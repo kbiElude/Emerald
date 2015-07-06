@@ -588,6 +588,9 @@ PUBLIC void ogl_context_linux_init(__in ogl_context                     context,
         attribute_list[6] = 0;
     }
 
+    /* Initialize WGL extensions */
+    _ogl_context_linux_initialize_glx_extensions(new_linux_ptr);
+
     new_linux_ptr->rendering_context = new_linux_ptr->pGLXCreateContextAttribsARB(window_display,
                                                                                   fb_configs_ptr[0],
                                                                                   parent_context_rendering_context,
@@ -611,9 +614,6 @@ end:
     {
         ogl_rendering_handler_unlock_bound_context(parent_context_rendering_handler);
     }
-
-    /* Initialize WGL extensions */
-    _ogl_context_linux_initialize_glx_extensions(new_linux_ptr);
 
     /* Call the provided function pointer to continue the context initialization process. */
     pInitContextAfterCreation(new_linux_ptr->context);

@@ -1059,20 +1059,6 @@ PUBLIC EMERALD_API system_window system_window_create_fullscreen(__in ogl_contex
 }
 
 /** Please see header for specification */
-PUBLIC void system_window_deinit_global()
-{
-    #ifdef _WIN32
-    {
-        /* Nothing to do here */
-    }
-    #else
-    {
-        system_window_linux_deinit_global();
-    }
-    #endif
-}
-
-/** Please see header for specification */
 PUBLIC EMERALD_API bool system_window_delete_callback_func(__in __notnull system_window               window_instance,
                                                            __in           system_window_callback_func callback_func,
                                                            __in __notnull void*                       pfn_callback_func,
@@ -1804,20 +1790,6 @@ end:
 }
 
 /** Please see header for specification */
-PUBLIC void system_window_init_global()
-{
-    #ifdef _WIN32
-    {
-        /* Nothing to do here */
-    }
-    #else
-    {
-        system_window_linux_init_global();
-    }
-    #endif
-}
-
-/** Please see header for specification */
 PUBLIC EMERALD_API bool system_window_set_cursor(__in __notnull system_window              window,
                                                                 system_window_mouse_cursor cursor)
 {
@@ -1943,6 +1915,17 @@ PUBLIC void _system_window_init()
     spawned_windows      = system_resizable_vector_create(BASE_WINDOW_STORAGE);
     spawned_windows_cs   = system_critical_section_create();
     n_windows_spawned_cs = system_critical_section_create();
+
+    #ifdef _WIN32
+    {
+        /* Nothing to do here */
+    }
+    #else
+    {
+        system_window_linux_init_global();
+    }
+    #endif
+
 }
 
 /** Please see header for specification */
@@ -1951,4 +1934,14 @@ PUBLIC void _system_window_deinit()
     system_resizable_vector_release(spawned_windows);
     system_critical_section_release(spawned_windows_cs);
     system_critical_section_release(n_windows_spawned_cs);
+
+    #ifdef _WIN32
+    {
+        /* Nothing to do here */
+    }
+    #else
+    {
+        system_window_linux_deinit_global();
+    }
+    #endif
 }

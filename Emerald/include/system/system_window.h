@@ -180,12 +180,6 @@ PUBLIC EMERALD_API system_window system_window_create_fullscreen(__in ogl_contex
                                                                  __in bool                vsync_enabled,
                                                                  __in system_pixel_format pixel_format);
 
-/** TODO
- * 
- *  NOTE: Internal use only.
- */
-PUBLIC void system_window_deinit_global();
-
 /** TODO */
 PUBLIC EMERALD_API bool system_window_delete_callback_func(__in __notnull system_window               window,
                                                            __in           system_window_callback_func callback_func,
@@ -218,12 +212,6 @@ PUBLIC EMERALD_API bool system_window_get_centered_window_position_for_primary_m
 PUBLIC EMERALD_API void system_window_get_property(__in  __notnull system_window          window,
                                                    __in            system_window_property property,
                                                    __out __notnull void*                  out_result);
-
-/** TODO
- * 
- *  NOTE: Internal use only.
- */
-PUBLIC void system_window_init_global();
 
 /** TODO */
 PUBLIC EMERALD_API bool system_window_set_cursor_visibility(__in __notnull system_window window,
