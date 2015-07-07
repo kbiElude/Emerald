@@ -32,6 +32,14 @@ typedef struct
     system_threads_entry_point_argument callback_func_argument;
     system_event                        kill_event; /* TODO: this HANDLE is currently leaked. */
     system_thread_id                    thread_id;
+    
+#ifdef __linux
+    /* No way to extract the TID outside of the concerned thread under POSIX,
+     * so we need this little magic wand event here..
+     */
+    system_event thread_id_submitted_event;
+#endif
+
 } _system_threads_thread_descriptor;
 
 /** Internal variables */
@@ -55,11 +63,23 @@ system_resource_pool    thread_descriptor_pool   = NULL;
     system_threads_entry_point_argument callback_func_arg = thread_descriptor->callback_func_argument;
     system_event                        exit_event        = thread_descriptor->kill_event;
 
+    #ifdef __linux
+    {
+        thread_descriptor->thread_id = system_threads_get_thread_id();
+        
+        system_event_set(thread_descriptor->thread_id_submitted_event);
+    }
+    #else
+    {
+        /* WinAPI's threading model is awesome ;) so this block is a stub. */
+    }
+    #endif
+    
+    callback_func(callback_func_arg);
+
     /* Release the descriptor back to the pool */
     system_resource_pool_return_to_pool(thread_descriptor_pool,
                                         (system_resource_pool_block) thread_descriptor);
-
-    callback_func(callback_func_arg);
 
     /* We're done */
     return NULL;
@@ -165,6 +185,12 @@ PUBLIC EMERALD_API system_thread_id system_threads_spawn(__in  __notnull   PFNSY
 #else
             pthread_t new_thread_handle = (pthread_t) NULL;
 
+            /* Instantiate a 'thread started' event we will use to wait until the newly spawned thread
+             * submits its thread ID to the descriptor.
+             * Since we're using resource pool to manage descriptors and it would require a bit of work
+             * to get the event to release at deinit time, we will free the event in just a bit */
+            thread_descriptor->thread_id_submitted_event = system_event_create(true); /* manual_reset */
+            
             int creation_result = pthread_create(&new_thread_handle,
                                                   NULL,
                                                   _system_threads_entry_point_wrapper,
@@ -172,6 +198,11 @@ PUBLIC EMERALD_API system_thread_id system_threads_spawn(__in  __notnull   PFNSY
 
             ASSERT_ALWAYS_SYNC(creation_result == 0,
                                "Could not create a new thread");
+            
+            system_event_wait_single(thread_descriptor->thread_id_submitted_event);
+
+            system_event_release(thread_descriptor->thread_id_submitted_event);
+            thread_descriptor->thread_id_submitted_event = NULL;
 #endif
 
             result = thread_descriptor->thread_id;
