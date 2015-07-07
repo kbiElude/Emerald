@@ -82,9 +82,6 @@ typedef struct _system_window_linux
 
     ~_system_window_linux()
     {
-        ASSERT_DEBUG_SYNC(!is_message_pump_locked,
-                          "System window about to be deinited while message pump is locked!");
-
         /* Release cursor */
         if (action_forbidden_cursor_resource != (Cursor) NULL)
         {
@@ -567,7 +564,7 @@ PUBLIC void system_window_linux_close_window(__in system_window_linux window)
 
     ASSERT_DEBUG_SYNC(linux_ptr != NULL,
                       "Input argument is NULL");
-    ASSERT_DEBUG_SYNC(linux_ptr->system_handle != NULL,
+    ASSERT_DEBUG_SYNC(linux_ptr->system_handle != (system_window_handle) NULL,
                       "No window to close - system handle is NULL.");
 
     XDestroyWindow(linux_ptr->display,
@@ -718,8 +715,6 @@ PUBLIC void system_window_linux_get_screen_size(__out int* out_screen_width_ptr,
 {
     Screen* display_screen = NULL;
 
-    ASSERT_DEBUG_SYNC(_display != NULL,
-                      "No active display");
     ASSERT_DEBUG_SYNC(root_window_linux_ptr != NULL,
                       "Root window unavailable");
     ASSERT_DEBUG_SYNC(out_screen_width_ptr  != NULL &&
@@ -894,19 +889,19 @@ PUBLIC bool system_window_linux_open_window(__in system_window_linux window,
     linux_ptr->vertical_resize_cursor_resource   = XCreateFontCursor(linux_ptr->display,
                                                                      XC_sb_v_double_arrow);
 
-    ASSERT_DEBUG_SYNC(linux_ptr->action_forbidden_cursor_resource != NULL,
+    ASSERT_DEBUG_SYNC(linux_ptr->action_forbidden_cursor_resource != (Cursor) NULL,
                       "Failed to load action forbidden cursor resource.");
-    ASSERT_DEBUG_SYNC(linux_ptr->arrow_cursor_resource != NULL,
+    ASSERT_DEBUG_SYNC(linux_ptr->arrow_cursor_resource != (Cursor) NULL,
                       "Failed to load arrow cursor resource.");
-    ASSERT_DEBUG_SYNC(linux_ptr->crosshair_cursor_resource != NULL,
+    ASSERT_DEBUG_SYNC(linux_ptr->crosshair_cursor_resource != (Cursor) NULL,
                       "Failed to load crosshair cursor resource.");
-    ASSERT_DEBUG_SYNC(linux_ptr->hand_cursor_resource != NULL,
+    ASSERT_DEBUG_SYNC(linux_ptr->hand_cursor_resource != (Cursor) NULL,
                       "Failed to load hand cursor resource.");
-    ASSERT_DEBUG_SYNC(linux_ptr->horizontal_resize_cursor_resource != NULL,
+    ASSERT_DEBUG_SYNC(linux_ptr->horizontal_resize_cursor_resource != (Cursor) NULL,
                       "Failed to load horizontal resize cursor resource.");
-    ASSERT_DEBUG_SYNC(linux_ptr->move_cursor_resource != NULL,
+    ASSERT_DEBUG_SYNC(linux_ptr->move_cursor_resource != (Cursor) NULL,
                       "Failed to load move cursor resource.");
-    ASSERT_DEBUG_SYNC(linux_ptr->vertical_resize_cursor_resource != NULL,
+    ASSERT_DEBUG_SYNC(linux_ptr->vertical_resize_cursor_resource != (Cursor) NULL,
                       "Failed to load vertical resize cursor resource.");
 
     /* If full-screen window is requested, throw an assertion. Linux builds do not support it yet.
@@ -937,7 +932,7 @@ PUBLIC bool system_window_linux_open_window(__in system_window_linux window,
                       "TODO: Full-screen windows are not supported yet");
 
     /* Determine parent window handle */
-    ASSERT_DEBUG_SYNC(parent_window_handle == NULL,
+    ASSERT_DEBUG_SYNC(parent_window_handle == (Cursor) NULL,
                       "TODO: system_window_linux does not support window embedding.");
 
     linux_ptr->default_screen_index = DefaultScreen(linux_ptr->display);

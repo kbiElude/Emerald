@@ -13,6 +13,7 @@
 #ifdef _WIN32
     #include <intrin.h>
 #else
+  #include <signal.h>
     #include <stdarg.h>
 #endif
 
@@ -30,7 +31,7 @@ _system_assertions_internal* internals = NULL;
 
 /** TODO */
 PRIVATE void _show_assertion_failure(const char* message)
-{
+{    
     #if defined(_DEBUG)
     {
         __debugbreak();
@@ -41,7 +42,7 @@ PRIVATE void _show_assertion_failure(const char* message)
                       "Assertion failure",
                       MB_OK | MB_ICONWARNING);
 #else
-        /* TODO */
+        raise(SIGINT);
 #endif
     }
     #endif /* _DEBUG */

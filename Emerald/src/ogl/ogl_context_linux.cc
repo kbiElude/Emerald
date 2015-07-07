@@ -158,8 +158,8 @@ PRIVATE void _ogl_context_linux_initialize_glx_extensions(__inout __notnull _ogl
                                SYSTEM_WINDOW_PROPERTY_SCREEN_INDEX,
                               &context_window_screen_index);
 
-    ASSERT_DEBUG_SYNC(context_window_platform != NULL,
-                      "No system handle associated with a system_window handle");
+    ASSERT_DEBUG_SYNC(context_window_display != NULL,
+                      "No display associated with a system_window handle");
 
     /* Retrieve the GLX extensions */
     glx_extensions = glXQueryExtensionsString(context_window_display,
@@ -493,8 +493,8 @@ PUBLIC void ogl_context_linux_init(__in ogl_context                     context,
     Display*              window_display                   = NULL;
     system_window_handle  window_handle                    = (system_window_handle) NULL;
 
-    ASSERT_DEBUG_SYNC(_display != NULL,
-                      "Display is NULL");
+    ASSERT_DEBUG_SYNC(context != NULL,
+                      "Input context is NULL");
     ASSERT_DEBUG_SYNC(new_linux_ptr != NULL,
                       "Out of memory");
 

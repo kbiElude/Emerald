@@ -171,7 +171,7 @@ PUBLIC collada_data_polylist collada_data_polylist_create(__in __notnull tinyxml
         if (input_type == COLLADA_DATA_INPUT_TYPE_UNDEFINED)
         {
             LOG_FATAL        ("Unrecognized semantic used for a polylist input");
-            ASSERT_DEBUG_SYNC(FALSE,
+            ASSERT_DEBUG_SYNC(false,
                               "Will skip an input");
 
             goto next_input;
