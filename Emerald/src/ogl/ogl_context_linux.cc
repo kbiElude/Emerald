@@ -230,9 +230,13 @@ PUBLIC void ogl_context_linux_bind_to_current_thread(__in ogl_context_linux cont
                                    SYSTEM_WINDOW_PROPERTY_HANDLE,
                                   &context_window_platform);
 
-        glXMakeCurrent(display,
-                       context_window_platform,
-                       linux_ptr->rendering_context);
+        XLockDisplay(display);
+        {
+            glXMakeCurrent(display,
+                           context_window_platform,
+                           linux_ptr->rendering_context);
+        }
+        XUnlockDisplay(display);
     }
 }
 
@@ -806,7 +810,11 @@ PUBLIC void ogl_context_linux_unbind_from_current_thread(__in ogl_context_linux 
                                SYSTEM_WINDOW_PROPERTY_DISPLAY,
                               &display);
 
-    glXMakeCurrent(              display,
-                   (GLXDrawable) NULL,  /* drawable */
-                                 NULL); /* ctx      */
+    XLockDisplay(display);
+    {
+        glXMakeCurrent(              display,
+                       (GLXDrawable) NULL,  /* drawable */
+                                     NULL); /* ctx      */
+    }
+    XUnlockDisplay(display);
 }

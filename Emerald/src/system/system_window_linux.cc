@@ -18,6 +18,7 @@
 #include "system/system_thread_pool.h"
 #include "system/system_threads.h"
 #include "system/system_window_linux.h"
+#include <unistd.h>
 #include <X11/cursorfont.h>
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
@@ -26,6 +27,8 @@
 
 typedef struct _system_window_linux
 {
+    Atom delete_window_atom;
+
     /* "action forbidden" cursor resource */
     Cursor action_forbidden_cursor_resource;
     /* arrow cursor resource */
@@ -65,6 +68,7 @@ typedef struct _system_window_linux
         crosshair_cursor_resource            = 0;
         current_mouse_cursor_system_resource = (Cursor) NULL;
         default_screen_index                 = -1;
+        delete_window_atom                   = (Atom) NULL;
         desktop_window                       = (Window) NULL;
         display                              = NULL;
         hand_cursor_resource                 = 0;
@@ -154,7 +158,8 @@ typedef struct _system_window_linux
             display = NULL;
         }
 
-        if (system_handle != (system_window_handle) NULL)
+        if (display       != 0                      &&
+            system_handle != (system_window_handle) NULL)
         {
             XDestroyWindow(display,
                            system_handle);
@@ -189,17 +194,10 @@ PRIVATE const unsigned int client_message_type_register_window = 2;
 
 PRIVATE bool                    is_message_pump_active              = true; /* set to false and send an event to the window to kill the message pump thread */
 PRIVATE bool                    is_message_pump_locked              = false;
-PRIVATE Display*                main_display                        = NULL;
-PRIVATE Atom                    message_pump_atom_delete_window     = (Atom) NULL;
 PRIVATE system_critical_section message_pump_registered_windows_cs  = NULL;
 PRIVATE system_hash64map        message_pump_registered_windows_map = NULL; /* maps (system_hash64) Window to system_window_linux */
 PRIVATE system_event            message_pump_thread_died_event      = NULL;
-
-
-/* Forward declarations */
-PRIVATE          void _system_window_linux_window_closing_rendering_thread_entrypoint(               ogl_context                          context,
-                                                                                                     void*                                user_arg);
-PRIVATE volatile void _system_window_linux_teardown_thread_pool_callback             (__in __notnull system_thread_pool_callback_argument arg);
+PRIVATE _system_window_linux*   root_window_linux_ptr               = NULL;
 
 
 /** Global UI thread event handler.
@@ -329,12 +327,12 @@ PRIVATE void _system_window_linux_handle_event(const XEvent* event_ptr)
 
                         window = (Window) hash_window;
 
-                        XSelectInput   (main_display,
+                        ASSERT_DEBUG_SYNC(root_window_linux_ptr != NULL,
+                                          "Root window is unknown");
+
+                        XSetWMProtocols(root_window_linux_ptr->display,
                                         window,
-                                        ButtonReleaseMask | ExposureMask | KeyPressMask | KeyReleaseMask | StructureNotifyMask);
-                        XSetWMProtocols(main_display,
-                                        window,
-                                        &message_pump_atom_delete_window,
+                                        &root_window_linux_ptr->delete_window_atom,
                                         1); /* n_atoms */
                     } /* for (all registered windows) */
                 }
@@ -349,86 +347,54 @@ PRIVATE void _system_window_linux_handle_event(const XEvent* event_ptr)
             break;
         }
 
-        /* TODO TODO TODO: MOVE TO THE RENDERING HANDLER'S MESSAGE PUMP!! */
         case DestroyNotify:
         {
-#if 0
-            _system_window_linux* linux_ptr = NULL;
+            /* TODO: ADD WINDOW_CLOSING CALLBACK SUPPORT */
+
+            /* Remove the window from the "registered windows" map */
+            ogl_context           context           = NULL;
+            _system_window_linux* linux_ptr         = NULL;
+            ogl_rendering_handler rendering_handler = NULL;
 
             system_critical_section_enter(message_pump_registered_windows_cs);
             {
                 system_hash64map_get(message_pump_registered_windows_map,
-                                     (system_hash64) event_ptr->xdestroywindow.window,
+                                     (system_hash64) event_ptr->xbutton.window,
                                     &linux_ptr);
 
-                ASSERT_DEBUG_SYNC(linux_ptr != NULL,
-                                  "Could not find a system_window_linux instance associated with the event's window");
-            }
-            system_critical_section_leave(message_pump_registered_windows_cs);
-
-            if (event_ptr->xdestroywindow.window == linux_ptr->system_handle)
-            {
-                /* If the window is being closed per system request (eg. ALT+F4 was pressed), we need to stop
-                 * the rendering process first! Otherwise we're very likely to end up with a nasty crash. */
-                ogl_context           context           = NULL;
-                ogl_rendering_handler rendering_handler = NULL;
-
-                system_window_get_property(linux_ptr->window,
-                                           SYSTEM_WINDOW_PROPERTY_RENDERING_CONTEXT,
-                                          &context);
-                system_window_get_property(linux_ptr->window,
-                                           SYSTEM_WINDOW_PROPERTY_RENDERING_HANDLER,
-                                          &rendering_handler);
-
-                if (rendering_handler != NULL)
-                {
-                    ogl_rendering_handler_playback_status playback_status = RENDERING_HANDLER_PLAYBACK_STATUS_STOPPED;
-
-                    ogl_rendering_handler_get_property(rendering_handler,
-                                                       OGL_RENDERING_HANDLER_PROPERTY_PLAYBACK_STATUS,
-                                                      &playback_status);
-
-                    if (playback_status != RENDERING_HANDLER_PLAYBACK_STATUS_STOPPED)
-                    {
-                        ogl_rendering_handler_stop(rendering_handler);
-                    } /* if (playback_status != RENDERING_HANDLER_PLAYBACK_STATUS_STOPPED) */
-
-                    /* For the "window closing" call-back, we need to work from the rendering thread, as the caller
-                     * may need to release GL stuff.
-                     *
-                     * This should work out of the box, since we've just stopped the play-back.
-                     */
-                    ogl_context_request_callback_from_context_thread(context,
-                                                                     _system_window_linux_window_closing_rendering_thread_entrypoint,
-                                                                     linux_ptr);
-                }
-
-                /* OK, safe to destroy the system window at this point */
-                XDestroyWindow(linux_ptr->display,
-                               linux_ptr->system_handle);
-
-                /* Now here's the trick: the call-backs can only be fired AFTER the window thread has shut down.
-                 * This lets us avoid various thread racing conditions which used to break all hell loose at the
-                 * tear-down time in the past, and which also let the window messages flow, which is necessary
-                 * for the closure to finish correctly.
-                 *
-                 * The entry-point we're pointing the task at does exactly that.
-                 */
-                system_thread_pool_task_descriptor task = system_thread_pool_create_task_descriptor_handler_only(THREAD_POOL_TASK_PRIORITY_CRITICAL,
-                                                                                                                _system_window_linux_teardown_thread_pool_callback,
-                                                                                                                (void*) linux_ptr);
-
-                system_thread_pool_submit_single_task(task);
-            } /* if (event_ptr->xdestroywindow.window == linux_ptr->system_handle) */
-#else
-            /* Remove the window from the "registered windows" map */
-            system_critical_section_enter(message_pump_registered_windows_cs);
-            {
                 system_hash64map_remove(message_pump_registered_windows_map,
                                         (system_hash64) event_ptr->xdestroywindow.window);
             }
             system_critical_section_leave(message_pump_registered_windows_cs);
-#endif
+
+            /* If the window is being closed per system request (eg. ALT+F4 was pressed), we need to stop
+             * the rendering process first! Otherwise we're very likely to end up with a nasty crash. */
+            system_window_get_property(linux_ptr->window,
+                                       SYSTEM_WINDOW_PROPERTY_RENDERING_CONTEXT,
+                                      &context);
+            system_window_get_property(linux_ptr->window,
+                                       SYSTEM_WINDOW_PROPERTY_RENDERING_HANDLER,
+                                      &rendering_handler);
+
+            if (rendering_handler != NULL)
+            {
+                ogl_rendering_handler_playback_status playback_status = RENDERING_HANDLER_PLAYBACK_STATUS_STOPPED;
+
+                ogl_rendering_handler_get_property(rendering_handler,
+                                                   OGL_RENDERING_HANDLER_PROPERTY_PLAYBACK_STATUS,
+                                                  &playback_status);
+
+                if (playback_status != RENDERING_HANDLER_PLAYBACK_STATUS_STOPPED)
+                {
+                    ogl_rendering_handler_stop(rendering_handler);
+                } /* if (playback_status != RENDERING_HANDLER_PLAYBACK_STATUS_STOPPED) */
+            }
+
+            /* Call back the subscribers, if any */
+            system_window_execute_callback_funcs(linux_ptr->window,
+                                                 SYSTEM_WINDOW_CALLBACK_FUNC_WINDOW_CLOSED);
+
+            system_event_set(linux_ptr->teardown_completed_event);
 
             break;
         } /* case DestroyNotify: */
@@ -530,13 +496,30 @@ PRIVATE void _system_window_linux_handle_event(const XEvent* event_ptr)
 /** TODO */
 PRIVATE void _system_window_linux_handle_events_thread_entrypoint(void* unused)
 {
+    ASSERT_DEBUG_SYNC(root_window_linux_ptr != NULL,
+                      "Root window is unknown");
+
     while (is_message_pump_active)
     {
         XEvent current_event;
 
         /* Block until X event arrives */
-        XNextEvent(main_display,
-                  &current_event);
+        if (XPending(root_window_linux_ptr->display) )
+        {
+            XLockDisplay(root_window_linux_ptr->display);
+            {
+                XNextEvent(root_window_linux_ptr->display,
+                          &current_event);
+            }
+            XUnlockDisplay(root_window_linux_ptr->display);
+        }
+        else
+        {
+            /* TODO: TEMP SOLUTION, FIX WHEN ALL UNIT TESTS PASS */
+            usleep(10);
+
+            continue;
+        }
 
         /* Handle the event */
         _system_window_linux_handle_event(&current_event);
@@ -576,18 +559,6 @@ PRIVATE void _system_window_window_closing_rendering_thread_entrypoint(ogl_conte
 }
 #endif
 
-/** TODO */
-PRIVATE volatile void _system_window_linux_teardown_thread_pool_callback(__in __notnull system_thread_pool_callback_argument arg)
-{
-    _system_window_linux* window_ptr = (_system_window_linux*) arg;
-
-    /* Call back the subscribers, if any */
-    system_window_execute_callback_funcs(window_ptr->window,
-                                         SYSTEM_WINDOW_CALLBACK_FUNC_WINDOW_CLOSED);
-
-    system_event_set(window_ptr->teardown_completed_event);
-}
-
 
 /** Please see header for spec */
 PUBLIC void system_window_linux_close_window(__in system_window_linux window)
@@ -618,13 +589,8 @@ PUBLIC void system_window_linux_deinit(__in system_window_linux window)
 /** Please see header for spec */
 PUBLIC void system_window_linux_deinit_global()
 {
-    if (main_display != NULL)
-    {
-        /* We don't really care whether this call fails or not */
-        XCloseDisplay(main_display);
-
-        main_display = NULL;
-    }
+    ASSERT_DEBUG_SYNC(root_window_linux_ptr == NULL,
+                      "Root window has not been initialized by the time system_window_linux_deinit_global() was called.");
 
     if (message_pump_registered_windows_cs != NULL)
     {
@@ -754,15 +720,17 @@ PUBLIC void system_window_linux_get_screen_size(__out int* out_screen_width_ptr,
 
     ASSERT_DEBUG_SYNC(_display != NULL,
                       "No active display");
+    ASSERT_DEBUG_SYNC(root_window_linux_ptr != NULL,
+                      "Root window unavailable");
     ASSERT_DEBUG_SYNC(out_screen_width_ptr  != NULL &&
                       out_screen_height_ptr != NULL,
                       "Input arguments are NULL");
 
-    XLockDisplay(main_display);
+    XLockDisplay(root_window_linux_ptr->display);
     {
-        display_screen = DefaultScreenOfDisplay(main_display);
+        display_screen = DefaultScreenOfDisplay(root_window_linux_ptr->display);
     }
-    XUnlockDisplay(main_display);
+    XUnlockDisplay(root_window_linux_ptr->display);
 
     ASSERT_DEBUG_SYNC(display_screen != NULL,
                       "No default screen reported for the display");
@@ -799,16 +767,34 @@ PUBLIC void system_window_linux_handle_window(__in system_window_linux window)
      * and handles them accordingly. Therefore, all we need to do here is to wait
      * until the WM_DELETE_WINDOW message arrives, which is when we can return
      * the execution to the caller. */
-    while (XNextEvent(linux_ptr->display,
-                     &current_event) )
+    while (true)
     {
-        if (               current_event.type == ClientMessage &&
-            (unsigned int) current_event.xclient.data.l[0] == message_pump_atom_delete_window)
+        if (XPending(linux_ptr->display) )
         {
-            /* Get out of the loop, the window is dead. */
-            break;
+            XLockDisplay(linux_ptr->display);
+            {
+                XNextEvent(linux_ptr->display,
+                          &current_event);
+            }
+            XUnlockDisplay(linux_ptr->display);
+
+            /* Handle the event */
+            _system_window_linux_handle_event(&current_event);
+
+            if (current_event.type == DestroyNotify)
+            {
+                /* Get out of the loop, the window is dead. */
+                linux_ptr->window = (Window) NULL;
+
+                break;
+            }
         }
-    } /* events can be processed */
+        else
+        {
+            /* TODO: TEMP SOLUTION, FIX WHEN ALL UNIT TESTS PASS */
+            usleep(10);
+        }
+    }
 
     LOG_INFO("system_window_linux_handle_window() waiting to die gracefully..");
 
@@ -835,36 +821,11 @@ PUBLIC void system_window_linux_init_global()
 {
     XInitThreads();
 
-    /* Open a global display which we will use to capture events coming for all
-     * opened windows.
-     */
-    main_display = XOpenDisplay(":0");
-
-    if (main_display == NULL)
-    {
-        ASSERT_ALWAYS_SYNC(false,
-                           "Could not open display at :0");
-
-        goto end;
-    }
-
-    /* Initialize other global stuff */
-    message_pump_atom_delete_window = XInternAtom(main_display,
-                                                  "WM_DELETE_WINDOW",
-                                                  True);
-
+    /* Initialize global stuff */
     message_pump_registered_windows_cs  = system_critical_section_create();
     message_pump_registered_windows_map = system_hash64map_create       (sizeof(_system_window_linux*) );
 
     message_pump_thread_died_event = system_event_create(true); /* manual_reset */
-
-    /* Spawn the global UI thread */
-    system_threads_spawn(_system_window_linux_handle_events_thread_entrypoint,
-                         NULL,  /* callback_func_argument */
-                         NULL); /* thread_wait_event */
-
-end:
-    ;
 }
 
 
@@ -899,6 +860,23 @@ PUBLIC bool system_window_linux_open_window(__in system_window_linux window,
 
         goto end;
     }
+
+    /* Initialize global root window properties */
+    if (is_first_window)
+    {
+        root_window_linux_ptr = linux_ptr;
+
+#if 0
+        /* Spawn the global UI thread */
+        system_threads_spawn(_system_window_linux_handle_events_thread_entrypoint,
+                             NULL,  /* callback_func_argument */
+                             NULL); /* thread_wait_event */
+#endif
+    }
+
+    linux_ptr->delete_window_atom = XInternAtom(linux_ptr->display,
+                                                "WM_DELETE_WINDOW",
+                                                 False);
 
     /* Cache mouse cursors */
     linux_ptr->action_forbidden_cursor_resource  = XCreateFontCursor(linux_ptr->display,
@@ -963,8 +941,8 @@ PUBLIC bool system_window_linux_open_window(__in system_window_linux window,
                       "TODO: system_window_linux does not support window embedding.");
 
     linux_ptr->default_screen_index = DefaultScreen(linux_ptr->display);
-    parent_window_handle            = RootWindow    (linux_ptr->display,
-                                                     linux_ptr->default_screen_index);
+    parent_window_handle            = RootWindow   (linux_ptr->display,
+                                                    linux_ptr->default_screen_index);
 
     /* Retrieve XVisualInfo instance, compatible with the requested rendering context */
     system_window_get_property(linux_ptr->window,
@@ -1026,6 +1004,14 @@ PUBLIC bool system_window_linux_open_window(__in system_window_linux window,
         goto end;
     }
 
+    XSelectInput   (linux_ptr->display,
+                    linux_ptr->system_handle,
+                    ButtonReleaseMask | ExposureMask | KeyPressMask | KeyReleaseMask | StructureNotifyMask);
+    XSetWMProtocols(linux_ptr->display,
+                    linux_ptr->system_handle,
+                   &linux_ptr->delete_window_atom,
+                    1); /* n_atoms */
+
     /* Register the window */
     system_critical_section_enter(message_pump_registered_windows_cs);
     {
@@ -1047,11 +1033,23 @@ PUBLIC bool system_window_linux_open_window(__in system_window_linux window,
     register_window_message.message_type = client_message_type_register_window;
     register_window_message.type         = ClientMessage;
 
-    XSendEvent(main_display,
-               linux_ptr->system_handle,
-               False, /* propagate */
-               0,     /* event_mask */
-               (XEvent*) &register_window_message);
+    XLockDisplay(root_window_linux_ptr->display);
+    {
+        Window root_window_system_handle = (Window) NULL;
+
+        system_window_get_property(root_window_linux_ptr->window,
+                                   SYSTEM_WINDOW_PROPERTY_HANDLE,
+                                  &root_window_system_handle);
+
+        XSendEvent (//linux_ptr->display,
+                    //linux_ptr->system_handle,
+                    root_window_linux_ptr->display,
+                    root_window_system_handle,
+                    False, /* propagate */
+                    0,     /* event_mask */
+                    (XEvent*) &register_window_message);
+    }
+    XUnlockDisplay(root_window_linux_ptr->display);
 
     /* Update the window title */
     XStoreName(linux_ptr->display,
