@@ -791,10 +791,9 @@ PUBLIC void ogl_context_linux_swap_buffers(__in ogl_context_linux context_linux)
 /** Please see header for spec */
 PUBLIC void ogl_context_linux_unbind_from_current_thread(__in ogl_context_linux context_linux)
 {
-    system_window        context_window          = NULL;
-    system_window_handle context_window_platform = (system_window_handle) NULL;
-    Display*             display                 = NULL;
-    _ogl_context_linux*  linux_ptr               = (_ogl_context_linux*) context_linux;
+    system_window        context_window = NULL;
+    Display*             display        = NULL;
+    _ogl_context_linux*  linux_ptr      = (_ogl_context_linux*) context_linux;
 
     ogl_context_get_property(linux_ptr->context,
                              OGL_CONTEXT_PROPERTY_WINDOW,
@@ -806,11 +805,8 @@ PUBLIC void ogl_context_linux_unbind_from_current_thread(__in ogl_context_linux 
     system_window_get_property(context_window,
                                SYSTEM_WINDOW_PROPERTY_DISPLAY,
                               &display);
-    system_window_get_property(context_window,
-                               SYSTEM_WINDOW_PROPERTY_HANDLE,
-                              &context_window_platform);
 
-    glXMakeCurrent(display,
-                   context_window_platform,
-                   NULL);
+    glXMakeCurrent(              display,
+                   (GLXDrawable) NULL,  /* drawable */
+                                 NULL); /* ctx      */
 }
