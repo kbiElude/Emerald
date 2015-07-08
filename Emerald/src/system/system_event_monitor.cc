@@ -393,6 +393,11 @@ PRIVATE void _system_event_monitor_thread_entrypoint(system_threads_entry_point_
 
                             has_found_signalled_event = true;
                         }
+                        else
+                        if (current_event_ptr->type == SYSTEM_EVENT_TYPE_THREAD)
+                        {
+                            has_found_signalled_event = true;
+                        }
 
                         ASSERT_DEBUG_SYNC(has_found_signalled_event,
                                           "About to wake up a wait op but none of the events are signalled.");

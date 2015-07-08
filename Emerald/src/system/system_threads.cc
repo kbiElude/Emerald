@@ -15,6 +15,7 @@
 #include "system/system_threads.h"
 
 #ifdef __linux__
+    #include <errno.h>
     #include <pthread.h>
     #include <unistd.h>
     #include <sys/syscall.h>
@@ -66,7 +67,7 @@ system_resource_pool    thread_descriptor_pool   = NULL;
     #ifdef __linux
     {
         thread_descriptor->thread_id = system_threads_get_thread_id();
-        
+
         system_event_set(thread_descriptor->thread_id_submitted_event);
     }
     #else
@@ -74,7 +75,7 @@ system_resource_pool    thread_descriptor_pool   = NULL;
         /* WinAPI's threading model is awesome ;) so this block is a stub. */
     }
     #endif
-    
+
     callback_func(callback_func_arg);
 
     /* Release the descriptor back to the pool */
@@ -128,15 +129,23 @@ PUBLIC EMERALD_API void system_threads_join_thread(__in      system_thread      
         struct timespec timeout_api;
         unsigned int    timeout_msec;
 
-        system_time_get_msec_for_timeline_time(timeout,
-                                              &timeout_msec);
+        if (timeout_msec == 0)
+        {
+            has_timed_out = (pthread_tryjoin_np(thread,
+                                                NULL) == ETIMEDOUT); /* __thread_return */
+        }
+        else
+        {
+            system_time_get_msec_for_timeline_time(timeout,
+                                                  &timeout_msec);
 
-        timeout_api.tv_sec  =  timeout_msec / 1000;
-        timeout_api.tv_nsec = (timeout_msec % 1000) * NSEC_PER_SEC;
+            timeout_api.tv_sec  =  timeout_msec / 1000;
+            timeout_api.tv_nsec = (timeout_msec % 1000) * NSEC_PER_SEC;
 
-        has_timed_out = (pthread_timedjoin_np(thread,
-                                              NULL, /* __thread_return */
-                                             &timeout_api) != 0);
+            has_timed_out = (pthread_timedjoin_np(thread,
+                                                  NULL, /* __thread_return */
+                                                  &timeout_api) == ETIMEDOUT);
+        }
     }
 #endif
 
