@@ -396,45 +396,6 @@ PRIVATE void _system_window_linux_handle_event(const XEvent* event_ptr)
             break;
         } /* case DestroyNotify: */
 
-        case Expose:
-        {
-            /* Need to re-render the frame */
-            _system_window_linux* linux_ptr         = NULL;
-            ogl_rendering_handler rendering_handler = NULL;
-
-            system_critical_section_enter(message_pump_registered_windows_cs);
-            {
-                system_hash64map_get(message_pump_registered_windows_map,
-                                     (system_hash64) event_ptr->xbutton.window,
-                                    &linux_ptr);
-
-                ASSERT_DEBUG_SYNC(linux_ptr != NULL,
-                                  "Could not find a system_window_linux instance associated with the event's window");
-            }
-            system_critical_section_leave(message_pump_registered_windows_cs);
-
-            system_window_get_property(linux_ptr->window,
-                                       SYSTEM_WINDOW_PROPERTY_RENDERING_HANDLER,
-                                      &rendering_handler);
-
-            ASSERT_DEBUG_SYNC(rendering_handler != NULL,
-                              "Window rendering handler is NULL");
-
-            if (rendering_handler != NULL)
-            {
-                system_timeline_time last_frame_time = 0;
-
-                ogl_rendering_handler_get_property(rendering_handler,
-                                                   OGL_RENDERING_HANDLER_PROPERTY_LAST_FRAME_TIME,
-                                                  &last_frame_time);
-
-                ogl_rendering_handler_play(rendering_handler,
-                                           last_frame_time);
-            } /* if (rendering_handler != NULL) */
-
-            break;
-        }
-
         case KeyPress:
         case KeyRelease:
         {
@@ -586,7 +547,7 @@ PUBLIC void system_window_linux_deinit(__in system_window_linux window)
 /** Please see header for spec */
 PUBLIC void system_window_linux_deinit_global()
 {
-    ASSERT_DEBUG_SYNC(root_window_linux_ptr == NULL,
+    ASSERT_DEBUG_SYNC(root_window_linux_ptr != NULL,
                       "Root window has not been initialized by the time system_window_linux_deinit_global() was called.");
 
     if (message_pump_registered_windows_cs != NULL)
@@ -1002,7 +963,7 @@ PUBLIC bool system_window_linux_open_window(__in system_window_linux window,
 
     XSelectInput   (linux_ptr->display,
                     linux_ptr->system_handle,
-                    ButtonReleaseMask | ExposureMask | KeyPressMask | KeyReleaseMask | StructureNotifyMask);
+                    ButtonReleaseMask | KeyPressMask | KeyReleaseMask | StructureNotifyMask);
     XSetWMProtocols(linux_ptr->display,
                     linux_ptr->system_handle,
                    &linux_ptr->delete_window_atom,
