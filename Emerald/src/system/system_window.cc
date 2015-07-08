@@ -697,6 +697,9 @@ PUBLIC EMERALD_API bool system_window_close(__in __notnull __deallocate(mem) sys
         {
             ogl_rendering_handler_stop(window_ptr->rendering_handler);
         }
+
+        /* Release the rendering handler */
+        ogl_rendering_handler_release(window_ptr->rendering_handler);
     }
 
     #ifdef INCLUDE_WEBCAM_MANAGER

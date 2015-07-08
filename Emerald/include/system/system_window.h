@@ -120,7 +120,7 @@ PUBLIC EMERALD_API bool system_window_add_callback_func(__in __notnull system_wi
                                                         __in __notnull void*                                pfn_callback_func,
                                                         __in __notnull void*                                callback_func_user_arg);
 
-/** TODO. Releases rendering handler! */
+/** TODO. Releases rendering handler, as well as the window instance! */
 PUBLIC EMERALD_API bool system_window_close(__in __notnull __deallocate(mem) system_window window);
 
 /** TODO

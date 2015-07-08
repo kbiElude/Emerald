@@ -48,7 +48,6 @@ typedef struct _system_window_linux
 
     /* Properties of a display connection which hosts the rendering handler */
     int      default_screen_index;
-    Window   desktop_window;
     Display* display;
 
     Colormap             colormap;
@@ -69,7 +68,6 @@ typedef struct _system_window_linux
         current_mouse_cursor_system_resource = (Cursor) NULL;
         default_screen_index                 = -1;
         delete_window_atom                   = (Atom) NULL;
-        desktop_window                       = (Window) NULL;
         display                              = NULL;
         hand_cursor_resource                 = 0;
         horizontal_resize_cursor_resource    = 0;
@@ -148,13 +146,6 @@ typedef struct _system_window_linux
             colormap = (Colormap) NULL;
         }
 
-        if (display != NULL)
-        {
-            XCloseDisplay(display);
-
-            display = NULL;
-        }
-
         if (display       != 0                      &&
             system_handle != (system_window_handle) NULL)
         {
@@ -162,6 +153,13 @@ typedef struct _system_window_linux
                            system_handle);
 
             system_handle = (system_window_handle) NULL;
+        }
+
+        if (display != NULL)
+        {
+            XCloseDisplay(display);
+
+            display = NULL;
         }
 
         if (teardown_completed_event != NULL)
@@ -530,6 +528,8 @@ PUBLIC void system_window_linux_close_window(__in system_window_linux window)
 
     XDestroyWindow(linux_ptr->display,
                    linux_ptr->system_handle);
+
+    linux_ptr->system_handle = NULL;
 }
 
 /** Please see header for spec */

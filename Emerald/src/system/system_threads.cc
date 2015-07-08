@@ -44,7 +44,7 @@ typedef struct
 } _system_threads_thread_descriptor;
 
 /** Internal variables */
-system_resizable_vector active_threads_vector    = NULL; /* contains HANDLEs of active vectors. */
+system_resizable_vector active_threads_vector    = NULL; /* contains system handles of active threads. */
 system_critical_section active_threads_vector_cs = NULL;
 system_resource_pool    thread_descriptor_pool   = NULL;
 
@@ -199,7 +199,7 @@ PUBLIC EMERALD_API system_thread_id system_threads_spawn(__in  __notnull   PFNSY
              * Since we're using resource pool to manage descriptors and it would require a bit of work
              * to get the event to release at deinit time, we will free the event in just a bit */
             thread_descriptor->thread_id_submitted_event = system_event_create(true); /* manual_reset */
-            
+
             int creation_result = pthread_create(&new_thread_handle,
                                                   NULL,
                                                   _system_threads_entry_point_wrapper,
@@ -207,7 +207,7 @@ PUBLIC EMERALD_API system_thread_id system_threads_spawn(__in  __notnull   PFNSY
 
             ASSERT_ALWAYS_SYNC(creation_result == 0,
                                "Could not create a new thread");
-            
+
             system_event_wait_single(thread_descriptor->thread_id_submitted_event);
 
             system_event_release(thread_descriptor->thread_id_submitted_event);
@@ -230,6 +230,14 @@ PUBLIC EMERALD_API system_thread_id system_threads_spawn(__in  __notnull   PFNSY
             {
                 thread_descriptor->kill_event = NULL;
             }
+
+            system_critical_section_enter(active_threads_vector_cs);
+            {
+                system_resizable_vector_push(active_threads_vector,
+                                             (void*) new_thread_handle);
+            }
+            system_critical_section_leave(active_threads_vector_cs);
+
         } /* if (thread_descriptor != NULL) */
     }
 
