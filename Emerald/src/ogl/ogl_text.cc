@@ -810,6 +810,11 @@ PRIVATE void _ogl_text_destruction_callback_from_renderer(__in __notnull ogl_con
             _global.draw_text_program          = NULL;
             _global.draw_text_program_data_ssb = NULL;
             _global.draw_text_vertex_shader    = NULL;
+
+            _global.draw_text_fragment_shader_color_ub_offset            = -1;
+            _global.draw_text_fragment_shader_font_table_location        = -1;
+            _global.draw_text_vertex_shader_n_origin_character_ub_offset = -1;
+            _global.draw_text_vertex_shader_scale_ub_offset              = -1;
         }
         else
         {

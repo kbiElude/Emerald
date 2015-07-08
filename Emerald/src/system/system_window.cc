@@ -139,12 +139,9 @@ system_resizable_vector spawned_windows = NULL;
 /* Critical section for read/write access to spawned_windows. */
 system_critical_section spawned_windows_cs = NULL;
 
-/** Used to track amount of spawned windows. Also, if it is the first window that is created, window class is initialized.
- *  Always lock n_windows_spawned_cs before accessing (in order to defend against multiple window class creation and counter
- *  corruption)
- */
-int                     n_windows_spawned    = 0;
-system_critical_section n_windows_spawned_cs = NULL;
+/** TODO. Only use when n_total_windows_spawned_cs is locked */
+unsigned int            n_total_windows_spawned    = 0;
+system_critical_section n_total_windows_spawned_cs = NULL;
 
 /* Root window - holds root rendering context which encapsulates buffer objects, program objects, texutre objects, etc. that
  * all other rendering contexts may use.
@@ -367,23 +364,8 @@ PRIVATE void _system_window_thread_entrypoint(__notnull void* in_arg)
     ASSERT_DEBUG_SYNC(window_ptr->window_platform != NULL,
                       "Platform-specific window instance is NULL");
 
-    if (!window_ptr->is_root_window)
-    {
-        /* For root windows, the CS will have already been locked. This does not
-         * hold for any other window type.
-         */
-        system_critical_section_enter(n_windows_spawned_cs);
-    }
-
     window_ptr->pfn_window_open_window(window_ptr->window_platform,
-                                       n_windows_spawned == 0); /* is_first_window */
-
-    ++n_windows_spawned;
-
-    if (!window_ptr->is_root_window)
-    {
-        system_critical_section_leave(n_windows_spawned_cs);
-    }
+                                       root_window == NULL); /* is_first_window */
 
     /* Set up context sharing between all windows */
     system_critical_section_enter(spawned_windows_cs);
@@ -758,29 +740,6 @@ PUBLIC EMERALD_API bool system_window_close(__in __notnull __deallocate(mem) sys
 
     delete window_ptr;
 
-    /* If no other window is around, release the root window */
-    system_critical_section_enter(n_windows_spawned_cs);
-    {
-        ASSERT_DEBUG_SYNC(n_windows_spawned >= 1,
-                          "Sanity check failed.");
-
-        --n_windows_spawned;
-
-        if (n_windows_spawned == 1)
-        {
-            ASSERT_DEBUG_SYNC(root_window                   != NULL &&
-                              root_window_rendering_handler != NULL,
-                              "Sanity check failed");
-
-            ogl_rendering_handler_release(root_window_rendering_handler);
-            root_window_rendering_handler = NULL;
-
-            system_window_close(root_window);
-            root_window = NULL;
-        } /* if (n_windows_spawned == 0) */
-    }
-    system_critical_section_leave(n_windows_spawned_cs);
-
     return true;
 }
 
@@ -899,30 +858,28 @@ PRIVATE system_window _system_window_create_shared(__in __notnull             og
         if (new_window->window_safe_to_release_event != NULL &&
             new_window->window_initialized_event     != NULL)
         {
-            /* If this is the first window created during app life-time, spawn a root context window
-             * before we continue.
-             *
-             * NOTE: This will be done repeatedly if appn_windows_spawnedlication opens a window A, kills it, and then
-             *       opens a window B. No damage done, but it will have performance implications.
-             */
-            system_critical_section_enter(n_windows_spawned_cs);
-            {
-                if ( n_windows_spawned == 0      &&
-                    !new_window->is_root_window)
-                {
-                    _system_window_create_root_window(context_type);
-                }
-                else
-                if (n_windows_spawned > 0      &&
-                    new_window->is_root_window)
-                {
-                    ASSERT_DEBUG_SYNC(false,
-                                      "Sanity check failed");
-                }
-            }
-            system_critical_section_leave(n_windows_spawned_cs);
+           /* If this is the first window created during app life-time, spawn a root context window
+            * before we continue.
+            *
+            * NOTE: This will be done repeatedly if appn_windows_spawnedlication opens a window A, kills it, and then
+            *       opens a window B. No damage done, but it will have performance implications.
+            */
+            int current_n_total_windows_spawned;
 
-            /* Spawn window thread */
+            system_critical_section_enter(n_total_windows_spawned_cs);
+            {
+                current_n_total_windows_spawned = n_total_windows_spawned;
+
+                ++n_total_windows_spawned;
+            }
+            system_critical_section_leave(n_total_windows_spawned_cs);
+
+            if (current_n_total_windows_spawned == 0)
+            {
+                _system_window_create_root_window(context_type);
+            }
+
+             /* Spawn window thread */
             system_threads_spawn(_system_window_thread_entrypoint,
                                  new_window,
                                 &new_window->window_thread_event);
@@ -1912,9 +1869,9 @@ PUBLIC void system_window_wait_until_closed(__in __notnull system_window window)
 /** Please see header for specification */
 PUBLIC void _system_window_init()
 {
-    spawned_windows      = system_resizable_vector_create(BASE_WINDOW_STORAGE);
-    spawned_windows_cs   = system_critical_section_create();
-    n_windows_spawned_cs = system_critical_section_create();
+    n_total_windows_spawned_cs = system_critical_section_create();
+    spawned_windows            = system_resizable_vector_create(BASE_WINDOW_STORAGE);
+    spawned_windows_cs         = system_critical_section_create();
 
     #ifdef _WIN32
     {
@@ -1931,9 +1888,22 @@ PUBLIC void _system_window_init()
 /** Please see header for specification */
 PUBLIC void _system_window_deinit()
 {
+    /* Release the root window if one is around */
+    if (root_window != NULL)
+    {
+        ASSERT_DEBUG_SYNC(root_window_rendering_handler != NULL,
+                          "Root window's rendering handler is NULL");
+
+        ogl_rendering_handler_release(root_window_rendering_handler);
+        root_window_rendering_handler = NULL;
+
+        system_window_close(root_window);
+        root_window = NULL;
+    }
+
+    system_critical_section_release(n_total_windows_spawned_cs);
     system_resizable_vector_release(spawned_windows);
     system_critical_section_release(spawned_windows_cs);
-    system_critical_section_release(n_windows_spawned_cs);
 
     #ifdef _WIN32
     {
