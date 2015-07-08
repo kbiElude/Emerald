@@ -229,6 +229,8 @@ PRIVATE void _ogl_rendering_handler_thread_entrypoint(void* in_arg)
                                 new_frame_time = rendering_handler->playback_start_time +
                                                  frame_index * HZ_PER_SEC * rendering_handler->fps / 1000;
 
+                                rendering_handler->n_frames_rendered++;
+
                                 break;
                             }
 
@@ -236,6 +238,8 @@ PRIVATE void _ogl_rendering_handler_thread_entrypoint(void* in_arg)
                             {
                                 new_frame_time = 0;
                                 frame_index    = 0;
+
+                                rendering_handler->n_frames_rendered++;
 
                                 break;
                             }
@@ -549,6 +553,7 @@ PUBLIC EMERALD_API bool ogl_rendering_handler_is_current_thread_rendering_thread
 PUBLIC EMERALD_API bool ogl_rendering_handler_play(__in __notnull ogl_rendering_handler rendering_handler,
                                                                   system_timeline_time  start_time)
 {
+    unsigned int            pre_n_frames_rendered = 0;
     _ogl_rendering_handler* rendering_handler_ptr = (_ogl_rendering_handler*) rendering_handler;
     bool                    result                = false;
 
@@ -575,11 +580,23 @@ PUBLIC EMERALD_API bool ogl_rendering_handler_play(__in __notnull ogl_rendering_
                     system_event_set(rendering_handler_ptr->playback_in_progress_event);
                 }
 
+                pre_n_frames_rendered                  = rendering_handler_ptr->n_frames_rendered;
                 rendering_handler_ptr->playback_status = RENDERING_HANDLER_PLAYBACK_STATUS_STARTED;
             }
             system_critical_section_leave(rendering_handler_ptr->rendering_cs);
 
             result = true;
+        }
+    }
+
+    if (result)
+    {
+        /* Spin until at least one frame is rendered. This is needed to work around thread racing
+         * conditions in one of the RenderingHandler unit tests, reproducible under 32-bit Linux builds.
+         */
+        while (rendering_handler_ptr->n_frames_rendered == pre_n_frames_rendered)
+        {
+            ;
         }
     }
 
