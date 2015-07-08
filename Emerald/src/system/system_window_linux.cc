@@ -776,6 +776,7 @@ PUBLIC void system_window_linux_handle_window(__in system_window_linux window)
             /* Handle the event */
             _system_window_linux_handle_event(&current_event);
 
+
             if (current_event.type == DestroyNotify)
             {
                 /* Get out of the loop, the window is dead. */

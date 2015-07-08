@@ -11,35 +11,40 @@
 
 /** Macro to use an assertion check that should be only included for debug builds of the user app AND Emerald core dll. **/
 #ifdef _DEBUG
-    #define ASSERT_DEBUG_ASYNC(condition, message, ...) system_assertions_assert(false,                \
-                                                                                 DEBUG_ONLY_ASSERTION, \
-                                                                                 condition,            \
-                                                                                 message,              \
-                                                                                 __VA_ARGS__);         \
-                                                        __analysis_assume       (condition);
+    #ifdef _WIN32
+        #define ASSERT_DEBUG_ASYNC(condition, message, ...) system_assertions_assert(false,                \
+                                                                                     DEBUG_ONLY_ASSERTION, \
+                                                                                     condition,            \
+                                                                                     message,              \
+                                                                                     __VA_ARGS__);         \
+                                                            __analysis_assume       (condition);
 
-    #define ASSERT_DEBUG_SYNC(condition, message, ...)  system_assertions_assert(true,                 \
-                                                                                 DEBUG_ONLY_ASSERTION, \
-                                                                                 condition,            \
-                                                                                 message,              \
-                                                                                 __VA_ARGS__);         \
-                                                        __analysis_assume       (condition);
+        #define ASSERT_DEBUG_SYNC(condition, message, ...)  system_assertions_assert(true,                 \
+                                                                                     DEBUG_ONLY_ASSERTION, \
+                                                                                     condition,            \
+                                                                                     message,              \
+                                                                                     __VA_ARGS__);         \
+                                                            __analysis_assume       (condition);
+    #else
+        #define ASSERT_DEBUG_ASYNC(condition, message, ...) system_assertions_assert(false,                \
+                                                                                     DEBUG_ONLY_ASSERTION, \
+                                                                                     condition,            \
+                                                                                     message,              \
+                                                                                    #__VA_ARGS__);         \
+                                                            __analysis_assume       (condition);
+
+        #define ASSERT_DEBUG_SYNC(condition, message, ...)  system_assertions_assert(true,                 \
+                                                                                     DEBUG_ONLY_ASSERTION, \
+                                                                                     condition,            \
+                                                                                     message,              \
+                                                                                    #__VA_ARGS__);         \
+                                                            __analysis_assume       (condition);
+    #endif
 #else
-    #define ASSERT_DEBUG_ASYNC(condition, message, ...) system_assertions_assert(false,                \
-                                                                                 DEBUG_ONLY_ASSERTION, \
-                                                                                 condition,            \
-                                                                                 message,              \
-                                                                                #__VA_ARGS__);         \
-                                                        __analysis_assume       (condition);
-
-    #define ASSERT_DEBUG_SYNC(condition, message, ...)  system_assertions_assert(true,                 \
-                                                                                 DEBUG_ONLY_ASSERTION, \
-                                                                                 condition,            \
-                                                                                 message,              \
-                                                                                #__VA_ARGS__);         \
-                                                        __analysis_assume       (condition);
+    #define ASSERT_DEBUG_ASYNC(condition, message, ...) ;
+    #define ASSERT_DEBUG_SYNC(condition, message, ...)  ;
 #endif
-  
+
 /** Macro to use an assertion check that should be only included for release builds of the user app AND Emerald core dll. **/
 #ifndef _DEBUG
     #define ASSERT_RELEASE_ASYNC(condition, message, ...) system_assertions_assert(false,                  \

@@ -630,6 +630,7 @@ PRIVATE void _ogl_text_construction_callback_from_renderer(__in __notnull ogl_co
             ASSERT_DEBUG_SYNC(per_context_data_ptr->draw_text_program_ub_vsdata != NULL,
                               "VSData uniform block descriptor is NULL");
 
+
             /* Set up uniform block bindings */
             ogl_program_ub_get_property(per_context_data_ptr->draw_text_program_ub_fsdata,
                                         OGL_PROGRAM_UB_PROPERTY_INDEX,

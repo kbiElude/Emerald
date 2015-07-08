@@ -101,18 +101,18 @@ typedef struct _system_memory_manager
         {
             char temp[1024];
 
-            sprintf_s(temp,
-                      sizeof(temp),
-                      "log_memory_manager_%d.txt",
-                      (n_alloc_log_serializers++) );
+            snprintf(temp,
+                     sizeof(temp),
+                     "log_memory_manager_%d.txt",
+                     (n_alloc_log_serializers++) );
 
             alloc_log_serializer = system_file_serializer_create_for_writing(system_hashed_ansi_string_create(temp) );
 
-            sprintf_s(temp,
-                      sizeof(temp),
-                      "constructor(in_memory_region_size:%d in_page_size:%d)\n",
-                      in_memory_region_size,
-                      in_page_size);
+            snprintf(temp,
+                     sizeof(temp),
+                     "constructor(in_memory_region_size:%d in_page_size:%d)\n",
+                     in_memory_region_size,
+                     in_page_size);
 
             system_file_serializer_write       (alloc_log_serializer,
                                                 strlen(temp),
@@ -195,11 +195,11 @@ PUBLIC EMERALD_API bool system_memory_manager_alloc_block(__in  __notnull system
     {
         char temp[1024];
 
-        sprintf_s(temp,
-                  sizeof(temp),
-                  "system_memory_manager_alloc_block(size:%d required_alignment:%d)\n",
-                  size,
-                  required_alignment);
+        snprintf(temp,
+                 sizeof(temp),
+                 "system_memory_manager_alloc_block(size:%d required_alignment:%d)\n",
+                 size,
+                 required_alignment);
 
         system_file_serializer_write       (manager_ptr->alloc_log_serializer,
                                             strlen(temp),
@@ -407,10 +407,10 @@ PUBLIC EMERALD_API void system_memory_manager_free_block(__in __notnull system_m
     {
         char temp[1024];
 
-        sprintf_s(temp,
-                  sizeof(temp),
-                  "system_memory_manager_free_block(alloc_offset:%d)\n",
-                  alloc_offset);
+        snprintf(temp,
+                 sizeof(temp),
+                 "system_memory_manager_free_block(alloc_offset:%d)\n",
+                 alloc_offset);
 
         system_file_serializer_write       (manager_ptr->alloc_log_serializer,
                                             strlen(temp),

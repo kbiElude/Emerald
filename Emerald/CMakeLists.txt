@@ -22,8 +22,9 @@ IF(MSVC)
 ENDIF(MSVC)
 
 IF (NOT MSVC)
-    SET(CMAKE_C_FLAGS_DEBUG "-D_DEBUG")
-    SET(CMAKE_CXX_FLAGS     "${CMAKE_CXX_FLAGS} -fPIC")
+    SET(CMAKE_C_FLAGS_DEBUG   "-D_DEBUG")
+    SET(CMAKE_CXX_FLAGS       "${CMAKE_CXX_FLAGS} -fPIC")
+    SET(CMAKE_CXX_FLAGS_DEBUG "-D_DEBUG")
 
     # Posix does not support events, as found in Windows. Emerald provides an emulation layer
     # for the functionality, based on conditional variables.

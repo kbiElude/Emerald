@@ -2834,10 +2834,10 @@ PUBLIC EMERALD_API void scene_graph_lock(__in __notnull scene_graph graph)
                ' ',
                sizeof(tmp) );
 
-        sprintf_s(tmp + indent_level,
-                  sizeof(tmp) - indent_level,
-                  "[%s]",
-                  _scene_graph_get_node_type_string(node_ptr->type)
+        snprintf(tmp + indent_level,
+                 sizeof(tmp) - indent_level,
+                 "[%s]",
+                 _scene_graph_get_node_type_string(node_ptr->type)
                  );
 
         LOG_INFO("%s", tmp);
@@ -2877,10 +2877,10 @@ PUBLIC EMERALD_API void scene_graph_lock(__in __notnull scene_graph graph)
                    ' ',
                    sizeof(tmp) );
 
-            sprintf_s(tmp + indent_level,
-                      sizeof(tmp) - indent_level,
-                      "+ Camera:[%s]",
-                      system_hashed_ansi_string_get_buffer(camera_name) );
+            snprintf(tmp + indent_level,
+                     sizeof(tmp) - indent_level,
+                     "+ Camera:[%s]",
+                     system_hashed_ansi_string_get_buffer(camera_name) );
 
             LOG_INFO("%s",
                      tmp);
@@ -2905,10 +2905,10 @@ PUBLIC EMERALD_API void scene_graph_lock(__in __notnull scene_graph graph)
                    ' ',
                    sizeof(tmp) );
 
-            sprintf_s(tmp + indent_level,
-                      sizeof(tmp) - indent_level,
-                      "+ Light:[%s]",
-                      system_hashed_ansi_string_get_buffer(light_name) );
+            snprintf(tmp + indent_level,
+                     sizeof(tmp) - indent_level,
+                     "+ Light:[%s]",
+                     system_hashed_ansi_string_get_buffer(light_name) );
 
             LOG_INFO("%s",
                      tmp);
@@ -2933,10 +2933,10 @@ PUBLIC EMERALD_API void scene_graph_lock(__in __notnull scene_graph graph)
                    ' ',
                    sizeof(tmp) );
 
-            sprintf_s(tmp + indent_level,
-                      sizeof(tmp) - indent_level,
-                      "+ Mesh:[%s]",
-                      system_hashed_ansi_string_get_buffer(mesh_name) );
+            snprintf(tmp + indent_level,
+                     sizeof(tmp) - indent_level,
+                     "+ Mesh:[%s]",
+                     system_hashed_ansi_string_get_buffer(mesh_name) );
 
             LOG_INFO("%s",
                      tmp);

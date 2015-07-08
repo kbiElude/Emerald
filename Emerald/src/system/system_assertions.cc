@@ -31,12 +31,12 @@ _system_assertions_internal* internals = NULL;
 
 /** TODO */
 PRIVATE void _show_assertion_failure(const char* message)
-{    
+{
     #if defined(_DEBUG)
     {
+#ifdef _WIN32
         __debugbreak();
 
-#ifdef _WIN32
         ::MessageBoxA(HWND_DESKTOP,
                       message,
                       "Assertion failure",
