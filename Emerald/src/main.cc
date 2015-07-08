@@ -132,10 +132,10 @@ int main_deinit()
         _system_resources_deinit();
 
         _system_assertions_deinit();
+        _system_window_deinit();
         _system_thread_pool_deinit();
         _system_threads_deinit();
         _system_matrix4x4_deinit();
-        _system_window_deinit();
         _system_variants_deinit();
         _system_time_deinit();
 
