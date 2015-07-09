@@ -213,11 +213,23 @@ __forceinline bool _system_event_monitor_is_event_signalled(__in _system_event_m
         ASSERT_DEBUG_SYNC(event_ptr->type == SYSTEM_EVENT_TYPE_THREAD,
                           "Unrecognized event type");
 
-        system_threads_join_thread(event_ptr->thread_event_thread,
-                                   0, /* timeout */
-                                  &has_timed_out);
+        if (!event_ptr->regular_event_status)
+        {
+            system_threads_join_thread(event_ptr->thread_event_thread,
+                                       0, /* timeout */
+                                      &has_timed_out);
 
-        result = !has_timed_out;
+            result = !has_timed_out;
+
+            if (!has_timed_out)
+            {
+                event_ptr->regular_event_status = true;
+            }
+        }
+        else
+        {
+            result = true;
+        }
     }
 
     return result;
@@ -471,6 +483,8 @@ PUBLIC void system_event_monitor_add_event(__in system_event event)
         }
         else
         {
+            internal_event_ptr->regular_event_status = false; /* NOT signalled by default. */
+
             system_event_get_property(event,
                                       SYSTEM_EVENT_PROPERTY_OWNED_THREAD,
                                      &internal_event_ptr->thread_event_thread);
