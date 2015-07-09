@@ -170,6 +170,11 @@ typedef struct _system_window_linux
     }
 } _system_window_linux;
 
+/* Forward declarations */
+PRIVATE void _system_window_linux_handle_close_window_request(_system_window_linux* linux_ptr,
+                                                              bool                  remove_from_window_map);
+
+
 /* Main display which is used to listen for window events.
  *
  * You might have noticed that each system_window_linux instance also holds a display.
@@ -198,27 +203,28 @@ PRIVATE _system_window_linux*   root_window_linux_ptr               = NULL;
  **/
 PRIVATE void _system_window_linux_handle_event(const XEvent* event_ptr)
 {
+    _system_window_linux* linux_ptr = NULL;
+
+    system_critical_section_enter(message_pump_registered_windows_cs);
+    {
+        system_hash64 key = (system_hash64) event_ptr->xany.window;
+
+        system_hash64map_get(message_pump_registered_windows_map,
+                             key,
+                            &linux_ptr);
+    }
+    system_critical_section_leave(message_pump_registered_windows_cs);
+
     switch (event_ptr->type)
     {
         case ButtonPress:
         case ButtonRelease:
         {
             system_window_callback_func callback_func;
-            _system_window_linux*       linux_ptr      = NULL;
-            bool                        should_proceed = true;
+            bool                        should_proceed = (linux_ptr != NULL);
 
-            system_critical_section_enter(message_pump_registered_windows_cs);
-            {
-                system_hash64map_get(message_pump_registered_windows_map,
-                                     (system_hash64) event_ptr->xbutton.window,
-                                    &linux_ptr);
-
-                ASSERT_DEBUG_SYNC(linux_ptr != NULL,
-                                  "Could not find a system_window_linux instance associated with the event's window");
-
-                should_proceed = (linux_ptr != NULL);
-            }
-            system_critical_section_leave(message_pump_registered_windows_cs);
+            ASSERT_DEBUG_SYNC(linux_ptr != NULL,
+                              "Could not find a system_window_linux instance associated with the event's window");
 
             switch (event_ptr->xbutton.button)
             {
@@ -320,6 +326,12 @@ PRIVATE void _system_window_linux_handle_event(const XEvent* event_ptr)
                 system_critical_section_leave(message_pump_registered_windows_cs);
             }
             else
+            if (event_ptr->xclient.data.l[0] == linux_ptr->delete_window_atom)
+            {
+                _system_window_linux_handle_close_window_request(linux_ptr,
+                                                                 false /* remove_from_window_map */);
+            }
+            else
             {
                 ASSERT_DEBUG_SYNC(false,
                                   "Unrecognized client message type");
@@ -330,52 +342,8 @@ PRIVATE void _system_window_linux_handle_event(const XEvent* event_ptr)
 
         case DestroyNotify:
         {
-            /* TODO: ADD WINDOW_CLOSING CALLBACK SUPPORT */
-
-            /* Remove the window from the "registered windows" map */
-            ogl_context           context           = NULL;
-            _system_window_linux* linux_ptr         = NULL;
-            ogl_rendering_handler rendering_handler = NULL;
-
-            system_critical_section_enter(message_pump_registered_windows_cs);
-            {
-                system_hash64map_get(message_pump_registered_windows_map,
-                                     (system_hash64) event_ptr->xbutton.window,
-                                    &linux_ptr);
-
-                system_hash64map_remove(message_pump_registered_windows_map,
-                                        (system_hash64) event_ptr->xdestroywindow.window);
-            }
-            system_critical_section_leave(message_pump_registered_windows_cs);
-
-            /* If the window is being closed per system request (eg. ALT+F4 was pressed), we need to stop
-             * the rendering process first! Otherwise we're very likely to end up with a nasty crash. */
-            system_window_get_property(linux_ptr->window,
-                                       SYSTEM_WINDOW_PROPERTY_RENDERING_CONTEXT,
-                                      &context);
-            system_window_get_property(linux_ptr->window,
-                                       SYSTEM_WINDOW_PROPERTY_RENDERING_HANDLER,
-                                      &rendering_handler);
-
-            if (rendering_handler != NULL)
-            {
-                ogl_rendering_handler_playback_status playback_status = RENDERING_HANDLER_PLAYBACK_STATUS_STOPPED;
-
-                ogl_rendering_handler_get_property(rendering_handler,
-                                                   OGL_RENDERING_HANDLER_PROPERTY_PLAYBACK_STATUS,
-                                                  &playback_status);
-
-                if (playback_status != RENDERING_HANDLER_PLAYBACK_STATUS_STOPPED)
-                {
-                    ogl_rendering_handler_stop(rendering_handler);
-                } /* if (playback_status != RENDERING_HANDLER_PLAYBACK_STATUS_STOPPED) */
-            }
-
-            /* Call back the subscribers, if any */
-            system_window_execute_callback_funcs(linux_ptr->window,
-                                                 SYSTEM_WINDOW_CALLBACK_FUNC_WINDOW_CLOSED);
-
-            system_event_set(linux_ptr->teardown_completed_event);
+            _system_window_linux_handle_close_window_request(linux_ptr,
+                                                             true); /* remove_from_window_map */
 
             break;
         } /* case DestroyNotify: */
@@ -383,19 +351,6 @@ PRIVATE void _system_window_linux_handle_event(const XEvent* event_ptr)
         case KeyPress:
         case KeyRelease:
         {
-            _system_window_linux* linux_ptr = NULL;
-
-            system_critical_section_enter(message_pump_registered_windows_cs);
-            {
-                system_hash64map_get(message_pump_registered_windows_map,
-                                     (system_hash64) event_ptr->xkey.window,
-                                    &linux_ptr);
-
-                ASSERT_DEBUG_SYNC(linux_ptr != NULL,
-                                  "Could not find a system_window_linux instance associated with the event's window");
-            }
-            system_critical_section_leave(message_pump_registered_windows_cs);
-
             system_window_execute_callback_funcs(linux_ptr->window,
                                                  (event_ptr->type == KeyPress) ? SYSTEM_WINDOW_CALLBACK_FUNC_KEY_DOWN
                                                                                : SYSTEM_WINDOW_CALLBACK_FUNC_KEY_UP,
@@ -434,6 +389,57 @@ PRIVATE void _system_window_linux_handle_event(const XEvent* event_ptr)
     }
     #endif
 }
+
+/** TODO */
+PRIVATE void _system_window_linux_handle_close_window_request(_system_window_linux* linux_ptr,
+                                                              bool                  remove_from_window_map)
+{
+    /* TODO: ADD WINDOW_CLOSING CALLBACK SUPPORT */
+
+    /* Remove the window from the "registered windows" map */
+    ogl_context           context           = NULL;
+    ogl_rendering_handler rendering_handler = NULL;
+
+    if (remove_from_window_map)
+    {
+        system_critical_section_enter(message_pump_registered_windows_cs);
+        {
+            system_hash64map_remove(message_pump_registered_windows_map,
+                                    (system_hash64) linux_ptr->system_handle);
+        }
+        system_critical_section_leave(message_pump_registered_windows_cs);
+    }
+
+    /* If the window is being closed per system request (eg. ALT+F4 was pressed), we need to stop
+     * the rendering process first! Otherwise we're very likely to end up with a nasty crash. */
+    system_window_get_property(linux_ptr->window,
+                               SYSTEM_WINDOW_PROPERTY_RENDERING_CONTEXT,
+                              &context);
+    system_window_get_property(linux_ptr->window,
+                               SYSTEM_WINDOW_PROPERTY_RENDERING_HANDLER,
+                              &rendering_handler);
+
+    if (rendering_handler != NULL)
+    {
+        ogl_rendering_handler_playback_status playback_status = RENDERING_HANDLER_PLAYBACK_STATUS_STOPPED;
+
+        ogl_rendering_handler_get_property(rendering_handler,
+                                           OGL_RENDERING_HANDLER_PROPERTY_PLAYBACK_STATUS,
+                                          &playback_status);
+
+        if (playback_status != RENDERING_HANDLER_PLAYBACK_STATUS_STOPPED)
+        {
+            ogl_rendering_handler_stop(rendering_handler);
+        } /* if (playback_status != RENDERING_HANDLER_PLAYBACK_STATUS_STOPPED) */
+    }
+
+    /* Call back the subscribers, if any */
+    system_window_execute_callback_funcs(linux_ptr->window,
+                                         SYSTEM_WINDOW_CALLBACK_FUNC_WINDOW_CLOSED);
+
+    system_event_set(linux_ptr->teardown_completed_event);
+}
+
 
 #if 0
 /** TODO */
@@ -479,7 +485,7 @@ PUBLIC void system_window_linux_close_window(__in system_window_linux window)
     XDestroyWindow(linux_ptr->display,
                    linux_ptr->system_handle);
 
-    linux_ptr->system_handle = NULL;
+    linux_ptr->system_handle = (system_window_handle) NULL;
 }
 
 /** Please see header for spec */
@@ -624,25 +630,45 @@ PUBLIC bool system_window_linux_get_property(__in  system_window_linux    window
 PUBLIC void system_window_linux_get_screen_size(__out int* out_screen_width_ptr,
                                                 __out int* out_screen_height_ptr)
 {
-    Screen* display_screen = NULL;
+    Display* display                = NULL;
+    Screen*  display_screen         = NULL;
+    bool     should_release_display = false;
 
-    ASSERT_DEBUG_SYNC(root_window_linux_ptr != NULL,
-                      "Root window unavailable");
     ASSERT_DEBUG_SYNC(out_screen_width_ptr  != NULL &&
                       out_screen_height_ptr != NULL,
                       "Input arguments are NULL");
 
-    XLockDisplay(root_window_linux_ptr->display);
+    if (root_window_linux_ptr != NULL)
     {
-        display_screen = DefaultScreenOfDisplay(root_window_linux_ptr->display);
+        display = root_window_linux_ptr->display;
     }
-    XUnlockDisplay(root_window_linux_ptr->display);
+    else
+    {
+        display                = XOpenDisplay(":0");
+        should_release_display = true;
+
+        ASSERT_DEBUG_SYNC(display != NULL,
+                          "Cannot open connection to display.");
+    }
+
+    XLockDisplay(display);
+    {
+        display_screen = DefaultScreenOfDisplay(display);
+    }
+    XUnlockDisplay(display);
 
     ASSERT_DEBUG_SYNC(display_screen != NULL,
                       "No default screen reported for the display");
 
     *out_screen_width_ptr  = display_screen->width;
     *out_screen_height_ptr = display_screen->height;
+
+    if (should_release_display)
+    {
+        XCloseDisplay(display);
+
+        display = NULL;
+    }
 }
 
 /** Please see header for spec */
