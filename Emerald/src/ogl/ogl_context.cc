@@ -2496,6 +2496,7 @@ PUBLIC EMERALD_API void ogl_context_enumerate_supported_msaa_samples(__in  syste
 
     /* Release the enumeration context */
     ogl_context_release(enumeration_context);
+    system_window_close(temp_window);
 
     enumeration_context = NULL;
 }

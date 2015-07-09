@@ -24,7 +24,6 @@
 #include <X11/Xutil.h>
 
 
-
 typedef struct _system_window_linux
 {
     Atom delete_window_atom;
@@ -941,9 +940,7 @@ PUBLIC bool system_window_linux_open_window(__in system_window_linux window,
                                    SYSTEM_WINDOW_PROPERTY_HANDLE,
                                   &root_window_system_handle);
 
-        XSendEvent (//linux_ptr->display,
-                    //linux_ptr->system_handle,
-                    root_window_linux_ptr->display,
+        XSendEvent (root_window_linux_ptr->display,
                     root_window_system_handle,
                     False, /* propagate */
                     0,     /* event_mask */
