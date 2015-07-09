@@ -210,7 +210,7 @@ PUBLIC EMERALD_API system_thread_id system_threads_spawn(__in  __notnull   PFNSY
                                                               0,                                   /* run immediately after creation */
                                                              &thread_descriptor->thread_id);
 
-            ASSERT_ALWAYS_SYNC(new_thread_handle != NULL,
+            ASSERT_ALWAYS_SYNC(thread_descriptor->thread_handle != NULL,
                                "Could not create a new thread");
 #else
             /* Instantiate a 'thread started' event we will use to wait until the newly spawned thread

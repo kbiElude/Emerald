@@ -436,7 +436,11 @@ end:
     if (window_ptr->rendering_handler != NULL)
     {
         ogl_rendering_handler_release(window_ptr->rendering_handler);
-        ogl_rendering_handler_release(window_ptr->rendering_handler);
+
+        if (window_ptr->rendering_handler != NULL)
+        {
+            ogl_rendering_handler_release(window_ptr->rendering_handler);
+        }
 
         window_ptr->rendering_handler = NULL;
     }
