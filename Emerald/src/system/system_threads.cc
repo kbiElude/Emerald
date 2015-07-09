@@ -32,20 +32,23 @@ typedef struct
     PFNSYSTEMTHREADSENTRYPOINTPROC      callback_func;
     system_threads_entry_point_argument callback_func_argument;
     system_event                        kill_event; /* TODO: this HANDLE is currently leaked. */
+    system_thread                       thread_handle;
     system_thread_id                    thread_id;
-    
+
 #ifdef __linux
     /* No way to extract the TID outside of the concerned thread under POSIX,
      * so we need this little magic wand event here..
      */
     system_event thread_id_submitted_event;
+    unsigned int thread_spawn_index;
 #endif
 
 } _system_threads_thread_descriptor;
 
 /** Internal variables */
-system_resizable_vector active_threads_vector    = NULL; /* contains HANDLEs of active vectors. */
+system_resizable_vector active_threads_vector    = NULL; /* contains system handles of active threads. */
 system_critical_section active_threads_vector_cs = NULL;
+unsigned int            n_threads_spawned        = 1;
 system_resource_pool    thread_descriptor_pool   = NULL;
 
 /** Internal functions */
@@ -63,6 +66,7 @@ system_resource_pool    thread_descriptor_pool   = NULL;
     PFNSYSTEMTHREADSENTRYPOINTPROC      callback_func     = thread_descriptor->callback_func;
     system_threads_entry_point_argument callback_func_arg = thread_descriptor->callback_func_argument;
     system_event                        exit_event        = thread_descriptor->kill_event;
+    system_thread                       thread_handle     = thread_descriptor->thread_handle;
 
     #ifdef __linux
     {
@@ -76,11 +80,29 @@ system_resource_pool    thread_descriptor_pool   = NULL;
     }
     #endif
 
-    callback_func(callback_func_arg);
-
     /* Release the descriptor back to the pool */
     system_resource_pool_return_to_pool(thread_descriptor_pool,
                                         (system_resource_pool_block) thread_descriptor);
+
+    /* Execute the user-specified entry-point */
+    callback_func(callback_func_arg);
+
+    /* Unregister the thread */
+    system_critical_section_enter(active_threads_vector_cs);
+    {
+        size_t thread_handle_index = system_resizable_vector_find(active_threads_vector,
+                                                                  (void*) thread_handle);
+
+        ASSERT_DEBUG_SYNC(thread_handle_index != ITEM_NOT_FOUND,
+                          "Thread handle was not found in the active threads vector");
+
+        if (thread_handle_index != ITEM_NOT_FOUND)
+        {
+            system_resizable_vector_delete_element_at(active_threads_vector,
+                                                      thread_handle_index);
+        }
+    }
+    system_critical_section_leave(active_threads_vector_cs);
 
     /* We're done */
     return NULL;
@@ -132,7 +154,7 @@ PUBLIC EMERALD_API void system_threads_join_thread(__in      system_thread      
         if (timeout_msec == 0)
         {
             has_timed_out = (pthread_tryjoin_np(thread,
-                                                NULL) == ETIMEDOUT); /* __thread_return */
+                                                NULL) != 0); /* __thread_return */
         }
         else
         {
@@ -144,7 +166,7 @@ PUBLIC EMERALD_API void system_threads_join_thread(__in      system_thread      
 
             has_timed_out = (pthread_timedjoin_np(thread,
                                                   NULL, /* __thread_return */
-                                                  &timeout_api) == ETIMEDOUT);
+                                                  &timeout_api) != 0);
         }
     }
 #endif
@@ -181,33 +203,31 @@ PUBLIC EMERALD_API system_thread_id system_threads_spawn(__in  __notnull   PFNSY
 
             /* Spawn the thread. */
 #ifdef _WIN32
-            HANDLE new_thread_handle = ::CreateThread(NULL,                   /* no security attribs */
-                                                      0,                      /* default stack size */
-                                                      &_system_threads_entry_point_wrapper,
-                                                      thread_descriptor,
-                                                      0,                      /* run immediately after creation */
-                                                      &thread_descriptor->thread_id
-                                                     );
+            thread_descriptor->thread_handle = ::CreateThread(NULL,                                /* no security attribs */
+                                                              0,                                   /* default stack size */
+                                                             &_system_threads_entry_point_wrapper,
+                                                              thread_descriptor,
+                                                              0,                                   /* run immediately after creation */
+                                                             &thread_descriptor->thread_id);
 
             ASSERT_ALWAYS_SYNC(new_thread_handle != NULL,
                                "Could not create a new thread");
 #else
-            pthread_t new_thread_handle = (pthread_t) NULL;
-
             /* Instantiate a 'thread started' event we will use to wait until the newly spawned thread
              * submits its thread ID to the descriptor.
              * Since we're using resource pool to manage descriptors and it would require a bit of work
              * to get the event to release at deinit time, we will free the event in just a bit */
-            thread_descriptor->thread_id_submitted_event = system_event_create(true); /* manual_reset */
-            
-            int creation_result = pthread_create(&new_thread_handle,
+            thread_descriptor->thread_id_submitted_event = system_event_create     (true); /* manual_reset */
+            thread_descriptor->thread_spawn_index        = system_atomics_increment(&n_threads_spawned);
+
+            int creation_result = pthread_create(&thread_descriptor->thread_handle,
                                                   NULL,
                                                   _system_threads_entry_point_wrapper,
                                                   thread_descriptor);
 
             ASSERT_ALWAYS_SYNC(creation_result == 0,
                                "Could not create a new thread");
-            
+
             system_event_wait_single(thread_descriptor->thread_id_submitted_event);
 
             system_event_release(thread_descriptor->thread_id_submitted_event);
@@ -218,18 +238,26 @@ PUBLIC EMERALD_API system_thread_id system_threads_spawn(__in  __notnull   PFNSY
 
             if (out_thread_ptr != NULL)
             {
-                *out_thread_ptr = new_thread_handle;
+                *out_thread_ptr = thread_descriptor->thread_handle;
             }
 
             if (thread_wait_event != NULL)
             {
-                *thread_wait_event            = system_event_create_from_thread(new_thread_handle);
+                *thread_wait_event            = system_event_create_from_thread(thread_descriptor->thread_handle);
                 thread_descriptor->kill_event = *thread_wait_event;
             }
             else
             {
                 thread_descriptor->kill_event = NULL;
             }
+
+            system_critical_section_enter(active_threads_vector_cs);
+            {
+                system_resizable_vector_push(active_threads_vector,
+                                             (void*) thread_descriptor->thread_handle);
+            }
+            system_critical_section_leave(active_threads_vector_cs);
+
         } /* if (thread_descriptor != NULL) */
     }
 
@@ -306,15 +334,10 @@ PUBLIC void _system_threads_deinit()
                                       n_thread < n_threads;
                                     ++n_thread)
                     {
-#ifdef _WIN32
-                        HANDLE thread_handle = 0;
-#else
-                        pthread_t thread_handle = (pthread_t) NULL;
-#endif
-
-                        bool result_get = system_resizable_vector_get_element_at(active_threads_vector,
-                                                                                 n_thread,
-                                                                                &thread_handle);
+                        system_thread thread_handle = (system_thread) NULL;
+                        bool          result_get    = system_resizable_vector_get_element_at(active_threads_vector,
+                                                                                             n_thread,
+                                                                                            &thread_handle);
 
                         ASSERT_DEBUG_SYNC(result_get,
                                           "Could not retrieve thread handle.");

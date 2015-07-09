@@ -697,6 +697,9 @@ PUBLIC EMERALD_API bool system_window_close(__in __notnull __deallocate(mem) sys
         {
             ogl_rendering_handler_stop(window_ptr->rendering_handler);
         }
+
+        /* Release the rendering handler */
+        ogl_rendering_handler_release(window_ptr->rendering_handler);
     }
 
     #ifdef INCLUDE_WEBCAM_MANAGER
@@ -759,7 +762,7 @@ PRIVATE void _system_window_create_root_window(__in ogl_context_type context_typ
     if (prev_context_type != 0xFFFFFFFF)
     {
         ASSERT_DEBUG_SYNC(context_type == prev_context_type,
-                          "Fix limitation where either only ES or only GL contexts can be created during app lifespan.");
+                          "TODO: Fix limitation where either only ES or only GL contexts can be created during app lifespan.");
     }
     else
     {
@@ -790,16 +793,15 @@ PRIVATE void _system_window_create_root_window(__in ogl_context_type context_typ
                                                 false, /* vsync_enabled */
                                                 0,     /* parent_window_handle */
                                                 false, /* visible */
-                                                true,   /* is_root_window */
+                                                true,  /* is_root_window */
                                                 root_window_pf);
 
     ASSERT_DEBUG_SYNC(root_window != NULL,
                       "Root window context creation failed");
 
-    root_window_rendering_handler = ogl_rendering_handler_create_with_fps_policy(system_hashed_ansi_string_create("Root window rendering handler"),
-                                                                                 1,     /* desired_fps */
-                                                                                 NULL,  /* pfn_rendering_callback */
-                                                                                 NULL); /* user_arg */
+    root_window_rendering_handler = ogl_rendering_handler_create_with_render_per_request_policy(system_hashed_ansi_string_create("Root window rendering handler"),
+                                                                                                NULL,  /* pfn_rendering_callback */
+                                                                                                NULL); /* user_arg */
 
     ASSERT_DEBUG_SYNC(root_window_rendering_handler != NULL,
                       "Root window rendering handler creation failed");

@@ -24,7 +24,6 @@
 #include <X11/Xutil.h>
 
 
-
 typedef struct _system_window_linux
 {
     Atom delete_window_atom;
@@ -48,7 +47,6 @@ typedef struct _system_window_linux
 
     /* Properties of a display connection which hosts the rendering handler */
     int      default_screen_index;
-    Window   desktop_window;
     Display* display;
 
     Colormap             colormap;
@@ -69,7 +67,6 @@ typedef struct _system_window_linux
         current_mouse_cursor_system_resource = (Cursor) NULL;
         default_screen_index                 = -1;
         delete_window_atom                   = (Atom) NULL;
-        desktop_window                       = (Window) NULL;
         display                              = NULL;
         hand_cursor_resource                 = 0;
         horizontal_resize_cursor_resource    = 0;
@@ -148,13 +145,6 @@ typedef struct _system_window_linux
             colormap = (Colormap) NULL;
         }
 
-        if (display != NULL)
-        {
-            XCloseDisplay(display);
-
-            display = NULL;
-        }
-
         if (display       != 0                      &&
             system_handle != (system_window_handle) NULL)
         {
@@ -162,6 +152,13 @@ typedef struct _system_window_linux
                            system_handle);
 
             system_handle = (system_window_handle) NULL;
+        }
+
+        if (display != NULL)
+        {
+            XCloseDisplay(display);
+
+            display = NULL;
         }
 
         if (teardown_completed_event != NULL)
@@ -186,11 +183,8 @@ typedef struct _system_window_linux
  * deinitialized in system_window_linux_deinit_global().
  *
  */
-PRIVATE const unsigned int client_message_type_please_die      = 1;
 PRIVATE const unsigned int client_message_type_register_window = 2;
 
-PRIVATE bool                    is_message_pump_active              = true; /* set to false and send an event to the window to kill the message pump thread */
-PRIVATE bool                    is_message_pump_locked              = false;
 PRIVATE system_critical_section message_pump_registered_windows_cs  = NULL;
 PRIVATE system_hash64map        message_pump_registered_windows_map = NULL; /* maps (system_hash64) Window to system_window_linux */
 PRIVATE system_event            message_pump_thread_died_event      = NULL;
@@ -278,17 +272,7 @@ PRIVATE void _system_window_linux_handle_event(const XEvent* event_ptr)
              * 1. REGISTER_WINDOW: new renderer window was spawned. Need to re-configure the main display
              *                     to intercept for certain events generated for the new event.
              * 
-             * 2. PLEASE_DIE:      the application is quitting, the message pump should gracefully put
-             *                     itself to rest.
              */
-            if (event_ptr->xclient.message_type == client_message_type_please_die)
-            {
-                LOG_FATAL("DEBUG: Please die client message received.");
-
-                /* By setting the variable below to false, the message pump loop will leave shortly after */
-                is_message_pump_active = false;
-            }
-            else
             if (event_ptr->xclient.message_type == client_message_type_register_window)
             {
                 LOG_FATAL("DEBUG: Register window client message received.");
@@ -451,42 +435,6 @@ PRIVATE void _system_window_linux_handle_event(const XEvent* event_ptr)
     #endif
 }
 
-/** TODO */
-PRIVATE void _system_window_linux_handle_events_thread_entrypoint(void* unused)
-{
-    ASSERT_DEBUG_SYNC(root_window_linux_ptr != NULL,
-                      "Root window is unknown");
-
-    while (is_message_pump_active)
-    {
-        XEvent current_event;
-
-        /* Block until X event arrives */
-        if (XPending(root_window_linux_ptr->display) )
-        {
-            XLockDisplay(root_window_linux_ptr->display);
-            {
-                XNextEvent(root_window_linux_ptr->display,
-                          &current_event);
-            }
-            XUnlockDisplay(root_window_linux_ptr->display);
-        }
-        else
-        {
-            /* TODO: TEMP SOLUTION, FIX WHEN ALL UNIT TESTS PASS */
-            usleep(10);
-
-            continue;
-        }
-
-        /* Handle the event */
-        _system_window_linux_handle_event(&current_event);
-    } /* while (is_message_pump_active) */
-
-    system_event_set(message_pump_thread_died_event);
-}
-
-
 #if 0
 /** TODO */
 PRIVATE void _system_window_window_closing_rendering_thread_entrypoint(ogl_context context,
@@ -530,6 +478,8 @@ PUBLIC void system_window_linux_close_window(__in system_window_linux window)
 
     XDestroyWindow(linux_ptr->display,
                    linux_ptr->system_handle);
+
+    linux_ptr->system_handle = NULL;
 }
 
 /** Please see header for spec */
@@ -737,7 +687,6 @@ PUBLIC void system_window_linux_handle_window(__in system_window_linux window)
             /* Handle the event */
             _system_window_linux_handle_event(&current_event);
 
-
             if (current_event.type == DestroyNotify)
             {
                 /* Get out of the loop, the window is dead. */
@@ -822,13 +771,6 @@ PUBLIC bool system_window_linux_open_window(__in system_window_linux window,
     if (is_first_window)
     {
         root_window_linux_ptr = linux_ptr;
-
-#if 0
-        /* Spawn the global UI thread */
-        system_threads_spawn(_system_window_linux_handle_events_thread_entrypoint,
-                             NULL,  /* callback_func_argument */
-                             NULL); /* thread_wait_event */
-#endif
     }
 
     linux_ptr->delete_window_atom = XInternAtom(linux_ptr->display,
@@ -998,9 +940,7 @@ PUBLIC bool system_window_linux_open_window(__in system_window_linux window,
                                    SYSTEM_WINDOW_PROPERTY_HANDLE,
                                   &root_window_system_handle);
 
-        XSendEvent (//linux_ptr->display,
-                    //linux_ptr->system_handle,
-                    root_window_linux_ptr->display,
+        XSendEvent (root_window_linux_ptr->display,
                     root_window_system_handle,
                     False, /* propagate */
                     0,     /* event_mask */

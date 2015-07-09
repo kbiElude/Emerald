@@ -133,8 +133,6 @@ int main_deinit()
 
         _system_assertions_deinit();
         _system_window_deinit();
-        _system_thread_pool_deinit();
-        _system_threads_deinit();
         _system_matrix4x4_deinit();
         _system_variants_deinit();
         _system_time_deinit();
@@ -157,12 +155,19 @@ int main_deinit()
             _ocl_deinit();
         #endif
 
+        /* NOTE: Thread pool must be shut down BEFORE the event monitor, since the deinit()
+         *       call uses events. Support for these under Linux is delivered by the monitor
+         *       (under Windows this can also be optionally enabled).
+         */
+        _system_thread_pool_deinit();
+
         #ifdef USE_EMULATED_EVENTS
         {
             system_event_monitor_deinit();
         }
         #endif
 
+        _system_threads_deinit();
         system_hashed_ansi_string_deinit();
 
         _system_log_deinit();

@@ -254,14 +254,17 @@ PRIVATE void _ogl_rendering_handler_thread_entrypoint(void* in_arg)
                         /* Call the user app's call-back */
                         system_timeline_time rendering_start_time = system_time_now();
                         {
-                            rendering_handler->pfn_rendering_callback(rendering_handler->context,
-                                                                      frame_index,
-                                                                      new_frame_time,
-                                                                      rendering_handler->rendering_callback_user_arg);
-
-                            if (rendering_handler->fps_counter_status)
+                            if (rendering_handler->pfn_rendering_callback != NULL)
                             {
-                                pGLFinish();
+                                rendering_handler->pfn_rendering_callback(rendering_handler->context,
+                                                                        frame_index,
+                                                                        new_frame_time,
+                                                                        rendering_handler->rendering_callback_user_arg);
+
+                                if (rendering_handler->fps_counter_status)
+                                {
+                                    pGLFinish();
+                                }
                             }
 
                             rendering_handler->last_frame_time = new_frame_time;

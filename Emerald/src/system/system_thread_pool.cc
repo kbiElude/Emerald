@@ -73,6 +73,7 @@ typedef struct
 typedef _system_thread_pool_order_descriptor* _system_thread_pool_order_descriptor_ptr;
 
 /* Internal variables */
+bool                    is_alive                                                    =  false;
 system_event            kill_pool_event                                             =  NULL;
 system_event            kill_wait_table           [THREAD_POOL_AMOUNT_OF_THREADS]   = {NULL};
 system_resource_pool    order_pool                                                  =  NULL;
@@ -663,17 +664,14 @@ PUBLIC void _system_thread_pool_init()
 /** Please see header for specification */
 PUBLIC void _system_thread_pool_deinit()
 {
-    /* TODO: There's a bug somewhere that causes the wait below to lock up if we used
-     *       an infinite stall. */
-    const system_timeline_time timeout_time = system_time_get_timeline_time_for_s(5);
-    bool                       wait_result  = false;
+    bool wait_result  = false;
 
     /* Set the kill event and wait till all worker threads die out */
     system_event_set          (kill_pool_event);
     system_event_wait_multiple(kill_wait_table,
                                THREAD_POOL_AMOUNT_OF_THREADS,
                                true, /* wait_on_all_objects */
-                               timeout_time,
+                               SYSTEM_TIME_INFINITE,
                               &wait_result);
 
     /* All threads should have died by now. Deinit all remaining objects */
