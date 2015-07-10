@@ -17,7 +17,7 @@ inline unsigned int system_atomics_decrement(volatile long* value_ptr)
     }
     #else
     {
-        previous_value = __sync_fetch_and_sub(value_ptr, 1);
+        previous_value = __sync_fetch_and_sub(value_ptr, 1) - 1; /* match Windows behavior */
     }
     #endif
 
@@ -34,7 +34,7 @@ inline unsigned int system_atomics_decrement(volatile unsigned int* value_ptr)
     }
     #else
     {
-        previous_value = __sync_fetch_and_sub(value_ptr, 1);
+        previous_value = __sync_fetch_and_sub(value_ptr, 1) - 1; /* match Windows behavior */
     }
     #endif
 
@@ -51,7 +51,7 @@ inline unsigned int system_atomics_increment(volatile long* value_ptr)
     }
     #else
     {
-        previous_value = __sync_fetch_and_add(value_ptr, 1);
+        previous_value = __sync_fetch_and_add(value_ptr, 1) + 1; /* match Windows behavior */
     }
     #endif
 
@@ -68,7 +68,7 @@ inline unsigned int system_atomics_increment(volatile unsigned int* value_ptr)
     }
     #else
     {
-        previous_value = __sync_fetch_and_add(value_ptr, 1);
+        previous_value = __sync_fetch_and_add(value_ptr, 1) + 1; /* match Windows behavior */
     }
     #endif
 
