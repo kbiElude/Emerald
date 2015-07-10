@@ -50,7 +50,13 @@ ELSE (MSVC)
                                                   LINK_FLAGS    "-m32")
 ENDIF (MSVC)
 
+# Copy the assets. Under VS, we need to copy the data to two different directories, so that
+# the debugging works out of the box..
 FILE(COPY "${Test-DemoApp_SOURCE_DIR}/blob/" DESTINATION "${EMERALD_BINARY_DIR}/bin/blob/")
+
+IF (MSVC)
+    FILE(COPY "${Test-DemoApp_SOURCE_DIR}/blob/" DESTINATION "${Test-DemoApp_BINARY_DIR}/blob/")
+ENDIF(MSVC)
 
 # Other blabbery ..
 SET(EXECUTABLE_OUTPUT_PATH ${EMERALD_BINARY_DIR}/bin)
