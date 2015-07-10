@@ -167,7 +167,7 @@ DECLARE_HANDLE(system_window);
 #endif
 
 /******************** TIME REPRESENTATION *********************************/
-typedef uint64_t system_timeline_time;
+typedef uint32_t system_timeline_time;
 
 /** TODO */
 typedef enum
