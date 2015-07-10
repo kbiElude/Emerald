@@ -776,6 +776,7 @@ PUBLIC bool system_window_linux_open_window(__in system_window_linux window,
 {
     bool                      is_window_fullscreen = false;
     bool                      is_window_scalable   = false;
+    XKeyboardControl          keyboard_control;
     _system_window_linux*     linux_ptr            = (_system_window_linux*) window;
     uint32_t                  n_depth_bits         = 0;
     uint32_t                  n_rgba_bits[4]       = {0};
@@ -801,6 +802,15 @@ PUBLIC bool system_window_linux_open_window(__in system_window_linux window,
 
         goto end;
     }
+
+    /* Configure the keyboard auto-repeat mode. We want it disabled, so that the key events arrives
+     * just like under Windows.
+     */
+    keyboard_control.auto_repeat_mode = AutoRepeatModeOff;
+
+    XChangeKeyboardControl(linux_ptr->display,
+                           KBAutoRepeatMode,
+                          &keyboard_control);
 
     /* Initialize global root window properties */
     if (is_first_window)
