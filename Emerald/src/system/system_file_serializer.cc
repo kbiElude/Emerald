@@ -143,7 +143,7 @@ PRIVATE THREAD_POOL_TASK_HANDLER void _system_file_serializer_read_task_executor
                             serializer_descriptor->contents,
                             serializer_descriptor->file_size);
 
-        ASSERT_ALWAYS_SYNC(n_bytes_read != serializer_descriptor->file_size,
+        ASSERT_ALWAYS_SYNC(n_bytes_read == serializer_descriptor->file_size,
                            "Could not read %d bytes for file [%s]",
                            serializer_descriptor->file_size,
                            system_hashed_ansi_string_get_buffer(serializer_descriptor->file_name)
@@ -200,8 +200,29 @@ PRIVATE THREAD_POOL_TASK_HANDLER void _system_file_serializer_read_task_executor
         delete [] path;
         path = NULL;
 #else
-    ASSERT_ALWAYS_SYNC(false,
-                       "TODO");
+    char* file_path = realpath(system_hashed_ansi_string_get_buffer(serializer_descriptor->file_name),
+                               NULL); /* resolved_path */
+
+    ASSERT_DEBUG_SYNC(file_path != NULL,
+                      "Could not determine file path for the file [%s]",
+                      system_hashed_ansi_string_get_buffer(serializer_descriptor->file_name) );
+
+    if (file_path != NULL)
+    {
+        /* Find the last / character and put the terminator right after it */
+        char* file_path_last_slash = strrchr(file_path, '/');
+
+        ASSERT_DEBUG_SYNC(file_path_last_slash != NULL,
+                          "Could not find the slash character in the file path for file [%s]",
+                          system_hashed_ansi_string_get_buffer(file_path) );
+
+        *(file_path_last_slash + 1) = 0;
+
+        serializer_descriptor->file_path = system_hashed_ansi_string_create(file_path);
+
+        free(file_path);
+        file_path = NULL;
+    }
 #endif
     }
 
