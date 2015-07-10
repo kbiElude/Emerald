@@ -220,6 +220,8 @@ PRIVATE void _system_window_linux_handle_event(const XEvent* event_ptr)
         case ButtonPress:
         case ButtonRelease:
         {
+            /* TODO: Re-use x & y information from the event */
+
             system_window_callback_func callback_func;
             bool                        should_proceed = (linux_ptr != NULL);
 
@@ -348,6 +350,17 @@ PRIVATE void _system_window_linux_handle_event(const XEvent* event_ptr)
             break;
         } /* case DestroyNotify: */
 
+        case MotionNotify:
+        {
+            /* TODO: Re-use x & y information from the event */
+            /* TODO: Provide vk_status info */
+            system_window_execute_callback_funcs(linux_ptr->window,
+                                                 SYSTEM_WINDOW_CALLBACK_FUNC_MOUSE_MOVE,
+                                                 NULL);
+
+            break;
+        } /* case MotionNotify: */
+
         case KeyPress:
         case KeyRelease:
         {
@@ -363,20 +376,6 @@ PRIVATE void _system_window_linux_handle_event(const XEvent* event_ptr)
 #if 0
     switch (message_id)
     {
-        case WM_MOUSEMOVE:
-        {
-            system_window_execute_callback_funcs(win32_ptr->window,
-                                                 SYSTEM_WINDOW_CALLBACK_FUNC_MOUSE_MOVE,
-                                                 (void*) wparam);
-
-            if (win32_ptr->current_mouse_cursor_system_resource != NULL)
-            {
-                ::SetCursor(win32_ptr->current_mouse_cursor_system_resource);
-            }
-
-            break;
-        }
-
         case WM_MOUSEWHEEL:
         {
             system_window_execute_callback_funcs(win32_ptr->window,
@@ -931,7 +930,7 @@ PUBLIC bool system_window_linux_open_window(__in system_window_linux window,
 
     XSelectInput   (linux_ptr->display,
                     linux_ptr->system_handle,
-                    ButtonPressMask | ButtonReleaseMask | KeyPressMask | KeyReleaseMask | StructureNotifyMask);
+                    ButtonPressMask | ButtonReleaseMask | KeyPressMask | KeyReleaseMask | PointerMotionMask | StructureNotifyMask);
     XSetWMProtocols(linux_ptr->display,
                     linux_ptr->system_handle,
                    &linux_ptr->delete_window_atom,

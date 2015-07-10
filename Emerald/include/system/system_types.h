@@ -212,7 +212,6 @@ typedef enum
 /** TODO */
 typedef enum
 {
-    SYSTEM_WINDOW_CALLBACK_FUNC_EXIT_SIZE_MOVE, /* NOTE: Windows-only */
     SYSTEM_WINDOW_CALLBACK_FUNC_KEY_DOWN,
     SYSTEM_WINDOW_CALLBACK_FUNC_KEY_UP,
     SYSTEM_WINDOW_CALLBACK_FUNC_MOUSE_MOVE,
@@ -226,7 +225,11 @@ typedef enum
     SYSTEM_WINDOW_CALLBACK_FUNC_RIGHT_BUTTON_UP,
     SYSTEM_WINDOW_CALLBACK_FUNC_RIGHT_BUTTON_DOUBLE_CLICK,
     SYSTEM_WINDOW_CALLBACK_FUNC_MOUSE_WHEEL,
-    SYSTEM_WINDOW_CALLBACK_FUNC_CHAR,           /* NOTE: Windows-only */
+
+#ifdef _WIN32
+    SYSTEM_WINDOW_CALLBACK_FUNC_CHAR,
+    SYSTEM_WINDOW_CALLBACK_FUNC_EXIT_SIZE_MOVE,
+#endif
 
     /* Called right after a rendering window has been closed. This
      * can happen both per user's, and per system's request. */

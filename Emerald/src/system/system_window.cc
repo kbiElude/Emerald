@@ -488,6 +488,7 @@ PUBLIC EMERALD_API bool system_window_add_callback_func(__in __notnull system_wi
 
             switch (callback_func)
             {
+#ifdef _WIN32
                 case SYSTEM_WINDOW_CALLBACK_FUNC_CHAR:
                 {
                     callback_container = window_ptr->char_callbacks;
@@ -503,6 +504,7 @@ PUBLIC EMERALD_API bool system_window_add_callback_func(__in __notnull system_wi
 
                     break;
                 }
+#endif
 
                 case SYSTEM_WINDOW_CALLBACK_FUNC_KEY_UP:
                 {
@@ -1039,12 +1041,14 @@ PUBLIC EMERALD_API bool system_window_delete_callback_func(__in __notnull system
             /* NOTE: Modifying this? Update system_window_add_callback_func() as well */
             switch (callback_func)
             {
+#ifdef _WIN32
                 case SYSTEM_WINDOW_CALLBACK_FUNC_EXIT_SIZE_MOVE:
                 {
                     callbacks_container = window_ptr->exit_size_move_callbacks;
 
                     break;
                 }
+#endif
 
                 case SYSTEM_WINDOW_CALLBACK_FUNC_MOUSE_MOVE:
                 {
@@ -1123,12 +1127,14 @@ PUBLIC EMERALD_API bool system_window_delete_callback_func(__in __notnull system
                     break;
                 }
 
+#ifdef _WIN32
                 case SYSTEM_WINDOW_CALLBACK_FUNC_CHAR:
                 {
                     callbacks_container = window_ptr->char_callbacks;
 
                     break;
                 }
+#endif
 
                 case SYSTEM_WINDOW_CALLBACK_FUNC_KEY_UP:
                 {
@@ -1211,6 +1217,7 @@ PUBLIC void system_window_execute_callback_funcs(__in __notnull system_window   
 
     switch (func)
     {
+#ifdef _WIN32
         case SYSTEM_WINDOW_CALLBACK_FUNC_CHAR:
         {
             callback_vector = window_ptr->char_callbacks;
@@ -1224,6 +1231,7 @@ PUBLIC void system_window_execute_callback_funcs(__in __notnull system_window   
 
             break;
         }
+#endif
 
         case SYSTEM_WINDOW_CALLBACK_FUNC_KEY_DOWN:
         {
@@ -1381,6 +1389,7 @@ PUBLIC void system_window_execute_callback_funcs(__in __notnull system_window   
 
                     switch (func)
                     {
+#ifdef _WIN32
                         case SYSTEM_WINDOW_CALLBACK_FUNC_CHAR:
                         {
                             result = ((PFNWINDOWCHARCALLBACKPROC) callback_ptr->pfn_callback)(window,
@@ -1396,6 +1405,7 @@ PUBLIC void system_window_execute_callback_funcs(__in __notnull system_window   
 
                             break;
                         }
+#endif
 
                         case SYSTEM_WINDOW_CALLBACK_FUNC_KEY_DOWN:
                         {
