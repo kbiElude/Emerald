@@ -364,10 +364,20 @@ PRIVATE void _system_window_linux_handle_event(const XEvent* event_ptr)
         case KeyPress:
         case KeyRelease:
         {
+            char           buffer[4];
+            XComposeStatus compose_status;
+            KeySym         key_symbol;
+
+            XLookupString((XKeyEvent*) event_ptr,
+                           buffer,
+                           sizeof(buffer),
+                          &key_symbol,
+                          &compose_status);
+
             system_window_execute_callback_funcs(linux_ptr->window,
                                                  (event_ptr->type == KeyPress) ? SYSTEM_WINDOW_CALLBACK_FUNC_KEY_DOWN
                                                                                : SYSTEM_WINDOW_CALLBACK_FUNC_KEY_UP,
-                                                 (void*) (intptr_t) (event_ptr->xkey.keycode & 0xFF) );
+                                                 (void*) (intptr_t) (key_symbol & 0xFF) );
 
             break;
         }
