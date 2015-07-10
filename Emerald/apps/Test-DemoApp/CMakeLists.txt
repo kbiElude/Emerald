@@ -50,7 +50,7 @@ ELSE (MSVC)
                                                   LINK_FLAGS    "-m32")
 ENDIF (MSVC)
 
-FILE(COPY "${Test-DemoApp_SOURCE_DIR}/blob/" DESTINATION "${Test-DemoApp_BINARY_DIR}/blob/")
+FILE(COPY "${Test-DemoApp_SOURCE_DIR}/blob/" DESTINATION "${EMERALD_BINARY_DIR}/bin/blob/")
 
 # Other blabbery ..
 SET(EXECUTABLE_OUTPUT_PATH ${EMERALD_BINARY_DIR}/bin)

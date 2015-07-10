@@ -36,7 +36,7 @@ INCLUDE_DIRECTORIES("${EMERALD_SOURCE_DIR}/include")
 FILE(GLOB GeneralIncludes "${TestDOF_SOURCE_DIR}/include/*.h")
 FILE(GLOB GeneralSources "${TestDOF_SOURCE_DIR}/src/*.cc")
 
-FILE(COPY "${TestDOF_SOURCE_DIR}/galileo_probe.hdr" DESTINATION "${TestDOF_BINARY_DIR}/")
+FILE(COPY "${TestDOF_SOURCE_DIR}/galileo_probe.hdr" DESTINATION "${EMERALD_BINARY_DIR}/bin/")
 
 SET(AllTestDOFSources ${GeneralSources} )
 
