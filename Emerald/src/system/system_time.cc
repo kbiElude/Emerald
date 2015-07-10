@@ -109,7 +109,7 @@ PUBLIC EMERALD_API system_timeline_time system_time_now()
     }
     else
     {
-        result = (system_timeline_time) ((current_time.QuadPart - start_time.QuadPart) * HZ_PER_SEC / 1000 /* MSEC_TO_SEC */);
+        result = (system_timeline_time) ((current_time.QuadPart - start_time.QuadPart) * HZ_PER_SEC / time_frequency.QuadPart);
     }
 #else
     struct timespec current_timespec;
