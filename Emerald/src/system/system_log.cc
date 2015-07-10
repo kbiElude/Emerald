@@ -55,6 +55,10 @@ EMERALD_API void system_log_write(system_log_priority,
         ::OutputDebugStringA(temp);
         ::OutputDebugStringA(text);
         ::OutputDebugStringA("\n");
+#else
+        printf("%s%s\n",
+               temp,
+               text);
 #endif
 
         if (log_file_handle != NULL)
