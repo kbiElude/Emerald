@@ -931,7 +931,7 @@ PUBLIC bool system_window_linux_open_window(__in system_window_linux window,
 
     XSelectInput   (linux_ptr->display,
                     linux_ptr->system_handle,
-                    ButtonReleaseMask | KeyPressMask | KeyReleaseMask | StructureNotifyMask);
+                    ButtonPressMask | ButtonReleaseMask | KeyPressMask | KeyReleaseMask | StructureNotifyMask);
     XSetWMProtocols(linux_ptr->display,
                     linux_ptr->system_handle,
                    &linux_ptr->delete_window_atom,
