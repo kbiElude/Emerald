@@ -13,8 +13,7 @@
     LARGE_INTEGER start_time     = {0, 0};
     LARGE_INTEGER time_frequency = {0, 0};
 #else
-    __uint64 start_time;
-    __uint64 time_frequency;
+    __uint64 start_time_msec;
 #endif
 
 
@@ -110,7 +109,7 @@ PUBLIC EMERALD_API system_timeline_time system_time_now()
     }
     else
     {
-        result = (system_timeline_time) ((current_time.QuadPart - start_time.QuadPart) * HZ_PER_SEC / time_frequency.QuadPart);
+        result = (system_timeline_time) ((current_time.QuadPart - start_time.QuadPart) * HZ_PER_SEC / 1000 /* MSEC_TO_SEC */);
     }
 #else
     struct timespec current_timespec;
@@ -118,7 +117,7 @@ PUBLIC EMERALD_API system_timeline_time system_time_now()
     clock_gettime(CLOCK_MONOTONIC,
                  &current_timespec);
 
-    result = (system_timeline_time) (((NSEC_PER_SEC * current_timespec.tv_sec + current_timespec.tv_nsec) - start_time) * HZ_PER_SEC / time_frequency);
+    result = (system_timeline_time) (((1000LL /* SEC_TO_MSEC */ * current_timespec.tv_sec + current_timespec.tv_nsec / 1000000LL /* MSEC_TO_NSEC */ - start_time_msec) * HZ_PER_SEC / 1000LL));
 #endif
 
     return result;
@@ -133,30 +132,19 @@ PUBLIC void _system_time_init()
     {
         LOG_FATAL("Could not obtain performance frequency information.");
     }
-#else
-    struct timespec frequency_timespec;
-
-    clock_getres(CLOCK_MONOTONIC,
-                &frequency_timespec);
-
-    time_frequency = NSEC_PER_SEC * frequency_timespec.tv_sec +
-                                    frequency_timespec.tv_nsec;
-#endif
 
     /* Retrieve the start time, relative to which all the timestamps are going to be calculated */
-#ifdef _WIN32
     if (::QueryPerformanceCounter(&start_time) == FALSE)
     {
         LOG_FATAL("Could not obtain start time information.");
     }
 #else
-    struct timespec start_timespec;
+    struct timespec current_timespec;
 
     clock_gettime(CLOCK_MONOTONIC,
-                 &start_timespec);
+                 &current_timespec);
 
-    start_time = NSEC_PER_SEC * start_timespec.tv_sec +
-                                start_timespec.tv_nsec;
+    start_time_msec = 1000LL /* SEC_TO_MSEC */ * current_timespec.tv_sec + current_timespec.tv_nsec / 1000000LL /* MSEC_TO_NSEC */;
 #endif
 }
 

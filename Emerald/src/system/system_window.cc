@@ -784,7 +784,7 @@ PRIVATE void _system_window_create_root_window(__in ogl_context_type context_typ
     system_pixel_format root_window_pf = system_pixel_format_create(8,  /* red_bits   */
                                                                     8,  /* green_bits */
                                                                     8,  /* blue_bits  */
-                                                                    0,  /* alpha_bits */
+                                                                    8,  /* alpha_bits */
                                                                     1,  /* depth_bits */
                                                                     1); /* n_samples  */
     root_window =  _system_window_create_shared(context_type,

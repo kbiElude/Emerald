@@ -320,7 +320,7 @@ PRIVATE void _window_closing_callback_handler(system_window window)
                                                                                                   true,  /* visible */
                                                                                                   window_pf);
     ogl_rendering_handler window_rendering_handler = ogl_rendering_handler_create_with_fps_policy(system_hashed_ansi_string_create("Default rendering handler"),
-                                                                                                  4,
+                                                                                                  60,
                                                                                                   _rendering_handler,
                                                                                                   NULL);
 
