@@ -27,7 +27,7 @@ typedef enum
     MESH_PROPERTY_N_GL_UNIQUE_VERTICES,                          /* not settable,  uint32_t                */
     MESH_PROPERTY_N_LAYERS,                                      /* not settable,  uint32_t                */
     MESH_PROPERTY_N_SH_BANDS,                                    /* settable ONCE, uint32_t                */
-    MESH_PROPERTY_TIMESTAMP_MODIFICATION,                        /* not settable,  system_timeline_time    */
+    MESH_PROPERTY_TIMESTAMP_MODIFICATION,                        /* not settable,  system_time    */
 
     /* not settable, bool.
      *

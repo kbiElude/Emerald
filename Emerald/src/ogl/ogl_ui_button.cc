@@ -20,9 +20,9 @@
 
 #define CLICK_BRIGHTNESS_MODIFIER             (1.5f)
 #define FOCUSED_BRIGHTNESS                    (1.5f)
-#define FOCUSED_TO_NONFOCUSED_TRANSITION_TIME (system_time_get_timeline_time_for_msec(200) )
+#define FOCUSED_TO_NONFOCUSED_TRANSITION_TIME (system_time_get_time_for_msec(200) )
 #define NONFOCUSED_BRIGHTNESS                 (1.0f)
-#define NONFOCUSED_TO_FOCUSED_TRANSITION_TIME (system_time_get_timeline_time_for_msec(450) )
+#define NONFOCUSED_TO_FOCUSED_TRANSITION_TIME (system_time_get_time_for_msec(450) )
 
 #define UB_DATAFS_BP_INDEX (0)
 #define UB_DATAVS_BP_INDEX (1)
@@ -41,14 +41,14 @@ typedef struct
     void*               fire_proc_user_arg;
     PFNOGLUIFIREPROCPTR pfn_fire_proc_ptr;
 
-    float                current_gpu_brightness_level;
-    bool                 force_gpu_brightness_update;
-    bool                 is_hovering;
-    bool                 is_lbm_on;
-    bool                 should_update_border_width;
-    float                start_hovering_brightness;
-    system_timeline_time start_hovering_time;
-    bool                 visible;
+    float       current_gpu_brightness_level;
+    bool        force_gpu_brightness_update;
+    bool        is_hovering;
+    bool        is_lbm_on;
+    bool        should_update_border_width;
+    float       start_hovering_brightness;
+    system_time start_hovering_time;
+    bool        visible;
 
     ogl_context    context;
     ogl_program    program;
@@ -305,8 +305,8 @@ PUBLIC void ogl_ui_button_deinit(void* internal_instance)
 /** Please see header for specification */
 PUBLIC RENDERING_CONTEXT_CALL void ogl_ui_button_draw(void* internal_instance)
 {
-    _ogl_ui_button*      button_ptr  = (_ogl_ui_button*) internal_instance;
-    system_timeline_time time_now    = system_time_now();
+    _ogl_ui_button* button_ptr  = (_ogl_ui_button*) internal_instance;
+    system_time     time_now    = system_time_now();
 
     /* Update brightness if necessary */
     float brightness = button_ptr->current_gpu_brightness_level;
@@ -314,8 +314,8 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_ui_button_draw(void* internal_instance)
     if (button_ptr->is_hovering)
     {
         /* Are we transiting? */
-        system_timeline_time transition_start = button_ptr->start_hovering_time;
-        system_timeline_time transition_end   = button_ptr->start_hovering_time + NONFOCUSED_TO_FOCUSED_TRANSITION_TIME;
+        system_time transition_start = button_ptr->start_hovering_time;
+        system_time transition_end   = button_ptr->start_hovering_time + NONFOCUSED_TO_FOCUSED_TRANSITION_TIME;
 
         if (time_now >= transition_start &&
             time_now <= transition_end)
@@ -341,9 +341,9 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_ui_button_draw(void* internal_instance)
     else
     {
         /* Are we transiting? */
-        system_timeline_time transition_start = button_ptr->start_hovering_time;
-        system_timeline_time transition_end   = button_ptr->start_hovering_time +
-                                                FOCUSED_TO_NONFOCUSED_TRANSITION_TIME;
+        system_time transition_start = button_ptr->start_hovering_time;
+        system_time transition_end   = button_ptr->start_hovering_time +
+                                       FOCUSED_TO_NONFOCUSED_TRANSITION_TIME;
 
         if (time_now >= transition_start &&
             time_now <= transition_end)

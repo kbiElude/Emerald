@@ -310,7 +310,7 @@ PRIVATE void _curve_editor_curve_window_on_property_edited(_curve_editor_curve_w
                 case CURVE_SEGMENT_LERP:
                 case CURVE_SEGMENT_STATIC:
                 {
-                    system_timeline_time node_time = -1;
+                    system_time node_time = -1;
 
                     if (curve_segment_get_node(descriptor_ptr->edited_segment,
                                                descriptor_ptr->edited_segment_node_id,
@@ -358,7 +358,7 @@ PRIVATE void _curve_editor_curve_window_on_property_edited(_curve_editor_curve_w
                     }
                     else
                     {
-                        system_timeline_time node_time = -1;
+                        system_time node_time = -1;
 
                         if (curve_segment_get_node(descriptor_ptr->edited_segment,
                                                    descriptor_ptr->edited_segment_node_id,
@@ -1082,10 +1082,10 @@ PRIVATE void _curve_editor_select_lerp_node(_curve_editor_curve_window* curve_wi
                  SW_HIDE);
 
     /* Set the editboxes */
-    system_variant       end_data_variant   = NULL;
-    system_variant       start_data_variant = NULL;
-    system_variant_type  data_variant_type  = (system_variant_type) -1;
-    system_timeline_time node_time          = -1;
+    system_variant      end_data_variant   = NULL;
+    system_variant      start_data_variant = NULL;
+    system_variant_type data_variant_type  = (system_variant_type) -1;
+    system_time         node_time          = -1;
 
     if (curve_segment_get_node_value_variant_type(segment,
                                                  &data_variant_type) )
@@ -1143,9 +1143,9 @@ PRIVATE void _curve_editor_select_static_node(_curve_editor_curve_window* curve_
                  SW_HIDE);
 
     /* Set the editboxes */
-    system_variant       data_variant      = NULL;
-    system_variant_type  data_variant_type = (system_variant_type) -1;
-    system_timeline_time node_time         = -1;
+    system_variant      data_variant      = NULL;
+    system_variant_type data_variant_type = (system_variant_type) -1;
+    system_time         node_time         = -1;
 
     if (curve_segment_get_node_value_variant_type(segment,
                                                  &data_variant_type) )
@@ -1201,12 +1201,12 @@ PRIVATE void _curve_editor_select_tcb_node(_curve_editor_curve_window* curve_win
                  SW_SHOW);
 
     /* Set the editboxes */
-    system_variant       bias_variant       = system_variant_create(SYSTEM_VARIANT_FLOAT);
-    system_variant       continuity_variant = system_variant_create(SYSTEM_VARIANT_FLOAT);
-    system_variant       data_variant       = NULL;
-    system_variant_type  data_variant_type  = (system_variant_type) -1;
-    system_timeline_time node_time          = -1;
-    system_variant       tension_variant    = system_variant_create(SYSTEM_VARIANT_FLOAT);
+    system_variant      bias_variant       = system_variant_create(SYSTEM_VARIANT_FLOAT);
+    system_variant      continuity_variant = system_variant_create(SYSTEM_VARIANT_FLOAT);
+    system_variant      data_variant       = NULL;
+    system_variant_type data_variant_type  = (system_variant_type) -1;
+    system_time         node_time          = -1;
+    system_variant      tension_variant    = system_variant_create(SYSTEM_VARIANT_FLOAT);
 
     if (curve_segment_get_node_value_variant_type(segment,
                                                  &data_variant_type) )

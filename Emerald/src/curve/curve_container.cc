@@ -24,25 +24,25 @@
 typedef struct
 {
 
-    system_timeline_time start_time;
-    system_timeline_time end_time;
-    curve_segment        segment;
-    float                threshold;
+    system_time   start_time;
+    system_time   end_time;
+    curve_segment segment;
+    float         threshold;
 
 } _curve_container_segment;
 
 typedef struct
 {
-    system_timeline_time last_read_time;
-    system_variant       last_read_value;
+    system_time    last_read_time;
+    system_variant last_read_value;
 
     curve_container_envelope_boundary_behavior pre_behavior;
     curve_container_envelope_boundary_behavior post_behavior;
     bool                                       pre_post_behavior_status;
-    system_variant default_value;
+    system_variant                             default_value;
 
-    curve_segment_id     last_used_segment_id;
-    system_timeline_time length;
+    curve_segment_id last_used_segment_id;
+    system_time      length;
 
     system_hash64map        segments;
     system_read_write_mutex segments_read_write_mutex;
@@ -72,24 +72,24 @@ typedef _curve_container_segment* _curve_container_segment_ptr;
 
 /** Forward declarations */
 PRIVATE uint32_t             _curve_container_find_appropriate_place_for_segment_at_time(__in  __notnull _curve_container_data*,
-                                                                                         __in            system_timeline_time);
+                                                                                         __in            system_time);
 PRIVATE bool                 _curve_container_get_pre_post_behavior_value               (__in  __notnull curve_container,
                                                                                          __in  __notnull _curve_container_data*,
                                                                                          __in            bool,
-                                                                                         __in            system_timeline_time,
+                                                                                         __in            system_time,
                                                                                          __out __notnull system_variant);
-PRIVATE system_timeline_time _curve_container_get_range                                 (__in            system_timeline_time,
-                                                                                         __in            system_timeline_time,
-                                                                                         __in            system_timeline_time);
+PRIVATE system_time          _curve_container_get_range                                 (__in            system_time,
+                                                                                         __in            system_time,
+                                                                                         __in            system_time);
 PRIVATE void                 _curve_container_on_curve_segment_changed                  (__in __notnull  void*);
 PRIVATE void                 _curve_container_on_new_segment_start_time                 (__in __notnull  curve_container,
                                                                                          __in __notnull  uint32_t,
                                                                                          __in            curve_segment_id,
-                                                                                         __in            system_timeline_time);
+                                                                                         __in            system_time);
 PRIVATE void                 _curve_container_on_new_segment_end_time                   (__in __notnull  curve_container,
                                                                                          __in __notnull  uint32_t,
                                                                                          __in            curve_segment_id,
-                                                                                         __in            system_timeline_time);
+                                                                                         __in            system_time);
 PRIVATE void                 _curve_container_recalculate_curve_length                  (__in __notnull  curve_container);
 PRIVATE void                 _deinit_curve_container                                    (__in __notnull _curve_container_ptr   container);
 PRIVATE void                 _deinit_curve_container_data                               (__in __notnull _curve_container_data* data);
@@ -99,11 +99,11 @@ PRIVATE void                 _init_curve_container_data                         
 
 /** Structure de-/initializers */
 /** TODO **/
-PRIVATE bool _curve_container_add_segment_shared(__in  __notnull curve_container      curve,
-                                                 __in            system_timeline_time start_time,
-                                                 __in            system_timeline_time end_time,
-                                                 __in  __notnull curve_segment        segment,
-                                                 __out __notnull curve_segment_id*    out_segment_id)
+PRIVATE bool _curve_container_add_segment_shared(__in  __notnull curve_container   curve,
+                                                 __in            system_time       start_time,
+                                                 __in            system_time       end_time,
+                                                 __in  __notnull curve_segment     segment,
+                                                 __out __notnull curve_segment_id* out_segment_id)
 {
     _curve_container_ptr curve_ptr = (_curve_container_ptr) curve;
 
@@ -301,8 +301,8 @@ PRIVATE void _init_curve_container_data(__in __notnull _curve_container_data* da
 
 /* TODO */
 PRIVATE void _init_curve_container_segment(__in __notnull _curve_container_segment_ptr segment,
-                                                          system_timeline_time         start_time,
-                                                          system_timeline_time         end_time)
+                                                          system_time                  start_time,
+                                                          system_time                  end_time)
 {
     segment->end_time   = end_time;
     segment->segment    = NULL;
@@ -314,7 +314,7 @@ PRIVATE void _init_curve_container_segment(__in __notnull _curve_container_segme
 /** Please see header for specification */
 PUBLIC EMERALD_API bool curve_container_add_general_node(__in __notnull  curve_container        curve,
                                                          __in            curve_segment_id       segment_id,
-                                                         __in            system_timeline_time   time,
+                                                         __in            system_time            time,
                                                          __in            system_variant         value,
                                                          __out __notnull curve_segment_node_id* out_node_id)
 {
@@ -357,12 +357,12 @@ PUBLIC EMERALD_API bool curve_container_add_general_node(__in __notnull  curve_c
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API bool curve_container_add_lerp_segment(__in   __notnull curve_container      curve,
-                                                         __in             system_timeline_time start_time,
-                                                         __in             system_timeline_time end_time,
-                                                         __in  __notnull  system_variant       start_value,
-                                                         __in  __notnull  system_variant       end_value,
-                                                         __out __notnull  curve_segment_id*    out_segment_id)
+PUBLIC EMERALD_API bool curve_container_add_lerp_segment(__in   __notnull curve_container   curve,
+                                                         __in             system_time       start_time,
+                                                         __in             system_time       end_time,
+                                                         __in  __notnull  system_variant    start_value,
+                                                         __in  __notnull  system_variant    end_value,
+                                                         __out __notnull  curve_segment_id* out_segment_id)
 {
     _curve_container* curve_ptr   = (_curve_container*) curve;
     curve_segment     new_segment = curve_segment_create_linear(start_time,
@@ -389,11 +389,11 @@ PUBLIC EMERALD_API bool curve_container_add_lerp_segment(__in   __notnull curve_
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API bool curve_container_add_static_value_segment(__in  __notnull curve_container      curve,
-                                                                 __in            system_timeline_time start_time,
-                                                                 __in            system_timeline_time end_time,
-                                                                 __in  __notnull system_variant       value,
-                                                                 __out __notnull curve_segment_id*    out_segment_id)
+PUBLIC EMERALD_API bool curve_container_add_static_value_segment(__in  __notnull curve_container   curve,
+                                                                 __in            system_time       start_time,
+                                                                 __in            system_time       end_time,
+                                                                 __in  __notnull system_variant    value,
+                                                                 __out __notnull curve_segment_id* out_segment_id)
 {
     _curve_container* curve_ptr   = (_curve_container*) curve;
     curve_segment     new_segment = curve_segment_create_static(value);
@@ -417,13 +417,13 @@ PUBLIC EMERALD_API bool curve_container_add_static_value_segment(__in  __notnull
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API bool curve_container_add_tcb_node(__in __notnull  curve_container      curve,
-                                                     __in            curve_segment_id     segment_id,
-                                                     __in            system_timeline_time time,
-                                                     __in            system_variant       value,
-                                                     __in            float                tension,
-                                                     __in            float                continuity,
-                                                     __in            float                bias,
+PUBLIC EMERALD_API bool curve_container_add_tcb_node(__in __notnull  curve_container        curve,
+                                                     __in            curve_segment_id       segment_id,
+                                                     __in            system_time            time,
+                                                     __in            system_variant         value,
+                                                     __in            float                  tension,
+                                                     __in            float                  continuity,
+                                                     __in            float                  bias,
                                                      __out __notnull curve_segment_node_id* out_node_id)
 {
     _curve_container_ptr   curve_container = (_curve_container_ptr) curve;
@@ -493,18 +493,18 @@ PUBLIC EMERALD_API bool curve_container_add_tcb_node(__in __notnull  curve_conta
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API bool curve_container_add_tcb_segment(__in __notnull  curve_container      curve,
-                                                        __in            system_timeline_time start_time,
-                                                        __in            system_timeline_time end_time,
-                                                        __in __notnull  system_variant       start_value,
-                                                        __in            float                start_tension,
-                                                        __in            float                start_continuity,
-                                                        __in            float                start_bias,
-                                                        __in __notnull  system_variant       end_value,
-                                                        __in            float                end_tension,
-                                                        __in            float                end_continuity,
-                                                        __in            float                end_bias,
-                                                        __out __notnull curve_segment_id*    out_segment_id)
+PUBLIC EMERALD_API bool curve_container_add_tcb_segment(__in __notnull  curve_container   curve,
+                                                        __in            system_time       start_time,
+                                                        __in            system_time       end_time,
+                                                        __in __notnull  system_variant    start_value,
+                                                        __in            float             start_tension,
+                                                        __in            float             start_continuity,
+                                                        __in            float             start_bias,
+                                                        __in __notnull  system_variant    end_value,
+                                                        __in            float             end_tension,
+                                                        __in            float             end_continuity,
+                                                        __in            float             end_bias,
+                                                        __out __notnull curve_segment_id* out_segment_id)
 {
     float start_tcb[3] = {start_tension,
                           start_continuity,
@@ -697,7 +697,7 @@ PUBLIC EMERALD_API bool curve_container_get_default_value(__in __notnull  curve_
 PUBLIC EMERALD_API bool curve_container_get_general_node_data(__in  __notnull curve_container       curve,
                                                               __in            curve_segment_id      segment_id,
                                                               __in            curve_segment_node_id node_id,
-                                                              __out __notnull system_timeline_time* out_node_time,
+                                                              __out __notnull system_time*          out_node_time,
                                                               __out __notnull system_variant        out_node_value)
 {
     _curve_container_ptr   curve_container = (_curve_container_ptr) curve;
@@ -864,7 +864,7 @@ PUBLIC EMERALD_API void curve_container_get_property(__in  __notnull curve_conta
 
         case CURVE_CONTAINER_PROPERTY_LENGTH:
         {
-            *(system_timeline_time*) out_result = curve_ptr->data.length;
+            *(system_time*) out_result = curve_ptr->data.length;
 
             break;
         }
@@ -943,7 +943,7 @@ PUBLIC EMERALD_API void curve_container_get_property(__in  __notnull curve_conta
                 ASSERT_DEBUG_SYNC(result,
                                   "Could not obtain start segment descriptor");
 
-                *(system_timeline_time*) out_result = curve_segment->start_time;
+                *(system_time*) out_result = curve_segment->start_time;
             }
 
             break;
@@ -992,12 +992,12 @@ PUBLIC EMERALD_API bool curve_container_get_segment_id_for_nth_segment(__in __no
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API bool curve_container_get_segment_id_relative_to_time(                bool                 should_move,
-                                                                                        bool                 move_towards_past,
-                                                                        __in  __notnull curve_container      curve,
-                                                                        __in            system_timeline_time time,
-                                                                        __in            curve_segment_id     segment_id_to_exclude,
-                                                                        __out __notnull curve_segment_id*    out_segment_id)
+PUBLIC EMERALD_API bool curve_container_get_segment_id_relative_to_time(                bool              should_move,
+                                                                                        bool              move_towards_past,
+                                                                        __in  __notnull curve_container   curve,
+                                                                        __in            system_time       time,
+                                                                        __in            curve_segment_id  segment_id_to_exclude,
+                                                                        __out __notnull curve_segment_id* out_segment_id)
 {
     bool result = false;
 
@@ -1173,14 +1173,14 @@ PUBLIC EMERALD_API bool curve_container_get_segment_property(__in  __notnull cur
 
                 case CURVE_CONTAINER_SEGMENT_PROPERTY_START_TIME:
                 {
-                    *(system_timeline_time*) out_result = curve_segment->start_time;
+                    *(system_time*) out_result = curve_segment->start_time;
 
                     break;
                 }
 
                 case CURVE_CONTAINER_SEGMENT_PROPERTY_END_TIME:
                 {
-                    *(system_timeline_time*) out_result = curve_segment->end_time;
+                    *(system_time*) out_result = curve_segment->end_time;
 
                     break;
                 }
@@ -1215,10 +1215,10 @@ PUBLIC EMERALD_API bool curve_container_get_segment_property(__in  __notnull cur
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API bool curve_container_get_value(__in __notnull curve_container      curve,
-                                                  __in           system_timeline_time time,
-                                                  __in           bool                 should_force,
-                                                  __out           __notnull           system_variant out_value)
+PUBLIC EMERALD_API bool curve_container_get_value(__in __notnull  curve_container curve,
+                                                  __in            system_time     time,
+                                                  __in            bool            should_force,
+                                                  __out __notnull system_variant  out_value)
 {
     _curve_container_ptr   curve_container_ptr      = (_curve_container_ptr) curve;
     _curve_container_data* curve_data_ptr           = &curve_container_ptr->data;
@@ -1382,7 +1382,7 @@ PUBLIC EMERALD_API bool curve_container_is_equal(__in __notnull curve_container 
 PUBLIC EMERALD_API bool curve_container_modify_node(__in __notnull curve_container       curve,
                                                     __in           curve_segment_id      segment_id,
                                                     __in           curve_segment_node_id node_id,
-                                                    __in           system_timeline_time  new_node_time,
+                                                    __in           system_time           new_node_time,
                                                     __in           system_variant        new_node_value)
 {
     _curve_container_ptr   curve_container = (_curve_container_ptr) curve;
@@ -1561,7 +1561,7 @@ PUBLIC EMERALD_API void curve_container_set_segment_property(__in __notnull curv
         {
             case CURVE_CONTAINER_SEGMENT_PROPERTY_START_TIME:
             {
-                segment_ptr->start_time = *(system_timeline_time*) in_data;
+                segment_ptr->start_time = *(system_time*) in_data;
 
                 break;
             }
@@ -1578,9 +1578,9 @@ PUBLIC EMERALD_API void curve_container_set_segment_property(__in __notnull curv
                 curve_container_set_segment_times(curve,
                                                   segment_id,
                                                   segment_ptr->start_time,
-                                                  *(system_timeline_time*) in_data);
+                                                  *(system_time*) in_data);
 #endif
-                segment_ptr->end_time = *(system_timeline_time*) in_data;
+                segment_ptr->end_time = *(system_time*) in_data;
 
                 break;
             }
@@ -1602,18 +1602,18 @@ PUBLIC EMERALD_API void curve_container_set_segment_property(__in __notnull curv
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API bool curve_container_set_segment_times(__in __notnull curve_container      curve,
-                                                          __in           curve_segment_id     segment_id,
-                                                          __in           system_timeline_time new_segment_start_time,
-                                                          __in           system_timeline_time new_segment_end_time)
+PUBLIC EMERALD_API bool curve_container_set_segment_times(__in __notnull curve_container  curve,
+                                                          __in           curve_segment_id segment_id,
+                                                          __in           system_time      new_segment_start_time,
+                                                          __in           system_time      new_segment_end_time)
 {
     _curve_container_segment_ptr curr_place_segment           = NULL;
     size_t                       curr_segments_order_iterator = -1;
     _curve_container_ptr         curve_container              = (_curve_container_ptr) curve;
     _curve_container_data*       curve_container_data         = &curve_container->data;
     system_resizable_vector      internal_node_order          = NULL;
-    system_timeline_time         former_start_time            = 0;
-    system_timeline_time         former_end_time              = 0;
+    system_time                  former_start_time            = 0;
+    system_time                  former_end_time              = 0;
     uint32_t                     n_nodes                      = 0;
     size_t                       n_segment_orders             = 0;
     bool                         needs_update                 = false;
@@ -1732,7 +1732,7 @@ PUBLIC EMERALD_API bool curve_container_set_segment_times(__in __notnull curve_c
                           n_ordered_node);
         if (result)
         {
-            system_timeline_time node_time;
+            system_time node_time;
 
             result = curve_segment_get_node(segment,
                                             node_id,
@@ -1744,7 +1744,7 @@ PUBLIC EMERALD_API bool curve_container_set_segment_times(__in __notnull curve_c
 
             if (result)
             {
-                system_timeline_time time_delta;
+                system_time time_delta;
 
                 /* Move nodes relative to the new segment start time.
                  * For the very last node, use the end time. */
@@ -1915,8 +1915,8 @@ PRIVATE void _curve_container_recalculate_curve_length(__in __notnull curve_cont
             ASSERT_DEBUG_SYNC(result,
                               "Could not obtain start segment descriptor");
 
-            system_timeline_time min_segment_start_time = start_segment->start_time;
-            system_timeline_time max_segment_end_time   = start_segment->end_time;
+            system_time min_segment_start_time = start_segment->start_time;
+            system_time max_segment_end_time   = start_segment->end_time;
 
             for (uint32_t n_segment = 0;
                           n_segment < n_segments;
@@ -1956,9 +1956,9 @@ PRIVATE void _curve_container_recalculate_curve_length(__in __notnull curve_cont
 }
 
 /** TODO */
-PRIVATE void _curve_container_on_new_segment_start_time(__in __notnull curve_container      curve,
-                                                        __in           curve_segment_id     segment_id,
-                                                        __in           system_timeline_time new_start_time)
+PRIVATE void _curve_container_on_new_segment_start_time(__in __notnull curve_container  curve,
+                                                        __in           curve_segment_id segment_id,
+                                                        __in           system_time      new_start_time)
 {
     _curve_container_ptr   curve_container = (_curve_container_ptr) curve;
     _curve_container_data* curve_data_ptr  = &curve_container->data;
@@ -1984,9 +1984,9 @@ PRIVATE void _curve_container_on_new_segment_start_time(__in __notnull curve_con
 }
 
 /** TODO */
-PRIVATE void _curve_container_on_new_segment_end_time(__in __notnull curve_container      curve,
-                                                      __in           curve_segment_id     segment_id,
-                                                      __in           system_timeline_time new_end_time)
+PRIVATE void _curve_container_on_new_segment_end_time(__in __notnull curve_container  curve,
+                                                      __in           curve_segment_id segment_id,
+                                                      __in           system_time      new_end_time)
 {
     _curve_container_ptr   curve_container = (_curve_container_ptr) curve;
     _curve_container_data* curve_data_ptr  = &curve_container->data;
@@ -2013,7 +2013,7 @@ PRIVATE void _curve_container_on_new_segment_end_time(__in __notnull curve_conta
 
 /** TODO */
 PRIVATE uint32_t _curve_container_find_appropriate_place_for_segment_at_time(__in __notnull _curve_container_data* curve_data_ptr,
-                                                                             __in           system_timeline_time   start_time)
+                                                                             __in           system_time            start_time)
 {
     uint32_t n_segment_orders = 0;
     uint32_t place_iterator   = n_segment_orders;
@@ -2059,7 +2059,7 @@ PRIVATE uint32_t _curve_container_find_appropriate_place_for_segment_at_time(__i
 PRIVATE bool _curve_container_get_pre_post_behavior_value(__in  __notnull curve_container        curve,
                                                           __in  __notnull _curve_container_data* curve_data,
                                                           __in            bool                   use_pre_behavior_value,
-                                                          __in            system_timeline_time   time,
+                                                          __in            system_time            time,
                                                           __out __notnull system_variant         out_result)
 {
     bool result = false;
@@ -2083,8 +2083,8 @@ PRIVATE bool _curve_container_get_pre_post_behavior_value(__in  __notnull curve_
 
             case CURVE_CONTAINER_BOUNDARY_BEHAVIOR_REPEAT:
             {
-                system_timeline_time         first_node_time     = 0;
-                system_timeline_time         last_node_time      = 0;
+                system_time                  first_node_time     = 0;
+                system_time                  last_node_time      = 0;
                 _curve_container_segment_ptr first_curve_segment = NULL;
                 curve_segment_id             segment_id          = 0;
                 bool                         result_get          = false;
@@ -2103,9 +2103,9 @@ PRIVATE bool _curve_container_get_pre_post_behavior_value(__in  __notnull curve_
                 first_node_time = first_curve_segment->start_time;
                 last_node_time  = first_curve_segment->end_time;
 
-                system_timeline_time time_to_use = _curve_container_get_range(time,
-                                                                              first_node_time,
-                                                                              last_node_time);
+                system_time time_to_use = _curve_container_get_range(time,
+                                                                     first_node_time,
+                                                                     last_node_time);
 
                 // Protect against infinite recursion.
                 if (time_to_use < first_node_time)
@@ -2128,7 +2128,7 @@ PRIVATE bool _curve_container_get_pre_post_behavior_value(__in  __notnull curve_
 
             case CURVE_CONTAINER_BOUNDARY_BEHAVIOR_CONSTANT:
             {
-                system_timeline_time         node_time           = 0;
+                system_time                  node_time           = 0;
                 _curve_container_segment_ptr first_curve_segment = NULL;
                 curve_segment_id             segment_id          = 0;
                 bool                         result_get          = false;
@@ -2190,10 +2190,10 @@ PRIVATE bool _curve_container_get_pre_post_behavior_value(__in  __notnull curve_
 }
 
 /** TODO */
-PUBLIC bool curve_container_is_range_defined(__in __notnull curve_container      curve,
-                                             __in           system_timeline_time start_time,
-                                             __in           system_timeline_time end_time,
-                                             __in           curve_segment_id     excluded_segment_id)
+PUBLIC bool curve_container_is_range_defined(__in __notnull curve_container  curve,
+                                             __in           system_time      start_time,
+                                             __in           system_time      end_time,
+                                             __in           curve_segment_id excluded_segment_id)
 {
     bool                   result         = false;
     _curve_container*      curve_ptr      = (_curve_container*) curve;
@@ -2248,16 +2248,16 @@ PUBLIC bool curve_container_is_range_defined(__in __notnull curve_container     
 }
 
 /* TODO */
-PRIVATE system_timeline_time _curve_container_get_range(__in system_timeline_time v,
-                                                        __in system_timeline_time lo,
-                                                        __in system_timeline_time hi)
+PRIVATE system_time _curve_container_get_range(__in system_time v,
+                                               __in system_time lo,
+                                               __in system_time hi)
 {
-    system_timeline_time r      = hi - lo;
-    system_timeline_time result = lo;
+    system_time r      = hi - lo;
+    system_time result = lo;
 
     if (r != 0)
     {
-        result = v - r * system_timeline_time(floor(double(v - lo) / double(r) ) );
+        result = v - r * system_time(floor(double(v - lo) / double(r) ) );
     }
 
     return result;

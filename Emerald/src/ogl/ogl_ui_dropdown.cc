@@ -22,11 +22,11 @@
 #define BUTTON_WIDTH_PX                       (14)
 #define CLICK_BRIGHTNESS_MODIFIER             (1.5f)
 #define FOCUSED_BRIGHTNESS                    (2.5f)
-#define FOCUSED_TO_NONFOCUSED_TRANSITION_TIME (system_time_get_timeline_time_for_msec(200) )
+#define FOCUSED_TO_NONFOCUSED_TRANSITION_TIME (system_time_get_time_for_msec(200) )
 #define LABEL_X_SEPARATOR_PX                  (4)
 #define MAX_N_ENTRIES_VISIBLE                 (5)
 #define NONFOCUSED_BRIGHTNESS                 (1.0f)
-#define NONFOCUSED_TO_FOCUSED_TRANSITION_TIME (system_time_get_timeline_time_for_msec(250) )
+#define NONFOCUSED_TO_FOCUSED_TRANSITION_TIME (system_time_get_time_for_msec(250) )
 #define SLIDER_Y_SEPARATOR_PX                 (4)
 #define SLIDER_WIDTH_PX                       (7)
 #define UB_FSDATA_BP                          (0)
@@ -100,17 +100,17 @@ typedef struct
     void*               fire_proc_user_arg;
     PFNOGLUIFIREPROCPTR pfn_fire_proc_ptr;
 
-    float                current_gpu_brightness_level;
-    bool                 force_gpu_brightness_update;
-    bool                 is_button_lbm;
-    bool                 is_droparea_lbm;
-    bool                 is_droparea_visible;
-    bool                 is_hovering;
-    bool                 is_lbm_on;
-    bool                 is_slider_lbm;
-    uint32_t             n_selected_entry;
-    float                start_hovering_brightness;
-    system_timeline_time start_hovering_time;
+    float       current_gpu_brightness_level;
+    bool        force_gpu_brightness_update;
+    bool        is_button_lbm;
+    bool        is_droparea_lbm;
+    bool        is_droparea_visible;
+    bool        is_hovering;
+    bool        is_lbm_on;
+    bool        is_slider_lbm;
+    uint32_t    n_selected_entry;
+    float       start_hovering_brightness;
+    system_time start_hovering_time;
 
     ogl_context               context;
     ogl_program               program;
@@ -1299,10 +1299,10 @@ PUBLIC void ogl_ui_dropdown_deinit(void* internal_instance)
 /** Please see header for specification */
 PUBLIC RENDERING_CONTEXT_CALL void ogl_ui_dropdown_draw(void* internal_instance)
 {
-    _ogl_ui_dropdown*    dropdown_ptr = (_ogl_ui_dropdown*) internal_instance;
-    system_timeline_time time_now     = system_time_now();
-    system_window        window       = NULL;
-    int                  window_size[2];
+    _ogl_ui_dropdown* dropdown_ptr = (_ogl_ui_dropdown*) internal_instance;
+    system_time       time_now     = system_time_now();
+    system_window     window       = NULL;
+    int               window_size[2];
 
     ogl_context_get_property  (dropdown_ptr->context,
                                OGL_CONTEXT_PROPERTY_WINDOW,
@@ -1325,8 +1325,8 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_ui_dropdown_draw(void* internal_instance)
     if (dropdown_ptr->is_hovering)
     {
         /* Are we transiting? */
-        system_timeline_time transition_start = dropdown_ptr->start_hovering_time;
-        system_timeline_time transition_end   = dropdown_ptr->start_hovering_time + NONFOCUSED_TO_FOCUSED_TRANSITION_TIME;
+        system_time transition_start = dropdown_ptr->start_hovering_time;
+        system_time transition_end   = dropdown_ptr->start_hovering_time + NONFOCUSED_TO_FOCUSED_TRANSITION_TIME;
 
         if (time_now >= transition_start &&
             time_now <= transition_end)
@@ -1350,8 +1350,8 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_ui_dropdown_draw(void* internal_instance)
     else
     {
         /* Are we transiting? */
-        system_timeline_time transition_start = dropdown_ptr->start_hovering_time;
-        system_timeline_time transition_end   = dropdown_ptr->start_hovering_time + FOCUSED_TO_NONFOCUSED_TRANSITION_TIME;
+        system_time transition_start = dropdown_ptr->start_hovering_time;
+        system_time transition_end   = dropdown_ptr->start_hovering_time + FOCUSED_TO_NONFOCUSED_TRANSITION_TIME;
 
         if (time_now >= transition_start &&
             time_now <= transition_end)

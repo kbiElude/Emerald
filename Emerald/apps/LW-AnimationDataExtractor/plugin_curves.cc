@@ -210,12 +210,12 @@ PRIVATE curve_container CreateCurveFromEnvelope(const char*   object_name,
                     ++n_key)
         {
             /* Retrieve curve segment key descriptors */
-            _curve_key*          next_key       = NULL;
-            system_timeline_time next_key_time  = 0;
-            system_variant       next_key_value = temp_variant_1;
-            _curve_key*          prev_key       = NULL;
-            system_timeline_time prev_key_time  = 0;
-            system_variant       prev_key_value = temp_variant_2;
+            _curve_key*    next_key       = NULL;
+            system_time    next_key_time  = 0;
+            system_variant next_key_value = temp_variant_1;
+            _curve_key*    prev_key       = NULL;
+            system_time    prev_key_time  = 0;
+            system_variant prev_key_value = temp_variant_2;
 
             system_resizable_vector_get_element_at(keys, n_key,     &prev_key);
             system_resizable_vector_get_element_at(keys, n_key + 1, &next_key);
@@ -224,8 +224,8 @@ PRIVATE curve_container CreateCurveFromEnvelope(const char*   object_name,
             ASSERT_ALWAYS_SYNC(next_key != NULL, "Next curve key descriptor is NULL");
 
             /* Convert LW time representation to Emerald one */
-            next_key_time = system_time_get_timeline_time_for_msec( uint32_t(next_key->time * 1000.0) );
-            prev_key_time = system_time_get_timeline_time_for_msec( uint32_t(prev_key->time * 1000.0) );
+            next_key_time = system_time_get_time_for_msec( uint32_t(next_key->time * 1000.0) );
+            prev_key_time = system_time_get_time_for_msec( uint32_t(prev_key->time * 1000.0) );
 
             /* Convert LW value representation to Emerald one */
             system_variant_set_float(next_key_value, (float) next_key->value);

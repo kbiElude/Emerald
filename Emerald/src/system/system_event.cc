@@ -238,8 +238,8 @@ PUBLIC EMERALD_API bool system_event_wait_single_peek(__in __notnull system_even
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API void system_event_wait_single(__in __notnull system_event         event,
-                                                 __in           system_timeline_time timeout)
+PUBLIC EMERALD_API void system_event_wait_single(__in __notnull system_event event,
+                                                 __in           system_time  timeout)
 {
     #if defined(USE_RAW_HANDLES)
     {
@@ -248,8 +248,8 @@ PUBLIC EMERALD_API void system_event_wait_single(__in __notnull system_event    
 
         if (timeout != SYSTEM_TIME_INFINITE)
         {
-            system_time_get_msec_for_timeline_time(timeout,
-                                                  &timeout_winapi);
+            system_time_get_msec_for_time(timeout,
+                                         &timeout_winapi);
         }
         else
         {
@@ -275,11 +275,11 @@ PUBLIC EMERALD_API void system_event_wait_single(__in __notnull system_event    
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API size_t system_event_wait_multiple(__in __notnull __ecount(n_elements) const system_event*  events,
-                                                     __in                                int                  n_elements,
-                                                                                         bool                 wait_on_all_objects,
-                                                                                         system_timeline_time timeout,
-                                                     __out __notnull                     bool*                out_has_timed_out_ptr)
+PUBLIC EMERALD_API size_t system_event_wait_multiple(__in __notnull __ecount(n_elements) const system_event* events,
+                                                     __in                                int                 n_elements,
+                                                                                         bool                wait_on_all_objects,
+                                                                                         system_time         timeout,
+                                                     __out __notnull                     bool*               out_has_timed_out_ptr)
 {
     unsigned int result;
 
@@ -291,8 +291,8 @@ PUBLIC EMERALD_API size_t system_event_wait_multiple(__in __notnull __ecount(n_e
 
         if (timeout != SYSTEM_TIME_INFINITE)
         {
-            system_time_get_msec_for_timeline_time(timeout,
-                                                  &timeout_winapi);
+            system_time_get_msec_for_time(timeout,
+                                         &timeout_winapi);
         }
         else
         {

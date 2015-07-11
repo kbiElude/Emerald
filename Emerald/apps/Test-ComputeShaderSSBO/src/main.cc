@@ -106,10 +106,10 @@ system_hashed_ansi_string _get_cs_body()
 }
 
 /** Rendering handler */
-void _rendering_handler(ogl_context          context,
-                        uint32_t             n_frames_rendered,
-                        system_timeline_time frame_time,
-                        void*                renderer)
+void _rendering_handler(ogl_context context,
+                        uint32_t    n_frames_rendered,
+                        system_time frame_time,
+                        void*       renderer)
 {
     const  ogl_context_gl_entrypoints* entry_points    = NULL;
     static bool                        has_initialized = false;

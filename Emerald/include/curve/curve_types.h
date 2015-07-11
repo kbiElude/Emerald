@@ -39,21 +39,21 @@ typedef enum
 typedef enum
 {
     CURVE_CONTAINER_PROPERTY_DATA_TYPE,                /* not settable, system_variant_type */
-    CURVE_CONTAINER_PROPERTY_LENGTH,                   /* not settable, system_timeline_time */
+    CURVE_CONTAINER_PROPERTY_LENGTH,                   /* not settable, system_time */
     CURVE_CONTAINER_PROPERTY_N_SEGMENTS,               /* not settable, uint32_t */
     CURVE_CONTAINER_PROPERTY_NAME,                     /* not settable, system_hashed_ansi_string */
     CURVE_CONTAINER_PROPERTY_POST_BEHAVIOR,            /* settable,     curve_container_envelope_boundary_behavior */
     CURVE_CONTAINER_PROPERTY_PRE_BEHAVIOR,             /* settable,     curve_container_envelope_boundary_behavior */
     CURVE_CONTAINER_PROPERTY_PRE_POST_BEHAVIOR_STATUS, /* settable,     bool */
-    CURVE_CONTAINER_PROPERTY_START_TIME,               /* not settable, system_timeline_time */
+    CURVE_CONTAINER_PROPERTY_START_TIME,               /* not settable, system_time */
 } curve_container_property;
 
 /* Curve container segment properties */
 typedef enum
 {
     CURVE_CONTAINER_SEGMENT_PROPERTY_N_NODES,          /* not settable, uint32_t */
-    CURVE_CONTAINER_SEGMENT_PROPERTY_START_TIME,       /* settable,     system_timeline_time */
-    CURVE_CONTAINER_SEGMENT_PROPERTY_END_TIME,         /* settable,     system_timeline_time */
+    CURVE_CONTAINER_SEGMENT_PROPERTY_START_TIME,       /* settable,     system_time */
+    CURVE_CONTAINER_SEGMENT_PROPERTY_END_TIME,         /* settable,     system_time */
     CURVE_CONTAINER_SEGMENT_PROPERTY_TYPE,             /* not settable, curve_segment_type */
     CURVE_CONTAINER_SEGMENT_PROPERTY_THRESHOLD,        /* settable,     float */
 } curve_container_segment_property;
@@ -94,20 +94,20 @@ typedef enum
 #define MAX(x,y) (x > y ? x : y)
 
 /* Internal: Function pointer type definitions to various segment-specific handlers */
-typedef bool (*PFNCURVESEGMENTADDNODE)            (curve_segment_data, system_timeline_time, system_variant, curve_segment_node_id*);
+typedef bool (*PFNCURVESEGMENTADDNODE)            (curve_segment_data, system_time, system_variant, curve_segment_node_id*);
 typedef bool (*PFNCURVESEGMENTDELETENODE)         (curve_segment_data, curve_segment_node_id);
 typedef bool (*PFNCURVESEGMENTDEINIT)             (curve_segment_data);
 typedef bool (*PFNCURVESEGMENTGETAMOUNTOFNODES)   (curve_segment_data, uint32_t*);
-typedef bool (*PFNCURVESEGMENTGETNODE)            (curve_segment_data, curve_segment_node_id, system_timeline_time*, system_variant);
+typedef bool (*PFNCURVESEGMENTGETNODE)            (curve_segment_data, curve_segment_node_id, system_time*, system_variant);
 typedef bool (*PFNCURVESEGMENTGETNODEIDFORNODEAT) (curve_segment_data, uint32_t, curve_segment_node_id*);
 typedef bool (*PFNCURVESEGMENTGETNODEPROPERTY)    (curve_segment_data, curve_segment_node_id, curve_segment_node_property, system_variant);
 typedef bool (*PFNCURVESEGMENTGETPROPERTY)        (curve_segment_data, curve_segment_property, system_variant);
 typedef bool (*PFNCURVESEGMENTGETNODEBYINDEX)     (curve_segment_data, uint32_t, curve_segment_node_id*);
 typedef bool (*PFNCURVESEGMENTGETNODEINORDER)     (curve_segment_data, uint32_t, curve_segment_node_id*);
-typedef bool (*PFNCURVESEGMENTGETVALUE)           (curve_segment_data, system_timeline_time, system_variant, bool);
+typedef bool (*PFNCURVESEGMENTGETVALUE)           (curve_segment_data, system_time, system_variant, bool);
 typedef bool (*PFNCURVESEGMENTMODIFYNODEPROPERTY) (curve_segment_data, curve_segment_node_id, curve_segment_node_property, system_variant);
-typedef bool (*PFNCURVESEGMENTMODIFYNODETIME)     (curve_segment_data, curve_segment_node_id, system_timeline_time);
-typedef bool (*PFNCURVESEGMENTMODIFYNODETIMEVALUE)(curve_segment_data, curve_segment_node_id, system_timeline_time, system_variant, bool);
+typedef bool (*PFNCURVESEGMENTMODIFYNODETIME)     (curve_segment_data, curve_segment_node_id, system_time);
+typedef bool (*PFNCURVESEGMENTMODIFYNODETIMEVALUE)(curve_segment_data, curve_segment_node_id, system_time, system_variant, bool);
 typedef bool (*PFNCURVESEGMENTSETPROPERTY)        (curve_segment_data, curve_segment_property, system_variant);
 
 /* Callback function pointer definition */

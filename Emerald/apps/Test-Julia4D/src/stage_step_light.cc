@@ -37,9 +37,9 @@ GLuint           _light_vertex_attribute_location         = -1;
 system_matrix4x4 _light_view_matrix                       = NULL;
 
 /** TODO */
-static void _stage_step_light_execute(ogl_context          context,
-                                      system_timeline_time time,
-                                      void*                not_used)
+static void _stage_step_light_execute(ogl_context context,
+                                      system_time time,
+                                      void*       not_used)
 {
     const ogl_context_gl_entrypoints* entrypoints = NULL;
     ogl_flyby                         flyby       = NULL;

@@ -161,7 +161,7 @@ PUBLIC EMERALD_API RENDERING_CONTEXT_CALL void ogl_scene_renderer_render_scene_g
                                                                                      __in                     const _ogl_scene_renderer_render_mode&   render_mode,
                                                                                      __in                     bool                                     apply_shadow_mapping,
                                                                                      __in           __notnull _ogl_scene_renderer_helper_visualization helper_visualization,
-                                                                                     __in                     system_timeline_time                     frame_time);
+                                                                                     __in                     system_time                              frame_time);
 
 /** TODO. **/
 PUBLIC EMERALD_API void ogl_scene_renderer_release(__in __notnull ogl_scene_renderer renderer);

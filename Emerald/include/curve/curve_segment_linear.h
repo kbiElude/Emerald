@@ -11,7 +11,7 @@
 
 /** TODO */
 PUBLIC bool curve_segment_linear_add_node(__in  __notnull curve_segment_data,
-                                          __in            system_timeline_time,
+                                          __in            system_time,
                                           __in  __notnull system_variant,
                                           __out __notnull curve_segment_node_id*);
 
@@ -29,7 +29,7 @@ PUBLIC bool curve_segment_linear_get_amount_of_nodes(__in  __notnull curve_segme
 /** TODO */
 PUBLIC bool curve_segment_linear_get_node(__in __notnull    curve_segment_data,
                                           __in              curve_segment_node_id,
-                                          __out __maybenull system_timeline_time*,
+                                          __out __maybenull system_time*,
                                           __out __maybenull system_variant);
 
 /** TODO */
@@ -39,27 +39,27 @@ PUBLIC bool curve_segment_linear_get_node_in_order(__in __notnull  curve_segment
 
 /** TODO */
 PUBLIC bool curve_segment_linear_get_value(__in    __notnull curve_segment_data,
-                                                             system_timeline_time,
+                                                             system_time,
                                            __inout __notnull system_variant,
                                            __in              bool);
 
 /** TODO */
 PUBLIC bool curve_segment_linear_init(__deref_out __notnull curve_segment_data*  segment_data,
                                                             system_variant_type  data_type,
-                                                            system_timeline_time start_time,
+                                                            system_time start_time,
                                                             system_variant       start_value,
-                                                            system_timeline_time end_time,
+                                                            system_time end_time,
                                                             system_variant       end_value);
 
 /** TODO */
 PUBLIC bool curve_segment_linear_modify_node_time(__in __notnull curve_segment_data,
                                                   __in           curve_segment_node_id,
-                                                  __in           system_timeline_time);
+                                                  __in           system_time);
 
 /** TODO */
 PUBLIC bool curve_segment_linear_modify_node_time_value(__in __notnull curve_segment_data,
                                                         __in           curve_segment_node_id,
-                                                        __in           system_timeline_time,
+                                                        __in           system_time,
                                                         __in __notnull system_variant,
                                                         __in           bool force);
 

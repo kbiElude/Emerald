@@ -196,12 +196,12 @@ PUBLIC EMERALD_API void ogl_uber_get_shader_item_property(__in __notnull const o
 PUBLIC EMERALD_API void ogl_uber_link(__in __notnull ogl_uber uber);
 
 /** TODO */
-PUBLIC void ogl_uber_rendering_render_mesh(__in     __notnull mesh                 mesh_gpu,
-                                           __in     __notnull system_matrix4x4     model,
-                                           __in     __notnull system_matrix4x4     normal_matrix,
-                                           __in     __notnull ogl_uber             uber,
-                                           __in_opt           mesh_material        material,
-                                           __in               system_timeline_time time);
+PUBLIC void ogl_uber_rendering_render_mesh(__in     __notnull mesh             mesh_gpu,
+                                           __in     __notnull system_matrix4x4 model,
+                                           __in     __notnull system_matrix4x4 normal_matrix,
+                                           __in     __notnull ogl_uber         uber,
+                                           __in_opt           mesh_material    material,
+                                           __in               system_time      time);
 
 /** TODO */
 PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void ogl_uber_rendering_start(__in __notnull ogl_uber);

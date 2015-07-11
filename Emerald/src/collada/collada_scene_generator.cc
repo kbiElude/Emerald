@@ -248,8 +248,8 @@ PRIVATE curve_container _collada_scene_generator_create_curve_container_from_col
         float end_time    = input_float_array_data [n_segment + 1];
         float end_value   = output_float_array_data[n_segment + 1];
 
-        uint32_t start_time_msec = system_time_get_timeline_time_for_msec( (uint32_t) (start_time * 1000 /* ms in s */) );
-        uint32_t end_time_msec   = system_time_get_timeline_time_for_msec( (uint32_t) (end_time   * 1000 /* ms in s */) );
+        uint32_t start_time_msec = system_time_get_time_for_msec( (uint32_t) (start_time * 1000 /* ms in s */) );
+        uint32_t end_time_msec   = system_time_get_time_for_msec( (uint32_t) (end_time   * 1000 /* ms in s */) );
 
         system_variant_set_float(start_value_variant,
                                  start_value);

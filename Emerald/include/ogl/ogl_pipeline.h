@@ -10,7 +10,7 @@
 #include "system/system_types.h"
 
 typedef void (*PFNOGLPIPELINECALLBACKPROC)(ogl_context,
-                                           system_timeline_time,
+                                           system_time,
                                            void*);
 
 REFCOUNT_INSERT_DECLARATIONS(ogl_pipeline,
@@ -32,9 +32,9 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API ogl_pipeline ogl_pipeline_create(__in 
                                                                            __in __notnull system_hashed_ansi_string name);
 
 /** TODO */
-PUBLIC RENDERING_CONTEXT_CALL EMERALD_API bool ogl_pipeline_draw_stage(__in __notnull ogl_pipeline         instance,
-                                                                       __in           uint32_t             n_stage,
-                                                                       __in           system_timeline_time time);
+PUBLIC RENDERING_CONTEXT_CALL EMERALD_API bool ogl_pipeline_draw_stage(__in __notnull ogl_pipeline instance,
+                                                                       __in           uint32_t     n_stage,
+                                                                       __in           system_time  time);
 
 /** TODO */
 PUBLIC EMERALD_API ogl_context ogl_pipeline_get_context(__in __notnull ogl_pipeline instance);

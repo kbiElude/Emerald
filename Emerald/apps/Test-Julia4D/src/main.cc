@@ -85,7 +85,7 @@ PRIVATE void _init_pipeline_rendering_thread_callback(ogl_context             co
 PRIVATE void _init_ui                                ();
 PRIVATE void _rendering_handler                      (ogl_context             context,
                                                       uint32_t                n_frames_rendered,
-                                                      system_timeline_time    frame_time,
+                                                      system_time             frame_time,
                                                       void*                   renderer);
 PRIVATE void _rendering_lbm_callback_handler         (system_window           window,
                                                       unsigned short          x,
@@ -465,10 +465,10 @@ PRIVATE void _init_ui()
 }
 
 /** Rendering handler */
-PRIVATE void _rendering_handler(ogl_context          context,
-                                uint32_t             n_frames_rendered,
-                                system_timeline_time frame_time,
-                                void*                renderer)
+PRIVATE void _rendering_handler(ogl_context context,
+                                uint32_t    n_frames_rendered,
+                                system_time frame_time,
+                                void*       renderer)
 {
     ogl_pipeline_draw_stage(_pipeline,
                             _pipeline_stage_id,

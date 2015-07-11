@@ -120,9 +120,9 @@ PUBLIC EMERALD_API system_thread_id system_threads_get_thread_id()
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API void system_threads_join_thread(__in      system_thread        thread,
-                                                   __in      system_timeline_time timeout,
-                                                   __out_opt bool*                out_has_timed_out_ptr)
+PUBLIC EMERALD_API void system_threads_join_thread(__in      system_thread thread,
+                                                   __in      system_time   timeout,
+                                                   __out_opt bool*         out_has_timed_out_ptr)
 {
     bool     has_timed_out = false;
     uint32_t timeout_msec  = 0;
@@ -134,8 +134,8 @@ PUBLIC EMERALD_API void system_threads_join_thread(__in      system_thread      
     }
     else
     {
-        system_time_get_msec_for_timeline_time(timeout,
-                                              &timeout_msec);
+        system_time_get_msec_for_time(timeout,
+                                     &timeout_msec);
     }
 
     has_timed_out = (::WaitForSingleObject( thread,

@@ -15,9 +15,9 @@
 PUBLIC EMERALD_API system_thread_id system_threads_get_thread_id();
 
 /** Waits until specified thread finishes executing */
-PUBLIC EMERALD_API void system_threads_join_thread(__in      system_thread        thread,
-                                                   __in      system_timeline_time timeout,
-                                                   __out_opt bool*                out_has_timed_out_ptr);
+PUBLIC EMERALD_API void system_threads_join_thread(__in      system_thread thread,
+                                                   __in      system_time   timeout,
+                                                   __out_opt bool*         out_has_timed_out_ptr);
 
 /** Spawns a new thread. Waits until the thread 
  *

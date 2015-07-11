@@ -25,7 +25,7 @@
 uint32_t                   _active_camera_index          = 0;
 uint32_t                   _active_camera_path_index     = 0; /* none */
 float                      _animation_duration_float     = 0.0f;
-system_timeline_time       _animation_duration_time      = 0;
+system_time                _animation_duration_time      = 0;
 system_critical_section    _camera_cs                    = NULL;
 void**                     _camera_indices               = NULL;
 void**                     _camera_path_indices          = NULL;
@@ -35,12 +35,12 @@ system_resizable_vector    _cameras                      = NULL;
 ogl_curve_renderer         _curve_renderer               = NULL;
 ogl_curve_item_id          _curve_renderer_item_id       = -1;
 ogl_flyby                  _flyby                        = NULL;
-system_timeline_time       _last_frame_time              = 0;
+system_time                _last_frame_time              = 0;
 ogl_pipeline               _pipeline                     = NULL;
 uint32_t                   _pipeline_stage_id            = -1;
 bool                       _playback_status              = true;
 scene                      _scene                        = NULL;
-system_timeline_time       _scene_duration               = 0;
+system_time                _scene_duration               = 0;
 ogl_scene_renderer         _scene_renderer               = NULL;
 
 
@@ -267,7 +267,7 @@ PUBLIC unsigned int state_get_active_camera_path_index()
 }
 
 /** Please see header for spec */
-PUBLIC system_timeline_time state_get_animation_duration_time()
+PUBLIC system_time state_get_animation_duration_time()
 {
     return _animation_duration_time;
 }
@@ -315,7 +315,7 @@ PUBLIC ogl_curve_item_id state_get_curve_renderer_item_id()
 }
 
 /** Please see header for spec */
-PUBLIC system_timeline_time state_get_last_frame_time()
+PUBLIC system_time state_get_last_frame_time()
 {
     return _last_frame_time;
 }
@@ -366,7 +366,7 @@ PUBLIC ogl_scene_renderer state_get_scene_renderer()
 PUBLIC bool state_init(__in __notnull system_hashed_ansi_string scene_filename)
 {
     float                animation_duration_float = 0.0f;
-    system_timeline_time animation_duration       = 0;
+    system_time          animation_duration       = 0;
     const float          camera_start_position[3] = {0, 0, 0};
     const float          movement_delta           = MOVEMENT_DELTA;
     bool                 result                   = true;
@@ -463,14 +463,14 @@ PUBLIC bool state_init(__in __notnull system_hashed_ansi_string scene_filename)
                        SCENE_PROPERTY_MAX_ANIMATION_DURATION,
                       &animation_duration_float);
 
-    _scene_duration = system_time_get_timeline_time_for_msec( uint32_t(animation_duration_float * 1000.0f) );
+    _scene_duration = system_time_get_time_for_msec( uint32_t(animation_duration_float * 1000.0f) );
 
     /* Determine the animation duration. */
     scene_get_property(_scene,
                        SCENE_PROPERTY_MAX_ANIMATION_DURATION,
                       &_animation_duration_float);
 
-    _animation_duration_time = system_time_get_timeline_time_for_msec( uint32_t(_animation_duration_float * 1000.0f) );
+    _animation_duration_time = system_time_get_time_for_msec( uint32_t(_animation_duration_float * 1000.0f) );
 
     /* Carry on initializing */
     _scene_renderer = ogl_scene_renderer_create(_context,
@@ -596,7 +596,7 @@ PUBLIC void state_set_active_camera_path_index(unsigned int index)
 }
 
 /** Please see header for spec */
-PUBLIC void state_set_last_frame_time(system_timeline_time time)
+PUBLIC void state_set_last_frame_time(system_time time)
 {
     _last_frame_time = time;
 }

@@ -26,8 +26,8 @@ typedef struct
 
     curve_container                    curve;
     curve_editor_curve_window_renderer renderer;
-    system_timeline_time               start_time;
-    system_timeline_time               end_time;
+    system_time                        start_time;
+    system_time                        end_time;
 
 } _curve_window_renderer_segment_creation_callback_argument;
 

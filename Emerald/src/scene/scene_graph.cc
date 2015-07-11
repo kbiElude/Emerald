@@ -25,51 +25,51 @@
 #include "system/system_variant.h"
 
 /* Private declarations */
-typedef system_matrix4x4 (*PFNUPDATEMATRIXPROC)(void*                data,
-                                                system_matrix4x4     current_matrix,
-                                                system_timeline_time prev_keyframe_time,
-                                                system_timeline_time next_keyframe_time,
-                                                float                lerp_factor);
+typedef system_matrix4x4 (*PFNUPDATEMATRIXPROC)(void*            data,
+                                                system_matrix4x4 current_matrix,
+                                                system_time      prev_keyframe_time,
+                                                system_time      next_keyframe_time,
+                                                float            lerp_factor);
 
 /* Forward declarations */
 PRIVATE void             _scene_graph_align_time_to_fps                        (__in      __notnull                scene_graph                                   graph,
-                                                                                __in                               system_timeline_time                          time,
-                                                                                __out_opt                          system_timeline_time*                         out_prev_keyframe_time_ptr,
-                                                                                __out_opt                          system_timeline_time*                         out_next_keyframe_time_ptr);
+                                                                                __in                               system_time                                   time,
+                                                                                __out_opt                          system_time*                                  out_prev_keyframe_time_ptr,
+                                                                                __out_opt                          system_time*                                  out_next_keyframe_time_ptr);
 PRIVATE system_matrix4x4 _scene_graph_compute_root_node                        (__in      __notnull                void*                                         data,
                                                                                 __in      __notnull                system_matrix4x4                              current_matrix,
-                                                                                __in                               system_timeline_time                          prev_keyframe_time,
-                                                                                __in                               system_timeline_time                          next_keyframe_time,
+                                                                                __in                               system_time                                   prev_keyframe_time,
+                                                                                __in                               system_time                                   next_keyframe_time,
                                                                                 __in                               float                                         lerp_factor);
 PRIVATE void             _scene_graph_compute_node_transformation_matrix       (__in      __notnull                scene_graph                                   graph,
                                                                                 __in      __notnull                struct _scene_graph_node*                     node_ptr,
-                                                                                __in                               system_timeline_time                          time);
+                                                                                __in                               system_time                                   time);
 PRIVATE system_matrix4x4 _scene_graph_compute_general                          (__in      __notnull                void*                                         data,
                                                                                 __in      __notnull                system_matrix4x4                              current_matrix,
-                                                                                __in                               system_timeline_time                          prev_keyframe_time,
-                                                                                __in                               system_timeline_time                          next_keyframe_time,
+                                                                                __in                               system_time                                   prev_keyframe_time,
+                                                                                __in                               system_time                                   next_keyframe_time,
                                                                                 __in                               float                                         lerp_factor);
 PRIVATE system_matrix4x4 _scene_graph_compute_rotation_dynamic                 (__in      __notnull                void*                                         data,
                                                                                 __in      __notnull                system_matrix4x4                              current_matrix,
-                                                                                __in                               system_timeline_time                          prev_keyframe_time,
-                                                                                __in                               system_timeline_time                          next_keyframe_time,
+                                                                                __in                               system_time                                   prev_keyframe_time,
+                                                                                __in                               system_time                                   next_keyframe_time,
                                                                                 __in                               float                                         lerp_factor);
 PRIVATE system_matrix4x4 _scene_graph_compute_scale_dynamic                    (__in      __notnull                void*                                         data,
                                                                                 __in      __notnull                system_matrix4x4                              current_matrix,
-                                                                                __in                               system_timeline_time                          prev_keyframe_time,
-                                                                                __in                               system_timeline_time                          next_keyframe_time,
+                                                                                __in                               system_time                                   prev_keyframe_time,
+                                                                                __in                               system_time                                   next_keyframe_time,
                                                                                 __in                               float                                         lerp_factor);
 PRIVATE system_matrix4x4 _scene_graph_compute_static_matrix4x4                 (__in      __notnull                void*                                         data,
                                                                                 __in      __notnull                system_matrix4x4                              current_matrix,
-                                                                                __in                               system_timeline_time                          prev_keyframe_time,
-                                                                                __in                               system_timeline_time                          next_keyframe_time,
+                                                                                __in                               system_time                                   prev_keyframe_time,
+                                                                                __in                               system_time                                   next_keyframe_time,
                                                                                 __in                               float                                         lerp_factor);
 PRIVATE system_matrix4x4 _scene_graph_compute_translation_dynamic              (__in      __notnull                void*                                         data,
                                                                                 __in      __notnull                system_matrix4x4                              current_matrix,
-                                                                                __in                               system_timeline_time                          prev_keyframe_time,
-                                                                                __in                               system_timeline_time                          next_keyframe_time,
+                                                                                __in                               system_time                                   prev_keyframe_time,
+                                                                                __in                               system_time                                   next_keyframe_time,
                                                                                 __in                               float                                         lerp_factor);
-PRIVATE float            _scene_graph_get_float_time_from_timeline_time        (                                   system_timeline_time                          time);
+PRIVATE float            _scene_graph_get_float_time_from_timeline_time        (                                   system_time                                   time);
 PRIVATE system_hash64map _scene_graph_get_node_hashmap                         (__in      __notnull                struct _scene_graph*                          graph_ptr);
 PRIVATE bool             _scene_graph_load_node                                (__in      __notnull                system_file_serializer                        serializer,
                                                                                 __in      __notnull                scene_graph                                   result_graph,
@@ -334,7 +334,7 @@ typedef struct _scene_graph_node
     system_resizable_vector                 attached_meshes;
     system_dag_node                         dag_node;
     void*                                   data;
-    system_timeline_time                    last_update_time;
+    system_time                             last_update_time;
     _scene_graph_node*                      parent_node;
     PFNUPDATEMATRIXPROC                     pUpdateMatrix;
     scene_graph_node_tag                    tag;
@@ -390,8 +390,8 @@ typedef struct _scene_graph
 {
     system_dag                dag;
     bool                      dirty;
-    system_timeline_time      dirty_time;
-    system_timeline_time      last_compute_time;
+    system_time               dirty_time;
+    system_time               last_compute_time;
     system_resizable_vector   nodes;
     system_hashed_ansi_string object_manager_path;
     scene                     owner_scene;
@@ -430,10 +430,10 @@ typedef struct _scene_graph
 
 
 /** TODO */
-PRIVATE void _scene_graph_align_time_to_fps(__in      __notnull scene_graph           graph,
-                                            __in                system_timeline_time  time,
-                                            __out_opt           system_timeline_time* out_prev_keyframe_time_ptr,
-                                            __out_opt           system_timeline_time* out_next_keyframe_time_ptr)
+PRIVATE void _scene_graph_align_time_to_fps(__in      __notnull scene_graph  graph,
+                                            __in                system_time  time,
+                                            __out_opt           system_time* out_prev_keyframe_time_ptr,
+                                            __out_opt           system_time* out_next_keyframe_time_ptr)
 {
     float         fps       = 0.0f;
     _scene_graph* graph_ptr = (_scene_graph*) graph;
@@ -452,8 +452,8 @@ PRIVATE void _scene_graph_align_time_to_fps(__in      __notnull scene_graph     
               unsigned int time_ms                     = 0;
               unsigned int time_ms_modulo_ms_per_frame = 0;
 
-        system_time_get_msec_for_timeline_time(time,
-                                              &time_ms);
+        system_time_get_msec_for_time(time,
+                                     &time_ms);
 
         time_ms_modulo_ms_per_frame = time_ms % ms_per_frame;
 
@@ -461,7 +461,7 @@ PRIVATE void _scene_graph_align_time_to_fps(__in      __notnull scene_graph     
         {
             unsigned int temp_aligned_time_ms = time_ms - time_ms_modulo_ms_per_frame;
 
-            *out_prev_keyframe_time_ptr = system_time_get_timeline_time_for_msec(temp_aligned_time_ms);
+            *out_prev_keyframe_time_ptr = system_time_get_time_for_msec(temp_aligned_time_ms);
         }
 
         if (out_next_keyframe_time_ptr != NULL)
@@ -469,7 +469,7 @@ PRIVATE void _scene_graph_align_time_to_fps(__in      __notnull scene_graph     
             /* Align to the next closest frame */
             unsigned int temp_aligned_time_ms = time_ms + ms_per_frame - time_ms_modulo_ms_per_frame;
 
-            *out_next_keyframe_time_ptr = system_time_get_timeline_time_for_msec(temp_aligned_time_ms);
+            *out_next_keyframe_time_ptr = system_time_get_time_for_msec(temp_aligned_time_ms);
         }
     } /* if (fabs(fps) >= 1e-5f) */
     else
@@ -487,11 +487,11 @@ PRIVATE void _scene_graph_align_time_to_fps(__in      __notnull scene_graph     
 }
 
 /** TODO */
-PRIVATE system_matrix4x4 _scene_graph_compute_root_node(__in __notnull void*                data,
-                                                        __in __notnull system_matrix4x4     current_matrix,
-                                                        __in           system_timeline_time prev_keyframe_time,
-                                                        __in           system_timeline_time next_keyframe_time,
-                                                        __in           float                lerp_factor)
+PRIVATE system_matrix4x4 _scene_graph_compute_root_node(__in __notnull void*            data,
+                                                        __in __notnull system_matrix4x4 current_matrix,
+                                                        __in           system_time      prev_keyframe_time,
+                                                        __in           system_time      next_keyframe_time,
+                                                        __in           float            lerp_factor)
 {
     /* Ignore current matrix, just return an identity matrix */
     system_matrix4x4 result = system_matrix4x4_create();
@@ -501,9 +501,9 @@ PRIVATE system_matrix4x4 _scene_graph_compute_root_node(__in __notnull void*    
 }
 
 /** TODO */
-PRIVATE void _scene_graph_compute_node_transformation_matrix(__in __notnull scene_graph          graph,
-                                                             __in __notnull _scene_graph_node*   node_ptr,
-                                                             __in           system_timeline_time time)
+PRIVATE void _scene_graph_compute_node_transformation_matrix(__in __notnull scene_graph        graph,
+                                                             __in __notnull _scene_graph_node* node_ptr,
+                                                             __in           system_time        time)
 {
     if (node_ptr->transformation_matrix.data != NULL)
     {
@@ -513,9 +513,9 @@ PRIVATE void _scene_graph_compute_node_transformation_matrix(__in __notnull scen
     }
 
     /* Retrieve keyframe data */
-    float                lerp_factor        = 0.0f;
-    system_timeline_time prev_keyframe_time = 0;
-    system_timeline_time next_keyframe_time = 0;
+    float       lerp_factor        = 0.0f;
+    system_time prev_keyframe_time = 0;
+    system_time next_keyframe_time = 0;
 
     _scene_graph_align_time_to_fps(graph,
                                    time,
@@ -557,11 +557,11 @@ PRIVATE void _scene_graph_compute_node_transformation_matrix(__in __notnull scen
 }
 
 /** TODO */
-PRIVATE system_matrix4x4 _scene_graph_compute_general(__in __notnull void*                data,
-                                                      __in __notnull system_matrix4x4     current_matrix,
-                                                      __in           system_timeline_time prev_keyframe_time,
-                                                      __in           system_timeline_time next_keyframe_time,
-                                                      __in           float                lerp_factor)
+PRIVATE system_matrix4x4 _scene_graph_compute_general(__in __notnull void*            data,
+                                                      __in __notnull system_matrix4x4 current_matrix,
+                                                      __in           system_time      prev_keyframe_time,
+                                                      __in           system_time      next_keyframe_time,
+                                                      __in           float            lerp_factor)
 {
     _scene_graph_node_matrix4x4_static* node_data_ptr = (_scene_graph_node_matrix4x4_static*) data;
     system_matrix4x4                    new_matrix    = system_matrix4x4_create();
@@ -573,11 +573,11 @@ PRIVATE system_matrix4x4 _scene_graph_compute_general(__in __notnull void*      
 }
 
 /** TODO */
-PRIVATE system_matrix4x4 _scene_graph_compute_rotation_dynamic(__in __notnull void*                data,
-                                                               __in __notnull system_matrix4x4     current_matrix,
-                                                               __in           system_timeline_time prev_keyframe_time,
-                                                               __in           system_timeline_time next_keyframe_time,
-                                                               __in           float                lerp_factor)
+PRIVATE system_matrix4x4 _scene_graph_compute_rotation_dynamic(__in __notnull void*            data,
+                                                               __in __notnull system_matrix4x4 current_matrix,
+                                                               __in           system_time      prev_keyframe_time,
+                                                               __in           system_time      next_keyframe_time,
+                                                               __in           float            lerp_factor)
 {
     _scene_graph_node_rotation_dynamic* node_data_ptr = (_scene_graph_node_rotation_dynamic*) data;
     system_matrix4x4                    new_matrix    = system_matrix4x4_create();
@@ -590,10 +590,10 @@ PRIVATE system_matrix4x4 _scene_graph_compute_rotation_dynamic(__in __notnull vo
                   n_keyframe < 2; /* prev, next */
                 ++n_keyframe)
     {
-        float*               result_rotation_ptr = (n_keyframe == 0) ? rotation_prev_keyframe
-                                                                     : rotation_next_keyframe;
-        system_timeline_time time                = (n_keyframe == 0) ? prev_keyframe_time
-                                                                     : next_keyframe_time;
+        float*      result_rotation_ptr = (n_keyframe == 0) ? rotation_prev_keyframe
+                                                            : rotation_next_keyframe;
+        system_time time                = (n_keyframe == 0) ? prev_keyframe_time
+                                                            : next_keyframe_time;
 
         for (uint32_t n_component = 0;
                       n_component < 4;
@@ -640,11 +640,11 @@ PRIVATE system_matrix4x4 _scene_graph_compute_rotation_dynamic(__in __notnull vo
 }
 
 /** TODO */
-PRIVATE system_matrix4x4 _scene_graph_compute_scale_dynamic(__in __notnull void*                data,
-                                                            __in __notnull system_matrix4x4     current_matrix,
-                                                            __in           system_timeline_time prev_keyframe_time,
-                                                            __in           system_timeline_time next_keyframe_time,
-                                                            __in           float                lerp_factor)
+PRIVATE system_matrix4x4 _scene_graph_compute_scale_dynamic(__in __notnull void*            data,
+                                                            __in __notnull system_matrix4x4 current_matrix,
+                                                            __in           system_time      prev_keyframe_time,
+                                                            __in           system_time      next_keyframe_time,
+                                                            __in           float            lerp_factor)
 {
     _scene_graph_node_scale_dynamic* node_data_ptr = (_scene_graph_node_scale_dynamic*) data;
     system_matrix4x4                 new_matrix    = system_matrix4x4_create();
@@ -657,10 +657,10 @@ PRIVATE system_matrix4x4 _scene_graph_compute_scale_dynamic(__in __notnull void*
                   n_keyframe < 2; /* prev, next */
                 ++n_keyframe)
     {
-        float*               result_scale_ptr = (n_keyframe == 0) ? scale_prev_keyframe
-                                                                  : scale_next_keyframe;
-        system_timeline_time time             = (n_keyframe == 0) ? prev_keyframe_time
-                                                                  : next_keyframe_time;
+        float*      result_scale_ptr = (n_keyframe == 0) ? scale_prev_keyframe
+                                                         : scale_next_keyframe;
+        system_time time             = (n_keyframe == 0) ? prev_keyframe_time
+                                                         : next_keyframe_time;
 
         for (uint32_t n_component = 0;
                       n_component < 3;
@@ -706,11 +706,11 @@ PRIVATE system_matrix4x4 _scene_graph_compute_scale_dynamic(__in __notnull void*
 }
 
 /** TODO */
-PRIVATE system_matrix4x4 _scene_graph_compute_static_matrix4x4(__in __notnull void*                data,
-                                                               __in __notnull system_matrix4x4     current_matrix,
-                                                               __in           system_timeline_time prev_keyframe_time,
-                                                               __in           system_timeline_time next_keyframe_time,
-                                                               __in           float                lerp_factor)
+PRIVATE system_matrix4x4 _scene_graph_compute_static_matrix4x4(__in __notnull void*            data,
+                                                               __in __notnull system_matrix4x4 current_matrix,
+                                                               __in           system_time      prev_keyframe_time,
+                                                               __in           system_time      next_keyframe_time,
+                                                               __in           float            lerp_factor)
 {
     _scene_graph_node_matrix4x4_static* node_data_ptr = (_scene_graph_node_matrix4x4_static*) data;
 
@@ -719,11 +719,11 @@ PRIVATE system_matrix4x4 _scene_graph_compute_static_matrix4x4(__in __notnull vo
 }
 
 /** TODO */
-PRIVATE system_matrix4x4 _scene_graph_compute_translation_dynamic(__in __notnull void*                data,
-                                                                  __in __notnull system_matrix4x4     current_matrix,
-                                                                  __in           system_timeline_time prev_keyframe_time,
-                                                                  __in           system_timeline_time next_keyframe_time,
-                                                                  __in           float                lerp_factor)
+PRIVATE system_matrix4x4 _scene_graph_compute_translation_dynamic(__in __notnull void*            data,
+                                                                  __in __notnull system_matrix4x4 current_matrix,
+                                                                  __in           system_time      prev_keyframe_time,
+                                                                  __in           system_time      next_keyframe_time,
+                                                                  __in           float            lerp_factor)
 {
     _scene_graph_node_translation_dynamic* node_data_ptr = (_scene_graph_node_translation_dynamic*) data;
     system_matrix4x4                       new_matrix    = system_matrix4x4_create();
@@ -736,10 +736,10 @@ PRIVATE system_matrix4x4 _scene_graph_compute_translation_dynamic(__in __notnull
                   n_keyframe < 2; /* prev, next */
                 ++n_keyframe)
     {
-        float*               result_translation_ptr = (n_keyframe == 0) ? translation_prev_keyframe
-                                                                        : translation_next_keyframe;
-        system_timeline_time time                   = (n_keyframe == 0) ? prev_keyframe_time
-                                                                        : next_keyframe_time;
+        float*      result_translation_ptr = (n_keyframe == 0) ? translation_prev_keyframe
+                                                               : translation_next_keyframe;
+        system_time time                   = (n_keyframe == 0) ? prev_keyframe_time
+                                                               : next_keyframe_time;
 
         for (uint32_t n_component = 0;
                       n_component < 3;
@@ -790,11 +790,11 @@ PRIVATE system_matrix4x4 _scene_graph_compute_translation_dynamic(__in __notnull
 }
 
 /** TODO */
-PRIVATE system_matrix4x4 _scene_graph_compute_translation_static(__in __notnull void*                data,
-                                                                 __in __notnull system_matrix4x4     current_matrix,
-                                                                 __in           system_timeline_time prev_keyframe_time,
-                                                                 __in           system_timeline_time next_keyframe_time,
-                                                                 __in           float                lerp_factor)
+PRIVATE system_matrix4x4 _scene_graph_compute_translation_static(__in __notnull void*            data,
+                                                                 __in __notnull system_matrix4x4 current_matrix,
+                                                                 __in           system_time      prev_keyframe_time,
+                                                                 __in           system_time      next_keyframe_time,
+                                                                 __in           float            lerp_factor)
 {
     _scene_graph_node_translation_static* node_data_ptr = (_scene_graph_node_translation_static*) data;
     system_matrix4x4                      result        = system_matrix4x4_create();
@@ -809,13 +809,13 @@ PRIVATE system_matrix4x4 _scene_graph_compute_translation_static(__in __notnull 
 }
 
 /** TODO */
-PRIVATE float _scene_graph_get_float_time_from_timeline_time(system_timeline_time time)
+PRIVATE float _scene_graph_get_float_time_from_timeline_time(system_time time)
 {
     float    time_float = 0.0f;
     uint32_t time_msec  = 0;
 
-    system_time_get_msec_for_timeline_time(time,
-                                          &time_msec);
+    system_time_get_msec_for_time(time,
+                                 &time_msec);
 
     time_float = float(time_msec) / 1000.0f;
 
@@ -2102,8 +2102,8 @@ PUBLIC EMERALD_API void scene_graph_attach_object_to_node(__in __notnull scene_g
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API void scene_graph_compute(__in __notnull scene_graph          graph,
-                                            __in           system_timeline_time time)
+PUBLIC EMERALD_API void scene_graph_compute(__in __notnull scene_graph graph,
+                                            __in           system_time time)
 {
     _scene_graph* graph_ptr = (_scene_graph*) graph;
 
@@ -2214,9 +2214,9 @@ end:
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API void scene_graph_compute_node(__in __notnull scene_graph          graph,
-                                                 __in __notnull scene_graph_node     node,
-                                                 __in           system_timeline_time time)
+PUBLIC EMERALD_API void scene_graph_compute_node(__in __notnull scene_graph      graph,
+                                                 __in __notnull scene_graph_node node,
+                                                 __in           system_time      time)
 {
     _scene_graph_node* current_node_ptr = (_scene_graph_node*) node;
     _scene_graph*      graph_ptr        = (_scene_graph*)      graph;
@@ -2813,10 +2813,10 @@ PUBLIC EMERALD_API void scene_graph_lock(__in __notnull scene_graph graph)
     }
 
     /* Please see header for specification */
-    PUBLIC EMERALD_API void scene_graph_log_hierarchy(__in __notnull scene_graph          graph,
-                                                      __in __notnull scene_graph_node     node,
-                                                      __in           unsigned int         indent_level,
-                                                      __in           system_timeline_time time)
+    PUBLIC EMERALD_API void scene_graph_log_hierarchy(__in __notnull scene_graph      graph,
+                                                      __in __notnull scene_graph_node node,
+                                                      __in           unsigned int     indent_level,
+                                                      __in           system_time      time)
     {
         _scene_graph*           graph_ptr   = (_scene_graph*) graph;
         _scene_graph_node*      node_ptr    = (_scene_graph_node*) node;
@@ -3281,7 +3281,7 @@ PUBLIC EMERALD_API void scene_graph_traverse(__in __notnull scene_graph         
                                              __in_opt       PFNINSERTLIGHTPROC             insert_light_proc,
                                              __in_opt       PFNINSERTMESHPROC              insert_mesh_proc,
                                              __in_opt       void*                          user_arg,
-                                             __in           system_timeline_time           frame_time)
+                                             __in           system_time                    frame_time)
 {
     _scene_graph* graph_ptr = (_scene_graph*) graph;
 

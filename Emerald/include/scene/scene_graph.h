@@ -102,17 +102,17 @@ PUBLIC EMERALD_API void scene_graph_attach_object_to_node(__in __notnull scene_g
  *  NOTE: Use scene_graph_lock() before calling this function. Otherwise, assertion
  *        failure will occur.
  **/
-PUBLIC EMERALD_API void scene_graph_compute(__in __notnull scene_graph          graph,
-                                            __in           system_timeline_time time);
+PUBLIC EMERALD_API void scene_graph_compute(__in __notnull scene_graph graph,
+                                            __in           system_time time);
 
 /** TODO
  *
  *  NOTE: Use scene_graph_lock() before calling this function. Otherwise, assertion
  *        failure will occur.
  **/
-PUBLIC EMERALD_API void scene_graph_compute_node(__in __notnull scene_graph          graph,
-                                                 __in __notnull scene_graph_node     node,
-                                                 __in           system_timeline_time time);
+PUBLIC EMERALD_API void scene_graph_compute_node(__in __notnull scene_graph      graph,
+                                                 __in __notnull scene_graph_node node,
+                                                 __in           system_time      time);
 
 
 /** TODO. */
@@ -177,10 +177,10 @@ PUBLIC EMERALD_API void scene_graph_lock(__in __notnull scene_graph graph);
 
 #ifdef _DEBUG
     /** TODO */
-    PUBLIC EMERALD_API void scene_graph_log_hierarchy(__in __notnull scene_graph          graph,
-                                                      __in __notnull scene_graph_node     node,
-                                                      __in           unsigned int         indent_level,
-                                                      __in           system_timeline_time time);
+    PUBLIC EMERALD_API void scene_graph_log_hierarchy(__in __notnull scene_graph      graph,
+                                                      __in __notnull scene_graph_node node,
+                                                      __in           unsigned int     indent_level,
+                                                      __in           system_time      time);
 #endif
 
 /** TODO */
@@ -232,7 +232,7 @@ PUBLIC EMERALD_API void scene_graph_traverse(__in __notnull scene_graph         
                                              __in_opt       PFNINSERTLIGHTPROC             insert_light_proc,
                                              __in_opt       PFNINSERTMESHPROC              insert_mesh_proc,
                                              __in_opt       void*                          user_arg,
-                                             __in           system_timeline_time           frame_time);
+                                             __in           system_time                    frame_time);
 
 /** Unlocks scene graph's computation operations. This call must be preceded by
  *  a scene_graph_lock() call, otherwise an assertion failure will occur.

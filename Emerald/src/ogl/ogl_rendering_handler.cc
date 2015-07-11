@@ -25,9 +25,9 @@ typedef struct
     uint32_t                              fps;
     bool                                  fps_counter_status;
     uint32_t                              last_frame_index;      /* only when fps policy is used */
-    system_timeline_time                  last_frame_time;
+    system_time                           last_frame_time;
     uint32_t                              n_frames_rendered;
-    system_timeline_time                  playback_start_time;
+    system_time                           playback_start_time;
     ogl_rendering_handler_playback_status playback_status;
     ogl_rendering_handler_policy          policy;
     ogl_text_string_id                    text_string_id;
@@ -207,9 +207,9 @@ PRIVATE void _ogl_rendering_handler_thread_entrypoint(void* in_arg)
                 {
                     if (rendering_handler->playback_status == RENDERING_HANDLER_PLAYBACK_STATUS_STARTED)
                     {
-                        system_timeline_time curr_time      = system_time_now();
-                        system_timeline_time new_frame_time = 0;
-                        uint32_t             frame_index    = 0;
+                        system_time curr_time      = system_time_now();
+                        system_time new_frame_time = 0;
+                        uint32_t    frame_index    = 0;
 
                         switch (rendering_handler->policy)
                         {
@@ -252,14 +252,14 @@ PRIVATE void _ogl_rendering_handler_thread_entrypoint(void* in_arg)
                         } /* switch (rendering_handler->policy) */
 
                         /* Call the user app's call-back */
-                        system_timeline_time rendering_start_time = system_time_now();
+                        system_time rendering_start_time = system_time_now();
                         {
                             if (rendering_handler->pfn_rendering_callback != NULL)
                             {
                                 rendering_handler->pfn_rendering_callback(rendering_handler->context,
-                                                                        frame_index,
-                                                                        new_frame_time,
-                                                                        rendering_handler->rendering_callback_user_arg);
+                                                                          frame_index,
+                                                                          new_frame_time,
+                                                                          rendering_handler->rendering_callback_user_arg);
 
                                 if (rendering_handler->fps_counter_status)
                                 {
@@ -269,23 +269,23 @@ PRIVATE void _ogl_rendering_handler_thread_entrypoint(void* in_arg)
 
                             rendering_handler->last_frame_time = new_frame_time;
                         }
-                        system_timeline_time rendering_end_time = system_time_now();
+                        system_time rendering_end_time = system_time_now();
 
                         if (rendering_handler->fps_counter_status)
                         {
                             /* Render FPS info */
-                            char                 rendering_time_buffer[128] = {0};
-                            system_timeline_time rendering_time_delta       = rendering_end_time - rendering_start_time;
-                            uint32_t             rendering_time_msec        = 0;
-                            int                  rendering_time_pos[2]      = {0};
-                            int                  rendering_time_text_height = 0;
-                            int                  window_size[2];
+                            char        rendering_time_buffer[128] = {0};
+                            system_time rendering_time_delta       = rendering_end_time - rendering_start_time;
+                            uint32_t    rendering_time_msec        = 0;
+                            int         rendering_time_pos[2]      = {0};
+                            int         rendering_time_text_height = 0;
+                            int         window_size[2];
 
                             system_window_get_property            (context_window,
                                                                    SYSTEM_WINDOW_PROPERTY_DIMENSIONS,
                                                                    window_size);
-                            system_time_get_msec_for_timeline_time(rendering_time_delta,
-                                                                  &rendering_time_msec);
+                            system_time_get_msec_for_time(rendering_time_delta,
+                                                         &rendering_time_msec);
 
                             snprintf(rendering_time_buffer,
                                      sizeof(rendering_time_buffer),
@@ -517,7 +517,7 @@ PUBLIC EMERALD_API void ogl_rendering_handler_get_property(__in  __notnull ogl_r
     {
         case OGL_RENDERING_HANDLER_PROPERTY_LAST_FRAME_TIME:
         {
-            *(system_timeline_time*) out_result = rendering_handler_ptr->last_frame_time;
+            *(system_time*) out_result = rendering_handler_ptr->last_frame_time;
 
             break;
         }
@@ -554,7 +554,7 @@ PUBLIC EMERALD_API bool ogl_rendering_handler_is_current_thread_rendering_thread
 
 /** Please see header for specification */
 PUBLIC EMERALD_API bool ogl_rendering_handler_play(__in __notnull ogl_rendering_handler rendering_handler,
-                                                                  system_timeline_time  start_time)
+                                                                  system_time           start_time)
 {
     unsigned int            pre_n_frames_rendered = 0;
     _ogl_rendering_handler* rendering_handler_ptr = (_ogl_rendering_handler*) rendering_handler;

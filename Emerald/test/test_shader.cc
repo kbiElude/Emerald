@@ -29,9 +29,9 @@ GLfloat triangle_test_position_data[] = { 0.0f,  0.5f, -1.0f, 1.0f,
                                           1.0f, -1.0f, -1.0f, 1.0f,
                                          -1.0f, -1.0f, -1.0f, 1.0f};
 
-static void _on_render_frame_triangle_test_callback(ogl_context          context,
-                                                    uint32_t             n_frames_rendered,
-                                                    system_timeline_time frame_time,
+static void _on_render_frame_triangle_test_callback(ogl_context context,
+                                                    uint32_t    n_frames_rendered,
+                                                    system_time frame_time,
                                                     void*)
 {
     const ogl_context_gl_entrypoints* entry_points = NULL;
@@ -110,9 +110,9 @@ static void _on_render_frame_triangle_test_callback(ogl_context          context
                                      3); /* count */
 }
 
-static void _on_render_frame_creation_test_callback(ogl_context          context,
-                                                    uint32_t             n_frames_rendered,
-                                                    system_timeline_time frame_time,
+static void _on_render_frame_creation_test_callback(ogl_context context,
+                                                    uint32_t    n_frames_rendered,
+                                                    system_time frame_time,
                                                     void*)
 {
     const ogl_context_gl_entrypoints* entry_points = NULL;

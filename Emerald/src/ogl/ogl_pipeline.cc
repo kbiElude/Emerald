@@ -536,9 +536,9 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API ogl_pipeline ogl_pipeline_create(__in 
 }
 
 /** Please see header for specification */
-PUBLIC RENDERING_CONTEXT_CALL EMERALD_API bool ogl_pipeline_draw_stage(__in __notnull ogl_pipeline         instance,
-                                                                       __in           uint32_t             n_stage,
-                                                                       __in           system_timeline_time time)
+PUBLIC RENDERING_CONTEXT_CALL EMERALD_API bool ogl_pipeline_draw_stage(__in __notnull ogl_pipeline instance,
+                                                                       __in           uint32_t     n_stage,
+                                                                       __in           system_time  time)
 {
     ogl_flyby                                                 flyby              = NULL;
     bool                                                      is_stage_dirty     = false;

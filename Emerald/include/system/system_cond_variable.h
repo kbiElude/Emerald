@@ -20,7 +20,7 @@ typedef bool (*PFNSYSTEMCONDVARIABLETESTPROC)(void* user_arg);
  */
 PUBLIC EMERALD_API system_cond_variable system_cond_variable_create(__in     PFNSYSTEMCONDVARIABLETESTPROC pTestPredicate,
                                                                     __in_opt void*                         test_predicate_user_arg,
-                                                                    __in_opt system_critical_section in_cs = NULL);
+                                                                    __in_opt system_critical_section       in_cs = NULL);
 
 /** Signals a specified condition variable.
  *
@@ -42,7 +42,7 @@ PUBLIC EMERALD_API void system_cond_variable_signal(__in __notnull system_cond_v
  *  never gain access.
  *
  *  @param cond_variable         Condition variable to use for the call. Must not be NULL.
- *  @param timeout               If timed-out wait is needed, provide a system_timeline_time describing the
+ *  @param timeout               If timed-out wait is needed, provide a system_time describing the
  *                               minimum amount of time after which the caller should be returned execution flow.
  *                               If the time-out functionality is not needed, pass SYSTEM_TIME_INFINITY.
  *  @param out_has_timed_out_ptr Optional; deref will be assigned the boolean value, indicating if the request
@@ -50,7 +50,7 @@ PUBLIC EMERALD_API void system_cond_variable_signal(__in __notnull system_cond_v
  *
  **/
 PUBLIC EMERALD_API void system_cond_variable_wait_begin(__in __notnull system_cond_variable cond_variable,
-                                                        __in           system_timeline_time timeout,
+                                                        __in           system_time          timeout,
                                                         __out_opt      bool*                out_has_timed_out_ptr);
 
 /** Releases the CV ownership from the current thread, letting other enqueued threads gain access to the guarded logic.

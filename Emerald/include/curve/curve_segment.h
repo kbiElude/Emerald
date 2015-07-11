@@ -12,14 +12,14 @@
 /** Adds a new node to a given segment. Note that only TCB segments support user nodes.
  *
  *  @param curve_segment          Curve segment to use. Cannot be NULL.
- *  @param system_timeline_time   New node time.
+ *  @param system_time            New node time.
  *  @param system_variant         New node value.
  *  @param curve_segment_node_id* If successful, deref will hold new node's id.
  *
  *  @return true if successful, false otherwise 
  **/
 PUBLIC EMERALD_API bool curve_segment_add_node(__in __notnull  curve_segment,
-                                               __in            system_timeline_time,
+                                               __in            system_time,
                                                __in __notnull  system_variant,
                                                __out __notnull curve_segment_node_id*);
 
@@ -37,17 +37,17 @@ PUBLIC EMERALD_API bool curve_segment_delete_node(__in __notnull curve_segment,
 /** Creates a LERP curve segment descriptor which uses the user-provided start/end values for
  *  given start/end times.
  *
- *  @param system_timeline_time Start time
- *  @param system_variant       Start value. Cannot be NULL.
- *  @param system_timeline_time End time.
- *  @param system_variant       End value. Cannot be NULL.
+ *  @param system_time    Start time
+ *  @param system_variant Start value. Cannot be NULL.
+ *  @param system_time    End time.
+ *  @param system_variant End value. Cannot be NULL.
  *
  *  @return If successful, creates and returns the initialized segment. You can free it
  *          by using curve_segment_release() function.
  */
-PUBLIC curve_segment curve_segment_create_linear(               system_timeline_time,
+PUBLIC curve_segment curve_segment_create_linear(               system_time,
                                                  __in __notnull system_variant,
-                                                                system_timeline_time,
+                                                                system_time,
                                                  __in __notnull system_variant);
 
 /** Creates a static curve segment descriptor which uses the user-provided value.
@@ -62,10 +62,10 @@ PUBLIC curve_segment curve_segment_create_static(__in __notnull system_variant);
 /** Creates a TCB curve segment descriptor which uses the user-provided start/end values for 
  *  given start/end times and Tension/Continuity/Bias factors for both of the nodes.
  *
- *  @param system_timeline_time Start time
+ *  @param system_time          Start time
  *  @param float*               [0] = tension, [1] = continuity, [2] = bias for start node. Cannot be NULL.
  *  @param system_variant       Start value. Cannot be NULL.
- *  @param system_timeline_time End time.
+ *  @param system_time          End time.
  *  @param float*               [0] = tension, [1] = continuity, [2] = bias for end node. Cannot be NULL.
  *  @param system_variant       End value. Cannot be NULL.
  *  @param curve_container      TODO
@@ -75,10 +75,10 @@ PUBLIC curve_segment curve_segment_create_static(__in __notnull system_variant);
  *  @return If successful, creates and returns the initialized segment. You can free it
  *          by using curve_segment_release() function.
  */
-PUBLIC curve_segment curve_segment_create_tcb(__in             system_timeline_time,
+PUBLIC curve_segment curve_segment_create_tcb(__in             system_time,
                                               __in __ecount(3) float*,
                                               __in __notnull   system_variant,
-                                              __in             system_timeline_time,
+                                              __in             system_time,
                                               __in __ecount(3) float*,
                                               __in __notnull   system_variant,
                                               __in __notnull   curve_container,
@@ -95,25 +95,25 @@ PUBLIC EMERALD_API bool curve_segment_get_amount_of_nodes(__in  __notnull curve_
                                                           __out __notnull uint32_t*);
 
 /** TODO */
-PUBLIC EMERALD_API system_timeline_time curve_segment_get_modification_time(__in __notnull curve_segment);
+PUBLIC EMERALD_API system_time curve_segment_get_modification_time(__in __notnull curve_segment);
 
 /** Retrieves node details for a given curve segment.
  *
  *  @param curve_segment         Curve segment to query. Cannot be NULL.
  *  @param curve_segment_node_id Id of curve segment node to retrieve properties for. 
- *  @param system_timeline_time* Deref will hold node time, if function finishes successfully.
+ *  @param system_time*          Deref will hold node time, if function finishes successfully.
  *  @param system_variant        Variant will be stored the node value, if function finishes successfully.
  *
  *  @return true if successful, false otherwise.
  **/
 PUBLIC EMERALD_API bool curve_segment_get_node(__in  __notnull   curve_segment,
                                                __in              curve_segment_node_id,
-                                               __out __maybenull system_timeline_time*,
+                                               __out __maybenull system_time*,
                                                      __maybenull system_variant);
 
 /** TODO */
 PUBLIC EMERALD_API bool curve_segment_get_node_at_time(__in  __notnull curve_segment,
-                                                       __in            system_timeline_time,
+                                                       __in            system_time,
                                                        __out __notnull curve_segment_node_id*);
 
 /** TODO */
@@ -162,15 +162,15 @@ PUBLIC bool curve_segment_get_type(__in  __notnull curve_segment,
 
 /** Retrieves value from segment handler for a given curve segment.
  *
- *  @param curve_segment        Curve segment to use. Cannot be NULL.
- *  @param system_timeline_time Time to use for the query.
- *  @param bool                 True if the value should be forced for result @param system_variant.
- *  @param system_variant       Variant to use for storing the result.
+ *  @param curve_segment  Curve segment to use. Cannot be NULL.
+ *  @param system_time    Time to use for the query.
+ *  @param bool           True if the value should be forced for result @param system_variant.
+ *  @param system_variant Variant to use for storing the result.
  *
  *  @return true if successful and result avlue has been saved in @param system_variant, false otherwise.
  **/ 
 PUBLIC bool curve_segment_get_value(__in __notnull  curve_segment,
-                                    __in            system_timeline_time,
+                                    __in            system_time,
                                     __in            bool,
                                     __out __notnull system_variant);
 
@@ -184,19 +184,19 @@ PUBLIC EMERALD_API bool curve_segment_modify_node_property(__in __notnull curve_
  *
  *  @param curve_segment          Curve segment to modify the node for. Cannot be NULL.
  *  @param curve_segement_node_id Id of node to move.
- *  @param system_timeline_time   New node time.
+ *  @param system_time            New node time.
  *
  *  @return true if successful, false otherwise.
  **/
 PUBLIC EMERALD_API bool curve_segment_modify_node_time(__in __notnull curve_segment,
                                                        __in           curve_segment_node_id,
-                                                       __in           system_timeline_time);
+                                                       __in           system_time);
 
 /** Modifies curve segment node's time and value.
  *
  *  @param curve_segment         Curve segment to modify the node for. Cannot be NULL.
  *  @param curve_segment_node_id Id of node to modify.
- *  @param system_timeline_time  New node time.
+ *  @param system_time           New node time.
  *  @param system_variant        New node value. Cannot be NULL.
  *  @param bool                  True if variant set operation for curve node's value should be forced.
  *
@@ -204,7 +204,7 @@ PUBLIC EMERALD_API bool curve_segment_modify_node_time(__in __notnull curve_segm
  **/
 PUBLIC EMERALD_API bool curve_segment_modify_node_time_value(__in __notnull curve_segment,
                                                              __in           curve_segment_node_id,
-                                                             __in           system_timeline_time,
+                                                             __in           system_time,
                                                              __in __notnull system_variant,
                                                              __in           bool);
 

@@ -98,8 +98,8 @@ PUBLIC EMERALD_API bool system_event_wait_single_peek(__in __notnull system_even
  *
  *  @paran system_event Event object to wait on.
  */
-PUBLIC EMERALD_API void system_event_wait_single(__in __notnull system_event         event,
-                                                 __in           system_timeline_time timeout = SYSTEM_TIME_INFINITE);
+PUBLIC EMERALD_API void system_event_wait_single(__in __notnull system_event event,
+                                                 __in           system_time  timeout = SYSTEM_TIME_INFINITE);
 
 /** Waits on multiple objects until user-defined amount of time passes. Function can either block till one of the events become available or
  *  till all of them are free.
@@ -107,15 +107,15 @@ PUBLIC EMERALD_API void system_event_wait_single(__in __notnull system_event    
  *  @param system_event*        Array to wait on
  *  @param int                  Amount of elements in the array. Can't be negative
  *  @param bool                 True to wait on all objects, false to wait on only one object.
- *  @param system_timeline_time Time-out.
+ *  @param system_time Time-out.
  *  @param timeout_occured      Deref set to true if time-out occured. Otherwise set to false.
  *
  *  @return Index of the event causing wait operation to unblock, if @param bool is false. Otherwise undetermined.
  */
-PUBLIC EMERALD_API size_t system_event_wait_multiple(__in  __notnull __ecount(n_elements) const system_event*  events,
-                                                     __in                                 int                  n_elements,
-                                                                                          bool                 wait_on_all_objects,
-                                                                                          system_timeline_time timeout,
-                                                     __out_opt                            bool*                out_has_timed_out_ptr);
+PUBLIC EMERALD_API size_t system_event_wait_multiple(__in  __notnull __ecount(n_elements) const system_event* events,
+                                                     __in                                 int                 n_elements,
+                                                                                          bool                wait_on_all_objects,
+                                                                                          system_time         timeout,
+                                                     __out_opt                            bool*               out_has_timed_out_ptr);
 
 #endif /* SYSTEM_EVENT_H */

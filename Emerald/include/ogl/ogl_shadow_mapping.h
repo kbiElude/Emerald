@@ -115,7 +115,7 @@ PUBLIC void ogl_shadow_mapping_get_matrices_for_light(__in            __notnull 
                                                       __in            __notnull scene_light                    light,
                                                       __in                      ogl_shadow_mapping_target_face light_target_face,
                                                       __in_ecount(3)  __notnull scene_camera                   current_camera,
-                                                      __in                      system_timeline_time           time,
+                                                      __in                      system_time                    time,
                                                       __in_ecount(3)  __notnull const float*                   aabb_min_world,
                                                       __in_ecount(3)  __notnull const float*                   aabb_max_world,
                                                       __out           __notnull system_matrix4x4*              out_view_matrix,
@@ -143,14 +143,14 @@ PUBLIC void ogl_shadow_mapping_release(__in __notnull ogl_shadow_mapping handler
 PUBLIC void ogl_shadow_mapping_render_shadow_map_meshes(__in __notnull ogl_shadow_mapping   shadow_mapping,
                                                         __in __notnull ogl_scene_renderer   renderer,
                                                         __in __notnull scene                scene,
-                                                        __in           system_timeline_time frame_time);
+                                                        __in           system_time          frame_time);
 
 /** TODO */
-PUBLIC void ogl_shadow_mapping_render_shadow_maps(__in __notnull ogl_shadow_mapping   shadow_mapping,
-                                                  __in __notnull ogl_scene_renderer   renderer,
-                                                  __in __notnull scene                current_scene,
-                                                  __in __notnull scene_camera         target_camera,
-                                                  __in           system_timeline_time frame_time);
+PUBLIC void ogl_shadow_mapping_render_shadow_maps(__in __notnull ogl_shadow_mapping shadow_mapping,
+                                                  __in __notnull ogl_scene_renderer renderer,
+                                                  __in __notnull scene              current_scene,
+                                                  __in __notnull scene_camera       target_camera,
+                                                  __in           system_time        frame_time);
 
 /** TODO.
  *

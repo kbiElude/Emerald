@@ -23,9 +23,9 @@
 /* A descriptor for a single scene */
 typedef struct _scene_descriptor
 {
-    system_timeline_time duration;
-    ogl_scene_renderer   renderer;
-    scene                this_scene;
+    system_time        duration;
+    ogl_scene_renderer renderer;
+    scene              this_scene;
 
     _scene_descriptor()
     {
@@ -64,9 +64,9 @@ ogl_texture_internalformat                  _color_shadow_map_internalformat    
 ogl_texture_internalformat                  _depth_shadow_map_internalformat            = OGL_TEXTURE_INTERNALFORMAT_GL_DEPTH_COMPONENT16;
 ogl_pipeline                                _pipeline                                   = NULL;
 uint32_t                                    _pipeline_stage_id                          = -1;
-system_timeline_time                        _playback_start_time                        = 0;
+system_time                                 _playback_start_time                        = 0;
 _scene_descriptor                           _scenes                [_n_scene_filenames];
-system_timeline_time                        _scenes_duration_summed[_n_scene_filenames] = {0};
+system_time                                 _scenes_duration_summed[_n_scene_filenames] = {0};
 scene_light_shadow_map_algorithm            _shadow_map_algo                            = SCENE_LIGHT_SHADOW_MAP_ALGORITHM_UNKNOWN;
 scene_light_shadow_map_pointlight_algorithm _shadow_map_pl_algo                         = SCENE_LIGHT_SHADOW_MAP_POINTLIGHT_ALGORITHM_DUAL_PARABOLOID;
 unsigned int                                _shadow_map_size                            = 1024;
@@ -108,14 +108,14 @@ PUBLIC void state_deinit()
 }
 
 /** Please see header for spec */
-PUBLIC void state_get_current_frame_properties(__out __notnull scene*                out_current_scene,
-                                               __out __notnull scene_camera*         out_current_scene_camera,
-                                               __out __notnull ogl_scene_renderer*   out_current_renderer,
-                                               __out           system_timeline_time* out_current_frame_time)
+PUBLIC void state_get_current_frame_properties(__out __notnull scene*              out_current_scene,
+                                               __out __notnull scene_camera*       out_current_scene_camera,
+                                               __out __notnull ogl_scene_renderer* out_current_renderer,
+                                               __out           system_time*        out_current_frame_time)
 {
-    system_timeline_time current_time        = 0;
-    unsigned int         n_times_scene_shown = 0;
-    static bool          is_first_call       = true;
+    system_time  current_time        = 0;
+    unsigned int n_times_scene_shown = 0;
+    static bool  is_first_call       = true;
 
     if (is_first_call)
     {
@@ -143,7 +143,7 @@ PUBLIC void state_get_current_frame_properties(__out __notnull scene*           
     {
         if (_scenes_duration_summed[n_scene] > current_time)
         {
-            system_timeline_time prev_scene_summed_time = 0;
+            system_time prev_scene_summed_time = 0;
 
             if (n_scene > 0)
             {
@@ -255,7 +255,7 @@ PUBLIC void state_init()
     const float camera_start_position[3] = {0, 0, 0};
 
     /* Initialize the unpackers */
-    system_timeline_time      loading_time_start                    = system_time_now();
+    system_time               loading_time_start                    = system_time_now();
     system_file_multiunpacker multi_unpacker                        = NULL;
     system_file_serializer    scene_serializers[_n_scene_filenames] = {NULL};
 
@@ -297,9 +297,9 @@ PUBLIC void state_init()
     scene_multiloader    loader                = scene_multiloader_create_from_system_file_serializers(_context,
                                                                                                        _n_scene_filenames,
                                                                                                        scene_serializers);
-    system_timeline_time loading_time_end      = 0;
-    uint32_t             loading_time_msec     = 0;
-    system_timeline_time scene_duration_summed = 0;
+    system_time loading_time_end      = 0;
+    uint32_t    loading_time_msec     = 0;
+    system_time scene_duration_summed = 0;
 
     scene_multiloader_load_async         (loader);
     scene_multiloader_wait_until_finished(loader);
@@ -314,14 +314,14 @@ PUBLIC void state_init()
         scene_retain                      (_scenes[n_scene].this_scene);
 
         /* Determine animation duration */
-        float                animation_duration_float = 0.0f;
-        system_timeline_time animation_duration       = 0;
+        float       animation_duration_float = 0.0f;
+        system_time animation_duration       = 0;
 
         scene_get_property(_scenes[n_scene].this_scene,
                            SCENE_PROPERTY_MAX_ANIMATION_DURATION,
                           &animation_duration_float);
 
-        _scenes[n_scene].duration = system_time_get_timeline_time_for_msec( uint32_t(animation_duration_float * 1000.0f) );
+        _scenes[n_scene].duration = system_time_get_time_for_msec( uint32_t(animation_duration_float * 1000.0f) );
 
         /* Update the summed duration array */
         _scenes_duration_summed[n_scene] = scene_duration_summed + _scenes[n_scene].duration;
@@ -344,8 +344,8 @@ PUBLIC void state_init()
     /* How much time has the loading taken? */
     loading_time_end = system_time_now();
 
-    system_time_get_msec_for_timeline_time(loading_time_end - loading_time_start,
-                                          &loading_time_msec);
+    system_time_get_msec_for_time(loading_time_end - loading_time_start,
+                                 &loading_time_msec);
 
     LOG_INFO("Scene loading time: %d.%d s",
              loading_time_msec / 1000,

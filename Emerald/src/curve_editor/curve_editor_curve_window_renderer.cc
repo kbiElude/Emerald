@@ -83,11 +83,11 @@ typedef enum
 
 typedef struct
 {
-    uint32_t             partial_reupload_start_index;
-    uint32_t             partial_reupload_end_index;
-    _data_status         status;
-    system_timeline_time tcb_ubo_modification_time;
-    GLuint               tcb_ubo_id;
+    uint32_t     partial_reupload_start_index;
+    uint32_t     partial_reupload_end_index;
+    _data_status status;
+    system_time  tcb_ubo_modification_time;
+    GLuint       tcb_ubo_id;
 
 } _tcb_segment_rendering;
 
@@ -144,14 +144,14 @@ typedef struct
     LONG                  segmentmove_click_x;
     bool                  segmentmove_mode_active;
     curve_segment_id      segmentmove_segment_id;
-    system_timeline_time  segmentmove_start_time;
-    system_timeline_time  segmentmove_end_time;
+    system_time           segmentmove_start_time;
+    system_time           segmentmove_end_time;
     LONG                  segmentresize_click_x;
-    system_timeline_time  segmentresize_end_time;
+    system_time           segmentresize_end_time;
     bool                  segmentresize_left_border_resize; /* if false, resize from right border */
     bool                  segmentresize_mode_active;
     curve_segment_id      segmentresize_segment_id;
-    system_timeline_time  segmentresize_start_time;
+    system_time           segmentresize_start_time;
 
     curve_segment_id      hovered_curve_segment_id; /* only configured by on right click handler */
     curve_segment_node_id selected_node_id;
@@ -300,7 +300,7 @@ PRIVATE void _curve_editor_curve_window_renderer_init_tcb_segment_rendering(ogl_
                                                                             curve_segment_id);
 PRIVATE void _curve_editor_curve_window_renderer_rendering_callback_handler(ogl_context,
                                                                             uint32_t /* n_frame */,
-                                                                            system_timeline_time /* frame time */,
+                                                                            system_time /* frame time */,
                                                                             void*);
 PRIVATE bool _curve_editor_curve_window_renderer_on_left_button_down       (system_window,
                                                                             LONG,
@@ -522,7 +522,7 @@ PRIVATE void _curve_editor_curve_window_renderer_draw_curve(ogl_context         
     _curve_editor_curve_window_renderer* descriptor_ptr = (_curve_editor_curve_window_renderer*) descriptor;
     float                                current_x      = descriptor_ptr->x1;
     float                                max_x          = descriptor_ptr->x1 + descriptor_ptr->x_width;
-    system_timeline_time                 max_time       = system_time_get_timeline_time_for_msec(uint32_t(max_x * 1000.0f) );
+    system_time                          max_time       = system_time_get_time_for_msec(uint32_t(max_x * 1000.0f) );
 
     system_window_handle window_handle;
     RECT                 window_rect;
@@ -563,8 +563,8 @@ PRIVATE void _curve_editor_curve_window_renderer_draw_curve(ogl_context         
 
         while (current_x < max_x)
         {
-            system_timeline_time x_time     = system_time_get_timeline_time_for_msec(uint32_t(current_x * 1000.0f) );
-            curve_segment_id     segment_id = -1;
+            system_time      x_time     = system_time_get_time_for_msec(uint32_t(current_x * 1000.0f) );
+            curve_segment_id segment_id = -1;
 
             /* Retrieve distance to the segment following the one already drawn */
             if (!curve_container_get_segment_id_relative_to_time(true,
@@ -579,11 +579,11 @@ PRIVATE void _curve_editor_curve_window_renderer_draw_curve(ogl_context         
             }
 
             /* If the distance is larger than 0, we need to draw a static curve preview for the default value */
-            system_timeline_time next_segment_start_time;
-            uint32_t             next_segment_start_msec = 0;
-            system_timeline_time next_segment_end_time;
-            uint32_t             next_segment_end_msec = 0;
-            curve_segment_type   next_segment_type;
+            system_time        next_segment_start_time;
+            uint32_t           next_segment_start_msec = 0;
+            system_time        next_segment_end_time;
+            uint32_t           next_segment_end_msec = 0;
+            curve_segment_type next_segment_type;
 
             bool has_retrieved_segment_data = true;
 
@@ -608,8 +608,8 @@ PRIVATE void _curve_editor_curve_window_renderer_draw_curve(ogl_context         
                     float curve_value          = 0;
                     float next_segment_start_x = 0;
 
-                    system_time_get_msec_for_timeline_time(next_segment_start_time,
-                                                          &next_segment_start_msec);
+                    system_time_get_msec_for_time(next_segment_start_time,
+                                                 &next_segment_start_msec);
 
                     next_segment_start_x = float(next_segment_start_msec) / 1000.0f;
                     curve_value          = curve_container_get_default_value(descriptor_ptr->curve,
@@ -634,8 +634,8 @@ PRIVATE void _curve_editor_curve_window_renderer_draw_curve(ogl_context         
                 if (x_time <= max_time)
                 {
                     /* Draw the segment. */
-                    system_time_get_msec_for_timeline_time(next_segment_end_time,
-                                                          &next_segment_end_msec);
+                    system_time_get_msec_for_time(next_segment_end_time,
+                                                 &next_segment_end_msec);
 
                     /* Retrieve x for start & end times of the segment */
                     uint32_t segment_start_msec;
@@ -643,10 +643,10 @@ PRIVATE void _curve_editor_curve_window_renderer_draw_curve(ogl_context         
                     uint32_t segment_end_msec;
                     float    segment_end_x;
 
-                    system_time_get_msec_for_timeline_time(next_segment_start_time,
-                                                          &segment_start_msec);
-                    system_time_get_msec_for_timeline_time(next_segment_end_time,
-                                                          &segment_end_msec);
+                    system_time_get_msec_for_time(next_segment_start_time,
+                                                 &segment_start_msec);
+                    system_time_get_msec_for_time(next_segment_end_time,
+                                                 &segment_end_msec);
 
                     segment_start_x = float(segment_start_msec) / 1000.0f;
                     segment_end_x   = float(segment_end_msec)   / 1000.0f;
@@ -940,12 +940,12 @@ PRIVATE void _curve_editor_curve_window_renderer_draw_curve_lerp_segment(ogl_con
     float bg_color [4] = {0.5, 0.25, 0.75, 0.25};
 
     /* Draw the curve */
-    system_timeline_time end_node_time;
-    float                end_node_value;
-    float                end_node_value_ss;
-    system_timeline_time start_node_time;
-    float                start_node_value;
-    float                start_node_value_ss;
+    system_time end_node_time;
+    float       end_node_value;
+    float       end_node_value_ss;
+    system_time start_node_time;
+    float       start_node_value;
+    float       start_node_value_ss;
 
     curve_container_get_general_node_data(descriptor_ptr->curve,
                                           segment_id,
@@ -1201,9 +1201,9 @@ PRIVATE void _curve_editor_curve_window_renderer_draw_curve_static_segment(ogl_c
     float bg_color [4] = {0.25f, 0.75f, 0.5f, 0.25f};
 
     /* Draw the curve */
-    system_timeline_time node_time;
-    float                node_value;
-    float                node_value_ss;
+    system_time node_time;
+    float       node_value;
+    float       node_value_ss;
 
     curve_container_get_general_node_data(descriptor_ptr->curve,
                                           segment_id,
@@ -1377,7 +1377,7 @@ PRIVATE void _curve_editor_curve_window_renderer_draw_curve_tcb_segment(ogl_cont
     /* If node data might have changed since last UBO reupload, update the status */
     if (tcb_segment_ptr->tcb_ubo_modification_time < curve_segment_get_modification_time(segment) )
     {
-        system_timeline_time time_now = system_time_now();
+        system_time time_now = system_time_now();
 
         tcb_segment_ptr->status                    = STATUS_FULL_REUPLOAD_NEEDED;
         tcb_segment_ptr->tcb_ubo_modification_time = time_now;
@@ -1420,20 +1420,20 @@ PRIVATE void _curve_editor_curve_window_renderer_draw_curve_tcb_segment(ogl_cont
     }
 
     /* Draw a line strip, separate for each node-node region */
-    int                     node_indexes[4]  = {-1, -1, -1, -1};
-    curve_segment_node_id   node_a_id        = -1;
-    system_timeline_time    node_a_time      = 0;
-    uint32_t                node_a_time_msec = 0;
-    curve_segment_node_id   node_b_id        = -1;
-    system_timeline_time    node_b_time      = 0;
-    uint32_t                node_b_time_msec = 0;
-    curve_segment_node_id   node_c_id        = -1;
-    system_timeline_time    node_c_time      = 0;
-    uint32_t                node_c_time_msec = 0;
-    curve_segment_node_id   node_d_id        = -1;
-    system_timeline_time    node_d_time      = 0;
-    uint32_t                node_d_time_msec = 0;
-    system_variant_type     segment_data_type;
+    int                   node_indexes[4]  = {-1, -1, -1, -1};
+    curve_segment_node_id node_a_id        = -1;
+    system_time           node_a_time      = 0;
+    uint32_t              node_a_time_msec = 0;
+    curve_segment_node_id node_b_id        = -1;
+    system_time           node_b_time      = 0;
+    uint32_t              node_b_time_msec = 0;
+    curve_segment_node_id node_c_id        = -1;
+    system_time           node_c_time      = 0;
+    uint32_t              node_c_time_msec = 0;
+    curve_segment_node_id node_d_id        = -1;
+    system_time           node_d_time      = 0;
+    uint32_t              node_d_time_msec = 0;
+    system_variant_type   segment_data_type;
 
     curve_segment_get_node_in_order(segment,
                                     0,
@@ -1470,12 +1470,12 @@ PRIVATE void _curve_editor_curve_window_renderer_draw_curve_tcb_segment(ogl_cont
     node_indexes[2] = node_c_id;
     node_indexes[3] = node_d_id;
 
-    system_time_get_msec_for_timeline_time(node_b_time,
-                                          &node_b_time_msec);
-    system_time_get_msec_for_timeline_time(node_c_time,
-                                          &node_c_time_msec);
-    system_time_get_msec_for_timeline_time(node_d_time,
-                                          &node_d_time_msec);
+    system_time_get_msec_for_time(node_b_time,
+                                 &node_b_time_msec);
+    system_time_get_msec_for_time(node_c_time,
+                                 &node_c_time_msec);
+    system_time_get_msec_for_time(node_d_time,
+                                 &node_d_time_msec);
 
     ASSERT_DEBUG_SYNC(node_b_time < node_c_time &&
                       node_c_time < node_d_time,
@@ -1561,15 +1561,15 @@ PRIVATE void _curve_editor_curve_window_renderer_draw_curve_tcb_segment(ogl_cont
             node_d_time     = 0;
         }
 
-        system_time_get_msec_for_timeline_time(node_a_time,
-                                              &node_a_time_msec);
-        system_time_get_msec_for_timeline_time(node_b_time,
-                                              &node_b_time_msec);
+        system_time_get_msec_for_time(node_a_time,
+                                     &node_a_time_msec);
+        system_time_get_msec_for_time(node_b_time,
+                                     &node_b_time_msec);
 
         if (node_indexes[2] != -1)
         {
-            system_time_get_msec_for_timeline_time(node_c_time,
-                                                  &node_c_time_msec);
+            system_time_get_msec_for_time(node_c_time,
+                                         &node_c_time_msec);
             
             ASSERT_DEBUG_SYNC(node_b_time < node_c_time,
                           "Nodes are not sorted in order!");
@@ -1577,8 +1577,8 @@ PRIVATE void _curve_editor_curve_window_renderer_draw_curve_tcb_segment(ogl_cont
 
         if (node_indexes[3] != -1)
         {
-            system_time_get_msec_for_timeline_time(node_d_time,
-                                                  &node_d_time_msec);
+            system_time_get_msec_for_time(node_d_time,
+                                         &node_d_time_msec);
 
             ASSERT_DEBUG_SYNC(node_c_time < node_d_time,
                               "Nodes are not sorted in order!");
@@ -1605,7 +1605,7 @@ PRIVATE void _curve_editor_curve_window_renderer_draw_curve_tcb_segment(ogl_cont
                 ++n_node)
     {
         curve_segment_node_id node_id;
-        system_timeline_time  node_time;
+        system_time           node_time;
 
         if (curve_segment_get_node_in_order(segment,
                                             n_node,
@@ -1618,10 +1618,10 @@ PRIVATE void _curve_editor_curve_window_renderer_draw_curve_tcb_segment(ogl_cont
             uint32_t node_time_msec;
             float    node_value;
 
-            system_time_get_msec_for_timeline_time(node_time,
-                                                  &node_time_msec);
-            system_variant_get_float              (descriptor_ptr->float_variant,
-                                                  &node_value);
+            system_time_get_msec_for_time(node_time,
+                                         &node_time_msec);
+            system_variant_get_float     (descriptor_ptr->float_variant,
+                                         &node_value);
 
             float node_x_ss    = LERP_FROM_A_B_TO_C_D(node_time_msec,
                                                       descriptor_ptr->x1 * 1000.0f,
@@ -1861,7 +1861,7 @@ PRIVATE void _curve_editor_curve_window_renderer_init_globals(ogl_context contex
 
     if (_globals != NULL)
     {
-        system_timeline_time start_time = system_time_now();
+        system_time start_time = system_time_now();
 
         /* Create background program */
         _globals->bg_program = ogl_program_create(context,
@@ -1987,11 +1987,11 @@ PRIVATE void _curve_editor_curve_window_renderer_init_globals(ogl_context contex
         /* Reset reference counter */
         _globals->ref_counter = 1;
 
-        system_timeline_time end_time            = system_time_now();
-        uint32_t             execution_time_msec = 0;
+        system_time end_time            = system_time_now();
+        uint32_t    execution_time_msec = 0;
 
-        system_time_get_msec_for_timeline_time(end_time - start_time,
-                                              &execution_time_msec);
+        system_time_get_msec_for_time(end_time - start_time,
+                                     &execution_time_msec);
 
         LOG_INFO("Time to initialize curve window renderer: %d ms",
                  execution_time_msec);
@@ -2117,13 +2117,13 @@ PRIVATE bool _curve_editor_curve_window_renderer_on_left_button_down(system_wind
         else
         {
             /* See if the user is hovering over a segment. If he/she is, we should enable 'move segment' mode */
-            curve_segment_id     segment_id;
-            float                mouse_x      = LERP_FROM_A_B_TO_C_D                  (x,
-                                                                                       renderer_ptr->quadselector_window_rect.left,
-                                                                                       renderer_ptr->quadselector_window_rect.right,
-                                                                                       renderer_ptr->x1,
-                                                                                       (renderer_ptr->x1 + renderer_ptr->x_width) );
-            system_timeline_time mouse_x_time = system_time_get_timeline_time_for_msec( uint32_t(mouse_x * 1000.0f) );
+            curve_segment_id segment_id;
+            float            mouse_x      = LERP_FROM_A_B_TO_C_D         (x,
+                                                                          renderer_ptr->quadselector_window_rect.left,
+                                                                          renderer_ptr->quadselector_window_rect.right,
+                                                                          renderer_ptr->x1,
+                                                                          (renderer_ptr->x1 + renderer_ptr->x_width) );
+            system_time      mouse_x_time = system_time_get_time_for_msec( uint32_t(mouse_x * 1000.0f) );
 
             if (curve_container_get_segment_id_relative_to_time(false,
                                                                 false,
@@ -2132,10 +2132,10 @@ PRIVATE bool _curve_editor_curve_window_renderer_on_left_button_down(system_wind
                                                                 -1,
                                                                &segment_id) )
             {
-                bool                 has_retrieved_segment_data = true;
-                system_timeline_time segment_start_time;
-                system_timeline_time segment_end_time;
-                curve_segment_type   segment_type;
+                bool               has_retrieved_segment_data = true;
+                system_time        segment_start_time;
+                system_time        segment_end_time;
+                curve_segment_type segment_type;
 
                 has_retrieved_segment_data &= curve_container_get_segment_property(renderer_ptr->curve,
                                                                                    segment_id,
@@ -2221,8 +2221,8 @@ PRIVATE bool _curve_editor_curve_window_renderer_on_left_button_up(system_window
 
         arg.curve           = renderer_ptr->curve;
         arg.renderer        = (curve_editor_curve_window_renderer) renderer_ptr;
-        arg.start_time      = system_time_get_timeline_time_for_msec(uint32_t(x1x2[0] * 1000.0f) );
-        arg.end_time        = system_time_get_timeline_time_for_msec(uint32_t(x1x2[1] * 1000.0f) );
+        arg.start_time      = system_time_get_time_for_msec(uint32_t(x1x2[0] * 1000.0f) );
+        arg.end_time        = system_time_get_time_for_msec(uint32_t(x1x2[1] * 1000.0f) );
 
         /* Got to show the context menu now */
         system_context_menu  context_menu         = system_context_menu_create(system_hashed_ansi_string_create("Segment type chooser") );
@@ -2273,12 +2273,12 @@ PRIVATE bool _curve_editor_curve_window_renderer_on_left_button_up(system_window
                                   &window_rect);
 
         curve_segment_id     clicked_segment_id = -1;
-        float                clicked_time_msec  = LERP_FROM_A_B_TO_C_D                  (x,
-                                                                                         window_rect.left,
-                                                                                         window_rect.right,
-                                                                                         renderer_ptr->x1,
-                                                                                         (renderer_ptr->x1 + renderer_ptr->x_width) ) * 1000.0f;
-        system_timeline_time clicked_time       = system_time_get_timeline_time_for_msec(uint32_t(clicked_time_msec) );
+        float                clicked_time_msec  = LERP_FROM_A_B_TO_C_D         (x,
+                                                                                window_rect.left,
+                                                                                window_rect.right,
+                                                                                renderer_ptr->x1,
+                                                                                (renderer_ptr->x1 + renderer_ptr->x_width) ) * 1000.0f;
+        system_time          clicked_time       = system_time_get_time_for_msec(uint32_t(clicked_time_msec) );
 
         if (curve_container_get_segment_id_relative_to_time(false,
                                                             false,
@@ -2378,12 +2378,12 @@ PRIVATE bool _curve_editor_curve_window_renderer_on_right_button_up(system_windo
     ::GetWindowRect           (window_system_handle,
                               &window_rect);
 
-    float                hover_time_s             = LERP_FROM_A_B_TO_C_D                  ((x - window_rect.left),
-                                                                                           0,
-                                                                                           (window_rect.right - window_rect.left),
-                                                                                           renderer_ptr->x1,
-                                                                                           (renderer_ptr->x1 + renderer_ptr->x_width));
-    system_timeline_time hover_time               = system_time_get_timeline_time_for_msec(uint32_t(hover_time_s * 1000.0f) );
+    float       hover_time_s             = LERP_FROM_A_B_TO_C_D         ((x - window_rect.left),
+                                                                         0,
+                                                                         (window_rect.right - window_rect.left),
+                                                                         renderer_ptr->x1,
+                                                                         (renderer_ptr->x1 + renderer_ptr->x_width));
+    system_time hover_time               = system_time_get_time_for_msec(uint32_t(hover_time_s * 1000.0f) );
 
     curve_container_get_segment_id_relative_to_time(false,
                                                     false,
@@ -2506,15 +2506,15 @@ PRIVATE bool _curve_editor_curve_window_renderer_on_mouse_move(system_window    
     /* If 'segment move' mode is enabled, move the segment according to the cursor */
     if (renderer_ptr->segmentmove_mode_active)
     {
-        LONG                 x_delta                = x - renderer_ptr->segmentmove_click_x;
-        float                x_delta_ss             = LERP_FROM_A_B_TO_C_D                  (x_delta,
-                                                                                             0,
-                                                                                             (window_rect.right - window_rect.left),
-                                                                                             0,
-                                                                                             renderer_ptr->x_width);
-        system_timeline_time x_delta_time           = system_time_get_timeline_time_for_msec(uint32_t((x_delta_ss) * 1000.0f) );
-        system_timeline_time new_segment_start_time;
-        system_timeline_time new_segment_end_time;
+        LONG                 x_delta       = x - renderer_ptr->segmentmove_click_x;
+        float                x_delta_ss    = LERP_FROM_A_B_TO_C_D         (x_delta,
+                                                                           0,
+                                                                           (window_rect.right - window_rect.left),
+                                                                           0,
+                                                                           renderer_ptr->x_width);
+        system_time x_delta_time           = system_time_get_time_for_msec(uint32_t((x_delta_ss) * 1000.0f) );
+        system_time new_segment_start_time;
+        system_time new_segment_end_time;
 
         if (x_delta_ss >= 0)
         {
@@ -2578,15 +2578,15 @@ PRIVATE bool _curve_editor_curve_window_renderer_on_mouse_move(system_window    
     else
     if (renderer_ptr->segmentresize_mode_active)
     {
-        LONG                 x_delta                = x - renderer_ptr->segmentresize_click_x;
-        float                x_delta_ss             = LERP_FROM_A_B_TO_C_D                  (x_delta,
-                                                                                             0,
-                                                                                             (window_rect.right - window_rect.left),
-                                                                                             0,
-                                                                                             renderer_ptr->x_width);
-        system_timeline_time x_delta_time           = system_time_get_timeline_time_for_msec(uint32_t((x_delta_ss) * 1000.0f) );
-        system_timeline_time new_segment_start_time = 0;
-        system_timeline_time new_segment_end_time   = 0;
+        LONG        x_delta                = x - renderer_ptr->segmentresize_click_x;
+        float       x_delta_ss             = LERP_FROM_A_B_TO_C_D         (x_delta,
+                                                                           0,
+                                                                           (window_rect.right - window_rect.left),
+                                                                           0,
+                                                                           renderer_ptr->x_width);
+        system_time x_delta_time           = system_time_get_time_for_msec(uint32_t((x_delta_ss) * 1000.0f) );
+        system_time new_segment_start_time = 0;
+        system_time new_segment_end_time   = 0;
 
         if (x_delta_ss >= 0)
         {
@@ -2652,20 +2652,20 @@ PRIVATE bool _curve_editor_curve_window_renderer_on_mouse_move(system_window    
     else
     if (renderer_ptr->nodemove_mode_active)
     {
-        curve_segment        segment = curve_container_get_segment(renderer_ptr->curve,
-                                                                   renderer_ptr->nodemove_segment_id);
-        curve_segment_type   segment_type;
-        float                x_ss    = LERP_FROM_A_B_TO_C_D                  (x,
-                                                                              window_rect.left,
-                                                                              window_rect.right,
-                                                                              renderer_ptr->x1,
-                                                                              (renderer_ptr->x1 + renderer_ptr->x_width) );
-        system_timeline_time x_time  = system_time_get_timeline_time_for_msec(uint32_t((x_ss >= 0 ? x_ss : 0) * 1000.0f) );
-        float                y_ss    = LERP_FROM_A_B_TO_C_D                  (y,
-                                                                              window_rect.bottom,
-                                                                              window_rect.top,
-                                                                              renderer_ptr->y1,
-                                                                              (renderer_ptr->y1 + renderer_ptr->y_height));
+        curve_segment      segment = curve_container_get_segment(renderer_ptr->curve,
+                                                                 renderer_ptr->nodemove_segment_id);
+        curve_segment_type segment_type;
+        float              x_ss    = LERP_FROM_A_B_TO_C_D         (x,
+                                                                   window_rect.left,
+                                                                   window_rect.right,
+                                                                   renderer_ptr->x1,
+                                                                   (renderer_ptr->x1 + renderer_ptr->x_width) );
+        system_time        x_time  = system_time_get_time_for_msec(uint32_t((x_ss >= 0 ? x_ss : 0) * 1000.0f) );
+        float              y_ss    = LERP_FROM_A_B_TO_C_D         (y,
+                                                                   window_rect.bottom,
+                                                                   window_rect.top,
+                                                                   renderer_ptr->y1,
+                                                                   (renderer_ptr->y1 + renderer_ptr->y_height));
 
         system_variant_set_float_forced(renderer_ptr->float_variant,
                                         y_ss);
@@ -2709,12 +2709,12 @@ PRIVATE bool _curve_editor_curve_window_renderer_on_mouse_move(system_window    
                                                                n_segment,
                                                               &segment_id) )
             {
-                bool                 has_retrieved_segment_data = true;
-                system_timeline_time segment_start_time;
-                uint32_t             segment_start_time_msec;
-                system_timeline_time segment_end_time;
-                uint32_t             segment_end_time_msec;
-                curve_segment_type   segment_type;
+                bool               has_retrieved_segment_data = true;
+                system_time        segment_start_time;
+                uint32_t           segment_start_time_msec;
+                system_time        segment_end_time;
+                uint32_t           segment_end_time_msec;
+                curve_segment_type segment_type;
 
                 has_retrieved_segment_data &= curve_container_get_segment_property(renderer_ptr->curve,
                                                                                    segment_id,
@@ -2731,8 +2731,8 @@ PRIVATE bool _curve_editor_curve_window_renderer_on_mouse_move(system_window    
 
                 if (has_retrieved_segment_data)
                 {
-                    system_time_get_msec_for_timeline_time(segment_start_time, &segment_start_time_msec);
-                    system_time_get_msec_for_timeline_time(segment_end_time,   &segment_end_time_msec);
+                    system_time_get_msec_for_time(segment_start_time, &segment_start_time_msec);
+                    system_time_get_msec_for_time(segment_end_time,   &segment_end_time_msec);
 
                     LONG segment_start_x  = (LONG) LERP_FROM_A_B_TO_C_D(float(segment_start_time_msec) / 1000.0f,
                                                                         renderer_ptr->x1,
@@ -2766,12 +2766,12 @@ PRIVATE bool _curve_editor_curve_window_renderer_on_mouse_move(system_window    
         }
 
         /* Get value at X pointed by the cursor */
-        float                x_ss    = LERP_FROM_A_B_TO_C_D                  (x,
-                                                                              window_rect.left,
-                                                                              window_rect.right,
-                                                                              renderer_ptr->x1,
-                                                                              (renderer_ptr->x1 + renderer_ptr->x_width) );
-        system_timeline_time x_time  = system_time_get_timeline_time_for_msec(uint32_t(x_ss * 1000.0f) );
+        float       x_ss    = LERP_FROM_A_B_TO_C_D         (x,
+                                                            window_rect.left,
+                                                            window_rect.right,
+                                                            renderer_ptr->x1,
+                                                            (renderer_ptr->x1 + renderer_ptr->x_width) );
+        system_time x_time  = system_time_get_time_for_msec(uint32_t(x_ss * 1000.0f) );
 
         if (x_time < 0)
         {
@@ -2886,7 +2886,7 @@ PRIVATE bool _curve_editor_curve_window_renderer_on_mouse_wheel(system_window   
 /** TODO */
 PRIVATE void _curve_editor_curve_window_renderer_rendering_callback_handler(ogl_context          context,
                                                                             uint32_t,
-                                                                            system_timeline_time,
+                                                                            system_time,
                                                                             void*                descriptor)
 {
     _curve_editor_curve_window_renderer* descriptor_ptr      = (_curve_editor_curve_window_renderer*) descriptor;
@@ -3330,7 +3330,7 @@ PRIVATE void _curve_editor_curve_window_renderer_rendering_callback_handler(ogl_
         }
 
         curve_container_get_value     (descriptor_ptr->curve,
-                                       system_time_get_timeline_time_for_msec(uint32_t(x_value * 1000) ),
+                                       system_time_get_time_for_msec(uint32_t(x_value * 1000) ),
                                        true,
                                        descriptor_ptr->text_variant);
         system_variant_get_ansi_string(descriptor_ptr->text_variant,
@@ -3520,7 +3520,7 @@ PRIVATE void _curve_editor_curve_window_renderer_update_tcb_ubo(      curve_segm
             float                 node_continuity;
             curve_segment_node_id node_id = -1;
             float                 node_tension;
-            system_timeline_time  node_time;
+            system_time           node_time;
             uint32_t              node_time_msec;
             float                 node_value;
 
@@ -3555,8 +3555,8 @@ PRIVATE void _curve_editor_curve_window_renderer_update_tcb_ubo(      curve_segm
             system_variant_get_float       (variant,
                                            &node_tension);
 
-            system_time_get_msec_for_timeline_time(node_time,
-                                                  &node_time_msec);
+            system_time_get_msec_for_time(node_time,
+                                         &node_time_msec);
 
             storage[8*(index - start_index)    ] = node_bias;
             storage[8*(index - start_index) + 1] = node_continuity;

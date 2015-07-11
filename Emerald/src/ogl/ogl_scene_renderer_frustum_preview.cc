@@ -122,7 +122,7 @@ typedef struct _ogl_scene_renderer_frustum_preview
     ogl_buffers             buffers; /* owned by context, do NOT release */
     ogl_context             context;
     unsigned char*          data_bo_buffer;
-    system_timeline_time    data_bo_buffer_last_update_time;
+    system_time             data_bo_buffer_last_update_time;
     unsigned int            data_bo_buffer_size;
     GLuint                  data_bo_id; /* owned by ogl_buffers - do NOT release */
     unsigned int            data_bo_size;
@@ -265,7 +265,7 @@ PRIVATE void _ogl_scene_renderer_frustum_preview_deinit_rendering_thread_callbac
 PRIVATE void _ogl_scene_renderer_frustum_preview_init_rendering_thread_callback  (__in __notnull ogl_context                          context,
                                                                                   __in __notnull void*                                preview);
 PRIVATE void _ogl_scene_renderer_frustum_preview_update_data_bo_buffer           (__in __notnull _ogl_scene_renderer_frustum_preview* preview_ptr,
-                                                                                  __in           system_timeline_time                 frame_time);
+                                                                                  __in           system_time                          frame_time);
 
 #ifdef _DEBUG
     PRIVATE void _ogl_scene_renderer_frustum_preview_verify_context_type(__in __notnull ogl_context);
@@ -473,7 +473,7 @@ PRIVATE void _ogl_scene_renderer_frustum_preview_init_rendering_thread_callback(
 
 /** TODO */
 PRIVATE void _ogl_scene_renderer_frustum_preview_update_data_bo_buffer(__in __notnull _ogl_scene_renderer_frustum_preview* preview_ptr,
-                                                                       __in           system_timeline_time                 frame_time,
+                                                                       __in           system_time                          frame_time,
                                                                        __in __notnull system_matrix4x4                     vp)
 {
     ASSERT_DEBUG_SYNC(preview_ptr->data_bo_buffer != NULL,
@@ -896,7 +896,7 @@ PUBLIC void ogl_scene_renderer_frustum_preview_release(__in __notnull __post_inv
 
 /** Please see header for spec */
 PUBLIC RENDERING_CONTEXT_CALL void ogl_scene_renderer_frustum_preview_render(__in __notnull ogl_scene_renderer_frustum_preview preview,
-                                                                             __in           system_timeline_time               time,
+                                                                             __in           system_time                        time,
                                                                              __in __notnull system_matrix4x4                   vp)
 {
     const ogl_context_gl_entrypoints_ext_direct_state_access* dsa_entrypoints_ptr = NULL;

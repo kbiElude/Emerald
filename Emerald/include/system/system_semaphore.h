@@ -35,9 +35,9 @@ EMERALD_API void system_semaphore_release(__in __deallocate(mem) system_semaphor
  *  @param out_has_timed_out_ptr TODO
  *
  */
-EMERALD_API void system_semaphore_enter(__in      system_semaphore     semaphore,
-                                        __in      system_timeline_time timeout               = 0,
-                                        __out_opt bool*                out_has_timed_out_ptr = NULL);
+EMERALD_API void system_semaphore_enter(__in      system_semaphore semaphore,
+                                        __in      system_time      timeout               = 0,
+                                        __out_opt bool*            out_has_timed_out_ptr = NULL);
 
 /** Enters a semaphore @param count times. This function will block if semaphore is fully occupied and will return
  *  to caller only after sufficient number of semaphore slots become available.

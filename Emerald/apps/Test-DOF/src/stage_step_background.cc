@@ -26,9 +26,9 @@ gfx_image        _skybox_image   = NULL;
 ogl_texture      _skybox_texture = NULL;
 
 /** TODO */
-static void _stage_step_background_execute(ogl_context          context,
-                                           system_timeline_time time,
-                                           void*                not_used)
+static void _stage_step_background_execute(ogl_context context,
+                                           system_time time,
+                                           void*       not_used)
 {
     const GLenum                      draw_buffer       = GL_COLOR_ATTACHMENT0;
     const ogl_context_gl_entrypoints* entrypoints       = NULL;

@@ -30,9 +30,9 @@ const  float                     _ui_scrollbar_text_color[]        = {1, 1, 1, 1
 
 #define CLICK_BRIGHTNESS_MODIFIER             (1.5f)
 #define FOCUSED_BRIGHTNESS                    (1.5f)
-#define FOCUSED_TO_NONFOCUSED_TRANSITION_TIME (system_time_get_timeline_time_for_msec(200) )
+#define FOCUSED_TO_NONFOCUSED_TRANSITION_TIME (system_time_get_time_for_msec(200) )
 #define NONFOCUSED_BRIGHTNESS                 (1.0f)
-#define NONFOCUSED_TO_FOCUSED_TRANSITION_TIME (system_time_get_timeline_time_for_msec(450) )
+#define NONFOCUSED_TO_FOCUSED_TRANSITION_TIME (system_time_get_time_for_msec(450) )
 
 /* Loosely based around concepts described in http://thndl.com/?5 */
 static const char* ui_scrollbar_fragment_shader_body = "#version 430 core\n"
@@ -104,7 +104,7 @@ typedef struct
     bool                           is_lbm_on;
     bool                           is_visible;
     float                          start_hovering_brightness;
-    system_timeline_time           start_hovering_time;
+    system_time                    start_hovering_time;
 
     float                          gpu_slider_handle_position;
     float                          slider_handle_size    [2]; /* scaled to window size */
@@ -376,7 +376,7 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_ui_scrollbar_draw(void* internal_instance
     float                brightness;
     _ogl_ui_scrollbar*   scrollbar_ptr   = (_ogl_ui_scrollbar*) internal_instance;
     GLuint               program_id      = ogl_program_get_id(scrollbar_ptr->program_slider);
-    system_timeline_time time_now        = system_time_now();
+    system_time          time_now        = system_time_now();
 
     /* Bail out if invisible */
     if (!scrollbar_ptr->is_visible)
@@ -390,8 +390,8 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_ui_scrollbar_draw(void* internal_instance
     if (scrollbar_ptr->is_hovering)
     {
         /* Are we transiting? */
-        system_timeline_time transition_start = scrollbar_ptr->start_hovering_time;
-        system_timeline_time transition_end   = scrollbar_ptr->start_hovering_time + NONFOCUSED_TO_FOCUSED_TRANSITION_TIME;
+        system_time transition_start = scrollbar_ptr->start_hovering_time;
+        system_time transition_end   = scrollbar_ptr->start_hovering_time + NONFOCUSED_TO_FOCUSED_TRANSITION_TIME;
 
         if (time_now >= transition_start && time_now <= transition_end)
         {
@@ -415,8 +415,8 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_ui_scrollbar_draw(void* internal_instance
     else
     {
         /* Are we transiting? */
-        system_timeline_time transition_start = scrollbar_ptr->start_hovering_time;
-        system_timeline_time transition_end   = scrollbar_ptr->start_hovering_time + FOCUSED_TO_NONFOCUSED_TRANSITION_TIME;
+        system_time transition_start = scrollbar_ptr->start_hovering_time;
+        system_time transition_end   = scrollbar_ptr->start_hovering_time + FOCUSED_TO_NONFOCUSED_TRANSITION_TIME;
 
         if (time_now >= transition_start && time_now <= transition_end)
         {

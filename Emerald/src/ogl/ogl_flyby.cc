@@ -57,8 +57,8 @@ typedef struct _ogl_flyby
     float          lbm_pitch;
     float          lbm_yaw;
 
-    _key_bits            key_bits;
-    system_timeline_time key_down_time;
+    _key_bits   key_bits;
+    system_time key_down_time;
 
     system_matrix4x4 view_matrix;
 
@@ -638,14 +638,14 @@ PUBLIC EMERALD_API void ogl_flyby_update(__in __notnull ogl_flyby flyby)
     /* Calculate current time */
     system_critical_section_enter(flyby_ptr->cs);
     {
-        system_timeline_time time_now         = system_time_now();
-        system_timeline_time time_delta       = time_now - flyby_ptr->key_down_time;
-        uint32_t             time_delta_msec  = 0;
-        float                time_delta_s     = 0;
-        float                ease_in_modifier = 1;
+        system_time time_now         = system_time_now();
+        system_time time_delta       = time_now - flyby_ptr->key_down_time;
+        uint32_t    time_delta_msec  = 0;
+        float       time_delta_s     = 0;
+        float       ease_in_modifier = 1;
 
-        system_time_get_msec_for_timeline_time(time_delta,
-                                              &time_delta_msec);
+        system_time_get_msec_for_time(time_delta,
+                                     &time_delta_msec);
 
         /* Smooth down the movement */
         ease_in_modifier = float(time_delta_msec) / 1000.0f * 3.0f;

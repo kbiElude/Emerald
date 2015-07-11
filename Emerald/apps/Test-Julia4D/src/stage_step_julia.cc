@@ -246,7 +246,9 @@ const char* julia_vertex_shader_code = "#version 430 core\n"
                                        "}\n";
 
 /** TODO */
-static void _stage_step_julia_execute(ogl_context context, system_timeline_time time, void* not_used)
+static void _stage_step_julia_execute(ogl_context context,
+                                      system_time time,
+                                      void*       not_used)
 {
     const ogl_context_gl_entrypoints* entrypoints = NULL;
     ogl_flyby                         flyby       = NULL;

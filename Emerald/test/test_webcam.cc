@@ -82,9 +82,9 @@ static void _creation_test_on_new_texture_data_available(ogl_context context,
               GL_NO_ERROR);
 }
 
-static void _creation_test_on_render_frame_callback(ogl_context          context,
-                                                    uint32_t             n_frames_rendered,
-                                                    system_timeline_time frame_time,
+static void _creation_test_on_render_frame_callback(ogl_context context,
+                                                    uint32_t    n_frames_rendered,
+                                                    system_time frame_time,
                                                     void*)
 {
     const ogl_context_gl_entrypoints* entry_points = NULL;
@@ -385,12 +385,12 @@ TEST(WebcamTest, CreationTest)
         /* Let's render a couple of frames. */
         ASSERT_TRUE(ogl_rendering_handler_play(rendering_handler, 0) );
 
-        system_timeline_time start_time = system_time_now();
-        system_timeline_time end_time   = start_time + system_time_get_timeline_time_for_s(5);
+        system_time start_time = system_time_now();
+        system_time end_time   = start_time + system_time_get_timeline_time_for_s(5);
 
         while (true)
         {
-            system_timeline_time curr_time = system_time_now();
+            system_time curr_time = system_time_now();
 
             if (curr_time < end_time)
             {

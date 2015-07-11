@@ -143,8 +143,8 @@ typedef enum
  */
 typedef struct __ogl_uber_vao
 {
-    system_timeline_time mesh_modification_timestamp;
-    GLuint               vao_id;
+    system_time mesh_modification_timestamp;
+    GLuint      vao_id;
 
     __ogl_uber_vao()
     {
@@ -1894,12 +1894,12 @@ end:
  *                  If @param material is NULL, all layers will be rendered
  *                  using currently bound program.
  **/
-PUBLIC void ogl_uber_rendering_render_mesh(__in __notnull mesh                 mesh_gpu,
-                                           __in __notnull system_matrix4x4     model,
-                                           __in __notnull system_matrix4x4     normal_matrix,
-                                           __in __notnull ogl_uber             uber,
-                                           __in_opt       mesh_material        material,
-                                           __in           system_timeline_time time)
+PUBLIC void ogl_uber_rendering_render_mesh(__in __notnull mesh             mesh_gpu,
+                                           __in __notnull system_matrix4x4 model,
+                                           __in __notnull system_matrix4x4 normal_matrix,
+                                           __in __notnull ogl_uber         uber,
+                                           __in_opt       mesh_material    material,
+                                           __in           system_time      time)
 {
     _ogl_uber* uber_ptr = (_ogl_uber*) uber;
 
@@ -1940,7 +1940,7 @@ PUBLIC void ogl_uber_rendering_render_mesh(__in __notnull mesh                 m
         else
         {
             /* Make sure the VAO we're using needs not be re-initialized */
-            system_timeline_time mesh_modification_timestamp = 0;
+            system_time mesh_modification_timestamp = 0;
 
             mesh_get_property(mesh_instantiation_parent_gpu,
                               MESH_PROPERTY_TIMESTAMP_MODIFICATION,

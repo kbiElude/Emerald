@@ -18,8 +18,8 @@ PRIVATE void AdjustCurveNodeValueByDelta(__in __notnull curve_container       cu
                                          __in           bool                  update_default_value)
 {
     /** TODO: If needed, add integer variant support */
-    system_timeline_time node_time = 0;
-    float                temp_float;
+    system_time node_time = 0;
+    float       temp_float;
 
     if (update_default_value)
     {

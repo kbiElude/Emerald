@@ -40,7 +40,7 @@
 #include <sstream>
 
 float                     _animation_duration_float   = 0.0f;
-system_timeline_time      _animation_duration_time    = 0;
+system_time               _animation_duration_time    = 0;
 ogl_context               _context                    = NULL;
 system_matrix4x4          _current_matrix             = NULL;
 ogl_flyby                 _flyby                      = NULL;
@@ -115,10 +115,10 @@ end:
 }
 
 /** Rendering handler */
-void _rendering_handler(ogl_context          context,
-                        uint32_t             n_frames_rendered,
-                        system_timeline_time frame_time,
-                        void*                unused)
+void _rendering_handler(ogl_context context,
+                        uint32_t    n_frames_rendered,
+                        system_time frame_time,
+                        void*       unused)
 {
     const ogl_context_gl_entrypoints* entry_points = NULL;
 
@@ -140,9 +140,9 @@ void _rendering_handler(ogl_context          context,
                             frame_time);
 }
 
-void _render_scene(ogl_context          context,
-                   system_timeline_time time,
-                   void*                not_used)
+void _render_scene(ogl_context context,
+                   system_time time,
+                   void*       not_used)
 {
     /* Update view matrix */
     float            camera_location[4] = {0, 0, 0, 0};
@@ -353,7 +353,7 @@ int main()
                               COLLADA_DATA_PROPERTY_MAX_ANIMATION_DURATION,
                              &_animation_duration_float);
 
-    _animation_duration_time = system_time_get_timeline_time_for_msec( uint32_t(_animation_duration_float * 1000.0f) );
+    _animation_duration_time = system_time_get_time_for_msec( uint32_t(_animation_duration_float * 1000.0f) );
 
     /* Carry on initializing */
     _test_scene = collada_data_get_emerald_scene(_test_collada_data,

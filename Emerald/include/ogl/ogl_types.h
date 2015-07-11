@@ -1826,11 +1826,11 @@ DECLARE_HANDLE(ogl_ui_bag);
 DECLARE_HANDLE(ogl_ui_control);
 
 /** Rendering handler call-back */
-typedef void (*PFNOGLRENDERINGHANDLERRENDERINGCALLBACK)   (ogl_context          context,
-                                                           uint32_t             n_frame,
-                                                           system_timeline_time frame_time,
-                                                           void*                user_arg);
-typedef void (*PFNOGLCONTEXTCALLBACKFROMCONTEXTTHREADPROC)(ogl_context          context,
-                                                           void*                user_arg);
+typedef void (*PFNOGLRENDERINGHANDLERRENDERINGCALLBACK)   (ogl_context context,
+                                                           uint32_t    n_frame,
+                                                           system_time frame_time,
+                                                           void*       user_arg);
+typedef void (*PFNOGLCONTEXTCALLBACKFROMCONTEXTTHREADPROC)(ogl_context context,
+                                                           void*       user_arg);
 
 #endif /* OGL_TYPES_H */

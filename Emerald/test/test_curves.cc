@@ -62,7 +62,7 @@ TEST(CurvesTest, StaticSegment)
                                                          test_default_value_variant) );
     ASSERT_TRUE(curve_container_add_static_value_segment(test_curve,
                                                          0, /* time */
-                                                         system_time_get_timeline_time_for_s(2),
+                                                         system_time_get_time_for_s(2),
                                                          static_segment_value_variant,
                                                         &static_segment_id) );
 
@@ -77,7 +77,7 @@ TEST(CurvesTest, StaticSegment)
                              222.0f);
 
     ASSERT_TRUE(curve_container_get_value(test_curve,
-                                          system_time_get_timeline_time_for_s(1),
+                                          system_time_get_time_for_s(1),
                                           false, /* should_force */
                                           result_variant));
 
@@ -87,7 +87,7 @@ TEST(CurvesTest, StaticSegment)
                              222.0f);
 
     ASSERT_TRUE(curve_container_get_value(test_curve,
-                                          system_time_get_timeline_time_for_s(2),
+                                          system_time_get_time_for_s(2),
                                           false, /* should_force */
                                           result_variant));
 
@@ -97,7 +97,7 @@ TEST(CurvesTest, StaticSegment)
                              222.0f);
 
     ASSERT_TRUE(curve_container_get_value(test_curve,
-                                          system_time_get_timeline_time_for_s(3),
+                                          system_time_get_time_for_s(3),
                                           false, /* should_force */
                                           result_variant));
 
@@ -136,7 +136,7 @@ TEST(CurvesTest, LerpSegment)
                                                   test_default_value_variant) );
     ASSERT_TRUE(curve_container_add_lerp_segment (test_curve,
                                                   0, /* start_time */
-                                                  system_time_get_timeline_time_for_s(2),
+                                                  system_time_get_time_for_s(2),
                                                   static_lerp_start_value_variant,
                                                   static_lerp_end_value_variant,
                                                  &static_segment_id) );
@@ -153,7 +153,7 @@ TEST(CurvesTest, LerpSegment)
               222.0f);
 
     ASSERT_TRUE(curve_container_get_value(test_curve,
-                                          system_time_get_timeline_time_for_s(1),
+                                          system_time_get_time_for_s(1),
                                           false, /* should_force */
                                           result_variant));
 
@@ -163,7 +163,7 @@ TEST(CurvesTest, LerpSegment)
                              result_float < 350.0f);
 
     ASSERT_TRUE(curve_container_get_value(test_curve,
-                                          system_time_get_timeline_time_for_s(2),
+                                          system_time_get_time_for_s(2),
                                           false, /* should_force */
                                           result_variant));
 
@@ -173,7 +173,7 @@ TEST(CurvesTest, LerpSegment)
                              444.0f);
 
     ASSERT_TRUE(curve_container_get_value(test_curve,
-                                          system_time_get_timeline_time_for_s(3),
+                                          system_time_get_time_for_s(3),
                                           false,
                                           result_variant));
 

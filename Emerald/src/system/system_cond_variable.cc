@@ -131,7 +131,7 @@ PUBLIC EMERALD_API void system_cond_variable_signal(__in __notnull system_cond_v
 
 /** Please see header for specification */
 PUBLIC EMERALD_API void system_cond_variable_wait_begin(__in __notnull system_cond_variable cond_variable,
-                                                        __in           system_timeline_time timeout,
+                                                        __in           system_time          timeout,
                                                         __out_opt      bool*                out_has_timed_out_ptr)
 {
     _system_cond_variable* cond_variable_ptr = (_system_cond_variable*) cond_variable;
@@ -153,8 +153,8 @@ PUBLIC EMERALD_API void system_cond_variable_wait_begin(__in __notnull system_co
     }
     else
     {
-        system_time_get_msec_for_timeline_time(timeout,
-                                              &timeout_msec);
+        system_time_get_msec_for_time(timeout,
+                                     &timeout_msec);
     }
 
     system_critical_section_enter(cond_variable_ptr->cs);

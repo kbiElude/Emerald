@@ -35,7 +35,7 @@
 PRIVATE void _ogl_scene_renderer_deinit_cached_ubers_map_contents         (__in            __notnull system_hash64map                cached_materials_map);
 PRIVATE void _ogl_scene_renderer_deinit_resizable_vector_for_resource_pool(                          system_resource_pool_block);
 PRIVATE void _ogl_scene_renderer_get_light_color                          (__in            __notnull scene_light                     light,
-                                                                           __in                      system_timeline_time            time,
+                                                                           __in                      system_time                     time,
                                                                            __in            __notnull system_variant                  temp_float_variant,
                                                                            __out_ecount(3) __notnull float*                          out_color);
 PRIVATE void _ogl_scene_renderer_get_ogl_uber_for_render_mode             (__in                      _ogl_scene_renderer_render_mode render_mode,
@@ -58,7 +58,7 @@ PRIVATE void _ogl_scene_renderer_update_frustum_preview_assigned_cameras  (__in 
 PRIVATE void _ogl_scene_renderer_update_ogl_uber_light_properties         (__in            __notnull ogl_uber                        material_uber,
                                                                            __in            __notnull scene                           scene,
                                                                            __in            __notnull system_matrix4x4                current_camera_view_matrix,
-                                                                           __in                      system_timeline_time            frame_time,
+                                                                           __in                      system_time            frame_time,
                                                                            __in            __notnull system_variant                  temp_variant_float);
 
 
@@ -309,10 +309,10 @@ PRIVATE void _ogl_scene_renderer_deinit_resizable_vector_for_resource_pool(syste
 }
 
 /** TODO */
-PRIVATE void _ogl_scene_renderer_get_light_color(__in            __notnull scene_light          light,
-                                                 __in                      system_timeline_time time,
-                                                 __in            __notnull system_variant       temp_float_variant,
-                                                 __out_ecount(3) __notnull float*               out_color)
+PRIVATE void _ogl_scene_renderer_get_light_color(__in            __notnull scene_light    light,
+                                                 __in                      system_time    time,
+                                                 __in            __notnull system_variant temp_float_variant,
+                                                 __out_ecount(3) __notnull float*         out_color)
 {
     curve_container  light_color_curves      [3];
     curve_container  light_color_intensity_curve;
@@ -718,11 +718,11 @@ PRIVATE void _ogl_scene_renderer_update_frustum_preview_assigned_cameras(__in __
 }
 
 /** TODO */
-PRIVATE void _ogl_scene_renderer_update_ogl_uber_light_properties(__in __notnull ogl_uber             material_uber,
-                                                                  __in __notnull scene                scene,
-                                                                  __in __notnull system_matrix4x4     current_camera_view_matrix,
-                                                                  __in           system_timeline_time frame_time,
-                                                                  __in __notnull system_variant       temp_variant_float)
+PRIVATE void _ogl_scene_renderer_update_ogl_uber_light_properties(__in __notnull ogl_uber         material_uber,
+                                                                  __in __notnull scene            scene,
+                                                                  __in __notnull system_matrix4x4 current_camera_view_matrix,
+                                                                  __in           system_time      frame_time,
+                                                                  __in __notnull system_variant   temp_variant_float)
 {
     unsigned int n_scene_lights = 0;
     unsigned int n_uber_items   = 0;
@@ -1686,7 +1686,7 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_scene_renderer_render_scene_graph(__in   
                                                                          __in                     const _ogl_scene_renderer_render_mode&   render_mode,
                                                                          __in                     bool                                     apply_shadow_mapping,
                                                                          __in           __notnull _ogl_scene_renderer_helper_visualization helper_visualization,
-                                                                         __in                     system_timeline_time                     frame_time)
+                                                                         __in                     system_time                              frame_time)
 {
     _ogl_scene_renderer*              renderer_ptr       = (_ogl_scene_renderer*) renderer;
     float                             camera_location[4];

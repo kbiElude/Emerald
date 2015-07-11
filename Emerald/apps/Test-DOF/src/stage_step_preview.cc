@@ -13,9 +13,9 @@
 #include "ogl/ogl_pipeline.h"
 
 /** TODO */
-static void _stage_step_preview_execute(ogl_context          context,
-                                        system_timeline_time time,
-                                        void*                not_used)
+static void _stage_step_preview_execute(ogl_context context,
+                                        system_time time,
+                                        void*       not_used)
 {
     const ogl_context_gl_entrypoints* entrypoints = NULL;
 

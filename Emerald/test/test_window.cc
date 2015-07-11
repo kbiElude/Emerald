@@ -70,9 +70,9 @@ TEST(WindowTest, CreationTest)
 /* rendering handler tests */
  unsigned int global_n_frames_rendered = 0;
 
-static void _on_render_frame_callback(ogl_context          context,
-                                      uint32_t             n_frames_rendered,
-                                      system_timeline_time frame_time,
+static void _on_render_frame_callback(ogl_context context,
+                                      uint32_t    n_frames_rendered,
+                                      system_time frame_time,
                                       void*)
 {
     const ogl_context_gl_entrypoints* entry_points = NULL;

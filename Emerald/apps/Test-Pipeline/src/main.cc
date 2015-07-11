@@ -233,9 +233,9 @@ void _init_gl(ogl_context context,
 }
 
 /* Stage step 1: sample data generation */
-static void _stage_step_generate_data(ogl_context          context,
-                                      system_timeline_time time,
-                                      void*                not_used)
+static void _stage_step_generate_data(ogl_context context,
+                                      system_time time,
+                                      void*       not_used)
 {
     const ogl_context_gl_entrypoints_ext_direct_state_access* dsa_entry_points = NULL;
     const ogl_context_gl_entrypoints*                         entry_points     = NULL;
@@ -249,8 +249,8 @@ static void _stage_step_generate_data(ogl_context          context,
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
                             &entry_points);
 
-    system_time_get_msec_for_timeline_time(time,
-                                          &time_ms);
+    system_time_get_msec_for_time(time,
+                                 &time_ms);
 
     time_ms_as_s = ((float) time_ms) / 1000.0f;
 
@@ -277,7 +277,9 @@ static void _stage_step_generate_data(ogl_context          context,
 }
 
 /* Stage step 2: sample data modification */
-static void _stage_step_modify_data(ogl_context context, system_timeline_time time, void* not_used)
+static void _stage_step_modify_data(ogl_context context,
+                                    system_time time,
+                                    void*       not_used)
 {
     const ogl_context_gl_entrypoints_ext_direct_state_access* dsa_entry_points = NULL;
     const ogl_context_gl_entrypoints*                         entry_points     = NULL;
@@ -291,8 +293,8 @@ static void _stage_step_modify_data(ogl_context context, system_timeline_time ti
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
                             &entry_points);
 
-    system_time_get_msec_for_timeline_time(time,
-                                          &time_ms);
+    system_time_get_msec_for_time(time,
+                                 &time_ms);
 
     entry_points->pGLUseProgram             (ogl_program_get_id(_generation_po) );
     dsa_entry_points->pGLBindMultiTextureEXT(GL_TEXTURE0,
@@ -308,10 +310,10 @@ static void _stage_step_modify_data(ogl_context context, system_timeline_time ti
 
 
 /** Rendering handler */
-void _rendering_handler(ogl_context          context,
-                        uint32_t             n_frames_rendered,
-                        system_timeline_time frame_time,
-                        void*                renderer)
+void _rendering_handler(ogl_context context,
+                        uint32_t    n_frames_rendered,
+                        system_time frame_time,
+                        void*       renderer)
 {
     ogl_pipeline_draw_stage(_pipeline,
                             _pipeline_stage_id,

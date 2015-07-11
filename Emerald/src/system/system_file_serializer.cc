@@ -614,9 +614,9 @@ PUBLIC EMERALD_API bool system_file_serializer_read_curve_container(__in     __n
                 ++n_segment)
     {
         /* Read general curve segment data */
-        system_timeline_time segment_start_time = 0;
-        system_timeline_time segment_end_time   = 0;
-        curve_segment_type   segment_type       = (curve_segment_type) -1;
+        system_time        segment_start_time = 0;
+        system_time        segment_end_time   = 0;
+        curve_segment_type segment_type       = (curve_segment_type) -1;
 
         if (!system_file_serializer_read(serializer,
                                          sizeof(segment_start_time),
@@ -719,11 +719,11 @@ PUBLIC EMERALD_API bool system_file_serializer_read_curve_container(__in     __n
                 /* Iterate through all nodes and store properties */
                 typedef struct
                 {
-                    float                bias;
-                    float                continuity;
-                    float                tension;
-                    system_timeline_time time;
-                    system_variant       value;
+                    float          bias;
+                    float          continuity;
+                    float          tension;
+                    system_time    time;
+                    system_variant value;
                 } _node_descriptor;
 
                 uint32_t                n_segment_nodes = 0;
@@ -759,8 +759,8 @@ PUBLIC EMERALD_API bool system_file_serializer_read_curve_container(__in     __n
                     }
 
                     /* Node time / value */
-                    system_timeline_time node_time  = (system_timeline_time) -1;
-                    system_variant       node_value = system_variant_create(variant_type);
+                    system_time    node_time  = (system_time) -1;
+                    system_variant node_value = system_variant_create(variant_type);
 
                     if (!system_file_serializer_read        (serializer,
                                                              sizeof(node_time),
@@ -1442,9 +1442,9 @@ PUBLIC EMERALD_API bool system_file_serializer_write_curve_container(__in __notn
         }
 
         /* Retrieve curve segment details */
-        system_timeline_time segment_start_time = 0;
-        system_timeline_time segment_end_time   = 0;
-        curve_segment_type   segment_type       = (curve_segment_type) -1;
+        system_time        segment_start_time = 0;
+        system_time        segment_end_time   = 0;
+        curve_segment_type segment_type       = (curve_segment_type) -1;
 
         curve_container_get_segment_property(curve,
                                              segment_id,
@@ -1513,7 +1513,7 @@ PUBLIC EMERALD_API bool system_file_serializer_write_curve_container(__in __notn
         {
             case CURVE_SEGMENT_LERP:
             {
-                system_timeline_time temp;
+                system_time temp;
 
                 if (!curve_segment_get_node(segment,
                                             0,
@@ -1546,7 +1546,7 @@ PUBLIC EMERALD_API bool system_file_serializer_write_curve_container(__in __notn
 
             case CURVE_SEGMENT_STATIC:
             {
-                system_timeline_time temp;
+                system_time temp;
 
                 if (!curve_segment_get_node(segment,
                                             0,
@@ -1637,7 +1637,7 @@ PUBLIC EMERALD_API bool system_file_serializer_write_curve_container(__in __notn
                     }
 
                     /* Node time / value */
-                    system_timeline_time node_time = (system_timeline_time) -1;
+                    system_time node_time = (system_time) -1;
 
                     if (!curve_segment_get_node(segment,
                                                 node_id,

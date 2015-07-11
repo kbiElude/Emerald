@@ -201,7 +201,7 @@ system_hashed_ansi_string _replace_extension                          (system_ha
                                                                       system_hashed_ansi_string new_extension);
 void                      _rendering_handler                          (ogl_context               context,
                                                                        uint32_t                  n_frames_rendered,
-                                                                       system_timeline_time      frame_time,
+                                                                       system_time               frame_time,
                                                                        void*                     renderer);
 void                      _rendering_lbm_down_callback_handler        (system_window             window,
                                                                        unsigned short            x,
@@ -726,10 +726,10 @@ system_hashed_ansi_string _replace_extension(system_hashed_ansi_string original_
 }
 
 /** Rendering handler */
-void _rendering_handler(ogl_context          context,
-                        uint32_t             n_frames_rendered,
-                        system_timeline_time frame_time,
-                        void*                renderer)
+void _rendering_handler(ogl_context context,
+                        uint32_t    n_frames_rendered,
+                        system_time frame_time,
+                        void*       renderer)
 {
     const ogl_context_gl_entrypoints_ext_direct_state_access* dsa_entry_points = NULL;
     const ogl_context_gl_entrypoints*                         entry_points     = NULL;

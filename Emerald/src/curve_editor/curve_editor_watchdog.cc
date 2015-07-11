@@ -58,9 +58,9 @@ typedef struct _curve_editor_watchdog
 PRIVATE void _curve_editor_watchdog_monitor_thread_entrypoint(__in __notnull system_threads_entry_point_argument argument)
 {
     /* This is new thread's entry-point */
-    const system_timeline_time timeout      = system_time_get_timeline_time_for_msec(SIGNAL_COLLATE_TIMEOUT);
-    _curve_editor_watchdog*    watchdog_ptr = (_curve_editor_watchdog*) argument;
-    const system_event         events[]     =
+    const system_time       timeout      = system_time_get_time_for_msec(SIGNAL_COLLATE_TIMEOUT);
+    _curve_editor_watchdog* watchdog_ptr = (_curve_editor_watchdog*) argument;
+    const system_event      events[]     =
     {
         watchdog_ptr->wakeup_event,
         watchdog_ptr->wakeup_thread_kill_event

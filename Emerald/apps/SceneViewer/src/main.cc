@@ -54,10 +54,10 @@ GLuint                _vao_id              = 0;
 extern ogl_flyby      _flyby;
 
 /** Rendering handler */
-void _rendering_handler_callback(ogl_context          context,
-                                 uint32_t             n_frames_rendered,
-                                 system_timeline_time frame_time,
-                                 void*                unused)
+void _rendering_handler_callback(ogl_context context,
+                                 uint32_t    n_frames_rendered,
+                                 system_time frame_time,
+                                 void*       unused)
 {
     const ogl_context_gl_entrypoints* entry_points = NULL;
 
@@ -79,11 +79,11 @@ void _rendering_handler_callback(ogl_context          context,
                             frame_time);
 }
 
-PUBLIC void _render_scene(ogl_context          context,
-                          system_timeline_time time,
-                          void*                not_used)
+PUBLIC void _render_scene(ogl_context context,
+                          system_time time,
+                          void*       not_used)
 {
-    system_timeline_time frame_time;
+    system_time frame_time;
 
     if (!state_get_playback_status() )
     {
@@ -91,7 +91,7 @@ PUBLIC void _render_scene(ogl_context          context,
     }
     else
     {
-        static system_timeline_time start_time = system_time_now();
+        static system_time start_time = system_time_now();
 
         #ifdef ENABLE_ANIMATION
            frame_time = (system_time_now() - start_time) %

@@ -73,7 +73,7 @@ PUBLIC EMERALD_API scene_camera scene_camera_create(__in     __notnull system_ha
  **/
 PUBLIC EMERALD_API void scene_camera_get_property(__in  __notnull scene_camera          camera,
                                                   __in            scene_camera_property property,
-                                                  __in            system_timeline_time  time,
+                                                  __in            system_time           time,
                                                   __out __notnull void*                 out_result);
 
 /** TODO */

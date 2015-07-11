@@ -353,7 +353,7 @@ PRIVATE void ExtractMeshData(__in __notnull _mesh_instance*  instance_ptr,
      *       LW will start reporting odd materials for polygons, which causes a crash in the later GL blob
      *       baking stage. However, when ran one mesh at a time, things work just fine.
      */
-    system_timeline_time    last_update_time                    = 0;
+    system_time             last_update_time                    = 0;
     system_hash64map        lw_surface_id_to_scene_material_map = GetLWSurfaceIDToSceneMaterialMap();
     const uint32_t          n_lw_mesh_layers                    = object_funcs_ptr->maxLayers     (lw_object_id);
     system_resizable_vector layer_polygon_ids_vector            = system_resizable_vector_create  (64);
@@ -436,10 +436,10 @@ PRIVATE void ExtractMeshData(__in __notnull _mesh_instance*  instance_ptr,
                 layer_data_extracted = true;
 
                 /* Update UI if it makes sense */
-                system_timeline_time time_now = system_time_now();
+                system_time time_now = system_time_now();
 
-                if (last_update_time            == 0                                           ||
-                    time_now - last_update_time > system_time_get_timeline_time_for_msec(1000) )
+                if (last_update_time            == 0                                  ||
+                    time_now - last_update_time > system_time_get_time_for_msec(1000) )
                 {
                     unsigned int n_objects = 0;
                     char         text_buffer[1024];

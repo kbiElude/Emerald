@@ -36,10 +36,10 @@ GLuint                _vao_id              = 0;
 
 
 /** Rendering handler */
-void _rendering_handler_entrypoint(ogl_context          context,
-                                   uint32_t             n_frames_rendered,
-                                   system_timeline_time frame_time,
-                                   void*                unused)
+void _rendering_handler_entrypoint(ogl_context context,
+                                   uint32_t    n_frames_rendered,
+                                   system_time frame_time,
+                                   void*       unused)
 {
     const ogl_context_gl_entrypoints* entry_points   = NULL;
     static bool                       ui_initialized = false;
@@ -110,14 +110,14 @@ void _rendering_handler_entrypoint(ogl_context          context,
                             frame_time);
 }
 
-PUBLIC void _render_scene(ogl_context          context,
-                          system_timeline_time time,
-                          void*                not_used)
+PUBLIC void _render_scene(ogl_context context,
+                          system_time time,
+                          void*       not_used)
 {
-    scene_camera         current_camera   = NULL;
-    ogl_scene_renderer   current_renderer = NULL;
-    scene                current_scene    = NULL;
-    system_timeline_time frame_time       = 0;
+    scene_camera       current_camera   = NULL;
+    ogl_scene_renderer current_renderer = NULL;
+    scene              current_scene    = NULL;
+    system_time        frame_time       = 0;
 
     state_get_current_frame_properties(&current_scene,
                                        &current_camera,

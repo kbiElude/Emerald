@@ -13,7 +13,7 @@ REFCOUNT_INSERT_DECLARATIONS(ogl_rendering_handler,
 
 typedef enum
 {
-    /* not settable, system_timeline_time */
+    /* not settable, system_time */
     OGL_RENDERING_HANDLER_PROPERTY_LAST_FRAME_TIME,
 
     /* not settable, ogl_rendering_handler_playback_status */
@@ -53,7 +53,7 @@ PUBLIC EMERALD_API void ogl_rendering_handler_lock_bound_context(__in __notnull 
 
 /** TODO */
 PUBLIC EMERALD_API bool ogl_rendering_handler_play(__in __notnull ogl_rendering_handler rendering_handler,
-                                                                  system_timeline_time  start_time);
+                                                                  system_time           start_time);
 
 /** TODO */
 PUBLIC EMERALD_API bool ogl_rendering_handler_request_callback_from_context_thread(__in __notnull ogl_rendering_handler                      rendering_handler,

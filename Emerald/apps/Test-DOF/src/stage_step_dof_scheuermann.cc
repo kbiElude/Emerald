@@ -93,9 +93,9 @@ static const char* _dof_scheuermann_combination_fragment_shader_main = "void mai
                                                                        "}\n";
 
 /** TODO */
-static void _stage_step_dof_scheuermann_combine_execute(ogl_context          context,
-                                                        system_timeline_time time,
-                                                        void*                not_used)
+static void _stage_step_dof_scheuermann_combine_execute(ogl_context context,
+                                                        system_time time,
+                                                        void*       not_used)
 {
     const ogl_context_gl_entrypoints_ext_direct_state_access* dsa_entrypoints   = NULL;
     const ogl_context_gl_entrypoints*                         entrypoints       = NULL;
@@ -151,9 +151,9 @@ static void _stage_step_dof_scheuermann_combine_execute(ogl_context          con
 }
 
 /** TODO */
-static void _stage_step_dof_scheuermann_downsample_execute(ogl_context          context,
-                                                           system_timeline_time time,
-                                                           void*                not_used)
+static void _stage_step_dof_scheuermann_downsample_execute(ogl_context context,
+                                                           system_time time,
+                                                           void*       not_used)
 {
     const ogl_context_gl_entrypoints* entrypoints                     = NULL;
     const int*                        output_resolution               = main_get_output_resolution();
@@ -185,9 +185,9 @@ static void _stage_step_dof_scheuermann_downsample_execute(ogl_context          
 }
 
 /** TODO */
-static void _stage_step_dof_scheuermann_preblur_execute(ogl_context          context,
-                                                        system_timeline_time time,
-                                                        void*                not_used)
+static void _stage_step_dof_scheuermann_preblur_execute(ogl_context context,
+                                                        system_time time,
+                                                        void*       not_used)
 {
     postprocessing_blur_poisson_execute(_dof_scheuermann_blur_poisson,
                                         _dof_scheuermann_downsampled_to,

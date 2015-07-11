@@ -61,12 +61,12 @@ typedef struct
     mesh             instantiation_parent; /* If not NULL, instantiation parent's GL data should be used instead */
 
     /* Properties */
-    float                aabb_max   [4]; /* model-space */
-    float                aabb_min   [4]; /* model-space */
-    mesh_creation_flags  creation_flags;
-    uint32_t             n_sh_bands;      /* can be 0 ! */
-    sh_components        n_sh_components; /* can be 0 ! */
-    system_timeline_time timestamp_last_modified;
+    float               aabb_max   [4]; /* model-space */
+    float               aabb_min   [4]; /* model-space */
+    mesh_creation_flags creation_flags;
+    uint32_t            n_sh_bands;      /* can be 0 ! */
+    sh_components       n_sh_components; /* can be 0 ! */
+    system_time         timestamp_last_modified;
 
     /* Other */
     system_resizable_vector layers;    /* contains _mesh_layer instances */
@@ -3561,7 +3561,7 @@ PUBLIC EMERALD_API bool mesh_get_property(__in  __notnull mesh          instance
 
         case MESH_PROPERTY_TIMESTAMP_MODIFICATION:
         {
-            *((system_timeline_time*)result) = mesh_ptr->timestamp_last_modified;
+            *((system_time*)result) = mesh_ptr->timestamp_last_modified;
 
             break;
         }

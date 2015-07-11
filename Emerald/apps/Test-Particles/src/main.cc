@@ -44,7 +44,7 @@ PRIVATE void _init_gl                       (ogl_context             context,
                                              void*                   arg);
 PRIVATE void _rendering_handler             (ogl_context             context,
                                              uint32_t                n_frames_rendered,
-                                             system_timeline_time    frame_time,
+                                             system_time             frame_time,
                                              void*                   renderer);
 PRIVATE bool _rendering_rbm_callback_handler(system_window           window,
                                              unsigned short          x,
@@ -202,10 +202,10 @@ PRIVATE void _init_gl(ogl_context context,
 }
 
 /** Rendering handler */
-PRIVATE void _rendering_handler(ogl_context          context,
-                                uint32_t             n_frames_rendered,
-                                system_timeline_time frame_time,
-                                void*                renderer)
+PRIVATE void _rendering_handler(ogl_context context,
+                                uint32_t    n_frames_rendered,
+                                system_time frame_time,
+                                void*       renderer)
 {
     ogl_pipeline_draw_stage(_pipeline,
                             stage_particle_get_stage_id(),

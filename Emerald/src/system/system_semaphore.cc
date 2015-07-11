@@ -84,9 +84,9 @@ EMERALD_API void system_semaphore_release(__in __deallocate(mem) system_semaphor
 }
 
 /** Please see header for specification */
-EMERALD_API void system_semaphore_enter(__in      system_semaphore     semaphore,
-                                        __in      system_timeline_time timeout,
-                                        __out_opt bool*                out_has_timed_out_ptr)
+EMERALD_API void system_semaphore_enter(__in      system_semaphore semaphore,
+                                        __in      system_time      timeout,
+                                        __out_opt bool*            out_has_timed_out_ptr)
 {
     _system_semaphore* semaphore_ptr = (_system_semaphore*) semaphore;
 
@@ -102,8 +102,8 @@ EMERALD_API void system_semaphore_enter(__in      system_semaphore     semaphore
         }
         else
         {
-            system_time_get_msec_for_timeline_time(timeout,
-                                                  &timeout_msec);
+            system_time_get_msec_for_time(timeout,
+                                         &timeout_msec);
         }
 
         result = ::WaitForSingleObject(semaphore_ptr->semaphore,

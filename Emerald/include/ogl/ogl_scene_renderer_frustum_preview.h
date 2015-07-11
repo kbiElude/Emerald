@@ -27,7 +27,7 @@ PUBLIC void ogl_scene_renderer_frustum_preview_release(__in __notnull ogl_scene_
 
 /** TODO */
 PUBLIC RENDERING_CONTEXT_CALL void ogl_scene_renderer_frustum_preview_render(__in __notnull ogl_scene_renderer_frustum_preview preview,
-                                                                             __in           system_timeline_time               time,
+                                                                             __in           system_time                        time,
                                                                              __in __notnull system_matrix4x4                   vp);
 
 #endif /* OGL_SCENE_RENDERER_FRUSTUM_PREVIEW_H */

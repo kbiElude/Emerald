@@ -489,7 +489,7 @@ PRIVATE void _ogl_program_link_callback(__in __notnull ogl_context context,
     _ogl_program* program_ptr     = (_ogl_program*) in_arg;
     bool          has_used_binary = false;
 
-    system_timeline_time start_time = system_time_now();
+    system_time start_time = system_time_now();
 
     /* If program binaries are supportd, see if we've got a blob file already stashed. If so, no need to link at this point */
     has_used_binary = _ogl_program_load_binary_blob(context,
@@ -691,11 +691,11 @@ PRIVATE void _ogl_program_link_callback(__in __notnull ogl_context context,
         }
     }
 
-    system_timeline_time end_time            = system_time_now();
-    uint32_t             execution_time_msec = 0;
+    system_time end_time            = system_time_now();
+    uint32_t    execution_time_msec = 0;
 
-    system_time_get_msec_for_timeline_time(end_time - start_time,
-                                          &execution_time_msec);
+    system_time_get_msec_for_time(end_time - start_time,
+                                 &execution_time_msec);
 
     LOG_INFO("Linking time: %d ms",
              execution_time_msec);

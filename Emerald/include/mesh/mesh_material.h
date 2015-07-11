@@ -223,13 +223,13 @@ PUBLIC EMERALD_API mesh_material_property_attachment mesh_material_get_shading_p
 /** TODO */
 PUBLIC EMERALD_API void mesh_material_get_shading_property_value_curve_container_float(__in      __notnull mesh_material                  material,
                                                                                        __in                mesh_material_shading_property property,
-                                                                                       __in                system_timeline_time           time,
+                                                                                       __in                system_time                    time,
                                                                                        __out_opt           float*                         out_float_value);
 
 /** TODO */
 PUBLIC EMERALD_API void mesh_material_get_shading_property_value_curve_container_vec3(__in      __notnull mesh_material                  material,
                                                                                       __in                mesh_material_shading_property property,
-                                                                                      __in                system_timeline_time           time,
+                                                                                      __in                system_time                    time,
                                                                                       __out_ecount_opt(3) float*                         out_vec3_value);
 
 /** TODO */

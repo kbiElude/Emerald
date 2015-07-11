@@ -530,13 +530,13 @@ PRIVATE void _ogl_shadow_mapping_add_uniforms_to_fragment_uber_for_point_light(_
 
 
 /** TODO */
- PRIVATE void _ogl_shadow_mapping_get_aabb_for_camera_frustum_and_scene_aabb(__in            __notnull scene_camera         current_camera,
-                                                                             __in                      system_timeline_time time,
-                                                                             __in_ecount(3)  __notnull const float*         aabb_min_world,
-                                                                             __in_ecount(3)  __notnull const float*         aabb_max_world,
-                                                                             __in            __notnull system_matrix4x4     view_matrix,
-                                                                             __out_ecount(3) __notnull float*               result_min,
-                                                                             __out_ecount(3) __notnull float*               result_max)
+ PRIVATE void _ogl_shadow_mapping_get_aabb_for_camera_frustum_and_scene_aabb(__in            __notnull scene_camera     current_camera,
+                                                                             __in                      system_time      time,
+                                                                             __in_ecount(3)  __notnull const float*     aabb_min_world,
+                                                                             __in_ecount(3)  __notnull const float*     aabb_max_world,
+                                                                             __in            __notnull system_matrix4x4 view_matrix,
+                                                                             __out_ecount(3) __notnull float*           result_min,
+                                                                             __out_ecount(3) __notnull float*           result_max)
 {
     /* Retrieve camera frustum data */
     float camera_frustum_vec4_fbl_world[4] = {0, 0, 0, 1.0f};
@@ -1889,7 +1889,7 @@ PUBLIC void ogl_shadow_mapping_get_matrices_for_light(__in            __notnull 
                                                       __in            __notnull scene_light                    light,
                                                       __in                      ogl_shadow_mapping_target_face light_target_face,
                                                       __in_ecount(3)  __notnull scene_camera                   current_camera,
-                                                      __in                      system_timeline_time           time,
+                                                      __in                      system_time                    time,
                                                       __in_ecount(3)  __notnull const float*                   aabb_min_world,
                                                       __in_ecount(3)  __notnull const float*                   aabb_max_world,
                                                       __out           __notnull system_matrix4x4*              out_view_matrix,
@@ -2720,10 +2720,10 @@ PUBLIC void ogl_shadow_mapping_release(__in __notnull __post_invalid ogl_shadow_
 }
 
 /** TODO */
-PUBLIC void ogl_shadow_mapping_render_shadow_map_meshes(__in __notnull ogl_shadow_mapping   shadow_mapping,
-                                                        __in __notnull ogl_scene_renderer   renderer,
-                                                        __in __notnull scene                scene,
-                                                        __in           system_timeline_time frame_time)
+PUBLIC void ogl_shadow_mapping_render_shadow_map_meshes(__in __notnull ogl_shadow_mapping shadow_mapping,
+                                                        __in __notnull ogl_scene_renderer renderer,
+                                                        __in __notnull scene              scene,
+                                                        __in           system_time        frame_time)
 {
     ogl_materials        materials          = NULL;
     _ogl_shadow_mapping* shadow_mapping_ptr = (_ogl_shadow_mapping*) shadow_mapping;
@@ -2916,7 +2916,7 @@ PUBLIC void ogl_shadow_mapping_render_shadow_maps(__in __notnull ogl_shadow_mapp
                                                   __in __notnull ogl_scene_renderer   renderer,
                                                   __in __notnull scene                current_scene,
                                                   __in __notnull scene_camera         target_camera,
-                                                  __in           system_timeline_time frame_time)
+                                                  __in           system_time          frame_time)
 {
     const ogl_context_gl_entrypoints_ext_direct_state_access* dsa_entrypoints    = NULL;
     scene_graph                                               graph              = NULL;
