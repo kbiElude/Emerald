@@ -23,9 +23,7 @@ typedef struct
     ogl_context                           context;
     system_event                          context_set_event;
     uint32_t                              fps;
-    bool                                  fps_counter_status;
     uint32_t                              last_frame_index;      /* only when fps policy is used */
-    system_time                           last_frame_time;
     uint32_t                              n_frames_rendered;
     system_time                           playback_start_time;
     ogl_rendering_handler_playback_status playback_status;
@@ -91,10 +89,8 @@ PRIVATE void _ogl_rendering_handler_thread_entrypoint(void* in_arg)
         system_event_wait_single(rendering_handler->context_set_event);
 
         /* Cache some variables.. */
-        ogl_context_type          context_type          = OGL_CONTEXT_TYPE_UNDEFINED;
         system_window             context_window        = NULL;
         system_hashed_ansi_string context_window_name   = NULL;
-        PFNGLFINISHPROC           pGLFinish             = NULL;
         bool                      should_live           = true;
         const system_event        wait_events[]         =
         {
@@ -103,35 +99,6 @@ PRIVATE void _ogl_rendering_handler_thread_entrypoint(void* in_arg)
             rendering_handler->unbind_context_request_event,
             rendering_handler->playback_in_progress_event
         };
-
-        ogl_context_get_property(rendering_handler->context,
-                                 OGL_CONTEXT_PROPERTY_TYPE,
-                                &context_type);
-
-        if (context_type == OGL_CONTEXT_TYPE_ES)
-        {
-            ogl_context_es_entrypoints* entrypoints = NULL;
-
-            ogl_context_get_property(rendering_handler->context,
-                                     OGL_CONTEXT_PROPERTY_ENTRYPOINTS_ES,
-                                    &entrypoints);
-
-            pGLFinish = entrypoints->pGLFinish;
-        }
-        else
-        {
-            ASSERT_DEBUG_SYNC(context_type == OGL_CONTEXT_TYPE_GL,
-                              "Unrecognized context type");
-
-            ogl_context_gl_entrypoints* entrypoints = NULL;
-
-            ogl_context_get_property(rendering_handler->context,
-                                     OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
-                                    &entrypoints);
-
-            pGLFinish = entrypoints->pGLFinish;
-
-        }
 
         ogl_context_get_property  (rendering_handler->context,
                                    OGL_CONTEXT_PROPERTY_WINDOW,
@@ -252,66 +219,13 @@ PRIVATE void _ogl_rendering_handler_thread_entrypoint(void* in_arg)
                         } /* switch (rendering_handler->policy) */
 
                         /* Call the user app's call-back */
-                        system_time rendering_start_time = system_time_now();
+                        if (rendering_handler->pfn_rendering_callback != NULL)
                         {
-                            if (rendering_handler->pfn_rendering_callback != NULL)
-                            {
-                                rendering_handler->pfn_rendering_callback(rendering_handler->context,
-                                                                          frame_index,
-                                                                          new_frame_time,
-                                                                          rendering_handler->rendering_callback_user_arg);
-
-                                if (rendering_handler->fps_counter_status)
-                                {
-                                    pGLFinish();
-                                }
-                            }
-
-                            rendering_handler->last_frame_time = new_frame_time;
+                            rendering_handler->pfn_rendering_callback(rendering_handler->context,
+                                                                      frame_index,
+                                                                      new_frame_time,
+                                                                      rendering_handler->rendering_callback_user_arg);
                         }
-                        system_time rendering_end_time = system_time_now();
-
-                        if (rendering_handler->fps_counter_status)
-                        {
-                            /* Render FPS info */
-                            char        rendering_time_buffer[128] = {0};
-                            system_time rendering_time_delta       = rendering_end_time - rendering_start_time;
-                            uint32_t    rendering_time_msec        = 0;
-                            int         rendering_time_pos[2]      = {0};
-                            int         rendering_time_text_height = 0;
-                            int         window_size[2];
-
-                            system_window_get_property            (context_window,
-                                                                   SYSTEM_WINDOW_PROPERTY_DIMENSIONS,
-                                                                   window_size);
-                            system_time_get_msec_for_time(rendering_time_delta,
-                                                         &rendering_time_msec);
-
-                            snprintf(rendering_time_buffer,
-                                     sizeof(rendering_time_buffer),
-                                     "Rendering time: %.4fs (%d FPS)",
-                                     float(rendering_time_msec) / 1000.0f,
-                                     int(1000.0f / (rendering_time_msec != 0 ? rendering_time_msec : 1) ) );
-
-                            ogl_text_set(text_renderer,
-                                         rendering_handler->text_string_id,
-                                         rendering_time_buffer);
-
-                            ogl_text_get_text_string_property(text_renderer,
-                                                              OGL_TEXT_STRING_PROPERTY_TEXT_HEIGHT_PX,
-                                                              rendering_handler->text_string_id,
-                                                             &rendering_time_text_height);
-
-                            rendering_time_pos[1] = window_size[1] - rendering_time_text_height;
-
-                            ogl_text_set_text_string_property(text_renderer,
-                                                              rendering_handler->text_string_id,
-                                                              OGL_TEXT_STRING_PROPERTY_POSITION_PX,
-                                                              rendering_time_pos);
-
-                            ogl_text_draw(rendering_handler->context,
-                                          text_renderer);
-                        } /* if (rendering_handler->fps_counter_status) */
 
                         /* Swap back buffer with the front buffer now */
                         rendering_handler->last_frame_index = frame_index;
@@ -420,8 +334,6 @@ PRIVATE ogl_rendering_handler ogl_rendering_handler_create_shared(__in __notnull
         new_handler->context                          = NULL;
         new_handler->context_set_event                = system_event_create(true); /* manual_reset */
         new_handler->fps                              = desired_fps;
-        new_handler->fps_counter_status               = false;
-        new_handler->last_frame_time                  = 0;
         new_handler->n_frames_rendered                = 0;
         new_handler->playback_in_progress_event       = system_event_create(true); /* manual_reset */
         new_handler->playback_start_time              = 0;
@@ -515,13 +427,6 @@ PUBLIC EMERALD_API void ogl_rendering_handler_get_property(__in  __notnull ogl_r
 
     switch (property)
     {
-        case OGL_RENDERING_HANDLER_PROPERTY_LAST_FRAME_TIME:
-        {
-            *(system_time*) out_result = rendering_handler_ptr->last_frame_time;
-
-            break;
-        }
-
         case OGL_RENDERING_HANDLER_PROPERTY_PLAYBACK_STATUS:
         {
             *(ogl_rendering_handler_playback_status*) out_result = rendering_handler_ptr->playback_status;
@@ -652,13 +557,6 @@ PUBLIC EMERALD_API bool ogl_rendering_handler_request_callback_from_context_thre
     }
 
     return result;
-}
-
-/** Please see header for specification */
-PUBLIC EMERALD_API void ogl_rendering_handler_set_fps_counter_visibility(__in __notnull ogl_rendering_handler rendering_handler,
-                                                                         __in           bool                  fps_counter_status)
-{
-    ((_ogl_rendering_handler*)rendering_handler)->fps_counter_status = fps_counter_status;
 }
 
 /** Please see header for specification */

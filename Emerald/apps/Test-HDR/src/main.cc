@@ -741,8 +741,6 @@ void _window_closing_callback_handler(system_window window)
                                          (void*) _window_closing_callback_handler,
                                          NULL);
 
-    ogl_rendering_handler_set_fps_counter_visibility(window_rendering_handler,
-                                                     true);
     /* Create shared VP */
     _vp = shaders_vertex_fullscreen_create(_context,
                                            true, /* export_uv */

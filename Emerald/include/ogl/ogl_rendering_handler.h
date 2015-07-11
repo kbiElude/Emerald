@@ -13,9 +13,6 @@ REFCOUNT_INSERT_DECLARATIONS(ogl_rendering_handler,
 
 typedef enum
 {
-    /* not settable, system_time */
-    OGL_RENDERING_HANDLER_PROPERTY_LAST_FRAME_TIME,
-
     /* not settable, ogl_rendering_handler_playback_status */
     OGL_RENDERING_HANDLER_PROPERTY_PLAYBACK_STATUS,
 
@@ -60,10 +57,6 @@ PUBLIC EMERALD_API bool ogl_rendering_handler_request_callback_from_context_thre
                                                                                    __in __notnull PFNOGLCONTEXTCALLBACKFROMCONTEXTTHREADPROC pfn_callback_proc,
                                                                                    __in           void*                                      user_arg,
                                                                                    __in           bool                                       block_until_available = true);
-
-/** TODO */
-PUBLIC EMERALD_API void ogl_rendering_handler_set_fps_counter_visibility(__in __notnull ogl_rendering_handler rendering_handler,
-                                                                         __in           bool                  fps_counter_status);
 
 /** TODO */
 PUBLIC EMERALD_API bool ogl_rendering_handler_stop(__in __notnull ogl_rendering_handler rendering_handler);
