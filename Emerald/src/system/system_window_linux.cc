@@ -58,7 +58,7 @@ typedef struct _system_window_linux
     int cursor_position[2]; /* only updated prior to call-back execution! */
 
 
-    explicit _system_window_linux(__in system_window in_window)
+    explicit _system_window_linux(system_window in_window)
     {
         action_forbidden_cursor_resource     = 0;
         arrow_cursor_resource                = 0;
@@ -482,7 +482,7 @@ PRIVATE void _system_window_window_closing_rendering_thread_entrypoint(ogl_conte
 
 
 /** Please see header for spec */
-PUBLIC void system_window_linux_close_window(__in system_window_linux window)
+PUBLIC void system_window_linux_close_window(system_window_linux window)
 {
     _system_window_linux* linux_ptr = (_system_window_linux*) window;
 
@@ -498,7 +498,7 @@ PUBLIC void system_window_linux_close_window(__in system_window_linux window)
 }
 
 /** Please see header for spec */
-PUBLIC void system_window_linux_deinit(__in system_window_linux window)
+PUBLIC void system_window_linux_deinit(system_window_linux window)
 {
     _system_window_linux* linux_ptr = (_system_window_linux*) window;
 
@@ -541,9 +541,9 @@ PUBLIC void system_window_linux_deinit_global()
 }
 
 /** Please see header for spec */
-PUBLIC bool system_window_linux_get_property(__in  system_window_linux    window,
-                                             __in  system_window_property property,
-                                             __out void*                  out_result)
+PUBLIC bool system_window_linux_get_property(system_window_linux    window,
+                                             system_window_property property,
+                                             void*                  out_result)
 {
     _system_window_linux* linux_ptr = (_system_window_linux*) window;
     bool                  result    = true;
@@ -636,8 +636,8 @@ PUBLIC bool system_window_linux_get_property(__in  system_window_linux    window
 }
 
 /** Please see header for spec */
-PUBLIC void system_window_linux_get_screen_size(__out int* out_screen_width_ptr,
-                                                __out int* out_screen_height_ptr)
+PUBLIC void system_window_linux_get_screen_size(int* out_screen_width_ptr,
+                                                int* out_screen_height_ptr)
 {
     Display* display                = NULL;
     Screen*  display_screen         = NULL;
@@ -681,7 +681,7 @@ PUBLIC void system_window_linux_get_screen_size(__out int* out_screen_width_ptr,
 }
 
 /** Please see header for spec */
-PUBLIC void system_window_linux_handle_window(__in system_window_linux window)
+PUBLIC void system_window_linux_handle_window(system_window_linux window)
 {
     XEvent                current_event;
     bool                  is_visible = false;
@@ -745,7 +745,7 @@ PUBLIC void system_window_linux_handle_window(__in system_window_linux window)
 }
 
 /** Please see header for spec */
-PUBLIC system_window_linux system_window_linux_init(__in __notnull system_window owner)
+PUBLIC system_window_linux system_window_linux_init(system_window owner)
 {
     _system_window_linux* linux_ptr = new (std::nothrow) _system_window_linux(owner);
 
@@ -771,8 +771,8 @@ PUBLIC void system_window_linux_init_global()
 
 
 /** Please see header for spec */
-PUBLIC bool system_window_linux_open_window(__in system_window_linux window,
-                                            __in bool                is_first_window)
+PUBLIC bool system_window_linux_open_window(system_window_linux window,
+                                            bool                is_first_window)
 {
     bool                      is_window_fullscreen = false;
     bool                      is_window_scalable   = false;
@@ -1010,9 +1010,9 @@ end:
 }
 
 /** Please see header for property */
-PUBLIC bool system_window_linux_set_property(__in system_window_linux    window,
-                                             __in system_window_property property,
-                                             __in const void*            data)
+PUBLIC bool system_window_linux_set_property(system_window_linux    window,
+                                             system_window_property property,
+                                             const void*            data)
 {
     _system_window_linux* linux_ptr = (_system_window_linux*) window;
     bool                  result    = true;

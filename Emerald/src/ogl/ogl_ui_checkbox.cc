@@ -702,8 +702,6 @@ PUBLIC void ogl_ui_checkbox_set_property(void*                    checkbox,
     {
         case OGL_UI_CONTROL_PROPERTY_CHECKBOX_X1Y1:
         {
-            __analysis_assume(sizeof(data) == sizeof(float) * 2);
-
             memcpy(checkbox_ptr->base_x1y1,
                    data,
                    sizeof(float) * 2);

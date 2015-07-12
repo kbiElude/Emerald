@@ -137,7 +137,7 @@ PRIVATE int* _ogl_context_linux_get_visual_attribute_list(system_pixel_format pi
 }
 
 /** TODO */
-PRIVATE void _ogl_context_linux_initialize_glx_extensions(__inout __notnull _ogl_context_linux* context_ptr)
+PRIVATE void _ogl_context_linux_initialize_glx_extensions(_ogl_context_linux* context_ptr)
 {
     system_window  context_window              = NULL;
     Display*       context_window_display      = NULL;
@@ -204,7 +204,7 @@ PRIVATE bool _ogl_context_linux_set_pixel_format_multisampling(_ogl_context_linu
 
 
 /** Please see header for spec */
-PUBLIC void ogl_context_linux_bind_to_current_thread(__in ogl_context_linux context_linux)
+PUBLIC void ogl_context_linux_bind_to_current_thread(ogl_context_linux context_linux)
 {
     system_window        context_window          = NULL;
     system_window_handle context_window_platform = (system_window_handle) NULL;
@@ -241,7 +241,7 @@ PUBLIC void ogl_context_linux_bind_to_current_thread(__in ogl_context_linux cont
 }
 
 /** Please see header for spec */
-PUBLIC void ogl_context_linux_deinit(__in __post_invalid ogl_context_linux context_linux)
+PUBLIC void ogl_context_linux_deinit(ogl_context_linux context_linux)
 {
     _ogl_context_linux* linux_ptr = (_ogl_context_linux*) context_linux;
 
@@ -288,7 +288,7 @@ PUBLIC void ogl_context_linux_deinit_global()
 }
 
 /** Please see header for specification */
-PUBLIC void ogl_context_linux_enumerate_supported_msaa_modes(__in ogl_context_linux context_linux)
+PUBLIC void ogl_context_linux_enumerate_supported_msaa_modes(ogl_context_linux context_linux)
 {
     /* TODO: Rip out MSAA stuff */
 }
@@ -333,8 +333,8 @@ PUBLIC void ogl_context_linux_get_fb_configs_for_gl_window(system_window window,
 }
 
 /** Please see header for spec */
-PUBLIC void* ogl_context_linux_get_func_ptr(__in ogl_context_linux context_linux,
-                                            __in const char*       name)
+PUBLIC void* ogl_context_linux_get_func_ptr(ogl_context_linux context_linux,
+                                            const char*       name)
 {
     void*               result    = NULL;
     _ogl_context_linux* linux_ptr = (_ogl_context_linux*) context_linux;
@@ -349,9 +349,9 @@ PUBLIC void* ogl_context_linux_get_func_ptr(__in ogl_context_linux context_linux
 }
 
 /** Please see header for spec */
-PUBLIC bool ogl_context_linux_get_property(__in  ogl_context_linux    context_linux,
-                                           __in  ogl_context_property property,
-                                           __out void*                out_result)
+PUBLIC bool ogl_context_linux_get_property(ogl_context_linux    context_linux,
+                                           ogl_context_property property,
+                                           void*                out_result)
 {
     bool                result    = false;
     _ogl_context_linux* linux_ptr = (_ogl_context_linux*) context_linux;
@@ -475,8 +475,8 @@ end:
 }
 
 /** Please see header for spec */
-PUBLIC void ogl_context_linux_init(__in ogl_context                     context,
-                                   __in PFNINITCONTEXTAFTERCREATIONPROC pInitContextAfterCreation)
+PUBLIC void ogl_context_linux_init(ogl_context                     context,
+                                   PFNINITCONTEXTAFTERCREATIONPROC pInitContextAfterCreation)
 {
     int                   attribute_list[32]               = {0}; /* 32 is more than enough */
     int                   context_major_version            = 0;
@@ -642,7 +642,7 @@ PUBLIC void ogl_context_linux_init_global()
 }
 
 /** Please see header for spec */
-PUBLIC void ogl_context_linux_init_msaa(__in ogl_context_linux context_linux)
+PUBLIC void ogl_context_linux_init_msaa(ogl_context_linux context_linux)
 {
     const ogl_context_gl_limits* limits_ptr       = NULL;
     _ogl_context_linux*          linux_ptr        = (_ogl_context_linux*) context_linux;
@@ -698,9 +698,9 @@ PUBLIC void ogl_context_linux_init_msaa(__in ogl_context_linux context_linux)
 }
 
 /** Please see header for spec */
-PUBLIC bool ogl_context_linux_set_property(__in ogl_context_linux    context_linux,
-                                           __in ogl_context_property property,
-                                           __in const void*          data)
+PUBLIC bool ogl_context_linux_set_property(ogl_context_linux    context_linux,
+                                           ogl_context_property property,
+                                           const void*          data)
 {
     bool                result    = false;
     _ogl_context_linux* linux_ptr = (_ogl_context_linux*) context_linux;
@@ -764,7 +764,7 @@ PUBLIC bool ogl_context_linux_set_property(__in ogl_context_linux    context_lin
 }
 
 /** Please see header for spec */
-PUBLIC void ogl_context_linux_swap_buffers(__in ogl_context_linux context_linux)
+PUBLIC void ogl_context_linux_swap_buffers(ogl_context_linux context_linux)
 {
     _ogl_context_linux*  linux_ptr       = (_ogl_context_linux*) context_linux;
     system_window        window          = NULL;
@@ -793,7 +793,7 @@ PUBLIC void ogl_context_linux_swap_buffers(__in ogl_context_linux context_linux)
 }
 
 /** Please see header for spec */
-PUBLIC void ogl_context_linux_unbind_from_current_thread(__in ogl_context_linux context_linux)
+PUBLIC void ogl_context_linux_unbind_from_current_thread(ogl_context_linux context_linux)
 {
     system_window        context_window = NULL;
     Display*             display        = NULL;

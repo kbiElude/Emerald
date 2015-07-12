@@ -158,8 +158,8 @@ PUBLIC EMERALD_API void system_threads_join_thread(system_thread thread,
         }
         else
         {
-            system_time_get_msec_for_timeline_time(timeout,
-                                                  &timeout_msec);
+            system_time_get_msec_for_time(timeout,
+                                         &timeout_msec);
 
             timeout_api.tv_sec  =  timeout_msec / 1000;
             timeout_api.tv_nsec = (timeout_msec % 1000) * NSEC_PER_SEC;

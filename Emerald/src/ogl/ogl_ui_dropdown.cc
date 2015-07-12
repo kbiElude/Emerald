@@ -2206,8 +2206,6 @@ PUBLIC void ogl_ui_dropdown_set_property(void*                    dropdown,
         case OGL_UI_CONTROL_PROPERTY_GENERAL_X1Y1:
         case OGL_UI_CONTROL_PROPERTY_DROPDOWN_X1Y1:
         {
-            __analysis_assume(sizeof(data) == sizeof(float) * 2);
-
             _ogl_ui_dropdown_update_position(dropdown_ptr,
                                              (const float*) data);
 
