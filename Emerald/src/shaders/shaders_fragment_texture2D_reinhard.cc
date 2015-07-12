@@ -71,7 +71,7 @@ REFCOUNT_INSERT_IMPLEMENTATION(shaders_fragment_texture2D_reinhardt,
  *
  *  @param ptr Pointer to _shaders_fragment_texture2D_reinhardt instance.
  **/
-PRIVATE void _shaders_fragment_texture2D_reinhardt_release(__in __notnull __deallocate(mem) void* ptr)
+PRIVATE void _shaders_fragment_texture2D_reinhardt_release(void* ptr)
 {
     _shaders_fragment_texture2D_reinhardt* data_ptr = (_shaders_fragment_texture2D_reinhardt*) ptr;
 
@@ -85,9 +85,9 @@ PRIVATE void _shaders_fragment_texture2D_reinhardt_release(__in __notnull __deal
 
 
 /** Please see header for specification */
-PUBLIC EMERALD_API shaders_fragment_texture2D_reinhardt shaders_fragment_texture2D_reinhardt_create(__in __notnull ogl_context               context,
-                                                                                                    __in           bool                      should_revert_y,
-                                                                                                    __in __notnull system_hashed_ansi_string name)
+PUBLIC EMERALD_API shaders_fragment_texture2D_reinhardt shaders_fragment_texture2D_reinhardt_create(ogl_context               context,
+                                                                                                    bool                      should_revert_y,
+                                                                                                    system_hashed_ansi_string name)
 {
     _shaders_fragment_texture2D_reinhardt* result_object = NULL;
     shaders_fragment_texture2D_reinhardt   result_shader = NULL;
@@ -163,7 +163,7 @@ end:
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API ogl_shader shaders_fragment_texture2D_reinhardt_get_shader(__in __notnull shaders_fragment_texture2D_reinhardt shader)
+PUBLIC EMERALD_API ogl_shader shaders_fragment_texture2D_reinhardt_get_shader(shaders_fragment_texture2D_reinhardt shader)
 {
     return (((_shaders_fragment_texture2D_reinhardt*)shader)->shader);
 }

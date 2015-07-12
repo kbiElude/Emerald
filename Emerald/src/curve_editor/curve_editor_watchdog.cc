@@ -55,7 +55,7 @@ typedef struct _curve_editor_watchdog
 
 
 /** TODO */
-PRIVATE void _curve_editor_watchdog_monitor_thread_entrypoint(__in __notnull system_threads_entry_point_argument argument)
+PRIVATE void _curve_editor_watchdog_monitor_thread_entrypoint(system_threads_entry_point_argument argument)
 {
     /* This is new thread's entry-point */
     const system_time       timeout      = system_time_get_time_for_msec(SIGNAL_COLLATE_TIMEOUT);
@@ -135,7 +135,7 @@ PUBLIC curve_editor_watchdog curve_editor_watchdog_create()
 }
 
 /** Please see header for spec */
-PUBLIC void curve_editor_watchdog_release(__in __notnull curve_editor_watchdog watchdog)
+PUBLIC void curve_editor_watchdog_release(curve_editor_watchdog watchdog)
 {
     if (watchdog != NULL)
     {
@@ -152,7 +152,7 @@ PUBLIC void curve_editor_watchdog_release(__in __notnull curve_editor_watchdog w
 }
 
 /** Please see header for spec */
-PUBLIC void curve_editor_watchdog_signal(__in __notnull curve_editor_watchdog watchdog)
+PUBLIC void curve_editor_watchdog_signal(curve_editor_watchdog watchdog)
 {
     _curve_editor_watchdog* watchdog_ptr = (_curve_editor_watchdog*) watchdog;
 

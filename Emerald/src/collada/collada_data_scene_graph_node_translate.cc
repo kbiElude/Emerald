@@ -10,9 +10,9 @@
 #include "system/system_resizable_vector.h"
 
 /** Please see header for spec */
-PUBLIC collada_data_scene_graph_node_item collada_data_scene_graph_node_translate_create(__in      __notnull   tinyxml2::XMLElement* element_ptr,
-                                                                                         __in_opt  __ecount(3) const float*          overriding_vec3,
-                                                                                         __out_opt __ecount(3) float*                result_vec3)
+PUBLIC collada_data_scene_graph_node_item collada_data_scene_graph_node_translate_create(tinyxml2::XMLElement* element_ptr,
+                                                                                         const float*          overriding_vec3,
+                                                                                         float*                result_vec3)
 {
     collada_data_scene_graph_node_item item          = NULL;
     const char*                        text          = element_ptr->GetText();

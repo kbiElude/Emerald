@@ -374,7 +374,7 @@ PRIVATE curve_container_envelope_boundary_behavior GetCurveContainerEnvelopeBoun
 
 
 /** TODO */
-PUBLIC curve_id AddCurveContainerToEnvelopeIDToCurveContainerHashMap(__in __notnull curve_container curve)
+PUBLIC curve_id AddCurveContainerToEnvelopeIDToCurveContainerHashMap(curve_container curve)
 {
     unsigned int n_curve_container_id = 0;
     curve_id     result               = 0;
@@ -440,7 +440,7 @@ PUBLIC void DeinitCurveData()
 }
 
 /** TODO */
-PUBLIC void FillSceneWithCurveData(__in __notnull scene in_scene)
+PUBLIC void FillSceneWithCurveData(scene in_scene)
 {
     ASSERT_DEBUG_SYNC(envelope_id_to_curve_container_map != NULL,
                       "Envelope ID->curve container map is NULL");
@@ -498,7 +498,7 @@ PUBLIC void FillSceneWithCurveData(__in __notnull scene in_scene)
 }
 
 /** TODO */
-volatile void InitCurveDataWorkerThreadEntryPoint(__in __notnull void* not_used)
+volatile void InitCurveDataWorkerThreadEntryPoint(void* not_used)
 {
     ASSERT_DEBUG_SYNC(curve_containers                   == NULL &&
                       envelope_id_to_curve_container_map == NULL,

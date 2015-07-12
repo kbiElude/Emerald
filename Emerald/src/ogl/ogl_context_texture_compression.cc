@@ -69,23 +69,23 @@ typedef struct _ogl_context_texture_compression
 
 
 /** Forward declarations */
-PRIVATE void _ogl_context_texture_compression_init_bptc_support       (__in __notnull _ogl_context_texture_compression* texture_compression_ptr,
-                                                                       __in __notnull GLenum*                           compressed_texture_formats,
-                                                                       __in           uint32_t                          n_compressed_texture_formats);
-PRIVATE void _ogl_context_texture_compression_init_dxt1_support       (__in __notnull _ogl_context_texture_compression* texture_compression_ptr);
-PRIVATE void _ogl_context_texture_compression_init_dxt3_dxt5_support  (__in __notnull _ogl_context_texture_compression* texture_compression_ptr);
-PRIVATE void _ogl_context_texture_compression_init_latc_support       (__in __notnull _ogl_context_texture_compression* texture_compression_ptr);
-PRIVATE void _ogl_context_texture_compression_init_rgtc_support       (__in __notnull _ogl_context_texture_compression* texture_compression_ptr,
-                                                                       __in __notnull GLenum*                           compressed_texture_formats,
-                                                                       __in           uint32_t                          n_compressed_texture_formats);
-PRIVATE bool _ogl_context_texture_compression_is_compression_supported(__in __notnull GLenum*  compressed_texture_formats,
-                                                                       __in           uint32_t n_compressed_texture_formats,
-                                                                       __in           GLenum   internalformat);
+PRIVATE void _ogl_context_texture_compression_init_bptc_support       (_ogl_context_texture_compression* texture_compression_ptr,
+                                                                       GLenum*                           compressed_texture_formats,
+                                                                       uint32_t                          n_compressed_texture_formats);
+PRIVATE void _ogl_context_texture_compression_init_dxt1_support       (_ogl_context_texture_compression* texture_compression_ptr);
+PRIVATE void _ogl_context_texture_compression_init_dxt3_dxt5_support  (_ogl_context_texture_compression* texture_compression_ptr);
+PRIVATE void _ogl_context_texture_compression_init_latc_support       (_ogl_context_texture_compression* texture_compression_ptr);
+PRIVATE void _ogl_context_texture_compression_init_rgtc_support       (_ogl_context_texture_compression* texture_compression_ptr,
+                                                                       GLenum*                           compressed_texture_formats,
+                                                                       uint32_t                          n_compressed_texture_formats);
+PRIVATE bool _ogl_context_texture_compression_is_compression_supported(GLenum*                           compressed_texture_formats,
+                                                                       uint32_t                          n_compressed_texture_formats,
+                                                                       GLenum                            internalformat);
 
 /** TODO */
-PRIVATE void _ogl_context_texture_compression_init_bptc_support(__in __notnull _ogl_context_texture_compression* texture_compression_ptr,
-                                                                __in __notnull GLenum*                           compressed_texture_formats,
-                                                                __in           uint32_t                          n_compressed_texture_formats)
+PRIVATE void _ogl_context_texture_compression_init_bptc_support(_ogl_context_texture_compression* texture_compression_ptr,
+                                                                GLenum*                           compressed_texture_formats,
+                                                                uint32_t                          n_compressed_texture_formats)
 {
     /* BC6H */
     _ogl_context_texture_compression_algorithm* item_rgb_bptc_signed_float   = new (std::nothrow) _ogl_context_texture_compression_algorithm;
@@ -157,7 +157,7 @@ PRIVATE void _ogl_context_texture_compression_init_bptc_support(__in __notnull _
 }
 
 /** TODO */
-PRIVATE void _ogl_context_texture_compression_init_dxt1_support(__in __notnull _ogl_context_texture_compression* texture_compression_ptr)
+PRIVATE void _ogl_context_texture_compression_init_dxt1_support(_ogl_context_texture_compression* texture_compression_ptr)
 {
     _ogl_context_texture_compression_algorithm* item_rgb_s3tc_dxt1  = new (std::nothrow) _ogl_context_texture_compression_algorithm;
     _ogl_context_texture_compression_algorithm* item_rgba_s3tc_dxt1 = new (std::nothrow) _ogl_context_texture_compression_algorithm;
@@ -196,7 +196,7 @@ PRIVATE void _ogl_context_texture_compression_init_dxt1_support(__in __notnull _
 }
 
 /** TODO */
-PRIVATE void _ogl_context_texture_compression_init_dxt3_dxt5_support(__in __notnull _ogl_context_texture_compression* texture_compression_ptr)
+PRIVATE void _ogl_context_texture_compression_init_dxt3_dxt5_support(_ogl_context_texture_compression* texture_compression_ptr)
 {
     _ogl_context_texture_compression_algorithm* item_rgba_s3tc_dxt3 = new (std::nothrow) _ogl_context_texture_compression_algorithm;
     _ogl_context_texture_compression_algorithm* item_rgba_s3tc_dxt5 = new (std::nothrow) _ogl_context_texture_compression_algorithm;
@@ -235,9 +235,9 @@ PRIVATE void _ogl_context_texture_compression_init_dxt3_dxt5_support(__in __notn
 }
 
 /** TODO */
-PRIVATE void _ogl_context_texture_compression_init_etc_etc2_support(__in __notnull _ogl_context_texture_compression* texture_compression_ptr,
-                                                                    __in __notnull GLenum*                           compressed_texture_formats,
-                                                                    __in           uint32_t                          n_compressed_texture_formats)
+PRIVATE void _ogl_context_texture_compression_init_etc_etc2_support(_ogl_context_texture_compression* texture_compression_ptr,
+                                                                    GLenum*                           compressed_texture_formats,
+                                                                    uint32_t                          n_compressed_texture_formats)
 {
     _ogl_context_texture_compression_algorithm* item_r11_eac                        = new (std::nothrow) _ogl_context_texture_compression_algorithm;
     _ogl_context_texture_compression_algorithm* item_rg11_eac                       = new (std::nothrow) _ogl_context_texture_compression_algorithm;
@@ -332,7 +332,7 @@ PRIVATE void _ogl_context_texture_compression_init_etc_etc2_support(__in __notnu
 }
 
 /** TODO */
-PRIVATE void _ogl_context_texture_compression_init_latc_support(__in __notnull _ogl_context_texture_compression* texture_compression_ptr)
+PRIVATE void _ogl_context_texture_compression_init_latc_support(_ogl_context_texture_compression* texture_compression_ptr)
 {
     _ogl_context_texture_compression_algorithm* item_luminance_latc1              = new (std::nothrow) _ogl_context_texture_compression_algorithm;
     _ogl_context_texture_compression_algorithm* item_signed_luminance_latc1       = new (std::nothrow) _ogl_context_texture_compression_algorithm;
@@ -383,9 +383,9 @@ PRIVATE void _ogl_context_texture_compression_init_latc_support(__in __notnull _
 }
 
 /** TODO */
-PRIVATE void _ogl_context_texture_compression_init_rgtc_support(__in __notnull _ogl_context_texture_compression* texture_compression_ptr,
-                                                                __in __notnull GLenum*                           compressed_texture_formats,
-                                                                __in           uint32_t                          n_compressed_texture_formats)
+PRIVATE void _ogl_context_texture_compression_init_rgtc_support(_ogl_context_texture_compression* texture_compression_ptr,
+                                                                GLenum*                           compressed_texture_formats,
+                                                                uint32_t                          n_compressed_texture_formats)
 {
     /* BC4 */
     _ogl_context_texture_compression_algorithm* item_red_rgtc1        = new (std::nothrow) _ogl_context_texture_compression_algorithm;
@@ -457,9 +457,9 @@ PRIVATE void _ogl_context_texture_compression_init_rgtc_support(__in __notnull _
 }
 
 /** TODO */
-PRIVATE bool _ogl_context_texture_compression_is_compression_supported(__in __notnull GLenum*  compressed_texture_formats,
-                                                                       __in           uint32_t n_compressed_texture_formats,
-                                                                       __in           GLenum   internalformat)
+PRIVATE bool _ogl_context_texture_compression_is_compression_supported(GLenum*  compressed_texture_formats,
+                                                                       uint32_t n_compressed_texture_formats,
+                                                                       GLenum   internalformat)
 {
     bool result = false;
 
@@ -480,7 +480,7 @@ PRIVATE bool _ogl_context_texture_compression_is_compression_supported(__in __no
 
 
 /** Please see header for spec */
-PUBLIC ogl_context_texture_compression ogl_context_texture_compression_create(__in __notnull ogl_context context)
+PUBLIC ogl_context_texture_compression ogl_context_texture_compression_create(ogl_context context)
 {
     _ogl_context_texture_compression* new_instance = new (std::nothrow) _ogl_context_texture_compression;
 
@@ -496,10 +496,10 @@ PUBLIC ogl_context_texture_compression ogl_context_texture_compression_create(__
 }
 
 /** Please see header for spec */
-PUBLIC EMERALD_API void ogl_context_texture_compression_get_algorithm_property(__in  __notnull ogl_context_texture_compression                    texture_compression,
-                                                                               __in            uint32_t                                           index,
-                                                                               __in            ogl_context_texture_compression_algorithm_property property,
-                                                                               __out __notnull void*                                              out_result)
+PUBLIC EMERALD_API void ogl_context_texture_compression_get_algorithm_property(ogl_context_texture_compression                    texture_compression,
+                                                                               uint32_t                                           index,
+                                                                               ogl_context_texture_compression_algorithm_property property,
+                                                                               void*                                              out_result)
 {
     _ogl_context_texture_compression_algorithm* algorithm_ptr           = NULL;
     _ogl_context_texture_compression*           texture_compression_ptr = (_ogl_context_texture_compression*) texture_compression;
@@ -547,9 +547,9 @@ PUBLIC EMERALD_API void ogl_context_texture_compression_get_algorithm_property(_
 }
 
 /** Please see header for spec */
-PUBLIC EMERALD_API void ogl_context_texture_compression_get_property(__in  __notnull ogl_context_texture_compression          texture_compression,
-                                                                     __in            ogl_context_texture_compression_property property,
-                                                                     __out __notnull void*                                    out_result)
+PUBLIC EMERALD_API void ogl_context_texture_compression_get_property(ogl_context_texture_compression          texture_compression,
+                                                                     ogl_context_texture_compression_property property,
+                                                                     void*                                    out_result)
 {
     _ogl_context_texture_compression* texture_compression_ptr = (_ogl_context_texture_compression*) texture_compression;
 
@@ -573,8 +573,8 @@ PUBLIC EMERALD_API void ogl_context_texture_compression_get_property(__in  __not
 }
 
 /** Please see header for spec */
-PUBLIC void ogl_context_texture_compression_init(__in __notnull ogl_context_texture_compression           texture_compression,
-                                                 __in __notnull const ogl_context_gl_entrypoints_private* entrypoints_private_ptr)
+PUBLIC void ogl_context_texture_compression_init(ogl_context_texture_compression           texture_compression,
+                                                 const ogl_context_gl_entrypoints_private* entrypoints_private_ptr)
 {
     _ogl_context_texture_compression* texture_compression_ptr = (_ogl_context_texture_compression*) texture_compression;
 
@@ -656,7 +656,7 @@ PUBLIC void ogl_context_texture_compression_init(__in __notnull ogl_context_text
 }
 
 /** Please see header for spec */
-PUBLIC void ogl_context_texture_compression_release(__in __notnull __post_invalid ogl_context_texture_compression texture_compression)
+PUBLIC void ogl_context_texture_compression_release(ogl_context_texture_compression texture_compression)
 {
     _ogl_context_texture_compression* texture_compression_ptr = (_ogl_context_texture_compression*) texture_compression;
 

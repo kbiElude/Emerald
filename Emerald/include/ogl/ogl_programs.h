@@ -31,29 +31,29 @@ PUBLIC ogl_programs ogl_programs_create();
  *
  *  Internal usage only.
  **/
-PUBLIC ogl_program ogl_programs_get_program_by_id(__in __notnull ogl_programs programs,
-                                                  __in           GLuint       po_id);
+PUBLIC ogl_program ogl_programs_get_program_by_id(ogl_programs programs,
+                                                  GLuint       po_id);
 
 /** TODO
  *
  *  Internal usage only.
  **/
-PUBLIC ogl_program ogl_programs_get_program_by_name(__in __notnull ogl_programs              programs,
-                                                    __in __notnull system_hashed_ansi_string program_has);
+PUBLIC ogl_program ogl_programs_get_program_by_name(ogl_programs              programs,
+                                                    system_hashed_ansi_string program_has);
 
 /** TODO.
  *
  *  Internal usage only.
  **/
-PUBLIC void ogl_programs_register_program(__in __notnull ogl_programs programs,
-                                          __in __notnull ogl_program  program);
+PUBLIC void ogl_programs_register_program(ogl_programs programs,
+                                          ogl_program  program);
 
 /** TODO.
  *
  *  Internal usage only.
  */
-PUBLIC void ogl_programs_unregister_program(__in __notnull ogl_programs programs,
-                                            __in __notnull ogl_program  program);
+PUBLIC void ogl_programs_unregister_program(ogl_programs programs,
+                                            ogl_program  program);
 
 
 #endif /* OGL_PROGRAMS_H */

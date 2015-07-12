@@ -28,7 +28,7 @@ bool _verbose_status = false;
 
 
 /* Please see header for specification */
-PUBLIC object_manager_directory object_manager_directory_create(__in __notnull system_hashed_ansi_string name)
+PUBLIC object_manager_directory object_manager_directory_create(system_hashed_ansi_string name)
 {
     _object_manager_directory* new_instance = new (std::nothrow) _object_manager_directory;
 
@@ -51,8 +51,8 @@ end:
 }
 
 /* Please see header for specification */
-PUBLIC bool object_manager_directory_create_directory_structure(__in __notnull object_manager_directory  directory,
-                                                                               system_hashed_ansi_string path)
+PUBLIC bool object_manager_directory_create_directory_structure(object_manager_directory  directory,
+                                                                system_hashed_ansi_string path)
 {
     _object_manager_directory* directory_ptr  = (_object_manager_directory*) directory;
     const char*                path_ptr       = system_hashed_ansi_string_get_buffer(path);
@@ -124,8 +124,8 @@ end:
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API bool object_manager_directory_delete_directory(__in __notnull object_manager_directory   directory,
-                                                                                  system_hashed_ansi_string directory_name)
+PUBLIC EMERALD_API bool object_manager_directory_delete_directory(object_manager_directory   directory,
+                                                                  system_hashed_ansi_string directory_name)
 {
     bool                       result        = false;
     _object_manager_directory* directory_ptr = (_object_manager_directory*) directory;
@@ -143,8 +143,8 @@ PUBLIC EMERALD_API bool object_manager_directory_delete_directory(__in __notnull
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API bool object_manager_directory_delete_item(__in __notnull object_manager_directory  directory,
-                                                                            system_hashed_ansi_string item_name)
+PUBLIC EMERALD_API bool object_manager_directory_delete_item(object_manager_directory  directory,
+                                                             system_hashed_ansi_string item_name)
 {
     bool                       result        = false;
     _object_manager_directory* directory_ptr = (_object_manager_directory*) directory;
@@ -176,9 +176,9 @@ PUBLIC EMERALD_API bool object_manager_directory_delete_item(__in __notnull obje
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API bool object_manager_directory_extract_item_name_and_path(__in __notnull system_hashed_ansi_string  registration_path,
-                                                                            __out          system_hashed_ansi_string* out_item_path,
-                                                                            __out          system_hashed_ansi_string* out_item_name)
+PUBLIC EMERALD_API bool object_manager_directory_extract_item_name_and_path(system_hashed_ansi_string  registration_path,
+                                                                            system_hashed_ansi_string* out_item_path,
+                                                                            system_hashed_ansi_string* out_item_name)
 {
     const char* path = system_hashed_ansi_string_get_buffer(registration_path);
 
@@ -239,8 +239,8 @@ PUBLIC EMERALD_API bool object_manager_directory_extract_item_name_and_path(__in
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API object_manager_item object_manager_directory_find_item(__in __notnull object_manager_directory  directory,
-                                                                                         system_hashed_ansi_string item_name)
+PUBLIC EMERALD_API object_manager_item object_manager_directory_find_item(object_manager_directory  directory,
+                                                                          system_hashed_ansi_string item_name)
 {
     object_manager_item        result         = NULL;
     _object_manager_directory* directory_ptr = (_object_manager_directory*) directory;
@@ -259,8 +259,8 @@ PUBLIC EMERALD_API object_manager_item object_manager_directory_find_item(__in _
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API object_manager_item object_manager_directory_find_item_recursive(__in __notnull object_manager_directory  directory,
-                                                                                                   system_hashed_ansi_string item_path)
+PUBLIC EMERALD_API object_manager_item object_manager_directory_find_item_recursive(object_manager_directory  directory,
+                                                                                    system_hashed_ansi_string item_path)
 {
     _object_manager_directory* directory_ptr = (_object_manager_directory*) directory;
     object_manager_item        result        = NULL;
@@ -306,8 +306,8 @@ PUBLIC EMERALD_API object_manager_item object_manager_directory_find_item_recurs
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API object_manager_directory object_manager_directory_find_subdirectory(__in __notnull object_manager_directory  start_directory,
-                                                                                                      system_hashed_ansi_string subdirectory_name)
+PUBLIC EMERALD_API object_manager_directory object_manager_directory_find_subdirectory(object_manager_directory  start_directory,
+                                                                                       system_hashed_ansi_string subdirectory_name)
 {
     object_manager_directory   result                = NULL;
     _object_manager_directory* start_directory_ptr   = (_object_manager_directory*) start_directory;
@@ -326,8 +326,8 @@ PUBLIC EMERALD_API object_manager_directory object_manager_directory_find_subdir
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API object_manager_directory object_manager_directory_find_subdirectory_recursive(__in __notnull object_manager_directory  start_directory,
-                                                                                                                system_hashed_ansi_string path)
+PUBLIC EMERALD_API object_manager_directory object_manager_directory_find_subdirectory_recursive(object_manager_directory  start_directory,
+                                                                                                 system_hashed_ansi_string path)
 {
     object_manager_directory   result              = start_directory;
     _object_manager_directory* start_directory_ptr = (_object_manager_directory*) start_directory;
@@ -406,7 +406,7 @@ PUBLIC EMERALD_API object_manager_directory object_manager_directory_find_subdir
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API uint32_t object_manager_directory_get_amount_of_children_for_directory(__in __notnull object_manager_directory directory)
+PUBLIC EMERALD_API uint32_t object_manager_directory_get_amount_of_children_for_directory(object_manager_directory directory)
 {
     _object_manager_directory* directory_ptr = (_object_manager_directory*) directory;
     uint32_t                   result        = 0;
@@ -487,7 +487,7 @@ PUBLIC EMERALD_API uint32_t object_manager_directory_get_amount_of_children_for_
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API uint32_t object_manager_directory_get_amount_of_subdirectories_for_directory(__in __notnull object_manager_directory directory)
+PUBLIC EMERALD_API uint32_t object_manager_directory_get_amount_of_subdirectories_for_directory(object_manager_directory directory)
 {
     _object_manager_directory* directory_ptr = (_object_manager_directory*) directory;
     uint32_t                   result        = 0;
@@ -510,8 +510,8 @@ PUBLIC EMERALD_API system_hashed_ansi_string object_manager_directory_get_name(o
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API object_manager_directory object_manager_directory_get_subdirectory_at(__in __notnull object_manager_directory directory,
-                                                                                                        uint32_t                 index)
+PUBLIC EMERALD_API object_manager_directory object_manager_directory_get_subdirectory_at(object_manager_directory directory,
+                                                                                         uint32_t                 index)
 {
     _object_manager_directory* directory_ptr = (_object_manager_directory*) directory;
     object_manager_directory   result        = NULL;
@@ -531,9 +531,9 @@ PUBLIC EMERALD_API object_manager_directory object_manager_directory_get_subdire
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API bool object_manager_directory_get_subitem_at(__in  __notnull object_manager_directory directory,
-                                                                                uint32_t                 index,
-                                                                __out __notnull object_manager_item*     out_item)
+PUBLIC EMERALD_API bool object_manager_directory_get_subitem_at(object_manager_directory directory,
+                                                                uint32_t                 index,
+                                                                object_manager_item*     out_item)
 {
     _object_manager_directory* directory_ptr   = (_object_manager_directory*) directory;
     system_hash64              item_hash       = 0;
@@ -554,8 +554,8 @@ PUBLIC EMERALD_API bool object_manager_directory_get_subitem_at(__in  __notnull 
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API bool object_manager_directory_insert_item(__in __notnull object_manager_directory directory,
-                                                                            object_manager_item      item)
+PUBLIC EMERALD_API bool object_manager_directory_insert_item(object_manager_directory directory,
+                                                             object_manager_item      item)
 {
     _object_manager_directory* directory_ptr  = (_object_manager_directory*) directory;
     system_hashed_ansi_string  item_name      = object_manager_item_get_name      (item);
@@ -597,8 +597,8 @@ PUBLIC EMERALD_API bool object_manager_directory_insert_item(__in __notnull obje
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API bool object_manager_directory_insert_subdirectory(__in __notnull object_manager_directory directory,
-                                                                                    object_manager_directory subdirectory)
+PUBLIC EMERALD_API bool object_manager_directory_insert_subdirectory(object_manager_directory directory,
+                                                                     object_manager_directory subdirectory)
 {
     _object_manager_directory* directory_ptr          = (_object_manager_directory*) directory;
     bool                       result                 = false;
@@ -638,7 +638,7 @@ PUBLIC EMERALD_API bool object_manager_directory_insert_subdirectory(__in __notn
 }
 
 /* Please see header for specification */
-PUBLIC void object_manager_directory_release(__in __notnull __post_invalid object_manager_directory directory)
+PUBLIC void object_manager_directory_release(object_manager_directory directory)
 {
     _object_manager_directory* directory_ptr = (_object_manager_directory*) directory;
 
@@ -682,7 +682,7 @@ PUBLIC void object_manager_directory_release(__in __notnull __post_invalid objec
 }
 
 /** Please see header for specification  */
- void object_manager_directory_set_verbose_mode(__in bool verbose)
+ void object_manager_directory_set_verbose_mode( bool verbose)
  {
      _verbose_status = verbose;
  }

@@ -39,9 +39,9 @@ typedef struct _collada_data_transformation_lookat
     collada_value up               [3];
 
     /* Constructor */
-    explicit _collada_data_transformation_lookat(__in_ecount(3) __notnull const float* in_eye,
-                                                 __in_ecount(3) __notnull const float* in_interest_position,
-                                                 __in_ecount(3) __notnull const float* in_up);
+    explicit _collada_data_transformation_lookat(const float* in_eye,
+                                                 const float* in_interest_position,
+                                                 const float* in_up);
     /* Destructor */
     ~_collada_data_transformation_lookat();
 } _collada_data_transformation_lookat;
@@ -53,7 +53,7 @@ typedef struct _collada_data_transformation_matrix
     collada_value data[4 * 4];
 
     /* Constructor */
-    explicit _collada_data_transformation_matrix(__in_ecount(16) __notnull const float* in_data)
+    explicit _collada_data_transformation_matrix(const float* in_data)
     {
         for (uint32_t n = 0;
                       n < 4 * 4;
@@ -88,8 +88,8 @@ typedef struct _collada_data_transformation_rotate
     collada_value angle; /* expressed in degrees */
 
     /* Constructor */
-    explicit _collada_data_transformation_rotate(__in_ecount(3) __notnull const float* in_axis,
-                                                                                float  in_angle)
+    explicit _collada_data_transformation_rotate(const float* in_axis,
+                                                       float  in_angle)
     {
         axis[0] = collada_value_create(COLLADA_VALUE_TYPE_FLOAT, in_axis + 0);
         axis[1] = collada_value_create(COLLADA_VALUE_TYPE_FLOAT, in_axis + 1);
@@ -135,7 +135,7 @@ typedef struct _collada_data_transformation_scale
     collada_value data[3];
 
     /* Constructor */
-    explicit _collada_data_transformation_scale(__in_ecount(3) __notnull const float* in_data)
+    explicit _collada_data_transformation_scale(const float* in_data)
     {
         for (uint32_t n = 0;
                       n < 3;
@@ -169,9 +169,9 @@ typedef struct _collada_data_transformation_skew
     collada_value translation_axis[3];
 
     /* Constructor */
-    explicit _collada_data_transformation_skew(__in                           float  in_angle,
-                                               __in_ecount(3) __notnull const float* in_rotation_axis,
-                                               __in_ecount(3) __notnull const float* in_translation_axis)
+    explicit _collada_data_transformation_skew(      float  in_angle,
+                                               const float* in_rotation_axis,
+                                               const float* in_translation_axis)
     {
         angle = collada_value_create(COLLADA_VALUE_TYPE_FLOAT, &in_angle);
 
@@ -221,7 +221,7 @@ typedef struct _collada_data_transformation_translate
     collada_value data[3];
 
     /* Constructor */
-    explicit _collada_data_transformation_translate(__in_ecount(3) __notnull const float* in_data)
+    explicit _collada_data_transformation_translate(const float* in_data)
     {
         for (uint32_t n = 0;
                       n < 3;
@@ -314,9 +314,9 @@ _collada_data_transformation::~_collada_data_transformation()
 }
 
 /** TODO */
-_collada_data_transformation_lookat::_collada_data_transformation_lookat(__in_ecount(3) __notnull const float* in_eye,
-                                                                         __in_ecount(3) __notnull const float* in_interest_position,
-                                                                         __in_ecount(3) __notnull const float* in_up)
+_collada_data_transformation_lookat::_collada_data_transformation_lookat(const float* in_eye,
+                                                                         const float* in_interest_position,
+                                                                         const float* in_up)
 {
     for (uint32_t n_component = 0;
                   n_component < 3;
@@ -360,8 +360,8 @@ _collada_data_transformation_lookat::~_collada_data_transformation_lookat()
 
 
 /** Please see header for specification */
-PUBLIC collada_data_transformation collada_data_transformation_create_lookat(__in           __notnull tinyxml2::XMLElement* element_ptr,
-                                                                             __in_ecount(9) __notnull const float*          data)
+PUBLIC collada_data_transformation collada_data_transformation_create_lookat(tinyxml2::XMLElement* element_ptr,
+                                                                             const float*          data)
 {
     _collada_data_transformation*        new_transformation_ptr      = new (std::nothrow) _collada_data_transformation       (COLLADA_DATA_TRANSFORMATION_TYPE_LOOKAT);
     _collada_data_transformation_lookat* new_transformation_data_ptr = new (std::nothrow) _collada_data_transformation_lookat(data, data + 3, data + 6);
@@ -380,8 +380,8 @@ end:
 }
 
 /** Please see header for specification */
-PUBLIC collada_data_transformation collada_data_transformation_create_matrix(__in           __notnull tinyxml2::XMLElement* element_ptr,
-                                                                             __in_ecount(16) __notnull const float*          data)
+PUBLIC collada_data_transformation collada_data_transformation_create_matrix(tinyxml2::XMLElement* element_ptr,
+                                                                             const float*          data)
 {
     _collada_data_transformation*        new_transformation_ptr      = new (std::nothrow) _collada_data_transformation       (COLLADA_DATA_TRANSFORMATION_TYPE_MATRIX);
     _collada_data_transformation_matrix* new_transformation_data_ptr = new (std::nothrow) _collada_data_transformation_matrix(data);
@@ -400,8 +400,8 @@ end:
 }
 
 /** Please see header for specification */
-PUBLIC collada_data_transformation collada_data_transformation_create_rotate(__in           __notnull tinyxml2::XMLElement* element_ptr,
-                                                                             __in_ecount(4) __notnull const float*          data)
+PUBLIC collada_data_transformation collada_data_transformation_create_rotate(tinyxml2::XMLElement* element_ptr,
+                                                                             const float*          data)
 {
     _collada_data_transformation*        new_transformation_ptr      = new (std::nothrow) _collada_data_transformation       (COLLADA_DATA_TRANSFORMATION_TYPE_ROTATE);
     _collada_data_transformation_rotate* new_transformation_data_ptr = new (std::nothrow) _collada_data_transformation_rotate(data, *(data + 3) );
@@ -420,8 +420,8 @@ end:
 }
 
 /** Please see header for specification */
-PUBLIC collada_data_transformation collada_data_transformation_create_scale(__in            __notnull tinyxml2::XMLElement* element_ptr,
-                                                                             __in_ecount(3) __notnull const float*          data)
+PUBLIC collada_data_transformation collada_data_transformation_create_scale(tinyxml2::XMLElement* element_ptr,
+                                                                            const float*          data)
 {
     _collada_data_transformation*       new_transformation_ptr      = new (std::nothrow) _collada_data_transformation      (COLLADA_DATA_TRANSFORMATION_TYPE_SCALE);
     _collada_data_transformation_scale* new_transformation_data_ptr = new (std::nothrow) _collada_data_transformation_scale(data);
@@ -440,8 +440,8 @@ end:
 }
 
 /** Please see header for specification */
-PUBLIC collada_data_transformation collada_data_transformation_create_skew(__in            __notnull tinyxml2::XMLElement* element_ptr,
-                                                                           __in_ecount(7) __notnull const float*          data)
+PUBLIC collada_data_transformation collada_data_transformation_create_skew(tinyxml2::XMLElement* element_ptr,
+                                                                           const float*          data)
 {
     _collada_data_transformation*      new_transformation_ptr      = new (std::nothrow) _collada_data_transformation     (COLLADA_DATA_TRANSFORMATION_TYPE_SKEW);
     _collada_data_transformation_skew* new_transformation_data_ptr = new (std::nothrow) _collada_data_transformation_skew(*data, data + 1, data + 4);
@@ -460,8 +460,8 @@ end:
 }
 
 /** Please see header for specification */
-PUBLIC collada_data_transformation collada_data_transformation_create_translate(__in           __notnull tinyxml2::XMLElement* element_ptr,
-                                                                                __in_ecount(3) __notnull const float*          data)
+PUBLIC collada_data_transformation collada_data_transformation_create_translate(tinyxml2::XMLElement* element_ptr,
+                                                                                const float*          data)
 {
     _collada_data_transformation*           new_transformation_ptr      = new (std::nothrow) _collada_data_transformation          (COLLADA_DATA_TRANSFORMATION_TYPE_TRANSLATE);
     _collada_data_transformation_translate* new_transformation_data_ptr = new (std::nothrow) _collada_data_transformation_translate(data);
@@ -480,8 +480,8 @@ end:
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API void collada_data_transformation_get_matrix_properties(__in                 __notnull collada_data_transformation transformation,
-                                                                          __out_ecount_opt(16)           collada_value*              out_data)
+PUBLIC EMERALD_API void collada_data_transformation_get_matrix_properties(collada_data_transformation transformation,
+                                                                          collada_value*              out_data)
 {
     _collada_data_transformation* transformation_ptr = (_collada_data_transformation*) transformation;
 
@@ -499,9 +499,9 @@ PUBLIC EMERALD_API void collada_data_transformation_get_matrix_properties(__in  
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API void collada_data_transformation_get_property(__in  __notnull collada_data_transformation          transformation,
-                                                                 __in  __notnull collada_data_transformation_property property,
-                                                                 __out __notnull void*                                out_result)
+PUBLIC EMERALD_API void collada_data_transformation_get_property(collada_data_transformation          transformation,
+                                                                 collada_data_transformation_property property,
+                                                                 void*                                out_result)
 {
     _collada_data_transformation* transformation_ptr = (_collada_data_transformation*) transformation;
 
@@ -537,9 +537,9 @@ PUBLIC EMERALD_API void collada_data_transformation_get_property(__in  __notnull
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API void collada_data_transformation_get_rotate_properties(__in            __notnull collada_data_transformation transformation,
-                                                                          __out_ecount(3) __notnull collada_value*              axis_vector,
-                                                                          __out           __notnull collada_value*              angle)
+PUBLIC EMERALD_API void collada_data_transformation_get_rotate_properties(collada_data_transformation transformation,
+                                                                          collada_value*              axis_vector,
+                                                                          collada_value*              angle)
 {
     _collada_data_transformation*        transformation_ptr = (_collada_data_transformation*)        transformation;
     _collada_data_transformation_rotate* rotate_data_ptr    = (_collada_data_transformation_rotate*) transformation_ptr->data;
@@ -555,8 +555,8 @@ PUBLIC EMERALD_API void collada_data_transformation_get_rotate_properties(__in  
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API void collada_data_transformation_get_scale_properties(__in            __notnull collada_data_transformation transformation,
-                                                                         __out_ecount(3) __notnull collada_value*              scale_vector)
+PUBLIC EMERALD_API void collada_data_transformation_get_scale_properties(collada_data_transformation transformation,
+                                                                         collada_value*              scale_vector)
 {
     _collada_data_transformation*       transformation_ptr = (_collada_data_transformation*)       transformation;
     _collada_data_transformation_scale* scale_data_ptr     = (_collada_data_transformation_scale*) transformation_ptr->data;
@@ -570,8 +570,8 @@ PUBLIC EMERALD_API void collada_data_transformation_get_scale_properties(__in   
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API void collada_data_transformation_get_translate_properties(__in            __notnull collada_data_transformation transformation,
-                                                                             __out_ecount(3) __notnull collada_value*              translation_vector)
+PUBLIC EMERALD_API void collada_data_transformation_get_translate_properties(collada_data_transformation transformation,
+                                                                             collada_value*              translation_vector)
 {
     _collada_data_transformation*           transformation_ptr = (_collada_data_transformation*)           transformation;
     _collada_data_transformation_translate* translate_data_ptr = (_collada_data_transformation_translate*) transformation_ptr->data;
@@ -585,7 +585,7 @@ PUBLIC EMERALD_API void collada_data_transformation_get_translate_properties(__i
 }
 
 /* Please see header for spec */
-PUBLIC EMERALD_API void collada_data_transformation_release(__in __notnull __post_invalid collada_data_transformation transformation)
+PUBLIC EMERALD_API void collada_data_transformation_release(collada_data_transformation transformation)
 {
     delete (_collada_data_transformation*) transformation;
 

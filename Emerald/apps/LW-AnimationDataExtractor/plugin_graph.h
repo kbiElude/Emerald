@@ -13,7 +13,7 @@
 PUBLIC void DeinitGraphData();
 
 /** TODO */
-PUBLIC void FillSceneGraphData(__in __notnull scene in_scene);
+PUBLIC void FillSceneGraphData(scene in_scene);
 
 /** TODO */
 PUBLIC void InitGraphData();

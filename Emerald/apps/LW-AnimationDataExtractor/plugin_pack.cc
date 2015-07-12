@@ -15,7 +15,7 @@ system_resizable_vector enqueued_files_vector = NULL;
 
 
 /** TODO */
-PUBLIC void AddFileToFinalBlob(__in __notnull system_hashed_ansi_string filename)
+PUBLIC void AddFileToFinalBlob(system_hashed_ansi_string filename)
 {
     ASSERT_DEBUG_SYNC(enqueued_files_vector != NULL,
                       "Enqueued files vector is NULL");
@@ -49,7 +49,7 @@ PUBLIC void InitPackData()
 }
 
 /* Please see header for spec */
-PUBLIC void SaveFinalBlob(__in __notnull system_hashed_ansi_string packed_scene_filename)
+PUBLIC void SaveFinalBlob(system_hashed_ansi_string packed_scene_filename)
 {
     uint32_t n_enqueued_files = 0;
 

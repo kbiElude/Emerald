@@ -62,9 +62,9 @@ typedef struct _ogl_query
     PFNGLGETQUERYOBJECTUIVPROC   pGLGetQueryObjectuiv;
     PFNGLGETQUERYOBJECTUI64VPROC pGLGetQueryObjectui64v;
 
-     _ogl_query(__in __notnull ogl_context  in_context,
-                __in           unsigned int in_ring_buffer_size,
-                __in           GLenum       in_target_gl);
+     _ogl_query(ogl_context  in_context,
+                unsigned int in_ring_buffer_size,
+                GLenum       in_target_gl);
     ~_ogl_query();
 } _ogl_query;
 
@@ -77,9 +77,9 @@ PRIVATE void _ogl_query_init_renderer_callback  (ogl_context context,
 
 
 /** TODO */
-_ogl_query::_ogl_query(__in __notnull ogl_context  in_context,
-                       __in           unsigned int in_ring_buffer_size,
-                       __in           GLenum       in_target_gl)
+_ogl_query::_ogl_query(ogl_context  in_context,
+                       unsigned int in_ring_buffer_size,
+                       GLenum       in_target_gl)
 {
     ogl_context_type context_type = OGL_CONTEXT_TYPE_UNDEFINED;
 
@@ -176,8 +176,8 @@ PRIVATE void _ogl_query_deinit_renderer_callback(ogl_context context,
 }
 
 /** TODO */
-PRIVATE void _ogl_query_init_renderer_callback(__in __notnull ogl_context context,
-                                               __in __notnull void*       user_arg)
+PRIVATE void _ogl_query_init_renderer_callback(ogl_context context,
+                                               void*       user_arg)
 {
     _ogl_query* query_ptr = (_ogl_query*) user_arg;
 
@@ -192,7 +192,7 @@ PRIVATE void _ogl_query_init_renderer_callback(__in __notnull ogl_context contex
 
 
 /** Please see header for spec */
-PUBLIC RENDERING_CONTEXT_CALL void ogl_query_begin(__in __notnull ogl_query query)
+PUBLIC RENDERING_CONTEXT_CALL void ogl_query_begin(ogl_query query)
 {
     _ogl_query* query_ptr = (_ogl_query*) query;
 
@@ -217,9 +217,9 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_query_begin(__in __notnull ogl_query quer
 }
 
 /** Please see header for spec */
-PUBLIC ogl_query ogl_query_create(__in __notnull ogl_context  context,
-                                  __in           unsigned int ring_buffer_size,
-                                  __in           GLenum       gl_query_target)
+PUBLIC ogl_query ogl_query_create(ogl_context  context,
+                                  unsigned int ring_buffer_size,
+                                  GLenum       gl_query_target)
 {
     _ogl_query* new_instance = new (std::nothrow) _ogl_query(context,
                                                              ring_buffer_size,
@@ -232,7 +232,7 @@ PUBLIC ogl_query ogl_query_create(__in __notnull ogl_context  context,
 }
 
 /** Please see header for spec */
-PUBLIC RENDERING_CONTEXT_CALL void ogl_query_end(__in __notnull ogl_query query)
+PUBLIC RENDERING_CONTEXT_CALL void ogl_query_end(ogl_query query)
 {
     _ogl_query*        query_ptr = (_ogl_query*) query;
     const unsigned int qo_id     = query_ptr->index_current;
@@ -247,8 +247,8 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_query_end(__in __notnull ogl_query query)
 }
 
 /** Please see header for spec */
-PUBLIC RENDERING_CONTEXT_CALL bool ogl_query_peek_result(__in      __notnull ogl_query query,
-                                                         __out_opt           GLuint64* out_result)
+PUBLIC RENDERING_CONTEXT_CALL bool ogl_query_peek_result(ogl_query query,
+                                                         GLuint64* out_result)
 {
     _ogl_query* query_ptr = (_ogl_query*) query;
     bool        result    = false;
@@ -331,7 +331,7 @@ PUBLIC RENDERING_CONTEXT_CALL bool ogl_query_peek_result(__in      __notnull ogl
 }
 
 /** Please see header for spec */
-PUBLIC void ogl_query_release(__in __notnull __post_invalid ogl_query query)
+PUBLIC void ogl_query_release(ogl_query query)
 {
     _ogl_query* query_ptr = (_ogl_query*) query;
 

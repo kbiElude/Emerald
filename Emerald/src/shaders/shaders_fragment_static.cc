@@ -45,7 +45,7 @@ REFCOUNT_INSERT_IMPLEMENTATION(shaders_fragment_static,
  *
  *  @param ptr Pointer to _shaders_fragment_static instance.
  **/
-PRIVATE void _shaders_fragment_static_release(__in __notnull __deallocate(mem) void* ptr)
+PRIVATE void _shaders_fragment_static_release(void* ptr)
 {
     _shaders_fragment_static* data_ptr = (_shaders_fragment_static*) ptr;
 
@@ -59,8 +59,8 @@ PRIVATE void _shaders_fragment_static_release(__in __notnull __deallocate(mem) v
 
 
 /** Please see header for specification */
-PUBLIC EMERALD_API shaders_fragment_static shaders_fragment_static_create(__in __notnull ogl_context               context,
-                                                                          __in __notnull system_hashed_ansi_string name)
+PUBLIC EMERALD_API shaders_fragment_static shaders_fragment_static_create(ogl_context               context,
+                                                                          system_hashed_ansi_string name)
 {
     _shaders_fragment_static* result_object = NULL;
     shaders_fragment_static   result_shader = NULL;
@@ -135,7 +135,7 @@ end:
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API ogl_shader shaders_fragment_static_get_shader(__in __notnull shaders_fragment_static shader)
+PUBLIC EMERALD_API ogl_shader shaders_fragment_static_get_shader(shaders_fragment_static shader)
 {
     return (((_shaders_fragment_static*)shader)->shader);
 }

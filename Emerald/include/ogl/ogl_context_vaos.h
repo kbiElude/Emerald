@@ -13,15 +13,15 @@
  *
  *  This function is not exported.
  */
-PUBLIC void ogl_context_vaos_add_vao(__in __notnull ogl_context_vaos vaos,
-                                     __in           GLuint           gl_id,
-                                     __in __notnull ogl_vao          vao);
+PUBLIC void ogl_context_vaos_add_vao(ogl_context_vaos vaos,
+                                     GLuint           gl_id,
+                                     ogl_vao          vao);
 
 /** TODO.
  *
  *  This function is not exported.
  **/
-PUBLIC ogl_context_vaos ogl_context_vaos_create(__in __notnull ogl_context context);
+PUBLIC ogl_context_vaos ogl_context_vaos_create(ogl_context context);
 
 /** TODO
  *
@@ -29,20 +29,20 @@ PUBLIC ogl_context_vaos ogl_context_vaos_create(__in __notnull ogl_context conte
  *  This function should ONLY be called by ogl_vao instances.
  *
  **/
-PUBLIC void ogl_context_vaos_delete_vao(__in __notnull ogl_context_vaos vaos,
-                                        __in           GLuint            gl_id);
+PUBLIC void ogl_context_vaos_delete_vao(ogl_context_vaos vaos,
+                                        GLuint            gl_id);
 
 /** TODO
  *
  *  This function is not exported.
  */
-PUBLIC ogl_vao ogl_context_vaos_get_vao(__in __notnull ogl_context_vaos vaos,
-                                        __in           GLuint           gl_id);
+PUBLIC ogl_vao ogl_context_vaos_get_vao(ogl_context_vaos vaos,
+                                        GLuint           gl_id);
 
 /** TODO.
  *
  *  This function is not exported.
  **/
-PUBLIC void ogl_context_vaos_release(__in __notnull ogl_context_vaos vaos);
+PUBLIC void ogl_context_vaos_release(ogl_context_vaos vaos);
 
 #endif /* OGL_CONTEXT_VAOS_H */

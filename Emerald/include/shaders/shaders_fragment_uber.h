@@ -111,24 +111,24 @@ typedef void (*PFNSHADERSFRAGMENTUBERPARENTCALLBACKPROC)(_shaders_fragment_uber_
                                                          void*                                       user_arg);
 
 /** TODO */
-PUBLIC EMERALD_API shaders_fragment_uber_item_id shaders_fragment_uber_add_input_attribute_contribution(__in __notnull     shaders_fragment_uber                      uber,
-                                                                                                        __in               shaders_fragment_uber_input_attribute_type attribute_type,
-                                                                                                        __in_opt __notnull PFNSHADERSFRAGMENTUBERPARENTCALLBACKPROC   pCallbackProc,
-                                                                                                        __in_opt           void*                                      user_arg);
+PUBLIC EMERALD_API shaders_fragment_uber_item_id shaders_fragment_uber_add_input_attribute_contribution(shaders_fragment_uber                      uber,
+                                                                                                        shaders_fragment_uber_input_attribute_type attribute_type,
+                                                                                                        PFNSHADERSFRAGMENTUBERPARENTCALLBACKPROC   pCallbackProc,
+                                                                                                        void*                                      user_arg);
 
 /** TODO.
  *
  *  @param diffuse_property_values Stores n_diffuse_properties instances of <shaders_fragment_uber_diffuse_property,
  *                                 shaders_fragment_uber_diffuse_property_value> pairs.
  **/
-PUBLIC EMERALD_API shaders_fragment_uber_item_id shaders_fragment_uber_add_light(__in     __notnull                    shaders_fragment_uber                    uber,
-                                                                                 __in                                  shaders_fragment_uber_light_type         light_type,
-                                                                                 __in     __notnull                    scene_light                              light_instance,
-                                                                                 __in                                  bool                                     is_shadow_caster,
-                                                                                 __in      __notnull                   unsigned int                             n_light_properties,
-                                                                                 __in_ecount_opt(n_light_properties*2) void*                                    light_property_values,
-                                                                                 __in_opt __notnull                    PFNSHADERSFRAGMENTUBERPARENTCALLBACKPROC pCallbackProc,
-                                                                                 __in_opt                              void*                                    user_arg);
+PUBLIC EMERALD_API shaders_fragment_uber_item_id shaders_fragment_uber_add_light(shaders_fragment_uber                    uber,
+                                                                                 shaders_fragment_uber_light_type         light_type,
+                                                                                 scene_light                              light_instance,
+                                                                                 bool                                     is_shadow_caster,
+                                                                                 unsigned int                             n_light_properties,
+                                                                                 void*                                    light_property_values,
+                                                                                 PFNSHADERSFRAGMENTUBERPARENTCALLBACKPROC pCallbackProc,
+                                                                                 void*                                    user_arg);
 
 /** Creates a shaders_fragment_uber object instance.
  *
@@ -137,21 +137,21 @@ PUBLIC EMERALD_API shaders_fragment_uber_item_id shaders_fragment_uber_add_light
  * 
  *  @return shaders_fragment_static instance if successful, NULL otherwise.
  */
-PUBLIC EMERALD_API shaders_fragment_uber shaders_fragment_uber_create(__in __notnull ogl_context,
-                                                                      __in __notnull system_hashed_ansi_string  name);
+PUBLIC EMERALD_API shaders_fragment_uber shaders_fragment_uber_create(ogl_context,
+                                                                      system_hashed_ansi_string  name);
 
 /** TODO */
-PUBLIC EMERALD_API bool shaders_fragment_uber_get_item_type(__in __notnull shaders_fragment_uber            uber,
-                                                            __in           shaders_fragment_uber_item_id    item_id,
-                                                            __out          shaders_fragment_uber_item_type* out_item_type);
+PUBLIC EMERALD_API bool shaders_fragment_uber_get_item_type(shaders_fragment_uber            uber,
+                                                            shaders_fragment_uber_item_id    item_id,
+                                                            shaders_fragment_uber_item_type* out_item_type);
 
 /** TODO */
-PUBLIC EMERALD_API bool shaders_fragment_uber_get_light_item_properties(__in __notnull const shaders_fragment_uber       uber,
-                                                                        __in           shaders_fragment_uber_item_id     item_id,
-                                                                        __out          shaders_fragment_uber_light_type* out_light_type);
+PUBLIC EMERALD_API bool shaders_fragment_uber_get_light_item_properties(const shaders_fragment_uber       uber,
+                                                                        shaders_fragment_uber_item_id     item_id,
+                                                                        shaders_fragment_uber_light_type* out_light_type);
 
 /** TODO */
-PUBLIC EMERALD_API uint32_t shaders_fragment_uber_get_n_items(__in __notnull shaders_fragment_uber);
+PUBLIC EMERALD_API uint32_t shaders_fragment_uber_get_n_items(shaders_fragment_uber);
 
 /** Retrieves ogl_shader object associated with the instance. Do not release the object or modify it in any way.
  *
@@ -159,12 +159,12 @@ PUBLIC EMERALD_API uint32_t shaders_fragment_uber_get_n_items(__in __notnull sha
  *
  *  @return ogl_shader instance.
  **/
-PUBLIC EMERALD_API ogl_shader shaders_fragment_uber_get_shader(__in __notnull shaders_fragment_uber);
+PUBLIC EMERALD_API ogl_shader shaders_fragment_uber_get_shader(shaders_fragment_uber);
 
 /** TODO */
-PUBLIC EMERALD_API bool shaders_fragment_uber_is_dirty(__in __notnull shaders_fragment_uber);
+PUBLIC EMERALD_API bool shaders_fragment_uber_is_dirty(shaders_fragment_uber);
 
 /** TODO */
-PUBLIC EMERALD_API void shaders_fragment_uber_recompile(__in __notnull shaders_fragment_uber);
+PUBLIC EMERALD_API void shaders_fragment_uber_recompile(shaders_fragment_uber);
 
 #endif /* SHADERS_FRAGMENT_UBER_H */

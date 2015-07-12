@@ -26,16 +26,16 @@ REFCOUNT_INSERT_DECLARATIONS(curve_editor_program_lerp,
 
 
 /** TODO */
-PUBLIC curve_editor_program_lerp curve_editor_program_lerp_create(__in __notnull ogl_context               context,
-                                                                  __in __notnull system_hashed_ansi_string name);
+PUBLIC curve_editor_program_lerp curve_editor_program_lerp_create(ogl_context               context,
+                                                                  system_hashed_ansi_string name);
 
 /** TODO */
-PUBLIC void curve_editor_program_lerp_set_property(__in __notnull curve_editor_program_lerp          lerp,
-                                                   __in           curve_editor_program_lerp_property property,
-                                                   __in __notnull const void*                        data);
+PUBLIC void curve_editor_program_lerp_set_property(curve_editor_program_lerp          lerp,
+                                                   curve_editor_program_lerp_property property,
+                                                   const void*                        data);
 
 /** TODO */
-PUBLIC void curve_editor_program_lerp_use(__in __notnull ogl_context               context,
-                                          __in __notnull curve_editor_program_lerp lerp);
+PUBLIC void curve_editor_program_lerp_use(ogl_context               context,
+                                          curve_editor_program_lerp lerp);
 
 #endif /* CURVE_EDITOR_PROGRAM_LERP_H */

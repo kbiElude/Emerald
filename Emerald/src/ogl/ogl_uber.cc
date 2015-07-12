@@ -217,9 +217,9 @@ typedef struct _ogl_uber
 
     REFCOUNT_INSERT_VARIABLES
 
-    explicit _ogl_uber(__in __notnull ogl_context               context,
-                       __in __notnull system_hashed_ansi_string name,
-                       __in           _ogl_uber_type            type);
+    explicit _ogl_uber(ogl_context               context,
+                       system_hashed_ansi_string name,
+                       _ogl_uber_type            type);
 } _ogl_uber;
 
 /** Reference counter impl */
@@ -228,18 +228,18 @@ REFCOUNT_INSERT_IMPLEMENTATION(ogl_uber,
                               _ogl_uber);
 
 /** Forward declarations */
-PRIVATE void _ogl_uber_add_item_shaders_fragment_callback_handler(                                 _shaders_fragment_uber_parent_callback_type type,
-                                                                  __in_opt                         void*                                       data,
-                                                                  __in                             void*                                       uber);
-PRIVATE void _ogl_uber_link_renderer_callback                    (                                 ogl_context                                 context,
-                                                                                                   void*                                       arg);
-PRIVATE void _ogl_uber_release                                   (__in __notnull __deallocate(mem) void*                                       uber);
-PRIVATE void _ogl_uber_release_renderer_callback                 (                                 ogl_context                                 context,
-                                                                                                   void*                                       arg);
-PRIVATE void _ogl_uber_reset_attribute_uniform_locations         (__in __notnull _ogl_uber*        uber_ptr);
+PRIVATE void _ogl_uber_add_item_shaders_fragment_callback_handler(_shaders_fragment_uber_parent_callback_type type,
+                                                                  void*                                       data,
+                                                                  void*                                       uber);
+PRIVATE void _ogl_uber_link_renderer_callback                    (ogl_context                                 context,
+                                                                  void*                                       arg);
+PRIVATE void _ogl_uber_release                                   (void*                                       uber);
+PRIVATE void _ogl_uber_release_renderer_callback                 (ogl_context                                 context,
+                                                                  void*                                       arg);
+PRIVATE void _ogl_uber_reset_attribute_uniform_locations         (_ogl_uber*                                  uber_ptr);
 
 #ifdef _DEBUG
-    PRIVATE void _ogl_uber_verify_context_type(__in __notnull ogl_context);
+    PRIVATE void _ogl_uber_verify_context_type(ogl_context);
 #else
     #define _ogl_uber_verify_context_type(x)
 #endif
@@ -247,9 +247,9 @@ PRIVATE void _ogl_uber_reset_attribute_uniform_locations         (__in __notnull
 /** Internal variables */
 
 /** TODO */
-_ogl_uber::_ogl_uber(__in __notnull ogl_context               in_context,
-                     __in __notnull system_hashed_ansi_string in_name,
-                     __in           _ogl_uber_type            in_type)
+_ogl_uber::_ogl_uber(ogl_context               in_context,
+                     system_hashed_ansi_string in_name,
+                     _ogl_uber_type            in_type)
 {
     added_items                    = system_resizable_vector_create(4 /* capacity */);
     context                        = in_context;    /* DO NOT retain, or face circular dependencies! */
@@ -277,9 +277,9 @@ _ogl_uber::_ogl_uber(__in __notnull ogl_context               in_context,
 
 
 /** TODO */
-PRIVATE void _ogl_uber_add_item_shaders_fragment_callback_handler(         _shaders_fragment_uber_parent_callback_type type,
-                                                                  __in_opt void*                                       data,
-                                                                  __in     void*                                       uber)
+PRIVATE void _ogl_uber_add_item_shaders_fragment_callback_handler(_shaders_fragment_uber_parent_callback_type type,
+                                                                  void*                                       data,
+                                                                  void*                                       uber)
 {
     switch (type)
     {
@@ -311,8 +311,8 @@ PRIVATE void _ogl_uber_add_item_shaders_fragment_callback_handler(         _shad
 }
 
 /** TODO */
-PRIVATE void _ogl_uber_bake_mesh_vao(__in __notnull _ogl_uber* uber_ptr,
-                                     __in __notnull mesh       mesh)
+PRIVATE void _ogl_uber_bake_mesh_vao(_ogl_uber* uber_ptr,
+                                     mesh       mesh)
 {
     const ogl_context_gl_entrypoints_ext_direct_state_access* dsa_entrypoints       = NULL;
     const ogl_context_gl_entrypoints*                         entrypoints           = NULL;
@@ -627,7 +627,7 @@ PRIVATE void _ogl_uber_link_renderer_callback(ogl_context context, void* arg)
 }
 
 /** TODO */
-PRIVATE void _ogl_uber_release(__in __notnull __deallocate(mem) void* uber)
+PRIVATE void _ogl_uber_release(void* uber)
 {
     _ogl_uber* uber_ptr = (_ogl_uber*) uber;
 
@@ -762,7 +762,7 @@ PRIVATE void _ogl_uber_release_renderer_callback(ogl_context context, void* arg)
 }
 
 /** TODO */
-PRIVATE void _ogl_uber_reset_attribute_uniform_locations(__in __notnull _ogl_uber* uber_ptr)
+PRIVATE void _ogl_uber_reset_attribute_uniform_locations(_ogl_uber* uber_ptr)
 {
     uber_ptr->ambient_material_sampler_uniform_location    = -1;
     uber_ptr->ambient_material_ub_offset                   = -1;
@@ -794,7 +794,7 @@ PRIVATE void _ogl_uber_reset_attribute_uniform_locations(__in __notnull _ogl_ube
 /** TODO */
 #ifdef _DEBUG
     /* TODO */
-    PRIVATE void _ogl_uber_verify_context_type(__in __notnull ogl_context context)
+    PRIVATE void _ogl_uber_verify_context_type(ogl_context context)
     {
         ogl_context_type context_type = OGL_CONTEXT_TYPE_UNDEFINED;
 
@@ -809,8 +809,8 @@ PRIVATE void _ogl_uber_reset_attribute_uniform_locations(__in __notnull _ogl_ube
 
 
 /* Please see header for specification */
-PUBLIC EMERALD_API ogl_uber_item_id ogl_uber_add_input_fragment_attribute_item(__in __notnull ogl_uber                           uber,
-                                                                               __in __notnull _ogl_uber_input_fragment_attribute input_attribute)
+PUBLIC EMERALD_API ogl_uber_item_id ogl_uber_add_input_fragment_attribute_item(ogl_uber                           uber,
+                                                                               _ogl_uber_input_fragment_attribute input_attribute)
 {
     shaders_fragment_uber_input_attribute_type fs_input_attribute = UBER_INPUT_ATTRIBUTE_UNKNOWN;
     shaders_fragment_uber_item_id              fs_item_id         = -1;
@@ -875,12 +875,12 @@ end:
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API ogl_uber_item_id ogl_uber_add_light_item(__in __notnull                        ogl_uber                         uber,
-                                                            __in_opt                              scene_light                      light_instance,
-                                                            __in                                  shaders_fragment_uber_light_type light_type,
-                                                            __in                                  bool                             is_shadow_caster,
-                                                            __in __notnull                        unsigned int                     n_light_properties,
-                                                            __in_ecount_opt(n_light_properties*2) void*                            light_property_values)
+PUBLIC EMERALD_API ogl_uber_item_id ogl_uber_add_light_item(ogl_uber                         uber,
+                                                            scene_light                      light_instance,
+                                                            shaders_fragment_uber_light_type light_type,
+                                                            bool                             is_shadow_caster,
+                                                            unsigned int                     n_light_properties,
+                                                            void*                            light_property_values)
 {
     _ogl_uber*       uber_ptr     = (_ogl_uber*) uber;
     _ogl_uber_item*  new_item_ptr = NULL;
@@ -1000,8 +1000,8 @@ end:
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API ogl_uber ogl_uber_create(__in __notnull ogl_context                context,
-                                            __in __notnull system_hashed_ansi_string  name)
+PUBLIC EMERALD_API ogl_uber ogl_uber_create(ogl_context                context,
+                                            system_hashed_ansi_string  name)
 {
     _ogl_uber_verify_context_type(context);
 
@@ -1052,9 +1052,9 @@ PUBLIC EMERALD_API ogl_uber ogl_uber_create(__in __notnull ogl_context          
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API ogl_uber ogl_uber_create_from_ogl_program(__in __notnull ogl_context               context,
-                                                             __in __notnull system_hashed_ansi_string name,
-                                                             __in __notnull ogl_program               program)
+PUBLIC EMERALD_API ogl_uber ogl_uber_create_from_ogl_program(ogl_context               context,
+                                                             system_hashed_ansi_string name,
+                                                             ogl_program               program)
 {
     _ogl_uber_verify_context_type(context);
 
@@ -1087,9 +1087,9 @@ PUBLIC EMERALD_API ogl_uber ogl_uber_create_from_ogl_program(__in __notnull ogl_
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API void ogl_uber_get_shader_general_property(__in  __notnull const ogl_uber             uber,
-                                                             __in            _ogl_uber_general_property property,
-                                                             __out __notnull void*                      out_result)
+PUBLIC EMERALD_API void ogl_uber_get_shader_general_property(const ogl_uber             uber,
+                                                             _ogl_uber_general_property property,
+                                                             void*                      out_result)
 {
     const _ogl_uber* uber_ptr = (const _ogl_uber*) uber;
 
@@ -1123,10 +1123,10 @@ PUBLIC EMERALD_API void ogl_uber_get_shader_general_property(__in  __notnull con
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API void ogl_uber_get_shader_item_property(__in __notnull const ogl_uber          uber,
-                                                          __in           ogl_uber_item_id        item_id,
-                                                          __in           _ogl_uber_item_property property,
-                                                          __out          void*                   result)
+PUBLIC EMERALD_API void ogl_uber_get_shader_item_property(const ogl_uber          uber,
+                                                          ogl_uber_item_id        item_id,
+                                                          _ogl_uber_item_property property,
+                                                          void*                   result)
 {
     const _ogl_uber*      uber_ptr = (const _ogl_uber*) uber;
           _ogl_uber_item* item_ptr = NULL;
@@ -1225,7 +1225,7 @@ PUBLIC EMERALD_API void ogl_uber_get_shader_item_property(__in __notnull const o
 }
 
 /** TODO */
-PUBLIC EMERALD_API void ogl_uber_link(__in __notnull ogl_uber uber)
+PUBLIC EMERALD_API void ogl_uber_link(ogl_uber uber)
 {
     const ogl_program_variable*             ambient_material_sampler_uniform_descriptor    = NULL;
     const ogl_program_variable*             ambient_material_uniform_descriptor            = NULL;
@@ -1894,12 +1894,12 @@ end:
  *                  If @param material is NULL, all layers will be rendered
  *                  using currently bound program.
  **/
-PUBLIC void ogl_uber_rendering_render_mesh(__in __notnull mesh             mesh_gpu,
-                                           __in __notnull system_matrix4x4 model,
-                                           __in __notnull system_matrix4x4 normal_matrix,
-                                           __in __notnull ogl_uber         uber,
-                                           __in_opt       mesh_material    material,
-                                           __in           system_time      time)
+PUBLIC void ogl_uber_rendering_render_mesh(mesh             mesh_gpu,
+                                           system_matrix4x4 model,
+                                           system_matrix4x4 normal_matrix,
+                                           ogl_uber         uber,
+                                           mesh_material    material,
+                                           system_time      time)
 {
     _ogl_uber* uber_ptr = (_ogl_uber*) uber;
 
@@ -2331,7 +2331,7 @@ PUBLIC void ogl_uber_rendering_render_mesh(__in __notnull mesh             mesh_
 }
 
 /* Please see header for specification */
-PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void ogl_uber_rendering_start(__in __notnull ogl_uber uber)
+PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void ogl_uber_rendering_start(ogl_uber uber)
 {
     _ogl_uber*                                                uber_ptr         = (_ogl_uber*) uber;
     const ogl_context_gl_entrypoints*                         entry_points     = NULL;
@@ -2617,9 +2617,9 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void ogl_uber_rendering_start(__in __n
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API void ogl_uber_set_shader_general_property(__in __notnull ogl_uber                   uber,
-                                                             __in           _ogl_uber_general_property property,
-                                                             __in           const void*                data)
+PUBLIC EMERALD_API void ogl_uber_set_shader_general_property(ogl_uber                   uber,
+                                                             _ogl_uber_general_property property,
+                                                             const void*                data)
 {
     _ogl_uber* uber_ptr = (_ogl_uber*) uber;
 
@@ -2719,10 +2719,10 @@ end:
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API void ogl_uber_set_shader_item_property(__in __notnull ogl_uber                uber,
-                                                          __in           unsigned int            item_index,
-                                                          __in           _ogl_uber_item_property property,
-                                                          __in           const void*             data)
+PUBLIC EMERALD_API void ogl_uber_set_shader_item_property(ogl_uber                uber,
+                                                          unsigned int            item_index,
+                                                          _ogl_uber_item_property property,
+                                                          const void*             data)
 {
     _ogl_uber* uber_ptr = (_ogl_uber*) uber;
 
@@ -3071,7 +3071,7 @@ PUBLIC EMERALD_API void ogl_uber_set_shader_item_property(__in __notnull ogl_ube
 }
 
 /* Please see header for specification */
-PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void ogl_uber_rendering_stop(__in __notnull ogl_uber uber)
+PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void ogl_uber_rendering_stop(ogl_uber uber)
 {
     _ogl_uber*                        uber_ptr     = (_ogl_uber*) uber;
     const ogl_context_gl_entrypoints* entry_points = NULL;

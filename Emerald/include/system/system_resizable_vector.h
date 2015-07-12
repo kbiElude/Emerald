@@ -27,7 +27,7 @@ typedef enum
 } system_resizable_vector_property;
 
 /** TODO */
-PUBLIC EMERALD_API void system_resizable_vector_clear(__in __notnull system_resizable_vector vector);
+PUBLIC EMERALD_API void system_resizable_vector_clear(system_resizable_vector vector);
 
 /** Creates a new instance of a resizable vector object.
  *
@@ -38,11 +38,11 @@ PUBLIC EMERALD_API void system_resizable_vector_clear(__in __notnull system_resi
  *
  *  @return Resizable vector instance.
  */
-PUBLIC EMERALD_API system_resizable_vector system_resizable_vector_create(__in size_t capacity,
-                                                                          __in bool   should_be_thread_safe = false);
+PUBLIC EMERALD_API system_resizable_vector system_resizable_vector_create(size_t capacity,
+                                                                          bool   should_be_thread_safe = false);
 
 /** TODO */
-PUBLIC EMERALD_API system_resizable_vector system_resizable_vector_create_copy(__in __notnull system_resizable_vector vector);
+PUBLIC EMERALD_API system_resizable_vector system_resizable_vector_create_copy(system_resizable_vector vector);
 
 /** Removes n-th element from the resizable vector object.
  *
@@ -51,14 +51,14 @@ PUBLIC EMERALD_API system_resizable_vector system_resizable_vector_create_copy(_
  *
  *  @return true if successful, false otherwise.
  */
-PUBLIC EMERALD_API bool system_resizable_vector_delete_element_at(__in system_resizable_vector resizable_vector,
-                                                                  __in size_t                  index);
+PUBLIC EMERALD_API bool system_resizable_vector_delete_element_at(system_resizable_vector resizable_vector,
+                                                                  size_t                  index);
 
 /** Empties a given resizable vector object.
  *
  *  @param system_resizable_vector Resizable vector to empty. CANNOT be NULL.
  */
-PUBLIC EMERALD_API void system_resizable_vector_empty(__in system_resizable_vector vector);
+PUBLIC EMERALD_API void system_resizable_vector_empty(system_resizable_vector vector);
 
 /** Finds a given element in the resizable vector object.
  *
@@ -67,8 +67,8 @@ PUBLIC EMERALD_API void system_resizable_vector_empty(__in system_resizable_vect
  *
  *  @return ITEM_NOT_FOUND if unsuccessful, index otherwise.
  */
-PUBLIC EMERALD_API size_t system_resizable_vector_find(__in system_resizable_vector resizable_vector,
-                                                       __in void*                   item);
+PUBLIC EMERALD_API size_t system_resizable_vector_find(system_resizable_vector resizable_vector,
+                                                       void*                   item);
 
 /** Returns element stored at given index.
  *
@@ -78,14 +78,14 @@ PUBLIC EMERALD_API size_t system_resizable_vector_find(__in system_resizable_vec
  *
  *  @return True if result was stored under @param void*, false otherwise.
  */
-PUBLIC EMERALD_API bool system_resizable_vector_get_element_at(__in            system_resizable_vector resizable_vector,
-                                                                               size_t                  index,
-                                                               __out __notnull void*                   result);
+PUBLIC EMERALD_API bool system_resizable_vector_get_element_at(system_resizable_vector resizable_vector,
+                                                               size_t                  index,
+                                                               void*                   result);
 
 /** TODO */
-PUBLIC EMERALD_API void system_resizable_vector_get_property(__in  system_resizable_vector          resizable_vector,
-                                                                   system_resizable_vector_property property,
-                                                             __out void*                            out_result_ptr);
+PUBLIC EMERALD_API void system_resizable_vector_get_property(system_resizable_vector          resizable_vector,
+                                                             system_resizable_vector_property property,
+                                                             void*                            out_result_ptr);
 
 /** Inserts new element at given index of the resizable vector instance. This operation does not support cases where
  *  object is to be inserted at index that exceeds vector's capacity. Such an attempt will result in an assertion 
@@ -97,9 +97,9 @@ PUBLIC EMERALD_API void system_resizable_vector_get_property(__in  system_resiza
  *  @param size_t                  Index to insert the element at.
  *  @param void*                   Object to insert.
  */
-PUBLIC EMERALD_API void system_resizable_vector_insert_element_at(__in system_resizable_vector resizable_vector,
-                                                                       size_t                  index,
-                                                                       void*                   element);
+PUBLIC EMERALD_API void system_resizable_vector_insert_element_at(system_resizable_vector resizable_vector,
+                                                                  size_t                  index,
+                                                                  void*                   element);
 
 /** Resizable vector comparator.
  *
@@ -108,8 +108,8 @@ PUBLIC EMERALD_API void system_resizable_vector_insert_element_at(__in system_re
  *
  *  @return True if identical, false otherwise.
  */
-PUBLIC EMERALD_API bool system_resizable_vector_is_equal(__in system_resizable_vector resizable_vector_1,
-                                                         __in system_resizable_vector resizable_vector_2);
+PUBLIC EMERALD_API bool system_resizable_vector_is_equal(system_resizable_vector resizable_vector_1,
+                                                         system_resizable_vector resizable_vector_2);
 
 /** TODO.
  *
@@ -118,8 +118,8 @@ PUBLIC EMERALD_API bool system_resizable_vector_is_equal(__in system_resizable_v
  *                     will occur.
  *  @param access_type Access type to be used for the lock.
  */
-PUBLIC EMERALD_API void system_resizable_vector_lock(__in __notnull system_resizable_vector             vector,
-                                                     __in           system_read_write_mutex_access_type access_type);
+PUBLIC EMERALD_API void system_resizable_vector_lock(system_resizable_vector             vector,
+                                                     system_read_write_mutex_access_type access_type);
 
 /** Retrieves last object stored for a given resizable vector and removes it from the vector.
  *
@@ -128,22 +128,22 @@ PUBLIC EMERALD_API void system_resizable_vector_lock(__in __notnull system_resiz
  *
  *  @return true if successful, false otherwise.
  */
-PUBLIC EMERALD_API bool system_resizable_vector_pop(__in            system_resizable_vector resizable_vector,
-                                                    __out __notnull void*                   result);
+PUBLIC EMERALD_API bool system_resizable_vector_pop(system_resizable_vector resizable_vector,
+                                                    void*                   result);
 
 /** Stores an element (having copied it by value) at next available cell of the resizable vector instance.
  *
  *  @param system_resizable_vector Object to operate on.
  *  @param void*                   Object to store.
  */
-PUBLIC EMERALD_API void system_resizable_vector_push(__in     system_resizable_vector resizable_vector,
-                                                     __in_opt void*                   element);
+PUBLIC EMERALD_API void system_resizable_vector_push(system_resizable_vector resizable_vector,
+                                                     void*                   element);
 
 /** Releases a system resizable vector instance. Object should not be accessed after this call.
  *
  *  @param system_resizable_vector Resizable vector to release.
  */
-PUBLIC EMERALD_API void system_resizable_vector_release(__in __deallocate(mem) system_resizable_vector vector);
+PUBLIC EMERALD_API void system_resizable_vector_release(system_resizable_vector vector);
 
 /** Stores an element (having copied it by value) in a cell located at user-provided index of the resizable
  *  vector object.
@@ -154,21 +154,21 @@ PUBLIC EMERALD_API void system_resizable_vector_release(__in __deallocate(mem) s
  *  @param size_t                  Index to place the item at.
  *  @param void*                   Object to store.
  */
-PUBLIC EMERALD_API void system_resizable_vector_set_element_at(__in             system_resizable_vector resizable_vector,
-                                                               __in             size_t                  index,
-                                                               __in __maybenull void*                   element);
+PUBLIC EMERALD_API void system_resizable_vector_set_element_at(system_resizable_vector resizable_vector,
+                                                               size_t                  index,
+                                                               void*                   element);
 
 /** TODO */
-PUBLIC EMERALD_API void system_resizable_vector_sort(__in __notnull system_resizable_vector resizable_vector,
-                                                                    int                   (*comparator_func_ptr)(void*, void*) );
+PUBLIC EMERALD_API void system_resizable_vector_sort(system_resizable_vector resizable_vector,
+                                                     int                   (*comparator_func_ptr)(void*, void*) );
 
 /** TODO */
-PUBLIC EMERALD_API bool system_resizable_vector_swap(__in __notnull system_resizable_vector resizable_vector,
-                                                                    uint32_t                index_a,
-                                                                    uint32_t                index_b);
+PUBLIC EMERALD_API bool system_resizable_vector_swap(system_resizable_vector resizable_vector,
+                                                     uint32_t                index_a,
+                                                     uint32_t                index_b);
 
 /** TODO */
-PUBLIC EMERALD_API void system_resizable_vector_unlock(__in __notnull system_resizable_vector             vector,
-                                                       __in           system_read_write_mutex_access_type access_type);
+PUBLIC EMERALD_API void system_resizable_vector_unlock(system_resizable_vector             vector,
+                                                       system_read_write_mutex_access_type access_type);
 
 #endif /* SYSTEM_RESIZABLE_VECTOR_H */

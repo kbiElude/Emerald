@@ -20,24 +20,24 @@ enum collada_data_source_property
 };
 
 /** TODO */
-PUBLIC collada_data_source collada_data_source_create(__in __notnull tinyxml2::XMLElement*     element_ptr,
-                                                      __in __notnull collada_data              data,
-                                                      __in __notnull system_hashed_ansi_string parent_geometry_name);
+PUBLIC collada_data_source collada_data_source_create(tinyxml2::XMLElement*     element_ptr,
+                                                      collada_data              data,
+                                                      system_hashed_ansi_string parent_geometry_name);
 
 /** TODO */
-PUBLIC void collada_data_source_get_source_float_data(__in      __notnull collada_data_source       source,
-                                                      __out_opt           collada_data_float_array* out_float_array_ptr);
+PUBLIC void collada_data_source_get_source_float_data(collada_data_source       source,
+                                                      collada_data_float_array* out_float_array_ptr);
 
 /** TODO */
-PUBLIC void collada_data_source_get_source_name_data(__in      __notnull collada_data_source      source,
-                                                     __out_opt           collada_data_name_array* out_name_array_ptr);
+PUBLIC void collada_data_source_get_source_name_data(collada_data_source      source,
+                                                     collada_data_name_array* out_name_array_ptr);
 
 /** TODO */
-PUBLIC void collada_data_source_get_property(__in  __notnull collada_data_source          source,
-                                             __in            collada_data_source_property property,
-                                             __out __notnull void*                        result_ptr);
+PUBLIC void collada_data_source_get_property(collada_data_source          source,
+                                             collada_data_source_property property,
+                                             void*                        result_ptr);
 
 /** TODO */
-PUBLIC void collada_data_source_release(__in __notnull __post_invalid collada_data_source source);
+PUBLIC void collada_data_source_release(collada_data_source source);
 
 #endif /* COLLADA_DATA_SOURCE_H */

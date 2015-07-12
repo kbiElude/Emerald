@@ -52,15 +52,15 @@ METHODDEF(void) _handle_error(j_common_ptr cinfo)
 
 
 /** Please see header for specification */
-PRIVATE gfx_image gfx_jpg_shared_load_handler(__in             bool                      should_load_from_file,
-                                              __in __notnull   system_hashed_ansi_string file_name,
-                                              __in_opt         system_file_unpacker      file_unpacker,
-                                              __in __maybenull const unsigned char*      in_data_ptr,
-                                              __in             unsigned int              data_size)
+PRIVATE gfx_image gfx_jpg_shared_load_handler(bool                      should_load_from_file,
+                                              system_hashed_ansi_string file_name,
+                                              system_file_unpacker      file_unpacker,
+                                              const unsigned char*      in_data_ptr,
+                                              unsigned int              data_size)
 {
     JSAMPARRAY             buffer;
     jpeg_decompress_struct cinfo;
-    __int64                dataSize    = 0;
+    int64_t                dataSize    = 0;
     unsigned char*         file_data   = NULL;
     unsigned int           file_size   = 0;
     _error_manager         jerr;
@@ -261,8 +261,8 @@ end:
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API gfx_image gfx_jpg_load_from_file(__in __notnull system_hashed_ansi_string file_name,
-                                                    __in __notnull system_file_unpacker      file_unpacker)
+PUBLIC EMERALD_API gfx_image gfx_jpg_load_from_file(system_hashed_ansi_string file_name,
+                                                    system_file_unpacker      file_unpacker)
 {
     ASSERT_DEBUG_SYNC(file_name != NULL,
                       "Cannot use NULL file name.");
@@ -282,8 +282,8 @@ PUBLIC EMERALD_API gfx_image gfx_jpg_load_from_file(__in __notnull system_hashed
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API gfx_image gfx_jpg_load_from_memory(__in __notnull const unsigned char* data_ptr,
-                                                      __in           unsigned int         data_size)
+PUBLIC EMERALD_API gfx_image gfx_jpg_load_from_memory(const unsigned char* data_ptr,
+                                                      unsigned int         data_size)
 {
     return gfx_jpg_shared_load_handler(false,                                                /* should_load_from_file */
                                        system_hashed_ansi_string_get_default_empty_string(),

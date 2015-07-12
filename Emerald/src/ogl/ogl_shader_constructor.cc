@@ -220,20 +220,20 @@ REFCOUNT_INSERT_IMPLEMENTATION(ogl_shader_constructor,
 /** Internal variables */
 
 /* Forward declarations */
-PRIVATE void        _ogl_shader_constructor_bake_body                           (__in __notnull                   _ogl_shader_constructor*               constructor_ptr);
-PRIVATE std::string _ogl_shader_constructor_get_argument_list_string            (__in __notnull                   system_resizable_vector                arguments);
-PRIVATE std::string _ogl_shader_constructor_get_function_declaration_string     (__in __notnull                   _ogl_shader_constructor_function*      function_ptr);
-PRIVATE std::string _ogl_shader_constructor_get_layout_qualifier_string         (__in __notnull                   _layout_qualifier                      qualifier);
-PRIVATE std::string _ogl_shader_constructor_get_shader_argument_qualifier_string(__in                             _shader_argument_qualifier             qualifier);
-PRIVATE std::string _ogl_shader_constructor_get_structure_declaration_string    (__in __notnull                   _ogl_shader_constructor_structure*     structure_ptr);
-PRIVATE const char* _ogl_shader_constructor_get_type_string                     (__in                             _shader_variable_type                  type);
-PRIVATE std::string _ogl_shader_constructor_get_uniform_block_declaration_string(__in __notnull                   _ogl_shader_constructor_uniform_block* ub_ptr);
-PRIVATE std::string _ogl_shader_constructor_get_variable_declaration_string     (__in __notnull                   _ogl_shader_constructor_variable*      variable_ptr);
-PRIVATE const char* _ogl_shader_constructor_get_variable_type_string            (__in                             _variable_type                         variable_type);
-PRIVATE void        _ogl_shader_constructor_release                             (__in __notnull __deallocate(mem) void*                                  constructor);
+PRIVATE void        _ogl_shader_constructor_bake_body                           (_ogl_shader_constructor*               constructor_ptr);
+PRIVATE std::string _ogl_shader_constructor_get_argument_list_string            (system_resizable_vector                arguments);
+PRIVATE std::string _ogl_shader_constructor_get_function_declaration_string     (_ogl_shader_constructor_function*      function_ptr);
+PRIVATE std::string _ogl_shader_constructor_get_layout_qualifier_string         (_layout_qualifier                      qualifier);
+PRIVATE std::string _ogl_shader_constructor_get_shader_argument_qualifier_string(_shader_argument_qualifier             qualifier);
+PRIVATE std::string _ogl_shader_constructor_get_structure_declaration_string    (_ogl_shader_constructor_structure*     structure_ptr);
+PRIVATE const char* _ogl_shader_constructor_get_type_string                     (_shader_variable_type                  type);
+PRIVATE std::string _ogl_shader_constructor_get_uniform_block_declaration_string(_ogl_shader_constructor_uniform_block* ub_ptr);
+PRIVATE std::string _ogl_shader_constructor_get_variable_declaration_string     (_ogl_shader_constructor_variable*      variable_ptr);
+PRIVATE const char* _ogl_shader_constructor_get_variable_type_string            (_variable_type                         variable_type);
+PRIVATE void        _ogl_shader_constructor_release                             (void*                                  constructor);
 
 /** TODO */
-PRIVATE void _ogl_shader_constructor_bake_body(__in __notnull _ogl_shader_constructor* constructor_ptr)
+PRIVATE void _ogl_shader_constructor_bake_body(_ogl_shader_constructor* constructor_ptr)
 {
     std::stringstream body_sstream;
 
@@ -334,7 +334,7 @@ PRIVATE void _ogl_shader_constructor_bake_body(__in __notnull _ogl_shader_constr
 }
 
 /** TODO */
-PRIVATE std::string _ogl_shader_constructor_get_argument_list_string(__in __notnull system_resizable_vector arguments)
+PRIVATE std::string _ogl_shader_constructor_get_argument_list_string(system_resizable_vector arguments)
 {
     unsigned int      n_arguments = 0;
     std::stringstream result;
@@ -377,7 +377,7 @@ PRIVATE std::string _ogl_shader_constructor_get_argument_list_string(__in __notn
 }
 
 /** TODO */
-PRIVATE std::string _ogl_shader_constructor_get_function_declaration_string(__in __notnull _ogl_shader_constructor_function* function_ptr)
+PRIVATE std::string _ogl_shader_constructor_get_function_declaration_string(_ogl_shader_constructor_function* function_ptr)
 {
     std::stringstream result_sstream;
 
@@ -399,7 +399,7 @@ PRIVATE std::string _ogl_shader_constructor_get_function_declaration_string(__in
 }
 
 /** TODO */
-PRIVATE std::string _ogl_shader_constructor_get_layout_qualifier_string(__in __notnull _layout_qualifier qualifier)
+PRIVATE std::string _ogl_shader_constructor_get_layout_qualifier_string(_layout_qualifier qualifier)
 {
     bool              first_qualifier = true;
     std::stringstream result_sstream;
@@ -475,7 +475,7 @@ PRIVATE std::string _ogl_shader_constructor_get_layout_qualifier_string(__in __n
 }
 
 /** TODO */
-PRIVATE std::string _ogl_shader_constructor_get_shader_argument_qualifier_string(__in _shader_argument_qualifier qualifier)
+PRIVATE std::string _ogl_shader_constructor_get_shader_argument_qualifier_string(_shader_argument_qualifier qualifier)
 {
     const char* result = "[?]";
 
@@ -497,7 +497,7 @@ PRIVATE std::string _ogl_shader_constructor_get_shader_argument_qualifier_string
 }
 
 /** TODO */
-PRIVATE std::string _ogl_shader_constructor_get_structure_declaration_string(__in __notnull _ogl_shader_constructor_structure* structure_ptr)
+PRIVATE std::string _ogl_shader_constructor_get_structure_declaration_string(_ogl_shader_constructor_structure* structure_ptr)
 {
     std::stringstream result_sstream;
 
@@ -539,7 +539,7 @@ PRIVATE std::string _ogl_shader_constructor_get_structure_declaration_string(__i
 }
 
 /** TODO */
-PRIVATE const char* _ogl_shader_constructor_get_type_string(__in _shader_variable_type type)
+PRIVATE const char* _ogl_shader_constructor_get_type_string(_shader_variable_type type)
 {
     const char* result ="[?]";
 
@@ -634,7 +634,7 @@ PRIVATE const char* _ogl_shader_constructor_get_type_string(__in _shader_variabl
 }
 
 /** TODO */
-PRIVATE std::string _ogl_shader_constructor_get_uniform_block_declaration_string(__in __notnull _ogl_shader_constructor_uniform_block* ub_ptr)
+PRIVATE std::string _ogl_shader_constructor_get_uniform_block_declaration_string(_ogl_shader_constructor_uniform_block* ub_ptr)
 {
     std::stringstream result_sstream;
 
@@ -684,7 +684,7 @@ PRIVATE std::string _ogl_shader_constructor_get_uniform_block_declaration_string
 }
 
 /** TODO */
-PRIVATE std::string _ogl_shader_constructor_get_variable_declaration_string(__in __notnull _ogl_shader_constructor_variable* variable_ptr)
+PRIVATE std::string _ogl_shader_constructor_get_variable_declaration_string(_ogl_shader_constructor_variable* variable_ptr)
 {
     std::stringstream result_sstream;
 
@@ -754,7 +754,7 @@ PRIVATE std::string _ogl_shader_constructor_get_variable_declaration_string(__in
 }
 
 /** TODO */
-PRIVATE const char* _ogl_shader_constructor_get_variable_type_string(__in _variable_type variable_type)
+PRIVATE const char* _ogl_shader_constructor_get_variable_type_string(_variable_type variable_type)
 {
     const char* result = "[?]";
 
@@ -776,7 +776,7 @@ PRIVATE const char* _ogl_shader_constructor_get_variable_type_string(__in _varia
 }
 
 /** TODO */
-PRIVATE void _ogl_shader_constructor_release(__in __notnull __deallocate(mem) void* constructor)
+PRIVATE void _ogl_shader_constructor_release(void* constructor)
 {
     _ogl_shader_constructor* constructor_ptr = (_ogl_shader_constructor*) constructor;
 
@@ -785,10 +785,10 @@ PRIVATE void _ogl_shader_constructor_release(__in __notnull __deallocate(mem) vo
 
 
 /** Please see header for specification */
-PUBLIC EMERALD_API bool ogl_shader_constructor_add_function(__in  __notnull ogl_shader_constructor    constructor,
-                                                            __in            system_hashed_ansi_string name,
-                                                            __in            _shader_variable_type     returned_value_type,
-                                                            __out __notnull _function_id*             out_new_function_id_ptr)
+PUBLIC EMERALD_API bool ogl_shader_constructor_add_function(ogl_shader_constructor    constructor,
+                                                            system_hashed_ansi_string name,
+                                                            _shader_variable_type     returned_value_type,
+                                                            _function_id*             out_new_function_id_ptr)
 {
     _ogl_shader_constructor*          constructor_ptr    = (_ogl_shader_constructor*) constructor;
     _ogl_shader_constructor_function* new_descriptor_ptr = NULL;
@@ -855,11 +855,11 @@ end:
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API void ogl_shader_constructor_add_function_argument(__in __notnull ogl_shader_constructor     constructor,
-                                                                     __in           _function_id               function_id,
-                                                                     __in           _shader_argument_qualifier qualifier,
-                                                                     __in           _shader_variable_type      argument_type,
-                                                                     __in __notnull system_hashed_ansi_string  argument_name)
+PUBLIC EMERALD_API void ogl_shader_constructor_add_function_argument(ogl_shader_constructor     constructor,
+                                                                     _function_id               function_id,
+                                                                     _shader_argument_qualifier qualifier,
+                                                                     _shader_variable_type      argument_type,
+                                                                     system_hashed_ansi_string  argument_name)
 {
     _ogl_shader_constructor*                   constructor_ptr    = (_ogl_shader_constructor*) constructor;
     unsigned int                               n_arguments        = 0;
@@ -935,11 +935,11 @@ end:
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API bool ogl_shader_constructor_add_general_variable_to_structure(__in __notnull ogl_shader_constructor    constructor,
-                                                                                 __in           _shader_variable_type     type,
-                                                                                 __in           uint32_t                  array_size,
-                                                                                 __in           _structure_id             structure,
-                                                                                 __in __notnull system_hashed_ansi_string name)
+PUBLIC EMERALD_API bool ogl_shader_constructor_add_general_variable_to_structure(ogl_shader_constructor    constructor,
+                                                                                 _shader_variable_type     type,
+                                                                                 uint32_t                  array_size,
+                                                                                 _structure_id             structure,
+                                                                                 system_hashed_ansi_string name)
 {
     _ogl_shader_constructor*          constructor_ptr = (_ogl_shader_constructor*) constructor;
     bool                              result          = false;
@@ -988,14 +988,14 @@ end:
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API bool ogl_shader_constructor_add_general_variable_to_ub(__in      __notnull ogl_shader_constructor    constructor,
-                                                                          __in                _variable_type            variable_type,
-                                                                          __in                _layout_qualifier         layout_qualifiers,
-                                                                          __in                _shader_variable_type     type,
-                                                                          __in                uint32_t                  array_size,
-                                                                          __in                _uniform_block_id         uniform_block,
-                                                                          __in      __notnull system_hashed_ansi_string name,
-                                                                          __out_opt           _variable_id*             out_variable_id)
+PUBLIC EMERALD_API bool ogl_shader_constructor_add_general_variable_to_ub(ogl_shader_constructor    constructor,
+                                                                          _variable_type            variable_type,
+                                                                          _layout_qualifier         layout_qualifiers,
+                                                                          _shader_variable_type     type,
+                                                                          uint32_t                  array_size,
+                                                                          _uniform_block_id         uniform_block,
+                                                                          system_hashed_ansi_string name,
+                                                                          _variable_id*             out_variable_id)
 {
     _ogl_shader_constructor*               constructor_ptr      = (_ogl_shader_constructor*) constructor;
     unsigned int                           n_existing_variables = 0;
@@ -1112,9 +1112,9 @@ end:
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API bool ogl_shader_constructor_add_structure(__in  __notnull ogl_shader_constructor    constructor,
-                                                             __in  __notnull system_hashed_ansi_string name,
-                                                             __out __notnull _structure_id*            out_result_id_ptr)
+PUBLIC EMERALD_API bool ogl_shader_constructor_add_structure(ogl_shader_constructor    constructor,
+                                                             system_hashed_ansi_string name,
+                                                             _structure_id*            out_result_id_ptr)
 {
     _ogl_shader_constructor*           constructor_ptr   = (_ogl_shader_constructor*) constructor;
     _ogl_shader_constructor_structure* new_structure_ptr = NULL;
@@ -1189,10 +1189,10 @@ end:
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API bool ogl_shader_constructor_add_structure_variable_to_ub(__in __notnull ogl_shader_constructor    constructor,
-                                                                            __in           _structure_id             structure,
-                                                                            __in           _uniform_block_id         uniform_block,
-                                                                            __in __notnull system_hashed_ansi_string name)
+PUBLIC EMERALD_API bool ogl_shader_constructor_add_structure_variable_to_ub(ogl_shader_constructor    constructor,
+                                                                            _structure_id             structure,
+                                                                            _uniform_block_id         uniform_block,
+                                                                            system_hashed_ansi_string name)
 {
     _ogl_shader_constructor*               constructor_ptr = (_ogl_shader_constructor*) constructor;
     bool                                   result          = false;
@@ -1252,9 +1252,9 @@ end:
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API void ogl_shader_constructor_append_to_function_body(__in __notnull ogl_shader_constructor    constructor,
-                                                                       __in           _function_id              function_id,
-                                                                       __in __notnull system_hashed_ansi_string body_to_append)
+PUBLIC EMERALD_API void ogl_shader_constructor_append_to_function_body(ogl_shader_constructor    constructor,
+                                                                       _function_id              function_id,
+                                                                       system_hashed_ansi_string body_to_append)
 {
     std::stringstream                 body_sstream;
     _ogl_shader_constructor*          constructor_ptr = (_ogl_shader_constructor*) constructor;
@@ -1284,9 +1284,9 @@ end:
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API _uniform_block_id ogl_shader_constructor_add_uniform_block(__in __notnull ogl_shader_constructor    constructor,
-                                                                              __in __notnull _layout_qualifier         layout_qualifiers,
-                                                                              __in __notnull system_hashed_ansi_string name)
+PUBLIC EMERALD_API _uniform_block_id ogl_shader_constructor_add_uniform_block(ogl_shader_constructor    constructor,
+                                                                              _layout_qualifier         layout_qualifiers,
+                                                                              system_hashed_ansi_string name)
 {
     _ogl_shader_constructor*               constructor_ptr = (_ogl_shader_constructor*) constructor;
     bool                                   is_default_ub   = false;
@@ -1381,8 +1381,8 @@ end:
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API ogl_shader_constructor ogl_shader_constructor_create(__in           ogl_shader_type           shader_type,
-                                                                        __in __notnull system_hashed_ansi_string name)
+PUBLIC EMERALD_API ogl_shader_constructor ogl_shader_constructor_create(ogl_shader_type           shader_type,
+                                                                        system_hashed_ansi_string name)
 {
     _ogl_shader_constructor* result = new (std::nothrow) _ogl_shader_constructor;
 
@@ -1419,8 +1419,8 @@ PUBLIC EMERALD_API ogl_shader_constructor ogl_shader_constructor_create(__in    
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API unsigned int ogl_shader_constructor_get_amount_of_variables_in_ub(__in __notnull ogl_shader_constructor constructor,
-                                                                                     __in           _uniform_block_id      ub_id)
+PUBLIC EMERALD_API unsigned int ogl_shader_constructor_get_amount_of_variables_in_ub(ogl_shader_constructor constructor,
+                                                                                     _uniform_block_id      ub_id)
 {
     _ogl_shader_constructor* constructor_ptr = (_ogl_shader_constructor*) constructor;
     unsigned int             result          = 0;
@@ -1448,7 +1448,7 @@ end:
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API system_hashed_ansi_string ogl_shader_constructor_get_shader_body(__in __notnull ogl_shader_constructor constructor)
+PUBLIC EMERALD_API system_hashed_ansi_string ogl_shader_constructor_get_shader_body(ogl_shader_constructor constructor)
 {
     _ogl_shader_constructor* constructor_ptr = (_ogl_shader_constructor*) constructor;
 
@@ -1461,9 +1461,9 @@ PUBLIC EMERALD_API system_hashed_ansi_string ogl_shader_constructor_get_shader_b
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API bool ogl_shader_constructor_is_general_variable_in_ub(__in __notnull ogl_shader_constructor    constructor,
-                                                                         __in           _uniform_block_id         uniform_block,
-                                                                         __in __notnull system_hashed_ansi_string var_name)
+PUBLIC EMERALD_API bool ogl_shader_constructor_is_general_variable_in_ub(ogl_shader_constructor    constructor,
+                                                                         _uniform_block_id         uniform_block,
+                                                                         system_hashed_ansi_string var_name)
 {
     _ogl_shader_constructor*               constructor_ptr = (_ogl_shader_constructor*) constructor;
     uint32_t                               n_variables     = 0;
@@ -1520,9 +1520,9 @@ end:
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API void ogl_shader_constructor_set_function_body(__in __notnull ogl_shader_constructor    constructor,
-                                                                 __in           _function_id              function_id,
-                                                                 __in __notnull system_hashed_ansi_string body)
+PUBLIC EMERALD_API void ogl_shader_constructor_set_function_body(ogl_shader_constructor    constructor,
+                                                                 _function_id              function_id,
+                                                                 system_hashed_ansi_string body)
 {
     _ogl_shader_constructor*          constructor_ptr = (_ogl_shader_constructor*) constructor;
     _ogl_shader_constructor_function* function_ptr    = NULL;
@@ -1549,11 +1549,11 @@ end:
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API bool ogl_shader_constructor_set_general_variable_default_value(__in      __notnull ogl_shader_constructor constructor,
-                                                                                  __in                _uniform_block_id      uniform_block,
-                                                                                  __in                _variable_id           variable_id,
-                                                                                  __in      __notnull const void*            data,
-                                                                                  __out_opt           uint32_t*              out_n_bytes_to_read)
+PUBLIC EMERALD_API bool ogl_shader_constructor_set_general_variable_default_value(ogl_shader_constructor constructor,
+                                                                                  _uniform_block_id      uniform_block,
+                                                                                  _variable_id           variable_id,
+                                                                                  const void*            data,
+                                                                                  uint32_t*              out_n_bytes_to_read)
 {
     _ogl_shader_constructor*          constructor_ptr = (_ogl_shader_constructor*) constructor;
     bool                              result          = false;

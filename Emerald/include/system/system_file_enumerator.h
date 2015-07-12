@@ -31,25 +31,25 @@ typedef enum
     *  This function DOES NOT require a system_file_enumerator instance.
     *
     **/
-    PUBLIC EMERALD_API system_hashed_ansi_string system_file_enumerator_choose_file_via_ui(__in                                   system_file_enumerator_file_operation operation,
-                                                                                           __in                                   unsigned int                          n_filters,
-                                                                                           __in_ecount(n_filters) __notnull const system_hashed_ansi_string*            filter_descriptions,
-                                                                                           __in_ecount(n_filters) __notnull const system_hashed_ansi_string*            filter_extensions,
-                                                                                           __in                   __notnull       system_hashed_ansi_string             dialog_title);
+    PUBLIC EMERALD_API system_hashed_ansi_string system_file_enumerator_choose_file_via_ui(      system_file_enumerator_file_operation operation,
+                                                                                                 unsigned int                          n_filters,
+                                                                                           const system_hashed_ansi_string*            filter_descriptions,
+                                                                                           const system_hashed_ansi_string*            filter_extensions,
+                                                                                                 system_hashed_ansi_string             dialog_title);
 
     /** TODO */
-    PUBLIC EMERALD_API system_file_enumerator system_file_enumerator_create(__in __notnull system_hashed_ansi_string file_pattern);
+    PUBLIC EMERALD_API system_file_enumerator system_file_enumerator_create(system_hashed_ansi_string file_pattern);
 
     /** TODO */
-    PUBLIC EMERALD_API void system_file_enumerator_get_file_property(__in  __notnull system_file_enumerator               enumerator,
-                                                                    __in            uint32_t                             n_file,
-                                                                    __in            system_file_enumerator_file_property property,
-                                                                    __out __notnull void*                                out_result);
+    PUBLIC EMERALD_API void system_file_enumerator_get_file_property(system_file_enumerator               enumerator,
+                                                                     uint32_t                             n_file,
+                                                                     system_file_enumerator_file_property property,
+                                                                     void*                                out_result);
 
     /** TODO */
-    PUBLIC EMERALD_API void system_file_enumerator_get_property(__in  __notnull system_file_enumerator          enumerator,
-                                                                __in            system_file_enumerator_property property,
-                                                                __out __notnull void*                           out_result);
+    PUBLIC EMERALD_API void system_file_enumerator_get_property(system_file_enumerator          enumerator,
+                                                                system_file_enumerator_property property,
+                                                                void*                           out_result);
 #endif
 
 /** Checks if user-specified file can be found by the system.
@@ -60,7 +60,7 @@ typedef enum
  *
  *  @return true if the file was found, false otherwise.
  **/
-PUBLIC EMERALD_API bool system_file_enumerator_is_file_present(__in __notnull system_hashed_ansi_string file_name);
+PUBLIC EMERALD_API bool system_file_enumerator_is_file_present(system_hashed_ansi_string file_name);
 
 /** Checks if user-specified file can be found in a system_file_unpacker instance.
  *
@@ -74,14 +74,14 @@ PUBLIC EMERALD_API bool system_file_enumerator_is_file_present(__in __notnull sy
  *
  *  @return true if the file was found, false otherwise.
  */
-PUBLIC EMERALD_API bool system_file_enumerator_is_file_present_in_system_file_unpacker(__in __notnull system_file_unpacker      file_unpacker,
-                                                                                       __in __notnull system_hashed_ansi_string file_name,
-                                                                                       __in           bool                      use_exact_match,
-                                                                                       __out_opt      unsigned int*             out_file_index);
+PUBLIC EMERALD_API bool system_file_enumerator_is_file_present_in_system_file_unpacker(system_file_unpacker      file_unpacker,
+                                                                                       system_hashed_ansi_string file_name,
+                                                                                       bool                      use_exact_match,
+                                                                                       unsigned int*             out_file_index);
 
 #ifdef _WIN32
     /** TODO */
-    PUBLIC EMERALD_API void system_file_enumerator_release(__in __notnull system_file_enumerator enumerator);
+    PUBLIC EMERALD_API void system_file_enumerator_release(system_file_enumerator enumerator);
 #endif
 
 #endif /* SYSTEM_FILE_ENUMERATOR_H */

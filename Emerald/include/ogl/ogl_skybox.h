@@ -25,20 +25,20 @@ typedef enum
 
 /** TODO */
 #ifdef INCLUDE_OPENCL
-    PUBLIC EMERALD_API ogl_skybox ogl_skybox_create_light_projection_sh(__in __notnull ogl_context               context,
-                                                                        __in __notnull sh_samples                samples,
-                                                                        __in __notnull system_hashed_ansi_string name);
+    PUBLIC EMERALD_API ogl_skybox ogl_skybox_create_light_projection_sh(ogl_context               context,
+                                                                        sh_samples                samples,
+                                                                        system_hashed_ansi_string name);
 #endif
 
 /** TODO */
-PUBLIC EMERALD_API ogl_skybox ogl_skybox_create_spherical_projection_texture(__in __notnull ogl_context               context,
-                                                                             __in __notnull ogl_texture               texture,
-                                                                             __in __notnull system_hashed_ansi_string name);
+PUBLIC EMERALD_API ogl_skybox ogl_skybox_create_spherical_projection_texture(ogl_context               context,
+                                                                             ogl_texture               texture,
+                                                                             system_hashed_ansi_string name);
 
 /** TODO */
-PUBLIC EMERALD_API void ogl_skybox_draw(__in __notnull ogl_skybox       skybox,
-                                        __in           ogl_texture      light_sh_data_tbo,
-                                        __in __notnull system_matrix4x4 modelview,
-                                        __in __notnull system_matrix4x4 inverted_projection);
+PUBLIC EMERALD_API void ogl_skybox_draw(ogl_skybox       skybox,
+                                        ogl_texture      light_sh_data_tbo,
+                                        system_matrix4x4 modelview,
+                                        system_matrix4x4 inverted_projection);
 
 #endif /* OGL_SKYBOX_H */

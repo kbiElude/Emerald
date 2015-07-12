@@ -19,7 +19,7 @@
  *
  *  @return Hash value.
  */
-PUBLIC system_hash64 system_hash64_calculate(__in __notnull const char* text,
-                                                            uint32_t    length);
+PUBLIC system_hash64 system_hash64_calculate(const char* text,
+                                             uint32_t    length);
 
 #endif /* SYSTEM_HASH64_H */

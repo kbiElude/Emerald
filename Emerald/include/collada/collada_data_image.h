@@ -20,26 +20,26 @@ enum collada_data_image_property
 };
 
 /** TODO */
-PUBLIC collada_data_image collada_data_image_create(__in __notnull tinyxml2::XMLElement* current_image_element_ptr);
+PUBLIC collada_data_image collada_data_image_create(tinyxml2::XMLElement* current_image_element_ptr);
 
 /** TODO */
-PUBLIC EMERALD_API void collada_data_image_get_properties(__in      __notnull collada_data_image         image,
-                                                          __out_opt           system_hashed_ansi_string* out_name,
-                                                          __out_opt           system_hashed_ansi_string* out_file_name,
-                                                          __out_opt           system_hashed_ansi_string* out_file_name_with_path,
-                                                          __out_opt           bool*                      out_requires_mipmaps);
+PUBLIC EMERALD_API void collada_data_image_get_properties(collada_data_image         image,
+                                                          system_hashed_ansi_string* out_name,
+                                                          system_hashed_ansi_string* out_file_name,
+                                                          system_hashed_ansi_string* out_file_name_with_path,
+                                                          bool*                      out_requires_mipmaps);
 
 /** TODO */
-PUBLIC EMERALD_API void collada_data_image_get_property(__in  __notnull const collada_data_image          image,
-                                                        __in                  collada_data_image_property property,
-                                                        __out __notnull void*                             out_data_ptr);
+PUBLIC EMERALD_API void collada_data_image_get_property(const collada_data_image          image,
+                                                              collada_data_image_property property,
+                                                        void*                             out_data_ptr);
 
 /** TODO */
-PUBLIC void collada_data_image_release(__in __notnull __post_invalid collada_data_image image);
+PUBLIC void collada_data_image_release(collada_data_image image);
 
 /** TODO */
-PUBLIC void collada_data_image_set_property(__in __notnull collada_data_image          image,
-                                            __in           collada_data_image_property property,
-                                            __in __notnull const void*                 data);
+PUBLIC void collada_data_image_set_property(collada_data_image          image,
+                                            collada_data_image_property property,
+                                            const void*                 data);
 
 #endif /* COLLADA_DATA_IMAGE_H */

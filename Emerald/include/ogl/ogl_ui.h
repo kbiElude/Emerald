@@ -93,124 +93,124 @@ typedef enum _ogl_ui_control_type
 
 
 /** TODO */
-PUBLIC EMERALD_API ogl_ui_control ogl_ui_add_button(__in           __notnull   ogl_ui                    ui_instance,
-                                                    __in           __notnull   system_hashed_ansi_string name,
-                                                    __in_ecount(2) __notnull   const float*              x1y1,
-                                                    __in           __notnull   PFNOGLUIFIREPROCPTR       pfn_fire_ptr,
-                                                    __in           __maybenull void*                     fire_user_arg);
+PUBLIC EMERALD_API ogl_ui_control ogl_ui_add_button(ogl_ui                    ui_instance,
+                                                    system_hashed_ansi_string name,
+                                                    const float*              x1y1,
+                                                    PFNOGLUIFIREPROCPTR       pfn_fire_ptr,
+                                                    void*                     fire_user_arg);
 
 /** TODO */
-PUBLIC EMERALD_API ogl_ui_control ogl_ui_add_checkbox(__in           __notnull   ogl_ui                    ui_instance,
-                                                      __in           __notnull   system_hashed_ansi_string name,
-                                                      __in_ecount(2) __notnull   const float*              x1y1,
-                                                      __in                       bool                      default_status,
-                                                      __in           __notnull   PFNOGLUIFIREPROCPTR       pfn_fire_ptr,
-                                                      __in           __maybenull void*                     fire_user_arg);
+PUBLIC EMERALD_API ogl_ui_control ogl_ui_add_checkbox(ogl_ui                    ui_instance,
+                                                      system_hashed_ansi_string name,
+                                                      const float*              x1y1,
+                                                      bool                      default_status,
+                                                      PFNOGLUIFIREPROCPTR       pfn_fire_ptr,
+                                                      void*                     fire_user_arg);
 
 /** TODO */
-PUBLIC EMERALD_API ogl_ui_control ogl_ui_add_dropdown(__in                   __notnull   ogl_ui                     ui_instance,
-                                                      __in                               uint32_t                   n_entries,
-                                                      __in_ecount(n_entries) __notnull   system_hashed_ansi_string* strings,
-                                                      __in_ecount(n_entries) __notnull   void**                     user_args,
-                                                      __in                               uint32_t                   n_selected_entry,
-                                                      __in                   __notnull   system_hashed_ansi_string  name,
-                                                      __in_ecount(2)         __notnull   const float*               x1y1,
-                                                      __in                   __notnull   PFNOGLUIFIREPROCPTR        pfn_fire_ptr,
-                                                      __in                   __maybenull void*                      fire_user_arg);
+PUBLIC EMERALD_API ogl_ui_control ogl_ui_add_dropdown(ogl_ui                     ui_instance,
+                                                      uint32_t                   n_entries,
+                                                      system_hashed_ansi_string* strings,
+                                                      void**                     user_args,
+                                                      uint32_t                   n_selected_entry,
+                                                      system_hashed_ansi_string  name,
+                                                      const float*               x1y1,
+                                                      PFNOGLUIFIREPROCPTR        pfn_fire_ptr,
+                                                      void*                      fire_user_arg);
 
 /** TODO */
-PUBLIC EMERALD_API ogl_ui_control ogl_ui_add_frame(__in           __notnull ogl_ui       ui_instance,
-                                                   __in_ecount(4) __notnull const float* x1y1x2y2);
+PUBLIC EMERALD_API ogl_ui_control ogl_ui_add_frame(ogl_ui       ui_instance,
+                                                   const float* x1y1x2y2);
 
 /** TODO */
-PUBLIC EMERALD_API ogl_ui_control ogl_ui_add_label(__in           __notnull ogl_ui                    ui_instance,
-                                                   __in           __notnull system_hashed_ansi_string name,
-                                                   __in_ecount(2) __notnull const float*              x1y1);
+PUBLIC EMERALD_API ogl_ui_control ogl_ui_add_label(ogl_ui                    ui_instance,
+                                                   system_hashed_ansi_string name,
+                                                   const float*              x1y1);
 
 /** TODO */
-PUBLIC EMERALD_API ogl_ui_control ogl_ui_add_scrollbar(__in           __notnull   ogl_ui                         ui_instance,
-                                                       __in           __notnull   system_hashed_ansi_string      name,
-                                                       __in                       ogl_ui_scrollbar_text_location text_location,
-                                                       __in           __notnull   system_variant                 min_value,
-                                                       __in           __notnull   system_variant                 max_value,
-                                                       __in_ecount(2) __notnull   const float*                   x1y1,
-                                                       __in           __notnull   PFNOGLUIGETCURRENTVALUEPROCPTR pfn_get_current_value_ptr,
-                                                       __in           __maybenull void*                          get_current_value_ptr_user_arg,
-                                                       __in           __notnull   PFNOGLUISETCURRENTVALUEPROCPTR pfn_set_current_value_ptr,
-                                                       __in           __maybenull void*                          set_current_value_ptr_user_arg);
+PUBLIC EMERALD_API ogl_ui_control ogl_ui_add_scrollbar(ogl_ui                         ui_instance,
+                                                       system_hashed_ansi_string      name,
+                                                       ogl_ui_scrollbar_text_location text_location,
+                                                       system_variant                 min_value,
+                                                       system_variant                 max_value,
+                                                       const float*                   x1y1,
+                                                       PFNOGLUIGETCURRENTVALUEPROCPTR pfn_get_current_value_ptr,
+                                                       void*                          get_current_value_ptr_user_arg,
+                                                       PFNOGLUISETCURRENTVALUEPROCPTR pfn_set_current_value_ptr,
+                                                       void*                          set_current_value_ptr_user_arg);
 
 /** TODO */
-PUBLIC EMERALD_API ogl_ui_control ogl_ui_add_texture_preview(__in __notnull           ogl_ui                      ui_instance,
-                                                             __in __notnull           system_hashed_ansi_string   name,
-                                                             __in_ecount(2) __notnull const float*                x1y1,
-                                                             __in_ecount(2) __notnull const float*                max_size,
-                                                             __in_opt                 ogl_texture                 texture,
-                                                             __in                     ogl_ui_texture_preview_type preview_type);
+PUBLIC EMERALD_API ogl_ui_control ogl_ui_add_texture_preview(ogl_ui                      ui_instance,
+                                                             system_hashed_ansi_string   name,
+                                                             const float*                x1y1,
+                                                             const float*                max_size,
+                                                             ogl_texture                 texture,
+                                                             ogl_ui_texture_preview_type preview_type);
 /** TODO */
-PUBLIC EMERALD_API ogl_ui ogl_ui_create(__in __notnull ogl_text                  text_renderer,
-                                        __in __notnull system_hashed_ansi_string name);
+PUBLIC EMERALD_API ogl_ui ogl_ui_create(ogl_text                  text_renderer,
+                                        system_hashed_ansi_string name);
 
 /** TODO */
-PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void ogl_ui_draw(__in __notnull ogl_ui);
+PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void ogl_ui_draw(ogl_ui);
 
 /** TODO */
-PUBLIC EMERALD_API void ogl_ui_get_control_property(__in  __notnull ogl_ui_control           control,
-                                                    __in            _ogl_ui_control_property property,
-                                                    __out __notnull void*                    out_result);
+PUBLIC EMERALD_API void ogl_ui_get_control_property(ogl_ui_control           control,
+                                                    _ogl_ui_control_property property,
+                                                    void*                    out_result);
 
 /** INTERNAL USAGE ONLY.
  *
  *  TODO
  **/
-PUBLIC ogl_context ogl_ui_get_context(__in __notnull ogl_ui);
+PUBLIC ogl_context ogl_ui_get_context(ogl_ui);
 
 /** INTERNAL USAGE ONLY.
  *
  *  TODO
  **/
-PUBLIC ogl_program ogl_ui_get_registered_program(__in __notnull ogl_ui,
-                                                 __in __notnull system_hashed_ansi_string);
+PUBLIC ogl_program ogl_ui_get_registered_program(ogl_ui,
+                                                 system_hashed_ansi_string);
 
 /** TODO */
-PUBLIC EMERALD_API void ogl_ui_lock(__in __notnull ogl_ui                              ui,
-                                    __in           system_read_write_mutex_access_type access_type);
+PUBLIC EMERALD_API void ogl_ui_lock(ogl_ui                              ui,
+                                    system_read_write_mutex_access_type access_type);
 
 /** INTERNAL USAGE ONLY.
  *
  *  Call-back entry-point to be used by UI control implementations. Will dispatch call-backs
  *  to subscribers by using engine thread pool.
  **/
-PUBLIC void ogl_ui_receive_control_callback(__in     __notnull ogl_ui         ui,
-                                            __in     __notnull ogl_ui_control control,
-                                            __in     __notnull int            callback_id,
-                                            __in_opt           void*          callback_user_arg);
+PUBLIC void ogl_ui_receive_control_callback(ogl_ui         ui,
+                                            ogl_ui_control control,
+                                            int            callback_id,
+                                            void*          callback_user_arg);
 
 /** TODO */
-PUBLIC EMERALD_API void ogl_ui_register_control_callback(__in __notnull ogl_ui                       ui,
-                                                         __in __notnull ogl_ui_control               control,
-                                                         __in __notnull int                          callback_id,
-                                                         __in __notnull PFNOGLUIEVENTCALLBACKPROCPTR callback_proc_ptr,
-                                                         __in __notnull void*                        callback_proc_user_arg);
+PUBLIC EMERALD_API void ogl_ui_register_control_callback(ogl_ui                       ui,
+                                                         ogl_ui_control               control,
+                                                         int                          callback_id,
+                                                         PFNOGLUIEVENTCALLBACKPROCPTR callback_proc_ptr,
+                                                         void*                        callback_proc_user_arg);
 
 /** INTERNAL USAGE ONLY.
  *
  *  TODO
  **/
-PUBLIC bool ogl_ui_register_program(__in __notnull ogl_ui,
-                                    __in __notnull system_hashed_ansi_string,
-                                    __in __notnull ogl_program);
+PUBLIC bool ogl_ui_register_program(ogl_ui,
+                                    system_hashed_ansi_string,
+                                    ogl_program);
 
 /** TODO */
-PUBLIC EMERALD_API void ogl_ui_reposition_control(__in __notnull ogl_ui_control control,
-                                                  __in           unsigned int   new_control_index);
+PUBLIC EMERALD_API void ogl_ui_reposition_control(ogl_ui_control control,
+                                                  unsigned int   new_control_index);
 
 /** TODO */
-PUBLIC EMERALD_API void ogl_ui_set_control_property(__in __notnull ogl_ui_control           control,
-                                                    __in           _ogl_ui_control_property property,
-                                                    __in __notnull const void*              data);
+PUBLIC EMERALD_API void ogl_ui_set_control_property(ogl_ui_control           control,
+                                                    _ogl_ui_control_property property,
+                                                    const void*              data);
 
 /** TODO */
-PUBLIC EMERALD_API void ogl_ui_unlock(__in __notnull ogl_ui                              ui,
-                                      __in           system_read_write_mutex_access_type access_type);
+PUBLIC EMERALD_API void ogl_ui_unlock(ogl_ui                              ui,
+                                      system_read_write_mutex_access_type access_type);
 
 #endif /* OGL_UI_H */

@@ -55,20 +55,20 @@ REFCOUNT_INSERT_IMPLEMENTATION(system_context_menu,
 
 
 /* Forward declarations */
-PRIVATE bool         _system_context_menu_call_back_owner                       (__in __notnull _system_context_menu*       menu_ptr,
-                                                                                 __in           int                         id);
-PRIVATE MENUITEMINFO _system_context_menu_create_item_system_representation     (__in __notnull _system_context_menu_entry* entry_ptr,
-                                                                                 __in           int                         id);
-PRIVATE void         _system_context_menu_create_menu_system_representation     (__in __notnull _system_context_menu*       menu_ptr);
-PRIVATE MENUITEMINFO _system_context_menu_create_separator_system_representation(__in __notnull _system_context_menu_entry* entry_ptr,
-                                                                                 __in           int                         id);
-PRIVATE MENUITEMINFO _system_context_menu_create_submenu_system_representation  (__in __notnull _system_context_menu_entry* entry_ptr,
-                                                                                 __in           int                         id);
+PRIVATE bool         _system_context_menu_call_back_owner                       (_system_context_menu*       menu_ptr,
+                                                                                 int                         id);
+PRIVATE MENUITEMINFO _system_context_menu_create_item_system_representation     (_system_context_menu_entry* entry_ptr,
+                                                                                 int                         id);
+PRIVATE void         _system_context_menu_create_menu_system_representation     (_system_context_menu*       menu_ptr);
+PRIVATE MENUITEMINFO _system_context_menu_create_separator_system_representation(_system_context_menu_entry* entry_ptr,
+                                                                                 int                         id);
+PRIVATE MENUITEMINFO _system_context_menu_create_submenu_system_representation  (_system_context_menu_entry* entry_ptr,
+                                                                                 int                         id);
 
 /* Private functions */
 /** TODO */
-PRIVATE bool _system_context_menu_call_back_owner(__in __notnull _system_context_menu* menu_ptr,
-                                                  __in           int                   id)
+PRIVATE bool _system_context_menu_call_back_owner(_system_context_menu* menu_ptr,
+                                                  int                   id)
 {
     bool         result    = false;
     unsigned int n_entries = 0;
@@ -120,8 +120,8 @@ PRIVATE bool _system_context_menu_call_back_owner(__in __notnull _system_context
 }
 
 /** TODO */
-PRIVATE MENUITEMINFO _system_context_menu_create_item_system_representation(__in __notnull _system_context_menu_entry* entry_ptr,
-                                                                            __in           int                         id)
+PRIVATE MENUITEMINFO _system_context_menu_create_item_system_representation(_system_context_menu_entry* entry_ptr,
+                                                                            int                         id)
 {
     MENUITEMINFO result;
 
@@ -153,7 +153,7 @@ PRIVATE MENUITEMINFO _system_context_menu_create_item_system_representation(__in
 }
 
 /** TODO */
-PRIVATE void _system_context_menu_create_menu_system_representation(__in __notnull _system_context_menu* menu_ptr)
+PRIVATE void _system_context_menu_create_menu_system_representation(_system_context_menu* menu_ptr)
 {
     int          counter   = 1;
     unsigned int n_entries = 0;
@@ -245,8 +245,8 @@ PRIVATE void _system_context_menu_create_menu_system_representation(__in __notnu
 }
 
 /** TODO */
-PRIVATE MENUITEMINFO _system_context_menu_create_separator_system_representation(__in __notnull _system_context_menu_entry* entry_ptr,
-                                                                                 __in           int                         id)
+PRIVATE MENUITEMINFO _system_context_menu_create_separator_system_representation(_system_context_menu_entry* entry_ptr,
+                                                                                 int                         id)
 {
     MENUITEMINFO result;
 
@@ -262,8 +262,8 @@ PRIVATE MENUITEMINFO _system_context_menu_create_separator_system_representation
 }
 
 /** TODO */
-PRIVATE MENUITEMINFO _system_context_menu_create_submenu_system_representation(__in __notnull _system_context_menu_entry* entry_ptr,
-                                                                               __in           int                         id)
+PRIVATE MENUITEMINFO _system_context_menu_create_submenu_system_representation(_system_context_menu_entry* entry_ptr,
+                                                                               int                         id)
 {
     MENUITEMINFO          result;
     _system_context_menu* submenu_ptr = (_system_context_menu*) entry_ptr->menu;
@@ -286,7 +286,7 @@ PRIVATE MENUITEMINFO _system_context_menu_create_submenu_system_representation(_
 }
 
 /** TODO */
-PUBLIC void _system_context_menu_release(__in __notnull __post_invalid void* menu)
+PUBLIC void _system_context_menu_release(void* menu)
 {
     _system_context_menu* menu_ptr  = (_system_context_menu*) menu;
     unsigned int          n_entries = 0;
@@ -326,12 +326,12 @@ PUBLIC void _system_context_menu_release(__in __notnull __post_invalid void* men
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API void system_context_menu_append_item(__in __notnull   system_context_menu                   menu,
-                                                        __in __notnull   system_hashed_ansi_string             name,
-                                                        __in __notnull   PFNCONTEXTMENUCALLBACK                callback_func,
-                                                        __in __maybenull system_context_menu_callback_argument callback_func_argument,
-                                                                         bool                                  is_checked,
-                                                                         bool                                  is_enabled)
+PUBLIC EMERALD_API void system_context_menu_append_item(system_context_menu                   menu,
+                                                        system_hashed_ansi_string             name,
+                                                        PFNCONTEXTMENUCALLBACK                callback_func,
+                                                        system_context_menu_callback_argument callback_func_argument,
+                                                        bool                                  is_checked,
+                                                        bool                                  is_enabled)
 {
     _system_context_menu*       menu_ptr  = (_system_context_menu*) menu;
     _system_context_menu_entry* new_entry = new (std::nothrow) _system_context_menu_entry;
@@ -354,8 +354,8 @@ PUBLIC EMERALD_API void system_context_menu_append_item(__in __notnull   system_
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API void context_menu_append_menu(__in __notnull system_context_menu menu,
-                                                 __in __notnull system_context_menu menu_to_append)
+PUBLIC EMERALD_API void context_menu_append_menu(system_context_menu menu,
+                                                 system_context_menu menu_to_append)
 {
     _system_context_menu*       menu_ptr  = (_system_context_menu*) menu;
     _system_context_menu_entry* new_entry = new (std::nothrow) _system_context_menu_entry;
@@ -374,7 +374,7 @@ PUBLIC EMERALD_API void context_menu_append_menu(__in __notnull system_context_m
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API void system_context_menu_append_separator(__in __notnull system_context_menu menu)
+PUBLIC EMERALD_API void system_context_menu_append_separator(system_context_menu menu)
 {
     _system_context_menu*       menu_ptr  = (_system_context_menu*) menu;
     _system_context_menu_entry* new_entry = new (std::nothrow) _system_context_menu_entry;
@@ -392,7 +392,7 @@ PUBLIC EMERALD_API void system_context_menu_append_separator(__in __notnull syst
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API system_context_menu system_context_menu_create(__in __notnull system_hashed_ansi_string name)
+PUBLIC EMERALD_API system_context_menu system_context_menu_create(system_hashed_ansi_string name)
 {
     _system_context_menu* instance = new (std::nothrow) _system_context_menu;
 
@@ -419,10 +419,10 @@ PUBLIC EMERALD_API system_context_menu system_context_menu_create(__in __notnull
 }
 
 /** TODO */
-PUBLIC void system_context_menu_show(__in __notnull system_context_menu  menu,
-                                     __in           system_window_handle parent_window_handle,
-                                     __in           int                  x,
-                                     __in           int                  y)
+PUBLIC void system_context_menu_show(system_context_menu  menu,
+                                     system_window_handle parent_window_handle,
+                                     int                  x,
+                                     int                  y)
 {
     int                   id_clicked = 0;
     _system_context_menu* menu_ptr   = (_system_context_menu*) menu;

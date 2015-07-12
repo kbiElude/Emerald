@@ -12,14 +12,14 @@ REFCOUNT_INSERT_DECLARATIONS(system_randomizer,
                              system_randomizer)
 
 /** TODO */
-PUBLIC EMERALD_API system_randomizer system_randomizer_create(__in __notnull system_hashed_ansi_string name,
-                                                              __in           __int64                   seed);
+PUBLIC EMERALD_API system_randomizer system_randomizer_create(system_hashed_ansi_string name,
+                                                              int64_t                   seed);
 
 /** TODO */
-PUBLIC EMERALD_API __int64 system_randomizer_pull(__in __notnull system_randomizer instance);
+PUBLIC EMERALD_API int64_t system_randomizer_pull(system_randomizer instance);
 
 /** TODO */
-PUBLIC EMERALD_API void system_randomizer_reset(__in __notnull system_randomizer instance,
-                                                __in            __int64          seed);
+PUBLIC EMERALD_API void system_randomizer_reset(system_randomizer instance,
+                                                int64_t           seed);
 
 #endif /* SYSTEM_RANDOMIZER */

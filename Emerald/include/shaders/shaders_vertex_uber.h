@@ -33,36 +33,36 @@ typedef unsigned int shaders_vertex_uber_item_id;
 
 
 /** TODO */
-PUBLIC EMERALD_API void shaders_vertex_uber_add_passthrough_input_attribute(__in __notnull shaders_vertex_uber       uber,
-                                                                            __in __notnull system_hashed_ansi_string in_attribute_name,
-                                                                            __in __notnull _shader_variable_type     in_attribute_variable_type,
-                                                                            __in __notnull system_hashed_ansi_string out_attribute_name);
+PUBLIC EMERALD_API void shaders_vertex_uber_add_passthrough_input_attribute(shaders_vertex_uber       uber,
+                                                                            system_hashed_ansi_string in_attribute_name,
+                                                                            _shader_variable_type     in_attribute_variable_type,
+                                                                            system_hashed_ansi_string out_attribute_name);
 
 /** TODO */
-PUBLIC EMERALD_API shaders_vertex_uber_item_id shaders_vertex_uber_add_light(__in __notnull shaders_vertex_uber              uber,
-                                                                             __in           shaders_vertex_uber_light        light,
-                                                                             __in           shaders_fragment_uber_light_type light_type,
-                                                                             __in           bool                             is_shadow_caster);
+PUBLIC EMERALD_API shaders_vertex_uber_item_id shaders_vertex_uber_add_light(shaders_vertex_uber              uber,
+                                                                             shaders_vertex_uber_light        light,
+                                                                             shaders_fragment_uber_light_type light_type,
+                                                                             bool                             is_shadow_caster);
 
 /** TODO
  * 
  *  @return shaders_vertex_uber instance if successful, NULL otherwise.
  */
-PUBLIC EMERALD_API shaders_vertex_uber shaders_vertex_uber_create(__in __notnull ogl_context               context,
-                                                                  __in __notnull system_hashed_ansi_string name);
+PUBLIC EMERALD_API shaders_vertex_uber shaders_vertex_uber_create(ogl_context               context,
+                                                                  system_hashed_ansi_string name);
 
 /** TODO */
-PUBLIC EMERALD_API bool shaders_vertex_uber_get_item_type(__in __notnull shaders_vertex_uber            uber,
-                                                          __in           shaders_vertex_uber_item_id    item_id,
-                                                          __out          shaders_vertex_uber_item_type* out_item_type);
+PUBLIC EMERALD_API bool shaders_vertex_uber_get_item_type(shaders_vertex_uber            uber,
+                                                          shaders_vertex_uber_item_id    item_id,
+                                                          shaders_vertex_uber_item_type* out_item_type);
 
 /** TODO */
-PUBLIC EMERALD_API bool shaders_vertex_uber_get_light_type(__in  __notnull shaders_vertex_uber         uber,
-                                                           __in            shaders_vertex_uber_item_id item_id,
-                                                           __out           shaders_vertex_uber_light*  out_light_type);
+PUBLIC EMERALD_API bool shaders_vertex_uber_get_light_type(shaders_vertex_uber         uber,
+                                                           shaders_vertex_uber_item_id item_id,
+                                                           shaders_vertex_uber_light*  out_light_type);
 
 /** TODO */
-PUBLIC EMERALD_API uint32_t shaders_vertex_uber_get_n_items(__in __notnull shaders_vertex_uber);
+PUBLIC EMERALD_API uint32_t shaders_vertex_uber_get_n_items(shaders_vertex_uber);
 
 /** Retrieves ogl_shader object associated with the instance. Do not release the object or modify it in any way.
  *
@@ -70,12 +70,12 @@ PUBLIC EMERALD_API uint32_t shaders_vertex_uber_get_n_items(__in __notnull shade
  *
  *  @return ogl_shader instance.
  **/
-PUBLIC EMERALD_API ogl_shader shaders_vertex_uber_get_shader(__in __notnull shaders_vertex_uber);
+PUBLIC EMERALD_API ogl_shader shaders_vertex_uber_get_shader(shaders_vertex_uber);
 
 /** TODO */
-PUBLIC EMERALD_API bool shaders_vertex_uber_is_dirty(__in __notnull shaders_vertex_uber);
+PUBLIC EMERALD_API bool shaders_vertex_uber_is_dirty(shaders_vertex_uber);
 
 /** TODO */
-PUBLIC EMERALD_API void shaders_vertex_uber_recompile(__in __notnull shaders_vertex_uber uber);
+PUBLIC EMERALD_API void shaders_vertex_uber_recompile(shaders_vertex_uber uber);
 
 #endif /* SHADERS_VERTEX_UBER_H */

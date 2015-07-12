@@ -66,12 +66,12 @@ typedef struct _system_memory_manager
      */
     unsigned int* page_owners;
 
-    explicit _system_memory_manager(__in bool                                 in_thread_safe,
-                                    __in unsigned int                         in_memory_region_size,
-                                    __in unsigned int                         in_page_size,
-                                    __in void*                                in_user_arg,
-                                    __in PFNSYSTEMMEMORYMANAGERALLOCBLOCKPROC in_pfn_on_memory_block_alloced,
-                                    __in PFNSYSTEMMEMORYMANAGERFREEBLOCKPROC  in_pfn_on_memory_block_freed)
+    explicit _system_memory_manager(bool                                 in_thread_safe,
+                                    unsigned int                         in_memory_region_size,
+                                    unsigned int                         in_page_size,
+                                    void*                                in_user_arg,
+                                    PFNSYSTEMMEMORYMANAGERALLOCBLOCKPROC in_pfn_on_memory_block_alloced,
+                                    PFNSYSTEMMEMORYMANAGERFREEBLOCKPROC  in_pfn_on_memory_block_freed)
     {
         const unsigned int n_page_owners = in_memory_region_size / in_page_size + 1;
 
@@ -178,10 +178,10 @@ typedef struct _system_memory_manager
 #endif
 
 /** Please see header for spec */
-PUBLIC EMERALD_API bool system_memory_manager_alloc_block(__in  __notnull system_memory_manager manager,
-                                                          __in            unsigned int          size,
-                                                          __in            unsigned int          required_alignment,
-                                                          __out __notnull unsigned int*         out_allocation_offset)
+PUBLIC EMERALD_API bool system_memory_manager_alloc_block(system_memory_manager manager,
+                                                          unsigned int          size,
+                                                          unsigned int          required_alignment,
+                                                          unsigned int*         out_allocation_offset)
 {
     _system_memory_manager* manager_ptr = (_system_memory_manager*) manager;
     bool                    result      = false;
@@ -346,12 +346,12 @@ PUBLIC EMERALD_API bool system_memory_manager_alloc_block(__in  __notnull system
 }
 
 /** Please see header for spec */
-PUBLIC EMERALD_API system_memory_manager system_memory_manager_create(__in           unsigned int                         memory_region_size,
-                                                                      __in           unsigned int                         page_size,
-                                                                      __in __notnull PFNSYSTEMMEMORYMANAGERALLOCBLOCKPROC pfn_on_memory_block_alloced,
-                                                                      __in __notnull PFNSYSTEMMEMORYMANAGERFREEBLOCKPROC  pfn_on_memory_block_freed,
-                                                                      __in_opt       void*                                user_arg,
-                                                                      __in           bool                                 should_be_thread_safe)
+PUBLIC EMERALD_API system_memory_manager system_memory_manager_create(unsigned int                         memory_region_size,
+                                                                      unsigned int                         page_size,
+                                                                      PFNSYSTEMMEMORYMANAGERALLOCBLOCKPROC pfn_on_memory_block_alloced,
+                                                                      PFNSYSTEMMEMORYMANAGERFREEBLOCKPROC  pfn_on_memory_block_freed,
+                                                                      void*                                user_arg,
+                                                                      bool                                 should_be_thread_safe)
 {
     /* Sanity checks */
     ASSERT_DEBUG_SYNC(memory_region_size != 0,
@@ -393,8 +393,8 @@ PUBLIC EMERALD_API system_memory_manager system_memory_manager_create(__in      
 }
 
 /** Please see header for spec */
-PUBLIC EMERALD_API void system_memory_manager_free_block(__in __notnull system_memory_manager manager,
-                                                         __in           unsigned int          alloc_offset)
+PUBLIC EMERALD_API void system_memory_manager_free_block(system_memory_manager manager,
+                                                         unsigned int          alloc_offset)
 {
     _system_memory_manager* manager_ptr = (_system_memory_manager*) manager;
 
@@ -602,7 +602,7 @@ PUBLIC EMERALD_API void system_memory_manager_free_block(__in __notnull system_m
 }
 
 /** Please see header for spec */
-PUBLIC EMERALD_API void system_memory_manager_release(__in __notnull system_memory_manager manager)
+PUBLIC EMERALD_API void system_memory_manager_release(system_memory_manager manager)
 {
     _system_memory_manager* manager_ptr = (_system_memory_manager*) manager;
 

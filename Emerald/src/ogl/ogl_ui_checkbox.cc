@@ -115,8 +115,8 @@ static const char* ui_checkbox_fragment_shader_body = "#version 430 core\n"
                                                       "}\n";
 
 /** TODO */
-PRIVATE void _ogl_ui_checkbox_init_program(__in __notnull ogl_ui            ui,
-                                           __in __notnull _ogl_ui_checkbox* checkbox_ptr)
+PRIVATE void _ogl_ui_checkbox_init_program(ogl_ui            ui,
+                                           _ogl_ui_checkbox* checkbox_ptr)
 {
     /* Create all objects */
     ogl_context context         = ogl_ui_get_context(ui);
@@ -285,7 +285,7 @@ PRIVATE void _ogl_ui_checkbox_init_renderer_callback(ogl_context context,
 }
 
 /** TODO */
-PRIVATE void _ogl_ui_checkbox_update_text_location(__in __notnull _ogl_ui_checkbox* checkbox_ptr)
+PRIVATE void _ogl_ui_checkbox_update_text_location(_ogl_ui_checkbox* checkbox_ptr)
 {
     int           text_height    = 0;
     int           text_xy[2]     = {0};
@@ -330,7 +330,7 @@ PRIVATE void _ogl_ui_checkbox_update_text_location(__in __notnull _ogl_ui_checkb
 }
 
 /** TODO */
-PRIVATE void _ogl_ui_checkbox_update_x1y1x2y2(__in __notnull _ogl_ui_checkbox* checkbox_ptr)
+PRIVATE void _ogl_ui_checkbox_update_x1y1x2y2(_ogl_ui_checkbox* checkbox_ptr)
 {
     int           text_height    = 0;
     int           text_width     = 0;
@@ -483,9 +483,9 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_ui_checkbox_draw(void* internal_instance)
 }
 
 /** Please see header for specification */
-PUBLIC void ogl_ui_checkbox_get_property(__in  __notnull const void*              checkbox,
-                                         __in            _ogl_ui_control_property property,
-                                         __out __notnull void*                    out_result)
+PUBLIC void ogl_ui_checkbox_get_property(const void*              checkbox,
+                                         _ogl_ui_control_property property,
+                                         void*                    out_result)
 {
     const _ogl_ui_checkbox* checkbox_ptr = (const _ogl_ui_checkbox*) checkbox;
 
@@ -514,13 +514,13 @@ PUBLIC void ogl_ui_checkbox_get_property(__in  __notnull const void*            
 }
 
 /** Please see header for specification */
-PUBLIC void* ogl_ui_checkbox_init(__in           __notnull   ogl_ui                    instance,
-                                  __in           __notnull   ogl_text                  text_renderer,
-                                  __in           __notnull   system_hashed_ansi_string name,
-                                  __in_ecount(2) __notnull   const float*              x1y1,
-                                  __in           __notnull   PFNOGLUIFIREPROCPTR       pfn_fire_proc_ptr,
-                                  __in           __maybenull void*                     fire_proc_user_arg,
-                                  __in                       bool                      default_status)
+PUBLIC void* ogl_ui_checkbox_init(ogl_ui                    instance,
+                                  ogl_text                  text_renderer,
+                                  system_hashed_ansi_string name,
+                                  const float*              x1y1,
+                                  PFNOGLUIFIREPROCPTR       pfn_fire_proc_ptr,
+                                  void*                     fire_proc_user_arg,
+                                  bool                      default_status)
 {
     _ogl_ui_checkbox* new_checkbox = new (std::nothrow) _ogl_ui_checkbox;
 
@@ -692,9 +692,9 @@ PUBLIC void ogl_ui_checkbox_on_lbm_up(void*        internal_instance,
 }
 
 /* Please see header for spec */
-PUBLIC void ogl_ui_checkbox_set_property(__in __notnull void*                    checkbox,
-                                         __in __notnull _ogl_ui_control_property property,
-                                         __in __notnull const void*              data)
+PUBLIC void ogl_ui_checkbox_set_property(void*                    checkbox,
+                                         _ogl_ui_control_property property,
+                                         const void*              data)
 {
     _ogl_ui_checkbox* checkbox_ptr = (_ogl_ui_checkbox*) checkbox;
 
@@ -702,8 +702,6 @@ PUBLIC void ogl_ui_checkbox_set_property(__in __notnull void*                   
     {
         case OGL_UI_CONTROL_PROPERTY_CHECKBOX_X1Y1:
         {
-            __analysis_assume(sizeof(data) == sizeof(float) * 2);
-
             memcpy(checkbox_ptr->base_x1y1,
                    data,
                    sizeof(float) * 2);

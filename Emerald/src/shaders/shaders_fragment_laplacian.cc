@@ -37,7 +37,7 @@ const float laplacian[9] = {1,  1, 1,
  *
  *  @param ptr Pointer to _shaders_fragment_sobel instance.
  **/
-PRIVATE void _shaders_fragment_laplacian_release(__in __notnull __deallocate(mem) void* ptr)
+PRIVATE void _shaders_fragment_laplacian_release(void* ptr)
 {
     _shaders_fragment_laplacian* data_ptr = (_shaders_fragment_laplacian*) ptr;
 
@@ -51,8 +51,8 @@ PRIVATE void _shaders_fragment_laplacian_release(__in __notnull __deallocate(mem
 
 
 /** Please see header for specification */
-PUBLIC EMERALD_API shaders_fragment_laplacian shaders_fragment_laplacian_create(__in __notnull ogl_context               context,
-                                                                                __in __notnull system_hashed_ansi_string name)
+PUBLIC EMERALD_API shaders_fragment_laplacian shaders_fragment_laplacian_create(ogl_context               context,
+                                                                                system_hashed_ansi_string name)
 {
     _shaders_fragment_laplacian* result_object = NULL;
     shaders_fragment_laplacian   result_shader = NULL;
@@ -109,7 +109,7 @@ end:
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API ogl_shader shaders_fragment_laplacian_get_shader(__in __notnull shaders_fragment_laplacian shader)
+PUBLIC EMERALD_API ogl_shader shaders_fragment_laplacian_get_shader(shaders_fragment_laplacian shader)
 {
     return shaders_fragment_convolution3x3_get_shader(((_shaders_fragment_laplacian*)shader)->shader);
 }

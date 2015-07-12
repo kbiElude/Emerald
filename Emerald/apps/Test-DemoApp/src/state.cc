@@ -108,10 +108,10 @@ PUBLIC void state_deinit()
 }
 
 /** Please see header for spec */
-PUBLIC void state_get_current_frame_properties(__out __notnull scene*              out_current_scene,
-                                               __out __notnull scene_camera*       out_current_scene_camera,
-                                               __out __notnull ogl_scene_renderer* out_current_renderer,
-                                               __out           system_time*        out_current_frame_time)
+PUBLIC void state_get_current_frame_properties(scene*              out_current_scene,
+                                               scene_camera*       out_current_scene_camera,
+                                               ogl_scene_renderer* out_current_renderer,
+                                               system_time*        out_current_frame_time)
 {
     system_time  current_time        = 0;
     unsigned int n_times_scene_shown = 0;
@@ -526,7 +526,7 @@ PUBLIC void state_init()
 }
 
 /** Please see header for spec */
-PUBLIC void state_set_color_shadow_map_blur_resolution(__in postprocessing_blur_gaussian_resolution new_resolution)
+PUBLIC void state_set_color_shadow_map_blur_resolution(postprocessing_blur_gaussian_resolution new_resolution)
 {
     /* Wait for the current frame to render and lock the rendering pipeline, while
      * we adjust the setting..
@@ -573,7 +573,7 @@ PUBLIC void state_set_color_shadow_map_blur_resolution(__in postprocessing_blur_
 }
 
 /** Please see header for spec */
-PUBLIC void state_set_color_shadow_map_internalformat(__in ogl_texture_internalformat new_internalformat)
+PUBLIC void state_set_color_shadow_map_internalformat(ogl_texture_internalformat new_internalformat)
 {
     /* Wait for the current frame to render and lock the rendering pipeline, while
      * we adjust the shadow map size..
@@ -620,7 +620,7 @@ PUBLIC void state_set_color_shadow_map_internalformat(__in ogl_texture_internalf
 }
 
 /** Please see header for spec */
-PUBLIC void state_set_depth_shadow_map_internalformat(__in ogl_texture_internalformat new_internalformat)
+PUBLIC void state_set_depth_shadow_map_internalformat(ogl_texture_internalformat new_internalformat)
 {
     /* Wait for the current frame to render and lock the rendering pipeline, while
      * we adjust the shadow map size..
@@ -667,7 +667,7 @@ PUBLIC void state_set_depth_shadow_map_internalformat(__in ogl_texture_internalf
 }
 
 /** Please see header for spec */
-PUBLIC void state_set_shadow_map_algorithm(__in scene_light_shadow_map_algorithm new_sm_algo)
+PUBLIC void state_set_shadow_map_algorithm(scene_light_shadow_map_algorithm new_sm_algo)
 {
     /* Wait for the current frame to render and lock the rendering pipeline, while
      * we adjust the shadow map size..
@@ -714,7 +714,7 @@ PUBLIC void state_set_shadow_map_algorithm(__in scene_light_shadow_map_algorithm
 }
 
 /** Please see header for spec */
-PUBLIC void state_set_shadow_map_pointlight_algorithm(__in scene_light_shadow_map_pointlight_algorithm pl_algo)
+PUBLIC void state_set_shadow_map_pointlight_algorithm(scene_light_shadow_map_pointlight_algorithm pl_algo)
 {
     /* Wait for the current frame to render and lock the rendering pipeline, while
      * we adjust the shadow map size..
@@ -761,7 +761,7 @@ PUBLIC void state_set_shadow_map_pointlight_algorithm(__in scene_light_shadow_ma
 }
 
 /** Please see header for spec */
-PUBLIC void state_set_shadow_map_size(__in unsigned int new_shadow_map_size)
+PUBLIC void state_set_shadow_map_size(unsigned int new_shadow_map_size)
 {
     /* Wait for the current frame to render and lock the rendering pipeline, while
      * we adjust the shadow map size..

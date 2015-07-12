@@ -45,27 +45,27 @@ typedef system_hashed_ansi_string (*PFNGFXIMAGEGETALTERNATIVEFILENAMEPROCPTR)(vo
                                                                               system_file_unpacker*     out_file_unpacker);      /* can be NULL if the file does not come from a file unpacker */
 
 /** TODO */
-PUBLIC unsigned int gfx_image_add_mipmap(__in __notnull                   gfx_image            image,
-                                         __in                             unsigned int         width,
-                                         __in                             unsigned int         height,
-                                         __in                             unsigned int         row_alignment,
-                                         __in                             GLenum               internalformat,
-                                         __in                             bool                 is_compressed,
-                                         __in_bcount(data_size) __notnull const unsigned char* data_ptr,
-                                         __in                             unsigned int         data_size,
-                                         __in                             bool                 should_cache_data_ptr,
-                                         __in                             bool                 should_release_cached_data = false);
+PUBLIC unsigned int gfx_image_add_mipmap(gfx_image            image,
+                                         unsigned int         width,
+                                         unsigned int         height,
+                                         unsigned int         row_alignment,
+                                         GLenum               internalformat,
+                                         bool                 is_compressed,
+                                         const unsigned char* data_ptr,
+                                         unsigned int         data_size,
+                                         bool                 should_cache_data_ptr,
+                                         bool                 should_release_cached_data = false);
 
 /** Creates a new instance of gfx_image.
  *
  *  @return gfx_image instance or NULL if call failed.
  */
-PUBLIC gfx_image gfx_image_create(__in __notnull system_hashed_ansi_string name);
+PUBLIC gfx_image gfx_image_create(system_hashed_ansi_string name);
 
 /** TODO */
-PUBLIC EMERALD_API gfx_image gfx_image_create_from_file(__in __notnull system_hashed_ansi_string name,
-                                                        __in __notnull system_hashed_ansi_string file_name,
-                                                        __in           bool                      use_alternative_filename_getter);
+PUBLIC EMERALD_API gfx_image gfx_image_create_from_file(system_hashed_ansi_string name,
+                                                        system_hashed_ansi_string file_name,
+                                                        bool                      use_alternative_filename_getter);
 
 /** Retrieves amount of bytes needed for data stored with specific combination of image properties.
  *
@@ -76,24 +76,24 @@ PUBLIC EMERALD_API gfx_image gfx_image_create_from_file(__in __notnull system_ha
  *
  *  @return Amount of bytes given image configuration needs to store full picture.
  **/
-PUBLIC unsigned int gfx_image_get_data_size(__in GLenum       internalformat,
-                                            __in unsigned int width,
-                                            __in unsigned int height,
-                                            __in unsigned int row_alignment);
+PUBLIC unsigned int gfx_image_get_data_size(GLenum       internalformat,
+                                            unsigned int width,
+                                            unsigned int height,
+                                            unsigned int row_alignment);
 
 /** TODO */
-PUBLIC EMERALD_API bool gfx_image_get_mipmap_property(__in  __notnull gfx_image                 image,
-                                                      __in            unsigned int              n_mipmap,
-                                                      __in            gfx_image_mipmap_property mipmap_property,
-                                                      __out __notnull void*                     out_result);
+PUBLIC EMERALD_API bool gfx_image_get_mipmap_property(gfx_image                 image,
+                                                      unsigned int              n_mipmap,
+                                                      gfx_image_mipmap_property mipmap_property,
+                                                      void*                     out_result);
 
 /** TODO */
-PUBLIC EMERALD_API void gfx_image_get_property(__in __notnull const gfx_image          image,
-                                               __in                 gfx_image_property property,
-                                               __in __notnull       void*              out_result_ptr);
+PUBLIC EMERALD_API void gfx_image_get_property(const gfx_image          image,
+                                                     gfx_image_property property,
+                                                     void*              out_result_ptr);
 
 /** TODO */
-PUBLIC EMERALD_API void gfx_image_set_global_property(__in     gfx_image_property property_value,
-                                                      __in_opt void*              value);
+PUBLIC EMERALD_API void gfx_image_set_global_property(gfx_image_property property_value,
+                                                      void*              value);
 
 #endif /* GFX_IMAGE_H */

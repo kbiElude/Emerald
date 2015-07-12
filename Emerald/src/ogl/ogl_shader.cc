@@ -41,8 +41,8 @@ REFCOUNT_INSERT_IMPLEMENTATION(ogl_shader,
 
 
 /** TODO */
-PRIVATE void _ogl_shader_compile_callback(__in __notnull ogl_context context,
-                                                         void*       in_arg)
+PRIVATE void _ogl_shader_compile_callback(ogl_context context,
+                                          void*       in_arg)
 {
     _ogl_shader* shader_ptr = (_ogl_shader*) in_arg;
 
@@ -93,7 +93,8 @@ PRIVATE void _ogl_shader_compile_callback(__in __notnull ogl_context context,
 }
 
 /** TODO */
-PRIVATE void _ogl_shader_create_callback(__in __notnull ogl_context context, void* in_arg)
+PRIVATE void _ogl_shader_create_callback(ogl_context context,
+                                         void*       in_arg)
 {
     _ogl_shader* shader_ptr = (_ogl_shader*) in_arg;
 
@@ -101,7 +102,8 @@ PRIVATE void _ogl_shader_create_callback(__in __notnull ogl_context context, voi
 }
 
 /** TODO */
-PRIVATE void _ogl_shader_release_callback(__in __notnull ogl_context context, void* in_arg)
+PRIVATE void _ogl_shader_release_callback(ogl_context context,
+                                          void*       in_arg)
 {
     _ogl_shader* shader_ptr = (_ogl_shader*) in_arg;
 
@@ -109,7 +111,8 @@ PRIVATE void _ogl_shader_release_callback(__in __notnull ogl_context context, vo
 }
 
 /** TODO */
-PRIVATE void _ogl_shader_set_body_callback(__in __notnull ogl_context context, void* in_arg)
+PRIVATE void _ogl_shader_set_body_callback(ogl_context context,
+                                           void*       in_arg)
 {
     _ogl_shader* shader_ptr           = (_ogl_shader*) in_arg;
     const char*  shader_source        = system_hashed_ansi_string_get_buffer(shader_ptr->body);
@@ -123,7 +126,7 @@ PRIVATE void _ogl_shader_set_body_callback(__in __notnull ogl_context context, v
 }
 
 /** TODO */
-PRIVATE void _ogl_shader_release(__in __notnull __deallocate(mem) void* shader)
+PRIVATE void _ogl_shader_release(void* shader)
 {
     _ogl_shader* shader_ptr = (_ogl_shader*) shader;
 
@@ -156,7 +159,7 @@ PRIVATE void _ogl_shader_release(__in __notnull __deallocate(mem) void* shader)
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API bool ogl_shader_compile(__in __notnull ogl_shader shader)
+PUBLIC EMERALD_API bool ogl_shader_compile(ogl_shader shader)
 {
     bool         result     = false;
     _ogl_shader* shader_ptr = (_ogl_shader*) shader;
@@ -179,9 +182,9 @@ PUBLIC EMERALD_API bool ogl_shader_compile(__in __notnull ogl_shader shader)
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API ogl_shader ogl_shader_create(__in __notnull ogl_context               context,
-                                                __in           ogl_shader_type           shader_type,
-                                                __in __notnull system_hashed_ansi_string name)
+PUBLIC EMERALD_API ogl_shader ogl_shader_create(ogl_context               context,
+                                                ogl_shader_type           shader_type,
+                                                system_hashed_ansi_string name)
 {
     /* Sanity check: make sure the ogl_shader instance we're about to create has not already been created.
      *               If you ever reach this point, please ensure shader instances are uniquely named. */
@@ -271,25 +274,25 @@ PUBLIC EMERALD_API ogl_shader ogl_shader_create(__in __notnull ogl_context      
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API system_hashed_ansi_string ogl_shader_get_body(__in __notnull ogl_shader shader)
+PUBLIC EMERALD_API system_hashed_ansi_string ogl_shader_get_body(ogl_shader shader)
 {
     return ((_ogl_shader*)shader)->body;
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API bool ogl_shader_get_compile_status(__in __notnull ogl_shader shader)
+PUBLIC EMERALD_API bool ogl_shader_get_compile_status(ogl_shader shader)
 {
     return ((_ogl_shader*) shader)->compile_status;
 }
 
 /** Please see header for specification */
-PUBLIC GLuint ogl_shader_get_id(__in __notnull ogl_shader shader)
+PUBLIC GLuint ogl_shader_get_id(ogl_shader shader)
 {
     return ((_ogl_shader*)shader)->id;
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API const char* ogl_shader_get_shader_info_log(__in __notnull ogl_shader shader)
+PUBLIC EMERALD_API const char* ogl_shader_get_shader_info_log(ogl_shader shader)
 {
     const char*  result     = NULL;
     _ogl_shader* shader_ptr = (_ogl_shader*) shader;
@@ -306,20 +309,20 @@ PUBLIC EMERALD_API const char* ogl_shader_get_shader_info_log(__in __notnull ogl
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API system_hashed_ansi_string ogl_shader_get_name(__in __notnull ogl_shader shader)
+PUBLIC EMERALD_API system_hashed_ansi_string ogl_shader_get_name(ogl_shader shader)
 {
     return ((_ogl_shader*)shader)->name;
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API ogl_shader_type ogl_shader_get_type(__in __notnull ogl_shader shader)
+PUBLIC EMERALD_API ogl_shader_type ogl_shader_get_type(ogl_shader shader)
 {
     return ((_ogl_shader*)shader)->type;
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API bool ogl_shader_set_body(__in __notnull ogl_shader                shader,
-                                            __in __notnull system_hashed_ansi_string body)
+PUBLIC EMERALD_API bool ogl_shader_set_body(ogl_shader                shader,
+                                            system_hashed_ansi_string body)
 {
     bool         result     = false;
     _ogl_shader* shader_ptr = (_ogl_shader*) shader;

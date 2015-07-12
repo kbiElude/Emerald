@@ -32,39 +32,39 @@ enum ogl_context_to_bindings_sync_bit
 DECLARE_HANDLE(ogl_context_to_bindings);
 
 /** TODO */
-PUBLIC ogl_context_to_bindings ogl_context_to_bindings_create(__in __notnull ogl_context context);
+PUBLIC ogl_context_to_bindings ogl_context_to_bindings_create(ogl_context context);
 
 /** TODO */
-PUBLIC ogl_texture ogl_context_to_bindings_get_bound_texture(__in __notnull const ogl_context_to_bindings to_bindings,
-                                                             __in           GLuint                        texture_unit,
-                                                             __in           GLenum                        target);
+PUBLIC ogl_texture ogl_context_to_bindings_get_bound_texture(const ogl_context_to_bindings to_bindings,
+                                                             GLuint                        texture_unit,
+                                                             GLenum                        target);
 
 /** TODO */
-PUBLIC ogl_context_to_bindings_sync_bit ogl_context_to_bindings_get_ogl_context_to_bindings_sync_bit_from_gl_target(__in GLenum binding_target);
+PUBLIC ogl_context_to_bindings_sync_bit ogl_context_to_bindings_get_ogl_context_to_bindings_sync_bit_from_gl_target(GLenum binding_target);
 
 /** TODO */
-PUBLIC void ogl_context_to_bindings_init(__in __notnull ogl_context_to_bindings                   bindings,
-                                         __in __notnull const ogl_context_gl_entrypoints_private* entrypoints_private_ptr);
+PUBLIC void ogl_context_to_bindings_init(ogl_context_to_bindings                   bindings,
+                                         const ogl_context_gl_entrypoints_private* entrypoints_private_ptr);
 
 /** TODO */
-PUBLIC void ogl_context_to_bindings_release(__in __notnull __post_invalid ogl_context_to_bindings bindings);
+PUBLIC void ogl_context_to_bindings_release(ogl_context_to_bindings bindings);
 
 /** TODO */
-PUBLIC void ogl_context_to_bindings_reset_all_bindings_for_texture_unit(__in __notnull ogl_context_to_bindings to_bindings,
-                                                                        __in           uint32_t                texture_unit);
+PUBLIC void ogl_context_to_bindings_reset_all_bindings_for_texture_unit(ogl_context_to_bindings to_bindings,
+                                                                        uint32_t                texture_unit);
 
 /** TODO */
-PUBLIC void ogl_context_to_bindings_set_binding(__in __notnull ogl_context_to_bindings bindings,
-                                                __in           GLuint                  texture_unit,
-                                                __in           GLenum                  target,
-                                                __in_opt       ogl_texture             texture);
+PUBLIC void ogl_context_to_bindings_set_binding(ogl_context_to_bindings bindings,
+                                                GLuint                  texture_unit,
+                                                GLenum                  target,
+                                                ogl_texture             texture);
 
 /** TODO
  *
  *  @param bindings  TODO
  *
  */
-PUBLIC void ogl_context_to_bindings_sync(__in __notnull ogl_context_to_bindings          bindings,
-                                         __in           ogl_context_to_bindings_sync_bit sync_bits);
+PUBLIC void ogl_context_to_bindings_sync(ogl_context_to_bindings          bindings,
+                                         ogl_context_to_bindings_sync_bit sync_bits);
 
 #endif /* OGL_CONTEXT_TO_BINDINGS_H */

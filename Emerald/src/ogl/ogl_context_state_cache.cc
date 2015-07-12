@@ -135,7 +135,7 @@ typedef struct _ogl_context_state_cache
 
 
 /** Please see header for spec */
-PUBLIC ogl_context_state_cache ogl_context_state_cache_create(__in __notnull ogl_context context)
+PUBLIC ogl_context_state_cache ogl_context_state_cache_create(ogl_context context)
 {
     _ogl_context_state_cache* new_cache = new (std::nothrow) _ogl_context_state_cache;
 
@@ -151,9 +151,9 @@ PUBLIC ogl_context_state_cache ogl_context_state_cache_create(__in __notnull ogl
 }
 
 /** Please see header for spec */
-PUBLIC void ogl_context_state_cache_get_property(__in  __notnull const ogl_context_state_cache    cache,
-                                                 __in            ogl_context_state_cache_property property,
-                                                 __out __notnull void*                            out_result)
+PUBLIC void ogl_context_state_cache_get_property(const ogl_context_state_cache    cache,
+                                                 ogl_context_state_cache_property property,
+                                                 void*                            out_result)
 {
     const _ogl_context_state_cache* cache_ptr = (const _ogl_context_state_cache*) cache;
 
@@ -477,8 +477,8 @@ PUBLIC void ogl_context_state_cache_get_property(__in  __notnull const ogl_conte
 }
 
 /** Please see header for spec */
-PUBLIC void ogl_context_state_cache_init(__in __notnull ogl_context_state_cache                   cache,
-                                         __in __notnull const ogl_context_gl_entrypoints_private* entrypoints_private_ptr)
+PUBLIC void ogl_context_state_cache_init(ogl_context_state_cache                   cache,
+                                         const ogl_context_gl_entrypoints_private* entrypoints_private_ptr)
 {
     _ogl_context_state_cache*    cache_ptr  = (_ogl_context_state_cache*) cache;
     const ogl_context_gl_limits* limits_ptr = NULL;
@@ -647,7 +647,7 @@ PUBLIC void ogl_context_state_cache_init(__in __notnull ogl_context_state_cache 
 }
 
 /** Please see header for spec */
-PUBLIC void ogl_context_state_cache_release(__in __notnull __post_invalid ogl_context_state_cache cache)
+PUBLIC void ogl_context_state_cache_release(ogl_context_state_cache cache)
 {
     _ogl_context_state_cache* cache_ptr = (_ogl_context_state_cache*) cache;
 
@@ -658,9 +658,9 @@ PUBLIC void ogl_context_state_cache_release(__in __notnull __post_invalid ogl_co
 }
 
 /* Please see header for spec */
-PUBLIC void ogl_context_state_cache_set_property(__in __notnull ogl_context_state_cache          cache,
-                                                 __in           ogl_context_state_cache_property property,
-                                                 __in __notnull const void*                      data)
+PUBLIC void ogl_context_state_cache_set_property(ogl_context_state_cache          cache,
+                                                 ogl_context_state_cache_property property,
+                                                 const void*                      data)
 {
     _ogl_context_state_cache* cache_ptr = (_ogl_context_state_cache*) cache;
 
@@ -1000,8 +1000,8 @@ PUBLIC void ogl_context_state_cache_set_property(__in __notnull ogl_context_stat
 }
 
 /** Please see header for spec */
-PUBLIC void ogl_context_state_cache_sync(__in __notnull ogl_context_state_cache cache,
-                                         __in           uint32_t                sync_bits)
+PUBLIC void ogl_context_state_cache_sync(ogl_context_state_cache cache,
+                                         uint32_t                sync_bits)
 {
     /* NOTE: cache is NULL during rendering context initialization */
     if (cache != NULL)

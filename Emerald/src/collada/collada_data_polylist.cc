@@ -82,9 +82,9 @@ _collada_data_polylist::~_collada_data_polylist()
 
 
 /** TODO */
-PRIVATE system_hashed_ansi_string _collada_data_polylist_get_cached_blob_file_name(__in __notnull system_hashed_ansi_string geometry_name,
-                                                                                   __in           unsigned int              count,
-                                                                                   __in __notnull system_hashed_ansi_string material)
+PRIVATE system_hashed_ansi_string _collada_data_polylist_get_cached_blob_file_name(system_hashed_ansi_string geometry_name,
+                                                                                   unsigned int              count,
+                                                                                   system_hashed_ansi_string material)
 {
     char temp_file_name[1024];
 
@@ -99,9 +99,9 @@ PRIVATE system_hashed_ansi_string _collada_data_polylist_get_cached_blob_file_na
 }
 
 /** TODO */
-PUBLIC collada_data_polylist collada_data_polylist_create(__in __notnull tinyxml2::XMLElement*      polylist_element_ptr,
-                                                          __in __notnull collada_data_geometry_mesh geometry_mesh,
-                                                          __in __notnull collada_data               data)
+PUBLIC collada_data_polylist collada_data_polylist_create(tinyxml2::XMLElement*      polylist_element_ptr,
+                                                          collada_data_geometry_mesh geometry_mesh,
+                                                          collada_data               data)
 {
     system_hashed_ansi_string blob_file_name            = NULL;
     tinyxml2::XMLElement*     current_input_element_ptr = NULL;
@@ -465,9 +465,9 @@ end:
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API void collada_data_polylist_get_input(__in      __notnull collada_data_polylist    polylist,
-                                                        __in                _collada_data_input_type type,
-                                                        __out_opt           collada_data_input*      out_input)
+PUBLIC EMERALD_API void collada_data_polylist_get_input(collada_data_polylist    polylist,
+                                                        _collada_data_input_type type,
+                                                        collada_data_input*      out_input)
 {
     _collada_data_polylist* polylist_ptr = (_collada_data_polylist*) polylist;
 
@@ -478,9 +478,9 @@ PUBLIC EMERALD_API void collada_data_polylist_get_input(__in      __notnull coll
 }
 
 /* Please see header for properties */
-PUBLIC EMERALD_API void collada_data_polylist_get_input_types(__in      __notnull collada_data_polylist     polylist,
-                                                              __out_opt           unsigned int*             out_n_input_types,
-                                                              __out               _collada_data_input_type* out_input_types)
+PUBLIC EMERALD_API void collada_data_polylist_get_input_types(collada_data_polylist     polylist,
+                                                              unsigned int*             out_n_input_types,
+                                                              _collada_data_input_type* out_input_types)
 {
     unsigned int            input_type_counter   = 0;
     unsigned int            result_n_input_types = 0;
@@ -508,9 +508,9 @@ PUBLIC EMERALD_API void collada_data_polylist_get_input_types(__in      __notnul
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API void collada_data_polylist_get_property(__in  __notnull const collada_data_polylist    polylist,
-                                                           __in            collada_data_polylist_property property,
-                                                           __out           void*                          out_result)
+PUBLIC EMERALD_API void collada_data_polylist_get_property(const collada_data_polylist    polylist,
+                                                           collada_data_polylist_property property,
+                                                           void*                          out_result)
 {
     const _collada_data_polylist* polylist_ptr = (const _collada_data_polylist*) polylist;
 
@@ -567,7 +567,7 @@ PUBLIC EMERALD_API void collada_data_polylist_get_property(__in  __notnull const
 }
 
 /* Please see header for spec */
-PUBLIC void collada_data_polylist_release(__in __notnull __post_invalid collada_data_polylist polylist)
+PUBLIC void collada_data_polylist_release(collada_data_polylist polylist)
 {
     delete (_collada_data_polylist*) polylist;
 

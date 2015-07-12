@@ -18,8 +18,8 @@ typedef struct _system_file_multiunpacker_unpacker
     system_hashed_ansi_string          packed_filename;
     system_file_unpacker               unpacker;
 
-    explicit _system_file_multiunpacker_unpacker(__in __notnull system_hashed_ansi_string   in_packed_filename,
-                                                 __in __notnull _system_file_multiunpacker* in_owner_ptr)
+    explicit _system_file_multiunpacker_unpacker(system_hashed_ansi_string   in_packed_filename,
+                                                 _system_file_multiunpacker* in_owner_ptr)
     {
         owner_ptr       = in_owner_ptr;
         packed_filename = in_packed_filename;
@@ -42,7 +42,7 @@ typedef struct _system_file_multiunpacker
     system_barrier          sync_barrier;
     system_resizable_vector unpackers; /* _system_file_multipacker_unpacker */
 
-    explicit _system_file_multiunpacker(__in unsigned int n_unpackers)
+    explicit _system_file_multiunpacker(unsigned int n_unpackers)
     {
         sync_barrier = system_barrier_create         (n_unpackers);
         unpackers    = system_resizable_vector_create(n_unpackers,
@@ -109,8 +109,8 @@ PRIVATE volatile void _system_file_multiunpacker_spawn_unpacker_thread_entrypoin
 
 
 /** Please see header for spec */
-PUBLIC EMERALD_API system_file_multiunpacker system_file_multiunpacker_create(__in_ecount(n_packed_filenames) __notnull const system_hashed_ansi_string* packed_filenames,
-                                                                              __in                                      unsigned int                     n_packed_filenames)
+PUBLIC EMERALD_API system_file_multiunpacker system_file_multiunpacker_create(const system_hashed_ansi_string* packed_filenames,
+                                                                              unsigned int                     n_packed_filenames)
 {
     _system_file_multiunpacker* new_multiunpacker_ptr = new (std::nothrow) _system_file_multiunpacker(n_packed_filenames);
 
@@ -154,10 +154,10 @@ PUBLIC EMERALD_API system_file_multiunpacker system_file_multiunpacker_create(__
 }
 
 /** Please see header for spec */
-PUBLIC EMERALD_API void system_file_multiunpacker_get_indexed_property(__in  __notnull system_file_multiunpacker           multiunpacker,
-                                                                       __in            unsigned int                        n_unpacker,
-                                                                       __in  __notnull _system_file_multiunpacker_property property,
-                                                                       __out __notnull void*                               out_result)
+PUBLIC EMERALD_API void system_file_multiunpacker_get_indexed_property(system_file_multiunpacker           multiunpacker,
+                                                                       unsigned int                        n_unpacker,
+                                                                       _system_file_multiunpacker_property property,
+                                                                       void*                               out_result)
 {
     _system_file_multiunpacker* multiunpacker_ptr = (_system_file_multiunpacker*) multiunpacker;
 
@@ -192,7 +192,7 @@ PUBLIC EMERALD_API void system_file_multiunpacker_get_indexed_property(__in  __n
 }
 
 /** Please see header for spec */
-PUBLIC EMERALD_API void system_file_multiunpacker_release(__in __notnull __post_invalid system_file_multiunpacker multiunpacker)
+PUBLIC EMERALD_API void system_file_multiunpacker_release(system_file_multiunpacker multiunpacker)
 {
     _system_file_multiunpacker* multiunpacker_ptr = (_system_file_multiunpacker*) multiunpacker;
 
@@ -203,7 +203,7 @@ PUBLIC EMERALD_API void system_file_multiunpacker_release(__in __notnull __post_
 }
 
 /** Please see header for spec */
-PUBLIC EMERALD_API void system_file_multiunpacker_wait_till_ready(__in __notnull system_file_multiunpacker multiunpacker)
+PUBLIC EMERALD_API void system_file_multiunpacker_wait_till_ready(system_file_multiunpacker multiunpacker)
 {
     _system_file_multiunpacker* unpacker_ptr = (_system_file_multiunpacker*) multiunpacker;
 

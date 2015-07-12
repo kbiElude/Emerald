@@ -36,20 +36,20 @@ PUBLIC EMERALD_API system_critical_section system_critical_section_create();
  *
  *  @param system_critical_section Critical section to enter.
  */
-PUBLIC EMERALD_API void system_critical_section_enter(__in system_critical_section critical_section);
+PUBLIC EMERALD_API void system_critical_section_enter(system_critical_section critical_section);
 
 /** TODO */
-PUBLIC EMERALD_API void system_critical_section_get_property(__in  system_critical_section          critical_section,
-                                                             __in  system_critical_section_property property,
-                                                             __out void*                            out_result_ptr);
+PUBLIC EMERALD_API void system_critical_section_get_property(system_critical_section          critical_section,
+                                                             system_critical_section_property property,
+                                                             void*                            out_result_ptr);
 
 /** Leaves a critical section
  *
  *  @param system_critical_section Critical section to leave.
  */
-PUBLIC EMERALD_API void system_critical_section_leave(__in system_critical_section critical_section);
+PUBLIC EMERALD_API void system_critical_section_leave(system_critical_section critical_section);
 
 /** TODO */
-PUBLIC EMERALD_API bool system_critical_section_try_enter(__in system_critical_section critical_section);
+PUBLIC EMERALD_API bool system_critical_section_try_enter(system_critical_section critical_section);
 
 #endif /* SYSTEM_CRITICAL_SECTION_H */

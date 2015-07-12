@@ -27,7 +27,7 @@
 #include "system/system_variant.h"
 #include <sstream>
 
-PRIVATE void ReleaseMaterialToPolygonInstanceVectorMap(__in __notnull system_hash64map material_to_polygon_instance_vector_map);
+PRIVATE void ReleaseMaterialToPolygonInstanceVectorMap(system_hash64map material_to_polygon_instance_vector_map);
 
 
 typedef struct _mesh_instance
@@ -96,9 +96,9 @@ typedef struct _bake_mesh_gl_blob_worker_arg
     mesh            new_mesh;
     scene           mesh_scene;
 
-    explicit _bake_mesh_gl_blob_worker_arg(__in __notnull _mesh_instance* in_instance_ptr,
-                                           __in __notnull mesh            in_new_mesh,
-                                           __in __notnull scene           in_scene)
+    explicit _bake_mesh_gl_blob_worker_arg(_mesh_instance* in_instance_ptr,
+                                           mesh            in_new_mesh,
+                                           scene           in_scene)
     {
         instance_ptr = in_instance_ptr;
         new_mesh     = in_new_mesh;
@@ -128,22 +128,22 @@ typedef struct _polygon_instance
 } _polygon_instance;
 
 /* Forward declarations */
-PRIVATE  void  AddMeshToScene                       (__in __notnull  scene                       in_scene,
-                                                     __in __notnull  mesh                        new_mesh,
-                                                     __in __notnull  _mesh_instance*             instance_ptr);
-volatile void  BakeMeshGLBlobWorkerThreadEntryPoint (__in __notnull  void*                       arg);
-PRIVATE  void  ExtractMeshData                      (__in __notnull  _mesh_instance*             instance_ptr,
-                                                     __in            int                         lw_object_id);
-volatile void  ExtractMeshDataWorkerThreadEntryPoint(__in __notnull  void*                       n_object_raw);
-PRIVATE  void  ExtractPointData                     (__in            LWPolID                     polygon_id,
-                                                     __in            LWPntID                     point_id,
-                                                     __in            LWMeshInfoID                layer_mesh_info_id,
-                                                     __in  __notnull LWMeshInfo*                 layer_mesh_info_ptr,
-                                                     __out __notnull float*                      out_point_vertex_data,
-                                                     __out __notnull float*                      out_point_uv_data,
-                                                     __out __notnull bool*                       out_uv_data_extracted);
-PRIVATE  void* GenerateDataStreamData               (__in  __notnull system_resizable_vector     polygon_instance_vector,
-                                                     __in            mesh_layer_data_stream_type stream_type);
+PRIVATE  void  AddMeshToScene                       (scene                       in_scene,
+                                                     mesh                        new_mesh,
+                                                     _mesh_instance*             instance_ptr);
+volatile void  BakeMeshGLBlobWorkerThreadEntryPoint (void*                       arg);
+PRIVATE  void  ExtractMeshData                      (_mesh_instance*             instance_ptr,
+                                                     int                         lw_object_id);
+volatile void  ExtractMeshDataWorkerThreadEntryPoint(void*                       n_object_raw);
+PRIVATE  void  ExtractPointData                     (LWPolID                     polygon_id,
+                                                     LWPntID                     point_id,
+                                                     LWMeshInfoID                layer_mesh_info_id,
+                                                     LWMeshInfo*                 layer_mesh_info_ptr,
+                                                     float*                      out_point_vertex_data,
+                                                     float*                      out_point_uv_data,
+                                                     bool*                       out_uv_data_extracted);
+PRIVATE  void* GenerateDataStreamData               (system_resizable_vector     polygon_instance_vector,
+                                                     mesh_layer_data_stream_type stream_type);
 
 /* Local variables */
 PRIVATE system_hash64map        filename_to_mesh_instance_map      = NULL;
@@ -158,9 +158,9 @@ PRIVATE system_hash64map        scene_mesh_to_mesh_instance_map    = NULL;
 system_critical_section global_cs = system_critical_section_create();
 
 /** TODO */
-PRIVATE void AddMeshToScene(__in __notnull scene           in_scene,
-                            __in __notnull mesh            new_mesh,
-                            __in __notnull _mesh_instance* instance_ptr)
+PRIVATE void AddMeshToScene(scene           in_scene,
+                            mesh            new_mesh,
+                            _mesh_instance* instance_ptr)
 {
     /* Store the mesh */
     scene_mesh new_scene_mesh = NULL;
@@ -195,7 +195,7 @@ PRIVATE void AddMeshToScene(__in __notnull scene           in_scene,
 }
 
 /** TODO */
-volatile void BakeMeshGLBlobWorkerThreadEntryPoint(__in __notnull void* arg)
+volatile void BakeMeshGLBlobWorkerThreadEntryPoint(void* arg)
 {
     _bake_mesh_gl_blob_worker_arg* arg_ptr     = (_bake_mesh_gl_blob_worker_arg*) arg;
     uint32_t                       n_materials = 0;
@@ -342,8 +342,8 @@ volatile void BakeMeshGLBlobWorkerThreadEntryPoint(__in __notnull void* arg)
 }
 
 /** TODO */
-PRIVATE void ExtractMeshData(__in __notnull _mesh_instance*  instance_ptr,
-                             __in           int              lw_object_id)
+PRIVATE void ExtractMeshData(_mesh_instance*  instance_ptr,
+                             int              lw_object_id)
 {
     /* NOTE: This used to implement a parallelized mesh data extraction but turned out to not to work correctly,
      *       owing to undocumented weird Lightwave's objections to parallelized API calls. Feel free to pick
@@ -622,7 +622,7 @@ PRIVATE void ExtractMeshData(__in __notnull _mesh_instance*  instance_ptr,
 }
 
 /** TODO */
-volatile void ExtractMeshDataWorkerThreadEntryPoint(__in __notnull void* n_object_raw)
+volatile void ExtractMeshDataWorkerThreadEntryPoint(void* n_object_raw)
 {
     unsigned int n_object        = (unsigned int) n_object_raw;
     const char*  object_filename = object_funcs_ptr->filename(n_object);
@@ -662,13 +662,13 @@ end:
 }
 
 /** TODO */
-PRIVATE void ExtractPointData(__in            LWPolID          polygon_id,
-                              __in            LWPntID          point_id,
-                              __in            LWMeshInfoID     layer_mesh_info_id,
-                              __in  __notnull LWMeshInfo*      layer_mesh_info_ptr,
-                              __out __notnull float*           out_point_vertex_data,
-                              __out __notnull float*           out_point_uv_data,
-                              __out __notnull bool*            out_uv_data_extracted)
+PRIVATE void ExtractPointData(LWPolID      polygon_id,
+                              LWPntID      point_id,
+                              LWMeshInfoID layer_mesh_info_id,
+                              LWMeshInfo*  layer_mesh_info_ptr,
+                              float*       out_point_vertex_data,
+                              float*       out_point_uv_data,
+                              bool*        out_uv_data_extracted)
 {
     /* Extract vertex data.
      *
@@ -732,8 +732,8 @@ PRIVATE void ExtractPointData(__in            LWPolID          polygon_id,
 }
 
 /** TODO */
-PRIVATE void* GenerateDataStreamData(__in  __notnull system_resizable_vector     polygon_instance_vector,
-                                     __in            mesh_layer_data_stream_type stream_type)
+PRIVATE void* GenerateDataStreamData(system_resizable_vector     polygon_instance_vector,
+                                     mesh_layer_data_stream_type stream_type)
 {
     uint32_t n_polygon_instances = 0;
     float*   result_data         = NULL;
@@ -869,7 +869,7 @@ end:
 }
 
 /** TODO */
-PRIVATE void ReleaseMaterialToPolygonInstanceVectorMap(__in __notnull system_hash64map material_to_polygon_instance_vector_map)
+PRIVATE void ReleaseMaterialToPolygonInstanceVectorMap(system_hash64map material_to_polygon_instance_vector_map)
 {
     uint32_t n_keys = 0;
 
@@ -989,7 +989,7 @@ PUBLIC void DeinitMeshData()
 }
 
 /** TODO */
-PUBLIC void FillSceneWithMeshData(__in __notnull scene scene)
+PUBLIC void FillSceneWithMeshData(scene scene)
 {
     system_hash64map        envelope_id_to_curve_container_map = GetEnvelopeIDToCurveContainerHashMap();
     system_resizable_vector job_done_events                    = NULL;
@@ -1334,9 +1334,9 @@ PUBLIC void FillSceneWithMeshData(__in __notnull scene scene)
 }
 
 /** TODO */
-PUBLIC void GetMeshProperty(__in  __notnull scene_mesh   mesh_instance,
-                            __in            MeshProperty property,
-                            __out __notnull void*        out_result)
+PUBLIC void GetMeshProperty(scene_mesh   mesh_instance,
+                            MeshProperty property,
+                            void*        out_result)
 {
     _mesh_instance* mesh_instance_ptr = NULL;
 

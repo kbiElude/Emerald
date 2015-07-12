@@ -19,9 +19,9 @@
     @return
 
     **/ 
-    EMERALD_API BOOL WINAPI DllMain(__in HINSTANCE instance,
-                                    __in DWORD     reason,
-                                    __in LPVOID    reserved);
+    EMERALD_API BOOL WINAPI DllMain(HINSTANCE instance,
+                                    DWORD     reason,
+                                    LPVOID    reserved);
 
     /** Initialized in DLL_PROCESS_ATTACH */
     extern HINSTANCE _global_instance;

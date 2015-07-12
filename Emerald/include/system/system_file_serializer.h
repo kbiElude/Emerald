@@ -64,8 +64,8 @@ typedef enum
  *  @param data_size Number of bytes available for reading under @param data.
  *
  */
-PUBLIC EMERALD_API system_file_serializer system_file_serializer_create_for_reading_memory_region(__in_bcount(data_size) __notnull void*        data,
-                                                                                                  __in                             unsigned int data_size);
+PUBLIC EMERALD_API system_file_serializer system_file_serializer_create_for_reading_memory_region(void*        data,
+                                                                                                  unsigned int data_size);
 
 /** Creates a file serializer instance for reading a file.
  *
@@ -73,8 +73,8 @@ PUBLIC EMERALD_API system_file_serializer system_file_serializer_create_for_read
  *
  *  @return File serializer instance if file was found. Otherwise null.
  */
-PUBLIC EMERALD_API system_file_serializer system_file_serializer_create_for_reading(__in __notnull system_hashed_ansi_string file_name,
-                                                                                    __in           bool                      async_read = true);
+PUBLIC EMERALD_API system_file_serializer system_file_serializer_create_for_reading(system_hashed_ansi_string file_name,
+                                                                                    bool                      async_read = true);
 
 /** Creates a file serializer instance for writing a file.
  *
@@ -82,18 +82,18 @@ PUBLIC EMERALD_API system_file_serializer system_file_serializer_create_for_read
  *
  *  @return File serializer instance if file could have been created. Otherwise null.
  */
-PUBLIC EMERALD_API system_file_serializer system_file_serializer_create_for_writing(__in __notnull system_hashed_ansi_string file_name);
+PUBLIC EMERALD_API system_file_serializer system_file_serializer_create_for_writing(system_hashed_ansi_string file_name);
 
 /** TODO.
  *
  *  Should only be issued against write serializers.
  */
-PUBLIC EMERALD_API void system_file_serializer_flush_writes(__in __notnull system_file_serializer serializer);
+PUBLIC EMERALD_API void system_file_serializer_flush_writes(system_file_serializer serializer);
 
 /** TODO */
-PUBLIC EMERALD_API void system_file_serializer_get_property(__in  __notnull system_file_serializer          serializer,
-                                                            __in            system_file_serializer_property property,
-                                                            __out __notnull void*                           out_data);
+PUBLIC EMERALD_API void system_file_serializer_get_property(system_file_serializer          serializer,
+                                                            system_file_serializer_property property,
+                                                            void*                           out_data);
 
 /** Copies @param uint32_t bytes to user-provided location and moves the reading pointer, so that next read request will
  *  retrieve bytes following the read sequence.
@@ -107,18 +107,18 @@ PUBLIC EMERALD_API void system_file_serializer_get_property(__in  __notnull syst
  *
  *  @return true if successful, false otherwise
  */
-PUBLIC EMERALD_API bool system_file_serializer_read(__in __notnull                       system_file_serializer serializer,
-                                                    __in                                 uint32_t               n_bytes,
-                                                    __deref_out_bcount_full_opt(n_bytes) void*                  out_result);
+PUBLIC EMERALD_API bool system_file_serializer_read(system_file_serializer serializer,
+                                                    uint32_t               n_bytes,
+                                                    void*                  out_result);
 
 /** TODO */
-PUBLIC EMERALD_API bool system_file_serializer_read_curve_container(__in     __notnull system_file_serializer    serializer,
-                                                                    __in_opt           system_hashed_ansi_string object_manager_path,
-                                                                    __out    __notnull curve_container*          result_container);
+PUBLIC EMERALD_API bool system_file_serializer_read_curve_container(system_file_serializer    serializer,
+                                                                    system_hashed_ansi_string object_manager_path,
+                                                                    curve_container*          result_container);
 
 /** TODO */
-PUBLIC EMERALD_API bool system_file_serializer_read_hashed_ansi_string(__in  __notnull system_file_serializer     serializer,
-                                                                       __out __notnull system_hashed_ansi_string* result_string);
+PUBLIC EMERALD_API bool system_file_serializer_read_hashed_ansi_string(system_file_serializer     serializer,
+                                                                       system_hashed_ansi_string* result_string);
 
 /** TODO.
  *
@@ -126,23 +126,23 @@ PUBLIC EMERALD_API bool system_file_serializer_read_hashed_ansi_string(__in  __n
  *        no longer needed.
  *
  **/
-PUBLIC EMERALD_API bool system_file_serializer_read_matrix4x4(__in  __notnull system_file_serializer serializer,
-                                                              __out __notnull system_matrix4x4*      out_result);
+PUBLIC EMERALD_API bool system_file_serializer_read_matrix4x4(system_file_serializer serializer,
+                                                              system_matrix4x4*      out_result);
 
 /** TODO */
-PUBLIC EMERALD_API bool system_file_serializer_read_variant(__in  __notnull system_file_serializer serializer,
-                                                            __out __notnull system_variant         out_result);
+PUBLIC EMERALD_API bool system_file_serializer_read_variant(system_file_serializer serializer,
+                                                            system_variant         out_result);
 
 /** Releases an existing file serializer instance. If serializer was created for writing, data will be written to the file.
  *
  *  @param system_file_serializer File serializer to release.
  */
-PUBLIC EMERALD_API void system_file_serializer_release(__in __notnull __deallocate(mem) system_file_serializer serializer);
+PUBLIC EMERALD_API void system_file_serializer_release(system_file_serializer serializer);
 
 /** TODO */
-PUBLIC EMERALD_API void system_file_serializer_set_property(__in __notnull system_file_serializer          serializer,
-                                                            __in           system_file_serializer_property property,
-                                                            __in __notnull void*                           data);
+PUBLIC EMERALD_API void system_file_serializer_set_property(system_file_serializer          serializer,
+                                                            system_file_serializer_property property,
+                                                            void*                           data);
 
 /** Schedules @param uint32_t bytes to be written to the file. This operation DOES NOT result in writing the data.
  *  This operation should only be used for a writing file serializer - otherwise an assertion failure will occur.
@@ -153,24 +153,24 @@ PUBLIC EMERALD_API void system_file_serializer_set_property(__in __notnull syste
  *
  *  @return true if successful, false otherwise.
  */
-PUBLIC EMERALD_API bool system_file_serializer_write(__in __notnull system_file_serializer serializer,
-                                                     __in           uint32_t               n_bytes,
-                                                     __in __notnull const void*            data_to_write);
+PUBLIC EMERALD_API bool system_file_serializer_write(system_file_serializer serializer,
+                                                     uint32_t               n_bytes,
+                                                     const void*            data_to_write);
 
 /** TODO */
-PUBLIC EMERALD_API bool system_file_serializer_write_curve_container(__in __notnull       system_file_serializer serializer,
-                                                                     __in __notnull const curve_container        curve);
+PUBLIC EMERALD_API bool system_file_serializer_write_curve_container(      system_file_serializer serializer,
+                                                                     const curve_container        curve);
 
 /** TODO */
-PUBLIC EMERALD_API bool system_file_serializer_write_hashed_ansi_string(__in __notnull system_file_serializer    serializer,
-                                                                        __in __notnull system_hashed_ansi_string string);
+PUBLIC EMERALD_API bool system_file_serializer_write_hashed_ansi_string(system_file_serializer    serializer,
+                                                                        system_hashed_ansi_string string);
 
 /** TODO */
-PUBLIC EMERALD_API bool system_file_serializer_write_matrix4x4(__in __notnull system_file_serializer serializer,
-                                                               __in __notnull system_matrix4x4       matrix);
+PUBLIC EMERALD_API bool system_file_serializer_write_matrix4x4(system_file_serializer serializer,
+                                                               system_matrix4x4       matrix);
 
 /** TODO */
-PUBLIC EMERALD_API bool system_file_serializer_write_variant(__in __notnull system_file_serializer serializer,
-                                                             __in __notnull system_variant         variant);
+PUBLIC EMERALD_API bool system_file_serializer_write_variant(system_file_serializer serializer,
+                                                             system_variant         variant);
 
 #endif /* SYSTEM_FILE_SERIALIZER_H */

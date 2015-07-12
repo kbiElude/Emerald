@@ -30,9 +30,9 @@ _collada_data_scene_graph_node_light_instance::_collada_data_scene_graph_node_li
 }
 
 /** TODO */
-PUBLIC collada_data_scene_graph_node_light_instance collada_data_scene_graph_node_light_instance_create(__in __notnull tinyxml2::XMLElement*         element_ptr,
-                                                                                                        __in __notnull system_hash64map              lights_by_id_map,
-                                                                                                        __in __notnull system_hashed_ansi_string name)
+PUBLIC collada_data_scene_graph_node_light_instance collada_data_scene_graph_node_light_instance_create(tinyxml2::XMLElement*         element_ptr,
+                                                                                                        system_hash64map              lights_by_id_map,
+                                                                                                        system_hashed_ansi_string name)
 {
     const char*        light_name      = element_ptr->Attribute("url");
     system_hash64      light_name_hash = 0;
@@ -88,9 +88,9 @@ end:
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API void collada_data_scene_graph_node_light_instance_get_property(__in  __notnull collada_data_scene_graph_node_light_instance          light_instance,
-                                                                                  __in            collada_data_scene_graph_node_light_instance_property property,
-                                                                                  __out __notnull void*                                                 out_result)
+PUBLIC EMERALD_API void collada_data_scene_graph_node_light_instance_get_property(collada_data_scene_graph_node_light_instance          light_instance,
+                                                                                  collada_data_scene_graph_node_light_instance_property property,
+                                                                                  void*                                                 out_result)
 {
     _collada_data_scene_graph_node_light_instance* instance_ptr = (_collada_data_scene_graph_node_light_instance*) light_instance;
 
@@ -119,7 +119,7 @@ PUBLIC EMERALD_API void collada_data_scene_graph_node_light_instance_get_propert
 }
 
 /** Please see header for spec */
-PUBLIC void collada_data_scene_graph_node_light_instance_release(__in __notnull __post_invalid collada_data_scene_graph_node_light_instance light_instance)
+PUBLIC void collada_data_scene_graph_node_light_instance_release(collada_data_scene_graph_node_light_instance light_instance)
 {
     delete (_collada_data_scene_graph_node_light_instance*) light_instance;
 

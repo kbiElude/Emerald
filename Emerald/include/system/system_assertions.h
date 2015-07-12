@@ -16,29 +16,25 @@
                                                                                      DEBUG_ONLY_ASSERTION, \
                                                                                      condition,            \
                                                                                      message,              \
-                                                                                     __VA_ARGS__);         \
-                                                            __analysis_assume       (condition);
+                                                                                     __VA_ARGS__);
 
         #define ASSERT_DEBUG_SYNC(condition, message, ...)  system_assertions_assert(true,                 \
                                                                                      DEBUG_ONLY_ASSERTION, \
                                                                                      condition,            \
                                                                                      message,              \
-                                                                                     __VA_ARGS__);         \
-                                                            __analysis_assume       (condition);
+                                                                                     __VA_ARGS__);
     #else
         #define ASSERT_DEBUG_ASYNC(condition, message, ...) system_assertions_assert(false,                \
                                                                                      DEBUG_ONLY_ASSERTION, \
                                                                                      condition,            \
                                                                                      message,              \
-                                                                                    #__VA_ARGS__);         \
-                                                            __analysis_assume       (condition);
+                                                                                    #__VA_ARGS__);
 
         #define ASSERT_DEBUG_SYNC(condition, message, ...)  system_assertions_assert(true,                 \
                                                                                      DEBUG_ONLY_ASSERTION, \
                                                                                      condition,            \
                                                                                      message,              \
-                                                                                    #__VA_ARGS__);         \
-                                                            __analysis_assume       (condition);
+                                                                                    #__VA_ARGS__);
     #endif
 #else
     #define ASSERT_DEBUG_ASYNC(condition, message, ...) ;
@@ -51,14 +47,12 @@
                                                                                    RELEASE_ONLY_ASSERTION, \
                                                                                    condition,              \
                                                                                    message,                \
-                                                                                   __VA_ARGS__);           \
-                                                          __analysis_assume       (condition);
+                                                                                   __VA_ARGS__);
     #define ASSERT_RELEASE_SYNC(condition, message, ...)  system_assertions_assert(true,                   \
                                                                                    RELEASE_ONLY_ASSERTION, \
                                                                                    condition,              \
                                                                                    message,                \
-                                                                                   __VA_ARGS__);           \
-                                                          __analysis_assume       (condition);
+                                                                                   __VA_ARGS__);
 #else
     #define ASSERT_RELEASE_ASYNC(condition, message, ...)
     #define ASSERT_RELEASE_SYNC (condition, message, ...)
@@ -70,27 +64,28 @@
                                                                                 ALWAYS_ASSERTION, \
                                                                                 condition,        \
                                                                                 message,          \
-                                                                                __VA_ARGS__);     \
-                                                        __analysis_assume       (condition);
+                                                                                __VA_ARGS__);
     #define ASSERT_ALWAYS_SYNC(condition, message, ...)  system_assertions_assert(true,           \
                                                                                 ALWAYS_ASSERTION, \
                                                                                 condition,        \
                                                                                 message,          \
-                                                                                __VA_ARGS__);     \
-                                                        __analysis_assume       (condition);
+                                                                                __VA_ARGS__);
 #else
     #define ASSERT_ALWAYS_ASYNC(condition, message, ...) system_assertions_assert(false,          \
                                                                                 ALWAYS_ASSERTION, \
                                                                                 condition,        \
                                                                                 message,          \
-                                                                                ##__VA_ARGS__);   \
-                                                        __analysis_assume       (condition);
+                                                                                ##__VA_ARGS__);
     #define ASSERT_ALWAYS_SYNC(condition, message, ...)  system_assertions_assert(true,           \
                                                                                 ALWAYS_ASSERTION, \
                                                                                 condition,        \
                                                                                 message,          \
-                                                                                ##__VA_ARGS__);   \
-                                                        __analysis_assume       (condition);
+                                                                                ##__VA_ARGS__);
+#endif
+
+/** Macros to provide VS-level functionality under GCC */
+#ifndef _WIN32
+    #define __forceinline inline
 #endif
 
 /** Function to use in order to issue a non-/-blocking assertion check. This

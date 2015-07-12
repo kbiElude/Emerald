@@ -22,8 +22,8 @@ typedef _curve_segment_data_static* _curve_segment_data_static_ptr;
  *  @param segment_data *segment_data will be used to store a _curve_segment_data_static instance. CANNOT be null.
  *  @param data_type    Data type to use for value storage.
  **/
-PRIVATE void init_curve_segment_data_static(__deref_out __notnull curve_segment_data* segment_data,
-                                                                  system_variant      value)
+PRIVATE void init_curve_segment_data_static(curve_segment_data* segment_data,
+                                            system_variant      value)
 {
     _curve_segment_data_static* new_segment_data = new (std::nothrow) _curve_segment_data_static;
 
@@ -49,7 +49,7 @@ PRIVATE void init_curve_segment_data_static(__deref_out __notnull curve_segment_
  *  @param segment_data Pointer to where the instance is located. DO NOT use this pointer after
  *                      calling this function.
  **/
-PRIVATE void deinit_curve_segment_data_static(__deref_out __post_invalid curve_segment_data segment_data)
+PRIVATE void deinit_curve_segment_data_static(curve_segment_data segment_data)
 {
     _curve_segment_data_static_ptr data_ptr = (_curve_segment_data_static_ptr) segment_data;
 
@@ -60,23 +60,23 @@ PRIVATE void deinit_curve_segment_data_static(__deref_out __post_invalid curve_s
 
 /******************************************************** PUBLIC FUNCTIONS *********************************************************/
 /** Please see header for specification */
-PUBLIC bool curve_segment_static_add_node(__in  __notnull curve_segment_data     segment_data,
-                                          __in            system_time            node_time,
-                                          __in  __notnull system_variant         node_value,
-                                          __out __notnull curve_segment_node_id* out_node_id)
+PUBLIC bool curve_segment_static_add_node(curve_segment_data     segment_data,
+                                          system_time            node_time,
+                                          system_variant         node_value,
+                                          curve_segment_node_id* out_node_id)
 {
     return false;
 }
 
 /** Please see header for specification */
-PUBLIC bool curve_segment_static_delete_node(__in __notnull curve_segment_data    segment_data,
-                                             __in           curve_segment_node_id node_id)
+PUBLIC bool curve_segment_static_delete_node(curve_segment_data    segment_data,
+                                             curve_segment_node_id node_id)
 {
     return false;
 }
 
 /** Please see header for specification */
-PUBLIC bool curve_segment_static_deinit(__in __notnull curve_segment_data segment_data)
+PUBLIC bool curve_segment_static_deinit(curve_segment_data segment_data)
 {
     deinit_curve_segment_data_static(segment_data);
 
@@ -84,17 +84,17 @@ PUBLIC bool curve_segment_static_deinit(__in __notnull curve_segment_data segmen
 }
 
 /** Please see header for specification */
-PUBLIC bool curve_segment_static_get_amount_of_nodes(__in  __notnull curve_segment_data segment_data,
-                                                     __out __notnull uint32_t*          out_result)
+PUBLIC bool curve_segment_static_get_amount_of_nodes(curve_segment_data segment_data,
+                                                     uint32_t*          out_result)
 {
     return 1;
 }
 
 /** Please see header for specification */
-PUBLIC bool curve_segment_static_get_node(__in __notnull    curve_segment_data    segment_data,
-                                          __in              curve_segment_node_id node_id,
-                                          __out __maybenull system_time*          out_node_time,
-                                          __out __maybenull system_variant        out_node_value)
+PUBLIC bool curve_segment_static_get_node(curve_segment_data    segment_data,
+                                          curve_segment_node_id node_id,
+                                          system_time*          out_node_time,
+                                          system_variant        out_node_value)
 {
     bool result = false;
 
@@ -124,9 +124,9 @@ PUBLIC bool curve_segment_static_get_node(__in __notnull    curve_segment_data  
 }
 
 /** Please see header for specification */
-PUBLIC bool curve_segment_static_get_node_in_order(__in __notnull  curve_segment_data    segment_data,
-                                                   __in            uint32_t               node_index,
-                                                   __out __notnull curve_segment_node_id* out_node_id)
+PUBLIC bool curve_segment_static_get_node_in_order(curve_segment_data    segment_data,
+                                                   uint32_t               node_index,
+                                                   curve_segment_node_id* out_node_id)
 {
     bool result = false;
 
@@ -145,10 +145,10 @@ PUBLIC bool curve_segment_static_get_node_in_order(__in __notnull  curve_segment
 }
 
 /** Please see header for specification */
-PUBLIC bool curve_segment_static_get_value(__in __notnull curve_segment_data segment_data,
-                                                   system_time               time,
-                                           __inout system_variant            out_result,
-                                           __in    bool                      should_force)
+PUBLIC bool curve_segment_static_get_value(curve_segment_data segment_data,
+                                           system_time        time,
+                                           system_variant     out_result,
+                                           bool               should_force)
 {
     _curve_segment_data_static_ptr data_ptr = (_curve_segment_data_static_ptr) segment_data;
 
@@ -160,8 +160,8 @@ PUBLIC bool curve_segment_static_get_value(__in __notnull curve_segment_data seg
 }
 
 /** Please see header for specification */
-PUBLIC bool curve_segment_static_init(__inout __notnull curve_segment_data* segment_data,
-                                                        system_variant      value)
+PUBLIC bool curve_segment_static_init(curve_segment_data* segment_data,
+                                      system_variant      value)
 {
     init_curve_segment_data_static(segment_data,
                                    value);
@@ -170,19 +170,19 @@ PUBLIC bool curve_segment_static_init(__inout __notnull curve_segment_data* segm
 }
 
 /** Please see header for specification */
-PUBLIC bool curve_segment_static_modify_node_time(__in __notnull curve_segment_data    segment_data,
-                                                  __in           curve_segment_node_id node_id,
-                                                  __in           system_time           new_node_time)
+PUBLIC bool curve_segment_static_modify_node_time(curve_segment_data    segment_data,
+                                                  curve_segment_node_id node_id,
+                                                  system_time           new_node_time)
 {
     return true;
 }
 
 /** Please see header for specification */
-PUBLIC bool curve_segment_static_modify_node_time_value(__in __notnull curve_segment_data    segment_data,
-                                                        __in           curve_segment_node_id node_id,
-                                                        __in           system_time           new_node_time,
-                                                        __in __notnull system_variant        new_node_value,
-                                                        __in           bool)
+PUBLIC bool curve_segment_static_modify_node_time_value(curve_segment_data    segment_data,
+                                                        curve_segment_node_id node_id,
+                                                        system_time           new_node_time,
+                                                        system_variant        new_node_value,
+                                                        bool)
 {
     _curve_segment_data_static_ptr data_ptr = (_curve_segment_data_static_ptr) segment_data;
 
@@ -194,9 +194,9 @@ PUBLIC bool curve_segment_static_modify_node_time_value(__in __notnull curve_seg
 }
 
 /** Please see header for specification */
-PUBLIC bool curve_segment_static_set_property(__in __notnull curve_segment_data     segment_data,
-                                              __in           curve_segment_property segment_property,
-                                              __in __notnull system_variant         value)
+PUBLIC bool curve_segment_static_set_property(curve_segment_data     segment_data,
+                                              curve_segment_property segment_property,
+                                              system_variant         value)
 {
     /* Should not be called */
     ASSERT_DEBUG_SYNC(false,
@@ -206,9 +206,9 @@ PUBLIC bool curve_segment_static_set_property(__in __notnull curve_segment_data 
 }
 
 /** Please see header for specification */
-PUBLIC bool curve_segment_static_get_property(__in __notnull curve_segment_data,
-                                              __in           curve_segment_property,
-                                              __in __notnull system_variant)
+PUBLIC bool curve_segment_static_get_property(curve_segment_data,
+                                              curve_segment_property,
+                                              system_variant)
 {
     /* Should not be called */
     ASSERT_DEBUG_SYNC(false, "curve_segment_static_get_property() should never be called - other means exist to query the segment's properties.");

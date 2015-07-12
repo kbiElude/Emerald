@@ -32,96 +32,96 @@ typedef system_matrix4x4 (*PFNUPDATEMATRIXPROC)(void*            data,
                                                 float            lerp_factor);
 
 /* Forward declarations */
-PRIVATE void             _scene_graph_align_time_to_fps                        (__in      __notnull                scene_graph                                   graph,
-                                                                                __in                               system_time                                   time,
-                                                                                __out_opt                          system_time*                                  out_prev_keyframe_time_ptr,
-                                                                                __out_opt                          system_time*                                  out_next_keyframe_time_ptr);
-PRIVATE system_matrix4x4 _scene_graph_compute_root_node                        (__in      __notnull                void*                                         data,
-                                                                                __in      __notnull                system_matrix4x4                              current_matrix,
-                                                                                __in                               system_time                                   prev_keyframe_time,
-                                                                                __in                               system_time                                   next_keyframe_time,
-                                                                                __in                               float                                         lerp_factor);
-PRIVATE void             _scene_graph_compute_node_transformation_matrix       (__in      __notnull                scene_graph                                   graph,
-                                                                                __in      __notnull                struct _scene_graph_node*                     node_ptr,
-                                                                                __in                               system_time                                   time);
-PRIVATE system_matrix4x4 _scene_graph_compute_general                          (__in      __notnull                void*                                         data,
-                                                                                __in      __notnull                system_matrix4x4                              current_matrix,
-                                                                                __in                               system_time                                   prev_keyframe_time,
-                                                                                __in                               system_time                                   next_keyframe_time,
-                                                                                __in                               float                                         lerp_factor);
-PRIVATE system_matrix4x4 _scene_graph_compute_rotation_dynamic                 (__in      __notnull                void*                                         data,
-                                                                                __in      __notnull                system_matrix4x4                              current_matrix,
-                                                                                __in                               system_time                                   prev_keyframe_time,
-                                                                                __in                               system_time                                   next_keyframe_time,
-                                                                                __in                               float                                         lerp_factor);
-PRIVATE system_matrix4x4 _scene_graph_compute_scale_dynamic                    (__in      __notnull                void*                                         data,
-                                                                                __in      __notnull                system_matrix4x4                              current_matrix,
-                                                                                __in                               system_time                                   prev_keyframe_time,
-                                                                                __in                               system_time                                   next_keyframe_time,
-                                                                                __in                               float                                         lerp_factor);
-PRIVATE system_matrix4x4 _scene_graph_compute_static_matrix4x4                 (__in      __notnull                void*                                         data,
-                                                                                __in      __notnull                system_matrix4x4                              current_matrix,
-                                                                                __in                               system_time                                   prev_keyframe_time,
-                                                                                __in                               system_time                                   next_keyframe_time,
-                                                                                __in                               float                                         lerp_factor);
-PRIVATE system_matrix4x4 _scene_graph_compute_translation_dynamic              (__in      __notnull                void*                                         data,
-                                                                                __in      __notnull                system_matrix4x4                              current_matrix,
-                                                                                __in                               system_time                                   prev_keyframe_time,
-                                                                                __in                               system_time                                   next_keyframe_time,
-                                                                                __in                               float                                         lerp_factor);
-PRIVATE float            _scene_graph_get_float_time_from_timeline_time        (                                   system_time                                   time);
-PRIVATE system_hash64map _scene_graph_get_node_hashmap                         (__in      __notnull                struct _scene_graph*                          graph_ptr);
-PRIVATE bool             _scene_graph_load_node                                (__in      __notnull                system_file_serializer                        serializer,
-                                                                                __in      __notnull                scene_graph                                   result_graph,
-                                                                                __in      __notnull                system_resizable_vector                       serialized_nodes,
-                                                                                __in      __notnull                system_resizable_vector                       scene_cameras_vector,
-                                                                                __in      __notnull                system_resizable_vector                       scene_lights_vector,
-                                                                                __in      __notnull                system_resizable_vector                       scene_mesh_instances_vector,
-                                                                                __in      __notnull                scene                                         owner_scene);
-PRIVATE scene_graph_node _scene_graph_load_scene_graph_node_matrix4x4_static   (__in      __notnull                system_file_serializer                        serializer,
-                                                                                __in      __notnull                scene_graph                                   result_graph,
-                                                                                __in      __notnull                scene_graph_node                              parent_node);
-PRIVATE scene_graph_node _scene_graph_load_scene_graph_node_rotation_dynamic   (__in      __notnull                system_file_serializer                        serializer,
-                                                                                __in      __notnull                scene_graph                                   result_graph,
-                                                                                __in      __notnull                scene_graph_node                              parent_node,
-                                                                                __in      __notnull                scene                                         owner_scene);
-PRIVATE scene_graph_node _scene_graph_load_scene_graph_node_scale_dynamic      (__in      __notnull                system_file_serializer                        serializer,
-                                                                                __in      __notnull                scene_graph                                   result_graph,
-                                                                                __in      __notnull                scene_graph_node                              parent_node,
-                                                                                __in      __notnull                scene                                         owner_scene);
-PRIVATE scene_graph_node _scene_graph_load_scene_graph_node_translation_dynamic(__in      __notnull                system_file_serializer                        serializer,
-                                                                                __in      __notnull                scene_graph                                   result_graph,
-                                                                                __in      __notnull                scene_graph_node                              parent_node,
-                                                                                __in      __notnull                scene                                         owner_scene);
-PRIVATE scene_graph_node _scene_graph_load_scene_graph_node_translation_static (__in      __notnull                system_file_serializer                        serializer,
-                                                                                __in      __notnull                scene_graph                                   result_graph,
-                                                                                __in      __notnull                scene_graph_node                              parent_node);
-PRIVATE bool             _scene_graph_save_scene_graph_node_matrix4x4_static   (__in      __notnull                system_file_serializer                        serializer,
-                                                                                __in      __notnull                struct _scene_graph_node_matrix4x4_static*    data_ptr);
-PRIVATE bool             _scene_graph_save_scene_graph_node_rotation_dynamic   (__in      __notnull                system_file_serializer                        serializer,
-                                                                                __in      __notnull                struct _scene_graph_node_rotation_dynamic*    data_ptr,
-                                                                                __in      __notnull                scene                                         owner_scene);
-PRIVATE bool             _scene_graph_save_scene_graph_node_scale_dynamic      (__in      __notnull                system_file_serializer                        serializer,
-                                                                                __in      __notnull                struct _scene_graph_node_scale_dynamic*       data_ptr,
-                                                                                __in      __notnull                scene                                         owner_scene);
-PRIVATE bool             _scene_graph_save_scene_graph_node_translation_dynamic(__in      __notnull                system_file_serializer                        serializer,
-                                                                                __in      __notnull                struct _scene_graph_node_translation_dynamic* data_ptr,
-                                                                                __in      __notnull                scene                                         owner_scene);
-PRIVATE bool             _scene_graph_save_scene_graph_node_translation_static (__in      __notnull                system_file_serializer                        serializer,
-                                                                                __in      __notnull                struct _scene_graph_node_translation_static*  data_ptr);
-PRIVATE void             _scene_graph_node_release_data                        (__in      __notnull __post_invalid void*                                         data,
-                                                                                __in                               scene_graph_node_type                         type);
-PRIVATE bool             _scene_graph_save_curve                               (__in_opt                           scene                                         owner_scene,
-                                                                                __in     __notnull                 curve_container                               in_curve,
-                                                                                __in     __notnull                 system_file_serializer                        serializer);
-PRIVATE bool             _scene_graph_save_node                                (__in     __notnull                 system_file_serializer                        serializer,
-                                                                                __in     __notnull                 const _scene_graph_node*                      node_ptr,
-                                                                                __in     __notnull                 system_hash64map                              node_ptr_to_id_map,
-                                                                                __in     __notnull                 system_hash64map                              camera_ptr_to_id_map,
-                                                                                __in     __notnull                 system_hash64map                              light_ptr_to_id_map,
-                                                                                __in     __notnull                 system_hash64map                              mesh_instance_ptr_to_id_map,
-                                                                                __in     __notnull                 scene                                         owner_scene);
-PRIVATE bool             _scene_graph_update_sorted_nodes                      (__in     __notnull                 _scene_graph*                                 graph_ptr);
+PRIVATE void             _scene_graph_align_time_to_fps                        (scene_graph                                   graph,
+                                                                                system_time                                   time,
+                                                                                system_time*                                  out_prev_keyframe_time_ptr,
+                                                                                system_time*                                  out_next_keyframe_time_ptr);
+PRIVATE system_matrix4x4 _scene_graph_compute_root_node                        (void*                                         data,
+                                                                                system_matrix4x4                              current_matrix,
+                                                                                system_time                                   prev_keyframe_time,
+                                                                                system_time                                   next_keyframe_time,
+                                                                                float                                         lerp_factor);
+PRIVATE void             _scene_graph_compute_node_transformation_matrix       (scene_graph                                   graph,
+                                                                                struct _scene_graph_node*                     node_ptr,
+                                                                                system_time                                   time);
+PRIVATE system_matrix4x4 _scene_graph_compute_general                          (void*                                         data,
+                                                                                system_matrix4x4                              current_matrix,
+                                                                                system_time                                   prev_keyframe_time,
+                                                                                system_time                                   next_keyframe_time,
+                                                                                float                                         lerp_factor);
+PRIVATE system_matrix4x4 _scene_graph_compute_rotation_dynamic                 (void*                                         data,
+                                                                                system_matrix4x4                              current_matrix,
+                                                                                system_time                                   prev_keyframe_time,
+                                                                                system_time                                   next_keyframe_time,
+                                                                                float                                         lerp_factor);
+PRIVATE system_matrix4x4 _scene_graph_compute_scale_dynamic                    (void*                                         data,
+                                                                                system_matrix4x4                              current_matrix,
+                                                                                system_time                                   prev_keyframe_time,
+                                                                                system_time                                   next_keyframe_time,
+                                                                                float                                         lerp_factor);
+PRIVATE system_matrix4x4 _scene_graph_compute_static_matrix4x4                 (void*                                         data,
+                                                                                system_matrix4x4                              current_matrix,
+                                                                                system_time                                   prev_keyframe_time,
+                                                                                system_time                                   next_keyframe_time,
+                                                                                float                                         lerp_factor);
+PRIVATE system_matrix4x4 _scene_graph_compute_translation_dynamic              (void*                                         data,
+                                                                                system_matrix4x4                              current_matrix,
+                                                                                system_time                                   prev_keyframe_time,
+                                                                                system_time                                   next_keyframe_time,
+                                                                                float                                         lerp_factor);
+PRIVATE float            _scene_graph_get_float_time_from_timeline_time        (system_time                                   time);
+PRIVATE system_hash64map _scene_graph_get_node_hashmap                         (struct _scene_graph*                          graph_ptr);
+PRIVATE bool             _scene_graph_load_node                                (system_file_serializer                        serializer,
+                                                                                scene_graph                                   result_graph,
+                                                                                system_resizable_vector                       serialized_nodes,
+                                                                                system_resizable_vector                       scene_cameras_vector,
+                                                                                system_resizable_vector                       scene_lights_vector,
+                                                                                system_resizable_vector                       scene_mesh_instances_vector,
+                                                                                scene                                         owner_scene);
+PRIVATE scene_graph_node _scene_graph_load_scene_graph_node_matrix4x4_static   (system_file_serializer                        serializer,
+                                                                                scene_graph                                   result_graph,
+                                                                                scene_graph_node                              parent_node);
+PRIVATE scene_graph_node _scene_graph_load_scene_graph_node_rotation_dynamic   (system_file_serializer                        serializer,
+                                                                                scene_graph                                   result_graph,
+                                                                                scene_graph_node                              parent_node,
+                                                                                scene                                         owner_scene);
+PRIVATE scene_graph_node _scene_graph_load_scene_graph_node_scale_dynamic      (system_file_serializer                        serializer,
+                                                                                scene_graph                                   result_graph,
+                                                                                scene_graph_node                              parent_node,
+                                                                                scene                                         owner_scene);
+PRIVATE scene_graph_node _scene_graph_load_scene_graph_node_translation_dynamic(system_file_serializer                        serializer,
+                                                                                scene_graph                                   result_graph,
+                                                                                scene_graph_node                              parent_node,
+                                                                                scene                                         owner_scene);
+PRIVATE scene_graph_node _scene_graph_load_scene_graph_node_translation_static (system_file_serializer                        serializer,
+                                                                                scene_graph                                   result_graph,
+                                                                                scene_graph_node                              parent_node);
+PRIVATE bool             _scene_graph_save_scene_graph_node_matrix4x4_static   (system_file_serializer                        serializer,
+                                                                                struct _scene_graph_node_matrix4x4_static*    data_ptr);
+PRIVATE bool             _scene_graph_save_scene_graph_node_rotation_dynamic   (system_file_serializer                        serializer,
+                                                                                struct _scene_graph_node_rotation_dynamic*    data_ptr,
+                                                                                scene                                         owner_scene);
+PRIVATE bool             _scene_graph_save_scene_graph_node_scale_dynamic      (system_file_serializer                        serializer,
+                                                                                struct _scene_graph_node_scale_dynamic*       data_ptr,
+                                                                                scene                                         owner_scene);
+PRIVATE bool             _scene_graph_save_scene_graph_node_translation_dynamic(system_file_serializer                        serializer,
+                                                                                struct _scene_graph_node_translation_dynamic* data_ptr,
+                                                                                scene                                         owner_scene);
+PRIVATE bool             _scene_graph_save_scene_graph_node_translation_static (system_file_serializer                        serializer,
+                                                                                struct _scene_graph_node_translation_static*  data_ptr);
+PRIVATE void             _scene_graph_node_release_data                        (void*                                         data,
+                                                                                scene_graph_node_type                         type);
+PRIVATE bool             _scene_graph_save_curve                               (scene                                         owner_scene,
+                                                                                curve_container                               in_curve,
+                                                                                system_file_serializer                        serializer);
+PRIVATE bool             _scene_graph_save_node                                (system_file_serializer                        serializer,
+                                                                                const _scene_graph_node*                      node_ptr,
+                                                                                system_hash64map                              node_ptr_to_id_map,
+                                                                                system_hash64map                              camera_ptr_to_id_map,
+                                                                                system_hash64map                              light_ptr_to_id_map,
+                                                                                system_hash64map                              mesh_instance_ptr_to_id_map,
+                                                                                scene                                         owner_scene);
+PRIVATE bool             _scene_graph_update_sorted_nodes                      (_scene_graph*                                 graph_ptr);
 
 
 typedef struct _scene_graph_node_matrix4x4_static
@@ -156,9 +156,9 @@ typedef struct _scene_graph_node_rotation_dynamic
     bool                 uses_radians;
     system_variant       variant_float;
 
-    explicit _scene_graph_node_rotation_dynamic(__in_ecount(4) __notnull curve_container*     in_curves,
-                                                __in                     scene_graph_node_tag in_tag,
-                                                __in                     bool                 in_uses_radians)
+    explicit _scene_graph_node_rotation_dynamic(curve_container*     in_curves,
+                                                scene_graph_node_tag in_tag,
+                                                bool                 in_uses_radians)
     {
         tag          = in_tag;
         uses_radians = in_uses_radians;
@@ -204,8 +204,8 @@ typedef struct _scene_graph_node_scale_dynamic
     scene_graph_node_tag tag;
     system_variant       variant_float;
 
-    explicit _scene_graph_node_scale_dynamic(__in_ecount(3) __notnull curve_container*     in_curves,
-                                             __in                     scene_graph_node_tag in_tag)
+    explicit _scene_graph_node_scale_dynamic(curve_container*     in_curves,
+                                             scene_graph_node_tag in_tag)
     {
         tag = in_tag;
 
@@ -251,9 +251,9 @@ typedef struct _scene_graph_node_translation_dynamic
     scene_graph_node_tag tag;
     system_variant       variant_float;
 
-    explicit _scene_graph_node_translation_dynamic(__in_ecount(3) __notnull curve_container*     in_curves,
-                                                   __in                     scene_graph_node_tag in_tag,
-                                                   __in_ecount(3) __notnull const bool*          in_negate_xyz_vectors)
+    explicit _scene_graph_node_translation_dynamic(curve_container*     in_curves,
+                                                   scene_graph_node_tag in_tag,
+                                                   const bool*          in_negate_xyz_vectors)
     {
         tag = in_tag;
 
@@ -298,8 +298,8 @@ typedef struct _scene_graph_node_translation_static
     float                translation[3];
     scene_graph_node_tag tag;
 
-    explicit _scene_graph_node_translation_static(__in_ecount(3) __notnull float*               in_translation,
-                                                  __in                     scene_graph_node_tag in_tag)
+    explicit _scene_graph_node_translation_static(float*               in_translation,
+                                                  scene_graph_node_tag in_tag)
     {
         tag = in_tag;
 
@@ -342,7 +342,7 @@ typedef struct _scene_graph_node
     scene_graph_node                        transformation_nodes_by_tag[SCENE_GRAPH_NODE_TAG_COUNT];
     scene_graph_node_type                   type;
 
-    _scene_graph_node(__in_opt __maybenull _scene_graph_node* in_parent_node)
+    _scene_graph_node(_scene_graph_node* in_parent_node)
     {
         attached_cameras = system_resizable_vector_create(4 /* capacity */);
         attached_lights  = system_resizable_vector_create(4 /* capacity */);
@@ -430,10 +430,10 @@ typedef struct _scene_graph
 
 
 /** TODO */
-PRIVATE void _scene_graph_align_time_to_fps(__in      __notnull scene_graph  graph,
-                                            __in                system_time  time,
-                                            __out_opt           system_time* out_prev_keyframe_time_ptr,
-                                            __out_opt           system_time* out_next_keyframe_time_ptr)
+PRIVATE void _scene_graph_align_time_to_fps(scene_graph  graph,
+                                            system_time  time,
+                                            system_time* out_prev_keyframe_time_ptr,
+                                            system_time* out_next_keyframe_time_ptr)
 {
     float         fps       = 0.0f;
     _scene_graph* graph_ptr = (_scene_graph*) graph;
@@ -487,11 +487,11 @@ PRIVATE void _scene_graph_align_time_to_fps(__in      __notnull scene_graph  gra
 }
 
 /** TODO */
-PRIVATE system_matrix4x4 _scene_graph_compute_root_node(__in __notnull void*            data,
-                                                        __in __notnull system_matrix4x4 current_matrix,
-                                                        __in           system_time      prev_keyframe_time,
-                                                        __in           system_time      next_keyframe_time,
-                                                        __in           float            lerp_factor)
+PRIVATE system_matrix4x4 _scene_graph_compute_root_node(void*            data,
+                                                        system_matrix4x4 current_matrix,
+                                                        system_time      prev_keyframe_time,
+                                                        system_time      next_keyframe_time,
+                                                        float            lerp_factor)
 {
     /* Ignore current matrix, just return an identity matrix */
     system_matrix4x4 result = system_matrix4x4_create();
@@ -501,9 +501,9 @@ PRIVATE system_matrix4x4 _scene_graph_compute_root_node(__in __notnull void*    
 }
 
 /** TODO */
-PRIVATE void _scene_graph_compute_node_transformation_matrix(__in __notnull scene_graph        graph,
-                                                             __in __notnull _scene_graph_node* node_ptr,
-                                                             __in           system_time        time)
+PRIVATE void _scene_graph_compute_node_transformation_matrix(scene_graph        graph,
+                                                             _scene_graph_node* node_ptr,
+                                                             system_time        time)
 {
     if (node_ptr->transformation_matrix.data != NULL)
     {
@@ -557,11 +557,11 @@ PRIVATE void _scene_graph_compute_node_transformation_matrix(__in __notnull scen
 }
 
 /** TODO */
-PRIVATE system_matrix4x4 _scene_graph_compute_general(__in __notnull void*            data,
-                                                      __in __notnull system_matrix4x4 current_matrix,
-                                                      __in           system_time      prev_keyframe_time,
-                                                      __in           system_time      next_keyframe_time,
-                                                      __in           float            lerp_factor)
+PRIVATE system_matrix4x4 _scene_graph_compute_general(void*            data,
+                                                      system_matrix4x4 current_matrix,
+                                                      system_time      prev_keyframe_time,
+                                                      system_time      next_keyframe_time,
+                                                      float            lerp_factor)
 {
     _scene_graph_node_matrix4x4_static* node_data_ptr = (_scene_graph_node_matrix4x4_static*) data;
     system_matrix4x4                    new_matrix    = system_matrix4x4_create();
@@ -573,11 +573,11 @@ PRIVATE system_matrix4x4 _scene_graph_compute_general(__in __notnull void*      
 }
 
 /** TODO */
-PRIVATE system_matrix4x4 _scene_graph_compute_rotation_dynamic(__in __notnull void*            data,
-                                                               __in __notnull system_matrix4x4 current_matrix,
-                                                               __in           system_time      prev_keyframe_time,
-                                                               __in           system_time      next_keyframe_time,
-                                                               __in           float            lerp_factor)
+PRIVATE system_matrix4x4 _scene_graph_compute_rotation_dynamic(void*            data,
+                                                               system_matrix4x4 current_matrix,
+                                                               system_time      prev_keyframe_time,
+                                                               system_time      next_keyframe_time,
+                                                               float            lerp_factor)
 {
     _scene_graph_node_rotation_dynamic* node_data_ptr = (_scene_graph_node_rotation_dynamic*) data;
     system_matrix4x4                    new_matrix    = system_matrix4x4_create();
@@ -640,11 +640,11 @@ PRIVATE system_matrix4x4 _scene_graph_compute_rotation_dynamic(__in __notnull vo
 }
 
 /** TODO */
-PRIVATE system_matrix4x4 _scene_graph_compute_scale_dynamic(__in __notnull void*            data,
-                                                            __in __notnull system_matrix4x4 current_matrix,
-                                                            __in           system_time      prev_keyframe_time,
-                                                            __in           system_time      next_keyframe_time,
-                                                            __in           float            lerp_factor)
+PRIVATE system_matrix4x4 _scene_graph_compute_scale_dynamic(void*            data,
+                                                            system_matrix4x4 current_matrix,
+                                                            system_time      prev_keyframe_time,
+                                                            system_time      next_keyframe_time,
+                                                            float            lerp_factor)
 {
     _scene_graph_node_scale_dynamic* node_data_ptr = (_scene_graph_node_scale_dynamic*) data;
     system_matrix4x4                 new_matrix    = system_matrix4x4_create();
@@ -706,11 +706,11 @@ PRIVATE system_matrix4x4 _scene_graph_compute_scale_dynamic(__in __notnull void*
 }
 
 /** TODO */
-PRIVATE system_matrix4x4 _scene_graph_compute_static_matrix4x4(__in __notnull void*            data,
-                                                               __in __notnull system_matrix4x4 current_matrix,
-                                                               __in           system_time      prev_keyframe_time,
-                                                               __in           system_time      next_keyframe_time,
-                                                               __in           float            lerp_factor)
+PRIVATE system_matrix4x4 _scene_graph_compute_static_matrix4x4(void*            data,
+                                                               system_matrix4x4 current_matrix,
+                                                               system_time      prev_keyframe_time,
+                                                               system_time      next_keyframe_time,
+                                                               float            lerp_factor)
 {
     _scene_graph_node_matrix4x4_static* node_data_ptr = (_scene_graph_node_matrix4x4_static*) data;
 
@@ -719,11 +719,11 @@ PRIVATE system_matrix4x4 _scene_graph_compute_static_matrix4x4(__in __notnull vo
 }
 
 /** TODO */
-PRIVATE system_matrix4x4 _scene_graph_compute_translation_dynamic(__in __notnull void*            data,
-                                                                  __in __notnull system_matrix4x4 current_matrix,
-                                                                  __in           system_time      prev_keyframe_time,
-                                                                  __in           system_time      next_keyframe_time,
-                                                                  __in           float            lerp_factor)
+PRIVATE system_matrix4x4 _scene_graph_compute_translation_dynamic(void*            data,
+                                                                  system_matrix4x4 current_matrix,
+                                                                  system_time      prev_keyframe_time,
+                                                                  system_time      next_keyframe_time,
+                                                                  float            lerp_factor)
 {
     _scene_graph_node_translation_dynamic* node_data_ptr = (_scene_graph_node_translation_dynamic*) data;
     system_matrix4x4                       new_matrix    = system_matrix4x4_create();
@@ -790,11 +790,11 @@ PRIVATE system_matrix4x4 _scene_graph_compute_translation_dynamic(__in __notnull
 }
 
 /** TODO */
-PRIVATE system_matrix4x4 _scene_graph_compute_translation_static(__in __notnull void*            data,
-                                                                 __in __notnull system_matrix4x4 current_matrix,
-                                                                 __in           system_time      prev_keyframe_time,
-                                                                 __in           system_time      next_keyframe_time,
-                                                                 __in           float            lerp_factor)
+PRIVATE system_matrix4x4 _scene_graph_compute_translation_static(void*            data,
+                                                                 system_matrix4x4 current_matrix,
+                                                                 system_time      prev_keyframe_time,
+                                                                 system_time      next_keyframe_time,
+                                                                 float            lerp_factor)
 {
     _scene_graph_node_translation_static* node_data_ptr = (_scene_graph_node_translation_static*) data;
     system_matrix4x4                      result        = system_matrix4x4_create();
@@ -823,7 +823,7 @@ PRIVATE float _scene_graph_get_float_time_from_timeline_time(system_time time)
 }
 
 /** TODO */
-PRIVATE system_hash64map _scene_graph_get_node_hashmap(__in __notnull _scene_graph* graph_ptr)
+PRIVATE system_hash64map _scene_graph_get_node_hashmap(_scene_graph* graph_ptr)
 {
     system_hash64map result = NULL;
 
@@ -882,10 +882,10 @@ end:
 }
 
 /** TODO */
-PRIVATE bool _scene_graph_load_curve(__in_opt           scene                     owner_scene,
-                                     __in_opt           system_hashed_ansi_string object_manager_path,
-                                     __in     __notnull curve_container*          curve_ptr,
-                                     __in     __notnull system_file_serializer    serializer)
+PRIVATE bool _scene_graph_load_curve(scene                     owner_scene,
+                                     system_hashed_ansi_string object_manager_path,
+                                     curve_container*          curve_ptr,
+                                     system_file_serializer    serializer)
 {
     bool result = true;
 
@@ -920,13 +920,13 @@ PRIVATE bool _scene_graph_load_curve(__in_opt           scene                   
 }
 
 /** TODO */
-PRIVATE bool _scene_graph_load_node(__in __notnull system_file_serializer  serializer,
-                                    __in __notnull scene_graph             result_graph,
-                                    __in __notnull system_resizable_vector serialized_nodes,
-                                    __in __notnull system_resizable_vector scene_cameras_vector,
-                                    __in __notnull system_resizable_vector scene_lights_vector,
-                                    __in __notnull system_resizable_vector scene_mesh_instances_vector,
-                                    __in __notnull scene                   owner_scene)
+PRIVATE bool _scene_graph_load_node(system_file_serializer  serializer,
+                                    scene_graph             result_graph,
+                                    system_resizable_vector serialized_nodes,
+                                    system_resizable_vector scene_cameras_vector,
+                                    system_resizable_vector scene_lights_vector,
+                                    system_resizable_vector scene_mesh_instances_vector,
+                                    scene                   owner_scene)
 {
     _scene_graph*         graph_ptr                 = NULL;
     uint32_t              n_attached_cameras        = 0;
@@ -1222,9 +1222,9 @@ end:
 }
 
 /** TODO */
-PRIVATE scene_graph_node _scene_graph_load_scene_graph_node_matrix4x4_static(__in __notnull system_file_serializer serializer,
-                                                                             __in __notnull scene_graph            result_graph,
-                                                                             __in __notnull scene_graph_node       parent_node)
+PRIVATE scene_graph_node _scene_graph_load_scene_graph_node_matrix4x4_static(system_file_serializer serializer,
+                                                                             scene_graph            result_graph,
+                                                                             scene_graph_node       parent_node)
 {
     scene_graph_node     result_node       = NULL;
     system_matrix4x4     serialized_matrix = NULL;
@@ -1255,10 +1255,10 @@ PRIVATE scene_graph_node _scene_graph_load_scene_graph_node_matrix4x4_static(__i
 }
 
 /** TODO */
-PRIVATE scene_graph_node _scene_graph_load_scene_graph_node_rotation_dynamic(__in __notnull system_file_serializer serializer,
-                                                                             __in __notnull scene_graph            result_graph,
-                                                                             __in __notnull scene_graph_node       parent_node,
-                                                                             __in __notnull scene                  owner_scene)
+PRIVATE scene_graph_node _scene_graph_load_scene_graph_node_rotation_dynamic(system_file_serializer serializer,
+                                                                             scene_graph            result_graph,
+                                                                             scene_graph_node       parent_node,
+                                                                             scene                  owner_scene)
 {
     _scene_graph*        graph_ptr            = (_scene_graph*) result_graph;
     scene_graph_node     result_node          = NULL;
@@ -1330,10 +1330,10 @@ end:
 }
 
 /** TODO */
-PRIVATE scene_graph_node _scene_graph_load_scene_graph_node_scale_dynamic(__in __notnull system_file_serializer serializer,
-                                                                          __in __notnull scene_graph            result_graph,
-                                                                          __in __notnull scene_graph_node       parent_node,
-                                                                          __in __notnull scene                  owner_scene)
+PRIVATE scene_graph_node _scene_graph_load_scene_graph_node_scale_dynamic(system_file_serializer serializer,
+                                                                          scene_graph            result_graph,
+                                                                          scene_graph_node       parent_node,
+                                                                          scene                  owner_scene)
 {
     _scene_graph*        graph_ptr            = (_scene_graph*) result_graph;
     scene_graph_node     result_node          = NULL;
@@ -1400,10 +1400,10 @@ end:
 }
 
 /** TODO */
-PRIVATE scene_graph_node _scene_graph_load_scene_graph_node_translation_dynamic(__in __notnull system_file_serializer serializer,
-                                                                                __in __notnull scene_graph            result_graph,
-                                                                                __in __notnull scene_graph_node       parent_node,
-                                                                                __in __notnull scene                  owner_scene)
+PRIVATE scene_graph_node _scene_graph_load_scene_graph_node_translation_dynamic(system_file_serializer serializer,
+                                                                                scene_graph            result_graph,
+                                                                                scene_graph_node       parent_node,
+                                                                                scene                  owner_scene)
 {
     _scene_graph*        graph_ptr                   = (_scene_graph*) result_graph;
     scene_graph_node     result_node                 = NULL;
@@ -1475,9 +1475,9 @@ end:
 }
 
 /** TODO */
-PRIVATE scene_graph_node _scene_graph_load_scene_graph_node_translation_static(__in __notnull system_file_serializer serializer,
-                                                                               __in __notnull scene_graph            result_graph,
-                                                                               __in __notnull scene_graph_node       parent_node)
+PRIVATE scene_graph_node _scene_graph_load_scene_graph_node_translation_static(system_file_serializer serializer,
+                                                                               scene_graph            result_graph,
+                                                                               scene_graph_node       parent_node)
 {
     _scene_graph*        graph_ptr                 = (_scene_graph*) result_graph;
     scene_graph_node     result_node               = NULL;
@@ -1519,8 +1519,8 @@ end:
 }
 
 /** TODO */
-PRIVATE bool _scene_graph_save_scene_graph_node_matrix4x4_static(__in __notnull system_file_serializer              serializer,
-                                                                 __in __notnull _scene_graph_node_matrix4x4_static* data_ptr)
+PRIVATE bool _scene_graph_save_scene_graph_node_matrix4x4_static(system_file_serializer              serializer,
+                                                                 _scene_graph_node_matrix4x4_static* data_ptr)
 {
     bool result = true;
 
@@ -1534,9 +1534,9 @@ PRIVATE bool _scene_graph_save_scene_graph_node_matrix4x4_static(__in __notnull 
 }
 
 /** TODO */
-PRIVATE bool _scene_graph_save_scene_graph_node_rotation_dynamic(__in __notnull system_file_serializer              serializer,
-                                                                 __in __notnull _scene_graph_node_rotation_dynamic* data_ptr,
-                                                                 __in __notnull scene                               owner_scene)
+PRIVATE bool _scene_graph_save_scene_graph_node_rotation_dynamic(system_file_serializer              serializer,
+                                                                 _scene_graph_node_rotation_dynamic* data_ptr,
+                                                                 scene                               owner_scene)
 {
     bool result = true;
 
@@ -1563,9 +1563,9 @@ PRIVATE bool _scene_graph_save_scene_graph_node_rotation_dynamic(__in __notnull 
 }
 
 /** TODO */
-PRIVATE bool _scene_graph_save_scene_graph_node_scale_dynamic(__in __notnull system_file_serializer           serializer,
-                                                              __in __notnull _scene_graph_node_scale_dynamic* data_ptr,
-                                                              __in __notnull scene                            owner_scene)
+PRIVATE bool _scene_graph_save_scene_graph_node_scale_dynamic(system_file_serializer           serializer,
+                                                              _scene_graph_node_scale_dynamic* data_ptr,
+                                                              scene                            owner_scene)
 {
     bool result = true;
 
@@ -1589,9 +1589,9 @@ PRIVATE bool _scene_graph_save_scene_graph_node_scale_dynamic(__in __notnull sys
 }
 
 /** TODO */
-PRIVATE bool _scene_graph_save_scene_graph_node_translation_dynamic(__in __notnull system_file_serializer                 serializer,
-                                                                    __in __notnull _scene_graph_node_translation_dynamic* data_ptr,
-                                                                    __in __notnull scene                                  owner_scene)
+PRIVATE bool _scene_graph_save_scene_graph_node_translation_dynamic(system_file_serializer                 serializer,
+                                                                    _scene_graph_node_translation_dynamic* data_ptr,
+                                                                    scene                                  owner_scene)
 {
     bool result = true;
 
@@ -1618,8 +1618,8 @@ PRIVATE bool _scene_graph_save_scene_graph_node_translation_dynamic(__in __notnu
 }
 
 /** TODO */
-PRIVATE bool _scene_graph_save_scene_graph_node_translation_static(__in __notnull system_file_serializer                serializer,
-                                                                   __in __notnull _scene_graph_node_translation_static* data_ptr)
+PRIVATE bool _scene_graph_save_scene_graph_node_translation_static(system_file_serializer                serializer,
+                                                                   _scene_graph_node_translation_static* data_ptr)
 {
     bool result = true;
 
@@ -1634,8 +1634,8 @@ PRIVATE bool _scene_graph_save_scene_graph_node_translation_static(__in __notnul
 }
 
 /** TODO */
-PRIVATE void _scene_graph_node_release_data(__in __notnull __post_invalid void*                 data,
-                                            __in                          scene_graph_node_type type)
+PRIVATE void _scene_graph_node_release_data(void*                 data,
+                                            scene_graph_node_type type)
 {
     if (data != NULL)
     {
@@ -1689,9 +1689,9 @@ PRIVATE void _scene_graph_node_release_data(__in __notnull __post_invalid void* 
 }
 
 /** TODO */
-PRIVATE bool _scene_graph_save_curve(__in_opt           scene                  owner_scene,
-                                     __in     __notnull curve_container        in_curve,
-                                     __in     __notnull system_file_serializer serializer)
+PRIVATE bool _scene_graph_save_curve(scene                  owner_scene,
+                                     curve_container        in_curve,
+                                     system_file_serializer serializer)
 {
     bool result = true;
 
@@ -1719,13 +1719,13 @@ PRIVATE bool _scene_graph_save_curve(__in_opt           scene                  o
 }
 
 /** TODO */
-PRIVATE bool _scene_graph_save_node(__in __notnull system_file_serializer   serializer,
-                                    __in __notnull const _scene_graph_node* node_ptr,
-                                    __in __notnull system_hash64map         node_ptr_to_id_map,
-                                    __in __notnull system_hash64map         camera_ptr_to_id_map,
-                                    __in __notnull system_hash64map         light_ptr_to_id_map,
-                                    __in __notnull system_hash64map         mesh_instance_ptr_to_id_map,
-                                    __in __notnull scene                    owner_scene)
+PRIVATE bool _scene_graph_save_node(system_file_serializer   serializer,
+                                    const _scene_graph_node* node_ptr,
+                                    system_hash64map         node_ptr_to_id_map,
+                                    system_hash64map         camera_ptr_to_id_map,
+                                    system_hash64map         light_ptr_to_id_map,
+                                    system_hash64map         mesh_instance_ptr_to_id_map,
+                                    scene                    owner_scene)
 {
     uint32_t     n_cameras        = 0;
     uint32_t     n_lights         = 0;
@@ -1971,7 +1971,7 @@ PRIVATE bool _scene_graph_save_node(__in __notnull system_file_serializer   seri
 }
 
 /** TODO */
-PRIVATE bool _scene_graph_update_sorted_nodes(__in __notnull _scene_graph* graph_ptr)
+PRIVATE bool _scene_graph_update_sorted_nodes(_scene_graph* graph_ptr)
 {
     bool getter_result = false;
 
@@ -2012,9 +2012,9 @@ end:
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API void scene_graph_add_node(__in __notnull scene_graph      graph,
-                                             __in __notnull scene_graph_node parent_node,
-                                             __in __notnull scene_graph_node node)
+PUBLIC EMERALD_API void scene_graph_add_node(scene_graph      graph,
+                                             scene_graph_node parent_node,
+                                             scene_graph_node node)
 {
     _scene_graph*      graph_ptr       = (_scene_graph*)      graph;
     _scene_graph_node* node_ptr        = (_scene_graph_node*) node;
@@ -2048,10 +2048,10 @@ end:
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API void scene_graph_attach_object_to_node(__in __notnull scene_graph        graph,
-                                                          __in __notnull scene_graph_node   graph_node,
-                                                          __in           _scene_object_type object_type,
-                                                          __in __notnull void*              instance)
+PUBLIC EMERALD_API void scene_graph_attach_object_to_node(scene_graph        graph,
+                                                          scene_graph_node   graph_node,
+                                                          _scene_object_type object_type,
+                                                          void*              instance)
 {
     _scene_graph*      graph_ptr = (_scene_graph*)      graph;
     _scene_graph_node* node_ptr  = (_scene_graph_node*) graph_node;
@@ -2102,8 +2102,8 @@ PUBLIC EMERALD_API void scene_graph_attach_object_to_node(__in __notnull scene_g
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API void scene_graph_compute(__in __notnull scene_graph graph,
-                                            __in           system_time time)
+PUBLIC EMERALD_API void scene_graph_compute(scene_graph graph,
+                                            system_time time)
 {
     _scene_graph* graph_ptr = (_scene_graph*) graph;
 
@@ -2214,9 +2214,9 @@ end:
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API void scene_graph_compute_node(__in __notnull scene_graph      graph,
-                                                 __in __notnull scene_graph_node node,
-                                                 __in           system_time      time)
+PUBLIC EMERALD_API void scene_graph_compute_node(scene_graph      graph,
+                                                 scene_graph_node node,
+                                                 system_time      time)
 {
     _scene_graph_node* current_node_ptr = (_scene_graph_node*) node;
     _scene_graph*      graph_ptr        = (_scene_graph*)      graph;
@@ -2307,8 +2307,8 @@ end:
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API scene_graph scene_graph_create(__in __notnull scene                     owner_scene,
-                                                  __in_opt       system_hashed_ansi_string object_manager_path)
+PUBLIC EMERALD_API scene_graph scene_graph_create(scene                     owner_scene,
+                                                  system_hashed_ansi_string object_manager_path)
 {
     _scene_graph* new_graph = new (std::nothrow) _scene_graph;
 
@@ -2360,10 +2360,10 @@ end:
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API scene_graph_node scene_graph_create_rotation_dynamic_node(__in           __notnull scene_graph          graph,
-                                                                             __in_ecount(4) __notnull curve_container*     rotation_vector_curves,
-                                                                             __in                     bool                 expressed_in_radians,
-                                                                             __in                     scene_graph_node_tag tag)
+PUBLIC EMERALD_API scene_graph_node scene_graph_create_rotation_dynamic_node(scene_graph          graph,
+                                                                             curve_container*     rotation_vector_curves,
+                                                                             bool                 expressed_in_radians,
+                                                                             scene_graph_node_tag tag)
 {
     _scene_graph*      graph_ptr    = (_scene_graph*) graph;
     _scene_graph_node* new_node_ptr = new (std::nothrow) _scene_graph_node(NULL);
@@ -2389,9 +2389,9 @@ end:
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API scene_graph_node scene_graph_create_scale_dynamic_node(__in           __notnull scene_graph          graph,
-                                                                          __in_ecount(3) __notnull curve_container*     scale_vector_curves,
-                                                                          __in                     scene_graph_node_tag tag)
+PUBLIC EMERALD_API scene_graph_node scene_graph_create_scale_dynamic_node(scene_graph          graph,
+                                                                          curve_container*     scale_vector_curves,
+                                                                          scene_graph_node_tag tag)
 {
     _scene_graph*      graph_ptr    = (_scene_graph*) graph;
     _scene_graph_node* new_node_ptr = new (std::nothrow) _scene_graph_node(NULL);
@@ -2417,10 +2417,10 @@ end:
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API scene_graph_node scene_graph_create_translation_dynamic_node(__in           __notnull scene_graph          graph,
-                                                                                __in_ecount(3) __notnull curve_container*     translation_vector_curves,
-                                                                                __in_ecount(3) __notnull const bool*          negate_xyz_vectors,
-                                                                                __in                     scene_graph_node_tag tag)
+PUBLIC EMERALD_API scene_graph_node scene_graph_create_translation_dynamic_node(scene_graph          graph,
+                                                                                curve_container*     translation_vector_curves,
+                                                                                const bool*          negate_xyz_vectors,
+                                                                                scene_graph_node_tag tag)
 {
     _scene_graph*      graph_ptr    = (_scene_graph*) graph;
     _scene_graph_node* new_node_ptr = new (std::nothrow) _scene_graph_node(NULL);
@@ -2447,9 +2447,9 @@ end:
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API scene_graph_node scene_graph_create_translation_static_node(__in           __notnull scene_graph          graph,
-                                                                               __in_ecount(3) __notnull float*               translation_vector,
-                                                                               __in                     scene_graph_node_tag tag)
+PUBLIC EMERALD_API scene_graph_node scene_graph_create_translation_static_node(scene_graph          graph,
+                                                                               float*               translation_vector,
+                                                                               scene_graph_node_tag tag)
 {
     _scene_graph*      graph_ptr    = (_scene_graph*) graph;
     _scene_graph_node* new_node_ptr = new (std::nothrow) _scene_graph_node(NULL);
@@ -2475,7 +2475,7 @@ end:
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API scene_graph_node scene_graph_create_general_node(__in __notnull scene_graph graph)
+PUBLIC EMERALD_API scene_graph_node scene_graph_create_general_node(scene_graph graph)
 {
     _scene_graph*      graph_ptr    = (_scene_graph*) graph;
     _scene_graph_node* new_node_ptr = new (std::nothrow) _scene_graph_node(NULL);
@@ -2498,9 +2498,9 @@ end:
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API scene_graph_node scene_graph_create_static_matrix4x4_transformation_node(__in_opt           scene_graph          graph,
-                                                                                            __in     __notnull system_matrix4x4     matrix,
-                                                                                            __in               scene_graph_node_tag tag)
+PUBLIC EMERALD_API scene_graph_node scene_graph_create_static_matrix4x4_transformation_node(scene_graph          graph,
+                                                                                            system_matrix4x4     matrix,
+                                                                                            scene_graph_node_tag tag)
 {
     _scene_graph*      graph_ptr    = (_scene_graph*) graph;
     _scene_graph_node* new_node_ptr = new (std::nothrow) _scene_graph_node(NULL);
@@ -2542,9 +2542,9 @@ end:
 
 
 /** Please see header for specification */
-PUBLIC EMERALD_API scene_graph_node scene_graph_get_node_for_object(__in __notnull scene_graph        graph,
-                                                                    __in           _scene_object_type object_type,
-                                                                    __in __notnull void*              object)
+PUBLIC EMERALD_API scene_graph_node scene_graph_get_node_for_object(scene_graph        graph,
+                                                                    _scene_object_type object_type,
+                                                                    void*              object)
 {
     _scene_graph*    graph_ptr      = (_scene_graph*) graph;
     unsigned int     n_nodes        = 0;
@@ -2649,18 +2649,18 @@ end:
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API scene_graph_node scene_graph_get_root_node(__in __notnull scene_graph graph)
+PUBLIC EMERALD_API scene_graph_node scene_graph_get_root_node(scene_graph graph)
 {
     return (scene_graph_node) ((_scene_graph*) graph)->root_node_ptr;
 }
 
 /* Please see header for specification */
-PUBLIC scene_graph scene_graph_load(__in __notnull scene                     owner_scene,
-                                    __in __notnull system_file_serializer    serializer,
-                                    __in __notnull system_resizable_vector   serialized_scene_cameras,
-                                    __in __notnull system_resizable_vector   serialized_scene_lights,
-                                    __in __notnull system_resizable_vector   serialized_scene_mesh_instances,
-                                    __in_opt       system_hashed_ansi_string object_manager_path)
+PUBLIC scene_graph scene_graph_load(scene                     owner_scene,
+                                    system_file_serializer    serializer,
+                                    system_resizable_vector   serialized_scene_cameras,
+                                    system_resizable_vector   serialized_scene_lights,
+                                    system_resizable_vector   serialized_scene_mesh_instances,
+                                    system_hashed_ansi_string object_manager_path)
 {
     scene_graph result = scene_graph_create(owner_scene,
                                             object_manager_path);
@@ -2722,15 +2722,15 @@ end:
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API void scene_graph_lock(__in __notnull scene_graph graph)
+PUBLIC EMERALD_API void scene_graph_lock(scene_graph graph)
 {
     system_critical_section_enter( ((_scene_graph*) graph)->compute_lock_cs);
 }
 
 #ifdef _DEBUG
     /** TODO */
-    PRIVATE system_resizable_vector _scene_graph_get_children(__in __notnull _scene_graph*    graph_ptr,
-                                                              __in __notnull scene_graph_node node)
+    PRIVATE system_resizable_vector _scene_graph_get_children(_scene_graph*    graph_ptr,
+                                                              scene_graph_node node)
     {
         uint32_t                n_nodes = 0;
         system_resizable_vector result  = system_resizable_vector_create(4 /* capacity */);
@@ -2760,7 +2760,7 @@ PUBLIC EMERALD_API void scene_graph_lock(__in __notnull scene_graph graph)
     }
 
     /** TODO */
-    PRIVATE const char* _scene_graph_get_node_type_string(__in scene_graph_node_type type)
+    PRIVATE const char* _scene_graph_get_node_type_string(scene_graph_node_type type)
     {
         const char* result = "[?]";
 
@@ -2813,10 +2813,10 @@ PUBLIC EMERALD_API void scene_graph_lock(__in __notnull scene_graph graph)
     }
 
     /* Please see header for specification */
-    PUBLIC EMERALD_API void scene_graph_log_hierarchy(__in __notnull scene_graph      graph,
-                                                      __in __notnull scene_graph_node node,
-                                                      __in           unsigned int     indent_level,
-                                                      __in           system_time      time)
+    PUBLIC EMERALD_API void scene_graph_log_hierarchy(scene_graph      graph,
+                                                      scene_graph_node node,
+                                                      unsigned int     indent_level,
+                                                      system_time      time)
     {
         _scene_graph*           graph_ptr   = (_scene_graph*) graph;
         _scene_graph_node*      node_ptr    = (_scene_graph_node*) node;
@@ -2969,9 +2969,9 @@ PUBLIC EMERALD_API void scene_graph_lock(__in __notnull scene_graph graph)
 #endif
 
 /* Please see header for specification */
-PUBLIC EMERALD_API void scene_graph_node_get_property(__in  __notnull scene_graph_node          node,
-                                                      __in            scene_graph_node_property property,
-                                                      __out __notnull void*                     out_result)
+PUBLIC EMERALD_API void scene_graph_node_get_property(scene_graph_node          node,
+                                                      scene_graph_node_property property,
+                                                      void*                     out_result)
 {
     _scene_graph_node* node_ptr = (_scene_graph_node*) node;
 
@@ -3014,9 +3014,9 @@ PUBLIC EMERALD_API void scene_graph_node_get_property(__in  __notnull scene_grap
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API bool scene_graph_node_get_transformation_node(__in  __notnull scene_graph_node     node,
-                                                                 __in            scene_graph_node_tag tag,
-                                                                 __out __notnull scene_graph_node*    out_result_node)
+PUBLIC EMERALD_API bool scene_graph_node_get_transformation_node(scene_graph_node     node,
+                                                                 scene_graph_node_tag tag,
+                                                                 scene_graph_node*    out_result_node)
 {
     _scene_graph_node* node_ptr = (_scene_graph_node*) node;
     bool               result   = true;
@@ -3042,7 +3042,7 @@ PUBLIC EMERALD_API bool scene_graph_node_get_transformation_node(__in  __notnull
 }
 
 /* Please see header for specification */
-PUBLIC void scene_graph_node_release(__in __notnull __post_invalid scene_graph_node node)
+PUBLIC void scene_graph_node_release(scene_graph_node node)
 {
     _scene_graph_node* node_ptr = (_scene_graph_node*) node;
 
@@ -3051,9 +3051,9 @@ PUBLIC void scene_graph_node_release(__in __notnull __post_invalid scene_graph_n
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API void scene_graph_node_replace(__in __notnull scene_graph      graph,
-                                                 __in __notnull scene_graph_node dst_node,
-                                                 __in __notnull scene_graph_node src_node)
+PUBLIC EMERALD_API void scene_graph_node_replace(scene_graph      graph,
+                                                 scene_graph_node dst_node,
+                                                 scene_graph_node src_node)
 {
     _scene_graph*      graph_ptr    = (_scene_graph*)      graph;
     _scene_graph_node* dst_node_ptr = (_scene_graph_node*) dst_node;
@@ -3117,7 +3117,7 @@ PUBLIC EMERALD_API void scene_graph_node_replace(__in __notnull scene_graph     
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API void scene_graph_release(__in __notnull __post_invalid scene_graph graph)
+PUBLIC EMERALD_API void scene_graph_release(scene_graph graph)
 {
     _scene_graph* graph_ptr = (_scene_graph*) graph;
 
@@ -3183,12 +3183,12 @@ PUBLIC EMERALD_API void scene_graph_release(__in __notnull __post_invalid scene_
 }
 
 /* Please see header for specification */
-PUBLIC bool scene_graph_save(__in __notnull system_file_serializer serializer,
-                             __in __notnull scene_graph            graph,
-                             __in __notnull system_hash64map       camera_ptr_to_id_map,
-                             __in __notnull system_hash64map       light_ptr_to_id_map,
-                             __in __notnull system_hash64map       mesh_instance_ptr_to_id_map,
-                             __in __notnull scene                  owner_scene)
+PUBLIC bool scene_graph_save(system_file_serializer serializer,
+                             scene_graph            graph,
+                             system_hash64map       camera_ptr_to_id_map,
+                             system_hash64map       light_ptr_to_id_map,
+                             system_hash64map       mesh_instance_ptr_to_id_map,
+                             scene                  owner_scene)
 {
     _scene_graph*    graph_ptr    = (_scene_graph*) graph;
     system_hash64map node_hashmap = NULL;
@@ -3275,13 +3275,13 @@ end:
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API void scene_graph_traverse(__in __notnull scene_graph                    graph,
-                                             __in_opt       PFNNEWTRANSFORMATIONMATRIXPROC on_new_transformation_matrix_proc,
-                                             __in_opt       PFNINSERTCAMERAPROC            insert_camera_proc,
-                                             __in_opt       PFNINSERTLIGHTPROC             insert_light_proc,
-                                             __in_opt       PFNINSERTMESHPROC              insert_mesh_proc,
-                                             __in_opt       void*                          user_arg,
-                                             __in           system_time                    frame_time)
+PUBLIC EMERALD_API void scene_graph_traverse(scene_graph                    graph,
+                                             PFNNEWTRANSFORMATIONMATRIXPROC on_new_transformation_matrix_proc,
+                                             PFNINSERTCAMERAPROC            insert_camera_proc,
+                                             PFNINSERTLIGHTPROC             insert_light_proc,
+                                             PFNINSERTMESHPROC              insert_mesh_proc,
+                                             void*                          user_arg,
+                                             system_time                    frame_time)
 {
     _scene_graph* graph_ptr = (_scene_graph*) graph;
 
@@ -3458,7 +3458,7 @@ end:
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API void scene_graph_unlock(__in __notnull scene_graph graph)
+PUBLIC EMERALD_API void scene_graph_unlock(scene_graph graph)
 {
     system_critical_section_leave( ((_scene_graph*) graph)->compute_lock_cs);
 }

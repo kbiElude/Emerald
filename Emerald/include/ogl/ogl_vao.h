@@ -48,32 +48,32 @@ typedef enum
 
 
 /** TODO */
-PUBLIC ogl_vao ogl_vao_create(__in __notnull ogl_context  context,
-                              __in           unsigned int gl_id);
+PUBLIC ogl_vao ogl_vao_create(ogl_context  context,
+                              unsigned int gl_id);
 
 /** TODO */
-PUBLIC void ogl_vao_get_property(__in  __notnull const ogl_vao    vao,
-                                 __in            ogl_vao_property property,
-                                 __out __notnull void*            out_result);
+PUBLIC void ogl_vao_get_property(const ogl_vao    vao,
+                                 ogl_vao_property property,
+                                 void*            out_result);
 
 /** TODO */
-PUBLIC void ogl_vao_get_vaa_property(__in  __notnull const ogl_vao        vao,
-                                     __in            unsigned int         n_vaa,
-                                     __in            ogl_vao_vaa_property property,
-                                     __out __notnull void*                out_result);
+PUBLIC void ogl_vao_get_vaa_property(const ogl_vao        vao,
+                                     unsigned int         n_vaa,
+                                     ogl_vao_vaa_property property,
+                                     void*                out_result);
 
 /** TODO */
-PUBLIC void ogl_vao_release(__in __notnull __post_invalid ogl_vao vao);
+PUBLIC void ogl_vao_release(ogl_vao vao);
 
 /** TODO */
-PUBLIC void ogl_vao_set_property(__in __notnull ogl_vao          vao,
-                                 __in           ogl_vao_property property,
-                                 __in __notnull const void*      data);
+PUBLIC void ogl_vao_set_property(ogl_vao          vao,
+                                 ogl_vao_property property,
+                                 const void*      data);
 
 /** TODO */
-PUBLIC void ogl_vao_set_vaa_property(__in __notnull ogl_vao              vao,
-                                     __in           unsigned int         n_vaa,
-                                     __in           ogl_vao_vaa_property property,
-                                     __in __notnull const void*          data);
+PUBLIC void ogl_vao_set_vaa_property(ogl_vao              vao,
+                                     unsigned int         n_vaa,
+                                     ogl_vao_vaa_property property,
+                                     const void*          data);
 
 #endif /* OGL_VAO_H */

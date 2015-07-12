@@ -54,14 +54,14 @@ enum collada_data_light_type
 };
 
 /** TODO */
-PUBLIC collada_data_light collada_data_light_create(__in __notnull tinyxml2::XMLElement* current_light_element_ptr);
+PUBLIC collada_data_light collada_data_light_create(tinyxml2::XMLElement* current_light_element_ptr);
 
 /** TODO */
-PUBLIC EMERALD_API void collada_data_light_get_property(__in  __notnull const collada_data_light          light,
-                                                        __in                  collada_data_light_property property,
-                                                        __out __notnull void*                             out_data_ptr);
+PUBLIC EMERALD_API void collada_data_light_get_property(const collada_data_light          light,
+                                                              collada_data_light_property property,
+                                                        void*                             out_data_ptr);
 
 /** TODO */
-PUBLIC void collada_data_light_release(__in __notnull __post_invalid collada_data_light light);
+PUBLIC void collada_data_light_release(collada_data_light light);
 
 #endif /* COLLADA_DATA_LIGHT_H */

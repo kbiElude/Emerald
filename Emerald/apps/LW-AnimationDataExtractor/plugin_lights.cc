@@ -47,11 +47,11 @@ PRIVATE system_hash64map scene_light_to_light_data_map = NULL;
 
 
 /** TODO */
-PRIVATE void _update_light_properties(__in __notnull scene_light               new_light,
-                                      __in           scene_light_type          new_light_type,
-                                      __in __notnull system_hashed_ansi_string new_light_name_has,
-                                      __in           LWItemID                  new_light_item_id,
-                                      __in           LWDVector                 new_light_pivot)
+PRIVATE void _update_light_properties(scene_light               new_light,
+                                      scene_light_type          new_light_type,
+                                      system_hashed_ansi_string new_light_name_has,
+                                      LWItemID                  new_light_item_id,
+                                      LWDVector                 new_light_pivot)
 {
     curve_container new_light_color_r_curve            = NULL;
     curve_id        new_light_color_r_curve_id         = 0;
@@ -333,7 +333,7 @@ PRIVATE void _update_light_properties(__in __notnull scene_light               n
 }
 
 /** TODO */
-volatile void ExtractLightDataWorkerThreadEntryPoint(__in __notnull void* in_scene_arg)
+volatile void ExtractLightDataWorkerThreadEntryPoint(void* in_scene_arg)
 {
     scene            in_scene          = (scene) in_scene_arg;
     char             text_buffer[1024] = {0};
@@ -508,9 +508,9 @@ PUBLIC void DeinitLightData()
 }
 
 /* Please see header for spec */
-PUBLIC void GetLightPropertyValue(__in  __notnull scene_light   light,
-                                  __in            LightProperty property,
-                                  __out __notnull void*         out_result)
+PUBLIC void GetLightPropertyValue(scene_light   light,
+                                  LightProperty property,
+                                  void*         out_result)
 {
     _light_data* light_ptr = NULL;
 
@@ -579,7 +579,7 @@ PUBLIC void InitLightData()
 }
 
 /** Please see header for spec */
-PUBLIC system_event StartLightDataExtraction(__in __notnull scene in_scene)
+PUBLIC system_event StartLightDataExtraction(scene in_scene)
 {
     job_done_event = system_event_create(false); /* manual_reset */
 

@@ -22,14 +22,14 @@ typedef enum
 PUBLIC void DeinitCameraData();
 
 /** TODO */
-PUBLIC void GetCameraPropertyValue(__in  __notnull scene_camera   camera,
-                                   __in            CameraProperty property,
-                                   __out __notnull void*          out_result);
+PUBLIC void GetCameraPropertyValue(scene_camera   camera,
+                                   CameraProperty property,
+                                   void*          out_result);
 
 /** TODO */
 PUBLIC void InitCameraData();
 
 /** TODO */
-PUBLIC system_event StartCameraDataExtraction(__in __notnull scene in_scene);
+PUBLIC system_event StartCameraDataExtraction(scene in_scene);
 
 #endif /* PLUGIN_CAMERAS_H */

@@ -35,9 +35,9 @@ typedef struct
 } _system_bst;
 
 /** TODO */
-PRIVATE void _init_system_bst_node(__in __notnull _system_bst_node* node_ptr,
-                                   __in __notnull system_bst_key    key,
-                                   __in __notnull system_bst_value  value)
+PRIVATE void _init_system_bst_node(_system_bst_node* node_ptr,
+                                   system_bst_key    key,
+                                   system_bst_value  value)
 {
     node_ptr->key   = key;
     node_ptr->value = value;
@@ -47,12 +47,12 @@ PRIVATE void _init_system_bst_node(__in __notnull _system_bst_node* node_ptr,
 
 
 /* Please see header for specification */
-PUBLIC EMERALD_API system_bst system_bst_create(__in           size_t                       key_size,
-                                                __in           size_t                       value_size,
-                                                __in __notnull system_bst_value_lower_func  key_lower_func,
-                                                __in __notnull system_bst_value_equals_func key_equals_func,
-                                                __in __notnull system_bst_key               initial_key,
-                                                __in __notnull system_bst_value             initial_value)
+PUBLIC EMERALD_API system_bst system_bst_create(size_t                       key_size,
+                                                size_t                       value_size,
+                                                system_bst_value_lower_func  key_lower_func,
+                                                system_bst_value_equals_func key_equals_func,
+                                                system_bst_key               initial_key,
+                                                system_bst_value             initial_value)
 {
     _system_bst* new_instance = new (std::nothrow) _system_bst;
 
@@ -93,9 +93,9 @@ PUBLIC EMERALD_API system_bst system_bst_create(__in           size_t           
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API bool system_bst_get(__in  __notnull   system_bst        bst,
-                                       __in  __notnull   system_bst_key    key,
-                                       __out __maybenull system_bst_value* result)
+PUBLIC EMERALD_API bool system_bst_get(system_bst        bst,
+                                       system_bst_key    key,
+                                       system_bst_value* result)
 {
     _system_bst*      bst_ptr        = (_system_bst*) bst;
     _system_bst_node* current_node   = &bst_ptr->root;
@@ -148,9 +148,9 @@ PUBLIC EMERALD_API bool system_bst_get(__in  __notnull   system_bst        bst,
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API void system_bst_insert(__in __notnull system_bst       bst,
-                                          __in __notnull system_bst_key   key,
-                                          __in __notnull system_bst_value value)
+PUBLIC EMERALD_API void system_bst_insert(system_bst       bst,
+                                          system_bst_key   key,
+                                          system_bst_value value)
 {
     _system_bst*      bst_ptr       = (_system_bst*) bst;
     _system_bst_node* current_node  = &bst_ptr->root;
@@ -205,7 +205,7 @@ PUBLIC EMERALD_API void system_bst_insert(__in __notnull system_bst       bst,
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API void system_bst_release(__in __notnull system_bst bst)
+PUBLIC EMERALD_API void system_bst_release(system_bst bst)
 {
     _system_bst* bst_ptr = (_system_bst*) bst;
 

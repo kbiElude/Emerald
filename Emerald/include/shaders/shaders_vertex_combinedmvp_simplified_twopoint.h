@@ -28,8 +28,8 @@ REFCOUNT_INSERT_DECLARATIONS(shaders_vertex_combinedmvp_simplified_twopoint,
  * 
  *  @return shaders_vertex_combinedmvp_simplified_twopoint instance if successful, NULL otherwise.
  */
-PUBLIC EMERALD_API shaders_vertex_combinedmvp_simplified_twopoint shaders_vertex_combinedmvp_simplified_twopoint_create(__in __notnull ogl_context,
-                                                                                                                        __in __notnull system_hashed_ansi_string);
+PUBLIC EMERALD_API shaders_vertex_combinedmvp_simplified_twopoint shaders_vertex_combinedmvp_simplified_twopoint_create(ogl_context,
+                                                                                                                        system_hashed_ansi_string);
 
 /** Retrieves ogl_shader object associated with the instance. Do not release the object or modify it in any way.
  *
@@ -37,7 +37,7 @@ PUBLIC EMERALD_API shaders_vertex_combinedmvp_simplified_twopoint shaders_vertex
  *
  *  @return ogl_shader instance.
  **/
-PUBLIC EMERALD_API ogl_shader shaders_vertex_combinedmvp_simplified_twopoint_get_shader(__in __notnull shaders_vertex_combinedmvp_simplified_twopoint);
+PUBLIC EMERALD_API ogl_shader shaders_vertex_combinedmvp_simplified_twopoint_get_shader(shaders_vertex_combinedmvp_simplified_twopoint);
 
 
 #endif /* SHADERS_VERTEX_COMBINEDMVP_SIMPLIFIED_TWOPOINT_H */

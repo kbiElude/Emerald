@@ -17,15 +17,15 @@
  *
  *  @return Semaphore object.
  */
-EMERALD_API system_semaphore system_semaphore_create(__in uint32_t semaphore_capacity,
-                                                     __in uint32_t semaphore_default_value);
+EMERALD_API system_semaphore system_semaphore_create(uint32_t semaphore_capacity,
+                                                     uint32_t semaphore_default_value);
 
 /** Releases a semaphore object. Once called, do not use the object passed
  *  in the argument.
  *
  *  @param system_semaphore Semaphore to release.
  */
-EMERALD_API void system_semaphore_release(__in __deallocate(mem) system_semaphore semaphore);
+EMERALD_API void system_semaphore_release(system_semaphore semaphore);
 
 /** Enters a semaphore. This function will block if semaphore is fully occupied and will return
  *  to caller only after sufficient number of semaphore slots become available.
@@ -35,9 +35,9 @@ EMERALD_API void system_semaphore_release(__in __deallocate(mem) system_semaphor
  *  @param out_has_timed_out_ptr TODO
  *
  */
-EMERALD_API void system_semaphore_enter(__in      system_semaphore semaphore,
-                                        __in      system_time      timeout               = 0,
-                                        __out_opt bool*            out_has_timed_out_ptr = NULL);
+EMERALD_API void system_semaphore_enter(system_semaphore semaphore,
+                                        system_time      timeout               = 0,
+                                        bool*            out_has_timed_out_ptr = NULL);
 
 /** Enters a semaphore @param count times. This function will block if semaphore is fully occupied and will return
  *  to caller only after sufficient number of semaphore slots become available.
@@ -45,21 +45,21 @@ EMERALD_API void system_semaphore_enter(__in      system_semaphore semaphore,
  *  @param system_semaphore Semaphore object to use.
  *  @param count            Number of enters to do on the semaphore object.
  */
-EMERALD_API void system_semaphore_enter_multiple(__in system_semaphore semaphore,
-                                                 __in uint32_t         count);
+EMERALD_API void system_semaphore_enter_multiple(system_semaphore semaphore,
+                                                 uint32_t         count);
 
 /** Leaves a semaphore.
  *
  *  @param system_semaphore Semaphore object to use.
  */
-EMERALD_API void system_semaphore_leave(__in system_semaphore);
+EMERALD_API void system_semaphore_leave(system_semaphore);
 
 /** Leaves a semaphore @param count times.
  *
  *  @param system_semaphore Semaphore object to use.
  *  @param count            Number of leaves to do on the semaphore object.
  */
-EMERALD_API void system_semaphore_leave_multiple(__in system_semaphore semaphore,
-                                                 __in uint32_t         count);
+EMERALD_API void system_semaphore_leave_multiple(system_semaphore semaphore,
+                                                 uint32_t         count);
 
 #endif /* SYSTEM_SEMAPHORE_H */

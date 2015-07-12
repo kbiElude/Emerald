@@ -43,7 +43,7 @@ typedef _curve_segment* _curve_segment_ptr;
 
 /** (De-)-initializers */
 /** TODO */
-PRIVATE void deinit_curve_segment(__notnull __deallocate(mem) curve_segment segment)
+PRIVATE void deinit_curve_segment(curve_segment segment)
 {
     _curve_segment_ptr curve_segment_ptr = (_curve_segment_ptr) segment;
 
@@ -56,7 +56,7 @@ PRIVATE void deinit_curve_segment(__notnull __deallocate(mem) curve_segment segm
 }
 
 /** TODO */
-PRIVATE void init_curve_segment(__deref_out __notnull curve_segment* segment)
+PRIVATE void init_curve_segment(curve_segment* segment)
 {
     _curve_segment* new_curve_segment = new (std::nothrow) _curve_segment;
 
@@ -87,13 +87,13 @@ PRIVATE void init_curve_segment(__deref_out __notnull curve_segment* segment)
 }
 
 /** Please see header for specification */
-PUBLIC void curve_segment_release(__in __notnull __deallocate(mem) curve_segment segment)
+PUBLIC void curve_segment_release(curve_segment segment)
 {
     deinit_curve_segment(segment);
 }
 
 /** Please see header for specification */
-PUBLIC curve_segment curve_segment_create_static(__in __notnull system_variant value)
+PUBLIC curve_segment curve_segment_create_static(system_variant value)
 {
     curve_segment result_curve_segment = NULL;
 
@@ -132,10 +132,10 @@ PUBLIC curve_segment curve_segment_create_static(__in __notnull system_variant v
 }
 
 /** Please see header for specification */
-PUBLIC curve_segment curve_segment_create_linear(               system_time    start_time,
-                                                 __in __notnull system_variant start_value,
-                                                                system_time    end_time,
-                                                 __in __notnull system_variant end_value)
+PUBLIC curve_segment curve_segment_create_linear(system_time    start_time,
+                                                 system_variant start_value,
+                                                 system_time    end_time,
+                                                 system_variant end_value)
 {
     curve_segment result_curve_segment = NULL;
 
@@ -184,14 +184,14 @@ PUBLIC curve_segment curve_segment_create_linear(               system_time    s
 }
 
 /** Please see header for specification */
-PUBLIC curve_segment curve_segment_create_tcb(__in             system_time      start_time,
-                                              __in __ecount(3) float*           start_tcb,
-                                              __in __notnull   system_variant   start_value,
-                                              __in             system_time      end_time,
-                                              __in __ecount(3) float*           end_tcb,
-                                              __in __notnull   system_variant   end_value,
-                                              __in __notnull   curve_container  curve,
-                                              __in             curve_segment_id segment_id)
+PUBLIC curve_segment curve_segment_create_tcb(system_time      start_time,
+                                              float*           start_tcb,
+                                              system_variant   start_value,
+                                              system_time      end_time,
+                                              float*           end_tcb,
+                                              system_variant   end_value,
+                                              curve_container  curve,
+                                              curve_segment_id segment_id)
 {
     curve_segment result_curve_segment = NULL;
 
@@ -243,10 +243,10 @@ PUBLIC curve_segment curve_segment_create_tcb(__in             system_time      
 }
 
 /** Please see header for specification */
-PUBLIC bool curve_segment_get_value(__in __notnull  curve_segment  segment,
-                                    __in            system_time    time,
-                                    __in            bool           should_force,
-                                    __out __notnull system_variant out_result)
+PUBLIC bool curve_segment_get_value(curve_segment  segment,
+                                    system_time    time,
+                                    bool           should_force,
+                                    system_variant out_result)
 {
     _curve_segment_ptr curve_segment_ptr = (_curve_segment_ptr) segment;
 
@@ -257,10 +257,10 @@ PUBLIC bool curve_segment_get_value(__in __notnull  curve_segment  segment,
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API bool curve_segment_add_node(__in __notnull  curve_segment          segment,
-                                               __in            system_time            node_time,
-                                               __in  __notnull system_variant         node_value,
-                                               __out __notnull curve_segment_node_id* out_node_id)
+PUBLIC EMERALD_API bool curve_segment_add_node(curve_segment          segment,
+                                               system_time            node_time,
+                                               system_variant         node_value,
+                                               curve_segment_node_id* out_node_id)
 {
     _curve_segment_ptr curve_segment_ptr = (_curve_segment_ptr) segment;
     bool               result            = curve_segment_ptr->pfn_add_node(curve_segment_ptr->segment_data,
@@ -277,8 +277,8 @@ PUBLIC EMERALD_API bool curve_segment_add_node(__in __notnull  curve_segment    
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API bool curve_segment_delete_node(__in __notnull curve_segment         segment,
-                                                  __in           curve_segment_node_id node_id)
+PUBLIC EMERALD_API bool curve_segment_delete_node(curve_segment         segment,
+                                                  curve_segment_node_id node_id)
 {
     _curve_segment_ptr curve_segment_ptr = (_curve_segment_ptr) segment;
     bool               result            = curve_segment_ptr->pfn_delete_node(curve_segment_ptr->segment_data,
@@ -293,8 +293,8 @@ PUBLIC EMERALD_API bool curve_segment_delete_node(__in __notnull curve_segment  
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API bool curve_segment_get_amount_of_nodes(__in  __notnull curve_segment segment,
-                                                          __out __notnull uint32_t*     out_result)
+PUBLIC EMERALD_API bool curve_segment_get_amount_of_nodes(curve_segment segment,
+                                                          uint32_t*     out_result)
 {
     _curve_segment_ptr curve_segment_ptr = (_curve_segment_ptr) segment;
 
@@ -303,10 +303,10 @@ PUBLIC EMERALD_API bool curve_segment_get_amount_of_nodes(__in  __notnull curve_
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API bool curve_segment_get_node(__in  __notnull   curve_segment         segment,
-                                               __in              curve_segment_node_id segment_node_id,
-                                               __out __maybenull system_time*          out_nodetime,
-                                               __out __maybenull system_variant        out_node_value)
+PUBLIC EMERALD_API bool curve_segment_get_node(curve_segment         segment,
+                                               curve_segment_node_id segment_node_id,
+                                               system_time*          out_nodetime,
+                                               system_variant        out_node_value)
 {
     _curve_segment_ptr curve_segment_ptr = (_curve_segment_ptr) segment;
 
@@ -317,10 +317,10 @@ PUBLIC EMERALD_API bool curve_segment_get_node(__in  __notnull   curve_segment  
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API bool curve_segment_get_node_property(__in    __notnull curve_segment               segment,
-                                                        __in    __notnull curve_segment_node_id       node_id,
-                                                        __in    __notnull curve_segment_node_property node_property,
-                                                        __inout __notnull system_variant              out_result)
+PUBLIC EMERALD_API bool curve_segment_get_node_property(curve_segment               segment,
+                                                        curve_segment_node_id       node_id,
+                                                        curve_segment_node_property node_property,
+                                                        system_variant              out_result)
 {
     _curve_segment_ptr curve_segment_ptr = (_curve_segment_ptr) segment;
     bool               result            = false;
@@ -337,10 +337,10 @@ PUBLIC EMERALD_API bool curve_segment_get_node_property(__in    __notnull curve_
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API bool curve_segment_modify_node_property(__in __notnull curve_segment               segment,
-                                                           __in __notnull curve_segment_node_id       node_id,
-                                                           __in __notnull curve_segment_node_property node_property,
-                                                           __in __notnull system_variant              value)
+PUBLIC EMERALD_API bool curve_segment_modify_node_property(curve_segment               segment,
+                                                           curve_segment_node_id       node_id,
+                                                           curve_segment_node_property node_property,
+                                                           system_variant              value)
 {
     _curve_segment_ptr curve_segment_ptr = (_curve_segment_ptr) segment;
     bool               result            = false;
@@ -367,9 +367,9 @@ PUBLIC EMERALD_API bool curve_segment_modify_node_property(__in __notnull curve_
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API bool curve_segment_modify_node_time(__in __notnull curve_segment         segment,
-                                                       __in           curve_segment_node_id segment_node_id,
-                                                       __in           system_time           new_node_time)
+PUBLIC EMERALD_API bool curve_segment_modify_node_time(curve_segment         segment,
+                                                       curve_segment_node_id segment_node_id,
+                                                       system_time           new_node_time)
 {
     _curve_segment_ptr curve_segment_ptr = (_curve_segment_ptr) segment;
     bool               result            = curve_segment_ptr->pfn_modify_node_time(curve_segment_ptr->segment_data,
@@ -390,11 +390,11 @@ PUBLIC EMERALD_API bool curve_segment_modify_node_time(__in __notnull curve_segm
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API bool curve_segment_modify_node_time_value(__in __notnull curve_segment         segment,
-                                                             __in           curve_segment_node_id segment_node_id,
-                                                             __in           system_time           new_node_time,
-                                                             __in __notnull system_variant        new_node_value,
-                                                             __in           bool                  should_force)
+PUBLIC EMERALD_API bool curve_segment_modify_node_time_value(curve_segment         segment,
+                                                             curve_segment_node_id segment_node_id,
+                                                             system_time           new_node_time,
+                                                             system_variant        new_node_value,
+                                                             bool                  should_force)
 {
     _curve_segment_ptr curve_segment_ptr = (_curve_segment_ptr) segment;
     bool               result            = curve_segment_ptr->pfn_modify_node_time_value(curve_segment_ptr->segment_data,
@@ -417,7 +417,7 @@ PUBLIC EMERALD_API bool curve_segment_modify_node_time_value(__in __notnull curv
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API system_time curve_segment_get_modification_time(__in __notnull curve_segment segment)
+PUBLIC EMERALD_API system_time curve_segment_get_modification_time(curve_segment segment)
 {
     _curve_segment_ptr curve_segment_ptr = (_curve_segment_ptr) segment;
 
@@ -425,9 +425,9 @@ PUBLIC EMERALD_API system_time curve_segment_get_modification_time(__in __notnul
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API bool curve_segment_get_node_at_time(__in  __notnull curve_segment          segment,
-                                                       __in            system_time            node_time,
-                                                       __out __notnull curve_segment_node_id* out_node_id)
+PUBLIC EMERALD_API bool curve_segment_get_node_at_time(curve_segment          segment,
+                                                       system_time            node_time,
+                                                       curve_segment_node_id* out_node_id)
 {
     _curve_segment_ptr curve_segment_ptr = (_curve_segment*) segment;
     unsigned int       n_current_node    = 0;
@@ -477,9 +477,9 @@ PUBLIC EMERALD_API bool curve_segment_get_node_at_time(__in  __notnull curve_seg
 }
 
 /** Please see header for specification */
-PUBLIC bool curve_segment_get_node_by_index(__in  __notnull curve_segment          segment,
-                                            __in            uint32_t               node_index,
-                                            __out __notnull curve_segment_node_id* out_node_id)
+PUBLIC bool curve_segment_get_node_by_index(curve_segment          segment,
+                                            uint32_t               node_index,
+                                            curve_segment_node_id* out_node_id)
 {
     _curve_segment_ptr curve_segment_ptr = (_curve_segment_ptr) segment;
 
@@ -489,9 +489,9 @@ PUBLIC bool curve_segment_get_node_by_index(__in  __notnull curve_segment       
 }
 
 /** Please see header for specification */
-PUBLIC bool curve_segment_get_node_in_order(__in  __notnull curve_segment          segment,
-                                            __in            uint32_t               node_index,
-                                            __out __notnull curve_segment_node_id* out_ordered_node_id)
+PUBLIC bool curve_segment_get_node_in_order(curve_segment          segment,
+                                            uint32_t               node_index,
+                                            curve_segment_node_id* out_ordered_node_id)
 {
     _curve_segment_ptr curve_segment_ptr = (_curve_segment_ptr) segment;
 
@@ -501,8 +501,8 @@ PUBLIC bool curve_segment_get_node_in_order(__in  __notnull curve_segment       
 }
 
 /** Please see header for specification */
-PUBLIC bool curve_segment_get_node_value_variant_type(__in            __notnull curve_segment        segment,
-                                                      __out_ecount(1) __notnull system_variant_type* out_type)
+PUBLIC bool curve_segment_get_node_value_variant_type(curve_segment        segment,
+                                                      system_variant_type* out_type)
 {
     _curve_segment_ptr curve_segment_ptr = (_curve_segment_ptr) segment;
 
@@ -511,8 +511,8 @@ PUBLIC bool curve_segment_get_node_value_variant_type(__in            __notnull 
 }
 
 /** Please see header for specification */
-PUBLIC bool curve_segment_get_type(__in  __notnull curve_segment       segment,
-                                   __out __notnull curve_segment_type* out_segment_type)
+PUBLIC bool curve_segment_get_type(curve_segment       segment,
+                                   curve_segment_type* out_segment_type)
 {
     _curve_segment_ptr curve_segment_ptr = (_curve_segment_ptr) segment;
 
@@ -521,9 +521,9 @@ PUBLIC bool curve_segment_get_type(__in  __notnull curve_segment       segment,
 }
 
 /** Please see header for specification */
-PUBLIC void curve_segment_set_on_segment_changed_callback(__in __notnull   curve_segment                 segment,
-                                                          __in __maybenull PFNCURVESEGMENTONCURVECHANGED callback_proc,
-                                                          __in __maybenull void*                         user_arg)
+PUBLIC void curve_segment_set_on_segment_changed_callback(curve_segment                 segment,
+                                                          PFNCURVESEGMENTONCURVECHANGED callback_proc,
+                                                          void*                         user_arg)
 {
     _curve_segment_ptr curve_segment_ptr = (_curve_segment_ptr) segment;
 

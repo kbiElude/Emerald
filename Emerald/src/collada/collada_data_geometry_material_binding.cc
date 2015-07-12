@@ -31,9 +31,9 @@ _collada_data_geometry_material_binding::_collada_data_geometry_material_binding
 }
 
 /** Please see header for spec */
-PUBLIC collada_data_geometry_material_binding collada_data_geometry_material_binding_create(__in __notnull system_hashed_ansi_string input_semantic_name,
-                                                                                            __in           unsigned int              input_set,
-                                                                                            __in __notnull system_hashed_ansi_string semantic_name)
+PUBLIC collada_data_geometry_material_binding collada_data_geometry_material_binding_create(system_hashed_ansi_string input_semantic_name,
+                                                                                            unsigned int              input_set,
+                                                                                            system_hashed_ansi_string semantic_name)
 {
     _collada_data_geometry_material_binding* binding_ptr = new (std::nothrow) _collada_data_geometry_material_binding;
 
@@ -51,10 +51,10 @@ PUBLIC collada_data_geometry_material_binding collada_data_geometry_material_bin
 }
 
 /* Please see header for spec */
-PUBLIC EMERALD_API void collada_data_geometry_material_binding_get_properties(__in __notnull collada_data_geometry_material_binding binding,
-                                                                              __out_opt      system_hashed_ansi_string*             out_input_semantic_name,
-                                                                              __out_opt      unsigned int*                          out_input_set,
-                                                                              __out_opt      system_hashed_ansi_string*             out_semantic_name)
+PUBLIC EMERALD_API void collada_data_geometry_material_binding_get_properties(collada_data_geometry_material_binding binding,
+                                                                              system_hashed_ansi_string*             out_input_semantic_name,
+                                                                              unsigned int*                          out_input_set,
+                                                                              system_hashed_ansi_string*             out_semantic_name)
 {
     _collada_data_geometry_material_binding* binding_ptr = (_collada_data_geometry_material_binding*) binding;
 
@@ -75,7 +75,7 @@ PUBLIC EMERALD_API void collada_data_geometry_material_binding_get_properties(__
 }
 
 /** Please see header for spec */
-PUBLIC void collada_data_geometry_material_binding_release(__in __notnull __post_invalid collada_data_geometry_material_binding binding)
+PUBLIC void collada_data_geometry_material_binding_release(collada_data_geometry_material_binding binding)
 {
     delete (_collada_data_geometry_material_binding*) binding;
 

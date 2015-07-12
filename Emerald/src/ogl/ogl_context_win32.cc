@@ -54,7 +54,7 @@ typedef struct _ogl_context_win32
 
 
 /** TODO */
-PRIVATE void _ogl_context_win32_initialize_wgl_extensions(__inout __notnull _ogl_context_win32* context_ptr)
+PRIVATE void _ogl_context_win32_initialize_wgl_extensions(_ogl_context_win32* context_ptr)
 {
     if (context_ptr->pWGLGetExtensionsStringEXT != NULL)
     {
@@ -140,7 +140,7 @@ PRIVATE bool _ogl_context_win32_set_pixel_format_multisampling(_ogl_context_win3
 
 
 /** Please see header for spec */
-PUBLIC void ogl_context_win32_bind_to_current_thread(__in ogl_context_win32 context_win32)
+PUBLIC void ogl_context_win32_bind_to_current_thread(ogl_context_win32 context_win32)
 {
     _ogl_context_win32* win32_ptr = (_ogl_context_win32*) context_win32;
 
@@ -157,7 +157,7 @@ PUBLIC void ogl_context_win32_bind_to_current_thread(__in ogl_context_win32 cont
 }
 
 /** Please see header for spec */
-PUBLIC void ogl_context_win32_deinit(__in __post_invalid ogl_context_win32 context_win32)
+PUBLIC void ogl_context_win32_deinit(ogl_context_win32 context_win32)
 {
     _ogl_context_win32* win32_ptr = (_ogl_context_win32*) context_win32;
 
@@ -188,7 +188,7 @@ PUBLIC void ogl_context_win32_deinit(__in __post_invalid ogl_context_win32 conte
 }
 
 /** Please see header for spec */
-PUBLIC void ogl_context_win32_enumerate_supported_msaa_modes(__in ogl_context_win32 context_win32)
+PUBLIC void ogl_context_win32_enumerate_supported_msaa_modes(ogl_context_win32 context_win32)
 {
     system_pixel_format          context_pf        = NULL;
     const ogl_context_gl_limits* limits_ptr        = NULL;
@@ -261,8 +261,8 @@ PUBLIC void ogl_context_win32_enumerate_supported_msaa_modes(__in ogl_context_wi
 }
 
 /** Please see header for spec */
-PUBLIC void* ogl_context_win32_get_func_ptr(__in ogl_context_win32 context_win32,
-                                            __in const char*       name)
+PUBLIC void* ogl_context_win32_get_func_ptr(ogl_context_win32 context_win32,
+                                            const char*       name)
 {
     void*               result    = NULL;
     _ogl_context_win32* win32_ptr = (_ogl_context_win32*) context_win32;
@@ -283,9 +283,9 @@ PUBLIC void* ogl_context_win32_get_func_ptr(__in ogl_context_win32 context_win32
 }
 
 /** Please see header for spec */
-PUBLIC bool ogl_context_win32_get_property(__in  ogl_context_win32    context_win32,
-                                           __in  ogl_context_property property,
-                                           __out void*                out_result)
+PUBLIC bool ogl_context_win32_get_property(ogl_context_win32    context_win32,
+                                           ogl_context_property property,
+                                           void*                out_result)
 {
     bool                result    = false;
     _ogl_context_win32* win32_ptr = (_ogl_context_win32*) context_win32;
@@ -329,8 +329,8 @@ PUBLIC bool ogl_context_win32_get_property(__in  ogl_context_win32    context_wi
 }
 
 /** Please see header for spec */
-PUBLIC void ogl_context_win32_init(__in ogl_context                     context,
-                                   __in PFNINITCONTEXTAFTERCREATIONPROC pInitContextAfterCreation)
+PUBLIC void ogl_context_win32_init(ogl_context                     context,
+                                   PFNINITCONTEXTAFTERCREATIONPROC pInitContextAfterCreation)
 {
     _ogl_context_win32* new_win32_ptr = new (std::nothrow) _ogl_context_win32;
 
@@ -540,9 +540,9 @@ end_error:
 }
 
 /** Please see header for spec */
-PUBLIC bool ogl_context_win32_set_property(__in ogl_context_win32    context_win32,
-                                           __in ogl_context_property property,
-                                           __in const void*          data)
+PUBLIC bool ogl_context_win32_set_property(ogl_context_win32    context_win32,
+                                           ogl_context_property property,
+                                           const void*          data)
 {
     bool                result    = false;
     _ogl_context_win32* win32_ptr = (_ogl_context_win32*) context_win32;
@@ -596,7 +596,7 @@ PUBLIC bool ogl_context_win32_set_property(__in ogl_context_win32    context_win
 }
 
 /** Please see header for spec */
-PUBLIC void ogl_context_win32_swap_buffers(__in ogl_context_win32 context_win32)
+PUBLIC void ogl_context_win32_swap_buffers(ogl_context_win32 context_win32)
 {
     _ogl_context_win32* win32_ptr = (_ogl_context_win32*) context_win32;
 
@@ -604,7 +604,7 @@ PUBLIC void ogl_context_win32_swap_buffers(__in ogl_context_win32 context_win32)
 }
 
 /** Please see header for spec */
-PUBLIC void ogl_context_win32_unbind_from_current_thread(__in ogl_context_win32 context_win32)
+PUBLIC void ogl_context_win32_unbind_from_current_thread(ogl_context_win32 context_win32)
 {
     ::wglMakeCurrent(NULL,  /* HDC */
                      NULL); /* HGLRC */

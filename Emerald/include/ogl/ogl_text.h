@@ -30,53 +30,53 @@ typedef enum
 } ogl_text_string_property;
 
 /** TODO */
-PUBLIC EMERALD_API ogl_text_string_id ogl_text_add_string(__in __notnull ogl_text text);
+PUBLIC EMERALD_API ogl_text_string_id ogl_text_add_string(ogl_text text);
 
 /** TODO */
-PUBLIC EMERALD_API ogl_text ogl_text_create(__in __notnull system_hashed_ansi_string name,
-                                            __in __notnull ogl_context               context,
-                                            __in __notnull gfx_bfg_font_table        font_table,
-                                            __in           uint32_t                  screen_width,
-                                            __in           uint32_t                  screen_height);
+PUBLIC EMERALD_API ogl_text ogl_text_create(system_hashed_ansi_string name,
+                                            ogl_context               context,
+                                            gfx_bfg_font_table        font_table,
+                                            uint32_t                  screen_width,
+                                            uint32_t                  screen_height);
 
 /** TODO */
-PUBLIC EMERALD_API void ogl_text_delete_string(__in __notnull ogl_text           text,
-                                               __in           ogl_text_string_id text_id);
+PUBLIC EMERALD_API void ogl_text_delete_string(ogl_text           text,
+                                               ogl_text_string_id text_id);
 
 /** TODO */
-PUBLIC EMERALD_API void ogl_text_draw(__in __notnull ogl_context context,
-                                      __in __notnull ogl_text    text);
+PUBLIC EMERALD_API void ogl_text_draw(ogl_context context,
+                                      ogl_text    text);
 
 /** TODO */
-PUBLIC EMERALD_API const unsigned char* ogl_text_get(__in __notnull ogl_text           text,
-                                                     __in           ogl_text_string_id text_string_id);
+PUBLIC EMERALD_API const unsigned char* ogl_text_get(ogl_text           text,
+                                                     ogl_text_string_id text_string_id);
 
 /** TODO */
-PUBLIC EMERALD_API uint32_t ogl_text_get_added_strings_counter(__in __notnull ogl_text instance);
+PUBLIC EMERALD_API uint32_t ogl_text_get_added_strings_counter(ogl_text instance);
 
 /** TODO */
-PUBLIC EMERALD_API ogl_context ogl_text_get_context(__in __notnull ogl_text text);
+PUBLIC EMERALD_API ogl_context ogl_text_get_context(ogl_text text);
 
 /** TODO */
-PUBLIC EMERALD_API void ogl_text_get_text_string_property(__in  __notnull ogl_text                 text,
-                                                          __in            ogl_text_string_property property,
-                                                          __in            ogl_text_string_id       text_string_id,
-                                                          __out __notnull void*                    out_result);
+PUBLIC EMERALD_API void ogl_text_get_text_string_property(ogl_text                 text,
+                                                          ogl_text_string_property property,
+                                                          ogl_text_string_id       text_string_id,
+                                                          void*                    out_result);
 
 /** TODO */
-PUBLIC EMERALD_API void ogl_text_set(__in __notnull ogl_text           text,
-                                     __in           ogl_text_string_id text_string_id,
-                                     __in __notnull const char*        raw_text_ptr);
+PUBLIC EMERALD_API void ogl_text_set(ogl_text           text,
+                                     ogl_text_string_id text_string_id,
+                                     const char*        raw_text_ptr);
 
 /** TODO */
-PUBLIC EMERALD_API void ogl_text_set_screen_properties(__in __notnull ogl_text instance,
-                                                       __in           uint32_t screen_width,
-                                                       __in           uint32_t screen_height);
+PUBLIC EMERALD_API void ogl_text_set_screen_properties(ogl_text instance,
+                                                       uint32_t screen_width,
+                                                       uint32_t screen_height);
 
 /** TODO */
-PUBLIC EMERALD_API void ogl_text_set_text_string_property(__in __notnull ogl_text                 text,
-                                                          __in           ogl_text_string_id       text_string_id,
-                                                          __in           ogl_text_string_property property,
-                                                          __in __notnull const void*              data);
+PUBLIC EMERALD_API void ogl_text_set_text_string_property(ogl_text                 text,
+                                                          ogl_text_string_id       text_string_id,
+                                                          ogl_text_string_property property,
+                                                          const void*              data);
 
 #endif /* OGL_TEXT_H */

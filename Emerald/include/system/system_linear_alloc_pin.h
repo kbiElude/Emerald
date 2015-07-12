@@ -52,7 +52,7 @@ PUBLIC EMERALD_API void system_linear_alloc_pin_mark(system_linear_alloc_pin all
  *
  *  @param system_linear_alloc_pin_handle Handle to a linear allocator instance.
  */
-PUBLIC EMERALD_API void system_linear_alloc_pin_release(__deallocate(mem) system_linear_alloc_pin allocator);
+PUBLIC EMERALD_API void system_linear_alloc_pin_release(system_linear_alloc_pin allocator);
 
 /** TODO */
 PUBLIC EMERALD_API void system_linear_alloc_pin_return_all(system_linear_alloc_pin allocator);

@@ -319,50 +319,50 @@ _collada_data::~_collada_data()
 /** Reference counter impl */
 REFCOUNT_INSERT_IMPLEMENTATION(collada_data, collada_data, _collada_data);
 
-PRIVATE void                                 _collada_data_apply_animation_data_to_transformation(__in __notnull                collada_data_transformation           transformation,
-                                                                                                  __in __notnull                collada_data_animation                animation,
-                                                                                                  __in __notnull                collada_data_channel                  channel,
-                                                                                                  __in                          collada_data_channel_target_component animation_target_component);
-PRIVATE void                                 _collada_data_init                                  (__in __notnull                _collada_data*                        collada_ptr,
-                                                                                                  __in                          system_hashed_ansi_string             filename,
-                                                                                                  __in                          bool                                  should_generate_cache_blobs);
-PRIVATE void                                 _collada_data_init_animations                       (__in __notnull                tinyxml2::XMLDocument*                xml_document_ptr,
-                                                                                                  __in __notnull                system_resizable_vector               result_animations,
-                                                                                                  __in __notnull                system_hash64map                      result_object_to_animation_vector_map,
-                                                                                                  __in __notnull                collada_data                          data);
-PRIVATE void                                 _collada_data_init_cameras                          (__in __notnull                tinyxml2::XMLDocument*                xml_document_ptr,
-                                                                                                  __in __notnull                system_resizable_vector               result_cameras,
-                                                                                                  __in __notnull                system_hash64map                      result_cameras_by_id_map);
-PRIVATE void                                 _collada_data_init_effects                          (__in __notnull                tinyxml2::XMLDocument*                xml_document_ptr,
-                                                                                                  __in __notnull                system_resizable_vector               result_effects,
-                                                                                                  __in __notnull                system_hash64map                      result_effects_by_id_map,
-                                                                                                  __in __notnull                system_hash64map                      images_by_id_map);
-PRIVATE void                                 _collada_data_init_general                          (__in __notnull                tinyxml2::XMLDocument*                xml_document_ptr,
-                                                                                                  __in __notnull                _collada_data*                        collada_data_ptr);
-PRIVATE void                                 _collada_data_init_geometries                       (__in __notnull                tinyxml2::XMLDocument*                xml_document_ptr,
-                                                                                                  __in __notnull                system_resizable_vector               result_geometries,
-                                                                                                  __in __notnull                system_hash64map                      result_geometries_by_id_map,
-                                                                                                  __in __notnull                collada_data                          collada_data);
-PRIVATE void                                 _collada_data_init_images                           (__in __notnull                tinyxml2::XMLDocument*                xml_document_ptr,
-                                                                                                  __in __notnull                system_resizable_vector               result_images,
-                                                                                                  __in __notnull                system_hash64map                      result_images_by_id_map);
-PRIVATE void                                 _collada_data_init_lights                           (__in __notnull                tinyxml2::XMLDocument*                xml_document_ptr,
-                                                                                                  __in __notnull                system_resizable_vector               result_lights,
-                                                                                                  __in __notnull                system_hash64map                      result_lights_by_id_map);
-PRIVATE void                                 _collada_data_init_materials                        (__in __notnull                tinyxml2::XMLDocument*                xml_document_ptr,
-                                                                                                  __in __notnull                system_resizable_vector               materials,
-                                                                                                  __in __notnull                system_hash64map                      materials_by_id_map,
-                                                                                                  __in __notnull                system_hash64map                      effects_by_id_map);
-PRIVATE void                                 _collada_data_init_scenes                           (__in __notnull                tinyxml2::XMLDocument*                xml_document_ptr,
-                                                                                                  __in __notnull                system_resizable_vector               result_scenes,
-                                                                                                  __in __notnull                system_hash64map                      result_scenes_by_id_map,
-                                                                                                  __in __notnull                system_hash64map                      result_nodes_by_id_map,
-                                                                                                  __in __notnull                _collada_data*                        loader_ptr);
-PRIVATE void                                 _collada_data_release                               (__in __notnull __post_invalid void*                                 arg);
+PRIVATE void                                 _collada_data_apply_animation_data_to_transformation(collada_data_transformation           transformation,
+                                                                                                  collada_data_animation                animation,
+                                                                                                  collada_data_channel                  channel,
+                                                                                                  collada_data_channel_target_component animation_target_component);
+PRIVATE void                                 _collada_data_init                                  (_collada_data*                        collada_ptr,
+                                                                                                  system_hashed_ansi_string             filename,
+                                                                                                  bool                                  should_generate_cache_blobs);
+PRIVATE void                                 _collada_data_init_animations                       (tinyxml2::XMLDocument*                xml_document_ptr,
+                                                                                                  system_resizable_vector               result_animations,
+                                                                                                  system_hash64map                      result_object_to_animation_vector_map,
+                                                                                                  collada_data                          data);
+PRIVATE void                                 _collada_data_init_cameras                          (tinyxml2::XMLDocument*                xml_document_ptr,
+                                                                                                  system_resizable_vector               result_cameras,
+                                                                                                  system_hash64map                      result_cameras_by_id_map);
+PRIVATE void                                 _collada_data_init_effects                          (tinyxml2::XMLDocument*                xml_document_ptr,
+                                                                                                  system_resizable_vector               result_effects,
+                                                                                                  system_hash64map                      result_effects_by_id_map,
+                                                                                                  system_hash64map                      images_by_id_map);
+PRIVATE void                                 _collada_data_init_general                          (tinyxml2::XMLDocument*                xml_document_ptr,
+                                                                                                  _collada_data*                        collada_data_ptr);
+PRIVATE void                                 _collada_data_init_geometries                       (tinyxml2::XMLDocument*                xml_document_ptr,
+                                                                                                  system_resizable_vector               result_geometries,
+                                                                                                  system_hash64map                      result_geometries_by_id_map,
+                                                                                                  collada_data                          collada_data);
+PRIVATE void                                 _collada_data_init_images                           (tinyxml2::XMLDocument*                xml_document_ptr,
+                                                                                                  system_resizable_vector               result_images,
+                                                                                                  system_hash64map                      result_images_by_id_map);
+PRIVATE void                                 _collada_data_init_lights                           (tinyxml2::XMLDocument*                xml_document_ptr,
+                                                                                                  system_resizable_vector               result_lights,
+                                                                                                  system_hash64map                      result_lights_by_id_map);
+PRIVATE void                                 _collada_data_init_materials                        (tinyxml2::XMLDocument*                xml_document_ptr,
+                                                                                                  system_resizable_vector               materials,
+                                                                                                  system_hash64map                      materials_by_id_map,
+                                                                                                  system_hash64map                      effects_by_id_map);
+PRIVATE void                                 _collada_data_init_scenes                           (tinyxml2::XMLDocument*                xml_document_ptr,
+                                                                                                  system_resizable_vector               result_scenes,
+                                                                                                  system_hash64map                      result_scenes_by_id_map,
+                                                                                                  system_hash64map                      result_nodes_by_id_map,
+                                                                                                  _collada_data*                        loader_ptr);
+PRIVATE void                                 _collada_data_release                               (void*                                 arg);
 
 
 /** TODO */
-PRIVATE void _collada_data_apply_animation_data(__in __notnull _collada_data* data_ptr)
+PRIVATE void _collada_data_apply_animation_data(_collada_data* data_ptr)
 {
     uint32_t n_animations = 0;
     
@@ -450,10 +450,10 @@ PRIVATE void _collada_data_apply_animation_data(__in __notnull _collada_data* da
 }
 
 /** TODO */
-PRIVATE void _collada_data_apply_animation_data_to_transformation(__in __notnull collada_data_transformation           transformation,
-                                                                  __in __notnull collada_data_animation                animation,
-                                                                  __in __notnull collada_data_channel                  channel,
-                                                                  __in           collada_data_channel_target_component animation_target_component)
+PRIVATE void _collada_data_apply_animation_data_to_transformation(collada_data_transformation           transformation,
+                                                                  collada_data_animation                animation,
+                                                                  collada_data_channel                  channel,
+                                                                  collada_data_channel_target_component animation_target_component)
 {
     _collada_data_transformation_type transformation_type = COLLADA_DATA_TRANSFORMATION_TYPE_UNDEFINED;
 
@@ -632,7 +632,7 @@ PRIVATE void _collada_data_apply_animation_data_to_transformation(__in __notnull
 }
 
 /** TODO */
-PRIVATE system_hashed_ansi_string _collada_data_get_emerald_mesh_blob_file_name(__in __notnull system_hashed_ansi_string geometry_name)
+PRIVATE system_hashed_ansi_string _collada_data_get_emerald_mesh_blob_file_name(system_hashed_ansi_string geometry_name)
 {
     const char* strings[] =
     {
@@ -646,9 +646,9 @@ PRIVATE system_hashed_ansi_string _collada_data_get_emerald_mesh_blob_file_name(
 }
 
 /** TODO */
-PRIVATE void _collada_data_init(__in __notnull _collada_data*            collada_ptr,
-                                __in           system_hashed_ansi_string filename,
-                                __in           bool                      should_generate_cache_blobs)
+PRIVATE void _collada_data_init(_collada_data*            collada_ptr,
+                                system_hashed_ansi_string filename,
+                                bool                      should_generate_cache_blobs)
 {
     collada_ptr->file_name                   = filename;
     collada_ptr->use_cache_binary_blobs_mode = should_generate_cache_blobs;
@@ -738,10 +738,10 @@ PRIVATE void _collada_data_init(__in __notnull _collada_data*            collada
 }
 
 /** TODO */
-PRIVATE void _collada_data_init_animations(__in __notnull tinyxml2::XMLDocument*  xml_document_ptr,
-                                           __in __notnull system_resizable_vector result_animations,
-                                           __in __notnull system_hash64map        result_object_to_animation_vector_map,
-                                           __in __notnull collada_data            data)
+PRIVATE void _collada_data_init_animations(tinyxml2::XMLDocument*  xml_document_ptr,
+                                           system_resizable_vector result_animations,
+                                           system_hash64map        result_object_to_animation_vector_map,
+                                           collada_data            data)
 {
     tinyxml2::XMLElement* collada_element_ptr            = xml_document_ptr->FirstChildElement("COLLADA");
     tinyxml2::XMLElement* current_animation_element_ptr  = NULL;
@@ -868,9 +868,9 @@ end: ;
 }
 
 /** TODO */
-PRIVATE void _collada_data_init_cameras(__in __notnull tinyxml2::XMLDocument*  xml_document_ptr,
-                                        __in __notnull system_resizable_vector result_cameras,
-                                        __in __notnull system_hash64map        result_cameras_by_id_map)
+PRIVATE void _collada_data_init_cameras(tinyxml2::XMLDocument*  xml_document_ptr,
+                                        system_resizable_vector result_cameras,
+                                        system_hash64map        result_cameras_by_id_map)
 {
     tinyxml2::XMLElement* collada_element_ptr         = xml_document_ptr->FirstChildElement("COLLADA");
     tinyxml2::XMLElement* current_camera_element_ptr  = NULL;
@@ -929,10 +929,10 @@ end: ;
 }
 
 /** TODO */
-PRIVATE void _collada_data_init_effects(__in __notnull tinyxml2::XMLDocument*  xml_document_ptr,
-                                        __in __notnull system_resizable_vector result_effects,
-                                        __in __notnull system_hash64map        result_effects_by_id_map,
-                                        __in __notnull system_hash64map        images_by_id_map)
+PRIVATE void _collada_data_init_effects(tinyxml2::XMLDocument*  xml_document_ptr,
+                                        system_resizable_vector result_effects,
+                                        system_hash64map        result_effects_by_id_map,
+                                        system_hash64map        images_by_id_map)
 {
     tinyxml2::XMLElement* collada_element_ptr         = xml_document_ptr->FirstChildElement("COLLADA");
     tinyxml2::XMLElement* current_effect_element_ptr  = NULL;
@@ -992,8 +992,8 @@ end: ;
 }
 
 /** TODO */
-PRIVATE void _collada_data_init_general(__in __notnull tinyxml2::XMLDocument*  xml_document_ptr,
-                                        __in __notnull _collada_data*          collada_data_ptr)
+PRIVATE void _collada_data_init_general(tinyxml2::XMLDocument*  xml_document_ptr,
+                                        _collada_data*          collada_data_ptr)
 {
     /* Locate COLLADA node */
     tinyxml2::XMLElement* asset_element_ptr       = NULL;
@@ -1098,10 +1098,10 @@ end:
 }
 
 /** TODO */
-PRIVATE void _collada_data_init_geometries(__in __notnull tinyxml2::XMLDocument*  xml_document_ptr,
-                                           __in __notnull system_resizable_vector result_geometries,
-                                           __in __notnull system_hash64map        result_geometries_by_id_map,
-                                           __in __notnull collada_data            collada_data)
+PRIVATE void _collada_data_init_geometries(tinyxml2::XMLDocument*  xml_document_ptr,
+                                           system_resizable_vector result_geometries,
+                                           system_hash64map        result_geometries_by_id_map,
+                                           collada_data            collada_data)
 {
     /* Locate COLLADA node */
     tinyxml2::XMLElement* collada_element_ptr           = xml_document_ptr->FirstChildElement("COLLADA");
@@ -1175,9 +1175,9 @@ end: ;
 }
 
 /** TODO */
-PRIVATE void _collada_data_init_images(__in __notnull tinyxml2::XMLDocument*  xml_document_ptr,
-                                       __in __notnull system_resizable_vector result_images,
-                                       __in __notnull system_hash64map        result_images_by_id_map)
+PRIVATE void _collada_data_init_images(tinyxml2::XMLDocument*  xml_document_ptr,
+                                       system_resizable_vector result_images,
+                                       system_hash64map        result_images_by_id_map)
 {
     tinyxml2::XMLElement*     collada_element_ptr        = xml_document_ptr->FirstChildElement("COLLADA");
     tinyxml2::XMLElement*     current_image_element_ptr  = NULL;
@@ -1235,9 +1235,9 @@ end: ;
 }
 
 /* TODO */
-PRIVATE void _collada_data_init_lights(__in __notnull tinyxml2::XMLDocument*  xml_document_ptr,
-                                       __in __notnull system_resizable_vector result_lights,
-                                       __in __notnull system_hash64map        result_lights_by_id_map)
+PRIVATE void _collada_data_init_lights(tinyxml2::XMLDocument*  xml_document_ptr,
+                                       system_resizable_vector result_lights,
+                                       system_hash64map        result_lights_by_id_map)
 {
     /* Locate COLLADA node */
     tinyxml2::XMLElement* collada_element_ptr       = xml_document_ptr->FirstChildElement("COLLADA");
@@ -1305,10 +1305,10 @@ end: ;
 }
 
 /** TODO */
-PRIVATE void _collada_data_init_materials(__in __notnull tinyxml2::XMLDocument*  xml_document_ptr,
-                                          __in __notnull system_resizable_vector materials,
-                                          __in __notnull system_hash64map        materials_by_id_map,
-                                          __in __notnull system_hash64map        effects_by_id_map)
+PRIVATE void _collada_data_init_materials(tinyxml2::XMLDocument*  xml_document_ptr,
+                                          system_resizable_vector materials,
+                                          system_hash64map        materials_by_id_map,
+                                          system_hash64map        effects_by_id_map)
 {
     tinyxml2::XMLElement* collada_element_ptr           = xml_document_ptr->FirstChildElement("COLLADA");
     tinyxml2::XMLElement* current_material_element_ptr  = NULL;
@@ -1370,11 +1370,11 @@ end: ;
 }
 
 /** TODO */
-PRIVATE void _collada_data_init_scenes(__in __notnull tinyxml2::XMLDocument*  xml_document_ptr,
-                                       __in __notnull system_resizable_vector result_scenes,
-                                       __in __notnull system_hash64map        result_scenes_by_id_map,
-                                       __in __notnull system_hash64map        result_nodes_by_id_map,
-                                       __in __notnull _collada_data*          collada_data_ptr)
+PRIVATE void _collada_data_init_scenes(tinyxml2::XMLDocument*  xml_document_ptr,
+                                       system_resizable_vector result_scenes,
+                                       system_hash64map        result_scenes_by_id_map,
+                                       system_hash64map        result_nodes_by_id_map,
+                                       _collada_data*          collada_data_ptr)
 {
     /* Locate COLLADA node */
     tinyxml2::XMLElement* collada_element_ptr       = xml_document_ptr->FirstChildElement("COLLADA");
@@ -1418,15 +1418,15 @@ end: ;
 }
 
 /** TODO */
-PRIVATE void _collada_data_release(__in __notnull __post_invalid void* arg)
+PRIVATE void _collada_data_release(void* arg)
 {
     _collada_data* mesh_collada = (_collada_data*) arg;
 }
 
 /* Please see header for spec */
-PUBLIC EMERALD_API void collada_data_get_property(__in  __notnull collada_data          data,
-                                                  __in            collada_data_property property,
-                                                  __out __notnull void*                 out_result_ptr)
+PUBLIC EMERALD_API void collada_data_get_property(collada_data          data,
+                                                  collada_data_property property,
+                                                  void*                 out_result_ptr)
 {
     _collada_data* collada_data_ptr = (_collada_data*) data;
 
@@ -1564,8 +1564,8 @@ PUBLIC EMERALD_API void collada_data_get_property(__in  __notnull collada_data  
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API collada_data_camera collada_data_get_camera_by_name(__in __notnull collada_data              data,
-                                                                       __in           system_hashed_ansi_string name)
+PUBLIC EMERALD_API collada_data_camera collada_data_get_camera_by_name(collada_data              data,
+                                                                       system_hashed_ansi_string name)
 {
     _collada_data*      data_ptr  = (_collada_data*) data;
     unsigned int        n_cameras = 0;
@@ -1612,9 +1612,9 @@ PUBLIC EMERALD_API collada_data_camera collada_data_get_camera_by_name(__in __no
 }
 
 /* Please see header for properties */
-PUBLIC EMERALD_API void collada_data_get_effect(__in __notnull  collada_data         data,
-                                                __in            unsigned int         n_effect,
-                                                __out __notnull collada_data_effect* out_effect)
+PUBLIC EMERALD_API void collada_data_get_effect(collada_data         data,
+                                                unsigned int         n_effect,
+                                                collada_data_effect* out_effect)
 {
     _collada_data* data_ptr = (_collada_data*) data;
 
@@ -2038,9 +2038,9 @@ PUBLIC EMERALD_API mesh collada_data_get_emerald_mesh(collada_data data,
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API mesh collada_data_get_emerald_mesh_by_name(__in __notnull collada_data              data,
-                                                              __in __notnull ogl_context               context,
-                                                              __in           system_hashed_ansi_string name)
+PUBLIC EMERALD_API mesh collada_data_get_emerald_mesh_by_name(collada_data              data,
+                                                              ogl_context               context,
+                                                              system_hashed_ansi_string name)
 {
     LOG_INFO("Invoked collada_data_get_emerald_mesh_by_name() is a slow code path!");
 
@@ -2102,9 +2102,9 @@ PUBLIC EMERALD_API mesh collada_data_get_emerald_mesh_by_name(__in __notnull col
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API scene collada_data_get_emerald_scene(__in __notnull collada_data data,
-                                                        __in __notnull ogl_context  context,
-                                                                       unsigned int n_scene)
+PUBLIC EMERALD_API scene collada_data_get_emerald_scene(collada_data data,
+                                                        ogl_context  context,
+                                                        unsigned int n_scene)
 {
     _collada_data* collada_data_ptr = (_collada_data*) data;
     unsigned int   n_scenes         = 0;
@@ -2165,9 +2165,9 @@ PUBLIC EMERALD_API scene collada_data_get_emerald_scene(__in __notnull collada_d
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API void collada_data_get_geometry(__in __notnull  collada_data           data,
-                                                  __in            unsigned int           n_geometry,
-                                                  __out __notnull collada_data_geometry* out_geometry)
+PUBLIC EMERALD_API void collada_data_get_geometry(collada_data           data,
+                                                  unsigned int           n_geometry,
+                                                  collada_data_geometry* out_geometry)
 {
     _collada_data* data_ptr = (_collada_data*) data;
 
@@ -2177,9 +2177,9 @@ PUBLIC EMERALD_API void collada_data_get_geometry(__in __notnull  collada_data  
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API void collada_data_get_image(__in __notnull  collada_data        data,
-                                               __in            unsigned int        n_image,
-                                               __out __notnull collada_data_image* out_image)
+PUBLIC EMERALD_API void collada_data_get_image(collada_data        data,
+                                               unsigned int        n_image,
+                                               collada_data_image* out_image)
 {
     _collada_data* data_ptr = (_collada_data*) data;
 
@@ -2189,9 +2189,9 @@ PUBLIC EMERALD_API void collada_data_get_image(__in __notnull  collada_data     
 }
 
 /* Please see header for properties */
-PUBLIC EMERALD_API void collada_data_get_material(__in __notnull  collada_data           data,
-                                                  __in            unsigned int           n_material,
-                                                  __out __notnull collada_data_material* out_material)
+PUBLIC EMERALD_API void collada_data_get_material(collada_data           data,
+                                                  unsigned int           n_material,
+                                                  collada_data_material* out_material)
 {
     _collada_data* data_ptr = (_collada_data*) data;
 
@@ -2201,9 +2201,9 @@ PUBLIC EMERALD_API void collada_data_get_material(__in __notnull  collada_data  
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API void collada_data_get_scene(__in  __notnull collada_data        data,
-                                               __in            unsigned int        n_scene,
-                                               __out __notnull collada_data_scene* out_scene)
+PUBLIC EMERALD_API void collada_data_get_scene(collada_data        data,
+                                               unsigned int        n_scene,
+                                               collada_data_scene* out_scene)
 {
     _collada_data* data_ptr = (_collada_data*) data;
 
@@ -2217,9 +2217,9 @@ PUBLIC EMERALD_API void collada_data_get_scene(__in  __notnull collada_data     
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API collada_data collada_data_load(__in __notnull system_hashed_ansi_string filename,
-                                                  __in __notnull system_hashed_ansi_string name,
-                                                  __in           bool                      should_generate_cache_blobs)
+PUBLIC EMERALD_API collada_data collada_data_load(system_hashed_ansi_string filename,
+                                                  system_hashed_ansi_string name,
+                                                  bool                      should_generate_cache_blobs)
 {
     _collada_data* new_collada_data = new (std::nothrow) _collada_data;
 
@@ -2243,9 +2243,9 @@ PUBLIC EMERALD_API collada_data collada_data_load(__in __notnull system_hashed_a
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API void collada_data_set_property(__in __notnull collada_data          data,
-                                                  __in           collada_data_property property,
-                                                  __in __notnull void*                 in_data)
+PUBLIC EMERALD_API void collada_data_set_property(collada_data          data,
+                                                  collada_data_property property,
+                                                  void*                 in_data)
 {
     _collada_data* data_ptr = (_collada_data*) data;
 

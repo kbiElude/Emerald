@@ -31,9 +31,9 @@ REFCOUNT_INSERT_IMPLEMENTATION(scene_mesh,
                               _scene_mesh);
 
 /** TODO */
-PRIVATE void _scene_mesh_init(__in __notnull _scene_mesh*              data_ptr,
-                              __in __notnull system_hashed_ansi_string name,
-                              __in __notnull mesh                      geometry)
+PRIVATE void _scene_mesh_init(_scene_mesh*              data_ptr,
+                              system_hashed_ansi_string name,
+                              mesh                      geometry)
 {
     data_ptr->geometry           = geometry;
     data_ptr->id                 = -1;
@@ -54,9 +54,9 @@ PRIVATE void _scene_mesh_release(void* data_ptr)
 
 
 /* Please see header for specification */
-PUBLIC EMERALD_API scene_mesh scene_mesh_create(__in     __notnull system_hashed_ansi_string name,
-                                                __in_opt           system_hashed_ansi_string object_manager_path,
-                                                __in               mesh                      geometry)
+PUBLIC EMERALD_API scene_mesh scene_mesh_create(system_hashed_ansi_string name,
+                                                system_hashed_ansi_string object_manager_path,
+                                                mesh                      geometry)
 {
     _scene_mesh* new_scene_mesh = new (std::nothrow) _scene_mesh;
 
@@ -81,9 +81,9 @@ PUBLIC EMERALD_API scene_mesh scene_mesh_create(__in     __notnull system_hashed
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API void scene_mesh_get_property(__in  __notnull scene_mesh          mesh_instance,
-                                                __in            scene_mesh_property property,
-                                                __out __notnull void*               out_result)
+PUBLIC EMERALD_API void scene_mesh_get_property(scene_mesh          mesh_instance,
+                                                scene_mesh_property property,
+                                                void*               out_result)
 {
     _scene_mesh* mesh_ptr = (_scene_mesh*) mesh_instance;
 
@@ -133,9 +133,9 @@ PUBLIC EMERALD_API void scene_mesh_get_property(__in  __notnull scene_mesh      
 }
 
 /* Please see header for spec */
-PUBLIC scene_mesh scene_mesh_load(__in __notnull system_file_serializer    serializer,
-                                  __in_opt       system_hashed_ansi_string object_manager_path,
-                                  __in __notnull system_hash64map          id_to_gpu_mesh_map)
+PUBLIC scene_mesh scene_mesh_load(system_file_serializer    serializer,
+                                  system_hashed_ansi_string object_manager_path,
+                                  system_hash64map          id_to_gpu_mesh_map)
 {
     system_hashed_ansi_string name                           = NULL;
     mesh                      mesh_gpu                       = NULL;
@@ -216,9 +216,9 @@ end:
 }
 
 /* Please see header for spec */
-PUBLIC bool scene_mesh_save(__in __notnull system_file_serializer serializer,
-                            __in __notnull const scene_mesh       mesh,
-                            __in __notnull system_hash64map       gpu_mesh_to_id_map)
+PUBLIC bool scene_mesh_save(system_file_serializer serializer,
+                            const scene_mesh       mesh,
+                            system_hash64map       gpu_mesh_to_id_map)
 {
     const _scene_mesh* mesh_ptr = (const _scene_mesh*) mesh;
     bool               result;
@@ -261,9 +261,9 @@ end:
 }
 
 /* Please see header for spec */
-PUBLIC EMERALD_API void scene_mesh_set_property(__in __notnull scene_mesh          mesh,
-                                                __in           scene_mesh_property property,
-                                                __in __notnull const void*         data)
+PUBLIC EMERALD_API void scene_mesh_set_property(scene_mesh          mesh,
+                                                scene_mesh_property property,
+                                                const void*         data)
 {
     _scene_mesh* mesh_ptr = (_scene_mesh*) mesh;
 

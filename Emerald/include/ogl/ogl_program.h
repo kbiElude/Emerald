@@ -48,8 +48,8 @@ REFCOUNT_INSERT_DECLARATIONS(ogl_program,
  *
  *  @return true if successful, false otherwise.
  */
-PUBLIC EMERALD_API bool ogl_program_attach_shader(__in __notnull ogl_program,
-                                                  __in __notnull ogl_shader);
+PUBLIC EMERALD_API bool ogl_program_attach_shader(ogl_program,
+                                                  ogl_shader);
 
 /** Creates a new program instance.
  *
@@ -64,9 +64,9 @@ PUBLIC EMERALD_API bool ogl_program_attach_shader(__in __notnull ogl_program,
  *
  *  @return New ogl_program instance.
  **/
-PUBLIC EMERALD_API ogl_program ogl_program_create(__in __notnull ogl_context                   context,
-                                                  __in __notnull system_hashed_ansi_string     name,
-                                                  __in           ogl_program_syncable_ubs_mode syncable_ubs_mode = OGL_PROGRAM_SYNCABLE_UBS_MODE_DISABLE);
+PUBLIC EMERALD_API ogl_program ogl_program_create(ogl_context                   context,
+                                                  system_hashed_ansi_string     name,
+                                                  ogl_program_syncable_ubs_mode syncable_ubs_mode = OGL_PROGRAM_SYNCABLE_UBS_MODE_DISABLE);
 
 /** Detaches a fragment/geometry/vertex shader from a program object.
  *
@@ -78,19 +78,19 @@ PUBLIC EMERALD_API ogl_program ogl_program_create(__in __notnull ogl_context    
  *
  *  @return true if successful, false otherwise.
  **/
-PUBLIC EMERALD_API bool ogl_program_detach_shader(__in __notnull ogl_program,
-                                                  __in __notnull ogl_shader);
+PUBLIC EMERALD_API bool ogl_program_detach_shader(ogl_program,
+                                                  ogl_shader);
 
 /** TODO
  *
  *  Internal use only.
  */
-PUBLIC void ogl_program_fill_ogl_program_variable(__in                                             __notnull ogl_program           program,
-                                                  __in                                                       unsigned int          temp_variable_name_storage_size,
-                                                  __in_bcount_opt(temp_variable_name_storage_size)           char*                 temp_variable_name_storage,
-                                                  __in                                             __notnull ogl_program_variable* variable_ptr,
-                                                  __in                                                       GLenum                variable_interface_type,
-                                                  __in                                                       unsigned int          n_variable);
+PUBLIC void ogl_program_fill_ogl_program_variable(ogl_program           program,
+                                                  unsigned int          temp_variable_name_storage_size,
+                                                  char*                 temp_variable_name_storage,
+                                                  ogl_program_variable* variable_ptr,
+                                                  GLenum                variable_interface_type,
+                                                  unsigned int          n_variable);
 
 /** Retrieves a shader that has been successfully attached to the program. Note the indexes
  *  may differ from the ones reported by GL.
@@ -101,9 +101,9 @@ PUBLIC void ogl_program_fill_ogl_program_variable(__in                          
  *
  *  @return true if successful, false otherwise.
  */
-PUBLIC EMERALD_API bool ogl_program_get_attached_shader(__in __notnull  ogl_program,
-                                                        __in            uint32_t,
-                                                        __out __notnull ogl_shader*);
+PUBLIC EMERALD_API bool ogl_program_get_attached_shader(ogl_program,
+                                                        uint32_t,
+                                                        ogl_shader*);
 
 /** Retrieves attribute descriptor for a particular index of user-provided program object.
  *
@@ -115,14 +115,14 @@ PUBLIC EMERALD_API bool ogl_program_get_attached_shader(__in __notnull  ogl_prog
  *
  *  @return true if successful, false otherwise
  **/
-PUBLIC EMERALD_API bool ogl_program_get_attribute_by_index(__in  __notnull ogl_program,
-                                                           __in            size_t,
-                                                           __out __notnull const ogl_program_attribute_descriptor**);
+PUBLIC EMERALD_API bool ogl_program_get_attribute_by_index(ogl_program,
+                                                           size_t,
+                                                           const ogl_program_attribute_descriptor**);
 
 /** TODO */
-PUBLIC EMERALD_API bool ogl_program_get_attribute_by_name(__in  __notnull ogl_program,
-                                                          __in  __notnull system_hashed_ansi_string,
-                                                          __out __notnull const ogl_program_attribute_descriptor**);
+PUBLIC EMERALD_API bool ogl_program_get_attribute_by_name(ogl_program,
+                                                          system_hashed_ansi_string,
+                                                          const ogl_program_attribute_descriptor**);
 
 /** Retrieves program's GL id.
  *
@@ -130,10 +130,10 @@ PUBLIC EMERALD_API bool ogl_program_get_attribute_by_name(__in  __notnull ogl_pr
  *
  *  @return ID of the program.
  **/
-PUBLIC EMERALD_API GLuint ogl_program_get_id(__in __notnull ogl_program);
+PUBLIC EMERALD_API GLuint ogl_program_get_id(ogl_program);
 
 /** TODO */
-PUBLIC EMERALD_API system_hashed_ansi_string ogl_program_get_name(__in __notnull ogl_program);
+PUBLIC EMERALD_API system_hashed_ansi_string ogl_program_get_name(ogl_program);
 
 /** Retrieves info log for the program object.
  *
@@ -143,17 +143,17 @@ PUBLIC EMERALD_API system_hashed_ansi_string ogl_program_get_name(__in __notnull
  *
  *  @return Info log stored as a hashed ansi string.
  */
-PUBLIC EMERALD_API system_hashed_ansi_string ogl_program_get_program_info_log(__in __notnull ogl_program);
+PUBLIC EMERALD_API system_hashed_ansi_string ogl_program_get_program_info_log(ogl_program);
 
 /** TODO */
-PUBLIC EMERALD_API bool ogl_program_get_shader_storage_block_by_sb_index(__in  __notnull ogl_program      program,
-                                                                         __in            unsigned int     index,
-                                                                         __out __notnull ogl_program_ssb* out_ssb_ptr);
+PUBLIC EMERALD_API bool ogl_program_get_shader_storage_block_by_sb_index(ogl_program      program,
+                                                                         unsigned int     index,
+                                                                         ogl_program_ssb* out_ssb_ptr);
 
 /** TODO */
-PUBLIC EMERALD_API bool ogl_program_get_shader_storage_block_by_name(__in  __notnull ogl_program               program,
-                                                                     __in  __notnull system_hashed_ansi_string name,
-                                                                     __out __notnull ogl_program_ssb*          out_ssb_ptr);
+PUBLIC EMERALD_API bool ogl_program_get_shader_storage_block_by_name(ogl_program               program,
+                                                                     system_hashed_ansi_string name,
+                                                                     ogl_program_ssb*          out_ssb_ptr);
 
 /** Retrieves uniform descriptor for a particular index of user-provided program object.
  *
@@ -165,24 +165,24 @@ PUBLIC EMERALD_API bool ogl_program_get_shader_storage_block_by_name(__in  __not
  *
  *  @return true if successful, false otherwise.
  **/
-PUBLIC EMERALD_API bool ogl_program_get_uniform_by_index(__in  __notnull ogl_program,
-                                                         __in            size_t,
-                                                         __out __notnull const ogl_program_variable**);
+PUBLIC EMERALD_API bool ogl_program_get_uniform_by_index(ogl_program,
+                                                         size_t,
+                                                         const ogl_program_variable**);
 
 /** TODO */
-PUBLIC EMERALD_API bool ogl_program_get_uniform_by_name(__in  __notnull ogl_program,
-                                                        __in  __notnull system_hashed_ansi_string,
-                                                        __out __notnull const ogl_program_variable**);
+PUBLIC EMERALD_API bool ogl_program_get_uniform_by_name(ogl_program,
+                                                        system_hashed_ansi_string,
+                                                        const ogl_program_variable**);
 
 /** TODO */
-PUBLIC EMERALD_API bool ogl_program_get_uniform_block_by_ub_index(__in  __notnull ogl_program     program,
-                                                                  __in            unsigned int    index,
-                                                                  __out __notnull ogl_program_ub* out_ub_ptr);
+PUBLIC EMERALD_API bool ogl_program_get_uniform_block_by_ub_index(ogl_program     program,
+                                                                  unsigned int    index,
+                                                                  ogl_program_ub* out_ub_ptr);
 
 /** TODO */
-PUBLIC EMERALD_API bool ogl_program_get_uniform_block_by_name(__in  __notnull ogl_program               program,
-                                                              __in  __notnull system_hashed_ansi_string name,
-                                                              __out __notnull ogl_program_ub*           out_ub_ptr);
+PUBLIC EMERALD_API bool ogl_program_get_uniform_block_by_name(ogl_program               program,
+                                                              system_hashed_ansi_string name,
+                                                              ogl_program_ub*           out_ub_ptr);
 
 /** Links a given GL program. After calling this function, you can retrieve attributes/uniform descriptors and program info log.
  *
@@ -190,20 +190,20 @@ PUBLIC EMERALD_API bool ogl_program_get_uniform_block_by_name(__in  __notnull og
  *
  *  @return true if link status for the program is now true, false otherwise.
  **/
-PUBLIC EMERALD_API bool ogl_program_link(__in __notnull ogl_program);
+PUBLIC EMERALD_API bool ogl_program_link(ogl_program);
 
 /** Releases GL objects associated with a specific context: eg. per-context ogl_program_ub
  *  instances.
  *
  *  Internal usage only.
  */
-PUBLIC RENDERING_CONTEXT_CALL void ogl_program_release_context_objects(__in __notnull ogl_program program,
-                                                                       __in __notnull ogl_context context);
+PUBLIC RENDERING_CONTEXT_CALL void ogl_program_release_context_objects(ogl_program program,
+                                                                       ogl_context context);
 
 /** TODO */
-PUBLIC EMERALD_API void ogl_program_set_tf_varyings(__in __notnull ogl_program    program,
-                                                    __in           unsigned int   n_varyings,
-                                                    __in __notnull const GLchar** varying_names,
-                                                    __in           GLenum         tf_mode);
+PUBLIC EMERALD_API void ogl_program_set_tf_varyings(ogl_program    program,
+                                                    unsigned int   n_varyings,
+                                                    const GLchar** varying_names,
+                                                    GLenum         tf_mode);
 
 #endif /* OGL_PROGRAM_H */

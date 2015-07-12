@@ -28,7 +28,7 @@
     typedef int64_t  __int64;
     typedef uint64_t __uint64;
 #else
-    /* __int64 is defined */
+    /* int64 is defined */
     typedef unsigned __int64 __uint64;
 #endif
 
@@ -139,31 +139,31 @@
     #define REFCOUNT_INSERT_IMPLEMENTATION_HELPER 
 #endif
 
-#define REFCOUNT_INSERT_IMPLEMENTATION(prefix, public_handle_type, private_handle_type)         \
-    PUBLIC EMERALD_API void prefix##_retain(__in __notnull public_handle_type handle)           \
-    {                                                                                           \
-        system_atomics_increment(&((private_handle_type*)handle)->refcount_counter);            \
-    }                                                                                           \
-    PUBLIC EMERALD_API void prefix##_release(__in public_handle_type& handle)                   \
-    {                                                                                           \
-        private_handle_type* ptr = (private_handle_type*)handle;                                \
-        REFCOUNT_INSERT_IMPLEMENTATION_HELPER                                                   \
-        if (system_atomics_decrement(&ptr->refcount_counter) == 0)                              \
-        {                                                                                       \
-            if (ptr->refcount_pfn_on_release != NULL)                                           \
-            {                                                                                   \
-                ptr->refcount_pfn_on_release(ptr);                                              \
-            }                                                                                   \
-            LOG_INFO("Releasing %p (type:%s)", handle, STRINGIZE(prefix) );                     \
-                                                                                                \
-            if (ptr->path != NULL)                                                              \
-            {                                                                                   \
-                UNREGISTER_REFCOUNTED_OBJECT(ptr->path);                                        \
-            }                                                                                   \
-                                                                                                \
-            delete (private_handle_type*) handle;                                               \
-            handle = NULL;                                                                      \
-        }                                                                                       \
+#define REFCOUNT_INSERT_IMPLEMENTATION(prefix, public_handle_type, private_handle_type) \
+    PUBLIC EMERALD_API void prefix##_retain(public_handle_type handle)                  \
+    {                                                                                   \
+        system_atomics_increment(&((private_handle_type*)handle)->refcount_counter);    \
+    }                                                                                   \
+    PUBLIC EMERALD_API void prefix##_release(public_handle_type& handle)                \
+    {                                                                                   \
+        private_handle_type* ptr = (private_handle_type*)handle;                        \
+        REFCOUNT_INSERT_IMPLEMENTATION_HELPER                                           \
+        if (system_atomics_decrement(&ptr->refcount_counter) == 0)                      \
+        {                                                                               \
+            if (ptr->refcount_pfn_on_release != NULL)                                   \
+            {                                                                           \
+                ptr->refcount_pfn_on_release(ptr);                                      \
+            }                                                                           \
+            LOG_INFO("Releasing %p (type:%s)", handle, STRINGIZE(prefix) );             \
+                                                                                        \
+            if (ptr->path != NULL)                                                      \
+            {                                                                           \
+                UNREGISTER_REFCOUNTED_OBJECT(ptr->path);                                \
+            }                                                                           \
+                                                                                        \
+            delete (private_handle_type*) handle;                                       \
+            handle = NULL;                                                              \
+        }                                                                               \
     }
 
 /* Pretty useful rad->deg and deg->rad macros*/

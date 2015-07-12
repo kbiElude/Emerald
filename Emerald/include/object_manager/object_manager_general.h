@@ -41,9 +41,9 @@ PUBLIC void _object_manager_init();
 PUBLIC EMERALD_API object_manager_directory object_manager_get_directory(system_hashed_ansi_string);
 
 /** TODO */
-PUBLIC system_hashed_ansi_string object_manager_get_object_path(__in     __notnull system_hashed_ansi_string  object_name,
-                                                                __in               object_manager_object_type object_type,
-                                                                __in_opt           system_hashed_ansi_string  scene_name);
+PUBLIC system_hashed_ansi_string object_manager_get_object_path(system_hashed_ansi_string  object_name,
+                                                                object_manager_object_type object_type,
+                                                                system_hashed_ansi_string  scene_name);
 
 /** TODO */
 PUBLIC EMERALD_API object_manager_directory object_manager_get_root_directory();

@@ -39,16 +39,16 @@ enum collada_data_channel_target_type
 };
 
 /** TODO */
-PUBLIC collada_data_channel collada_data_channel_create(__in __notnull tinyxml2::XMLElement* channel_element_ptr,
-                                                        __in __notnull collada_data_sampler  sampler,
-                                                        __in __notnull collada_data          data);
+PUBLIC collada_data_channel collada_data_channel_create(tinyxml2::XMLElement* channel_element_ptr,
+                                                        collada_data_sampler  sampler,
+                                                        collada_data          data);
 
 /** TODO */
-PUBLIC void collada_data_channel_get_property(__in  __notnull collada_data_channel          channel,
-                                              __in            collada_data_channel_property property,
-                                              __out __notnull void*                         out_result);
+PUBLIC void collada_data_channel_get_property(collada_data_channel          channel,
+                                              collada_data_channel_property property,
+                                              void*                         out_result);
 
 /** TODO */
-PUBLIC void collada_data_channel_release(__in __notnull __post_invalid collada_data_channel channel);
+PUBLIC void collada_data_channel_release(collada_data_channel channel);
 
 #endif /* COLLADA_DATA_CHANNEL_H */

@@ -19,7 +19,7 @@ typedef struct _ogl_context_vaos
     ogl_context      context; /* Do NOT retain */
     system_hash64map vaos;
 
-    explicit _ogl_context_vaos(__in __notnull ogl_context in_context)
+    explicit _ogl_context_vaos(ogl_context in_context)
     {
         context  = in_context;
         vaos     = system_hash64map_create(sizeof(ogl_vao) );
@@ -72,9 +72,9 @@ typedef struct _ogl_context_vaos
 
 
 /** Please see header for specification */
-PUBLIC void ogl_context_vaos_add_vao(__in __notnull ogl_context_vaos vaos,
-                                     __in           GLuint           gl_id,
-                                     __in __notnull ogl_vao          vao)
+PUBLIC void ogl_context_vaos_add_vao(ogl_context_vaos vaos,
+                                     GLuint           gl_id,
+                                     ogl_vao          vao)
 {
     _ogl_context_vaos* vaos_ptr = (_ogl_context_vaos*) vaos;
 
@@ -94,7 +94,7 @@ PUBLIC void ogl_context_vaos_add_vao(__in __notnull ogl_context_vaos vaos,
 }
 
 /** Please see header for specification */
-PUBLIC ogl_context_vaos ogl_context_vaos_create(__in __notnull ogl_context context)
+PUBLIC ogl_context_vaos ogl_context_vaos_create(ogl_context context)
 {
     _ogl_context_vaos* vaos_ptr = new (std::nothrow) _ogl_context_vaos(context);
 
@@ -116,8 +116,8 @@ PUBLIC ogl_context_vaos ogl_context_vaos_create(__in __notnull ogl_context conte
 }
 
 /** Please see header for specification */
-PUBLIC void ogl_context_vaos_delete_vao(__in __notnull ogl_context_vaos vaos,
-                                        __in           GLuint           gl_id)
+PUBLIC void ogl_context_vaos_delete_vao(ogl_context_vaos vaos,
+                                        GLuint           gl_id)
 {
     _ogl_context_vaos* vaos_ptr = (_ogl_context_vaos*) vaos;
 
@@ -136,8 +136,8 @@ PUBLIC void ogl_context_vaos_delete_vao(__in __notnull ogl_context_vaos vaos,
 }
 
 /** Please see header for specification */
-PUBLIC ogl_vao ogl_context_vaos_get_vao(__in __notnull ogl_context_vaos vaos,
-                                        __in           GLuint           gl_id)
+PUBLIC ogl_vao ogl_context_vaos_get_vao(ogl_context_vaos vaos,
+                                        GLuint           gl_id)
 {
     ogl_vao            result   = NULL;
     _ogl_context_vaos* vaos_ptr = (_ogl_context_vaos*) vaos;
@@ -150,7 +150,7 @@ PUBLIC ogl_vao ogl_context_vaos_get_vao(__in __notnull ogl_context_vaos vaos,
 }
 
 /** Please see header for specification */
-PUBLIC void ogl_context_vaos_release(__in __notnull ogl_context_vaos vaos)
+PUBLIC void ogl_context_vaos_release(ogl_context_vaos vaos)
 {
     if (vaos != NULL)
     {

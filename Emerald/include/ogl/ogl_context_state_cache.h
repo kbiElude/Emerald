@@ -84,31 +84,31 @@ enum ogl_context_state_cache_sync_bit
 DECLARE_HANDLE(ogl_context_state_cache);
 
 /** TODO */
-PUBLIC ogl_context_state_cache ogl_context_state_cache_create(__in __notnull ogl_context context);
+PUBLIC ogl_context_state_cache ogl_context_state_cache_create(ogl_context context);
 
 /** TODO */
-PUBLIC void ogl_context_state_cache_get_property(__in  __notnull const ogl_context_state_cache    cache,
-                                                 __in            ogl_context_state_cache_property property,
-                                                 __out __notnull void*                            out_result);
+PUBLIC void ogl_context_state_cache_get_property(const ogl_context_state_cache    cache,
+                                                 ogl_context_state_cache_property property,
+                                                 void*                            out_result);
 
 /** TODO */
-PUBLIC void ogl_context_state_cache_init(__in __notnull ogl_context_state_cache                   cache,
-                                         __in __notnull const ogl_context_gl_entrypoints_private* entrypoints_private_ptr);
+PUBLIC void ogl_context_state_cache_init(ogl_context_state_cache                   cache,
+                                         const ogl_context_gl_entrypoints_private* entrypoints_private_ptr);
 
 /** TODO */
-PUBLIC void ogl_context_state_cache_release(__in __notnull __post_invalid ogl_context_state_cache cache);
+PUBLIC void ogl_context_state_cache_release(ogl_context_state_cache cache);
 
 /** TODO */
-PUBLIC void ogl_context_state_cache_set_property(__in __notnull ogl_context_state_cache          cache,
-                                                 __in           ogl_context_state_cache_property property,
-                                                 __in __notnull const void*                      data);
+PUBLIC void ogl_context_state_cache_set_property(ogl_context_state_cache          cache,
+                                                 ogl_context_state_cache_property property,
+                                                 const void*                      data);
 
 /** TODO
  *
  *  @param cache  TODO
  *
  */
-PUBLIC void ogl_context_state_cache_sync(__in __notnull ogl_context_state_cache cache,
-                                         __in           uint32_t                sync_bits);
+PUBLIC void ogl_context_state_cache_sync(ogl_context_state_cache cache,
+                                         uint32_t                sync_bits);
 
 #endif /* OGL_CONTEXT_STATE_CACHE_H */

@@ -11,10 +11,10 @@
 /** Internal type definitions */
 typedef struct
 {
-    __int64 seed;
-    __int64 u;
-    __int64 v;
-    __int64 w;
+    int64_t seed;
+    int64_t u;
+    int64_t v;
+    int64_t w;
 
     REFCOUNT_INSERT_VARIABLES
 } _system_randomizer;
@@ -27,7 +27,7 @@ REFCOUNT_INSERT_IMPLEMENTATION(system_randomizer,
 
 /** TODO */
 PRIVATE void _system_randomizer_init(_system_randomizer* data_ptr,
-                                     __int64             seed)
+                                     int64_t             seed)
 {
     memset(data_ptr,
            0,
@@ -47,8 +47,8 @@ PRIVATE void _system_randomizer_release(void* ptr)
 
 
 /** Please see header for specification */
-PUBLIC EMERALD_API system_randomizer system_randomizer_create(__in __notnull system_hashed_ansi_string name,
-                                                              __in           __int64                   seed)
+PUBLIC EMERALD_API system_randomizer system_randomizer_create(system_hashed_ansi_string name,
+                                                              int64_t                   seed)
 {
     _system_randomizer* randomizer_ptr = new (std::nothrow) _system_randomizer;
 
@@ -71,7 +71,7 @@ PUBLIC EMERALD_API system_randomizer system_randomizer_create(__in __notnull sys
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API __int64 system_randomizer_pull(__in __notnull system_randomizer instance)
+PUBLIC EMERALD_API int64_t system_randomizer_pull(system_randomizer instance)
 {
     _system_randomizer* data_ptr = (_system_randomizer*) instance;
 
@@ -82,7 +82,7 @@ PUBLIC EMERALD_API __int64 system_randomizer_pull(__in __notnull system_randomiz
     data_ptr->v ^= data_ptr->v >> 8;
     data_ptr->w  = 4294957665U * (data_ptr->w & 0xffffffff) + (data_ptr->w >> 32);
 
-    __int64 x = data_ptr->u ^ (data_ptr->u << 21);
+    int64_t x = data_ptr->u ^ (data_ptr->u << 21);
 
     x ^= x >> 35; 
     x ^= x << 4;
@@ -91,8 +91,8 @@ PUBLIC EMERALD_API __int64 system_randomizer_pull(__in __notnull system_randomiz
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API void system_randomizer_reset(__in __notnull system_randomizer instance,
-                                                __in            __int64          seed)
+PUBLIC EMERALD_API void system_randomizer_reset(system_randomizer instance,
+                                                int64_t           seed)
 {
     _system_randomizer* data_ptr = (_system_randomizer*) instance;
 

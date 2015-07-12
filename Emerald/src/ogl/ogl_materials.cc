@@ -182,28 +182,28 @@ typedef struct _ogl_materials
 
 
 /* Forward declarations */
-PRIVATE ogl_uber                  _ogl_materials_bake_uber             (__in      __notnull ogl_materials                      materials,
-                                                                        __in      __notnull mesh_material                      material,
-                                                                        __in      __notnull scene                              scene,
-                                                                        __in                bool                               use_shadow_maps);
-PRIVATE bool                      _ogl_materials_does_uber_match_scene (__in      __notnull ogl_uber                           uber,
-                                                                        __in      __notnull scene                              scene,
-                                                                        __in                bool                               use_shadow_maps);
-PRIVATE void                      _ogl_materials_get_forced_setting    (__in      __notnull ogl_materials                      materials,
-                                                                        __in                mesh_material_shading_property,
-                                                                        __out_opt __notnull mesh_material_property_attachment* out_attachment,
-                                                                        __out_opt __notnull void**                             out_attachment_data);
-PRIVATE system_hashed_ansi_string _ogl_materials_get_uber_name         (__in __notnull      mesh_material                      material,
-                                                                        __in __notnull      scene                              scene,
-                                                                        __in                bool                               use_shadow_maps);
-PRIVATE void                      _ogl_materials_init_special_materials(__in __notnull      _ogl_materials*                    materials_ptr);
+PRIVATE ogl_uber                  _ogl_materials_bake_uber             (ogl_materials                      materials,
+                                                                        mesh_material                      material,
+                                                                        scene                              scene,
+                                                                        bool                               use_shadow_maps);
+PRIVATE bool                      _ogl_materials_does_uber_match_scene (ogl_uber                           uber,
+                                                                        scene                              scene,
+                                                                        bool                               use_shadow_maps);
+PRIVATE void                      _ogl_materials_get_forced_setting    (ogl_materials                      materials,
+                                                                        mesh_material_shading_property,
+                                                                        mesh_material_property_attachment* out_attachment,
+                                                                        void**                             out_attachment_data);
+PRIVATE system_hashed_ansi_string _ogl_materials_get_uber_name         (mesh_material                      material,
+                                                                        scene                              scene,
+                                                                        bool                               use_shadow_maps);
+PRIVATE void                      _ogl_materials_init_special_materials(_ogl_materials*                    materials_ptr);
 
 
 /** TODO */
-PRIVATE ogl_uber _ogl_materials_bake_uber(__in __notnull ogl_materials materials,
-                                          __in __notnull mesh_material material,
-                                          __in __notnull scene         scene,
-                                          __in           bool          use_shadow_maps)
+PRIVATE ogl_uber _ogl_materials_bake_uber(ogl_materials materials,
+                                          mesh_material material,
+                                          scene         scene,
+                                          bool          use_shadow_maps)
 {
     _ogl_materials* materials_ptr = (_ogl_materials*) materials;
     ogl_context     context       = materials_ptr->context;
@@ -572,9 +572,9 @@ PRIVATE ogl_uber _ogl_materials_bake_uber(__in __notnull ogl_materials materials
 }
 
 /** TODO. **/
-PRIVATE bool _ogl_materials_does_uber_match_scene(__in __notnull ogl_uber uber,
-                                                  __in __notnull scene    scene,
-                                                  __in           bool     use_shadow_mapping)
+PRIVATE bool _ogl_materials_does_uber_match_scene(ogl_uber uber,
+                                                  scene    scene,
+                                                  bool     use_shadow_mapping)
 {
     bool result = true;
 
@@ -782,10 +782,10 @@ end:
 }
 
 /** TODO */
-PRIVATE void _ogl_materials_get_forced_setting(__in      __notnull ogl_materials                      materials,
-                                               __in                mesh_material_shading_property     shading_property,
-                                               __out_opt __notnull mesh_material_property_attachment* out_attachment,
-                                               __out_opt __notnull void**                             out_attachment_data)
+PRIVATE void _ogl_materials_get_forced_setting(ogl_materials                      materials,
+                                               mesh_material_shading_property     shading_property,
+                                               mesh_material_property_attachment* out_attachment,
+                                               void**                             out_attachment_data)
 {
     const _ogl_materials* materials_ptr     = (const _ogl_materials*) materials;
     unsigned int          n_forced_settings = 0;
@@ -827,9 +827,9 @@ PRIVATE void _ogl_materials_get_forced_setting(__in      __notnull ogl_materials
 }
 
 /** TODO */
-PRIVATE system_hashed_ansi_string _ogl_materials_get_uber_name(__in __notnull mesh_material material,
-                                                               __in __notnull scene         scene,
-                                                               __in           bool          use_shadow_maps)
+PRIVATE system_hashed_ansi_string _ogl_materials_get_uber_name(mesh_material material,
+                                                               scene         scene,
+                                                               bool          use_shadow_maps)
 {
     system_hashed_ansi_string material_name = NULL;
     std::stringstream         name_sstream;
@@ -1021,7 +1021,7 @@ PRIVATE system_hashed_ansi_string _ogl_materials_get_uber_name(__in __notnull me
 }
 
 /** TODO */
-PRIVATE void _ogl_materials_init_special_materials(__in __notnull _ogl_materials* materials_ptr)
+PRIVATE void _ogl_materials_init_special_materials(_ogl_materials* materials_ptr)
 {
     const mesh_material_shading     shading_type_attribute_data = MESH_MATERIAL_SHADING_INPUT_FRAGMENT_ATTRIBUTE;
     const mesh_material_shading     shading_type_none           = MESH_MATERIAL_SHADING_NONE;
@@ -1103,7 +1103,7 @@ PRIVATE void _ogl_materials_init_special_materials(__in __notnull _ogl_materials
 
 
 /** Please see header for specification */
-PUBLIC ogl_materials ogl_materials_create(__in __notnull ogl_context context)
+PUBLIC ogl_materials ogl_materials_create(ogl_context context)
 {
     _ogl_materials* materials_ptr = new (std::nothrow) _ogl_materials;
 
@@ -1121,10 +1121,10 @@ PUBLIC ogl_materials ogl_materials_create(__in __notnull ogl_context context)
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API void ogl_materials_force_mesh_material_shading_property_attachment(__in __notnull ogl_materials                     materials,
-                                                                                      __in           mesh_material_shading_property    property,
-                                                                                      __in           mesh_material_property_attachment attachment,
-                                                                                      __in __notnull void*                             attachment_data)
+PUBLIC EMERALD_API void ogl_materials_force_mesh_material_shading_property_attachment(ogl_materials                     materials,
+                                                                                      mesh_material_shading_property    property,
+                                                                                      mesh_material_property_attachment attachment,
+                                                                                      void*                             attachment_data)
 {
     _ogl_materials*                       materials_ptr   = (_ogl_materials*) materials;
     _ogl_materials_mesh_material_setting* new_setting_ptr = new _ogl_materials_mesh_material_setting;
@@ -1145,17 +1145,17 @@ PUBLIC EMERALD_API void ogl_materials_force_mesh_material_shading_property_attac
 }
 
 /** Please see header for specification */
-PUBLIC mesh_material ogl_materials_get_special_material(__in __notnull ogl_materials                   materials,
-                                                        __in           _ogl_materials_special_material special_material)
+PUBLIC mesh_material ogl_materials_get_special_material(ogl_materials                   materials,
+                                                        _ogl_materials_special_material special_material)
 {
     return ( (_ogl_materials*) materials)->special_materials[special_material];
 }
 
 /** Please see header for specification */
-PUBLIC ogl_uber ogl_materials_get_uber(__in     __notnull ogl_materials materials,
-                                       __in     __notnull mesh_material material,
-                                       __in_opt           scene         scene,
-                                       __in               bool          use_shadow_maps)
+PUBLIC ogl_uber ogl_materials_get_uber(ogl_materials materials,
+                                       mesh_material material,
+                                       scene         scene,
+                                       bool          use_shadow_maps)
 {
     _ogl_materials* materials_ptr = (_ogl_materials*) materials;
     ogl_uber        result        = NULL;
@@ -1265,7 +1265,7 @@ PUBLIC ogl_uber ogl_materials_get_uber(__in     __notnull ogl_materials material
 }
 
 /** Please see header for specification */
-PUBLIC void ogl_materials_release(__in __notnull ogl_materials materials)
+PUBLIC void ogl_materials_release(ogl_materials materials)
 {
     if (materials != NULL)
     {

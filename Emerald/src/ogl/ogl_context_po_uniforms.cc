@@ -31,7 +31,7 @@ typedef struct _ogl_context_po_uniforms
 
 
 /** Please see header for spec */
-PUBLIC ogl_context_po_uniforms ogl_context_po_uniforms_create(__in __notnull ogl_context context)
+PUBLIC ogl_context_po_uniforms ogl_context_po_uniforms_create(ogl_context context)
 {
     _ogl_context_po_uniforms* new_instance = new (std::nothrow) _ogl_context_po_uniforms;
 
@@ -45,8 +45,8 @@ PUBLIC ogl_context_po_uniforms ogl_context_po_uniforms_create(__in __notnull ogl
 }
 
 /** Please see header for spec */
-PUBLIC void ogl_context_po_uniforms_init(__in __notnull ogl_context_po_uniforms                   po_uniforms,
-                                         __in __notnull const ogl_context_gl_entrypoints_private* entrypoints_private_ptr)
+PUBLIC void ogl_context_po_uniforms_init(ogl_context_po_uniforms                   po_uniforms,
+                                         const ogl_context_gl_entrypoints_private* entrypoints_private_ptr)
 {
     _ogl_context_po_uniforms* po_uniforms_ptr = (_ogl_context_po_uniforms*) po_uniforms;
 
@@ -55,7 +55,7 @@ PUBLIC void ogl_context_po_uniforms_init(__in __notnull ogl_context_po_uniforms 
 }
 
 /** Please see header for spec */
-PUBLIC void ogl_context_po_uniforms_release(__in __notnull __post_invalid ogl_context_po_uniforms po_uniforms)
+PUBLIC void ogl_context_po_uniforms_release(ogl_context_po_uniforms po_uniforms)
 {
     _ogl_context_po_uniforms* po_uniforms_ptr = (_ogl_context_po_uniforms*) po_uniforms;
 
@@ -66,7 +66,7 @@ PUBLIC void ogl_context_po_uniforms_release(__in __notnull __post_invalid ogl_co
 }
 
 /** Please see header for spec */
-PUBLIC void ogl_context_po_uniforms_sync(__in __notnull ogl_context_po_uniforms po_uniforms)
+PUBLIC void ogl_context_po_uniforms_sync(ogl_context_po_uniforms po_uniforms)
 {
     /* NOTE: po_uniforms is NULL during rendering context initialization */
     if (po_uniforms != NULL)

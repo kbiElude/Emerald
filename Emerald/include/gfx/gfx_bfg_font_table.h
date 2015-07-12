@@ -34,31 +34,31 @@ PUBLIC EMERALD_API gfx_bfg_font_table gfx_bfg_font_table_create_from_ptr(system_
  *
  *  @return true if character is present in the map, false otherwise.
  **/
-PUBLIC EMERALD_API bool gfx_bfg_font_table_get_character_properties(__in  __notnull gfx_bfg_font_table,
-                                                                    __in            uint8_t /* ascii index */,
-                                                                    __out __notnull float* /* u1 */,
-                                                                    __out __notnull float* /* v1 */,
-                                                                    __out __notnull float* /* u2 */,
-                                                                    __out __notnull float* /* v2 */);
+PUBLIC EMERALD_API bool gfx_bfg_font_table_get_character_properties(gfx_bfg_font_table,
+                                                                    uint8_t /* ascii index */,
+                                                                    float* /* u1 */,
+                                                                    float* /* v1 */,
+                                                                    float* /* u2 */,
+                                                                    float* /* v2 */);
 
 /** TODO */
-PUBLIC EMERALD_API bool gfx_bfg_font_table_get_character_size(__in  __notnull gfx_bfg_font_table,
-                                                              __in            uint8_t  /* ascii index */,
-                                                              __out __notnull uint8_t* /* out width */,
-                                                              __out __notnull uint8_t* /* out height */);
+PUBLIC EMERALD_API bool gfx_bfg_font_table_get_character_size(gfx_bfg_font_table,
+                                                              uint8_t  /* ascii index */,
+                                                              uint8_t* /* out width */,
+                                                              uint8_t* /* out height */);
 
 /** TODO */
-PUBLIC EMERALD_API const unsigned char* gfx_bfg_font_table_get_data_pointer(__in __notnull gfx_bfg_font_table);
+PUBLIC EMERALD_API const unsigned char* gfx_bfg_font_table_get_data_pointer(gfx_bfg_font_table);
 
 /** TODO */
-PUBLIC EMERALD_API void gfx_bfg_font_table_get_data_properties(__in  __notnull gfx_bfg_font_table,
-                                                               __out __notnull uint32_t* /* map width */,
-                                                               __out __notnull uint32_t* /* map height */);
+PUBLIC EMERALD_API void gfx_bfg_font_table_get_data_properties(gfx_bfg_font_table,
+                                                               uint32_t* /* map width */,
+                                                               uint32_t* /* map height */);
 
 /** TODO */
-PUBLIC EMERALD_API uint8_t gfx_bfg_font_table_get_maximum_character_height(__in __notnull gfx_bfg_font_table);
+PUBLIC EMERALD_API uint8_t gfx_bfg_font_table_get_maximum_character_height(gfx_bfg_font_table);
 
 /** TODO */
-PUBLIC EMERALD_API uint8_t gfx_bfg_font_table_get_maximum_character_width(__in __notnull gfx_bfg_font_table);
+PUBLIC EMERALD_API uint8_t gfx_bfg_font_table_get_maximum_character_width(gfx_bfg_font_table);
 
 #endif /* GFX_BFG_BONT_TABLE_H */

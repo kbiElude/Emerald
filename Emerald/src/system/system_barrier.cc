@@ -23,7 +23,7 @@ typedef struct _system_barrier
 } _system_barrier;
 
 /** Please see header for specification */
-PUBLIC EMERALD_API system_barrier system_barrier_create(__in unsigned int n_signals_before_release)
+PUBLIC EMERALD_API system_barrier system_barrier_create(unsigned int n_signals_before_release)
 {
     _system_barrier* barrier_ptr = new (std::nothrow) _system_barrier(n_signals_before_release);
 
@@ -40,7 +40,7 @@ PUBLIC EMERALD_API system_barrier system_barrier_create(__in unsigned int n_sign
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API void system_barrier_release(__in __notnull __post_invalid system_barrier barrier)
+PUBLIC EMERALD_API void system_barrier_release(system_barrier barrier)
 {
     _system_barrier* barrier_ptr = (_system_barrier*) barrier;
 
@@ -56,10 +56,10 @@ PUBLIC EMERALD_API void system_barrier_release(__in __notnull __post_invalid sys
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API void system_barrier_signal(__in __notnull system_barrier                            barrier,
-                                              __in           bool                                      wait_until_signalled,
-                                              __in_opt       PFNSYSTEMBARRIERABOUTTOSIGNALCALLBACKPROC about_to_signal_callback_proc,
-                                              __in_opt       void*                                     about_to_signal_callback_user_arg)
+PUBLIC EMERALD_API void system_barrier_signal(system_barrier                            barrier,
+                                              bool                                      wait_until_signalled,
+                                              PFNSYSTEMBARRIERABOUTTOSIGNALCALLBACKPROC about_to_signal_callback_proc,
+                                              void*                                     about_to_signal_callback_user_arg)
 {
     _system_barrier* barrier_ptr = (_system_barrier*) barrier;
 
@@ -80,7 +80,7 @@ PUBLIC EMERALD_API void system_barrier_signal(__in __notnull system_barrier     
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API void system_barrier_wait_until_signalled(__in __notnull system_barrier barrier)
+PUBLIC EMERALD_API void system_barrier_wait_until_signalled(system_barrier barrier)
 {
     _system_barrier* barrier_ptr = (_system_barrier*) barrier;
 

@@ -118,7 +118,7 @@ PRIVATE void _system_resizable_vector_resize(system_resizable_vector resizable_v
 
 
 /** TODO */
-PUBLIC EMERALD_API void system_resizable_vector_clear(__in __notnull system_resizable_vector vector)
+PUBLIC EMERALD_API void system_resizable_vector_clear(system_resizable_vector vector)
 {
     _system_resizable_vector* vector_ptr = (_system_resizable_vector*) vector;
 
@@ -126,8 +126,8 @@ PUBLIC EMERALD_API void system_resizable_vector_clear(__in __notnull system_resi
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API system_resizable_vector system_resizable_vector_create(__in size_t capacity,
-                                                                          __in bool   should_be_thread_safe)
+PUBLIC EMERALD_API system_resizable_vector system_resizable_vector_create(size_t capacity,
+                                                                          bool   should_be_thread_safe)
 {
     _system_resizable_vector* vector_ptr = new (std::nothrow) _system_resizable_vector;
 
@@ -143,7 +143,7 @@ PUBLIC EMERALD_API system_resizable_vector system_resizable_vector_create(__in s
 }
 
 /** Please see header for specifiaction */
-PUBLIC EMERALD_API system_resizable_vector system_resizable_vector_create_copy(__in __notnull system_resizable_vector vector)
+PUBLIC EMERALD_API system_resizable_vector system_resizable_vector_create_copy(system_resizable_vector vector)
 {
     const _system_resizable_vector* existing_vector_ptr = (const _system_resizable_vector*) vector;
     _system_resizable_vector*       result              = new (std::nothrow) _system_resizable_vector;
@@ -189,7 +189,7 @@ end:
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API void system_resizable_vector_empty(__in system_resizable_vector resizable_vector)
+PUBLIC EMERALD_API void system_resizable_vector_empty(system_resizable_vector resizable_vector)
 {
     _system_resizable_vector* vector_ptr = (_system_resizable_vector*) resizable_vector;
 
@@ -209,8 +209,8 @@ PUBLIC EMERALD_API void system_resizable_vector_empty(__in system_resizable_vect
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API bool system_resizable_vector_delete_element_at(__in system_resizable_vector resizable_vector,
-                                                                  __in size_t                  index)
+PUBLIC EMERALD_API bool system_resizable_vector_delete_element_at(system_resizable_vector resizable_vector,
+                                                                  size_t                  index)
 {
     _system_resizable_vector* vector_ptr = (_system_resizable_vector*) resizable_vector;
     bool                      result     = false;
@@ -252,8 +252,8 @@ PUBLIC EMERALD_API bool system_resizable_vector_delete_element_at(__in system_re
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API size_t system_resizable_vector_find(__in system_resizable_vector resizable_vector,
-                                                       __in void*                   item)
+PUBLIC EMERALD_API size_t system_resizable_vector_find(system_resizable_vector resizable_vector,
+                                                       void*                   item)
 {
     _system_resizable_vector* vector_ptr = (_system_resizable_vector*) resizable_vector;
     size_t                    n_elements = vector_ptr->n_elements;
@@ -289,9 +289,9 @@ PUBLIC EMERALD_API size_t system_resizable_vector_find(__in system_resizable_vec
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API void system_resizable_vector_get_property(__in  system_resizable_vector          resizable_vector,
-                                                                   system_resizable_vector_property property,
-                                                             __out void*                            out_result_ptr)
+PUBLIC EMERALD_API void system_resizable_vector_get_property(system_resizable_vector          resizable_vector,
+                                                             system_resizable_vector_property property,
+                                                             void*                            out_result_ptr)
 {
     _system_resizable_vector* resizable_vector_ptr = (_system_resizable_vector*) resizable_vector;
 
@@ -332,9 +332,9 @@ PUBLIC EMERALD_API void system_resizable_vector_get_property(__in  system_resiza
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API bool system_resizable_vector_get_element_at(__in            system_resizable_vector resizable_vector,
-                                                                               size_t                  index,
-                                                               __out __notnull void*                   result)
+PUBLIC EMERALD_API bool system_resizable_vector_get_element_at(system_resizable_vector resizable_vector,
+                                                               size_t                  index,
+                                                               void*                   result)
 {
     bool                      bool_result = false;
     _system_resizable_vector* vector_ptr  = (_system_resizable_vector*) resizable_vector;
@@ -364,9 +364,9 @@ PUBLIC EMERALD_API bool system_resizable_vector_get_element_at(__in            s
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API void system_resizable_vector_insert_element_at(__in system_resizable_vector resizable_vector,
-                                                                       size_t                  index,
-                                                                       void*                   element)
+PUBLIC EMERALD_API void system_resizable_vector_insert_element_at(system_resizable_vector resizable_vector,
+                                                                  size_t                  index,
+                                                                  void*                   element)
 {
     _system_resizable_vector* vector_ptr = (_system_resizable_vector*) resizable_vector;
 
@@ -435,8 +435,8 @@ PUBLIC EMERALD_API void system_resizable_vector_insert_element_at(__in system_re
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API bool system_resizable_vector_is_equal(__in system_resizable_vector resizable_vector_1,
-                                                         __in system_resizable_vector resizable_vector_2)
+PUBLIC EMERALD_API bool system_resizable_vector_is_equal(system_resizable_vector resizable_vector_1,
+                                                         system_resizable_vector resizable_vector_2)
 {
     _system_resizable_vector* vector_ptr_1 = (_system_resizable_vector*) resizable_vector_1;
     _system_resizable_vector* vector_ptr_2 = (_system_resizable_vector*) resizable_vector_2;
@@ -484,8 +484,8 @@ PUBLIC EMERALD_API bool system_resizable_vector_is_equal(__in system_resizable_v
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API void system_resizable_vector_lock(__in __notnull system_resizable_vector             vector,
-                                                     __in           system_read_write_mutex_access_type access_type)
+PUBLIC EMERALD_API void system_resizable_vector_lock(system_resizable_vector             vector,
+                                                     system_read_write_mutex_access_type access_type)
 {
     _system_resizable_vector* vector_ptr = (_system_resizable_vector*) vector;
 
@@ -497,8 +497,8 @@ PUBLIC EMERALD_API void system_resizable_vector_lock(__in __notnull system_resiz
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API bool system_resizable_vector_pop(__in            system_resizable_vector resizable_vector,
-                                                    __out __notnull void*                   result)
+PUBLIC EMERALD_API bool system_resizable_vector_pop(system_resizable_vector resizable_vector,
+                                                    void*                   result)
 {
     bool                      bool_result = false;
     _system_resizable_vector* vector_ptr = (_system_resizable_vector*) resizable_vector;
@@ -529,8 +529,8 @@ PUBLIC EMERALD_API bool system_resizable_vector_pop(__in            system_resiz
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API void system_resizable_vector_push(__in     system_resizable_vector resizable_vector,
-                                                     __in_opt void*                    element)
+PUBLIC EMERALD_API void system_resizable_vector_push(system_resizable_vector resizable_vector,
+                                                     void*                    element)
 {
     _system_resizable_vector* vector_ptr = (_system_resizable_vector*) resizable_vector;
 
@@ -569,15 +569,15 @@ PUBLIC EMERALD_API void system_resizable_vector_push(__in     system_resizable_v
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API void system_resizable_vector_release(__in __deallocate(mem) system_resizable_vector resizable_vector)
+PUBLIC EMERALD_API void system_resizable_vector_release(system_resizable_vector resizable_vector)
 {
     _deinit_resizable_vector( (_system_resizable_vector*) resizable_vector);
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API void system_resizable_vector_set_element_at(__in             system_resizable_vector resizable_vector,
-                                                               __in             size_t                  index,
-                                                               __in __maybenull void*                   element)
+PUBLIC EMERALD_API void system_resizable_vector_set_element_at(system_resizable_vector resizable_vector,
+                                                               size_t                  index,
+                                                               void*                   element)
 {
     _system_resizable_vector* vector_ptr = (_system_resizable_vector*) resizable_vector;
 
@@ -608,10 +608,10 @@ PUBLIC EMERALD_API void system_resizable_vector_set_element_at(__in             
  *
  *  comparator_func_ptr() = operator<
  */
-PRIVATE void _system_resizable_vector_sort_recursive(__in __notnull system_resizable_vector resizable_vector,
-                                                                    int                   (*comparator_func_ptr)(void*, void*),
-                                                                    int start_index,
-                                                                    int end_index)
+PRIVATE void _system_resizable_vector_sort_recursive(system_resizable_vector resizable_vector,
+                                                     int                   (*comparator_func_ptr)(void*, void*),
+                                                     int start_index,
+                                                     int end_index)
 {
     if (start_index == end_index)
     {
@@ -723,8 +723,8 @@ PRIVATE void _system_resizable_vector_sort_recursive(__in __notnull system_resiz
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API void system_resizable_vector_sort(__in __notnull system_resizable_vector resizable_vector,
-                                                                    int                   (*comparator_func_ptr)(void*, void*) )
+PUBLIC EMERALD_API void system_resizable_vector_sort(system_resizable_vector resizable_vector,
+                                                     int                   (*comparator_func_ptr)(void*, void*) )
 {
     uint32_t                  n_vector_items = 0;
     _system_resizable_vector* vector_ptr     = (_system_resizable_vector*) resizable_vector;
@@ -752,9 +752,9 @@ PUBLIC EMERALD_API void system_resizable_vector_sort(__in __notnull system_resiz
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API bool system_resizable_vector_swap(__in __notnull system_resizable_vector resizable_vector,
-                                                                    uint32_t                index_a,
-                                                                    uint32_t                index_b)
+PUBLIC EMERALD_API bool system_resizable_vector_swap(system_resizable_vector resizable_vector,
+                                                     uint32_t                index_a,
+                                                     uint32_t                index_b)
 {
     _system_resizable_vector* resizable_vector_ptr = (_system_resizable_vector*) resizable_vector;
     bool                      result               = true;
@@ -794,8 +794,8 @@ PUBLIC EMERALD_API bool system_resizable_vector_swap(__in __notnull system_resiz
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API void system_resizable_vector_unlock(__in __notnull system_resizable_vector             vector,
-                                                       __in           system_read_write_mutex_access_type access_type)
+PUBLIC EMERALD_API void system_resizable_vector_unlock(system_resizable_vector             vector,
+                                                       system_read_write_mutex_access_type access_type)
 {
     _system_resizable_vector* vector_ptr = (_system_resizable_vector*) vector;
 

@@ -345,9 +345,9 @@ volatile void _ogl_ui_dropdown_fire_callback(system_thread_pool_callback_argumen
 }
 
 /** TODO */
-PRIVATE void _ogl_ui_dropdown_get_highlighted_v1v2(__in  __notnull _ogl_ui_dropdown* dropdown_ptr,
-                                                   __in            bool              offset_by_slider_dy,
-                                                   __out __notnull float*            out_highlighted_v1v2)
+PRIVATE void _ogl_ui_dropdown_get_highlighted_v1v2(_ogl_ui_dropdown* dropdown_ptr,
+                                                   bool              offset_by_slider_dy,
+                                                   float*            out_highlighted_v1v2)
 {
     unsigned int n_entries = 0;
     float        slider_height_ss;
@@ -384,8 +384,8 @@ PRIVATE void _ogl_ui_dropdown_get_highlighted_v1v2(__in  __notnull _ogl_ui_dropd
 }
 
 /** TODO */
-PRIVATE void _ogl_ui_dropdown_get_selected_v1v2(__in  __notnull _ogl_ui_dropdown* dropdown_ptr,
-                                                __out __notnull float*            out_selected_v1v2)
+PRIVATE void _ogl_ui_dropdown_get_selected_v1v2(_ogl_ui_dropdown* dropdown_ptr,
+                                                float*            out_selected_v1v2)
 {
     unsigned int n_entries = 0;
 
@@ -406,8 +406,8 @@ PRIVATE void _ogl_ui_dropdown_get_selected_v1v2(__in  __notnull _ogl_ui_dropdown
 }
 
 /** TODO */
-PRIVATE void _ogl_ui_dropdown_get_slider_x1y1x2y2(__in  __notnull _ogl_ui_dropdown* dropdown_ptr,
-                                                  __out __notnull float*            out_result)
+PRIVATE void _ogl_ui_dropdown_get_slider_x1y1x2y2(_ogl_ui_dropdown* dropdown_ptr,
+                                                  float*            out_result)
 {
     out_result[0] = dropdown_ptr->slider_x1x2[0];
     out_result[1] = dropdown_ptr->drop_x1y2x2y1[1]   -
@@ -425,8 +425,8 @@ PRIVATE void _ogl_ui_dropdown_get_slider_x1y1x2y2(__in  __notnull _ogl_ui_dropdo
 }
 
 /** TODO */
-PRIVATE void _ogl_ui_dropdown_init_program(__in __notnull ogl_ui            ui,
-                                           __in __notnull _ogl_ui_dropdown* dropdown_ptr)
+PRIVATE void _ogl_ui_dropdown_init_program(ogl_ui            ui,
+                                           _ogl_ui_dropdown* dropdown_ptr)
 {
     /* Create all objects */
     ogl_context context                   = ogl_ui_get_context(ui);
@@ -881,7 +881,7 @@ PRIVATE void _ogl_ui_dropdown_init_renderer_callback(ogl_context context, void* 
 }
 
 /* TODO */
-PRIVATE void _ogl_ui_dropdown_update_entry_positions(__in __notnull _ogl_ui_dropdown* dropdown_ptr)
+PRIVATE void _ogl_ui_dropdown_update_entry_positions(_ogl_ui_dropdown* dropdown_ptr)
 {
     system_window context_window = NULL;
     uint32_t      n_entries      = 0;
@@ -927,8 +927,8 @@ PRIVATE void _ogl_ui_dropdown_update_entry_positions(__in __notnull _ogl_ui_drop
 }
 
 /** TODO */
-PRIVATE void _ogl_ui_dropdown_update_entry_strings(__in __notnull _ogl_ui_dropdown* dropdown_ptr,
-                                                   __in           bool              only_update_selected_entry)
+PRIVATE void _ogl_ui_dropdown_update_entry_strings(_ogl_ui_dropdown* dropdown_ptr,
+                                                   bool              only_update_selected_entry)
 {
     unsigned int n_strings = 0;
 
@@ -1044,7 +1044,7 @@ PRIVATE void _ogl_ui_dropdown_update_entry_strings(__in __notnull _ogl_ui_dropdo
 }
 
 /** TODO */
-PRIVATE void _ogl_ui_dropdown_update_entry_visibility(__in __notnull _ogl_ui_dropdown* dropdown_ptr)
+PRIVATE void _ogl_ui_dropdown_update_entry_visibility(_ogl_ui_dropdown* dropdown_ptr)
 {
     unsigned int n_entries = 0;
 
@@ -1103,8 +1103,8 @@ PRIVATE void _ogl_ui_dropdown_update_entry_visibility(__in __notnull _ogl_ui_dro
     } /* for (all entries) */
 }
 
-PRIVATE void _ogl_ui_dropdown_update_position(__in           __notnull _ogl_ui_dropdown* dropdown_ptr,
-                                              __in_ecount(2) __notnull const float*      x1y1)
+PRIVATE void _ogl_ui_dropdown_update_position(_ogl_ui_dropdown* dropdown_ptr,
+                                              const float*      x1y1)
 {
     system_window window         = NULL;
     int           window_size[2] = {0};
@@ -1607,9 +1607,9 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_ui_dropdown_draw(void* internal_instance)
 }
 
 /** Please see header for specification */
-PUBLIC void ogl_ui_dropdown_get_property(__in  __notnull const void*              dropdown,
-                                         __in            _ogl_ui_control_property property,
-                                         __out __notnull void*                    out_result)
+PUBLIC void ogl_ui_dropdown_get_property(const void*              dropdown,
+                                         _ogl_ui_control_property property,
+                                         void*                    out_result)
 {
     const _ogl_ui_dropdown* dropdown_ptr = (const _ogl_ui_dropdown*) dropdown;
 
@@ -1718,18 +1718,18 @@ PUBLIC void ogl_ui_dropdown_get_property(__in  __notnull const void*            
 }
 
 /** Please see header for specification */
-PUBLIC void* ogl_ui_dropdown_init(__in                   __notnull   ogl_ui                     instance,
-                                  __in                   __notnull   ogl_text                   text_renderer,
-                                  __in                   __notnull   system_hashed_ansi_string  label_text,
-                                  __in                               uint32_t                   n_strings,
-                                  __in_ecount(n_entries) __notnull   system_hashed_ansi_string* strings,
-                                  __in_ecount(n_entries) __notnull   void**                     user_args,
-                                  __in                               uint32_t                   n_selected_entry,
-                                  __in                   __notnull   system_hashed_ansi_string  name,
-                                  __in_ecount(2)         __notnull   const float*               x1y1,
-                                  __in                   __notnull   PFNOGLUIFIREPROCPTR        pfn_fire_proc_ptr,
-                                  __in                   __maybenull void*                      fire_proc_user_arg,
-                                  __in                   __notnull   ogl_ui_control             owner_control)
+PUBLIC void* ogl_ui_dropdown_init(ogl_ui                     instance,
+                                  ogl_text                   text_renderer,
+                                  system_hashed_ansi_string  label_text,
+                                  uint32_t                   n_strings,
+                                  system_hashed_ansi_string* strings,
+                                  void**                     user_args,
+                                  uint32_t                   n_selected_entry,
+                                  system_hashed_ansi_string  name,
+                                  const float*               x1y1,
+                                  PFNOGLUIFIREPROCPTR        pfn_fire_proc_ptr,
+                                  void*                      fire_proc_user_arg,
+                                  ogl_ui_control             owner_control)
 {
     _ogl_ui_dropdown* new_dropdown = new (std::nothrow) _ogl_ui_dropdown;
 
@@ -2180,9 +2180,9 @@ PUBLIC void ogl_ui_dropdown_on_mouse_wheel(void* internal_instance,
 }
 
 /* Please see header for spec */
-PUBLIC void ogl_ui_dropdown_set_property(__in __notnull void*                    dropdown,
-                                         __in __notnull _ogl_ui_control_property property,
-                                         __in __notnull const void*              data)
+PUBLIC void ogl_ui_dropdown_set_property(void*                    dropdown,
+                                         _ogl_ui_control_property property,
+                                         const void*              data)
 {
     _ogl_ui_dropdown* dropdown_ptr = (_ogl_ui_dropdown*) dropdown;
 
@@ -2206,8 +2206,6 @@ PUBLIC void ogl_ui_dropdown_set_property(__in __notnull void*                   
         case OGL_UI_CONTROL_PROPERTY_GENERAL_X1Y1:
         case OGL_UI_CONTROL_PROPERTY_DROPDOWN_X1Y1:
         {
-            __analysis_assume(sizeof(data) == sizeof(float) * 2);
-
             _ogl_ui_dropdown_update_position(dropdown_ptr,
                                              (const float*) data);
 

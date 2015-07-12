@@ -23,15 +23,15 @@ typedef enum
 PUBLIC void DeinitLightData();
 
 /** TODO */
-PUBLIC void GetLightPropertyValue(__in  __notnull scene_light   light,
-                                  __in            LightProperty property,
-                                  __out __notnull void*         out_result);
+PUBLIC void GetLightPropertyValue(scene_light   light,
+                                  LightProperty property,
+                                  void*         out_result);
 
 /** TODO */
 PUBLIC void InitLightData();
 
 /** TODO */
-PUBLIC system_event StartLightDataExtraction(__in __notnull scene in_scene);
+PUBLIC system_event StartLightDataExtraction(scene in_scene);
 
 
 #endif /* PLUGIN_LIGHTS_H */

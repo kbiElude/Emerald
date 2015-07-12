@@ -26,7 +26,7 @@
 #endif
 
 
-PRIVATE ogl_context_state_cache_property _ogl_context_wrappers_get_ogl_context_state_cache_property_for_glenum(__in GLenum property)
+PRIVATE ogl_context_state_cache_property _ogl_context_wrappers_get_ogl_context_state_cache_property_for_glenum(GLenum property)
 {
     ogl_context_state_cache_property result = OGL_CONTEXT_STATE_CACHE_PROPERTY_UNKNOWN;
 
@@ -212,10 +212,10 @@ PRIVATE ogl_context_state_cache_property _ogl_context_wrappers_get_ogl_context_s
 }
 
 /** TODO */
-PRIVATE void _ogl_context_wrappers_update_mipmap_level_info(__in __notnull ogl_context context,
-                                                            __in           GLenum      texture_target,
-                                                            __in __notnull ogl_texture texture,
-                                                            __in           GLuint      level)
+PRIVATE void _ogl_context_wrappers_update_mipmap_level_info(ogl_context context,
+                                                            GLenum      texture_target,
+                                                            ogl_texture texture,
+                                                            GLuint      level)
 {
     const ogl_context_gl_entrypoints_ext_direct_state_access* dsa_entrypoints       = NULL;
     GLuint                                                    texture_gl_id         = 0;
@@ -284,9 +284,9 @@ PRIVATE void _ogl_context_wrappers_update_mipmap_level_info(__in __notnull ogl_c
 }
 
 /** TODO */
-PRIVATE void _ogl_context_wrappers_update_mipmap_info(__in __notnull ogl_context context,
-                                                      __in           GLenum      texture_target,
-                                                      __in __notnull ogl_texture texture)
+PRIVATE void _ogl_context_wrappers_update_mipmap_info(ogl_context context,
+                                                      GLenum      texture_target,
+                                                      ogl_texture texture)
 {
     const ogl_context_gl_limits* limits        = NULL;
     GLuint                       texture_gl_id = 0;
@@ -7083,7 +7083,7 @@ PUBLIC void APIENTRY ogl_context_wrappers_glViewport(GLint   x,
 
 
 /* Please see header for specification */
-PUBLIC void ogl_context_wrappers_set_private_functions(__in __maybenull ogl_context_gl_entrypoints_private* ptrs)
+PUBLIC void ogl_context_wrappers_set_private_functions(ogl_context_gl_entrypoints_private* ptrs)
 {
     _private_entrypoints_ptr = ptrs;
 }

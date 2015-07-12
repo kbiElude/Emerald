@@ -14,34 +14,6 @@
 #define PRIVATE                static
 #define RENDERING_CONTEXT_CALL
 
-/* Emerald uses SAL annotations which are Windows-specific. Provide dummy wrappers
- * for other platforms.
- */
-#ifndef _WIN32
-    #define __analysis_assume(A) 1;
-    #define __bcount(A)
-    #define __deallocate(A)
-    #define __deref_out
-    #define __deref_out_bcount_full_opt(A)
-    #define __ecount(A)
-    #define __forceinline inline
-    #define __in
-    #define __in_bcount(A)
-    #define __in_bcount_opt(A)
-    #define __in_ecount(A)
-    #define __in_ecount_opt(A)
-    #define __in_opt
-    #define __in_range(a, b)
-    #define __inout
-    #define __notnull
-    #define __maybenull
-    #define __out
-    #define __out_ecount(A)
-    #define __out_ecount_opt(A)
-    #define __out_opt
-    #define __post_invalid
-#endif /* _WIN32 */
-
 
 /*********************** ASSERTION CHECKS ********************************/
 typedef enum
@@ -54,9 +26,9 @@ typedef enum
 #include <stdint.h>
 
 /* General includes */
-#define REFCOUNT_INSERT_DECLARATIONS(prefix, public_handle_type)                                \
-    PUBLIC EMERALD_API void prefix##_retain(__in __notnull public_handle_type);                 \
-    PUBLIC EMERALD_API void prefix##_release(__inout __notnull public_handle_type&);
+#define REFCOUNT_INSERT_DECLARATIONS(prefix, public_handle_type)  \
+    PUBLIC EMERALD_API void prefix##_retain(public_handle_type);  \
+    PUBLIC EMERALD_API void prefix##_release(public_handle_type&);
 
 /************************* CAPABILITIES *****************/
 typedef enum

@@ -94,17 +94,17 @@ typedef struct _system_callback_manager
 system_callback_manager global_callback_manager = NULL;
 
 /* Forward declarations */
-PRIVATE          void _add_callback_support                     (__in __notnull system_callback_manager            callback_manager,
-                                                                 __in           _callback_id                       callback_id,
-                                                                 __in           uint32_t                           callback_proc_data_size);
-PRIVATE          void _deinit_system_callback_manager_callback  (               _system_callback_manager_callback& descriptor);
-PRIVATE volatile void _system_callback_manager_call_back_handler(__in __notnull void*                              descriptor);
+PRIVATE          void _add_callback_support                     (system_callback_manager            callback_manager,
+                                                                 _callback_id                       callback_id,
+                                                                 uint32_t                           callback_proc_data_size);
+PRIVATE          void _deinit_system_callback_manager_callback  (_system_callback_manager_callback& descriptor);
+PRIVATE volatile void _system_callback_manager_call_back_handler(void*                              descriptor);
 
 
 /** Please see header for spec */
-PRIVATE void _add_callback_support(__in __notnull system_callback_manager callback_manager,
-                                   __in           _callback_id            callback_id,
-                                   __in            uint32_t               callback_proc_data_size)
+PRIVATE void _add_callback_support(system_callback_manager callback_manager,
+                                   _callback_id            callback_id,
+                                   uint32_t                callback_proc_data_size)
 {
     _system_callback_manager*          callback_manager_ptr = (_system_callback_manager*) callback_manager;
     _system_callback_manager_callback* descriptor_ptr       = NULL;
@@ -182,7 +182,7 @@ PRIVATE void _deinit_system_callback_manager_callback(_system_callback_manager_c
 }
 
 /** TODO */
-PRIVATE volatile void _system_callback_manager_call_back_handler(__in __notnull void* descriptor)
+PRIVATE volatile void _system_callback_manager_call_back_handler(void* descriptor)
 {
     _system_callback_manager_callback_subscription* subscription_ptr = (_system_callback_manager_callback_subscription*) descriptor;
     const unsigned char*                            callback_data    = (unsigned char*) descriptor + sizeof(_system_callback_manager_callback_subscription);
@@ -195,9 +195,9 @@ PRIVATE volatile void _system_callback_manager_call_back_handler(__in __notnull 
 }
 
 /** Please see header for spec */
-PUBLIC void system_callback_manager_call_back(__in __notnull system_callback_manager callback_manager,
-                                              __in           int                     callback_id,
-                                              __in __notnull void*                   callback_proc_data)
+PUBLIC void system_callback_manager_call_back(system_callback_manager callback_manager,
+                                              int                     callback_id,
+                                              void*                   callback_proc_data)
 {
     _system_callback_manager* callback_manager_ptr = (_system_callback_manager*) callback_manager;
 
@@ -277,7 +277,7 @@ PUBLIC void system_callback_manager_call_back(__in __notnull system_callback_man
 }
 
 /** Please see header for spec */
-PUBLIC system_callback_manager system_callback_manager_create(__in _callback_id max_callback_id)
+PUBLIC system_callback_manager system_callback_manager_create(_callback_id max_callback_id)
 {
     /* Carry on */
     _system_callback_manager* manager_ptr = new (std::nothrow) _system_callback_manager;
@@ -344,7 +344,7 @@ PUBLIC void system_callback_manager_init()
 }
 
 /** Please see header for spec */
-PUBLIC void system_callback_manager_release(__in __notnull system_callback_manager callback_manager)
+PUBLIC void system_callback_manager_release(system_callback_manager callback_manager)
 {
     _system_callback_manager* callback_manager_ptr = (_system_callback_manager*) callback_manager;
 
@@ -369,11 +369,11 @@ PUBLIC void system_callback_manager_release(__in __notnull system_callback_manag
 }
 
 /** Please see header for spec */
-PUBLIC EMERALD_API void system_callback_manager_subscribe_for_callbacks(__in __notnull system_callback_manager callback_manager,
-                                                                        __in           int                     callback_id,
-                                                                        __in __notnull _callback_synchronicity callback_synchronicity,
-                                                                        __in __notnull PFNSYSTEMCALLBACKPROC   pfn_callback_proc,
-                                                                        __in __notnull void*                   callback_proc_user_arg)
+PUBLIC EMERALD_API void system_callback_manager_subscribe_for_callbacks(system_callback_manager callback_manager,
+                                                                        int                     callback_id,
+                                                                        _callback_synchronicity callback_synchronicity,
+                                                                        PFNSYSTEMCALLBACKPROC   pfn_callback_proc,
+                                                                        void*                   callback_proc_user_arg)
 {
     _system_callback_manager* callback_manager_ptr = (_system_callback_manager*) callback_manager;
 
@@ -403,10 +403,10 @@ PUBLIC EMERALD_API void system_callback_manager_subscribe_for_callbacks(__in __n
 }
 
 /** Please see header for spec */
-PUBLIC EMERALD_API void system_callback_manager_unsubscribe_from_callbacks(__in __notnull system_callback_manager callback_manager,
-                                                                           __in           int                     callback_id,
-                                                                           __in __notnull PFNSYSTEMCALLBACKPROC   pfn_callback_proc,
-                                                                           __in __notnull void*                   callback_proc_user_arg)
+PUBLIC EMERALD_API void system_callback_manager_unsubscribe_from_callbacks(system_callback_manager callback_manager,
+                                                                           int                     callback_id,
+                                                                           PFNSYSTEMCALLBACKPROC   pfn_callback_proc,
+                                                                           void*                   callback_proc_user_arg)
 {
     _system_callback_manager* callback_manager_ptr = (_system_callback_manager*) callback_manager;
 

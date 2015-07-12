@@ -178,29 +178,29 @@ REFCOUNT_INSERT_IMPLEMENTATION(mesh,
                               _mesh);
 
 /** Forward declarations */
-PRIVATE void _mesh_deinit_mesh_layer     (__in __notnull const _mesh*            mesh_ptr,
-                                          __in __notnull       _mesh_layer*      layer_ptr,
-                                                               bool              do_full_deinit);
-PRIVATE void _mesh_deinit_mesh_layer_pass(__in __notnull const _mesh*            mesh_ptr,
-                                          __in __notnull       _mesh_layer_pass* pass_ptr,
-                                                               bool              do_full_deinit);
-PRIVATE bool _mesh_is_key_uint32_equal   (                     void*             arg1,
-                                                               void*             arg2);
-PRIVATE bool _mesh_is_key_uint32_lower   (                     void*             arg1,
-                                                               void*             arg2);
-PRIVATE void _mesh_release_normals_data  (__in __notnull       _mesh* mesh_ptr);
+PRIVATE void _mesh_deinit_mesh_layer     (const _mesh*            mesh_ptr,
+                                                _mesh_layer*      layer_ptr,
+                                                bool              do_full_deinit);
+PRIVATE void _mesh_deinit_mesh_layer_pass(const _mesh*            mesh_ptr,
+                                                _mesh_layer_pass* pass_ptr,
+                                                bool              do_full_deinit);
+PRIVATE bool _mesh_is_key_uint32_equal   (      void*             arg1,
+                                                void*             arg2);
+PRIVATE bool _mesh_is_key_uint32_lower   (      void*             arg1,
+                                                void*             arg2);
+PRIVATE void _mesh_release_normals_data  (      _mesh* mesh_ptr);
 
 #ifdef _DEBUG
-    PRIVATE void _mesh_verify_context_type(__in __notnull ogl_context);
+    PRIVATE void _mesh_verify_context_type(ogl_context);
 #else
     #define _mesh_verify_context_type(x)
 #endif
 
 
 /** TODO */
-PRIVATE void _mesh_get_index_key(__out          uint32_t*               out_result,
-                                 __in __notnull const _mesh_layer_pass* layer_pass_ptr,
-                                 __in           unsigned int            n_element)
+PRIVATE void _mesh_get_index_key(uint32_t*               out_result,
+                                 const _mesh_layer_pass* layer_pass_ptr,
+                                 unsigned int            n_element)
 {
     unsigned int n_current_word = 0;
 
@@ -266,10 +266,10 @@ PRIVATE void _mesh_get_index_key(__out          uint32_t*               out_resu
 }
 
 /** TODO */
-PRIVATE uint32_t _mesh_get_source_index_from_index_key(__in __notnull const uint32_t*             key_ptr,
-                                                       __in __notnull const _mesh_layer_pass*     layer_pass_ptr,
-                                                       __in           mesh_layer_data_stream_type data_stream_type,
-                                                       __in           unsigned int                set_id)
+PRIVATE uint32_t _mesh_get_source_index_from_index_key(const uint32_t*             key_ptr,
+                                                       const _mesh_layer_pass*     layer_pass_ptr,
+                                                       mesh_layer_data_stream_type data_stream_type,
+                                                       unsigned int                set_id)
 {
     unsigned int n_current_word = 0;
     uint32_t     result         = -1;
@@ -540,9 +540,9 @@ PRIVATE void _mesh_deinit_mesh_layer(const _mesh* mesh_ptr,
 }
 
 /** TODO */
-PRIVATE void _mesh_deinit_mesh_layer_pass(__in __notnull const _mesh*            mesh_ptr,
-                                          __in __notnull       _mesh_layer_pass* pass_ptr,
-                                                                bool             do_full_deinit)
+PRIVATE void _mesh_deinit_mesh_layer_pass(const _mesh*            mesh_ptr,
+                                                _mesh_layer_pass* pass_ptr,
+                                                 bool             do_full_deinit)
 {
     for (unsigned int n_stream_type = MESH_LAYER_DATA_STREAM_TYPE_FIRST;
                       n_stream_type < MESH_LAYER_DATA_STREAM_TYPE_COUNT;
@@ -706,11 +706,11 @@ PRIVATE void _mesh_fill_gl_buffers_renderer_callback(ogl_context context,
 }
 
 /** TODO */
-PRIVATE void _mesh_get_amount_of_stream_data_sets(__in      __notnull _mesh*                      mesh_ptr,
-                                                  __in                mesh_layer_data_stream_type stream_type,
-                                                  __in                mesh_layer_id               layer_id,
-                                                  __in                mesh_layer_pass_id          layer_pass_id,
-                                                  __out_opt           uint32_t*                   out_n_stream_sets)
+PRIVATE void _mesh_get_amount_of_stream_data_sets(_mesh*                      mesh_ptr,
+                                                  mesh_layer_data_stream_type stream_type,
+                                                  mesh_layer_id               layer_id,
+                                                  mesh_layer_pass_id          layer_pass_id,
+                                                  uint32_t*                   out_n_stream_sets)
 {
     if (out_n_stream_sets != NULL)
     {
@@ -759,11 +759,11 @@ PRIVATE void _mesh_get_amount_of_stream_data_sets(__in      __notnull _mesh*    
 }
 
 /** TODO */
-PRIVATE void _mesh_get_stream_data_properties(__in      _mesh*                            mesh_ptr,
-                                              __in      mesh_layer_data_stream_type       stream_type,
-                                              __out_opt mesh_layer_data_stream_data_type* out_data_type,
-                                              __out_opt uint32_t*                         out_n_components,
-                                              __out_opt uint32_t*                         out_required_bit_alignment)
+PRIVATE void _mesh_get_stream_data_properties(_mesh*                            mesh_ptr,
+                                              mesh_layer_data_stream_type       stream_type,
+                                              mesh_layer_data_stream_data_type* out_data_type,
+                                              uint32_t*                         out_n_components,
+                                              uint32_t*                         out_required_bit_alignment)
 {
     mesh_layer_data_stream_data_type result_data_type              = MESH_LAYER_DATA_STREAM_DATA_TYPE_UNKNOWN;
     uint32_t                         result_n_components           = 0;
@@ -824,9 +824,9 @@ PRIVATE void _mesh_get_stream_data_properties(__in      _mesh*                  
 }
 
 /** TODO */
-PRIVATE void _mesh_get_total_number_of_stream_sets_for_mesh(__in      __notnull _mesh*                      mesh_ptr,
-                                                            __in                mesh_layer_data_stream_type stream_type,
-                                                            __out_opt           uint32_t*                   out_n_stream_sets)
+PRIVATE void _mesh_get_total_number_of_stream_sets_for_mesh(_mesh*                      mesh_ptr,
+                                                            mesh_layer_data_stream_type stream_type,
+                                                            uint32_t*                   out_n_stream_sets)
 {
     if (out_n_stream_sets != NULL)
     {
@@ -895,9 +895,9 @@ PRIVATE void _mesh_get_total_number_of_stream_sets_for_mesh(__in      __notnull 
 }
 
 /** TODO */
-PRIVATE void _mesh_init_mesh(__in __notnull _mesh*                    new_mesh,
-                             __in __notnull system_hashed_ansi_string name,
-                                            mesh_creation_flags       flags)
+PRIVATE void _mesh_init_mesh(_mesh*                    new_mesh,
+                             system_hashed_ansi_string name,
+                             mesh_creation_flags       flags)
 {
     memset(new_mesh->aabb_max,
            0,
@@ -984,8 +984,8 @@ PRIVATE void _mesh_init_mesh_layer_pass(_mesh_layer_pass* new_mesh_layer_pass)
 }
 
 /** TODO */
-PRIVATE void _mesh_material_setting_changed(__in __notnull const void* callback_data,
-                                            __in __notnull       void* user_arg)
+PRIVATE void _mesh_material_setting_changed(const void* callback_data,
+                                                  void* user_arg)
 {
     _mesh*        mesh_ptr     = (_mesh*)        user_arg;
     float         material_vsa = 0.0f;
@@ -1076,7 +1076,7 @@ PRIVATE void _mesh_material_setting_changed(__in __notnull const void* callback_
 }
 
 /** TODO */
-PRIVATE void _mesh_release_normals_data(__in __notnull _mesh* mesh_ptr)
+PRIVATE void _mesh_release_normals_data(_mesh* mesh_ptr)
 {
     uint32_t n_layers = 0;
 
@@ -1218,7 +1218,7 @@ PRIVATE void _mesh_release_renderer_callback(ogl_context context,
 }
 
 /** TODO */
-PRIVATE void _mesh_release(__in __notnull __post_invalid void* arg)
+PRIVATE void _mesh_release(void* arg)
 {
     _mesh* mesh = (_mesh*) arg;
 
@@ -1324,7 +1324,7 @@ PRIVATE void _mesh_release(__in __notnull __post_invalid void* arg)
 }
 
 /** TODO */
-PRIVATE void _mesh_update_aabb(__in __notnull _mesh* mesh_ptr)
+PRIVATE void _mesh_update_aabb(_mesh* mesh_ptr)
 {
     uint32_t n_layers = 0;
 
@@ -1378,7 +1378,7 @@ PRIVATE void _mesh_update_aabb(__in __notnull _mesh* mesh_ptr)
 /** TODO */
 #ifdef _DEBUG
     /* TODO */
-    PRIVATE void _mesh_verify_context_type(__in __notnull ogl_context context)
+    PRIVATE void _mesh_verify_context_type(ogl_context context)
     {
         ogl_context_type context_type = OGL_CONTEXT_TYPE_UNDEFINED;
 
@@ -1393,7 +1393,7 @@ PRIVATE void _mesh_update_aabb(__in __notnull _mesh* mesh_ptr)
 
 
 /* Please see header for specification */
-PUBLIC EMERALD_API mesh_layer_id mesh_add_layer(__in __notnull mesh instance)
+PUBLIC EMERALD_API mesh_layer_id mesh_add_layer(mesh instance)
 {
     _mesh*        mesh_instance = (_mesh*) instance;
     mesh_layer_id result        = -1;
@@ -1433,11 +1433,11 @@ PUBLIC EMERALD_API mesh_layer_id mesh_add_layer(__in __notnull mesh instance)
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API void mesh_add_layer_data_stream(__in __notnull mesh                        mesh,
-                                                   __in __notnull mesh_layer_id               layer_id,
-                                                   __in           mesh_layer_data_stream_type type,
-                                                   __in           unsigned int                n_items,
-                                                   __in __notnull const void*                 data)
+PUBLIC EMERALD_API void mesh_add_layer_data_stream(mesh                        mesh,
+                                                   mesh_layer_id               layer_id,
+                                                   mesh_layer_data_stream_type type,
+                                                   unsigned int                n_items,
+                                                   const void*                 data)
 {
     _mesh_layer* layer_ptr     = NULL;
     _mesh*       mesh_instance = (_mesh*) mesh;
@@ -1557,10 +1557,10 @@ PUBLIC EMERALD_API void mesh_add_layer_data_stream(__in __notnull mesh          
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API mesh_layer_pass_id mesh_add_layer_pass(__in __notnull mesh          mesh_instance,
-                                                          __in           mesh_layer_id layer_id,
-                                                          __in           mesh_material material,
-                                                          __in           uint32_t      n_elements)
+PUBLIC EMERALD_API mesh_layer_pass_id mesh_add_layer_pass(mesh          mesh_instance,
+                                                          mesh_layer_id layer_id,
+                                                          mesh_material material,
+                                                          uint32_t      n_elements)
 {
     _mesh*             mesh_ptr       = (_mesh*) mesh_instance;
     _mesh_layer*       mesh_layer_ptr = NULL;
@@ -1673,14 +1673,14 @@ PUBLIC EMERALD_API mesh_layer_pass_id mesh_add_layer_pass(__in __notnull mesh   
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API bool mesh_add_layer_pass_index_data(__in __notnull mesh                        mesh_instance,
-                                                       __in           mesh_layer_id               layer_id,
-                                                       __in           mesh_layer_pass_id          layer_pass_id,
-                                                       __in           mesh_layer_data_stream_type stream_type,
-                                                       __in           unsigned int                set_id,
-                                                       __in           const void*                 index_data,
-                                                       __in           unsigned int                min_index,
-                                                       __in           unsigned int                max_index)
+PUBLIC EMERALD_API bool mesh_add_layer_pass_index_data(mesh                        mesh_instance,
+                                                       mesh_layer_id               layer_id,
+                                                       mesh_layer_pass_id          layer_pass_id,
+                                                       mesh_layer_data_stream_type stream_type,
+                                                       unsigned int                set_id,
+                                                       const void*                 index_data,
+                                                       unsigned int                min_index,
+                                                       unsigned int                max_index)
 {
     /* TODO: This implementation is not currently able to handle multiple texcoord streams. Please improve */
     _mesh*             mesh_ptr       = (_mesh*) mesh_instance;
@@ -1777,8 +1777,8 @@ PUBLIC EMERALD_API bool mesh_add_layer_pass_index_data(__in __notnull mesh      
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API mesh mesh_create(__in           mesh_creation_flags       flags,
-                                    __in __notnull system_hashed_ansi_string name)
+PUBLIC EMERALD_API mesh mesh_create(mesh_creation_flags       flags,
+                                    system_hashed_ansi_string name)
 {
     _mesh* new_mesh = new (std::nothrow) _mesh;
 
@@ -2451,8 +2451,8 @@ PUBLIC EMERALD_API void mesh_create_single_indexed_representation(mesh instance)
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API bool mesh_fill_gl_buffers(__in __notnull mesh        instance,
-                                             __in __notnull ogl_context context)
+PUBLIC EMERALD_API bool mesh_fill_gl_buffers(mesh        instance,
+                                             ogl_context context)
 {
     _mesh* mesh_ptr = (_mesh*) instance;
     bool   result   = false;
@@ -2571,7 +2571,7 @@ PUBLIC EMERALD_API void mesh_free_single_indexed_representation(mesh instance)
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API void mesh_generate_normal_data(__in __notnull mesh mesh)
+PUBLIC EMERALD_API void mesh_generate_normal_data(mesh mesh)
 {
     /* TODO: Should we move this to mesh_normal_data_generation.cc or sth? */
     system_resizable_vector allocated_polygon_vectors  = system_resizable_vector_create                (4);
@@ -3208,8 +3208,8 @@ PUBLIC EMERALD_API void mesh_generate_normal_data(__in __notnull mesh mesh)
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API uint32_t mesh_get_amount_of_layer_passes(__in __notnull mesh          instance,
-                                                            __in           mesh_layer_id layer_id)
+PUBLIC EMERALD_API uint32_t mesh_get_amount_of_layer_passes(mesh          instance,
+                                                            mesh_layer_id layer_id)
 {
     _mesh*       mesh_ptr       = (_mesh*) instance;
     _mesh_layer* mesh_layer_ptr = NULL;
@@ -3234,11 +3234,11 @@ PUBLIC EMERALD_API uint32_t mesh_get_amount_of_layer_passes(__in __notnull mesh 
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API void mesh_get_layer_data_stream_data(__in      __notnull mesh                        mesh,
-                                                        __in      __notnull mesh_layer_id               layer_id,
-                                                        __in      __notnull mesh_layer_data_stream_type type,
-                                                        __out_opt __notnull unsigned int*               out_n_items_ptr,
-                                                        __out_opt __notnull const void**                out_data_ptr)
+PUBLIC EMERALD_API void mesh_get_layer_data_stream_data(mesh                        mesh,
+                                                        mesh_layer_id               layer_id,
+                                                        mesh_layer_data_stream_type type,
+                                                        unsigned int*               out_n_items_ptr,
+                                                        const void**                out_data_ptr)
 {
     _mesh_layer* layer_ptr = NULL;
     _mesh*       mesh_ptr  = (_mesh*) mesh;
@@ -3281,10 +3281,10 @@ PUBLIC EMERALD_API void mesh_get_layer_data_stream_data(__in      __notnull mesh
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API void mesh_get_layer_data_stream_property(__in  __notnull mesh                            mesh,
-                                                            __in            mesh_layer_data_stream_type     type,
-                                                            __in            mesh_layer_data_stream_property property,
-                                                            __out __notnull void*                           out_result)
+PUBLIC EMERALD_API void mesh_get_layer_data_stream_property(mesh                            mesh,
+                                                            mesh_layer_data_stream_type     type,
+                                                            mesh_layer_data_stream_property property,
+                                                            void*                           out_result)
 {
     _mesh* mesh_ptr = (_mesh*) mesh;
 
@@ -3319,9 +3319,9 @@ PUBLIC EMERALD_API void mesh_get_layer_data_stream_property(__in  __notnull mesh
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API bool mesh_get_property(__in  __notnull mesh          instance,
-                                          __in  __notnull mesh_property property,
-                                          __out __notnull void*         result)
+PUBLIC EMERALD_API bool mesh_get_property(mesh          instance,
+                                          mesh_property property,
+                                          void*         result)
 {
     _mesh* mesh_ptr = (_mesh*) instance;
     bool   b_result = true;
@@ -3579,11 +3579,11 @@ PUBLIC EMERALD_API bool mesh_get_property(__in  __notnull mesh          instance
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API bool mesh_get_layer_pass_property(__in  __notnull mesh                instance,
-                                                     __in            uint32_t            n_layer,
-                                                     __in            uint32_t            n_pass,
-                                                     __in  __notnull mesh_layer_property property,
-                                                     __out __notnull void*               out_result)
+PUBLIC EMERALD_API bool mesh_get_layer_pass_property(mesh                instance,
+                                                     uint32_t            n_layer,
+                                                     uint32_t            n_pass,
+                                                     mesh_layer_property property,
+                                                     void*               out_result)
 {
     _mesh*       mesh_ptr       = (_mesh*) instance;
     _mesh_layer* mesh_layer_ptr = NULL;
@@ -3694,11 +3694,11 @@ PUBLIC EMERALD_API bool mesh_get_layer_pass_property(__in  __notnull mesh       
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API mesh mesh_load(__in __notnull ogl_context               context,
-                                  __in           mesh_creation_flags       flags,
-                                  __in __notnull system_hashed_ansi_string full_file_path,
-                                  __in __notnull system_hash64map          material_id_to_mesh_material_map,
-                                  __in __notnull system_hash64map          mesh_name_to_mesh_map)
+PUBLIC EMERALD_API mesh mesh_load(ogl_context               context,
+                                  mesh_creation_flags       flags,
+                                  system_hashed_ansi_string full_file_path,
+                                  system_hash64map          material_id_to_mesh_material_map,
+                                  system_hash64map          mesh_name_to_mesh_map)
 {
     /* Create file serializer instance */
     mesh                   result     = NULL;
@@ -3723,11 +3723,11 @@ PUBLIC EMERALD_API mesh mesh_load(__in __notnull ogl_context               conte
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API mesh mesh_load_with_serializer(__in __notnull ogl_context            context,
-                                                  __in           mesh_creation_flags    flags,
-                                                  __in __notnull system_file_serializer serializer,
-                                                  __in __notnull system_hash64map       material_id_to_mesh_material_map,
-                                                  __in __notnull system_hash64map       mesh_name_to_mesh_map)
+PUBLIC EMERALD_API mesh mesh_load_with_serializer(ogl_context            context,
+                                                  mesh_creation_flags    flags,
+                                                  system_file_serializer serializer,
+                                                  system_hash64map       material_id_to_mesh_material_map,
+                                                  system_hash64map       mesh_name_to_mesh_map)
 {
     /* Read header */
     char                      header[16]           = {0};
@@ -4012,7 +4012,7 @@ end:
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API void mesh_release_layer_datum(__in __notnull mesh in_mesh)
+PUBLIC EMERALD_API void mesh_release_layer_datum(mesh in_mesh)
 {
     _mesh*   mesh_ptr = (_mesh*) in_mesh;
     uint32_t n_layers = 0;
@@ -4145,9 +4145,9 @@ PUBLIC EMERALD_API void mesh_release_layer_datum(__in __notnull mesh in_mesh)
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API bool mesh_save(__in __notnull mesh                      instance,
-                                  __in __notnull system_hashed_ansi_string full_file_path,
-                                  __in __notnull system_hash64map          material_name_to_id_map)
+PUBLIC EMERALD_API bool mesh_save(mesh                      instance,
+                                  system_hashed_ansi_string full_file_path,
+                                  system_hash64map          material_name_to_id_map)
 {
     _mesh*                 mesh_ptr   = (_mesh*) instance;
     bool                   result     = false;
@@ -4183,9 +4183,9 @@ end:
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API bool mesh_save_with_serializer(__in __notnull mesh                   instance,
-                                                  __in __notnull system_file_serializer serializer,
-                                                  __in __notnull system_hash64map       mesh_material_to_id_map)
+PUBLIC EMERALD_API bool mesh_save_with_serializer(mesh                   instance,
+                                                  system_file_serializer serializer,
+                                                  system_hash64map       mesh_material_to_id_map)
 {
     _mesh* mesh_ptr = (_mesh*) instance;
     bool   result   = false;
@@ -4371,8 +4371,8 @@ PUBLIC EMERALD_API bool mesh_save_with_serializer(__in __notnull mesh           
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API void mesh_set_as_instantiated(__in __notnull mesh mesh_to_modify,
-                                                 __in __notnull mesh source_mesh)
+PUBLIC EMERALD_API void mesh_set_as_instantiated(mesh mesh_to_modify,
+                                                 mesh source_mesh)
 {
     _mesh* mesh_to_modify_ptr = (_mesh*) mesh_to_modify;
     _mesh* source_mesh_ptr    = (_mesh*) source_mesh;
@@ -4426,11 +4426,11 @@ PUBLIC EMERALD_API void mesh_set_as_instantiated(__in __notnull mesh mesh_to_mod
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API void mesh_set_layer_property(__in __notnull mesh                instance,
-                                                __in           uint32_t            n_layer,
-                                                __in           uint32_t            n_pass,
-                                                __in __notnull mesh_layer_property property,
-                                                __in __notnull const void*         data)
+PUBLIC EMERALD_API void mesh_set_layer_property(mesh                instance,
+                                                uint32_t            n_layer,
+                                                uint32_t            n_pass,
+                                                mesh_layer_property property,
+                                                const void*         data)
 {
     _mesh*       mesh_ptr       = (_mesh*) instance;
     _mesh_layer* mesh_layer_ptr = NULL;
@@ -4520,9 +4520,9 @@ PUBLIC EMERALD_API void mesh_set_layer_property(__in __notnull mesh             
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API void mesh_set_processed_data_stream_start_offset(__in __notnull mesh                        mesh,
-                                                                    __in           mesh_layer_data_stream_type stream_type,
-                                                                    __in           unsigned int                start_offset)
+PUBLIC EMERALD_API void mesh_set_processed_data_stream_start_offset(mesh                        mesh,
+                                                                    mesh_layer_data_stream_type stream_type,
+                                                                    unsigned int                start_offset)
 {
     _mesh* mesh_ptr = (_mesh*) mesh;
 
@@ -4533,9 +4533,9 @@ PUBLIC EMERALD_API void mesh_set_processed_data_stream_start_offset(__in __notnu
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API void mesh_set_property(__in __notnull mesh          instance,
-                                          __in           mesh_property property,
-                                          __in __notnull void*         value)
+PUBLIC EMERALD_API void mesh_set_property(mesh          instance,
+                                          mesh_property property,
+                                          void*         value)
 {
     ASSERT_DEBUG_SYNC(instance != NULL,
                       "Cannot set propetry - instance is NULL");
@@ -4606,10 +4606,10 @@ PUBLIC EMERALD_API void mesh_set_property(__in __notnull mesh          instance,
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API void mesh_set_single_indexed_representation(__in __notnull                 mesh             mesh,
-                                                               __in                           _mesh_index_type index_type,
-                                                               __in                           uint32_t         n_blob_data_bytes,
-                                                               __in_bcount(n_blob_data_bytes) const void*      blob_data)
+PUBLIC EMERALD_API void mesh_set_single_indexed_representation(mesh             mesh,
+                                                               _mesh_index_type index_type,
+                                                               uint32_t         n_blob_data_bytes,
+                                                               const void*      blob_data)
 {
     _mesh* mesh_ptr = (_mesh*) mesh;
 

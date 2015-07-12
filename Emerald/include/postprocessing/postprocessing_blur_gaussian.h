@@ -23,16 +23,16 @@ typedef enum
 
 
 /** TODO */
-PUBLIC RENDERING_CONTEXT_CALL EMERALD_API postprocessing_blur_gaussian postprocessing_blur_gaussian_create(__in __notnull ogl_context               context,
-                                                                                                           __in __notnull system_hashed_ansi_string name,
-                                                                                                           __in           unsigned int              n_min_taps,
-                                                                                                           __in           unsigned int              n_max_taps);
+PUBLIC RENDERING_CONTEXT_CALL EMERALD_API postprocessing_blur_gaussian postprocessing_blur_gaussian_create(ogl_context               context,
+                                                                                                           system_hashed_ansi_string name,
+                                                                                                           unsigned int              n_min_taps,
+                                                                                                           unsigned int              n_max_taps);
 
 /** TODO */
-PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void postprocessing_blur_gaussian_execute(     __notnull postprocessing_blur_gaussian            blur,
-                                                                                    __in           unsigned int                            n_taps,
-                                                                                    __in           float                                   n_iterations,
-                                                                                    __in __notnull ogl_texture                             src_texture,
-                                                                                    __in           postprocessing_blur_gaussian_resolution blur_resolution);
+PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void postprocessing_blur_gaussian_execute(postprocessing_blur_gaussian            blur,
+                                                                                    unsigned int                            n_taps,
+                                                                                    float                                   n_iterations,
+                                                                                    ogl_texture                             src_texture,
+                                                                                    postprocessing_blur_gaussian_resolution blur_resolution);
 
 #endif /* POSTPROCESSING_BLUR_GAUSSIAN_H */

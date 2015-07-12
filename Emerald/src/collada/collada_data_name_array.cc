@@ -39,7 +39,7 @@ _collada_data_name_array::~_collada_data_name_array()
 
 
 /** TODO */
-PUBLIC collada_data_name_array collada_data_name_array_create(__in __notnull tinyxml2::XMLElement* name_array_element_ptr)
+PUBLIC collada_data_name_array collada_data_name_array_create(tinyxml2::XMLElement* name_array_element_ptr)
 {
     _collada_data_name_array* result_ptr = new (std::nothrow) _collada_data_name_array;
 
@@ -103,9 +103,9 @@ end:
 }
 
 /** Please see header for spec */
-PUBLIC void collada_data_name_array_get_property(__in  __notnull collada_data_name_array          array,
-                                                 __in            collada_data_name_array_property property,
-                                                 __out __notnull void*                            out_result)
+PUBLIC void collada_data_name_array_get_property(collada_data_name_array          array,
+                                                 collada_data_name_array_property property,
+                                                 void*                            out_result)
 {
     _collada_data_name_array* array_ptr = (_collada_data_name_array*) array;
 
@@ -133,8 +133,8 @@ PUBLIC void collada_data_name_array_get_property(__in  __notnull collada_data_na
 }
 
 /** Please see header for spec */
-PUBLIC system_hashed_ansi_string collada_data_name_array_get_value_at_index(__in __notnull collada_data_name_array array,
-                                                                            __in           uint32_t                index)
+PUBLIC system_hashed_ansi_string collada_data_name_array_get_value_at_index(collada_data_name_array array,
+                                                                            uint32_t                index)
 {
     _collada_data_name_array* array_ptr = (_collada_data_name_array*) array;
     system_hashed_ansi_string result    = NULL;
@@ -147,7 +147,7 @@ PUBLIC system_hashed_ansi_string collada_data_name_array_get_value_at_index(__in
 }
 
 /** Please see header for spec */
-PUBLIC void collada_data_name_array_release(__in __notnull __post_invalid collada_data_name_array array)
+PUBLIC void collada_data_name_array_release(collada_data_name_array array)
 {
     delete (_collada_data_name_array*) array;
 

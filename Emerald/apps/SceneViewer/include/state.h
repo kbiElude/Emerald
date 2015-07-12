@@ -46,8 +46,8 @@ PUBLIC system_time state_get_last_frame_time();
 PUBLIC bool state_get_playback_status();
 
 /** TODO */
-PUBLIC void state_lock_current_camera(__out __notnull scene_camera* out_current_camera,
-                                      __out           bool*         out_is_flyby);
+PUBLIC void state_lock_current_camera(scene_camera* out_current_camera,
+                                      bool*         out_is_flyby);
 
 /** TODO */
 PUBLIC uint32_t state_get_number_of_cameras();
@@ -65,7 +65,7 @@ PUBLIC scene state_get_scene();
 PUBLIC ogl_scene_renderer state_get_scene_renderer();
 
 /** TODO */
-PUBLIC bool state_init(__in __notnull system_hashed_ansi_string scene_filename);
+PUBLIC bool state_init(system_hashed_ansi_string scene_filename);
 
 /** TODO */
 PUBLIC void state_set_active_camera_index(unsigned int index);

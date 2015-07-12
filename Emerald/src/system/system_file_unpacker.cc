@@ -19,7 +19,7 @@ typedef struct _system_file_unpacker_file
     uint32_t                  filesize;
     system_file_serializer    serializer;
 
-    explicit _system_file_unpacker_file(__in __notnull system_hashed_ansi_string in_filename)
+    explicit _system_file_unpacker_file(system_hashed_ansi_string in_filename)
     {
         data              = NULL;
         data_start_offset = 0;
@@ -45,7 +45,7 @@ typedef struct _system_file_unpacker
     system_hashed_ansi_string packed_filename;
     unsigned char*            unpacked_buffer_ptr;
 
-    explicit _system_file_unpacker(__in __notnull system_hashed_ansi_string in_packed_filename)
+    explicit _system_file_unpacker(system_hashed_ansi_string in_packed_filename)
     {
         files               = system_resizable_vector_create(4,     /* capacity */
                                                              true); /* should_be_thread_safe */
@@ -83,7 +83,7 @@ typedef struct _system_file_unpacker
 
 
 /** TODO */
-PRIVATE bool _system_file_unpacker_init(__in __notnull _system_file_unpacker* file_unpacker_ptr)
+PRIVATE bool _system_file_unpacker_init(_system_file_unpacker* file_unpacker_ptr)
 {
     unsigned char*              data_ptr               = NULL;
     int                         inflation_result       = 0;
@@ -259,7 +259,7 @@ end:
 
 
 /** Please see header for specification */
-PUBLIC EMERALD_API system_file_unpacker system_file_unpacker_create(__in __notnull system_hashed_ansi_string packed_filename)
+PUBLIC EMERALD_API system_file_unpacker system_file_unpacker_create(system_hashed_ansi_string packed_filename)
 {
     _system_file_unpacker* file_unpacker = new (std::nothrow) _system_file_unpacker(packed_filename);
 
@@ -285,10 +285,10 @@ PUBLIC EMERALD_API system_file_unpacker system_file_unpacker_create(__in __notnu
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API void system_file_unpacker_get_file_property(__in  __notnull system_file_unpacker               unpacker,
-                                                               __in            uint32_t                           file_index,
-                                                               __in            system_file_unpacker_file_property property,
-                                                               __out __notnull void*                              out_result)
+PUBLIC EMERALD_API void system_file_unpacker_get_file_property(system_file_unpacker               unpacker,
+                                                               uint32_t                           file_index,
+                                                               system_file_unpacker_file_property property,
+                                                               void*                              out_result)
 {
     _system_file_unpacker_file* file_ptr     = NULL;
     _system_file_unpacker*      unpacker_ptr = (_system_file_unpacker*) unpacker;
@@ -355,9 +355,9 @@ PUBLIC EMERALD_API void system_file_unpacker_get_file_property(__in  __notnull s
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API void system_file_unpacker_get_property(__in  __notnull system_file_unpacker          unpacker,
-                                                          __in            system_file_unpacker_property property,
-                                                          __out __notnull void*                         out_result)
+PUBLIC EMERALD_API void system_file_unpacker_get_property(system_file_unpacker          unpacker,
+                                                          system_file_unpacker_property property,
+                                                          void*                         out_result)
 {
     _system_file_unpacker* unpacker_ptr = (_system_file_unpacker*) unpacker;
 
@@ -388,7 +388,7 @@ PUBLIC EMERALD_API void system_file_unpacker_get_property(__in  __notnull system
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API void system_file_unpacker_release(__in __notnull __post_invalid system_file_unpacker unpacker)
+PUBLIC EMERALD_API void system_file_unpacker_release(system_file_unpacker unpacker)
 {
     ASSERT_DEBUG_SYNC(unpacker != NULL,
                       "Input unpacker argument is NULL");

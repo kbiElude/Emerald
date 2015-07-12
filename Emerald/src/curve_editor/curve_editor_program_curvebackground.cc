@@ -66,8 +66,8 @@ PRIVATE void _curve_editor_program_curvebackground_release(void* in)
 
 
 /** Please see header for specification */
-PUBLIC curve_editor_program_curvebackground curve_editor_program_curvebackground_create(__in __notnull ogl_context               context,
-                                                                                        __in __notnull system_hashed_ansi_string name)
+PUBLIC curve_editor_program_curvebackground curve_editor_program_curvebackground_create(ogl_context               context,
+                                                                                        system_hashed_ansi_string name)
 {
     _curve_editor_program_curvebackground* result = new (std::nothrow) _curve_editor_program_curvebackground;
 
@@ -252,9 +252,9 @@ end:
 }
 
 /** Please see header for spec */
-PUBLIC void curve_editor_program_curvebackground_set_property(__in __notnull curve_editor_program_curvebackground          program,
-                                                              __in           curve_editor_program_curvebackground_property property,
-                                                              __in __notnull const void*                                   data)
+PUBLIC void curve_editor_program_curvebackground_set_property(curve_editor_program_curvebackground          program,
+                                                              curve_editor_program_curvebackground_property property,
+                                                              const void*                                   data)
 {
     _curve_editor_program_curvebackground* program_ptr = (_curve_editor_program_curvebackground*) program;
 
@@ -293,8 +293,8 @@ PUBLIC void curve_editor_program_curvebackground_set_property(__in __notnull cur
 }
 
 /** Please see header for spec */
-PUBLIC void curve_editor_program_curvebackground_use(__in __notnull ogl_context                          context,
-                                                     __in __notnull curve_editor_program_curvebackground curvebackground)
+PUBLIC void curve_editor_program_curvebackground_use(ogl_context                          context,
+                                                     curve_editor_program_curvebackground curvebackground)
 {
     _curve_editor_program_curvebackground* curvebackground_ptr = (_curve_editor_program_curvebackground*) curvebackground;
     const ogl_context_gl_entrypoints*      entry_points        = NULL;

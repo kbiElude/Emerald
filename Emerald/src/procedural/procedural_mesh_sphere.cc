@@ -44,7 +44,7 @@ REFCOUNT_INSERT_IMPLEMENTATION(procedural_mesh_sphere,
 
 /* Forward declarations */
 #ifdef _DEBUG
-    PRIVATE void _procedural_mesh_sphere_verify_context_type(__in __notnull ogl_context);
+    PRIVATE void _procedural_mesh_sphere_verify_context_type(ogl_context);
 #else
     #define _procedural_mesh_sphere_verify_context_type(x)
 #endif
@@ -280,7 +280,7 @@ PRIVATE void _procedural_mesh_sphere_release(void* arg)
 /** TODO */
 #ifdef _DEBUG
     /* TODO */
-    PRIVATE void _procedural_mesh_sphere_verify_context_type(__in __notnull ogl_context context)
+    PRIVATE void _procedural_mesh_sphere_verify_context_type(ogl_context context)
     {
         ogl_context_type context_type = OGL_CONTEXT_TYPE_UNDEFINED;
 
@@ -295,11 +295,11 @@ PRIVATE void _procedural_mesh_sphere_release(void* arg)
 
 
 /** Please see header for specification */
-PUBLIC EMERALD_API procedural_mesh_sphere procedural_mesh_sphere_create(__in __notnull ogl_context                   context,
-                                                                        __in           _procedural_mesh_data_bitmask data_bitmask,
-                                                                        __in __notnull uint32_t                      n_latitude_splices, /* number of latitude splices */
-                                                                        __in __notnull uint32_t                      n_longitude_splices, /* number of longitude splices */
-                                                                        __in __notnull system_hashed_ansi_string     name)
+PUBLIC EMERALD_API procedural_mesh_sphere procedural_mesh_sphere_create(ogl_context                   context,
+                                                                        _procedural_mesh_data_bitmask data_bitmask,
+                                                                        uint32_t                      n_latitude_splices, /* number of latitude splices */
+                                                                        uint32_t                      n_longitude_splices, /* number of longitude splices */
+                                                                        system_hashed_ansi_string     name)
 {
     _procedural_mesh_sphere_verify_context_type(context);
 
@@ -344,9 +344,9 @@ PUBLIC EMERALD_API procedural_mesh_sphere procedural_mesh_sphere_create(__in __n
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API void procedural_mesh_sphere_get_property(__in  __notnull procedural_mesh_sphere           sphere,
-                                                            __in            _procedural_mesh_sphere_property prop,
-                                                            __out __notnull void*                            out_result)
+PUBLIC EMERALD_API void procedural_mesh_sphere_get_property(procedural_mesh_sphere           sphere,
+                                                            _procedural_mesh_sphere_property prop,
+                                                            void*                            out_result)
 {
     _procedural_mesh_sphere* sphere_ptr = (_procedural_mesh_sphere*) sphere;
 

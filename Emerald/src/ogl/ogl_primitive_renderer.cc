@@ -459,7 +459,7 @@ PRIVATE void _ogl_primitive_renderer_update_bo_storage(ogl_context              
 }
 
 /** Please see header for specification */
-PRIVATE void _ogl_primitive_renderer_update_data_buffer(__in __notnull _ogl_primitive_renderer* renderer_ptr)
+PRIVATE void _ogl_primitive_renderer_update_data_buffer(_ogl_primitive_renderer* renderer_ptr)
 {
     /* TODO: This is the simplest implementation possible. Consider optimizations */
 
@@ -591,11 +591,11 @@ PRIVATE void _ogl_primitive_renderer_update_vao(ogl_context               contex
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API ogl_primitive_renderer_dataset_id ogl_primitive_renderer_add_dataset(__in                      __notnull ogl_primitive_renderer renderer,
-                                                                                        __in                                ogl_primitive_type     primitive_type,
-                                                                                        __in                                unsigned int           n_vertices,
-                                                                                        __in_ecount(3*n_vertices) __notnull const float*           vertex_data,
-                                                                                        __in_ecount(4)            __notnull const float*           rgb)
+PUBLIC EMERALD_API ogl_primitive_renderer_dataset_id ogl_primitive_renderer_add_dataset(ogl_primitive_renderer renderer,
+                                                                                        ogl_primitive_type     primitive_type,
+                                                                                        unsigned int           n_vertices,
+                                                                                        const float*           vertex_data,
+                                                                                        const float*           rgb)
 {
     _ogl_primitive_renderer*          renderer_ptr = (_ogl_primitive_renderer*) renderer;
     ogl_primitive_renderer_dataset_id result_id    = -1;
@@ -666,10 +666,10 @@ end:
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API void ogl_primitive_renderer_change_dataset_data(__in                      __notnull ogl_primitive_renderer            renderer,
-                                                                   __in                                ogl_primitive_renderer_dataset_id dataset_id,
-                                                                   __in                                unsigned int                      n_vertices,
-                                                                   __in_ecount(3*n_vertices) __notnull const float*                      vertex_data)
+PUBLIC EMERALD_API void ogl_primitive_renderer_change_dataset_data(ogl_primitive_renderer            renderer,
+                                                                   ogl_primitive_renderer_dataset_id dataset_id,
+                                                                   unsigned int                      n_vertices,
+                                                                   const float*                      vertex_data)
 {
     _ogl_primitive_renderer* renderer_ptr = (_ogl_primitive_renderer*) renderer;
 
@@ -735,8 +735,8 @@ end:
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API ogl_primitive_renderer ogl_primitive_renderer_create(__in __notnull ogl_context               context,
-                                                                        __in __notnull system_hashed_ansi_string name)
+PUBLIC EMERALD_API ogl_primitive_renderer ogl_primitive_renderer_create(ogl_context               context,
+                                                                        system_hashed_ansi_string name)
 {
     /* Context type verification */
     ogl_context_type context_type = OGL_CONTEXT_TYPE_UNDEFINED;
@@ -785,8 +785,8 @@ PUBLIC EMERALD_API ogl_primitive_renderer ogl_primitive_renderer_create(__in __n
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API bool ogl_primitive_renderer_delete_dataset(__in __notnull ogl_primitive_renderer            renderer,
-                                                              __in           ogl_primitive_renderer_dataset_id dataset_id)
+PUBLIC EMERALD_API bool ogl_primitive_renderer_delete_dataset(ogl_primitive_renderer            renderer,
+                                                              ogl_primitive_renderer_dataset_id dataset_id)
 {
     _ogl_primitive_renderer* renderer_ptr = (_ogl_primitive_renderer*) renderer;
     bool                      result       = true;
@@ -834,10 +834,10 @@ end:
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API void ogl_primitive_renderer_draw(__in                       __notnull ogl_primitive_renderer             renderer,
-                                                    __in                       __notnull system_matrix4x4                   mvp,
-                                                    __in                                 unsigned int                       n_dataset_ids,
-                                                    __in_ecount(n_dataset_ids) __notnull ogl_primitive_renderer_dataset_id* dataset_ids)
+PUBLIC EMERALD_API void ogl_primitive_renderer_draw(ogl_primitive_renderer             renderer,
+                                                    system_matrix4x4                   mvp,
+                                                    unsigned int                       n_dataset_ids,
+                                                    ogl_primitive_renderer_dataset_id* dataset_ids)
 {
     /* Store the draw call arguments */
     _ogl_primitive_renderer* renderer_ptr = (_ogl_primitive_renderer*) renderer;

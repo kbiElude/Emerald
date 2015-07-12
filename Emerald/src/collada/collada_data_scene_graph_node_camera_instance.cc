@@ -30,9 +30,9 @@ _collada_data_scene_graph_node_camera_instance::_collada_data_scene_graph_node_c
 }
 
 /** TODO */
-PUBLIC collada_data_scene_graph_node_camera_instance collada_data_scene_graph_node_camera_instance_create(__in __notnull tinyxml2::XMLElement*         element_ptr,
-                                                                                                          __in __notnull system_hash64map              cameras_by_id_map,
-                                                                                                          __in __notnull system_hashed_ansi_string name)
+PUBLIC collada_data_scene_graph_node_camera_instance collada_data_scene_graph_node_camera_instance_create(tinyxml2::XMLElement*         element_ptr,
+                                                                                                          system_hash64map              cameras_by_id_map,
+                                                                                                          system_hashed_ansi_string name)
 {
     const char*                                     camera_name             = NULL;
     system_hash64                                   camera_name_hash        = 0;
@@ -89,9 +89,9 @@ end:
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API void collada_data_scene_graph_node_camera_instance_get_property(__in  __notnull collada_data_scene_graph_node_camera_instance          camera_instance,
-                                                                                   __in            collada_data_scene_graph_node_camera_instance_property property,
-                                                                                   __out __notnull void*                                                  out_result)
+PUBLIC EMERALD_API void collada_data_scene_graph_node_camera_instance_get_property(collada_data_scene_graph_node_camera_instance          camera_instance,
+                                                                                   collada_data_scene_graph_node_camera_instance_property property,
+                                                                                   void*                                                  out_result)
 {
     _collada_data_scene_graph_node_camera_instance* instance_ptr = (_collada_data_scene_graph_node_camera_instance*) camera_instance;
 
@@ -121,7 +121,7 @@ PUBLIC EMERALD_API void collada_data_scene_graph_node_camera_instance_get_proper
 
 
 /** Please see header for spec */
-PUBLIC void collada_data_scene_graph_node_camera_instance_release(__in __notnull __post_invalid collada_data_scene_graph_node_camera_instance camera_instance)
+PUBLIC void collada_data_scene_graph_node_camera_instance_release(collada_data_scene_graph_node_camera_instance camera_instance)
 {
     delete (_collada_data_scene_graph_node_camera_instance*) camera_instance;
 

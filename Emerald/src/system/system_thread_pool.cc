@@ -31,24 +31,24 @@ typedef enum
 typedef struct
 {
     /** Event to set on finishing the task. Can be NULL. */
-    __maybenull system_event event;
+    system_event event;
     /** Argument to use for execution call-back function. Can be NULL */
-    __maybenull system_thread_pool_callback_argument on_execution_callback_argument;
+    system_thread_pool_callback_argument on_execution_callback_argument;
     /** Function pointer to an execution call-back function. Can be NULL. */
-    __notnull PFNSYSTEMTHREADPOOLCALLBACKPROC on_execution_callback;
+    PFNSYSTEMTHREADPOOLCALLBACKPROC on_execution_callback;
     /** Argument to use for on-finish call-back function. Can be NULL */
-    __maybenull system_thread_pool_callback_argument on_finish_callback_argument;
+    system_thread_pool_callback_argument on_finish_callback_argument;
     /** Function pointer to an on-finish call-back function. Can be NULL. */
-    __maybenull PFNSYSTEMTHREADPOOLCALLBACKPROC on_finish_callback;
+    PFNSYSTEMTHREADPOOLCALLBACKPROC on_finish_callback;
     /** Priority of the task. Used for task scheduling */
-    __in_range(THREAD_POOL_TASK_PRIORITY_FIRST, THREAD_POOL_TASK_PRIORITY_COUNT-1) system_thread_pool_task_priority task_priority;
+    system_thread_pool_task_priority task_priority;
 
 } _system_thread_pool_task_descriptor;
 
 typedef struct
 {
     /** A resizable vector of system_thread_pool_task_descriptors. **/
-    __notnull system_resizable_vector tasks;
+    system_resizable_vector tasks;
 
     /** If true, tasks will be executed in a random order from different worker threads. If false, they will be
      *  executed in order, one after another, from the same worker thread
@@ -67,7 +67,7 @@ typedef struct
      * _system_thread_pool_task_group_descriptor* if order_type is ORDER_TYPE_GROUP_OF_TASKS
      * _system_thread_pool_task_job_descriptor*   if order_type is ORDER_TYPE_JOB
      */
-    __notnull void* order_ptr; 
+    void* order_ptr; 
 } _system_thread_pool_order_descriptor;
 
 typedef _system_thread_pool_order_descriptor* _system_thread_pool_order_descriptor_ptr;
@@ -102,8 +102,8 @@ system_event            wait_table                [WAIT_TABLE_SIZE]             
  * @param enter_cs        True to enter queued_tasks_cs critical section before submitting, false if no need to.
  *                        False should only be used from private implementation!
  */
-PRIVATE inline void _system_thread_pool_submit_single_task(__notnull system_thread_pool_task_descriptor task_descriptor,
-                                                                     bool                               enter_cs)
+PRIVATE inline void _system_thread_pool_submit_single_task(system_thread_pool_task_descriptor task_descriptor,
+                                                           bool                               enter_cs)
 {
     /* Create order descriptor */
     _system_thread_pool_order_descriptor_ptr new_order_descriptor     = (_system_thread_pool_order_descriptor_ptr) system_resource_pool_get_from_pool(order_pool);
@@ -137,13 +137,13 @@ PRIVATE inline void _system_thread_pool_submit_single_task(__notnull system_thre
 }
 
 /** TODO */
-void _init_system_thread_pool_task_descriptor(__in __notnull system_resource_pool_block task_descriptor_block)
+void _init_system_thread_pool_task_descriptor(system_resource_pool_block task_descriptor_block)
 {
     /* Left blank for future if needed. */
 }
 
 /** TODO */
-void _init_system_thread_pool_task_group_descriptor(__in __notnull system_resource_pool_block task_group_descriptor_block)
+void _init_system_thread_pool_task_group_descriptor(system_resource_pool_block task_group_descriptor_block)
 {
     _system_thread_pool_task_group_descriptor* task_group_descriptor = (_system_thread_pool_task_group_descriptor*) task_group_descriptor_block;
 
@@ -154,13 +154,13 @@ void _init_system_thread_pool_task_group_descriptor(__in __notnull system_resour
 }
 
 /** TODO */
-void _deinit_system_thread_pool_task_descriptor(__in __notnull system_resource_pool_block task_descriptor_block)
+void _deinit_system_thread_pool_task_descriptor(system_resource_pool_block task_descriptor_block)
 {
     /* Left blank for future if needed. */
 }
 
 /** TODO */
-void _deinit_system_thread_pool_task_group_descriptor(__in __notnull system_resource_pool_block task_group_descriptor_block)
+void _deinit_system_thread_pool_task_group_descriptor(system_resource_pool_block task_group_descriptor_block)
 {
     _system_thread_pool_task_group_descriptor* task_group_descriptor = (_system_thread_pool_task_group_descriptor*) task_group_descriptor_block;
 
@@ -171,7 +171,7 @@ void _deinit_system_thread_pool_task_group_descriptor(__in __notnull system_reso
  *
  *  @param task_descriptor Descriptor describing how the task should be executed. Cannot be NULL.
  */
-inline void _system_thread_pool_worker_execute_task(__notnull _system_thread_pool_task_descriptor* task_descriptor)
+inline void _system_thread_pool_worker_execute_task(_system_thread_pool_task_descriptor* task_descriptor)
 {
     /* Decrement the task counter */
     system_atomics_decrement(&queued_tasks_counter);
@@ -196,7 +196,7 @@ inline void _system_thread_pool_worker_execute_task(__notnull _system_thread_poo
  *
  *  @param task_group_descriptor Task group descriptor. Cannot be NULL.
  */
-inline void _system_thread_pool_worker_execute_task_group(__notnull _system_thread_pool_task_group_descriptor* task_group_descriptor)
+inline void _system_thread_pool_worker_execute_task_group(_system_thread_pool_task_group_descriptor* task_group_descriptor)
 {
     system_resizable_vector& tasks_vector = task_group_descriptor->tasks;
     unsigned int             n_tasks      = 0;
@@ -513,14 +513,14 @@ PUBLIC EMERALD_API system_thread_pool_task_group_descriptor system_thread_pool_c
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API void system_thread_pool_submit_single_task(__notnull system_thread_pool_task_descriptor task_descriptor)
+PUBLIC EMERALD_API void system_thread_pool_submit_single_task(system_thread_pool_task_descriptor task_descriptor)
 {
     _system_thread_pool_submit_single_task(task_descriptor,
                                            true); /* enter_cs */
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API void system_thread_pool_submit_single_task_group(__notnull system_thread_pool_task_group_descriptor task_descriptor)
+PUBLIC EMERALD_API void system_thread_pool_submit_single_task_group(system_thread_pool_task_group_descriptor task_descriptor)
 {
     /* Create order descriptor */
     _system_thread_pool_order_descriptor_ptr   new_order_descriptor           = (_system_thread_pool_order_descriptor_ptr)   system_resource_pool_get_from_pool(order_pool);
@@ -541,7 +541,7 @@ PUBLIC EMERALD_API void system_thread_pool_submit_single_task_group(__notnull sy
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API void system_thread_pool_release_task_group_descriptor(__deallocate(mem) system_thread_pool_task_group_descriptor descriptor)
+PUBLIC EMERALD_API void system_thread_pool_release_task_group_descriptor(system_thread_pool_task_group_descriptor descriptor)
 {
     ASSERT_DEBUG_SYNC(task_group_descriptor_pool != NULL, "Task group descriptor pool is NULL.");
 

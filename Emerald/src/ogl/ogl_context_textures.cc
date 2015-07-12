@@ -234,15 +234,15 @@ typedef enum
 } _ogl_context_textures_key_internalformat;
 
 /* Forward declarations */
-PRIVATE GLenum                                   _ogl_context_textures_get_glenum_internalformat_for_key_internalformat(__in _ogl_context_textures_key_internalformat internalformat);
-PRIVATE ogl_texture_dimensionality               _ogl_context_textures_get_glenum_dimensionality_for_key_dimensionality(__in _ogl_context_textures_key_dimensionality dimensionality);
-PRIVATE _ogl_context_textures_key_dimensionality _ogl_context_textures_get_key_dimensionality_for_glenum_dimensionality(__in ogl_texture_dimensionality               dimensionality);
-PRIVATE _ogl_context_textures_key_internalformat _ogl_context_textures_get_key_internalformat_for_glenum_internalformat(__in GLenum                                   internalformat);
+PRIVATE GLenum                                   _ogl_context_textures_get_glenum_internalformat_for_key_internalformat(_ogl_context_textures_key_internalformat internalformat);
+PRIVATE ogl_texture_dimensionality               _ogl_context_textures_get_glenum_dimensionality_for_key_dimensionality(_ogl_context_textures_key_dimensionality dimensionality);
+PRIVATE _ogl_context_textures_key_dimensionality _ogl_context_textures_get_key_dimensionality_for_glenum_dimensionality(ogl_texture_dimensionality               dimensionality);
+PRIVATE _ogl_context_textures_key_internalformat _ogl_context_textures_get_key_internalformat_for_glenum_internalformat(GLenum                                   internalformat);
 
 /** Private functions */
 
 /** TODO */
-PRIVATE ogl_texture_dimensionality _ogl_context_textures_get_glenum_dimensionality_for_key_dimensionality(__in _ogl_context_textures_key_dimensionality dimensionality)
+PRIVATE ogl_texture_dimensionality _ogl_context_textures_get_glenum_dimensionality_for_key_dimensionality(_ogl_context_textures_key_dimensionality dimensionality)
 {
     ogl_texture_dimensionality result;
 
@@ -271,7 +271,7 @@ PRIVATE ogl_texture_dimensionality _ogl_context_textures_get_glenum_dimensionali
 }
 
 /** TODO */
-PRIVATE GLenum _ogl_context_textures_get_glenum_internalformat_for_key_internalformat(__in _ogl_context_textures_key_internalformat internalformat)
+PRIVATE GLenum _ogl_context_textures_get_glenum_internalformat_for_key_internalformat(_ogl_context_textures_key_internalformat internalformat)
 {
     GLenum result;
 
@@ -353,7 +353,7 @@ PRIVATE GLenum _ogl_context_textures_get_glenum_internalformat_for_key_internalf
 }
 
 /** TODO */
-PRIVATE _ogl_context_textures_key_dimensionality _ogl_context_textures_get_key_dimensionality_for_glenum_dimensionality(__in ogl_texture_dimensionality dimensionality)
+PRIVATE _ogl_context_textures_key_dimensionality _ogl_context_textures_get_key_dimensionality_for_glenum_dimensionality(ogl_texture_dimensionality dimensionality)
 {
     _ogl_context_textures_key_dimensionality result;
 
@@ -382,7 +382,7 @@ PRIVATE _ogl_context_textures_key_dimensionality _ogl_context_textures_get_key_d
 }
 
 /** TODO */
-PRIVATE _ogl_context_textures_key_internalformat _ogl_context_textures_get_key_internalformat_for_glenum_internalformat(__in GLenum internalformat)
+PRIVATE _ogl_context_textures_key_internalformat _ogl_context_textures_get_key_internalformat_for_glenum_internalformat(GLenum internalformat)
 {
     _ogl_context_textures_key_internalformat result;
 
@@ -465,14 +465,14 @@ PRIVATE _ogl_context_textures_key_internalformat _ogl_context_textures_get_key_i
 }
 
 /** TODO */
-PRIVATE system_hash64 _ogl_context_textures_get_reusable_texture_key(__in ogl_texture_dimensionality dimensionality,
-                                                                     __in unsigned int               base_mipmap_depth,
-                                                                     __in unsigned int               base_mipmap_height,
-                                                                     __in unsigned int               base_mipmap_width,
-                                                                     __in unsigned int               n_mipmaps,
-                                                                     __in unsigned int               n_samples,
-                                                                     __in GLenum                     internalformat,
-                                                                     __in bool                       fixed_sample_locations)
+PRIVATE system_hash64 _ogl_context_textures_get_reusable_texture_key(ogl_texture_dimensionality dimensionality,
+                                                                     unsigned int               base_mipmap_depth,
+                                                                     unsigned int               base_mipmap_height,
+                                                                     unsigned int               base_mipmap_width,
+                                                                     unsigned int               n_mipmaps,
+                                                                     unsigned int               n_samples,
+                                                                     GLenum                     internalformat,
+                                                                     bool                       fixed_sample_locations)
 {
     /* Key structure:
      *
@@ -510,8 +510,8 @@ PRIVATE system_hash64 _ogl_context_textures_get_reusable_texture_key(__in ogl_te
 }
 
 /** Please see header for specification */
-PUBLIC void ogl_context_textures_add_texture(__in __notnull ogl_context_textures textures,
-                                             __in __notnull ogl_texture          texture)
+PUBLIC void ogl_context_textures_add_texture(ogl_context_textures textures,
+                                             ogl_texture          texture)
 {
     system_hashed_ansi_string texture_name         = NULL;
     system_hashed_ansi_string texture_src_filename = NULL;
@@ -565,7 +565,7 @@ end:
 }
 
 /** Please see header for specification */
-PUBLIC ogl_context_textures ogl_context_textures_create(__in __notnull ogl_context context)
+PUBLIC ogl_context_textures ogl_context_textures_create(ogl_context context)
 {
     _ogl_context_textures* textures_ptr = new (std::nothrow) _ogl_context_textures;
 
@@ -581,15 +581,15 @@ PUBLIC ogl_context_textures ogl_context_textures_create(__in __notnull ogl_conte
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API ogl_texture ogl_context_textures_get_texture_from_pool(__in __notnull ogl_context                context,
-                                                                          __in           ogl_texture_dimensionality dimensionality,
-                                                                          __in           unsigned int               n_mipmaps,
-                                                                          __in           GLenum                     internalformat,
-                                                                          __in           unsigned int               base_mipmap_width,
-                                                                          __in           unsigned int               base_mipmap_height,
-                                                                          __in           unsigned int               base_mipmap_depth,
-                                                                          __in           unsigned int               n_samples,
-                                                                          __in           bool                       fixed_sample_locations)
+PUBLIC EMERALD_API ogl_texture ogl_context_textures_get_texture_from_pool(ogl_context                context,
+                                                                          ogl_texture_dimensionality dimensionality,
+                                                                          unsigned int               n_mipmaps,
+                                                                          GLenum                     internalformat,
+                                                                          unsigned int               base_mipmap_width,
+                                                                          unsigned int               base_mipmap_height,
+                                                                          unsigned int               base_mipmap_depth,
+                                                                          unsigned int               n_samples,
+                                                                          bool                       fixed_sample_locations)
 {
     ogl_texture            result           = NULL;
     const system_hash64    texture_key      = _ogl_context_textures_get_reusable_texture_key(dimensionality,
@@ -671,8 +671,8 @@ PUBLIC EMERALD_API ogl_texture ogl_context_textures_get_texture_from_pool(__in _
 }
 
 /** Please see header for specification */
-PUBLIC void ogl_context_textures_delete_texture(__in __notnull ogl_context_textures      textures,
-                                        __in __notnull system_hashed_ansi_string texture_name)
+PUBLIC void ogl_context_textures_delete_texture(ogl_context_textures      textures,
+                                                system_hashed_ansi_string texture_name)
 {
     _ogl_context_textures* textures_ptr = (_ogl_context_textures*) textures;
 
@@ -689,8 +689,8 @@ PUBLIC void ogl_context_textures_delete_texture(__in __notnull ogl_context_textu
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API ogl_texture ogl_context_textures_get_texture_by_filename(__in __notnull ogl_context_textures      textures,
-                                                                            __in __notnull system_hashed_ansi_string texture_filename)
+PUBLIC EMERALD_API ogl_texture ogl_context_textures_get_texture_by_filename(ogl_context_textures      textures,
+                                                                            system_hashed_ansi_string texture_filename)
 {
     ogl_texture            result       = NULL;
     _ogl_context_textures* textures_ptr = (_ogl_context_textures*) textures;
@@ -703,8 +703,8 @@ PUBLIC EMERALD_API ogl_texture ogl_context_textures_get_texture_by_filename(__in
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API ogl_texture ogl_context_textures_get_texture_by_name(__in __notnull ogl_context_textures      textures,
-                                                                        __in __notnull system_hashed_ansi_string texture_name)
+PUBLIC EMERALD_API ogl_texture ogl_context_textures_get_texture_by_name(ogl_context_textures      textures,
+                                                                        system_hashed_ansi_string texture_name)
 {
     ogl_texture            result       = NULL;
     _ogl_context_textures* textures_ptr = (_ogl_context_textures*) textures;
@@ -717,7 +717,7 @@ PUBLIC EMERALD_API ogl_texture ogl_context_textures_get_texture_by_name(__in __n
 }
 
 /** Please see header for specification */
-PUBLIC void ogl_context_textures_release(__in __notnull ogl_context_textures textures)
+PUBLIC void ogl_context_textures_release(ogl_context_textures textures)
 {
     if (textures != NULL)
     {
@@ -728,8 +728,8 @@ PUBLIC void ogl_context_textures_release(__in __notnull ogl_context_textures tex
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API void ogl_context_textures_return_reusable(__in __notnull ogl_context context,
-                                                             __in __notnull ogl_texture released_texture)
+PUBLIC EMERALD_API void ogl_context_textures_return_reusable(ogl_context context,
+                                                             ogl_texture released_texture)
 {
     const ogl_context_gl_entrypoints* entrypoints = NULL;
     system_resizable_vector           owner_vector                   = NULL;

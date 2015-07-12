@@ -42,17 +42,17 @@
     typedef void* system_window_platform;
 #endif
 
-typedef void (*PFNWINDOWCLOSEWINDOWPROC) (__in  system_window_platform window);
-typedef void (*PFNWINDOWDEINITWINDOWPROC)(__in  system_window_platform window);
-typedef bool (*PFNWINDOWGETPROPERTYPROC) (__in  system_window_platform window,
-                                          __in  system_window_property property,
-                                          __out void*                  out_result);
-typedef void (*PFNWINDOWHANDLEWINDOWPROC)(__in  system_window_platform window);
-typedef bool (*PFNWINDOWOPENWINDOWPROC)  (__in  system_window_platform window,
-                                          __in  bool                   is_first_window);
-typedef bool (*PFNWINDOWSETPROPERTYPROC) (__in system_window_platform  window,
-                                          __in system_window_property  property,
-                                          __in const void*             data);
+typedef void (*PFNWINDOWCLOSEWINDOWPROC) (system_window_platform window);
+typedef void (*PFNWINDOWDEINITWINDOWPROC)(system_window_platform window);
+typedef bool (*PFNWINDOWGETPROPERTYPROC) (system_window_platform window,
+                                          system_window_property property,
+                                          void*                  out_result);
+typedef void (*PFNWINDOWHANDLEWINDOWPROC)(system_window_platform window);
+typedef bool (*PFNWINDOWOPENWINDOWPROC)  (system_window_platform window,
+                                          bool                   is_first_window);
+typedef bool (*PFNWINDOWSETPROPERTYPROC) (system_window_platform window,
+                                          system_window_property property,
+                                          const void*            data);
 typedef struct
 {
     void*                                pfn_callback;
@@ -153,25 +153,25 @@ system_window         root_window                   = NULL;
 
 
 /* Forward declarations */
-PRIVATE void          _deinit_system_window                                    (                           _system_window*                      descriptor);
-PRIVATE void          _init_system_window                                      (                           _system_window*                      descriptor);
-PRIVATE volatile void _system_window_teardown_thread_pool_callback             (__in __notnull             system_thread_pool_callback_argument arg);
-PRIVATE void          _system_window_thread_entrypoint                         (     __notnull             void*                                in_arg);
-PRIVATE void          _system_window_create_root_window                        (__in                       ogl_context_type                     context_type);
-PRIVATE system_window _system_window_create_shared                             (__in __notnull             ogl_context_type                     context_type,
-                                                                                __in                       bool                                 is_fullscreen,
-                                                                                __in __notnull __ecount(4) const int*                           x1y1x2y2,
-                                                                                __in __notnull             system_hashed_ansi_string            title,
-                                                                                __in __notnull             bool                                 is_scalable,
-                                                                                __in                       uint16_t                             fullscreen_bpp,
-                                                                                __in                       uint16_t                             fullscreen_freq,
-                                                                                __in                       bool                                 vsync_enabled,
-                                                                                __in __maybenull           system_window_handle                 parent_window_handle,
-                                                                                __in                       bool                                 visible,
-                                                                                __in                       bool                                 is_root_window,
-                                                                                __in                       system_pixel_format                  pf);
-PRIVATE void          _system_window_window_closing_rendering_thread_entrypoint(                           ogl_context                          context,
-                                                                                                           void*                                user_arg);
+PRIVATE void          _deinit_system_window                                    (_system_window*                      descriptor);
+PRIVATE void          _init_system_window                                      (_system_window*                      descriptor);
+PRIVATE volatile void _system_window_teardown_thread_pool_callback             (system_thread_pool_callback_argument arg);
+PRIVATE void          _system_window_thread_entrypoint                         (void*                                in_arg);
+PRIVATE void          _system_window_create_root_window                        (ogl_context_type                     context_type);
+PRIVATE system_window _system_window_create_shared                             (ogl_context_type                     context_type,
+                                                                                bool                                 is_fullscreen,
+                                                                                const int*                           x1y1x2y2,
+                                                                                system_hashed_ansi_string            title,
+                                                                                bool                                 is_scalable,
+                                                                                uint16_t                             fullscreen_bpp,
+                                                                                uint16_t                             fullscreen_freq,
+                                                                                bool                                 vsync_enabled,
+                                                                                system_window_handle                 parent_window_handle,
+                                                                                bool                                 visible,
+                                                                                bool                                 is_root_window,
+                                                                                system_pixel_format                  pf);
+PRIVATE void          _system_window_window_closing_rendering_thread_entrypoint(ogl_context                          context,
+                                                                                void*                                user_arg);
 
 /** TODO */
 PRIVATE void _deinit_system_window(_system_window* window_ptr)
@@ -354,7 +354,7 @@ PRIVATE void _init_system_window(_system_window* window_ptr)
 
 
 /** TODO */
-PRIVATE void _system_window_thread_entrypoint(__notnull void* in_arg)
+PRIVATE void _system_window_thread_entrypoint(void* in_arg)
 {
     _system_window* window_ptr = (_system_window*) in_arg;
 
@@ -465,11 +465,11 @@ end:
 
 
 /** Please see header for specification */
-PUBLIC EMERALD_API bool system_window_add_callback_func(__in __notnull system_window                        window,
-                                                        __in           system_window_callback_func_priority priority,
-                                                        __in           system_window_callback_func          callback_func,
-                                                        __in __notnull void*                                pfn_callback_func,
-                                                        __in __notnull void*                                user_arg)
+PUBLIC EMERALD_API bool system_window_add_callback_func(system_window                        window,
+                                                        system_window_callback_func_priority priority,
+                                                        system_window_callback_func          callback_func,
+                                                        void*                                pfn_callback_func,
+                                                        void*                                user_arg)
 {
     _callback_descriptor* new_descriptor_ptr = new (std::nothrow) _callback_descriptor;
     bool                  result             = false;
@@ -686,7 +686,7 @@ PUBLIC EMERALD_API bool system_window_add_callback_func(__in __notnull system_wi
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API bool system_window_close(__in __notnull __deallocate(mem) system_window window)
+PUBLIC EMERALD_API bool system_window_close(system_window window)
 {
     _system_window* window_ptr = (_system_window*) window;
 
@@ -753,7 +753,7 @@ PUBLIC EMERALD_API bool system_window_close(__in __notnull __deallocate(mem) sys
 }
 
 /** TODO */
-PRIVATE void _system_window_create_root_window(__in ogl_context_type context_type)
+PRIVATE void _system_window_create_root_window(ogl_context_type context_type)
 {
     static ogl_context_type prev_context_type      = (ogl_context_type) 0xFFFFFFFF;
     static const int        root_window_x1y1x2y2[] =
@@ -822,18 +822,18 @@ PRIVATE void _system_window_create_root_window(__in ogl_context_type context_typ
 }
 
 /** TODO */
-PRIVATE system_window _system_window_create_shared(__in __notnull             ogl_context_type          context_type,
-                                                   __in                       bool                      is_fullscreen,
-                                                   __in __notnull __ecount(4) const int*                x1y1x2y2,
-                                                   __in __notnull             system_hashed_ansi_string title,
-                                                   __in __notnull             bool                      is_scalable,
-                                                   __in                       uint16_t                  fullscreen_bpp,
-                                                   __in                       uint16_t                  fullscreen_freq,
-                                                   __in                       bool                      vsync_enabled,
-                                                   __in __maybenull           system_window_handle      parent_window_handle,
-                                                   __in                       bool                      visible,
-                                                   __in                       bool                      is_root_window,
-                                                   __in                       system_pixel_format       pf)
+PRIVATE system_window _system_window_create_shared(ogl_context_type          context_type,
+                                                   bool                      is_fullscreen,
+                                                   const int*                x1y1x2y2,
+                                                   system_hashed_ansi_string title,
+                                                   bool                      is_scalable,
+                                                   uint16_t                  fullscreen_bpp,
+                                                   uint16_t                  fullscreen_freq,
+                                                   bool                      vsync_enabled,
+                                                   system_window_handle      parent_window_handle,
+                                                   bool                      visible,
+                                                   bool                      is_root_window,
+                                                   system_pixel_format       pf)
 {
     _system_window* new_window = new (std::nothrow) _system_window;
 
@@ -920,11 +920,11 @@ PRIVATE system_window _system_window_create_shared(__in __notnull             og
 
 
 /** Please see header for specification */
-PUBLIC EMERALD_API system_window system_window_create_by_replacing_window(__in system_hashed_ansi_string name,
-                                                                          __in ogl_context_type          context_type,
-                                                                          __in bool                      vsync_enabled,
-                                                                          __in system_window_handle      parent_window_handle,
-                                                                          __in system_pixel_format       pf)
+PUBLIC EMERALD_API system_window system_window_create_by_replacing_window(system_hashed_ansi_string name,
+                                                                          ogl_context_type          context_type,
+                                                                          bool                      vsync_enabled,
+                                                                          system_window_handle      parent_window_handle,
+                                                                          system_pixel_format       pf)
 {
     system_window result = NULL;
 
@@ -976,13 +976,13 @@ PUBLIC EMERALD_API system_window system_window_create_by_replacing_window(__in s
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API system_window system_window_create_not_fullscreen(__in                       ogl_context_type          context_type,
-                                                                     __in __notnull __ecount(4) const int*                x1y1x2y2,
-                                                                     __in __notnull             system_hashed_ansi_string title,
-                                                                     __in                       bool                      scalable,
-                                                                     __in                       bool                      vsync_enabled,
-                                                                     __in                       bool                      visible,
-                                                                     __in                       system_pixel_format       pf)
+PUBLIC EMERALD_API system_window system_window_create_not_fullscreen(ogl_context_type          context_type,
+                                                                     const int*                x1y1x2y2,
+                                                                     system_hashed_ansi_string title,
+                                                                     bool                      scalable,
+                                                                     bool                      vsync_enabled,
+                                                                     bool                      visible,
+                                                                     system_pixel_format       pf)
 {
     return _system_window_create_shared(context_type,
                                         false,
@@ -999,13 +999,13 @@ PUBLIC EMERALD_API system_window system_window_create_not_fullscreen(__in       
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API system_window system_window_create_fullscreen(__in ogl_context_type    context_type,
-                                                                 __in uint16_t            width,
-                                                                 __in uint16_t            height,
-                                                                 __in uint16_t            bpp,
-                                                                 __in uint16_t            freq,
-                                                                 __in bool                vsync_enabled,
-                                                                 __in system_pixel_format pf)
+PUBLIC EMERALD_API system_window system_window_create_fullscreen(ogl_context_type    context_type,
+                                                                 uint16_t            width,
+                                                                 uint16_t            height,
+                                                                 uint16_t            bpp,
+                                                                 uint16_t            freq,
+                                                                 bool                vsync_enabled,
+                                                                 system_pixel_format pf)
 {
     const int x1y1x2y2[4] = {0, 0, width, height};
 
@@ -1024,10 +1024,10 @@ PUBLIC EMERALD_API system_window system_window_create_fullscreen(__in ogl_contex
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API bool system_window_delete_callback_func(__in __notnull system_window               window_instance,
-                                                           __in           system_window_callback_func callback_func,
-                                                           __in __notnull void*                       pfn_callback_func,
-                                                           __in __notnull void*                       user_arg)
+PUBLIC EMERALD_API bool system_window_delete_callback_func(system_window               window_instance,
+                                                           system_window_callback_func callback_func,
+                                                           void*                       pfn_callback_func,
+                                                           void*                       user_arg)
 {
     bool            result     = false;
     _system_window* window_ptr = (_system_window*) window_instance;
@@ -1205,10 +1205,10 @@ PUBLIC EMERALD_API bool system_window_delete_callback_func(__in __notnull system
 }
 
 /** Please see header for specification */
-PUBLIC void system_window_execute_callback_funcs(__in __notnull system_window               window,
-                                                 __in           system_window_callback_func func,
-                                                 __in_opt       void*                       arg1,
-                                                 __in_opt       void*                       arg2)
+PUBLIC void system_window_execute_callback_funcs(system_window               window,
+                                                 system_window_callback_func func,
+                                                 void*                       arg1,
+                                                 void*                       arg2)
 {
     system_resizable_vector callback_vector  = NULL;
     unsigned int            n_callback_funcs = 0;
@@ -1580,8 +1580,8 @@ PUBLIC void system_window_execute_callback_funcs(__in __notnull system_window   
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API bool system_window_get_centered_window_position_for_primary_monitor(__in_ecount(2)  __notnull const int* dimensions,
-                                                                                       __out_ecount(4) __notnull int*       result_dimensions)
+PUBLIC EMERALD_API bool system_window_get_centered_window_position_for_primary_monitor(const int* dimensions,
+                                                                                       int*       result_dimensions)
 {
     int fullscreen_x = 0;
     int fullscreen_y = 0;
@@ -1615,9 +1615,9 @@ PUBLIC EMERALD_API bool system_window_get_centered_window_position_for_primary_m
 }
 
 /* Please see header for spec */
-PUBLIC EMERALD_API void system_window_get_property(__in  __notnull system_window          window,
-                                                   __in            system_window_property property,
-                                                   __out __notnull void*                  out_result)
+PUBLIC EMERALD_API void system_window_get_property(system_window          window,
+                                                   system_window_property property,
+                                                   void*                  out_result)
 {
     _system_window* window_ptr = (_system_window*) window;
 
@@ -1763,8 +1763,8 @@ end:
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API bool system_window_set_cursor(__in __notnull system_window              window,
-                                                                system_window_mouse_cursor cursor)
+PUBLIC EMERALD_API bool system_window_set_cursor(system_window              window,
+                                                 system_window_mouse_cursor cursor)
 {
     _system_window* window_ptr = (_system_window*) window;
     bool            result     = true;
@@ -1783,9 +1783,9 @@ PUBLIC EMERALD_API bool system_window_set_cursor(__in __notnull system_window   
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API bool system_window_set_property(__in system_window          window,
-                                                   __in system_window_property property,
-                                                   __in const void*            data)
+PUBLIC EMERALD_API bool system_window_set_property(system_window          window,
+                                                   system_window_property property,
+                                                   const void*            data)
 {
     bool            result     = false;
     _system_window* window_ptr = (_system_window*) window;
@@ -1875,7 +1875,7 @@ PUBLIC EMERALD_API bool system_window_set_property(__in system_window          w
 }
 
 /** Please see header for specification */
-PUBLIC void system_window_wait_until_closed(__in __notnull system_window window)
+PUBLIC void system_window_wait_until_closed(system_window window)
 {
     _system_window* window_ptr = (_system_window*) window;
 

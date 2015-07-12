@@ -39,15 +39,15 @@ typedef void (*PFNSYSTEMCALLBACKPROC)(const void* callback_data,
  *
  *  Internal usage only.
  **/
-PUBLIC void system_callback_manager_call_back(__in __notnull system_callback_manager callback_manager,
-                                              __in           int                     callback_id,
-                                              __in __notnull void*                   callback_proc_data);
+PUBLIC void system_callback_manager_call_back(system_callback_manager callback_manager,
+                                              int                     callback_id,
+                                              void*                   callback_proc_data);
 
 /** TODO.
  *
  *  Internal usage only.
  **/
-PUBLIC system_callback_manager system_callback_manager_create(__in _callback_id max_callback_id);
+PUBLIC system_callback_manager system_callback_manager_create(_callback_id max_callback_id);
 
 /** TODO */
 PUBLIC void system_callback_manager_deinit();
@@ -62,19 +62,19 @@ PUBLIC void system_callback_manager_init();
  *
  *  Internal usage only.
  **/
-PUBLIC void system_callback_manager_release(__in __notnull system_callback_manager callback_manager);
+PUBLIC void system_callback_manager_release(system_callback_manager callback_manager);
 
 /** TODO */
-PUBLIC EMERALD_API void system_callback_manager_subscribe_for_callbacks(__in __notnull system_callback_manager callback_manager,
-                                                                        __in           int                     callback_id,
-                                                                        __in __notnull _callback_synchronicity callback_synchronicity,
-                                                                        __in __notnull PFNSYSTEMCALLBACKPROC   pfn_callback_proc,
-                                                                        __in __notnull void*                   callback_proc_user_arg);
+PUBLIC EMERALD_API void system_callback_manager_subscribe_for_callbacks(system_callback_manager callback_manager,
+                                                                        int                     callback_id,
+                                                                        _callback_synchronicity callback_synchronicity,
+                                                                        PFNSYSTEMCALLBACKPROC   pfn_callback_proc,
+                                                                        void*                   callback_proc_user_arg);
 
 /** TODO */
-PUBLIC EMERALD_API void system_callback_manager_unsubscribe_from_callbacks(__in __notnull system_callback_manager callback_manager,
-                                                                           __in           int                     callback_id,
-                                                                           __in __notnull PFNSYSTEMCALLBACKPROC   pfn_callback_proc,
-                                                                           __in __notnull void*                   callback_proc_user_arg);
+PUBLIC EMERALD_API void system_callback_manager_unsubscribe_from_callbacks(system_callback_manager callback_manager,
+                                                                           int                     callback_id,
+                                                                           PFNSYSTEMCALLBACKPROC   pfn_callback_proc,
+                                                                           void*                   callback_proc_user_arg);
 
 #endif /* SYSTEM_CALLBACK_MANAGER_H */

@@ -66,8 +66,8 @@ PRIVATE void _curve_editor_program_static_release(void* in)
 
 
 /** Please see header for specification */
-PUBLIC curve_editor_program_static curve_editor_program_static_create(__in __notnull ogl_context               context,
-                                                                      __in __notnull system_hashed_ansi_string name)
+PUBLIC curve_editor_program_static curve_editor_program_static_create(ogl_context               context,
+                                                                      system_hashed_ansi_string name)
 {
     _curve_editor_program_static* result = new (std::nothrow) _curve_editor_program_static;
 
@@ -251,9 +251,9 @@ end:
 }
 
 /** Please see header for spec */
-PUBLIC void curve_editor_program_static_set_property(__in __notnull curve_editor_program_static          instance,
-                                                     __in           curve_editor_program_static_property property,
-                                                     __in __notnull const void*                          data)
+PUBLIC void curve_editor_program_static_set_property(curve_editor_program_static          instance,
+                                                     curve_editor_program_static_property property,
+                                                     const void*                          data)
 {
     _curve_editor_program_static* instance_ptr = (_curve_editor_program_static*) instance;
 
@@ -290,8 +290,8 @@ PUBLIC void curve_editor_program_static_set_property(__in __notnull curve_editor
 }
 
 /** Please see header for spec */
-PUBLIC void curve_editor_program_static_use(__in __notnull ogl_context                 context,
-                                            __in __notnull curve_editor_program_static instance)
+PUBLIC void curve_editor_program_static_use(ogl_context                 context,
+                                            curve_editor_program_static instance)
 {
     const ogl_context_gl_entrypoints* entry_points = NULL;
     _curve_editor_program_static*     static_ptr   = (_curve_editor_program_static*) instance;

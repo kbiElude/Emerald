@@ -34,9 +34,9 @@ REFCOUNT_INSERT_DECLARATIONS(shaders_fragment_texture2D_filmic_customizable,
  * 
  *  @return shaders_fragment_texture2D_filmic_customizable instance if successful, NULL otherwise.
  */
-PUBLIC EMERALD_API shaders_fragment_texture2D_filmic_customizable shaders_fragment_texture2D_filmic_customizable_create(__in __notnull ogl_context               context,
-                                                                                                                        __in           bool                      should_revert_y,
-                                                                                                                        __in __notnull system_hashed_ansi_string name);
+PUBLIC EMERALD_API shaders_fragment_texture2D_filmic_customizable shaders_fragment_texture2D_filmic_customizable_create(ogl_context               context,
+                                                                                                                        bool                      should_revert_y,
+                                                                                                                        system_hashed_ansi_string name);
 
 /** Retrieves ogl_shader object associated with the instance. Do not release the object or modify it in any way.
  *
@@ -44,6 +44,6 @@ PUBLIC EMERALD_API shaders_fragment_texture2D_filmic_customizable shaders_fragme
  *
  *  @return ogl_shader instance.
  **/
-PUBLIC EMERALD_API ogl_shader shaders_fragment_texture2D_filmic_customizable_get_shader(__in __notnull shaders_fragment_texture2D_filmic_customizable filmic);
+PUBLIC EMERALD_API ogl_shader shaders_fragment_texture2D_filmic_customizable_get_shader(shaders_fragment_texture2D_filmic_customizable filmic);
 
 #endif /* SHADERS_FRAGMENT_TEXTURE2D_FILMIC_H */

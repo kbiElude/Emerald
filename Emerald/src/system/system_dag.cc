@@ -59,9 +59,9 @@ typedef struct
 
 
 /** TODO */
-PRIVATE bool _system_dag_process_node(__in    __notnull _system_dag_node*       node_ptr,
-                                      __inout __notnull unsigned int*           time_ptr,
-                                      __in    __notnull system_resizable_vector processed_nodes_vector)
+PRIVATE bool _system_dag_process_node(_system_dag_node*       node_ptr,
+                                      unsigned int*           time_ptr,
+                                      system_resizable_vector processed_nodes_vector)
     {
         _system_dag_node* adjacent_node_ptr = NULL;
         unsigned int      n_adjacent_nodes  = 0;
@@ -128,9 +128,9 @@ end:
     }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API system_dag_connection system_dag_add_connection(__in __notnull system_dag      dag,
-                                                                   __in __notnull system_dag_node src,
-                                                                   __in __notnull system_dag_node dst)
+PUBLIC EMERALD_API system_dag_connection system_dag_add_connection(system_dag      dag,
+                                                                   system_dag_node src,
+                                                                   system_dag_node dst)
 {
     _system_dag* dag_ptr = (_system_dag*) dag;
 
@@ -158,8 +158,8 @@ end:
 }
 
 /** TODO */
-PUBLIC EMERALD_API system_dag_node system_dag_add_node(__in __notnull system_dag            dag,
-                                                       __in           system_dag_node_value value)
+PUBLIC EMERALD_API system_dag_node system_dag_add_node(system_dag            dag,
+                                                       system_dag_node_value value)
 {
     _system_dag* dag_ptr = (_system_dag*) dag;
 
@@ -214,8 +214,8 @@ end:
 }
 
 /** TODO */
-PUBLIC EMERALD_API bool system_dag_get_topologically_sorted_node_values(__in    __notnull system_dag              dag,
-                                                                        __inout __notnull system_resizable_vector result)
+PUBLIC EMERALD_API bool system_dag_get_topologically_sorted_node_values(system_dag              dag,
+                                                                        system_resizable_vector result)
 {
     _system_dag* dag_ptr        = (_system_dag*) dag;
     unsigned int n_result_nodes = 0;
@@ -271,7 +271,7 @@ end:
 }
 
 /** TODO */
-PUBLIC EMERALD_API void system_dag_release(__in __notnull system_dag dag)
+PUBLIC EMERALD_API void system_dag_release(system_dag dag)
 {
     _system_dag* dag_ptr = (_system_dag*) dag;
 
@@ -323,7 +323,7 @@ PUBLIC EMERALD_API void system_dag_release(__in __notnull system_dag dag)
 }
 
 /** TODO */
-PUBLIC EMERALD_API void system_dag_reset_connections(__in __notnull system_dag dag)
+PUBLIC EMERALD_API void system_dag_reset_connections(system_dag dag)
 {
     _system_dag*            dag_ptr        = (_system_dag*) dag;
     _system_dag_connection* connection_ptr = NULL;
@@ -338,7 +338,7 @@ PUBLIC EMERALD_API void system_dag_reset_connections(__in __notnull system_dag d
 }
 
 /** TODO */
-PUBLIC EMERALD_API bool system_dag_solve(__in __notnull system_dag dag)
+PUBLIC EMERALD_API bool system_dag_solve(system_dag dag)
 {
     _system_dag_node* current_node_ptr = NULL;
     _system_dag*      dag_ptr          = (_system_dag*) dag;

@@ -42,7 +42,7 @@ typedef struct
 } _procedural_mesh_box;
 
 #ifdef _DEBUG
-    PRIVATE void _procedural_mesh_box_verify_context_type(__in __notnull ogl_context);
+    PRIVATE void _procedural_mesh_box_verify_context_type(ogl_context);
 #else
     #define _procedural_mesh_box_verify_context_type(x)
 #endif
@@ -54,7 +54,8 @@ REFCOUNT_INSERT_IMPLEMENTATION(procedural_mesh_box,
 
 
 /* Private functions */
-PRIVATE void _procedural_mesh_box_create_renderer_callback(ogl_context context, void* arg)
+PRIVATE void _procedural_mesh_box_create_renderer_callback(ogl_context context,
+                                                           void*       arg)
 {
     const ogl_context_gl_entrypoints_ext_direct_state_access* entry_points_dsa = NULL;
     const ogl_context_gl_entrypoints*                         entry_points     = NULL;
@@ -570,7 +571,7 @@ PRIVATE void _procedural_mesh_box_release(void* arg)
 /** TODO */
 #ifdef _DEBUG
     /* TODO */
-    PRIVATE void _procedural_mesh_box_verify_context_type(__in __notnull ogl_context context)
+    PRIVATE void _procedural_mesh_box_verify_context_type(ogl_context context)
     {
         ogl_context_type context_type = OGL_CONTEXT_TYPE_UNDEFINED;
 
@@ -585,11 +586,11 @@ PRIVATE void _procedural_mesh_box_release(void* arg)
 
 
 /** Please see header for specification */
-PUBLIC EMERALD_API procedural_mesh_box procedural_mesh_box_create(__in __notnull ogl_context                   context,
-                                                                  __in           _procedural_mesh_data_bitmask data_bitmask,
-                                                                  __in __notnull uint32_t                      n_horizontal,
-                                                                  __in __notnull uint32_t                      n_vertical,
-                                                                  __in __notnull system_hashed_ansi_string     name)
+PUBLIC EMERALD_API procedural_mesh_box procedural_mesh_box_create(ogl_context                   context,
+                                                                  _procedural_mesh_data_bitmask data_bitmask,
+                                                                  uint32_t                      n_horizontal,
+                                                                  uint32_t                      n_vertical,
+                                                                  system_hashed_ansi_string     name)
 {
     _procedural_mesh_box_verify_context_type(context);
 
@@ -640,9 +641,9 @@ PUBLIC EMERALD_API procedural_mesh_box procedural_mesh_box_create(__in __notnull
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API void procedural_mesh_box_get_property(__in  __notnull procedural_mesh_box          box,
-                                                         __in            procedural_mesh_box_property property,
-                                                         __out __notnull void*                        out_result)
+PUBLIC EMERALD_API void procedural_mesh_box_get_property(procedural_mesh_box          box,
+                                                         procedural_mesh_box_property property,
+                                                         void*                        out_result)
 {
     _procedural_mesh_box* mesh_box_ptr = (_procedural_mesh_box*) box;
 

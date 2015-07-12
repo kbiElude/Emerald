@@ -115,33 +115,33 @@ typedef struct _collada_mesh_generator_input_data
 } _collada_mesh_generator_input_data;
 
 /* Forward declarations */
-PRIVATE mesh_material_shading_property      _collada_mesh_generator_get_mesh_material_shading_property_from_collada_data_shading_factor_item(               collada_data_shading_factor_item item);
-PRIVATE mesh_material_texture_filtering     _collada_mesh_generator_get_mesh_material_texture_filtering_from_collada_data_sampler_filter    (               _collada_data_sampler_filter     filter);
-PRIVATE void                                _collada_mesh_generator_configure_mesh_material_from_effect                                     (__in __notnull ogl_context                      context,
-                                                                                                                                             __in __notnull collada_data_effect              effect,
-                                                                                                                                             __in __notnull mesh_material                    material);
-PRIVATE _collada_mesh_generator_input_data* _collada_mesh_generator_generate_input_data                                                     (__in __notnull ogl_context                      context,
-                                                                                                                                             __in __notnull collada_data                     data,
-                                                                                                                                             __in __notnull collada_data_geometry            geometry,
-                                                                                                                                             __in           _collada_data_input_type         requested_input_type,
-                                                                                                                                             __in           unsigned int                     n_polylist);
-PRIVATE collada_data_effect                 _collada_mesh_generator_get_geometry_effect                                                     (__in __notnull collada_data_geometry            geometry,
-                                                                                                                                             __in           collada_data_polylist            polylist);
-PRIVATE mesh_material                       _collada_mesh_generator_get_geometry_material                                                   (__in __notnull ogl_context                      context,
-                                                                                                                                             __in __notnull collada_data_geometry            geometry,
-                                                                                                                                             __in           unsigned int                     n_polylist);
-PRIVATE collada_data_polylist               _collada_mesh_generator_get_geometry_polylist                                                   (__in __notnull collada_data_geometry            geometry,
-                                                                                                                                             __in           unsigned int                     n_polylist);
-PRIVATE void                                _collada_mesh_generator_get_input_type_properties                                               (__in           _collada_data_input_type         input_type,
-                                                                                                                                             __out_opt      unsigned int*                    out_component_size,
-                                                                                                                                             __out_opt      unsigned int*                    out_n_components);
-PRIVATE mesh_layer_data_stream_type         _collada_mesh_generator_get_mesh_layer_data_stream_type_for_collada_data_input_type             (__in           _collada_data_input_type         input_type);
+PRIVATE mesh_material_shading_property      _collada_mesh_generator_get_mesh_material_shading_property_from_collada_data_shading_factor_item(collada_data_shading_factor_item item);
+PRIVATE mesh_material_texture_filtering     _collada_mesh_generator_get_mesh_material_texture_filtering_from_collada_data_sampler_filter    (_collada_data_sampler_filter     filter);
+PRIVATE void                                _collada_mesh_generator_configure_mesh_material_from_effect                                     (ogl_context                      context,
+                                                                                                                                             collada_data_effect              effect,
+                                                                                                                                             mesh_material                    material);
+PRIVATE _collada_mesh_generator_input_data* _collada_mesh_generator_generate_input_data                                                     (ogl_context                      context,
+                                                                                                                                             collada_data                     data,
+                                                                                                                                             collada_data_geometry            geometry,
+                                                                                                                                             _collada_data_input_type         requested_input_type,
+                                                                                                                                             unsigned int                     n_polylist);
+PRIVATE collada_data_effect                 _collada_mesh_generator_get_geometry_effect                                                     (collada_data_geometry            geometry,
+                                                                                                                                             collada_data_polylist            polylist);
+PRIVATE mesh_material                       _collada_mesh_generator_get_geometry_material                                                   (ogl_context                      context,
+                                                                                                                                             collada_data_geometry            geometry,
+                                                                                                                                             unsigned int                     n_polylist);
+PRIVATE collada_data_polylist               _collada_mesh_generator_get_geometry_polylist                                                   (collada_data_geometry            geometry,
+                                                                                                                                             unsigned int                     n_polylist);
+PRIVATE void                                _collada_mesh_generator_get_input_type_properties                                               (_collada_data_input_type         input_type,
+                                                                                                                                             unsigned int*                    out_component_size,
+                                                                                                                                             unsigned int*                    out_n_components);
+PRIVATE mesh_layer_data_stream_type         _collada_mesh_generator_get_mesh_layer_data_stream_type_for_collada_data_input_type             (_collada_data_input_type         input_type);
 
 
 /** TODO */
-PRIVATE void _collada_mesh_generator_configure_mesh_material_from_effect(__in __notnull ogl_context         context,
-                                                                         __in __notnull collada_data_effect effect,
-                                                                         __in __notnull mesh_material       material)
+PRIVATE void _collada_mesh_generator_configure_mesh_material_from_effect(ogl_context         context,
+                                                                         collada_data_effect effect,
+                                                                         mesh_material       material)
 {
     _collada_data_shading       effect_shading              = COLLADA_DATA_SHADING_UNKNOWN;
     collada_data_shading_factor effect_shading_factor       = COLLADA_DATA_SHADING_FACTOR_UNKNOWN;
@@ -310,11 +310,11 @@ PRIVATE void _collada_mesh_generator_configure_mesh_material_from_effect(__in __
 }
 
 /** TODO */
-PRIVATE _collada_mesh_generator_input_data* _collada_mesh_generator_generate_input_data(__in __notnull ogl_context              context,
-                                                                                        __in __notnull collada_data             data,
-                                                                                        __in __notnull collada_data_geometry    geometry,
-                                                                                        __in           _collada_data_input_type requested_input_type,
-                                                                                        __in           unsigned int             n_polylist)
+PRIVATE _collada_mesh_generator_input_data* _collada_mesh_generator_generate_input_data(ogl_context              context,
+                                                                                        collada_data             data,
+                                                                                        collada_data_geometry    geometry,
+                                                                                        _collada_data_input_type requested_input_type,
+                                                                                        unsigned int             n_polylist)
 {
     /* Sanity checks */
     ASSERT_DEBUG_SYNC(geometry != NULL,
@@ -634,8 +634,8 @@ end:
 }
 
 /** TODO */
-PRIVATE collada_data_effect _collada_mesh_generator_get_geometry_effect(__in __notnull collada_data_geometry geometry,
-                                                                        __in           collada_data_polylist polylist)
+PRIVATE collada_data_effect _collada_mesh_generator_get_geometry_effect(collada_data_geometry geometry,
+                                                                        collada_data_polylist polylist)
 {
     /* Retrieve polylist properties */
     collada_data_effect material_effect      = NULL;
@@ -710,9 +710,9 @@ PRIVATE collada_data_effect _collada_mesh_generator_get_geometry_effect(__in __n
  *  It is caller's responsibility to release the mesh_material object
  *  when no longer needed.
  **/
-PRIVATE mesh_material _collada_mesh_generator_get_geometry_material(__in __notnull ogl_context           context,
-                                                                    __in __notnull collada_data_geometry geometry,
-                                                                    __in           unsigned int          n_polylist)
+PRIVATE mesh_material _collada_mesh_generator_get_geometry_material(ogl_context           context,
+                                                                    collada_data_geometry geometry,
+                                                                    unsigned int          n_polylist)
 {
     /* Sanity checks */
     ASSERT_DEBUG_SYNC(geometry != NULL,
@@ -765,8 +765,8 @@ PRIVATE mesh_material _collada_mesh_generator_get_geometry_material(__in __notnu
 }
 
 /** TODO */
-PRIVATE collada_data_polylist _collada_mesh_generator_get_geometry_polylist(__in __notnull collada_data_geometry geometry,
-                                                                            __in           unsigned int          n_polylist)
+PRIVATE collada_data_polylist _collada_mesh_generator_get_geometry_polylist(collada_data_geometry geometry,
+                                                                            unsigned int          n_polylist)
 {
     /* Retrieve geometry properties */
     collada_data_geometry_mesh geometry_mesh = NULL;
@@ -793,9 +793,9 @@ PRIVATE collada_data_polylist _collada_mesh_generator_get_geometry_polylist(__in
 }
 
 /** TODO */
-PRIVATE void _collada_mesh_generator_get_input_type_properties(__in      _collada_data_input_type input_type,
-                                                               __out_opt unsigned int*            out_component_size,
-                                                               __out_opt unsigned int*            out_n_components)
+PRIVATE void _collada_mesh_generator_get_input_type_properties(_collada_data_input_type input_type,
+                                                               unsigned int*            out_component_size,
+                                                               unsigned int*            out_n_components)
 {
     unsigned int result_component_size = 0;
     unsigned int result_n_components   = 0;
@@ -837,7 +837,7 @@ PRIVATE void _collada_mesh_generator_get_input_type_properties(__in      _collad
 }
 
 /** TODO */
-PRIVATE mesh_layer_data_stream_type _collada_mesh_generator_get_mesh_layer_data_stream_type_for_collada_data_input_type(__in _collada_data_input_type input_type)
+PRIVATE mesh_layer_data_stream_type _collada_mesh_generator_get_mesh_layer_data_stream_type_for_collada_data_input_type(_collada_data_input_type input_type)
 {
     mesh_layer_data_stream_type result = MESH_LAYER_DATA_STREAM_TYPE_UNKNOWN;
 
@@ -933,9 +933,9 @@ PRIVATE mesh_material_texture_filtering _collada_mesh_generator_get_mesh_materia
 
 
 /** Please see header for specification */
-PUBLIC mesh collada_mesh_generator_create(__in __notnull ogl_context  context,
-                                          __in __notnull collada_data data,
-                                          __in __notnull unsigned int n_geometry)
+PUBLIC mesh collada_mesh_generator_create(ogl_context  context,
+                                          collada_data data,
+                                          unsigned int n_geometry)
 {
     collada_data_geometry      geometry                      = NULL;
     system_hashed_ansi_string  geometry_id                   = NULL;

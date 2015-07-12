@@ -56,8 +56,8 @@ static const char* ui_frame_fragment_shader_body = "#version 430 core\n"
 static system_hashed_ansi_string ui_frame_program_name = system_hashed_ansi_string_create("UI Frame");
 
 /** TODO */
-PRIVATE void _ogl_ui_frame_init_program(__in __notnull ogl_ui         ui,
-                                        __in __notnull _ogl_ui_frame* frame_ptr)
+PRIVATE void _ogl_ui_frame_init_program(ogl_ui         ui,
+                                        _ogl_ui_frame* frame_ptr)
 {
     /* Create all objects */
     ogl_context context         = ogl_ui_get_context(ui);
@@ -147,9 +147,9 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_ui_frame_draw(void* internal_instance)
 }
 
 /** Please see header for specification */
-PUBLIC void ogl_ui_frame_get_property(__in  __notnull const void*              frame,
-                                      __in            _ogl_ui_control_property property,
-                                      __out __notnull void*                    out_result)
+PUBLIC void ogl_ui_frame_get_property(const void*              frame,
+                                      _ogl_ui_control_property property,
+                                      void*                    out_result)
 {
     const _ogl_ui_frame* frame_ptr = (const _ogl_ui_frame*) frame;
 
@@ -188,8 +188,8 @@ PUBLIC void ogl_ui_frame_get_property(__in  __notnull const void*              f
 }
 
 /** Please see header for specification */
-PUBLIC void* ogl_ui_frame_init(__in           __notnull ogl_ui       instance,
-                               __in_ecount(4) __notnull const float* x1y1x2y2)
+PUBLIC void* ogl_ui_frame_init(ogl_ui       instance,
+                               const float* x1y1x2y2)
 {
     _ogl_ui_frame* new_frame = new (std::nothrow) _ogl_ui_frame;
 
@@ -307,9 +307,9 @@ PUBLIC void* ogl_ui_frame_init(__in           __notnull ogl_ui       instance,
 }
 
 /** Please see header for specification */
-PUBLIC void ogl_ui_frame_set_property(__in __notnull void*                    frame,
-                                      __in __notnull _ogl_ui_control_property property,
-                                      __in __notnull const void*              data)
+PUBLIC void ogl_ui_frame_set_property(void*                    frame,
+                                      _ogl_ui_control_property property,
+                                      const void*              data)
 {
     _ogl_ui_frame* frame_ptr = (_ogl_ui_frame*) frame;
 

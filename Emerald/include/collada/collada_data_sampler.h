@@ -45,21 +45,21 @@ typedef enum
 
 
 /** TODO */
-PUBLIC collada_data_sampler collada_data_sampler_create(__in __notnull tinyxml2::XMLElement* element_ptr,
-                                                        __in __notnull system_hash64map      source_by_name_map);
+PUBLIC collada_data_sampler collada_data_sampler_create(tinyxml2::XMLElement* element_ptr,
+                                                        system_hash64map      source_by_name_map);
 
 /** TODO */
-PUBLIC bool collada_data_sampler_get_input_property(__in  __notnull collada_data_sampler                sampler,
-                                                    __in            collada_data_sampler_input_semantic semantic,
-                                                    __in            collada_data_sampler_input_property property,
-                                                    __out __notnull void*                               out_result);
+PUBLIC bool collada_data_sampler_get_input_property(collada_data_sampler                sampler,
+                                                    collada_data_sampler_input_semantic semantic,
+                                                    collada_data_sampler_input_property property,
+                                                    void*                               out_result);
 
 /** TODO */
-PUBLIC void collada_data_sampler_get_property(__in  __notnull collada_data_sampler          sampler,
-                                              __in            collada_data_sampler_property property,
-                                              __out __notnull void*                         out_result);
+PUBLIC void collada_data_sampler_get_property(collada_data_sampler          sampler,
+                                              collada_data_sampler_property property,
+                                              void*                         out_result);
 
 /** TODO */
-PUBLIC void collada_data_sampler_release(__in __notnull __post_invalid collada_data_sampler sampler_instance);
+PUBLIC void collada_data_sampler_release(collada_data_sampler sampler_instance);
 
 #endif /* COLLADA_DATA_SAMPLER_H */

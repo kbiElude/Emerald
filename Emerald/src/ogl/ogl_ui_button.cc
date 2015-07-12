@@ -100,8 +100,8 @@ static const char* ui_button_fragment_shader_body = "#version 430 core\n"
                                                     "}\n";
 
 /** TODO */
-PRIVATE void _ogl_ui_button_init_program(__in __notnull ogl_ui          ui,
-                                         __in __notnull _ogl_ui_button* button_ptr)
+PRIVATE void _ogl_ui_button_init_program(ogl_ui          ui,
+                                         _ogl_ui_button* button_ptr)
 {
     /* Create all objects */
     ogl_context context         = ogl_ui_get_context(ui);
@@ -244,7 +244,7 @@ PRIVATE void _ogl_ui_button_init_renderer_callback(ogl_context context, void* bu
 }
 
 /** TODO */
-PRIVATE void _ogl_ui_button_update_text_location(__in __notnull _ogl_ui_button* button_ptr)
+PRIVATE void _ogl_ui_button_update_text_location(_ogl_ui_button* button_ptr)
 {
     int           text_height   = 0;
     int           text_xy[2]    = {0};
@@ -437,9 +437,9 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_ui_button_draw(void* internal_instance)
 }
 
 /** Please see header for specification */
-PUBLIC void ogl_ui_button_get_property(__in  __notnull const void*              button,
-                                       __in            _ogl_ui_control_property property,
-                                       __out __notnull void*                    out_result)
+PUBLIC void ogl_ui_button_get_property(const void*              button,
+                                       _ogl_ui_control_property property,
+                                       void*                    out_result)
 {
     const _ogl_ui_button* button_ptr = (const _ogl_ui_button*) button;
 
@@ -476,13 +476,13 @@ PUBLIC void ogl_ui_button_get_property(__in  __notnull const void*              
 }
 
 /** Please see header for specification */
-PUBLIC void* ogl_ui_button_init(__in           __notnull   ogl_ui                    instance,
-                                __in           __notnull   ogl_text                  text_renderer,
-                                __in           __notnull   system_hashed_ansi_string name,
-                                __in_ecount(2) __notnull   const float*              x1y1,
-                                __in_ecount(2) __notnull   const float*              x2y2,
-                                __in           __notnull   PFNOGLUIFIREPROCPTR       pfn_fire_proc_ptr,
-                                __in           __maybenull void*                     fire_proc_user_arg)
+PUBLIC void* ogl_ui_button_init(ogl_ui                    instance,
+                                ogl_text                  text_renderer,
+                                system_hashed_ansi_string name,
+                                const float*              x1y1,
+                                const float*              x2y2,
+                                PFNOGLUIFIREPROCPTR       pfn_fire_proc_ptr,
+                                void*                     fire_proc_user_arg)
 {
     _ogl_ui_button* new_button = new (std::nothrow) _ogl_ui_button;
 
@@ -647,9 +647,9 @@ PUBLIC void ogl_ui_button_on_lbm_up(void* internal_instance, const float* xy)
 }
 
 /** Please see header for specification */
-PUBLIC void ogl_ui_button_set_property(__in __notnull void*                    button,
-                                       __in __notnull _ogl_ui_control_property property,
-                                       __in __notnull const void*              data)
+PUBLIC void ogl_ui_button_set_property(void*                    button,
+                                       _ogl_ui_control_property property,
+                                       const void*              data)
 {
     _ogl_ui_button* button_ptr = (_ogl_ui_button*) button;
 

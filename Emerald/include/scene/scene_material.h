@@ -57,34 +57,34 @@ enum scene_material_property
  *  scene_material DOES NOT increment @param owner_scene reference counter.
  *
  **/
-PUBLIC EMERALD_API scene_material scene_material_create(__in     __notnull system_hashed_ansi_string name,
-                                                        __in_opt           system_hashed_ansi_string object_manager_path,
-                                                        __in     __notnull scene                     owner_scene);
+PUBLIC EMERALD_API scene_material scene_material_create(system_hashed_ansi_string name,
+                                                        system_hashed_ansi_string object_manager_path,
+                                                        scene                     owner_scene);
 
 /** TODO */
-PUBLIC EMERALD_API void scene_material_get_property(__in  __notnull scene_material,
-                                                    __in            scene_material_property,
-                                                    __out __notnull void*);
+PUBLIC EMERALD_API void scene_material_get_property(scene_material,
+                                                    scene_material_property,
+                                                    void*);
 
 /** TODO.
  *
  *  NOTE: This function is for internal use only.
  *
  */
-PUBLIC scene_material scene_material_load(__in __notnull system_file_serializer    serializer,
-                                          __in_opt       scene                     owner_scene,
-                                          __in_opt       system_hashed_ansi_string object_manager_path);
+PUBLIC scene_material scene_material_load(system_file_serializer    serializer,
+                                          scene                     owner_scene,
+                                          system_hashed_ansi_string object_manager_path);
 
 /** TODO.
  *
  **/
-PUBLIC bool scene_material_save(__in     __notnull system_file_serializer serializer,
-                                __in     __notnull const scene_material   material,
-                                __in_opt           scene                  owner_scene);
+PUBLIC bool scene_material_save(system_file_serializer serializer,
+                                const scene_material   material,
+                                scene                  owner_scene);
 
 /** TODO */
-PUBLIC EMERALD_API void scene_material_set_property(__in __notnull scene_material          material,
-                                                    __in           scene_material_property property,
-                                                    __in __notnull const void*             data);
+PUBLIC EMERALD_API void scene_material_set_property(scene_material          material,
+                                                    scene_material_property property,
+                                                    const void*             data);
 
 #endif /* SCENE_MESH_H */

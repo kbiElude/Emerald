@@ -23,8 +23,8 @@ REFCOUNT_INSERT_DECLARATIONS(shaders_fragment_saturate,
  * 
  *  @return shaders_fragment_saturate instance if successful, NULL otherwise.
  */
-PUBLIC EMERALD_API shaders_fragment_saturate shaders_fragment_saturate_create(__in __notnull ogl_context,
-                                                                              __in __notnull system_hashed_ansi_string name);
+PUBLIC EMERALD_API shaders_fragment_saturate shaders_fragment_saturate_create(ogl_context,
+                                                                              system_hashed_ansi_string name);
 
 /** Retrieves ogl_shader object associated with the instance. Do not release the object or modify it in any way.
  *
@@ -32,6 +32,6 @@ PUBLIC EMERALD_API shaders_fragment_saturate shaders_fragment_saturate_create(__
  *
  *  @return ogl_shader instance.
  **/
-PUBLIC EMERALD_API ogl_shader shaders_fragment_saturate_get_shader(__in __notnull shaders_fragment_saturate);
+PUBLIC EMERALD_API ogl_shader shaders_fragment_saturate_get_shader(shaders_fragment_saturate);
 
 #endif /* SHADERS_FRAGMENT_SATURATE_H */

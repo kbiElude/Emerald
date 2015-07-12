@@ -10,8 +10,8 @@
 
 
 /** TODO */
-PUBLIC EMERALD_API void system_capabilities_get(__in            system_capabilities_property property,
-                                                __out __notnull void*                        out_result);
+PUBLIC EMERALD_API void system_capabilities_get(system_capabilities_property property,
+                                                void*                        out_result);
 
 /** TODO */
 PUBLIC void system_capabilities_init();

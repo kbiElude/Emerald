@@ -1799,8 +1799,8 @@ PRIVATE bool _curve_editor_curve_window_renderer_init(_curve_editor_curve_window
 PRIVATE void _curve_editor_curve_window_renderer_init_descriptor(     _curve_editor_curve_window_renderer* descriptor,
                                                                       HWND                                 view_window_handle,
                                                                       system_hashed_ansi_string            name,
-                                                                 __in curve_container                      curve,
-                                                                 __in curve_editor_curve_window            owner)
+                                                                  curve_container                      curve,
+                                                                  curve_editor_curve_window            owner)
 {
     descriptor->context                                    = NULL;
     descriptor->curve                                      = curve;
@@ -3599,11 +3599,11 @@ PRIVATE void _curve_editor_curve_window_renderer_update_tcb_ubo(      curve_segm
 
 
 /* Please see header for specification */
-PUBLIC curve_editor_curve_window_renderer curve_editor_curve_window_renderer_create(__in __notnull system_hashed_ansi_string name,
-                                                                                    __in __notnull HWND                      view_window_handle,
-                                                                                    __in __notnull ogl_context               context,
-                                                                                    __in           curve_container           curve,
-                                                                                    __in __notnull curve_editor_curve_window owner)
+PUBLIC curve_editor_curve_window_renderer curve_editor_curve_window_renderer_create(system_hashed_ansi_string name,
+                                                                                    HWND                      view_window_handle,
+                                                                                    ogl_context               context,
+                                                                                    curve_container           curve,
+                                                                                    curve_editor_curve_window owner)
 {
     /* Initialize globals if necessary.
      *
@@ -3640,7 +3640,7 @@ PUBLIC curve_editor_curve_window_renderer curve_editor_curve_window_renderer_cre
 }
 
 /* Please see header for specification */
-PUBLIC system_window curve_editor_curve_window_renderer_get_window(__in __notnull curve_editor_curve_window_renderer descriptor)
+PUBLIC system_window curve_editor_curve_window_renderer_get_window(curve_editor_curve_window_renderer descriptor)
 {
     _curve_editor_curve_window_renderer* descriptor_ptr = (_curve_editor_curve_window_renderer*) descriptor;
 
@@ -3648,13 +3648,13 @@ PUBLIC system_window curve_editor_curve_window_renderer_get_window(__in __notnul
 }
 
 /* Please see header for specification */
-PUBLIC void curve_editor_curve_window_renderer_redraw(__in __notnull curve_editor_curve_window_renderer renderer)
+PUBLIC void curve_editor_curve_window_renderer_redraw(curve_editor_curve_window_renderer renderer)
 {
     ogl_rendering_handler_play( ((_curve_editor_curve_window_renderer*)renderer)->rendering_handler, 0);
 }
 
 /* Please see header for specification */
-PUBLIC void curve_editor_curve_window_renderer_release(__in __post_invalid curve_editor_curve_window_renderer descriptor)
+PUBLIC void curve_editor_curve_window_renderer_release(curve_editor_curve_window_renderer descriptor)
 {
     _curve_editor_curve_window_renderer* descriptor_ptr = (_curve_editor_curve_window_renderer*) descriptor;
 
@@ -3690,8 +3690,8 @@ void _curve_editor_curve_window_renderer_on_resize(ogl_context context,
 }
 
 /* Please see header for specification */
-PUBLIC void curve_editor_curve_window_renderer_resize(__in __notnull   curve_editor_curve_window_renderer renderer,
-                                                      __in __ecount(4) int*                               x1y1x2y2)
+PUBLIC void curve_editor_curve_window_renderer_resize(curve_editor_curve_window_renderer renderer,
+                                                      int*                               x1y1x2y2)
 {
     _curve_editor_curve_window_renderer* renderer_ptr       = (_curve_editor_curve_window_renderer*) renderer;
     uint32_t                             new_height         = x1y1x2y2[3] - x1y1x2y2[1];
@@ -3714,9 +3714,9 @@ PUBLIC void curve_editor_curve_window_renderer_resize(__in __notnull   curve_edi
 }
 
 /* Please see header for spec */
-PUBLIC void curve_editor_curve_window_renderer_set_property(__in __notnull curve_editor_curve_window_renderer          renderer,
-                                                            __in           curve_editor_curve_window_renderer_property property,
-                                                            __in __notnull void*                                       data)
+PUBLIC void curve_editor_curve_window_renderer_set_property(curve_editor_curve_window_renderer          renderer,
+                                                            curve_editor_curve_window_renderer_property property,
+                                                            void*                                       data)
 {
     _curve_editor_curve_window_renderer* renderer_ptr = (_curve_editor_curve_window_renderer*) renderer;
 

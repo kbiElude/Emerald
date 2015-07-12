@@ -23,26 +23,26 @@ enum collada_data_polylist_property
 };
 
 /** TODO */
-PUBLIC collada_data_polylist collada_data_polylist_create(__in __notnull tinyxml2::XMLElement*      polylist_element_ptr,
-                                                          __in __notnull collada_data_geometry_mesh geometry_mesh,
-                                                          __in __notnull collada_data               data);
+PUBLIC collada_data_polylist collada_data_polylist_create(tinyxml2::XMLElement*      polylist_element_ptr,
+                                                          collada_data_geometry_mesh geometry_mesh,
+                                                          collada_data               data);
 
 /** TODO */
-PUBLIC EMERALD_API void collada_data_polylist_get_input(__in      __notnull collada_data_polylist    polylist,
-                                                        __in                _collada_data_input_type type,
-                                                        __out_opt           collada_data_input*      out_input);
+PUBLIC EMERALD_API void collada_data_polylist_get_input(collada_data_polylist    polylist,
+                                                        _collada_data_input_type type,
+                                                        collada_data_input*      out_input);
 
 /** TODO */
-PUBLIC EMERALD_API void collada_data_polylist_get_input_types(__in      __notnull collada_data_polylist     polylist,
-                                                              __out_opt           unsigned int*             out_n_input_types,
-                                                              __out               _collada_data_input_type* out_input_types);
+PUBLIC EMERALD_API void collada_data_polylist_get_input_types(collada_data_polylist     polylist,
+                                                              unsigned int*             out_n_input_types,
+                                                              _collada_data_input_type* out_input_types);
 
 /** TODO */
-PUBLIC EMERALD_API void collada_data_polylist_get_property(__in  __notnull collada_data_polylist          polylist,
-                                                           __in            collada_data_polylist_property property,
-                                                           __out           void*                          out_result);
+PUBLIC EMERALD_API void collada_data_polylist_get_property(collada_data_polylist          polylist,
+                                                           collada_data_polylist_property property,
+                                                           void*                          out_result);
 
 /** TODO */
-PUBLIC void collada_data_polylist_release(__in __notnull __post_invalid collada_data_polylist polylist);
+PUBLIC void collada_data_polylist_release(collada_data_polylist polylist);
 
 #endif /* COLLADA_DATA_GEOMETRY_H */

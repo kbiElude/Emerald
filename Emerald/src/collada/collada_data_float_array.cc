@@ -50,9 +50,9 @@ _collada_data_float_array::~_collada_data_float_array()
 
 
 /** TODO */
-PRIVATE system_hashed_ansi_string _collada_data_float_array_get_cached_blob_file_name(__in __notnull system_hashed_ansi_string float_array_id,
-                                                                                      __in           unsigned int              count,
-                                                                                      __in __notnull system_hashed_ansi_string parent_source_name)
+PRIVATE system_hashed_ansi_string _collada_data_float_array_get_cached_blob_file_name(system_hashed_ansi_string float_array_id,
+                                                                                      unsigned int              count,
+                                                                                      system_hashed_ansi_string parent_source_name)
 {
     char temp_file_name[1024];
 
@@ -67,11 +67,11 @@ PRIVATE system_hashed_ansi_string _collada_data_float_array_get_cached_blob_file
 }
 
 /** TODO */
-PUBLIC collada_data_float_array collada_data_float_array_create(__in __notnull tinyxml2::XMLElement*     float_array_element_ptr,
-                                                                __in           unsigned int              n_components,
-                                                                __in           unsigned int              stride,
-                                                                __in __notnull collada_data              in_collada_data,
-                                                                __in __notnull system_hashed_ansi_string parent_name)
+PUBLIC collada_data_float_array collada_data_float_array_create(tinyxml2::XMLElement*     float_array_element_ptr,
+                                                                unsigned int              n_components,
+                                                                unsigned int              stride,
+                                                                collada_data              in_collada_data,
+                                                                system_hashed_ansi_string parent_name)
 {
     _collada_data_float_array* result_ptr = new (std::nothrow) _collada_data_float_array;
 
@@ -210,9 +210,9 @@ end:
 }
 
 /** Please see header for spec */
-PUBLIC void collada_data_float_array_get_property(__in  __notnull collada_data_float_array          array,
-                                                  __in            collada_data_float_array_property property,
-                                                  __out __notnull void*                             out_result)
+PUBLIC void collada_data_float_array_get_property(collada_data_float_array          array,
+                                                  collada_data_float_array_property property,
+                                                  void*                             out_result)
 {
     _collada_data_float_array* array_ptr = (_collada_data_float_array*) array;
 
@@ -248,7 +248,7 @@ PUBLIC void collada_data_float_array_get_property(__in  __notnull collada_data_f
 }
 
 /** Please see header for spec */
-PUBLIC void collada_data_float_array_release(__in __notnull __post_invalid collada_data_float_array array)
+PUBLIC void collada_data_float_array_release(collada_data_float_array array)
 {
     delete (_collada_data_float_array*) array;
 

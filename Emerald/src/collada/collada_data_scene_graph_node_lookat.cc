@@ -10,7 +10,7 @@
 #include "system/system_resizable_vector.h"
 
 /** TODO */
-PUBLIC collada_data_scene_graph_node_item collada_data_scene_graph_node_lookat_create(__in __notnull tinyxml2::XMLElement* element_ptr)
+PUBLIC collada_data_scene_graph_node_item collada_data_scene_graph_node_lookat_create(tinyxml2::XMLElement* element_ptr)
 {
     float                              data[9];
     collada_data_scene_graph_node_item item               = NULL;

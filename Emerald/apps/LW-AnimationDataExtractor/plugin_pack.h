@@ -9,7 +9,7 @@
 #include "system/system_types.h"
 
 /** TODO */
-PUBLIC void AddFileToFinalBlob(__in __notnull system_hashed_ansi_string filename);
+PUBLIC void AddFileToFinalBlob(system_hashed_ansi_string filename);
 
 /** TODO */
 PUBLIC void DeinitPackData();
@@ -18,6 +18,6 @@ PUBLIC void DeinitPackData();
 PUBLIC void InitPackData();
 
 /** TODO */
-PUBLIC void SaveFinalBlob(__in __notnull system_hashed_ansi_string packed_scene_filename);
+PUBLIC void SaveFinalBlob(system_hashed_ansi_string packed_scene_filename);
 
 #endif /* PLUGIN_PACK_H */

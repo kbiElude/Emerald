@@ -21,8 +21,8 @@ REFCOUNT_INSERT_DECLARATIONS(shaders_fragment_static,
  * 
  *  @return shaders_fragment_static instance if successful, NULL otherwise.
  */
-PUBLIC EMERALD_API shaders_fragment_static shaders_fragment_static_create(__in __notnull ogl_context,
-                                                                          __in __notnull system_hashed_ansi_string name);
+PUBLIC EMERALD_API shaders_fragment_static shaders_fragment_static_create(ogl_context,
+                                                                          system_hashed_ansi_string name);
 
 /** Retrieves ogl_shader object associated with the instance. Do not release the object or modify it in any way.
  *
@@ -30,6 +30,6 @@ PUBLIC EMERALD_API shaders_fragment_static shaders_fragment_static_create(__in _
  *
  *  @return ogl_shader instance.
  **/
-PUBLIC EMERALD_API ogl_shader shaders_fragment_static_get_shader(__in __notnull shaders_fragment_static);
+PUBLIC EMERALD_API ogl_shader shaders_fragment_static_get_shader(shaders_fragment_static);
 
 #endif /* SHADERS_FRAGMENT_STATIC_H */

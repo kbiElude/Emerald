@@ -30,7 +30,7 @@ _collada_data_sampler2D::_collada_data_sampler2D()
 }
 
 /** TODO */
-PUBLIC _collada_data_sampler_filter _collada_data_get_sampler_filter_from_filter_node(__in __notnull tinyxml2::XMLElement* element_ptr)
+PUBLIC _collada_data_sampler_filter _collada_data_get_sampler_filter_from_filter_node(tinyxml2::XMLElement* element_ptr)
 {
     const char*                  node_text = element_ptr->GetText();
     _collada_data_sampler_filter result    = COLLADA_DATA_SAMPLER_FILTER_UNKNOWN;
@@ -50,9 +50,9 @@ PUBLIC _collada_data_sampler_filter _collada_data_get_sampler_filter_from_filter
 }
 
 /** TODO */
-PUBLIC collada_data_sampler2D collada_data_sampler2D_create(__in __notnull system_hashed_ansi_string id,
-                                                            __in __notnull tinyxml2::XMLElement*     element_ptr,
-                                                            __in __notnull system_hash64map          surfaces_by_id_map)
+PUBLIC collada_data_sampler2D collada_data_sampler2D_create(system_hashed_ansi_string id,
+                                                            tinyxml2::XMLElement*     element_ptr,
+                                                            system_hash64map          surfaces_by_id_map)
 {
     tinyxml2::XMLElement* magfilter_element_ptr = element_ptr->FirstChildElement("magfilter");
     tinyxml2::XMLElement* minfilter_element_ptr = element_ptr->FirstChildElement("minfilter");
@@ -96,10 +96,10 @@ PUBLIC collada_data_sampler2D collada_data_sampler2D_create(__in __notnull syste
 }
 
 /* Please see header for spec */
-PUBLIC void collada_data_sampler2D_get_properties(__in     __notnull const collada_data_sampler2D        sampler,
-                                                  __out_opt                collada_data_surface*         out_surface,
-                                                  __out_opt                _collada_data_sampler_filter* out_mag_filter,
-                                                  __out_opt                _collada_data_sampler_filter* out_min_filter)
+PUBLIC void collada_data_sampler2D_get_properties(const collada_data_sampler2D        sampler,
+                                                       collada_data_surface*         out_surface,
+                                                       _collada_data_sampler_filter* out_mag_filter,
+                                                       _collada_data_sampler_filter* out_min_filter)
 {
     const _collada_data_sampler2D* sampler_ptr = (const _collada_data_sampler2D*) sampler;
 
@@ -120,7 +120,7 @@ PUBLIC void collada_data_sampler2D_get_properties(__in     __notnull const colla
 }
 
 /* Please see header for spec */
-PUBLIC void collada_data_sampler2D_release(__in __notnull __post_invalid collada_data_sampler2D sampler)
+PUBLIC void collada_data_sampler2D_release(collada_data_sampler2D sampler)
 {
     delete (_collada_data_sampler2D*) sampler;
 

@@ -32,16 +32,16 @@ typedef enum
 /** TODO. Does NOT support 
  *
  **/
-PUBLIC EMERALD_API procedural_mesh_sphere procedural_mesh_sphere_create(__in __notnull ogl_context                   context,
-                                                                        __in           _procedural_mesh_data_bitmask data_bitmask,
-                                                                        __in __notnull uint32_t                      n_latitude_splices, /* number of latitude splices */
-                                                                        __in __notnull uint32_t                      n_longitude_splices, /* number of longitude splices */
-                                                                        __in __notnull system_hashed_ansi_string     name);
+PUBLIC EMERALD_API procedural_mesh_sphere procedural_mesh_sphere_create(ogl_context                   context,
+                                                                        _procedural_mesh_data_bitmask data_bitmask,
+                                                                        uint32_t                      n_latitude_splices, /* number of latitude splices */
+                                                                        uint32_t                      n_longitude_splices, /* number of longitude splices */
+                                                                        system_hashed_ansi_string     name);
 
 /** TODO */
-PUBLIC EMERALD_API void procedural_mesh_sphere_get_property(__in  __notnull procedural_mesh_sphere           sphere,
-                                                            __in            _procedural_mesh_sphere_property prop,
-                                                            __out __notnull void*                            out_result);
+PUBLIC EMERALD_API void procedural_mesh_sphere_get_property(procedural_mesh_sphere           sphere,
+                                                            _procedural_mesh_sphere_property prop,
+                                                            void*                            out_result);
 
 
 #endif /* PROCEDURAL_MESH_SPHERE_H */

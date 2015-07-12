@@ -41,7 +41,7 @@ system_resource_pool    variants_pool = NULL;
 
 
 /** Please see header for specification */
-PUBLIC EMERALD_API system_variant system_variant_create(__in __notnull system_variant_type variant_type)
+PUBLIC EMERALD_API system_variant system_variant_create(system_variant_type variant_type)
 {
     _system_variant_descriptor_ptr result = NULL;
 
@@ -57,7 +57,7 @@ PUBLIC EMERALD_API system_variant system_variant_create(__in __notnull system_va
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API system_variant system_variant_create_float(__in __notnull float value)
+PUBLIC EMERALD_API system_variant system_variant_create_float(float value)
 {
     system_variant new_variant = system_variant_create(SYSTEM_VARIANT_FLOAT);
 
@@ -68,7 +68,7 @@ PUBLIC EMERALD_API system_variant system_variant_create_float(__in __notnull flo
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API system_variant system_variant_create_int(__in __notnull int value)
+PUBLIC EMERALD_API system_variant system_variant_create_int(int value)
 {
     system_variant new_variant = system_variant_create(SYSTEM_VARIANT_INTEGER);
 
@@ -80,9 +80,9 @@ PUBLIC EMERALD_API system_variant system_variant_create_int(__in __notnull int v
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API void system_variant_get_ansi_string(__in  __notnull system_variant            variant,
-                                                       __in            bool                      forced,
-                                                       __out           system_hashed_ansi_string* result)
+PUBLIC EMERALD_API void system_variant_get_ansi_string(system_variant            variant,
+                                                       bool                      forced,
+                                                       system_hashed_ansi_string* result)
 {
     _system_variant_descriptor_ptr variant_descriptor = (_system_variant_descriptor_ptr) variant;
 
@@ -158,8 +158,8 @@ PUBLIC EMERALD_API void system_variant_get_ansi_string(__in  __notnull system_va
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API void system_variant_get_boolean(__in  __notnull system_variant variant,
-                                                   __out           bool*          result)
+PUBLIC EMERALD_API void system_variant_get_boolean(system_variant variant,
+                                                   bool*          result)
 {
     _system_variant_descriptor_ptr variant_descriptor = (_system_variant_descriptor_ptr) variant;
 
@@ -198,8 +198,8 @@ PUBLIC EMERALD_API void system_variant_get_boolean(__in  __notnull system_varian
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API void system_variant_get_float(__in  __notnull system_variant variant,
-                                                 __out           float*         result)
+PUBLIC EMERALD_API void system_variant_get_float(system_variant variant,
+                                                 float*         result)
 {
     _system_variant_descriptor_ptr variant_descriptor = (_system_variant_descriptor_ptr) variant;
 
@@ -237,8 +237,8 @@ PUBLIC EMERALD_API void system_variant_get_float(__in  __notnull system_variant 
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API void system_variant_get_integer(__in  __notnull system_variant variant,
-                                                   __out           int*           result)
+PUBLIC EMERALD_API void system_variant_get_integer(system_variant variant,
+                                                   int*           result)
 {
     _system_variant_descriptor_ptr variant_descriptor = (_system_variant_descriptor_ptr) variant;
 
@@ -277,14 +277,14 @@ PUBLIC EMERALD_API void system_variant_get_integer(__in  __notnull system_varian
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API system_variant_type system_variant_get_type(__in __notnull system_variant variant)
+PUBLIC EMERALD_API system_variant_type system_variant_get_type(system_variant variant)
 {
     return ((_system_variant_descriptor_ptr)variant)->type;
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API bool system_variant_is_equal(__in __notnull system_variant variant_1,
-                                                __in __notnull system_variant variant_2)
+PUBLIC EMERALD_API bool system_variant_is_equal(system_variant variant_1,
+                                                system_variant variant_2)
 {
     _system_variant_descriptor_ptr variant_1_descriptor = (_system_variant_descriptor_ptr) variant_1;
     _system_variant_descriptor_ptr variant_2_descriptor = (_system_variant_descriptor_ptr) variant_2;
@@ -341,16 +341,16 @@ PUBLIC EMERALD_API bool system_variant_is_equal(__in __notnull system_variant va
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API void system_variant_release(__in __notnull __deallocate(mem) system_variant variant)
+PUBLIC EMERALD_API void system_variant_release(system_variant variant)
 {
     system_resource_pool_return_to_pool(variants_pool,
                                         (system_resource_pool_block) variant);
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API void system_variant_set(__in __notnull system_variant dst,
-                                           __in __notnull system_variant src,
-                                                          bool           should_force)
+PUBLIC EMERALD_API void system_variant_set(system_variant dst,
+                                           system_variant src,
+                                           bool           should_force)
 {
     _system_variant_descriptor_ptr dst_variant_descriptor = (_system_variant_descriptor_ptr) dst;
     _system_variant_descriptor_ptr src_variant_descriptor = (_system_variant_descriptor_ptr) src;
@@ -530,9 +530,9 @@ PUBLIC EMERALD_API void system_variant_set(__in __notnull system_variant dst,
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API void system_variant_set_ansi_string(__in __notnull system_variant            variant,
-                                                       __in __notnull system_hashed_ansi_string input,
-                                                       __in           bool                      forced)
+PUBLIC EMERALD_API void system_variant_set_ansi_string(system_variant            variant,
+                                                       system_hashed_ansi_string input,
+                                                       bool                      forced)
 {
     _system_variant_descriptor_ptr variant_descriptor = (_system_variant_descriptor_ptr) variant;
 
@@ -589,8 +589,8 @@ PUBLIC EMERALD_API void system_variant_set_ansi_string(__in __notnull system_var
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API void system_variant_set_boolean(__in __notnull system_variant variant,
-                                                   __in           bool           value)
+PUBLIC EMERALD_API void system_variant_set_boolean(system_variant variant,
+                                                   bool           value)
 {
     _system_variant_descriptor_ptr variant_descriptor = (_system_variant_descriptor_ptr) variant;
 
@@ -601,8 +601,8 @@ PUBLIC EMERALD_API void system_variant_set_boolean(__in __notnull system_variant
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API void system_variant_set_float(__in __notnull system_variant variant,
-                                                 __in           float          value)
+PUBLIC EMERALD_API void system_variant_set_float(system_variant variant,
+                                                 float          value)
 {
     _system_variant_descriptor_ptr variant_descriptor = (_system_variant_descriptor_ptr) variant;
 
@@ -613,8 +613,8 @@ PUBLIC EMERALD_API void system_variant_set_float(__in __notnull system_variant v
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API void system_variant_set_float_forced(__in __notnull system_variant variant,
-                                                        __in           float          value)
+PUBLIC EMERALD_API void system_variant_set_float_forced(system_variant variant,
+                                                        float          value)
 {
     _system_variant_descriptor_ptr variant_descriptor = (_system_variant_descriptor_ptr) variant;
 
@@ -669,9 +669,9 @@ PUBLIC EMERALD_API void system_variant_set_float_forced(__in __notnull system_va
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API void system_variant_set_integer(__in __notnull system_variant variant,
-                                                   __in           int            value,
-                                                   __in           bool           forced)
+PUBLIC EMERALD_API void system_variant_set_integer(system_variant variant,
+                                                   int            value,
+                                                   bool           forced)
 {
     _system_variant_descriptor_ptr variant_descriptor = (_system_variant_descriptor_ptr) variant;
 

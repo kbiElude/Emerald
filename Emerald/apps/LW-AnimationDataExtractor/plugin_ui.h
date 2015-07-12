@@ -18,6 +18,6 @@ PUBLIC void DeinitUI();
 PUBLIC void InitUI();
 
 /** TODO */
-PUBLIC void SetActivityDescription(__in __notnull char* text);
+PUBLIC void SetActivityDescription(char* text);
 
 #endif /* PLUGIN_UI_H */

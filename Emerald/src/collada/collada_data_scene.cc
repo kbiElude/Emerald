@@ -49,8 +49,8 @@ _collada_data_scene::~_collada_data_scene()
 
 
 /** TODO */
-PUBLIC collada_data_scene collada_data_scene_create(__in __notnull tinyxml2::XMLElement* scene_element_ptr,
-                                                    __in __notnull collada_data          collada_data)
+PUBLIC collada_data_scene collada_data_scene_create(tinyxml2::XMLElement* scene_element_ptr,
+                                                    collada_data          collada_data)
 {
     tinyxml2::XMLElement* current_node_element_ptr = scene_element_ptr->FirstChildElement("node");
     _collada_data_scene*  new_scene_ptr            = new (std::nothrow) _collada_data_scene;
@@ -114,9 +114,9 @@ end:
 }
 
 /* Please see header for spec */
-PUBLIC EMERALD_API void collada_data_scene_get_property(__in  __notnull const collada_data_scene          in_scene,
-                                                        __in                  collada_data_scene_property property,
-                                                        __out __notnull void*                             out_data_ptr)
+PUBLIC EMERALD_API void collada_data_scene_get_property(const collada_data_scene          in_scene,
+                                                              collada_data_scene_property property,
+                                                        void*                             out_data_ptr)
 {
     const _collada_data_scene* scene_ptr = (const _collada_data_scene*) in_scene;
 
@@ -151,7 +151,7 @@ PUBLIC EMERALD_API void collada_data_scene_get_property(__in  __notnull const co
 }
 
 /* Please see header for spec */
-PUBLIC void collada_data_scene_release(__in __notnull __post_invalid collada_data_scene scene)
+PUBLIC void collada_data_scene_release(collada_data_scene scene)
 {
     delete (_collada_data_scene*) scene;
 
@@ -159,9 +159,9 @@ PUBLIC void collada_data_scene_release(__in __notnull __post_invalid collada_dat
 }
 
 /* Please see header for spec */
-PUBLIC EMERALD_API void collada_data_scene_set_property(__in __notnull collada_data_scene          in_scene,
-                                                        __in           collada_data_scene_property property,
-                                                        __in __notnull void*                       data_ptr)
+PUBLIC EMERALD_API void collada_data_scene_set_property(collada_data_scene          in_scene,
+                                                        collada_data_scene_property property,
+                                                        void*                       data_ptr)
 {
     _collada_data_scene* scene_ptr = (_collada_data_scene*) in_scene;
 

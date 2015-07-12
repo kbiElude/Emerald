@@ -83,14 +83,14 @@ typedef struct
 } _curve_editor_curve_window;
 
 /* Forward declarations */
-PRIVATE void _curve_editor_curve_window_initialize_dialog (__in __notnull _curve_editor_curve_window*,
-                                                                          HWND                        dialog_handle);
-PRIVATE void _curve_editor_curve_window_on_property_edited(               _curve_editor_curve_window*,
-                                                                          uint32_t);
-PRIVATE void _curve_editor_curve_window_on_resize         (               _curve_editor_curve_window* descriptor,
-                                                                          unsigned int                new_width,
-                                                                          unsigned int                new_height);
-PRIVATE void _curve_editor_curve_window_release           (               _curve_editor_curve_window* descriptor);
+PRIVATE void _curve_editor_curve_window_initialize_dialog (_curve_editor_curve_window*,
+                                                           HWND                        dialog_handle);
+PRIVATE void _curve_editor_curve_window_on_property_edited(_curve_editor_curve_window*,
+                                                           uint32_t);
+PRIVATE void _curve_editor_curve_window_on_resize         (_curve_editor_curve_window* descriptor,
+                                                           unsigned int                new_width,
+                                                           unsigned int                new_height);
+PRIVATE void _curve_editor_curve_window_release           (_curve_editor_curve_window* descriptor);
 
 
 /** TODO */
@@ -589,7 +589,7 @@ PRIVATE void _curve_editor_curve_window_dialog_thread_entrypoint(void* descripto
 }
 
 /** TODO */
-PRIVATE volatile void _curve_editor_curve_window_initialize_renderer(__in __notnull void* descriptor)
+PRIVATE volatile void _curve_editor_curve_window_initialize_renderer(void* descriptor)
 {
     _curve_editor_curve_window* descriptor_ptr = (_curve_editor_curve_window*) descriptor;
 
@@ -687,8 +687,8 @@ PRIVATE volatile void _curve_editor_curve_window_initialize_renderer(__in __notn
 }
 
 /** TODO */
-PRIVATE void _curve_editor_curve_window_initialize_dialog(__in __notnull _curve_editor_curve_window* descriptor,
-                                                                         HWND                        dialog_handle)
+PRIVATE void _curve_editor_curve_window_initialize_dialog(_curve_editor_curve_window* descriptor,
+                                                          HWND                        dialog_handle)
 {
     descriptor->edited_segment                     = NULL;
     descriptor->edited_segment_node_id             = -1;
@@ -1332,9 +1332,9 @@ PUBLIC void curve_editor_select_node(curve_editor_curve_window curve_window,
 }
 
 /** Please see header for specification */
-PUBLIC void curve_editor_curve_window_set_property(__in __notnull curve_editor_curve_window          window,
-                                                   __in           curve_editor_curve_window_property property,
-                                                   __in __notnull void*                              data)
+PUBLIC void curve_editor_curve_window_set_property(curve_editor_curve_window          window,
+                                                   curve_editor_curve_window_property property,
+                                                   void*                              data)
 {
     _curve_editor_curve_window* window_ptr = (_curve_editor_curve_window*) window;
 

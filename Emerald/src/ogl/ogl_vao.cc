@@ -46,8 +46,8 @@ typedef struct _ogl_vao
     unsigned int  n_vaas;
     _ogl_vao_vaa* vaas;
 
-    explicit _ogl_vao(__in __notnull ogl_context  in_context,
-                      __in           unsigned int in_gl_id)
+    explicit _ogl_vao(ogl_context  in_context,
+                      unsigned int in_gl_id)
     {
         ogl_context_type context_type         = OGL_CONTEXT_TYPE_UNDEFINED;
         unsigned int     n_max_vertex_attribs = 0;
@@ -113,8 +113,8 @@ typedef struct _ogl_vao
 
 
 /** Please see header for spec */
-PUBLIC ogl_vao ogl_vao_create(__in __notnull ogl_context  context,
-                              __in           unsigned int gl_id)
+PUBLIC ogl_vao ogl_vao_create(ogl_context  context,
+                              unsigned int gl_id)
 {
     _ogl_vao* new_instance = new (std::nothrow) _ogl_vao(context,
                                                          gl_id);
@@ -126,9 +126,9 @@ PUBLIC ogl_vao ogl_vao_create(__in __notnull ogl_context  context,
 }
 
 /** Please see header for spec */
-PUBLIC void ogl_vao_get_property(__in  __notnull const ogl_vao    vao,
-                                 __in            ogl_vao_property property,
-                                 __out __notnull void*            out_result)
+PUBLIC void ogl_vao_get_property(const ogl_vao    vao,
+                                 ogl_vao_property property,
+                                 void*            out_result)
 {
     const _ogl_vao* vao_ptr = (const _ogl_vao*) vao;
 
@@ -157,10 +157,10 @@ PUBLIC void ogl_vao_get_property(__in  __notnull const ogl_vao    vao,
 }
 
 /** Please see header for spec */
-PUBLIC void ogl_vao_get_vaa_property(__in  __notnull const ogl_vao        vao,
-                                     __in            unsigned int         n_vaa,
-                                     __in            ogl_vao_vaa_property property,
-                                     __out __notnull void*                out_result)
+PUBLIC void ogl_vao_get_vaa_property(const ogl_vao        vao,
+                                     unsigned int         n_vaa,
+                                     ogl_vao_vaa_property property,
+                                     void*                out_result)
 {
     const _ogl_vao* vao_ptr = (const _ogl_vao*) vao;
 
@@ -239,7 +239,7 @@ PUBLIC void ogl_vao_get_vaa_property(__in  __notnull const ogl_vao        vao,
 }
 
 /** Please see header for spec */
-PUBLIC void ogl_vao_release(__in __notnull __post_invalid ogl_vao vao)
+PUBLIC void ogl_vao_release(ogl_vao vao)
 {
     _ogl_vao* vao_ptr = (_ogl_vao*) vao;
 
@@ -250,9 +250,9 @@ PUBLIC void ogl_vao_release(__in __notnull __post_invalid ogl_vao vao)
 }
 
 /** Please see header for spec */
-PUBLIC void ogl_vao_set_property(__in __notnull ogl_vao          vao,
-                                 __in           ogl_vao_property property,
-                                 __in __notnull const void*      data)
+PUBLIC void ogl_vao_set_property(ogl_vao          vao,
+                                 ogl_vao_property property,
+                                 const void*      data)
 {
     _ogl_vao* vao_ptr = (_ogl_vao*) vao;
 
@@ -281,10 +281,10 @@ PUBLIC void ogl_vao_set_property(__in __notnull ogl_vao          vao,
 }
 
 /** TODO */
-PUBLIC void ogl_vao_set_vaa_property(__in __notnull ogl_vao              vao,
-                                     __in           unsigned int         n_vaa,
-                                     __in           ogl_vao_vaa_property property,
-                                     __in __notnull const void*          data)
+PUBLIC void ogl_vao_set_vaa_property(ogl_vao              vao,
+                                     unsigned int         n_vaa,
+                                     ogl_vao_vaa_property property,
+                                     const void*          data)
 {
     _ogl_vao* vao_ptr = (_ogl_vao*) vao;
 

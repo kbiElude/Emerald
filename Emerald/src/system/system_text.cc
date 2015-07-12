@@ -8,8 +8,8 @@
 #include "system/system_text.h"
 
 /** Please see header for spec */
-PUBLIC EMERALD_API bool system_text_get_float_from_text(__in  __notnull const char* data,
-                                                        __out __notnull float*      out_result)
+PUBLIC EMERALD_API bool system_text_get_float_from_text(const char* data,
+                                                        float*      out_result)
 {
     unsigned int              current_location         = 0;
     bool                      is_negative              = false;

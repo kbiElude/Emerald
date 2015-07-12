@@ -57,7 +57,7 @@ REFCOUNT_INSERT_IMPLEMENTATION(scene,
                               _scene);
 
 /* Please see header for specification */
-PRIVATE void _scene_release(__in __notnull __post_invalid void* arg)
+PRIVATE void _scene_release(void* arg)
 {
     _scene* scene_ptr = (_scene*) arg;
 
@@ -206,8 +206,8 @@ PRIVATE void _scene_release(__in __notnull __post_invalid void* arg)
 
 
 /* Please see header for specification */
-PUBLIC EMERALD_API bool scene_add_camera(__in __notnull scene        scene_instance,
-                                         __in __notnull scene_camera new_camera)
+PUBLIC EMERALD_API bool scene_add_camera(scene        scene_instance,
+                                         scene_camera new_camera)
 
 {
     bool    result    = false;
@@ -226,8 +226,8 @@ PUBLIC EMERALD_API bool scene_add_camera(__in __notnull scene        scene_insta
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API bool scene_add_curve(__in __notnull scene       scene_instance,
-                                        __in __notnull scene_curve curve_instance)
+PUBLIC EMERALD_API bool scene_add_curve(scene       scene_instance,
+                                        scene_curve curve_instance)
 {
     scene_curve_id curve_id  = -1;
     bool           result    = false;
@@ -254,8 +254,8 @@ PUBLIC EMERALD_API bool scene_add_curve(__in __notnull scene       scene_instanc
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API bool scene_add_light(__in __notnull scene       scene_instance,
-                                        __in __notnull scene_light light_instance)
+PUBLIC EMERALD_API bool scene_add_light(scene       scene_instance,
+                                        scene_light light_instance)
 
 {
     bool    result    = false;
@@ -333,8 +333,8 @@ end:
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API bool scene_add_material(__in __notnull scene          scene_instance,
-                                           __in __notnull scene_material material)
+PUBLIC EMERALD_API bool scene_add_material(scene          scene_instance,
+                                           scene_material material)
 {
     bool    result    = false;
     _scene* scene_ptr = (_scene*) scene_instance;
@@ -353,8 +353,8 @@ PUBLIC EMERALD_API bool scene_add_material(__in __notnull scene          scene_i
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API bool scene_add_mesh_instance_defined(__in __notnull scene      scene,
-                                                        __in __notnull scene_mesh mesh_instance)
+PUBLIC EMERALD_API bool scene_add_mesh_instance_defined(scene      scene,
+                                                        scene_mesh mesh_instance)
 {
     bool    result    = true;
     _scene* scene_ptr = (_scene*) scene;
@@ -394,9 +394,9 @@ PUBLIC EMERALD_API bool scene_add_mesh_instance_defined(__in __notnull scene    
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API bool scene_add_mesh_instance(__in __notnull scene                     scene,
-                                                __in __notnull mesh                      mesh_data,
-                                                __in __notnull system_hashed_ansi_string name)
+PUBLIC EMERALD_API bool scene_add_mesh_instance(scene                     scene,
+                                                mesh                      mesh_data,
+                                                system_hashed_ansi_string name)
 {
     scene_mesh                new_instance     = NULL;
     bool                      result           = true;
@@ -446,8 +446,8 @@ PUBLIC EMERALD_API bool scene_add_mesh_instance(__in __notnull scene            
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API bool scene_add_texture(__in __notnull scene         scene_instance,
-                                          __in __notnull scene_texture texture_instance)
+PUBLIC EMERALD_API bool scene_add_texture(scene         scene_instance,
+                                          scene_texture texture_instance)
 {
     bool    result    = false;
     _scene* scene_ptr = (_scene*) scene_instance;
@@ -466,8 +466,8 @@ PUBLIC EMERALD_API bool scene_add_texture(__in __notnull scene         scene_ins
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API scene scene_create(__in_opt       ogl_context               context,
-                                      __in __notnull system_hashed_ansi_string name)
+PUBLIC EMERALD_API scene scene_create(ogl_context               context,
+                                      system_hashed_ansi_string name)
 {
     _scene* new_scene = new (std::nothrow) _scene;
 
@@ -537,8 +537,8 @@ end_with_failure:
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API scene_camera scene_get_camera_by_index(__in __notnull scene        scene,
-                                                          __in           unsigned int index)
+PUBLIC EMERALD_API scene_camera scene_get_camera_by_index(scene        scene,
+                                                          unsigned int index)
 {
     scene_camera result    = NULL;
     _scene*      scene_ptr = (_scene*) scene;
@@ -551,8 +551,8 @@ PUBLIC EMERALD_API scene_camera scene_get_camera_by_index(__in __notnull scene  
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API scene_camera scene_get_camera_by_name(__in __notnull scene                     scene,
-                                                         __in __notnull system_hashed_ansi_string name)
+PUBLIC EMERALD_API scene_camera scene_get_camera_by_name(scene                     scene,
+                                                         system_hashed_ansi_string name)
 {
     _scene*      scene_ptr = (_scene*) scene;
     unsigned int n_cameras = 0;
@@ -600,8 +600,8 @@ PUBLIC EMERALD_API scene_camera scene_get_camera_by_name(__in __notnull scene   
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API scene_curve scene_get_curve_by_container(__in __notnull scene           instance,
-                                                            __in           curve_container curve)
+PUBLIC EMERALD_API scene_curve scene_get_curve_by_container(scene           instance,
+                                                            curve_container curve)
 {
     /* TODO: A curve_container->scene_curve map would fit in here just perfectly. */
     _scene*     scene_ptr = (_scene*) instance;
@@ -647,8 +647,8 @@ PUBLIC EMERALD_API scene_curve scene_get_curve_by_container(__in __notnull scene
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API scene_curve scene_get_curve_by_id(__in __notnull scene          instance,
-                                                     __in           scene_curve_id id)
+PUBLIC EMERALD_API scene_curve scene_get_curve_by_id(scene          instance,
+                                                     scene_curve_id id)
 {
     scene_curve result    = NULL;
     _scene*     scene_ptr = (_scene*) instance;
@@ -663,8 +663,8 @@ PUBLIC EMERALD_API scene_curve scene_get_curve_by_id(__in __notnull scene       
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API scene_light scene_get_light_by_index(__in __notnull scene        scene,
-                                                        __in           unsigned int index)
+PUBLIC EMERALD_API scene_light scene_get_light_by_index(scene        scene,
+                                                        unsigned int index)
 {
     scene_light result    = NULL;
     _scene*     scene_ptr = (_scene*) scene;
@@ -677,8 +677,8 @@ PUBLIC EMERALD_API scene_light scene_get_light_by_index(__in __notnull scene    
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API scene_light scene_get_light_by_name(__in __notnull scene                     scene,
-                                                       __in __notnull system_hashed_ansi_string name)
+PUBLIC EMERALD_API scene_light scene_get_light_by_name(scene                     scene,
+                                                       system_hashed_ansi_string name)
 {
     _scene*      scene_ptr = (_scene*) scene;
     unsigned int n_lights  = 0;
@@ -725,8 +725,8 @@ PUBLIC EMERALD_API scene_light scene_get_light_by_name(__in __notnull scene     
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API scene_mesh scene_get_mesh_instance_by_index(__in __notnull scene        scene,
-                                                               __in           unsigned int index)
+PUBLIC EMERALD_API scene_mesh scene_get_mesh_instance_by_index(scene        scene,
+                                                               unsigned int index)
 {
     scene_mesh result    = NULL;
     _scene*    scene_ptr = (_scene*) scene;
@@ -739,8 +739,8 @@ PUBLIC EMERALD_API scene_mesh scene_get_mesh_instance_by_index(__in __notnull sc
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API scene_material scene_get_material_by_index(__in __notnull scene        scene,
-                                                              __in           unsigned int index)
+PUBLIC EMERALD_API scene_material scene_get_material_by_index(scene        scene,
+                                                              unsigned int index)
 {
     scene_material result    = NULL;
     _scene*        scene_ptr = (_scene*) scene;
@@ -753,8 +753,8 @@ PUBLIC EMERALD_API scene_material scene_get_material_by_index(__in __notnull sce
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API scene_material scene_get_material_by_name(__in __notnull scene                     scene,
-                                                             __in __notnull system_hashed_ansi_string name)
+PUBLIC EMERALD_API scene_material scene_get_material_by_name(scene                     scene,
+                                                             system_hashed_ansi_string name)
 {
     _scene*        scene_ptr   = (_scene*) scene;
     unsigned int   n_materials = 0;
@@ -801,8 +801,8 @@ PUBLIC EMERALD_API scene_material scene_get_material_by_name(__in __notnull scen
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API scene_mesh scene_get_mesh_instance_by_name(__in __notnull scene                     scene,
-                                                              __in __notnull system_hashed_ansi_string name)
+PUBLIC EMERALD_API scene_mesh scene_get_mesh_instance_by_name(scene                     scene,
+                                                              system_hashed_ansi_string name)
 {
     _scene*      scene_ptr        = (_scene*) scene;
     unsigned int n_mesh_instances = 0;
@@ -847,9 +847,9 @@ PUBLIC EMERALD_API scene_mesh scene_get_mesh_instance_by_name(__in __notnull sce
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API void scene_get_property(__in  __notnull scene          scene,
-                                           __in            scene_property property,
-                                           __out __notnull void*          out_result)
+PUBLIC EMERALD_API void scene_get_property(scene          scene,
+                                           scene_property property,
+                                           void*          out_result)
 {
     const _scene* scene_ptr = (_scene*) scene;
 
@@ -951,8 +951,8 @@ PUBLIC EMERALD_API void scene_get_property(__in  __notnull scene          scene,
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API scene_texture scene_get_texture_by_index(__in __notnull scene        scene,
-                                                            __in           unsigned int index)
+PUBLIC EMERALD_API scene_texture scene_get_texture_by_index(scene        scene,
+                                                            unsigned int index)
 {
     scene_texture result    = NULL;
     _scene*       scene_ptr = (_scene*) scene;
@@ -965,8 +965,8 @@ PUBLIC EMERALD_API scene_texture scene_get_texture_by_index(__in __notnull scene
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API scene_texture scene_get_texture_by_name(__in __notnull scene                     instance,
-                                                           __in __notnull system_hashed_ansi_string name)
+PUBLIC EMERALD_API scene_texture scene_get_texture_by_name(scene                     instance,
+                                                           system_hashed_ansi_string name)
 {
     /* Todo: OPTIMISE THIS! Use hashed strings! */
     scene_texture result     = NULL;
@@ -1021,8 +1021,8 @@ PUBLIC EMERALD_API scene_texture scene_get_texture_by_name(__in __notnull scene 
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API mesh scene_get_unique_mesh_by_index(__in __notnull scene        scene,
-                                                       __in           unsigned int index)
+PUBLIC EMERALD_API mesh scene_get_unique_mesh_by_index(scene        scene,
+                                                       unsigned int index)
 {
     _scene*      scene_ptr       = (_scene*) scene;
     unsigned int n_unique_meshes = 0;
@@ -1049,8 +1049,8 @@ PUBLIC EMERALD_API mesh scene_get_unique_mesh_by_index(__in __notnull scene     
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API scene scene_load(__in __notnull ogl_context               context,
-                                    __in __notnull system_hashed_ansi_string full_file_name_with_path)
+PUBLIC EMERALD_API scene scene_load(ogl_context               context,
+                                    system_hashed_ansi_string full_file_name_with_path)
 {
     /* Use multi-loader to load the scene */
     scene_multiloader loader = NULL;
@@ -1074,8 +1074,8 @@ PUBLIC EMERALD_API scene scene_load(__in __notnull ogl_context               con
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API scene scene_load_with_serializer(__in __notnull ogl_context            context,
-                                                    __in __notnull system_file_serializer serializer)
+PUBLIC EMERALD_API scene scene_load_with_serializer(ogl_context            context,
+                                                    system_file_serializer serializer)
 {
     /* Use multi-loader to load the scene */
     scene_multiloader loader = NULL;
@@ -1099,8 +1099,8 @@ PUBLIC EMERALD_API scene scene_load_with_serializer(__in __notnull ogl_context  
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API bool scene_save(__in __notnull scene                     instance,
-                                   __in __notnull system_hashed_ansi_string full_file_name_with_path)
+PUBLIC EMERALD_API bool scene_save(scene                     instance,
+                                   system_hashed_ansi_string full_file_name_with_path)
 {
     bool                   result     = false;
     _scene*                scene_ptr  = (_scene*) instance;
@@ -1128,8 +1128,8 @@ end:
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API bool scene_save_with_serializer(__in     __notnull scene                  instance,
-                                                   __in     __notnull system_file_serializer serializer)
+PUBLIC EMERALD_API bool scene_save_with_serializer(scene                  instance,
+                                                   system_file_serializer serializer)
 {
     bool    result    = true;
     _scene* scene_ptr = (_scene*) instance;
@@ -1715,8 +1715,8 @@ PUBLIC EMERALD_API bool scene_save_with_serializer(__in     __notnull scene     
 }
 
 /* Please see header for spec */
-PUBLIC EMERALD_API void scene_set_graph(__in __notnull scene       scene,
-                                        __in __notnull scene_graph graph)
+PUBLIC EMERALD_API void scene_set_graph(scene       scene,
+                                        scene_graph graph)
 {
     _scene* scene_ptr = (_scene*) scene;
 
@@ -1731,9 +1731,9 @@ PUBLIC EMERALD_API void scene_set_graph(__in __notnull scene       scene,
 }
 
 /* Please see header for spec */
-PUBLIC EMERALD_API void scene_set_property(__in __notnull scene          scene,
-                                           __in __notnull scene_property property,
-                                           __in __notnull const void*    data)
+PUBLIC EMERALD_API void scene_set_property(scene          scene,
+                                           scene_property property,
+                                           const void*    data)
 {
     _scene* scene_ptr = (_scene*) scene;
 

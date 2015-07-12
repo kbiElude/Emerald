@@ -9,7 +9,7 @@
 #include "system/system_assertions.h"
 #include "system/system_resizable_vector.h"
 
-PUBLIC collada_data_scene_graph_node_item collada_data_scene_graph_node_matrix_create(__in __notnull tinyxml2::XMLElement* element_ptr)
+PUBLIC collada_data_scene_graph_node_item collada_data_scene_graph_node_matrix_create(tinyxml2::XMLElement* element_ptr)
 {
     collada_data_scene_graph_node_item item          = NULL;
     const char*                        text          = element_ptr->GetText();

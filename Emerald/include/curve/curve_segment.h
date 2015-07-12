@@ -18,10 +18,10 @@
  *
  *  @return true if successful, false otherwise 
  **/
-PUBLIC EMERALD_API bool curve_segment_add_node(__in __notnull  curve_segment,
-                                               __in            system_time,
-                                               __in __notnull  system_variant,
-                                               __out __notnull curve_segment_node_id*);
+PUBLIC EMERALD_API bool curve_segment_add_node(curve_segment,
+                                               system_time,
+                                               system_variant,
+                                               curve_segment_node_id*);
 
 /** Deletes an existing node from given segment. Note that only TCB segments can have their nodes
  *  deleted.
@@ -31,8 +31,8 @@ PUBLIC EMERALD_API bool curve_segment_add_node(__in __notnull  curve_segment,
  *
  *  @return true if successful, false otherwise.
  **/
-PUBLIC EMERALD_API bool curve_segment_delete_node(__in __notnull curve_segment,
-                                                  __in           curve_segment_node_id);
+PUBLIC EMERALD_API bool curve_segment_delete_node(curve_segment,
+                                                  curve_segment_node_id);
 
 /** Creates a LERP curve segment descriptor which uses the user-provided start/end values for
  *  given start/end times.
@@ -45,10 +45,10 @@ PUBLIC EMERALD_API bool curve_segment_delete_node(__in __notnull curve_segment,
  *  @return If successful, creates and returns the initialized segment. You can free it
  *          by using curve_segment_release() function.
  */
-PUBLIC curve_segment curve_segment_create_linear(               system_time,
-                                                 __in __notnull system_variant,
-                                                                system_time,
-                                                 __in __notnull system_variant);
+PUBLIC curve_segment curve_segment_create_linear(system_time,
+                                                 system_variant,
+                                                 system_time,
+                                                 system_variant);
 
 /** Creates a static curve segment descriptor which uses the user-provided value.
  *
@@ -57,7 +57,7 @@ PUBLIC curve_segment curve_segment_create_linear(               system_time,
  *  @return If successful, creates and returns the initialized segment. You can free it
  *          by using curve_segment_release() function.
  */
-PUBLIC curve_segment curve_segment_create_static(__in __notnull system_variant);
+PUBLIC curve_segment curve_segment_create_static(system_variant);
 
 /** Creates a TCB curve segment descriptor which uses the user-provided start/end values for 
  *  given start/end times and Tension/Continuity/Bias factors for both of the nodes.
@@ -75,14 +75,14 @@ PUBLIC curve_segment curve_segment_create_static(__in __notnull system_variant);
  *  @return If successful, creates and returns the initialized segment. You can free it
  *          by using curve_segment_release() function.
  */
-PUBLIC curve_segment curve_segment_create_tcb(__in             system_time,
-                                              __in __ecount(3) float*,
-                                              __in __notnull   system_variant,
-                                              __in             system_time,
-                                              __in __ecount(3) float*,
-                                              __in __notnull   system_variant,
-                                              __in __notnull   curve_container,
-                                              __in             curve_segment_id);
+PUBLIC curve_segment curve_segment_create_tcb(system_time,
+                                              float*,
+                                              system_variant,
+                                              system_time,
+                                              float*,
+                                              system_variant,
+                                              curve_container,
+                                              curve_segment_id);
 
 /** Retrieves amount of nodes held by given curve segment.
  *
@@ -91,11 +91,11 @@ PUBLIC curve_segment curve_segment_create_tcb(__in             system_time,
  *
  *  @return true if successful, false otherwise.
  **/
-PUBLIC EMERALD_API bool curve_segment_get_amount_of_nodes(__in  __notnull curve_segment,
-                                                          __out __notnull uint32_t*);
+PUBLIC EMERALD_API bool curve_segment_get_amount_of_nodes(curve_segment,
+                                                          uint32_t*);
 
 /** TODO */
-PUBLIC EMERALD_API system_time curve_segment_get_modification_time(__in __notnull curve_segment);
+PUBLIC EMERALD_API system_time curve_segment_get_modification_time(curve_segment);
 
 /** Retrieves node details for a given curve segment.
  *
@@ -106,20 +106,20 @@ PUBLIC EMERALD_API system_time curve_segment_get_modification_time(__in __notnul
  *
  *  @return true if successful, false otherwise.
  **/
-PUBLIC EMERALD_API bool curve_segment_get_node(__in  __notnull   curve_segment,
-                                               __in              curve_segment_node_id,
-                                               __out __maybenull system_time*,
-                                                     __maybenull system_variant);
+PUBLIC EMERALD_API bool curve_segment_get_node(curve_segment,
+                                               curve_segment_node_id,
+                                               system_time*,
+                                               system_variant);
 
 /** TODO */
-PUBLIC EMERALD_API bool curve_segment_get_node_at_time(__in  __notnull curve_segment,
-                                                       __in            system_time,
-                                                       __out __notnull curve_segment_node_id*);
+PUBLIC EMERALD_API bool curve_segment_get_node_at_time(curve_segment,
+                                                       system_time,
+                                                       curve_segment_node_id*);
 
 /** TODO */
-PUBLIC bool curve_segment_get_node_by_index(__in  __notnull curve_segment,
-                                            __in            uint32_t,
-                                            __out __notnull curve_segment_node_id*);
+PUBLIC bool curve_segment_get_node_by_index(curve_segment,
+                                            uint32_t,
+                                            curve_segment_node_id*);
 
 /** Retrieves id of a curve segment's node of user-requested index. The indexes will be sorted from the one
  *  located the closest to zero, and then moving on forward.
@@ -130,15 +130,15 @@ PUBLIC bool curve_segment_get_node_by_index(__in  __notnull curve_segment,
  *
  *  @return true if successful, false otherwise.
  **/
-PUBLIC bool curve_segment_get_node_in_order(__in  __notnull  curve_segment,
-                                            __in             uint32_t,
-                                            __out __notnull curve_segment_node_id*);
+PUBLIC bool curve_segment_get_node_in_order(curve_segment,
+                                            uint32_t,
+                                            curve_segment_node_id*);
 
 /** TODO */
-PUBLIC EMERALD_API bool curve_segment_get_node_property(__in    __notnull curve_segment,
-                                                        __in    __notnull curve_segment_node_id,
-                                                        __in    __notnull curve_segment_node_property,
-                                                        __inout __notnull system_variant);
+PUBLIC EMERALD_API bool curve_segment_get_node_property(curve_segment,
+                                                        curve_segment_node_id,
+                                                        curve_segment_node_property,
+                                                        system_variant);
 
 /** Retrieves variant type that is used for storing node values.
  *
@@ -147,8 +147,8 @@ PUBLIC EMERALD_API bool curve_segment_get_node_property(__in    __notnull curve_
  *
  *  @return true if successful, false otherwise.
  **/
-PUBLIC bool curve_segment_get_node_value_variant_type(__in            __notnull curve_segment,
-                                                      __out_ecount(1) __notnull system_variant_type*);
+PUBLIC bool curve_segment_get_node_value_variant_type(curve_segment,
+                                                      system_variant_type*);
 
 /** Retrieves curve segment's type.
  *
@@ -157,8 +157,8 @@ PUBLIC bool curve_segment_get_node_value_variant_type(__in            __notnull 
  *
  *  @return true if successful, false otherwise.
  **/
-PUBLIC bool curve_segment_get_type(__in  __notnull curve_segment,
-                                   __out __notnull curve_segment_type*);
+PUBLIC bool curve_segment_get_type(curve_segment,
+                                   curve_segment_type*);
 
 /** Retrieves value from segment handler for a given curve segment.
  *
@@ -169,16 +169,16 @@ PUBLIC bool curve_segment_get_type(__in  __notnull curve_segment,
  *
  *  @return true if successful and result avlue has been saved in @param system_variant, false otherwise.
  **/ 
-PUBLIC bool curve_segment_get_value(__in __notnull  curve_segment,
-                                    __in            system_time,
-                                    __in            bool,
-                                    __out __notnull system_variant);
+PUBLIC bool curve_segment_get_value(curve_segment,
+                                    system_time,
+                                    bool,
+                                    system_variant);
 
 /** TODO */
-PUBLIC EMERALD_API bool curve_segment_modify_node_property(__in __notnull curve_segment,
-                                                           __in __notnull curve_segment_node_id,
-                                                           __in __notnull curve_segment_node_property,
-                                                           __in __notnull system_variant);
+PUBLIC EMERALD_API bool curve_segment_modify_node_property(curve_segment,
+                                                           curve_segment_node_id,
+                                                           curve_segment_node_property,
+                                                           system_variant);
 
 /** Modifies curve segment node's time.
  *
@@ -188,9 +188,9 @@ PUBLIC EMERALD_API bool curve_segment_modify_node_property(__in __notnull curve_
  *
  *  @return true if successful, false otherwise.
  **/
-PUBLIC EMERALD_API bool curve_segment_modify_node_time(__in __notnull curve_segment,
-                                                       __in           curve_segment_node_id,
-                                                       __in           system_time);
+PUBLIC EMERALD_API bool curve_segment_modify_node_time(curve_segment,
+                                                       curve_segment_node_id,
+                                                       system_time);
 
 /** Modifies curve segment node's time and value.
  *
@@ -202,21 +202,21 @@ PUBLIC EMERALD_API bool curve_segment_modify_node_time(__in __notnull curve_segm
  *
  *  @return true if successful, false otherwise.
  **/
-PUBLIC EMERALD_API bool curve_segment_modify_node_time_value(__in __notnull curve_segment,
-                                                             __in           curve_segment_node_id,
-                                                             __in           system_time,
-                                                             __in __notnull system_variant,
-                                                             __in           bool);
+PUBLIC EMERALD_API bool curve_segment_modify_node_time_value(curve_segment,
+                                                             curve_segment_node_id,
+                                                             system_time,
+                                                             system_variant,
+                                                             bool);
 
 /** Releases an initialized curve segment. 
  *
  *  @param curve_segment Curve segment to deinitialize. Cannot be null. Do not use after calling this function.
  **/
-PUBLIC void curve_segment_release(__notnull __deallocate(mem) curve_segment);
+PUBLIC void curve_segment_release(curve_segment);
 
 /** TODO */
-PUBLIC void curve_segment_set_on_segment_changed_callback(__in __notnull   curve_segment                 segment,
-                                                          __in __maybenull PFNCURVESEGMENTONCURVECHANGED callback_proc,
-                                                          __in __maybenull void*                         user_arg);
+PUBLIC void curve_segment_set_on_segment_changed_callback(curve_segment                 segment,
+                                                          PFNCURVESEGMENTONCURVECHANGED callback_proc,
+                                                          void*                         user_arg);
 
 #endif /* CURVE_SEGMENT_H */

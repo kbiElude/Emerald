@@ -69,7 +69,7 @@ typedef struct _ogl_context_samplers_create_renderer_callback_user_arg
 
 
 /** TODO */
-PRIVATE system_hashed_ansi_string _ogl_sampler_get_new_sampler_name(__in __notnull ogl_context_samplers samplers)
+PRIVATE system_hashed_ansi_string _ogl_sampler_get_new_sampler_name(ogl_context_samplers samplers)
 {
     std::stringstream         name_sstream;
     unsigned int              n_samplers  = 0;
@@ -89,8 +89,8 @@ PRIVATE system_hashed_ansi_string _ogl_sampler_get_new_sampler_name(__in __notnu
 }
 
 /** TODO */
-PRIVATE void _ogl_context_samplers_create_renderer_callback(__in __notnull ogl_context context,
-                                                            __in __notnull void*       user_arg)
+PRIVATE void _ogl_context_samplers_create_renderer_callback(ogl_context context,
+                                                            void*       user_arg)
 {
     _ogl_context_samplers_create_renderer_callback_user_arg* user_arg_ptr = (_ogl_context_samplers_create_renderer_callback_user_arg*) user_arg;
 
@@ -181,7 +181,7 @@ PRIVATE void _ogl_context_samplers_create_renderer_callback(__in __notnull ogl_c
 }
 
 /** Please see header for specification */
-PUBLIC ogl_context_samplers ogl_context_samplers_create(__in __notnull ogl_context context)
+PUBLIC ogl_context_samplers ogl_context_samplers_create(ogl_context context)
 {
     _ogl_context_samplers* samplers_ptr = new (std::nothrow) _ogl_context_samplers;
 
@@ -198,17 +198,17 @@ PUBLIC ogl_context_samplers ogl_context_samplers_create(__in __notnull ogl_conte
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API ogl_sampler ogl_context_samplers_get_sampler(__in               __notnull ogl_context_samplers samplers,
-                                                                __in_ecount_opt(4)           const GLfloat*       border_color,
-                                                                __in_opt                     const GLenum*        mag_filter_ptr,
-                                                                __in_opt                     const GLfloat*       max_lod_ptr,
-                                                                __in_opt                     const GLenum*        min_filter_ptr,
-                                                                __in_opt                     const GLfloat*       min_lod_ptr,
-                                                                __in_opt                     const GLenum*        texture_compare_func_ptr,
-                                                                __in_opt                     const GLenum*        texture_compare_mode_ptr,
-                                                                __in_opt                     const GLenum*        wrap_r_ptr,
-                                                                __in_opt                     const GLenum*        wrap_s_ptr,
-                                                                __in_opt                     const GLenum*        wrap_t_ptr)
+PUBLIC EMERALD_API ogl_sampler ogl_context_samplers_get_sampler(ogl_context_samplers samplers,
+                                                                const GLfloat*       border_color,
+                                                                const GLenum*        mag_filter_ptr,
+                                                                const GLfloat*       max_lod_ptr,
+                                                                const GLenum*        min_filter_ptr,
+                                                                const GLfloat*       min_lod_ptr,
+                                                                const GLenum*        texture_compare_func_ptr,
+                                                                const GLenum*        texture_compare_mode_ptr,
+                                                                const GLenum*        wrap_r_ptr,
+                                                                const GLenum*        wrap_s_ptr,
+                                                                const GLenum*        wrap_t_ptr)
 {
     const _ogl_context_samplers* samplers_ptr = (const _ogl_context_samplers*) samplers;
     uint32_t                     n_samplers   = 0;
@@ -353,7 +353,7 @@ PUBLIC EMERALD_API ogl_sampler ogl_context_samplers_get_sampler(__in            
 }
 
 /** Please see header for specification */
-PUBLIC void ogl_context_samplers_release(__in __notnull ogl_context_samplers samplers)
+PUBLIC void ogl_context_samplers_release(ogl_context_samplers samplers)
 {
     if (samplers != NULL)
     {

@@ -54,7 +54,7 @@ const char* yxy_to_rgb_shader_body = "#version 430 core\n"
  *
  *  @param ptr Pointer to _shaders_fragment_sobel instance.
  **/
-PRIVATE void _shaders_fragment_Yxy_to_rgb_release(__in __notnull __deallocate(mem) void* ptr)
+PRIVATE void _shaders_fragment_Yxy_to_rgb_release(void* ptr)
 {
     _shaders_fragment_Yxy_to_rgb* data_ptr = (_shaders_fragment_Yxy_to_rgb*) ptr;
 
@@ -68,8 +68,8 @@ PRIVATE void _shaders_fragment_Yxy_to_rgb_release(__in __notnull __deallocate(me
 
 
 /** Please see header for specification */
-PUBLIC EMERALD_API shaders_fragment_Yxy_to_rgb shaders_fragment_Yxy_to_rgb_create(__in __notnull ogl_context               context,
-                                                                                  __in __notnull system_hashed_ansi_string name)
+PUBLIC EMERALD_API shaders_fragment_Yxy_to_rgb shaders_fragment_Yxy_to_rgb_create(ogl_context               context,
+                                                                                  system_hashed_ansi_string name)
 {
     _shaders_fragment_Yxy_to_rgb* result_object = NULL;
     shaders_fragment_Yxy_to_rgb   result_shader = NULL;
@@ -144,7 +144,7 @@ end:
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API ogl_shader shaders_fragment_Yxy_to_rgb_get_shader(__in __notnull shaders_fragment_Yxy_to_rgb shader)
+PUBLIC EMERALD_API ogl_shader shaders_fragment_Yxy_to_rgb_get_shader(shaders_fragment_Yxy_to_rgb shader)
 {
     return (((_shaders_fragment_Yxy_to_rgb*)shader)->shader);
 }

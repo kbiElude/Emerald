@@ -201,18 +201,18 @@ typedef enum ogl_context_property
 
 } ogl_context_property;
 
-typedef void (*PFNINITCONTEXTAFTERCREATIONPROC)(__in ogl_context context);
+typedef void (*PFNINITCONTEXTAFTERCREATIONPROC)( ogl_context context);
 
 
 /** TODO */
-PUBLIC void ogl_context_bind_to_current_thread(__in ogl_context);
+PUBLIC void ogl_context_bind_to_current_thread( ogl_context);
 
 /** TODO */
-PUBLIC EMERALD_API ogl_context ogl_context_create_from_system_window(__in __notnull   system_hashed_ansi_string name,
-                                                                     __in __notnull   ogl_context_type          type,
-                                                                     __in __notnull   system_window             window,
-                                                                     __in             bool                      vsync_enabled,
-                                                                     __in __maybenull ogl_context               parent_context);
+PUBLIC EMERALD_API ogl_context ogl_context_create_from_system_window(system_hashed_ansi_string name,
+                                                                     ogl_context_type          type,
+                                                                     system_window             window,
+                                                                     bool                      vsync_enabled,
+                                                                     ogl_context               parent_context);
 
 /** TODO
  *
@@ -227,17 +227,17 @@ PUBLIC void ogl_context_deinit_global();
  *  @param out_supported_msaa_samples   TODO.
  *
  */
-PUBLIC EMERALD_API void ogl_context_enumerate_supported_msaa_samples(__in  system_pixel_format pf,
-                                                                     __out unsigned int*       out_n_supported_msaa_samples,
-                                                                     __out unsigned int**      out_supported_msaa_samples);
+PUBLIC EMERALD_API void ogl_context_enumerate_supported_msaa_samples(system_pixel_format pf,
+                                                                     unsigned int*       out_n_supported_msaa_samples,
+                                                                     unsigned int**      out_supported_msaa_samples);
 
 /** TODO */
 PUBLIC ogl_context ogl_context_get_current_context();
 
 /** TODO */
-PUBLIC EMERALD_API void ogl_context_get_property(__in  __notnull ogl_context          context,
-                                                 __in            ogl_context_property property,
-                                                 __out __notnull void*                out_result);
+PUBLIC EMERALD_API void ogl_context_get_property(ogl_context          context,
+                                                 ogl_context_property property,
+                                                 void*                out_result);
 
 /** TODO
  *
@@ -246,11 +246,11 @@ PUBLIC EMERALD_API void ogl_context_get_property(__in  __notnull ogl_context    
 PUBLIC void ogl_context_init_global();
 
 /** TODO */
-PUBLIC EMERALD_API bool ogl_context_is_extension_supported(__in __notnull ogl_context,
-                                                           __in __notnull system_hashed_ansi_string);
+PUBLIC EMERALD_API bool ogl_context_is_extension_supported(ogl_context,
+                                                           system_hashed_ansi_string);
 
 /** TODO */
-PUBLIC bool ogl_context_release_managers(__in __notnull ogl_context);
+PUBLIC bool ogl_context_release_managers(ogl_context);
 
 /** Blocks by default until user-specified entry-point finishes executing. The entry-point WILL be called
  *  a different thread, that is currently bound to GL context described by @param ogl_context.
@@ -261,23 +261,23 @@ PUBLIC bool ogl_context_release_managers(__in __notnull ogl_context);
  *
  *  @return true if successful, false otherwise
  **/
-PUBLIC EMERALD_API bool ogl_context_request_callback_from_context_thread(__in __notnull ogl_context,
-                                                                         __in __notnull PFNOGLCONTEXTCALLBACKFROMCONTEXTTHREADPROC,
-                                                                         __in           void*,
-                                                                         __in           bool block_until_available = true);
+PUBLIC EMERALD_API bool ogl_context_request_callback_from_context_thread(ogl_context,
+                                                                         PFNOGLCONTEXTCALLBACKFROMCONTEXTTHREADPROC,
+                                                                         void*,
+                                                                         bool block_until_available = true);
 
 /** TODO.
  *
  *  This setter will NOT throw an assertion failure if @param property is not recognized.
  */
-PUBLIC bool ogl_context_set_property(__in ogl_context          context,
-                                     __in ogl_context_property property,
-                                     __in const void*          data);
+PUBLIC bool ogl_context_set_property(ogl_context          context,
+                                     ogl_context_property property,
+                                     const void*          data);
 
 /** TODO */
-PUBLIC void ogl_context_swap_buffers(__in ogl_context context);
+PUBLIC void ogl_context_swap_buffers(ogl_context context);
 
 /** TODO */
-PUBLIC void ogl_context_unbind_from_current_thread(__in __notnull ogl_context context);
+PUBLIC void ogl_context_unbind_from_current_thread(ogl_context context);
 
 #endif /* OGL_CONTEXT_H */

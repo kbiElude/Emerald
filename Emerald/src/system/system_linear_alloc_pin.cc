@@ -266,7 +266,7 @@ PUBLIC EMERALD_API void system_linear_alloc_pin_mark(system_linear_alloc_pin han
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API void system_linear_alloc_pin_release(__deallocate(mem) system_linear_alloc_pin handle)
+PUBLIC EMERALD_API void system_linear_alloc_pin_release(system_linear_alloc_pin handle)
 {
     _system_linear_alloc_pin_descriptor* descriptor = (_system_linear_alloc_pin_descriptor*) handle;
 

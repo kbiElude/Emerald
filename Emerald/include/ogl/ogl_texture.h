@@ -43,54 +43,54 @@ typedef enum _ogl_texture_property
 } ogl_texture_property;
 
 /** TODO */
-PUBLIC EMERALD_API ogl_texture ogl_texture_create_empty(__in __notnull ogl_context               context,
-                                                        __in __notnull system_hashed_ansi_string name);
+PUBLIC EMERALD_API ogl_texture ogl_texture_create_empty(ogl_context               context,
+                                                        system_hashed_ansi_string name);
 
 /** TODO */
-PUBLIC EMERALD_API ogl_texture ogl_texture_create_from_file_name(__in __notnull ogl_context               context,
-                                                                 __in __notnull system_hashed_ansi_string name,
-                                                                 __in __notnull system_hashed_ansi_string src_filename);
+PUBLIC EMERALD_API ogl_texture ogl_texture_create_from_file_name(ogl_context               context,
+                                                                 system_hashed_ansi_string name,
+                                                                 system_hashed_ansi_string src_filename);
 
 /** TODO */
-PUBLIC EMERALD_API ogl_texture ogl_texture_create_from_gfx_image(__in __notnull ogl_context               context,
-                                                                 __in __notnull gfx_image                 image,
-                                                                 __in __notnull system_hashed_ansi_string name);
+PUBLIC EMERALD_API ogl_texture ogl_texture_create_from_gfx_image(ogl_context               context,
+                                                                 gfx_image                 image,
+                                                                 system_hashed_ansi_string name);
 
 /** TODO */
-PUBLIC EMERALD_API RENDERING_CONTEXT_CALL ogl_texture ogl_texture_create_and_initialize(__in __notnull ogl_context                context,
-                                                                                        __in __notnull system_hashed_ansi_string  name,
-                                                                                        __in           ogl_texture_dimensionality dimensionality,
-                                                                                        __in           unsigned int               n_mipmaps,
-                                                                                        __in           GLenum                     internalformat,
-                                                                                        __in           unsigned int               base_mipmap_width,
-                                                                                        __in           unsigned int               base_mipmap_height,
-                                                                                        __in           unsigned int               base_mipmap_depth,
-                                                                                        __in           unsigned int               n_samples,
-                                                                                        __in           bool                       fixed_sample_locations);
+PUBLIC EMERALD_API RENDERING_CONTEXT_CALL ogl_texture ogl_texture_create_and_initialize(ogl_context                context,
+                                                                                        system_hashed_ansi_string  name,
+                                                                                        ogl_texture_dimensionality dimensionality,
+                                                                                        unsigned int               n_mipmaps,
+                                                                                        GLenum                     internalformat,
+                                                                                        unsigned int               base_mipmap_width,
+                                                                                        unsigned int               base_mipmap_height,
+                                                                                        unsigned int               base_mipmap_depth,
+                                                                                        unsigned int               n_samples,
+                                                                                        bool                       fixed_sample_locations);
 
 /** TODO */
-PUBLIC EMERALD_API void ogl_texture_generate_mipmaps(__in __notnull ogl_texture texture);
+PUBLIC EMERALD_API void ogl_texture_generate_mipmaps(ogl_texture texture);
 
 /** TODO */
-PUBLIC EMERALD_API bool ogl_texture_get_mipmap_property(__in  __notnull ogl_texture                 texture,
-                                                        __in            unsigned int                mipmap_level,
-                                                        __in            ogl_texture_mipmap_property property_value,
-                                                        __out __notnull void*                       out_result);
+PUBLIC EMERALD_API bool ogl_texture_get_mipmap_property(ogl_texture                 texture,
+                                                        unsigned int                mipmap_level,
+                                                        ogl_texture_mipmap_property property_value,
+                                                        void*                       out_result);
 
 /** TODO */
-PUBLIC EMERALD_API void ogl_texture_get_property(__in  __notnull const ogl_texture    texture,
-                                                 __in            ogl_texture_property property,
-                                                 __out           void*                out_result);
+PUBLIC EMERALD_API void ogl_texture_get_property(const ogl_texture    texture,
+                                                 ogl_texture_property property,
+                                                 void*                out_result);
 
 /** TODO */
-PUBLIC EMERALD_API void ogl_texture_set_mipmap_property(__in __notnull ogl_texture                 texture,
-                                                        __in           unsigned int                n_mipmap,
-                                                        __in           ogl_texture_mipmap_property property_value,
-                                                        __in           void*                       value_ptr);
+PUBLIC EMERALD_API void ogl_texture_set_mipmap_property(ogl_texture                 texture,
+                                                        unsigned int                n_mipmap,
+                                                        ogl_texture_mipmap_property property_value,
+                                                        void*                       value_ptr);
 
 /** TODO */
-PUBLIC EMERALD_API void ogl_texture_set_property(__in  __notnull ogl_texture          texture,
-                                                 __in            ogl_texture_property property,
-                                                 __in            void*                data);
+PUBLIC EMERALD_API void ogl_texture_set_property(ogl_texture          texture,
+                                                 ogl_texture_property property,
+                                                 void*                data);
 
 #endif /* OGL_TEXTURE_H */

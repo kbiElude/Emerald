@@ -95,14 +95,14 @@ PUBLIC EMERALD_API system_read_write_mutex system_read_write_mutex_create()
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API bool system_read_write_mutex_is_write_locked(__in system_read_write_mutex mutex)
+PUBLIC EMERALD_API bool system_read_write_mutex_is_write_locked(system_read_write_mutex mutex)
 {
     return (((_system_read_write_mutex*) mutex)->n_write_locks > 0);
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API void system_read_write_mutex_lock(__in system_read_write_mutex             mutex,
-                                                     __in system_read_write_mutex_access_type access_type)
+PUBLIC EMERALD_API void system_read_write_mutex_lock(system_read_write_mutex             mutex,
+                                                     system_read_write_mutex_access_type access_type)
 {
     system_thread_id          current_thread_id = system_threads_get_thread_id();
     _system_read_write_mutex* rw_mutex_ptr      = (_system_read_write_mutex*) mutex;
@@ -188,7 +188,7 @@ PUBLIC EMERALD_API void system_read_write_mutex_lock(__in system_read_write_mute
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API void system_read_write_mutex_release(__in __deallocate(mem) system_read_write_mutex mutex)
+PUBLIC EMERALD_API void system_read_write_mutex_release(system_read_write_mutex mutex)
 {
     ASSERT_DEBUG_SYNC(mutex != NULL,
                       "Cannot release a NULL mutex");
@@ -206,8 +206,8 @@ PUBLIC EMERALD_API void system_read_write_mutex_release(__in __deallocate(mem) s
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API void system_read_write_mutex_unlock(__in system_read_write_mutex             mutex,
-                                                       __in system_read_write_mutex_access_type access_type)
+PUBLIC EMERALD_API void system_read_write_mutex_unlock(system_read_write_mutex             mutex,
+                                                       system_read_write_mutex_access_type access_type)
 {
     system_thread_id          current_thread_id = system_threads_get_thread_id();
     _system_read_write_mutex* rw_mutex_ptr      = (_system_read_write_mutex*) mutex;

@@ -49,7 +49,7 @@ const char* convolution3x3_fragment_shader_body_suffix = ";\n"
  *
  *  @param ptr Pointer to _shaders_fragment_convolution3x3 instance.
  **/
-PRIVATE void _shaders_fragment_convolution3x3_release(__in __notnull __deallocate(mem) void* ptr)
+PRIVATE void _shaders_fragment_convolution3x3_release(void* ptr)
 {
     _shaders_fragment_convolution3x3* data_ptr = (_shaders_fragment_convolution3x3*) ptr;
 
@@ -63,9 +63,9 @@ PRIVATE void _shaders_fragment_convolution3x3_release(__in __notnull __deallocat
 
 
 /** Please see header for specification */
-PUBLIC EMERALD_API shaders_fragment_convolution3x3 shaders_fragment_convolution3x3_create(__in __notnull             ogl_context               context,
-                                                                                          __in __notnull __ecount(9) const float*              input_mask,
-                                                                                          __in __notnull             system_hashed_ansi_string name)
+PUBLIC EMERALD_API shaders_fragment_convolution3x3 shaders_fragment_convolution3x3_create(ogl_context               context,
+                                                                                          const float*              input_mask,
+                                                                                          system_hashed_ansi_string name)
 {
     ogl_shader                        convolution_shader = NULL;
     bool                              result             = false;
@@ -167,7 +167,7 @@ end:
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API ogl_shader shaders_fragment_convolution3x3_get_shader(__in __notnull shaders_fragment_convolution3x3 shader)
+PUBLIC EMERALD_API ogl_shader shaders_fragment_convolution3x3_get_shader(shaders_fragment_convolution3x3 shader)
 {
     return ((_shaders_fragment_convolution3x3*)shader)->fragment_shader;
 }

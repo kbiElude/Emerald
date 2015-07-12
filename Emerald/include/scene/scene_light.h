@@ -291,83 +291,83 @@ typedef enum
 
 
 /** TODO */
-PUBLIC EMERALD_API scene_light scene_light_create_ambient(__in     __notnull system_hashed_ansi_string name,
-                                                          __in_opt           system_hashed_ansi_string object_manager_path);
+PUBLIC EMERALD_API scene_light scene_light_create_ambient(system_hashed_ansi_string name,
+                                                          system_hashed_ansi_string object_manager_path);
 
 /** TODO */
-PUBLIC EMERALD_API scene_light scene_light_create_directional(__in     __notnull system_hashed_ansi_string name,
-                                                              __in_opt           system_hashed_ansi_string object_manager_path);
+PUBLIC EMERALD_API scene_light scene_light_create_directional(system_hashed_ansi_string name,
+                                                              system_hashed_ansi_string object_manager_path);
 
 /** TODO */
-PUBLIC EMERALD_API scene_light scene_light_create_point(__in     __notnull system_hashed_ansi_string name,
-                                                        __in_opt           system_hashed_ansi_string object_manager_path);
+PUBLIC EMERALD_API scene_light scene_light_create_point(system_hashed_ansi_string name,
+                                                        system_hashed_ansi_string object_manager_path);
 
 /** TODO */
-PUBLIC EMERALD_API scene_light scene_light_create_spot(__in     __notnull system_hashed_ansi_string name,
-                                                       __in_opt           system_hashed_ansi_string object_manager_path);
+PUBLIC EMERALD_API scene_light scene_light_create_spot(system_hashed_ansi_string name,
+                                                       system_hashed_ansi_string object_manager_path);
 
 /** TODO */
-PUBLIC EMERALD_API void scene_light_get_property(__in  __notnull scene_light          light,
-                                                 __in            scene_light_property property,
-                                                 __out __notnull void*                out_result);
+PUBLIC EMERALD_API void scene_light_get_property(scene_light          light,
+                                                 scene_light_property property,
+                                                 void*                out_result);
 
 /** TODO
  *
  *  Internal usage only.
  */
-PUBLIC system_hashed_ansi_string scene_light_get_scene_light_falloff_has(__in scene_light_falloff falloff);
+PUBLIC system_hashed_ansi_string scene_light_get_scene_light_falloff_has(scene_light_falloff falloff);
 
 /** TODO
  *
  *  Internal usage only.
  */
-PUBLIC system_hashed_ansi_string scene_light_get_scene_light_shadow_map_algorithm_has(__in scene_light_shadow_map_algorithm algorithm);
+PUBLIC system_hashed_ansi_string scene_light_get_scene_light_shadow_map_algorithm_has(scene_light_shadow_map_algorithm algorithm);
 
 /** TODO
  *
  *  Internal usage only.
  */
-PUBLIC system_hashed_ansi_string scene_light_get_scene_light_shadow_map_bias_has(__in scene_light_shadow_map_bias bias);
+PUBLIC system_hashed_ansi_string scene_light_get_scene_light_shadow_map_bias_has(scene_light_shadow_map_bias bias);
 
 /** TODO
  *
  *  Internal usage only.
  */
-PUBLIC system_hashed_ansi_string scene_light_get_scene_light_shadow_map_filtering_has(__in scene_light_shadow_map_filtering filtering);
+PUBLIC system_hashed_ansi_string scene_light_get_scene_light_shadow_map_filtering_has(scene_light_shadow_map_filtering filtering);
 
 /** TODO.
  *
  *  Internal usage only.
  */
-PUBLIC system_hashed_ansi_string scene_light_get_scene_light_shadow_map_pointlight_algorithm_has(__in scene_light_shadow_map_pointlight_algorithm algorithm);
+PUBLIC system_hashed_ansi_string scene_light_get_scene_light_shadow_map_pointlight_algorithm_has(scene_light_shadow_map_pointlight_algorithm algorithm);
 
 /** TODO
  *
  *  Internal usage only.
  */
-PUBLIC system_hashed_ansi_string scene_light_get_scene_light_type_has(__in scene_light_type light_type);
+PUBLIC system_hashed_ansi_string scene_light_get_scene_light_type_has(scene_light_type light_type);
 
 /** TODO.
  *
  *  NOTE: This function is for internal use only.
  *
  */
-PUBLIC scene_light scene_light_load(__in     __notnull system_file_serializer    serializer,
-                                    __in_opt           scene                     owner_scene,
-                                    __in_opt           system_hashed_ansi_string object_manager_path);
+PUBLIC scene_light scene_light_load(system_file_serializer    serializer,
+                                    scene                     owner_scene,
+                                    system_hashed_ansi_string object_manager_path);
 
 /** TODO.
  *
  *  NOTE: This function is for internal use only.
  *
  **/
-PUBLIC bool scene_light_save(__in     __notnull system_file_serializer serializer,
-                             __in     __notnull const scene_light      light,
-                             __in_opt           scene                  owner_scene);
+PUBLIC bool scene_light_save(system_file_serializer serializer,
+                             const scene_light      light,
+                             scene                  owner_scene);
 
 /** TODO */
-PUBLIC EMERALD_API void scene_light_set_property(__in __notnull scene_light,
-                                                 __in           scene_light_property,
-                                                 __in __notnull const void*);
+PUBLIC EMERALD_API void scene_light_set_property(scene_light,
+                                                 scene_light_property,
+                                                 const void*);
 
 #endif /* SCENE_CAMERA_H */

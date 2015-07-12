@@ -27,8 +27,8 @@ typedef struct _ogl_ui_bag
     float                   x1y1[2];
     ogl_ui                  ui;
 
-    explicit _ogl_ui_bag(__in           __notnull ogl_ui       in_ui,
-                         __in_ecount(2) __notnull const float* in_x1y1)
+    explicit _ogl_ui_bag(ogl_ui       in_ui,
+                         const float* in_x1y1)
     {
         controls = NULL;
         frame    = NULL;
@@ -49,11 +49,11 @@ typedef struct _ogl_ui_bag
 } _ogl_ui_label;
 
 /* Forward declarations */
-PRIVATE void _ogl_ui_bag_position_controls(__in __notnull _ogl_ui_bag* bag_ptr);
+PRIVATE void _ogl_ui_bag_position_controls(_ogl_ui_bag* bag_ptr);
 
 
 /** TODO */
-PRIVATE void _ogl_ui_bag_position_controls(__in __notnull _ogl_ui_bag* bag_ptr)
+PRIVATE void _ogl_ui_bag_position_controls(_ogl_ui_bag* bag_ptr)
 {
     unsigned int n_controls      = 0;
     float        current_x1y1[2] =
@@ -217,20 +217,20 @@ PRIVATE void _ogl_ui_bag_position_controls(__in __notnull _ogl_ui_bag* bag_ptr)
 }
 
 /** TODO */
-PRIVATE void _ogl_ui_on_controls_changed_callback(__in __notnull ogl_ui_control control,
-                                                  __in           int            callback_id,
-                                                  __in __notnull void*          callback_subscriber_data,
-                                                  __in __notnull void*          callback_data)
+PRIVATE void _ogl_ui_on_controls_changed_callback(ogl_ui_control control,
+                                                  int            callback_id,
+                                                  void*          callback_subscriber_data,
+                                                  void*          callback_data)
 {
     /* Reposition the controls and resize the frame */
     _ogl_ui_bag_position_controls( (_ogl_ui_bag*) callback_subscriber_data);
 }
 
 /* Please see header for spec */
-PUBLIC EMERALD_API ogl_ui_bag ogl_ui_bag_create(__in                    __notnull ogl_ui                ui,
-                                                __in_ecount(2)          __notnull const float*          x1y1,
-                                                __in                              unsigned int          n_controls,
-                                                __in_ecount(n_controls) __notnull const ogl_ui_control* controls)
+PUBLIC EMERALD_API ogl_ui_bag ogl_ui_bag_create(ogl_ui                ui,
+                                                const float*          x1y1,
+                                                unsigned int          n_controls,
+                                                const ogl_ui_control* controls)
 {
     _ogl_ui_bag* new_bag_ptr = new (std::nothrow) _ogl_ui_bag(ui,
                                                               x1y1);
@@ -336,7 +336,7 @@ PUBLIC EMERALD_API ogl_ui_bag ogl_ui_bag_create(__in                    __notnul
 }
 
 /* Please see header for spec */
-PUBLIC EMERALD_API void ogl_ui_bag_release(__in __notnull ogl_ui_bag bag)
+PUBLIC EMERALD_API void ogl_ui_bag_release(ogl_ui_bag bag)
 {
     /* Sanity checks */
     ASSERT_DEBUG_SYNC(bag != NULL,

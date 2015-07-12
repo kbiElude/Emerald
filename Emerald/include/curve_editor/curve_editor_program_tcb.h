@@ -44,16 +44,16 @@ REFCOUNT_INSERT_DECLARATIONS(curve_editor_program_tcb,
 
 
 /** TODO */
-PUBLIC curve_editor_program_tcb curve_editor_program_tcb_create(__in __notnull ogl_context               context,
-                                                                __in __notnull system_hashed_ansi_string name);
+PUBLIC curve_editor_program_tcb curve_editor_program_tcb_create(ogl_context               context,
+                                                                system_hashed_ansi_string name);
 
 /** TODO */
-PUBLIC void curve_editor_program_tcb_set_property(__in __notnull curve_editor_program_tcb          tcb,
-                                                  __in           curve_editor_program_tcb_property property,
-                                                  __in __notnull const void*                       data);
+PUBLIC void curve_editor_program_tcb_set_property(curve_editor_program_tcb          tcb,
+                                                  curve_editor_program_tcb_property property,
+                                                  const void*                       data);
 
 /** TODO */
-PUBLIC void curve_editor_program_tcb_use(__in __notnull ogl_context              context,
-                                         __in __notnull curve_editor_program_tcb tcb);
+PUBLIC void curve_editor_program_tcb_use(ogl_context              context,
+                                         curve_editor_program_tcb tcb);
 
 #endif /* CURVE_EDITOR_PROGRAM_TCB_H */

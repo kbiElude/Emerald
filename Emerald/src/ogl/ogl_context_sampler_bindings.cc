@@ -43,7 +43,7 @@ typedef struct _ogl_context_sampler_bindings
 
 
 /** TODO */
-PRIVATE void _ogl_context_sampler_bindings_sync_multi_bind_process(__in __notnull ogl_context_sampler_bindings bindings)
+PRIVATE void _ogl_context_sampler_bindings_sync_multi_bind_process(ogl_context_sampler_bindings bindings)
 {
     _ogl_context_sampler_bindings* bindings_ptr      = (_ogl_context_sampler_bindings*) bindings;
     uint32_t                       dirty_start_index = 0xFFFFFFFF;
@@ -105,7 +105,7 @@ PRIVATE void _ogl_context_sampler_bindings_sync_multi_bind_process(__in __notnul
 }
 
 /** TODO */
-PRIVATE void _ogl_context_sampler_bindings_sync_non_multi_bind_process(__in __notnull ogl_context_sampler_bindings bindings)
+PRIVATE void _ogl_context_sampler_bindings_sync_non_multi_bind_process(ogl_context_sampler_bindings bindings)
 {
     _ogl_context_sampler_bindings* bindings_ptr = (_ogl_context_sampler_bindings*) bindings;
 
@@ -134,7 +134,7 @@ PRIVATE void _ogl_context_sampler_bindings_sync_non_multi_bind_process(__in __no
 }
 
 /** Please see header for spec */
-PUBLIC ogl_context_sampler_bindings ogl_context_sampler_bindings_create(__in __notnull ogl_context context)
+PUBLIC ogl_context_sampler_bindings ogl_context_sampler_bindings_create(ogl_context context)
 {
     _ogl_context_sampler_bindings* new_bindings = new (std::nothrow) _ogl_context_sampler_bindings;
 
@@ -150,8 +150,8 @@ PUBLIC ogl_context_sampler_bindings ogl_context_sampler_bindings_create(__in __n
 }
 
 /** Please see header for spec */
-PUBLIC GLuint ogl_context_sampler_bindings_get_binding(__in __notnull const ogl_context_sampler_bindings bindings,
-                                                       __in           GLuint                             texture_unit)
+PUBLIC GLuint ogl_context_sampler_bindings_get_binding(const ogl_context_sampler_bindings bindings,
+                                                       GLuint                             texture_unit)
 {
     const _ogl_context_sampler_bindings* bindings_ptr = (const _ogl_context_sampler_bindings*) bindings;
     GLuint                               result       = 0;
@@ -168,8 +168,8 @@ PUBLIC GLuint ogl_context_sampler_bindings_get_binding(__in __notnull const ogl_
 }
 
 /** Please see header for spec */
-PUBLIC void ogl_context_sampler_bindings_init(__in __notnull ogl_context_sampler_bindings              bindings,
-                                              __in __notnull const ogl_context_gl_entrypoints_private* entrypoints_private_ptr)
+PUBLIC void ogl_context_sampler_bindings_init(ogl_context_sampler_bindings              bindings,
+                                              const ogl_context_gl_entrypoints_private* entrypoints_private_ptr)
 {
     _ogl_context_sampler_bindings* bindings_ptr = (_ogl_context_sampler_bindings*) bindings;
     const ogl_context_gl_limits*   limits_ptr   = NULL;
@@ -210,7 +210,7 @@ PUBLIC void ogl_context_sampler_bindings_init(__in __notnull ogl_context_sampler
 }
 
 /** Please see header for spec */
-PUBLIC void ogl_context_sampler_bindings_release(__in __notnull __post_invalid ogl_context_sampler_bindings bindings)
+PUBLIC void ogl_context_sampler_bindings_release(ogl_context_sampler_bindings bindings)
 {
     _ogl_context_sampler_bindings* bindings_ptr = (_ogl_context_sampler_bindings*) bindings;
 
@@ -244,9 +244,9 @@ PUBLIC void ogl_context_sampler_bindings_release(__in __notnull __post_invalid o
 }
 
 /** Please see header for spec */
-PUBLIC void ogl_context_sampler_bindings_set_binding(__in __notnull ogl_context_sampler_bindings bindings,
-                                                     __in           GLuint                       texture_unit,
-                                                     __in           GLuint                       sampler)
+PUBLIC void ogl_context_sampler_bindings_set_binding(ogl_context_sampler_bindings bindings,
+                                                     GLuint                       texture_unit,
+                                                     GLuint                       sampler)
 {
     _ogl_context_sampler_bindings* bindings_ptr = (_ogl_context_sampler_bindings*) bindings;
 
@@ -264,7 +264,7 @@ PUBLIC void ogl_context_sampler_bindings_set_binding(__in __notnull ogl_context_
 }
 
 /** Please see header for spec */
-PUBLIC void ogl_context_sampler_bindings_sync(__in __notnull ogl_context_sampler_bindings bindings)
+PUBLIC void ogl_context_sampler_bindings_sync(ogl_context_sampler_bindings bindings)
 {
     /* NOTE: bindings is NULL during rendering context initialization */
     if (bindings != NULL)

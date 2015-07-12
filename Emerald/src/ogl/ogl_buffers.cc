@@ -20,8 +20,8 @@
 #define SPARSE_BUFFER_SIZE         (512 * 1024768)
 
 #define MAKE_BO_HASHMAP_KEY(bo_id, bo_offset)           \
-    ((__int64(bo_id)     & ((1LL << 32) - 1))         | \
-    ((__int64(bo_offset) & ((1LL << 32) - 1)) << 32))
+    ((int64_t(bo_id)     & ((1LL << 32) - 1))         | \
+    ((int64_t(bo_offset) & ((1LL << 32) - 1)) << 32))
 
 
 typedef struct _ogl_buffers_buffer
@@ -52,8 +52,8 @@ typedef struct _ogl_buffers
     unsigned int                                   page_size;
     system_resizable_vector                        sparse_buffers; /* sparse BOs are never mappable! */
 
-    _ogl_buffers(__in __notnull ogl_context               in_context,
-                 __in __notnull system_hashed_ansi_string in_name)
+    _ogl_buffers(ogl_context               in_context,
+                 system_hashed_ansi_string in_name)
     {
         are_sparse_buffers_in           = false;
         bo_id_offset_hash_to_buffer_map = system_hash64map_create    (sizeof(_ogl_buffers_buffer*) );
@@ -183,20 +183,20 @@ typedef struct _ogl_buffers
 
 
 /** Forward declarations */
-PRIVATE _ogl_buffers_buffer* _ogl_buffers_alloc_new_immutable_buffer    (__in __notnull _ogl_buffers*            buffers_ptr,
-                                                                         __in           _ogl_buffers_mappability mappability,
-                                                                         __in           _ogl_buffers_usage       usage,
-                                                                         __in           unsigned int             required_size);
-PRIVATE _ogl_buffers_buffer* _ogl_buffers_alloc_new_sparse_buffer       (__in __notnull _ogl_buffers*            buffers_ptr);
-PRIVATE unsigned int         _ogl_buffers_get_nonsparse_buffer_size     (__in           _ogl_buffers_usage       usage);
-PRIVATE void                 _ogl_buffers_on_sparse_memory_block_alloced(__in __notnull system_memory_manager    manager,
-                                                                         __in           unsigned int             offset_aligned,
-                                                                         __in           unsigned int             size,
-                                                                         __in __notnull void*                    user_arg);
-PRIVATE void                 _ogl_buffers_on_sparse_memory_block_freed  (__in __notnull system_memory_manager    manager,
-                                                                         __in           unsigned int             offset_aligned,
-                                                                         __in           unsigned int             size,
-                                                                         __in __notnull void*                    user_arg);
+PRIVATE _ogl_buffers_buffer* _ogl_buffers_alloc_new_immutable_buffer    (_ogl_buffers*            buffers_ptr,
+                                                                         _ogl_buffers_mappability mappability,
+                                                                         _ogl_buffers_usage       usage,
+                                                                         unsigned int             required_size);
+PRIVATE _ogl_buffers_buffer* _ogl_buffers_alloc_new_sparse_buffer       (_ogl_buffers*            buffers_ptr);
+PRIVATE unsigned int         _ogl_buffers_get_nonsparse_buffer_size     (_ogl_buffers_usage       usage);
+PRIVATE void                 _ogl_buffers_on_sparse_memory_block_alloced(system_memory_manager    manager,
+                                                                         unsigned int             offset_aligned,
+                                                                         unsigned int             size,
+                                                                         void*                    user_arg);
+PRIVATE void                 _ogl_buffers_on_sparse_memory_block_freed  (system_memory_manager    manager,
+                                                                         unsigned int             offset_aligned,
+                                                                         unsigned int             size,
+                                                                         void*                    user_arg);
 
 /** TODO */
 _ogl_buffers_buffer::~_ogl_buffers_buffer()
@@ -230,10 +230,10 @@ _ogl_buffers_buffer::~_ogl_buffers_buffer()
 
 
 /** TODO */
-PRIVATE _ogl_buffers_buffer* _ogl_buffers_alloc_new_immutable_buffer(__in __notnull _ogl_buffers*            buffers_ptr,
-                                                                     __in           _ogl_buffers_mappability mappability,
-                                                                     __in           _ogl_buffers_usage       usage,
-                                                                     __in           unsigned int             required_size)
+PRIVATE _ogl_buffers_buffer* _ogl_buffers_alloc_new_immutable_buffer(_ogl_buffers*            buffers_ptr,
+                                                                     _ogl_buffers_mappability mappability,
+                                                                     _ogl_buffers_usage       usage,
+                                                                     unsigned int             required_size)
 {
     unsigned int         bo_flags       = GL_DYNAMIC_STORAGE_BIT;
     unsigned int         bo_size        = _ogl_buffers_get_nonsparse_buffer_size(usage);
@@ -373,7 +373,7 @@ PRIVATE _ogl_buffers_buffer* _ogl_buffers_alloc_new_immutable_buffer(__in __notn
 }
 
 /** TODO */
-PRIVATE _ogl_buffers_buffer* _ogl_buffers_alloc_new_sparse_buffer(__in __notnull _ogl_buffers* buffers_ptr)
+PRIVATE _ogl_buffers_buffer* _ogl_buffers_alloc_new_sparse_buffer(_ogl_buffers* buffers_ptr)
 {
     _ogl_buffers_buffer* new_buffer_ptr = (_ogl_buffers_buffer*) system_resource_pool_get_from_pool(buffers_ptr->buffer_descriptor_pool);
 
@@ -431,7 +431,7 @@ PRIVATE _ogl_buffers_buffer* _ogl_buffers_alloc_new_sparse_buffer(__in __notnull
 }
 
 /** TODO */
-PRIVATE unsigned int _ogl_buffers_get_nonsparse_buffer_size(__in _ogl_buffers_usage usage)
+PRIVATE unsigned int _ogl_buffers_get_nonsparse_buffer_size(_ogl_buffers_usage usage)
 {
     unsigned int result = 0;
 
@@ -477,10 +477,10 @@ PRIVATE unsigned int _ogl_buffers_get_nonsparse_buffer_size(__in _ogl_buffers_us
 }
 
 /** TODO */
-PRIVATE void _ogl_buffers_on_sparse_memory_block_alloced(__in __notnull system_memory_manager manager,
-                                                         __in           unsigned int          offset_aligned,
-                                                         __in           unsigned int          size,
-                                                         __in __notnull void*                 user_arg)
+PRIVATE void _ogl_buffers_on_sparse_memory_block_alloced(system_memory_manager manager,
+                                                         unsigned int          offset_aligned,
+                                                         unsigned int          size,
+                                                         void*                 user_arg)
 {
     _ogl_buffers_buffer* buffer_ptr = (_ogl_buffers_buffer*) user_arg;
 
@@ -495,10 +495,10 @@ PRIVATE void _ogl_buffers_on_sparse_memory_block_alloced(__in __notnull system_m
 }
 
 /** TODO */
-PRIVATE void _ogl_buffers_on_sparse_memory_block_freed(__in __notnull system_memory_manager manager,
-                                                       __in           unsigned int          offset_aligned,
-                                                       __in           unsigned int          size,
-                                                       __in __notnull void*                 user_arg)
+PRIVATE void _ogl_buffers_on_sparse_memory_block_freed(system_memory_manager manager,
+                                                       unsigned int          offset_aligned,
+                                                       unsigned int          size,
+                                                       void*                 user_arg)
 {
     _ogl_buffers_buffer* buffer_ptr = (_ogl_buffers_buffer*) user_arg;
 
@@ -518,14 +518,14 @@ PRIVATE void _ogl_buffers_on_sparse_memory_block_freed(__in __notnull system_mem
 
 
 /** Please see header for spec */
-PUBLIC EMERALD_API bool ogl_buffers_allocate_buffer_memory(__in  __notnull ogl_buffers              buffers,
-                                                           __in            unsigned int             size,
-                                                           __in            unsigned int             alignment_requirement,
-                                                           __in            _ogl_buffers_mappability mappability,
-                                                           __in            _ogl_buffers_usage       usage,
-                                                           __in            int                      flags, /* bitfield of OGL_BUFFERS_FLAGS_ */
-                                                           __out __notnull unsigned int*            out_bo_id_ptr,
-                                                           __out __notnull unsigned int*            out_bo_offset_ptr)
+PUBLIC EMERALD_API bool ogl_buffers_allocate_buffer_memory(ogl_buffers              buffers,
+                                                           unsigned int             size,
+                                                           unsigned int             alignment_requirement,
+                                                           _ogl_buffers_mappability mappability,
+                                                           _ogl_buffers_usage       usage,
+                                                           int                      flags, /* bitfield of OGL_BUFFERS_FLAGS_ */
+                                                           unsigned int*            out_bo_id_ptr,
+                                                           unsigned int*            out_bo_offset_ptr)
 {
     _ogl_buffers_buffer* buffer_ptr                 = NULL;
     _ogl_buffers*        buffers_ptr                = (_ogl_buffers*) buffers;
@@ -709,8 +709,8 @@ PUBLIC EMERALD_API bool ogl_buffers_allocate_buffer_memory(__in  __notnull ogl_b
 }
 
 /** Please see header for spec */
-PUBLIC ogl_buffers ogl_buffers_create(__in __notnull ogl_context               context,
-                                      __in __notnull system_hashed_ansi_string name)
+PUBLIC ogl_buffers ogl_buffers_create(ogl_context               context,
+                                      system_hashed_ansi_string name)
 {
     _ogl_buffers* new_buffers = new (std::nothrow) _ogl_buffers(context,
                                                                 name);
@@ -746,9 +746,9 @@ PUBLIC ogl_buffers ogl_buffers_create(__in __notnull ogl_context               c
 }
 
 /** Please see header for spec */
-PUBLIC EMERALD_API void ogl_buffers_free_buffer_memory(__in __notnull ogl_buffers  buffers,
-                                                       __in           unsigned int bo_id,
-                                                       __in           unsigned int bo_offset)
+PUBLIC EMERALD_API void ogl_buffers_free_buffer_memory(ogl_buffers  buffers,
+                                                       unsigned int bo_id,
+                                                       unsigned int bo_offset)
 {
     _ogl_buffers_buffer* buffer_ptr  = NULL;
     _ogl_buffers*        buffers_ptr = (_ogl_buffers*) buffers;
@@ -779,7 +779,7 @@ PUBLIC EMERALD_API void ogl_buffers_free_buffer_memory(__in __notnull ogl_buffer
 }
 
 /** Please see header for spec */
-PUBLIC void ogl_buffers_release(__in __notnull ogl_buffers buffers)
+PUBLIC void ogl_buffers_release(ogl_buffers buffers)
 {
     delete (_ogl_buffers*) buffers;
 

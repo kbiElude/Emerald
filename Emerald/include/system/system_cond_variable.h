@@ -18,9 +18,9 @@ typedef bool (*PFNSYSTEMCONDVARIABLETESTPROC)(void* user_arg);
  *
  *  @return The requested condition variable, or NULL if the request has failed.
  */
-PUBLIC EMERALD_API system_cond_variable system_cond_variable_create(__in     PFNSYSTEMCONDVARIABLETESTPROC pTestPredicate,
-                                                                    __in_opt void*                         test_predicate_user_arg,
-                                                                    __in_opt system_critical_section       in_cs = NULL);
+PUBLIC EMERALD_API system_cond_variable system_cond_variable_create(PFNSYSTEMCONDVARIABLETESTPROC pTestPredicate,
+                                                                    void*                         test_predicate_user_arg,
+                                                                    system_critical_section       in_cs = NULL);
 
 /** Signals a specified condition variable.
  *
@@ -31,8 +31,8 @@ PUBLIC EMERALD_API system_cond_variable system_cond_variable_create(__in     PFN
  *  @param should_broadcast true to wake up all awaiting threads; false to wake only one of them.
  *                          Which of the threads will be awakened in the latter case is undefined.
  **/
-PUBLIC EMERALD_API void system_cond_variable_signal(__in __notnull system_cond_variable cond_variable,
-                                                    __in           bool                 should_broadcast);
+PUBLIC EMERALD_API void system_cond_variable_signal(system_cond_variable cond_variable,
+                                                    bool                 should_broadcast);
 
 /** Blocks until a specified condition variable is assigned to the calling thread. No other thread is guaranteed,
  *  to work on the logic guarded by the condition variable, after the call returns.
@@ -49,9 +49,9 @@ PUBLIC EMERALD_API void system_cond_variable_signal(__in __notnull system_cond_v
  *                               has timed out (true) or not (false).
  *
  **/
-PUBLIC EMERALD_API void system_cond_variable_wait_begin(__in __notnull system_cond_variable cond_variable,
-                                                        __in           system_time          timeout,
-                                                        __out_opt      bool*                out_has_timed_out_ptr);
+PUBLIC EMERALD_API void system_cond_variable_wait_begin(system_cond_variable cond_variable,
+                                                        system_time          timeout,
+                                                        bool*                out_has_timed_out_ptr);
 
 /** Releases the CV ownership from the current thread, letting other enqueued threads gain access to the guarded logic.
  *
@@ -59,12 +59,12 @@ PUBLIC EMERALD_API void system_cond_variable_wait_begin(__in __notnull system_co
  *
  *  @param cond_variable Condition variable to use for the call. Must not be NULL.
  **/
-PUBLIC EMERALD_API void system_cond_variable_wait_end(__in __notnull system_cond_variable cond_variable);
+PUBLIC EMERALD_API void system_cond_variable_wait_end(system_cond_variable cond_variable);
 
 /** Releases the condition variable.
  *
  *  @param cond_variable Condition variable to release. Must NOT be NULL.
  **/
-PUBLIC EMERALD_API void system_cond_variable_release(__in __post_invalid system_cond_variable cond_variable);
+PUBLIC EMERALD_API void system_cond_variable_release(system_cond_variable cond_variable);
 
 #endif /* SYSTEM_COND_VARIABLE */

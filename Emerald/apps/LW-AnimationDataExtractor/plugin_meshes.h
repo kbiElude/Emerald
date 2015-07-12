@@ -23,12 +23,12 @@ typedef enum
 PUBLIC void DeinitMeshData();
 
 /** TODO */
-PUBLIC void FillSceneWithMeshData(__in __notnull scene scene);
+PUBLIC void FillSceneWithMeshData(scene scene);
 
 /** TODO */
-PUBLIC void GetMeshProperty(__in  __notnull scene_mesh   mesh_instance,
-                            __in            MeshProperty property,
-                            __out __notnull void*        out_result);
+PUBLIC void GetMeshProperty(scene_mesh   mesh_instance,
+                            MeshProperty property,
+                            void*        out_result);
 
 /** TODO */
 PUBLIC void InitMeshData();

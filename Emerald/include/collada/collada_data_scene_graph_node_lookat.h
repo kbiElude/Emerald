@@ -12,7 +12,7 @@
 #include "tinyxml2.h"
 
 /** TODO */
-PUBLIC collada_data_scene_graph_node_item collada_data_scene_graph_node_lookat_create(__in __notnull tinyxml2::XMLElement* element_ptr);
+PUBLIC collada_data_scene_graph_node_item collada_data_scene_graph_node_lookat_create(tinyxml2::XMLElement* element_ptr);
 
 
 #endif /* COLLADA_DATA_SCENE_GRAPH_NODE_LOOKAT_H */

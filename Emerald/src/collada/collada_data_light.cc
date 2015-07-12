@@ -67,7 +67,7 @@ end:
 }
 
 /** Please see header for spec */
-PUBLIC collada_data_light collada_data_light_create(__in __notnull tinyxml2::XMLElement* current_light_element_ptr)
+PUBLIC collada_data_light collada_data_light_create(tinyxml2::XMLElement* current_light_element_ptr)
 {
     tinyxml2::XMLElement* current_child_element_ptr    = NULL;
     bool                  has_parsed_light             = false;
@@ -252,9 +252,9 @@ end:
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API void collada_data_light_get_property(__in  __notnull const collada_data_light          light,
-                                                        __in                  collada_data_light_property property,
-                                                        __out __notnull void*                             out_data_ptr)
+PUBLIC EMERALD_API void collada_data_light_get_property(const collada_data_light          light,
+                                                              collada_data_light_property property,
+                                                        void*                             out_data_ptr)
 {
     _collada_data_light* light_ptr = (_collada_data_light*) light;
 
@@ -338,7 +338,7 @@ PUBLIC EMERALD_API void collada_data_light_get_property(__in  __notnull const co
 }
 
 /* Please see header for specification */
-PUBLIC void collada_data_light_release(__in __notnull __post_invalid collada_data_light light)
+PUBLIC void collada_data_light_release(collada_data_light light)
 {
     delete (_collada_data_light*) light;
 

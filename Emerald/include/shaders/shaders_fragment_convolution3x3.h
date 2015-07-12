@@ -29,9 +29,9 @@ REFCOUNT_INSERT_DECLARATIONS(shaders_fragment_convolution3x3,
  * 
  *  @return Shaders_fragment_convolution3x3 instance if successful, NULL otherwise.
  */
-PUBLIC EMERALD_API shaders_fragment_convolution3x3 shaders_fragment_convolution3x3_create(__in __notnull             ogl_context,
-                                                                                          __in __notnull __ecount(9) const float*,
-                                                                                          __in __notnull             system_hashed_ansi_string);
+PUBLIC EMERALD_API shaders_fragment_convolution3x3 shaders_fragment_convolution3x3_create(ogl_context,
+                                                                                          const float*,
+                                                                                          system_hashed_ansi_string);
 
 /** Retrieves ogl_shader object associated with the instance. Do not release the object or modify it in any way.
  *
@@ -39,7 +39,7 @@ PUBLIC EMERALD_API shaders_fragment_convolution3x3 shaders_fragment_convolution3
  *
  *  @return ogl_shader instance.
  **/
-PUBLIC EMERALD_API ogl_shader shaders_fragment_convolution3x3_get_shader(__in __notnull shaders_fragment_convolution3x3);
+PUBLIC EMERALD_API ogl_shader shaders_fragment_convolution3x3_get_shader(shaders_fragment_convolution3x3);
 
 
 #endif /* SHADERS_FRAGMENT_CONVOLUTION3X3_H */

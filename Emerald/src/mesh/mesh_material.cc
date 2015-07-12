@@ -158,7 +158,7 @@ REFCOUNT_INSERT_IMPLEMENTATION(mesh_material,
 
 
 /** TODO */
-PRIVATE void _mesh_material_deinit_shading_property_attachment(__in_opt _mesh_material_property& material_property)
+PRIVATE void _mesh_material_deinit_shading_property_attachment(_mesh_material_property& material_property)
 {
     if (material_property.attachment == MESH_MATERIAL_PROPERTY_ATTACHMENT_CURVE_CONTAINER_FLOAT ||
         material_property.attachment == MESH_MATERIAL_PROPERTY_ATTACHMENT_CURVE_CONTAINER_VEC3)
@@ -276,7 +276,7 @@ PRIVATE void _mesh_material_release(void* data_ptr)
 }
 
 /* Please see header for specification */
-PRIVATE GLenum _mesh_material_get_glenum_for_mesh_material_texture_filtering(__in mesh_material_texture_filtering filtering)
+PRIVATE GLenum _mesh_material_get_glenum_for_mesh_material_texture_filtering(mesh_material_texture_filtering filtering)
 {
     GLenum result = GL_NONE;
 
@@ -337,9 +337,9 @@ PRIVATE GLenum _mesh_material_get_glenum_for_mesh_material_texture_filtering(__i
 
 
 /* Please see header for specification */
-PUBLIC EMERALD_API mesh_material mesh_material_create(__in     __notnull system_hashed_ansi_string name,
-                                                      __in     __notnull ogl_context               context,
-                                                      __in_opt           system_hashed_ansi_string object_manager_path)
+PUBLIC EMERALD_API mesh_material mesh_material_create(system_hashed_ansi_string name,
+                                                      ogl_context               context,
+                                                      system_hashed_ansi_string object_manager_path)
 {
     _mesh_material* new_material = new (std::nothrow) _mesh_material;
 
@@ -373,8 +373,8 @@ PUBLIC EMERALD_API mesh_material mesh_material_create(__in     __notnull system_
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API mesh_material mesh_material_create_copy(__in __notnull system_hashed_ansi_string name,
-                                                           __in __notnull mesh_material             src_material)
+PUBLIC EMERALD_API mesh_material mesh_material_create_copy(system_hashed_ansi_string name,
+                                                           mesh_material             src_material)
 {
     _mesh_material* new_material_ptr = new (std::nothrow) _mesh_material;
     _mesh_material* src_material_ptr = (_mesh_material*) src_material;
@@ -473,8 +473,8 @@ PUBLIC EMERALD_API mesh_material mesh_material_create_copy(__in __notnull system
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API mesh_material mesh_material_create_from_scene_material(__in     __notnull scene_material src_material,
-                                                                          __in_opt           ogl_context    context)
+PUBLIC EMERALD_API mesh_material mesh_material_create_from_scene_material(scene_material src_material,
+                                                                          ogl_context    context)
 {
     /* Create a new mesh_material instance */
     curve_container*                color                            = NULL;
@@ -802,14 +802,14 @@ end:
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API mesh_material mesh_material_create_from_shader_bodies(__in __notnull system_hashed_ansi_string name,
-                                                                         __in __notnull ogl_context               context,
-                                                                         __in_opt       system_hashed_ansi_string object_manager_path,
-                                                                         __in_opt       system_hashed_ansi_string fs_body,
-                                                                         __in_opt       system_hashed_ansi_string gs_body,
-                                                                         __in_opt       system_hashed_ansi_string tc_body,
-                                                                         __in_opt       system_hashed_ansi_string te_body,
-                                                                         __in_opt       system_hashed_ansi_string vs_body)
+PUBLIC EMERALD_API mesh_material mesh_material_create_from_shader_bodies(system_hashed_ansi_string name,
+                                                                         ogl_context               context,
+                                                                         system_hashed_ansi_string object_manager_path,
+                                                                         system_hashed_ansi_string fs_body,
+                                                                         system_hashed_ansi_string gs_body,
+                                                                         system_hashed_ansi_string tc_body,
+                                                                         system_hashed_ansi_string te_body,
+                                                                         system_hashed_ansi_string vs_body)
 {
     mesh_material   result_material     = NULL;
     _mesh_material* result_material_ptr = NULL;
@@ -958,7 +958,7 @@ end:
 }
 
 /* Please see header for specification */
-PUBLIC system_hashed_ansi_string mesh_material_get_mesh_material_property_attachment_has(__in mesh_material_property_attachment attachment)
+PUBLIC system_hashed_ansi_string mesh_material_get_mesh_material_property_attachment_has(mesh_material_property_attachment attachment)
 {
     system_hashed_ansi_string result = system_hashed_ansi_string_get_default_empty_string();
 
@@ -1032,7 +1032,7 @@ PUBLIC system_hashed_ansi_string mesh_material_get_mesh_material_property_attach
 }
 
 /* Please see header for specification */
-PUBLIC system_hashed_ansi_string mesh_material_get_mesh_material_shading_has(__in mesh_material_shading shading)
+PUBLIC system_hashed_ansi_string mesh_material_get_mesh_material_shading_has(mesh_material_shading shading)
 {
     system_hashed_ansi_string result = system_hashed_ansi_string_get_default_empty_string();
 
@@ -1082,7 +1082,7 @@ PUBLIC system_hashed_ansi_string mesh_material_get_mesh_material_shading_has(__i
 }
 
 /* Please see header for specification */
-PUBLIC system_hashed_ansi_string mesh_material_get_mesh_material_type_has(__in mesh_material_type type)
+PUBLIC system_hashed_ansi_string mesh_material_get_mesh_material_type_has(mesh_material_type type)
 {
     system_hashed_ansi_string result = system_hashed_ansi_string_get_default_empty_string();
 
@@ -1116,7 +1116,7 @@ PUBLIC system_hashed_ansi_string mesh_material_get_mesh_material_type_has(__in m
 }
 
 /* Please see header for specification */
-PUBLIC system_hashed_ansi_string mesh_material_get_mesh_material_shading_property_has(__in mesh_material_shading_property property)
+PUBLIC system_hashed_ansi_string mesh_material_get_mesh_material_shading_property_has(mesh_material_shading_property property)
 {
     system_hashed_ansi_string result = system_hashed_ansi_string_get_default_empty_string();
 
@@ -1182,9 +1182,9 @@ PUBLIC system_hashed_ansi_string mesh_material_get_mesh_material_shading_propert
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API ogl_uber mesh_material_get_ogl_uber(__in     __notnull mesh_material material,
-                                                       __in_opt           scene         scene,
-                                                       __in               bool          use_shadow_maps)
+PUBLIC EMERALD_API ogl_uber mesh_material_get_ogl_uber(mesh_material material,
+                                                       scene         scene,
+                                                       bool          use_shadow_maps)
 {
     _mesh_material* material_ptr = (_mesh_material*) material;
 
@@ -1292,9 +1292,9 @@ PUBLIC EMERALD_API ogl_uber mesh_material_get_ogl_uber(__in     __notnull mesh_m
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API void mesh_material_get_property(__in  __notnull mesh_material          material,
-                                                   __in            mesh_material_property property,
-                                                   __out __notnull void*                  out_result)
+PUBLIC EMERALD_API void mesh_material_get_property(mesh_material          material,
+                                                   mesh_material_property property,
+                                                   void*                  out_result)
 {
     const _mesh_material* material_ptr = (_mesh_material*) material;
 
@@ -1381,8 +1381,8 @@ PUBLIC EMERALD_API void mesh_material_get_property(__in  __notnull mesh_material
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API mesh_material_property_attachment mesh_material_get_shading_property_attachment_type(__in __notnull mesh_material                  material,
-                                                                                                        __in           mesh_material_shading_property property)
+PUBLIC EMERALD_API mesh_material_property_attachment mesh_material_get_shading_property_attachment_type(mesh_material                  material,
+                                                                                                        mesh_material_shading_property property)
 {
     ASSERT_DEBUG_SYNC(((_mesh_material*) material)->type == MESH_MATERIAL_TYPE_GENERAL,
                       "mesh_material_get_shading_property_attachment_type() call is invalid for customized mesh_material instances.");
@@ -1391,10 +1391,10 @@ PUBLIC EMERALD_API mesh_material_property_attachment mesh_material_get_shading_p
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API void mesh_material_get_shading_property_value_curve_container_float(__in      __notnull mesh_material                  material,
-                                                                                       __in                mesh_material_shading_property property,
-                                                                                       __in                system_time                    time,
-                                                                                       __out_opt           float*                         out_float_value)
+PUBLIC EMERALD_API void mesh_material_get_shading_property_value_curve_container_float(mesh_material                  material,
+                                                                                       mesh_material_shading_property property,
+                                                                                       system_time                    time,
+                                                                                       float*                         out_float_value)
 {
     _mesh_material*          material_ptr = ((_mesh_material*) material);
     _mesh_material_property* property_ptr = material_ptr->shading_properties + property;
@@ -1413,10 +1413,10 @@ PUBLIC EMERALD_API void mesh_material_get_shading_property_value_curve_container
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API void mesh_material_get_shading_property_value_curve_container_vec3(__in      __notnull mesh_material                  material,
-                                                                                      __in                mesh_material_shading_property property,
-                                                                                      __in                system_time                    time,
-                                                                                      __out_ecount_opt(3) float*                         out_vec3_value)
+PUBLIC EMERALD_API void mesh_material_get_shading_property_value_curve_container_vec3(mesh_material                  material,
+                                                                                      mesh_material_shading_property property,
+                                                                                      system_time                    time,
+                                                                                      float*                         out_vec3_value)
 {
     _mesh_material*          material_ptr = ((_mesh_material*) material);
     _mesh_material_property* property_ptr = material_ptr->shading_properties + property;
@@ -1440,9 +1440,9 @@ PUBLIC EMERALD_API void mesh_material_get_shading_property_value_curve_container
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API void mesh_material_get_shading_property_value_float(__in      __notnull mesh_material                  material,
-                                                                       __in                mesh_material_shading_property property,
-                                                                       __out_opt           float*                         out_float_value)
+PUBLIC EMERALD_API void mesh_material_get_shading_property_value_float(mesh_material                  material,
+                                                                       mesh_material_shading_property property,
+                                                                       float*                         out_float_value)
 {
     _mesh_material_property* property_ptr = ((_mesh_material*) material)->shading_properties + property;
 
@@ -1455,9 +1455,9 @@ PUBLIC EMERALD_API void mesh_material_get_shading_property_value_float(__in     
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API void mesh_material_get_shading_property_value_input_fragment_attribute(__in __notnull mesh_material                           material,
-                                                                                          __in           mesh_material_shading_property          property,
-                                                                                          __out_opt      mesh_material_input_fragment_attribute* out_attribute)
+PUBLIC EMERALD_API void mesh_material_get_shading_property_value_input_fragment_attribute(mesh_material                           material,
+                                                                                          mesh_material_shading_property          property,
+                                                                                          mesh_material_input_fragment_attribute* out_attribute)
 {
     _mesh_material* material_ptr = (_mesh_material*) material;
 
@@ -1477,11 +1477,11 @@ PUBLIC EMERALD_API void mesh_material_get_shading_property_value_input_fragment_
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API void mesh_material_get_shading_property_value_texture(__in      __notnull mesh_material                    material,
-                                                                         __in                mesh_material_shading_property   property,
-                                                                         __out_opt           ogl_texture*                     out_texture,
-                                                                         __out_opt           unsigned int*                    out_mipmap_level,
-                                                                         __out_opt           ogl_sampler*                     out_sampler)
+PUBLIC EMERALD_API void mesh_material_get_shading_property_value_texture(mesh_material                    material,
+                                                                         mesh_material_shading_property   property,
+                                                                         ogl_texture*                     out_texture,
+                                                                         unsigned int*                    out_mipmap_level,
+                                                                         ogl_sampler*                     out_sampler)
 {
     _mesh_material_property*         property_ptr     = ( (_mesh_material*) material)->shading_properties + property;
     _mesh_material_property_texture* texture_data_ptr = &property_ptr->texture_data;
@@ -1508,9 +1508,9 @@ PUBLIC EMERALD_API void mesh_material_get_shading_property_value_texture(__in   
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API void mesh_material_get_shading_property_value_vec4(__in           __notnull mesh_material                  material,
-                                                                      __in                     mesh_material_shading_property property,
-                                                                      __out_ecount(4)          float*                         out_vec4_data)
+PUBLIC EMERALD_API void mesh_material_get_shading_property_value_vec4(mesh_material                  material,
+                                                                      mesh_material_shading_property property,
+                                                                      float*                         out_vec4_data)
 {
     _mesh_material_property* property_ptr = ((_mesh_material*) material)->shading_properties + property;
 
@@ -1525,8 +1525,8 @@ PUBLIC EMERALD_API void mesh_material_get_shading_property_value_vec4(__in      
 }
 
 /* Please see header for specification */
-PUBLIC bool mesh_material_is_a_match_to_mesh_material(__in __notnull mesh_material material_a,
-                                                      __in __notnull mesh_material material_b)
+PUBLIC bool mesh_material_is_a_match_to_mesh_material(mesh_material material_a,
+                                                      mesh_material material_b)
 {
     mesh_material_shading material_a_shading = MESH_MATERIAL_SHADING_UNKNOWN;
     mesh_material_type    material_a_type    = ( (_mesh_material*) material_a)->type;
@@ -1653,9 +1653,9 @@ end:
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API void mesh_material_set_property(__in __notnull mesh_material          material,
-                                                   __in           mesh_material_property property,
-                                                   __in __notnull const void*            data)
+PUBLIC EMERALD_API void mesh_material_set_property(mesh_material          material,
+                                                   mesh_material_property property,
+                                                   const void*            data)
 {
     _mesh_material* material_ptr = (_mesh_material*) material;
 
@@ -1706,9 +1706,9 @@ PUBLIC EMERALD_API void mesh_material_set_property(__in __notnull mesh_material 
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API void mesh_material_set_shading_property_to_curve_container_float(__in __notnull mesh_material                  material,
-                                                                                    __in           mesh_material_shading_property property,
-                                                                                    __in           curve_container                data)
+PUBLIC EMERALD_API void mesh_material_set_shading_property_to_curve_container_float(mesh_material                  material,
+                                                                                    mesh_material_shading_property property,
+                                                                                    curve_container                data)
 {
     _mesh_material* material_ptr = (_mesh_material*) material;
 
@@ -1728,9 +1728,9 @@ PUBLIC EMERALD_API void mesh_material_set_shading_property_to_curve_container_fl
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API void mesh_material_set_shading_property_to_curve_container_vec3(__in           __notnull mesh_material                  material,
-                                                                                   __in                     mesh_material_shading_property property,
-                                                                                   __in_ecount(3)           curve_container*               data)
+PUBLIC EMERALD_API void mesh_material_set_shading_property_to_curve_container_vec3(mesh_material                  material,
+                                                                                   mesh_material_shading_property property,
+                                                                                   curve_container*               data)
 {
     _mesh_material* material_ptr = (_mesh_material*) material;
 
@@ -1751,9 +1751,9 @@ PUBLIC EMERALD_API void mesh_material_set_shading_property_to_curve_container_ve
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API void mesh_material_set_shading_property_to_float(__in __notnull mesh_material                  material,
-                                                                    __in           mesh_material_shading_property property,
-                                                                    __in           float                          data)
+PUBLIC EMERALD_API void mesh_material_set_shading_property_to_float(mesh_material                  material,
+                                                                    mesh_material_shading_property property,
+                                                                    float                          data)
 {
     _mesh_material* material_ptr = (_mesh_material*) material;
 
@@ -1778,9 +1778,9 @@ PUBLIC EMERALD_API void mesh_material_set_shading_property_to_float(__in __notnu
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API void mesh_material_set_shading_property_to_input_fragment_attribute(__in __notnull mesh_material                          material,
-                                                                                       __in           mesh_material_shading_property         property,
-                                                                                       __in           mesh_material_input_fragment_attribute attribute)
+PUBLIC EMERALD_API void mesh_material_set_shading_property_to_input_fragment_attribute(mesh_material                          material,
+                                                                                       mesh_material_shading_property         property,
+                                                                                       mesh_material_input_fragment_attribute attribute)
 {
     _mesh_material* material_ptr = (_mesh_material*) material;
 
@@ -1803,12 +1803,12 @@ PUBLIC EMERALD_API void mesh_material_set_shading_property_to_input_fragment_att
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API void mesh_material_set_shading_property_to_texture(__in __notnull mesh_material                   material,
-                                                                      __in           mesh_material_shading_property  property,
-                                                                      __in           ogl_texture                     texture,
-                                                                      __in           unsigned int                    mipmap_level,
-                                                                      __in           mesh_material_texture_filtering mag_filter,
-                                                                      __in           mesh_material_texture_filtering min_filter)
+PUBLIC EMERALD_API void mesh_material_set_shading_property_to_texture(mesh_material                   material,
+                                                                      mesh_material_shading_property  property,
+                                                                      ogl_texture                     texture,
+                                                                      unsigned int                    mipmap_level,
+                                                                      mesh_material_texture_filtering mag_filter,
+                                                                      mesh_material_texture_filtering min_filter)
 {
     _mesh_material* material_ptr = (_mesh_material*) material;
 
@@ -1865,9 +1865,9 @@ PUBLIC EMERALD_API void mesh_material_set_shading_property_to_texture(__in __not
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API void mesh_material_set_shading_property_to_vec4(__in __notnull mesh_material                  material,
-                                                                   __in           mesh_material_shading_property property,
-                                                                   __in_ecount(4) const float*                   data)
+PUBLIC EMERALD_API void mesh_material_set_shading_property_to_vec4(mesh_material                  material,
+                                                                   mesh_material_shading_property property,
+                                                                   const float*                   data)
 {
     _mesh_material* material_ptr = (_mesh_material*) material;
 
