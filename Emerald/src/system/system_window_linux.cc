@@ -446,6 +446,8 @@ PRIVATE void _system_window_linux_handle_close_window_request(_system_window_lin
     system_window_execute_callback_funcs(linux_ptr->window,
                                          SYSTEM_WINDOW_CALLBACK_FUNC_WINDOW_CLOSED);
 
+    linux_ptr->system_handle = NULL;
+
     system_event_set(linux_ptr->teardown_completed_event);
 }
 
@@ -493,8 +495,6 @@ PUBLIC void system_window_linux_close_window(system_window_linux window)
 
     XDestroyWindow(linux_ptr->display,
                    linux_ptr->system_handle);
-
-    linux_ptr->system_handle = (system_window_handle) NULL;
 }
 
 /** Please see header for spec */
