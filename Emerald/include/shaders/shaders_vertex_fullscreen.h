@@ -24,9 +24,9 @@ REFCOUNT_INSERT_DECLARATIONS(shaders_vertex_fullscreen,
  * 
  *  @return shaders_vertex_fullscreen instance if successful, NULL otherwise.
  */
-PUBLIC EMERALD_API shaders_vertex_fullscreen shaders_vertex_fullscreen_create(__in __notnull ogl_context               context,
-                                                                              __in           bool                      export_uv,
-                                                                              __in __notnull system_hashed_ansi_string name);
+PUBLIC EMERALD_API shaders_vertex_fullscreen shaders_vertex_fullscreen_create(ogl_context               context,
+                                                                              bool                      export_uv,
+                                                                              system_hashed_ansi_string name);
 
 /** Retrieves ogl_shader object associated with the instance. Do not release the object or modify it in any way.
  *
@@ -34,7 +34,7 @@ PUBLIC EMERALD_API shaders_vertex_fullscreen shaders_vertex_fullscreen_create(__
  *
  *  @return ogl_shader instance.
  **/
-PUBLIC EMERALD_API ogl_shader shaders_vertex_fullscreen_get_shader(__in __notnull shaders_vertex_fullscreen fullscreen);
+PUBLIC EMERALD_API ogl_shader shaders_vertex_fullscreen_get_shader(shaders_vertex_fullscreen fullscreen);
 
 
 #endif /* SHADERS_VERTEX_FULLSCREEN_H */

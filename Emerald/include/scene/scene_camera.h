@@ -64,35 +64,35 @@ enum scene_camera_property
 };
 
 /** TODO */
-PUBLIC EMERALD_API scene_camera scene_camera_create(__in     __notnull system_hashed_ansi_string name,
-                                                    __in_opt           system_hashed_ansi_string object_manager_path);
+PUBLIC EMERALD_API scene_camera scene_camera_create(system_hashed_ansi_string name,
+                                                    system_hashed_ansi_string object_manager_path);
 
 /** TODO.
  *
  *  NOTE: Some properties may need a recalc, which is why the function takes @param time.
  **/
-PUBLIC EMERALD_API void scene_camera_get_property(__in  __notnull scene_camera          camera,
-                                                  __in            scene_camera_property property,
-                                                  __in            system_time           time,
-                                                  __out __notnull void*                 out_result);
+PUBLIC EMERALD_API void scene_camera_get_property(scene_camera          camera,
+                                                  scene_camera_property property,
+                                                  system_time           time,
+                                                  void*                 out_result);
 
 /** TODO */
-PUBLIC scene_camera scene_camera_load(__in     __notnull ogl_context               context,
-                                      __in     __notnull system_file_serializer    serializer,
-                                      __in_opt           scene                     owner_scene,
-                                      __in_opt           system_hashed_ansi_string object_manager_path);
+PUBLIC scene_camera scene_camera_load(ogl_context               context,
+                                      system_file_serializer    serializer,
+                                      scene                     owner_scene,
+                                      system_hashed_ansi_string object_manager_path);
 
 /** TODO
  *
  *  NOTE: This function is for internal use only.
  **/
-PUBLIC bool scene_camera_save(__in __notnull system_file_serializer serializer,
-                              __in __notnull const scene_camera     camera,
-                              __in __notnull scene                  owner_scene);
+PUBLIC bool scene_camera_save(system_file_serializer serializer,
+                              const scene_camera     camera,
+                              scene                  owner_scene);
 
 /** TODO */
-PUBLIC EMERALD_API void scene_camera_set_property(__in __notnull scene_camera          camera,
-                                                  __in           scene_camera_property property,
-                                                  __in __notnull const void*           data);
+PUBLIC EMERALD_API void scene_camera_set_property(scene_camera          camera,
+                                                  scene_camera_property property,
+                                                  const void*           data);
 
 #endif /* SCENE_CAMERA_H */

@@ -133,7 +133,7 @@ PRIVATE void _system_hash64map_deinit_descriptor(_system_hash64map* descriptor)
 }
 
 /** Please see header for spec */
-PUBLIC EMERALD_API void system_hash64map_clear(__in __notnull system_hash64map map)
+PUBLIC EMERALD_API void system_hash64map_clear(system_hash64map map)
 {
     _system_hash64map* map_ptr = (_system_hash64map*) map;
 
@@ -171,8 +171,8 @@ PUBLIC EMERALD_API void system_hash64map_clear(__in __notnull system_hash64map m
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API system_hash64map system_hash64map_create(__in size_t element_size,
-                                                            __in bool   should_be_thread_safe)
+PUBLIC EMERALD_API system_hash64map system_hash64map_create(size_t element_size,
+                                                            bool   should_be_thread_safe)
 {
     _system_hash64map* new_descriptor = new _system_hash64map;
 
@@ -186,8 +186,8 @@ PUBLIC EMERALD_API system_hash64map system_hash64map_create(__in size_t element_
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API bool system_hash64map_contains(__in system_hash64map hash_map,
-                                                  __in system_hash64    hash)
+PUBLIC EMERALD_API bool system_hash64map_contains(system_hash64map hash_map,
+                                                  system_hash64    hash)
 {
     _system_hash64map* descriptor = (_system_hash64map*) hash_map;
 
@@ -238,9 +238,9 @@ PUBLIC EMERALD_API bool system_hash64map_contains(__in system_hash64map hash_map
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API bool system_hash64map_get(__in      system_hash64map map,
-                                             __in      system_hash64    hash,
-                                             __out_opt void*            result_element)
+PUBLIC EMERALD_API bool system_hash64map_get(system_hash64map map,
+                                             system_hash64    hash,
+                                             void*            result_element)
 {
     _system_hash64map* descriptor = (_system_hash64map*) map;
 
@@ -295,10 +295,10 @@ PUBLIC EMERALD_API bool system_hash64map_get(__in      system_hash64map map,
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API bool system_hash64map_get_element_at(__in      system_hash64map map,
-                                                                  size_t           n_element,
-                                                        __out_opt void*            result_element,
-                                                        __out_opt system_hash64*   result_hash)
+PUBLIC EMERALD_API bool system_hash64map_get_element_at(system_hash64map map,
+                                                        size_t           n_element,
+                                                        void*            result_element,
+                                                        system_hash64*   result_hash)
 {
     _system_hash64map* descriptor = (_system_hash64map*) map;
 
@@ -366,8 +366,8 @@ PUBLIC EMERALD_API bool system_hash64map_get_element_at(__in      system_hash64m
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API bool system_hash64map_is_equal(__in system_hash64map map_1,
-                                                  __in system_hash64map map_2)
+PUBLIC EMERALD_API bool system_hash64map_is_equal(system_hash64map map_1,
+                                                  system_hash64map map_2)
 {
     _system_hash64map* descriptor_1 = (_system_hash64map*) map_1;
     _system_hash64map* descriptor_2 = (_system_hash64map*) map_2;
@@ -413,9 +413,9 @@ PUBLIC EMERALD_API bool system_hash64map_is_equal(__in system_hash64map map_1,
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API void system_hash64map_get_property(__in            system_hash64map          map,
-                                                      __in            system_hash64map_property property,
-                                                      __out __notnull void*                     out_result)
+PUBLIC EMERALD_API void system_hash64map_get_property(system_hash64map          map,
+                                                      system_hash64map_property property,
+                                                      void*                     out_result)
 {
     _system_hash64map* map_ptr = (_system_hash64map*) map;
 
@@ -462,11 +462,11 @@ PUBLIC EMERALD_API void system_hash64map_get_property(__in            system_has
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API bool system_hash64map_insert(__in             system_hash64map                              map,
-                                                __in             system_hash64                                 hash,
-                                                __in_opt         void*                                         element,
-                                                __in __maybenull PFNSYSTEMHASH64MAPONREMOVECALLBACKPROC        callback,
-                                                __in __maybenull _system_hash64map_on_remove_callback_argument callback_argument)
+PUBLIC EMERALD_API bool system_hash64map_insert(system_hash64map                              map,
+                                                system_hash64                                 hash,
+                                                void*                                         element,
+                                                PFNSYSTEMHASH64MAPONREMOVECALLBACKPROC        callback,
+                                                _system_hash64map_on_remove_callback_argument callback_argument)
 {
     _system_hash64map* descriptor = (_system_hash64map*) map;
 
@@ -537,8 +537,8 @@ PUBLIC EMERALD_API bool system_hash64map_insert(__in             system_hash64ma
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API void system_hash64map_lock(__in system_hash64map                    map,
-                                              __in system_read_write_mutex_access_type lock_type)
+PUBLIC EMERALD_API void system_hash64map_lock(system_hash64map                    map,
+                                              system_read_write_mutex_access_type lock_type)
 {
     _system_hash64map* map_ptr = (_system_hash64map*) map;
 
@@ -550,8 +550,8 @@ PUBLIC EMERALD_API void system_hash64map_lock(__in system_hash64map             
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API bool system_hash64map_remove(__in system_hash64map map,
-                                                __in system_hash64    hash)
+PUBLIC EMERALD_API bool system_hash64map_remove( system_hash64map map,
+                                                 system_hash64    hash)
 {
     _system_hash64map* descriptor = (_system_hash64map*) map;
 
@@ -606,14 +606,14 @@ PUBLIC EMERALD_API bool system_hash64map_remove(__in system_hash64map map,
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API void system_hash64map_release(__in __deallocate(mem) system_hash64map map)
+PUBLIC EMERALD_API void system_hash64map_release(system_hash64map map)
 {
     _system_hash64map_deinit_descriptor( (_system_hash64map*) map);
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API void system_hash64map_unlock(__in system_hash64map                    map,
-                                                __in system_read_write_mutex_access_type lock_type)
+PUBLIC EMERALD_API void system_hash64map_unlock(system_hash64map                    map,
+                                                system_read_write_mutex_access_type lock_type)
 {
     _system_hash64map* map_ptr = (_system_hash64map*) map;
 

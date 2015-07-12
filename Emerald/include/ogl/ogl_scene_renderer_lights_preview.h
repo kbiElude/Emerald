@@ -26,8 +26,8 @@ DECLARE_HANDLE(ogl_scene_renderer_lights_preview);
  *
  *  @return Requested object or NULL if failure occured for whatever reason.
  **/
-PUBLIC ogl_scene_renderer_lights_preview ogl_scene_renderer_lights_preview_create(__in __notnull ogl_context context,
-                                                                                  __in __notnull scene       scene);
+PUBLIC ogl_scene_renderer_lights_preview ogl_scene_renderer_lights_preview_create(ogl_context context,
+                                                                                  scene       scene);
 
 /** Renders a single light instance. Requires a former call to ogl_scene_renderer_lights_preview_start().
  *
@@ -38,18 +38,18 @@ PUBLIC ogl_scene_renderer_lights_preview ogl_scene_renderer_lights_preview_creat
  *                                  The vector needs not be normalized.
  *                                  May be NULL (eg. for lights that do not have direction).
  **/
-PUBLIC RENDERING_CONTEXT_CALL void ogl_scene_renderer_lights_preview_render(__in __notnull     ogl_scene_renderer_lights_preview preview,
-                                                                            __in_ecount(4)     float*                            light_position,
-                                                                            __in_ecount(3)     float*                            light_color,
-                                                                            __in_ecount_opt(3) float*                            light_pos_plus_direction);
+PUBLIC RENDERING_CONTEXT_CALL void ogl_scene_renderer_lights_preview_render(ogl_scene_renderer_lights_preview preview,
+                                                                            float*                            light_position,
+                                                                            float*                            light_color,
+                                                                            float*                            light_pos_plus_direction);
 
 /** TODO */
-PUBLIC RENDERING_CONTEXT_CALL void ogl_scene_renderer_lights_preview_start(__in __notnull ogl_scene_renderer_lights_preview preview);
+PUBLIC RENDERING_CONTEXT_CALL void ogl_scene_renderer_lights_preview_start(ogl_scene_renderer_lights_preview preview);
 
 /** TODO */
-PUBLIC RENDERING_CONTEXT_CALL void ogl_scene_renderer_lights_preview_stop(__in __notnull ogl_scene_renderer_lights_preview preview);
+PUBLIC RENDERING_CONTEXT_CALL void ogl_scene_renderer_lights_preview_stop(ogl_scene_renderer_lights_preview preview);
 
 /** TODO. **/
-PUBLIC void ogl_scene_renderer_lights_preview_release(__in __notnull ogl_scene_renderer_lights_preview preview);
+PUBLIC void ogl_scene_renderer_lights_preview_release(ogl_scene_renderer_lights_preview preview);
 
 #endif /* OGL_SCENE_RENDERER_LIGHTS_PREVIEW_H */

@@ -53,10 +53,10 @@ REFCOUNT_INSERT_IMPLEMENTATION(scene_material,
 
 
 /** TODO */
-PRIVATE void _scene_material_init(__in __notnull _scene_material*          data_ptr,
-                                  __in __notnull system_hashed_ansi_string name,
-                                  __in __notnull system_hashed_ansi_string object_manager_path,
-                                  __in __notnull scene                     owner_scene)
+PRIVATE void _scene_material_init(_scene_material*          data_ptr,
+                                  system_hashed_ansi_string name,
+                                  system_hashed_ansi_string object_manager_path,
+                                  scene                     owner_scene)
 {
     memset(data_ptr,
            0,
@@ -107,10 +107,10 @@ PRIVATE void _scene_material_init(__in __notnull _scene_material*          data_
 }
 
 /** TODO */
-PRIVATE bool _scene_material_load_curve(__in_opt           scene                     owner_scene,
-                                        __in_opt           system_hashed_ansi_string object_manager_path,
-                                        __in     __notnull curve_container*          curve_ptr,
-                                        __in     __notnull system_file_serializer    serializer)
+PRIVATE bool _scene_material_load_curve(scene                     owner_scene,
+                                        system_hashed_ansi_string object_manager_path,
+                                        curve_container*          curve_ptr,
+                                        system_file_serializer    serializer)
 {
     bool result = true;
 
@@ -202,9 +202,9 @@ PRIVATE void _scene_material_release(void* data_ptr)
 }
 
 /** TODO */
-PRIVATE bool _scene_material_save_curve(__in_opt           scene                  owner_scene,
-                                        __in     __notnull curve_container        in_curve,
-                                        __in     __notnull system_file_serializer serializer)
+PRIVATE bool _scene_material_save_curve(scene                  owner_scene,
+                                        curve_container        in_curve,
+                                        system_file_serializer serializer)
 {
     bool result = true;
 
@@ -233,9 +233,9 @@ PRIVATE bool _scene_material_save_curve(__in_opt           scene                
 
 
 /* Please see header for specification */
-PUBLIC EMERALD_API scene_material scene_material_create(__in     __notnull system_hashed_ansi_string name,
-                                                        __in_opt           system_hashed_ansi_string object_manager_path,
-                                                        __in     __notnull scene                     owner_scene)
+PUBLIC EMERALD_API scene_material scene_material_create(system_hashed_ansi_string name,
+                                                        system_hashed_ansi_string object_manager_path,
+                                                        scene                     owner_scene)
 {
     _scene_material* new_scene_material = new (std::nothrow) _scene_material;
 
@@ -261,9 +261,9 @@ PUBLIC EMERALD_API scene_material scene_material_create(__in     __notnull syste
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API void scene_material_get_property(__in  __notnull scene_material          material_instance,
-                                                    __in            scene_material_property property,
-                                                    __out __notnull void*                   out_result)
+PUBLIC EMERALD_API void scene_material_get_property(scene_material          material_instance,
+                                                    scene_material_property property,
+                                                    void*                   out_result)
 {
     _scene_material* material_ptr = (_scene_material*) material_instance;
 
@@ -446,9 +446,9 @@ PUBLIC EMERALD_API void scene_material_get_property(__in  __notnull scene_materi
 }
 
 /* Please see header for spec */
-PUBLIC scene_material scene_material_load(__in     __notnull system_file_serializer    serializer,
-                                          __in_opt           scene                     owner_scene,
-                                          __in_opt           system_hashed_ansi_string object_manager_path)
+PUBLIC scene_material scene_material_load(system_file_serializer    serializer,
+                                          scene                     owner_scene,
+                                          system_hashed_ansi_string object_manager_path)
 {
     curve_container*          default_curves[7]   = {NULL};
     const unsigned int        n_default_curves    = sizeof(default_curves) / sizeof(default_curves[0]);
@@ -551,9 +551,9 @@ end:
 }
 
 /* Please see header for spec */
-PUBLIC bool scene_material_save(__in     __notnull system_file_serializer serializer,
-                                __in     __notnull const scene_material   material,
-                                __in_opt           scene                  owner_scene)
+PUBLIC bool scene_material_save(system_file_serializer serializer,
+                                const scene_material   material,
+                                scene                  owner_scene)
 {
     const _scene_material* material_ptr = (const _scene_material*) material;
     bool                   result;
@@ -604,9 +604,9 @@ PUBLIC bool scene_material_save(__in     __notnull system_file_serializer serial
 }
 
 /* Please see header for spec */
-PUBLIC EMERALD_API void scene_material_set_property(__in __notnull scene_material          material,
-                                                    __in           scene_material_property property,
-                                                    __in __notnull const void*             data)
+PUBLIC EMERALD_API void scene_material_set_property(scene_material          material,
+                                                    scene_material_property property,
+                                                    const void*             data)
 {
     _scene_material* material_ptr = (_scene_material*) material;
 

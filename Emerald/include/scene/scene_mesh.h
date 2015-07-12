@@ -22,23 +22,23 @@ enum scene_mesh_property
 };
 
 /** TODO */
-PUBLIC EMERALD_API scene_mesh scene_mesh_create(__in     __notnull system_hashed_ansi_string name,
-                                                __in_opt           system_hashed_ansi_string object_manager_path,
-                                                __in               mesh                      geometry);
+PUBLIC EMERALD_API scene_mesh scene_mesh_create(system_hashed_ansi_string name,
+                                                system_hashed_ansi_string object_manager_path,
+                                                mesh                      geometry);
 
 /** TODO */
-PUBLIC EMERALD_API void scene_mesh_get_property(__in  __notnull scene_mesh          mesh_instance,
-                                                __in            scene_mesh_property property,
-                                                __out __notnull void*               out_result);
+PUBLIC EMERALD_API void scene_mesh_get_property(scene_mesh          mesh_instance,
+                                                scene_mesh_property property,
+                                                void*               out_result);
 
 /** TODO.
  *
  *  NOTE: This function is for internal use only.
  *
  */
-PUBLIC scene_mesh scene_mesh_load(__in __notnull system_file_serializer    serializer,
-                                  __in_opt       system_hashed_ansi_string object_manager_path,
-                                  __in __notnull system_hash64map          id_to_gpu_mesh_map);
+PUBLIC scene_mesh scene_mesh_load(system_file_serializer    serializer,
+                                  system_hashed_ansi_string object_manager_path,
+                                  system_hash64map          id_to_gpu_mesh_map);
 
 /** TODO.
  *
@@ -46,13 +46,13 @@ PUBLIC scene_mesh scene_mesh_load(__in __notnull system_file_serializer    seria
  *  NOTE: This function does NOT serialize owned meshes. They should be serialized separately.
  *
  **/
-PUBLIC bool scene_mesh_save(__in __notnull system_file_serializer serializer,
-                            __in __notnull const scene_mesh       mesh,
-                            __in __notnull system_hash64map       gpu_mesh_to_id_map);
+PUBLIC bool scene_mesh_save(system_file_serializer serializer,
+                            const scene_mesh       mesh,
+                            system_hash64map       gpu_mesh_to_id_map);
 
 /** TODO */
-PUBLIC EMERALD_API void scene_mesh_set_property(__in __notnull scene_mesh          mesh,
-                                                __in           scene_mesh_property property,
-                                                __in __notnull const void*         data);
+PUBLIC EMERALD_API void scene_mesh_set_property(scene_mesh          mesh,
+                                                scene_mesh_property property,
+                                                const void*         data);
 
 #endif /* SCENE_MESH_H */

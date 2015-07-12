@@ -24,10 +24,10 @@
  *
  *  @return Handle to the new resource pool object.
  */
-PUBLIC EMERALD_API system_resource_pool system_resource_pool_create(__in size_t                           element_size,
-                                                                    __in size_t                           n_elements_to_preallocate,
-                                                                         PFNSYSTEMRESOURCEPOOLINITBLOCK   init_fn,
-                                                                         PFNSYSTEMRESOURCEPOOLDEINITBLOCK deinit_fn);
+PUBLIC EMERALD_API system_resource_pool system_resource_pool_create(size_t                           element_size,
+                                                                    size_t                           n_elements_to_preallocate,
+                                                                    PFNSYSTEMRESOURCEPOOLINITBLOCK   init_fn,
+                                                                    PFNSYSTEMRESOURCEPOOLDEINITBLOCK deinit_fn);
 
 /*  Obtains a pointer to preallocated space from the pool.
  *
@@ -36,10 +36,10 @@ PUBLIC EMERALD_API system_resource_pool system_resource_pool_create(__in size_t 
  *
  *  @return Pointer to a block with amount of space as defined when creating the pool.
  */
-PUBLIC EMERALD_API system_resource_pool_block system_resource_pool_get_from_pool(__in __notnull system_resource_pool pool);
+PUBLIC EMERALD_API system_resource_pool_block system_resource_pool_get_from_pool(system_resource_pool pool);
 
 /** TODO */
-PUBLIC EMERALD_API void system_resource_pool_return_all_allocations(__in __notnull system_resource_pool pool);
+PUBLIC EMERALD_API void system_resource_pool_return_all_allocations(system_resource_pool pool);
 
 /*  Returns a block back to the pool.
  *
@@ -49,14 +49,14 @@ PUBLIC EMERALD_API void system_resource_pool_return_all_allocations(__in __notnu
  *  @param system_resource_pool       Pool to release the block to.
  *  @param system_resource_pool_block Block to return back to the pool.
  */
-PUBLIC EMERALD_API void system_resource_pool_return_to_pool(__in __notnull system_resource_pool       pool,
-                                                            __in __notnull system_resource_pool_block block);
+PUBLIC EMERALD_API void system_resource_pool_return_to_pool(system_resource_pool       pool,
+                                                            system_resource_pool_block block);
 
 /*  Releases a resource pool object. This renders all managed blocks invalid!
  *
  *  @param system_resource_pool Handle to the resource pool.
  */
-PUBLIC EMERALD_API void system_resource_pool_release(__in __notnull __deallocate(mem) system_resource_pool pool);
+PUBLIC EMERALD_API void system_resource_pool_release(system_resource_pool pool);
 
 
 #endif /* SYSTEM_RESOURCE_POOL_H */

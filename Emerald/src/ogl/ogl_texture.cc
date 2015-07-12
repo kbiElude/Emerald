@@ -49,8 +49,8 @@ typedef struct _ogl_texture
 
     gfx_image src_image;
 
-    explicit _ogl_texture(__in __notnull ogl_context               in_context,
-                          __in __notnull system_hashed_ansi_string in_name)
+    explicit _ogl_texture(ogl_context               in_context,
+                          system_hashed_ansi_string in_name)
     {
         context                   = in_context;
         dimensionality            = OGL_TEXTURE_DIMENSIONALITY_UNKNOWN;
@@ -75,28 +75,28 @@ REFCOUNT_INSERT_IMPLEMENTATION(ogl_texture,
                               _ogl_texture);
 
 /* Forward declarations */
-PRIVATE ogl_texture _ogl_texture_create_base                                (__in  __notnull                ogl_context               context,
-                                                                             __in  __notnull                system_hashed_ansi_string name,
-                                                                             __in_opt                       system_hashed_ansi_string file_name);
-PRIVATE void        _ogl_texture_create_from_gfx_image_renderer_callback    (__in  __notnull                ogl_context               context,
-                                                                             __in                           void*                     texture);
-PRIVATE void        _ogl_texture_deinit_renderer_callback                   (__in  __notnull                ogl_context               context,
-                                                                             __in                           void*                     texture);
-PRIVATE void        _ogl_texture_generate_mipmaps                           (__in  __notnull                ogl_context               context,
-                                                                             __in  __notnull                void*                     texture);
-PRIVATE void        _ogl_texture_get_texture_format_type_from_internalformat(__in                           GLenum                    internalformat,
-                                                                             __out __notnull                GLenum*                   out_format,
-                                                                             __out __notnull                GLenum*                   out_type);
-PRIVATE void        _ogl_texture_init_renderer_callback                     (__in  __notnull                ogl_context               context,
-                                                                             __in                           void*                     texture);
-PRIVATE void        _ogl_texture_mipmap_deinit                              (__in  __notnull                _ogl_texture_mipmap*      mipmap_ptr);
-PRIVATE void        _ogl_texture_release                                    (__in  __notnull __post_invalid void*                     arg);
+PRIVATE ogl_texture _ogl_texture_create_base                                (ogl_context               context,
+                                                                             system_hashed_ansi_string name,
+                                                                             system_hashed_ansi_string file_name);
+PRIVATE void        _ogl_texture_create_from_gfx_image_renderer_callback    (ogl_context               context,
+                                                                             void*                     texture);
+PRIVATE void        _ogl_texture_deinit_renderer_callback                   (ogl_context               context,
+                                                                             void*                     texture);
+PRIVATE void        _ogl_texture_generate_mipmaps                           (ogl_context               context,
+                                                                             void*                     texture);
+PRIVATE void        _ogl_texture_get_texture_format_type_from_internalformat(GLenum                    internalformat,
+                                                                             GLenum*                   out_format,
+                                                                             GLenum*                   out_type);
+PRIVATE void        _ogl_texture_init_renderer_callback                     (ogl_context               context,
+                                                                             void*                     texture);
+PRIVATE void        _ogl_texture_mipmap_deinit                              (_ogl_texture_mipmap*      mipmap_ptr);
+PRIVATE void        _ogl_texture_release                                    (void*                     arg);
 
 
 /** TODO */
-PRIVATE ogl_texture _ogl_texture_create_base(__in __notnull ogl_context               context,
-                                             __in __notnull system_hashed_ansi_string name,
-                                             __in_opt       system_hashed_ansi_string file_name = NULL)
+PRIVATE ogl_texture _ogl_texture_create_base(ogl_context               context,
+                                             system_hashed_ansi_string name,
+                                             system_hashed_ansi_string file_name = NULL)
 {
     _ogl_texture* new_texture = new (std::nothrow) _ogl_texture(context,
                                                                 name);
@@ -131,8 +131,8 @@ PRIVATE ogl_texture _ogl_texture_create_base(__in __notnull ogl_context         
 }
 
 /** TODO */
-PRIVATE void _ogl_texture_create_from_gfx_image_renderer_callback(__in __notnull ogl_context context,
-                                                                  __in           void*       texture)
+PRIVATE void _ogl_texture_create_from_gfx_image_renderer_callback(ogl_context context,
+                                                                  void*       texture)
 {
     ogl_context_type                               context_type                         = OGL_CONTEXT_TYPE_UNDEFINED;
     PFNWRAPPEDGLCOMPRESSEDTEXTURESUBIMAGE2DEXTPROC gl_pGLCompressedTextureSubImage2DEXT = NULL;
@@ -382,8 +382,8 @@ PRIVATE void _ogl_texture_create_from_gfx_image_renderer_callback(__in __notnull
 }
 
 /** TODO */
-PRIVATE void _ogl_texture_deinit_renderer_callback(__in __notnull ogl_context context,
-                                                   __in           void*       texture)
+PRIVATE void _ogl_texture_deinit_renderer_callback(ogl_context context,
+                                                   void*       texture)
 {
     _ogl_texture* texture_ptr = (_ogl_texture*) texture;
 
@@ -447,9 +447,9 @@ PRIVATE void _ogl_texture_generate_mipmaps(ogl_context context,
 }
 
 /** TODO */
-PRIVATE void _ogl_texture_get_texture_format_type_from_internalformat(__in            GLenum  internalformat,
-                                                                      __out __notnull GLenum* out_format,
-                                                                      __out __notnull GLenum* out_type)
+PRIVATE void _ogl_texture_get_texture_format_type_from_internalformat(GLenum  internalformat,
+                                                                      GLenum* out_format,
+                                                                      GLenum* out_type)
 {
     switch (internalformat)
     {
@@ -496,8 +496,8 @@ PRIVATE void _ogl_texture_get_texture_format_type_from_internalformat(__in      
 } /* if (!image_is_compressed) */
 
 /** TODO */
-PRIVATE void _ogl_texture_init_renderer_callback(__in __notnull ogl_context context,
-                                                 __in           void*       texture)
+PRIVATE void _ogl_texture_init_renderer_callback(ogl_context context,
+                                                 void*       texture)
 {
     ogl_context_type     context_type   = OGL_CONTEXT_TYPE_UNDEFINED;
     PFNGLGENTEXTURESPROC pGLGenTextures = NULL;
@@ -537,13 +537,13 @@ PRIVATE void _ogl_texture_init_renderer_callback(__in __notnull ogl_context cont
 }
 
 /** TODO */
-PRIVATE void _ogl_texture_mipmap_deinit(__in __notnull _ogl_texture_mipmap* mipmap_ptr)
+PRIVATE void _ogl_texture_mipmap_deinit(_ogl_texture_mipmap* mipmap_ptr)
 {
     /* Nothing to do */
 }
 
 /* TODO */
-PRIVATE void _ogl_texture_release(__in __notnull __post_invalid void* arg)
+PRIVATE void _ogl_texture_release(void* arg)
 {
     _ogl_texture* texture_ptr = (_ogl_texture*) arg;
 
@@ -567,16 +567,16 @@ PRIVATE void _ogl_texture_release(__in __notnull __post_invalid void* arg)
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API RENDERING_CONTEXT_CALL ogl_texture ogl_texture_create_and_initialize(__in __notnull ogl_context                context,
-                                                                                        __in __notnull system_hashed_ansi_string  name,
-                                                                                        __in           ogl_texture_dimensionality dimensionality,
-                                                                                        __in           unsigned int               n_mipmaps,
-                                                                                        __in           GLenum                     internalformat,
-                                                                                        __in           unsigned int               base_mipmap_width,
-                                                                                        __in           unsigned int               base_mipmap_height,
-                                                                                        __in           unsigned int               base_mipmap_depth,
-                                                                                        __in           unsigned int               n_samples,
-                                                                                        __in           bool                       fixed_sample_locations)
+PUBLIC EMERALD_API RENDERING_CONTEXT_CALL ogl_texture ogl_texture_create_and_initialize(ogl_context                context,
+                                                                                        system_hashed_ansi_string  name,
+                                                                                        ogl_texture_dimensionality dimensionality,
+                                                                                        unsigned int               n_mipmaps,
+                                                                                        GLenum                     internalformat,
+                                                                                        unsigned int               base_mipmap_width,
+                                                                                        unsigned int               base_mipmap_height,
+                                                                                        unsigned int               base_mipmap_depth,
+                                                                                        unsigned int               n_samples,
+                                                                                        bool                       fixed_sample_locations)
 {
     const ogl_context_gl_entrypoints_ext_direct_state_access* dsa_entry_points = NULL;
     ogl_texture                                               result           = NULL;
@@ -700,17 +700,17 @@ end:
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API ogl_texture ogl_texture_create_empty(__in __notnull ogl_context               context,
-                                                        __in __notnull system_hashed_ansi_string name)
+PUBLIC EMERALD_API ogl_texture ogl_texture_create_empty(ogl_context               context,
+                                                        system_hashed_ansi_string name)
 {
     return _ogl_texture_create_base(context,
                                     name);
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API ogl_texture ogl_texture_create_from_file_name(__in __notnull ogl_context               context,
-                                                                 __in __notnull system_hashed_ansi_string name,
-                                                                 __in __notnull system_hashed_ansi_string src_filename)
+PUBLIC EMERALD_API ogl_texture ogl_texture_create_from_file_name(ogl_context               context,
+                                                                 system_hashed_ansi_string name,
+                                                                 system_hashed_ansi_string src_filename)
 {
     ASSERT_DEBUG_SYNC (src_filename != NULL,
                        "Source filename is NULL");
@@ -735,9 +735,9 @@ PUBLIC EMERALD_API ogl_texture ogl_texture_create_from_file_name(__in __notnull 
 }
 
 /* Please see header for specificaiton */
-PUBLIC EMERALD_API ogl_texture ogl_texture_create_from_gfx_image(__in __notnull ogl_context               context,
-                                                                 __in __notnull gfx_image                 image,
-                                                                 __in __notnull system_hashed_ansi_string name)
+PUBLIC EMERALD_API ogl_texture ogl_texture_create_from_gfx_image(ogl_context               context,
+                                                                 gfx_image                 image,
+                                                                 system_hashed_ansi_string name)
 {
     system_hashed_ansi_string image_filename = NULL;
     ogl_texture               result         = NULL;
@@ -785,7 +785,7 @@ end:
 }
 
 /* Please see header for spec */
-PUBLIC EMERALD_API void ogl_texture_generate_mipmaps(__in __notnull ogl_texture texture)
+PUBLIC EMERALD_API void ogl_texture_generate_mipmaps(ogl_texture texture)
 {
     _ogl_texture* texture_ptr = (_ogl_texture*) texture;
 
@@ -796,10 +796,10 @@ PUBLIC EMERALD_API void ogl_texture_generate_mipmaps(__in __notnull ogl_texture 
 }
 
 /* Please see header for spec */
-PUBLIC EMERALD_API bool ogl_texture_get_mipmap_property(__in  __notnull ogl_texture                 texture,
-                                                        __in            unsigned int                mipmap_level,
-                                                        __in            ogl_texture_mipmap_property property_value,
-                                                        __out __notnull void*                       out_result)
+PUBLIC EMERALD_API bool ogl_texture_get_mipmap_property(ogl_texture                 texture,
+                                                        unsigned int                mipmap_level,
+                                                        ogl_texture_mipmap_property property_value,
+                                                        void*                       out_result)
 {
     _ogl_texture* texture_ptr         = (_ogl_texture*) texture;
     unsigned int  n_mipmaps_allocated = 0;
@@ -872,9 +872,9 @@ PUBLIC EMERALD_API bool ogl_texture_get_mipmap_property(__in  __notnull ogl_text
 }
 
 /* Please see header for spec */
-PUBLIC EMERALD_API void ogl_texture_get_property(__in  __notnull const ogl_texture    texture,
-                                                 __in            ogl_texture_property property,
-                                                 __out           void*                out_result)
+PUBLIC EMERALD_API void ogl_texture_get_property(const ogl_texture    texture,
+                                                 ogl_texture_property property,
+                                                 void*                out_result)
 {
     const _ogl_texture* texture_ptr = (const _ogl_texture*) texture;
 
@@ -1003,10 +1003,10 @@ end:
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API void ogl_texture_set_mipmap_property(__in __notnull ogl_texture                 texture,
-                                                        __in           unsigned int                n_mipmap,
-                                                        __in           ogl_texture_mipmap_property property_value,
-                                                        __in           void*                       value_ptr)
+PUBLIC EMERALD_API void ogl_texture_set_mipmap_property(ogl_texture                 texture,
+                                                        unsigned int                n_mipmap,
+                                                        ogl_texture_mipmap_property property_value,
+                                                        void*                       value_ptr)
 {
     _ogl_texture* texture_ptr         = (_ogl_texture*) texture;
     unsigned int  n_mipmaps_allocated = 0;
@@ -1103,9 +1103,9 @@ PUBLIC EMERALD_API void ogl_texture_set_mipmap_property(__in __notnull ogl_textu
 }
 
 /** Please see header for spec */
-PUBLIC EMERALD_API void ogl_texture_set_property(__in  __notnull ogl_texture          texture,
-                                                 __in            ogl_texture_property property,
-                                                 __in            void*                data)
+PUBLIC EMERALD_API void ogl_texture_set_property(ogl_texture          texture,
+                                                 ogl_texture_property property,
+                                                 void*                data)
 {
     _ogl_texture* texture_ptr = (_ogl_texture*) texture;
 

@@ -85,34 +85,34 @@ REFCOUNT_INSERT_IMPLEMENTATION(ogl_pipeline,
                               _ogl_pipeline);
 
 /* Forward declarations */
-PRIVATE void _ogl_pipeline_deinit_pipeline                             (__in __notnull   _ogl_pipeline*             pipeline_ptr);
-PRIVATE void _ogl_pipeline_deinit_pipeline_stage                       (__in __notnull   _ogl_pipeline_stage*       stage_ptr);
-PRIVATE void _ogl_pipeline_deinit_pipeline_stage_step                  (__in __notnull   _ogl_pipeline_stage_step*  step_ptr);
-PRIVATE void _ogl_pipeline_deinit_pipeline_stage_step_renderer_callback(__in __notnull   ogl_context                context,
-                                                                                         void*                      user_arg);
-PRIVATE void _ogl_pipeline_init_pipeline                               (__in __notnull   _ogl_pipeline*             pipeline_ptr,
-                                                                        __in __notnull   ogl_context                context,
-                                                                        __in             bool                       should_overlay_performance_info);
-PRIVATE void _ogl_pipeline_init_pipeline_stage                         (__in __notnull   _ogl_pipeline_stage*       stage_ptr);
-PRIVATE void _ogl_pipeline_init_pipeline_stage_step                    (__in __notnull   _ogl_pipeline_stage_step*  step_ptr,
-                                                                        __in __notnull   system_hashed_ansi_string  name,
-                                                                        __in __notnull   PFNOGLPIPELINECALLBACKPROC pfn_step_callback,
-                                                                        __in __maybenull void*                      step_callback_user_arg,
-                                                                        __in __notnull   ogl_context                context);
-PRIVATE void _ogl_pipeline_init_pipeline_stage_step_renderer_callback  (__in __notnull   ogl_context                context,
-                                                                                         void*                      user_arg);
-PRIVATE void _ogl_pipeline_release                                     (                 void*                      pipeline);
+PRIVATE void _ogl_pipeline_deinit_pipeline                             (_ogl_pipeline*             pipeline_ptr);
+PRIVATE void _ogl_pipeline_deinit_pipeline_stage                       (_ogl_pipeline_stage*       stage_ptr);
+PRIVATE void _ogl_pipeline_deinit_pipeline_stage_step                  (_ogl_pipeline_stage_step*  step_ptr);
+PRIVATE void _ogl_pipeline_deinit_pipeline_stage_step_renderer_callback(ogl_context                context,
+                                                                        void*                      user_arg);
+PRIVATE void _ogl_pipeline_init_pipeline                               (_ogl_pipeline*             pipeline_ptr,
+                                                                        ogl_context                context,
+                                                                        bool                       should_overlay_performance_info);
+PRIVATE void _ogl_pipeline_init_pipeline_stage                         (_ogl_pipeline_stage*       stage_ptr);
+PRIVATE void _ogl_pipeline_init_pipeline_stage_step                    (_ogl_pipeline_stage_step*  step_ptr,
+                                                                        system_hashed_ansi_string  name,
+                                                                        PFNOGLPIPELINECALLBACKPROC pfn_step_callback,
+                                                                        void*                      step_callback_user_arg,
+                                                                        ogl_context                context);
+PRIVATE void _ogl_pipeline_init_pipeline_stage_step_renderer_callback  (ogl_context                context,
+                                                                        void*                      user_arg);
+PRIVATE void _ogl_pipeline_release                                     (void*                      pipeline);
 
 
 #ifdef _DEBUG
-    PRIVATE void _ogl_pipeline_verify_context_type(__in __notnull ogl_context);
+    PRIVATE void _ogl_pipeline_verify_context_type(ogl_context);
 #else
     #define _ogl_pipeline_verify_context_type(x)
 #endif
 
 
 /** TODO */
-PRIVATE void _ogl_pipeline_deinit_pipeline(__in __notnull _ogl_pipeline* pipeline_ptr)
+PRIVATE void _ogl_pipeline_deinit_pipeline(_ogl_pipeline* pipeline_ptr)
 {
     if (pipeline_ptr->context != NULL)
     {
@@ -149,7 +149,7 @@ PRIVATE void _ogl_pipeline_deinit_pipeline(__in __notnull _ogl_pipeline* pipelin
 }
 
 /** TODO */
-PRIVATE void _ogl_pipeline_deinit_pipeline_stage(__in __notnull _ogl_pipeline_stage* stage_ptr)
+PRIVATE void _ogl_pipeline_deinit_pipeline_stage(_ogl_pipeline_stage* stage_ptr)
 {
     _ogl_pipeline_stage_step* step_ptr = NULL;
 
@@ -164,7 +164,7 @@ PRIVATE void _ogl_pipeline_deinit_pipeline_stage(__in __notnull _ogl_pipeline_st
 }
 
 /** TODO */
-PRIVATE void _ogl_pipeline_deinit_pipeline_stage_step(__in __notnull _ogl_pipeline_stage_step* step_ptr)
+PRIVATE void _ogl_pipeline_deinit_pipeline_stage_step(_ogl_pipeline_stage_step* step_ptr)
 {
     ogl_context_request_callback_from_context_thread(step_ptr->context,
                                                      _ogl_pipeline_deinit_pipeline_stage_step_renderer_callback,
@@ -177,8 +177,8 @@ PRIVATE void _ogl_pipeline_deinit_pipeline_stage_step(__in __notnull _ogl_pipeli
 }
 
 /** TODO */
-PRIVATE void _ogl_pipeline_deinit_pipeline_stage_step_renderer_callback(__in __notnull ogl_context context,
-                                                                                       void*       user_arg)
+PRIVATE void _ogl_pipeline_deinit_pipeline_stage_step_renderer_callback(ogl_context context,
+                                                                        void*       user_arg)
 {
     _ogl_pipeline_stage_step* step_ptr = (_ogl_pipeline_stage_step*) user_arg;
 
@@ -198,10 +198,10 @@ PRIVATE void _ogl_pipeline_deinit_pipeline_stage_step_renderer_callback(__in __n
 }
 
 /** TODO */
-PRIVATE void _ogl_pipeline_init_pipeline(__in __notnull _ogl_pipeline*            pipeline_ptr,
-                                         __in __notnull ogl_context               context,
-                                         __in           bool                      should_overlay_performance_info,
-                                         __in __notnull system_hashed_ansi_string name)
+PRIVATE void _ogl_pipeline_init_pipeline(_ogl_pipeline*            pipeline_ptr,
+                                         ogl_context               context,
+                                         bool                      should_overlay_performance_info,
+                                         system_hashed_ansi_string name)
 {
     /* Retrieve output dimensions before continuing */
     system_window         context_window        = NULL;
@@ -245,7 +245,7 @@ PRIVATE void _ogl_pipeline_init_pipeline(__in __notnull _ogl_pipeline*          
 }
 
 /** TODO */
-PRIVATE void _ogl_pipeline_init_pipeline_stage(__in __notnull _ogl_pipeline_stage* stage_ptr)
+PRIVATE void _ogl_pipeline_init_pipeline_stage(_ogl_pipeline_stage* stage_ptr)
 {
     /* Counter is set to 1 for each stage, because the zeroth index is used for "total frame time" string */
     stage_ptr->max_text_width_px    = 0;
@@ -254,11 +254,11 @@ PRIVATE void _ogl_pipeline_init_pipeline_stage(__in __notnull _ogl_pipeline_stag
 }
 
 /** TODO */
-PRIVATE void _ogl_pipeline_init_pipeline_stage_step(__in __notnull   _ogl_pipeline_stage_step*  step_ptr,
-                                                    __in __notnull   system_hashed_ansi_string  name,
-                                                    __in __notnull   PFNOGLPIPELINECALLBACKPROC pfn_step_callback,
-                                                    __in __maybenull void*                      step_callback_user_arg,
-                                                    __in __notnull   ogl_context                context)
+PRIVATE void _ogl_pipeline_init_pipeline_stage_step(_ogl_pipeline_stage_step*  step_ptr,
+                                                    system_hashed_ansi_string  name,
+                                                    PFNOGLPIPELINECALLBACKPROC pfn_step_callback,
+                                                    void*                      step_callback_user_arg,
+                                                    ogl_context                context)
 {
     /* Truncate input name if too long */
     uint32_t name_length = system_hashed_ansi_string_get_length(name);
@@ -292,8 +292,8 @@ PRIVATE void _ogl_pipeline_init_pipeline_stage_step(__in __notnull   _ogl_pipeli
 }
 
 /** TODO */
-PRIVATE void _ogl_pipeline_init_pipeline_stage_step_renderer_callback(__in __notnull ogl_context context,
-                                                                                     void*       user_arg)
+PRIVATE void _ogl_pipeline_init_pipeline_stage_step_renderer_callback(ogl_context context,
+                                                                      void*       user_arg)
 {
     _ogl_pipeline_stage_step* step_ptr = (_ogl_pipeline_stage_step*) user_arg;
 
@@ -314,7 +314,7 @@ PRIVATE void _ogl_pipeline_release(void* pipeline)
 /** TODO */
 #ifdef _DEBUG
     /* TODO */
-    PRIVATE void _ogl_pipeline_verify_context_type(__in __notnull ogl_context context)
+    PRIVATE void _ogl_pipeline_verify_context_type(ogl_context context)
     {
         ogl_context_type context_type = OGL_CONTEXT_TYPE_UNDEFINED;
 
@@ -329,11 +329,11 @@ PRIVATE void _ogl_pipeline_release(void* pipeline)
 
 
 /** Please see header for specification */
-PUBLIC EMERALD_API uint32_t ogl_pipeline_add_stage_step(__in __notnull ogl_pipeline               instance,
-                                                        __in           uint32_t                   n_stage,
-                                                        __in __notnull system_hashed_ansi_string  step_name,
-                                                        __in __notnull PFNOGLPIPELINECALLBACKPROC pfn_step_callback,
-                                                        __in __notnull void*                      step_callback_user_arg)
+PUBLIC EMERALD_API uint32_t ogl_pipeline_add_stage_step(ogl_pipeline               instance,
+                                                        uint32_t                   n_stage,
+                                                        system_hashed_ansi_string  step_name,
+                                                        PFNOGLPIPELINECALLBACKPROC pfn_step_callback,
+                                                        void*                      step_callback_user_arg)
 {
     _ogl_pipeline_stage_step* new_step_ptr       = NULL;
     _ogl_pipeline*            pipeline_ptr       = (_ogl_pipeline*) instance;
@@ -469,7 +469,7 @@ PUBLIC EMERALD_API uint32_t ogl_pipeline_add_stage_step(__in __notnull ogl_pipel
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API uint32_t ogl_pipeline_add_stage(__in __notnull ogl_pipeline instance)
+PUBLIC EMERALD_API uint32_t ogl_pipeline_add_stage(ogl_pipeline instance)
 {
     _ogl_pipeline*       pipeline_ptr       = (_ogl_pipeline*) instance;
     _ogl_pipeline_stage* pipeline_stage_ptr = NULL;
@@ -507,9 +507,9 @@ PUBLIC EMERALD_API uint32_t ogl_pipeline_add_stage(__in __notnull ogl_pipeline i
 }
 
 /** Please see header for specification */
-PUBLIC RENDERING_CONTEXT_CALL EMERALD_API ogl_pipeline ogl_pipeline_create(__in __notnull ogl_context               context,
-                                                                           __in           bool                      should_overlay_performance_info,
-                                                                           __in __notnull system_hashed_ansi_string name)
+PUBLIC RENDERING_CONTEXT_CALL EMERALD_API ogl_pipeline ogl_pipeline_create(ogl_context               context,
+                                                                           bool                      should_overlay_performance_info,
+                                                                           system_hashed_ansi_string name)
 {
     _ogl_pipeline* pipeline_ptr = new (std::nothrow) _ogl_pipeline;
 
@@ -536,9 +536,9 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API ogl_pipeline ogl_pipeline_create(__in 
 }
 
 /** Please see header for specification */
-PUBLIC RENDERING_CONTEXT_CALL EMERALD_API bool ogl_pipeline_draw_stage(__in __notnull ogl_pipeline instance,
-                                                                       __in           uint32_t     n_stage,
-                                                                       __in           system_time  time)
+PUBLIC RENDERING_CONTEXT_CALL EMERALD_API bool ogl_pipeline_draw_stage(ogl_pipeline instance,
+                                                                       uint32_t     n_stage,
+                                                                       system_time  time)
 {
     ogl_flyby                                                 flyby              = NULL;
     bool                                                      is_stage_dirty     = false;
@@ -729,19 +729,19 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API bool ogl_pipeline_draw_stage(__in __no
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API ogl_context ogl_pipeline_get_context(__in __notnull ogl_pipeline instance)
+PUBLIC EMERALD_API ogl_context ogl_pipeline_get_context(ogl_pipeline instance)
 {
     return ((_ogl_pipeline*) instance)->context;
 }
 
 /** Please see header for specification */
-PUBLIC ogl_text ogl_pipeline_get_text_renderer(__in __notnull ogl_pipeline instance)
+PUBLIC ogl_text ogl_pipeline_get_text_renderer(ogl_pipeline instance)
 {
     return ((_ogl_pipeline*) instance)->text_renderer;
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API ogl_ui ogl_pipeline_get_ui(__in __notnull ogl_pipeline instance)
+PUBLIC EMERALD_API ogl_ui ogl_pipeline_get_ui(ogl_pipeline instance)
 {
     return ((_ogl_pipeline*) instance)->ui;
 }

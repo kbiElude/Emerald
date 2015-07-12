@@ -94,8 +94,8 @@ PUBLIC ogl_programs ogl_programs_create()
 }
 
 /** Please see header for spec */
-PUBLIC ogl_program ogl_programs_get_program_by_id(__in __notnull ogl_programs programs,
-                                                  __in           GLuint       po_id)
+PUBLIC ogl_program ogl_programs_get_program_by_id(ogl_programs programs,
+                                                  GLuint       po_id)
 {
     ogl_program    result       = NULL;
     _ogl_programs* programs_ptr = (_ogl_programs*) programs;
@@ -108,8 +108,8 @@ PUBLIC ogl_program ogl_programs_get_program_by_id(__in __notnull ogl_programs pr
 }
 
 /** Please see header for spec */
-PUBLIC ogl_program ogl_programs_get_program_by_name(__in __notnull ogl_programs              programs,
-                                                    __in __notnull system_hashed_ansi_string program_has)
+PUBLIC ogl_program ogl_programs_get_program_by_name(ogl_programs              programs,
+                                                    system_hashed_ansi_string program_has)
 {
     ogl_program    result       = NULL;
     _ogl_programs* programs_ptr = (_ogl_programs*) programs;
@@ -122,7 +122,7 @@ PUBLIC ogl_program ogl_programs_get_program_by_name(__in __notnull ogl_programs 
 }
 
 /** Please see header for spec */
-PUBLIC void ogl_programs_release(__in __notnull ogl_programs programs)
+PUBLIC void ogl_programs_release(ogl_programs programs)
 {
     delete (_ogl_programs*) programs;
 
@@ -130,8 +130,8 @@ PUBLIC void ogl_programs_release(__in __notnull ogl_programs programs)
 }
 
 /** Please see header for spec */
-PUBLIC void ogl_programs_register_program(__in __notnull ogl_programs programs,
-                                          __in __notnull ogl_program  program)
+PUBLIC void ogl_programs_register_program(ogl_programs programs,
+                                          ogl_program  program)
 {
     GLuint                    program_id   = ogl_program_get_id                (program);
     system_hashed_ansi_string program_name = ogl_program_get_name              (program);
@@ -158,8 +158,8 @@ PUBLIC void ogl_programs_register_program(__in __notnull ogl_programs programs,
 }
 
 /** Please see header for spec */
-PUBLIC void ogl_programs_unregister_program(__in __notnull ogl_programs programs,
-                                            __in __notnull ogl_program  program)
+PUBLIC void ogl_programs_unregister_program(ogl_programs programs,
+                                            ogl_program  program)
 {
     GLuint                    program_id   = ogl_program_get_id                (program);
     system_hashed_ansi_string program_name = ogl_program_get_name              (program);

@@ -39,11 +39,11 @@ _collada_data_channel::_collada_data_channel()
 }
 
 /** TODO */
-PRIVATE bool _collada_data_channel_get_target(__in  __notnull collada_data                           data,
-                                              __in  __notnull const char*                            path,
-                                              __out __notnull void**                                 out_target,
-                                              __out __notnull collada_data_channel_target_type*      out_target_type,
-                                              __out __notnull collada_data_channel_target_component* out_target_component)
+PRIVATE bool _collada_data_channel_get_target(collada_data                           data,
+                                              const char*                            path,
+                                              void**                                 out_target,
+                                              collada_data_channel_target_type*      out_target_type,
+                                              collada_data_channel_target_component* out_target_component)
 
 {
     bool result = false;
@@ -372,9 +372,9 @@ end:
 
 
 /** Please see header for spec */
-PUBLIC collada_data_channel collada_data_channel_create(__in __notnull tinyxml2::XMLElement* channel_element_ptr,
-                                                        __in __notnull collada_data_sampler  sampler,
-                                                        __in __notnull collada_data          data)
+PUBLIC collada_data_channel collada_data_channel_create(tinyxml2::XMLElement* channel_element_ptr,
+                                                        collada_data_sampler  sampler,
+                                                        collada_data          data)
 {
     _collada_data_channel*                channel_ptr      = NULL;
     system_hashed_ansi_string             sampler_id       = NULL;
@@ -458,9 +458,9 @@ end:
 }
 
 /** Please see header for spec */
-PUBLIC void collada_data_channel_get_property(__in  __notnull collada_data_channel          channel,
-                                              __in            collada_data_channel_property property,
-                                              __out __notnull void*                         out_result)
+PUBLIC void collada_data_channel_get_property(collada_data_channel          channel,
+                                              collada_data_channel_property property,
+                                              void*                         out_result)
 {
     _collada_data_channel* channel_ptr = (_collada_data_channel*) channel;
 
@@ -503,7 +503,7 @@ PUBLIC void collada_data_channel_get_property(__in  __notnull collada_data_chann
 }
 
 /** Please see header for spec */
-PUBLIC void collada_data_channel_release(__in __notnull __post_invalid collada_data_channel channel)
+PUBLIC void collada_data_channel_release(collada_data_channel channel)
 {
     delete (_collada_data_channel*) channel;
 

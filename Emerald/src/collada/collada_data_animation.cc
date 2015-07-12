@@ -81,8 +81,8 @@ _collada_data_animation::~_collada_data_animation()
 
 
 /** TODO */
-PUBLIC collada_data_animation collada_data_animation_create(__in __notnull tinyxml2::XMLElement* current_animation_element_ptr,
-                                                            __in __notnull collada_data          data)
+PUBLIC collada_data_animation collada_data_animation_create(tinyxml2::XMLElement* current_animation_element_ptr,
+                                                            collada_data          data)
 {
     _collada_data_animation* new_animation_ptr = new (std::nothrow) _collada_data_animation;
 
@@ -158,9 +158,9 @@ PUBLIC collada_data_animation collada_data_animation_create(__in __notnull tinyx
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API void collada_data_animation_get_property(__in  __notnull collada_data_animation          animation,
-                                                            __in            collada_data_animation_property property,
-                                                            __out __notnull void*                           out_result)
+PUBLIC EMERALD_API void collada_data_animation_get_property(collada_data_animation          animation,
+                                                            collada_data_animation_property property,
+                                                            void*                           out_result)
 {
     _collada_data_animation* animation_ptr = (_collada_data_animation*) animation;
 
@@ -196,7 +196,7 @@ PUBLIC EMERALD_API void collada_data_animation_get_property(__in  __notnull coll
 }
 
 /* Please see header for spec */
-PUBLIC void collada_data_animation_release(__in __post_invalid collada_data_animation animation)
+PUBLIC void collada_data_animation_release(collada_data_animation animation)
 {
     if (animation != NULL)
     {

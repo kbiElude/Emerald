@@ -33,7 +33,7 @@ PRIVATE system_resizable_vector uv_maps_vector = NULL;
 
 
 /** TODO */
-volatile void ExtractVMapDataWorkerThreadEntryPoint(__in __notnull void* not_used)
+volatile void ExtractVMapDataWorkerThreadEntryPoint(void* not_used)
 {
     char text_buffer[1024];
 
@@ -104,8 +104,8 @@ PUBLIC void DeinitVMapData()
 }
 
 /** Please see header for spec */
-PUBLIC void GetGlobalVMapProperty(__in            _vmap_property property,
-                                  __out __notnull void*          out_result)
+PUBLIC void GetGlobalVMapProperty( _vmap_property property,
+                                  void*          out_result)
 {
     switch (property)
     {
@@ -127,10 +127,10 @@ PUBLIC void GetGlobalVMapProperty(__in            _vmap_property property,
 }
 
 /** Please see header for spec */
-PUBLIC void GetVMapProperty(__in            _vmap_property property,
-                            __in            _vmap_type     vmap_type,
-                            __in            unsigned int   n_vmap,
-                            __out __notnull void*          out_result)
+PUBLIC void GetVMapProperty(_vmap_property property,
+                            _vmap_type     vmap_type,
+                            unsigned int   n_vmap,
+                            void*          out_result)
 {
     system_resizable_vector vmap_vector = NULL;
 

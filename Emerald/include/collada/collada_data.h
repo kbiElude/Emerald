@@ -39,76 +39,76 @@ enum collada_data_property
 };
 
 /** TODO */
-PUBLIC EMERALD_API collada_data collada_data_load(__in __notnull system_hashed_ansi_string filename,
-                                                  __in __notnull system_hashed_ansi_string name,
-                                                  __in           bool                      should_generate_cache_blobs = false);
+PUBLIC EMERALD_API collada_data collada_data_load(system_hashed_ansi_string filename,
+                                                  system_hashed_ansi_string name,
+                                                  bool                      should_generate_cache_blobs = false);
 
 /** TODO */
-PUBLIC EMERALD_API bool collada_data_get_camera_by_index(__in  __notnull collada_data         data,
-                                                         __in            uint32_t             n_camera,
-                                                         __out __notnull collada_data_camera* out_camera);
+PUBLIC EMERALD_API bool collada_data_get_camera_by_index(collada_data         data,
+                                                         uint32_t             n_camera,
+                                                         collada_data_camera* out_camera);
 
 /** TODO */
-PUBLIC EMERALD_API collada_data_camera collada_data_get_camera_by_name(__in __notnull collada_data              data,
-                                                                       __in           system_hashed_ansi_string name);
+PUBLIC EMERALD_API collada_data_camera collada_data_get_camera_by_name(collada_data              data,
+                                                                       system_hashed_ansi_string name);
 
 /** TODO */
-PUBLIC EMERALD_API void collada_data_get_effect(__in __notnull  collada_data         data,
-                                                __in            unsigned int         n_effect,
-                                                __out __notnull collada_data_effect* out_effect);
+PUBLIC EMERALD_API void collada_data_get_effect(collada_data         data,
+                                                unsigned int         n_effect,
+                                                collada_data_effect* out_effect);
 
 /** TODO.
  *
  *  mesh = renderer+geometrical mesh representation
  **/
-PUBLIC EMERALD_API mesh collada_data_get_emerald_mesh(__in __notnull collada_data data,
-                                                      __in __notnull ogl_context  context,
-                                                                     unsigned int n_mesh);
+PUBLIC EMERALD_API mesh collada_data_get_emerald_mesh(collada_data data,
+                                                      ogl_context  context,
+                                                      unsigned int n_mesh);
 
 /** TODO */
-PUBLIC EMERALD_API mesh collada_data_get_emerald_mesh_by_name(__in __notnull collada_data              data,
-                                                              __in __notnull ogl_context               context,
-                                                              __in           system_hashed_ansi_string name);
+PUBLIC EMERALD_API mesh collada_data_get_emerald_mesh_by_name(collada_data              data,
+                                                              ogl_context               context,
+                                                              system_hashed_ansi_string name);
 
 /** TODO. */
-PUBLIC EMERALD_API scene collada_data_get_emerald_scene(__in __notnull collada_data data,
-                                                        __in __notnull ogl_context  context,
-                                                                       unsigned int n_scene);
+PUBLIC EMERALD_API scene collada_data_get_emerald_scene(collada_data data,
+                                                        ogl_context  context,
+                                                        unsigned int n_scene);
 
 /** TODO */
-PUBLIC EMERALD_API void collada_data_get_geometry(__in __notnull  collada_data           data,
-                                                  __in            unsigned int           n_geometry,
-                                                  __out __notnull collada_data_geometry* out_geometry);
+PUBLIC EMERALD_API void collada_data_get_geometry(collada_data           data,
+                                                  unsigned int           n_geometry,
+                                                  collada_data_geometry* out_geometry);
 
 
 /** TODO */
-PUBLIC EMERALD_API void collada_data_get_image(__in  __notnull collada_data        data,
-                                               __in            unsigned int        n_image,
-                                               __out __notnull collada_data_image* out_image);
+PUBLIC EMERALD_API void collada_data_get_image(collada_data        data,
+                                               unsigned int        n_image,
+                                               collada_data_image* out_image);
 
 /** TODO */
-PUBLIC EMERALD_API void collada_data_get_material(__in __notnull  collada_data           data,
-                                                  __in            unsigned int           n_material,
-                                                  __out __notnull collada_data_material* out_material);
+PUBLIC EMERALD_API void collada_data_get_material(collada_data           data,
+                                                  unsigned int           n_material,
+                                                  collada_data_material* out_material);
 
 /** TODO */
-PUBLIC EMERALD_API void collada_data_get_material_by_name(__in  __notnull collada_data              data,
-                                                          __in  __notnull system_hashed_ansi_string name,
-                                                          __out __notnull collada_data_material*    out_material);
+PUBLIC EMERALD_API void collada_data_get_material_by_name(collada_data              data,
+                                                          system_hashed_ansi_string name,
+                                                          collada_data_material*    out_material);
 
 /** TODO */
-PUBLIC EMERALD_API void collada_data_get_property(__in  __notnull collada_data          data,
-                                                  __in            collada_data_property property,
-                                                  __out __notnull void*                 out_result_ptr);
+PUBLIC EMERALD_API void collada_data_get_property(collada_data          data,
+                                                  collada_data_property property,
+                                                  void*                 out_result_ptr);
 
 /** TODO */
-PUBLIC EMERALD_API void collada_data_get_scene(__in  __notnull collada_data        data,
-                                               __in            unsigned int        n_scene,
-                                               __out __notnull collada_data_scene* out_scene);
+PUBLIC EMERALD_API void collada_data_get_scene(collada_data        data,
+                                               unsigned int        n_scene,
+                                               collada_data_scene* out_scene);
 
 /** TODO */
-PUBLIC EMERALD_API void collada_data_set_property(__in __notnull collada_data          data,
-                                                  __in           collada_data_property property,
-                                                  __in __notnull void*                 data_ptr);
+PUBLIC EMERALD_API void collada_data_set_property(collada_data          data,
+                                                  collada_data_property property,
+                                                  void*                 data_ptr);
 
 #endif /* COLLADA_LOADER_H */

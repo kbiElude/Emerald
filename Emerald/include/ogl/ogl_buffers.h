@@ -61,32 +61,32 @@ const unsigned int OGL_BUFFERS_FLAGS_IMMUTABLE_BUFFER_MEMORY_BIT = 1 << 0;
 
 
 /** TODO */
-PUBLIC EMERALD_API bool ogl_buffers_allocate_buffer_memory(__in  __notnull ogl_buffers              buffers,
-                                                           __in            unsigned int             size,
-                                                           __in            unsigned int             alignment_requirement,
-                                                           __in            _ogl_buffers_mappability mappability,
-                                                           __in            _ogl_buffers_usage       usage,
-                                                           __in            int                      flags, /* bitfield of OGL_BUFFERS_FLAGS_ */
-                                                           __out __notnull unsigned int*            out_bo_id_ptr,
-                                                           __out __notnull unsigned int*            out_bo_offset_ptr);
+PUBLIC EMERALD_API bool ogl_buffers_allocate_buffer_memory(ogl_buffers              buffers,
+                                                           unsigned int             size,
+                                                           unsigned int             alignment_requirement,
+                                                           _ogl_buffers_mappability mappability,
+                                                           _ogl_buffers_usage       usage,
+                                                           int                      flags, /* bitfield of OGL_BUFFERS_FLAGS_ */
+                                                           unsigned int*            out_bo_id_ptr,
+                                                           unsigned int*            out_bo_offset_ptr);
 
 /** TODO.
  *
  *  Internal usage only.
  **/
-PUBLIC ogl_buffers ogl_buffers_create(__in __notnull ogl_context               context,
-                                      __in __notnull system_hashed_ansi_string name);
+PUBLIC ogl_buffers ogl_buffers_create(ogl_context               context,
+                                      system_hashed_ansi_string name);
 
 /** TODO */
-PUBLIC EMERALD_API void ogl_buffers_free_buffer_memory(__in __notnull ogl_buffers  buffers,
-                                                       __in           unsigned int bo_id,
-                                                       __in           unsigned int bo_offset);
+PUBLIC EMERALD_API void ogl_buffers_free_buffer_memory(ogl_buffers  buffers,
+                                                       unsigned int bo_id,
+                                                       unsigned int bo_offset);
 
 /** TODO.
  *
  *  Internal usage only.
  **/
-PUBLIC void ogl_buffers_release(__in __notnull ogl_buffers buffers);
+PUBLIC void ogl_buffers_release(ogl_buffers buffers);
 
 
 #endif /* OGL_BUFFERS_H */

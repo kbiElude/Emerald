@@ -53,7 +53,7 @@ PRIVATE system_hash64map scene_camera_to_camera_internal_map = NULL;
 
 
 /** TODO */
-volatile void ExtractCameraDataWorkerThreadEntryPoint(__in __notnull void* in_scene_arg)
+volatile void ExtractCameraDataWorkerThreadEntryPoint(void* in_scene_arg)
 {
     system_hash64map envelope_id_to_curve_container_map = GetEnvelopeIDToCurveContainerHashMap();
     scene            in_scene                           = (scene) in_scene_arg;
@@ -328,7 +328,7 @@ PUBLIC void DeinitCameraData()
 }
 
 /** TODO */
-PUBLIC system_event StartCameraDataExtraction(__in __notnull scene in_scene)
+PUBLIC system_event StartCameraDataExtraction(scene in_scene)
 {
     job_done_event = system_event_create(false); /* manual_reset */
 
@@ -343,9 +343,9 @@ PUBLIC system_event StartCameraDataExtraction(__in __notnull scene in_scene)
 }
 
 /* Please see header for spec */
-PUBLIC void GetCameraPropertyValue(__in  __notnull scene_camera   camera,
-                                   __in            CameraProperty property,
-                                   __out __notnull void*          out_result)
+PUBLIC void GetCameraPropertyValue(scene_camera   camera,
+                                   CameraProperty property,
+                                   void*          out_result)
 {
     _camera_internal* camera_ptr = NULL;
 

@@ -28,16 +28,18 @@ typedef _curve_segment_data_lerp* _curve_segment_data_lerp_ptr;
  *  @param segment_data *segment_data will be used to store a _curve_segment_data_lerp instance. CANNOT be null.
  *  @param data_type    Data type to use for value storage.
  **/
-PRIVATE void init_curve_segment_data_lerp(__deref_out __notnull curve_segment_data* segment_data,
-                                                                system_variant_type data_type,
-                                                                system_time         start_time,
-                                                                system_variant      start_value,
-                                                                system_time         end_time,
-                                                                system_variant      end_value)
+PRIVATE void init_curve_segment_data_lerp(curve_segment_data* segment_data,
+                                          system_variant_type data_type,
+                                          system_time         start_time,
+                                          system_variant      start_value,
+                                          system_time         end_time,
+                                          system_variant      end_value)
 {
     _curve_segment_data_lerp* new_segment = new (std::nothrow) _curve_segment_data_lerp;
 
-    ASSERT_ALWAYS_SYNC(new_segment != NULL, "Could not allocate lerp curve segment!");
+    ASSERT_ALWAYS_SYNC(new_segment != NULL,
+                       "Could not allocate lerp curve segment!");
+
     if (new_segment != NULL)
     {
         _curve_segment_data_lerp_ptr data_ptr = (_curve_segment_data_lerp_ptr) new_segment;
@@ -74,7 +76,7 @@ PRIVATE void init_curve_segment_data_lerp(__deref_out __notnull curve_segment_da
  *  @param segment_data Pointer to where the instance is located. DO NOT use this pointer after
  *                      calling this function.
  **/
-PRIVATE void deinit_curve_segment_data_lerp(__deref_out __post_invalid curve_segment_data segment_data)
+PRIVATE void deinit_curve_segment_data_lerp(curve_segment_data segment_data)
 {
     _curve_segment_data_lerp_ptr data_ptr = (_curve_segment_data_lerp_ptr) segment_data;
 
@@ -85,23 +87,23 @@ PRIVATE void deinit_curve_segment_data_lerp(__deref_out __post_invalid curve_seg
 }
 
 /** Please see header for specification */
-PUBLIC bool curve_segment_linear_add_node(__in  __notnull curve_segment_data     segment_data,
-                                          __in            system_time            node_time,
-                                          __in  __notnull system_variant         node_value,
-                                          __out __notnull curve_segment_node_id* out_node_id)
+PUBLIC bool curve_segment_linear_add_node(curve_segment_data     segment_data,
+                                          system_time            node_time,
+                                          system_variant         node_value,
+                                          curve_segment_node_id* out_node_id)
 {
     return false;
 }
 
 /** Please see header for specification */
-PUBLIC bool curve_segment_linear_delete_node(__in __notnull curve_segment_data    segment_data,
-                                             __in           curve_segment_node_id node_id)
+PUBLIC bool curve_segment_linear_delete_node(curve_segment_data    segment_data,
+                                             curve_segment_node_id node_id)
 {
     return false;
 }
 
 /** Please see header for specification */
-PUBLIC bool curve_segment_linear_deinit(__in __notnull curve_segment_data segment_data)
+PUBLIC bool curve_segment_linear_deinit(curve_segment_data segment_data)
 {
     deinit_curve_segment_data_lerp(segment_data);
 
@@ -109,8 +111,8 @@ PUBLIC bool curve_segment_linear_deinit(__in __notnull curve_segment_data segmen
 }
 
 /** Please see header for specification */
-PUBLIC bool curve_segment_linear_get_amount_of_nodes(__in  __notnull curve_segment_data segment_data,
-                                                     __out __notnull uint32_t*          out_result)
+PUBLIC bool curve_segment_linear_get_amount_of_nodes(curve_segment_data segment_data,
+                                                     uint32_t*          out_result)
 {
     *out_result = 2;
 
@@ -118,10 +120,10 @@ PUBLIC bool curve_segment_linear_get_amount_of_nodes(__in  __notnull curve_segme
 }
 
 /** Please see header for specification */
-PUBLIC bool curve_segment_linear_get_node(__in  __notnull  curve_segment_data     segment_data,
-                                          __in              curve_segment_node_id node_id,
-                                          __out __maybenull system_time*          out_node_time,
-                                          __out __maybenull system_variant        out_node_value)
+PUBLIC bool curve_segment_linear_get_node(curve_segment_data     segment_data,
+                                          curve_segment_node_id node_id,
+                                          system_time*          out_node_time,
+                                          system_variant        out_node_value)
 {
     _curve_segment_data_lerp_ptr data_ptr = (_curve_segment_data_lerp_ptr) segment_data;
 
@@ -159,9 +161,9 @@ PUBLIC bool curve_segment_linear_get_node(__in  __notnull  curve_segment_data   
 }
 
 /** Please see header for specification */
-PUBLIC bool curve_segment_linear_get_node_in_order(__in __notnull  curve_segment_data     segment_data,
-                                                   __in            uint32_t               node_index,
-                                                   __out __notnull curve_segment_node_id* out_node_id)
+PUBLIC bool curve_segment_linear_get_node_in_order(curve_segment_data     segment_data,
+                                                   uint32_t               node_index,
+                                                   curve_segment_node_id* out_node_id)
 {
     ASSERT_DEBUG_SYNC(node_index >= 0 && node_index <= 1,
                       "Requested node index [%d] is invalid for a lerp segment",
@@ -172,10 +174,10 @@ PUBLIC bool curve_segment_linear_get_node_in_order(__in __notnull  curve_segment
 }
 
 /** Please see header for specification */
-PUBLIC bool curve_segment_linear_get_value(__in    __notnull curve_segment_data segment_data,
-                                                             system_time        time,
-                                           __inout __notnull system_variant     out_result,
-                                           __in              bool               should_force)
+PUBLIC bool curve_segment_linear_get_value(curve_segment_data segment_data,
+                                           system_time        time,
+                                           system_variant     out_result,
+                                           bool               should_force)
 {
     _curve_segment_data_lerp_ptr data_ptr = (_curve_segment_data_lerp_ptr) segment_data;
     float                        a;
@@ -199,12 +201,12 @@ PUBLIC bool curve_segment_linear_get_value(__in    __notnull curve_segment_data 
 }
 
 /** Please see header for specification */
-PUBLIC bool curve_segment_linear_init(__deref_out __notnull curve_segment_data* segment_data,
-                                                            system_variant_type data_type,
-                                                            system_time         start_time,
-                                                            system_variant      start_value,
-                                                            system_time         end_time,
-                                                            system_variant      end_value)
+PUBLIC bool curve_segment_linear_init(curve_segment_data* segment_data,
+                                      system_variant_type data_type,
+                                      system_time         start_time,
+                                      system_variant      start_value,
+                                      system_time         end_time,
+                                      system_variant      end_value)
 {
     init_curve_segment_data_lerp(segment_data,
                                  data_type,
@@ -217,9 +219,9 @@ PUBLIC bool curve_segment_linear_init(__deref_out __notnull curve_segment_data* 
 }
 
 /** Please see header for specification */
-PUBLIC bool curve_segment_linear_modify_node_time(__in __notnull curve_segment_data    segment_data,
-                                                  __in           curve_segment_node_id node_id,
-                                                  __in           system_time           new_node_time)
+PUBLIC bool curve_segment_linear_modify_node_time(curve_segment_data    segment_data,
+                                                  curve_segment_node_id node_id,
+                                                  system_time           new_node_time)
 {
     _curve_segment_data_lerp_ptr data_ptr = (_curve_segment_data_lerp_ptr) segment_data;
 
@@ -263,11 +265,11 @@ PUBLIC bool curve_segment_linear_modify_node_time(__in __notnull curve_segment_d
 }
 
 /** Please see header for specification */
-PUBLIC bool curve_segment_linear_modify_node_time_value(__in __notnull curve_segment_data    segment_data,
-                                                        __in           curve_segment_node_id node_id,
-                                                        __in           system_time           new_node_time,
-                                                        __in __notnull system_variant        new_node_value,
-                                                        __in           bool                  force)
+PUBLIC bool curve_segment_linear_modify_node_time_value(curve_segment_data    segment_data,
+                                                        curve_segment_node_id node_id,
+                                                        system_time           new_node_time,
+                                                        system_variant        new_node_value,
+                                                        bool                  force)
 {
     _curve_segment_data_lerp_ptr data_ptr = (_curve_segment_data_lerp_ptr) segment_data;
     bool                         success  = false;
@@ -320,9 +322,9 @@ PUBLIC bool curve_segment_linear_modify_node_time_value(__in __notnull curve_seg
 }
 
 /** Please see header for specification */
-PUBLIC bool curve_segment_linear_set_property(__in __notnull curve_segment_data     segment_data,
-                                              __in           curve_segment_property segment_property,
-                                              __in __notnull system_variant         value)
+PUBLIC bool curve_segment_linear_set_property(curve_segment_data     segment_data,
+                                              curve_segment_property segment_property,
+                                              system_variant         value)
 {
     ASSERT_DEBUG_SYNC(false,
                       "LERP segment supports no properties.");
@@ -331,9 +333,9 @@ PUBLIC bool curve_segment_linear_set_property(__in __notnull curve_segment_data 
 }
 
 /** Please see header for specification */
-PUBLIC bool curve_segment_linear_get_property(__in __notnull curve_segment_data,
-                                              __in           curve_segment_property,
-                                              __in __notnull system_variant)
+PUBLIC bool curve_segment_linear_get_property(curve_segment_data,
+                                              curve_segment_property,
+                                              system_variant)
 {
     ASSERT_DEBUG_SYNC(false,
                       "LERP segment supports no properties.");

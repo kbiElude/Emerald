@@ -39,7 +39,7 @@ _collada_data_camera::_collada_data_camera()
 }
 
 /** TODO */
-PUBLIC collada_data_camera collada_data_camera_create(__in __notnull tinyxml2::XMLElement* current_camera_element_ptr)
+PUBLIC collada_data_camera collada_data_camera_create(tinyxml2::XMLElement* current_camera_element_ptr)
 {
     _collada_data_camera* new_camera_ptr = new (std::nothrow) _collada_data_camera;
 
@@ -162,9 +162,9 @@ PUBLIC collada_data_camera collada_data_camera_create(__in __notnull tinyxml2::X
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API void collada_data_camera_get_property(__in      __notnull collada_data_camera          camera,
-                                                         __in                collada_data_camera_property property,
-                                                         __out_opt           void*                        out_result)
+PUBLIC EMERALD_API void collada_data_camera_get_property(collada_data_camera          camera,
+                                                         collada_data_camera_property property,
+                                                         void*                        out_result)
 {
     _collada_data_camera* camera_ptr = (_collada_data_camera*) camera;
 
@@ -228,7 +228,7 @@ PUBLIC EMERALD_API void collada_data_camera_get_property(__in      __notnull col
 }
 
 /* Please see header for spec */
-PUBLIC void collada_data_camera_release(__in __post_invalid collada_data_camera camera)
+PUBLIC void collada_data_camera_release(collada_data_camera camera)
 {
     if (camera != NULL)
     {

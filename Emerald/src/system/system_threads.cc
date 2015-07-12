@@ -120,9 +120,9 @@ PUBLIC EMERALD_API system_thread_id system_threads_get_thread_id()
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API void system_threads_join_thread(__in      system_thread thread,
-                                                   __in      system_time   timeout,
-                                                   __out_opt bool*         out_has_timed_out_ptr)
+PUBLIC EMERALD_API void system_threads_join_thread(system_thread thread,
+                                                   system_time   timeout,
+                                                   bool*         out_has_timed_out_ptr)
 {
     bool     has_timed_out = false;
     uint32_t timeout_msec  = 0;
@@ -178,10 +178,10 @@ PUBLIC EMERALD_API void system_threads_join_thread(__in      system_thread threa
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API system_thread_id system_threads_spawn(__in  __notnull   PFNSYSTEMTHREADSENTRYPOINTPROC      callback_func,
-                                                         __in  __maybenull system_threads_entry_point_argument callback_func_argument,
-                                                         __out __maybenull system_event*                       thread_wait_event,
-                                                         __out __maybenull system_thread*                      out_thread_ptr)
+PUBLIC EMERALD_API system_thread_id system_threads_spawn(PFNSYSTEMTHREADSENTRYPOINTPROC      callback_func,
+                                                         system_threads_entry_point_argument callback_func_argument,
+                                                         system_event*                       thread_wait_event,
+                                                         system_thread*                      out_thread_ptr)
 {
     /* Create a new descriptor */
     system_thread_id result = 0;

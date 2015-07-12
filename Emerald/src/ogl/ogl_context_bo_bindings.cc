@@ -116,7 +116,7 @@ typedef struct _ogl_context_bo_bindings
 
 
 /** TODO */
-PRIVATE GLenum _ogl_context_bo_bindings_get_glenum_from_ogl_context_bo_binding_target(__in GLenum binding_target)
+PRIVATE GLenum _ogl_context_bo_bindings_get_glenum_from_ogl_context_bo_binding_target(GLenum binding_target)
 {
     GLenum result = GL_NONE;
 
@@ -148,7 +148,7 @@ PRIVATE GLenum _ogl_context_bo_bindings_get_glenum_from_ogl_context_bo_binding_t
 }
 
 /** TODO */
-PRIVATE _ogl_context_bo_binding_target _ogl_context_bo_bindings_get_ogl_context_bo_binding_target_from_glenum(__in GLenum binding_target)
+PRIVATE _ogl_context_bo_binding_target _ogl_context_bo_bindings_get_ogl_context_bo_binding_target_from_glenum(GLenum binding_target)
 {
     _ogl_context_bo_binding_target result = BINDING_TARGET_UNKNOWN;
 
@@ -180,10 +180,10 @@ PRIVATE _ogl_context_bo_binding_target _ogl_context_bo_bindings_get_ogl_context_
 }
 
 /** TODO */
-PRIVATE void _ogl_context_bo_bindings_sync_multi_bind_process_indiced_sync_bit(__in __notnull ogl_context_bo_bindings        bindings,
-                                                                               __in           GLint                          n_gl_max_bindings,
-                                                                               __in           _ogl_context_bo_binding_target internal_target,
-                                                                               __in           GLenum                         gl_target)
+PRIVATE void _ogl_context_bo_bindings_sync_multi_bind_process_indiced_sync_bit(ogl_context_bo_bindings        bindings,
+                                                                               GLint                          n_gl_max_bindings,
+                                                                               _ogl_context_bo_binding_target internal_target,
+                                                                               GLenum                         gl_target)
 {
     uint32_t dirty_start_index = 0xFFFFFFFF;
     uint32_t dirty_end_index   = 0;
@@ -284,9 +284,9 @@ PRIVATE void _ogl_context_bo_bindings_sync_multi_bind_process_indiced_sync_bit(_
 }
 
 /** TODO */
-PRIVATE void _ogl_context_bo_bindings_sync_non_multi_bind_process_indiced_sync_bit(__in __notnull ogl_context_bo_bindings        bindings,
-                                                                                   __in           GLint                          n_gl_max_bindings,
-                                                                                   __in           _ogl_context_bo_binding_target internal_target)
+PRIVATE void _ogl_context_bo_bindings_sync_non_multi_bind_process_indiced_sync_bit(ogl_context_bo_bindings        bindings,
+                                                                                   GLint                          n_gl_max_bindings,
+                                                                                   _ogl_context_bo_binding_target internal_target)
 {
     _ogl_context_bo_bindings* bindings_ptr = (_ogl_context_bo_bindings*) bindings;
 
@@ -324,8 +324,8 @@ PRIVATE void _ogl_context_bo_bindings_sync_non_multi_bind_process_indiced_sync_b
 }
 
 /** TODO */
-PRIVATE void _ogl_context_bo_bindings_sync_process_general_sync_bit(__in __notnull ogl_context_bo_bindings        bindings,
-                                                                    __in           _ogl_context_bo_binding_target internal_target)
+PRIVATE void _ogl_context_bo_bindings_sync_process_general_sync_bit(ogl_context_bo_bindings        bindings,
+                                                                    _ogl_context_bo_binding_target internal_target)
 {
     _ogl_context_bo_bindings* bindings_ptr = (_ogl_context_bo_bindings*) bindings;
 
@@ -343,7 +343,7 @@ PRIVATE void _ogl_context_bo_bindings_sync_process_general_sync_bit(__in __notnu
 }
 
 /** Please see header for spec */
-PUBLIC ogl_context_bo_bindings ogl_context_bo_bindings_create(__in __notnull ogl_context context)
+PUBLIC ogl_context_bo_bindings ogl_context_bo_bindings_create(ogl_context context)
 {
     _ogl_context_bo_bindings* new_bindings = new (std::nothrow) _ogl_context_bo_bindings;
 
@@ -364,8 +364,8 @@ PUBLIC ogl_context_bo_bindings ogl_context_bo_bindings_create(__in __notnull ogl
 }
 
 /** Please see header for spec */
-PUBLIC GLuint ogl_context_bo_bindings_get_general_binding(__in __notnull const ogl_context_bo_bindings bo_bindings,
-                                                          __in           GLenum                        target)
+PUBLIC GLuint ogl_context_bo_bindings_get_general_binding(const ogl_context_bo_bindings bo_bindings,
+                                                          GLenum                        target)
 {
     const _ogl_context_bo_bindings* bindings_ptr    = (const _ogl_context_bo_bindings*) bo_bindings;
     _ogl_context_bo_binding_target  internal_target = _ogl_context_bo_bindings_get_ogl_context_bo_binding_target_from_glenum(target);
@@ -383,7 +383,7 @@ PUBLIC GLuint ogl_context_bo_bindings_get_general_binding(__in __notnull const o
 }
 
 /** TODO */
-PUBLIC ogl_context_bo_bindings_sync_bit ogl_context_bo_bindings_get_ogl_context_bo_bindings_sync_bit_for_gl_target(__in GLenum binding_target)
+PUBLIC ogl_context_bo_bindings_sync_bit ogl_context_bo_bindings_get_ogl_context_bo_bindings_sync_bit_for_gl_target(GLenum binding_target)
 {
     ogl_context_bo_bindings_sync_bit result;
 
@@ -415,8 +415,8 @@ PUBLIC ogl_context_bo_bindings_sync_bit ogl_context_bo_bindings_get_ogl_context_
 }
 
 /** Please see header for spec */
-PUBLIC void ogl_context_bo_bindings_init(__in __notnull ogl_context_bo_bindings                   bindings,
-                                         __in __notnull const ogl_context_gl_entrypoints_private* entrypoints_private_ptr)
+PUBLIC void ogl_context_bo_bindings_init(ogl_context_bo_bindings                   bindings,
+                                         const ogl_context_gl_entrypoints_private* entrypoints_private_ptr)
 {
     _ogl_context_bo_bindings* bindings_ptr = (_ogl_context_bo_bindings*) bindings;
 
@@ -532,7 +532,7 @@ PUBLIC void ogl_context_bo_bindings_init(__in __notnull ogl_context_bo_bindings 
 }
 
 /** Please see header for spec */
-PUBLIC void ogl_context_bo_bindings_release(__in __notnull __post_invalid ogl_context_bo_bindings bindings)
+PUBLIC void ogl_context_bo_bindings_release(ogl_context_bo_bindings bindings)
 {
     _ogl_context_bo_bindings* bindings_ptr = (_ogl_context_bo_bindings*) bindings;
 
@@ -608,9 +608,9 @@ PUBLIC void ogl_context_bo_bindings_release(__in __notnull __post_invalid ogl_co
 }
 
 /** Please see header for spec */
-PUBLIC void ogl_context_bo_bindings_reset_buffer_bindings(__in __notnull ogl_context_bo_bindings bindings,
-                                                          __in __notnull const GLuint*           buffers,
-                                                          __in           GLint                   n)
+PUBLIC void ogl_context_bo_bindings_reset_buffer_bindings(ogl_context_bo_bindings bindings,
+                                                          const GLuint*           buffers,
+                                                          GLint                   n)
 {
     _ogl_context_bo_bindings*    bindings_ptr = (_ogl_context_bo_bindings*) bindings;
     const ogl_context_gl_limits* limits_ptr   = NULL;
@@ -698,9 +698,9 @@ PUBLIC void ogl_context_bo_bindings_reset_buffer_bindings(__in __notnull ogl_con
 }
 
 /** Please see header for spec */
-PUBLIC void ogl_context_bo_bindings_set_binding(__in __notnull ogl_context_bo_bindings bindings,
-                                                __in           GLenum                  binding_point,
-                                                __in           GLint                   bo_id)
+PUBLIC void ogl_context_bo_bindings_set_binding(ogl_context_bo_bindings bindings,
+                                                GLenum                  binding_point,
+                                                GLint                   bo_id)
 {
     _ogl_context_bo_bindings*      bindings_ptr   = (_ogl_context_bo_bindings*) bindings;
     _ogl_context_bo_binding_target binding_target = _ogl_context_bo_bindings_get_ogl_context_bo_binding_target_from_glenum(binding_point);
@@ -745,10 +745,10 @@ PUBLIC void ogl_context_bo_bindings_set_binding(__in __notnull ogl_context_bo_bi
 }
 
 /** Please see header for spec */
-PUBLIC void ogl_context_bo_bindings_set_binding_base(__in __notnull ogl_context_bo_bindings bindings,
-                                                     __in           GLenum                  binding_point,
-                                                     __in           GLuint                  binding_index,
-                                                     __in           GLint                   bo_id)
+PUBLIC void ogl_context_bo_bindings_set_binding_base(ogl_context_bo_bindings bindings,
+                                                     GLenum                  binding_point,
+                                                     GLuint                  binding_index,
+                                                     GLint                   bo_id)
 {
     _ogl_context_bo_bindings*      bindings_ptr   = (_ogl_context_bo_bindings*) bindings;
     _ogl_context_bo_binding_target binding_target = _ogl_context_bo_bindings_get_ogl_context_bo_binding_target_from_glenum(binding_point);
@@ -779,12 +779,12 @@ PUBLIC void ogl_context_bo_bindings_set_binding_base(__in __notnull ogl_context_
 }
 
 /** Please see header for spec */
-PUBLIC void ogl_context_bo_bindings_set_binding_range(__in __notnull ogl_context_bo_bindings bindings,
-                                                      __in           GLenum                  binding_point,
-                                                      __in           GLuint                  binding_index,
-                                                      __in           GLintptr                offset,
-                                                      __in           GLsizeiptr              size,
-                                                      __in           GLint                   bo_id)
+PUBLIC void ogl_context_bo_bindings_set_binding_range(ogl_context_bo_bindings bindings,
+                                                      GLenum                  binding_point,
+                                                      GLuint                  binding_index,
+                                                      GLintptr                offset,
+                                                      GLsizeiptr              size,
+                                                      GLint                   bo_id)
 {
     _ogl_context_bo_bindings*      bindings_ptr   = (_ogl_context_bo_bindings*) bindings;
     _ogl_context_bo_binding_target binding_target = _ogl_context_bo_bindings_get_ogl_context_bo_binding_target_from_glenum(binding_point);
@@ -850,9 +850,9 @@ PUBLIC void ogl_context_bo_bindings_set_binding_range(__in __notnull ogl_context
 }
 
 /** Please see header for spec */
-PUBLIC void ogl_context_bo_bindings_set_bo_storage_size(__in __notnull ogl_context_bo_bindings bindings,
-                                                        __in           GLuint                  bo_id,
-                                                        __in           GLsizeiptr              bo_size)
+PUBLIC void ogl_context_bo_bindings_set_bo_storage_size(ogl_context_bo_bindings bindings,
+                                                        GLuint                  bo_id,
+                                                        GLsizeiptr              bo_size)
 {
     _ogl_context_bo_bindings* bindings_ptr = (_ogl_context_bo_bindings*) bindings;
 
@@ -889,8 +889,8 @@ end:
 }
 
 /** Please see header for spec */
-PUBLIC void ogl_context_bo_bindings_sync(__in __notnull ogl_context_bo_bindings bindings,
-                                         __in           uint32_t                sync_bits)
+PUBLIC void ogl_context_bo_bindings_sync(ogl_context_bo_bindings bindings,
+                                         uint32_t                sync_bits)
 {
     /* NOTE: bindings is NULL during rendering context initialization */
     if (bindings != NULL)

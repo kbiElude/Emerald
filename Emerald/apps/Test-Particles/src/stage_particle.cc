@@ -473,8 +473,8 @@ PUBLIC uint32_t stage_particle_get_stage_id()
 }
 
 /** Please see header for specification */
-PUBLIC RENDERING_CONTEXT_CALL void stage_particle_deinit(__in __notnull ogl_context,
-                                                         __in __notnull ogl_pipeline)
+PUBLIC RENDERING_CONTEXT_CALL void stage_particle_deinit(ogl_context,
+                                                         ogl_pipeline)
 {
     ogl_texture_release(_particle_data_tbo);
 
@@ -523,8 +523,8 @@ PUBLIC float stage_particle_get_spread()
 }
 
 /** Please see header for specification */
-PUBLIC RENDERING_CONTEXT_CALL void stage_particle_init(__in __notnull ogl_context  context,
-                                                       __in __notnull ogl_pipeline pipeline)
+PUBLIC RENDERING_CONTEXT_CALL void stage_particle_init(ogl_context  context,
+                                                       ogl_pipeline pipeline)
 {
     const ogl_context_gl_entrypoints_ext_direct_state_access* dsa_entrypoints = NULL;
     const ogl_context_gl_entrypoints*                         entrypoints     = NULL;
@@ -881,32 +881,32 @@ PUBLIC void stage_particle_reset()
 }
 
 /** Please see header for specification */
-PUBLIC void stage_particle_set_decay(__in float new_decay)
+PUBLIC void stage_particle_set_decay( float new_decay)
 {
     _particle_decay = new_decay;
 }
 
 /** Please see header for specification */
-PUBLIC void stage_particle_set_dt(__in float new_dt)
+PUBLIC void stage_particle_set_dt( float new_dt)
 {
     _particle_dt = new_dt;
 }
 
 /** Please see header for specification */
-PUBLIC void stage_particle_set_gravity(__in float new_gravity)
+PUBLIC void stage_particle_set_gravity(float new_gravity)
 {
     _particle_gravity = new_gravity;
 }
 
 /** Please see header for specification */
-PUBLIC void stage_particle_set_minimum_mass(__in float new_min_mass)
+PUBLIC void stage_particle_set_minimum_mass(float new_min_mass)
 {
     _particle_min_mass         = new_min_mass;
     _particle_data_initialized = false;
 }
 
 /** Please see header for specification */
-PUBLIC void stage_particle_set_spread(__in float new_spread)
+PUBLIC void stage_particle_set_spread(float new_spread)
 {
     _particle_spread           = new_spread;
     _particle_data_initialized = false;

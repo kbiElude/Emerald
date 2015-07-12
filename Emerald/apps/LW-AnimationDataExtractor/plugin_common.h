@@ -49,21 +49,21 @@ typedef enum
 } _item_property;
 
 /** TODO */
-PUBLIC void AdjustCurveByDelta(__in __notnull curve_container curve,
-                               __in           float           delta);
+PUBLIC void AdjustCurveByDelta(curve_container curve,
+                               float           delta);
 
 /** TODO */
-PUBLIC LWEnvelopeID FindEnvelope(__in           LWChanGroupID  group_id,
-                                 __in __notnull const char*    envelope_name);
+PUBLIC LWEnvelopeID FindEnvelope(LWChanGroupID  group_id,
+                                 const char*    envelope_name);
 
 /** TODO */
-PUBLIC LWChanGroupID FindGroup(__in __notnull const char* group_name);
+PUBLIC LWChanGroupID FindGroup(const char* group_name);
 
 /** TODO */
-PUBLIC void GetCurveContainerForProperty(__in                system_hashed_ansi_string object_name,
-                                         __in                _item_property            property,
-                                         __in      __notnull LWItemID                  item_id,
-                                         __out_opt           curve_container*          out_curve_ptr,
-                                         __out_opt           curve_id*                 out_curve_id_ptr);
+PUBLIC void GetCurveContainerForProperty(system_hashed_ansi_string object_name,
+                                         _item_property            property,
+                                         LWItemID                  item_id,
+                                         curve_container*          out_curve_ptr,
+                                         curve_id*                 out_curve_id_ptr);
 
 #endif /* PLUGIN_LIGHTS_H */

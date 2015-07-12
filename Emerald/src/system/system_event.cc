@@ -31,7 +31,7 @@ typedef struct _system_event
     system_thread     owned_thread; /* only relevant for thread events */
     system_event_type type;
 
-    explicit _system_event(__in system_event_type in_type)
+    explicit _system_event(system_event_type in_type)
     {
         #if defined(USE_RAW_HANDLES)
             event = NULL;
@@ -50,7 +50,7 @@ typedef struct _system_event
 
 
 /** Please see header for specification */
-PUBLIC EMERALD_API __maybenull system_event system_event_create(bool manual_reset)
+PUBLIC EMERALD_API system_event system_event_create(bool manual_reset)
 {
     _system_event* event_ptr = new (std::nothrow) _system_event(SYSTEM_EVENT_TYPE_REGULAR);
 
@@ -79,7 +79,7 @@ PUBLIC EMERALD_API __maybenull system_event system_event_create(bool manual_rese
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API __maybenull system_event system_event_create_from_thread(__in system_thread thread)
+PUBLIC EMERALD_API system_event system_event_create_from_thread(system_thread thread)
 {
     _system_event* event_ptr = new (std::nothrow) _system_event(SYSTEM_EVENT_TYPE_THREAD);
 
@@ -104,9 +104,9 @@ PUBLIC EMERALD_API __maybenull system_event system_event_create_from_thread(__in
 }
 
 /** Please see header for specification */
-PUBLIC void system_event_get_property(__in  system_event          event,
-                                      __in  system_event_property property,
-                                      __out void*                 out_result)
+PUBLIC void system_event_get_property(system_event          event,
+                                      system_event_property property,
+                                      void*                 out_result)
 {
     _system_event* event_ptr = (_system_event*) event;
 
@@ -145,7 +145,7 @@ PUBLIC void system_event_get_property(__in  system_event          event,
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API void system_event_release(__in __notnull __deallocate(mem) system_event event)
+PUBLIC EMERALD_API void system_event_release(system_event event)
 {
     #if defined(USE_RAW_HANDLES)
     {
@@ -166,7 +166,7 @@ PUBLIC EMERALD_API void system_event_release(__in __notnull __deallocate(mem) sy
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API void system_event_reset(__in __notnull system_event event)
+PUBLIC EMERALD_API void system_event_reset(system_event event)
 {
     _system_event* event_ptr = (_system_event*) event;
 
@@ -190,7 +190,7 @@ PUBLIC EMERALD_API void system_event_reset(__in __notnull system_event event)
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API void system_event_set(__in __notnull system_event event)
+PUBLIC EMERALD_API void system_event_set(system_event event)
 {
     _system_event* event_ptr = (_system_event*) event;
 
@@ -214,7 +214,7 @@ PUBLIC EMERALD_API void system_event_set(__in __notnull system_event event)
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API bool system_event_wait_single_peek(__in __notnull system_event event)
+PUBLIC EMERALD_API bool system_event_wait_single_peek(system_event event)
 {
     #if !defined(USE_RAW_HANDLES)
     {
@@ -238,8 +238,8 @@ PUBLIC EMERALD_API bool system_event_wait_single_peek(__in __notnull system_even
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API void system_event_wait_single(__in __notnull system_event event,
-                                                 __in           system_time  timeout)
+PUBLIC EMERALD_API void system_event_wait_single(system_event event,
+                                                 system_time  timeout)
 {
     #if defined(USE_RAW_HANDLES)
     {
@@ -275,11 +275,11 @@ PUBLIC EMERALD_API void system_event_wait_single(__in __notnull system_event eve
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API size_t system_event_wait_multiple(__in __notnull __ecount(n_elements) const system_event* events,
-                                                     __in                                int                 n_elements,
-                                                                                         bool                wait_on_all_objects,
-                                                                                         system_time         timeout,
-                                                     __out __notnull                     bool*               out_has_timed_out_ptr)
+PUBLIC EMERALD_API size_t system_event_wait_multiple(const system_event* events,
+                                                     int                 n_elements,
+                                                     bool                wait_on_all_objects,
+                                                     system_time         timeout,
+                                                     bool*               out_has_timed_out_ptr)
 {
     unsigned int result;
 

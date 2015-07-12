@@ -37,50 +37,50 @@ enum ogl_context_bo_bindings_sync_bit
 DECLARE_HANDLE(ogl_context_bo_bindings);
 
 /** TODO */
-PUBLIC ogl_context_bo_bindings ogl_context_bo_bindings_create(__in __notnull ogl_context context);
+PUBLIC ogl_context_bo_bindings ogl_context_bo_bindings_create(ogl_context context);
 
 /** TODO */
-PUBLIC GLuint ogl_context_bo_bindings_get_general_binding(__in __notnull const ogl_context_bo_bindings bo_bindings,
-                                                          __in           GLenum                        target);
+PUBLIC GLuint ogl_context_bo_bindings_get_general_binding(const ogl_context_bo_bindings bo_bindings,
+                                                          GLenum                        target);
 
 /** TODO */
-PUBLIC ogl_context_bo_bindings_sync_bit ogl_context_bo_bindings_get_ogl_context_bo_bindings_sync_bit_for_gl_target(__in GLenum binding_target);
+PUBLIC ogl_context_bo_bindings_sync_bit ogl_context_bo_bindings_get_ogl_context_bo_bindings_sync_bit_for_gl_target(GLenum binding_target);
 
 /** TODO */
-PUBLIC void ogl_context_bo_bindings_init(__in __notnull ogl_context_bo_bindings                   bindings,
-                                         __in __notnull const ogl_context_gl_entrypoints_private* entrypoints_private_ptr);
+PUBLIC void ogl_context_bo_bindings_init(ogl_context_bo_bindings                   bindings,
+                                         const ogl_context_gl_entrypoints_private* entrypoints_private_ptr);
 
 /** TODO */
-PUBLIC void ogl_context_bo_bindings_release(__in __notnull __post_invalid ogl_context_bo_bindings bindings);
+PUBLIC void ogl_context_bo_bindings_release(ogl_context_bo_bindings bindings);
 
 /** TODO */
-PUBLIC void ogl_context_bo_bindings_reset_buffer_bindings(__in __notnull ogl_context_bo_bindings bindings,
-                                                          __in __notnull const GLuint*           buffers,
-                                                          __in           GLint                   n);
+PUBLIC void ogl_context_bo_bindings_reset_buffer_bindings(ogl_context_bo_bindings bindings,
+                                                          const GLuint*           buffers,
+                                                          GLint                   n);
 
 /** TODO */
-PUBLIC void ogl_context_bo_bindings_set_binding(__in __notnull ogl_context_bo_bindings bindings,
-                                                __in           GLenum                  binding_point,
-                                                __in           GLint                   bo_id);
+PUBLIC void ogl_context_bo_bindings_set_binding(ogl_context_bo_bindings bindings,
+                                                GLenum                  binding_point,
+                                                GLint                   bo_id);
 
 /** TODO */
-PUBLIC void ogl_context_bo_bindings_set_binding_base(__in __notnull ogl_context_bo_bindings bindings,
-                                                     __in           GLenum                  binding_point,
-                                                     __in           GLuint                  binding_index,
-                                                     __in           GLint                   bo_id);
+PUBLIC void ogl_context_bo_bindings_set_binding_base(ogl_context_bo_bindings bindings,
+                                                     GLenum                  binding_point,
+                                                     GLuint                  binding_index,
+                                                     GLint                   bo_id);
 
 /** TODO */
-PUBLIC void ogl_context_bo_bindings_set_binding_range(__in __notnull ogl_context_bo_bindings bindings,
-                                                      __in           GLenum                  binding_point,
-                                                      __in           GLuint                  binding_index,
-                                                      __in           GLintptr                offset,
-                                                      __in           GLsizeiptr              size,
-                                                      __in           GLint                   bo_id);
+PUBLIC void ogl_context_bo_bindings_set_binding_range(ogl_context_bo_bindings bindings,
+                                                      GLenum                  binding_point,
+                                                      GLuint                  binding_index,
+                                                      GLintptr                offset,
+                                                      GLsizeiptr              size,
+                                                      GLint                   bo_id);
 
 /** TODO */
-PUBLIC void ogl_context_bo_bindings_set_bo_storage_size(__in __notnull ogl_context_bo_bindings bindings,
-                                                        __in           GLuint                  bo_id,
-                                                        __in           GLsizeiptr              bo_size);
+PUBLIC void ogl_context_bo_bindings_set_bo_storage_size(ogl_context_bo_bindings bindings,
+                                                        GLuint                  bo_id,
+                                                        GLsizeiptr              bo_size);
 
 /** TODO
  *
@@ -88,7 +88,7 @@ PUBLIC void ogl_context_bo_bindings_set_bo_storage_size(__in __notnull ogl_conte
  *  @param sync_bits TODO. Use bits from ogl_context_bo_bindings_sync_bit.
  *
  */
-PUBLIC void ogl_context_bo_bindings_sync(__in __notnull ogl_context_bo_bindings bindings,
-                                         __in           uint32_t                sync_bits);
+PUBLIC void ogl_context_bo_bindings_sync(ogl_context_bo_bindings bindings,
+                                         uint32_t                sync_bits);
 
 #endif /* OGL_CONTEXT_H */

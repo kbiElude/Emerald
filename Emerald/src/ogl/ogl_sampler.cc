@@ -60,14 +60,14 @@ REFCOUNT_INSERT_IMPLEMENTATION(ogl_sampler,
 
 /* Forward declarations */
 #ifdef _DEBUG
-    PRIVATE void _ogl_sampler_verify_context_type(__in __notnull ogl_context);
+    PRIVATE void _ogl_sampler_verify_context_type(ogl_context);
 #else
     #define _ogl_sampler_verify_context_type(x)
 #endif
 
 
 /* TODO */
-PRIVATE void _ogl_sampler_release(__in __notnull __post_invalid void* arg)
+PRIVATE void _ogl_sampler_release(void* arg)
 {
     _ogl_sampler*                     sampler_ptr = (_ogl_sampler*) arg;
     const ogl_context_gl_entrypoints* entrypoints = NULL;
@@ -88,7 +88,7 @@ PRIVATE void _ogl_sampler_release(__in __notnull __post_invalid void* arg)
 /** TODO */
 #ifdef _DEBUG
     /* TODO */
-    PRIVATE void _ogl_sampler_verify_context_type(__in __notnull ogl_context context)
+    PRIVATE void _ogl_sampler_verify_context_type(ogl_context context)
     {
         ogl_context_type context_type = OGL_CONTEXT_TYPE_UNDEFINED;
 
@@ -102,8 +102,8 @@ PRIVATE void _ogl_sampler_release(__in __notnull __post_invalid void* arg)
 #endif
 
 /* Please see header for specification */
-PUBLIC ogl_sampler ogl_sampler_create(__in __notnull ogl_context               context,
-                                      __in __notnull system_hashed_ansi_string name)
+PUBLIC ogl_sampler ogl_sampler_create(ogl_context               context,
+                                      system_hashed_ansi_string name)
 {
     _ogl_sampler* new_sampler = new (std::nothrow) _ogl_sampler(context);
 
@@ -142,15 +142,15 @@ PUBLIC ogl_sampler ogl_sampler_create(__in __notnull ogl_context               c
 }
 
 /* Please see header for spec */
-PUBLIC EMERALD_API GLuint ogl_sampler_get_id(__in __notnull ogl_sampler sampler)
+PUBLIC EMERALD_API GLuint ogl_sampler_get_id(ogl_sampler sampler)
 {
     return ((_ogl_sampler*) sampler)->gl_id;
 }
 
 /* Please see header for spec */
-PUBLIC void ogl_sampler_get_property(__in  __notnull const ogl_sampler    sampler,
-                                     __in            ogl_sampler_property property,
-                                     __out           void*                out_result)
+PUBLIC void ogl_sampler_get_property(const ogl_sampler    sampler,
+                                     ogl_sampler_property property,
+                                     void*                out_result)
 {
     const _ogl_sampler* sampler_ptr = (const _ogl_sampler*) sampler;
 
@@ -250,9 +250,9 @@ end:
 }
 
 /* Please see header for spec */
-PUBLIC void ogl_sampler_set_property(__in __notnull ogl_sampler          sampler,
-                                     __in           ogl_sampler_property property,
-                                     __in           const void*          in_data)
+PUBLIC void ogl_sampler_set_property(ogl_sampler          sampler,
+                                     ogl_sampler_property property,
+                                     const void*          in_data)
 {
     _ogl_sampler*                     sampler_ptr = (_ogl_sampler*) sampler;
     const ogl_context_gl_entrypoints* entrypoints = NULL;

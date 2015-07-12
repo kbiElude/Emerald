@@ -61,7 +61,7 @@ PUBLIC void system_global_deinit()
 }
 
 /** Please see header for spec */
-PUBLIC EMERALD_API void system_global_add_asset_path(__in __notnull system_hashed_ansi_string asset_path)
+PUBLIC EMERALD_API void system_global_add_asset_path(system_hashed_ansi_string asset_path)
 {
     /* Sanity checks */
     ASSERT_DEBUG_SYNC(global_ptr != NULL,
@@ -81,7 +81,7 @@ PUBLIC EMERALD_API void system_global_add_asset_path(__in __notnull system_hashe
 }
 
 /** Please see header for spec */
-PUBLIC EMERALD_API void system_global_add_file_unpacker(__in __notnull system_file_unpacker unpacker)
+PUBLIC EMERALD_API void system_global_add_file_unpacker(system_file_unpacker unpacker)
 {
     /* Sanity checks */
     ASSERT_DEBUG_SYNC(global_ptr != NULL,
@@ -99,7 +99,7 @@ PUBLIC EMERALD_API void system_global_add_file_unpacker(__in __notnull system_fi
 }
 
 /** Please see header for spec */
-PUBLIC EMERALD_API void system_global_delete_file_unpacker(__in __notnull system_file_unpacker unpacker)
+PUBLIC EMERALD_API void system_global_delete_file_unpacker(system_file_unpacker unpacker)
 {
     /* Sanity checks */
     ASSERT_DEBUG_SYNC(global_ptr != NULL,
@@ -122,8 +122,8 @@ PUBLIC EMERALD_API void system_global_delete_file_unpacker(__in __notnull system
 }
 
 /** Please see header for spec */
-PUBLIC EMERALD_API void system_global_get_general_property(__in            system_global_property property,
-                                                           __out __notnull void*                  out_result)
+PUBLIC EMERALD_API void system_global_get_general_property(system_global_property property,
+                                                           void*                  out_result)
 {
     ASSERT_DEBUG_SYNC(global_ptr != NULL,
                       "Global storage not initialized");
@@ -157,9 +157,9 @@ PUBLIC EMERALD_API void system_global_get_general_property(__in            syste
 }
 
 /** Please see header for spec */
-PUBLIC EMERALD_API void system_global_get_indexed_property(__in            system_global_property property,
-                                                           __in            uint32_t               index,
-                                                           __out __notnull void*                  out_result)
+PUBLIC EMERALD_API void system_global_get_indexed_property(system_global_property property,
+                                                           uint32_t               index,
+                                                           void*                  out_result)
 {
     ASSERT_DEBUG_SYNC(global_ptr != NULL,
                       "Global storage was not initialized.");

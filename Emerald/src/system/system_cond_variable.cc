@@ -30,8 +30,8 @@ typedef struct _system_cond_variable
     PFNSYSTEMCONDVARIABLETESTPROC pTestPredicate;
     void*                         test_predicate_user_arg;
 
-    explicit _system_cond_variable(__in PFNSYSTEMCONDVARIABLETESTPROC in_pTestPredicate,
-                                   __in void*                         in_test_predicate_user_arg)
+    explicit _system_cond_variable(PFNSYSTEMCONDVARIABLETESTPROC in_pTestPredicate,
+                                   void*                         in_test_predicate_user_arg)
     {
         ASSERT_DEBUG_SYNC(in_pTestPredicate != NULL,
                           "Test predicate func ptr is NULL");
@@ -51,9 +51,9 @@ typedef struct _system_cond_variable
 
 
 /** Please see header for specification */
-PUBLIC EMERALD_API system_cond_variable system_cond_variable_create(__in     PFNSYSTEMCONDVARIABLETESTPROC pTestPredicate,
-                                                                    __in_opt void*                         test_predicate_user_arg,
-                                                                    __in_opt system_critical_section       in_cs)
+PUBLIC EMERALD_API system_cond_variable system_cond_variable_create(PFNSYSTEMCONDVARIABLETESTPROC pTestPredicate,
+                                                                    void*                         test_predicate_user_arg,
+                                                                    system_critical_section       in_cs)
 {
     _system_cond_variable* new_variable_ptr = new (std::nothrow) _system_cond_variable(pTestPredicate,
                                                                                        test_predicate_user_arg);
@@ -97,8 +97,8 @@ end:
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API void system_cond_variable_signal(__in __notnull system_cond_variable cond_variable,
-                                                    __in           bool                 should_broadcast)
+PUBLIC EMERALD_API void system_cond_variable_signal(system_cond_variable cond_variable,
+                                                    bool                 should_broadcast)
 {
     _system_cond_variable* cond_variable_ptr = (_system_cond_variable*) cond_variable;
 
@@ -130,9 +130,9 @@ PUBLIC EMERALD_API void system_cond_variable_signal(__in __notnull system_cond_v
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API void system_cond_variable_wait_begin(__in __notnull system_cond_variable cond_variable,
-                                                        __in           system_time          timeout,
-                                                        __out_opt      bool*                out_has_timed_out_ptr)
+PUBLIC EMERALD_API void system_cond_variable_wait_begin(system_cond_variable cond_variable,
+                                                        system_time          timeout,
+                                                        bool*                out_has_timed_out_ptr)
 {
     _system_cond_variable* cond_variable_ptr = (_system_cond_variable*) cond_variable;
     bool                   has_timed_out     = false;
@@ -237,7 +237,7 @@ PUBLIC EMERALD_API void system_cond_variable_wait_begin(__in __notnull system_co
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API void system_cond_variable_wait_end(__in __notnull system_cond_variable cond_variable)
+PUBLIC EMERALD_API void system_cond_variable_wait_end(system_cond_variable cond_variable)
 {
     _system_cond_variable* cond_variable_ptr = (_system_cond_variable*) cond_variable;
     system_thread_id       current_thread_id = system_threads_get_thread_id();
@@ -258,7 +258,7 @@ PUBLIC EMERALD_API void system_cond_variable_wait_end(__in __notnull system_cond
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API void system_cond_variable_release(__in __post_invalid system_cond_variable cond_variable)
+PUBLIC EMERALD_API void system_cond_variable_release(system_cond_variable cond_variable)
 {
     ASSERT_ALWAYS_SYNC(cond_variable != NULL,
                        "Input argument is NULL");

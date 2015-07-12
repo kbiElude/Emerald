@@ -26,20 +26,20 @@ typedef struct _collada_data_geometry_mesh
     system_resizable_vector sources;
     system_hash64map        sources_map_by_id;
 
-    explicit _collada_data_geometry_mesh(__in __notnull collada_data_geometry parent_geometry);
+    explicit _collada_data_geometry_mesh(collada_data_geometry parent_geometry);
 
     ~_collada_data_geometry_mesh();
 } _collada_data_geometry_mesh;
 
 /** Forward declarations */
-PRIVATE  void _collada_data_init_geometry_mesh      (__in __notnull tinyxml2::XMLElement*               mesh_element_ptr,
-                                                     __in __notnull _collada_data_geometry_mesh*        result_mesh_ptr,
-                                                     __in __notnull system_hashed_ansi_string           parent_geometry_name,
-                                                     __in __notnull const collada_data                  collada_data);
+PRIVATE  void _collada_data_init_geometry_mesh(tinyxml2::XMLElement*        mesh_element_ptr,
+                                               _collada_data_geometry_mesh* result_mesh_ptr,
+                                               system_hashed_ansi_string    parent_geometry_name,
+                                               const collada_data           collada_data);
 
 
 /** TODO */
-_collada_data_geometry_mesh::_collada_data_geometry_mesh(__in __notnull collada_data_geometry in_parent_geometry)
+_collada_data_geometry_mesh::_collada_data_geometry_mesh(collada_data_geometry in_parent_geometry)
 {
     parent_geometry   = in_parent_geometry;
     polylists         = system_resizable_vector_create(4 /* capacity */);
@@ -103,9 +103,9 @@ _collada_data_geometry_mesh::~_collada_data_geometry_mesh()
 }
 
 /** TODO */
-PUBLIC collada_data_geometry_mesh collada_data_geometry_mesh_create(__in __notnull tinyxml2::XMLElement* mesh_element_ptr,
-                                                                    __in __notnull collada_data_geometry parent_geometry,
-                                                                    __in __notnull const collada_data    collada_data)
+PUBLIC collada_data_geometry_mesh collada_data_geometry_mesh_create(tinyxml2::XMLElement* mesh_element_ptr,
+                                                                    collada_data_geometry parent_geometry,
+                                                                    const collada_data    collada_data)
 {
     _collada_data_geometry_mesh* result_mesh_ptr      = new (std::nothrow) _collada_data_geometry_mesh(parent_geometry);
     system_hashed_ansi_string    parent_geometry_id   = NULL;
@@ -313,9 +313,9 @@ PUBLIC collada_data_geometry_mesh collada_data_geometry_mesh_create(__in __notnu
 }
 
 /* Please see header for spec */
-PUBLIC EMERALD_API void collada_data_geometry_mesh_get_polylist(__in  __notnull collada_data_geometry_mesh mesh,
-                                                                __in            unsigned int               n_polylist,
-                                                                __out           collada_data_polylist*     out_polylist)
+PUBLIC EMERALD_API void collada_data_geometry_mesh_get_polylist(collada_data_geometry_mesh mesh,
+                                                                unsigned int               n_polylist,
+                                                                collada_data_polylist*     out_polylist)
 {
     _collada_data_geometry_mesh* mesh_ptr = (_collada_data_geometry_mesh*) mesh;
 
@@ -325,9 +325,9 @@ PUBLIC EMERALD_API void collada_data_geometry_mesh_get_polylist(__in  __notnull 
 }
 
 /* Please see header for spec */
-PUBLIC void collada_data_geometry_mesh_get_property(__in  __notnull collada_data_geometry_mesh          mesh,
-                                                    __in            collada_data_geometry_mesh_property property,
-                                                    __out __notnull void*                               out_result_ptr)
+PUBLIC void collada_data_geometry_mesh_get_property(collada_data_geometry_mesh          mesh,
+                                                    collada_data_geometry_mesh_property property,
+                                                    void*                               out_result_ptr)
 {
     _collada_data_geometry_mesh* mesh_ptr = (_collada_data_geometry_mesh*) mesh;
 
@@ -358,8 +358,8 @@ PUBLIC void collada_data_geometry_mesh_get_property(__in  __notnull collada_data
 }
 
 /* Please see header for spec */
-PUBLIC collada_data_source collada_data_geometry_mesh_get_source_by_id(__in __notnull collada_data_geometry_mesh mesh,
-                                                                       __in __notnull system_hashed_ansi_string  source_id)
+PUBLIC collada_data_source collada_data_geometry_mesh_get_source_by_id(collada_data_geometry_mesh mesh,
+                                                                       system_hashed_ansi_string  source_id)
 {
     _collada_data_geometry_mesh* mesh_ptr = (_collada_data_geometry_mesh*) mesh;
     collada_data_source          result   = NULL;
@@ -372,7 +372,7 @@ PUBLIC collada_data_source collada_data_geometry_mesh_get_source_by_id(__in __no
 }
 
 /* Please see header for spec */
-PUBLIC void collada_data_geometry_mesh_release(__in __notnull __post_invalid collada_data_geometry_mesh mesh)
+PUBLIC void collada_data_geometry_mesh_release(collada_data_geometry_mesh mesh)
 {
     delete (_collada_data_geometry_mesh*) mesh;
 

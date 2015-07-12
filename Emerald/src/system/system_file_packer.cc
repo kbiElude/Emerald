@@ -35,8 +35,8 @@ typedef struct _system_file_packer_file
     system_hashed_ansi_string filename;
     uint32_t                  filesize;
 
-    explicit _system_file_packer_file(__in __notnull system_hashed_ansi_string in_filename,
-                                      __in           uint32_t                  in_filesize)
+    explicit _system_file_packer_file(system_hashed_ansi_string in_filename,
+                                      uint32_t                  in_filesize)
     {
         filename = in_filename;
         filesize = in_filesize;
@@ -100,9 +100,9 @@ typedef struct _system_file_packer
 
 
 /** TODO */
-PRIVATE uint32_t _system_file_packer_build_file_table(__in                           __notnull system_resizable_vector files,
-                                                      __in                           __notnull uint32_t                result_data_bytes,
-                                                      __in_bcount(result_data_bytes) __notnull char*                   out_result_data)
+PRIVATE uint32_t _system_file_packer_build_file_table(system_resizable_vector files,
+                                                      uint32_t                result_data_bytes,
+                                                      char*                   out_result_data)
 {
     uint32_t n_files_to_use = 0;
     char*    traveller_ptr  = out_result_data;
@@ -165,8 +165,8 @@ PRIVATE uint32_t _system_file_packer_build_file_table(__in                      
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API bool system_file_packer_add_file(__in __notnull system_file_packer        packer,
-                                                    __in __notnull system_hashed_ansi_string filename)
+PUBLIC EMERALD_API bool system_file_packer_add_file(system_file_packer        packer,
+                                                    system_hashed_ansi_string filename)
 {
     _system_file_packer_file* new_file_ptr = NULL;
     _system_file_packer*      packer_ptr   = (_system_file_packer*) packer;
@@ -277,7 +277,7 @@ PUBLIC EMERALD_API system_file_packer system_file_packer_create()
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API void system_file_packer_release(__in __notnull __post_invalid system_file_packer packer)
+PUBLIC EMERALD_API void system_file_packer_release(system_file_packer packer)
 {
     ASSERT_DEBUG_SYNC(packer != NULL,
                       "Input packer argument is NULL");
@@ -289,8 +289,8 @@ PUBLIC EMERALD_API void system_file_packer_release(__in __notnull __post_invalid
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API bool system_file_packer_save(__in __notnull system_file_packer        packer,
-                                                __in __notnull system_hashed_ansi_string target_packed_filename)
+PUBLIC EMERALD_API bool system_file_packer_save(system_file_packer        packer,
+                                                system_hashed_ansi_string target_packed_filename)
 {
     uint32_t                   file_table_size               = 0;
     system_file_serializer     in_file_serializer            = NULL;

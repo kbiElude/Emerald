@@ -10,12 +10,12 @@
 #include "plugin_common.h"
 
 /** TODO */
-PRIVATE void AdjustCurveNodeValueByDelta(__in __notnull curve_container       curve,
-                                         __in           curve_segment_id      segment_id,
-                                         __in           curve_segment_node_id node_id,
-                                         __in           float                 delta,
-                                         __in           system_variant        temp_float_variant,
-                                         __in           bool                  update_default_value)
+PRIVATE void AdjustCurveNodeValueByDelta(curve_container       curve,
+                                         curve_segment_id      segment_id,
+                                         curve_segment_node_id node_id,
+                                         float                 delta,
+                                         system_variant        temp_float_variant,
+                                         bool                  update_default_value)
 {
     /** TODO: If needed, add integer variant support */
     system_time node_time = 0;
@@ -77,8 +77,8 @@ PRIVATE void AdjustCurveNodeValueByDelta(__in __notnull curve_container       cu
 
 
 /** Please see header for spec */
-PUBLIC void AdjustCurveByDelta(__in __notnull curve_container curve,
-                               __in           float           delta)
+PUBLIC void AdjustCurveByDelta(curve_container curve,
+                               float           delta)
 {
     uint32_t       n_segments         = 0;
     system_variant temp_float_variant = system_variant_create(SYSTEM_VARIANT_FLOAT);
@@ -137,8 +137,8 @@ PUBLIC void AdjustCurveByDelta(__in __notnull curve_container curve,
 }
 
 /** Please see header for spec */
-PUBLIC LWEnvelopeID FindEnvelope(__in           LWChanGroupID  group_id,
-                                 __in __notnull const char*    envelope_name)
+PUBLIC LWEnvelopeID FindEnvelope(LWChanGroupID  group_id,
+                                 const char*    envelope_name)
 {
     LWChannelID  channel_id = channel_info_ptr->nextChannel(group_id,
                                                             NULL);
@@ -165,7 +165,7 @@ end:
 }
 
 /** Please see header for spec */
-PUBLIC LWChanGroupID FindGroup(__in __notnull const char* group_name)
+PUBLIC LWChanGroupID FindGroup(const char* group_name)
 {
     LWChanGroupID group_id = channel_info_ptr->nextGroup(0,     /* parent */
                                                          NULL); /* group */
@@ -192,11 +192,11 @@ end:
 }
 
 /** Please see header for spec */
-PUBLIC void GetCurveContainerForProperty(__in                system_hashed_ansi_string object_name,
-                                         __in                _item_property            property,
-                                         __in      __notnull LWItemID                  item_id,
-                                         __out_opt           curve_container*          out_curve_ptr,
-                                         __out_opt           curve_id*                 out_curve_id_ptr)
+PUBLIC void GetCurveContainerForProperty(system_hashed_ansi_string object_name,
+                                         _item_property            property,
+                                         LWItemID                  item_id,
+                                         curve_container*          out_curve_ptr,
+                                         curve_id*                 out_curve_id_ptr)
 {
     const char*     property_name = NULL;
     curve_container result_curve  = NULL;

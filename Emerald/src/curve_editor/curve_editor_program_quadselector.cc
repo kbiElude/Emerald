@@ -66,8 +66,8 @@ PRIVATE void _curve_editor_program_quadselector_release(void* in)
 
 
 /** Please see header for specification */
-PUBLIC curve_editor_program_quadselector curve_editor_program_quadselector_create(__in __notnull ogl_context               context,
-                                                                                  __in __notnull system_hashed_ansi_string name)
+PUBLIC curve_editor_program_quadselector curve_editor_program_quadselector_create(ogl_context               context,
+                                                                                  system_hashed_ansi_string name)
 {
     _curve_editor_program_quadselector* result = new (std::nothrow) _curve_editor_program_quadselector;
 
@@ -256,9 +256,9 @@ end:
 }
 
 /** Please see header for spec */
-PUBLIC void curve_editor_program_quadselector_set_property(__in __notnull curve_editor_program_quadselector          program,
-                                                           __in           curve_editor_program_quadselector_property property,
-                                                           __in __notnull const void*                                data)
+PUBLIC void curve_editor_program_quadselector_set_property(curve_editor_program_quadselector          program,
+                                                           curve_editor_program_quadselector_property property,
+                                                           const void*                                data)
 {
     _curve_editor_program_quadselector* program_ptr = (_curve_editor_program_quadselector*) program;
 
@@ -297,8 +297,8 @@ PUBLIC void curve_editor_program_quadselector_set_property(__in __notnull curve_
 }
 
 /** Please see header for spec */
-PUBLIC void curve_editor_program_quadselector_use(__in __notnull ogl_context                       context,
-                                                  __in __notnull curve_editor_program_quadselector quadselector)
+PUBLIC void curve_editor_program_quadselector_use(ogl_context                       context,
+                                                  curve_editor_program_quadselector quadselector)
 {
     const ogl_context_gl_entrypoints*   entry_points     = NULL;
     _curve_editor_program_quadselector* quadselector_ptr = (_curve_editor_program_quadselector*) quadselector;

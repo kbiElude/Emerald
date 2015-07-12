@@ -23,12 +23,12 @@ system_hash64map object_id_to_scene_graph_node_map = NULL;
 
 
 /** TODO */
-PRIVATE bool AddObjectToSceneGraph(__in           _scene_object_type object_type,
-                                   __in           scene_graph        graph,
-                                   __in __notnull curve_container    zero_curve,
-                                   __in __notnull curve_container    one_curve,
-                                   __in __notnull curve_container    minus_one_curve,
-                                   __in __notnull void*              object)
+PRIVATE bool AddObjectToSceneGraph(_scene_object_type object_type,
+                                   scene_graph        graph,
+                                   curve_container    zero_curve,
+                                   curve_container    one_curve,
+                                   curve_container    minus_one_curve,
+                                   void*              object)
 {
     scene_camera     camera        = (scene_camera) object;
     scene_light      light         = (scene_light)  object;
@@ -350,7 +350,7 @@ PUBLIC void DeinitGraphData()
 }
 
 /** Please see header for spec */
-PUBLIC void FillSceneGraphData(__in __notnull scene in_scene)
+PUBLIC void FillSceneGraphData(scene in_scene)
 {
     scene_graph      graph     = NULL;
     scene_graph_node root_node = NULL;

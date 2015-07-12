@@ -125,7 +125,7 @@ typedef struct
 
 /* Forward declarations */
 #ifdef _DEBUG
-    PRIVATE void _ogl_skybox_verify_context_type(__in __notnull ogl_context);
+    PRIVATE void _ogl_skybox_verify_context_type(ogl_context);
 #else
     #define _ogl_skybox_verify_context_type(x)
 #endif
@@ -137,19 +137,19 @@ REFCOUNT_INSERT_IMPLEMENTATION(ogl_skybox,
                               _ogl_skybox);
 
 /* Forward declarations */
-PRIVATE std::string _ogl_skybox_get_fragment_shader_body         (__in __notnull sh_samples                samples);
-PRIVATE void        _ogl_skybox_init_ogl_skybox                  (__in __notnull _ogl_skybox*              skybox_ptr,
-                                                                  __in __notnull system_hashed_ansi_string name,
-                                                                  __in           _ogl_skybox_type          type,
-                                                                  __in __notnull sh_samples                samples,
-                                                                  __in __notnull ogl_context               context,
-                                                                  __in __notnull ogl_texture               texture);
-PRIVATE void        _ogl_skybox_init_ogl_skybox_sh               (__in __notnull _ogl_skybox*              skybox_ptr);
-PRIVATE void        _ogl_skybox_init_ub                          (__in __notnull _ogl_skybox*              skybox_ptr);
+PRIVATE std::string _ogl_skybox_get_fragment_shader_body(sh_samples                samples);
+PRIVATE void        _ogl_skybox_init_ogl_skybox         (_ogl_skybox*              skybox_ptr,
+                                                         system_hashed_ansi_string name,
+                                                         _ogl_skybox_type          type,
+                                                         sh_samples                samples,
+                                                         ogl_context               context,
+                                                         ogl_texture               texture);
+PRIVATE void        _ogl_skybox_init_ogl_skybox_sh      (_ogl_skybox*              skybox_ptr);
+PRIVATE void        _ogl_skybox_init_ub                 (_ogl_skybox*              skybox_ptr);
 
 #ifdef INCLUDE_OPENCL
     /** TODO */
-    PRIVATE std::string _ogl_skybox_get_fragment_shader_body(__in __notnull sh_samples samples)
+    PRIVATE std::string _ogl_skybox_get_fragment_shader_body(sh_samples samples)
     {
         std::string       body;
         std::string       n_bands_value_string;
@@ -173,7 +173,7 @@ PRIVATE void        _ogl_skybox_init_ub                          (__in __notnull
     }
 
     /** TODO */
-    PRIVATE void _ogl_skybox_init_ogl_skybox_sh(__in __notnull _ogl_skybox* skybox_ptr)
+    PRIVATE void _ogl_skybox_init_ogl_skybox_sh(_ogl_skybox* skybox_ptr)
     {
         /* Initialize the vertex shader. */
         ogl_shader vertex_shader = ogl_shader_create(skybox_ptr->context,
@@ -248,7 +248,7 @@ PRIVATE void        _ogl_skybox_init_ub                          (__in __notnull
 #endif
 
 /** TODO */
-PRIVATE void _ogl_skybox_init_ogl_skybox_spherical_projection_texture(__in __notnull _ogl_skybox* skybox_ptr)
+PRIVATE void _ogl_skybox_init_ogl_skybox_spherical_projection_texture(_ogl_skybox* skybox_ptr)
 {
     /* Initialize the vertex shader. */
     ogl_shader vertex_shader = ogl_shader_create(skybox_ptr->context,
@@ -324,12 +324,12 @@ PRIVATE void _ogl_skybox_init_ogl_skybox_spherical_projection_texture(__in __not
 }
 
 /** TODO */
-PRIVATE void _ogl_skybox_init_ogl_skybox(__in __notnull _ogl_skybox*              skybox_ptr,
-                                         __in __notnull system_hashed_ansi_string name,
-                                         __in           _ogl_skybox_type          type,
-                                         __in __notnull sh_samples                samples,
-                                         __in __notnull ogl_context               context,
-                                         __in __notnull ogl_texture               texture)
+PRIVATE void _ogl_skybox_init_ogl_skybox(_ogl_skybox*              skybox_ptr,
+                                         system_hashed_ansi_string name,
+                                         _ogl_skybox_type          type,
+                                         sh_samples                samples,
+                                         ogl_context               context,
+                                         ogl_texture               texture)
 {
     memset(skybox_ptr,
            0,
@@ -370,7 +370,7 @@ PRIVATE void _ogl_skybox_init_ogl_skybox(__in __notnull _ogl_skybox*            
 }
 
 /** TODO */
-PRIVATE void _ogl_skybox_init_ub(__in __notnull _ogl_skybox* skybox_ptr)
+PRIVATE void _ogl_skybox_init_ub(_ogl_skybox* skybox_ptr)
 {
     ogl_program_get_uniform_block_by_name(skybox_ptr->program,
                                           system_hashed_ansi_string_create("dataVS"),
@@ -391,7 +391,7 @@ PRIVATE void _ogl_skybox_init_ub(__in __notnull _ogl_skybox* skybox_ptr)
 }
 
 /** TODO */
-PRIVATE void _ogl_skybox_release(__in __notnull void* skybox)
+PRIVATE void _ogl_skybox_release(void* skybox)
 {
     _ogl_skybox* skybox_ptr = (_ogl_skybox*) skybox;
 
@@ -402,7 +402,7 @@ PRIVATE void _ogl_skybox_release(__in __notnull void* skybox)
 /** TODO */
 #ifdef _DEBUG
     /* TODO */
-    PRIVATE void _ogl_skybox_verify_context_type(__in __notnull ogl_context context)
+    PRIVATE void _ogl_skybox_verify_context_type(ogl_context context)
     {
         ogl_context_type context_type = OGL_CONTEXT_TYPE_UNDEFINED;
 
@@ -417,9 +417,9 @@ PRIVATE void _ogl_skybox_release(__in __notnull void* skybox)
 
 #ifdef INCLUDE_OPENCL
     /** Please see header for specification */
-    PUBLIC EMERALD_API ogl_skybox ogl_skybox_create_light_projection_sh(__in __notnull ogl_context               context,
-                                                                        __in __notnull sh_samples                samples,
-                                                                        __in __notnull system_hashed_ansi_string name)
+    PUBLIC EMERALD_API ogl_skybox ogl_skybox_create_light_projection_sh(ogl_context               context,
+                                                                        sh_samples                samples,
+                                                                        system_hashed_ansi_string name)
     {
         _ogl_skybox_verify_context_type(context);
 
@@ -449,9 +449,9 @@ PRIVATE void _ogl_skybox_release(__in __notnull void* skybox)
 #endif
 
 /** Please see header for specification */
-PUBLIC EMERALD_API ogl_skybox ogl_skybox_create_spherical_projection_texture(__in __notnull ogl_context               context,
-                                                                             __in __notnull ogl_texture               texture,
-                                                                             __in __notnull system_hashed_ansi_string name)
+PUBLIC EMERALD_API ogl_skybox ogl_skybox_create_spherical_projection_texture(ogl_context               context,
+                                                                             ogl_texture               texture,
+                                                                             system_hashed_ansi_string name)
 {
     _ogl_skybox_verify_context_type(context);
 
@@ -480,10 +480,10 @@ PUBLIC EMERALD_API ogl_skybox ogl_skybox_create_spherical_projection_texture(__i
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API void ogl_skybox_draw(__in __notnull ogl_skybox       skybox,
-                                        __in           ogl_texture      light_sh_data_tbo,
-                                        __in __notnull system_matrix4x4 modelview,
-                                        __in __notnull system_matrix4x4 inverted_projection)
+PUBLIC EMERALD_API void ogl_skybox_draw(ogl_skybox       skybox,
+                                        ogl_texture      light_sh_data_tbo,
+                                        system_matrix4x4 modelview,
+                                        system_matrix4x4 inverted_projection)
 {
     _ogl_skybox*                                              skybox_ptr        = (_ogl_skybox*) skybox;
     const ogl_context_gl_entrypoints_ext_direct_state_access* dsa_entry_points  = NULL;

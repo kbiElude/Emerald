@@ -32,19 +32,19 @@ typedef enum _ogl_sampler_property
 } ogl_sampler_property;
 
 /** TODO */
-PUBLIC EMERALD_API ogl_sampler ogl_sampler_create(__in __notnull ogl_context               context,
-                                                  __in __notnull system_hashed_ansi_string name);
+PUBLIC EMERALD_API ogl_sampler ogl_sampler_create(ogl_context               context,
+                                                  system_hashed_ansi_string name);
 
 /** TODO */
-PUBLIC EMERALD_API GLuint ogl_sampler_get_id(__in __notnull ogl_sampler sampler);
+PUBLIC EMERALD_API GLuint ogl_sampler_get_id(ogl_sampler sampler);
 
 /** TODO */
-PUBLIC EMERALD_API void ogl_sampler_get_property(__in  __notnull const ogl_sampler    sampler,
-                                                 __in            ogl_sampler_property property,
-                                                 __out           void*                out_result);
+PUBLIC EMERALD_API void ogl_sampler_get_property(const ogl_sampler    sampler,
+                                                 ogl_sampler_property property,
+                                                 void*                out_result);
 
 /** TODO */
-PUBLIC EMERALD_API void ogl_sampler_set_property(__in __notnull ogl_sampler          sampler,
-                                                 __in           ogl_sampler_property property,
-                                                 __in           const void*          in_data);
+PUBLIC EMERALD_API void ogl_sampler_set_property(ogl_sampler          sampler,
+                                                 ogl_sampler_property property,
+                                                 const void*          in_data);
 #endif /* OGL_SAMPLER_H */

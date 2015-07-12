@@ -23,8 +23,8 @@ typedef struct _collada_value
 
 
 /** Please see header for spec */
-PUBLIC collada_value collada_value_create(__in           collada_value_type type,
-                                          __in __notnull const void*        data_ptr)
+PUBLIC collada_value collada_value_create(collada_value_type type,
+                                          const void*        data_ptr)
 {
     _collada_value* new_value_ptr = new (std::nothrow) _collada_value;
 
@@ -44,9 +44,9 @@ end:
 }
 
 /** Please see header for spec */
-PUBLIC void collada_value_get_property(__in  __notnull const collada_value    value,
-                                       __in            collada_value_property property,
-                                       __out __notnull void*                  out_result)
+PUBLIC void collada_value_get_property(const collada_value    value,
+                                       collada_value_property property,
+                                       void*                  out_result)
 {
     _collada_value* value_ptr = (_collada_value*) value;
 
@@ -86,15 +86,15 @@ PUBLIC void collada_value_get_property(__in  __notnull const collada_value    va
 }
 
 /** Please see header for spec */
-PUBLIC void collada_value_release(__in __notnull collada_value value)
+PUBLIC void collada_value_release(collada_value value)
 {
     delete (_collada_value*) value;
 }
 
 /** Please see header for spec */
-PUBLIC void collada_value_set(__in __notnull collada_value      value,
-                              __in           collada_value_type type,
-                              __in __notnull const void*        data_ptr)
+PUBLIC void collada_value_set(collada_value      value,
+                              collada_value_type type,
+                              const void*        data_ptr)
 {
     _collada_value* value_ptr = (_collada_value*) value;
 

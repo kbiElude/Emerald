@@ -18,7 +18,7 @@
 PUBLIC EMERALD_API uint32_t system_time_get_hz_per_sec();
 
 /** TODO */
-PUBLIC EMERALD_API system_time system_time_get_time_for_msec(__in uint32_t msec);
+PUBLIC EMERALD_API system_time system_time_get_time_for_msec(uint32_t msec);
 
 /** Converts seconds to system_time value.
  *
@@ -26,7 +26,7 @@ PUBLIC EMERALD_API system_time system_time_get_time_for_msec(__in uint32_t msec)
  *
  *  @return Corresponding system_time value.
  */
-PUBLIC EMERALD_API system_time system_time_get_time_for_s(__in uint32_t seconds);
+PUBLIC EMERALD_API system_time system_time_get_time_for_s(uint32_t seconds);
 
 /** Converts amount of time represented in ms format to system_time value.
  *
@@ -35,8 +35,8 @@ PUBLIC EMERALD_API system_time system_time_get_time_for_s(__in uint32_t seconds)
  *
  *  @return Corresponding system_time value.
  */
-PUBLIC EMERALD_API system_time system_time_get_time_for_ms(__in uint32_t minutes,
-                                                           __in uint8_t  seconds);
+PUBLIC EMERALD_API system_time system_time_get_time_for_ms(uint32_t minutes,
+                                                           uint8_t  seconds);
 
 /** Converts amount of time represented in hms format to system_time value.
  *
@@ -46,13 +46,13 @@ PUBLIC EMERALD_API system_time system_time_get_time_for_ms(__in uint32_t minutes
  *
  *  @return Corresponding system_time value.
  */
-PUBLIC EMERALD_API system_time system_time_get_time_for_hms(__in uint32_t hours,
-                                                            __in uint8_t  minutes,
-                                                            __in uint8_t  seconds);
+PUBLIC EMERALD_API system_time system_time_get_time_for_hms(uint32_t hours,
+                                                            uint8_t  minutes,
+                                                            uint8_t  seconds);
 
 /** TODO */
-PUBLIC EMERALD_API void system_time_get_msec_for_time(__in            system_time time,
-                                                      __out __notnull uint32_t*   result_miliseconds);
+PUBLIC EMERALD_API void system_time_get_msec_for_time(system_time time,
+                                                      uint32_t*   result_miliseconds);
 
 /** Converts system_time to amount of seconds corresponding to the value.
  *
@@ -60,8 +60,8 @@ PUBLIC EMERALD_API void system_time_get_msec_for_time(__in            system_tim
  *  @param uint32_t*            Deref will be used to store amount of seconds the value corresponds to.
  *                              CANNOT be null.
  */
-PUBLIC EMERALD_API void system_time_get_s_for_time(__in            system_time time,
-                                                   __out __notnull uint32_t*   result_seconds);
+PUBLIC EMERALD_API void system_time_get_s_for_time(system_time time,
+                                                   uint32_t*   result_seconds);
 
 /** Converts system_time to amount of minutes + seconds corresponding to the value.
  *
@@ -71,9 +71,9 @@ PUBLIC EMERALD_API void system_time_get_s_for_time(__in            system_time t
  *  @param uint8_t *            Deref will be used to store amount of minutes the value corresponds to.
  *                              CANNOT be null. Result avlue will be from range [0, 2^32-1].
  */
-PUBLIC EMERALD_API void system_time_get_ms_for_time(__in            system_time time,
-                                                    __out __notnull uint32_t*   result_minutes,
-                                                    __out __notnull uint8_t*    result_seconds);
+PUBLIC EMERALD_API void system_time_get_ms_for_time(system_time time,
+                                                    uint32_t*   result_minutes,
+                                                    uint8_t*    result_seconds);
 
 /** Converts system_time to amount of hours + minutes + seconds corresponding to the value.
  *
@@ -85,10 +85,10 @@ PUBLIC EMERALD_API void system_time_get_ms_for_time(__in            system_time 
  *  @param uint32_t*            Deref will be used to store amount of hours the value corresponds to.
  *                              CANNOT be null. Result avlue will be from range [0, 2^32-1].
  */
-PUBLIC EMERALD_API void system_time_get_hms_for_time(__in            system_time time,
-                                                     __out __notnull uint32_t*   result_hours,
-                                                     __out __notnull uint8_t*    result_minutes,
-                                                     __out __notnull uint8_t*    result_seconds);
+PUBLIC EMERALD_API void system_time_get_hms_for_time(system_time time,
+                                                     uint32_t*   result_hours,
+                                                     uint8_t*    result_minutes,
+                                                     uint8_t*    result_seconds);
 
 /** Retrieves system_time for the time of call.
  *

@@ -31,7 +31,7 @@ REFCOUNT_INSERT_IMPLEMENTATION(shaders_vertex_fullscreen,
  *
  *  @param ptr Pointer to _shaders_convolution3x3 instance.
  **/
-PRIVATE void _shaders_vertex_fullscreen_release(__in __notnull __deallocate(mem) void* ptr)
+PRIVATE void _shaders_vertex_fullscreen_release(void* ptr)
 {
     _shaders_vertex_fullscreen* data_ptr = (_shaders_vertex_fullscreen*) ptr;
 
@@ -45,9 +45,9 @@ PRIVATE void _shaders_vertex_fullscreen_release(__in __notnull __deallocate(mem)
 
 
 /** Please see header for specification */
-PUBLIC EMERALD_API shaders_vertex_fullscreen shaders_vertex_fullscreen_create(__in __notnull ogl_context               context,
-                                                                              __in           bool                      export_uv,
-                                                                              __in __notnull system_hashed_ansi_string name)
+PUBLIC EMERALD_API shaders_vertex_fullscreen shaders_vertex_fullscreen_create(ogl_context               context,
+                                                                              bool                      export_uv,
+                                                                              system_hashed_ansi_string name)
 {
     bool                        result        = false;
     _shaders_vertex_fullscreen* result_object = NULL;
@@ -152,7 +152,7 @@ end:
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API ogl_shader shaders_vertex_fullscreen_get_shader(__in __notnull shaders_vertex_fullscreen shader)
+PUBLIC EMERALD_API ogl_shader shaders_vertex_fullscreen_get_shader(shaders_vertex_fullscreen shader)
 {
     return ((_shaders_vertex_fullscreen*)shader)->vertex_shader;
 }

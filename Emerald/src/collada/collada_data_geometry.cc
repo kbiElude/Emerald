@@ -92,7 +92,7 @@ _collada_data_geometry::~_collada_data_geometry()
 }
 
 /* Forward declarations */
-volatile void _collada_data_init_geometries_task(__in __notnull void* attachment);
+volatile void _collada_data_init_geometries_task(void* attachment);
 
 
 /** TODO */
@@ -107,7 +107,7 @@ _collada_data_geometry::_collada_data_geometry()
 
 
 /* TODO */
-volatile void _collada_data_init_geometry_task(__in __notnull void* attachment)
+volatile void _collada_data_init_geometry_task(void* attachment)
 {
     _collada_data_init_geometries_task_attachment* attachment_ptr = (_collada_data_init_geometries_task_attachment*) attachment;
 
@@ -150,8 +150,8 @@ volatile void _collada_data_init_geometry_task(__in __notnull void* attachment)
 
 
 /** TODO */
-PUBLIC void collada_data_geometry_add_material_instance(__in __notnull collada_data_geometry                           geometry,
-                                                        __in __notnull collada_data_scene_graph_node_material_instance material_instance)
+PUBLIC void collada_data_geometry_add_material_instance(collada_data_geometry                           geometry,
+                                                        collada_data_scene_graph_node_material_instance material_instance)
 {
     _collada_data_geometry* geometry_ptr = (_collada_data_geometry*) geometry;
 
@@ -160,13 +160,13 @@ PUBLIC void collada_data_geometry_add_material_instance(__in __notnull collada_d
 }
 
 /** TODO */
-PUBLIC collada_data_geometry collada_data_geometry_create_async(__in __notnull tinyxml2::XMLElement*      xml_element_ptr,
-                                                                __in __notnull collada_data               collada_data,
-                                                                __in __notnull system_event               geometry_processed_event,
-                                                                __inout __notnull volatile unsigned int*  n_geometry_elements_processed_ptr,
-                                                                __inout __notnull const    unsigned int*  n_geometry_elements_ptr,
-                                                                __in    __notnull system_resizable_vector result_geometries,
-                                                                __in    __notnull system_hash64map        result_geometries_by_id_map)
+PUBLIC collada_data_geometry collada_data_geometry_create_async(tinyxml2::XMLElement*   xml_element_ptr,
+                                                                collada_data            collada_data,
+                                                                system_event            geometry_processed_event,
+                                                                volatile unsigned int*  n_geometry_elements_processed_ptr,
+                                                                const    unsigned int*  n_geometry_elements_ptr,
+                                                                system_resizable_vector result_geometries,
+                                                                system_hash64map        result_geometries_by_id_map)
 {
     _collada_data_geometry* new_geometry = new (std::nothrow) _collada_data_geometry;
 
@@ -229,9 +229,9 @@ PUBLIC collada_data_geometry collada_data_geometry_create_async(__in __notnull t
 }
 
 /* Please see header for spec */
-PUBLIC void collada_data_geometry_get_property(__in __notnull const collada_data_geometry          geometry,
-                                               __in                 collada_data_geometry_property property,
-                                               __out                void*                          out_result_ptr)
+PUBLIC void collada_data_geometry_get_property(const collada_data_geometry          geometry,
+                                                     collada_data_geometry_property property,
+                                                     void*                          out_result_ptr)
 {
     const _collada_data_geometry* geometry_ptr = (const _collada_data_geometry*) geometry;
 
@@ -273,10 +273,10 @@ PUBLIC void collada_data_geometry_get_property(__in __notnull const collada_data
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API void collada_data_geometry_get_properties(__in      __notnull collada_data_geometry       geometry,
-                                                             __out_opt           system_hashed_ansi_string*  out_name,
-                                                             __out_opt           collada_data_geometry_mesh* out_geometry_mesh,
-                                                             __out_opt           unsigned int*               out_n_material_instances)
+PUBLIC EMERALD_API void collada_data_geometry_get_properties(collada_data_geometry       geometry,
+                                                             system_hashed_ansi_string*  out_name,
+                                                             collada_data_geometry_mesh* out_geometry_mesh,
+                                                             unsigned int*               out_n_material_instances)
 {
     _collada_data_geometry* geometry_ptr = (_collada_data_geometry*) geometry;
 
@@ -299,10 +299,10 @@ PUBLIC EMERALD_API void collada_data_geometry_get_properties(__in      __notnull
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API bool collada_data_geometry_get_material_binding_index_by_input_semantic_name(__in  __notnull collada_data_scene_graph_node_material_instance instance,
-                                                                                                __in            unsigned int                                    input_set,
-                                                                                                __in  __notnull system_hashed_ansi_string                       input_semantic_name,
-                                                                                                __out __notnull unsigned int*                                   out_binding_index_ptr)
+PUBLIC EMERALD_API bool collada_data_geometry_get_material_binding_index_by_input_semantic_name(collada_data_scene_graph_node_material_instance instance,
+                                                                                                unsigned int                                    input_set,
+                                                                                                system_hashed_ansi_string                       input_semantic_name,
+                                                                                                unsigned int*                                   out_binding_index_ptr)
 {
     unsigned int n_bindings = 0;
     bool         result     = false;
@@ -339,8 +339,8 @@ PUBLIC EMERALD_API bool collada_data_geometry_get_material_binding_index_by_inpu
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API collada_data_scene_graph_node_material_instance collada_data_geometry_get_material_instance(__in __notnull collada_data_geometry geometry,
-                                                                                                               __in           unsigned int          n_material_instance)
+PUBLIC EMERALD_API collada_data_scene_graph_node_material_instance collada_data_geometry_get_material_instance(collada_data_geometry geometry,
+                                                                                                               unsigned int          n_material_instance)
 {
     _collada_data_geometry*                         geometry_ptr = (_collada_data_geometry*) geometry;
     collada_data_scene_graph_node_material_instance result       = NULL;
@@ -354,8 +354,8 @@ PUBLIC EMERALD_API collada_data_scene_graph_node_material_instance collada_data_
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API collada_data_scene_graph_node_material_instance collada_data_geometry_get_material_instance_by_symbol_name(__in __notnull collada_data_geometry     geometry,
-                                                                                                                              __in __notnull system_hashed_ansi_string symbol_name)
+PUBLIC EMERALD_API collada_data_scene_graph_node_material_instance collada_data_geometry_get_material_instance_by_symbol_name(collada_data_geometry     geometry,
+                                                                                                                              system_hashed_ansi_string symbol_name)
 {
     _collada_data_geometry*                         geometry_ptr         = (_collada_data_geometry*) geometry;
     unsigned int                                    n_material_instances = 0;
@@ -394,7 +394,7 @@ end:
 }
 
 /* Please see header for spec */
-PUBLIC void collada_data_geometry_release(__in __notnull __post_invalid collada_data_geometry geometry)
+PUBLIC void collada_data_geometry_release(collada_data_geometry geometry)
 {
     delete ( (_collada_data_geometry*) geometry);
 
@@ -402,9 +402,9 @@ PUBLIC void collada_data_geometry_release(__in __notnull __post_invalid collada_
 }
 
 /* Please see header for spec */
-PUBLIC void collada_data_geometry_set_property(__in __notnull collada_data_geometry          geometry,
-                                               __in           collada_data_geometry_property property,
-                                               __in __notnull void*                          data)
+PUBLIC void collada_data_geometry_set_property(collada_data_geometry          geometry,
+                                               collada_data_geometry_property property,
+                                               void*                          data)
 {
     _collada_data_geometry* geometry_ptr = (_collada_data_geometry*) geometry;
 

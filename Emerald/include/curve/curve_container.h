@@ -22,11 +22,11 @@ REFCOUNT_INSERT_DECLARATIONS(curve_container, curve_container)
  *
  * @return true if successful, false otherwise.
  **/
-PUBLIC EMERALD_API bool curve_container_add_general_node(__in __notnull  curve_container        curve,
-                                                         __in            curve_segment_id       segment_id,
-                                                         __in            system_time            node_time,
-                                                         __in            system_variant         node_value,
-                                                         __out __notnull curve_segment_node_id* out_node_id_ptr);
+PUBLIC EMERALD_API bool curve_container_add_general_node(curve_container        curve,
+                                                         curve_segment_id       segment_id,
+                                                         system_time            node_time,
+                                                         system_variant         node_value,
+                                                         curve_segment_node_id* out_node_id_ptr);
 
 /* Adds a new tcb node to a curve segment. This function will work with tcb segments only.
  *
@@ -41,14 +41,14 @@ PUBLIC EMERALD_API bool curve_container_add_general_node(__in __notnull  curve_c
  *
  * @return true if successful, false otherwise.
  **/
-PUBLIC EMERALD_API bool curve_container_add_tcb_node(__in __notnull  curve_container        curve,
-                                                     __in            curve_segment_id       segment_id,
-                                                     __in            system_time            node_time,
-                                                     __in            system_variant         node_value,
-                                                     __in            float                  node_tension,
-                                                     __in            float                  node_continuity,
-                                                     __in            float                  node_bias,
-                                                     __out __notnull curve_segment_node_id* out_node_id_ptr);
+PUBLIC EMERALD_API bool curve_container_add_tcb_node(curve_container        curve,
+                                                     curve_segment_id       segment_id,
+                                                     system_time            node_time,
+                                                     system_variant         node_value,
+                                                     float                  node_tension,
+                                                     float                  node_continuity,
+                                                     float                  node_bias,
+                                                     curve_segment_node_id* out_node_id_ptr);
 
 /* Adds a new LERP value segment to a given curve container's dimension. The segment will linearly interpolate
  * between start value for start time and end value for given end time.
@@ -64,12 +64,12 @@ PUBLIC EMERALD_API bool curve_container_add_tcb_node(__in __notnull  curve_conta
  *
  * @return True if successful, false otherwise.
  **/
-PUBLIC EMERALD_API bool curve_container_add_lerp_segment(__in  __notnull curve_container   curve,
-                                                         __in            system_time       start_time,
-                                                         __in            system_time       end_time,
-                                                         __in  __notnull system_variant    value_start,
-                                                         __in  __notnull system_variant    value_end,
-                                                         __out __notnull curve_segment_id* out_segment_id_ptr);
+PUBLIC EMERALD_API bool curve_container_add_lerp_segment(curve_container   curve,
+                                                         system_time       start_time,
+                                                         system_time       end_time,
+                                                         system_variant    value_start,
+                                                         system_variant    value_end,
+                                                         curve_segment_id* out_segment_id_ptr);
 
 /* Adds a new static value segment to a given curve container's dimension. Note that the segment is not allowed
  * to overlap with existing segments for a given container's dimension.
@@ -83,25 +83,25 @@ PUBLIC EMERALD_API bool curve_container_add_lerp_segment(__in  __notnull curve_c
  *
  * @return True if successful, false otherwise.
  **/
-PUBLIC EMERALD_API bool curve_container_add_static_value_segment(__in  __notnull curve_container   curve,
-                                                                 __in            system_time       start_time,
-                                                                 __in            system_time       end_time,
-                                                                 __in  __notnull system_variant    value,
-                                                                 __out __notnull curve_segment_id* out_segment_id_ptr);
+PUBLIC EMERALD_API bool curve_container_add_static_value_segment(curve_container   curve,
+                                                                 system_time       start_time,
+                                                                 system_time       end_time,
+                                                                 system_variant    value,
+                                                                 curve_segment_id* out_segment_id_ptr);
 
 /* TODO */
-PUBLIC EMERALD_API bool curve_container_add_tcb_segment(__in __notnull  curve_container   curve,
-                                                        __in            system_time       start_time,
-                                                        __in            system_time       end_time,
-                                                        __in __notnull  system_variant    start_value,
-                                                        __in            float             start_tension,
-                                                        __in            float             start_continuity,
-                                                        __in            float             start_bias,
-                                                        __in __notnull  system_variant    end_value,
-                                                        __in            float             end_tension,
-                                                        __in            float             end_continuity,
-                                                        __in            float             end_bias,
-                                                        __out __notnull curve_segment_id* out_segment_id_ptr);
+PUBLIC EMERALD_API bool curve_container_add_tcb_segment(curve_container   curve,
+                                                        system_time       start_time,
+                                                        system_time       end_time,
+                                                        system_variant    start_value,
+                                                        float             start_tension,
+                                                        float             start_continuity,
+                                                        float             start_bias,
+                                                        system_variant    end_value,
+                                                        float             end_tension,
+                                                        float             end_continuity,
+                                                        float             end_bias,
+                                                        curve_segment_id* out_segment_id_ptr);
 
 /** Creates a curve container. Curve type must be defined at creation time and
  *  cannot be changed later.
@@ -112,9 +112,9 @@ PUBLIC EMERALD_API bool curve_container_add_tcb_segment(__in __notnull  curve_co
  *
  *  @return Returns a new curve container.
  */
-PUBLIC EMERALD_API __notnull curve_container curve_container_create(__in     system_hashed_ansi_string name,
-                                                                    __in_opt system_hashed_ansi_string object_manager_path,
-                                                                    __in     system_variant_type       data_type);
+PUBLIC EMERALD_API curve_container curve_container_create(system_hashed_ansi_string name,
+                                                          system_hashed_ansi_string object_manager_path,
+                                                          system_variant_type       data_type);
 
 /** Deletes an existing node from a curve segment.
  *
@@ -124,9 +124,9 @@ PUBLIC EMERALD_API __notnull curve_container curve_container_create(__in     sys
  *
  *  @return true if successful, false otherwise.
  **/
-PUBLIC EMERALD_API bool curve_container_delete_node(__in __notnull  curve_container       curve,
-                                                    __in            curve_segment_id      segment_id,
-                                                    __in            curve_segment_node_id node_id);
+PUBLIC EMERALD_API bool curve_container_delete_node(curve_container       curve,
+                                                    curve_segment_id      segment_id,
+                                                    curve_segment_node_id node_id);
 
 /** Deletes an existing curve segment from a curve container's dimension.
  *
@@ -135,8 +135,8 @@ PUBLIC EMERALD_API bool curve_container_delete_node(__in __notnull  curve_contai
  *
  *  @return true if successful, false otherwise.
  **/
-PUBLIC EMERALD_API bool curve_container_delete_segment(__in __notnull curve_container  curve,
-                                                       __in           curve_segment_id segment_id);
+PUBLIC EMERALD_API bool curve_container_delete_segment(curve_container  curve,
+                                                       curve_segment_id segment_id);
 
 /** Retrieves default value used for a given curve container's dimension.
  *
@@ -147,9 +147,9 @@ PUBLIC EMERALD_API bool curve_container_delete_segment(__in __notnull curve_cont
  *
  *  @return true if successful, false otherwise.
  **/
-PUBLIC EMERALD_API bool curve_container_get_default_value(__in __notnull  curve_container curve,
-                                                          __in            bool            should_force,
-                                                          __out __notnull system_variant  result_variant);
+PUBLIC EMERALD_API bool curve_container_get_default_value(curve_container curve,
+                                                          bool            should_force,
+                                                          system_variant  result_variant);
 
 /** Retrieves general curve segment node data. Works for nodes created for static/lerp segments only.
  *
@@ -161,11 +161,11 @@ PUBLIC EMERALD_API bool curve_container_get_default_value(__in __notnull  curve_
  *
  *  @return true if successful, false otherwise.
  **/
-PUBLIC EMERALD_API bool curve_container_get_general_node_data(__in __notnull  curve_container       curve,
-                                                              __in            curve_segment_id      segment_id,
-                                                              __in            curve_segment_node_id node_id,
-                                                              __out __notnull system_time*          node_time,
-                                                              __out __notnull system_variant        node_value);
+PUBLIC EMERALD_API bool curve_container_get_general_node_data(curve_container       curve,
+                                                              curve_segment_id      segment_id,
+                                                              curve_segment_node_id node_id,
+                                                              system_time*          node_time,
+                                                              system_variant        node_value);
 
 /** Retrieves id of a node with given index, looking from the beginning of the curve segment.
  *
@@ -176,19 +176,19 @@ PUBLIC EMERALD_API bool curve_container_get_general_node_data(__in __notnull  cu
  *
  *  @return true if successful, false otherwise.
  **/
-PUBLIC EMERALD_API bool curve_container_get_node_id_for_node_at(__in __notnull  curve_container        curve,
-                                                                __in            curve_segment_id       segment_id,
-                                                                __in            uint32_t               node_index,
-                                                                __out __notnull curve_segment_node_id* out_node_id_ptr);
+PUBLIC EMERALD_API bool curve_container_get_node_id_for_node_at(curve_container        curve,
+                                                                curve_segment_id       segment_id,
+                                                                uint32_t               node_index,
+                                                                curve_segment_node_id* out_node_id_ptr);
 
 /** TODO */
-PUBLIC EMERALD_API void curve_container_get_property(__in  __notnull curve_container          curve,
-                                                     __in            curve_container_property curve_property,
-                                                     __out __notnull void*                    out_result);
+PUBLIC EMERALD_API void curve_container_get_property(curve_container          curve,
+                                                     curve_container_property curve_property,
+                                                     void*                    out_result);
 
 /** TODO */
-PUBLIC EMERALD_API curve_segment curve_container_get_segment(__in __notnull curve_container  curve,
-                                                             __in           curve_segment_id segment_id);
+PUBLIC EMERALD_API curve_segment curve_container_get_segment(curve_container  curve,
+                                                             curve_segment_id segment_id);
 
 /** Retrieves id of a segment with user-provided index, starting from 0:00:00 time.
  *
@@ -198,9 +198,9 @@ PUBLIC EMERALD_API curve_segment curve_container_get_segment(__in __notnull curv
  *
  *  @return true if successful, false otherwise.
  **/
-PUBLIC EMERALD_API bool curve_container_get_segment_id_for_nth_segment(__in __notnull  curve_container   curve,
-                                                                       __in            uint32_t          segment_index,
-                                                                       __out __notnull curve_segment_id* out_segment_id_ptr);
+PUBLIC EMERALD_API bool curve_container_get_segment_id_for_nth_segment(curve_container   curve,
+                                                                       uint32_t          segment_index,
+                                                                       curve_segment_id* out_segment_id_ptr);
 
 /** Retrieves id of a segment that is closest to a given time-point. Seek direction is governed by the caller.
  *
@@ -213,12 +213,12 @@ PUBLIC EMERALD_API bool curve_container_get_segment_id_for_nth_segment(__in __no
  *
  *  @return true if successful, false otherwise.
  **/
-PUBLIC EMERALD_API bool curve_container_get_segment_id_relative_to_time(__in            bool              allow_seeking,
-                                                                        __in            bool              seek_forward,
-                                                                        __in __notnull  curve_container   curve,
-                                                                        __in            system_time       time,
-                                                                        __in            curve_segment_id  segment_to_exclude_id,
-                                                                        __out __notnull curve_segment_id* out_segment_id_ptr);
+PUBLIC EMERALD_API bool curve_container_get_segment_id_relative_to_time(bool              allow_seeking,
+                                                                        bool              seek_forward,
+                                                                        curve_container   curve,
+                                                                        system_time       time,
+                                                                        curve_segment_id  segment_to_exclude_id,
+                                                                        curve_segment_id* out_segment_id_ptr);
 
 /** Retrieves general curve segment node data. Works for TCB nodes only.
  *
@@ -230,17 +230,17 @@ PUBLIC EMERALD_API bool curve_container_get_segment_id_relative_to_time(__in    
  *
  *  @return true if successful, false otherwise.
  **/
-PUBLIC EMERALD_API bool curve_container_get_node_property(__in __notnull  curve_container             curve,
-                                                          __in            curve_segment_id            segment_id,
-                                                          __in            curve_segment_node_id       node_id,
-                                                          __in            curve_segment_node_property node_property,
-                                                          __out __notnull system_variant              result);
+PUBLIC EMERALD_API bool curve_container_get_node_property(curve_container             curve,
+                                                          curve_segment_id            segment_id,
+                                                          curve_segment_node_id       node_id,
+                                                          curve_segment_node_property node_property,
+                                                          system_variant              result);
 
 /** TODO */
-PUBLIC EMERALD_API bool curve_container_get_segment_property(__in  __notnull curve_container                  curve,
-                                                             __in            curve_segment_id                 segment_id,
-                                                             __in            curve_container_segment_property segment_property,
-                                                             __out __notnull void*                            out_result);
+PUBLIC EMERALD_API bool curve_container_get_segment_property(curve_container                  curve,
+                                                             curve_segment_id                 segment_id,
+                                                             curve_container_segment_property segment_property,
+                                                             void*                            out_result);
 
 /** Retrieves value for a given time point and dimension of the curve container.
  *
@@ -252,10 +252,10 @@ PUBLIC EMERALD_API bool curve_container_get_segment_property(__in  __notnull cur
  *
  *  @return true if successful, false otherwise.
  **/
-PUBLIC EMERALD_API bool curve_container_get_value(__in __notnull  curve_container curve,
-                                                  __in            system_time     time,
-                                                  __in            bool            should_force,
-                                                  __out __notnull system_variant  result);
+PUBLIC EMERALD_API bool curve_container_get_value(curve_container curve,
+                                                  system_time     time,
+                                                  bool            should_force,
+                                                  system_variant  result);
 
 /* Tells whether two curve containers are equal.
  *
@@ -264,14 +264,14 @@ PUBLIC EMERALD_API bool curve_container_get_value(__in __notnull  curve_containe
  * 
  * @return True if equal, false otherwise.
  **/
-PUBLIC EMERALD_API bool curve_container_is_equal(__in __notnull curve_container curve_a,
-                                                 __in __notnull curve_container curve_b);
+PUBLIC EMERALD_API bool curve_container_is_equal(curve_container curve_a,
+                                                 curve_container curve_b);
 
 /** TODO */
-PUBLIC bool curve_container_is_range_defined(__in __notnull curve_container  curve,
-                                             __in           system_time      start_time,
-                                             __in           system_time      end_time,
-                                             __in           curve_segment_id segment_id);
+PUBLIC bool curve_container_is_range_defined(curve_container  curve,
+                                             system_time      start_time,
+                                             system_time      end_time,
+                                             curve_segment_id segment_id);
 
 /* Modify properties of a segment node.
  *
@@ -283,30 +283,30 @@ PUBLIC bool curve_container_is_range_defined(__in __notnull curve_container  cur
  *
  * @return true if successful, false otherwise.
  */
-PUBLIC EMERALD_API bool curve_container_modify_node(__in __notnull curve_container       curve,
-                                                    __in           curve_segment_id      segment_id,
-                                                    __in           curve_segment_node_id node_id,
-                                                    __in           system_time           new_node_time,
-                                                    __in __notnull system_variant        new_node_value);
+PUBLIC EMERALD_API bool curve_container_modify_node(curve_container       curve,
+                                                    curve_segment_id      segment_id,
+                                                    curve_segment_node_id node_id,
+                                                    system_time           new_node_time,
+                                                    system_variant        new_node_value);
 
 /* Sets a new defautl value for a specific dimension of user-provided curve container.
  *
  * @param curve_container Curve container to modify. Cannot be NULL.
  * @param system_variant  Value to use. Cannot be NULL.
  */
-PUBLIC EMERALD_API bool curve_container_set_default_value(__in __notnull curve_container curve,
-                                                          __in __notnull system_variant  new_default_value);
+PUBLIC EMERALD_API bool curve_container_set_default_value(curve_container curve,
+                                                          system_variant  new_default_value);
 
 /** TODO */
-PUBLIC EMERALD_API void curve_container_set_property(__in __notnull curve_container          curve,
-                                                     __in           curve_container_property curve_property,
-                                                     __in __notnull const void*              value_ptr);
+PUBLIC EMERALD_API void curve_container_set_property(curve_container          curve,
+                                                     curve_container_property curve_property,
+                                                     const void*              value_ptr);
 
 /** TODO */
-PUBLIC EMERALD_API void curve_container_set_segment_property(__in __notnull curve_container                  curve,
-                                                             __in           curve_segment_id                 segment_id,
-                                                             __in           curve_container_segment_property segment_property,
-                                                             __in __notnull void*                            value_ptr);
+PUBLIC EMERALD_API void curve_container_set_segment_property(curve_container                  curve,
+                                                             curve_segment_id                 segment_id,
+                                                             curve_container_segment_property segment_property,
+                                                             void*                            value_ptr);
 
 /* Changes times of a given segment of user-proivided curve container's dimension
  *
@@ -317,9 +317,9 @@ PUBLIC EMERALD_API void curve_container_set_segment_property(__in __notnull curv
  *
  * @return True if successful, false otherwise.
  **/
-PUBLIC EMERALD_API bool curve_container_set_segment_times(__in __notnull curve_container  curve,
-                                                          __in           curve_segment_id segment_id,
-                                                          __in           system_time      start_time,
-                                                          __in           system_time      end_time);
+PUBLIC EMERALD_API bool curve_container_set_segment_times(curve_container  curve,
+                                                          curve_segment_id segment_id,
+                                                          system_time      start_time,
+                                                          system_time      end_time);
 
 #endif /* CURVE_CONTAINER_H */

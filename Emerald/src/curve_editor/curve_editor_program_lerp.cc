@@ -66,8 +66,8 @@ PRIVATE void _curve_editor_program_lerp_release(void* in)
 
 
 /** Please see header for specification */
-PUBLIC curve_editor_program_lerp curve_editor_program_lerp_create(__in __notnull ogl_context               context,
-                                                                  __in __notnull system_hashed_ansi_string name)
+PUBLIC curve_editor_program_lerp curve_editor_program_lerp_create(ogl_context               context,
+                                                                  system_hashed_ansi_string name)
 {
     _curve_editor_program_lerp* result = new (std::nothrow) _curve_editor_program_lerp;
 
@@ -251,9 +251,9 @@ end:
 }
 
 /** Please see header for spec */
-PUBLIC void curve_editor_program_lerp_set_property(__in __notnull curve_editor_program_lerp          lerp,
-                                                   __in           curve_editor_program_lerp_property property,
-                                                   __in __notnull const void*                        data)
+PUBLIC void curve_editor_program_lerp_set_property(curve_editor_program_lerp          lerp,
+                                                   curve_editor_program_lerp_property property,
+                                                   const void*                        data)
 {
     _curve_editor_program_lerp* lerp_ptr = (_curve_editor_program_lerp*) lerp;
 
@@ -290,8 +290,8 @@ PUBLIC void curve_editor_program_lerp_set_property(__in __notnull curve_editor_p
 }
 
 /** Please see header for spec */
-PUBLIC void curve_editor_program_lerp_use(__in __notnull ogl_context               context,
-                                          __in __notnull curve_editor_program_lerp lerp)
+PUBLIC void curve_editor_program_lerp_use(ogl_context               context,
+                                          curve_editor_program_lerp lerp)
 {
     const ogl_context_gl_entrypoints* entry_points = NULL;
     _curve_editor_program_lerp*       lerp_ptr     = (_curve_editor_program_lerp*) lerp;

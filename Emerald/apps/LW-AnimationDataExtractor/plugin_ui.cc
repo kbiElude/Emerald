@@ -124,7 +124,7 @@ PUBLIC void InitUI()
 }
 
 /** Please see header for spec */
-PUBLIC void SetActivityDescription(__in __notnull char* text)
+PUBLIC void SetActivityDescription(char* text)
 {
     /* The plug-in uses system thread pool to execute tasks. This
      * allows us to map thread IDs to specific CPU cores.

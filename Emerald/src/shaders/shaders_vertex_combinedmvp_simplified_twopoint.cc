@@ -31,7 +31,7 @@ REFCOUNT_INSERT_IMPLEMENTATION(shaders_vertex_combinedmvp_simplified_twopoint,
  *
  *  @param ptr Pointer to _shaders_vertex_combinedmvp instance.
  **/
-PRIVATE void _shaders_vertex_combinedmvp_simplified_twopoint_release(__in __notnull __deallocate(mem) void* ptr)
+PRIVATE void _shaders_vertex_combinedmvp_simplified_twopoint_release(void* ptr)
 {
     _shaders_vertex_combinedmvp_simplified_twopoint* data_ptr = (_shaders_vertex_combinedmvp_simplified_twopoint*) ptr;
 
@@ -45,8 +45,8 @@ PRIVATE void _shaders_vertex_combinedmvp_simplified_twopoint_release(__in __notn
 
 
 /** Please see header for specification */
-PUBLIC EMERALD_API shaders_vertex_combinedmvp_simplified_twopoint shaders_vertex_combinedmvp_simplified_twopoint_create(__in __notnull ogl_context               context,
-                                                                                                                        __in __notnull system_hashed_ansi_string name)
+PUBLIC EMERALD_API shaders_vertex_combinedmvp_simplified_twopoint shaders_vertex_combinedmvp_simplified_twopoint_create(ogl_context               context,
+                                                                                                                        system_hashed_ansi_string name)
 {
     bool                                             result        = false;
     _shaders_vertex_combinedmvp_simplified_twopoint* result_object = NULL;
@@ -150,7 +150,7 @@ end:
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API ogl_shader shaders_vertex_combinedmvp_simplified_twopoint_get_shader(__in __notnull shaders_vertex_combinedmvp_simplified_twopoint shader)
+PUBLIC EMERALD_API ogl_shader shaders_vertex_combinedmvp_simplified_twopoint_get_shader(shaders_vertex_combinedmvp_simplified_twopoint shader)
 {
     return ((_shaders_vertex_combinedmvp_simplified_twopoint*)shader)->vertex_shader;
 }

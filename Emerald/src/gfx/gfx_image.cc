@@ -30,14 +30,14 @@ volatile PFNGFXIMAGEGETALTERNATIVEFILENAMEPROCPTR _alternative_filename_getter_p
 /** Private declarations */
 typedef struct _gfx_image_mipmap
 {
-                        bool                 data_ptr_releaseable;
-                        unsigned int         data_size;
-    __bcount(data_size) const unsigned char* data_ptr;
-                        unsigned int         height;
-                        GLenum               internalformat;
-                        bool                 is_compressed;
-                        unsigned int         row_alignment;
-                        unsigned int         width;
+    bool                 data_ptr_releaseable;
+    unsigned int         data_size;
+    const unsigned char* data_ptr;
+    unsigned int         height;
+    GLenum               internalformat;
+    bool                 is_compressed;
+    unsigned int         row_alignment;
+    unsigned int         width;
 
     _gfx_image_mipmap()
     {
@@ -106,10 +106,10 @@ REFCOUNT_INSERT_IMPLEMENTATION(gfx_image,
 
 
 /** TODO */
-PRIVATE gfx_image _gfx_image_create_from_alternative_file(__in __notnull system_hashed_ansi_string name,
-                                                          __in __notnull system_hashed_ansi_string alternative_filename,
-                                                          __in           GLenum                    alternative_filename_glenum,
-                                                          __in_opt       system_file_unpacker      file_unpacker)
+PRIVATE gfx_image _gfx_image_create_from_alternative_file(system_hashed_ansi_string name,
+                                                          system_hashed_ansi_string alternative_filename,
+                                                          GLenum                    alternative_filename_glenum,
+                                                          system_file_unpacker      file_unpacker)
 {
 
     const unsigned char*                                   data                   = NULL;
@@ -268,16 +268,16 @@ PUBLIC void _gfx_image_release(void* image)
 }
 
 /** Please see header for specification */
-PUBLIC unsigned int gfx_image_add_mipmap(__in __notnull                   gfx_image            image,
-                                         __in                             unsigned int         width,
-                                         __in                             unsigned int         height,
-                                         __in                             unsigned int         row_alignment,
-                                         __in                             GLenum               internalformat,
-                                         __in                             bool                 is_compressed,
-                                         __in_bcount(data_size) __notnull const unsigned char* data_ptr,
-                                         __in                             unsigned int         data_size,
-                                         __in                             bool                 should_cache_data_ptr,
-                                         __in                             bool                 should_release_cached_data)
+PUBLIC unsigned int gfx_image_add_mipmap(gfx_image            image,
+                                         unsigned int         width,
+                                         unsigned int         height,
+                                         unsigned int         row_alignment,
+                                         GLenum               internalformat,
+                                         bool                 is_compressed,
+                                         const unsigned char* data_ptr,
+                                         unsigned int         data_size,
+                                         bool                 should_cache_data_ptr,
+                                         bool                 should_release_cached_data)
 {
     _gfx_image*  image_ptr = (_gfx_image*) image;
     unsigned int result    = -1;
@@ -340,7 +340,7 @@ end:
 }
 
 /** Please see header for specification */
-PUBLIC gfx_image gfx_image_create(__in __notnull system_hashed_ansi_string name)
+PUBLIC gfx_image gfx_image_create(system_hashed_ansi_string name)
 {
     _gfx_image* new_gfx_image = new (std::nothrow) _gfx_image;
 
@@ -365,9 +365,9 @@ PUBLIC gfx_image gfx_image_create(__in __notnull system_hashed_ansi_string name)
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API gfx_image gfx_image_create_from_file(__in __notnull system_hashed_ansi_string name,
-                                                        __in __notnull system_hashed_ansi_string file_name,
-                                                        __in           bool                      use_alternative_filename_getter)
+PUBLIC EMERALD_API gfx_image gfx_image_create_from_file(system_hashed_ansi_string name,
+                                                        system_hashed_ansi_string file_name,
+                                                        bool                      use_alternative_filename_getter)
 {
     const char*               file_name_raw_ptr            = system_hashed_ansi_string_get_buffer(file_name);
     GLenum                    alternative_file_name_glenum = GL_NONE;
@@ -471,10 +471,10 @@ PUBLIC EMERALD_API gfx_image gfx_image_create_from_file(__in __notnull system_ha
 }
 
 /** Please see header for specification */
-PUBLIC unsigned int gfx_image_get_data_size(__in GLenum       internalformat,
-                                            __in unsigned int width,
-                                            __in unsigned int height,
-                                            __in unsigned int row_alignment)
+PUBLIC unsigned int gfx_image_get_data_size(GLenum       internalformat,
+                                            unsigned int width,
+                                            unsigned int height,
+                                            unsigned int row_alignment)
 {
     unsigned int pixel_size = 0;
 
@@ -512,10 +512,10 @@ PUBLIC unsigned int gfx_image_get_data_size(__in GLenum       internalformat,
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API bool gfx_image_get_mipmap_property(__in  __notnull gfx_image                 image,
-                                                      __in            unsigned int              n_mipmap,
-                                                      __in            gfx_image_mipmap_property mipmap_property,
-                                                      __out __notnull void*                     out_result)
+PUBLIC EMERALD_API bool gfx_image_get_mipmap_property(gfx_image                 image,
+                                                      unsigned int              n_mipmap,
+                                                      gfx_image_mipmap_property mipmap_property,
+                                                      void*                     out_result)
 {
     _gfx_image* image_ptr = (_gfx_image*) image;
     bool        result    = false;
@@ -598,9 +598,9 @@ PUBLIC EMERALD_API bool gfx_image_get_mipmap_property(__in  __notnull gfx_image 
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API void gfx_image_get_property(__in __notnull const gfx_image          image,
-                                               __in                 gfx_image_property property,
-                                               __in __notnull       void*              out_result_ptr)
+PUBLIC EMERALD_API void gfx_image_get_property(const gfx_image          image,
+                                                     gfx_image_property property,
+                                                     void*              out_result_ptr)
 {
     const _gfx_image* image_ptr = (const _gfx_image*) image;
 
@@ -645,8 +645,8 @@ PUBLIC EMERALD_API void gfx_image_get_property(__in __notnull const gfx_image   
 }
 
 /** TODO */
-PUBLIC EMERALD_API void gfx_image_set_global_property(__in     gfx_image_property property_value,
-                                                      __in_opt void*              value)
+PUBLIC EMERALD_API void gfx_image_set_global_property(gfx_image_property property_value,
+                                                      void*              value)
 {
     switch (property_value)
     {

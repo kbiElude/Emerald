@@ -29,7 +29,7 @@ REFCOUNT_INSERT_IMPLEMENTATION(postprocessing_bloom,
 
 
 /** TODO */
-PRIVATE void _postprocessing_bloom_release(__in __notnull __deallocate(mem) void* ptr)
+PRIVATE void _postprocessing_bloom_release(void* ptr)
 {
     _postprocessing_bloom* data_ptr = (_postprocessing_bloom*) ptr;
     
@@ -38,8 +38,8 @@ PRIVATE void _postprocessing_bloom_release(__in __notnull __deallocate(mem) void
 
 
 /** Please see header for specification */
-PUBLIC EMERALD_API postprocessing_bloom postprocessing_bloom_create(__in __notnull ogl_context               context, 
-                                                                    __in __notnull system_hashed_ansi_string name)
+PUBLIC EMERALD_API postprocessing_bloom postprocessing_bloom_create(ogl_context               context, 
+                                                                    system_hashed_ansi_string name)
 {
     /* Instantiate the object */
     _postprocessing_bloom* result_object = new (std::nothrow) _postprocessing_bloom;
@@ -75,10 +75,10 @@ end:
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API void postprocessing_bloom_execute(__in __notnull postprocessing_bloom bloom,
-                                                     __in __notnull texture              texture_insgance,
-                                                     __in __notnull uint32_t             downsampled_texture_instance,
-                                                     __in __notnull uint32_t             result_texture_instance)
+PUBLIC EMERALD_API void postprocessing_bloom_execute(postprocessing_bloom bloom,
+                                                     texture              texture_insgance,
+                                                     uint32_t             downsampled_texture_instance,
+                                                     uint32_t             result_texture_instance)
 {
     // ..
 }

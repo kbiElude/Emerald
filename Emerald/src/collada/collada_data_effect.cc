@@ -80,12 +80,12 @@ typedef struct _collada_data_effect
 } _collada_data_effect;
 
 /** Forward declarations */
-PRIVATE void _collada_data_effect_init_lambert     (__in __notnull _collada_data_effect*               effect_ptr,
-                                                    __in __notnull tinyxml2::XMLElement*               element_ptr,
-                                                    __in __notnull system_hash64map                    samplers_by_id_map);
-PRIVATE void _collada_data_effect_init_shading_item(__in __notnull tinyxml2::XMLElement*               element_ptr,
-                                                    __in __notnull _collada_data_shading_factor_item*  result_ptr,
-                                                    __in __notnull system_hash64map                    samplers_by_id_map);
+PRIVATE void _collada_data_effect_init_lambert     (_collada_data_effect*               effect_ptr,
+                                                    tinyxml2::XMLElement*               element_ptr,
+                                                    system_hash64map                    samplers_by_id_map);
+PRIVATE void _collada_data_effect_init_shading_item(tinyxml2::XMLElement*               element_ptr,
+                                                    _collada_data_shading_factor_item*  result_ptr,
+                                                    system_hash64map                    samplers_by_id_map);
 
 /** TODO */
 _collada_data_effect::_collada_data_effect()
@@ -159,8 +159,8 @@ _collada_data_shading_factor_item_texture::_collada_data_shading_factor_item_tex
 
 
 /** TODO */
-PRIVATE _collada_data_shading_factor_item* _collada_data_get_effect_shading_factor_item(__in __notnull _collada_data_effect*            effect_ptr,
-                                                                                        __in           collada_data_shading_factor_item item)
+PRIVATE _collada_data_shading_factor_item* _collada_data_get_effect_shading_factor_item(_collada_data_effect*            effect_ptr,
+                                                                                        collada_data_shading_factor_item item)
 {
     _collada_data_shading_factor_item* result = NULL;
 
@@ -213,9 +213,9 @@ PRIVATE _collada_data_shading_factor_item* _collada_data_get_effect_shading_fact
 }
 
 /** TODO */
-PRIVATE void _collada_data_effect_init_lambert(__in __notnull _collada_data_effect* effect_ptr,
-                                               __in __notnull tinyxml2::XMLElement* element_ptr,
-                                               __in __notnull system_hash64map      samplers_by_id_map)
+PRIVATE void _collada_data_effect_init_lambert(_collada_data_effect* effect_ptr,
+                                               tinyxml2::XMLElement* element_ptr,
+                                               system_hash64map      samplers_by_id_map)
 {
     effect_ptr->shading = COLLADA_DATA_SHADING_LAMBERT;
 
@@ -261,8 +261,8 @@ PRIVATE void _collada_data_effect_init_lambert(__in __notnull _collada_data_effe
 
 
 /** TODO */
-PRIVATE void _collada_data_effect_init_float_shading_item(__in __notnull _collada_data_shading_factor_item* result_ptr,
-                                                          __in           float                              value)
+PRIVATE void _collada_data_effect_init_float_shading_item(_collada_data_shading_factor_item* result_ptr,
+                                                          float                              value)
 {
     result_ptr->data = new float;
     result_ptr->type = COLLADA_DATA_SHADING_FACTOR_FLOAT;
@@ -274,9 +274,9 @@ PRIVATE void _collada_data_effect_init_float_shading_item(__in __notnull _collad
 }
 
 /** TODO */
-PRIVATE void _collada_data_effect_init_shading_item(__in __notnull tinyxml2::XMLElement*               element_ptr,
-                                                    __in __notnull _collada_data_shading_factor_item*  result_ptr,
-                                                    __in __notnull system_hash64map                    samplers_by_id_map)
+PRIVATE void _collada_data_effect_init_shading_item(tinyxml2::XMLElement*               element_ptr,
+                                                    _collada_data_shading_factor_item*  result_ptr,
+                                                    system_hash64map                    samplers_by_id_map)
 {
     /* We currently support <color> and <texture> sub-nodes */
     tinyxml2::XMLElement* child_element_ptr  = element_ptr->FirstChildElement();
@@ -364,8 +364,8 @@ PRIVATE void _collada_data_effect_init_shading_item(__in __notnull tinyxml2::XML
 }
 
 /** TODO */
-PRIVATE bool _collada_data_effect_read_float_xml_node(__in  __notnull tinyxml2::XMLElement* element_ptr,
-                                                      __out __notnull float*                out_result_ptr)
+PRIVATE bool _collada_data_effect_read_float_xml_node(tinyxml2::XMLElement* element_ptr,
+                                                      float*                out_result_ptr)
 {
     bool result = false;
 
@@ -385,9 +385,9 @@ PRIVATE bool _collada_data_effect_read_float_xml_node(__in  __notnull tinyxml2::
     return result;
 }
 /** TODO */
-PRIVATE tinyxml2::XMLElement* _collada_data_effect_traverse_xml_tree(__in                           __notnull tinyxml2::XMLElement*           root_element_ptr,
-                                                                     __in                                     unsigned int                    n_traversal_nodes,
-                                                                     __in_ecount(n_traversal_nodes) __notnull const _xml_tree_traversal_node* traversal_nodes)
+PRIVATE tinyxml2::XMLElement* _collada_data_effect_traverse_xml_tree(tinyxml2::XMLElement*           root_element_ptr,
+                                                                     unsigned int                    n_traversal_nodes,
+                                                                     const _xml_tree_traversal_node* traversal_nodes)
 {
     ASSERT_DEBUG_SYNC(root_element_ptr != NULL,
                       "Root element is NULL");
@@ -451,8 +451,8 @@ PRIVATE tinyxml2::XMLElement* _collada_data_effect_traverse_xml_tree(__in       
 }
 
 /** TODO */
-PUBLIC collada_data_effect collada_data_effect_create(__in __notnull tinyxml2::XMLElement* current_effect_element_ptr,
-                                                      __in __notnull system_hash64map      images_by_id_map)
+PUBLIC collada_data_effect collada_data_effect_create(tinyxml2::XMLElement* current_effect_element_ptr,
+                                                      system_hash64map      images_by_id_map)
 {
     _collada_data_effect* new_effect_ptr = new (std::nothrow) _collada_data_effect;
 
@@ -806,9 +806,9 @@ PUBLIC collada_data_effect collada_data_effect_create(__in __notnull tinyxml2::X
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API void collada_data_effect_get_properties(__in      __notnull collada_data_effect    effect,
-                                                           __out_opt           _collada_data_shading* out_shading,
-                                                           __out_opt           int*                   out_shading_factor_item_bitmask)
+PUBLIC EMERALD_API void collada_data_effect_get_properties( collada_data_effect    effect,
+                                                           _collada_data_shading* out_shading,
+                                                           int*                   out_shading_factor_item_bitmask)
 {
     _collada_data_effect* effect_ptr = (_collada_data_effect*) effect;
 
@@ -840,9 +840,9 @@ PUBLIC EMERALD_API void collada_data_effect_get_properties(__in      __notnull c
 }
 
 /* Please see header for spec */
-PUBLIC EMERALD_API void collada_data_effect_get_property(__in  __notnull const collada_data_effect          effect,
-                                                         __in                  collada_data_effect_property property,
-                                                         __out __notnull       void*                        out_data_ptr)
+PUBLIC EMERALD_API void collada_data_effect_get_property(const collada_data_effect          effect,
+                                                               collada_data_effect_property property,
+                                                               void*                        out_data_ptr)
 {
     const _collada_data_effect* effect_ptr = (const _collada_data_effect*) effect;
 
@@ -870,8 +870,8 @@ PUBLIC EMERALD_API void collada_data_effect_get_property(__in  __notnull const c
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API collada_data_shading_factor_item collada_data_effect_get_shading_factor_item_by_texcoord(__in __notnull collada_data_effect       effect,
-                                                                                                            __in __notnull system_hashed_ansi_string texcoord_name)
+PUBLIC EMERALD_API collada_data_shading_factor_item collada_data_effect_get_shading_factor_item_by_texcoord(collada_data_effect       effect,
+                                                                                                            system_hashed_ansi_string texcoord_name)
 {
     _collada_data_effect*            effect_ptr = (_collada_data_effect*) effect;
     collada_data_shading_factor_item result     = COLLADA_DATA_SHADING_FACTOR_ITEM_UNKNOWN;
@@ -933,9 +933,9 @@ PUBLIC EMERALD_API collada_data_shading_factor_item collada_data_effect_get_shad
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API void collada_data_effect_get_shading_factor_item_properties(__in      __notnull collada_data_effect              effect,
-                                                                               __in                collada_data_shading_factor_item item,
-                                                                               __out_opt           collada_data_shading_factor*     out_type)
+PUBLIC EMERALD_API void collada_data_effect_get_shading_factor_item_properties(collada_data_effect              effect,
+                                                                               collada_data_shading_factor_item item,
+                                                                               collada_data_shading_factor*     out_type)
 {
     _collada_data_effect*              effect_ptr = (_collada_data_effect*) effect;
     collada_data_shading_factor        result     = COLLADA_DATA_SHADING_FACTOR_UNKNOWN;
@@ -954,9 +954,9 @@ PUBLIC EMERALD_API void collada_data_effect_get_shading_factor_item_properties(_
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API void collada_data_effect_get_shading_factor_item_float_properties(__in __notnull collada_data_effect              effect,
-                                                                                     __in           collada_data_shading_factor_item item,
-                                                                                     __out          float*                           out_float)
+PUBLIC EMERALD_API void collada_data_effect_get_shading_factor_item_float_properties(collada_data_effect              effect,
+                                                                                     collada_data_shading_factor_item item,
+                                                                                     float*                           out_float)
 {
     _collada_data_effect*              effect_ptr = (_collada_data_effect*) effect;
     _collada_data_shading_factor_item* item_ptr   = _collada_data_get_effect_shading_factor_item(effect_ptr,
@@ -977,9 +977,9 @@ PUBLIC EMERALD_API void collada_data_effect_get_shading_factor_item_float_proper
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API void collada_data_effect_get_shading_factor_item_float4_properties(__in __notnull      collada_data_effect              effect,
-                                                                                      __in                collada_data_shading_factor_item item,
-                                                                                      __out_ecount_opt(4) float*                           out_float4)
+PUBLIC EMERALD_API void collada_data_effect_get_shading_factor_item_float4_properties(collada_data_effect              effect,
+                                                                                      collada_data_shading_factor_item item,
+                                                                                      float*                           out_float4)
 {
     _collada_data_effect*              effect_ptr = (_collada_data_effect*) effect;
     _collada_data_shading_factor_item* item_ptr   = _collada_data_get_effect_shading_factor_item(effect_ptr,
@@ -1002,12 +1002,12 @@ PUBLIC EMERALD_API void collada_data_effect_get_shading_factor_item_float4_prope
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API void collada_data_effect_get_shading_factor_item_texture_properties(__in __notnull collada_data_effect              effect,
-                                                                                       __in           collada_data_shading_factor_item item,
-                                                                                       __out_opt      collada_data_image*              out_image,
-                                                                                       __out_opt      _collada_data_sampler_filter*    out_mag_filter,
-                                                                                       __out_opt      _collada_data_sampler_filter*    out_min_filter,
-                                                                                       __out_opt      system_hashed_ansi_string*       out_texcoord_name)
+PUBLIC EMERALD_API void collada_data_effect_get_shading_factor_item_texture_properties(collada_data_effect              effect,
+                                                                                       collada_data_shading_factor_item item,
+                                                                                       collada_data_image*              out_image,
+                                                                                       _collada_data_sampler_filter*    out_mag_filter,
+                                                                                       _collada_data_sampler_filter*    out_min_filter,
+                                                                                       system_hashed_ansi_string*       out_texcoord_name)
 {
     _collada_data_effect*              effect_ptr = (_collada_data_effect*) effect;
     _collada_data_shading_factor_item* item_ptr   = _collada_data_get_effect_shading_factor_item(effect_ptr, item);
@@ -1042,7 +1042,7 @@ PUBLIC EMERALD_API void collada_data_effect_get_shading_factor_item_texture_prop
 }
 
 /** Please see header for spec */
-PUBLIC void collada_data_effect_release(__in __notnull __post_invalid collada_data_effect effect)
+PUBLIC void collada_data_effect_release(collada_data_effect effect)
 {
     delete (_collada_data_effect*) effect;
 

@@ -231,7 +231,7 @@ PRIVATE THREAD_POOL_TASK_HANDLER void _system_file_serializer_read_task_executor
 }
 
 /** TODO */
-PRIVATE void _system_file_serializer_write_down_data_to_file(__in __notnull _system_file_serializer_descriptor* descriptor)
+PRIVATE void _system_file_serializer_write_down_data_to_file(_system_file_serializer_descriptor* descriptor)
 {
     ASSERT_DEBUG_SYNC(descriptor->type == SYSTEM_FILE_SERIALIZER_TYPE_FILE,
                       "_system_file_serializer_write_down_data_to_file() can only be called for file serializers.");
@@ -304,8 +304,8 @@ PRIVATE void _system_file_serializer_write_down_data_to_file(__in __notnull _sys
 
 
 /** Please see header file for specification */
-PUBLIC EMERALD_API system_file_serializer system_file_serializer_create_for_reading_memory_region(__in_bcount(data_size) __notnull void*        data,
-                                                                                                  __in                             unsigned int data_size)
+PUBLIC EMERALD_API system_file_serializer system_file_serializer_create_for_reading_memory_region(void*        data,
+                                                                                                  unsigned int data_size)
 {
     _system_file_serializer_descriptor* new_descriptor = new _system_file_serializer_descriptor;
 
@@ -324,8 +324,8 @@ PUBLIC EMERALD_API system_file_serializer system_file_serializer_create_for_read
 }
 
 /** Please see header file for specification */
-PUBLIC EMERALD_API system_file_serializer system_file_serializer_create_for_reading(__in __notnull system_hashed_ansi_string file_name,
-                                                                                    __in           bool                      async_read)
+PUBLIC EMERALD_API system_file_serializer system_file_serializer_create_for_reading(system_hashed_ansi_string file_name,
+                                                                                    bool                      async_read)
 {
     _system_file_serializer_descriptor* new_descriptor = new _system_file_serializer_descriptor;
 
@@ -360,7 +360,7 @@ PUBLIC EMERALD_API system_file_serializer system_file_serializer_create_for_read
 }
 
 /** Please see header file for specification */
-PUBLIC EMERALD_API system_file_serializer system_file_serializer_create_for_writing(__in __notnull system_hashed_ansi_string file_name)
+PUBLIC EMERALD_API system_file_serializer system_file_serializer_create_for_writing(system_hashed_ansi_string file_name)
 {
     _system_file_serializer_descriptor* new_descriptor = new (std::nothrow) _system_file_serializer_descriptor;
 
@@ -387,15 +387,15 @@ PUBLIC EMERALD_API system_file_serializer system_file_serializer_create_for_writ
 }
 
 /** Please see header file for specification */
-PUBLIC EMERALD_API void system_file_serializer_flush_writes(__in __notnull system_file_serializer serializer)
+PUBLIC EMERALD_API void system_file_serializer_flush_writes(system_file_serializer serializer)
 {
     _system_file_serializer_write_down_data_to_file( (_system_file_serializer_descriptor*) serializer);
 }
 
 /** Please see header file for specification */
-PUBLIC EMERALD_API void system_file_serializer_get_property(__in  __notnull system_file_serializer          serializer,
-                                                            __in            system_file_serializer_property property,
-                                                            __out __notnull void*                           out_data)
+PUBLIC EMERALD_API void system_file_serializer_get_property(system_file_serializer          serializer,
+                                                            system_file_serializer_property property,
+                                                            void*                           out_data)
 {
     _system_file_serializer_descriptor* serializer_ptr = (_system_file_serializer_descriptor*) serializer;
 
@@ -486,9 +486,9 @@ PUBLIC EMERALD_API void system_file_serializer_get_property(__in  __notnull syst
 }
 
 /** Please see header file for specification */
-PUBLIC EMERALD_API bool system_file_serializer_read(__in __notnull                       system_file_serializer serializer,
-                                                    __in                                 uint32_t               n_bytes,
-                                                    __deref_out_bcount_full_opt(n_bytes) void*                  out_result)
+PUBLIC EMERALD_API bool system_file_serializer_read(system_file_serializer serializer,
+                                                    uint32_t               n_bytes,
+                                                    void*                  out_result)
 {
     _system_file_serializer_descriptor* descriptor = (_system_file_serializer_descriptor*) serializer;
     bool                                result     = false;
@@ -517,9 +517,9 @@ PUBLIC EMERALD_API bool system_file_serializer_read(__in __notnull              
 }
 
 /* Please see header file for specification */
-PUBLIC EMERALD_API bool system_file_serializer_read_curve_container(__in     __notnull system_file_serializer    serializer,
-                                                                    __in_opt           system_hashed_ansi_string object_manager_path,
-                                                                    __out    __notnull curve_container*          result_container)
+PUBLIC EMERALD_API bool system_file_serializer_read_curve_container(system_file_serializer    serializer,
+                                                                    system_hashed_ansi_string object_manager_path,
+                                                                    curve_container*          result_container)
 {
     system_hashed_ansi_string                  curve_name              = NULL;
     bool                                       is_pre_post_behavior_on = false;
@@ -992,8 +992,8 @@ end:
 }
 
 /* Please see header file for specification */
-PUBLIC EMERALD_API bool system_file_serializer_read_hashed_ansi_string(__in  __notnull system_file_serializer     serializer,
-                                                                       __out __notnull system_hashed_ansi_string* result_string)
+PUBLIC EMERALD_API bool system_file_serializer_read_hashed_ansi_string(system_file_serializer     serializer,
+                                                                       system_hashed_ansi_string* result_string)
 {
     int  n_characters = 0;
     bool result       = false;
@@ -1038,8 +1038,8 @@ PUBLIC EMERALD_API bool system_file_serializer_read_hashed_ansi_string(__in  __n
 }
 
 /* Please see header file for specification */
-PUBLIC EMERALD_API bool system_file_serializer_read_matrix4x4(__in  __notnull system_file_serializer serializer,
-                                                              __out __notnull system_matrix4x4*      out_result)
+PUBLIC EMERALD_API bool system_file_serializer_read_matrix4x4(system_file_serializer serializer,
+                                                              system_matrix4x4*      out_result)
 {
     float matrix_row_major_data[16];
     bool  result = true;
@@ -1071,8 +1071,8 @@ end:
 }
 
 /* Please see header file for specification */
-PUBLIC EMERALD_API bool system_file_serializer_read_variant(__in  __notnull system_file_serializer serializer,
-                                                            __out __notnull system_variant         out_result)
+PUBLIC EMERALD_API bool system_file_serializer_read_variant(system_file_serializer serializer,
+                                                            system_variant         out_result)
 {
     bool                result = false;
     system_variant_type variant_type;
@@ -1205,7 +1205,7 @@ PUBLIC EMERALD_API bool system_file_serializer_read_variant(__in  __notnull syst
 }
 
 /** Please see header file for specification */
-PUBLIC EMERALD_API void system_file_serializer_release(__in __notnull __deallocate(mem) system_file_serializer serializer)
+PUBLIC EMERALD_API void system_file_serializer_release(system_file_serializer serializer)
 {
     _system_file_serializer_descriptor* descriptor = (_system_file_serializer_descriptor*) serializer;
 
@@ -1253,9 +1253,9 @@ PUBLIC EMERALD_API void system_file_serializer_release(__in __notnull __dealloca
 }
 
 /** Please see header file for specification */
-PUBLIC EMERALD_API void system_file_serializer_set_property(__in __notnull system_file_serializer          serializer,
-                                                            __in           system_file_serializer_property property,
-                                                            __in __notnull void*                           data)
+PUBLIC EMERALD_API void system_file_serializer_set_property(system_file_serializer          serializer,
+                                                            system_file_serializer_property property,
+                                                            void*                           data)
 {
     _system_file_serializer_descriptor* serializer_ptr = (_system_file_serializer_descriptor*) serializer;
 
@@ -1277,9 +1277,9 @@ PUBLIC EMERALD_API void system_file_serializer_set_property(__in __notnull syste
 }
 
 /** Please see header file for specification */
-PUBLIC EMERALD_API bool system_file_serializer_write(__in __notnull system_file_serializer serializer,
-                                                     __in           uint32_t               n_bytes,
-                                                     __in __notnull const void*            data_to_write)
+PUBLIC EMERALD_API bool system_file_serializer_write(system_file_serializer serializer,
+                                                     uint32_t               n_bytes,
+                                                     const void*            data_to_write)
 {
     _system_file_serializer_descriptor* descriptor = (_system_file_serializer_descriptor*) serializer;
     bool                                result     = false;
@@ -1337,8 +1337,8 @@ PUBLIC EMERALD_API bool system_file_serializer_write(__in __notnull system_file_
 }
 
 /* Please see header file for specification */
-PUBLIC EMERALD_API bool system_file_serializer_write_curve_container(__in __notnull       system_file_serializer serializer,
-                                                                     __in __notnull const curve_container        curve)
+PUBLIC EMERALD_API bool system_file_serializer_write_curve_container(      system_file_serializer serializer,
+                                                                     const curve_container        curve)
 {
     system_hashed_ansi_string                  curve_name              = NULL;
     bool                                       is_pre_post_behavior_on = false;
@@ -1697,8 +1697,8 @@ end:
 }
 
 /* Please see header file for specification */
-PUBLIC EMERALD_API bool system_file_serializer_write_hashed_ansi_string(__in __notnull system_file_serializer    serializer,
-                                                                        __in __notnull system_hashed_ansi_string string)
+PUBLIC EMERALD_API bool system_file_serializer_write_hashed_ansi_string(system_file_serializer    serializer,
+                                                                        system_hashed_ansi_string string)
 {
     bool result        = false;
     int  string_length = system_hashed_ansi_string_get_length(string);
@@ -1729,8 +1729,8 @@ PUBLIC EMERALD_API bool system_file_serializer_write_hashed_ansi_string(__in __n
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API bool system_file_serializer_write_matrix4x4(__in __notnull system_file_serializer serializer,
-                                                               __in __notnull system_matrix4x4       matrix)
+PUBLIC EMERALD_API bool system_file_serializer_write_matrix4x4(system_file_serializer serializer,
+                                                               system_matrix4x4       matrix)
 {
     const float* matrix_data = system_matrix4x4_get_row_major_data(matrix);
 
@@ -1740,8 +1740,8 @@ PUBLIC EMERALD_API bool system_file_serializer_write_matrix4x4(__in __notnull sy
 }
 
 /* Please see header file for specification */
-PUBLIC EMERALD_API bool system_file_serializer_write_variant(__in __notnull system_file_serializer serializer,
-                                                             __in __notnull system_variant         variant)
+PUBLIC EMERALD_API bool system_file_serializer_write_variant(system_file_serializer serializer,
+                                                             system_variant         variant)
 {
     bool                result       = false;
     system_variant_type variant_type = system_variant_get_type(variant);

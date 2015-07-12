@@ -52,9 +52,9 @@ typedef struct _scene_multiloader_deferred_gfx_image_load_op
     struct _scene_multiloader* loader_ptr;
     system_hashed_ansi_string  name;
 
-    explicit _scene_multiloader_deferred_gfx_image_load_op(__in __notnull system_hashed_ansi_string in_filename,
-                                                           __in __notnull system_hashed_ansi_string in_name,
-                                                           __in __notnull _scene_multiloader*       in_loader_ptr)
+    explicit _scene_multiloader_deferred_gfx_image_load_op(system_hashed_ansi_string in_filename,
+                                                           system_hashed_ansi_string in_name,
+                                                           _scene_multiloader*       in_loader_ptr)
     {
         filename   = in_filename;
         name       = in_name;
@@ -112,9 +112,9 @@ typedef struct _scene_multiloader
     system_resizable_vector  enqueued_image_file_names_vector; /* system_hashed_ansi_string */
     system_hash64map         image_filename_to_gfx_image_map;
 
-     explicit _scene_multiloader(__in __notnull ogl_context  in_context,
-                                 __in           bool         in_free_serializers_at_release_time,
-                                 __in           unsigned int in_n_scenes);
+     explicit _scene_multiloader(ogl_context  in_context,
+                                 bool         in_free_serializers_at_release_time,
+                                 unsigned int in_n_scenes);
              ~_scene_multiloader();
 } _scene_multiloader;
 
@@ -168,9 +168,9 @@ _scene_multiloader_scene::~_scene_multiloader_scene()
 }
 
 /** TODO */
-_scene_multiloader::_scene_multiloader(__in __notnull ogl_context  in_context,
-                                       __in           bool         in_free_serializers_at_release_time,
-                                       __in           unsigned int in_n_scenes)
+_scene_multiloader::_scene_multiloader(ogl_context  in_context,
+                                       bool         in_free_serializers_at_release_time,
+                                       unsigned int in_n_scenes)
 {
     barrier_all_scene_gfx_images_enqueued = system_barrier_create(in_n_scenes);
     barrier_all_scene_gfx_images_loaded   = NULL;
@@ -305,63 +305,63 @@ _scene_multiloader::~_scene_multiloader()
 
 
 /* Forward declarations */
-PRIVATE  void _scene_multiloader_load_scene_internal_create_gfx_images_loaded_barrier(__in  __notnull void*                                arg);
-PRIVATE  void _scene_multiloader_load_scene_internal_enqueue_gfx_filenames           (__in            scene_texture                        texture,
-                                                                                      __in            system_hashed_ansi_string            file_name,
-                                                                                      __in            system_hashed_ansi_string            texture_name,
-                                                                                                      bool                                 uses_mipmaps,
-                                                                                      __in            void*                                callback_user_data);
-PRIVATE  bool _scene_multiloader_load_scene_internal_create_mesh_materials           (__in  __notnull _scene_multiloader_scene*            scene_ptr,
-                                                                                      __in            unsigned int                         n_scene_materials,
-                                                                                      __in  __notnull system_hash64map                     scene_material_to_material_id_map,
-                                                                                      __in  __notnull system_hash64map                     material_id_to_mesh_material_map);
-PRIVATE  bool _scene_multiloader_load_scene_internal_get_basic_data                  (__in  __notnull _scene_multiloader_scene*            scene_ptr,
-                                                                                      __out __notnull system_hashed_ansi_string*           out_scene_name,
-                                                                                      __out __notnull unsigned int*                        out_scene_fps,
-                                                                                      __out __notnull float*                               out_scene_animation_duration,
-                                                                                      __out __notnull uint32_t*                            out_n_scene_cameras,
-                                                                                      __out __notnull uint32_t*                            out_n_scene_curves,
-                                                                                      __out __notnull uint32_t*                            out_n_scene_lights,
-                                                                                      __out __notnull uint32_t*                            out_n_scene_materials,
-                                                                                      __out __notnull uint32_t*                            out_n_scene_mesh_instances,
-                                                                                      __out __notnull uint32_t*                            out_n_scene_textures);
-PRIVATE  bool _scene_multiloader_load_scene_internal_get_camera_data                 (__in  __notnull _scene_multiloader_scene*            scene_ptr,
-                                                                                      __in            uint32_t                             n_scene_cameras,
-                                                                                      __in  __notnull system_hashed_ansi_string            scene_file_name,
-                                                                                      __in  __notnull system_resizable_vector              serialized_scene_cameras);
-PRIVATE  bool _scene_multiloader_load_scene_internal_get_curve_data                  (__in  __notnull _scene_multiloader_scene*            scene_ptr,
-                                                                                      __in            uint32_t                             n_scene_curves,
-                                                                                      __in  __notnull system_hashed_ansi_string            scene_file_name);
-PRIVATE  bool _scene_multiloader_load_scene_internal_get_light_data                  (__in  __notnull _scene_multiloader_scene*            scene_ptr,
-                                                                                      __in            uint32_t                             n_scene_lights,
-                                                                                      __in  __notnull system_hashed_ansi_string            scene_file_name,
-                                                                                      __in  __notnull system_resizable_vector              serialized_scene_lights);
-PRIVATE  bool _scene_multiloader_load_scene_internal_get_material_data               (__in  __notnull _scene_multiloader_scene*            scene_ptr,
-                                                                                      __in            uint32_t                             n_scene_materials,
-                                                                                      __in  __notnull system_hashed_ansi_string            scene_file_name,
-                                                                                      __in  __notnull system_hash64map                     material_id_to_scene_material_map,
-                                                                                      __in  __notnull system_hash64map                     scene_material_to_material_id_map);
-PRIVATE  bool _scene_multiloader_load_scene_internal_get_mesh_data                   (__in  __notnull _scene_multiloader_scene*            scene_ptr,
-                                                                                      __in  __notnull system_hash64map                     material_id_to_mesh_material_map,
-                                                                                      __in  __notnull system_hash64map                     mesh_id_to_mesh_map,
-                                                                                      __in  __notnull system_hash64map                     mesh_name_to_mesh_map);
-PRIVATE  bool _scene_multiloader_load_scene_internal_get_mesh_instances_data         (__in  __notnull _scene_multiloader_scene*            scene_ptr,
-                                                                                      __in            uint32_t                             n_scene_mesh_instances,
-                                                                                      __in  __notnull system_hashed_ansi_string            scene_name,
-                                                                                      __in  __notnull system_hash64map                     mesh_id_to_mesh_map,
-                                                                                      __in  __notnull system_resizable_vector              serialized_scene_mesh_instances);
-PRIVATE  bool _scene_multiloader_load_scene_internal_get_texture_data                (__in  __notnull _scene_multiloader_scene*            scene_ptr,
-                                                                                      __in            system_hashed_ansi_string            object_manager_path,
-                                                                                      __in            unsigned int                         n_scene_textures,
-                                                                                      __in  __notnull ogl_context_textures                 context_textures,
-                                                                                      __in  __notnull system_hash64map                     texture_id_to_ogl_texture_map);
-volatile void _scene_multiloader_load_scene_internal_load_gfx_image_entrypoint       (                system_thread_pool_callback_argument op);
-PRIVATE  void _scene_multiloader_load_scene_internal                                 (__in  __notnull _scene_multiloader_scene*            scene_ptr);
-PRIVATE  void _scene_multiloader_load_scene_thread_entrypoint                        (                system_threads_entry_point_argument  arg);
+PRIVATE  void _scene_multiloader_load_scene_internal_create_gfx_images_loaded_barrier(void*                                arg);
+PRIVATE  void _scene_multiloader_load_scene_internal_enqueue_gfx_filenames           (scene_texture                        texture,
+                                                                                      system_hashed_ansi_string            file_name,
+                                                                                      system_hashed_ansi_string            texture_name,
+                                                                                      bool                                 uses_mipmaps,
+                                                                                      void*                                callback_user_data);
+PRIVATE  bool _scene_multiloader_load_scene_internal_create_mesh_materials           (_scene_multiloader_scene*            scene_ptr,
+                                                                                      unsigned int                         n_scene_materials,
+                                                                                      system_hash64map                     scene_material_to_material_id_map,
+                                                                                      system_hash64map                     material_id_to_mesh_material_map);
+PRIVATE  bool _scene_multiloader_load_scene_internal_get_basic_data                  (_scene_multiloader_scene*            scene_ptr,
+                                                                                      system_hashed_ansi_string*           out_scene_name,
+                                                                                      unsigned int*                        out_scene_fps,
+                                                                                      float*                               out_scene_animation_duration,
+                                                                                      uint32_t*                            out_n_scene_cameras,
+                                                                                      uint32_t*                            out_n_scene_curves,
+                                                                                      uint32_t*                            out_n_scene_lights,
+                                                                                      uint32_t*                            out_n_scene_materials,
+                                                                                      uint32_t*                            out_n_scene_mesh_instances,
+                                                                                      uint32_t*                            out_n_scene_textures);
+PRIVATE  bool _scene_multiloader_load_scene_internal_get_camera_data                 (_scene_multiloader_scene*            scene_ptr,
+                                                                                      uint32_t                             n_scene_cameras,
+                                                                                      system_hashed_ansi_string            scene_file_name,
+                                                                                      system_resizable_vector              serialized_scene_cameras);
+PRIVATE  bool _scene_multiloader_load_scene_internal_get_curve_data                  (_scene_multiloader_scene*            scene_ptr,
+                                                                                      uint32_t                             n_scene_curves,
+                                                                                      system_hashed_ansi_string            scene_file_name);
+PRIVATE  bool _scene_multiloader_load_scene_internal_get_light_data                  (_scene_multiloader_scene*            scene_ptr,
+                                                                                      uint32_t                             n_scene_lights,
+                                                                                      system_hashed_ansi_string            scene_file_name,
+                                                                                      system_resizable_vector              serialized_scene_lights);
+PRIVATE  bool _scene_multiloader_load_scene_internal_get_material_data               (_scene_multiloader_scene*            scene_ptr,
+                                                                                      uint32_t                             n_scene_materials,
+                                                                                      system_hashed_ansi_string            scene_file_name,
+                                                                                      system_hash64map                     material_id_to_scene_material_map,
+                                                                                      system_hash64map                     scene_material_to_material_id_map);
+PRIVATE  bool _scene_multiloader_load_scene_internal_get_mesh_data                   (_scene_multiloader_scene*            scene_ptr,
+                                                                                      system_hash64map                     material_id_to_mesh_material_map,
+                                                                                      system_hash64map                     mesh_id_to_mesh_map,
+                                                                                      system_hash64map                     mesh_name_to_mesh_map);
+PRIVATE  bool _scene_multiloader_load_scene_internal_get_mesh_instances_data         (_scene_multiloader_scene*            scene_ptr,
+                                                                                      uint32_t                             n_scene_mesh_instances,
+                                                                                      system_hashed_ansi_string            scene_name,
+                                                                                      system_hash64map                     mesh_id_to_mesh_map,
+                                                                                      system_resizable_vector              serialized_scene_mesh_instances);
+PRIVATE  bool _scene_multiloader_load_scene_internal_get_texture_data                (_scene_multiloader_scene*            scene_ptr,
+                                                                                      system_hashed_ansi_string            object_manager_path,
+                                                                                      unsigned int                         n_scene_textures,
+                                                                                      ogl_context_textures                 context_textures,
+                                                                                      system_hash64map                     texture_id_to_ogl_texture_map);
+volatile void _scene_multiloader_load_scene_internal_load_gfx_image_entrypoint       (system_thread_pool_callback_argument op);
+PRIVATE  void _scene_multiloader_load_scene_internal                                 (_scene_multiloader_scene*            scene_ptr);
+PRIVATE  void _scene_multiloader_load_scene_thread_entrypoint                        (system_threads_entry_point_argument  arg);
 
 
 /** TODO */
-PRIVATE void _scene_multiloader_load_scene_internal_create_gfx_images_loaded_barrier(__in __notnull void* arg)
+PRIVATE void _scene_multiloader_load_scene_internal_create_gfx_images_loaded_barrier(void* arg)
 {
     _scene_multiloader* loader_ptr           = (_scene_multiloader*) arg;
     unsigned int        n_enqueued_filenames = 0;
@@ -431,10 +431,10 @@ PRIVATE void _scene_multiloader_load_scene_internal_enqueue_gfx_filenames(scene_
 }
 
 /** TODO */
-PRIVATE bool _scene_multiloader_load_scene_internal_create_mesh_materials(__in __notnull _scene_multiloader_scene* scene_ptr,
-                                                                          __in           unsigned int              n_scene_materials,
-                                                                          __in __notnull system_hash64map          scene_material_to_material_id_map,
-                                                                          __in __notnull system_hash64map          material_id_to_mesh_material_map)
+PRIVATE bool _scene_multiloader_load_scene_internal_create_mesh_materials(_scene_multiloader_scene* scene_ptr,
+                                                                          unsigned int              n_scene_materials,
+                                                                          system_hash64map          scene_material_to_material_id_map,
+                                                                          system_hash64map          material_id_to_mesh_material_map)
 {
     bool result = true;
 
@@ -490,16 +490,16 @@ end:
 }
 
 /** TODO */
-PRIVATE bool _scene_multiloader_load_scene_internal_get_basic_data(__in  __notnull _scene_multiloader_scene*  scene_ptr,
-                                                                   __out __notnull system_hashed_ansi_string* out_scene_name,
-                                                                   __out __notnull unsigned int*              out_scene_fps,
-                                                                   __out __notnull float*                     out_scene_animation_duration,
-                                                                   __out __notnull uint32_t*                  out_n_scene_cameras,
-                                                                   __out __notnull uint32_t*                  out_n_scene_curves,
-                                                                   __out __notnull uint32_t*                  out_n_scene_lights,
-                                                                   __out __notnull uint32_t*                  out_n_scene_materials,
-                                                                   __out __notnull uint32_t*                  out_n_scene_mesh_instances,
-                                                                   __out __notnull uint32_t*                  out_n_scene_textures)
+PRIVATE bool _scene_multiloader_load_scene_internal_get_basic_data(_scene_multiloader_scene*  scene_ptr,
+                                                                   system_hashed_ansi_string* out_scene_name,
+                                                                   unsigned int*              out_scene_fps,
+                                                                   float*                     out_scene_animation_duration,
+                                                                   uint32_t*                  out_n_scene_cameras,
+                                                                   uint32_t*                  out_n_scene_curves,
+                                                                   uint32_t*                  out_n_scene_lights,
+                                                                   uint32_t*                  out_n_scene_materials,
+                                                                   uint32_t*                  out_n_scene_mesh_instances,
+                                                                   uint32_t*                  out_n_scene_textures)
 {
     bool  result = true;
     float temp_fps;
@@ -537,10 +537,10 @@ PRIVATE bool _scene_multiloader_load_scene_internal_get_basic_data(__in  __notnu
 }
 
 /** TODO */
-PRIVATE bool _scene_multiloader_load_scene_internal_get_camera_data(__in __notnull _scene_multiloader_scene* scene_ptr,
-                                                                    __in           uint32_t                  n_scene_cameras,
-                                                                    __in __notnull system_hashed_ansi_string scene_file_name,
-                                                                    __in __notnull system_resizable_vector   serialized_scene_cameras)
+PRIVATE bool _scene_multiloader_load_scene_internal_get_camera_data(_scene_multiloader_scene* scene_ptr,
+                                                                    uint32_t                  n_scene_cameras,
+                                                                    system_hashed_ansi_string scene_file_name,
+                                                                    system_resizable_vector   serialized_scene_cameras)
 {
     bool result = true;
 
@@ -581,9 +581,9 @@ end:
 }
 
 /** TODO */
-PRIVATE bool _scene_multiloader_load_scene_internal_get_curve_data(__in __notnull _scene_multiloader_scene* scene_ptr,
-                                                                   __in           uint32_t                  n_scene_curves,
-                                                                   __in __notnull system_hashed_ansi_string scene_file_name)
+PRIVATE bool _scene_multiloader_load_scene_internal_get_curve_data(_scene_multiloader_scene* scene_ptr,
+                                                                   uint32_t                  n_scene_curves,
+                                                                   system_hashed_ansi_string scene_file_name)
 {
     bool result = true;
 
@@ -616,10 +616,10 @@ end:
 }
 
 /** TODO */
-PRIVATE bool _scene_multiloader_load_scene_internal_get_light_data(__in __notnull _scene_multiloader_scene* scene_ptr,
-                                                                   __in           uint32_t                  n_scene_lights,
-                                                                   __in __notnull system_hashed_ansi_string scene_file_name,
-                                                                   __in __notnull system_resizable_vector   serialized_scene_lights)
+PRIVATE bool _scene_multiloader_load_scene_internal_get_light_data(_scene_multiloader_scene* scene_ptr,
+                                                                   uint32_t                  n_scene_lights,
+                                                                   system_hashed_ansi_string scene_file_name,
+                                                                   system_resizable_vector   serialized_scene_lights)
 {
     bool result = true;
 
@@ -659,11 +659,11 @@ end:
 }
 
 /** TODO */
-PRIVATE bool _scene_multiloader_load_scene_internal_get_material_data(__in __notnull _scene_multiloader_scene* scene_ptr,
-                                                                      __in           uint32_t                  n_scene_materials,
-                                                                      __in __notnull system_hashed_ansi_string scene_file_name,
-                                                                      __in __notnull system_hash64map          material_id_to_scene_material_map,
-                                                                      __in __notnull system_hash64map          scene_material_to_material_id_map)
+PRIVATE bool _scene_multiloader_load_scene_internal_get_material_data(_scene_multiloader_scene* scene_ptr,
+                                                                      uint32_t                  n_scene_materials,
+                                                                      system_hashed_ansi_string scene_file_name,
+                                                                      system_hash64map          material_id_to_scene_material_map,
+                                                                      system_hash64map          scene_material_to_material_id_map)
 {
     bool result = true;
 
@@ -722,10 +722,10 @@ end:
 }
 
 /** TODO */
-PRIVATE bool _scene_multiloader_load_scene_internal_get_mesh_data(__in __notnull _scene_multiloader_scene* scene_ptr,
-                                                                  __in __notnull system_hash64map          material_id_to_mesh_material_map,
-                                                                  __in __notnull system_hash64map          mesh_id_to_mesh_map,
-                                                                  __in __notnull system_hash64map          mesh_name_to_mesh_map)
+PRIVATE bool _scene_multiloader_load_scene_internal_get_mesh_data(_scene_multiloader_scene* scene_ptr,
+                                                                  system_hash64map          material_id_to_mesh_material_map,
+                                                                  system_hash64map          mesh_id_to_mesh_map,
+                                                                  system_hash64map          mesh_name_to_mesh_map)
 {
     uint32_t n_meshes = 0;
     bool     result   = true;
@@ -791,11 +791,11 @@ end:
 }
 
 /** TODO */
-PRIVATE bool _scene_multiloader_load_scene_internal_get_mesh_instances_data(__in __notnull _scene_multiloader_scene* scene_ptr,
-                                                                            __in           uint32_t                  n_scene_mesh_instances,
-                                                                            __in __notnull system_hashed_ansi_string scene_name,
-                                                                            __in __notnull system_hash64map          mesh_id_to_mesh_map,
-                                                                            __in __notnull system_resizable_vector   serialized_scene_mesh_instances)
+PRIVATE bool _scene_multiloader_load_scene_internal_get_mesh_instances_data(_scene_multiloader_scene* scene_ptr,
+                                                                            uint32_t                  n_scene_mesh_instances,
+                                                                            system_hashed_ansi_string scene_name,
+                                                                            system_hash64map          mesh_id_to_mesh_map,
+                                                                            system_resizable_vector   serialized_scene_mesh_instances)
 {
     bool result = true;
 
@@ -847,11 +847,11 @@ end:
 }
 
 /** TODO */
-PRIVATE bool _scene_multiloader_load_scene_internal_get_texture_data(__in __notnull _scene_multiloader_scene* scene_ptr,
-                                                                     __in           system_hashed_ansi_string object_manager_path,
-                                                                     __in           unsigned int              n_scene_textures,
-                                                                     __in __notnull ogl_context_textures      context_textures,
-                                                                     __in __notnull system_hash64map          texture_id_to_ogl_texture_map)
+PRIVATE bool _scene_multiloader_load_scene_internal_get_texture_data(_scene_multiloader_scene* scene_ptr,
+                                                                     system_hashed_ansi_string object_manager_path,
+                                                                     unsigned int              n_scene_textures,
+                                                                     ogl_context_textures      context_textures,
+                                                                     system_hash64map          texture_id_to_ogl_texture_map)
 {
     /*
      * We break the usual scene_texture_load_with_serializer() routine by first
@@ -1093,7 +1093,7 @@ volatile void _scene_multiloader_load_scene_internal_load_gfx_image_entrypoint(s
 }
 
 /** TODO */
-PRIVATE void _scene_multiloader_load_scene_internal(__in __notnull _scene_multiloader_scene* scene_ptr)
+PRIVATE void _scene_multiloader_load_scene_internal(_scene_multiloader_scene* scene_ptr)
 {
     ogl_context_textures      context_textures                  = NULL;
     system_hash64map          material_id_to_scene_material_map = system_hash64map_create(sizeof(scene_material));
@@ -1500,9 +1500,9 @@ PRIVATE void _scene_multiloader_load_scene_thread_entrypoint(system_threads_entr
 
 
 /** Please see header for specification */
-PUBLIC EMERALD_API scene_multiloader scene_multiloader_create_from_filenames(__in                  ogl_context                      context,
-                                                                             __in                  unsigned int                     n_scenes,
-                                                                             __in_ecount(n_scenes) const system_hashed_ansi_string* scene_filenames)
+PUBLIC EMERALD_API scene_multiloader scene_multiloader_create_from_filenames(ogl_context                      context,
+                                                                             unsigned int                     n_scenes,
+                                                                             const system_hashed_ansi_string* scene_filenames)
 {
     ASSERT_DEBUG_SYNC(n_scenes > 0,
                       "n_scenes is 0");
@@ -1542,10 +1542,10 @@ PUBLIC EMERALD_API scene_multiloader scene_multiloader_create_from_filenames(__i
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API scene_multiloader scene_multiloader_create_from_system_file_serializers(__in                  ogl_context                   context,
-                                                                                           __in                  unsigned int                  n_scenes,
-                                                                                           __in_ecount(n_scenes) const system_file_serializer* scene_file_serializers,
-                                                                                           __in                  bool                          free_serializers_at_release_time)
+PUBLIC EMERALD_API scene_multiloader scene_multiloader_create_from_system_file_serializers(ogl_context                   context,
+                                                                                           unsigned int                  n_scenes,
+                                                                                           const system_file_serializer* scene_file_serializers,
+                                                                                           bool                          free_serializers_at_release_time)
 {
     _scene_multiloader* multiloader_ptr = new (std::nothrow) _scene_multiloader(context,
                                                                                 free_serializers_at_release_time,
@@ -1584,9 +1584,9 @@ PUBLIC EMERALD_API scene_multiloader scene_multiloader_create_from_system_file_s
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API void scene_multiloader_get_loaded_scene(__in  __notnull scene_multiloader loader,
-                                                           __in            unsigned int      n_scene,
-                                                           __out __notnull scene*            out_result_scene)
+PUBLIC EMERALD_API void scene_multiloader_get_loaded_scene(scene_multiloader loader,
+                                                           unsigned int      n_scene,
+                                                           scene*            out_result_scene)
 {
     _scene_multiloader* loader_ptr = (_scene_multiloader*) loader;
 
@@ -1621,7 +1621,7 @@ PUBLIC EMERALD_API void scene_multiloader_get_loaded_scene(__in  __notnull scene
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API void scene_multiloader_load_async(__in __notnull scene_multiloader loader)
+PUBLIC EMERALD_API void scene_multiloader_load_async(scene_multiloader loader)
 {
     _scene_multiloader* instance_ptr = (_scene_multiloader*) loader;
     unsigned int        n_scenes     = 0;
@@ -1671,7 +1671,7 @@ end:
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API void scene_multiloader_release(__in __notnull __post_invalid scene_multiloader instance)
+PUBLIC EMERALD_API void scene_multiloader_release(scene_multiloader instance)
 {
     _scene_multiloader* instance_ptr = (_scene_multiloader*) instance;
 
@@ -1687,7 +1687,7 @@ PUBLIC EMERALD_API void scene_multiloader_release(__in __notnull __post_invalid 
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API void scene_multiloader_wait_until_finished(__in __notnull scene_multiloader loader)
+PUBLIC EMERALD_API void scene_multiloader_wait_until_finished(scene_multiloader loader)
 {
     _scene_multiloader* loader_ptr = (_scene_multiloader*) loader;
 

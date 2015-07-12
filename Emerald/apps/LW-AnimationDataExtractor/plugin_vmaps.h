@@ -23,14 +23,14 @@ typedef enum
 PUBLIC void DeinitVMapData();
 
 /** TODO */
-PUBLIC void GetGlobalVMapProperty(__in            _vmap_property property,
-                                  __out __notnull void*          out_result);
+PUBLIC void GetGlobalVMapProperty(_vmap_property property,
+                                  void*          out_result);
 
 /** TODO */
-PUBLIC void GetVMapProperty(__in            _vmap_property property,
-                            __in            _vmap_type     vmap_type,
-                            __in            unsigned int   n_vmap,
-                            __out __notnull void*          out_result);
+PUBLIC void GetVMapProperty(_vmap_property property,
+                            _vmap_type     vmap_type,
+                            unsigned int   n_vmap,
+                            void*          out_result);
 
 /** TODO */
 PUBLIC system_event StartVMapDataExtraction();

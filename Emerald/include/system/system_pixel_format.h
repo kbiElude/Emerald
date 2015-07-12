@@ -41,22 +41,22 @@ typedef enum
 
 
 /** TODO */
-PUBLIC EMERALD_API system_pixel_format system_pixel_format_create(__in unsigned char color_buffer_red_bits,
-                                                                  __in unsigned char color_buffer_green_bits,
-                                                                  __in unsigned char color_buffer_blue_bits,
-                                                                  __in unsigned char color_buffer_alpha_bits,
-                                                                  __in unsigned char depth_buffer_bits,
-                                                                  __in unsigned char n_samples);
+PUBLIC EMERALD_API system_pixel_format system_pixel_format_create(unsigned char color_buffer_red_bits,
+                                                                  unsigned char color_buffer_green_bits,
+                                                                  unsigned char color_buffer_blue_bits,
+                                                                  unsigned char color_buffer_alpha_bits,
+                                                                  unsigned char depth_buffer_bits,
+                                                                  unsigned char n_samples);
 
 /** TODO */
-PUBLIC system_pixel_format system_pixel_format_create_copy(__in system_pixel_format src_pf);
+PUBLIC system_pixel_format system_pixel_format_create_copy(system_pixel_format src_pf);
 
 /** TODO */
-PUBLIC void system_pixel_format_get_property(__in            system_pixel_format          pf,
-                                             __in            system_pixel_format_property property,
-                                             __out __notnull void*                        out_result);
+PUBLIC void system_pixel_format_get_property(system_pixel_format          pf,
+                                             system_pixel_format_property property,
+                                             void*                        out_result);
 
 /** TODO */
-PUBLIC EMERALD_API void system_pixel_format_release(__in __notnull system_pixel_format pf);
+PUBLIC EMERALD_API void system_pixel_format_release(system_pixel_format pf);
 
 #endif /* SYSTEM_PIXEL_FORMAT_H */

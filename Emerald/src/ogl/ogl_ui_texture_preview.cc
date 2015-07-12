@@ -124,7 +124,7 @@ static const char* ui_texture_preview_sampler2darray_type = "sampler2DArray";
 
 
 /** TODO */
-PRIVATE const char* _ogl_ui_texture_preview_get_program_name(__in ogl_ui_texture_preview_type type)
+PRIVATE const char* _ogl_ui_texture_preview_get_program_name(ogl_ui_texture_preview_type type)
 {
     const char* result = (type == OGL_UI_TEXTURE_PREVIEW_TYPE_SAMPLER2D_ALPHA) ? "UI texture preview [sampler2d alpha]" :
                          (type == OGL_UI_TEXTURE_PREVIEW_TYPE_SAMPLER2D_DEPTH) ? "UI texture preview [sampler2d depth]" :
@@ -137,8 +137,8 @@ PRIVATE const char* _ogl_ui_texture_preview_get_program_name(__in ogl_ui_texture
 }
 
 /** TODO */
-PRIVATE void _ogl_ui_texture_preview_init_program(__in __notnull ogl_ui                   ui,
-                                                  __in __notnull _ogl_ui_texture_preview* texture_preview_ptr)
+PRIVATE void _ogl_ui_texture_preview_init_program(ogl_ui                   ui,
+                                                  _ogl_ui_texture_preview* texture_preview_ptr)
 {
     /* Create all objects */
     ogl_context context         = ogl_ui_get_context(ui);
@@ -622,9 +622,9 @@ end:
 }
 
 /** Please see header for specification */
-PUBLIC void ogl_ui_texture_preview_get_property(__in  __notnull const void*              texture_preview,
-                                                __in  __notnull _ogl_ui_control_property property,
-                                                __out __notnull void*                    out_result)
+PUBLIC void ogl_ui_texture_preview_get_property(const void*              texture_preview,
+                                                _ogl_ui_control_property property,
+                                                void*                    out_result)
 {
     _ogl_ui_texture_preview* texture_preview_ptr = (_ogl_ui_texture_preview*) texture_preview;
 
@@ -721,13 +721,13 @@ PUBLIC void ogl_ui_texture_preview_get_property(__in  __notnull const void*     
 }
 
 /** Please see header for specification */
-PUBLIC void* ogl_ui_texture_preview_init(__in           __notnull ogl_ui                      instance,
-                                         __in           __notnull ogl_text                    text_renderer,
-                                         __in           __notnull system_hashed_ansi_string   name,
-                                         __in_ecount(2) __notnull const float*                x1y1,
-                                         __in_ecount(2) __notnull const float*                max_size,
-                                         __in                     ogl_texture                 to,
-                                         __in                     ogl_ui_texture_preview_type preview_type)
+PUBLIC void* ogl_ui_texture_preview_init(ogl_ui                      instance,
+                                         ogl_text                    text_renderer,
+                                         system_hashed_ansi_string   name,
+                                         const float*                x1y1,
+                                         const float*                max_size,
+                                         ogl_texture                 to,
+                                         ogl_ui_texture_preview_type preview_type)
 {
     _ogl_ui_texture_preview* new_texture_preview = new (std::nothrow) _ogl_ui_texture_preview;
 
@@ -873,9 +873,9 @@ PUBLIC void* ogl_ui_texture_preview_init(__in           __notnull ogl_ui        
 }
 
 /** Please see header for specification */
-PUBLIC void ogl_ui_texture_preview_set_property(__in __notnull void*                    texture_preview,
-                                                __in __notnull _ogl_ui_control_property property,
-                                                __in __notnull const void*              data)
+PUBLIC void ogl_ui_texture_preview_set_property(void*                    texture_preview,
+                                                _ogl_ui_control_property property,
+                                                const void*              data)
 {
     _ogl_ui_texture_preview* texture_preview_ptr = (_ogl_ui_texture_preview*) texture_preview;
 

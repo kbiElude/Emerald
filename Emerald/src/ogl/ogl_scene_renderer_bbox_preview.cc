@@ -143,7 +143,7 @@ typedef struct _ogl_scene_renderer_bbox_preview
 
 
 /** TODO */
-PRIVATE void _ogl_context_scene_renderer_bbox_preview_init_preview_program(__in __notnull _ogl_scene_renderer_bbox_preview* preview_ptr)
+PRIVATE void _ogl_context_scene_renderer_bbox_preview_init_preview_program(_ogl_scene_renderer_bbox_preview* preview_ptr)
 {
     const ogl_program_variable* model_uniform_ptr = NULL;
     const ogl_program_variable* vp_uniform_ptr    = NULL;
@@ -290,7 +290,7 @@ end:
 }
 
 /** TODO */
-PRIVATE void _ogl_context_scene_renderer_bbox_preview_init_ub_data(__in __notnull _ogl_scene_renderer_bbox_preview* preview_ptr)
+PRIVATE void _ogl_context_scene_renderer_bbox_preview_init_ub_data(_ogl_scene_renderer_bbox_preview* preview_ptr)
 {
     ogl_context_type context_type                    = OGL_CONTEXT_TYPE_UNDEFINED;
     float*           traveller_ptr                   = NULL;
@@ -432,8 +432,8 @@ end:
 }
 
 /** TODO */
-PRIVATE void _ogl_scene_renderer_bbox_preview_release_renderer_callback(__in __notnull ogl_context context,
-                                                                        __in __notnull void*       preview)
+PRIVATE void _ogl_scene_renderer_bbox_preview_release_renderer_callback(ogl_context context,
+                                                                        void*       preview)
 {
     _ogl_scene_renderer_bbox_preview* preview_ptr = (_ogl_scene_renderer_bbox_preview*) preview;
 
@@ -446,9 +446,9 @@ PRIVATE void _ogl_scene_renderer_bbox_preview_release_renderer_callback(__in __n
 }
 
 /** Please see header for spec */
-PUBLIC ogl_scene_renderer_bbox_preview ogl_scene_renderer_bbox_preview_create(__in __notnull ogl_context        context,
-                                                                              __in __notnull scene              scene,
-                                                                              __in __notnull ogl_scene_renderer owner)
+PUBLIC ogl_scene_renderer_bbox_preview ogl_scene_renderer_bbox_preview_create(ogl_context        context,
+                                                                              scene              scene,
+                                                                              ogl_scene_renderer owner)
 {
     _ogl_scene_renderer_bbox_preview* new_instance = new (std::nothrow) _ogl_scene_renderer_bbox_preview;
 
@@ -537,7 +537,7 @@ PUBLIC ogl_scene_renderer_bbox_preview ogl_scene_renderer_bbox_preview_create(__
 }
 
 /** Please see header for spec */
-PUBLIC void ogl_scene_renderer_bbox_preview_release(__in __notnull __post_invalid ogl_scene_renderer_bbox_preview preview)
+PUBLIC void ogl_scene_renderer_bbox_preview_release(ogl_scene_renderer_bbox_preview preview)
 {
     _ogl_scene_renderer_bbox_preview* preview_ptr = (_ogl_scene_renderer_bbox_preview*) preview;
 
@@ -558,8 +558,8 @@ PUBLIC void ogl_scene_renderer_bbox_preview_release(__in __notnull __post_invali
 }
 
 /** Please see header for spec */
-PUBLIC RENDERING_CONTEXT_CALL void ogl_scene_renderer_bbox_preview_render(__in __notnull ogl_scene_renderer_bbox_preview preview,
-                                                                          __in __notnull uint32_t                        mesh_id)
+PUBLIC RENDERING_CONTEXT_CALL void ogl_scene_renderer_bbox_preview_render(ogl_scene_renderer_bbox_preview preview,
+                                                                          uint32_t                        mesh_id)
 {
     system_matrix4x4                  model       = NULL;
     _ogl_scene_renderer_bbox_preview* preview_ptr = (_ogl_scene_renderer_bbox_preview*) preview;
@@ -588,8 +588,8 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_scene_renderer_bbox_preview_render(__in _
 }
 
 /** Please see header for spec */
-PUBLIC RENDERING_CONTEXT_CALL void ogl_scene_renderer_bbox_preview_start(__in __notnull ogl_scene_renderer_bbox_preview preview,
-                                                                         __in __notnull system_matrix4x4                vp)
+PUBLIC RENDERING_CONTEXT_CALL void ogl_scene_renderer_bbox_preview_start(ogl_scene_renderer_bbox_preview preview,
+                                                                         system_matrix4x4                vp)
 {
     _ogl_scene_renderer_bbox_preview* preview_ptr  = (_ogl_scene_renderer_bbox_preview*) preview;
 
@@ -634,7 +634,7 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_scene_renderer_bbox_preview_start(__in __
 }
 
 /** Please see header for spec */
-PUBLIC RENDERING_CONTEXT_CALL void ogl_scene_renderer_bbox_preview_stop(__in __notnull ogl_scene_renderer_bbox_preview preview)
+PUBLIC RENDERING_CONTEXT_CALL void ogl_scene_renderer_bbox_preview_stop(ogl_scene_renderer_bbox_preview preview)
 {
     _ogl_scene_renderer_bbox_preview* preview_ptr = (_ogl_scene_renderer_bbox_preview*) preview;
 

@@ -47,7 +47,7 @@ system_resource_pool matrix_pool = NULL;
  *
  *  @param descriptor Descriptor to use for the process.
  */
-PRIVATE void _system_matrix4x4_generate_column_major_data(__in __notnull _system_matrix4x4_descriptor* descriptor)
+PRIVATE void _system_matrix4x4_generate_column_major_data(_system_matrix4x4_descriptor* descriptor)
 {
     ASSERT_DEBUG_SYNC(descriptor->is_data_dirty,
                       "Invalid call detected");
@@ -88,9 +88,9 @@ PUBLIC EMERALD_API system_matrix4x4 system_matrix4x4_create()
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API system_matrix4x4 system_matrix4x4_create_lookat_matrix(__in_ecount(3) const float* camera_location,
-                                                                          __in_ecount(3) const float* look_at_point,
-                                                                          __in_ecount(3) const float* base_up_vector)
+PUBLIC EMERALD_API system_matrix4x4 system_matrix4x4_create_lookat_matrix(const float* camera_location,
+                                                                          const float* look_at_point,
+                                                                          const float* base_up_vector)
 {
     float                         direction_vector[3];
     system_matrix4x4              new_matrix          = system_matrix4x4_create();
@@ -250,12 +250,12 @@ PUBLIC EMERALD_API system_matrix4x4 system_matrix4x4_create_perspective_projecti
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API system_matrix4x4 system_matrix4x4_create_perspective_projection_matrix_custom(__in float left,
-                                                                                                 __in float right,
-                                                                                                 __in float bottom,
-                                                                                                 __in float top,
-                                                                                                 __in float z_near,
-                                                                                                 __in float z_far)
+PUBLIC EMERALD_API system_matrix4x4 system_matrix4x4_create_perspective_projection_matrix_custom(float left,
+                                                                                                 float right,
+                                                                                                 float bottom,
+                                                                                                 float top,
+                                                                                                 float z_near,
+                                                                                                 float z_far)
 {
     system_matrix4x4              new_matrix     = system_matrix4x4_create();
     _system_matrix4x4_descriptor* new_matrix_ptr = (_system_matrix4x4_descriptor*) new_matrix;
@@ -290,14 +290,14 @@ PUBLIC EMERALD_API system_matrix4x4 system_matrix4x4_create_perspective_projecti
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API void system_matrix4x4_release(__in __notnull __deallocate(mem) system_matrix4x4 matrix)
+PUBLIC EMERALD_API void system_matrix4x4_release(system_matrix4x4 matrix)
 {
     system_resource_pool_return_to_pool(matrix_pool,
                                         (system_resource_pool_block) matrix);
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API const float* system_matrix4x4_get_column_major_data(__in __notnull system_matrix4x4 matrix)
+PUBLIC EMERALD_API const float* system_matrix4x4_get_column_major_data(system_matrix4x4 matrix)
 {
     _system_matrix4x4_descriptor* descriptor = (_system_matrix4x4_descriptor*) matrix;
 
@@ -312,14 +312,14 @@ PUBLIC EMERALD_API const float* system_matrix4x4_get_column_major_data(__in __no
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API const float* system_matrix4x4_get_row_major_data(__in __notnull system_matrix4x4 matrix)
+PUBLIC EMERALD_API const float* system_matrix4x4_get_row_major_data(system_matrix4x4 matrix)
 {
     return ((_system_matrix4x4_descriptor*) matrix)->data;
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API system_matrix4x4 system_matrix4x4_create_by_mul(__in __notnull system_matrix4x4 mat_a,
-                                                                   __in __notnull system_matrix4x4 mat_b)
+PUBLIC EMERALD_API system_matrix4x4 system_matrix4x4_create_by_mul(system_matrix4x4 mat_a,
+                                                                   system_matrix4x4 mat_b)
 {
     system_matrix4x4              result            = system_matrix4x4_create();
     _system_matrix4x4_descriptor* mat_a_descriptor  = (_system_matrix4x4_descriptor*) mat_a;
@@ -348,7 +348,7 @@ PUBLIC EMERALD_API system_matrix4x4 system_matrix4x4_create_by_mul(__in __notnul
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API bool system_matrix4x4_invert(__in __notnull system_matrix4x4 matrix)
+PUBLIC EMERALD_API bool system_matrix4x4_invert(system_matrix4x4 matrix)
 {
     // Naive implementatino from http://www.euclideanspace.com/maths/algebra/matrix/functions/inverse/fourD/index.htm 
     float                         m[16];
@@ -497,9 +497,9 @@ PUBLIC EMERALD_API bool system_matrix4x4_invert(__in __notnull system_matrix4x4 
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API void system_matrix4x4_get_clipping_plane(__in            __notnull system_matrix4x4                mvp,
-                                                            __in                      system_matrix4x4_clipping_plane clipping_plane,
-                                                            __out_ecount(4)           float*                          out_plane_coeffs)
+PUBLIC EMERALD_API void system_matrix4x4_get_clipping_plane(system_matrix4x4                mvp,
+                                                            system_matrix4x4_clipping_plane clipping_plane,
+                                                            float*                          out_plane_coeffs)
 {
     _system_matrix4x4_descriptor* mvp_ptr = (_system_matrix4x4_descriptor*) mvp;
 
@@ -609,8 +609,8 @@ PUBLIC EMERALD_API void system_matrix4x4_get_clipping_plane(__in            __no
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API bool system_matrix4x4_is_equal(__in __notnull const system_matrix4x4 a,
-                                                  __in __notnull const system_matrix4x4 b)
+PUBLIC EMERALD_API bool system_matrix4x4_is_equal(const system_matrix4x4 a,
+                                                  const system_matrix4x4 b)
 {
     const _system_matrix4x4_descriptor* a_ptr  = (const _system_matrix4x4_descriptor*) a;
     const _system_matrix4x4_descriptor* b_ptr  = (const _system_matrix4x4_descriptor*) b;
@@ -632,10 +632,10 @@ PUBLIC EMERALD_API bool system_matrix4x4_is_equal(__in __notnull const system_ma
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API void system_matrix4x4_multiply_by_lookat(__in __notnull system_matrix4x4         matrix,
-                                                            __in __notnull __ecount(3) const float* camera_position,
-                                                            __in __notnull __ecount(3) const float* look_at_point,
-                                                            __in __notnull __ecount(3) const float* up_vector)
+PUBLIC EMERALD_API void system_matrix4x4_multiply_by_lookat(system_matrix4x4 matrix,
+                                                            const float*     camera_position,
+                                                            const float*     look_at_point,
+                                                            const float*     up_vector)
 {
     float x_vector[3];
     float y_vector[3];
@@ -715,8 +715,8 @@ PUBLIC EMERALD_API void system_matrix4x4_multiply_by_lookat(__in __notnull syste
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API void system_matrix4x4_multiply_by_matrix4x4(__in __notnull system_matrix4x4 a,
-                                                               __in __notnull system_matrix4x4 b)
+PUBLIC EMERALD_API void system_matrix4x4_multiply_by_matrix4x4(system_matrix4x4 a,
+                                                               system_matrix4x4 b)
 {
     _system_matrix4x4_descriptor* a_ptr = (_system_matrix4x4_descriptor*) a;
     _system_matrix4x4_descriptor* b_ptr = (_system_matrix4x4_descriptor*) b;
@@ -745,9 +745,9 @@ PUBLIC EMERALD_API void system_matrix4x4_multiply_by_matrix4x4(__in __notnull sy
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API void system_matrix4x4_multiply_by_vector4(__in  __notnull system_matrix4x4         matrix,
-                                                             __in  __notnull __ecount(4) const float* vector,
-                                                             __out __notnull __ecount(4) float*       result)
+PUBLIC EMERALD_API void system_matrix4x4_multiply_by_vector4(system_matrix4x4 matrix,
+                                                             const float*     vector,
+                                                             float*           result)
 {
     _system_matrix4x4_descriptor* descriptor = (_system_matrix4x4_descriptor*) matrix;
 
@@ -773,9 +773,9 @@ PUBLIC EMERALD_API void system_matrix4x4_multiply_by_vector4(__in  __notnull sys
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API void system_matrix4x4_multiply_by_vector3(__in  __notnull system_matrix4x4         matrix,
-                                                             __in  __notnull __ecount(3) const float* vector,
-                                                             __out __notnull __ecount(4) float*       result)
+PUBLIC EMERALD_API void system_matrix4x4_multiply_by_vector3(system_matrix4x4 matrix,
+                                                             const float*     vector,
+                                                             float*           result)
 {
     _system_matrix4x4_descriptor* descriptor = (_system_matrix4x4_descriptor*) matrix;
 
@@ -794,9 +794,9 @@ PUBLIC EMERALD_API void system_matrix4x4_multiply_by_vector3(__in  __notnull sys
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API void system_matrix4x4_rotate(__in __notnull             system_matrix4x4 matrix,
-                                                __in                       float            angle,
-                                                __in __notnull __ecount(3) const float*     xyz)
+PUBLIC EMERALD_API void system_matrix4x4_rotate(system_matrix4x4 matrix,
+                                                float            angle,
+                                                const float*     xyz)
 {
     system_matrix4x4              rotation_matrix            = system_matrix4x4_create();
     _system_matrix4x4_descriptor* rotation_matrix_descriptor = (_system_matrix4x4_descriptor*) rotation_matrix;
@@ -865,8 +865,8 @@ PUBLIC EMERALD_API void system_matrix4x4_rotate(__in __notnull             syste
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API void system_matrix4x4_scale(__in __notnull             system_matrix4x4 matrix,
-                                               __in __notnull __ecount(3) const float*     xyz)
+PUBLIC EMERALD_API void system_matrix4x4_scale(system_matrix4x4 matrix,
+                                               const float*     xyz)
 {
     system_matrix4x4              scale_matrix            = system_matrix4x4_create();
     _system_matrix4x4_descriptor* scale_matrix_descriptor = (_system_matrix4x4_descriptor*) scale_matrix;
@@ -893,8 +893,8 @@ PUBLIC EMERALD_API void system_matrix4x4_scale(__in __notnull             system
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API void system_matrix4x4_set_to_float(__in __notnull system_matrix4x4 matrix,
-                                                      __in           float            value)
+PUBLIC EMERALD_API void system_matrix4x4_set_to_float(system_matrix4x4 matrix,
+                                                      float            value)
 {
     _system_matrix4x4_descriptor* matrix_ptr = (_system_matrix4x4_descriptor*) matrix;
 
@@ -911,7 +911,7 @@ PUBLIC EMERALD_API void system_matrix4x4_set_to_float(__in __notnull system_matr
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API void system_matrix4x4_set_to_identity(__in __notnull system_matrix4x4 matrix)
+PUBLIC EMERALD_API void system_matrix4x4_set_to_identity(system_matrix4x4 matrix)
 {
     _system_matrix4x4_descriptor* matrix_descriptor = (_system_matrix4x4_descriptor*) matrix;
 
@@ -940,9 +940,9 @@ PUBLIC EMERALD_API void system_matrix4x4_set_to_identity(__in __notnull system_m
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API void system_matrix4x4_set_element(__in __notnull system_matrix4x4 matrix,
-                                                     __in           unsigned char    location_data,
-                                                     __in           float            value)
+PUBLIC EMERALD_API void system_matrix4x4_set_element(system_matrix4x4 matrix,
+                                                     unsigned char    location_data,
+                                                     float            value)
 {
     _system_matrix4x4_descriptor* matrix_descriptor = (_system_matrix4x4_descriptor*) matrix;
 
@@ -955,8 +955,8 @@ PUBLIC EMERALD_API void system_matrix4x4_set_element(__in __notnull system_matri
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API void system_matrix4x4_set_from_column_major_raw(__in __notnull              system_matrix4x4 matrix,
-                                                                   __in __notnull __ecount(16) const float*     data)
+PUBLIC EMERALD_API void system_matrix4x4_set_from_column_major_raw(system_matrix4x4 matrix,
+                                                                   const float*     data)
 {
     _system_matrix4x4_descriptor* matrix_descriptor = (_system_matrix4x4_descriptor*) matrix;
     
@@ -969,8 +969,8 @@ PUBLIC EMERALD_API void system_matrix4x4_set_from_column_major_raw(__in __notnul
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API void system_matrix4x4_set_from_row_major_raw(__in __notnull              system_matrix4x4 matrix,
-                                                                __in __notnull __ecount(16) const float*     data)
+PUBLIC EMERALD_API void system_matrix4x4_set_from_row_major_raw(system_matrix4x4 matrix,
+                                                                const float*     data)
 {
     _system_matrix4x4_descriptor* matrix_descriptor = (_system_matrix4x4_descriptor*) matrix;
 
@@ -982,8 +982,8 @@ PUBLIC EMERALD_API void system_matrix4x4_set_from_row_major_raw(__in __notnull  
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API void system_matrix4x4_set_from_matrix4x4(__in __notnull system_matrix4x4 dst_matrix,
-                                                            __in __notnull system_matrix4x4 src_matrix)
+PUBLIC EMERALD_API void system_matrix4x4_set_from_matrix4x4(system_matrix4x4 dst_matrix,
+                                                            system_matrix4x4 src_matrix)
 {
     _system_matrix4x4_descriptor* dst_matrix_descriptor = (_system_matrix4x4_descriptor*) dst_matrix;
     _system_matrix4x4_descriptor* src_matrix_descriptor = (_system_matrix4x4_descriptor*) src_matrix;
@@ -994,8 +994,8 @@ PUBLIC EMERALD_API void system_matrix4x4_set_from_matrix4x4(__in __notnull syste
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API void system_matrix4x4_translate(__in __notnull             system_matrix4x4 matrix,
-                                                   __in __notnull __ecount(3) const float*     xyz)
+PUBLIC EMERALD_API void system_matrix4x4_translate(system_matrix4x4 matrix,
+                                                   const float*     xyz)
 {
     system_matrix4x4              result_matrix                 = NULL;
     system_matrix4x4              translation_matrix            = system_matrix4x4_create();
@@ -1024,7 +1024,7 @@ PUBLIC EMERALD_API void system_matrix4x4_translate(__in __notnull             sy
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API void system_matrix4x4_transpose(__in __notnull system_matrix4x4 matrix)
+PUBLIC EMERALD_API void system_matrix4x4_transpose(system_matrix4x4 matrix)
 {
     _system_matrix4x4_descriptor* matrix_descriptor = (_system_matrix4x4_descriptor*) matrix;
     float                         data[16];

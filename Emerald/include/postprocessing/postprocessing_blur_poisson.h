@@ -21,16 +21,16 @@ REFCOUNT_INSERT_DECLARATIONS(postprocessing_blur_poisson, postprocessing_blur_po
 /** TODO.
  *
  *  @param custom_shader_code Only used if bluriness_source is POSTPROCESSING_BLUR_POISSON_BLUR_BLURRINESS_SOURCE_CUSTOM */
-PUBLIC EMERALD_API postprocessing_blur_poisson postprocessing_blur_poisson_create(__in __notnull ogl_context                                       context,
-                                                                                  __in __notnull system_hashed_ansi_string                         name,
-                                                                                  __in           postprocessing_blur_poisson_blur_bluriness_source bluriness_source,
-                                                                                  __in           const char*                                       custom_shader_code = NULL);
+PUBLIC EMERALD_API postprocessing_blur_poisson postprocessing_blur_poisson_create(ogl_context                                       context,
+                                                                                  system_hashed_ansi_string                         name,
+                                                                                  postprocessing_blur_poisson_blur_bluriness_source bluriness_source,
+                                                                                  const char*                                       custom_shader_code = NULL);
 
 /** TODO */
-PUBLIC EMERALD_API void postprocessing_blur_poisson_execute(__in __notnull postprocessing_blur_poisson blur_poisson,
-                                                            __in __notnull ogl_texture                 input_texture,
-                                                            __in           float                       blur_strength,
-                                                            __in __notnull ogl_texture                 result_texture);
+PUBLIC EMERALD_API void postprocessing_blur_poisson_execute(postprocessing_blur_poisson blur_poisson,
+                                                            ogl_texture                 input_texture,
+                                                            float                       blur_strength,
+                                                            ogl_texture                 result_texture);
 
 /** TODO */
 PUBLIC EMERALD_API const char* postprocessing_blur_poisson_get_tap_data_shader_code();

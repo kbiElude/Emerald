@@ -13,8 +13,8 @@
 #ifdef _WIN32
 
 /* TODO */
-PUBLIC EMERALD_API void* system_resources_get_exe_resource(__in int resource_id,
-                                                           __in int resource_type);
+PUBLIC EMERALD_API void* system_resources_get_exe_resource(int resource_id,
+                                                           int resource_type);
 
 #endif
 

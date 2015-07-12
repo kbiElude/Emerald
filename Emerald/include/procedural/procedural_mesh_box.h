@@ -54,15 +54,15 @@ typedef enum
 /** TODO.
  *
  **/
-PUBLIC EMERALD_API procedural_mesh_box procedural_mesh_box_create(__in __notnull ogl_context,
-                                                                  __in           _procedural_mesh_data_bitmask,
-                                                                  __in __notnull uint32_t, /* number of horizontal patches per plane */
-                                                                  __in __notnull uint32_t, /* number of vertical patches per plane */
-                                                                  __in __notnull system_hashed_ansi_string);
+PUBLIC EMERALD_API procedural_mesh_box procedural_mesh_box_create(ogl_context,
+                                                                  _procedural_mesh_data_bitmask,
+                                                                  uint32_t, /* number of horizontal patches per plane */
+                                                                  uint32_t, /* number of vertical patches per plane */
+                                                                  system_hashed_ansi_string);
 
 /** TODO */
-PUBLIC EMERALD_API void procedural_mesh_box_get_property(__in  __notnull procedural_mesh_box          box,
-                                                         __in            procedural_mesh_box_property property,
-                                                         __out __notnull void*                        out_result);
+PUBLIC EMERALD_API void procedural_mesh_box_get_property(procedural_mesh_box          box,
+                                                         procedural_mesh_box_property property,
+                                                         void*                        out_result);
 
 #endif /* PROCEDURAL_MESH_BOX_H */

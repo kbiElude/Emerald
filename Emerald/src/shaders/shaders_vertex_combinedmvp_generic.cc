@@ -31,7 +31,7 @@ REFCOUNT_INSERT_IMPLEMENTATION(shaders_vertex_combinedmvp_generic,
  *
  *  @param ptr Pointer to _shaders_vertex_combinedmvp_generic instance.
  **/
-PRIVATE void _shaders_vertex_combinedmvp_generic_release(__in __notnull __deallocate(mem) void* ptr)
+PRIVATE void _shaders_vertex_combinedmvp_generic_release(void* ptr)
 {
     _shaders_vertex_combinedmvp_generic* data_ptr = (_shaders_vertex_combinedmvp_generic*) ptr;
 
@@ -45,8 +45,8 @@ PRIVATE void _shaders_vertex_combinedmvp_generic_release(__in __notnull __deallo
 
 
 /** Please see header for specification */
-PUBLIC EMERALD_API shaders_vertex_combinedmvp_generic shaders_vertex_combinedmvp_generic_create(__in __notnull ogl_context               context,
-                                                                                                __in __notnull system_hashed_ansi_string name)
+PUBLIC EMERALD_API shaders_vertex_combinedmvp_generic shaders_vertex_combinedmvp_generic_create(ogl_context               context,
+                                                                                                system_hashed_ansi_string name)
 {
     bool                                 result        = false;
     _shaders_vertex_combinedmvp_generic* result_object = NULL;
@@ -151,7 +151,7 @@ end:
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API ogl_shader shaders_vertex_combinedmvp_generic_get_shader(__in __notnull shaders_vertex_combinedmvp_generic shader)
+PUBLIC EMERALD_API ogl_shader shaders_vertex_combinedmvp_generic_get_shader(shaders_vertex_combinedmvp_generic shader)
 {
     return ((_shaders_vertex_combinedmvp_generic*)shader)->vertex_shader;
 }

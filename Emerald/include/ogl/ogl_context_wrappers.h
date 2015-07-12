@@ -1377,6 +1377,6 @@ PUBLIC void APIENTRY ogl_context_wrappers_glViewport(GLint   x,
 
 
 /** TODO */
-PUBLIC void ogl_context_wrappers_set_private_functions(__in __maybenull ogl_context_gl_entrypoints_private*);
+PUBLIC void ogl_context_wrappers_set_private_functions(ogl_context_gl_entrypoints_private*);
 
 #endif /* OGL_CONTEXT_WRAPPERS_H */

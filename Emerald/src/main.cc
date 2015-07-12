@@ -181,7 +181,7 @@ int main_deinit()
 
 #ifdef _WIN32
     /** Please see header for specification */
-    EMERALD_API BOOL WINAPI DllMain(__in HINSTANCE instance, __in DWORD reason,__in LPVOID reserved)
+    EMERALD_API BOOL WINAPI DllMain(HINSTANCE instance,  DWORD reason, LPVOID reserved)
     {
         switch (reason)
         {

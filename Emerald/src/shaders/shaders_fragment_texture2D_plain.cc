@@ -57,7 +57,7 @@ REFCOUNT_INSERT_IMPLEMENTATION(shaders_fragment_texture2D_plain,
  *
  *  @param ptr Pointer to _shaders_fragment_static instance.
  **/
-PRIVATE void _shaders_fragment_texture2D_plain_release(__in __notnull __deallocate(mem) void* ptr)
+PRIVATE void _shaders_fragment_texture2D_plain_release(void* ptr)
 {
     _shaders_fragment_texture2D_plain* data_ptr = (_shaders_fragment_texture2D_plain*) ptr;
 
@@ -71,9 +71,9 @@ PRIVATE void _shaders_fragment_texture2D_plain_release(__in __notnull __dealloca
 
 
 /** Please see header for specification */
-PUBLIC EMERALD_API shaders_fragment_texture2D_plain shaders_fragment_texture2D_plain_create(__in __notnull ogl_context               context,
-                                                                                            __in           bool                      should_revert_y,
-                                                                                            __in __notnull system_hashed_ansi_string name)
+PUBLIC EMERALD_API shaders_fragment_texture2D_plain shaders_fragment_texture2D_plain_create(ogl_context               context,
+                                                                                            bool                      should_revert_y,
+                                                                                            system_hashed_ansi_string name)
 {
     _shaders_fragment_texture2D_plain* result_object = NULL;
     shaders_fragment_texture2D_plain   result_shader = NULL;
@@ -149,7 +149,7 @@ end:
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API ogl_shader shaders_fragment_texture2D_plain_get_shader(__in __notnull shaders_fragment_texture2D_plain shader)
+PUBLIC EMERALD_API ogl_shader shaders_fragment_texture2D_plain_get_shader(shaders_fragment_texture2D_plain shader)
 {
     return (((_shaders_fragment_texture2D_plain*)shader)->shader);
 }

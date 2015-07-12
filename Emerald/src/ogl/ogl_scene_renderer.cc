@@ -32,34 +32,34 @@
 #include <float.h>
 
 /* Forward declarations */
-PRIVATE void _ogl_scene_renderer_deinit_cached_ubers_map_contents         (__in            __notnull system_hash64map                cached_materials_map);
-PRIVATE void _ogl_scene_renderer_deinit_resizable_vector_for_resource_pool(                          system_resource_pool_block);
-PRIVATE void _ogl_scene_renderer_get_light_color                          (__in            __notnull scene_light                     light,
-                                                                           __in                      system_time                     time,
-                                                                           __in            __notnull system_variant                  temp_float_variant,
-                                                                           __out_ecount(3) __notnull float*                          out_color);
-PRIVATE void _ogl_scene_renderer_get_ogl_uber_for_render_mode             (__in                      _ogl_scene_renderer_render_mode render_mode,
-                                                                           __in            __notnull ogl_materials                   context_materials,
-                                                                           __in            __notnull scene                           scene,
-                                                                           __out           __notnull ogl_uber*                       result_uber_ptr);
-PRIVATE void _ogl_scene_renderer_init_resizable_vector_for_resource_pool  (                          system_resource_pool_block);
-PRIVATE void _ogl_scene_renderer_on_camera_show_frustum_setting_changed   (                          const void*                     unused,
-                                                                                                           void*                     scene_renderer);
-PRIVATE void _ogl_scene_renderer_on_ubers_map_invalidated                 (                          const void*                     unused,
-                                                                                                           void*                     scene_renderer);
-PRIVATE void _ogl_scene_renderer_process_mesh_for_forward_rendering       (                __notnull scene_mesh                      scene_mesh_instance,
-                                                                           __in                      void*                           renderer);
-PRIVATE void _ogl_scene_renderer_process_mesh_for_shadow_map_rendering    (                __notnull scene_mesh                      scene_mesh_instance,
-                                                                           __in                      void*                           renderer);
-PRIVATE void _ogl_scene_renderer_process_mesh_for_shadow_map_pre_pass     (                __notnull scene_mesh                      scene_mesh_instance,
-                                                                           __in                      void*                           renderer);
-PRIVATE void _ogl_scene_renderer_return_shadow_maps_to_pool               (__in            __notnull ogl_scene_renderer              renderer);
-PRIVATE void _ogl_scene_renderer_update_frustum_preview_assigned_cameras  (__in            __notnull struct _ogl_scene_renderer*     renderer_ptr);
-PRIVATE void _ogl_scene_renderer_update_ogl_uber_light_properties         (__in            __notnull ogl_uber                        material_uber,
-                                                                           __in            __notnull scene                           scene,
-                                                                           __in            __notnull system_matrix4x4                current_camera_view_matrix,
-                                                                           __in                      system_time            frame_time,
-                                                                           __in            __notnull system_variant                  temp_variant_float);
+PRIVATE void _ogl_scene_renderer_deinit_cached_ubers_map_contents         (system_hash64map                cached_materials_map);
+PRIVATE void _ogl_scene_renderer_deinit_resizable_vector_for_resource_pool(system_resource_pool_block);
+PRIVATE void _ogl_scene_renderer_get_light_color                          (scene_light                     light,
+                                                                           system_time                     time,
+                                                                           system_variant                  temp_float_variant,
+                                                                           float*                          out_color);
+PRIVATE void _ogl_scene_renderer_get_ogl_uber_for_render_mode             (_ogl_scene_renderer_render_mode render_mode,
+                                                                           ogl_materials                   context_materials,
+                                                                           scene                           scene,
+                                                                           ogl_uber*                       result_uber_ptr);
+PRIVATE void _ogl_scene_renderer_init_resizable_vector_for_resource_pool  (system_resource_pool_block);
+PRIVATE void _ogl_scene_renderer_on_camera_show_frustum_setting_changed   (const void*                     unused,
+                                                                                 void*                     scene_renderer);
+PRIVATE void _ogl_scene_renderer_on_ubers_map_invalidated                 (const void*                     unused,
+                                                                                 void*                     scene_renderer);
+PRIVATE void _ogl_scene_renderer_process_mesh_for_forward_rendering       (scene_mesh                      scene_mesh_instance,
+                                                                           void*                           renderer);
+PRIVATE void _ogl_scene_renderer_process_mesh_for_shadow_map_rendering    (scene_mesh                      scene_mesh_instance,
+                                                                           void*                           renderer);
+PRIVATE void _ogl_scene_renderer_process_mesh_for_shadow_map_pre_pass     (scene_mesh                      scene_mesh_instance,
+                                                                           void*                           renderer);
+PRIVATE void _ogl_scene_renderer_return_shadow_maps_to_pool               (ogl_scene_renderer              renderer);
+PRIVATE void _ogl_scene_renderer_update_frustum_preview_assigned_cameras  (struct _ogl_scene_renderer*     renderer_ptr);
+PRIVATE void _ogl_scene_renderer_update_ogl_uber_light_properties         (ogl_uber                        material_uber,
+                                                                           scene                           scene,
+                                                                           system_matrix4x4                current_camera_view_matrix,
+                                                                           system_time                     frame_time,
+                                                                           system_variant                  temp_variant_float);
 
 
 /* Private type definitions */
@@ -278,7 +278,7 @@ typedef struct _ogl_scene_renderer
 } _ogl_scene_renderer;
 
 /* TODO */
-PRIVATE void _ogl_scene_renderer_deinit_cached_ubers_map_contents(__in __notnull system_hash64map ubers_map)
+PRIVATE void _ogl_scene_renderer_deinit_cached_ubers_map_contents(system_hash64map ubers_map)
 {
     system_hash64             ogl_uber_hash = 0;
     _ogl_scene_renderer_uber* uber_ptr     = NULL;
@@ -309,10 +309,10 @@ PRIVATE void _ogl_scene_renderer_deinit_resizable_vector_for_resource_pool(syste
 }
 
 /** TODO */
-PRIVATE void _ogl_scene_renderer_get_light_color(__in            __notnull scene_light    light,
-                                                 __in                      system_time    time,
-                                                 __in            __notnull system_variant temp_float_variant,
-                                                 __out_ecount(3) __notnull float*         out_color)
+PRIVATE void _ogl_scene_renderer_get_light_color(scene_light    light,
+                                                 system_time    time,
+                                                 system_variant temp_float_variant,
+                                                 float*         out_color)
 {
     curve_container  light_color_curves      [3];
     curve_container  light_color_intensity_curve;
@@ -353,10 +353,10 @@ PRIVATE void _ogl_scene_renderer_get_light_color(__in            __notnull scene
 }
 
 /** TODO */
-PRIVATE void _ogl_scene_renderer_get_ogl_uber_for_render_mode(__in            _ogl_scene_renderer_render_mode render_mode,
-                                                              __in  __notnull ogl_materials                   context_materials,
-                                                              __in  __notnull scene                           scene,
-                                                              __out __notnull ogl_uber*                       result_uber_ptr)
+PRIVATE void _ogl_scene_renderer_get_ogl_uber_for_render_mode(_ogl_scene_renderer_render_mode render_mode,
+                                                              ogl_materials                   context_materials,
+                                                              scene                           scene,
+                                                              ogl_uber*                       result_uber_ptr)
 {
     switch (render_mode)
     {
@@ -442,8 +442,8 @@ PRIVATE void _ogl_scene_renderer_on_ubers_map_invalidated(const void* unused,
 }
 
 /** TODO */
-PRIVATE void _ogl_scene_renderer_process_mesh_for_forward_rendering(__notnull scene_mesh scene_mesh_instance,
-                                                                    __in      void*      renderer)
+PRIVATE void _ogl_scene_renderer_process_mesh_for_forward_rendering(scene_mesh scene_mesh_instance,
+                                                                    void*      renderer)
 {
     bool                    is_shadow_receiver            = false;
     _ogl_scene_renderer*    renderer_ptr                  = (_ogl_scene_renderer*) renderer;
@@ -601,7 +601,7 @@ end:
 }
 
 /** TODO */
-PRIVATE void _ogl_scene_renderer_return_shadow_maps_to_pool(__in __notnull ogl_scene_renderer renderer)
+PRIVATE void _ogl_scene_renderer_return_shadow_maps_to_pool(ogl_scene_renderer renderer)
 {
     uint32_t             n_lights       = 0;
     _ogl_scene_renderer* renderer_ptr   = (_ogl_scene_renderer*) renderer;
@@ -655,7 +655,7 @@ PRIVATE void _ogl_scene_renderer_return_shadow_maps_to_pool(__in __notnull ogl_s
 }
 
 /** TODO */
-PRIVATE void _ogl_scene_renderer_update_frustum_preview_assigned_cameras(__in __notnull _ogl_scene_renderer* renderer_ptr)
+PRIVATE void _ogl_scene_renderer_update_frustum_preview_assigned_cameras(_ogl_scene_renderer* renderer_ptr)
 {
     /* This function may be called via a call-back. Make sure the frustum preview handler is instantiated
      * before carrying on.
@@ -718,11 +718,11 @@ PRIVATE void _ogl_scene_renderer_update_frustum_preview_assigned_cameras(__in __
 }
 
 /** TODO */
-PRIVATE void _ogl_scene_renderer_update_ogl_uber_light_properties(__in __notnull ogl_uber         material_uber,
-                                                                  __in __notnull scene            scene,
-                                                                  __in __notnull system_matrix4x4 current_camera_view_matrix,
-                                                                  __in           system_time      frame_time,
-                                                                  __in __notnull system_variant   temp_variant_float)
+PRIVATE void _ogl_scene_renderer_update_ogl_uber_light_properties(ogl_uber         material_uber,
+                                                                  scene            scene,
+                                                                  system_matrix4x4 current_camera_view_matrix,
+                                                                  system_time      frame_time,
+                                                                  system_variant   temp_variant_float)
 {
     unsigned int n_scene_lights = 0;
     unsigned int n_uber_items   = 0;
@@ -1051,7 +1051,7 @@ PRIVATE void _ogl_scene_renderer_update_ogl_uber_light_properties(__in __notnull
 
 
 /** Please see header for specification */
-PUBLIC EMERALD_API void ogl_scene_renderer_bake_gpu_assets(__in __notnull ogl_scene_renderer renderer)
+PUBLIC EMERALD_API void ogl_scene_renderer_bake_gpu_assets(ogl_scene_renderer renderer)
 {
     ogl_materials        context_materials = NULL;
     _ogl_scene_renderer* renderer_ptr      = (_ogl_scene_renderer*) renderer;
@@ -1127,8 +1127,8 @@ PUBLIC EMERALD_API void ogl_scene_renderer_bake_gpu_assets(__in __notnull ogl_sc
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API ogl_scene_renderer ogl_scene_renderer_create(__in __notnull ogl_context context,
-                                                                __in __notnull scene       scene)
+PUBLIC EMERALD_API ogl_scene_renderer ogl_scene_renderer_create(ogl_context context,
+                                                                scene       scene)
 {
     _ogl_scene_renderer* scene_renderer_ptr = new (std::nothrow) _ogl_scene_renderer;
 
@@ -1260,10 +1260,10 @@ PUBLIC EMERALD_API ogl_scene_renderer ogl_scene_renderer_create(__in __notnull o
 }
 
 /** Please see header for specification */
-PUBLIC bool ogl_scene_renderer_cull_against_frustum(__in __notnull ogl_scene_renderer                           renderer,
-                                                    __in __notnull mesh                                         mesh_gpu,
-                                                    __in           _ogl_scene_renderer_frustum_culling_behavior behavior,
-                                                    __in __notnull const void*                                  behavior_data)
+PUBLIC bool ogl_scene_renderer_cull_against_frustum(ogl_scene_renderer                           renderer,
+                                                    mesh                                         mesh_gpu,
+                                                    _ogl_scene_renderer_frustum_culling_behavior behavior,
+                                                    const void*                                  behavior_data)
 {
     _ogl_scene_renderer* renderer_ptr = (_ogl_scene_renderer*) renderer;
     bool                 result       = true;
@@ -1536,10 +1536,10 @@ end:
 }
 
 /** Please see header for specification */
-PUBLIC void ogl_scene_renderer_get_indexed_property(__in  __notnull const ogl_scene_renderer    renderer,
-                                                    __in            ogl_scene_renderer_property property,
-                                                    __in            uint32_t                    index,
-                                                    __out __notnull void*                       out_result)
+PUBLIC void ogl_scene_renderer_get_indexed_property(const ogl_scene_renderer    renderer,
+                                                    ogl_scene_renderer_property property,
+                                                    uint32_t                    index,
+                                                    void*                       out_result)
 {
     const _ogl_scene_renderer* renderer_ptr = (const _ogl_scene_renderer*) renderer;
 
@@ -1614,9 +1614,9 @@ PUBLIC void ogl_scene_renderer_get_indexed_property(__in  __notnull const ogl_sc
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API void ogl_scene_renderer_get_property(__in  __notnull ogl_scene_renderer          renderer,
-                                                        __in            ogl_scene_renderer_property property,
-                                                        __out __notnull void*                       out_result)
+PUBLIC EMERALD_API void ogl_scene_renderer_get_property(ogl_scene_renderer          renderer,
+                                                        ogl_scene_renderer_property property,
+                                                        void*                       out_result)
 {
     _ogl_scene_renderer* renderer_ptr = (_ogl_scene_renderer*) renderer;
 
@@ -1679,14 +1679,14 @@ PUBLIC EMERALD_API void ogl_scene_renderer_get_property(__in  __notnull ogl_scen
 }
 
 /** Please see header for specification */
-PUBLIC RENDERING_CONTEXT_CALL void ogl_scene_renderer_render_scene_graph(__in           __notnull ogl_scene_renderer                       renderer,
-                                                                         __in           __notnull system_matrix4x4                         view,
-                                                                         __in           __notnull system_matrix4x4                         projection,
-                                                                         __in           __notnull scene_camera                             camera,
-                                                                         __in                     const _ogl_scene_renderer_render_mode&   render_mode,
-                                                                         __in                     bool                                     apply_shadow_mapping,
-                                                                         __in           __notnull _ogl_scene_renderer_helper_visualization helper_visualization,
-                                                                         __in                     system_time                              frame_time)
+PUBLIC RENDERING_CONTEXT_CALL void ogl_scene_renderer_render_scene_graph(ogl_scene_renderer                       renderer,
+                                                                         system_matrix4x4                         view,
+                                                                         system_matrix4x4                         projection,
+                                                                         scene_camera                             camera,
+                                                                         const _ogl_scene_renderer_render_mode&   render_mode,
+                                                                         bool                                     apply_shadow_mapping,
+                                                                         _ogl_scene_renderer_helper_visualization helper_visualization,
+                                                                         system_time                              frame_time)
 {
     _ogl_scene_renderer*              renderer_ptr       = (_ogl_scene_renderer*) renderer;
     float                             camera_location[4];
@@ -2251,7 +2251,7 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_scene_renderer_render_scene_graph(__in   
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API void ogl_scene_renderer_release(__in __notnull ogl_scene_renderer scene_renderer)
+PUBLIC EMERALD_API void ogl_scene_renderer_release(ogl_scene_renderer scene_renderer)
 {
     if (scene_renderer != NULL)
     {
@@ -2262,9 +2262,9 @@ PUBLIC EMERALD_API void ogl_scene_renderer_release(__in __notnull ogl_scene_rend
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API void ogl_scene_renderer_set_property(__in __notnull ogl_scene_renderer          renderer,
-                                                        __in           ogl_scene_renderer_property property,
-                                                        __in __notnull const void*                 data)
+PUBLIC EMERALD_API void ogl_scene_renderer_set_property(ogl_scene_renderer          renderer,
+                                                        ogl_scene_renderer_property property,
+                                                        const void*                 data)
 {
     _ogl_scene_renderer* renderer_ptr = (_ogl_scene_renderer*) renderer;
 
@@ -2297,8 +2297,8 @@ PUBLIC EMERALD_API void ogl_scene_renderer_set_property(__in __notnull ogl_scene
 }
 
 /** Please see header for specification */
-PUBLIC void ogl_scene_renderer_update_current_model_matrix(__in __notnull system_matrix4x4 transformation_matrix,
-                                                           __in __notnull void*            renderer)
+PUBLIC void ogl_scene_renderer_update_current_model_matrix(system_matrix4x4 transformation_matrix,
+                                                           void*            renderer)
 {
     _ogl_scene_renderer* renderer_ptr = (_ogl_scene_renderer*) renderer;
 
@@ -2307,8 +2307,8 @@ PUBLIC void ogl_scene_renderer_update_current_model_matrix(__in __notnull system
 }
 
 /** Please see header for specification */
-PUBLIC  void ogl_scene_renderer_update_light_properties(__in __notnull scene_light light,
-                                                        __in           void*       renderer)
+PUBLIC  void ogl_scene_renderer_update_light_properties(scene_light light,
+                                                        void*       renderer)
 {
     _ogl_scene_renderer* renderer_ptr = (_ogl_scene_renderer*) renderer;
 

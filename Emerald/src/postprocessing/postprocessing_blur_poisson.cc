@@ -98,15 +98,15 @@ REFCOUNT_INSERT_IMPLEMENTATION(postprocessing_blur_poisson,
 
 /* Forward declarations */
 #ifdef _DEBUG
-    PRIVATE void _postprocessing_blur_poisson_verify_context_type(__in __notnull ogl_context);
+    PRIVATE void _postprocessing_blur_poisson_verify_context_type(ogl_context);
 #else
     #define _postprocessing_blur_poisson_verify_context_type(x)
 #endif
 
 
 /** TODO */
-PUBLIC void _postprocessing_blur_poisson_init_renderer_callback(__in __notnull ogl_context context,
-                                                                __in           void*       instance)
+PUBLIC void _postprocessing_blur_poisson_init_renderer_callback(ogl_context context,
+                                                                void*       instance)
 {
     _postprocessing_blur_poisson* poisson_ptr     = (_postprocessing_blur_poisson*) instance;
     ogl_shader                    fragment_shader = NULL;
@@ -193,7 +193,7 @@ PUBLIC void _postprocessing_blur_poisson_init_renderer_callback(__in __notnull o
 }
 
 /** TODO */
-PRIVATE void _postprocessing_blur_poisson_release(__in __notnull __deallocate(mem) void* ptr)
+PRIVATE void _postprocessing_blur_poisson_release(void* ptr)
 {
     _postprocessing_blur_poisson* data_ptr = (_postprocessing_blur_poisson*) ptr;
 
@@ -203,7 +203,7 @@ PRIVATE void _postprocessing_blur_poisson_release(__in __notnull __deallocate(me
 /** TODO */
 #ifdef _DEBUG
     /* TODO */
-    PRIVATE void _postprocessing_blur_poisson_verify_context_type(__in __notnull ogl_context context)
+    PRIVATE void _postprocessing_blur_poisson_verify_context_type(ogl_context context)
     {
         ogl_context_type context_type = OGL_CONTEXT_TYPE_UNDEFINED;
 
@@ -218,10 +218,10 @@ PRIVATE void _postprocessing_blur_poisson_release(__in __notnull __deallocate(me
 
 
 /** Please see header for specification */
-PUBLIC EMERALD_API postprocessing_blur_poisson postprocessing_blur_poisson_create(__in __notnull ogl_context                                       context,
-                                                                                  __in __notnull system_hashed_ansi_string                         name,
-                                                                                  __in           postprocessing_blur_poisson_blur_bluriness_source bluriness_source,
-                                                                                  __in           const char*                                       custom_shader_code)
+PUBLIC EMERALD_API postprocessing_blur_poisson postprocessing_blur_poisson_create(ogl_context                                       context,
+                                                                                  system_hashed_ansi_string                         name,
+                                                                                  postprocessing_blur_poisson_blur_bluriness_source bluriness_source,
+                                                                                  const char*                                       custom_shader_code)
 {
     _postprocessing_blur_poisson_verify_context_type(context);
 
@@ -272,10 +272,10 @@ end:
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API void postprocessing_blur_poisson_execute(__in __notnull postprocessing_blur_poisson blur_poisson,
-                                                            __in __notnull ogl_texture                 input_texture,
-                                                            __in           float                       blur_strength,
-                                                            __in __notnull ogl_texture                 result_texture)
+PUBLIC EMERALD_API void postprocessing_blur_poisson_execute(postprocessing_blur_poisson blur_poisson,
+                                                            ogl_texture                 input_texture,
+                                                            float                       blur_strength,
+                                                            ogl_texture                 result_texture)
 {
     _postprocessing_blur_poisson*                             poisson_ptr     = (_postprocessing_blur_poisson*) blur_poisson;
     const ogl_context_gl_entrypoints_ext_direct_state_access* dsa_entrypoints = NULL;

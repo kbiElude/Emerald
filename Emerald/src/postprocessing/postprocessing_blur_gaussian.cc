@@ -145,10 +145,10 @@ typedef struct _postprocessing_blur_gaussian
     GLuint       other_data_bo_id;           /* owned by ogl_buffers - do NOT release */
     unsigned int other_data_bo_start_offset;
 
-    _postprocessing_blur_gaussian(__in __notnull ogl_context               in_context,
-                                  __in           unsigned int              in_n_min_taps,
-                                  __in           unsigned int              in_n_max_taps,
-                                  __in __notnull system_hashed_ansi_string in_name)
+    _postprocessing_blur_gaussian(ogl_context               in_context,
+                                  unsigned int              in_n_min_taps,
+                                  unsigned int              in_n_max_taps,
+                                  system_hashed_ansi_string in_name)
     {
         ASSERT_DEBUG_SYNC(in_n_min_taps <= in_n_max_taps,
                           "Invalid min/max tap argument values");
@@ -221,8 +221,8 @@ REFCOUNT_INSERT_IMPLEMENTATION(postprocessing_blur_gaussian,
 
 
 /** TODO */
-PRIVATE void _postprocessing_blur_gaussian_deinit_rendering_thread_callback(__in __notnull ogl_context context,
-                                                                            __in __notnull void*       user_arg)
+PRIVATE void _postprocessing_blur_gaussian_deinit_rendering_thread_callback(ogl_context context,
+                                                                            void*       user_arg)
 {
     const ogl_context_gl_entrypoints* entrypoints_ptr = NULL;
     _postprocessing_blur_gaussian*    instance_ptr    = (_postprocessing_blur_gaussian*) user_arg;
@@ -262,7 +262,7 @@ PRIVATE void _postprocessing_blur_gaussian_deinit_rendering_thread_callback(__in
 }
 
 /** TODO */
-PRIVATE system_hashed_ansi_string _postprocessing_blur_gaussian_get_fs_name(__in uint32_t n_max_data_coeffs)
+PRIVATE system_hashed_ansi_string _postprocessing_blur_gaussian_get_fs_name(uint32_t n_max_data_coeffs)
 {
     std::stringstream name_sstream;
 
@@ -274,7 +274,7 @@ PRIVATE system_hashed_ansi_string _postprocessing_blur_gaussian_get_fs_name(__in
 }
 
 /** TODO */
-PRIVATE system_hashed_ansi_string _postprocessing_blur_gaussian_get_po_name(__in uint32_t n_max_data_coeffs)
+PRIVATE system_hashed_ansi_string _postprocessing_blur_gaussian_get_po_name(uint32_t n_max_data_coeffs)
 {
     std::stringstream name_sstream;
 
@@ -286,8 +286,8 @@ PRIVATE system_hashed_ansi_string _postprocessing_blur_gaussian_get_po_name(__in
 }
 
 /** TODO */
-PRIVATE void _postprocessing_blur_gaussian_init_rendering_thread_callback(__in __notnull ogl_context context,
-                                                                          __in __notnull void*       user_arg)
+PRIVATE void _postprocessing_blur_gaussian_init_rendering_thread_callback(ogl_context context,
+                                                                          void*       user_arg)
 {
     const ogl_context_gl_entrypoints_ext_direct_state_access* dsa_entrypoints_ptr = NULL;
     const ogl_context_gl_entrypoints*                         entrypoints_ptr     = NULL;
@@ -795,7 +795,7 @@ PRIVATE void _postprocessing_blur_gaussian_init_rendering_thread_callback(__in _
 }
 
 /** TODO */
-PRIVATE void _postprocessing_blur_gaussian_release(__in __notnull __deallocate(mem) void* ptr)
+PRIVATE void _postprocessing_blur_gaussian_release(void* ptr)
 {
     _postprocessing_blur_gaussian* data_ptr = (_postprocessing_blur_gaussian*) ptr;
 
@@ -805,8 +805,8 @@ PRIVATE void _postprocessing_blur_gaussian_release(__in __notnull __deallocate(m
 }
 
 /** TODO */
-PRIVATE RENDERING_CONTEXT_CALL void _postprocessing_blur_gaussian_update_other_data_bo_storage(__in __notnull _postprocessing_blur_gaussian* gaussian_ptr,
-                                                                                               __in           unsigned int                   new_other_data_cached_value)
+PRIVATE RENDERING_CONTEXT_CALL void _postprocessing_blur_gaussian_update_other_data_bo_storage(_postprocessing_blur_gaussian* gaussian_ptr,
+                                                                                               unsigned int                   new_other_data_cached_value)
 {
     const ogl_context_gl_entrypoints_ext_direct_state_access* entrypoints_dsa = NULL;
 
@@ -831,10 +831,10 @@ PRIVATE RENDERING_CONTEXT_CALL void _postprocessing_blur_gaussian_update_other_d
 
 
 /** Please see header for specification */
-PUBLIC RENDERING_CONTEXT_CALL EMERALD_API postprocessing_blur_gaussian postprocessing_blur_gaussian_create(__in __notnull ogl_context               context,
-                                                                                                           __in __notnull system_hashed_ansi_string name,
-                                                                                                           __in           unsigned int              n_min_taps,
-                                                                                                           __in           unsigned int              n_max_taps)
+PUBLIC RENDERING_CONTEXT_CALL EMERALD_API postprocessing_blur_gaussian postprocessing_blur_gaussian_create(ogl_context               context,
+                                                                                                           system_hashed_ansi_string name,
+                                                                                                           unsigned int              n_min_taps,
+                                                                                                           unsigned int              n_max_taps)
 {
     /* Instantiate the object */
     _postprocessing_blur_gaussian* result_object = new (std::nothrow) _postprocessing_blur_gaussian(context,
@@ -880,11 +880,11 @@ end:
 }
 
 /** Please see header for spec */
-PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void postprocessing_blur_gaussian_execute(     __notnull postprocessing_blur_gaussian            blur,
-                                                                                    __in           unsigned int                            n_taps,
-                                                                                    __in           float                                   n_iterations,
-                                                                                    __in __notnull ogl_texture                             src_texture,
-                                                                                    __in           postprocessing_blur_gaussian_resolution blur_resolution)
+PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void postprocessing_blur_gaussian_execute(postprocessing_blur_gaussian            blur,
+                                                                                    unsigned int                            n_taps,
+                                                                                    float                                   n_iterations,
+                                                                                    ogl_texture                             src_texture,
+                                                                                    postprocessing_blur_gaussian_resolution blur_resolution)
 {
     _postprocessing_blur_gaussian*                            blur_ptr                      = (_postprocessing_blur_gaussian*) blur;
     const ogl_context_gl_entrypoints_ext_direct_state_access* dsa_entrypoints_ptr           = NULL;

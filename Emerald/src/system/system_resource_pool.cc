@@ -34,10 +34,10 @@ typedef struct
 
 
 /** Please see header for specification */
-PUBLIC EMERALD_API system_resource_pool system_resource_pool_create(__in size_t                           element_size,
-                                                                    __in size_t                           n_elements_per_blob,
-                                                                         PFNSYSTEMRESOURCEPOOLINITBLOCK   init_block_fn,
-                                                                         PFNSYSTEMRESOURCEPOOLDEINITBLOCK deinit_block_fn)
+PUBLIC EMERALD_API system_resource_pool system_resource_pool_create(size_t                           element_size,
+                                                                    size_t                           n_elements_per_blob,
+                                                                    PFNSYSTEMRESOURCEPOOLINITBLOCK   init_block_fn,
+                                                                    PFNSYSTEMRESOURCEPOOLDEINITBLOCK deinit_block_fn)
 {
     _system_resource_pool_internals* result = new (std::nothrow) _system_resource_pool_internals;
 
@@ -66,7 +66,7 @@ PUBLIC EMERALD_API system_resource_pool system_resource_pool_create(__in size_t 
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API system_resource_pool_block system_resource_pool_get_from_pool(__in __notnull system_resource_pool pool)
+PUBLIC EMERALD_API system_resource_pool_block system_resource_pool_get_from_pool(system_resource_pool pool)
 {
     _system_resource_pool_internals* descriptor = (_system_resource_pool_internals*) pool;
     system_resource_pool_block       result     = NULL;
@@ -107,7 +107,7 @@ PUBLIC EMERALD_API system_resource_pool_block system_resource_pool_get_from_pool
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API void system_resource_pool_return_all_allocations(__in __notnull system_resource_pool pool)
+PUBLIC EMERALD_API void system_resource_pool_return_all_allocations(system_resource_pool pool)
 {
     _system_resource_pool_internals* pool_ptr = (_system_resource_pool_internals*) pool;
 
@@ -129,8 +129,8 @@ PUBLIC EMERALD_API void system_resource_pool_return_all_allocations(__in __notnu
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API void system_resource_pool_return_to_pool(__in __notnull system_resource_pool       pool,
-                                                            __in __notnull system_resource_pool_block block)
+PUBLIC EMERALD_API void system_resource_pool_return_to_pool(system_resource_pool       pool,
+                                                            system_resource_pool_block block)
 {
     _system_resource_pool_internals* descriptor = (_system_resource_pool_internals*) pool;
 
@@ -145,7 +145,7 @@ PUBLIC EMERALD_API void system_resource_pool_return_to_pool(__in __notnull syste
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API void system_resource_pool_release(__in __notnull __deallocate(mem) system_resource_pool pool)
+PUBLIC EMERALD_API void system_resource_pool_release(system_resource_pool pool)
 {
     _system_resource_pool_internals* descriptor = (_system_resource_pool_internals*) pool;
 

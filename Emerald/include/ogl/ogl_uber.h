@@ -161,63 +161,63 @@ typedef struct
 typedef unsigned int ogl_uber_item_id;
 
 /** TODO */
-PUBLIC EMERALD_API ogl_uber_item_id ogl_uber_add_input_fragment_attribute_item(__in __notnull ogl_uber                           uber,
-                                                                               __in __notnull _ogl_uber_input_fragment_attribute input_attribute);
+PUBLIC EMERALD_API ogl_uber_item_id ogl_uber_add_input_fragment_attribute_item(ogl_uber                           uber,
+                                                                               _ogl_uber_input_fragment_attribute input_attribute);
 
 /** TODO */
-PUBLIC EMERALD_API ogl_uber_item_id ogl_uber_add_light_item(__in __notnull                        ogl_uber                         uber,
-                                                            __in_opt                              scene_light                      light_instance,
-                                                            __in                                  shaders_fragment_uber_light_type light_type,
-                                                            __in                                  bool                             is_shadow_caster,
-                                                            __in __notnull                        unsigned int                     n_light_properties,
-                                                            __in_ecount_opt(n_light_properties*2) void*                            light_property_values);
+PUBLIC EMERALD_API ogl_uber_item_id ogl_uber_add_light_item(ogl_uber                         uber,
+                                                            scene_light                      light_instance,
+                                                            shaders_fragment_uber_light_type light_type,
+                                                            bool                             is_shadow_caster,
+                                                            unsigned int                     n_light_properties,
+                                                            void*                            light_property_values);
 
 /** TODO */
-PUBLIC EMERALD_API ogl_uber ogl_uber_create(__in __notnull ogl_context                context,
-                                            __in __notnull system_hashed_ansi_string  name);
+PUBLIC EMERALD_API ogl_uber ogl_uber_create(ogl_context                context,
+                                            system_hashed_ansi_string  name);
 
 /** TODO */
-PUBLIC EMERALD_API ogl_uber ogl_uber_create_from_ogl_program(__in __notnull ogl_context               context,
-                                                             __in __notnull system_hashed_ansi_string name,
-                                                             __in __notnull ogl_program               program);
+PUBLIC EMERALD_API ogl_uber ogl_uber_create_from_ogl_program(ogl_context               context,
+                                                             system_hashed_ansi_string name,
+                                                             ogl_program               program);
 
 /** TODO */
-PUBLIC EMERALD_API void ogl_uber_get_shader_general_property(__in  __notnull const ogl_uber             uber,
-                                                             __in            _ogl_uber_general_property property,
-                                                             __out __notnull void*                      out_result);
+PUBLIC EMERALD_API void ogl_uber_get_shader_general_property(const ogl_uber             uber,
+                                                             _ogl_uber_general_property property,
+                                                             void*                      out_result);
 
 /** TODO */
-PUBLIC EMERALD_API void ogl_uber_get_shader_item_property(__in __notnull const ogl_uber          uber,
-                                                          __in           ogl_uber_item_id        item_id,
-                                                          __in           _ogl_uber_item_property property,
-                                                          __out          void*                   result);
+PUBLIC EMERALD_API void ogl_uber_get_shader_item_property(const ogl_uber          uber,
+                                                          ogl_uber_item_id        item_id,
+                                                          _ogl_uber_item_property property,
+                                                          void*                   result);
 
 /** TODO */
-PUBLIC EMERALD_API void ogl_uber_link(__in __notnull ogl_uber uber);
+PUBLIC EMERALD_API void ogl_uber_link(ogl_uber uber);
 
 /** TODO */
-PUBLIC void ogl_uber_rendering_render_mesh(__in     __notnull mesh             mesh_gpu,
-                                           __in     __notnull system_matrix4x4 model,
-                                           __in     __notnull system_matrix4x4 normal_matrix,
-                                           __in     __notnull ogl_uber         uber,
-                                           __in_opt           mesh_material    material,
-                                           __in               system_time      time);
+PUBLIC void ogl_uber_rendering_render_mesh(mesh             mesh_gpu,
+                                           system_matrix4x4 model,
+                                           system_matrix4x4 normal_matrix,
+                                           ogl_uber         uber,
+                                           mesh_material    material,
+                                           system_time      time);
 
 /** TODO */
-PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void ogl_uber_rendering_start(__in __notnull ogl_uber);
+PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void ogl_uber_rendering_start(ogl_uber);
 
 /** TODO */
-PUBLIC EMERALD_API void ogl_uber_set_shader_general_property(__in __notnull ogl_uber                   uber,
-                                                             __in           _ogl_uber_general_property property,
-                                                             __in           const void*                data);
+PUBLIC EMERALD_API void ogl_uber_set_shader_general_property(ogl_uber                   uber,
+                                                             _ogl_uber_general_property property,
+                                                             const void*                data);
 
 /** TODO */
-PUBLIC EMERALD_API void ogl_uber_set_shader_item_property(__in __notnull ogl_uber                uber,
-                                                          __in           unsigned int            item_index,
-                                                          __in           _ogl_uber_item_property property,
-                                                          __in           const void*             data);
+PUBLIC EMERALD_API void ogl_uber_set_shader_item_property(ogl_uber                uber,
+                                                          unsigned int            item_index,
+                                                          _ogl_uber_item_property property,
+                                                          const void*             data);
 
 /** TODO */
-PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void ogl_uber_rendering_stop(__in __notnull ogl_uber);
+PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void ogl_uber_rendering_stop(ogl_uber);
 
 #endif /* OGL_UBER_H */

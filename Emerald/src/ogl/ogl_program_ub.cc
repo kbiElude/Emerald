@@ -9,7 +9,7 @@
 
 
 /** TODO */
-PRIVATE ogl_program_block_property _ogl_program_ub_get_block_property_for_ub_property(__in ogl_program_ub_property property)
+PRIVATE ogl_program_block_property _ogl_program_ub_get_block_property_for_ub_property(ogl_program_ub_property property)
 {
     ogl_program_block_property result;
 
@@ -76,24 +76,24 @@ PRIVATE ogl_program_block_property _ogl_program_ub_get_block_property_for_ub_pro
 
 
 /** Please see header for spec */
-PUBLIC ogl_program_ub ogl_program_ub_create(__in __notnull ogl_context               context,
-                                            __in __notnull ogl_program               owner_program,
-                                            __in __notnull unsigned int              ub_index,
-                                            __in __notnull system_hashed_ansi_string ub_name,
-                                            __in           bool                      support_sync_behavior)
+PUBLIC ogl_program_ub ogl_program_ub_create(ogl_context               context,
+                                            ogl_program               owner_program,
+                                            unsigned int              ub_index,
+                                            system_hashed_ansi_string ub_name,
+                                            bool                      support_sync_behavior)
 {
     return (ogl_program_ub) ogl_program_block_create(context,
-                                                      owner_program,
-                                                      OGL_PROGRAM_BLOCK_TYPE_UNIFORM_BUFFER,
-                                                      ub_index,
-                                                      ub_name,
-                                                      support_sync_behavior);
+                                                     owner_program,
+                                                     OGL_PROGRAM_BLOCK_TYPE_UNIFORM_BUFFER,
+                                                     ub_index,
+                                                     ub_name,
+                                                     support_sync_behavior);
 }
 
 /** Please see header for spec */
-PUBLIC EMERALD_API void ogl_program_ub_get_property(__in  __notnull const ogl_program_ub    ub,
-                                                    __in            ogl_program_ub_property property,
-                                                    __out __notnull void*                   out_result)
+PUBLIC EMERALD_API void ogl_program_ub_get_property(const ogl_program_ub    ub,
+                                                    ogl_program_ub_property property,
+                                                    void*                   out_result)
 {
     ogl_program_block_get_property((ogl_program_block) ub,
                                    _ogl_program_ub_get_block_property_for_ub_property(property),
@@ -101,19 +101,19 @@ PUBLIC EMERALD_API void ogl_program_ub_get_property(__in  __notnull const ogl_pr
 }
 
 /** Please see header for spec */
-PUBLIC void ogl_program_ub_release(__in __notnull ogl_program_ub ub)
+PUBLIC void ogl_program_ub_release(ogl_program_ub ub)
 {
     ogl_program_block_release( (ogl_program_block) ub);
 }
 
 /* Please see header for spec */
-PUBLIC EMERALD_API void ogl_program_ub_set_arrayed_uniform_value(__in                       __notnull ogl_program_ub ub,
-                                                                 __in                                 GLuint         ub_uniform_offset,
-                                                                 __in_ecount(src_data_size) __notnull const void*    src_data,
-                                                                 __in                                 int            src_data_flags, /* UB_SRC_DATA_FLAG_* */
-                                                                 __in                                 unsigned int   src_data_size,
-                                                                 __in                                 unsigned int   dst_array_start_index,
-                                                                 __in                                 unsigned int   dst_array_item_count)
+PUBLIC EMERALD_API void ogl_program_ub_set_arrayed_uniform_value(ogl_program_ub ub,
+                                                                 GLuint         ub_uniform_offset,
+                                                                 const void*    src_data,
+                                                                 int            src_data_flags, /* UB_SRC_DATA_FLAG_* */
+                                                                 unsigned int   src_data_size,
+                                                                 unsigned int   dst_array_start_index,
+                                                                 unsigned int   dst_array_item_count)
 {
     ASSERT_DEBUG_SYNC(src_data_flags == 0,
                       "Unsupported src_data_flags argument value");
@@ -127,11 +127,11 @@ PUBLIC EMERALD_API void ogl_program_ub_set_arrayed_uniform_value(__in           
 }
 
 /* Please see header for spec */
-PUBLIC EMERALD_API void ogl_program_ub_set_nonarrayed_uniform_value(__in                       __notnull ogl_program_ub ub,
-                                                                    __in                                 GLuint         ub_uniform_offset,
-                                                                    __in_ecount(src_data_size) __notnull const void*    src_data,
-                                                                    __in                                 int            src_data_flags, /* UB_SRC_DATA_FLAG_* */
-                                                                    __in                                 unsigned int   src_data_size)
+PUBLIC EMERALD_API void ogl_program_ub_set_nonarrayed_uniform_value(ogl_program_ub ub,
+                                                                    GLuint         ub_uniform_offset,
+                                                                    const void*    src_data,
+                                                                    int            src_data_flags, /* UB_SRC_DATA_FLAG_* */
+                                                                    unsigned int   src_data_size)
 {
     ASSERT_DEBUG_SYNC(src_data_flags == 0,
                       "Unsupported src_data_flags argument value");
@@ -143,9 +143,9 @@ PUBLIC EMERALD_API void ogl_program_ub_set_nonarrayed_uniform_value(__in        
 }
 
 /* Please see header for spec */
-PUBLIC void ogl_program_ub_set_property(__in  __notnull const ogl_program_ub    ub,
-                                        __in            ogl_program_ub_property property,
-                                        __out __notnull const void*             data)
+PUBLIC void ogl_program_ub_set_property(const ogl_program_ub    ub,
+                                        ogl_program_ub_property property,
+                                        const void*             data)
 {
     ogl_program_block_set_property( (ogl_program_block) ub,
                                     _ogl_program_ub_get_block_property_for_ub_property(property),
@@ -153,7 +153,7 @@ PUBLIC void ogl_program_ub_set_property(__in  __notnull const ogl_program_ub    
 }
 
 /* Please see header for spec */
-PUBLIC EMERALD_API RENDERING_CONTEXT_CALL void ogl_program_ub_sync(__in __notnull ogl_program_ub ub)
+PUBLIC EMERALD_API RENDERING_CONTEXT_CALL void ogl_program_ub_sync(ogl_program_ub ub)
 {
     ogl_program_block_sync( (ogl_program_block) ub);
 }

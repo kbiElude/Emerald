@@ -56,7 +56,7 @@ typedef struct _system_file_enumerator
 
 
 /** TODO */
-PRIVATE bool _system_file_enumerator_fill(__in __notnull _system_file_enumerator* enumerator_ptr)
+PRIVATE bool _system_file_enumerator_fill(_system_file_enumerator* enumerator_ptr)
 {
     HANDLE file_finder = INVALID_HANDLE_VALUE;
     bool   result      = true;
@@ -128,11 +128,11 @@ end:
 
 
 /** Please see header for spec */
-PUBLIC EMERALD_API system_hashed_ansi_string system_file_enumerator_choose_file_via_ui(__in                                   system_file_enumerator_file_operation operation,
-                                                                                       __in                                   unsigned int                          n_filters,
-                                                                                       __in_ecount(n_filters) __notnull const system_hashed_ansi_string*            filter_descriptions,
-                                                                                       __in_ecount(n_filters) __notnull const system_hashed_ansi_string*            filter_extensions,
-                                                                                       __in                   __notnull       system_hashed_ansi_string             dialog_title)
+PUBLIC EMERALD_API system_hashed_ansi_string system_file_enumerator_choose_file_via_ui(      system_file_enumerator_file_operation operation,
+                                                                                             unsigned int                          n_filters,
+                                                                                       const system_hashed_ansi_string*            filter_descriptions,
+                                                                                       const system_hashed_ansi_string*            filter_extensions,
+                                                                                             system_hashed_ansi_string             dialog_title)
 {
     char                      buffer[MAX_PATH];
     OPENFILENAME              config;
@@ -259,7 +259,7 @@ end:
 }
 
 /** Please see header for spec */
-PUBLIC EMERALD_API system_file_enumerator system_file_enumerator_create(__in __notnull system_hashed_ansi_string file_pattern)
+PUBLIC EMERALD_API system_file_enumerator system_file_enumerator_create(system_hashed_ansi_string file_pattern)
 {
     system_file_enumerator result = NULL;
 
@@ -290,10 +290,10 @@ end:
 }
 
 /** Please see header for spec */
-PUBLIC EMERALD_API void system_file_enumerator_get_file_property(__in  __notnull system_file_enumerator               enumerator,
-                                                                 __in            uint32_t                             n_file,
-                                                                 __in            system_file_enumerator_file_property property,
-                                                                 __out __notnull void*                                out_result)
+PUBLIC EMERALD_API void system_file_enumerator_get_file_property(system_file_enumerator               enumerator,
+                                                                 uint32_t                             n_file,
+                                                                 system_file_enumerator_file_property property,
+                                                                 void*                                out_result)
 {
     _system_file_enumerator*       enumerator_ptr = (_system_file_enumerator*) enumerator;
     _system_file_enumerator_entry* entry_ptr      = NULL;
@@ -327,9 +327,9 @@ PUBLIC EMERALD_API void system_file_enumerator_get_file_property(__in  __notnull
 }
 
 /** Please see header for spec */
-PUBLIC EMERALD_API void system_file_enumerator_get_property(__in  __notnull system_file_enumerator          enumerator,
-                                                            __in            system_file_enumerator_property property,
-                                                            __out __notnull void*                           out_result)
+PUBLIC EMERALD_API void system_file_enumerator_get_property(system_file_enumerator          enumerator,
+                                                            system_file_enumerator_property property,
+                                                            void*                           out_result)
 {
     _system_file_enumerator* enumerator_ptr = (_system_file_enumerator*) enumerator;
 
@@ -355,7 +355,7 @@ PUBLIC EMERALD_API void system_file_enumerator_get_property(__in  __notnull syst
 #endif
 
 /** Please see header for spec */
-PUBLIC EMERALD_API bool system_file_enumerator_is_file_present(__in __notnull system_hashed_ansi_string file_name)
+PUBLIC EMERALD_API bool system_file_enumerator_is_file_present(system_hashed_ansi_string file_name)
 {
     #ifdef _WIN32
     {
@@ -388,10 +388,10 @@ PUBLIC EMERALD_API bool system_file_enumerator_is_file_present(__in __notnull sy
 }
 
 /** Please see header for spec */
-PUBLIC EMERALD_API bool system_file_enumerator_is_file_present_in_system_file_unpacker(__in __notnull system_file_unpacker      file_unpacker,
-                                                                                       __in __notnull system_hashed_ansi_string file_name,
-                                                                                       __in           bool                      use_exact_match,
-                                                                                       __out_opt      unsigned int*             out_file_index)
+PUBLIC EMERALD_API bool system_file_enumerator_is_file_present_in_system_file_unpacker(system_file_unpacker      file_unpacker,
+                                                                                       system_hashed_ansi_string file_name,
+                                                                                       bool                      use_exact_match,
+                                                                                       unsigned int*             out_file_index)
 {
     unsigned int n_packed_files = 0;
     bool         result         = false;
@@ -433,7 +433,7 @@ PUBLIC EMERALD_API bool system_file_enumerator_is_file_present_in_system_file_un
 #ifdef _WIN32
 
 /** Please see header for spec */
-PUBLIC EMERALD_API void system_file_enumerator_release(__in __notnull system_file_enumerator enumerator)
+PUBLIC EMERALD_API void system_file_enumerator_release(system_file_enumerator enumerator)
 {
     if (enumerator != NULL)
     {

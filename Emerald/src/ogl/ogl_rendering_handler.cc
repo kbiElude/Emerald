@@ -63,7 +63,7 @@ REFCOUNT_INSERT_IMPLEMENTATION(ogl_rendering_handler,
 /** Internal variables */
 
 /** TODO */
-PUBLIC EMERALD_API void ogl_rendering_handler_lock_bound_context(__in __notnull ogl_rendering_handler rendering_handler)
+PUBLIC EMERALD_API void ogl_rendering_handler_lock_bound_context(ogl_rendering_handler rendering_handler)
 {
     _ogl_rendering_handler* rendering_handler_ptr = (_ogl_rendering_handler*) rendering_handler;
 
@@ -294,7 +294,7 @@ PRIVATE void _ogl_rendering_handler_release(void* in_arg)
 }
 
 /** TODO */
-PUBLIC EMERALD_API void ogl_rendering_handler_unlock_bound_context(__in __notnull ogl_rendering_handler rendering_handler)
+PUBLIC EMERALD_API void ogl_rendering_handler_unlock_bound_context(ogl_rendering_handler rendering_handler)
 {
     _ogl_rendering_handler* rendering_handler_ptr = (_ogl_rendering_handler*) rendering_handler;
 
@@ -306,11 +306,11 @@ PUBLIC EMERALD_API void ogl_rendering_handler_unlock_bound_context(__in __notnul
 }
 
 /** TODO */
-PRIVATE ogl_rendering_handler ogl_rendering_handler_create_shared(__in __notnull system_hashed_ansi_string               name,
-                                                                                 ogl_rendering_handler_policy            policy,
-                                                                  __in           uint32_t                                desired_fps,
-                                                                  __in __notnull PFNOGLRENDERINGHANDLERRENDERINGCALLBACK pfn_rendering_callback,
-                                                                                 void*                                   user_arg)
+PRIVATE ogl_rendering_handler ogl_rendering_handler_create_shared(system_hashed_ansi_string               name,
+                                                                  ogl_rendering_handler_policy            policy,
+                                                                  uint32_t                                desired_fps,
+                                                                  PFNOGLRENDERINGHANDLERRENDERINGCALLBACK pfn_rendering_callback,
+                                                                  void*                                   user_arg)
 {
     _ogl_rendering_handler* new_handler = new (std::nothrow) _ogl_rendering_handler;
 
@@ -383,10 +383,10 @@ PRIVATE ogl_rendering_handler ogl_rendering_handler_create_shared(__in __notnull
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API ogl_rendering_handler ogl_rendering_handler_create_with_fps_policy(__in __notnull system_hashed_ansi_string               name,
-                                                                                      __in           uint32_t                                desired_fps,
-                                                                                      __in __notnull PFNOGLRENDERINGHANDLERRENDERINGCALLBACK pfn_rendering_callback,
-                                                                                                     void*                                   user_arg)
+PUBLIC EMERALD_API ogl_rendering_handler ogl_rendering_handler_create_with_fps_policy(system_hashed_ansi_string               name,
+                                                                                      uint32_t                                desired_fps,
+                                                                                      PFNOGLRENDERINGHANDLERRENDERINGCALLBACK pfn_rendering_callback,
+                                                                                      void*                                   user_arg)
 {
     return ogl_rendering_handler_create_shared(name,
                                                RENDERING_HANDLER_POLICY_FPS,
@@ -396,20 +396,21 @@ PUBLIC EMERALD_API ogl_rendering_handler ogl_rendering_handler_create_with_fps_p
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API ogl_rendering_handler ogl_rendering_handler_create_with_max_performance_policy(__in __notnull system_hashed_ansi_string               name,
-                                                                                                  __in __notnull PFNOGLRENDERINGHANDLERRENDERINGCALLBACK pfn_rendering_callback,
-                                                                                                                 void*                                   user_arg)
+PUBLIC EMERALD_API ogl_rendering_handler ogl_rendering_handler_create_with_max_performance_policy(system_hashed_ansi_string               name,
+                                                                                                  PFNOGLRENDERINGHANDLERRENDERINGCALLBACK pfn_rendering_callback,
+                                                                                                  void*                                   user_arg)
 {
     return ogl_rendering_handler_create_shared(name,
                                                RENDERING_HANDLER_POLICY_MAX_PERFORMANCE,
                                                0, /* desired_fps */
-                                               pfn_rendering_callback, user_arg);
+                                               pfn_rendering_callback,
+                                               user_arg);
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API ogl_rendering_handler ogl_rendering_handler_create_with_render_per_request_policy(__in __notnull system_hashed_ansi_string               name,
-                                                                                                     __in __notnull PFNOGLRENDERINGHANDLERRENDERINGCALLBACK pfn_rendering_callback,
-                                                                                                                    void*                                   user_arg)
+PUBLIC EMERALD_API ogl_rendering_handler ogl_rendering_handler_create_with_render_per_request_policy(system_hashed_ansi_string               name,
+                                                                                                     PFNOGLRENDERINGHANDLERRENDERINGCALLBACK pfn_rendering_callback,
+                                                                                                     void*                                   user_arg)
 {
     return ogl_rendering_handler_create_shared(name,
                                                RENDERING_HANDLER_POLICY_RENDER_PER_REQUEST,
@@ -419,9 +420,9 @@ PUBLIC EMERALD_API ogl_rendering_handler ogl_rendering_handler_create_with_rende
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API void ogl_rendering_handler_get_property(__in  __notnull ogl_rendering_handler          rendering_handler,
-                                                           __in            ogl_rendering_handler_property property,
-                                                           __out __notnull void*                          out_result)
+PUBLIC EMERALD_API void ogl_rendering_handler_get_property(ogl_rendering_handler          rendering_handler,
+                                                           ogl_rendering_handler_property property,
+                                                           void*                          out_result)
 {
     _ogl_rendering_handler* rendering_handler_ptr = (_ogl_rendering_handler*) rendering_handler;
 
@@ -450,7 +451,7 @@ PUBLIC EMERALD_API void ogl_rendering_handler_get_property(__in  __notnull ogl_r
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API bool ogl_rendering_handler_is_current_thread_rendering_thread(__in __notnull ogl_rendering_handler rendering_handler)
+PUBLIC EMERALD_API bool ogl_rendering_handler_is_current_thread_rendering_thread(ogl_rendering_handler rendering_handler)
 {
     _ogl_rendering_handler* rendering_handler_ptr = (_ogl_rendering_handler*) rendering_handler;
 
@@ -458,8 +459,8 @@ PUBLIC EMERALD_API bool ogl_rendering_handler_is_current_thread_rendering_thread
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API bool ogl_rendering_handler_play(__in __notnull ogl_rendering_handler rendering_handler,
-                                                                  system_time           start_time)
+PUBLIC EMERALD_API bool ogl_rendering_handler_play(ogl_rendering_handler rendering_handler,
+                                                   system_time           start_time)
 {
     unsigned int            pre_n_frames_rendered = 0;
     _ogl_rendering_handler* rendering_handler_ptr = (_ogl_rendering_handler*) rendering_handler;
@@ -512,10 +513,10 @@ PUBLIC EMERALD_API bool ogl_rendering_handler_play(__in __notnull ogl_rendering_
 }
 
 /** Please see header for specification. */
-PUBLIC EMERALD_API bool ogl_rendering_handler_request_callback_from_context_thread(__in __notnull ogl_rendering_handler                      rendering_handler,
-                                                                                   __in __notnull PFNOGLCONTEXTCALLBACKFROMCONTEXTTHREADPROC pfn_callback_proc,
-                                                                                   __in           void*                                      user_arg,
-                                                                                   __in           bool                                       block_until_available)
+PUBLIC EMERALD_API bool ogl_rendering_handler_request_callback_from_context_thread(ogl_rendering_handler                      rendering_handler,
+                                                                                   PFNOGLCONTEXTCALLBACKFROMCONTEXTTHREADPROC pfn_callback_proc,
+                                                                                   void*                                      user_arg,
+                                                                                   bool                                       block_until_available)
 {
     _ogl_rendering_handler* rendering_handler_ptr = (_ogl_rendering_handler*) rendering_handler;
     bool                    result                = false;
@@ -560,7 +561,7 @@ PUBLIC EMERALD_API bool ogl_rendering_handler_request_callback_from_context_thre
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API bool ogl_rendering_handler_stop(__in __notnull ogl_rendering_handler rendering_handler)
+PUBLIC EMERALD_API bool ogl_rendering_handler_stop(ogl_rendering_handler rendering_handler)
 {
     _ogl_rendering_handler* rendering_handler_ptr = (_ogl_rendering_handler*) rendering_handler;
     bool                    result                = false;
@@ -591,8 +592,8 @@ PUBLIC EMERALD_API bool ogl_rendering_handler_stop(__in __notnull ogl_rendering_
 }
 
 /** Please see header for specification */
-PUBLIC bool _ogl_rendering_handler_on_bound_to_context(__in __notnull ogl_rendering_handler rendering_handler,
-                                                       __in __notnull ogl_context           context)
+PUBLIC bool _ogl_rendering_handler_on_bound_to_context(ogl_rendering_handler rendering_handler,
+                                                       ogl_context           context)
 {
     _ogl_rendering_handler* rendering_handler_ptr = (_ogl_rendering_handler*) rendering_handler;
     bool                    result                = false;

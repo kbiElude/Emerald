@@ -11,9 +11,9 @@
 const float epsilon = 1e-8f;
 
 /** Please see header for description */
-PUBLIC EMERALD_API void system_math_vector_add3(__in_ecount(3)  const float* a,
-                                                __in_ecount(3)  const float* b,
-                                                __out_ecount(3)       float* result)
+PUBLIC EMERALD_API void system_math_vector_add3(const float* a,
+                                                const float* b,
+                                                      float* result)
 {
     result[0] = a[0] + b[0];
     result[1] = a[1] + b[1];
@@ -21,9 +21,9 @@ PUBLIC EMERALD_API void system_math_vector_add3(__in_ecount(3)  const float* a,
 }
 
 /** Please see header for description */
-PUBLIC EMERALD_API void system_math_vector_cross3(__in_ecount(3)  const float* a,
-                                                  __in_ecount(3)  const float* b,
-                                                  __out_ecount(3)       float* result)
+PUBLIC EMERALD_API void system_math_vector_cross3(const float* a,
+                                                  const float* b,
+                                                        float* result)
 {
     ASSERT_DEBUG_SYNC(a != result,
                       "Illegal assumption: a == result");
@@ -36,22 +36,22 @@ PUBLIC EMERALD_API void system_math_vector_cross3(__in_ecount(3)  const float* a
 }
 
 /** Please see header for description */
-PUBLIC EMERALD_API float system_math_vector_dot3(__in_ecount(3) const float* a,
-                                                 __in_ecount(3) const float* b)
+PUBLIC EMERALD_API float system_math_vector_dot3(const float* a,
+                                                 const float* b)
 {
     return a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
 }
 
 /* Please see header for description */
-PUBLIC EMERALD_API float system_math_vector_length3(__in_ecount(3) const float* a)
+PUBLIC EMERALD_API float system_math_vector_length3(const float* a)
 {
     return sqrt(a[0] * a[0] + a[1] * a[1] + a[2] * a[2]);
 }
 
 /** Please see header for description */
-PUBLIC EMERALD_API void system_math_vector_minus3(__in_ecount(3)  const float* a,
-                                                  __in_ecount(3)  const float* b,
-                                                  __out_ecount(3)       float* result)
+PUBLIC EMERALD_API void system_math_vector_minus3(const float* a,
+                                                  const float* b,
+                                                        float* result)
 {
     result[0] = a[0] - b[0];
     result[1] = a[1] - b[1];
@@ -59,9 +59,9 @@ PUBLIC EMERALD_API void system_math_vector_minus3(__in_ecount(3)  const float* a
 }
 
 /** Please see header for description */
-PUBLIC EMERALD_API void system_math_vector_mul3(__in_ecount(3)  const float* a,
-                                                __in_ecount(3)  const float* b,
-                                                __out_ecount(3)       float* result)
+PUBLIC EMERALD_API void system_math_vector_mul3(const float* a,
+                                                const float* b,
+                                                      float* result)
 {
     result[0] = a[0] * b[0];
     result[1] = a[1] * b[1];
@@ -69,9 +69,9 @@ PUBLIC EMERALD_API void system_math_vector_mul3(__in_ecount(3)  const float* a,
 }
 
 /** Please see header for descrpition */
-PUBLIC EMERALD_API void system_math_vector_mul3_float(__in_ecount(3)  const float* a,
-                                                      __in            const float  b,
-                                                      __out_ecount(3)       float* result)
+PUBLIC EMERALD_API void system_math_vector_mul3_float(const float* a,
+                                                      const float  b,
+                                                            float* result)
 {
     result[0] = a[0] * b;
     result[1] = a[1] * b;
@@ -79,8 +79,8 @@ PUBLIC EMERALD_API void system_math_vector_mul3_float(__in_ecount(3)  const floa
 }
 
 /** Please see header for description */
-PUBLIC EMERALD_API void system_math_vector_normalize3(__in_ecount(3)  const float* a,
-                                                      __out_ecount(3)       float* result)
+PUBLIC EMERALD_API void system_math_vector_normalize3(const float* a,
+                                                            float* result)
 {
     float len = system_math_vector_length3(a);
 
@@ -97,8 +97,8 @@ PUBLIC EMERALD_API void system_math_vector_normalize3(__in_ecount(3)  const floa
 }
 
 /** TODO */
-PUBLIC EMERALD_API void system_math_vector_normalize4_use_vec3_length(__in_ecount(4)  const float* a,
-                                                                      __out_ecount(4)       float* result)
+PUBLIC EMERALD_API void system_math_vector_normalize4_use_vec3_length(const float* a,
+                                                                            float* result)
 {
     float len = system_math_vector_length3(a);
 

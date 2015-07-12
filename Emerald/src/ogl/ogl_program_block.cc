@@ -66,12 +66,12 @@ typedef struct _ogl_program_block
     unsigned int dirty_offset_end;
     unsigned int dirty_offset_start;
 
-    explicit _ogl_program_block(__in __notnull ogl_context               in_context,
-                                __in __notnull ogl_program               in_owner,
-                                __in __notnull unsigned int              in_index,
-                                __in __notnull system_hashed_ansi_string in_name,
-                                __in           bool                      in_syncable,
-                                __in           ogl_program_block_type    in_type)
+    explicit _ogl_program_block(ogl_context               in_context,
+                                ogl_program               in_owner,
+                                unsigned int              in_index,
+                                system_hashed_ansi_string in_name,
+                                bool                      in_syncable,
+                                ogl_program_block_type    in_type)
     {
         /* Sanity checks.
          *
@@ -159,8 +159,8 @@ typedef struct _ogl_program_block
 
 
 /** TODO */
-PRIVATE unsigned int _ogl_program_block_get_expected_src_data_size(__in __notnull const ogl_program_variable* uniform_ptr,
-                                                                   __in           unsigned int                n_array_items)
+PRIVATE unsigned int _ogl_program_block_get_expected_src_data_size(const ogl_program_variable* uniform_ptr,
+                                                                   unsigned int                n_array_items)
 {
     unsigned int result = 0;
 
@@ -207,7 +207,7 @@ PRIVATE unsigned int _ogl_program_block_get_expected_src_data_size(__in __notnul
 }
 
 /** TODO */
-PRIVATE unsigned int _ogl_program_block_get_memcpy_friendly_matrix_stride(__in __notnull const ogl_program_variable* uniform_ptr)
+PRIVATE unsigned int _ogl_program_block_get_memcpy_friendly_matrix_stride(const ogl_program_variable* uniform_ptr)
 {
     unsigned int result = 0;
 
@@ -279,7 +279,7 @@ PRIVATE unsigned int _ogl_program_block_get_memcpy_friendly_matrix_stride(__in _
 }
 
 /** TODO */
-PRIVATE unsigned int _ogl_program_block_get_n_matrix_columns(__in __notnull const ogl_program_variable* uniform_ptr)
+PRIVATE unsigned int _ogl_program_block_get_n_matrix_columns(const ogl_program_variable* uniform_ptr)
 {
     unsigned int result = 0;
 
@@ -307,7 +307,7 @@ PRIVATE unsigned int _ogl_program_block_get_n_matrix_columns(__in __notnull cons
 }
 
 /** TODO */
-PRIVATE unsigned int _ogl_program_block_get_n_matrix_rows(__in __notnull const ogl_program_variable* uniform_ptr)
+PRIVATE unsigned int _ogl_program_block_get_n_matrix_rows(const ogl_program_variable* uniform_ptr)
 {
     unsigned int result = 0;
 
@@ -335,7 +335,7 @@ PRIVATE unsigned int _ogl_program_block_get_n_matrix_rows(__in __notnull const o
 }
 
 /** TODO */
-PRIVATE bool _ogl_program_block_init(__in __notnull _ogl_program_block* block_ptr)
+PRIVATE bool _ogl_program_block_init(_ogl_program_block* block_ptr)
 {
     GLint* active_variable_indices = NULL;
     GLint  n_active_variables      = 0;
@@ -573,7 +573,7 @@ end:
 }
 
 /** TODO */
-PRIVATE bool _ogl_program_block_is_matrix_uniform(__in __notnull const ogl_program_variable* uniform_ptr)
+PRIVATE bool _ogl_program_block_is_matrix_uniform(const ogl_program_variable* uniform_ptr)
 {
     bool result = false;
 
@@ -597,12 +597,12 @@ PRIVATE bool _ogl_program_block_is_matrix_uniform(__in __notnull const ogl_progr
 }
 
 /** TODO */
-PRIVATE void _ogl_program_block_set_uniform_value(__in                       __notnull ogl_program_block block,
-                                                  __in                                 GLuint            block_variable_offset,
-                                                  __in_ecount(src_data_size) __notnull const void*       src_data,
-                                                  __in                                 unsigned int      src_data_size,
-                                                  __in                                 unsigned int      dst_array_start_index,
-                                                  __in                                 unsigned int      dst_array_item_count)
+PRIVATE void _ogl_program_block_set_uniform_value(ogl_program_block block,
+                                                  GLuint            block_variable_offset,
+                                                  const void*       src_data,
+                                                  unsigned int      src_data_size,
+                                                  unsigned int      dst_array_start_index,
+                                                  unsigned int      dst_array_item_count)
 {
     _ogl_program_block*   block_ptr             = (_ogl_program_block*) block;
     unsigned char*        dst_traveller_ptr     = NULL;
@@ -855,12 +855,12 @@ end:
 
 
 /** Please see header for spec */
-PUBLIC ogl_program_block ogl_program_block_create(__in __notnull ogl_context               context,
-                                                  __in __notnull ogl_program               owner_program,
-                                                  __in           ogl_program_block_type    block_type,
-                                                  __in __notnull unsigned int              block_index,
-                                                  __in __notnull system_hashed_ansi_string block_name,
-                                                  __in           bool                      support_sync_behavior)
+PUBLIC ogl_program_block ogl_program_block_create(ogl_context               context,
+                                                  ogl_program               owner_program,
+                                                  ogl_program_block_type    block_type,
+                                                  unsigned int              block_index,
+                                                  system_hashed_ansi_string block_name,
+                                                  bool                      support_sync_behavior)
 {
     _ogl_program_block* new_block_ptr = new (std::nothrow) _ogl_program_block(context,
                                                                               owner_program,
@@ -881,9 +881,9 @@ PUBLIC ogl_program_block ogl_program_block_create(__in __notnull ogl_context    
 }
 
 /** Please see header for spec */
-PUBLIC bool ogl_program_block_get_block_variable(__in  __notnull ogl_program_block            block,
-                                                 __in            unsigned int                 index,
-                                                 __out __notnull const ogl_program_variable** out_variable_ptr)
+PUBLIC bool ogl_program_block_get_block_variable(ogl_program_block            block,
+                                                 unsigned int                 index,
+                                                 const ogl_program_variable** out_variable_ptr)
 {
     _ogl_program_block* block_ptr = (_ogl_program_block*) block;
     bool                result    = false;
@@ -896,9 +896,9 @@ PUBLIC bool ogl_program_block_get_block_variable(__in  __notnull ogl_program_blo
 }
 
 /** Please see header for spec */
-PUBLIC void ogl_program_block_get_property(__in  __notnull const ogl_program_block    block,
-                                           __in            ogl_program_block_property property,
-                                           __out __notnull void*                      out_result)
+PUBLIC void ogl_program_block_get_property(const ogl_program_block    block,
+                                           ogl_program_block_property property,
+                                           void*                      out_result)
 {
     const _ogl_program_block* block_ptr = (const _ogl_program_block*) block;
 
@@ -973,18 +973,18 @@ PUBLIC void ogl_program_block_get_property(__in  __notnull const ogl_program_blo
 }
 
 /** Please see header for spec */
-PUBLIC void ogl_program_block_release(__in __notnull ogl_program_block block)
+PUBLIC void ogl_program_block_release(ogl_program_block block)
 {
     delete (_ogl_program_block*) block;
 }
 
 /* Please see header for spec */
-PUBLIC void ogl_program_block_set_arrayed_variable_value(__in                       __notnull ogl_program_block block,
-                                                         __in                                 GLuint            block_variable_offset,
-                                                         __in_ecount(src_data_size) __notnull const void*       src_data,
-                                                         __in                                 unsigned int      src_data_size,
-                                                         __in                                 unsigned int      dst_array_start_index,
-                                                         __in                                 unsigned int      dst_array_item_count)
+PUBLIC void ogl_program_block_set_arrayed_variable_value(ogl_program_block block,
+                                                         GLuint            block_variable_offset,
+                                                         const void*       src_data,
+                                                         unsigned int      src_data_size,
+                                                         unsigned int      dst_array_start_index,
+                                                         unsigned int      dst_array_item_count)
 {
     _ogl_program_block_set_uniform_value(block,
                                          block_variable_offset,
@@ -995,10 +995,10 @@ PUBLIC void ogl_program_block_set_arrayed_variable_value(__in                   
 }
 
 /* Please see header for spec */
-PUBLIC void ogl_program_block_set_nonarrayed_variable_value(__in                       __notnull ogl_program_block block,
-                                                            __in                                 GLuint            block_variable_offset,
-                                                            __in_ecount(src_data_size) __notnull const void*       src_data,
-                                                            __in                                 unsigned int      src_data_size)
+PUBLIC void ogl_program_block_set_nonarrayed_variable_value(ogl_program_block block,
+                                                            GLuint            block_variable_offset,
+                                                            const void*       src_data,
+                                                            unsigned int      src_data_size)
 {
     _ogl_program_block_set_uniform_value(block,
                                          block_variable_offset,
@@ -1009,9 +1009,9 @@ PUBLIC void ogl_program_block_set_nonarrayed_variable_value(__in                
 }
 
 /* Please see header for spec */
-PUBLIC void ogl_program_block_set_property(__in  __notnull const ogl_program_block    block,
-                                           __in            ogl_program_block_property property,
-                                           __out __notnull const void*                data)
+PUBLIC void ogl_program_block_set_property(const ogl_program_block    block,
+                                           ogl_program_block_property property,
+                                           const void*                data)
 {
     _ogl_program_block* block_ptr = (_ogl_program_block*) block;
 
@@ -1033,7 +1033,7 @@ PUBLIC void ogl_program_block_set_property(__in  __notnull const ogl_program_blo
 }
 
 /* Please see header for spec */
-PUBLIC RENDERING_CONTEXT_CALL void ogl_program_block_sync(__in __notnull ogl_program_block block)
+PUBLIC RENDERING_CONTEXT_CALL void ogl_program_block_sync(ogl_program_block block)
 {
     _ogl_program_block* block_ptr = (_ogl_program_block*) block;
 

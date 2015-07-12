@@ -14,10 +14,10 @@
 PUBLIC void state_deinit();
 
 /** TODO */
-PUBLIC void state_get_current_frame_properties(__out __notnull scene*              out_current_scene,
-                                               __out __notnull scene_camera*       out_current_scene_camera,
-                                               __out __notnull ogl_scene_renderer* out_current_renderer,
-                                               __out           system_time*        out_current_frame_time);
+PUBLIC void state_get_current_frame_properties(scene*              out_current_scene,
+                                               scene_camera*       out_current_scene_camera,
+                                               ogl_scene_renderer* out_current_renderer,
+                                               system_time*        out_current_frame_time);
 
 /** TODO */
 PUBLIC postprocessing_blur_gaussian_resolution state_get_color_shadow_map_blur_resolution();
@@ -62,22 +62,22 @@ PUBLIC uint32_t state_get_pipeline_stage_id();
 PUBLIC void state_init();
 
 /** TODO */
-PUBLIC void state_set_color_shadow_map_blur_resolution(__in postprocessing_blur_gaussian_resolution blur_resolution);
+PUBLIC void state_set_color_shadow_map_blur_resolution(postprocessing_blur_gaussian_resolution blur_resolution);
 
 /** TODO */
-PUBLIC void state_set_color_shadow_map_internalformat(__in ogl_texture_internalformat new_internalformat);
+PUBLIC void state_set_color_shadow_map_internalformat(ogl_texture_internalformat new_internalformat);
 
 /** TODO */
-PUBLIC void state_set_depth_shadow_map_internalformat(__in ogl_texture_internalformat new_internalformat);
+PUBLIC void state_set_depth_shadow_map_internalformat(ogl_texture_internalformat new_internalformat);
 
 /** TODO */
-PUBLIC void state_set_shadow_map_algorithm(__in scene_light_shadow_map_algorithm sm_algo);
+PUBLIC void state_set_shadow_map_algorithm(scene_light_shadow_map_algorithm sm_algo);
 
 /** TODO */
-PUBLIC void state_set_shadow_map_pointlight_algorithm(__in scene_light_shadow_map_pointlight_algorithm pl_algo);
+PUBLIC void state_set_shadow_map_pointlight_algorithm(scene_light_shadow_map_pointlight_algorithm pl_algo);
 
 /** TODO */
-PUBLIC void state_set_shadow_map_size(__in unsigned int new_shadow_map_size);
+PUBLIC void state_set_shadow_map_size(unsigned int new_shadow_map_size);
 
 /** TODO */
 PUBLIC void state_set_shadow_map_vsm_blur_n_passes(float new_value);

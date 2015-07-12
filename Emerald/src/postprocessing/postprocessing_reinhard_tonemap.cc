@@ -111,7 +111,7 @@ REFCOUNT_INSERT_IMPLEMENTATION(postprocessing_reinhard_tonemap,
 
 /* Forward declarations */
 #ifdef _DEBUG
-    PRIVATE void _postprocessing_reinhard_tonemap_verify_context_type(__in __notnull ogl_context);
+    PRIVATE void _postprocessing_reinhard_tonemap_verify_context_type(ogl_context);
 #else
     #define _postprocessing_reinhard_tonemap_verify_context_type(x)
 #endif
@@ -319,7 +319,7 @@ PRIVATE void _release_callback(ogl_context context,
 }
 
 /** TODO */
-PRIVATE void _postprocessing_reinhard_tonemap_release(__in __notnull __deallocate(mem) void* ptr)
+PRIVATE void _postprocessing_reinhard_tonemap_release(void* ptr)
 {
     _postprocessing_reinhard_tonemap* data_ptr = (_postprocessing_reinhard_tonemap*) ptr;
 
@@ -331,7 +331,7 @@ PRIVATE void _postprocessing_reinhard_tonemap_release(__in __notnull __deallocat
 /** TODO */
 #ifdef _DEBUG
     /* TODO */
-    PRIVATE void _postprocessing_reinhard_tonemap_verify_context_type(__in __notnull ogl_context context)
+    PRIVATE void _postprocessing_reinhard_tonemap_verify_context_type(ogl_context context)
     {
         ogl_context_type context_type = OGL_CONTEXT_TYPE_UNDEFINED;
 
@@ -345,10 +345,10 @@ PRIVATE void _postprocessing_reinhard_tonemap_release(__in __notnull __deallocat
 #endif
 
 /** Please see header for specification */
-PUBLIC EMERALD_API postprocessing_reinhard_tonemap postprocessing_reinhard_tonemap_create(__in __notnull             ogl_context               context,
-                                                                                          __in __notnull             system_hashed_ansi_string name,
-                                                                                          __in                       bool                      use_crude_downsampled_lum_average_calculation,
-                                                                                          __in __notnull __ecount(2) uint32_t*                 texture_size)
+PUBLIC EMERALD_API postprocessing_reinhard_tonemap postprocessing_reinhard_tonemap_create(ogl_context               context,
+                                                                                          system_hashed_ansi_string name,
+                                                                                          bool                      use_crude_downsampled_lum_average_calculation,
+                                                                                          uint32_t*                 texture_size)
 {
     _postprocessing_reinhard_tonemap_verify_context_type(context);
 
@@ -399,11 +399,11 @@ end:
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API void postprocessing_reinhard_tonemap_execute(__in __notnull postprocessing_reinhard_tonemap tonemapper,
-                                                                __in __notnull ogl_texture                     in_texture,
-                                                                __in           float                           alpha,
-                                                                __in           float                           white_level,
-                                                                __in __notnull ogl_texture                     out_texture)
+PUBLIC EMERALD_API void postprocessing_reinhard_tonemap_execute(postprocessing_reinhard_tonemap tonemapper,
+                                                                ogl_texture                     in_texture,
+                                                                float                           alpha,
+                                                                float                           white_level,
+                                                                ogl_texture                     out_texture)
 {
     const ogl_context_gl_entrypoints* entry_points   = NULL;
     _postprocessing_reinhard_tonemap* tonemapper_ptr = (_postprocessing_reinhard_tonemap*) tonemapper;

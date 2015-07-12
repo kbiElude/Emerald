@@ -28,8 +28,8 @@ system_hashed_ansi_string _empty_string  = NULL;
 
 /* Internal functions */
 /** TODO */
-PRIVATE void _init_system_hashed_ansi_string_descriptor(__in  __notnull const char*                            text,
-                                                        __out           _system_hashed_ansi_string_descriptor* descriptor)
+PRIVATE void _init_system_hashed_ansi_string_descriptor( const char*                            text,
+                                                        _system_hashed_ansi_string_descriptor* descriptor)
 {
     size_t length = strlen(text);
 
@@ -45,15 +45,15 @@ PRIVATE void _init_system_hashed_ansi_string_descriptor(__in  __notnull const ch
 }
 
 /** TODO */
-PRIVATE void _deinit_system_hashed_ansi_string_descriptor(__in __notnull _system_hashed_ansi_string_descriptor* descriptor)
+PRIVATE void _deinit_system_hashed_ansi_string_descriptor(_system_hashed_ansi_string_descriptor* descriptor)
 {
     delete [] descriptor->contents;
     delete descriptor;
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API bool system_hashed_ansi_string_contains(__in __notnull system_hashed_ansi_string has_1,
-                                                           __in __notnull system_hashed_ansi_string has_2)
+PUBLIC EMERALD_API bool system_hashed_ansi_string_contains(system_hashed_ansi_string has_1,
+                                                           system_hashed_ansi_string has_2)
 {
     _system_hashed_ansi_string_descriptor* descriptor_1 = (_system_hashed_ansi_string_descriptor*) has_1;
     _system_hashed_ansi_string_descriptor* descriptor_2 = (_system_hashed_ansi_string_descriptor*) has_2;
@@ -70,7 +70,7 @@ PUBLIC EMERALD_API bool system_hashed_ansi_string_contains(__in __notnull system
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API system_hashed_ansi_string system_hashed_ansi_string_create(__in __notnull const char* raw)
+PUBLIC EMERALD_API system_hashed_ansi_string system_hashed_ansi_string_create(const char* raw)
 {
     system_hashed_ansi_string result = NULL;
 
@@ -124,8 +124,8 @@ end:
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API system_hashed_ansi_string system_hashed_ansi_string_create_by_merging_strings(               uint32_t     n_strings,
-                                                                                                 __in __notnull const char** strings)
+PUBLIC EMERALD_API system_hashed_ansi_string system_hashed_ansi_string_create_by_merging_strings(      uint32_t n_strings,
+                                                                                                 const char**   strings)
 {
     if (_dictionary == NULL)
     {
@@ -183,8 +183,8 @@ PUBLIC EMERALD_API system_hashed_ansi_string system_hashed_ansi_string_create_by
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API system_hashed_ansi_string system_hashed_ansi_string_create_by_merging_two_strings(__in __notnull const char* src1,
-                                                                                                     __in __notnull const char* src2)
+PUBLIC EMERALD_API system_hashed_ansi_string system_hashed_ansi_string_create_by_merging_two_strings(const char* src1,
+                                                                                                     const char* src2)
 {
     if (_dictionary == NULL)
     {
@@ -223,9 +223,9 @@ PUBLIC EMERALD_API system_hashed_ansi_string system_hashed_ansi_string_create_by
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API system_hashed_ansi_string system_hashed_ansi_string_create_substring(__in __notnull const char* string,
-                                                                                        __in           uint32_t    start_offset,
-                                                                                        __in           uint32_t    length)
+PUBLIC EMERALD_API system_hashed_ansi_string system_hashed_ansi_string_create_substring(const char* string,
+                                                                                        uint32_t    start_offset,
+                                                                                        uint32_t    length)
 {
     uint32_t                  original_length = strlen(string);
     char*                     buffer          = (char*) malloc(length + 1);
@@ -255,7 +255,7 @@ PUBLIC EMERALD_API system_hashed_ansi_string system_hashed_ansi_string_get_defau
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API uint32_t system_hashed_ansi_string_get_length(__in __notnull system_hashed_ansi_string string)
+PUBLIC EMERALD_API uint32_t system_hashed_ansi_string_get_length(system_hashed_ansi_string string)
 {
     if (string != NULL)
     {
@@ -268,14 +268,14 @@ PUBLIC EMERALD_API uint32_t system_hashed_ansi_string_get_length(__in __notnull 
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API const char* system_hashed_ansi_string_get_buffer(__in __notnull system_hashed_ansi_string string)
+PUBLIC EMERALD_API const char* system_hashed_ansi_string_get_buffer(system_hashed_ansi_string string)
 {
     return ((_system_hashed_ansi_string_descriptor*) string)->contents;
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API bool system_hashed_ansi_string_is_equal_to_raw_string(__in __notnull system_hashed_ansi_string string,
-                                                                         __in __notnull const char*               raw_text)
+PUBLIC EMERALD_API bool system_hashed_ansi_string_is_equal_to_raw_string(system_hashed_ansi_string string,
+                                                                         const char*               raw_text)
 {
     _system_hashed_ansi_string_descriptor* descriptor = (_system_hashed_ansi_string_descriptor*) string;
 
@@ -292,14 +292,14 @@ PUBLIC EMERALD_API bool system_hashed_ansi_string_is_equal_to_raw_string(__in __
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API system_hash64 system_hashed_ansi_string_get_hash(__in __notnull system_hashed_ansi_string string)
+PUBLIC EMERALD_API system_hash64 system_hashed_ansi_string_get_hash(system_hashed_ansi_string string)
 {
     return ((_system_hashed_ansi_string_descriptor*) string)->hash;
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API bool system_hashed_ansi_string_is_equal_to_hash_string(__in __notnull system_hashed_ansi_string has_1,
-                                                                          __in __notnull system_hashed_ansi_string has_2)
+PUBLIC EMERALD_API bool system_hashed_ansi_string_is_equal_to_hash_string(system_hashed_ansi_string has_1,
+                                                                          system_hashed_ansi_string has_2)
 {
     _system_hashed_ansi_string_descriptor* has_1_descriptor = (_system_hashed_ansi_string_descriptor*) has_1;
     _system_hashed_ansi_string_descriptor* has_2_descriptor = (_system_hashed_ansi_string_descriptor*) has_2;

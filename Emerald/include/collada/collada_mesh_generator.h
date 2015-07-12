@@ -13,8 +13,8 @@
 #include "mesh/mesh_types.h"
 
 /** TODO */
-PUBLIC mesh collada_mesh_generator_create(__in __notnull ogl_context  context,
-                                          __in __notnull collada_data data,
-                                          __in __notnull unsigned int n_geometry);
+PUBLIC mesh collada_mesh_generator_create(ogl_context  context,
+                                          collada_data data,
+                                          unsigned int n_geometry);
 
 #endif /* COLLADA_MESH_GENERATOR_H */

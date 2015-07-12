@@ -53,8 +53,8 @@ PUBLIC ogl_shaders ogl_shaders_create()
 }
 
 /** Please see header for spec */
-PUBLIC ogl_shader ogl_shaders_get_shader_by_name(__in __notnull ogl_shaders               shaders,
-                                                 __in __notnull system_hashed_ansi_string shader_has)
+PUBLIC ogl_shader ogl_shaders_get_shader_by_name(ogl_shaders               shaders,
+                                                 system_hashed_ansi_string shader_has)
 {
     ogl_shader    result      = NULL;
     _ogl_shaders* shaders_ptr = (_ogl_shaders*) shaders;
@@ -67,7 +67,7 @@ PUBLIC ogl_shader ogl_shaders_get_shader_by_name(__in __notnull ogl_shaders     
 }
 
 /** Please see header for spec */
-PUBLIC void ogl_shaders_release(__in __notnull ogl_shaders shaders)
+PUBLIC void ogl_shaders_release(ogl_shaders shaders)
 {
     delete (_ogl_shaders*) shaders;
 
@@ -75,8 +75,8 @@ PUBLIC void ogl_shaders_release(__in __notnull ogl_shaders shaders)
 }
 
 /** Please see header for spec */
-PUBLIC void ogl_shaders_register_shader(__in __notnull ogl_shaders shaders,
-                                        __in __notnull ogl_shader  shader)
+PUBLIC void ogl_shaders_register_shader(ogl_shaders shaders,
+                                        ogl_shader  shader)
 {
     system_hashed_ansi_string shader_name = ogl_shader_get_name               (shader);
     system_hash64             shader_hash = system_hashed_ansi_string_get_hash(shader_name);
@@ -94,8 +94,8 @@ PUBLIC void ogl_shaders_register_shader(__in __notnull ogl_shaders shaders,
 }
 
 /** Please see header for spec */
-PUBLIC void ogl_shaders_unregister_shader(__in __notnull ogl_shaders shaders,
-                                          __in __notnull ogl_shader  shader)
+PUBLIC void ogl_shaders_unregister_shader(ogl_shaders shaders,
+                                          ogl_shader  shader)
 {
     system_hashed_ansi_string shader_name = ogl_shader_get_name               (shader);
     system_hash64             shader_hash = system_hashed_ansi_string_get_hash(shader_name);

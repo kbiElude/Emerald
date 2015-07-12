@@ -30,7 +30,7 @@ PRIVATE system_resizable_vector texture_filenames_vector         = NULL;
 
 
 /** TODO */
-volatile void ExtractMaterialDataWorkerThreadEntryPoint(__in __notnull void* in_scene_arg)
+volatile void ExtractMaterialDataWorkerThreadEntryPoint(void* in_scene_arg)
 {
     scene            in_scene          = (scene) in_scene_arg;
     char             text_buffer[1024];
@@ -401,7 +401,7 @@ PUBLIC system_hash64map GetLWSurfaceIDToSceneMaterialMap()
 }
 
 /** Please see header for spec */
-PUBLIC system_event StartMaterialDataExtraction(__in __notnull scene in_scene)
+PUBLIC system_event StartMaterialDataExtraction(scene in_scene)
 {
     job_done_event = system_event_create(false); /* manual_reset */
 

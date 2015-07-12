@@ -46,28 +46,28 @@ REFCOUNT_INSERT_DECLARATIONS(ogl_flyby,
  *
  *  Internal usage only.
  */
-PUBLIC ogl_flyby ogl_flyby_create(__in __notnull ogl_context context);
+PUBLIC ogl_flyby ogl_flyby_create(ogl_context context);
 
 /** TODO */
-PUBLIC EMERALD_API void ogl_flyby_deactivate(__in __notnull ogl_context context);
+PUBLIC EMERALD_API void ogl_flyby_deactivate(ogl_context context);
 
 /** TODO */
-PUBLIC EMERALD_API void ogl_flyby_get_property(__in  __notnull ogl_flyby          flyby,
-                                               __in            ogl_flyby_property property,
-                                               __out __notnull void*              out_result);
+PUBLIC EMERALD_API void ogl_flyby_get_property(ogl_flyby          flyby,
+                                               ogl_flyby_property property,
+                                               void*              out_result);
 
 /** TODO */
-PUBLIC EMERALD_API void ogl_flyby_lock(__in  __notnull ogl_flyby flyby);
+PUBLIC EMERALD_API void ogl_flyby_lock(ogl_flyby flyby);
 
 /** TODO */
-PUBLIC EMERALD_API void ogl_flyby_set_property(__in __notnull ogl_flyby          flyby,
-                                               __in           ogl_flyby_property property,
-                                               __in __notnull const void*        data);
+PUBLIC EMERALD_API void ogl_flyby_set_property(ogl_flyby          flyby,
+                                               ogl_flyby_property property,
+                                               const void*        data);
 
 /** TODO */
-PUBLIC EMERALD_API void ogl_flyby_unlock(__in  __notnull ogl_flyby flyby);
+PUBLIC EMERALD_API void ogl_flyby_unlock(ogl_flyby flyby);
 
 /** TODO. Must be called once per frame after flyby has been activated */
-PUBLIC EMERALD_API void ogl_flyby_update(__in __notnull ogl_flyby flyby);
+PUBLIC EMERALD_API void ogl_flyby_update(ogl_flyby flyby);
 
 #endif /* OGL_FLYBY_H */

@@ -14,7 +14,7 @@ typedef struct _system_list_bidirectional_item
     _system_list_bidirectional_item* next_ptr;
     _system_list_bidirectional_item* prev_ptr;
 
-    explicit _system_list_bidirectional_item(__in_opt void* in_data)
+    explicit _system_list_bidirectional_item(void* in_data)
     {
         data     = in_data;
         next_ptr = NULL;
@@ -52,9 +52,9 @@ typedef struct _system_list_bidirectional
 
 
 /** TODO */
-PUBLIC EMERALD_API void system_list_bidirectional_append(__in __notnull system_list_bidirectional      list,
-                                                         __in __notnull system_list_bidirectional_item item,
-                                                         __in_opt       void*                          new_item_data)
+PUBLIC EMERALD_API void system_list_bidirectional_append(system_list_bidirectional      list,
+                                                         system_list_bidirectional_item item,
+                                                         void*                          new_item_data)
 {
     /* Sanity checks */
     ASSERT_DEBUG_SYNC(list != NULL,
@@ -96,7 +96,7 @@ PUBLIC EMERALD_API void system_list_bidirectional_append(__in __notnull system_l
 }
 
 /** TODO */
-PUBLIC EMERALD_API void system_list_bidirectional_clear(__in __notnull system_list_bidirectional list)
+PUBLIC EMERALD_API void system_list_bidirectional_clear(system_list_bidirectional list)
 {
     _system_list_bidirectional* list_ptr = (_system_list_bidirectional*) list;
 
@@ -119,15 +119,15 @@ PUBLIC EMERALD_API system_list_bidirectional system_list_bidirectional_create()
 }
 
 /** TODO */
-PUBLIC EMERALD_API system_list_bidirectional_item system_list_bidirectional_get_head_item(__in __notnull system_list_bidirectional list)
+PUBLIC EMERALD_API system_list_bidirectional_item system_list_bidirectional_get_head_item(system_list_bidirectional list)
 {
     return (system_list_bidirectional_item) ( (_system_list_bidirectional*) list)->head_ptr;
 }
 
 /** TODO */
-PUBLIC EMERALD_API bool system_list_bidirectional_get_item_at(__in  __notnull system_list_bidirectional       list,
-                                                              __in            unsigned int                    index,
-                                                              __out __notnull system_list_bidirectional_item* out_item)
+PUBLIC EMERALD_API bool system_list_bidirectional_get_item_at(system_list_bidirectional       list,
+                                                              unsigned int                    index,
+                                                              system_list_bidirectional_item* out_item)
 {
     _system_list_bidirectional*      list_ptr       = (_system_list_bidirectional*) list;
     _system_list_bidirectional_item* item_ptr       = list_ptr->head_ptr;
@@ -152,8 +152,8 @@ PUBLIC EMERALD_API bool system_list_bidirectional_get_item_at(__in  __notnull sy
 }
 
 /** TODO */
-PUBLIC EMERALD_API void system_list_bidirectional_get_item_data(__in  __notnull system_list_bidirectional_item list_item,
-                                                                __out __notnull void**                         out_result)
+PUBLIC EMERALD_API void system_list_bidirectional_get_item_data(system_list_bidirectional_item list_item,
+                                                                void**                         out_result)
 {
     _system_list_bidirectional_item* list_item_ptr = (_system_list_bidirectional_item*) list_item;
 
@@ -161,32 +161,32 @@ PUBLIC EMERALD_API void system_list_bidirectional_get_item_data(__in  __notnull 
 }
 
 /** TODO */
-PUBLIC EMERALD_API system_list_bidirectional_item system_list_bidirectional_get_next_item(__in __notnull system_list_bidirectional_item list_item)
+PUBLIC EMERALD_API system_list_bidirectional_item system_list_bidirectional_get_next_item(system_list_bidirectional_item list_item)
 {
     return (system_list_bidirectional_item) ( (_system_list_bidirectional_item*) list_item)->next_ptr;
 }
 
 /** TODO */
-PUBLIC EMERALD_API system_list_bidirectional_item system_list_bidirectional_get_previous_item(__in __notnull system_list_bidirectional_item list_item)
+PUBLIC EMERALD_API system_list_bidirectional_item system_list_bidirectional_get_previous_item(system_list_bidirectional_item list_item)
 {
     return (system_list_bidirectional_item) ( (_system_list_bidirectional_item*) list_item)->prev_ptr;
 }
 
 /** TODO */
-PUBLIC EMERALD_API unsigned int system_list_bidirectional_get_number_of_elements(__in __notnull system_list_bidirectional list)
+PUBLIC EMERALD_API unsigned int system_list_bidirectional_get_number_of_elements(system_list_bidirectional list)
 {
     return ( (_system_list_bidirectional*) list)->n_items;
 }
 
 /** TODO */
-PUBLIC EMERALD_API system_list_bidirectional_item system_list_bidirectional_get_tail_item(__in __notnull system_list_bidirectional list)
+PUBLIC EMERALD_API system_list_bidirectional_item system_list_bidirectional_get_tail_item(system_list_bidirectional list)
 {
     return (system_list_bidirectional_item) ( (_system_list_bidirectional*) list)->last_ptr;
 }
 
 /** TODO */
-PUBLIC EMERALD_API void system_list_bidirectional_push_at_end(__in __notnull system_list_bidirectional list,
-                                                              __in_opt       void*                      new_item_data)
+PUBLIC EMERALD_API void system_list_bidirectional_push_at_end(system_list_bidirectional list,
+                                                              void*                      new_item_data)
 {
     _system_list_bidirectional*      list_ptr     = (_system_list_bidirectional*)      list;
     _system_list_bidirectional_item* new_item_ptr = (_system_list_bidirectional_item*) system_linear_alloc_pin_get_from_pool(list_ptr->item_allocator);
@@ -220,8 +220,8 @@ PUBLIC EMERALD_API void system_list_bidirectional_push_at_end(__in __notnull sys
 }
 
 /** TODO */
-PUBLIC EMERALD_API void system_list_bidirectional_push_at_front(__in __notnull system_list_bidirectional list,
-                                                                __in_opt       void*                      new_item_data)
+PUBLIC EMERALD_API void system_list_bidirectional_push_at_front(system_list_bidirectional list,
+                                                                void*                      new_item_data)
 {
     _system_list_bidirectional*      list_ptr     = (_system_list_bidirectional*)      list;
     _system_list_bidirectional_item* new_item_ptr = (_system_list_bidirectional_item*) system_linear_alloc_pin_get_from_pool(list_ptr->item_allocator);
@@ -246,14 +246,14 @@ PUBLIC EMERALD_API void system_list_bidirectional_push_at_front(__in __notnull s
 }
 
 /** TODO */
-PUBLIC EMERALD_API void system_list_bidirectional_release(__in __notnull system_list_bidirectional list)
+PUBLIC EMERALD_API void system_list_bidirectional_release(system_list_bidirectional list)
 {
     delete (_system_list_bidirectional*) list;
 }
 
 /** TODO */
-PUBLIC EMERALD_API void system_list_bidirectional_remove_item(__in __notnull system_list_bidirectional      list,
-                                                              __in __notnull system_list_bidirectional_item list_item)
+PUBLIC EMERALD_API void system_list_bidirectional_remove_item(system_list_bidirectional      list,
+                                                              system_list_bidirectional_item list_item)
 {
     _system_list_bidirectional_item* item_ptr = (_system_list_bidirectional_item*) list_item;
     _system_list_bidirectional*      list_ptr = (_system_list_bidirectional*)      list;

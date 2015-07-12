@@ -11,7 +11,7 @@
 #include "system/system_hashed_ansi_string.h"
 
 /** TODO */
-void FillMiscellaneousData(__in __notnull scene in_scene)
+void FillMiscellaneousData(scene in_scene)
 {
     float duration = (float) (interface_info_ptr->previewEnd - interface_info_ptr->previewStart) /
                      (float) (scene_info_ptr->framesPerSecond);

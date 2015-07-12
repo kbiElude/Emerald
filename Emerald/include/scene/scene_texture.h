@@ -29,21 +29,21 @@ REFCOUNT_INSERT_DECLARATIONS(scene_texture,
 /** TODO.
  *
  *  NOTE: Texture ID is configured exclusively by scene instance which owns the texture. */
-PUBLIC EMERALD_API scene_texture scene_texture_create(__in     __notnull system_hashed_ansi_string name,
-                                                      __in_opt           system_hashed_ansi_string object_manager_path,
-                                                      __in     __notnull system_hashed_ansi_string filename);
+PUBLIC EMERALD_API scene_texture scene_texture_create(system_hashed_ansi_string name,
+                                                      system_hashed_ansi_string object_manager_path,
+                                                      system_hashed_ansi_string filename);
 
 /** TODO */
-PUBLIC EMERALD_API void scene_texture_get(__in  __notnull scene_texture          instance,
-                                          __in            scene_texture_property property,
-                                          __out __notnull void*                  result);
+PUBLIC EMERALD_API void scene_texture_get(scene_texture          instance,
+                                          scene_texture_property property,
+                                          void*                  result);
 
 /** TODO */
-PUBLIC EMERALD_API scene_texture scene_texture_load_with_serializer(__in     __notnull system_file_serializer      serializer,
-                                                                    __in_opt           system_hashed_ansi_string   object_manager_path,
-                                                                    __in     __notnull ogl_context                 context,
-                                                                    __in_opt           PFNSETOGLTEXTUREBACKINGPROC pGLSetOGLTextureBacking_callback,
-                                                                    __in_opt           void*                       callback_user_data = NULL);
+PUBLIC EMERALD_API scene_texture scene_texture_load_with_serializer(system_file_serializer      serializer,
+                                                                    system_hashed_ansi_string   object_manager_path,
+                                                                    ogl_context                 context,
+                                                                    PFNSETOGLTEXTUREBACKINGPROC pGLSetOGLTextureBacking_callback,
+                                                                    void*                       callback_user_data = NULL);
 
 /** TODO.
  *
@@ -51,12 +51,12 @@ PUBLIC EMERALD_API scene_texture scene_texture_load_with_serializer(__in     __n
  *  NOTE: This function does not spawn ogl_texture instances. This should be handled by the
  *        caller. The SCENE_TEXTURE_PROPERTY_OGL_TEXTURE property should be updated accordingly.
  */
-PUBLIC bool scene_texture_save(__in __notnull system_file_serializer serializer,
-                               __in __notnull scene_texture          instance);
+PUBLIC bool scene_texture_save(system_file_serializer serializer,
+                               scene_texture          instance);
 
 /** TODO */
-PUBLIC EMERALD_API void scene_texture_set(__in __notnull scene_texture          instance,
-                                          __in           scene_texture_property property,
-                                          __in __notnull void*                  value);
+PUBLIC EMERALD_API void scene_texture_set(scene_texture          instance,
+                                          scene_texture_property property,
+                                          void*                  value);
 
 #endif /* SCENE_TEXTURE_H */

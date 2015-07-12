@@ -15,8 +15,8 @@ struct _memory_block
     unsigned int offset_aligned;
     unsigned int size;
 
-    explicit _memory_block(__in unsigned int in_offset_aligned,
-                           __in unsigned int in_size)
+    explicit _memory_block( unsigned int in_offset_aligned,
+                            unsigned int in_size)
     {
         offset_aligned = in_offset_aligned;
         size           = in_size;
@@ -45,10 +45,10 @@ static void _free_memory_blocks()
     } /* if (memory_blocks != NULL) */
 }
 
-static void _mmanager_block_alloc_callback(__in system_memory_manager manager,
-                                           __in unsigned int          offset_aligned,
-                                           __in unsigned int          size,
-                                           __in void*                 user_arg)
+static void _mmanager_block_alloc_callback(system_memory_manager manager,
+                                           unsigned int          offset_aligned,
+                                           unsigned int          size,
+                                           void*                 user_arg)
 {
     _memory_block* new_block_ptr = new _memory_block(offset_aligned,
                                                      size);
@@ -57,10 +57,10 @@ static void _mmanager_block_alloc_callback(__in system_memory_manager manager,
                                  new_block_ptr);
 }
 
-static void _mmanager_block_freed_callback(__in system_memory_manager manager,
-                                           __in unsigned int          offset_aligned,
-                                           __in unsigned int          size,
-                                           __in void*                 user_arg)
+static void _mmanager_block_freed_callback(system_memory_manager manager,
+                                           unsigned int          offset_aligned,
+                                           unsigned int          size,
+                                           void*                 user_arg)
 {
     /* Find the matching block */
     bool         has_found               = false;

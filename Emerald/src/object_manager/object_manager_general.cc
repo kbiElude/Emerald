@@ -272,9 +272,9 @@ PUBLIC EMERALD_API object_manager_directory object_manager_get_directory(system_
 }
 
 /** Please see header for specification */
-PUBLIC system_hashed_ansi_string object_manager_get_object_path(__in     __notnull system_hashed_ansi_string  object_name,
-                                                                __in               object_manager_object_type object_type,
-                                                                __in_opt           system_hashed_ansi_string  scene_name)
+PUBLIC system_hashed_ansi_string object_manager_get_object_path(system_hashed_ansi_string  object_name,
+                                                                object_manager_object_type object_type,
+                                                                system_hashed_ansi_string  scene_name)
 {
     /* Come up with a path which also includes owner scene's name.
      * This helps us avoid naming collisions.

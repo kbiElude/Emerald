@@ -16,28 +16,28 @@ typedef enum
 } curve_editor_curve_window_renderer_property;
 
 /** TODO */
-PUBLIC curve_editor_curve_window_renderer curve_editor_curve_window_renderer_create(__in __notnull system_hashed_ansi_string,
-                                                                                    __in __notnull HWND,
-                                                                                    __in __notnull ogl_context,
-                                                                                    __in           curve_container,
-                                                                                    __in __notnull curve_editor_curve_window);
+PUBLIC curve_editor_curve_window_renderer curve_editor_curve_window_renderer_create(system_hashed_ansi_string,
+                                                                                    HWND,
+                                                                                    ogl_context,
+                                                                                    curve_container,
+                                                                                    curve_editor_curve_window);
 
 /** TODO */
-PUBLIC system_window curve_editor_curve_window_renderer_get_window(__in __notnull curve_editor_curve_window_renderer);
+PUBLIC system_window curve_editor_curve_window_renderer_get_window(curve_editor_curve_window_renderer);
 
 /** TODO */
-PUBLIC void curve_editor_curve_window_renderer_redraw(__in __notnull curve_editor_curve_window_renderer);
+PUBLIC void curve_editor_curve_window_renderer_redraw(curve_editor_curve_window_renderer);
 
 /** TODO */
-PUBLIC void curve_editor_curve_window_renderer_release(__in __post_invalid curve_editor_curve_window_renderer);
+PUBLIC void curve_editor_curve_window_renderer_release(curve_editor_curve_window_renderer);
 
 /** TODO */
-PUBLIC void curve_editor_curve_window_renderer_resize(__in __notnull   curve_editor_curve_window_renderer,
-                                                      __in __ecount(4) int*                               x1y1x2y2);
+PUBLIC void curve_editor_curve_window_renderer_resize(curve_editor_curve_window_renderer,
+                                                      int*                               x1y1x2y2);
 
 /** TODO */
-PUBLIC void curve_editor_curve_window_renderer_set_property(__in __notnull curve_editor_curve_window_renderer          renderer,
-                                                            __in           curve_editor_curve_window_renderer_property property,
-                                                            __in __notnull void*                                       data);
+PUBLIC void curve_editor_curve_window_renderer_set_property(curve_editor_curve_window_renderer          renderer,
+                                                            curve_editor_curve_window_renderer_property property,
+                                                            void*                                       data);
 
 #endif /* CURVE_EDITOR_CURVE_WINDOW_RENDERER_H */

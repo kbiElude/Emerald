@@ -15,13 +15,13 @@
 PUBLIC EMERALD_API system_read_write_mutex system_read_write_mutex_create();
 
 /** TODO */
-PUBLIC EMERALD_API bool system_read_write_mutex_is_write_locked(__in system_read_write_mutex mutex);
+PUBLIC EMERALD_API bool system_read_write_mutex_is_write_locked(system_read_write_mutex mutex);
 
 /** Releases a read/write mutex object. Do not use the object afterward.
  *
  *  @param system_read_write_mutex Mutex to release.
  */
-PUBLIC EMERALD_API void system_read_write_mutex_release(__in __deallocate(mem) system_read_write_mutex mutex);
+PUBLIC EMERALD_API void system_read_write_mutex_release(system_read_write_mutex mutex);
 
 /** Locks a read/write mutex object for either read or write access.
  *
@@ -31,8 +31,8 @@ PUBLIC EMERALD_API void system_read_write_mutex_release(__in __deallocate(mem) s
  *  @param system_read_write_mutex Mutex to perform the operation on.
  *  @param system_read_write_mutex_access_type Access type to lock the mutex for.
  */
-PUBLIC EMERALD_API void system_read_write_mutex_lock(__in system_read_write_mutex             mutex,
-                                                     __in system_read_write_mutex_access_type access_type);
+PUBLIC EMERALD_API void system_read_write_mutex_lock(system_read_write_mutex             mutex,
+                                                     system_read_write_mutex_access_type access_type);
 
 /** Unlocks a read/write mutex object from either read or write access.
  *
@@ -44,7 +44,7 @@ PUBLIC EMERALD_API void system_read_write_mutex_lock(__in system_read_write_mute
  *  @param system_read_write_mutex Mutex to perform the operation on.
  *  @param system_read_write_mutex_access_type Access type to unlock the mutex from.
  */
-PUBLIC EMERALD_API void system_read_write_mutex_unlock(__in system_read_write_mutex             mutex,
-                                                       __in system_read_write_mutex_access_type access_type);
+PUBLIC EMERALD_API void system_read_write_mutex_unlock(system_read_write_mutex             mutex,
+                                                       system_read_write_mutex_access_type access_type);
 
 #endif /* SYSTEM_READ_WRITE_MUTEX */

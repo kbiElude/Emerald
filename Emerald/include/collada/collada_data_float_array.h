@@ -22,18 +22,18 @@ enum collada_data_float_array_property
  *  NOTE: The reason this function takes parent geometry name is that Lightwave COLLADA exporter
  *        uses the same ids for float_array of differing contents..
  **/
-PUBLIC collada_data_float_array collada_data_float_array_create(__in __notnull tinyxml2::XMLElement*     float_array_element_ptr,
-                                                                __in           unsigned int              n_components,
-                                                                __in           unsigned int              stride,
-                                                                __in __notnull collada_data              data,
-                                                                __in __notnull system_hashed_ansi_string parent_name);
+PUBLIC collada_data_float_array collada_data_float_array_create(tinyxml2::XMLElement*     float_array_element_ptr,
+                                                                unsigned int              n_components,
+                                                                unsigned int              stride,
+                                                                collada_data              data,
+                                                                system_hashed_ansi_string parent_name);
 
 /** TODO */
-PUBLIC void collada_data_float_array_get_property(__in  __notnull collada_data_float_array          array,
-                                                  __in            collada_data_float_array_property property,
-                                                  __out __notnull void*                             out_result);
+PUBLIC void collada_data_float_array_get_property(collada_data_float_array          array,
+                                                  collada_data_float_array_property property,
+                                                  void*                             out_result);
 
 /** TODO */
-PUBLIC void collada_data_float_array_release(__in __notnull __post_invalid collada_data_float_array);
+PUBLIC void collada_data_float_array_release(collada_data_float_array);
 
 #endif /* COLLADA_DATA_GEOMETRY_H */

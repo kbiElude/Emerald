@@ -24,8 +24,8 @@ struct _system_semaphore
 };
 
 /** Please see header for specification */
-EMERALD_API system_semaphore system_semaphore_create(__in uint32_t semaphore_capacity,
-                                                     __in uint32_t semaphore_default_value)
+EMERALD_API system_semaphore system_semaphore_create(uint32_t semaphore_capacity,
+                                                     uint32_t semaphore_default_value)
 {
     _system_semaphore* semaphore_ptr = new _system_semaphore;
 
@@ -67,7 +67,7 @@ EMERALD_API system_semaphore system_semaphore_create(__in uint32_t semaphore_cap
 }
 
 /** Please see header for specification */
-EMERALD_API void system_semaphore_release(__in __deallocate(mem) system_semaphore semaphore)
+EMERALD_API void system_semaphore_release(system_semaphore semaphore)
 {
     _system_semaphore* semaphore_ptr = (_system_semaphore*) semaphore;
 
@@ -84,9 +84,9 @@ EMERALD_API void system_semaphore_release(__in __deallocate(mem) system_semaphor
 }
 
 /** Please see header for specification */
-EMERALD_API void system_semaphore_enter(__in      system_semaphore semaphore,
-                                        __in      system_time      timeout,
-                                        __out_opt bool*            out_has_timed_out_ptr)
+EMERALD_API void system_semaphore_enter(system_semaphore semaphore,
+                                        system_time      timeout,
+                                        bool*            out_has_timed_out_ptr)
 {
     _system_semaphore* semaphore_ptr = (_system_semaphore*) semaphore;
 
@@ -134,7 +134,8 @@ EMERALD_API void system_semaphore_enter(__in      system_semaphore semaphore,
 }
 
 /** Please see header for specification */
-EMERALD_API void system_semaphore_enter_multiple(__in system_semaphore semaphore, __in uint32_t count)
+EMERALD_API void system_semaphore_enter_multiple(system_semaphore semaphore,
+                                                 uint32_t         count)
 {
     _system_semaphore* semaphore_ptr = (_system_semaphore*) semaphore;
 
@@ -155,7 +156,7 @@ EMERALD_API void system_semaphore_enter_multiple(__in system_semaphore semaphore
 }
 
 /** Please see header for specification */
-EMERALD_API void system_semaphore_leave(__in system_semaphore semaphore)
+EMERALD_API void system_semaphore_leave(system_semaphore semaphore)
 {
     _system_semaphore* semaphore_ptr = (_system_semaphore*) semaphore;
 
@@ -172,8 +173,8 @@ EMERALD_API void system_semaphore_leave(__in system_semaphore semaphore)
 }
 
 /** Please see header for specification */
-EMERALD_API void system_semaphore_leave_multiple(__in system_semaphore semaphore,
-                                                 __in uint32_t         count)
+EMERALD_API void system_semaphore_leave_multiple(system_semaphore semaphore,
+                                                 uint32_t         count)
 {
     _system_semaphore* semaphore_ptr = (_system_semaphore*) semaphore;
 

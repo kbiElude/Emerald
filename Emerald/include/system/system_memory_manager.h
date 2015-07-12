@@ -20,14 +20,14 @@
 
 #include "system_types.h"
 
-typedef void (*PFNSYSTEMMEMORYMANAGERALLOCBLOCKPROC)(__in system_memory_manager manager,
-                                                     __in unsigned int          offset_aligned,
-                                                     __in unsigned int          size,
-                                                     __in void*                 user_arg);
-typedef void (*PFNSYSTEMMEMORYMANAGERFREEBLOCKPROC) (__in system_memory_manager manager,
-                                                     __in unsigned int          offset_aligned,
-                                                     __in unsigned int          size,
-                                                     __in void*                 user_arg);
+typedef void (*PFNSYSTEMMEMORYMANAGERALLOCBLOCKPROC)(system_memory_manager manager,
+                                                     unsigned int          offset_aligned,
+                                                     unsigned int          size,
+                                                     void*                 user_arg);
+typedef void (*PFNSYSTEMMEMORYMANAGERFREEBLOCKPROC) (system_memory_manager manager,
+                                                     unsigned int          offset_aligned,
+                                                     unsigned int          size,
+                                                     void*                 user_arg);
 
 
 /** TODO
@@ -47,24 +47,24 @@ typedef void (*PFNSYSTEMMEMORYMANAGERFREEBLOCKPROC) (__in system_memory_manager 
  *
  *  @return TODO
  **/
-PUBLIC EMERALD_API bool system_memory_manager_alloc_block(__in  __notnull system_memory_manager manager,
-                                                          __in            unsigned int          size,
-                                                          __in            unsigned int          required_alignment,
-                                                          __out __notnull unsigned int*         out_allocation_offset);
+PUBLIC EMERALD_API bool system_memory_manager_alloc_block(system_memory_manager manager,
+                                                          unsigned int          size,
+                                                          unsigned int          required_alignment,
+                                                          unsigned int*         out_allocation_offset);
 
 /** TODO */
-PUBLIC EMERALD_API system_memory_manager system_memory_manager_create(__in           unsigned int                         memory_region_size,
-                                                                      __in           unsigned int                         page_size,
-                                                                      __in __notnull PFNSYSTEMMEMORYMANAGERALLOCBLOCKPROC pfn_on_memory_block_alloced,
-                                                                      __in __notnull PFNSYSTEMMEMORYMANAGERFREEBLOCKPROC  pfn_on_memory_block_freed,
-                                                                      __in_opt       void*                                user_arg,
-                                                                      __in           bool                                 should_be_thread_safe);
+PUBLIC EMERALD_API system_memory_manager system_memory_manager_create(unsigned int                         memory_region_size,
+                                                                      unsigned int                         page_size,
+                                                                      PFNSYSTEMMEMORYMANAGERALLOCBLOCKPROC pfn_on_memory_block_alloced,
+                                                                      PFNSYSTEMMEMORYMANAGERFREEBLOCKPROC  pfn_on_memory_block_freed,
+                                                                      void*                                user_arg,
+                                                                      bool                                 should_be_thread_safe);
 
 /** TODO */
-PUBLIC EMERALD_API void system_memory_manager_free_block(__in __notnull system_memory_manager manager,
-                                                         __in           unsigned int          alloc_offset);
+PUBLIC EMERALD_API void system_memory_manager_free_block(system_memory_manager manager,
+                                                         unsigned int          alloc_offset);
 
 /** TODO */
-PUBLIC EMERALD_API void system_memory_manager_release(__in __notnull system_memory_manager manager);
+PUBLIC EMERALD_API void system_memory_manager_release(system_memory_manager manager);
 
 #endif /* SYSTEM_MEMORY_MANAGER */

@@ -918,8 +918,8 @@ PRIVATE void _curve_editor_main_window_on_curves_changed_callback(const void* ca
 }
 
 /* Please see header for specification */
-PUBLIC curve_editor_main_window curve_editor_main_window_create(               PFNONMAINWINDOWRELEASECALLBACKHANDLERPROC on_release_callback_handler_func,
-                                                                __in __notnull ogl_context                               context)
+PUBLIC curve_editor_main_window curve_editor_main_window_create(PFNONMAINWINDOWRELEASECALLBACKHANDLERPROC on_release_callback_handler_func,
+                                                                ogl_context                               context)
 {
     /* Create result container */
     _curve_editor_main_window* result = new (std::nothrow) _curve_editor_main_window;
@@ -963,7 +963,7 @@ PUBLIC curve_editor_main_window curve_editor_main_window_create(               P
 
 
 /* Please see header for specification */
-PUBLIC void curve_editor_main_window_release(__in __notnull __post_invalid curve_editor_main_window main_window)
+PUBLIC void curve_editor_main_window_release(curve_editor_main_window main_window)
 {
     _curve_editor_main_window* main_window_ptr = (_curve_editor_main_window*) main_window;
 
@@ -1082,9 +1082,9 @@ PUBLIC void curve_editor_main_window_release(__in __notnull __post_invalid curve
 }
 
 /* Please see header for specification */
-PUBLIC void curve_editor_main_window_set_property(__in __notnull curve_editor_main_window          window,
-                                                  __in           curve_editor_main_window_property property,
-                                                  __in __notnull void*                             data)
+PUBLIC void curve_editor_main_window_set_property(curve_editor_main_window          window,
+                                                  curve_editor_main_window_property property,
+                                                  void*                             data)
 {
     _curve_editor_main_window* window_ptr = (_curve_editor_main_window*) window;
 
@@ -1132,7 +1132,7 @@ PUBLIC void curve_editor_main_window_set_property(__in __notnull curve_editor_ma
 }
 
 /* Please see header for specification */
-PUBLIC void curve_editor_main_window_update_curve_list(__in __notnull curve_editor_main_window window)
+PUBLIC void curve_editor_main_window_update_curve_list(curve_editor_main_window window)
 {
     _curve_editor_main_window* window_ptr = (_curve_editor_main_window*) window;
 

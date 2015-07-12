@@ -76,14 +76,14 @@ typedef struct _ogl_scene_renderer_lights_preview
 
 /* Forward declarations */
 #ifdef _DEBUG
-    PRIVATE void _ogl_scene_renderer_lights_preview_verify_context_type(__in __notnull ogl_context);
+    PRIVATE void _ogl_scene_renderer_lights_preview_verify_context_type(ogl_context);
 #else
     #define _ogl_scene_renderer_lights_preview_verify_context_type(x)
 #endif
 
 
 /** TODO */
-PRIVATE void _ogl_context_scene_renderer_lights_preview_init_preview_program(__in __notnull _ogl_scene_renderer_lights_preview* preview_ptr)
+PRIVATE void _ogl_context_scene_renderer_lights_preview_init_preview_program(_ogl_scene_renderer_lights_preview* preview_ptr)
 {
     const ogl_program_variable* color_uniform_ptr    = NULL;
     const ogl_program_variable* position_uniform_ptr = NULL;
@@ -199,7 +199,7 @@ end:
 /** TODO */
 #ifdef _DEBUG
     /* TODO */
-    PRIVATE void _ogl_scene_renderer_lights_preview_verify_context_type(__in __notnull ogl_context context)
+    PRIVATE void _ogl_scene_renderer_lights_preview_verify_context_type(ogl_context context)
     {
         ogl_context_type context_type = OGL_CONTEXT_TYPE_UNDEFINED;
 
@@ -214,8 +214,8 @@ end:
 
 
 /** Please see header for spec */
-PUBLIC ogl_scene_renderer_lights_preview ogl_scene_renderer_lights_preview_create(__in __notnull ogl_context context,
-                                                                                  __in __notnull scene       scene)
+PUBLIC ogl_scene_renderer_lights_preview ogl_scene_renderer_lights_preview_create(ogl_context context,
+                                                                                  scene       scene)
 {
     _ogl_scene_renderer_lights_preview* new_instance = new (std::nothrow) _ogl_scene_renderer_lights_preview;
 
@@ -238,7 +238,7 @@ PUBLIC ogl_scene_renderer_lights_preview ogl_scene_renderer_lights_preview_creat
 }
 
 /** Please see header for spec */
-PUBLIC void ogl_scene_renderer_lights_preview_release(__in __notnull __post_invalid ogl_scene_renderer_lights_preview preview)
+PUBLIC void ogl_scene_renderer_lights_preview_release(ogl_scene_renderer_lights_preview preview)
 {
     _ogl_scene_renderer_lights_preview* preview_ptr = (_ogl_scene_renderer_lights_preview*) preview;
 
@@ -261,10 +261,10 @@ PUBLIC void ogl_scene_renderer_lights_preview_release(__in __notnull __post_inva
 }
 
 /** Please see header for spec */
-PUBLIC RENDERING_CONTEXT_CALL void ogl_scene_renderer_lights_preview_render(__in __notnull     ogl_scene_renderer_lights_preview preview,
-                                                                            __in_ecount(4)     float*                            light_position,
-                                                                            __in_ecount(3)     float*                            light_color,
-                                                                            __in_ecount_opt(3) float*                            light_pos_plus_direction)
+PUBLIC RENDERING_CONTEXT_CALL void ogl_scene_renderer_lights_preview_render(ogl_scene_renderer_lights_preview preview,
+                                                                            float*                            light_position,
+                                                                            float*                            light_color,
+                                                                            float*                            light_pos_plus_direction)
 {
     const ogl_context_gl_entrypoints*   entrypoints_ptr = NULL;
     _ogl_scene_renderer_lights_preview* preview_ptr     = (_ogl_scene_renderer_lights_preview*) preview;
@@ -327,7 +327,7 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_scene_renderer_lights_preview_render(__in
 }
 
 /** Please see header for spec */
-PUBLIC RENDERING_CONTEXT_CALL void ogl_scene_renderer_lights_preview_start(__in __notnull ogl_scene_renderer_lights_preview preview)
+PUBLIC RENDERING_CONTEXT_CALL void ogl_scene_renderer_lights_preview_start(ogl_scene_renderer_lights_preview preview)
 {
     const ogl_context_gl_entrypoints*   entrypoints_ptr = NULL;
     _ogl_scene_renderer_lights_preview* preview_ptr     = (_ogl_scene_renderer_lights_preview*) preview;
@@ -359,7 +359,7 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_scene_renderer_lights_preview_start(__in 
 }
 
 /** Please see header for spec */
-PUBLIC RENDERING_CONTEXT_CALL void ogl_scene_renderer_lights_preview_stop(__in __notnull ogl_scene_renderer_lights_preview preview)
+PUBLIC RENDERING_CONTEXT_CALL void ogl_scene_renderer_lights_preview_stop(ogl_scene_renderer_lights_preview preview)
 {
     const ogl_context_gl_entrypoints*   entrypoints_ptr = NULL;
     _ogl_scene_renderer_lights_preview* preview_ptr     = (_ogl_scene_renderer_lights_preview*) preview;

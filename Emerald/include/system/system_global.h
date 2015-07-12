@@ -56,7 +56,7 @@ PUBLIC void system_global_deinit();
  *
  *  @param asset_path New path to remember. Must not be NULL.
  */
-PUBLIC EMERALD_API void system_global_add_asset_path(__in __notnull system_hashed_ansi_string asset_path);
+PUBLIC EMERALD_API void system_global_add_asset_path(system_hashed_ansi_string asset_path);
 
 /** Adds a new file unpacker to the global storage. The unpacker will only
  *  be added, if it has not already been added in the past.
@@ -70,10 +70,10 @@ PUBLIC EMERALD_API void system_global_add_asset_path(__in __notnull system_hashe
  *
  *  @param file_unpacker New file unpacker to remember. Must not be NULL.
  */
-PUBLIC EMERALD_API void system_global_add_file_unpacker(__in __notnull system_file_unpacker unpacker);
+PUBLIC EMERALD_API void system_global_add_file_unpacker(system_file_unpacker unpacker);
 
 /** TODO */
-PUBLIC EMERALD_API void system_global_delete_file_unpacker(__in __notnull system_file_unpacker unpacker);
+PUBLIC EMERALD_API void system_global_delete_file_unpacker(system_file_unpacker unpacker);
 
 /** Retrieves a general property value of the system global storage.
  *  Please check documentation of system_global_property for more
@@ -84,8 +84,8 @@ PUBLIC EMERALD_API void system_global_delete_file_unpacker(__in __notnull system
  *                    Must not be NULL.
  *
  **/
-PUBLIC EMERALD_API void system_global_get_general_property(__in            system_global_property property,
-                                                           __out __notnull void*                  out_result);
+PUBLIC EMERALD_API void system_global_get_general_property(system_global_property property,
+                                                           void*                  out_result);
 
 /** Retrieves an indexed property value from the system global storage.
  *  Please check documentation of system_global_property for more
@@ -97,9 +97,9 @@ PUBLIC EMERALD_API void system_global_get_general_property(__in            syste
  *                    Must not be NULL.
  *
  **/
-PUBLIC EMERALD_API void system_global_get_indexed_property(__in            system_global_property property,
-                                                           __in            uint32_t               index,
-                                                           __out __notnull void*                  out_result);
+PUBLIC EMERALD_API void system_global_get_indexed_property(system_global_property property,
+                                                           uint32_t               index,
+                                                           void*                  out_result);
 
 /** Initializes system global storage. Must only be called once,
  *  preferably at Emerald's initialization time.

@@ -12,22 +12,22 @@
 
 
 /** TODO */
-PUBLIC void ogl_context_win32_bind_to_current_thread(__in ogl_context_win32 context_win32);
+PUBLIC void ogl_context_win32_bind_to_current_thread(ogl_context_win32 context_win32);
 
 /** TODO */
-PUBLIC void ogl_context_win32_deinit(__in __post_invalid ogl_context_win32 context_win32);
+PUBLIC void ogl_context_win32_deinit(ogl_context_win32 context_win32);
 
 /** TODO */
-PUBLIC void ogl_context_win32_enumerate_supported_msaa_modes(__in ogl_context_win32 context_win32);
+PUBLIC void ogl_context_win32_enumerate_supported_msaa_modes(ogl_context_win32 context_win32);
 
 /** TODO */
-PUBLIC void* ogl_context_win32_get_func_ptr(__in ogl_context_win32 context_win32,
-                                            __in const char*       name);
+PUBLIC void* ogl_context_win32_get_func_ptr(ogl_context_win32 context_win32,
+                                            const char*       name);
 
 /** TODO */
-PUBLIC bool ogl_context_win32_get_property(__in  ogl_context_win32    context_win32,
-                                           __in  ogl_context_property property,
-                                           __out void*                out_result);
+PUBLIC bool ogl_context_win32_get_property(ogl_context_win32    context_win32,
+                                           ogl_context_property property,
+                                           void*                out_result);
 
 /** TODO
  *
@@ -35,18 +35,18 @@ PUBLIC bool ogl_context_win32_get_property(__in  ogl_context_win32    context_wi
  *
  *  @return TODO
  */
-PUBLIC void ogl_context_win32_init(__in ogl_context                     context,
-                                   __in PFNINITCONTEXTAFTERCREATIONPROC pInitContextAfterCreation);
+PUBLIC void ogl_context_win32_init(ogl_context                     context,
+                                   PFNINITCONTEXTAFTERCREATIONPROC pInitContextAfterCreation);
 
 /** TODO */
-PUBLIC bool ogl_context_win32_set_property(__in ogl_context_win32    context_win32,
-                                           __in ogl_context_property property,
-                                           __in const void*          data);
+PUBLIC bool ogl_context_win32_set_property(ogl_context_win32    context_win32,
+                                           ogl_context_property property,
+                                           const void*          data);
 
 /** TODO */
-PUBLIC void ogl_context_win32_swap_buffers(__in ogl_context_win32 context_win32);
+PUBLIC void ogl_context_win32_swap_buffers(ogl_context_win32 context_win32);
 
 /** TODO */
-PUBLIC void ogl_context_win32_unbind_from_current_thread(__in ogl_context_win32 context_win32);
+PUBLIC void ogl_context_win32_unbind_from_current_thread(ogl_context_win32 context_win32);
 
 #endif /* OGL_CONTEXT_WIN32_H */

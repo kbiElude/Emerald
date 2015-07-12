@@ -23,8 +23,8 @@ REFCOUNT_INSERT_DECLARATIONS(shaders_fragment_Yxy_to_rgb,
  * 
  *  @return shaders_fragment_Yxy_to_rgb instance if successful, NULL otherwise.
  */
-PUBLIC EMERALD_API shaders_fragment_Yxy_to_rgb shaders_fragment_Yxy_to_rgb_create(__in __notnull ogl_context,
-                                                                                  __in __notnull system_hashed_ansi_string name);
+PUBLIC EMERALD_API shaders_fragment_Yxy_to_rgb shaders_fragment_Yxy_to_rgb_create(ogl_context,
+                                                                                  system_hashed_ansi_string name);
 
 /** Retrieves ogl_shader object associated with the instance. Do not release the object or modify it in any way.
  *
@@ -32,6 +32,6 @@ PUBLIC EMERALD_API shaders_fragment_Yxy_to_rgb shaders_fragment_Yxy_to_rgb_creat
  *
  *  @return ogl_shader instance.
  **/
-PUBLIC EMERALD_API ogl_shader shaders_fragment_Yxy_to_rgb_get_shader(__in __notnull shaders_fragment_Yxy_to_rgb);
+PUBLIC EMERALD_API ogl_shader shaders_fragment_Yxy_to_rgb_get_shader(shaders_fragment_Yxy_to_rgb);
 
 #endif /* SHADERS_FRAGMENT_YXY_TO_RGB_H */

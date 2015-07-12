@@ -24,9 +24,9 @@ PUBLIC void _curve_editor_init();
 PUBLIC EMERALD_API bool curve_editor_hide();
 
 /** TODO */
-PUBLIC EMERALD_API void curve_editor_set_property(__in __notnull ogl_context           context,
-                                                  __in           curve_editor_property property,
-                                                  __in __notnull void*                 data);
+PUBLIC EMERALD_API void curve_editor_set_property(ogl_context           context,
+                                                  curve_editor_property property,
+                                                  void*                 data);
 
 /** TODO */
 PUBLIC EMERALD_API bool curve_editor_show(ogl_context);

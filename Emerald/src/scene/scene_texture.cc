@@ -31,9 +31,9 @@ REFCOUNT_INSERT_IMPLEMENTATION(scene_texture,
                               _scene_texture);
 
 /** TODO */
-PRIVATE void _scene_texture_init(__in __notnull _scene_texture*           data_ptr,
-                                 __in __notnull system_hashed_ansi_string name,
-                                 __in __notnull system_hashed_ansi_string filename)
+PRIVATE void _scene_texture_init(_scene_texture*           data_ptr,
+                                 system_hashed_ansi_string name,
+                                 system_hashed_ansi_string filename)
 {
     data_ptr->filename = filename;
     data_ptr->name     = name;
@@ -55,9 +55,9 @@ PRIVATE void _scene_texture_release(void* data_ptr)
 
 
 /* Please see header for specification */
-PUBLIC EMERALD_API scene_texture scene_texture_create(__in     __notnull system_hashed_ansi_string name,
-                                                      __in_opt           system_hashed_ansi_string object_manager_path,
-                                                      __in     __notnull system_hashed_ansi_string filename)
+PUBLIC EMERALD_API scene_texture scene_texture_create(system_hashed_ansi_string name,
+                                                      system_hashed_ansi_string object_manager_path,
+                                                      system_hashed_ansi_string filename)
 {
     _scene_texture* new_scene_texture = new (std::nothrow) _scene_texture;
 
@@ -82,9 +82,9 @@ PUBLIC EMERALD_API scene_texture scene_texture_create(__in     __notnull system_
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API void scene_texture_get(__in  __notnull scene_texture          instance,
-                                          __in            scene_texture_property property,
-                                          __out __notnull void*                  result)
+PUBLIC EMERALD_API void scene_texture_get(scene_texture          instance,
+                                          scene_texture_property property,
+                                          void*                  result)
 {
     _scene_texture* texture_ptr = (_scene_texture*) instance;
 
@@ -120,11 +120,11 @@ PUBLIC EMERALD_API void scene_texture_get(__in  __notnull scene_texture         
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API scene_texture scene_texture_load_with_serializer(__in __notnull system_file_serializer      serializer,
-                                                                    __in_opt       system_hashed_ansi_string   object_manager_path,
-                                                                    __in __notnull ogl_context                 context,
-                                                                    __in_opt       PFNSETOGLTEXTUREBACKINGPROC pGLSetOGLTextureBacking_callback,
-                                                                    __in_opt       void*                       callback_user_data)
+PUBLIC EMERALD_API scene_texture scene_texture_load_with_serializer(system_file_serializer      serializer,
+                                                                    system_hashed_ansi_string   object_manager_path,
+                                                                    ogl_context                 context,
+                                                                    PFNSETOGLTEXTUREBACKINGPROC pGLSetOGLTextureBacking_callback,
+                                                                    void*                       callback_user_data)
 {
     ogl_context_textures      context_textures = NULL;
     system_hashed_ansi_string filename         = NULL;
@@ -248,8 +248,8 @@ end:
 }
 
 /* Please see header for specification */
-PUBLIC bool scene_texture_save(__in __notnull system_file_serializer serializer,
-                               __in __notnull scene_texture          texture)
+PUBLIC bool scene_texture_save(system_file_serializer serializer,
+                               scene_texture          texture)
 {
     bool            result      = false;
     _scene_texture* texture_ptr = (_scene_texture*) texture;
@@ -287,9 +287,9 @@ PUBLIC bool scene_texture_save(__in __notnull system_file_serializer serializer,
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API void scene_texture_set(__in __notnull scene_texture          instance,
-                                          __in           scene_texture_property property,
-                                          __in __notnull void*                  value)
+PUBLIC EMERALD_API void scene_texture_set(scene_texture          instance,
+                                          scene_texture_property property,
+                                          void*                  value)
 {
     _scene_texture* texture_ptr = (_scene_texture*) instance;
 

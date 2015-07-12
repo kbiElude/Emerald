@@ -36,7 +36,7 @@ REFCOUNT_INSERT_IMPLEMENTATION( system_critical_section,
 
 
 /** Please see header for specification */
-PRIVATE void _system_critical_section_release(__in __deallocate(mem) void* user_arg)
+PRIVATE void _system_critical_section_release(void* user_arg)
 {
     _system_critical_section* cs_ptr = (_system_critical_section*) user_arg;
 
@@ -99,9 +99,9 @@ EMERALD_API system_critical_section system_critical_section_create()
 }
 
 /** TODO */
-PUBLIC EMERALD_API void system_critical_section_get_property(__in  system_critical_section          critical_section,
-                                                             __in  system_critical_section_property property,
-                                                             __out void*                            out_result_ptr)
+PUBLIC EMERALD_API void system_critical_section_get_property(system_critical_section          critical_section,
+                                                             system_critical_section_property property,
+                                                             void*                            out_result_ptr)
 {
     _system_critical_section* cs_ptr = (_system_critical_section*) critical_section;
 
@@ -137,7 +137,7 @@ PUBLIC EMERALD_API void system_critical_section_get_property(__in  system_critic
 }
 
 /** Please see header for specification */
-EMERALD_API void system_critical_section_enter(__in system_critical_section critical_section)
+EMERALD_API void system_critical_section_enter(system_critical_section critical_section)
 {
     system_thread_id          curr_thread_id = system_threads_get_thread_id();
     _system_critical_section* cs_ptr         = (_system_critical_section*) critical_section;
@@ -168,7 +168,7 @@ EMERALD_API void system_critical_section_enter(__in system_critical_section crit
 }
 
 /** Please see header for specification */
-EMERALD_API void system_critical_section_leave(__in system_critical_section critical_section)
+EMERALD_API void system_critical_section_leave(system_critical_section critical_section)
 {
     system_thread_id          curr_thread_id = system_threads_get_thread_id();
     _system_critical_section* cs_ptr         = (_system_critical_section*) critical_section;
@@ -208,7 +208,7 @@ EMERALD_API void system_critical_section_leave(__in system_critical_section crit
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API bool system_critical_section_try_enter(__in system_critical_section critical_section)
+PUBLIC EMERALD_API bool system_critical_section_try_enter(system_critical_section critical_section)
 {
     system_thread_id          curr_thread_id = system_threads_get_thread_id();
     _system_critical_section* cs_ptr         = (_system_critical_section*) critical_section;

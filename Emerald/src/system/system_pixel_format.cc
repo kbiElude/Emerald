@@ -43,18 +43,18 @@ typedef struct _system_pixel_format
 } _system_pixel_format;
 
 /** Please see header for specification */
-PRIVATE void _system_pixel_format_release(__in __notnull __deallocate(mem) void* descriptor)
+PRIVATE void _system_pixel_format_release(void* descriptor)
 {
     /* Nothing to do - refcount impl automatically releases the descriptor after this func finishes executing */
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API system_pixel_format system_pixel_format_create(__in unsigned char color_buffer_red_bits,
-                                                                  __in unsigned char color_buffer_green_bits,
-                                                                  __in unsigned char color_buffer_blue_bits,
-                                                                  __in unsigned char color_buffer_alpha_bits,
-                                                                  __in unsigned char depth_buffer_bits,
-                                                                  __in unsigned char n_samples)
+PUBLIC EMERALD_API system_pixel_format system_pixel_format_create(unsigned char color_buffer_red_bits,
+                                                                  unsigned char color_buffer_green_bits,
+                                                                  unsigned char color_buffer_blue_bits,
+                                                                  unsigned char color_buffer_alpha_bits,
+                                                                  unsigned char depth_buffer_bits,
+                                                                  unsigned char n_samples)
 {
     _system_pixel_format* pf_ptr = new (std::nothrow) _system_pixel_format;
 
@@ -94,7 +94,7 @@ PUBLIC EMERALD_API system_pixel_format system_pixel_format_create(__in unsigned 
 }
 
 /** Please see header for specification */
-PUBLIC system_pixel_format system_pixel_format_create_copy(__in system_pixel_format src_pf)
+PUBLIC system_pixel_format system_pixel_format_create_copy(system_pixel_format src_pf)
 {
     _system_pixel_format* new_pf_ptr = new (std::nothrow) _system_pixel_format( *(_system_pixel_format*) src_pf);
 
@@ -105,9 +105,9 @@ PUBLIC system_pixel_format system_pixel_format_create_copy(__in system_pixel_for
 }
 
 /** Please see header for specification */
-PUBLIC void system_pixel_format_get_property(__in            system_pixel_format          pf,
-                                             __in            system_pixel_format_property property,
-                                             __out __notnull void*                        out_result)
+PUBLIC void system_pixel_format_get_property(system_pixel_format          pf,
+                                             system_pixel_format_property property,
+                                             void*                        out_result)
 {
     _system_pixel_format* pf_ptr = (_system_pixel_format*) pf;
 
@@ -174,7 +174,7 @@ PUBLIC void system_pixel_format_get_property(__in            system_pixel_format
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API void system_pixel_format_release(__in __notnull system_pixel_format pf)
+PUBLIC EMERALD_API void system_pixel_format_release(system_pixel_format pf)
 {
     delete (_system_pixel_format*) pf;
 

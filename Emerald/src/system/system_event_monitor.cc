@@ -198,7 +198,7 @@ PRIVATE void _system_event_monitor_event_init(system_resource_pool_block block)
 }
 
 /** TODO */
-__forceinline bool _system_event_monitor_is_event_signalled(__in _system_event_monitor_event* event_ptr)
+__forceinline bool _system_event_monitor_is_event_signalled(_system_event_monitor_event* event_ptr)
 {
     bool result = false;
 
@@ -460,7 +460,7 @@ PRIVATE void _system_event_monitor_wait_op_init(system_resource_pool_block block
 
 
 /** Please see header for spec */
-PUBLIC void system_event_monitor_add_event(__in system_event event)
+PUBLIC void system_event_monitor_add_event(system_event event)
 {
     ASSERT_DEBUG_SYNC(monitor_ptr != NULL,
                       "Global event monitor instance is NULL");
@@ -526,7 +526,7 @@ PUBLIC void system_event_monitor_deinit()
 }
 
 /** Please see header for spec */
-PUBLIC void system_event_monitor_delete_event(__in system_event event)
+PUBLIC void system_event_monitor_delete_event(system_event event)
 {
     ASSERT_DEBUG_SYNC(monitor_ptr != NULL,
                       "Global event monitor instance is NULL");
@@ -580,7 +580,7 @@ PUBLIC void system_event_monitor_init()
 }
 
 /** Please see header for spec */
-PUBLIC void system_event_monitor_reset_event(__in system_event event)
+PUBLIC void system_event_monitor_reset_event(system_event event)
 {
     ASSERT_DEBUG_SYNC(monitor_ptr != NULL,
                       "Global event monitor instance is NULL");
@@ -607,7 +607,7 @@ PUBLIC void system_event_monitor_reset_event(__in system_event event)
 }
 
 /** Please see header for spec */
-PUBLIC void system_event_monitor_set_event(__in system_event event)
+PUBLIC void system_event_monitor_set_event(system_event event)
 {
     ASSERT_DEBUG_SYNC(monitor_ptr != NULL,
                       "Global event monitor instance is NULL");
@@ -643,12 +643,12 @@ PUBLIC void system_event_monitor_set_event(__in system_event event)
 }
 
 /** Please see header for spec */
-PUBLIC void system_event_monitor_wait(__in      system_event* events,
-                                      __in      unsigned int  n_events,
-                                      __in      bool          wait_for_all_events,
-                                      __in      system_time   timeout,
-                                      __out_opt bool*         out_has_timed_out_ptr,
-                                      __out_opt unsigned int* out_signalled_event_index_ptr)
+PUBLIC void system_event_monitor_wait(system_event* events,
+                                      unsigned int  n_events,
+                                      bool          wait_for_all_events,
+                                      system_time   timeout,
+                                      bool*         out_has_timed_out_ptr,
+                                      unsigned int* out_signalled_event_index_ptr)
 {
     /* Sanity checks */
     bool needs_to_leave_monitor_wakeup_cs;

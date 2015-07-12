@@ -12,13 +12,13 @@
 
 
 /* Forward declarations */
-PRIVATE void  _system_resources_get_embedded_meiryo_font_binaries(__out __notnull   void**  out_bmp_blob,
-                                                                  __out __notnull   void**  out_dat_blob);
+PRIVATE void  _system_resources_get_embedded_meiryo_font_binaries(void** out_bmp_blob,
+                                                                  void** out_dat_blob);
 
 #ifdef _WIN32
-    PRIVATE void* _system_resources_get_resource_blob(__in  __maybenull HMODULE module_handle,
-                                                                        int     resource_id,
-                                                                        int     resource_type);
+    PRIVATE void* _system_resources_get_resource_blob(HMODULE module_handle,
+                                                      int     resource_id,
+                                                      int     resource_type);
 #else
     #include "../meiryo_36.bmp.h"
     #include "../meiryo_36.dat.h"
@@ -43,8 +43,8 @@ PUBLIC void _system_resources_deinit()
 }
 
 /** Please see header for specification */
-PRIVATE void _system_resources_get_embedded_meiryo_font_binaries(__out __notnull void** out_bmp_blob,
-                                                                 __out __notnull void** out_dat_blob)
+PRIVATE void _system_resources_get_embedded_meiryo_font_binaries(void** out_bmp_blob,
+                                                                 void** out_dat_blob)
 {
     #ifdef _WIN32
     {
@@ -84,9 +84,9 @@ PRIVATE void _system_resources_get_embedded_meiryo_font_binaries(__out __notnull
 #ifdef _WIN32
 
 /** TODO */
-PRIVATE void* _system_resources_get_resource_blob(__in __maybenull HMODULE module_handle,
-                                                                   int     resource_id,
-                                                                   int     resource_type)
+PRIVATE void* _system_resources_get_resource_blob(HMODULE module_handle,
+                                                  int     resource_id,
+                                                  int     resource_type)
 {
     void* result = NULL;
 
@@ -125,8 +125,8 @@ PRIVATE void* _system_resources_get_resource_blob(__in __maybenull HMODULE modul
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API void* system_resources_get_exe_resource(__in __notnull int resource_id,
-                                                           __in           int resource_type)
+PUBLIC EMERALD_API void* system_resources_get_exe_resource(int resource_id,
+                                                           int resource_type)
 {
     return _system_resources_get_resource_blob(0, /* module_handle */
                                                resource_id,

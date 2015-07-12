@@ -30,10 +30,10 @@ REFCOUNT_INSERT_IMPLEMENTATION(scene_curve,
                               _scene_curve);
 
 /** TODO */
-PRIVATE void _scene_curve_init(__in __notnull _scene_curve*             data_ptr,
-                               __in __notnull system_hashed_ansi_string name,
-                               __in           scene_curve_id            id,
-                               __in __notnull curve_container           instance)
+PRIVATE void _scene_curve_init(_scene_curve*             data_ptr,
+                               system_hashed_ansi_string name,
+                               scene_curve_id            id,
+                               curve_container           instance)
 {
     data_ptr->name              = name;
     data_ptr->property_id       = id;
@@ -50,9 +50,9 @@ PRIVATE void _scene_curve_release(void* data_ptr)
 
 
 /* Please see header for specification */
-PUBLIC EMERALD_API scene_curve scene_curve_create(__in __notnull system_hashed_ansi_string name,
-                                                  __in           scene_curve_id            id,
-                                                  __in __notnull curve_container           instance)
+PUBLIC EMERALD_API scene_curve scene_curve_create(system_hashed_ansi_string name,
+                                                  scene_curve_id            id,
+                                                  curve_container           instance)
 {
     _scene_curve* new_scene_curve = new (std::nothrow) _scene_curve;
 
@@ -77,9 +77,9 @@ PUBLIC EMERALD_API scene_curve scene_curve_create(__in __notnull system_hashed_a
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API void scene_curve_get(__in  __notnull scene_curve          instance,
-                                        __in            scene_curve_property property,
-                                        __out __notnull void*                result_ptr)
+PUBLIC EMERALD_API void scene_curve_get(scene_curve          instance,
+                                        scene_curve_property property,
+                                        void*                result_ptr)
 {
     _scene_curve* curve_ptr = (_scene_curve*) instance;
 
@@ -109,8 +109,8 @@ PUBLIC EMERALD_API void scene_curve_get(__in  __notnull scene_curve          ins
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API scene_curve scene_curve_load(__in     __notnull system_file_serializer    serializer,
-                                                __in_opt           system_hashed_ansi_string object_manager_path)
+PUBLIC EMERALD_API scene_curve scene_curve_load(system_file_serializer    serializer,
+                                                system_hashed_ansi_string object_manager_path)
 {
     system_hashed_ansi_string name     = NULL;
     scene_curve               result   = NULL;
@@ -177,8 +177,8 @@ end_with_error:
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API bool scene_curve_save(__in __notnull system_file_serializer serializer,
-                                         __in __notnull scene_curve            curve)
+PUBLIC EMERALD_API bool scene_curve_save(system_file_serializer serializer,
+                                         scene_curve            curve)
 {
     bool          result    = false;
     _scene_curve* curve_ptr = (_scene_curve*) curve;

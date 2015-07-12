@@ -108,7 +108,7 @@ typedef enum
  *  Bakes in advance all GPU assets required to render a given scene.
  *
  */
-PUBLIC EMERALD_API void ogl_scene_renderer_bake_gpu_assets(__in __notnull ogl_scene_renderer renderer);
+PUBLIC EMERALD_API void ogl_scene_renderer_bake_gpu_assets(ogl_scene_renderer renderer);
 
 /** TODO.
  *
@@ -130,46 +130,46 @@ PUBLIC EMERALD_API void ogl_scene_renderer_bake_gpu_assets(__in __notnull ogl_sc
  *        OGL_SCENE_RENDERER_PROPERTY_VISIBLE_WORLD_AABB_MIN properties of @param renderer
  *        are also adjusted.
  */
-PUBLIC bool ogl_scene_renderer_cull_against_frustum(__in __notnull ogl_scene_renderer                           renderer,
-                                                    __in __notnull mesh                                         mesh_gpu,
-                                                    __in           _ogl_scene_renderer_frustum_culling_behavior behavior,
-                                                    __in_opt       const void*                                  behavior_data);
+PUBLIC bool ogl_scene_renderer_cull_against_frustum(ogl_scene_renderer                           renderer,
+                                                    mesh                                         mesh_gpu,
+                                                    _ogl_scene_renderer_frustum_culling_behavior behavior,
+                                                    const void*                                  behavior_data);
 
 /** TODO. **/
-PUBLIC EMERALD_API ogl_scene_renderer ogl_scene_renderer_create(__in __notnull ogl_context context,
-                                                                __in __notnull scene       scene);
+PUBLIC EMERALD_API ogl_scene_renderer ogl_scene_renderer_create(ogl_context context,
+                                                                scene       scene);
 
 /** TODO. Internal usage only */
-PUBLIC void ogl_scene_renderer_get_indexed_property(__in  __notnull const ogl_scene_renderer    renderer,
-                                                    __in            ogl_scene_renderer_property property,
-                                                    __in            uint32_t                    index,
-                                                    __out __notnull void*                       out_result);
+PUBLIC void ogl_scene_renderer_get_indexed_property(const ogl_scene_renderer    renderer,
+                                                    ogl_scene_renderer_property property,
+                                                    uint32_t                    index,
+                                                    void*                       out_result);
 
 /** TODO */
-PUBLIC EMERALD_API void ogl_scene_renderer_get_property(__in  __notnull ogl_scene_renderer          renderer,
-                                                        __in            ogl_scene_renderer_property property,
-                                                        __out __notnull void*                       out_result);
+PUBLIC EMERALD_API void ogl_scene_renderer_get_property(ogl_scene_renderer          renderer,
+                                                        ogl_scene_renderer_property property,
+                                                        void*                       out_result);
 
 /** TODO.
  *
  *  TODO: state-ify render_mode / shadow_mapping_type / helper_visualization arguments..
  **/
-PUBLIC EMERALD_API RENDERING_CONTEXT_CALL void ogl_scene_renderer_render_scene_graph(__in           __notnull ogl_scene_renderer                       renderer,
-                                                                                     __in           __notnull system_matrix4x4                         view,
-                                                                                     __in           __notnull system_matrix4x4                         projection,
-                                                                                     __in           __notnull scene_camera                             camera,
-                                                                                     __in                     const _ogl_scene_renderer_render_mode&   render_mode,
-                                                                                     __in                     bool                                     apply_shadow_mapping,
-                                                                                     __in           __notnull _ogl_scene_renderer_helper_visualization helper_visualization,
-                                                                                     __in                     system_time                              frame_time);
+PUBLIC EMERALD_API RENDERING_CONTEXT_CALL void ogl_scene_renderer_render_scene_graph(ogl_scene_renderer                       renderer,
+                                                                                     system_matrix4x4                         view,
+                                                                                     system_matrix4x4                         projection,
+                                                                                     scene_camera                             camera,
+                                                                                     const _ogl_scene_renderer_render_mode&   render_mode,
+                                                                                     bool                                     apply_shadow_mapping,
+                                                                                     _ogl_scene_renderer_helper_visualization helper_visualization,
+                                                                                     system_time                              frame_time);
 
 /** TODO. **/
-PUBLIC EMERALD_API void ogl_scene_renderer_release(__in __notnull ogl_scene_renderer renderer);
+PUBLIC EMERALD_API void ogl_scene_renderer_release(ogl_scene_renderer renderer);
 
 /** TODO */
-PUBLIC EMERALD_API void ogl_scene_renderer_set_property(__in __notnull ogl_scene_renderer          renderer,
-                                                        __in           ogl_scene_renderer_property property,
-                                                        __in __notnull const void*                 data);
+PUBLIC EMERALD_API void ogl_scene_renderer_set_property(ogl_scene_renderer          renderer,
+                                                        ogl_scene_renderer_property property,
+                                                        const void*                 data);
 
 /** TODO.
  *
@@ -177,8 +177,8 @@ PUBLIC EMERALD_API void ogl_scene_renderer_set_property(__in __notnull ogl_scene
  *  handles the RENDER_MODE_SHADOW_MAP render mode).
  *
  **/
-PUBLIC void ogl_scene_renderer_update_current_model_matrix(__in __notnull system_matrix4x4 transformation_matrix,
-                                                           __in __notnull void*            renderer);
+PUBLIC void ogl_scene_renderer_update_current_model_matrix(system_matrix4x4 transformation_matrix,
+                                                           void*            renderer);
 
 /** TODO.
  *
@@ -186,7 +186,7 @@ PUBLIC void ogl_scene_renderer_update_current_model_matrix(__in __notnull system
  *  handles the RENDER_MODE_SHADOW_MAP render mode).
  *
  **/
-PUBLIC void ogl_scene_renderer_update_light_properties(__in __notnull scene_light light,
-                                                       __in           void*       renderer);
+PUBLIC void ogl_scene_renderer_update_light_properties(scene_light light,
+                                                       void*       renderer);
 
 #endif /* OGL_SCENE_RENDERER_H */

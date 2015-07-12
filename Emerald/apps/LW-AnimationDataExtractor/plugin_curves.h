@@ -15,13 +15,13 @@ typedef uint32_t curve_id;
 
 
 /** TODO */
-PUBLIC curve_id AddCurveContainerToEnvelopeIDToCurveContainerHashMap(__in __notnull curve_container curve);
+PUBLIC curve_id AddCurveContainerToEnvelopeIDToCurveContainerHashMap(curve_container curve);
 
 /** TODO */
 PUBLIC void DeinitCurveData();
 
 /** TODO */
-PUBLIC void FillSceneWithCurveData(__in __notnull scene in_scene);
+PUBLIC void FillSceneWithCurveData(scene in_scene);
 
 /** TODO */
 PUBLIC system_hash64map GetEnvelopeIDToCurveContainerHashMap();

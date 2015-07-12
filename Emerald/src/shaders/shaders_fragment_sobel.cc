@@ -43,7 +43,7 @@ const float sobel_dy[9] = {-1, -2, -1,
  *
  *  @param ptr Pointer to _shaders_fragment_sobel instance.
  **/
-PRIVATE void _shaders_fragment_sobel_release(__in __notnull __deallocate(mem) void* ptr)
+PRIVATE void _shaders_fragment_sobel_release(void* ptr)
 {
     _shaders_fragment_sobel* data_ptr = (_shaders_fragment_sobel*) ptr;
 
@@ -64,8 +64,8 @@ PRIVATE void _shaders_fragment_sobel_release(__in __notnull __deallocate(mem) vo
 
 
 /** Please see header for specification */
-PUBLIC EMERALD_API shaders_fragment_sobel shaders_fragment_sobel_create(__in __notnull ogl_context               context,
-                                                                        __in __notnull system_hashed_ansi_string name)
+PUBLIC EMERALD_API shaders_fragment_sobel shaders_fragment_sobel_create(ogl_context               context,
+                                                                        system_hashed_ansi_string name)
 {
     shaders_fragment_convolution3x3 dy_shader     = NULL;
     _shaders_fragment_sobel*        result_object = NULL;
@@ -149,13 +149,13 @@ end:
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API ogl_shader shaders_fragment_sobel_get_dx_shader(__in __notnull shaders_fragment_sobel shader)
+PUBLIC EMERALD_API ogl_shader shaders_fragment_sobel_get_dx_shader(shaders_fragment_sobel shader)
 {
     return shaders_fragment_convolution3x3_get_shader(((_shaders_fragment_sobel*)shader)->dx_shader);
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API ogl_shader shaders_fragment_sobel_get_dy_shader(__in __notnull shaders_fragment_sobel shader)
+PUBLIC EMERALD_API ogl_shader shaders_fragment_sobel_get_dy_shader(shaders_fragment_sobel shader)
 {
     return shaders_fragment_convolution3x3_get_shader(((_shaders_fragment_sobel*)shader)->dy_shader);
 }

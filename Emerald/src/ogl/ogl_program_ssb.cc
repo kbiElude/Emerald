@@ -9,7 +9,7 @@
 
 
 /** TODO */
-PRIVATE ogl_program_block_property _ogl_program_ssb_get_block_property_for_ssb_property(__in ogl_program_ssb_property property)
+PRIVATE ogl_program_block_property _ogl_program_ssb_get_block_property_for_ssb_property(ogl_program_ssb_property property)
 {
     ogl_program_block_property result;
 
@@ -62,10 +62,10 @@ PRIVATE ogl_program_block_property _ogl_program_ssb_get_block_property_for_ssb_p
 
 
 /** Please see header for spec */
-PUBLIC ogl_program_ssb ogl_program_ssb_create(__in __notnull ogl_context               context,
-                                              __in __notnull ogl_program               owner_program,
-                                              __in __notnull unsigned int              ssb_index,
-                                              __in __notnull system_hashed_ansi_string ssb_name)
+PUBLIC ogl_program_ssb ogl_program_ssb_create(ogl_context               context,
+                                              ogl_program               owner_program,
+                                              unsigned int              ssb_index,
+                                              system_hashed_ansi_string ssb_name)
 {
     return (ogl_program_ssb) ogl_program_block_create(context,
                                                       owner_program,
@@ -76,9 +76,9 @@ PUBLIC ogl_program_ssb ogl_program_ssb_create(__in __notnull ogl_context        
 }
 
 /** Please see header for spec */
-PUBLIC EMERALD_API void ogl_program_ssb_get_property(__in  __notnull const ogl_program_ssb    ssb,
-                                                     __in            ogl_program_ssb_property property,
-                                                     __out __notnull void*                    out_result)
+PUBLIC EMERALD_API void ogl_program_ssb_get_property(const ogl_program_ssb    ssb,
+                                                     ogl_program_ssb_property property,
+                                                     void*                    out_result)
 {
     ogl_program_block_get_property((ogl_program_block) ssb,
                                    _ogl_program_ssb_get_block_property_for_ssb_property(property),
@@ -86,9 +86,9 @@ PUBLIC EMERALD_API void ogl_program_ssb_get_property(__in  __notnull const ogl_p
 }
 
 /** Please see header for spec */
-PUBLIC EMERALD_API bool ogl_program_ssb_get_variable_by_index(__in  __notnull const ogl_program_ssb        ssb,
-                                                              __in            unsigned int                 n_variable,
-                                                              __out __notnull const ogl_program_variable** out_variable_ptr)
+PUBLIC EMERALD_API bool ogl_program_ssb_get_variable_by_index(const ogl_program_ssb        ssb,
+                                                              unsigned int                 n_variable,
+                                                              const ogl_program_variable** out_variable_ptr)
 {
     return ogl_program_block_get_block_variable((ogl_program_block) ssb,
                                                 n_variable,
@@ -96,15 +96,15 @@ PUBLIC EMERALD_API bool ogl_program_ssb_get_variable_by_index(__in  __notnull co
 }
 
 /** Please see header for spec */
-PUBLIC void ogl_program_ssb_release(__in __notnull ogl_program_ssb ssb)
+PUBLIC void ogl_program_ssb_release(ogl_program_ssb ssb)
 {
     ogl_program_block_release( (ogl_program_block) ssb);
 }
 
 /* Please see header for spec */
-PUBLIC void ogl_program_ssb_set_property(__in  __notnull const ogl_program_ssb    ssb,
-                                         __in            ogl_program_ssb_property property,
-                                         __out __notnull const void*              data)
+PUBLIC void ogl_program_ssb_set_property(const ogl_program_ssb    ssb,
+                                         ogl_program_ssb_property property,
+                                         const void*              data)
 {
     ogl_program_block_set_property( (ogl_program_block) ssb,
                                     _ogl_program_ssb_get_block_property_for_ssb_property(property),

@@ -122,8 +122,8 @@ _collada_data_scene_graph_node::~_collada_data_scene_graph_node()
 }
 
 /** TODO */
-PUBLIC void collada_data_scene_graph_node_add_node_item(__in __notnull collada_data_scene_graph_node      node,
-                                                        __in __notnull collada_data_scene_graph_node_item node_item)
+PUBLIC void collada_data_scene_graph_node_add_node_item(collada_data_scene_graph_node      node,
+                                                        collada_data_scene_graph_node_item node_item)
 {
     _collada_data_scene_graph_node* node_ptr = (_collada_data_scene_graph_node*) node;
 
@@ -132,7 +132,7 @@ PUBLIC void collada_data_scene_graph_node_add_node_item(__in __notnull collada_d
 }
 
 /** TODO */
-PUBLIC collada_data_scene_graph_node collada_data_scene_graph_node_create(__in __notnull void* parent)
+PUBLIC collada_data_scene_graph_node collada_data_scene_graph_node_create(void* parent)
 {
     _collada_data_scene_graph_node* new_node_ptr = new (std::nothrow) _collada_data_scene_graph_node(parent);
 
@@ -143,9 +143,9 @@ PUBLIC collada_data_scene_graph_node collada_data_scene_graph_node_create(__in _
 }
 
 /** TODO */
-PUBLIC collada_data_scene_graph_node_item collada_data_scene_graph_node_item_create(__in           _collada_data_node_item_type type,
-                                                                                    __in __notnull void*                        data,
-                                                                                    __in __notnull system_hashed_ansi_string    sid)
+PUBLIC collada_data_scene_graph_node_item collada_data_scene_graph_node_item_create(_collada_data_node_item_type type,
+                                                                                    void*                        data,
+                                                                                    system_hashed_ansi_string    sid)
 {
     _collada_data_scene_graph_node_item* new_node_item_ptr = new (std::nothrow) _collada_data_scene_graph_node_item();
 
@@ -166,9 +166,9 @@ end:
 }
 
 /** TODO */
-PUBLIC collada_data_scene_graph_node_item collada_data_scene_graph_node_item_create_node(__in     __notnull tinyxml2::XMLElement*         element_ptr,
-                                                                                         __in_opt __notnull collada_data_scene_graph_node parent_node,
-                                                                                         __in     __notnull collada_data                  collada_data)
+PUBLIC collada_data_scene_graph_node_item collada_data_scene_graph_node_item_create_node(tinyxml2::XMLElement*         element_ptr,
+                                                                                         collada_data_scene_graph_node parent_node,
+                                                                                         collada_data                  collada_data)
 {
     tinyxml2::XMLElement*                current_node_child_ptr    = NULL;
     bool                                 is_lw10_file              = false;
@@ -423,9 +423,9 @@ end:
 }
 
 /* Please see header for properties */
-PUBLIC EMERALD_API void collada_data_scene_graph_node_get_property(__in  __notnull collada_data_scene_graph_node          node,
-                                                                   __in            collada_data_scene_graph_node_property property,
-                                                                   __out __notnull void*                                  out_result)
+PUBLIC EMERALD_API void collada_data_scene_graph_node_get_property(collada_data_scene_graph_node          node,
+                                                                   collada_data_scene_graph_node_property property,
+                                                                   void*                                  out_result)
 {
     _collada_data_scene_graph_node* node_ptr = (_collada_data_scene_graph_node*) node;
 
@@ -470,9 +470,9 @@ PUBLIC EMERALD_API void collada_data_scene_graph_node_get_property(__in  __notnu
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API void collada_data_scene_graph_node_get_node_item(__in      __notnull collada_data_scene_graph_node       node,
-                                                                    __in                unsigned int                        n_node_item,
-                                                                    __out_opt __notnull collada_data_scene_graph_node_item* out_node_item)
+PUBLIC EMERALD_API void collada_data_scene_graph_node_get_node_item(collada_data_scene_graph_node       node,
+                                                                    unsigned int                        n_node_item,
+                                                                    collada_data_scene_graph_node_item* out_node_item)
 {
     _collada_data_scene_graph_node* node_ptr = (_collada_data_scene_graph_node*) node;
 
@@ -485,9 +485,9 @@ PUBLIC EMERALD_API void collada_data_scene_graph_node_get_node_item(__in      __
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API void collada_data_scene_graph_node_item_get_property(__in  __notnull collada_data_scene_graph_node_item          node_item,
-                                                                        __in            collada_data_scene_graph_node_item_property property,
-                                                                        __out __notnull void*                                       out_result)
+PUBLIC EMERALD_API void collada_data_scene_graph_node_item_get_property(collada_data_scene_graph_node_item          node_item,
+                                                                        collada_data_scene_graph_node_item_property property,
+                                                                        void*                                       out_result)
 {
     _collada_data_scene_graph_node_item* node_item_ptr = (_collada_data_scene_graph_node_item*) node_item;
 

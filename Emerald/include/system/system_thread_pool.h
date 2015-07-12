@@ -20,7 +20,7 @@
  *
  *  @param Task descriptor.
  */
-PUBLIC EMERALD_API void system_thread_pool_submit_single_task(__notnull system_thread_pool_task_descriptor task_descriptor);
+PUBLIC EMERALD_API void system_thread_pool_submit_single_task(system_thread_pool_task_descriptor task_descriptor);
 
 /** Submits a group of tasks for execution by the thread pool. This skips job creation and injects the tasks
  *  directly into the task queue. Mind that the tasks may not be instantly executed - this depends on whether
@@ -28,7 +28,7 @@ PUBLIC EMERALD_API void system_thread_pool_submit_single_task(__notnull system_t
  *
  *  @param system_thread_pool_task_group_descriptor Task group.
  */
-PUBLIC EMERALD_API void system_thread_pool_submit_single_task_group(__notnull system_thread_pool_task_group_descriptor task_descriptor);
+PUBLIC EMERALD_API void system_thread_pool_submit_single_task_group(system_thread_pool_task_group_descriptor task_descriptor);
 
 
 /** Retrieves a task descriptor from internally managed resource pool, configured for specific user requirements.
@@ -69,7 +69,7 @@ PUBLIC EMERALD_API system_thread_pool_task_group_descriptor system_thread_pool_c
  *
  *  @param system_thread_pool_task_group_descriptor Task group descriptor to use.
  */
-PUBLIC EMERALD_API void system_thread_pool_release_task_group_descriptor(__deallocate(mem) system_thread_pool_task_group_descriptor group_descriptor);
+PUBLIC EMERALD_API void system_thread_pool_release_task_group_descriptor(system_thread_pool_task_group_descriptor group_descriptor);
 
 /** Inserts a task into a task group descriptor. The tasks are free to use any priorities they wish. Tasks will be inserted
  *  at once into priority queue, whem submitted (either by means of iterating over job contents or being submitted by user),

@@ -187,8 +187,8 @@ end:
 }
 
 /** TODO */
-PRIVATE gfx_image _gfx_rgbe_shared_load_handler(__in __notnull system_hashed_ansi_string name,
-                                                __in __notnull const char*               in_data_ptr)
+PRIVATE gfx_image _gfx_rgbe_shared_load_handler(system_hashed_ansi_string name,
+                                                const char*               in_data_ptr)
 {
     /* Open file handle */
     char*            data_buffer        = NULL;
@@ -390,8 +390,8 @@ end_with_dealloc:
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API gfx_image gfx_rgbe_load_from_file(__in __notnull system_hashed_ansi_string file_name,
-                                                     __in_opt       system_file_unpacker      file_unpacker)
+PUBLIC EMERALD_API gfx_image gfx_rgbe_load_from_file(system_hashed_ansi_string file_name,
+                                                     system_file_unpacker      file_unpacker)
 {
     gfx_image result = NULL;
 
@@ -492,8 +492,8 @@ end:
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API gfx_image gfx_rgbe_load_from_memory(__in           system_hashed_ansi_string name,
-                                                       __in __notnull const char*               data_ptr)
+PUBLIC EMERALD_API gfx_image gfx_rgbe_load_from_memory(system_hashed_ansi_string name,
+                                                       const char*               data_ptr)
 {
     return _gfx_rgbe_shared_load_handler(name, data_ptr);
 }

@@ -122,8 +122,8 @@ end:
 }
 
 /** Please see header for specification */
-PRIVATE bool _gfx_bfg_font_table_load_dat_blob(                void*                    blob,
-                                               __out __notnull _gfx_bfg_font_table_dat* out_result)
+PRIVATE bool _gfx_bfg_font_table_load_dat_blob(void*                    blob,
+                                               _gfx_bfg_font_table_dat* out_result)
 {
     memcpy(out_result,
            blob,
@@ -133,8 +133,8 @@ PRIVATE bool _gfx_bfg_font_table_load_dat_blob(                void*            
 }
 
 /** Please see header for specification */
-PRIVATE bool _gfx_bfg_font_table_load_dat_file(                system_hashed_ansi_string dat_file_name,
-                                               __out __notnull _gfx_bfg_font_table_dat*  out_result)
+PRIVATE bool _gfx_bfg_font_table_load_dat_file(system_hashed_ansi_string dat_file_name,
+                                               _gfx_bfg_font_table_dat*  out_result)
 {
     /* Open the file */
     FILE* file   = ::fopen(system_hashed_ansi_string_get_buffer(dat_file_name),
@@ -188,7 +188,7 @@ end:
 }
 
 /** Please see header for specification */
-PRIVATE void _gfx_bfg_font_table_release(__in __notnull void* font_table)
+PRIVATE void _gfx_bfg_font_table_release(void* font_table)
 {
     if (font_table != NULL)
     {
@@ -343,7 +343,7 @@ end:
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API uint8_t gfx_bfg_font_table_get_maximum_character_height(__in __notnull gfx_bfg_font_table font_table)
+PUBLIC EMERALD_API uint8_t gfx_bfg_font_table_get_maximum_character_height(gfx_bfg_font_table font_table)
 {
     _gfx_bfg_font_table* font_table_ptr = (_gfx_bfg_font_table*) font_table;
 
@@ -351,7 +351,7 @@ PUBLIC EMERALD_API uint8_t gfx_bfg_font_table_get_maximum_character_height(__in 
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API uint8_t gfx_bfg_font_table_get_maximum_character_width(__in __notnull gfx_bfg_font_table font_table)
+PUBLIC EMERALD_API uint8_t gfx_bfg_font_table_get_maximum_character_width(gfx_bfg_font_table font_table)
 {
     _gfx_bfg_font_table* font_table_ptr = (_gfx_bfg_font_table*) font_table;
 
@@ -359,12 +359,12 @@ PUBLIC EMERALD_API uint8_t gfx_bfg_font_table_get_maximum_character_width(__in _
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API bool gfx_bfg_font_table_get_character_properties(__in __notnull  gfx_bfg_font_table font_table,
-                                                                    __in            uint8_t            ascii_index,
-                                                                    __out __notnull float*             out_u1,
-                                                                    __out __notnull float*             out_v1,
-                                                                    __out __notnull float*             out_u2,
-                                                                    __out __notnull float*             out_v2)
+PUBLIC EMERALD_API bool gfx_bfg_font_table_get_character_properties(gfx_bfg_font_table font_table,
+                                                                    uint8_t            ascii_index,
+                                                                    float*             out_u1,
+                                                                    float*             out_v1,
+                                                                    float*             out_u2,
+                                                                    float*             out_v2)
 {
     _gfx_bfg_font_table*    font_table_ptr        = (_gfx_bfg_font_table*) font_table;
     _gfx_bfg_font_table_dat& map_properties       = font_table_ptr->dat_data;
@@ -403,10 +403,10 @@ end:
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API bool gfx_bfg_font_table_get_character_size(__in  __notnull gfx_bfg_font_table font_table,
-                                                              __in            uint8_t            ascii_index,
-                                                              __out __notnull uint8_t*           out_width,
-                                                              __out __notnull uint8_t*           out_height)
+PUBLIC EMERALD_API bool gfx_bfg_font_table_get_character_size(gfx_bfg_font_table font_table,
+                                                              uint8_t            ascii_index,
+                                                              uint8_t*           out_width,
+                                                              uint8_t*           out_height)
 {
     _gfx_bfg_font_table* font_table_ptr = (_gfx_bfg_font_table*) font_table;
 
@@ -417,7 +417,7 @@ PUBLIC EMERALD_API bool gfx_bfg_font_table_get_character_size(__in  __notnull gf
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API const unsigned char* gfx_bfg_font_table_get_data_pointer(__in __notnull gfx_bfg_font_table font_table)
+PUBLIC EMERALD_API const unsigned char* gfx_bfg_font_table_get_data_pointer(gfx_bfg_font_table font_table)
 {
     _gfx_bfg_font_table* font_table_ptr = (_gfx_bfg_font_table*) font_table;
     const unsigned char* result         = NULL;
@@ -431,9 +431,9 @@ PUBLIC EMERALD_API const unsigned char* gfx_bfg_font_table_get_data_pointer(__in
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API void gfx_bfg_font_table_get_data_properties(__in  __notnull gfx_bfg_font_table font_table,
-                                                               __out __notnull uint32_t*          out_map_width,
-                                                               __out __notnull uint32_t*          out_map_height)
+PUBLIC EMERALD_API void gfx_bfg_font_table_get_data_properties(gfx_bfg_font_table font_table,
+                                                               uint32_t*          out_map_width,
+                                                               uint32_t*          out_map_height)
 {
     _gfx_bfg_font_table* font_table_ptr = (_gfx_bfg_font_table*) font_table;
 

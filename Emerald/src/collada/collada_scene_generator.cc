@@ -38,36 +38,36 @@
 #include "system/system_variant.h"
 
 /* Forward declarations */
-PRIVATE void             _collada_scene_generator_process_collada_data_node          (__in __notnull collada_data                  data,
-                                                                                      __in __notnull collada_data_scene_graph_node node,
-                                                                                      __in __notnull scene                         scene,
-                                                                                      __in __notnull scene_graph_node              parent_node,
-                                                                                      __in __notnull scene_graph                   graph,
-                                                                                      __in __notnull system_hash64map              scene_to_dag_node_map,
-                                                                                      __in __notnull ogl_context                   context);
-PRIVATE void             _collada_scene_generator_process_camera_instance_node_item  (__in __notnull collada_data                  data,
-                                                                                      __in __notnull scene                         scene,
-                                                                                      __in __notnull scene_graph                   graph,
-                                                                                      __in __notnull scene_graph_node              parent_node,
-                                                                                      __in __notnull void*                         node_item_data);
-PRIVATE void             _collada_scene_generator_process_geometry_instance_node_item(__in __notnull collada_data                  data,
-                                                                                      __in __notnull scene                         scene,
-                                                                                      __in __notnull scene_graph                   graph,
-                                                                                      __in __notnull scene_graph_node              parent_node,
-                                                                                      __in __notnull void*                         node_item_data,
-                                                                                      __in __notnull ogl_context                   context);
-PRIVATE void             _collada_scene_generator_process_light_instance_node_item   (__in __notnull collada_data                  data,
-                                                                                      __in __notnull scene                         scene,
-                                                                                      __in __notnull scene_graph                   graph,
-                                                                                      __in __notnull scene_graph_node              parent_node,
-                                                                                      __in __notnull void*                         node_item_data);
-PRIVATE scene_graph_node _collada_scene_generator_process_transformation_node_item   (__in __notnull scene_graph                   graph,
-                                                                                      __in __notnull scene_graph_node              parent_node,
-                                                                                      __in __notnull void*                         node_item_data,
-                                                                                      __in __notnull system_hashed_ansi_string     node_item_sid);
+PRIVATE void             _collada_scene_generator_process_collada_data_node          (collada_data                  data,
+                                                                                      collada_data_scene_graph_node node,
+                                                                                      scene                         scene,
+                                                                                      scene_graph_node              parent_node,
+                                                                                      scene_graph                   graph,
+                                                                                      system_hash64map              scene_to_dag_node_map,
+                                                                                      ogl_context                   context);
+PRIVATE void             _collada_scene_generator_process_camera_instance_node_item  (collada_data                  data,
+                                                                                      scene                         scene,
+                                                                                      scene_graph                   graph,
+                                                                                      scene_graph_node              parent_node,
+                                                                                      void*                         node_item_data);
+PRIVATE void             _collada_scene_generator_process_geometry_instance_node_item(collada_data                  data,
+                                                                                      scene                         scene,
+                                                                                      scene_graph                   graph,
+                                                                                      scene_graph_node              parent_node,
+                                                                                      void*                         node_item_data,
+                                                                                      ogl_context                   context);
+PRIVATE void             _collada_scene_generator_process_light_instance_node_item   (collada_data                  data,
+                                                                                      scene                         scene,
+                                                                                      scene_graph                   graph,
+                                                                                      scene_graph_node              parent_node,
+                                                                                      void*                         node_item_data);
+PRIVATE scene_graph_node _collada_scene_generator_process_transformation_node_item   (scene_graph                   graph,
+                                                                                      scene_graph_node              parent_node,
+                                                                                      void*                         node_item_data,
+                                                                                      system_hashed_ansi_string     node_item_sid);
 
 /** TODO */
-PRIVATE curve_container _collada_scene_generator_create_curve_container_from_collada_value(__in __notnull collada_value value)
+PRIVATE curve_container _collada_scene_generator_create_curve_container_from_collada_value(collada_value value)
 {
     collada_data_animation    animation                       = NULL;
     collada_data_sampler      animation_sampler               = NULL;
@@ -311,10 +311,10 @@ end:
 }
 
 /** TODO */
-PRIVATE void _collada_scene_generator_create_scene_graph(__in __notnull collada_data       data,
-                                                         __in __notnull collada_data_scene collada_scene,
-                                                         __in __notnull scene              result_scene,
-                                                         __in __notnull ogl_context        context)
+PRIVATE void _collada_scene_generator_create_scene_graph(collada_data       data,
+                                                         collada_data_scene collada_scene,
+                                                         scene              result_scene,
+                                                         ogl_context        context)
 {
     scene_graph                   scene_graph           = scene_graph_create(result_scene,
                                                                              NULL); /* object_manager_path */
@@ -388,7 +388,7 @@ struct _texture_loader_workload
 };
 
 /** TODO */
-volatile void _collada_scene_generator_process_workload(__in __notnull system_thread_pool_callback_argument data)
+volatile void _collada_scene_generator_process_workload(system_thread_pool_callback_argument data)
 {
     _texture_loader_workload* workload_ptr = (_texture_loader_workload*) data;
 
@@ -452,10 +452,10 @@ volatile void _collada_scene_generator_process_workload(__in __notnull system_th
 }
 
 /** TODO */
-PRIVATE void _collada_scene_generator_create_textures(__in __notnull collada_data       data,
-                                                      __in __notnull collada_data_scene collada_scene,
-                                                      __in __notnull scene              result_scene,
-                                                      __in __notnull ogl_context        context)
+PRIVATE void _collada_scene_generator_create_textures(collada_data       data,
+                                                      collada_data_scene collada_scene,
+                                                      scene              result_scene,
+                                                      ogl_context        context)
 {
     unsigned int n_images = 0;
 
@@ -701,13 +701,13 @@ PRIVATE void _collada_scene_generator_create_textures(__in __notnull collada_dat
 }
 
 /** TODO */
-PRIVATE void _collada_scene_generator_process_collada_data_node(__in __notnull collada_data                  data,
-                                                                __in __notnull collada_data_scene_graph_node node,
-                                                                __in __notnull scene                         scene,
-                                                                __in __notnull scene_graph_node              parent_node,
-                                                                __in __notnull scene_graph                   graph,
-                                                                __in __notnull system_hash64map              scene_to_dag_node_map,
-                                                                __in __notnull ogl_context                   context)
+PRIVATE void _collada_scene_generator_process_collada_data_node(collada_data                  data,
+                                                                collada_data_scene_graph_node node,
+                                                                scene                         scene,
+                                                                scene_graph_node              parent_node,
+                                                                scene_graph                   graph,
+                                                                system_hash64map              scene_to_dag_node_map,
+                                                                ogl_context                   context)
 {
     scene_graph_node        current_node = NULL;
     _collada_data_node_type node_type    = COLLADA_DATA_NODE_TYPE_UNDEFINED;
@@ -847,11 +847,11 @@ end:
 }
 
 /** TODO */
-PRIVATE void _collada_scene_generator_process_camera_instance_node_item(__in __notnull collada_data     data,
-                                                                        __in __notnull scene            scene,
-                                                                        __in __notnull scene_graph      graph,
-                                                                        __in __notnull scene_graph_node parent_node,
-                                                                        __in __notnull void*            node_item_data)
+PRIVATE void _collada_scene_generator_process_camera_instance_node_item(collada_data     data,
+                                                                        scene            scene,
+                                                                        scene_graph      graph,
+                                                                        scene_graph_node parent_node,
+                                                                        void*            node_item_data)
 {
     collada_data_camera       collada_camera = NULL;
     system_hashed_ansi_string camera_name    = NULL;
@@ -935,12 +935,12 @@ PRIVATE void _collada_scene_generator_process_camera_instance_node_item(__in __n
 }
 
 /** TODO */
-PRIVATE void _collada_scene_generator_process_geometry_instance_node_item(__in __notnull collada_data     data,
-                                                                          __in __notnull scene            scene,
-                                                                          __in __notnull scene_graph      graph,
-                                                                          __in __notnull scene_graph_node parent_node,
-                                                                          __in __notnull void*            node_item_data,
-                                                                          __in __notnull ogl_context      context)
+PRIVATE void _collada_scene_generator_process_geometry_instance_node_item(collada_data     data,
+                                                                          scene            scene,
+                                                                          scene_graph      graph,
+                                                                          scene_graph_node parent_node,
+                                                                          void*            node_item_data,
+                                                                          ogl_context      context)
 {
     collada_data_geometry     geometry      = NULL;
     system_hashed_ansi_string instance_name = NULL;
@@ -988,11 +988,11 @@ PRIVATE void _collada_scene_generator_process_geometry_instance_node_item(__in _
 }
 
 /** TODO */
-PRIVATE void _collada_scene_generator_process_light_instance_node_item(__in __notnull collada_data     data,
-                                                                       __in __notnull scene            scene,
-                                                                       __in __notnull scene_graph      graph,
-                                                                       __in __notnull scene_graph_node parent_node,
-                                                                       __in __notnull void*            node_item_data)
+PRIVATE void _collada_scene_generator_process_light_instance_node_item(collada_data     data,
+                                                                       scene            scene,
+                                                                       scene_graph      graph,
+                                                                       scene_graph_node parent_node,
+                                                                       void*            node_item_data)
 {
     collada_data_light        collada_light                     = NULL;
     system_hashed_ansi_string instance_name                     = NULL;
@@ -1138,10 +1138,10 @@ PRIVATE void _collada_scene_generator_process_light_instance_node_item(__in __no
 }
 
 /** TODO */
-PRIVATE scene_graph_node _collada_scene_generator_process_transformation_node_item(__in __notnull scene_graph               graph,
-                                                                                   __in __notnull scene_graph_node          parent_node,
-                                                                                   __in __notnull void*                     node_item_data,
-                                                                                   __in __notnull system_hashed_ansi_string node_item_sid)
+PRIVATE scene_graph_node _collada_scene_generator_process_transformation_node_item(scene_graph               graph,
+                                                                                   scene_graph_node          parent_node,
+                                                                                   void*                     node_item_data,
+                                                                                   system_hashed_ansi_string node_item_sid)
 {
     scene_graph_node                  result              = NULL;
     _collada_data_transformation_type transformation_type = COLLADA_DATA_TRANSFORMATION_TYPE_UNDEFINED;
@@ -1485,9 +1485,9 @@ PRIVATE scene_graph_node _collada_scene_generator_process_transformation_node_it
 }
 
 /** Please see header for specification */
-PUBLIC scene collada_scene_generator_create(__in __notnull collada_data data,
-                                            __in __notnull ogl_context  context,
-                                            __in __notnull unsigned int n_scene)
+PUBLIC scene collada_scene_generator_create(collada_data data,
+                                            ogl_context  context,
+                                            unsigned int n_scene)
 {
     float                         animation_time    = 0.0f;
     collada_data_scene_graph_node collada_root_node = NULL;

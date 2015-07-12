@@ -61,24 +61,24 @@ typedef struct
 } _scene_camera;
 
 /* Forward declarations */
-PRIVATE void                      _scene_camera_calculate_frustum                (__in     __notnull _scene_camera*            camera_ptr,
-                                                                                  __in               system_time               time);
-PRIVATE void                      _scene_camera_calculate_zfar_znear             (__in     __notnull _scene_camera*            camera_ptr,
-                                                                                  __in               system_time               time);
-PRIVATE void                      _scene_camera_init                             (__in     __notnull _scene_camera*            camera_ptr,
-                                                                                  __in     __notnull system_hashed_ansi_string name);
-PRIVATE void                      _scene_camera_init_default_f_stop_curve        (__in     __notnull _scene_camera*            camera_ptr);
-PRIVATE void                      _scene_camera_init_default_focal_distance_curve(__in     __notnull _scene_camera*            camera_ptr);
-PRIVATE void                      _scene_camera_init_default_yfov_custom_curve   (__in     __notnull _scene_camera*            camera_ptr);
-PRIVATE void                      _scene_camera_init_default_zoom_factor_curve   (__in     __notnull _scene_camera*            camera_ptr);
-PRIVATE bool                      _scene_camera_load_curve                       (__in_opt           scene                     owner_scene,
-                                                                                  __in_opt           system_hashed_ansi_string object_manager_path,
-                                                                                  __in     __notnull curve_container*          curve_ptr,
-                                                                                  __in     __notnull system_file_serializer    serializer);
-PRIVATE void                      _scene_camera_release                          (                   void*                     data_ptr);
-PRIVATE bool                      _scene_camera_save_curve                       (__in_opt           scene                     owner_scene,
-                                                                                  __in     __notnull curve_container           in_curve,
-                                                                                  __in     __notnull system_file_serializer    serializer);
+PRIVATE void                      _scene_camera_calculate_frustum                (_scene_camera*            camera_ptr,
+                                                                                  system_time               time);
+PRIVATE void                      _scene_camera_calculate_zfar_znear             (_scene_camera*            camera_ptr,
+                                                                                  system_time               time);
+PRIVATE void                      _scene_camera_init                             (_scene_camera*            camera_ptr,
+                                                                                  system_hashed_ansi_string name);
+PRIVATE void                      _scene_camera_init_default_f_stop_curve        (_scene_camera*            camera_ptr);
+PRIVATE void                      _scene_camera_init_default_focal_distance_curve(_scene_camera*            camera_ptr);
+PRIVATE void                      _scene_camera_init_default_yfov_custom_curve   (_scene_camera*            camera_ptr);
+PRIVATE void                      _scene_camera_init_default_zoom_factor_curve   (_scene_camera*            camera_ptr);
+PRIVATE bool                      _scene_camera_load_curve                       (scene                     owner_scene,
+                                                                                  system_hashed_ansi_string object_manager_path,
+                                                                                  curve_container*          curve_ptr,
+                                                                                  system_file_serializer    serializer);
+PRIVATE void                      _scene_camera_release                          (void*                     data_ptr);
+PRIVATE bool                      _scene_camera_save_curve                       (scene                     owner_scene,
+                                                                                  curve_container           in_curve,
+                                                                                  system_file_serializer    serializer);
 
 /** Reference counter impl */
 REFCOUNT_INSERT_IMPLEMENTATION(scene_camera,
@@ -87,8 +87,8 @@ REFCOUNT_INSERT_IMPLEMENTATION(scene_camera,
 
 
 /** TODO */
-PRIVATE void _scene_camera_calculate_frustum(__in __notnull _scene_camera* camera_ptr,
-                                             __in           system_time    time)
+PRIVATE void _scene_camera_calculate_frustum(_scene_camera* camera_ptr,
+                                             system_time    time)
 {
     float yfov_value;
 
@@ -332,8 +332,8 @@ PRIVATE void _scene_camera_calculate_frustum(__in __notnull _scene_camera* camer
 }
 
 /** TODO */
-PRIVATE void _scene_camera_calculate_zfar_znear(__in __notnull _scene_camera* camera_ptr,
-                                                __in           system_time    time)
+PRIVATE void _scene_camera_calculate_zfar_znear(_scene_camera* camera_ptr,
+                                                system_time    time)
 {
     /* Make sure the curves are available */
     if (camera_ptr->f_stop == NULL)
@@ -392,9 +392,9 @@ PRIVATE void _scene_camera_calculate_zfar_znear(__in __notnull _scene_camera* ca
 }
 
 /** TODO */
-PRIVATE void _scene_camera_init(__in     __notnull _scene_camera*            camera_ptr,
-                                __in     __notnull system_hashed_ansi_string name,
-                                __in_opt           system_hashed_ansi_string object_manager_path)
+PRIVATE void _scene_camera_init(_scene_camera*            camera_ptr,
+                                system_hashed_ansi_string name,
+                                system_hashed_ansi_string object_manager_path)
 {
     camera_ptr->ar                       = 0.0f;
     camera_ptr->callback_manager         = system_callback_manager_create( (_callback_id) SCENE_CAMERA_CALLBACK_ID_COUNT);
@@ -418,7 +418,7 @@ PRIVATE void _scene_camera_init(__in     __notnull _scene_camera*            cam
 }
 
 /** TODO */
-PRIVATE void _scene_camera_init_default_f_stop_curve(__in __notnull _scene_camera* camera_ptr)
+PRIVATE void _scene_camera_init_default_f_stop_curve(_scene_camera* camera_ptr)
 {
     ASSERT_DEBUG_SYNC(camera_ptr->f_stop == NULL,
                       "Overwriting existing F-stop curve with the default one.");
@@ -430,7 +430,7 @@ PRIVATE void _scene_camera_init_default_f_stop_curve(__in __notnull _scene_camer
 }
 
 /** TODO */
-PRIVATE void _scene_camera_init_default_focal_distance_curve(__in __notnull _scene_camera* camera_ptr)
+PRIVATE void _scene_camera_init_default_focal_distance_curve(_scene_camera* camera_ptr)
 {
     ASSERT_DEBUG_SYNC(camera_ptr->focal_distance == NULL,
                       "Overwriting existing focal distance curve with the default one.");
@@ -442,7 +442,7 @@ PRIVATE void _scene_camera_init_default_focal_distance_curve(__in __notnull _sce
 }
 
 /** TODO */
-PRIVATE void _scene_camera_init_default_yfov_custom_curve(__in __notnull _scene_camera* camera_ptr)
+PRIVATE void _scene_camera_init_default_yfov_custom_curve(_scene_camera* camera_ptr)
 {
     ASSERT_DEBUG_SYNC(camera_ptr->yfov_custom == NULL,
                       "Overwriting existing YFov curve with the default one.");
@@ -460,7 +460,7 @@ PRIVATE void _scene_camera_init_default_yfov_custom_curve(__in __notnull _scene_
 }
 
 /** TODO */
-PRIVATE void _scene_camera_init_default_zoom_factor_curve(__in __notnull _scene_camera* camera_ptr)
+PRIVATE void _scene_camera_init_default_zoom_factor_curve(_scene_camera* camera_ptr)
 {
     ASSERT_DEBUG_SYNC(camera_ptr->zoom_factor == NULL,
                       "Overwriting existing Zoom Factor curve with the default one.");
@@ -472,10 +472,10 @@ PRIVATE void _scene_camera_init_default_zoom_factor_curve(__in __notnull _scene_
 }
 
 /** TODO */
-PRIVATE bool _scene_camera_load_curve(__in_opt           scene                     owner_scene,
-                                      __in_opt           system_hashed_ansi_string object_manager_path,
-                                      __in     __notnull curve_container*          curve_ptr,
-                                      __in     __notnull system_file_serializer    serializer)
+PRIVATE bool _scene_camera_load_curve(scene                     owner_scene,
+                                      system_hashed_ansi_string object_manager_path,
+                                      curve_container*          curve_ptr,
+                                      system_file_serializer    serializer)
 {
     bool result = true;
 
@@ -558,9 +558,9 @@ PRIVATE void _scene_camera_release(void* data_ptr)
 }
 
 /** TODO */
-PRIVATE bool _scene_camera_save_curve(__in_opt           scene                  owner_scene,
-                                      __in     __notnull curve_container        in_curve,
-                                      __in     __notnull system_file_serializer serializer)
+PRIVATE bool _scene_camera_save_curve(scene                  owner_scene,
+                                      curve_container        in_curve,
+                                      system_file_serializer serializer)
 {
     bool result = true;
 
@@ -588,8 +588,8 @@ PRIVATE bool _scene_camera_save_curve(__in_opt           scene                  
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API scene_camera scene_camera_create(__in     __notnull system_hashed_ansi_string name,
-                                                    __in_opt           system_hashed_ansi_string object_manager_path)
+PUBLIC EMERALD_API scene_camera scene_camera_create(system_hashed_ansi_string name,
+                                                    system_hashed_ansi_string object_manager_path)
 {
     _scene_camera* new_scene_camera = new (std::nothrow) _scene_camera;
 
@@ -615,10 +615,10 @@ PUBLIC EMERALD_API scene_camera scene_camera_create(__in     __notnull system_ha
 }
 
 /* Please see header for spec */
-PUBLIC EMERALD_API void scene_camera_get_property(__in  __notnull scene_camera          camera,
-                                                  __in            scene_camera_property property,
-                                                  __in            system_time           time,
-                                                  __out __notnull void*                 out_result)
+PUBLIC EMERALD_API void scene_camera_get_property(scene_camera          camera,
+                                                  scene_camera_property property,
+                                                  system_time           time,
+                                                  void*                 out_result)
 {
     _scene_camera* camera_ptr             = (_scene_camera*) camera;
     const bool     recalc_value_requested = (property == SCENE_CAMERA_PROPERTY_FRUSTUM_FAR_BOTTOM_LEFT   ||
@@ -883,10 +883,10 @@ PUBLIC EMERALD_API void scene_camera_get_property(__in  __notnull scene_camera  
 }
 
 /* Please see header for specification */
-PUBLIC scene_camera scene_camera_load(__in     __notnull ogl_context               context,
-                                      __in     __notnull system_file_serializer    serializer,
-                                      __in_opt           scene                     owner_scene,
-                                      __in_opt           system_hashed_ansi_string object_manager_path)
+PUBLIC scene_camera scene_camera_load(ogl_context               context,
+                                      system_file_serializer    serializer,
+                                      scene                     owner_scene,
+                                      system_hashed_ansi_string object_manager_path)
 {
     float              camera_ar;
     curve_container    camera_f_stop                  = NULL;
@@ -1071,9 +1071,9 @@ end:
 }
 
 /* Please see header for specification */
-PUBLIC bool scene_camera_save(__in __notnull system_file_serializer serializer,
-                              __in __notnull const scene_camera     camera,
-                              __in __notnull scene                  owner_scene)
+PUBLIC bool scene_camera_save(system_file_serializer serializer,
+                              const scene_camera     camera,
+                              scene                  owner_scene)
 {
     const _scene_camera* camera_ptr = (const _scene_camera*) camera;
     bool                 result     = false;
@@ -1115,9 +1115,9 @@ PUBLIC bool scene_camera_save(__in __notnull system_file_serializer serializer,
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API void scene_camera_set_property(__in __notnull scene_camera          camera,
-                                                  __in           scene_camera_property property,
-                                                  __in __notnull const void*           data)
+PUBLIC EMERALD_API void scene_camera_set_property(scene_camera          camera,
+                                                  scene_camera_property property,
+                                                  const void*           data)
 {
     _scene_camera* camera_ptr = (_scene_camera*) camera;
 

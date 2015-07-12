@@ -23,7 +23,7 @@ REFCOUNT_INSERT_DECLARATIONS(ogl_shader,
  *
  *  @return True if the shader compiled successfully, false otherwise
  */
-PUBLIC EMERALD_API bool ogl_shader_compile(__in __notnull ogl_shader shader);
+PUBLIC EMERALD_API bool ogl_shader_compile(ogl_shader shader);
 
 /** Creates a new shader instance of given type.
  *
@@ -36,21 +36,21 @@ PUBLIC EMERALD_API bool ogl_shader_compile(__in __notnull ogl_shader shader);
  *
  *  @return GL shader instance.
  **/
-PUBLIC EMERALD_API ogl_shader ogl_shader_create(__in __notnull ogl_context               context,
-                                                __in           ogl_shader_type           shader_type,
-                                                __in __notnull system_hashed_ansi_string name);
+PUBLIC EMERALD_API ogl_shader ogl_shader_create(ogl_context               context,
+                                                ogl_shader_type           shader_type,
+                                                system_hashed_ansi_string name);
 
 /** TODO */
-PUBLIC EMERALD_API system_hashed_ansi_string ogl_shader_get_body(__in __notnull ogl_shader shader);
+PUBLIC EMERALD_API system_hashed_ansi_string ogl_shader_get_body(ogl_shader shader);
 
 /** TODO */
-PUBLIC EMERALD_API bool ogl_shader_get_compile_status(__in __notnull ogl_shader shader);
+PUBLIC EMERALD_API bool ogl_shader_get_compile_status(ogl_shader shader);
 
 /** TODO */
-PUBLIC GLuint ogl_shader_get_id(__in __notnull ogl_shader shader);
+PUBLIC GLuint ogl_shader_get_id(ogl_shader shader);
 
 /** TODO */
-PUBLIC EMERALD_API system_hashed_ansi_string ogl_shader_get_name(__in __notnull ogl_shader shader);
+PUBLIC EMERALD_API system_hashed_ansi_string ogl_shader_get_name(ogl_shader shader);
 
 /** Retrieves a shader info log. Only call this function after ogl_shader_compile() call.
  *
@@ -58,7 +58,7 @@ PUBLIC EMERALD_API system_hashed_ansi_string ogl_shader_get_name(__in __notnull 
  *
  *  @return Info log or NULL if unavailable.
  **/
-PUBLIC EMERALD_API const char* ogl_shader_get_shader_info_log(__in __notnull ogl_shader shader);
+PUBLIC EMERALD_API const char* ogl_shader_get_shader_info_log(ogl_shader shader);
 
 /** Retrieves shader type.
  *
@@ -66,7 +66,7 @@ PUBLIC EMERALD_API const char* ogl_shader_get_shader_info_log(__in __notnull ogl
  *
  *  @return Shader type.
  **/
-PUBLIC EMERALD_API ogl_shader_type ogl_shader_get_type(__in __notnull ogl_shader shader);
+PUBLIC EMERALD_API ogl_shader_type ogl_shader_get_type(ogl_shader shader);
 
 /** Sets new shader's body.
  *
@@ -78,7 +78,7 @@ PUBLIC EMERALD_API ogl_shader_type ogl_shader_get_type(__in __notnull ogl_shader
  *
  *  @return true if successful, false otherwise.
  **/
-PUBLIC EMERALD_API bool ogl_shader_set_body(__in __notnull ogl_shader                shader,
-                                            __in __notnull system_hashed_ansi_string body);
+PUBLIC EMERALD_API bool ogl_shader_set_body(ogl_shader                shader,
+                                            system_hashed_ansi_string body);
 
 #endif /* OGL_SHADER_H */

@@ -34,12 +34,14 @@ PUBLIC EMERALD_API curve_editor_curve_window curve_editor_curve_window_show(ogl_
  *  If curve_segment_id or curve_segment_node_id is <= 0, the identifiers are considered to be invalid and
  *  action static and editbox components are hidden
  **/
-PUBLIC void curve_editor_select_node(curve_editor_curve_window, curve_segment_id, curve_segment_node_id);
+PUBLIC void curve_editor_select_node(curve_editor_curve_window,
+                                     curve_segment_id,
+                                     curve_segment_node_id);
 
 /** TODO */
-PUBLIC void curve_editor_curve_window_set_property(__in __notnull curve_editor_curve_window          window,
-                                                   __in           curve_editor_curve_window_property property,
-                                                   __in __notnull void*                              data);
+PUBLIC void curve_editor_curve_window_set_property(curve_editor_curve_window          window,
+                                                   curve_editor_curve_window_property property,
+                                                   void*                              data);
 
 /** TODO. Called back with 2 floats <start, end x> */
 PUBLIC void curve_editor_curve_window_create_static_segment_handler(void*);

@@ -59,24 +59,24 @@ DECLARE_HANDLE(ogl_context_texture_compression);
 
 
 /** TODO */
-PUBLIC ogl_context_texture_compression ogl_context_texture_compression_create(__in __notnull ogl_context context);
+PUBLIC ogl_context_texture_compression ogl_context_texture_compression_create(ogl_context context);
 
 /** TODO */
-PUBLIC EMERALD_API void ogl_context_texture_compression_get_algorithm_property(__in  __notnull ogl_context_texture_compression                    texture_compression,
-                                                                               __in            uint32_t                                           index,
-                                                                               __in            ogl_context_texture_compression_algorithm_property property,
-                                                                               __out __notnull void*                                              out_result);
+PUBLIC EMERALD_API void ogl_context_texture_compression_get_algorithm_property(ogl_context_texture_compression                    texture_compression,
+                                                                               uint32_t                                           index,
+                                                                               ogl_context_texture_compression_algorithm_property property,
+                                                                               void*                                              out_result);
 
 /** TODO */
-PUBLIC EMERALD_API void ogl_context_texture_compression_get_property(__in  __notnull ogl_context_texture_compression          texture_compression,
-                                                                     __in            ogl_context_texture_compression_property property,
-                                                                     __out __notnull void*                                    out_result);
+PUBLIC EMERALD_API void ogl_context_texture_compression_get_property(ogl_context_texture_compression          texture_compression,
+                                                                     ogl_context_texture_compression_property property,
+                                                                     void*                                    out_result);
 
 /** TODO */
-PUBLIC void ogl_context_texture_compression_init(__in __notnull ogl_context_texture_compression           texture_compression,
-                                                 __in __notnull const ogl_context_gl_entrypoints_private* entrypoints_private_ptr);
+PUBLIC void ogl_context_texture_compression_init(ogl_context_texture_compression           texture_compression,
+                                                 const ogl_context_gl_entrypoints_private* entrypoints_private_ptr);
 
 /** TODO */
-PUBLIC void ogl_context_texture_compression_release(__in __notnull __post_invalid ogl_context_texture_compression texture_compression);
+PUBLIC void ogl_context_texture_compression_release(ogl_context_texture_compression texture_compression);
 
 #endif /* OGL_CONTEXT_TEXTURE_COMPRESSION_H */

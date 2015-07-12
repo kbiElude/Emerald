@@ -65,9 +65,9 @@ _collada_data_source::~_collada_data_source()
 
 
 /** TODO */
-PUBLIC collada_data_source collada_data_source_create(__in __notnull tinyxml2::XMLElement*     element_ptr,
-                                                      __in __notnull collada_data              data,
-                                                      __in __notnull system_hashed_ansi_string parent_geometry_name)
+PUBLIC collada_data_source collada_data_source_create(tinyxml2::XMLElement*     element_ptr,
+                                                      collada_data              data,
+                                                      system_hashed_ansi_string parent_geometry_name)
 {
     _collada_data_source* result_source_ptr = new (std::nothrow) _collada_data_source;
 
@@ -178,9 +178,9 @@ end:
 }
 
 /** Please see header for spec */
-PUBLIC void collada_data_source_get_property(__in  __notnull collada_data_source          source,
-                                             __in            collada_data_source_property property,
-                                             __out __notnull void*                        result_ptr)
+PUBLIC void collada_data_source_get_property(collada_data_source          source,
+                                             collada_data_source_property property,
+                                             void*                        result_ptr)
 {
     _collada_data_source* source_ptr = (_collada_data_source*) source;
 
@@ -202,8 +202,8 @@ PUBLIC void collada_data_source_get_property(__in  __notnull collada_data_source
 }
 
 /* Please see header for specification */
-PUBLIC void collada_data_source_get_source_float_data(__in      __notnull collada_data_source       source,
-                                                      __out_opt           collada_data_float_array* out_float_array_ptr)
+PUBLIC void collada_data_source_get_source_float_data(collada_data_source       source,
+                                                      collada_data_float_array* out_float_array_ptr)
 {
     _collada_data_source* source_ptr = (_collada_data_source*) source;
 
@@ -217,8 +217,8 @@ PUBLIC void collada_data_source_get_source_float_data(__in      __notnull collad
 }
 
 /* Please see header for spec */
-PUBLIC void collada_data_source_get_source_name_data(__in      __notnull collada_data_source      source,
-                                                     __out_opt           collada_data_name_array* out_name_array_ptr)
+PUBLIC void collada_data_source_get_source_name_data(collada_data_source      source,
+                                                     collada_data_name_array* out_name_array_ptr)
 {
     _collada_data_source* source_ptr = (_collada_data_source*) source;
 
@@ -232,7 +232,7 @@ PUBLIC void collada_data_source_get_source_name_data(__in      __notnull collada
 }
 
 /** Please see header for a spec */
-PUBLIC void collada_data_source_release(__in __notnull __post_invalid collada_data_source source)
+PUBLIC void collada_data_source_release(collada_data_source source)
 {
     _collada_data_source* source_ptr = (_collada_data_source*) source;
 

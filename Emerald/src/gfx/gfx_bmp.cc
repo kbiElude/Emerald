@@ -34,10 +34,10 @@
 #pragma pack(pop)
 
 /** Please see header for specification */
-PRIVATE gfx_image gfx_bmp_shared_load_handler(__in             bool                      should_load_from_file,
-                                              __in __notnull   system_hashed_ansi_string file_name,
-                                              __in_opt         system_file_unpacker      file_unpacker,
-                                              __in __maybenull const unsigned char*      in_data_ptr)
+PRIVATE gfx_image gfx_bmp_shared_load_handler(bool                      should_load_from_file,
+                                              system_hashed_ansi_string file_name,
+                                              system_file_unpacker      file_unpacker,
+                                              const unsigned char*      in_data_ptr)
 {
     /* Create or retrieve the file serializer */
     unsigned char*      data_ptr   = NULL;
@@ -204,8 +204,8 @@ end:
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API gfx_image gfx_bmp_load_from_file(__in __notnull system_hashed_ansi_string file_name,
-                                                    __in __notnull system_file_unpacker      file_unpacker)
+PUBLIC EMERALD_API gfx_image gfx_bmp_load_from_file(system_hashed_ansi_string file_name,
+                                                    system_file_unpacker      file_unpacker)
 {
     ASSERT_DEBUG_SYNC(file_name != NULL,
                       "Cannot use NULL file name.");
@@ -224,7 +224,7 @@ PUBLIC EMERALD_API gfx_image gfx_bmp_load_from_file(__in __notnull system_hashed
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API gfx_image gfx_bmp_load_from_memory(__in __notnull const unsigned char* data_ptr)
+PUBLIC EMERALD_API gfx_image gfx_bmp_load_from_memory(const unsigned char* data_ptr)
 {
     return gfx_bmp_shared_load_handler(false, /* should_load_from_file */
                                        system_hashed_ansi_string_get_default_empty_string(),

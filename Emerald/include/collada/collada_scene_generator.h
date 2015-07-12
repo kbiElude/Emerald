@@ -14,8 +14,8 @@
 #include "scene/scene_types.h"
 
 /** TODO */
-PUBLIC scene collada_scene_generator_create(__in __notnull collada_data data,
-                                            __in __notnull ogl_context  context,
-                                            __in __notnull unsigned int n_scene);
+PUBLIC scene collada_scene_generator_create(collada_data data,
+                                            ogl_context  context,
+                                            unsigned int n_scene);
 
 #endif /* COLLADA_SCENE_GENERATOR_H */

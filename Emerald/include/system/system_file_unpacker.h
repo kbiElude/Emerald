@@ -29,20 +29,20 @@ typedef enum
  *  The call does not leave until the unpacking process finishes!
  *
  **/
-PUBLIC EMERALD_API system_file_unpacker system_file_unpacker_create(__in __notnull system_hashed_ansi_string packed_filename);
+PUBLIC EMERALD_API system_file_unpacker system_file_unpacker_create(system_hashed_ansi_string packed_filename);
 
 /** TODO */
-PUBLIC EMERALD_API void system_file_unpacker_get_file_property(__in  __notnull system_file_unpacker               unpacker,
-                                                               __in            uint32_t                           file_index,
-                                                               __in            system_file_unpacker_file_property property,
-                                                               __out __notnull void*                              out_result);
+PUBLIC EMERALD_API void system_file_unpacker_get_file_property(system_file_unpacker               unpacker,
+                                                               uint32_t                           file_index,
+                                                               system_file_unpacker_file_property property,
+                                                               void*                              out_result);
 
 /** TODO */
-PUBLIC EMERALD_API void system_file_unpacker_get_property(__in  __notnull system_file_unpacker          unpacker,
-                                                          __in            system_file_unpacker_property property,
-                                                          __out __notnull void*                         out_result);
+PUBLIC EMERALD_API void system_file_unpacker_get_property(system_file_unpacker          unpacker,
+                                                          system_file_unpacker_property property,
+                                                          void*                         out_result);
 
 /** TODO */
-PUBLIC EMERALD_API void system_file_unpacker_release(__in __notnull __post_invalid system_file_unpacker unpacker);
+PUBLIC EMERALD_API void system_file_unpacker_release(system_file_unpacker unpacker);
 
 #endif /* SYSTEM_FILE_UNPACKER_H */

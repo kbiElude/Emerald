@@ -33,28 +33,28 @@ PUBLIC ogl_shaders ogl_shaders_create();
  *
  *  Internal usage only.
  **/
-PUBLIC ogl_shader ogl_shaders_get_shader_by_name(__in __notnull ogl_shaders               shaders,
-                                                 __in __notnull system_hashed_ansi_string shader_has);
+PUBLIC ogl_shader ogl_shaders_get_shader_by_name(ogl_shaders               shaders,
+                                                 system_hashed_ansi_string shader_has);
 
 /** TODO.
  *
  *  Internal usage only.
  **/
-PUBLIC void ogl_shaders_release(__in __notnull ogl_shaders shaders);
+PUBLIC void ogl_shaders_release(ogl_shaders shaders);
 
 /** TODO.
  *
  *  Internal usage only.
  **/
-PUBLIC void ogl_shaders_register_shader(__in __notnull ogl_shaders shaders,
-                                        __in __notnull ogl_shader  shader);
+PUBLIC void ogl_shaders_register_shader(ogl_shaders shaders,
+                                        ogl_shader  shader);
 
 /** TODO.
  *
  *  Internal usage only.
  */
-PUBLIC void ogl_shaders_unregister_shader(__in __notnull ogl_shaders shaders,
-                                          __in __notnull ogl_shader  shader);
+PUBLIC void ogl_shaders_unregister_shader(ogl_shaders shaders,
+                                          ogl_shader  shader);
 
 
 #endif /* OGL_SHADERS_H */

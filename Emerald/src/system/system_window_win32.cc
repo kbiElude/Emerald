@@ -52,7 +52,7 @@ typedef struct _system_window_win32
     POINT cursor_position; /* only updated prior to call-back execution! */
 
 
-    explicit _system_window_win32(__in system_window in_window)
+    explicit _system_window_win32(system_window in_window)
     {
         action_forbidden_cursor_resource     = 0;
         arrow_cursor_resource                = 0;
@@ -111,9 +111,9 @@ typedef struct _system_window_win32
 } _system_window_win32;
 
 /* Forward declarations */
-PRIVATE          void _system_window_window_closing_rendering_thread_entrypoint(                ogl_context                          context,
-                                                                                                void*                                user_arg);
-PRIVATE volatile void _system_window_teardown_thread_pool_callback              (__in __notnull system_thread_pool_callback_argument arg);
+PRIVATE          void _system_window_window_closing_rendering_thread_entrypoint(ogl_context                          context,
+                                                                                void*                                user_arg);
+PRIVATE volatile void _system_window_teardown_thread_pool_callback             (system_thread_pool_callback_argument arg);
 
 
 /** TODO */
@@ -482,7 +482,7 @@ PRIVATE void _system_window_window_closing_rendering_thread_entrypoint(ogl_conte
 }
 
 /** TODO */
-PRIVATE volatile void _system_window_teardown_thread_pool_callback(__in __notnull system_thread_pool_callback_argument arg)
+PRIVATE volatile void _system_window_teardown_thread_pool_callback(system_thread_pool_callback_argument arg)
 {
     _system_window_win32* window_ptr = (_system_window_win32*) arg;
 
@@ -495,7 +495,7 @@ PRIVATE volatile void _system_window_teardown_thread_pool_callback(__in __notnul
 
 
 /** Please see header for spec */
-PUBLIC void system_window_win32_close_window(__in system_window_win32 window)
+PUBLIC void system_window_win32_close_window(system_window_win32 window)
 {
     _system_window_win32* win32_ptr = (_system_window_win32*) window;
 
@@ -514,7 +514,7 @@ PUBLIC void system_window_win32_close_window(__in system_window_win32 window)
 }
 
 /** Please see header for spec */
-PUBLIC void system_window_win32_deinit(__in system_window_win32 window)
+PUBLIC void system_window_win32_deinit(system_window_win32 window)
 {
     _system_window_win32* win32_ptr = (_system_window_win32*) window;
 
@@ -526,9 +526,9 @@ PUBLIC void system_window_win32_deinit(__in system_window_win32 window)
 }
 
 /** Please see header for spec */
-PUBLIC bool system_window_win32_get_property(__in  system_window_win32    window,
-                                             __in  system_window_property property,
-                                             __out void*                  out_result)
+PUBLIC bool system_window_win32_get_property(  system_window_win32    window,
+                                               system_window_property property,
+                                              void*                  out_result)
 {
     bool                  result    = true;
     _system_window_win32* win32_ptr = (_system_window_win32*) window;
@@ -600,8 +600,8 @@ PUBLIC bool system_window_win32_get_property(__in  system_window_win32    window
 }
 
 /** Please see header for spec */
-PUBLIC void system_window_win32_get_screen_size(__out int* out_screen_width_ptr,
-                                                __out int* out_screen_height_ptr)
+PUBLIC void system_window_win32_get_screen_size(int* out_screen_width_ptr,
+                                                int* out_screen_height_ptr)
 {
     ASSERT_DEBUG_SYNC(out_screen_width_ptr  != NULL &&
                       out_screen_height_ptr != NULL,
@@ -612,7 +612,7 @@ PUBLIC void system_window_win32_get_screen_size(__out int* out_screen_width_ptr,
 }
 
 /** Please see header for spec */
-PUBLIC system_window_win32 system_window_win32_init(__in __notnull system_window owner)
+PUBLIC system_window_win32 system_window_win32_init(system_window owner)
 {
     _system_window_win32* win32_ptr = new (std::nothrow) _system_window_win32(owner);
 
@@ -625,7 +625,7 @@ PUBLIC system_window_win32 system_window_win32_init(__in __notnull system_window
 }
 
 /** Please see header for spec */
-PUBLIC void system_window_win32_handle_window(__in system_window_win32 window)
+PUBLIC void system_window_win32_handle_window(system_window_win32 window)
 {
     bool                  is_visible = false;
     _system_window_win32* win32_ptr  = (_system_window_win32*) window;
@@ -668,8 +668,8 @@ PUBLIC void system_window_win32_handle_window(__in system_window_win32 window)
 }
 
 /** Please see header for spec */
-PUBLIC bool system_window_win32_open_window(__in system_window_win32 window,
-                                            __in bool                is_first_window)
+PUBLIC bool system_window_win32_open_window(system_window_win32 window,
+                                            bool                is_first_window)
 {
     DWORD                 ex_style  = 0;
     bool                  result    = true;
@@ -891,9 +891,9 @@ end:
 }
 
 /** Please see header for property */
-PUBLIC bool system_window_win32_set_property(__in system_window_win32    window,
-                                             __in system_window_property property,
-                                             __in const void*            data)
+PUBLIC bool system_window_win32_set_property(system_window_win32    window,
+                                             system_window_property property,
+                                             const void*            data)
 {
     bool                  result    = true;
     _system_window_win32* win32_ptr = (_system_window_win32*) window;

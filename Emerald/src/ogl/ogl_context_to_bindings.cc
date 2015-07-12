@@ -135,8 +135,8 @@ PRIVATE _ogl_context_to_binding_target _ogl_context_to_bindings_get_ogl_context_
 }
 
 /** TODO */
-PRIVATE void _ogl_context_to_bindings_sync_multi_bind_process(__in __notnull ogl_context_to_bindings          bindings,
-                                                              __in           ogl_context_to_bindings_sync_bit sync_bits)
+PRIVATE void _ogl_context_to_bindings_sync_multi_bind_process(ogl_context_to_bindings          bindings,
+                                                              ogl_context_to_bindings_sync_bit sync_bits)
 {
     _ogl_context_to_bindings* bindings_ptr = (_ogl_context_to_bindings*) bindings;
 
@@ -203,8 +203,8 @@ PRIVATE void _ogl_context_to_bindings_sync_multi_bind_process(__in __notnull ogl
 }
 
 /** TODO */
-PRIVATE void _ogl_context_to_bindings_sync_non_multi_bind_process(__in __notnull ogl_context_to_bindings          bindings,
-                                                                  __in           ogl_context_to_bindings_sync_bit sync_bits)
+PRIVATE void _ogl_context_to_bindings_sync_non_multi_bind_process(ogl_context_to_bindings          bindings,
+                                                                  ogl_context_to_bindings_sync_bit sync_bits)
 {
     _ogl_context_to_bindings* bindings_ptr = (_ogl_context_to_bindings*) bindings;
 
@@ -259,7 +259,7 @@ PRIVATE void _ogl_context_to_bindings_sync_non_multi_bind_process(__in __notnull
 }
 
 /** Please see header for spec */
-PUBLIC ogl_context_to_bindings ogl_context_to_bindings_create(__in __notnull ogl_context context)
+PUBLIC ogl_context_to_bindings ogl_context_to_bindings_create(ogl_context context)
 {
     _ogl_context_to_bindings* new_bindings = new (std::nothrow) _ogl_context_to_bindings;
 
@@ -275,9 +275,9 @@ PUBLIC ogl_context_to_bindings ogl_context_to_bindings_create(__in __notnull ogl
 }
 
 /** Please see header for spec */
-PUBLIC ogl_texture ogl_context_to_bindings_get_bound_texture(__in __notnull const ogl_context_to_bindings to_bindings,
-                                                             __in           GLuint                        texture_unit,
-                                                             __in           GLenum                        target)
+PUBLIC ogl_texture ogl_context_to_bindings_get_bound_texture(const ogl_context_to_bindings to_bindings,
+                                                             GLuint                        texture_unit,
+                                                             GLenum                        target)
 {
     ogl_texture                     result          = NULL;
     const _ogl_context_to_bindings* to_bindings_ptr = (const _ogl_context_to_bindings*) to_bindings;
@@ -302,7 +302,7 @@ PUBLIC ogl_texture ogl_context_to_bindings_get_bound_texture(__in __notnull cons
 }
 
 /** Please see header for spec */
-PUBLIC ogl_context_to_bindings_sync_bit ogl_context_to_bindings_get_ogl_context_to_bindings_sync_bit_from_gl_target(__in GLenum binding_target)
+PUBLIC ogl_context_to_bindings_sync_bit ogl_context_to_bindings_get_ogl_context_to_bindings_sync_bit_from_gl_target(GLenum binding_target)
 {
     ogl_context_to_bindings_sync_bit result = (ogl_context_to_bindings_sync_bit) 0;
 
@@ -361,8 +361,8 @@ PUBLIC ogl_context_to_bindings_sync_bit ogl_context_to_bindings_get_ogl_context_
 }
 
 /** Please see header for spec */
-PUBLIC void ogl_context_to_bindings_init(__in __notnull ogl_context_to_bindings                   bindings,
-                                         __in __notnull const ogl_context_gl_entrypoints_private* entrypoints_private_ptr)
+PUBLIC void ogl_context_to_bindings_init(ogl_context_to_bindings                   bindings,
+                                         const ogl_context_gl_entrypoints_private* entrypoints_private_ptr)
 {
     _ogl_context_to_bindings*    bindings_ptr = (_ogl_context_to_bindings*) bindings;
     const ogl_context_gl_limits* limits_ptr   = NULL;
@@ -396,7 +396,7 @@ PUBLIC void ogl_context_to_bindings_init(__in __notnull ogl_context_to_bindings 
 }
 
 /** Please see header for spec */
-PUBLIC void ogl_context_to_bindings_release(__in __notnull __post_invalid ogl_context_to_bindings bindings)
+PUBLIC void ogl_context_to_bindings_release(ogl_context_to_bindings bindings)
 {
     _ogl_context_to_bindings* bindings_ptr = (_ogl_context_to_bindings*) bindings;
 
@@ -423,8 +423,8 @@ PUBLIC void ogl_context_to_bindings_release(__in __notnull __post_invalid ogl_co
 }
 
 /** Please see header for spec */
-PUBLIC void ogl_context_to_bindings_reset_all_bindings_for_texture_unit(__in __notnull ogl_context_to_bindings to_bindings,
-                                                                        __in           uint32_t                texture_unit)
+PUBLIC void ogl_context_to_bindings_reset_all_bindings_for_texture_unit(ogl_context_to_bindings to_bindings,
+                                                                        uint32_t                texture_unit)
 {
     _ogl_context_to_bindings* to_bindings_ptr = (_ogl_context_to_bindings*) to_bindings;
 
@@ -445,10 +445,10 @@ PUBLIC void ogl_context_to_bindings_reset_all_bindings_for_texture_unit(__in __n
 }
 
 /** Please see header for spec */
-PUBLIC void ogl_context_to_bindings_set_binding(__in __notnull ogl_context_to_bindings bindings,
-                                                __in           GLuint                  texture_unit,
-                                                __in           GLenum                  target,
-                                                __in_opt       ogl_texture             texture)
+PUBLIC void ogl_context_to_bindings_set_binding(ogl_context_to_bindings bindings,
+                                                GLuint                  texture_unit,
+                                                GLenum                  target,
+                                                ogl_texture             texture)
 {
     _ogl_context_to_bindings* bindings_ptr = (_ogl_context_to_bindings*) bindings;
 
@@ -502,8 +502,8 @@ PUBLIC void ogl_context_to_bindings_set_binding(__in __notnull ogl_context_to_bi
 }
 
 /** Please see header for spec */
-PUBLIC void ogl_context_to_bindings_sync(__in __notnull ogl_context_to_bindings          bindings,
-                                         __in           ogl_context_to_bindings_sync_bit sync_bits)
+PUBLIC void ogl_context_to_bindings_sync(ogl_context_to_bindings          bindings,
+                                         ogl_context_to_bindings_sync_bit sync_bits)
 {
     /* NOTE: bindings is NULL during rendering context initialization */
     if (bindings != NULL)

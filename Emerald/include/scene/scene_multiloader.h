@@ -15,15 +15,15 @@
 #include "scene/scene_types.h"
 
 /** TODO */
-PUBLIC EMERALD_API scene_multiloader scene_multiloader_create_from_filenames(__in                  ogl_context                      context,
-                                                                             __in                  unsigned int                     n_scenes,
-                                                                             __in_ecount(n_scenes) const system_hashed_ansi_string* scene_filenames);
+PUBLIC EMERALD_API scene_multiloader scene_multiloader_create_from_filenames(ogl_context                      context,
+                                                                             unsigned int                     n_scenes,
+                                                                             const system_hashed_ansi_string* scene_filenames);
 
 /** TODO */
-PUBLIC EMERALD_API scene_multiloader scene_multiloader_create_from_system_file_serializers(__in                  ogl_context                   context,
-                                                                                           __in                  unsigned int                  n_scenes,
-                                                                                           __in_ecount(n_scenes) const system_file_serializer* scene_file_serializers,
-                                                                                           __in                  bool                          free_serializers_at_release_time = false);
+PUBLIC EMERALD_API scene_multiloader scene_multiloader_create_from_system_file_serializers(ogl_context                   context,
+                                                                                           unsigned int                  n_scenes,
+                                                                                           const system_file_serializer* scene_file_serializers,
+                                                                                           bool                          free_serializers_at_release_time = false);
 
 /** TODO.
  *
@@ -31,9 +31,9 @@ PUBLIC EMERALD_API scene_multiloader scene_multiloader_create_from_system_file_s
  *                          Caller must retain the returned scene instance, prior to the
  *                          scene_multiloader_release() call, lest the object is released!
  */
-PUBLIC EMERALD_API void scene_multiloader_get_loaded_scene(__in  __notnull scene_multiloader loader,
-                                                           __in            unsigned int      n_scene,
-                                                           __out __notnull scene*            out_result_scene);
+PUBLIC EMERALD_API void scene_multiloader_get_loaded_scene(scene_multiloader loader,
+                                                           unsigned int      n_scene,
+                                                           scene*            out_result_scene);
 
 /** Kicks off the scene loading process. The loading process is executed in the background,
  *  and the execution flow is returned to the caller as soon as the background threads are
@@ -45,12 +45,12 @@ PUBLIC EMERALD_API void scene_multiloader_get_loaded_scene(__in  __notnull scene
  *
  *  @param loader scene_multiloader to perform the loading operation for.
  */
-PUBLIC EMERALD_API void scene_multiloader_load_async(__in __notnull scene_multiloader loader);
+PUBLIC EMERALD_API void scene_multiloader_load_async(scene_multiloader loader);
 
 /** TODO */
-PUBLIC EMERALD_API void scene_multiloader_release(__in __notnull __post_invalid scene_multiloader instance);
+PUBLIC EMERALD_API void scene_multiloader_release(scene_multiloader instance);
 
 /** TODO */
-PUBLIC EMERALD_API void scene_multiloader_wait_until_finished(__in __notnull scene_multiloader loader);
+PUBLIC EMERALD_API void scene_multiloader_wait_until_finished(scene_multiloader loader);
 
 #endif /* SCENE_MULTILOADER_H */

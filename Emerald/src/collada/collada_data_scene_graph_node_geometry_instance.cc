@@ -31,10 +31,10 @@ _collada_data_scene_graph_node_geometry_instance::_collada_data_scene_graph_node
 }
 
 /** Please see header for specification */
-PUBLIC collada_data_scene_graph_node_geometry_instance collada_data_scene_graph_node_geometry_instance_create(__in __notnull tinyxml2::XMLElement*     element_ptr,
-                                                                                                              __in           system_hash64map          geometry_by_id_map,
-                                                                                                              __in __notnull system_hashed_ansi_string name,
-                                                                                                              __in __notnull system_hash64map          materials_by_id_map)
+PUBLIC collada_data_scene_graph_node_geometry_instance collada_data_scene_graph_node_geometry_instance_create(tinyxml2::XMLElement*     element_ptr,
+                                                                                                              system_hash64map          geometry_by_id_map,
+                                                                                                              system_hashed_ansi_string name,
+                                                                                                              system_hash64map          materials_by_id_map)
 {
     /* Allocate space for the descriptor */
     tinyxml2::XMLElement*                             bind_material_element_ptr = NULL;
@@ -149,9 +149,9 @@ end:
 }
 
 /** TODO */
-PUBLIC void collada_data_scene_graph_node_geometry_instance_get_properties(__in      __notnull collada_data_scene_graph_node_geometry_instance geometry_instance,
-                                                                           __out_opt           collada_data_geometry*                          out_geometry,
-                                                                           __out_opt           system_hashed_ansi_string*                      out_instance_name)
+PUBLIC void collada_data_scene_graph_node_geometry_instance_get_properties(collada_data_scene_graph_node_geometry_instance geometry_instance,
+                                                                           collada_data_geometry*                          out_geometry,
+                                                                           system_hashed_ansi_string*                      out_instance_name)
 {
     _collada_data_scene_graph_node_geometry_instance* instance_ptr = (_collada_data_scene_graph_node_geometry_instance*) geometry_instance;
 
@@ -167,9 +167,9 @@ PUBLIC void collada_data_scene_graph_node_geometry_instance_get_properties(__in 
 }
 
 /** TODO */
-PUBLIC EMERALD_API void collada_data_scene_graph_node_geometry_instance_get_property(__in  __notnull collada_data_scene_graph_node_geometry_instance          geometry_instance,
-                                                                                     __in            collada_data_scene_graph_node_geometry_instance_property property,
-                                                                                     __out __notnull void*                                                    out_result)
+PUBLIC EMERALD_API void collada_data_scene_graph_node_geometry_instance_get_property(collada_data_scene_graph_node_geometry_instance          geometry_instance,
+                                                                                     collada_data_scene_graph_node_geometry_instance_property property,
+                                                                                     void*                                                    out_result)
 {
     _collada_data_scene_graph_node_geometry_instance* instance_ptr = (_collada_data_scene_graph_node_geometry_instance*) geometry_instance;
 
@@ -198,7 +198,7 @@ PUBLIC EMERALD_API void collada_data_scene_graph_node_geometry_instance_get_prop
 }
 
 /** TODO */
-PUBLIC void collada_data_scene_graph_node_geometry_instance_release(__in __notnull __post_invalid collada_data_scene_graph_node_geometry_instance geometry_instance)
+PUBLIC void collada_data_scene_graph_node_geometry_instance_release(collada_data_scene_graph_node_geometry_instance geometry_instance)
 {
     delete (_collada_data_scene_graph_node_geometry_instance*) geometry_instance;
 

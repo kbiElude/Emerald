@@ -11,33 +11,33 @@
 #include "system/system_window.h"
 
 /** TODO */
-PUBLIC void system_window_win32_close_window(__in system_window_win32 window);
+PUBLIC void system_window_win32_close_window(system_window_win32 window);
 
 /** TODO */
-PUBLIC void system_window_win32_deinit(__in system_window_win32 window);
+PUBLIC void system_window_win32_deinit(system_window_win32 window);
 
 /** TODO */
-PUBLIC bool system_window_win32_get_property(__in  system_window_win32    window,
-                                             __in  system_window_property property,
-                                             __out void*                  out_result);
+PUBLIC bool system_window_win32_get_property(system_window_win32    window,
+                                             system_window_property property,
+                                             void*                  out_result);
 
 /** TODO */
-PUBLIC void system_window_win32_get_screen_size(__out int* out_screen_width_ptr,
-                                                __out int* out_screen_height_ptr);
+PUBLIC void system_window_win32_get_screen_size(int* out_screen_width_ptr,
+                                                int* out_screen_height_ptr);
 
 /** TODO */
-PUBLIC system_window_win32 system_window_win32_init(__in system_window owner);
+PUBLIC system_window_win32 system_window_win32_init(system_window owner);
 
 /** TODO */
-PUBLIC void system_window_win32_handle_window(__in system_window_win32 window);
+PUBLIC void system_window_win32_handle_window(system_window_win32 window);
 
 /** TODO */
-PUBLIC bool system_window_win32_open_window(__in system_window_win32 window,
-                                            __in bool                is_first_window);
+PUBLIC bool system_window_win32_open_window(system_window_win32 window,
+                                            bool                is_first_window);
 
 /** TODO */
-PUBLIC bool system_window_win32_set_property(__in system_window_win32    window,
-                                             __in system_window_property property,
-                                             __in const void*            data);
+PUBLIC bool system_window_win32_set_property(system_window_win32    window,
+                                             system_window_property property,
+                                             const void*            data);
 
 #endif /* SYSTEM_WINDOW_WIN32_H */

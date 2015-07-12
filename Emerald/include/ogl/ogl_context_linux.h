@@ -12,16 +12,16 @@
 
 
 /** TODO */
-PUBLIC void ogl_context_linux_bind_to_current_thread(__in ogl_context_linux context_linux);
+PUBLIC void ogl_context_linux_bind_to_current_thread(ogl_context_linux context_linux);
 
 /** TODO */
-PUBLIC void ogl_context_linux_deinit(__in __post_invalid ogl_context_linux context_linux);
+PUBLIC void ogl_context_linux_deinit(ogl_context_linux context_linux);
 
 /** TODO */
 PUBLIC void ogl_context_linux_deinit_global();
 
 /** TODO */
-PUBLIC void ogl_context_linux_enumerate_supported_msaa_modes(__in ogl_context_linux context_linux);
+PUBLIC void ogl_context_linux_enumerate_supported_msaa_modes(ogl_context_linux context_linux);
 
 /** TODO
  *
@@ -31,13 +31,13 @@ PUBLIC void ogl_context_linux_get_fb_configs_for_gl_window(system_window window,
                                                            int*          out_n_compatible_fb_configs_ptr);
 
 /** TODO */
-PUBLIC void* ogl_context_linux_get_func_ptr(__in ogl_context_linux context_linux,
-                                            __in const char*       name);
+PUBLIC void* ogl_context_linux_get_func_ptr(ogl_context_linux context_linux,
+                                            const char*       name);
 
 /** TODO */
-PUBLIC bool ogl_context_linux_get_property(__in  ogl_context_linux    context_linux,
-                                           __in  ogl_context_property property,
-                                           __out void*                out_result);
+PUBLIC bool ogl_context_linux_get_property(ogl_context_linux    context_linux,
+                                           ogl_context_property property,
+                                           void*                out_result);
 
 /** TODO.
  *
@@ -51,21 +51,21 @@ PUBLIC XVisualInfo* ogl_context_linux_get_visual_info_for_gl_window(system_windo
  *
  *  @return TODO
  */
-PUBLIC void ogl_context_linux_init(__in ogl_context                     context,
-                                   __in PFNINITCONTEXTAFTERCREATIONPROC pInitContextAfterCreation);
+PUBLIC void ogl_context_linux_init(ogl_context                     context,
+                                   PFNINITCONTEXTAFTERCREATIONPROC pInitContextAfterCreation);
 
 /** TODO */
 PUBLIC void ogl_context_linux_init_global();
 
 /** TODO */
-PUBLIC bool ogl_context_linux_set_property(__in ogl_context_linux    context_linux,
-                                           __in ogl_context_property property,
-                                           __in const void*          data);
+PUBLIC bool ogl_context_linux_set_property(ogl_context_linux    context_linux,
+                                           ogl_context_property property,
+                                           const void*          data);
 
 /** TODO */
-PUBLIC void ogl_context_linux_swap_buffers(__in ogl_context_linux context_linux);
+PUBLIC void ogl_context_linux_swap_buffers(ogl_context_linux context_linux);
 
 /** TODO */
-PUBLIC void ogl_context_linux_unbind_from_current_thread(__in ogl_context_linux context_linux);
+PUBLIC void ogl_context_linux_unbind_from_current_thread(ogl_context_linux context_linux);
 
 #endif /* OGL_CONTEXT_LINUX_H */

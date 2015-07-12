@@ -50,9 +50,9 @@ REFCOUNT_INSERT_IMPLEMENTATION(shaders_vertex_uber,
 
 
 /** TODO */
-PRIVATE void _shaders_vertex_uber_add_sh3_light_support(__in __notnull ogl_shader_constructor shader_constructor,
-                                                        __in           unsigned int           n_light,
-                                                        __in           _uniform_block_id      vs_ub_id)
+PRIVATE void _shaders_vertex_uber_add_sh3_light_support(ogl_shader_constructor shader_constructor,
+                                                        unsigned int           n_light,
+                                                        _uniform_block_id      vs_ub_id)
 {
     /* Add UB variables */
     std::stringstream light_sh3_variable_name_sstream;
@@ -123,9 +123,9 @@ PRIVATE void _shaders_vertex_uber_add_sh3_light_support(__in __notnull ogl_shade
 }
 
 /** TODO */
-PRIVATE void _shaders_vertex_uber_add_sh4_light_support(__in __notnull ogl_shader_constructor shader_constructor,
-                                                        __in           unsigned int           n_light,
-                                                        __in           _uniform_block_id      vs_ub_id)
+PRIVATE void _shaders_vertex_uber_add_sh4_light_support(ogl_shader_constructor shader_constructor,
+                                                        unsigned int           n_light,
+                                                        _uniform_block_id      vs_ub_id)
 {
     /* Add UB variables */
     std::stringstream light_sh3_variable_name_sstream;
@@ -203,7 +203,7 @@ PRIVATE void _shaders_vertex_uber_add_sh4_light_support(__in __notnull ogl_shade
  *
  *  @param ptr Pointer to _shaders_vertex_uber instance.
  **/
-PRIVATE void _shaders_vertex_uber_release(__in __notnull __deallocate(mem) void* ptr)
+PRIVATE void _shaders_vertex_uber_release(void* ptr)
 {
     _shaders_vertex_uber* data_ptr = (_shaders_vertex_uber*) ptr;
 
@@ -238,10 +238,10 @@ PRIVATE void _shaders_vertex_uber_release(__in __notnull __deallocate(mem) void*
 
 
 /** Please see header for specification */
-PUBLIC EMERALD_API void shaders_vertex_uber_add_passthrough_input_attribute(__in __notnull shaders_vertex_uber       uber,
-                                                                            __in __notnull system_hashed_ansi_string in_attribute_name,
-                                                                            __in __notnull _shader_variable_type     in_attribute_variable_type,
-                                                                            __in __notnull system_hashed_ansi_string out_attribute_name)
+PUBLIC EMERALD_API void shaders_vertex_uber_add_passthrough_input_attribute(shaders_vertex_uber       uber,
+                                                                            system_hashed_ansi_string in_attribute_name,
+                                                                            _shader_variable_type     in_attribute_variable_type,
+                                                                            system_hashed_ansi_string out_attribute_name)
 {
     _shaders_vertex_uber* uber_ptr = (_shaders_vertex_uber*) uber;
 
@@ -295,10 +295,10 @@ PUBLIC EMERALD_API void shaders_vertex_uber_add_passthrough_input_attribute(__in
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API shaders_vertex_uber_item_id shaders_vertex_uber_add_light(__in __notnull shaders_vertex_uber              uber,
-                                                                             __in           shaders_vertex_uber_light        light,
-                                                                             __in           shaders_fragment_uber_light_type light_type,
-                                                                             __in           bool                             is_shadow_caster)
+PUBLIC EMERALD_API shaders_vertex_uber_item_id shaders_vertex_uber_add_light(shaders_vertex_uber              uber,
+                                                                             shaders_vertex_uber_light        light,
+                                                                             shaders_fragment_uber_light_type light_type,
+                                                                             bool                             is_shadow_caster)
 {
     _shaders_vertex_uber*       uber_ptr     = (_shaders_vertex_uber*) uber;
     unsigned int                n_items      = 0;
@@ -378,8 +378,8 @@ end:
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API shaders_vertex_uber shaders_vertex_uber_create(__in __notnull ogl_context               context,
-                                                                  __in __notnull system_hashed_ansi_string name)
+PUBLIC EMERALD_API shaders_vertex_uber shaders_vertex_uber_create(ogl_context               context,
+                                                                  system_hashed_ansi_string name)
 {
     std::stringstream     body_stream;
     _shaders_vertex_uber* result_object = NULL;
@@ -581,9 +581,9 @@ end:
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API bool shaders_vertex_uber_get_item_type(__in __notnull shaders_vertex_uber            uber,
-                                                          __in           shaders_vertex_uber_item_id    item_id,
-                                                          __out          shaders_vertex_uber_item_type* out_item_type)
+PUBLIC EMERALD_API bool shaders_vertex_uber_get_item_type(shaders_vertex_uber            uber,
+                                                          shaders_vertex_uber_item_id    item_id,
+                                                          shaders_vertex_uber_item_type* out_item_type)
 {
     _shaders_vertex_uber_item* item_ptr = NULL;
     _shaders_vertex_uber*      uber_ptr = (_shaders_vertex_uber*) uber;
@@ -604,9 +604,9 @@ end:
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API bool shaders_vertex_uber_get_light_type(__in  __notnull shaders_vertex_uber         uber,
-                                                           __in            shaders_vertex_uber_item_id item_id,
-                                                           __out           shaders_vertex_uber_light*  out_light_type)
+PUBLIC EMERALD_API bool shaders_vertex_uber_get_light_type(shaders_vertex_uber         uber,
+                                                           shaders_vertex_uber_item_id item_id,
+                                                           shaders_vertex_uber_light*  out_light_type)
 {
     _shaders_vertex_uber_item* item_ptr = NULL;
     _shaders_vertex_uber*      uber_ptr = (_shaders_vertex_uber*) uber;
@@ -638,7 +638,7 @@ end:
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API uint32_t shaders_vertex_uber_get_n_items(__in __notnull shaders_vertex_uber shader)
+PUBLIC EMERALD_API uint32_t shaders_vertex_uber_get_n_items(shaders_vertex_uber shader)
 {
     uint32_t result = 0;
 
@@ -650,7 +650,7 @@ PUBLIC EMERALD_API uint32_t shaders_vertex_uber_get_n_items(__in __notnull shade
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API ogl_shader shaders_vertex_uber_get_shader(__in __notnull shaders_vertex_uber shader)
+PUBLIC EMERALD_API ogl_shader shaders_vertex_uber_get_shader(shaders_vertex_uber shader)
 {
     _shaders_vertex_uber* shader_ptr = (_shaders_vertex_uber*) shader;
 
@@ -665,13 +665,13 @@ PUBLIC EMERALD_API ogl_shader shaders_vertex_uber_get_shader(__in __notnull shad
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API bool shaders_vertex_uber_is_dirty(__in __notnull shaders_vertex_uber uber)
+PUBLIC EMERALD_API bool shaders_vertex_uber_is_dirty(shaders_vertex_uber uber)
 {
     return ((_shaders_vertex_uber*) uber)->dirty;
 }
 
 /* Please see header for specificationb */
-PUBLIC EMERALD_API void shaders_vertex_uber_recompile(__in __notnull shaders_vertex_uber uber)
+PUBLIC EMERALD_API void shaders_vertex_uber_recompile(shaders_vertex_uber uber)
 {
     _shaders_vertex_uber* uber_ptr = (_shaders_vertex_uber*) uber;
 

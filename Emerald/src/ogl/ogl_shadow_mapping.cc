@@ -166,18 +166,18 @@ typedef struct _ogl_shadow_mapping
 
 /* Forward declarations */
 #ifdef _DEBUG
-    PRIVATE void _ogl_shadow_mapping_verify_context_type(__in __notnull ogl_context);
+    PRIVATE void _ogl_shadow_mapping_verify_context_type(ogl_context);
 #else
     #define _ogl_shadow_mapping_verify_context_type(x)
 #endif
 
 
 /** TODO */
-PRIVATE void _ogl_shadow_mapping_add_bias_variable_to_fragment_uber(__in            std::stringstream&               code_snippet_sstream,
-                                                                    __in            const uint32_t                   n_light,
-                                                                    __in            scene_light_shadow_map_bias      light_sm_bias,
-                                                                    __in            scene_light_shadow_map_algorithm sm_algo,
-                                                                    __out __notnull system_hashed_ansi_string*       out_light_bias_var_name_has)
+PRIVATE void _ogl_shadow_mapping_add_bias_variable_to_fragment_uber(std::stringstream&               code_snippet_sstream,
+                                                                    const uint32_t                   n_light,
+                                                                    scene_light_shadow_map_bias      light_sm_bias,
+                                                                    scene_light_shadow_map_algorithm sm_algo,
+                                                                    system_hashed_ansi_string*       out_light_bias_var_name_has)
 {
     /* Create the new code snippet */
     std::stringstream light_bias_var_name_sstream;
@@ -236,14 +236,14 @@ PRIVATE void _ogl_shadow_mapping_add_bias_variable_to_fragment_uber(__in        
 }
 
 /** TODO */
-PRIVATE void _ogl_shadow_mapping_add_constructor_variable(__in __notnull ogl_shader_constructor     constructor,
-                                                          __in           uint32_t                   n_light,
-                                                          __in           system_hashed_ansi_string  var_suffix,
-                                                          __in           _variable_type             var_type,
-                                                          __in           _layout_qualifier          layout_qualifier,
-                                                          __in           _shader_variable_type      shader_var_type,
-                                                          __in           _uniform_block_id          ub_id,
-                                                          __out          system_hashed_ansi_string* out_var_name)
+PRIVATE void _ogl_shadow_mapping_add_constructor_variable(ogl_shader_constructor     constructor,
+                                                          uint32_t                   n_light,
+                                                          system_hashed_ansi_string  var_suffix,
+                                                          _variable_type             var_type,
+                                                          _layout_qualifier          layout_qualifier,
+                                                          _shader_variable_type      shader_var_type,
+                                                          _uniform_block_id          ub_id,
+                                                          system_hashed_ansi_string* out_var_name)
 {
     bool              is_var_added = false;
     std::stringstream var_name_sstream;
@@ -272,15 +272,15 @@ PRIVATE void _ogl_shadow_mapping_add_constructor_variable(__in __notnull ogl_sha
 }
 
 /** TODO */
-PRIVATE void _ogl_shadow_mapping_add_uniforms_to_fragment_uber_for_non_point_light(__in  __notnull ogl_shader_constructor     constructor,
-                                                                                   __in            _uniform_block_id          ub_fs,
-                                                                                   __in  __notnull scene_light                light,
-                                                                                   __in            uint32_t                   n_light,
-                                                                                   __out __notnull system_hashed_ansi_string* out_light_shadow_coord_var_name_has,
-                                                                                   __out __notnull system_hashed_ansi_string* out_shadow_map_color_sampler_var_name_has,
-                                                                                   __out __notnull system_hashed_ansi_string* out_shadow_map_depth_sampler_var_name_has,
-                                                                                   __out __notnull system_hashed_ansi_string* out_vsm_cutoff_var_name_has,
-                                                                                   __out __notnull system_hashed_ansi_string* out_vsm_min_variance_var_name_has)
+PRIVATE void _ogl_shadow_mapping_add_uniforms_to_fragment_uber_for_non_point_light(ogl_shader_constructor     constructor,
+                                                                                   _uniform_block_id          ub_fs,
+                                                                                   scene_light                light,
+                                                                                   uint32_t                   n_light,
+                                                                                   system_hashed_ansi_string* out_light_shadow_coord_var_name_has,
+                                                                                   system_hashed_ansi_string* out_shadow_map_color_sampler_var_name_has,
+                                                                                   system_hashed_ansi_string* out_shadow_map_depth_sampler_var_name_has,
+                                                                                   system_hashed_ansi_string* out_vsm_cutoff_var_name_has,
+                                                                                   system_hashed_ansi_string* out_vsm_min_variance_var_name_has)
 {
     /* Add the light-specific shadow coordinate input variable.
      *
@@ -370,18 +370,18 @@ PRIVATE void _ogl_shadow_mapping_add_uniforms_to_fragment_uber_for_non_point_lig
 }
 
 /** TODO */
-PRIVATE void _ogl_shadow_mapping_add_uniforms_to_fragment_uber_for_point_light(__in  __notnull ogl_shader_constructor     constructor,
-                                                                               __in            _uniform_block_id          ub_fs,
-                                                                               __in  __notnull scene_light                light,
-                                                                               __in            uint32_t                   n_light,
-                                                                               __out __notnull system_hashed_ansi_string* out_light_far_near_diff_var_name_has,
-                                                                               __out __notnull system_hashed_ansi_string* out_light_near_var_name_has,
-                                                                               __out __notnull system_hashed_ansi_string* out_light_projection_matrix_var_name_has,
-                                                                               __out __notnull system_hashed_ansi_string* out_light_view_matrix_var_name_has,
-                                                                               __out __notnull system_hashed_ansi_string* out_shadow_map_color_sampler_var_name_has,
-                                                                               __out __notnull system_hashed_ansi_string* out_shadow_map_depth_sampler_var_name_has,
-                                                                               __out __notnull system_hashed_ansi_string* out_vsm_cutoff_var_name_has,
-                                                                               __out __notnull system_hashed_ansi_string* out_vsm_min_variance_var_name_has)
+PRIVATE void _ogl_shadow_mapping_add_uniforms_to_fragment_uber_for_point_light(ogl_shader_constructor     constructor,
+                                                                               _uniform_block_id          ub_fs,
+                                                                               scene_light                light,
+                                                                               uint32_t                   n_light,
+                                                                               system_hashed_ansi_string* out_light_far_near_diff_var_name_has,
+                                                                               system_hashed_ansi_string* out_light_near_var_name_has,
+                                                                               system_hashed_ansi_string* out_light_projection_matrix_var_name_has,
+                                                                               system_hashed_ansi_string* out_light_view_matrix_var_name_has,
+                                                                               system_hashed_ansi_string* out_shadow_map_color_sampler_var_name_has,
+                                                                               system_hashed_ansi_string* out_shadow_map_depth_sampler_var_name_has,
+                                                                               system_hashed_ansi_string* out_vsm_cutoff_var_name_has,
+                                                                               system_hashed_ansi_string* out_vsm_min_variance_var_name_has)
 {
     scene_light_shadow_map_algorithm            sm_algorithm;
     scene_light_shadow_map_pointlight_algorithm sm_pl_algorithm;
@@ -530,13 +530,13 @@ PRIVATE void _ogl_shadow_mapping_add_uniforms_to_fragment_uber_for_point_light(_
 
 
 /** TODO */
- PRIVATE void _ogl_shadow_mapping_get_aabb_for_camera_frustum_and_scene_aabb(__in            __notnull scene_camera     current_camera,
-                                                                             __in                      system_time      time,
-                                                                             __in_ecount(3)  __notnull const float*     aabb_min_world,
-                                                                             __in_ecount(3)  __notnull const float*     aabb_max_world,
-                                                                             __in            __notnull system_matrix4x4 view_matrix,
-                                                                             __out_ecount(3) __notnull float*           result_min,
-                                                                             __out_ecount(3) __notnull float*           result_max)
+ PRIVATE void _ogl_shadow_mapping_get_aabb_for_camera_frustum_and_scene_aabb(scene_camera     current_camera,
+                                                                             system_time      time,
+                                                                             const float*     aabb_min_world,
+                                                                             const float*     aabb_max_world,
+                                                                             system_matrix4x4 view_matrix,
+                                                                             float*           result_min,
+                                                                             float*           result_max)
 {
     /* Retrieve camera frustum data */
     float camera_frustum_vec4_fbl_world[4] = {0, 0, 0, 1.0f};
@@ -842,8 +842,8 @@ PRIVATE void _ogl_shadow_mapping_add_uniforms_to_fragment_uber_for_point_light(_
 }
 
 /** TODO */
-uint32_t _ogl_shadow_mapping_get_number_of_sm_passes(__in scene_light      light,
-                                                     __in scene_light_type light_type)
+uint32_t _ogl_shadow_mapping_get_number_of_sm_passes(scene_light      light,
+                                                     scene_light_type light_type)
 {
     uint32_t result = 0;
 
@@ -887,8 +887,8 @@ uint32_t _ogl_shadow_mapping_get_number_of_sm_passes(__in scene_light      light
 }
 
 /** TODO */
-PRIVATE ogl_shadow_mapping_target_face _ogl_shadow_mapping_get_target_face_for_point_light(__in scene_light_shadow_map_pointlight_algorithm algorithm,
-                                                                                           __in uint32_t                                    n_sm_pass)
+PRIVATE ogl_shadow_mapping_target_face _ogl_shadow_mapping_get_target_face_for_point_light(scene_light_shadow_map_pointlight_algorithm algorithm,
+                                                                                           uint32_t                                    n_sm_pass)
 {
     ogl_shadow_mapping_target_face result = OGL_SHADOW_MAPPING_TARGET_FACE_UNKNOWN;
 
@@ -949,7 +949,7 @@ PRIVATE ogl_shadow_mapping_target_face _ogl_shadow_mapping_get_target_face_for_p
 }
 
 /** TODO */
-PRIVATE ogl_shadow_mapping_target_face _ogl_shadow_mapping_get_target_face_for_nonpoint_light(__in uint32_t n_sm_pass)
+PRIVATE ogl_shadow_mapping_target_face _ogl_shadow_mapping_get_target_face_for_nonpoint_light(uint32_t n_sm_pass)
 {
     ogl_shadow_mapping_target_face result = OGL_SHADOW_MAPPING_TARGET_FACE_UNKNOWN;
 
@@ -972,9 +972,9 @@ PRIVATE ogl_shadow_mapping_target_face _ogl_shadow_mapping_get_target_face_for_n
     return result;
 }
 /** TODO */
-PRIVATE void _ogl_shadow_mapping_get_texture_targets_from_target_face(__in            ogl_shadow_mapping_target_face target_face,
-                                                                      __out __notnull GLenum*                        out_general_texture_target,
-                                                                      __out __notnull GLenum*                        out_detailed_texture_target)
+PRIVATE void _ogl_shadow_mapping_get_texture_targets_from_target_face(ogl_shadow_mapping_target_face target_face,
+                                                                      GLenum*                        out_general_texture_target,
+                                                                      GLenum*                        out_detailed_texture_target)
 {
     switch (target_face)
     {
@@ -1054,8 +1054,8 @@ PRIVATE void _ogl_shadow_mapping_get_texture_targets_from_target_face(__in      
 }
 
 /** TODO */
-PRIVATE void _ogl_shadow_mapping_init_renderer_callback(__in __notnull ogl_context context,
-                                                        __in __notnull void*       shadow_mapping)
+PRIVATE void _ogl_shadow_mapping_init_renderer_callback(ogl_context context,
+                                                        void*       shadow_mapping)
 {
     ogl_context_gl_entrypoints* entry_points       = NULL;
     _ogl_shadow_mapping*        shadow_mapping_ptr = (_ogl_shadow_mapping*) shadow_mapping;
@@ -1070,8 +1070,8 @@ PRIVATE void _ogl_shadow_mapping_init_renderer_callback(__in __notnull ogl_conte
 }
 
 /** TODO */
-PRIVATE void _ogl_shadow_mapping_release_renderer_callback(__in __notnull ogl_context context,
-                                                           __in __notnull void*       shadow_mapping)
+PRIVATE void _ogl_shadow_mapping_release_renderer_callback(ogl_context context,
+                                                           void*       shadow_mapping)
 {
     ogl_context_gl_entrypoints* entry_points       = NULL;
     _ogl_shadow_mapping*        shadow_mapping_ptr = (_ogl_shadow_mapping*) shadow_mapping;
@@ -1097,8 +1097,8 @@ PRIVATE void _ogl_shadow_mapping_release_renderer_callback(__in __notnull ogl_co
  *  @param renderer
  *
  **/
-PRIVATE void _ogl_shadow_mapping_process_mesh_for_shadow_map_pre_pass(__notnull scene_mesh scene_mesh_instance,
-                                                                      __in      void*      renderer)
+PRIVATE void _ogl_shadow_mapping_process_mesh_for_shadow_map_pre_pass(scene_mesh scene_mesh_instance,
+                                                                      void*      renderer)
 {
     mesh mesh_gpu                      = NULL;
     mesh mesh_instantiation_parent_gpu = NULL;
@@ -1135,7 +1135,7 @@ PRIVATE void _ogl_shadow_mapping_process_mesh_for_shadow_map_pre_pass(__notnull 
 /** TODO */
 #ifdef _DEBUG
     /* TODO */
-    PRIVATE void _ogl_shadow_mapping_verify_context_type(__in __notnull ogl_context context)
+    PRIVATE void _ogl_shadow_mapping_verify_context_type(ogl_context context)
     {
         ogl_context_type context_type = OGL_CONTEXT_TYPE_UNDEFINED;
 
@@ -1150,14 +1150,14 @@ PRIVATE void _ogl_shadow_mapping_process_mesh_for_shadow_map_pre_pass(__notnull 
 
 
 /** Please see header for spec */
-PUBLIC void ogl_shadow_mapping_adjust_fragment_uber_code(__in  __notnull ogl_shader_constructor     shader_constructor_fs,
-                                                         __in            uint32_t                   n_light,
-                                                         __in __notnull  scene_light                light_instance,
-                                                         __in            _uniform_block_id          ub_fs,
-                                                         __in            system_hashed_ansi_string  light_world_pos_var_name,
-                                                         __in            system_hashed_ansi_string  light_vector_norm_var_name,
-                                                         __in            system_hashed_ansi_string  light_vector_non_norm_var_name,
-                                                         __out __notnull system_hashed_ansi_string* out_visibility_var_name)
+PUBLIC void ogl_shadow_mapping_adjust_fragment_uber_code(ogl_shader_constructor     shader_constructor_fs,
+                                                         uint32_t                   n_light,
+                                                         scene_light                light_instance,
+                                                         _uniform_block_id          ub_fs,
+                                                         system_hashed_ansi_string  light_world_pos_var_name,
+                                                         system_hashed_ansi_string  light_vector_norm_var_name,
+                                                         system_hashed_ansi_string  light_vector_non_norm_var_name,
+                                                         system_hashed_ansi_string* out_visibility_var_name)
 {
     scene_light_shadow_map_algorithm            light_sm_algorithm;
     scene_light_shadow_map_pointlight_algorithm light_sm_pointlight_algorithm;
@@ -1721,11 +1721,11 @@ PUBLIC void ogl_shadow_mapping_adjust_fragment_uber_code(__in  __notnull ogl_sha
 }
 
 /** Please see header for spec */
-PUBLIC void ogl_shadow_mapping_adjust_vertex_uber_code(__in __notnull ogl_shader_constructor           shader_constructor_vs,
-                                                       __in           uint32_t                         n_light,
-                                                       __in           shaders_fragment_uber_light_type light_type,
-                                                       __in           _uniform_block_id                ub_vs,
-                                                       __in __notnull system_hashed_ansi_string        world_vertex_vec4_variable_name)
+PUBLIC void ogl_shadow_mapping_adjust_vertex_uber_code(ogl_shader_constructor           shader_constructor_vs,
+                                                       uint32_t                         n_light,
+                                                       shaders_fragment_uber_light_type light_type,
+                                                       _uniform_block_id                ub_vs,
+                                                       system_hashed_ansi_string        world_vertex_vec4_variable_name)
 {
     /* NOTE: The following code is only used for the directional and spot lights. We're using a
      *       "light_view * camera_view_inversed" matrix directly in FS for point lights, so we
@@ -1857,7 +1857,7 @@ PUBLIC void ogl_shadow_mapping_adjust_vertex_uber_code(__in __notnull ogl_shader
 }
 
 /** Please see header for spec */
-PUBLIC RENDERING_CONTEXT_CALL ogl_shadow_mapping ogl_shadow_mapping_create(__in __notnull ogl_context context)
+PUBLIC RENDERING_CONTEXT_CALL ogl_shadow_mapping ogl_shadow_mapping_create(ogl_context context)
 {
     _ogl_shadow_mapping* new_instance = new (std::nothrow) _ogl_shadow_mapping;
 
@@ -1885,15 +1885,15 @@ PUBLIC RENDERING_CONTEXT_CALL ogl_shadow_mapping ogl_shadow_mapping_create(__in 
 }
 
 /** Please see header for spec */
-PUBLIC void ogl_shadow_mapping_get_matrices_for_light(__in            __notnull ogl_shadow_mapping             shadow_mapping,
-                                                      __in            __notnull scene_light                    light,
-                                                      __in                      ogl_shadow_mapping_target_face light_target_face,
-                                                      __in_ecount(3)  __notnull scene_camera                   current_camera,
-                                                      __in                      system_time                    time,
-                                                      __in_ecount(3)  __notnull const float*                   aabb_min_world,
-                                                      __in_ecount(3)  __notnull const float*                   aabb_max_world,
-                                                      __out           __notnull system_matrix4x4*              out_view_matrix,
-                                                      __out           __notnull system_matrix4x4*              out_projection_matrix)
+PUBLIC void ogl_shadow_mapping_get_matrices_for_light(ogl_shadow_mapping             shadow_mapping,
+                                                      scene_light                    light,
+                                                      ogl_shadow_mapping_target_face light_target_face,
+                                                      scene_camera                   current_camera,
+                                                      system_time                    time,
+                                                      const float*                   aabb_min_world,
+                                                      const float*                   aabb_max_world,
+                                                      system_matrix4x4*              out_view_matrix,
+                                                      system_matrix4x4*              out_projection_matrix)
 {
     _ogl_shadow_mapping* shadow_mapping_ptr = (_ogl_shadow_mapping*) shadow_mapping;
 
@@ -2320,9 +2320,9 @@ PUBLIC void ogl_shadow_mapping_get_matrices_for_light(__in            __notnull 
 }
 
 /** TODO */
-PUBLIC EMERALD_API void ogl_shadow_mapping_get_property(__in  __notnull ogl_shadow_mapping          shadow_mapping,
-                                                        __in            ogl_shadow_mapping_property property,
-                                                        __out __notnull void*                       out_result)
+PUBLIC EMERALD_API void ogl_shadow_mapping_get_property(ogl_shadow_mapping          shadow_mapping,
+                                                        ogl_shadow_mapping_property property,
+                                                        void*                       out_result)
 {
     const _ogl_shadow_mapping* shadow_mapping_ptr = (const _ogl_shadow_mapping*) shadow_mapping;
 
@@ -2351,7 +2351,7 @@ PUBLIC EMERALD_API void ogl_shadow_mapping_get_property(__in  __notnull ogl_shad
 }
 
 /** TODO */
-PUBLIC system_hashed_ansi_string ogl_shadow_mapping_get_special_material_shader_body(__in ogl_shadow_mapping_special_material_body_type body_type)
+PUBLIC system_hashed_ansi_string ogl_shadow_mapping_get_special_material_shader_body(ogl_shadow_mapping_special_material_body_type body_type)
 {
     system_hashed_ansi_string result = NULL;
 
@@ -2593,8 +2593,8 @@ PUBLIC system_hashed_ansi_string ogl_shadow_mapping_get_special_material_shader_
 }
 
 /** TODO */
-PUBLIC void ogl_shadow_mapping_process_mesh_for_shadow_map_rendering(     __notnull scene_mesh scene_mesh_instance,
-                                                                     __in __notnull void*      renderer_raw)
+PUBLIC void ogl_shadow_mapping_process_mesh_for_shadow_map_rendering(scene_mesh scene_mesh_instance,
+                                                                     void*      renderer_raw)
 {
     ogl_context                    context                       = NULL;
     mesh                           mesh_gpu                      = NULL;
@@ -2707,7 +2707,7 @@ end:
 }
 
 /** Please see header for spec */
-PUBLIC void ogl_shadow_mapping_release(__in __notnull __post_invalid ogl_shadow_mapping handler)
+PUBLIC void ogl_shadow_mapping_release(ogl_shadow_mapping handler)
 {
     _ogl_shadow_mapping* handler_ptr = (_ogl_shadow_mapping*) handler;
 
@@ -2720,10 +2720,10 @@ PUBLIC void ogl_shadow_mapping_release(__in __notnull __post_invalid ogl_shadow_
 }
 
 /** TODO */
-PUBLIC void ogl_shadow_mapping_render_shadow_map_meshes(__in __notnull ogl_shadow_mapping shadow_mapping,
-                                                        __in __notnull ogl_scene_renderer renderer,
-                                                        __in __notnull scene              scene,
-                                                        __in           system_time        frame_time)
+PUBLIC void ogl_shadow_mapping_render_shadow_map_meshes(ogl_shadow_mapping shadow_mapping,
+                                                        ogl_scene_renderer renderer,
+                                                        scene              scene,
+                                                        system_time        frame_time)
 {
     ogl_materials        materials          = NULL;
     _ogl_shadow_mapping* shadow_mapping_ptr = (_ogl_shadow_mapping*) shadow_mapping;
@@ -2912,11 +2912,11 @@ PUBLIC void ogl_shadow_mapping_render_shadow_map_meshes(__in __notnull ogl_shado
 }
 
 /** TODO */
-PUBLIC void ogl_shadow_mapping_render_shadow_maps(__in __notnull ogl_shadow_mapping   shadow_mapping,
-                                                  __in __notnull ogl_scene_renderer   renderer,
-                                                  __in __notnull scene                current_scene,
-                                                  __in __notnull scene_camera         target_camera,
-                                                  __in           system_time          frame_time)
+PUBLIC void ogl_shadow_mapping_render_shadow_maps(ogl_shadow_mapping   shadow_mapping,
+                                                  ogl_scene_renderer   renderer,
+                                                  scene                current_scene,
+                                                  scene_camera         target_camera,
+                                                  system_time          frame_time)
 {
     const ogl_context_gl_entrypoints_ext_direct_state_access* dsa_entrypoints    = NULL;
     scene_graph                                               graph              = NULL;
@@ -3209,10 +3209,10 @@ PUBLIC void ogl_shadow_mapping_render_shadow_maps(__in __notnull ogl_shadow_mapp
 }
 
 /** Please see header for spec */
-PUBLIC RENDERING_CONTEXT_CALL void ogl_shadow_mapping_toggle(__in __notnull ogl_shadow_mapping             handler,
-                                                             __in __notnull scene_light                    light,
-                                                             __in           bool                           should_enable,
-                                                             __in           ogl_shadow_mapping_target_face target_face)
+PUBLIC RENDERING_CONTEXT_CALL void ogl_shadow_mapping_toggle(ogl_shadow_mapping             handler,
+                                                             scene_light                    light,
+                                                             bool                           should_enable,
+                                                             ogl_shadow_mapping_target_face target_face)
 {
     const ogl_context_gl_entrypoints_ext_direct_state_access* dsa_entry_points = NULL;
     const ogl_context_gl_entrypoints*                         entry_points     = NULL;

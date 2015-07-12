@@ -363,7 +363,7 @@ PUBLIC ogl_scene_renderer state_get_scene_renderer()
 }
 
 /** Please see header for spec */
-PUBLIC bool state_init(__in __notnull system_hashed_ansi_string scene_filename)
+PUBLIC bool state_init(system_hashed_ansi_string scene_filename)
 {
     float                animation_duration_float = 0.0f;
     system_time          animation_duration       = 0;
@@ -513,8 +513,8 @@ end:
 }
 
 /** Please see header for spec */
-PUBLIC void state_lock_current_camera(__out __notnull scene_camera* out_current_camera,
-                                      __out           bool*         out_is_flyby)
+PUBLIC void state_lock_current_camera(scene_camera* out_current_camera,
+                                      bool*         out_is_flyby)
 {
     system_critical_section_enter(_camera_cs);
     {

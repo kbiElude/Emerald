@@ -48,7 +48,7 @@ REFCOUNT_INSERT_IMPLEMENTATION(shaders_fragment_saturate,
  *
  *  @param ptr Pointer to _shaders_fragment_sobel instance.
  **/
-PRIVATE void _shaders_fragment_saturate_release(__in __notnull __deallocate(mem) void* ptr)
+PRIVATE void _shaders_fragment_saturate_release(void* ptr)
 {
     _shaders_fragment_saturate* data_ptr = (_shaders_fragment_saturate*) ptr;
 
@@ -62,8 +62,8 @@ PRIVATE void _shaders_fragment_saturate_release(__in __notnull __deallocate(mem)
 
 
 /** Please see header for specification */
-PUBLIC EMERALD_API shaders_fragment_saturate shaders_fragment_saturate_create(__in __notnull ogl_context               context,
-                                                                              __in __notnull system_hashed_ansi_string name)
+PUBLIC EMERALD_API shaders_fragment_saturate shaders_fragment_saturate_create(ogl_context               context,
+                                                                              system_hashed_ansi_string name)
 {
     _shaders_fragment_saturate* result_object = NULL;
     shaders_fragment_saturate   result_shader = NULL;
@@ -131,7 +131,7 @@ end:
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API ogl_shader shaders_fragment_saturate_get_shader(__in __notnull shaders_fragment_saturate shader)
+PUBLIC EMERALD_API ogl_shader shaders_fragment_saturate_get_shader(shaders_fragment_saturate shader)
 {
     return (((_shaders_fragment_saturate*)shader)->shader);
 }

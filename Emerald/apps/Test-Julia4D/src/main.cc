@@ -272,8 +272,8 @@ PRIVATE void _init_gl(ogl_context context,
 }
 
 /** TODO */
-PRIVATE void _init_pipeline_rendering_thread_callback(__in __notnull ogl_context context,
-                                                      __in           void*       unused)
+PRIVATE void _init_pipeline_rendering_thread_callback(ogl_context context,
+                                                      void*       unused)
 {
     /* Set up pipeline */
     _pipeline          = ogl_pipeline_create   (_context,

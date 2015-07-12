@@ -44,31 +44,31 @@ typedef enum
  *
  *  @param owner_program TODO. NOT retained.
  */
-PUBLIC RENDERING_CONTEXT_CALL ogl_program_ssb ogl_program_ssb_create(__in __notnull ogl_context               context,
-                                                                     __in __notnull ogl_program               owner_program,
-                                                                     __in __notnull unsigned int              ssb_index,
-                                                                     __in __notnull system_hashed_ansi_string ssb_name);
+PUBLIC RENDERING_CONTEXT_CALL ogl_program_ssb ogl_program_ssb_create(ogl_context               context,
+                                                                     ogl_program               owner_program,
+                                                                     unsigned int              ssb_index,
+                                                                     system_hashed_ansi_string ssb_name);
 
 /** TODO */
-PUBLIC EMERALD_API bool ogl_program_ssb_get_variable_by_index(__in  __notnull const ogl_program_ssb        ssb,
-                                                              __in            unsigned int                 n_variable,
-                                                              __out __notnull const ogl_program_variable** out_variable_ptr);
+PUBLIC EMERALD_API bool ogl_program_ssb_get_variable_by_index(const ogl_program_ssb        ssb,
+                                                              unsigned int                 n_variable,
+                                                              const ogl_program_variable** out_variable_ptr);
 
 /** TODO */
-PUBLIC EMERALD_API void ogl_program_ssb_get_property(__in  __notnull const ogl_program_ssb    ssb,
-                                                     __in            ogl_program_ssb_property property,
-                                                     __out __notnull void*                    out_result);
+PUBLIC EMERALD_API void ogl_program_ssb_get_property(const ogl_program_ssb    ssb,
+                                                     ogl_program_ssb_property property,
+                                                     void*                    out_result);
 
 /** TODO
  *
  *  Internal use only.
  *
  */
-PUBLIC void ogl_program_ssb_release(__in __notnull ogl_program_ssb ssb);
+PUBLIC void ogl_program_ssb_release(ogl_program_ssb ssb);
 
 /** TODO */
-PUBLIC void ogl_program_ssb_set_property(__in  __notnull const ogl_program_ssb    ssb,
-                                         __in            ogl_program_ssb_property property,
-                                         __out __notnull const void*              data);
+PUBLIC void ogl_program_ssb_set_property(const ogl_program_ssb    ssb,
+                                         ogl_program_ssb_property property,
+                                         const void*              data);
 
 #endif /* OGL_PROGRAM_SSB_H */

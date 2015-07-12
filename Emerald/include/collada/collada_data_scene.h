@@ -24,20 +24,20 @@ enum collada_data_scene_property
 };
 
 /** TODO */
-PUBLIC collada_data_scene collada_data_scene_create(__in __notnull tinyxml2::XMLElement* scene_element_ptr,
-                                                    __in __notnull collada_data          collada_data);
+PUBLIC collada_data_scene collada_data_scene_create(tinyxml2::XMLElement* scene_element_ptr,
+                                                    collada_data          collada_data);
 
 /** TODO */
-PUBLIC EMERALD_API void collada_data_scene_get_property(__in  __notnull const collada_data_scene          scene,
-                                                        __in                  collada_data_scene_property property,
-                                                        __out __notnull void*                             out_data_ptr);
+PUBLIC EMERALD_API void collada_data_scene_get_property(const collada_data_scene          scene,
+                                                              collada_data_scene_property property,
+                                                        void*                             out_data_ptr);
 
 /** TODO */
-PUBLIC void collada_data_scene_release(__in __notnull __post_invalid collada_data_scene scene);
+PUBLIC void collada_data_scene_release(collada_data_scene scene);
 
 /** TODO */
-PUBLIC EMERALD_API void collada_data_scene_set_property(__in __notnull collada_data_scene          scene,
-                                                        __in           collada_data_scene_property property,
-                                                        __in __notnull void*                       data_ptr);
+PUBLIC EMERALD_API void collada_data_scene_set_property(collada_data_scene          scene,
+                                                        collada_data_scene_property property,
+                                                        void*                       data_ptr);
 
 #endif /* COLLADA_DATA_SCENE_H */

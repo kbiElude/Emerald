@@ -22,9 +22,9 @@ typedef struct _collada_data_surface
 
 
 /** TODO */
-PUBLIC collada_data_surface collada_data_surface_create(__in __notnull tinyxml2::XMLElement*     element_ptr,
-                                                        __in __notnull system_hashed_ansi_string id,
-                                                        __in __notnull system_hash64map          images_by_id_map)
+PUBLIC collada_data_surface collada_data_surface_create(tinyxml2::XMLElement*     element_ptr,
+                                                        system_hashed_ansi_string id,
+                                                        system_hash64map          images_by_id_map)
 {
     /* Sanity check */
     const char* surface_type = element_ptr->Attribute("type");
@@ -72,9 +72,9 @@ PUBLIC collada_data_surface collada_data_surface_create(__in __notnull tinyxml2:
 }
 
 /** Please see header for specification */
-PUBLIC void collada_data_surface_get_property(__in  __notnull const collada_data_surface          surface,
-                                              __in                  collada_data_surface_property property,
-                                              __out __notnull void*                               out_data)
+PUBLIC void collada_data_surface_get_property(const collada_data_surface          surface,
+                                                    collada_data_surface_property property,
+                                              void*                               out_data)
 {
     const _collada_data_surface* surface_ptr = (const _collada_data_surface*) surface;
 
@@ -101,7 +101,7 @@ PUBLIC void collada_data_surface_get_property(__in  __notnull const collada_data
 }
 
 /** Please see header for spec */
-PUBLIC void collada_data_surface_release(__in __notnull __post_invalid collada_data_surface surface)
+PUBLIC void collada_data_surface_release(collada_data_surface surface)
 {
     delete (_collada_data_surface*) surface;
 
@@ -109,9 +109,9 @@ PUBLIC void collada_data_surface_release(__in __notnull __post_invalid collada_d
 }
 
 /** Please see header for specification */
-PUBLIC void collada_data_surface_set_property(__in __notnull collada_data_surface          surface,
-                                              __in           collada_data_surface_property property,
-                                              __in __notnull const void*                   value_ptr)
+PUBLIC void collada_data_surface_set_property(collada_data_surface          surface,
+                                              collada_data_surface_property property,
+                                              const void*                   value_ptr)
 {
     _collada_data_surface* surface_ptr = (_collada_data_surface*) surface;
 

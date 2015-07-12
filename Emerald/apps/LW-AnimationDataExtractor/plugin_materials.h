@@ -16,6 +16,6 @@ PUBLIC void DeinitMaterialData();
 PUBLIC system_hash64map GetLWSurfaceIDToSceneMaterialMap();
 
 /** TODO */
-PUBLIC system_event StartMaterialDataExtraction(__in __notnull scene in_scene);
+PUBLIC system_event StartMaterialDataExtraction(scene in_scene);
 
 #endif /* PLUGIN_MATERIALS_H */

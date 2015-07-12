@@ -35,10 +35,10 @@ typedef struct
 
 
 /** TODO */
-double _get_curve_time_for_time(__in __notnull  _curve_segment_data_tcb* segment_data_ptr,
-                                __in            system_time              time,
-                                __out __notnull curve_segment_node_id*   out_node_id,
-                                __out __notnull curve_segment_node_id*   out_next_node_id)
+double _get_curve_time_for_time(_curve_segment_data_tcb* segment_data_ptr,
+                                system_time              time,
+                                curve_segment_node_id*   out_node_id,
+                                curve_segment_node_id*   out_next_node_id)
 {
     uint32_t                      n_nodes_order_elements                = 0;
     curve_segment_node_id         last_nodes_order_id                   = 0;
@@ -205,9 +205,9 @@ double _get_curve_time_for_time(__in __notnull  _curve_segment_data_tcb* segment
 }
 
 /** TODO */
-PRIVATE bool _get_nodes_in_order(__in __notnull  _curve_segment_data_tcb* segment_data_ptr,
-                                 __in            uint32_t                 n_node,
-                                 __out __notnull curve_segment_node_id*   out_node_id)
+PRIVATE bool _get_nodes_in_order(_curve_segment_data_tcb* segment_data_ptr,
+                                 uint32_t                 n_node,
+                                 curve_segment_node_id*   out_node_id)
 {
     unsigned int n_nodes_order = 0;
 
@@ -228,15 +228,15 @@ PRIVATE bool _get_nodes_in_order(__in __notnull  _curve_segment_data_tcb* segmen
 }
 
 /** TODO */
-PRIVATE void _init_curve_segment_data_tcb(                 curve_segment_data* segment_data,
-                                          __in __notnull   curve_container     curve,
-                                          __in             system_time         start_time,
-                                          __in __ecount(3) float*              start_tcb,
-                                          __in __notnull   system_variant      start_value,
-                                          __in             system_time         end_time,
-                                          __in __ecount(3) float*              end_tcb,
-                                          __in __notnull   system_variant      end_value,
-                                          __in             curve_segment_id    segment_id)
+PRIVATE void _init_curve_segment_data_tcb(curve_segment_data* segment_data,
+                                          curve_container     curve,
+                                          system_time         start_time,
+                                          float*              start_tcb,
+                                          system_variant      start_value,
+                                          system_time         end_time,
+                                          float*              end_tcb,
+                                          system_variant      end_value,
+                                          curve_segment_id    segment_id)
 {
     _curve_segment_data_tcb* new_segment = new (std::nothrow) _curve_segment_data_tcb;
 
@@ -324,9 +324,9 @@ PRIVATE void _init_curve_segment_data_tcb(                 curve_segment_data* s
 }
 
 /** TODO */
-PRIVATE void _init_curve_segment_data_tcb_node(__in __notnull _curve_segment_data_tcb_node* ptr,
-                                                              system_time                   time,
-                                                              float                         value)
+PRIVATE void _init_curve_segment_data_tcb_node(_curve_segment_data_tcb_node* ptr,
+                                               system_time                   time,
+                                               float                         value)
 {
     ptr->time       = time;
     ptr->value      = value;
@@ -336,10 +336,10 @@ PRIVATE void _init_curve_segment_data_tcb_node(__in __notnull _curve_segment_dat
 }
 
 /** Please see header for specification */
-PUBLIC bool curve_segment_tcb_add_node(__in  __notnull curve_segment_data     segment_data,
-                                       __in            system_time            node_time,
-                                       __in  __notnull system_variant         node_value,
-                                       __out __notnull curve_segment_node_id* out_node_id)
+PUBLIC bool curve_segment_tcb_add_node(curve_segment_data     segment_data,
+                                       system_time            node_time,
+                                       system_variant         node_value,
+                                       curve_segment_node_id* out_node_id)
 {
     _curve_segment_data_tcb* segment_data_ptr      = (_curve_segment_data_tcb*) segment_data;
     uint32_t                 n_node_elements       = 0;
@@ -520,8 +520,8 @@ PUBLIC bool curve_segment_tcb_add_node(__in  __notnull curve_segment_data     se
 }
 
 /** Please see header for specification */
-PUBLIC bool curve_segment_tcb_delete_node(__in __notnull curve_segment_data    segment_data,
-                                          __in           curve_segment_node_id node_id)
+PUBLIC bool curve_segment_tcb_delete_node(curve_segment_data    segment_data,
+                                          curve_segment_node_id node_id)
 {
     _curve_segment_data_tcb*      segment_data_ptr      = (_curve_segment_data_tcb*) segment_data;
     uint32_t                      n_node_elements       = 0;
@@ -648,7 +648,7 @@ PUBLIC bool curve_segment_tcb_delete_node(__in __notnull curve_segment_data    s
 }
 
 /** Please see header for specification */
-PUBLIC bool curve_segment_tcb_deinit(__in __notnull __post_invalid curve_segment_data segment_data)
+PUBLIC bool curve_segment_tcb_deinit(curve_segment_data segment_data)
 {
     unsigned int             n_nodes          = 0;
     _curve_segment_data_tcb* segment_data_ptr = (_curve_segment_data_tcb*) segment_data;
@@ -683,8 +683,8 @@ PUBLIC bool curve_segment_tcb_deinit(__in __notnull __post_invalid curve_segment
 }
 
 /** Please see header for specification */
-PUBLIC bool curve_segment_tcb_get_amount_of_nodes(__in  __notnull curve_segment_data segment_data,
-                                                  __out __notnull uint32_t*          out_result)
+PUBLIC bool curve_segment_tcb_get_amount_of_nodes(curve_segment_data segment_data,
+                                                  uint32_t*          out_result)
 {
     _curve_segment_data_tcb* segment_data_ptr = (_curve_segment_data_tcb*) segment_data;
 
@@ -696,10 +696,10 @@ PUBLIC bool curve_segment_tcb_get_amount_of_nodes(__in  __notnull curve_segment_
 }
 
 /** Please see header for specification */
-PUBLIC bool curve_segment_tcb_get_node(__in __notnull    curve_segment_data    segment_data,
-                                       __in              curve_segment_node_id node_id,
-                                       __out __maybenull system_time*          out_node_time,
-                                       __out __maybenull system_variant        out_node_value)
+PUBLIC bool curve_segment_tcb_get_node(curve_segment_data    segment_data,
+                                       curve_segment_node_id node_id,
+                                       system_time*          out_node_time,
+                                       system_variant        out_node_value)
 {
     _curve_segment_data_tcb*      segment_data_ptr = (_curve_segment_data_tcb*) segment_data;
     uint32_t                      n_node_elements  = 0;
@@ -738,9 +738,9 @@ PUBLIC bool curve_segment_tcb_get_node(__in __notnull    curve_segment_data    s
 }
 
 /** Please see header for specification */
-PUBLIC bool curve_segment_tcb_get_node_id_for_node_index(__in __notnull  curve_segment_data     segment_data,
-                                                         __in            uint32_t               node_index,
-                                                         __out __notnull curve_segment_node_id* out_node_id)
+PUBLIC bool curve_segment_tcb_get_node_id_for_node_index(curve_segment_data     segment_data,
+                                                         uint32_t               node_index,
+                                                         curve_segment_node_id* out_node_id)
 {
     unsigned int             n_nodes          = 0;
     _curve_segment_data_tcb* segment_data_ptr = (_curve_segment_data_tcb*) segment_data;
@@ -762,9 +762,9 @@ PUBLIC bool curve_segment_tcb_get_node_id_for_node_index(__in __notnull  curve_s
 }
 
 /** Please see header for specification */
-PUBLIC bool curve_segment_tcb_get_node_id_for_node_in_order(__in  __notnull curve_segment_data     segment_data,
-                                                            __in            uint32_t               node_index,
-                                                            __out __notnull curve_segment_node_id* out_node_id)
+PUBLIC bool curve_segment_tcb_get_node_id_for_node_in_order(curve_segment_data     segment_data,
+                                                            uint32_t               node_index,
+                                                            curve_segment_node_id* out_node_id)
 {
     unsigned int             n_nodes_order    = 0;
     _curve_segment_data_tcb* segment_data_ptr = (_curve_segment_data_tcb*) segment_data;
@@ -788,10 +788,10 @@ PUBLIC bool curve_segment_tcb_get_node_id_for_node_in_order(__in  __notnull curv
 }
 
 /** Please see header for specification */
-PUBLIC bool curve_segment_tcb_get_node_property(__in    __notnull curve_segment_data          segment_data,
-                                                __in              curve_segment_node_id       node_id,
-                                                __in              curve_segment_node_property node_property,
-                                                __inout __notnull system_variant              value)
+PUBLIC bool curve_segment_tcb_get_node_property(curve_segment_data          segment_data,
+                                                curve_segment_node_id       node_id,
+                                                curve_segment_node_property node_property,
+                                                system_variant              value)
 {
     bool                          result           = true;
     _curve_segment_data_tcb*      segment_data_ptr = (_curve_segment_data_tcb*) segment_data;
@@ -848,9 +848,9 @@ PUBLIC bool curve_segment_tcb_get_node_property(__in    __notnull curve_segment_
 }
 
 /** Please see header for specification */
-PUBLIC bool curve_segment_tcb_get_property(__in __notnull curve_segment_data     segment_data,
-                                           __in           curve_segment_property segment_property,
-                                           __in __notnull system_variant         out_variant)
+PUBLIC bool curve_segment_tcb_get_property(curve_segment_data     segment_data,
+                                           curve_segment_property segment_property,
+                                           system_variant         out_variant)
 {
     curve_segment_node_id         node_id          = 0;
     _curve_segment_data_tcb_node* node_ptr         = NULL;
@@ -968,10 +968,10 @@ PUBLIC bool curve_segment_tcb_get_property(__in __notnull curve_segment_data    
 }
 
 /** Please see header for specification */
-PUBLIC bool curve_segment_tcb_get_value(__in    __notnull curve_segment_data segment_data,
-                                                          system_time        time,
-                                        __inout           system_variant     out_result,
-                                        __in              bool               should_force)
+PUBLIC bool curve_segment_tcb_get_value(curve_segment_data segment_data,
+                                        system_time        time,
+                                        system_variant     out_result,
+                                        bool               should_force)
 {
     _curve_segment_data_tcb* segment_data_ptr = (_curve_segment_data_tcb*) segment_data;
 
@@ -1115,15 +1115,15 @@ PUBLIC bool curve_segment_tcb_get_value(__in    __notnull curve_segment_data seg
 }
 
 /** Please see header for specification */
-PUBLIC bool curve_segment_tcb_init(__inout __notnull curve_segment_data* segment_data,
-                                   __in    __notnull curve_container     curve,
-                                   __in              system_time         start_time,
-                                   __in __ecount(3)  float*              start_tcb,
-                                   __in __notnull    system_variant      start_value,
-                                   __in              system_time         end_time,
-                                   __in __ecount(3)  float*              end_tcb,
-                                   __in __notnull    system_variant      end_value,
-                                   __in              curve_segment_id    segment_id)
+PUBLIC bool curve_segment_tcb_init(curve_segment_data* segment_data,
+                                   curve_container     curve,
+                                   system_time         start_time,
+                                   float*              start_tcb,
+                                   system_variant      start_value,
+                                   system_time         end_time,
+                                   float*              end_tcb,
+                                   system_variant      end_value,
+                                   curve_segment_id    segment_id)
 {
     _init_curve_segment_data_tcb(segment_data,
                                  curve,
@@ -1139,10 +1139,10 @@ PUBLIC bool curve_segment_tcb_init(__inout __notnull curve_segment_data* segment
 }
 
 /** Please see header for specification */
-PUBLIC bool curve_segment_tcb_modify_node_property(__in __notnull curve_segment_data          segment_data,
-                                                   __in           curve_segment_node_id       node_id,
-                                                   __in           curve_segment_node_property node_property,
-                                                   __in __notnull system_variant              value)
+PUBLIC bool curve_segment_tcb_modify_node_property(curve_segment_data          segment_data,
+                                                   curve_segment_node_id       node_id,
+                                                   curve_segment_node_property node_property,
+                                                   system_variant              value)
 {
     bool                          result           = true;
     _curve_segment_data_tcb*      segment_data_ptr = (_curve_segment_data_tcb*) segment_data;
@@ -1199,9 +1199,9 @@ PUBLIC bool curve_segment_tcb_modify_node_property(__in __notnull curve_segment_
 }
 
 /** Please see header for specification */
-PUBLIC bool curve_segment_tcb_modify_node_time(__in __notnull curve_segment_data    segment_data,
-                                               __in           curve_segment_node_id node_id,
-                                               __in           system_time           new_node_time)
+PUBLIC bool curve_segment_tcb_modify_node_time(curve_segment_data    segment_data,
+                                               curve_segment_node_id node_id,
+                                               system_time           new_node_time)
 {
     _curve_segment_data_tcb*      segment_data_ptr = (_curve_segment_data_tcb*) segment_data;
     uint32_t                      n_node_elements  = 0;
@@ -1361,11 +1361,11 @@ PUBLIC bool curve_segment_tcb_modify_node_time(__in __notnull curve_segment_data
 }
 
 /** Please see header for specification */
-PUBLIC bool curve_segment_tcb_modify_node_time_value(__in __notnull curve_segment_data    segment_data,
-                                                     __in           curve_segment_node_id node_id,
-                                                     __in           system_time           new_node_time,
-                                                     __in __notnull system_variant        new_node_value,
-                                                                    bool                  force)
+PUBLIC bool curve_segment_tcb_modify_node_time_value(curve_segment_data    segment_data,
+                                                     curve_segment_node_id node_id,
+                                                     system_time           new_node_time,
+                                                     system_variant        new_node_value,
+                                                     bool                  force)
 {
     float                         new_node_value_float;
     _curve_segment_data_tcb_node* node_ptr         = NULL;
@@ -1391,9 +1391,9 @@ PUBLIC bool curve_segment_tcb_modify_node_time_value(__in __notnull curve_segmen
 }
 
 /** Please see header for specification */
-PUBLIC bool curve_segment_tcb_set_property(__in __notnull curve_segment_data     segment_data,
-                                           __in           curve_segment_property segment_property,
-                                           __in __notnull system_variant         value)
+PUBLIC bool curve_segment_tcb_set_property(curve_segment_data     segment_data,
+                                           curve_segment_property segment_property,
+                                           system_variant         value)
 {
     curve_segment_node_id         node_id          = 0;
     _curve_segment_data_tcb_node* node_ptr         = NULL;
