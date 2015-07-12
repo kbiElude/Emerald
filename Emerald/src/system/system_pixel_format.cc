@@ -22,6 +22,7 @@ typedef struct _system_pixel_format
     unsigned char color_red_bits;
     unsigned char depth_bits;
     unsigned char n_samples;
+    unsigned char stencil_bits;
 
     _system_pixel_format()
     {
@@ -39,6 +40,7 @@ typedef struct _system_pixel_format
         color_red_bits   = 0;
         depth_bits       = 0;
         n_samples        = 1;
+        stencil_bits     = 0;
     }
 } _system_pixel_format;
 
@@ -54,7 +56,8 @@ PUBLIC EMERALD_API system_pixel_format system_pixel_format_create(unsigned char 
                                                                   unsigned char color_buffer_blue_bits,
                                                                   unsigned char color_buffer_alpha_bits,
                                                                   unsigned char depth_buffer_bits,
-                                                                  unsigned char n_samples)
+                                                                  unsigned char n_samples,
+                                                                  unsigned char stencil_buffer_bits)
 {
     _system_pixel_format* pf_ptr = new (std::nothrow) _system_pixel_format;
 
@@ -69,6 +72,7 @@ PUBLIC EMERALD_API system_pixel_format system_pixel_format_create(unsigned char 
         pf_ptr->color_alpha_bits = color_buffer_alpha_bits;
         pf_ptr->depth_bits       = depth_buffer_bits;
         pf_ptr->n_samples        = n_samples;
+        pf_ptr->stencil_bits     = stencil_buffer_bits;
 
         #ifdef _WIN32
         {
@@ -160,6 +164,13 @@ PUBLIC void system_pixel_format_get_property(system_pixel_format          pf,
         case SYSTEM_PIXEL_FORMAT_PROPERTY_N_SAMPLES:
         {
             *(unsigned char*) out_result = pf_ptr->n_samples;
+
+            break;
+        }
+
+        case SYSTEM_PIXEL_FORMAT_PROPERTY_STENCIL_BITS:
+        {
+            *(unsigned char*) out_result = pf_ptr->stencil_bits;
 
             break;
         }

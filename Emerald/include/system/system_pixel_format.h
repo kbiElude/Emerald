@@ -1,8 +1,6 @@
 /**
  *
  * Emerald (kbi/elude @2015)
- *
- * NOTE: Internal use only.
  */
 #ifndef SYSTEM_PIXEL_FORMAT_H
 #define SYSTEM_PIXEL_FORMAT_H
@@ -29,6 +27,9 @@ typedef enum
     /* not settable, unsigned char */
     SYSTEM_PIXEL_FORMAT_PROPERTY_N_SAMPLES,
 
+    /* not settable, unsigned char */
+    SYSTEM_PIXEL_FORMAT_PROPERTY_STENCIL_BITS,
+
 #ifdef _WIN32
     /* not settable, const PIXELFORMATDESCRIPTOR*.
      *
@@ -46,7 +47,8 @@ PUBLIC EMERALD_API system_pixel_format system_pixel_format_create(unsigned char 
                                                                   unsigned char color_buffer_blue_bits,
                                                                   unsigned char color_buffer_alpha_bits,
                                                                   unsigned char depth_buffer_bits,
-                                                                  unsigned char n_samples);
+                                                                  unsigned char n_samples,
+                                                                  unsigned char stencil_buffer_bits);
 
 /** TODO */
 PUBLIC system_pixel_format system_pixel_format_create_copy(system_pixel_format src_pf);

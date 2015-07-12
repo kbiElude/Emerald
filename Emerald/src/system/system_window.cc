@@ -38,8 +38,7 @@
 #ifdef _WIN32
     typedef system_window_win32 system_window_platform;
 #else
-    // TEMP TODO: typedef system_window_linux system_window_platform;
-    typedef void* system_window_platform;
+    typedef system_window_linux system_window_platform;
 #endif
 
 typedef void (*PFNWINDOWCLOSEWINDOWPROC) (system_window_platform window);
@@ -783,12 +782,13 @@ PRIVATE void _system_window_create_root_window(ogl_context_type context_type)
      *
      * NOTE: root_window_pf is taken over by the root window, so we need not release
      *       the instance we're creating here. */
-    system_pixel_format root_window_pf = system_pixel_format_create(8,  /* red_bits   */
-                                                                    8,  /* green_bits */
-                                                                    8,  /* blue_bits  */
-                                                                    8,  /* alpha_bits */
-                                                                    1,  /* depth_bits */
-                                                                    1); /* n_samples  */
+    system_pixel_format root_window_pf = system_pixel_format_create(8,  /* red_bits     */
+                                                                    8,  /* green_bits   */
+                                                                    8,  /* blue_bits    */
+                                                                    8,  /* alpha_bits   */
+                                                                    1,  /* depth_bits   */
+                                                                    1,  /* n_samples    */
+                                                                    0); /* stencil_bits */
     root_window =  _system_window_create_shared(context_type,
                                                 false, /* is_fullscreen */
                                                 root_window_x1y1x2y2,
@@ -1760,6 +1760,20 @@ PUBLIC EMERALD_API void system_window_get_property(system_window          window
 
 end:
     ;
+}
+
+/** Please see header for specification */
+PUBLIC system_window system_window_get_root_window(ogl_context_type context_type)
+{
+    if (root_window == NULL)
+    {
+        _system_window_create_root_window(context_type);
+    }
+
+    ASSERT_DEBUG_SYNC(root_window != NULL,
+                      "Could not instantiate the root window.");
+
+    return root_window;
 }
 
 /** Please see header for specification */

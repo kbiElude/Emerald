@@ -213,6 +213,14 @@ PUBLIC EMERALD_API void system_window_get_property(system_window          window
                                                    system_window_property property,
                                                    void*                  out_result);
 
+/** TODO
+ *
+ *  NOTE: Internal use only.
+ *
+ *  @return TODO
+ */
+PUBLIC system_window system_window_get_root_window(ogl_context_type context_type = OGL_CONTEXT_TYPE_GL);
+
 /** TODO */
 PUBLIC EMERALD_API bool system_window_set_cursor_visibility(system_window window,
                                                             bool          visibility);

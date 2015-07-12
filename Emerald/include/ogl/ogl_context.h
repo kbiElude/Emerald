@@ -220,16 +220,26 @@ PUBLIC EMERALD_API ogl_context ogl_context_create_from_system_window(system_hash
  */
 PUBLIC void ogl_context_deinit_global();
 
-/** TODO
+/** Returns information about the supported numbers of samples that can be used for color,
+ *  depth and stencil attachments, given user-specified pixel format requirements.
  *
- *  @param pf                           TODO. Ownership is NOT claimed by the function.
- *  @param out_n_supported_msaa_samples TODO.
- *  @param out_supported_msaa_samples   TODO.
+ *  Instead of rendering to the back buffer, Emerald uses a multisample render-buffer. Once
+ *  the frame rendering process finishes, it blits the contents of the render-buffer's color
+ *  attachment to the back buffer and performs the swap operation.
+ *  The approach was mostly dictated by two things:
+ *
+ *  1) Linux and Windows builds would require significantly different platform-specific code
+*      paths to provide the same information for back buffer-based MSAA.
+ *  2) Use of multisample render-targets better fits APIs we will need to support in the future.
+ *
+ *  @param pf                      TODO. Ownership is NOT claimed by the function.
+ *  @param out_n_supported_samples TODO.
+ *  @param out_supported_samples   TODO.
  *
  */
-PUBLIC EMERALD_API void ogl_context_enumerate_supported_msaa_samples(system_pixel_format pf,
-                                                                     unsigned int*       out_n_supported_msaa_samples,
-                                                                     unsigned int**      out_supported_msaa_samples);
+PUBLIC EMERALD_API void ogl_context_enumerate_msaa_samples(system_pixel_format pf,
+                                                           unsigned int*       out_n_supported_samples,
+                                                           unsigned int**      out_supported_samples);
 
 /** TODO */
 PUBLIC ogl_context ogl_context_get_current_context();

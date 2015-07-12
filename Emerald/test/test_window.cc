@@ -29,7 +29,8 @@ TEST(WindowTest, CreationTest)
                                                                             8,  /* color_buffer_blue_bits  */
                                                                             0,  /* color_buffer_alpha_bits */
                                                                             8,  /* depth_buffer_bits       */
-                                                                            1); /* n_samples               */
+                                                                            1,  /* n_samples               */
+                                                                            0); /* stencil_buffer_bits     */
     system_window       window_handle = system_window_create_not_fullscreen(OGL_CONTEXT_TYPE_GL,
                                                                             xywh,
                                                                             system_hashed_ansi_string_create("Test window"),
@@ -99,11 +100,12 @@ TEST(WindowTest, MSAAEnumerationTest)
                                                                       8,  /* color_buffer_blue_bits  */
                                                                       0,  /* color_buffer_alpha_bits */
                                                                       8,  /* depth_buffer_bits       */
-                                                                      1); /* n_samples               */
+                                                                      1,  /* n_samples               */
+                                                                      0); /* stencil_buffer_bits     */
 
-    ogl_context_enumerate_supported_msaa_samples(window_pf,
-                                                &n_msaa_samples,
-                                                &msaa_samples_ptr);
+    ogl_context_enumerate_msaa_samples(window_pf,
+                                      &n_msaa_samples,
+                                      &msaa_samples_ptr);
 
     system_pixel_format_release(window_pf);
 
@@ -120,7 +122,8 @@ TEST(WindowTest, RenderingHandlerTest)
                                                                             8,  /* color_buffer_blue_bits  */
                                                                             0,  /* color_buffer_alpha_bits */
                                                                             8,  /* depth_buffer_bits       */
-                                                                            1); /* n_samples               */
+                                                                            1,  /* n_samples               */
+                                                                            0); /* stencil_buffer_bits     */
     system_window       window_handle = system_window_create_not_fullscreen(OGL_CONTEXT_TYPE_GL,
                                                                             xywh,
                                                                             system_hashed_ansi_string_create("Test window"),

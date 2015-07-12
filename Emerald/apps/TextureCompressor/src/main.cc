@@ -1702,7 +1702,8 @@ void _update_ui_controls_strings()
                                                                8,  /* color_buffer_blue_bits  */
                                                                0,  /* color_buffer_alpha_bits */
                                                                8,  /* depth_buffer_bits       */
-                                                               1); /* n_samples               */
+                                                               1,  /* n_samples               */
+                                                               0); /* stencil_buffer_bits     */
 
     system_window_get_centered_window_position_for_primary_monitor(_window_size,
                                                                    window_x1y1x2y2);
