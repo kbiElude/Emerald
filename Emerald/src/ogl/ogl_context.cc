@@ -85,7 +85,13 @@ typedef struct
 
     GLuint               vao_no_vaas_id;
 
-    /* Used for MSAA enumeration */
+    /* Used for off-screen rendering. */
+    GLint fbo_color_rbo_id;
+    GLint fbo_depth_rbo_id;
+    GLint fbo_id;
+    GLint fbo_stencil_rbo_id;
+
+    /* Used by the root window for MSAA enumeration only */
     GLenum msaa_enumeration_color_internalformat;
     GLint  msaa_enumeration_color_n_samples;
     GLint* msaa_enumeration_color_samples;
@@ -167,51 +173,55 @@ REFCOUNT_INSERT_IMPLEMENTATION(ogl_context,
                               _ogl_context);
 
 /* Forward declarations */
-PRIVATE void APIENTRY             _ogl_context_debug_message_gl_callback                            (GLenum                       source,
-                                                                                                     GLenum                       type,
-                                                                                                     GLuint                       id,
-                                                                                                     GLenum                       severity,
-                                                                                                     GLsizei                      length,
-                                                                                                     const GLchar*                message,
-                                                                                                     const void*                  userParam);
-PRIVATE void                      _ogl_context_enumerate_msaa_samples_rendering_thread_callback     (ogl_context                  context,
-                                                                                                     void*                        user_arg);
-PRIVATE bool                      _ogl_context_get_color_attachment_internalformat_for_rgba_bits    (unsigned char*               n_rgba_bits,
-                                                                                                     bool                         use_srgb_color_space,
-                                                                                                     GLenum*                      out_gl_internalformat);
-PRIVATE system_hashed_ansi_string _ogl_context_get_compressed_filename                              (void*                        user_arg,
-                                                                                                     system_hashed_ansi_string    decompressed_filename,
-                                                                                                     GLenum*                      out_compressed_gl_enum,
-                                                                                                     system_file_unpacker*        out_file_unpacker);
-PRIVATE bool                      _ogl_context_get_depth_attachment_internalformat_for_bits         (unsigned char                n_depth_bits,
-                                                                                                     GLenum*                      out_gl_internalformat);
-PRIVATE bool                      _ogl_context_get_depth_stencil_attachment_internalformat_for_bits (unsigned char                n_depth_bits,
-                                                                                                     unsigned char                n_stencil_bits,
-                                                                                                     GLenum*                      out_gl_internalformat);
-PRIVATE bool                      _ogl_context_get_function_pointers                                (_ogl_context*                context_ptr,
-                                                                                                     func_ptr_table_entry*        entries,
-                                                                                                     uint32_t                     n_entries);
-PRIVATE void                      _ogl_context_gl_info_deinit                                       (ogl_context_gl_info*         info_ptr);
-PRIVATE void                      _ogl_context_gl_info_init                                         (ogl_context_gl_info*         info_ptr,
-                                                                                                     const ogl_context_gl_limits* limits_ptr);
-PRIVATE void                      _ogl_context_init_context_after_creation                          (ogl_context                  context);
-PRIVATE void                      _ogl_context_initialize_es_ext_texture_buffer_extension           (_ogl_context*                context_ptr);
-PRIVATE void                      _ogl_context_initialize_gl_arb_buffer_storage_extension           (_ogl_context*                context_ptr);
-PRIVATE void                      _ogl_context_initialize_gl_arb_multi_bind_extension               (_ogl_context*                context_ptr);
-PRIVATE void                      _ogl_context_initialize_gl_arb_sparse_buffer_extension            (_ogl_context*                context_ptr);
-PRIVATE void                      _ogl_context_initialize_gl_ext_direct_state_access_extension      (_ogl_context*                context_ptr);
-PRIVATE void                      _ogl_context_release                                              (void*                        ptr);
-PRIVATE void                      _ogl_context_retrieve_ES_function_pointers                        (_ogl_context*                context_ptr);
-PRIVATE void                      _ogl_context_retrieve_GL_ARB_buffer_storage_function_pointers     (_ogl_context*                context_ptr);
-PRIVATE void                      _ogl_context_retrieve_GL_ARB_multi_bind_function_pointers         (_ogl_context*                context_ptr);
-PRIVATE void                      _ogl_context_retrieve_GL_ARB_sparse_buffer_function_pointers      (_ogl_context*                context_ptr);
-PRIVATE void                      _ogl_context_retrieve_GL_ARB_sparse_buffer_limits                 (_ogl_context*                context_ptr);
-PRIVATE void                      _ogl_context_retrieve_GL_EXT_direct_state_access_function_pointers(_ogl_context*                context_ptr);
-PRIVATE void                      _ogl_context_retrieve_GL_function_pointers                        (_ogl_context*                context_ptr);
-PRIVATE void                      _ogl_context_retrieve_GL_info                                     (_ogl_context*                context_ptr);
-PRIVATE void                      _ogl_context_retrieve_GL_limits                                   (_ogl_context*                context_ptr);
-PRIVATE bool                      _ogl_context_sort_descending                                      (void*                        in_int_1,
-                                                                                                     void*                        in_int_2);
+PRIVATE void APIENTRY             _ogl_context_debug_message_gl_callback                             (GLenum                       source,
+                                                                                                      GLenum                       type,
+                                                                                                      GLuint                       id,
+                                                                                                      GLenum                       severity,
+                                                                                                      GLsizei                      length,
+                                                                                                      const GLchar*                message,
+                                                                                                      const void*                  userParam);
+PRIVATE void                      _ogl_context_enumerate_msaa_samples_rendering_thread_callback      (ogl_context                  context,
+                                                                                                      void*                        user_arg);
+PRIVATE bool                      _ogl_context_get_attachment_internalformats_for_system_pixel_format(const system_pixel_format    pf,
+                                                                                                      GLenum*                      out_color_attachment_internalformat_ptr,
+                                                                                                      GLenum*                      out_depth_stencil_attachment_internalformat_ptr);
+PRIVATE bool                      _ogl_context_get_color_attachment_internalformat_for_rgba_bits     (unsigned char*               n_rgba_bits,
+                                                                                                      bool                         use_srgb_color_space,
+                                                                                                      GLenum*                      out_gl_internalformat);
+PRIVATE system_hashed_ansi_string _ogl_context_get_compressed_filename                               (void*                        user_arg,
+                                                                                                      system_hashed_ansi_string    decompressed_filename,
+                                                                                                      GLenum*                      out_compressed_gl_enum,
+                                                                                                      system_file_unpacker*        out_file_unpacker);
+PRIVATE bool                      _ogl_context_get_depth_attachment_internalformat_for_bits          (unsigned char                n_depth_bits,
+                                                                                                      GLenum*                      out_gl_internalformat);
+PRIVATE bool                      _ogl_context_get_depth_stencil_attachment_internalformat_for_bits  (unsigned char                n_depth_bits,
+                                                                                                      unsigned char                n_stencil_bits,
+                                                                                                      GLenum*                      out_gl_internalformat);
+PRIVATE bool                      _ogl_context_get_function_pointers                                 (_ogl_context*                context_ptr,
+                                                                                                      func_ptr_table_entry*        entries,
+                                                                                                      uint32_t                     n_entries);
+PRIVATE void                      _ogl_context_gl_info_deinit                                        (ogl_context_gl_info*         info_ptr);
+PRIVATE void                      _ogl_context_gl_info_init                                          (ogl_context_gl_info*         info_ptr,
+                                                                                                      const ogl_context_gl_limits* limits_ptr);
+PRIVATE void                      _ogl_context_init_context_after_creation                           (ogl_context                  context);
+PRIVATE void                      _ogl_context_initialize_es_ext_texture_buffer_extension            (_ogl_context*                context_ptr);
+PRIVATE void                      _ogl_context_initialize_fbo                                        (_ogl_context*                context_ptr);
+PRIVATE void                      _ogl_context_initialize_gl_arb_buffer_storage_extension            (_ogl_context*                context_ptr);
+PRIVATE void                      _ogl_context_initialize_gl_arb_multi_bind_extension                (_ogl_context*                context_ptr);
+PRIVATE void                      _ogl_context_initialize_gl_arb_sparse_buffer_extension             (_ogl_context*                context_ptr);
+PRIVATE void                      _ogl_context_initialize_gl_ext_direct_state_access_extension       (_ogl_context*                context_ptr);
+PRIVATE void                      _ogl_context_release                                               (void*                        ptr);
+PRIVATE void                      _ogl_context_retrieve_ES_function_pointers                         (_ogl_context*                context_ptr);
+PRIVATE void                      _ogl_context_retrieve_GL_ARB_buffer_storage_function_pointers      (_ogl_context*                context_ptr);
+PRIVATE void                      _ogl_context_retrieve_GL_ARB_multi_bind_function_pointers          (_ogl_context*                context_ptr);
+PRIVATE void                      _ogl_context_retrieve_GL_ARB_sparse_buffer_function_pointers       (_ogl_context*                context_ptr);
+PRIVATE void                      _ogl_context_retrieve_GL_ARB_sparse_buffer_limits                  (_ogl_context*                context_ptr);
+PRIVATE void                      _ogl_context_retrieve_GL_EXT_direct_state_access_function_pointers (_ogl_context*                context_ptr);
+PRIVATE void                      _ogl_context_retrieve_GL_function_pointers                         (_ogl_context*                context_ptr);
+PRIVATE void                      _ogl_context_retrieve_GL_info                                      (_ogl_context*                context_ptr);
+PRIVATE void                      _ogl_context_retrieve_GL_limits                                    (_ogl_context*                context_ptr);
+PRIVATE bool                      _ogl_context_sort_descending                                       (void*                        in_int_1,
+                                                                                                      void*                        in_int_2);
 
 
 /** TODO */
@@ -392,8 +402,8 @@ PRIVATE void APIENTRY _ogl_context_debug_message_gl_callback(GLenum        sourc
 PRIVATE void _ogl_context_enumerate_msaa_samples_rendering_thread_callback(ogl_context context,
                                                                            void*       user_arg)
 {
-    _ogl_context*               context_ptr  = (_ogl_context*) context;
-    ogl_context_gl_entrypoints* entry_points = NULL;
+    _ogl_context*                context_ptr            = (_ogl_context*) context;
+    PFNGLGETINTERNALFORMATIVPROC pGLGetInternalformativ = NULL;
 
     /* Determine all supported n_samples for the internalformat we intend to use for the color attachment */
     struct _internalformat
@@ -408,9 +418,17 @@ PRIVATE void _ogl_context_enumerate_msaa_samples_rendering_thread_callback(ogl_c
     };
     const unsigned int n_internalformats = sizeof(internalformats) / sizeof(internalformats[0]);
 
-    ogl_context_get_property(context,
-                             OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
-                            &entry_points);
+    if (context_ptr->context_type == OGL_CONTEXT_TYPE_GL)
+    {
+        pGLGetInternalformativ = context_ptr->entry_points_gl.pGLGetInternalformativ;
+    }
+    else
+    {
+        ASSERT_DEBUG_SYNC(context_ptr->context_type == OGL_CONTEXT_TYPE_ES,
+                          "Unrecognized context type");
+
+        pGLGetInternalformativ = context_ptr->entry_points_es.pGLGetInternalformativ;
+    }
 
     for (unsigned int n_internalformat = 0;
                       n_internalformat < n_internalformats;
@@ -418,11 +436,11 @@ PRIVATE void _ogl_context_enumerate_msaa_samples_rendering_thread_callback(ogl_c
     {
         _internalformat* internalformat_ptr = internalformats + n_internalformat;
 
-         entry_points->pGLGetInternalformativ(GL_RENDERBUFFER,
-                                              internalformat_ptr->internalformat,
-                                              GL_NUM_SAMPLE_COUNTS,
-                                              sizeof(*internalformat_ptr->n_samples_ptr),
-                                              internalformat_ptr->n_samples_ptr);
+         pGLGetInternalformativ(GL_RENDERBUFFER,
+                                internalformat_ptr->internalformat,
+                                GL_NUM_SAMPLE_COUNTS,
+                                sizeof(*internalformat_ptr->n_samples_ptr),
+                                internalformat_ptr->n_samples_ptr);
 
          if (*internalformat_ptr->n_samples_ptr > 0)
          {
@@ -431,11 +449,11 @@ PRIVATE void _ogl_context_enumerate_msaa_samples_rendering_thread_callback(ogl_c
              ASSERT_DEBUG_SYNC(*internalformat_ptr->samples_ptr != NULL,
                                "Out of memory");
 
-             entry_points->pGLGetInternalformativ(GL_RENDERBUFFER,
-                                                  internalformat_ptr->internalformat,
-                                                  GL_SAMPLES,
-                                                  sizeof(GLint) * (*internalformat_ptr->n_samples_ptr),
-                                                  *internalformat_ptr->samples_ptr);
+             pGLGetInternalformativ(GL_RENDERBUFFER,
+                                    internalformat_ptr->internalformat,
+                                    GL_SAMPLES,
+                                    sizeof(GLint) * (*internalformat_ptr->n_samples_ptr),
+                                    *internalformat_ptr->samples_ptr);
          }
          else
          {
@@ -444,6 +462,90 @@ PRIVATE void _ogl_context_enumerate_msaa_samples_rendering_thread_callback(ogl_c
     } /* for (all internalformats) */
 }
 
+/** TODO */
+PRIVATE bool _ogl_context_get_attachment_internalformats_for_system_pixel_format(const system_pixel_format pf,
+                                                                                 GLenum*                   out_color_attachment_internalformat_ptr,
+                                                                                 GLenum*                   out_depth_stencil_attachment_internalformat_ptr)
+{
+    GLenum        internalformat_color          = GL_NONE;
+    GLenum        internalformat_depth_stencil  = GL_NONE;
+    unsigned char n_color_rgba_bits[4]          = {0};
+    unsigned char n_depth_bits                  = 0;
+    unsigned char n_stencil_bits                = 0;
+    bool          result                        = true;
+
+    /* Retrieve the number of bits for all three attachments */
+    system_pixel_format_get_property(pf,
+                                     SYSTEM_PIXEL_FORMAT_PROPERTY_COLOR_BUFFER_RED_BITS,
+                                     n_color_rgba_bits + 0);
+    system_pixel_format_get_property(pf,
+                                     SYSTEM_PIXEL_FORMAT_PROPERTY_COLOR_BUFFER_GREEN_BITS,
+                                     n_color_rgba_bits + 1);
+    system_pixel_format_get_property(pf,
+                                     SYSTEM_PIXEL_FORMAT_PROPERTY_COLOR_BUFFER_BLUE_BITS,
+                                     n_color_rgba_bits + 2);
+    system_pixel_format_get_property(pf,
+                                     SYSTEM_PIXEL_FORMAT_PROPERTY_COLOR_BUFFER_ALPHA_BITS,
+                                     n_color_rgba_bits + 3);
+    system_pixel_format_get_property(pf,
+                                     SYSTEM_PIXEL_FORMAT_PROPERTY_DEPTH_BITS,
+                                    &n_depth_bits);
+    system_pixel_format_get_property(pf,
+                                     SYSTEM_PIXEL_FORMAT_PROPERTY_STENCIL_BITS,
+                                    &n_stencil_bits);
+
+    /* Convert the pixel format into a set of GL internalformats */
+    if (!_ogl_context_get_color_attachment_internalformat_for_rgba_bits(n_color_rgba_bits,
+                                                                        true, /* use_srgb_color_space */
+                                                                       &internalformat_color) )
+    {
+        ASSERT_DEBUG_SYNC(false,
+                          "Cannot convert user-specified pixel format to color internalformat");
+
+        result = false;
+        goto end;
+    }
+
+    if (n_stencil_bits == 0)
+    {
+        if (!_ogl_context_get_depth_attachment_internalformat_for_bits(n_depth_bits,
+                                                                      &internalformat_depth_stencil) )
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Cannot convert user-specified pixel format to depth internalformat");
+
+            result = false;
+            goto end;
+        }
+    }
+    else
+    {
+        if (!_ogl_context_get_depth_stencil_attachment_internalformat_for_bits(n_depth_bits,
+                                                                               n_stencil_bits,
+                                                                              &internalformat_depth_stencil) )
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Cannot convert user-specified pixel format to depth+stencil internalformat");
+
+            result = false;
+            goto end;
+        }
+    }
+
+end:
+    if (result)
+    {
+        *out_color_attachment_internalformat_ptr         = internalformat_color;
+        *out_depth_stencil_attachment_internalformat_ptr = internalformat_depth_stencil;
+    }
+    else
+    {
+        *out_color_attachment_internalformat_ptr         = GL_NONE;
+        *out_depth_stencil_attachment_internalformat_ptr = GL_NONE;
+    }
+
+    return result;
+}
 
 /** TODO */
 PRIVATE system_hashed_ansi_string _ogl_context_get_compressed_filename(void*                     user_arg,
@@ -804,6 +906,10 @@ PRIVATE void _ogl_context_init_context_after_creation( ogl_context context)
     context_ptr->bo_bindings                                = NULL;
     context_ptr->buffers                                    = NULL;
     context_ptr->es_ext_texture_buffer_support              = false;
+    context_ptr->fbo_color_rbo_id                           = 0;
+    context_ptr->fbo_depth_rbo_id                           = 0;
+    context_ptr->fbo_id                                     = 0;
+    context_ptr->fbo_stencil_rbo_id                         = 0;
     context_ptr->flyby                                      = NULL;
     context_ptr->gl_arb_buffer_storage_support              = false;
     context_ptr->gl_arb_multi_bind_support                  = false;
@@ -842,7 +948,7 @@ PRIVATE void _ogl_context_init_context_after_creation( ogl_context context)
         context_ptr->programs = ogl_programs_create();
     }
 
-    /* Associate DC with the WGL context and with current thread.*/
+    /* Bind the context to the running thread for a few seconds.. */
     ogl_context_unbind_from_current_thread( (ogl_context) context_ptr);
     ogl_context_bind_to_current_thread    ( (ogl_context) context_ptr);
 
@@ -997,6 +1103,9 @@ PRIVATE void _ogl_context_init_context_after_creation( ogl_context context)
         context_ptr->is_nv_driver = true;
     }
 
+    /* Initialize the FBO we will use to render contents, to be later blitted into the back buffer */
+    _ogl_context_initialize_fbo(context_ptr);
+
     /* Set up vertical sync */
     context_ptr->pfn_set_property(context_ptr->context_platform,
                                   OGL_CONTEXT_PROPERTY_VSYNC_ENABLED,
@@ -1023,6 +1132,70 @@ PRIVATE void _ogl_context_initialize_es_ext_texture_buffer_extension(_ogl_contex
     {
         context_ptr->es_ext_texture_buffer_support = true;
     }
+}
+
+/** TODO */
+PRIVATE void _ogl_context_initialize_fbo(_ogl_context* context_ptr)
+{
+    GLenum                                  internalformat_color              = GL_NONE;
+    GLenum                                  internalformat_depth_stencil      = GL_NONE;
+    system_pixel_format                     pixel_format                      = NULL;
+    PFNGLBINDFRAMEBUFFERPROC                pGLBindFramebuffer                = NULL;
+    PFNGLBINDRENDERBUFFERPROC               pGLBindRenderbuffer               = NULL;
+    PFNGLFRAMEBUFFERRENDERBUFFERPROC        pGLFramebufferRenderbuffer        = NULL;
+    PFNGLGENFRAMEBUFFERSPROC                pGLGenFramebuffers                = NULL;
+    PFNGLGENRENDERBUFFERSPROC               pGLGenRenderbuffers               = NULL;
+    PFNGLRENDERBUFFERSTORAGEMULTISAMPLEPROC pGLRenderbufferStorageMultisample = NULL;
+
+    if (context_ptr->context_type == OGL_CONTEXT_TYPE_ES)
+    {
+        pGLBindFramebuffer                = context_ptr->entry_points_es.pGLBindFramebuffer;
+        pGLBindRenderbuffer               = context_ptr->entry_points_es.pGLBindRenderbuffer;
+        pGLFramebufferRenderbuffer        = context_ptr->entry_points_es.pGLFramebufferRenderbuffer;
+        pGLGenFramebuffers                = context_ptr->entry_points_es.pGLGenFramebuffers;
+        pGLGenRenderbuffers               = context_ptr->entry_points_es.pGLGenRenderbuffers;
+        pGLRenderbufferStorageMultisample = context_ptr->entry_points_es.pGLRenderbufferStorageMultisample;
+    }
+    else
+    {
+        ASSERT_DEBUG_SYNC(context_ptr->context_type == OGL_CONTEXT_TYPE_GL,
+                          "Unrecognized context type");
+
+        pGLBindFramebuffer                = context_ptr->entry_points_gl.pGLBindFramebuffer;
+        pGLBindRenderbuffer               = context_ptr->entry_points_gl.pGLBindRenderbuffer;
+        pGLFramebufferRenderbuffer        = context_ptr->entry_points_gl.pGLFramebufferRenderbuffer;
+        pGLGenFramebuffers                = context_ptr->entry_points_gl.pGLGenFramebuffers;
+        pGLGenRenderbuffers               = context_ptr->entry_points_gl.pGLGenRenderbuffers;
+        pGLRenderbufferStorageMultisample = context_ptr->entry_points_gl.pGLRenderbufferStorageMultisample;
+    }
+
+    /* Determine what internalformats we need to use for the color, depth and stencil attachments */
+    system_window_get_property(context_ptr->window,
+                               SYSTEM_WINDOW_PROPERTY_PIXEL_FORMAT,
+                              &pixel_format);
+
+    ASSERT_DEBUG_SYNC(pixel_format != NULL,
+                      "No pixel format associated with the rendering window");
+
+    if (!_ogl_context_get_attachment_internalformats_for_system_pixel_format(pixel_format,
+                                                                            &internalformat_color,
+                                                                            &internalformat_depth_stencil) )
+    {
+        ASSERT_DEBUG_SYNC(false,
+                          "Cannot determine color/depth/stencil attachment internalformats for the window's pixel format");
+
+        goto end;
+    }
+
+    ASSERT_DEBUG_SYNC(internalformat_color         != GL_NONE ||
+                      internalformat_depth_stencil != GL_NONE,
+                      "No internalformats determined for the window's pixel format");
+
+    /* Generate the GL objects */
+    pGLGenFramebuffers(1, &context_ptr->fbo_id);
+
+end:
+    todo;
 }
 
 /** TODO */
@@ -1697,6 +1870,7 @@ PRIVATE void _ogl_context_retrieve_GL_function_pointers(_ogl_context* context_pt
         {&context_ptr->entry_points_private.pGLBindFramebuffer,                             "glBindFramebuffer"},
         {&context_ptr->entry_points_private.pGLBindImageTexture,                            "glBindImageTexture"},
         {&context_ptr->entry_points_gl.pGLBindProgramPipeline,                              "glBindProgramPipeline"},
+        {&context_ptr->entry_points_gl.pGLBindRenderbuffer,                                 "glBindRenderbuffer"},
         {&context_ptr->entry_points_private.pGLBindSampler,                                 "glBindSampler"},
         {&context_ptr->entry_points_private.pGLBindTexture,                                 "glBindTexture"},
         {&context_ptr->entry_points_gl.pGLBindTransformFeedback,                            "glBindTransformFeedback"},
@@ -1750,6 +1924,7 @@ PRIVATE void _ogl_context_retrieve_GL_function_pointers(_ogl_context* context_pt
         {&context_ptr->entry_points_gl.pGLDeleteFramebuffers,                               "glDeleteFramebuffers"},
         {&context_ptr->entry_points_gl.pGLDeleteProgram,                                    "glDeleteProgram"},
         {&context_ptr->entry_points_gl.pGLDeleteProgramPipelines,                           "glDeleteProgramPipelines"},
+        {&context_ptr->entry_points_gl.pGLDeleteRenderbuffers,                              "glDeleteRenderbuffers"},
         {&context_ptr->entry_points_gl.pGLDeleteSamplers,                                   "glDeleteSamplers"},
         {&context_ptr->entry_points_gl.pGLDeleteShader,                                     "glDeleteShader"},
         {&context_ptr->entry_points_gl.pGLDeleteTextures,                                   "glDeleteTextures"},
@@ -1787,6 +1962,7 @@ PRIVATE void _ogl_context_retrieve_GL_function_pointers(_ogl_context* context_pt
         {&context_ptr->entry_points_gl.pGLFinish,                                           "glFinish"},
         {&context_ptr->entry_points_gl.pGLFlush,                                            "glFlush"},
         {&context_ptr->entry_points_private.pGLFramebufferParameteri,                       "glFramebufferParameteri"},
+        {&context_ptr->entry_points_private.pGLFramebufferRenderbuffer,                     "glFramebufferRenderbuffer"},
         {&context_ptr->entry_points_private.pGLFramebufferTexture,                          "glFramebufferTexture"},
         {&context_ptr->entry_points_private.pGLFramebufferTexture1D,                        "glFramebufferTexture1D"},
         {&context_ptr->entry_points_private.pGLFramebufferTexture2D,                        "glFramebufferTexture2D"},
@@ -1797,6 +1973,7 @@ PRIVATE void _ogl_context_retrieve_GL_function_pointers(_ogl_context* context_pt
         {&context_ptr->entry_points_gl.pGLGenerateMipmap,                                   "glGenerateMipmap"},
         {&context_ptr->entry_points_gl.pGLGenFramebuffers,                                  "glGenFramebuffers"},
         {&context_ptr->entry_points_gl.pGLGenProgramPipelines,                              "glGenProgramPipelines"},
+        {&context_ptr->entry_points_gl.pGLGenRenderbuffers,                                 "glGenRenderbuffers"},
         {&context_ptr->entry_points_gl.pGLGenSamplers,                                      "glGenSamplers"},
         {&context_ptr->entry_points_gl.pGLGenTextures,                                      "glGenTextures"},
         {&context_ptr->entry_points_gl.pGLGenTransformFeedbacks,                            "glGenTransformFeedbacks"},
@@ -1952,6 +2129,7 @@ PRIVATE void _ogl_context_retrieve_GL_function_pointers(_ogl_context* context_pt
         {&context_ptr->entry_points_gl.pGLProgramUniformMatrix4x3fv,                        "glProgramUniformMatrix4x3fv"},
         {&context_ptr->entry_points_private.pGLReadBuffer,                                  "glReadBuffer"},
         {&context_ptr->entry_points_private.pGLReadPixels,                                  "glReadPixels"},
+        {&context_ptr->entry_points_gl.pGLRenderbufferStorageMultisample,                   "glRenderbufferStorageMultisample"},
         {&context_ptr->entry_points_private.pGLResumeTransformFeedback,                     "glResumeTransformFeedback"},
         {&context_ptr->entry_points_gl.pGLPointSize,                                        "glPointSize"},
         {&context_ptr->entry_points_gl.pGLPushDebugGroup,                                   "glPushDebugGroup"},
@@ -2132,6 +2310,7 @@ PRIVATE void _ogl_context_retrieve_GL_function_pointers(_ogl_context* context_pt
     context_ptr->entry_points_gl.pGLEnablei                                     = ogl_context_wrappers_glEnablei;
     context_ptr->entry_points_gl.pGLEnableVertexAttribArray                     = ogl_context_wrappers_glEnableVertexAttribArray;
     context_ptr->entry_points_gl.pGLFramebufferParameteri                       = ogl_context_wrappers_glFramebufferParameteri;
+    context_ptr->entry_points_gl.pGLFramebufferRenderbuffer                     = ogl_context_wrappers_glFramebufferRenderbuffer;
     context_ptr->entry_points_gl.pGLFramebufferTexture                          = ogl_context_wrappers_glFramebufferTexture;
     context_ptr->entry_points_gl.pGLFramebufferTexture1D                        = ogl_context_wrappers_glFramebufferTexture1D;
     context_ptr->entry_points_gl.pGLFramebufferTexture2D                        = ogl_context_wrappers_glFramebufferTexture2D;
@@ -2620,75 +2799,25 @@ PUBLIC EMERALD_API void ogl_context_enumerate_msaa_samples(system_pixel_format p
                                                            unsigned int*       out_n_supported_samples,
                                                            unsigned int**      out_supported_samples)
 {
-    system_resizable_vector depth_stencil_samples_vector  = NULL;
-    GLenum                  internalformat_color          = GL_NONE;
-    GLenum                  internalformat_depth_stencil  = GL_NONE;
-    unsigned char           n_color_rgba_bits[4]          = {0};
-    unsigned char           n_depth_bits                  = 0;
-    unsigned char           n_stencil_bits                = 0;
-    bool                    result                        = true;
-    system_resizable_vector result_vector                 = NULL;
-    system_window           root_window                   = NULL;
-    ogl_context             root_window_context           = NULL;
-    _ogl_context*           root_window_context_ptr       = NULL;
-    ogl_rendering_handler   root_window_rendering_handler = NULL;
+    system_resizable_vector depth_stencil_samples_vector = NULL;
+    GLenum                  internalformat_color         = GL_NONE;
+    GLenum                  internalformat_depth_stencil = GL_NONE;
+    bool                    result                       = true;
+    system_resizable_vector result_vector                = NULL;
+    system_window           root_window                  = NULL;
+    ogl_context             root_window_context          = NULL;
+    _ogl_context*           root_window_context_ptr      = NULL;
 
-    /* Retrieve the number of bits for all three attachments */
-    system_pixel_format_get_property(pf,
-                                     SYSTEM_PIXEL_FORMAT_PROPERTY_COLOR_BUFFER_RED_BITS,
-                                     n_color_rgba_bits + 0);
-    system_pixel_format_get_property(pf,
-                                     SYSTEM_PIXEL_FORMAT_PROPERTY_COLOR_BUFFER_GREEN_BITS,
-                                     n_color_rgba_bits + 1);
-    system_pixel_format_get_property(pf,
-                                     SYSTEM_PIXEL_FORMAT_PROPERTY_COLOR_BUFFER_BLUE_BITS,
-                                     n_color_rgba_bits + 2);
-    system_pixel_format_get_property(pf,
-                                     SYSTEM_PIXEL_FORMAT_PROPERTY_COLOR_BUFFER_ALPHA_BITS,
-                                     n_color_rgba_bits + 3);
-    system_pixel_format_get_property(pf,
-                                     SYSTEM_PIXEL_FORMAT_PROPERTY_DEPTH_BITS,
-                                    &n_depth_bits);
-    system_pixel_format_get_property(pf,
-                                     SYSTEM_PIXEL_FORMAT_PROPERTY_STENCIL_BITS,
-                                    &n_stencil_bits);
+    result = _ogl_context_get_attachment_internalformats_for_system_pixel_format(pf,
+                                                                                &internalformat_color,
+                                                                                &internalformat_depth_stencil);
 
-    /* Convert the pixel format into a set of GL internalformats */
-    if (!_ogl_context_get_color_attachment_internalformat_for_rgba_bits(n_color_rgba_bits,
-                                                                        true, /* use_srgb_color_space */
-                                                                       &internalformat_color) )
+    if (!result)
     {
         ASSERT_DEBUG_SYNC(false,
-                          "Cannot convert user-specified pixel format to color internalformat");
+                          "Could not determine color/depth/stencil attachment internalformats for user-specified PF");
 
-        result = false;
         goto end;
-    }
-
-    if (n_stencil_bits == 0)
-    {
-        if (!_ogl_context_get_depth_attachment_internalformat_for_bits(n_depth_bits,
-                                                                      &internalformat_depth_stencil) )
-        {
-            ASSERT_DEBUG_SYNC(false,
-                              "Cannot convert user-specified pixel format to depth internalformat");
-
-            result = false;
-            goto end;
-        }
-    }
-    else
-    {
-        if (!_ogl_context_get_depth_stencil_attachment_internalformat_for_bits(n_depth_bits,
-                                                                               n_stencil_bits,
-                                                                              &internalformat_depth_stencil) )
-        {
-            ASSERT_DEBUG_SYNC(false,
-                              "Cannot convert user-specified pixel format to depth+stencil internalformat");
-
-            result = false;
-            goto end;
-        }
     }
 
     /* Determine the number of samples which can be used for the specified internalformats */
@@ -2706,23 +2835,11 @@ PUBLIC EMERALD_API void ogl_context_enumerate_msaa_samples(system_pixel_format p
     system_window_get_property(root_window,
                                SYSTEM_WINDOW_PROPERTY_RENDERING_CONTEXT,
                               &root_window_context);
-    system_window_get_property(root_window,
-                               SYSTEM_WINDOW_PROPERTY_RENDERING_HANDLER,
-                              &root_window_rendering_handler);
 
     if (root_window_context == NULL)
     {
         ASSERT_DEBUG_SYNC(false,
                           "Root window's rendering context is NULL");
-
-        result = false;
-        goto end;
-    }
-
-    if (root_window_rendering_handler == NULL)
-    {
-        ASSERT_DEBUG_SYNC(false,
-                          "Root window's rendering handler is NULL");
 
         result = false;
         goto end;

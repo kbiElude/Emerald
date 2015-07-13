@@ -946,6 +946,7 @@ typedef struct
     PFNGLBINDFRAMEBUFFERPROC                             pGLBindFramebuffer;
     PFNWRAPPEDGLBINDIMAGETEXTUREEXTPROC                  pGLBindImageTexture;
     PFNGLBINDPROGRAMPIPELINEPROC                         pGLBindProgramPipeline;
+    PFNGLBINDRENDERBUFFERPROC                            pGLBindRenderbuffer;
     PFNGLBINDSAMPLERPROC                                 pGLBindSampler;
     PFNGLBINDTRANSFORMFEEDBACKPROC                       pGLBindTransformFeedback;
     PFNWRAPPEDGLBINDTEXTUREPROC                          pGLBindTexture;
@@ -999,6 +1000,7 @@ typedef struct
     PFNGLDELETEPROGRAMPROC                               pGLDeleteProgram;
     PFNGLDELETEPROGRAMPIPELINESPROC                      pGLDeleteProgramPipelines;
     PFNGLDELETEQUERIESPROC                               pGLDeleteQueries;
+    PFNGLDELETERENDERBUFFERSPROC                         pGLDeleteRenderbuffers;
     PFNGLDELETESAMPLERSPROC                              pGLDeleteSamplers;
     PFNGLDELETESHADERPROC                                pGLDeleteShader;
     PFNGLDELETETEXTURESPROC                              pGLDeleteTextures;
@@ -1035,6 +1037,7 @@ typedef struct
     PFNGLFINISHPROC                                      pGLFinish;
     PFNGLFLUSHPROC                                       pGLFlush;
     PFNGLFRAMEBUFFERPARAMETERIPROC                       pGLFramebufferParameteri;
+    PFNGLFRAMEBUFFERRENDERBUFFERPROC                     pGLFramebufferRenderbuffer;
     PFNWRAPPEDGLFRAMEBUFFERTEXTUREPROC                   pGLFramebufferTexture;
     PFNWRAPPEDGLFRAMEBUFFERTEXTURE1DPROC                 pGLFramebufferTexture1D;
     PFNWRAPPEDGLFRAMEBUFFERTEXTURE2DPROC                 pGLFramebufferTexture2D;
@@ -1046,6 +1049,7 @@ typedef struct
     PFNGLGENFRAMEBUFFERSPROC                             pGLGenFramebuffers;
     PFNGLGENPROGRAMPIPELINESPROC                         pGLGenProgramPipelines;
     PFNGLGENQUERIESPROC                                  pGLGenQueries;
+    PFNGLGENRENDERBUFFERSPROC                            pGLGenRenderbuffers;
     PFNGLGENSAMPLERSPROC                                 pGLGenSamplers;
     PFNGLGENTEXTURESPROC                                 pGLGenTextures;
     PFNGLGENTRANSFORMFEEDBACKSPROC                       pGLGenTransformFeedbacks;
@@ -1204,6 +1208,7 @@ typedef struct
     PFNGLPUSHDEBUGGROUPPROC                              pGLPushDebugGroup;
     PFNGLREADBUFFERPROC                                  pGLReadBuffer;
     PFNGLREADPIXELSPROC                                  pGLReadPixels;
+    PFNGLRENDERBUFFERSTORAGEMULTISAMPLEPROC              pGLRenderbufferStorageMultisample;
     PFNGLRESUMETRANSFORMFEEDBACKPROC                     pGLResumeTransformFeedback;
     PFNGLSAMPLECOVERAGEPROC                              pGLSampleCoverage;
     PFNGLSAMPLERPARAMETERFPROC                           pGLSamplerParameterf;
@@ -1379,6 +1384,7 @@ typedef struct
     PFNGLENABLEIPROC                                     pGLEnablei;
     PFNGLENABLEVERTEXATTRIBARRAYPROC                     pGLEnableVertexAttribArray;
     PFNGLFRAMEBUFFERPARAMETERIPROC                       pGLFramebufferParameteri;
+    PFNGLFRAMEBUFFERRENDERBUFFERPROC                     pGLFramebufferRenderbuffer;
     PFNGLFRAMEBUFFERTEXTUREPROC                          pGLFramebufferTexture;
     PFNGLFRAMEBUFFERTEXTURE1DPROC                        pGLFramebufferTexture1D;
     PFNGLFRAMEBUFFERTEXTURE2DPROC                        pGLFramebufferTexture2D;
