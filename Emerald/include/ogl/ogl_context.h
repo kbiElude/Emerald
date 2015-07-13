@@ -229,8 +229,14 @@ PUBLIC void ogl_context_deinit_global();
  *  The approach was mostly dictated by two things:
  *
  *  1) Linux and Windows builds would require significantly different platform-specific code
-*      paths to provide the same information for back buffer-based MSAA.
+ *     paths to provide the same information for back buffer-based MSAA.
  *  2) Use of multisample render-targets better fits APIs we will need to support in the future.
+ *
+ *  NOTE: The returned data is sorted in a descending order.
+ *
+ *  NOTE: It is caller's responsibility to ensure only one ogl_context_enumerate_msaa_samples() call
+ *        is active at the same time. The function uses root window's rendering context to retrieve
+ *        GL-specific information and badness may/will happen if this requirement is ignored.
  *
  *  @param pf                      TODO. Ownership is NOT claimed by the function.
  *  @param out_n_supported_samples TODO.

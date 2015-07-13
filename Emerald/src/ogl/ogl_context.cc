@@ -32,6 +32,7 @@
 #include "system/system_hashed_ansi_string.h"
 #include "system/system_log.h"
 #include "system/system_pixel_format.h"
+#include "system/system_resizable_vector.h"
 #include "system/system_resources.h"
 #include "system/system_window.h"
 #include <string.h>
@@ -83,6 +84,14 @@ typedef struct
     system_window_handle window_handle;
 
     GLuint               vao_no_vaas_id;
+
+    /* Used for MSAA enumeration */
+    GLenum msaa_enumeration_color_internalformat;
+    GLint  msaa_enumeration_color_n_samples;
+    GLint* msaa_enumeration_color_samples;
+    GLenum msaa_enumeration_depth_stencil_internalformat;
+    GLint  msaa_enumeration_depth_stencil_n_samples;
+    GLint* msaa_enumeration_depth_stencil_samples;
 
     /* Current multisampling samples setting */
     uint32_t multisampling_samples;
@@ -165,10 +174,20 @@ PRIVATE void APIENTRY             _ogl_context_debug_message_gl_callback        
                                                                                                      GLsizei                      length,
                                                                                                      const GLchar*                message,
                                                                                                      const void*                  userParam);
+PRIVATE void                      _ogl_context_enumerate_msaa_samples_rendering_thread_callback     (ogl_context                  context,
+                                                                                                     void*                        user_arg);
+PRIVATE bool                      _ogl_context_get_color_attachment_internalformat_for_rgba_bits    (unsigned char*               n_rgba_bits,
+                                                                                                     bool                         use_srgb_color_space,
+                                                                                                     GLenum*                      out_gl_internalformat);
 PRIVATE system_hashed_ansi_string _ogl_context_get_compressed_filename                              (void*                        user_arg,
                                                                                                      system_hashed_ansi_string    decompressed_filename,
                                                                                                      GLenum*                      out_compressed_gl_enum,
                                                                                                      system_file_unpacker*        out_file_unpacker);
+PRIVATE bool                      _ogl_context_get_depth_attachment_internalformat_for_bits         (unsigned char                n_depth_bits,
+                                                                                                     GLenum*                      out_gl_internalformat);
+PRIVATE bool                      _ogl_context_get_depth_stencil_attachment_internalformat_for_bits (unsigned char                n_depth_bits,
+                                                                                                     unsigned char                n_stencil_bits,
+                                                                                                     GLenum*                      out_gl_internalformat);
 PRIVATE bool                      _ogl_context_get_function_pointers                                (_ogl_context*                context_ptr,
                                                                                                      func_ptr_table_entry*        entries,
                                                                                                      uint32_t                     n_entries);
@@ -191,6 +210,8 @@ PRIVATE void                      _ogl_context_retrieve_GL_EXT_direct_state_acce
 PRIVATE void                      _ogl_context_retrieve_GL_function_pointers                        (_ogl_context*                context_ptr);
 PRIVATE void                      _ogl_context_retrieve_GL_info                                     (_ogl_context*                context_ptr);
 PRIVATE void                      _ogl_context_retrieve_GL_limits                                   (_ogl_context*                context_ptr);
+PRIVATE int                       _ogl_context_sort_descending                                      (void*                        in_int_1,
+                                                                                                     void*                        in_int_2);
 
 
 /** TODO */
@@ -218,12 +239,14 @@ PRIVATE ogl_context _ogl_context_create_from_system_window_shared(system_hashed_
                                                    system_hashed_ansi_string_get_buffer(name))
                                                    );
 
-    new_context_ptr->context_platform            = NULL;
-    new_context_ptr->context_type                = type;
-    new_context_ptr->parent_context              = parent_context;
-    new_context_ptr->pfd                         = in_pfd;
-    new_context_ptr->vsync_enabled               = vsync_enabled;
-    new_context_ptr->window                      = window;
+    new_context_ptr->context_platform                       = NULL;
+    new_context_ptr->context_type                           = type;
+    new_context_ptr->msaa_enumeration_color_samples         = NULL;
+    new_context_ptr->msaa_enumeration_depth_stencil_samples = NULL;
+    new_context_ptr->parent_context                         = parent_context;
+    new_context_ptr->pfd                                    = in_pfd;
+    new_context_ptr->vsync_enabled                          = vsync_enabled;
+    new_context_ptr->window                                 = window;
 
     #ifdef _WIN32
     {
@@ -364,6 +387,63 @@ PRIVATE void APIENTRY _ogl_context_debug_message_gl_callback(GLenum        sourc
                           "GL error detected");
     }
 }
+
+/** TODO */
+PRIVATE void _ogl_context_enumerate_msaa_samples_rendering_thread_callback(ogl_context context,
+                                                                           void*       user_arg)
+{
+    _ogl_context*               context_ptr  = (_ogl_context*) context;
+    ogl_context_gl_entrypoints* entry_points = NULL;
+
+    /* Determine all supported n_samples for the internalformat we intend to use for the color attachment */
+    struct _internalformat
+    {
+        GLenum  internalformat;
+        GLint*  n_samples_ptr;
+        GLint** samples_ptr;
+    } internalformats[] =
+    {
+        {context_ptr->msaa_enumeration_color_internalformat,         &context_ptr->msaa_enumeration_color_n_samples,         &context_ptr->msaa_enumeration_color_samples},
+        {context_ptr->msaa_enumeration_depth_stencil_internalformat, &context_ptr->msaa_enumeration_depth_stencil_n_samples, &context_ptr->msaa_enumeration_depth_stencil_samples}
+    };
+    const unsigned int n_internalformats = sizeof(internalformats) / sizeof(internalformats[0]);
+
+    ogl_context_get_property(context,
+                             OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
+                            &entry_points);
+
+    for (unsigned int n_internalformat = 0;
+                      n_internalformat < n_internalformats;
+                    ++n_internalformat)
+    {
+        _internalformat* internalformat_ptr = internalformats + n_internalformat;
+
+         entry_points->pGLGetInternalformativ(GL_RENDERBUFFER,
+                                              internalformat_ptr->internalformat,
+                                              GL_NUM_SAMPLE_COUNTS,
+                                              sizeof(*internalformat_ptr->n_samples_ptr),
+                                              internalformat_ptr->n_samples_ptr);
+
+         if (*internalformat_ptr->n_samples_ptr > 0)
+         {
+             *internalformat_ptr->samples_ptr = new GLint[*internalformat_ptr->n_samples_ptr];
+
+             ASSERT_DEBUG_SYNC(*internalformat_ptr->samples_ptr != NULL,
+                               "Out of memory");
+
+             entry_points->pGLGetInternalformativ(GL_RENDERBUFFER,
+                                                  internalformat_ptr->internalformat,
+                                                  GL_SAMPLES,
+                                                  sizeof(GLint) * (*internalformat_ptr->n_samples_ptr),
+                                                  *internalformat_ptr->samples_ptr);
+         }
+         else
+         {
+             *internalformat_ptr->samples_ptr = NULL;
+         }
+    } /* for (all internalformats) */
+}
+
 
 /** TODO */
 PRIVATE system_hashed_ansi_string _ogl_context_get_compressed_filename(void*                     user_arg,
@@ -536,6 +616,107 @@ PRIVATE system_hashed_ansi_string _ogl_context_get_compressed_filename(void*    
     } /* for (all active file unpackers) */
 
 end:
+    return result;
+}
+
+/** TODO */
+PRIVATE bool _ogl_context_get_color_attachment_internalformat_for_rgba_bits(unsigned char* n_rgba_bits,
+                                                                            bool           use_srgb_color_space,
+                                                                            GLenum*        out_gl_internalformat)
+{
+    bool result = true;
+
+    if (use_srgb_color_space)
+    {
+        if (n_rgba_bits[0] == 8 && n_rgba_bits[1] == 8 && n_rgba_bits[2] == 8 && n_rgba_bits[3] == 0) *out_gl_internalformat = GL_SRGB8;       else
+        if (n_rgba_bits[0] == 8 && n_rgba_bits[1] == 8 && n_rgba_bits[2] == 8 && n_rgba_bits[3] == 8) *out_gl_internalformat = GL_SRGB8_ALPHA8;else
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Unsupported number of RGBA bits requested");
+
+            result = false;
+        }
+    } /* if (use_srgb_color_space) */
+    else
+    {
+        if (n_rgba_bits[0] == 8 && n_rgba_bits[1] == 8 && n_rgba_bits[2] == 8 && n_rgba_bits[3] == 0) *out_gl_internalformat = GL_RGB8; else
+        if (n_rgba_bits[0] == 8 && n_rgba_bits[1] == 8 && n_rgba_bits[2] == 8 && n_rgba_bits[3] == 8) *out_gl_internalformat = GL_RGBA8;else
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Unsupported number of RGBA bits requested");
+
+            result = false;
+        }
+    }
+
+    return result;
+}
+
+/** TODO */
+PRIVATE bool _ogl_context_get_depth_attachment_internalformat_for_bits(unsigned char n_depth_bits,
+                                                                       GLenum*       out_gl_internalformat)
+{
+    bool result = true;
+
+    switch (n_depth_bits)
+    {
+        case 16:
+        {
+            *out_gl_internalformat = GL_DEPTH_COMPONENT16;
+
+            break;
+        }
+
+        case 24:
+        {
+            *out_gl_internalformat = GL_DEPTH_COMPONENT24;
+
+            break;
+        }
+
+        case 32:
+        {
+            *out_gl_internalformat = GL_DEPTH_COMPONENT32;
+
+            break;
+        }
+
+        default:
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Unsupported number of bits requested for the depth attachment");
+
+            result = false;
+        }
+    } /* switch (n_depth_bits) */
+
+    return result;
+}
+
+/** TODO */
+PRIVATE bool _ogl_context_get_depth_stencil_attachment_internalformat_for_bits(unsigned char n_depth_bits,
+                                                                               unsigned char n_stencil_bits,
+                                                                               GLenum*       out_gl_internalformat)
+{
+    bool result = true;
+
+    if (n_depth_bits == 24 && n_stencil_bits == 8)
+    {
+        *out_gl_internalformat = GL_DEPTH24_STENCIL8;
+    }
+    else
+    if (n_depth_bits == 32 && n_stencil_bits == 8)
+    {
+        *out_gl_internalformat = GL_DEPTH32F_STENCIL8;
+    }
+    else
+    {
+        ASSERT_DEBUG_SYNC(false,
+                          "Unsupported combination of number of depth & stencil attachment bits requetsed");
+
+        result = false;
+    }
+
     return result;
 }
 
@@ -2337,6 +2518,16 @@ PRIVATE void _ogl_context_retrieve_GL_limits(_ogl_context* context_ptr)
     }
 }
 
+/** TODO */
+PRIVATE int _ogl_context_sort_descending(void* in_int_1,
+                                         void* in_int_2)
+{
+    int int_1 = (int) in_int_1;
+    int int_2 = (int) in_int_2;
+
+    return (int_1 > int_2);
+}
+
 
 /** Please see header for specification */
 PUBLIC void ogl_context_bind_to_current_thread(ogl_context context)
@@ -2429,23 +2620,32 @@ PUBLIC EMERALD_API void ogl_context_enumerate_msaa_samples(system_pixel_format p
                                                            unsigned int*       out_n_supported_samples,
                                                            unsigned int**      out_supported_samples)
 {
-    unsigned char n_color_rgba_bits[4] = {0};
-    unsigned char n_depth_bits         = 0;
-    unsigned char n_stencil_bits       = 0;
+    system_resizable_vector depth_stencil_samples_vector  = NULL;
+    GLenum                  internalformat_color          = GL_NONE;
+    GLenum                  internalformat_depth_stencil  = GL_NONE;
+    unsigned char           n_color_rgba_bits[4]          = {0};
+    unsigned char           n_depth_bits                  = 0;
+    unsigned char           n_stencil_bits                = 0;
+    bool                    result                        = true;
+    system_resizable_vector result_vector                 = NULL;
+    system_window           root_window                   = NULL;
+    ogl_context             root_window_context           = NULL;
+    _ogl_context*           root_window_context_ptr       = NULL;
+    ogl_rendering_handler   root_window_rendering_handler = NULL;
 
     /* Retrieve the number of bits for all three attachments */
     system_pixel_format_get_property(pf,
                                      SYSTEM_PIXEL_FORMAT_PROPERTY_COLOR_BUFFER_RED_BITS,
-                                    &n_color_rgba_bits + 0);
+                                     n_color_rgba_bits + 0);
     system_pixel_format_get_property(pf,
                                      SYSTEM_PIXEL_FORMAT_PROPERTY_COLOR_BUFFER_GREEN_BITS,
-                                    &n_color_rgba_bits + 1);
+                                     n_color_rgba_bits + 1);
     system_pixel_format_get_property(pf,
                                      SYSTEM_PIXEL_FORMAT_PROPERTY_COLOR_BUFFER_BLUE_BITS,
-                                    &n_color_rgba_bits + 2);
+                                     n_color_rgba_bits + 2);
     system_pixel_format_get_property(pf,
                                      SYSTEM_PIXEL_FORMAT_PROPERTY_COLOR_BUFFER_ALPHA_BITS,
-                                    &n_color_rgba_bits + 3);
+                                     n_color_rgba_bits + 3);
     system_pixel_format_get_property(pf,
                                      SYSTEM_PIXEL_FORMAT_PROPERTY_DEPTH_BITS,
                                     &n_depth_bits);
@@ -2454,7 +2654,189 @@ PUBLIC EMERALD_API void ogl_context_enumerate_msaa_samples(system_pixel_format p
                                     &n_stencil_bits);
 
     /* Convert the pixel format into a set of GL internalformats */
-    // todo
+    if (!_ogl_context_get_color_attachment_internalformat_for_rgba_bits(n_color_rgba_bits,
+                                                                        true, /* use_srgb_color_space */
+                                                                       &internalformat_color) )
+    {
+        ASSERT_DEBUG_SYNC(false,
+                          "Cannot convert user-specified pixel format to color internalformat");
+
+        result = false;
+        goto end;
+    }
+
+    if (n_stencil_bits == 0)
+    {
+        if (!_ogl_context_get_depth_attachment_internalformat_for_bits(n_depth_bits,
+                                                                      &internalformat_depth_stencil) )
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Cannot convert user-specified pixel format to depth internalformat");
+
+            result = false;
+            goto end;
+        }
+    }
+    else
+    {
+        if (!_ogl_context_get_depth_stencil_attachment_internalformat_for_bits(n_depth_bits,
+                                                                               n_stencil_bits,
+                                                                              &internalformat_depth_stencil) )
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Cannot convert user-specified pixel format to depth+stencil internalformat");
+
+            result = false;
+            goto end;
+        }
+    }
+
+    /* Determine the number of samples which can be used for the specified internalformats */
+    root_window = system_window_get_root_window();
+
+    if (root_window == NULL)
+    {
+        ASSERT_DEBUG_SYNC(false,
+                          "Could not obtain root window");
+
+        result = false;
+        goto end;
+    }
+
+    system_window_get_property(root_window,
+                               SYSTEM_WINDOW_PROPERTY_RENDERING_CONTEXT,
+                              &root_window_context);
+    system_window_get_property(root_window,
+                               SYSTEM_WINDOW_PROPERTY_RENDERING_HANDLER,
+                              &root_window_rendering_handler);
+
+    if (root_window_context == NULL)
+    {
+        ASSERT_DEBUG_SYNC(false,
+                          "Root window's rendering context is NULL");
+
+        result = false;
+        goto end;
+    }
+
+    if (root_window_rendering_handler == NULL)
+    {
+        ASSERT_DEBUG_SYNC(false,
+                          "Root window's rendering handler is NULL");
+
+        result = false;
+        goto end;
+    }
+
+    root_window_context_ptr = (_ogl_context*) root_window_context;
+
+    root_window_context_ptr->msaa_enumeration_color_internalformat         = internalformat_color;
+    root_window_context_ptr->msaa_enumeration_depth_stencil_internalformat = internalformat_depth_stencil;
+
+    ogl_context_request_callback_from_context_thread(root_window_context,
+                                                     _ogl_context_enumerate_msaa_samples_rendering_thread_callback,
+                                                     NULL); /* user_arg */
+
+    /* Extract the information we gathered in the rendering thread. Since the number of samples
+     * used for color & depth attachments must match, we can only return values that are supported
+     * for both internalformats.
+     */
+    if (root_window_context_ptr->msaa_enumeration_color_n_samples         == 0 ||
+        root_window_context_ptr->msaa_enumeration_depth_stencil_n_samples == 0)
+    {
+        ASSERT_DEBUG_SYNC(false,
+                          "MSAA not supported for the requested color / depth / depth-stencil internalformats");
+
+        result = false;
+        goto end;
+    }
+
+    depth_stencil_samples_vector = system_resizable_vector_create(root_window_context_ptr->msaa_enumeration_depth_stencil_n_samples);
+    result_vector                = system_resizable_vector_create(32 /* capacity */);
+
+    ASSERT_DEBUG_SYNC(result_vector != NULL,
+                      "Out of memory");
+
+    for (unsigned int n_depth_stencil_n_samples = 0;
+                      n_depth_stencil_n_samples < root_window_context_ptr->msaa_enumeration_depth_stencil_n_samples;
+                    ++n_depth_stencil_n_samples)
+    {
+        system_resizable_vector_push(depth_stencil_samples_vector,
+                                     (void*) root_window_context_ptr->msaa_enumeration_depth_stencil_samples[n_depth_stencil_n_samples]);
+    }
+
+    for (unsigned int n_result_sample = 0;
+                      n_result_sample < root_window_context_ptr->msaa_enumeration_color_n_samples;
+                    ++n_result_sample)
+     {
+         /* Only store matches */
+         if (system_resizable_vector_find(depth_stencil_samples_vector,
+                                          (void*) root_window_context_ptr->msaa_enumeration_color_samples[n_result_sample]) != ITEM_NOT_FOUND)
+         {
+             system_resizable_vector_push(result_vector,
+                                          (void*) root_window_context_ptr->msaa_enumeration_color_samples[n_result_sample]);
+         }
+     }
+
+     system_resizable_vector_sort(result_vector,
+                                  _ogl_context_sort_descending);
+end:
+    if (!result)
+    {
+        *out_n_supported_samples = 0;
+    }
+    else
+    {
+        /* Copy the result data to the output variables */
+        GLint* result_vector_data_ptr = NULL;
+
+        system_resizable_vector_get_property(result_vector,
+                                             SYSTEM_RESIZABLE_VECTOR_PROPERTY_ARRAY,
+                                            &result_vector_data_ptr);
+        system_resizable_vector_get_property(result_vector,
+                                             SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                             out_n_supported_samples);
+
+        *out_supported_samples = new unsigned int [*out_n_supported_samples];
+
+        ASSERT_DEBUG_SYNC(result_vector_data_ptr != NULL,
+                          "system_resizable_vector returned NULL for SYSTEM_RESIZABLE_VECTOR_PROPERTY_ARRAY query");
+        ASSERT_DEBUG_SYNC(*out_supported_samples != NULL,
+                          "Out of memory");
+
+        memcpy(*out_supported_samples,
+               result_vector_data_ptr,
+               sizeof(GLint) * *out_n_supported_samples);
+    }
+
+    /* Clean up */
+    if (root_window_context_ptr->msaa_enumeration_color_samples != NULL)
+    {
+        delete [] root_window_context_ptr->msaa_enumeration_color_samples;
+
+        root_window_context_ptr->msaa_enumeration_color_samples = NULL;
+    }
+
+    if (root_window_context_ptr->msaa_enumeration_depth_stencil_samples != NULL)
+    {
+        delete [] root_window_context_ptr->msaa_enumeration_depth_stencil_samples;
+
+        root_window_context_ptr->msaa_enumeration_depth_stencil_samples = NULL;
+    }
+
+    if (depth_stencil_samples_vector != NULL)
+    {
+        system_resizable_vector_release(depth_stencil_samples_vector);
+
+        depth_stencil_samples_vector = NULL;
+    }
+
+    if (result_vector != NULL)
+    {
+        system_resizable_vector_release(result_vector);
+
+        result_vector = NULL;
+    }
 }
 
 /* Please see header for spec */
