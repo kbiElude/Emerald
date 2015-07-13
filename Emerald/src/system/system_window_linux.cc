@@ -415,6 +415,8 @@ PRIVATE void _system_window_linux_handle_close_window_request(_system_window_lin
         {
             system_hash64map_remove(message_pump_registered_windows_map,
                                     (system_hash64) linux_ptr->system_handle);
+
+            linux_ptr->system_handle = (system_window_handle) NULL;
         }
         system_critical_section_leave(message_pump_registered_windows_cs);
     }
@@ -445,8 +447,6 @@ PRIVATE void _system_window_linux_handle_close_window_request(_system_window_lin
     /* Call back the subscribers, if any */
     system_window_execute_callback_funcs(linux_ptr->window,
                                          SYSTEM_WINDOW_CALLBACK_FUNC_WINDOW_CLOSED);
-
-    linux_ptr->system_handle = (system_window_handle) NULL;
 
     system_event_set(linux_ptr->teardown_completed_event);
 }
