@@ -188,7 +188,7 @@ void                      _change_algorithm_renderer_callback         (ogl_conte
                                                                        void*                     user_arg);
 void                      _change_texture_renderer_callback           (ogl_context               context,
                                                                        void*                     user_arg);
-int                       _compression_algorithm_comparator           (void*                     alg1,
+bool                      _compression_algorithm_comparator           (void*                     alg1,
                                                                        void*                     alg2);
 bool                      _compress_texture                           (ogl_context               context,
                                                                        uint32_t                  n_compressed_internalformat);
@@ -422,14 +422,14 @@ void _change_texture_renderer_callback(ogl_context context,
     _update_ui_controls_strings();
 }
 
-int _compression_algorithm_comparator(void* alg1,
-                                      void* alg2)
+bool _compression_algorithm_comparator(void* alg1,
+                                       void* alg2)
 {
     _compression_algorithm* alg1_ptr = (_compression_algorithm*) alg1;
     _compression_algorithm* alg2_ptr = (_compression_algorithm*) alg2;
 
     return strcmp(system_hashed_ansi_string_get_buffer(alg1_ptr->name),
-                  system_hashed_ansi_string_get_buffer(alg2_ptr->name) );
+                  system_hashed_ansi_string_get_buffer(alg2_ptr->name) ) < 0;
 }
 
 bool _compress_texture(ogl_context context,

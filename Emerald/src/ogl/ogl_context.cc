@@ -210,7 +210,7 @@ PRIVATE void                      _ogl_context_retrieve_GL_EXT_direct_state_acce
 PRIVATE void                      _ogl_context_retrieve_GL_function_pointers                        (_ogl_context*                context_ptr);
 PRIVATE void                      _ogl_context_retrieve_GL_info                                     (_ogl_context*                context_ptr);
 PRIVATE void                      _ogl_context_retrieve_GL_limits                                   (_ogl_context*                context_ptr);
-PRIVATE int                       _ogl_context_sort_descending                                      (void*                        in_int_1,
+PRIVATE bool                      _ogl_context_sort_descending                                      (void*                        in_int_1,
                                                                                                      void*                        in_int_2);
 
 
@@ -2519,8 +2519,8 @@ PRIVATE void _ogl_context_retrieve_GL_limits(_ogl_context* context_ptr)
 }
 
 /** TODO */
-PRIVATE int _ogl_context_sort_descending(void* in_int_1,
-                                         void* in_int_2)
+PRIVATE bool _ogl_context_sort_descending(void* in_int_1,
+                                          void* in_int_2)
 {
     int int_1 = (int) in_int_1;
     int int_2 = (int) in_int_2;

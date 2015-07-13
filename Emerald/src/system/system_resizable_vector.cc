@@ -609,52 +609,44 @@ PUBLIC EMERALD_API void system_resizable_vector_set_element_at(system_resizable_
  *  comparator_func_ptr() = operator<
  */
 PRIVATE void _system_resizable_vector_sort_recursive(system_resizable_vector resizable_vector,
-                                                     int                   (*comparator_func_ptr)(void*, void*),
-                                                     int start_index,
-                                                     int end_index)
+                                                     bool                  (*comparator_func_ptr)(void*, void*),
+                                                     int                     start_index,
+                                                     int                     end_index)
 {
-    if (start_index == end_index)
+    /* Based on http://www.mycstutorials.com/articles/sorting/quicksort */
+    int   left   = start_index; // i
+    void* pivot  = NULL;
+    bool  result = false;
+    int   right  = end_index;   // j
+    void* value  = NULL;
+
+    if (end_index - start_index >= 1)
     {
-        return;
-    }
+        result = system_resizable_vector_get_element_at(resizable_vector,
+                                                        start_index,
+                                                       &pivot);
 
-    /* Shamelessly adapted from http://pl.wikisource.org/wiki/Sortowanie_szybkie/kod <ANSI C, normal version> */
-    int   x         = (end_index + start_index) >> 1; //rand() % (end_index - start_index) + start_index + 1;
-    int   left      = start_index; // i
-    int   right     = end_index;   // j
-    bool  result    = false;
-    void* element_x = NULL;
+        ASSERT_DEBUG_SYNC(result,
+                          "Could not retrieve reference element [%d] from the vector",
+                          start_index);
 
-    result = system_resizable_vector_get_element_at(resizable_vector,
-                                                    x,
-                                                   &element_x);
-
-    ASSERT_DEBUG_SYNC(result,
-                      "Could not retrieve reference element [%d] from the vector", x);
-
-    do
-    {
-        /* while (T[i] < x) ++i; */
-        void* element = NULL;
-
-        while (true)
+        while (right > left)
         {
-            result = system_resizable_vector_get_element_at(resizable_vector,
-                                                            left,
-                                                           &element);
-
-            ASSERT_DEBUG_SYNC(result,
-                              "Could not retrieve %dth element from the vector",
-                              left);
-
-            if (!(comparator_func_ptr(element,
-                                      element_x) < 0))
+            while (true)
             {
-                break;
-            }
-            else
-            {
-                if (left < end_index)
+                if (left > end_index)
+                {
+                    break;
+                }
+
+                result = system_resizable_vector_get_element_at(resizable_vector,
+                                                                left,
+                                                               &value);
+
+                ASSERT_DEBUG_SYNC(result,
+                                 "system_resizable_vector_get_element_at() failed.");
+
+                if (comparator_func_ptr(value, pivot) && right > left)
                 {
                     ++left;
                 }
@@ -662,28 +654,23 @@ PRIVATE void _system_resizable_vector_sort_recursive(system_resizable_vector res
                 {
                     break;
                 }
-            }
-        }
+            } /* while (true) */
 
-        /* While (T[j] > x) --j; */
-        while (true)
-        {
-            result = system_resizable_vector_get_element_at(resizable_vector,
-                                                            right,
-                                                           &element);
-
-            ASSERT_DEBUG_SYNC(result,
-                              "Could not retrieve %dth element from the vector",
-                              right);
-
-            if (!(comparator_func_ptr(element,
-                                      element_x) > 0))
+            while (true)
             {
-                break;
-            }
-            else
-            {
-                if (right > start_index)
+                if (right < start_index)
+                {
+                    break;
+                }
+
+                result = system_resizable_vector_get_element_at(resizable_vector,
+                                                                right,
+                                                               &value);
+
+                ASSERT_DEBUG_SYNC(result,
+                                  "system_resizable_vector_get_element_at() failed.");
+
+                if (!comparator_func_ptr(value, pivot) && right >= left)
                 {
                     --right;
                 }
@@ -691,40 +678,37 @@ PRIVATE void _system_resizable_vector_sort_recursive(system_resizable_vector res
                 {
                     break;
                 }
-            }
-        }
+            } /* while (true) */
 
-        if (left <= right)
+            if (right > left)
+            {
+                system_resizable_vector_swap(resizable_vector,
+                                             left,
+                                             right);
+            }
+        } /* while (right > left) */
+
+        if (right >= 0)
         {
             system_resizable_vector_swap(resizable_vector,
-                                         left,
+                                         start_index,
                                          right);
 
-            ++left;
-            --right;
+            _system_resizable_vector_sort_recursive(resizable_vector,
+                                                    comparator_func_ptr,
+                                                    start_index,
+                                                    right - 1);
+            _system_resizable_vector_sort_recursive(resizable_vector,
+                                                    comparator_func_ptr,
+                                                    right + 1,
+                                                    end_index);
         }
-    }
-    while (left < right);
-
-    if (start_index < right)
-    {
-        _system_resizable_vector_sort_recursive(resizable_vector,
-                                                comparator_func_ptr,
-                                                start_index,
-                                                right);
-    }
-    if (end_index > left)
-    {
-        _system_resizable_vector_sort_recursive(resizable_vector,
-                                                comparator_func_ptr,
-                                                left,
-                                                end_index);
-    }
+    } /* if (end_index - start_index >= 1) */
 }
 
 /** Please see header for specification */
 PUBLIC EMERALD_API void system_resizable_vector_sort(system_resizable_vector resizable_vector,
-                                                     int                   (*comparator_func_ptr)(void*, void*) )
+                                                     bool                  (*comparator_func_ptr)(void*, void*) )
 {
     uint32_t                  n_vector_items = 0;
     _system_resizable_vector* vector_ptr     = (_system_resizable_vector*) resizable_vector;

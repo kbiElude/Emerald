@@ -75,7 +75,7 @@ typedef struct
 /* Forward declarations */
 PRIVATE curve_container  _curve_editor_dialog_get_selected_curve          (_curve_editor_main_window* descriptor_ptr);
 PRIVATE void             _curve_editor_dialog_handle_edit_request         (_curve_editor_main_window* descriptor_ptr);
-PRIVATE int              _curve_editor_dialog_item_name_comparator        (void*                      has_1,
+PRIVATE bool             _curve_editor_dialog_item_name_comparator        (void*                      has_1,
                                                                            void*                      has_2);
 PRIVATE void             _curve_editor_dialog_on_curve_window_release     (void*,
                                                                            curve_container);
@@ -264,14 +264,14 @@ PRIVATE void _curve_editor_dialog_handle_edit_request(_curve_editor_main_window*
 }
 
 /** TODO */
-PRIVATE int _curve_editor_dialog_item_name_comparator(void* has_1,
-                                                      void* has_2)
+PRIVATE bool _curve_editor_dialog_item_name_comparator(void* has_1,
+                                                       void* has_2)
 {
     system_hashed_ansi_string string_1 = (system_hashed_ansi_string) has_1;
     system_hashed_ansi_string string_2 = (system_hashed_ansi_string) has_2;
 
     return stricmp(system_hashed_ansi_string_get_buffer(string_1),
-                   system_hashed_ansi_string_get_buffer(string_2) );
+                   system_hashed_ansi_string_get_buffer(string_2) ) < 0;
 }
 
 /** TODO */

@@ -104,6 +104,16 @@ bool pop_item(std::vector<int>&       ref,
     }
 }
 
+/** TODO */
+PRIVATE bool sort_comparator(void* value_1,
+                             void* value_2)
+{
+    int int_1 = (int) value_1;
+    int int_2 = (int) value_2;
+
+    return (int_1 <= int_2);
+}
+
 TEST(ResizableVectorTest, RandomOperations)
 {
     system_resizable_vector vec = system_resizable_vector_create(4 /* capacity */);
@@ -170,3 +180,64 @@ TEST(ResizableVectorTest, RandomOperations)
     system_resizable_vector_release(vec);
 }
 
+TEST(ResizablevectorTest, Sort)
+{
+    int data_sorted[] =
+    {
+        0,
+        12,
+        267,
+        666,
+        753,
+        5210,
+        5211,
+        5212,
+    };
+    int data_unsorted[] =
+    {
+        666,
+        12,
+        753,
+        267,
+        0,
+        5211,
+        5212,
+        5210
+    };
+    const unsigned int      n_data_items = 8;
+    system_resizable_vector test_vector  = system_resizable_vector_create(n_data_items);
+
+    /* Add the unsorted data items to the vector */
+    for (unsigned int n_data_item = 0;
+                      n_data_item < n_data_items;
+                    ++n_data_item)
+    {
+        system_resizable_vector_push(test_vector,
+                                     (void*) data_unsorted[n_data_item]);
+    }
+
+    /* Sort the vector */
+    system_resizable_vector_sort(test_vector,
+                                 sort_comparator);
+
+    /* Verify the items are sorted */
+    for (unsigned int n_data_item = 0;
+                      n_data_item < n_data_items;
+                    ++n_data_item)
+    {
+        void* result = NULL;
+        int   result_int;
+
+        system_resizable_vector_get_element_at(test_vector,
+                                               n_data_item,
+                                              &result);
+
+        result_int = (int) result;
+
+        ASSERT_EQ(result_int,
+                  data_sorted[n_data_item]);
+    }
+
+    /* Clean up */
+    system_resizable_vector_release(test_vector);
+}
