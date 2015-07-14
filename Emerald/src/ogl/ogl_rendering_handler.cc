@@ -24,7 +24,7 @@ typedef struct
     system_event                          context_set_event;
     uint32_t                              fps;
     uint32_t                              last_frame_index;      /* only when fps policy is used */
-    uint32_t                              n_frames_rendered;
+    volatile uint32_t                     n_frames_rendered;     /* NOTE: must be volatile for release builds to work correctly! */
     system_time                           playback_start_time;
     ogl_rendering_handler_playback_status playback_status;
     ogl_rendering_handler_policy          policy;
