@@ -71,8 +71,6 @@ typedef struct
     bool                       is_fullscreen;
     bool                       is_root_window;
     bool                       is_scalable;
-    bool                       multisampling_supported;
-    uint16_t                   n_multisampling_samples;
     system_window_handle       parent_window_handle;
     system_hashed_ansi_string  title;
     bool                       visible;
@@ -287,8 +285,6 @@ PRIVATE void _init_system_window(_system_window* window_ptr)
     window_ptr->is_cursor_visible            = false;
     window_ptr->is_fullscreen                = false;
     window_ptr->is_scalable                  = false;
-    window_ptr->multisampling_supported      = false;
-    window_ptr->n_multisampling_samples      = 0;
     window_ptr->pf                           = NULL;
     window_ptr->title                        = system_hashed_ansi_string_get_default_empty_string();
     window_ptr->window_mouse_cursor          = SYSTEM_WINDOW_MOUSE_CURSOR_ARROW;
@@ -405,17 +401,10 @@ PRIVATE void _system_window_thread_entrypoint(void* in_arg)
     }
     system_critical_section_leave(spawned_windows_cs);
 
-    /* Bind the context to current thread */
-    ogl_context_bind_to_current_thread(window_ptr->system_ogl_context);
-    {
-        /* Set up multisampling for the window */
-        if (window_ptr->multisampling_supported)
-        {
-            ogl_context_set_property(window_ptr->system_ogl_context,
-                                     OGL_CONTEXT_PROPERTY_MSAA_N_SUPPORTED_SAMPLES,
-                                    &window_ptr->n_multisampling_samples);
-        }
-    }
+    /* Bind the context to current thread. As a side effect, stuff like text rendering will
+     * be initialized.
+     */
+    ogl_context_bind_to_current_thread    (window_ptr->system_ogl_context);
     ogl_context_unbind_from_current_thread(window_ptr->system_ogl_context);
 
     /* All done, set the event so the creating thread can carry on */
@@ -781,14 +770,20 @@ PRIVATE void _system_window_create_root_window(ogl_context_type context_type)
     /* Spawn the root window.
      *
      * NOTE: root_window_pf is taken over by the root window, so we need not release
-     *       the instance we're creating here. */
-    system_pixel_format root_window_pf = system_pixel_format_create(8,  /* red_bits     */
-                                                                    8,  /* green_bits   */
-                                                                    8,  /* blue_bits    */
-                                                                    8,  /* alpha_bits   */
-                                                                    1,  /* depth_bits   */
-                                                                    1,  /* n_samples    */
-                                                                    0); /* stencil_bits */
+     *       the instance we're creating here.
+     *
+     * NOTE: The pixel format we use to initialize the root window uses 0 bits for the
+     *       color, depth and stencil attachments. That's fine, we don't really need
+     *       to render anything to the window; we only use it as a mean to share objects
+     *       between contexts.
+     */
+    system_pixel_format root_window_pf = system_pixel_format_create(0, /* red_bits     */
+                                                                    0, /* green_bits   */
+                                                                    0, /* blue_bits    */
+                                                                    0, /* alpha_bits   */
+                                                                    0, /* depth_bits   */
+                                                                    1, /* n_samples    */
+                                                                    0);/* stencil_bits */
     root_window =  _system_window_create_shared(context_type,
                                                 false, /* is_fullscreen */
                                                 root_window_x1y1x2y2,
@@ -1682,6 +1677,13 @@ PUBLIC EMERALD_API void system_window_get_property(system_window          window
         case SYSTEM_WINDOW_PROPERTY_IS_FULLSCREEN:
         {
             *(bool*) out_result = window_ptr->is_fullscreen;
+
+            break;
+        }
+
+        case SYSTEM_WINDOW_PROPERTY_IS_ROOT_WINDOW:
+        {
+            *(bool*) out_result = window_ptr->is_root_window;
 
             break;
         }

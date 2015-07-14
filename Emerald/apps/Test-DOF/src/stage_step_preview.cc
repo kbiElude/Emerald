@@ -17,8 +17,12 @@ static void _stage_step_preview_execute(ogl_context context,
                                         system_time time,
                                         void*       not_used)
 {
+    GLuint                            draw_fbo_id = 0;
     const ogl_context_gl_entrypoints* entrypoints = NULL;
 
+    ogl_context_get_property(context,
+                             OGL_CONTEXT_PROPERTY_DEFAULT_FBO_ID,
+                            &draw_fbo_id);
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
                             &entrypoints);
@@ -27,7 +31,7 @@ static void _stage_step_preview_execute(ogl_context context,
     entrypoints->pGLBindFramebuffer(GL_READ_FRAMEBUFFER,
                                     stage_step_dof_scheuermann_get_combination_fbo_id() );
     entrypoints->pGLBindFramebuffer(GL_DRAW_FRAMEBUFFER,
-                                    0);
+                                    draw_fbo_id);
     entrypoints->pGLBlitFramebuffer(0,    /* srcX0 */
                                     0,    /* srcY0 */
                                     1280, /* srcX1 */

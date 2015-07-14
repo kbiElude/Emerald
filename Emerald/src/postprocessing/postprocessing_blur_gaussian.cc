@@ -887,6 +887,7 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void postprocessing_blur_gaussian_exec
                                                                                     postprocessing_blur_gaussian_resolution blur_resolution)
 {
     _postprocessing_blur_gaussian*                            blur_ptr                      = (_postprocessing_blur_gaussian*) blur;
+    GLuint                                                    context_default_fbo_id        = -1;
     const ogl_context_gl_entrypoints_ext_direct_state_access* dsa_entrypoints_ptr           = NULL;
     const ogl_context_gl_entrypoints*                         entrypoints_ptr               = NULL;
     ogl_texture_dimensionality                                src_texture_dimensionality    = OGL_TEXTURE_DIMENSIONALITY_UNKNOWN;
@@ -903,6 +904,9 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void postprocessing_blur_gaussian_exec
                       n_taps <= blur_ptr->n_max_taps,
                       "Invalid number of taps requested");
 
+    ogl_context_get_property            (blur_ptr->context,
+                                         OGL_CONTEXT_PROPERTY_DEFAULT_FBO_ID,
+                                        &context_default_fbo_id);
     ogl_context_get_property            (blur_ptr->context,
                                          OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL_EXT_DIRECT_STATE_ACCESS,
                                         &dsa_entrypoints_ptr);
@@ -1268,7 +1272,7 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void postprocessing_blur_gaussian_exec
             entrypoints_ptr->pGLBindFramebuffer(GL_DRAW_FRAMEBUFFER,
                                                 ping_fbo_id);
             entrypoints_ptr->pGLBindFramebuffer(GL_READ_FRAMEBUFFER,
-                                                0);
+                                                context_default_fbo_id);
 
             entrypoints_ptr->pGLEnable       (GL_BLEND);
             entrypoints_ptr->pGLBlendColor   (0.0f, /* red */
@@ -1346,7 +1350,7 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void postprocessing_blur_gaussian_exec
                                            0); /* level */
 
     entrypoints_ptr->pGLBindFramebuffer(GL_DRAW_FRAMEBUFFER,
-                                        0);
+                                        context_default_fbo_id);
     entrypoints_ptr->pGLBindSampler    (DATA_SAMPLER_TEXTURE_UNIT_INDEX,
                                         0);
     entrypoints_ptr->pGLViewport       (viewport_data[0],

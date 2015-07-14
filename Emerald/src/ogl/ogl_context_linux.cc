@@ -22,10 +22,6 @@ typedef struct _ogl_context_linux
     ogl_context context; /* DO NOT retain */
     GLXContext  rendering_context;
 
-    /* MSAA support */
-    uint32_t  n_supported_msaa_samples;
-    uint32_t* supported_msaa_samples;
-
     /* GLX extensions */
     bool glx_arb_create_context_support;
     bool glx_ext_swap_control_support;
@@ -40,11 +36,9 @@ typedef struct _ogl_context_linux
         glx_arb_create_context_support    = false;
         glx_ext_swap_control_support      = false;
         glx_ext_swap_control_tear_support = false;
-        n_supported_msaa_samples          = 0;
         pGLXCreateContextAttribsARB       = NULL;
         pGLXSwapIntervalEXT               = NULL;
         rendering_context                 = NULL;
-        supported_msaa_samples            = NULL;
     }
 } _ogl_context_linux;
 
@@ -270,13 +264,6 @@ PUBLIC void ogl_context_linux_deinit(ogl_context_linux context_linux)
         linux_ptr->rendering_context = NULL;
     }
 
-    if (linux_ptr->supported_msaa_samples != NULL)
-    {
-        delete [] linux_ptr->supported_msaa_samples;
-
-        linux_ptr->supported_msaa_samples = NULL;
-    }
-
     delete linux_ptr;
     linux_ptr = NULL;
 }
@@ -285,12 +272,6 @@ PUBLIC void ogl_context_linux_deinit(ogl_context_linux context_linux)
 PUBLIC void ogl_context_linux_deinit_global()
 {
     /* Stub */
-}
-
-/** Please see header for specification */
-PUBLIC void ogl_context_linux_enumerate_supported_msaa_modes(ogl_context_linux context_linux)
-{
-    /* TODO: Rip out MSAA stuff */
 }
 
 /** Please see header for specification */
@@ -358,22 +339,6 @@ PUBLIC bool ogl_context_linux_get_property(ogl_context_linux    context_linux,
 
     switch (property)
     {
-        case OGL_CONTEXT_PROPERTY_MSAA_N_SUPPORTED_SAMPLES:
-        {
-            *(uint32_t*) out_result = linux_ptr->n_supported_msaa_samples;
-                         result     = true;
-
-            break;
-        }
-
-        case OGL_CONTEXT_PROPERTY_MSAA_SUPPORTED_SAMPLES:
-        {
-            *(uint32_t**) out_result = linux_ptr->supported_msaa_samples;
-                          result     = true;
-
-            break;
-        }
-
         case OGL_CONTEXT_PROPERTY_RENDERING_CONTEXT:
         {
             *(GLXContext*) out_result = linux_ptr->rendering_context;
@@ -642,62 +607,6 @@ PUBLIC void ogl_context_linux_init_global()
 }
 
 /** Please see header for spec */
-PUBLIC void ogl_context_linux_init_msaa(ogl_context_linux context_linux)
-{
-    const ogl_context_gl_limits* limits_ptr       = NULL;
-    _ogl_context_linux*          linux_ptr        = (_ogl_context_linux*) context_linux;
-    int                          n_stored_entries = 0;
-
-    ASSERT_DEBUG_SYNC(linux_ptr != NULL,
-                      "Input argument is NULL");
-    ASSERT_DEBUG_SYNC(linux_ptr->n_supported_msaa_samples == 0,
-                      "ogl_context_linux_init_msaa() called more than once for the same context");
-
-    ogl_context_get_property(linux_ptr->context,
-                             OGL_CONTEXT_PROPERTY_LIMITS,
-                            &limits_ptr);
-
-    for (int n_iteration = 0;
-             n_iteration < 2;
-           ++n_iteration)
-    {
-        if (n_iteration == 1)
-        {
-            /* If this is second iteration, we know how many entries we need to allocate for the array storing
-             * information on supported "amount of samples" setting for given context. */
-            linux_ptr->supported_msaa_samples = new uint32_t[linux_ptr->n_supported_msaa_samples];
-
-            ASSERT_ALWAYS_SYNC(linux_ptr->supported_msaa_samples != NULL,
-                               "Out of memory while allocating \"multisampling supported sample\" array.");
-        }
-
-        for (int n_samples = 1;
-                 n_samples < limits_ptr->max_color_texture_samples;
-               ++n_samples)
-        {
-            bool status = _ogl_context_linux_set_pixel_format_multisampling(linux_ptr,
-                                                                            n_samples);
-
-            if (status)
-            {
-                /* If this is first iteration, just count this supported samples setting in. */
-                if (n_iteration == 0)
-                {
-                    linux_ptr->n_supported_msaa_samples++;
-                }
-                else
-                {
-                    /* Second one? Store it. */
-                    linux_ptr->supported_msaa_samples[n_stored_entries] = n_samples;
-
-                    n_stored_entries++;
-                }
-            }
-        } /* for (int n_samples = 0; n_samples < _result->limits.max_color_texture_samples; ++n_samples) */
-    } /* for (int n_iteration = 0; n_iteration < 2; ++n_iteration) */
-}
-
-/** Please see header for spec */
 PUBLIC bool ogl_context_linux_set_property(ogl_context_linux    context_linux,
                                            ogl_context_property property,
                                            const void*          data)
@@ -710,14 +619,6 @@ PUBLIC bool ogl_context_linux_set_property(ogl_context_linux    context_linux,
 
     switch (property)
     {
-        case OGL_CONTEXT_PROPERTY_MSAA_SAMPLES:
-        {
-            result = _ogl_context_linux_set_pixel_format_multisampling(linux_ptr,
-                                                                       *(uint32_t*) data);
-
-            break;
-        }
-
         case OGL_CONTEXT_PROPERTY_VSYNC_ENABLED:
         {
             system_window        context_window          = NULL;

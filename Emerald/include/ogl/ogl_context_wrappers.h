@@ -556,6 +556,12 @@ PUBLIC void APIENTRY ogl_context_wrappers_glFramebufferReadBufferEXT(GLuint fram
                                                                      GLenum mode);
 
 /** TODO */
+PUBLIC void APIENTRY ogl_context_wrappers_glFramebufferRenderbuffer(GLenum target,
+                                                                    GLenum attachment,
+                                                                    GLenum renderbuffertarget,
+                                                                    GLuint renderbuffer);
+
+/** TODO */
 PUBLIC void APIENTRY ogl_context_wrappers_glFramebufferTexture(GLenum      target,
                                                                GLenum      attachment,
                                                                ogl_texture texture,

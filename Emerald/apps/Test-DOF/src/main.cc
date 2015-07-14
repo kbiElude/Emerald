@@ -296,8 +296,12 @@ void _rendering_handler(ogl_context context,
                         system_time frame_time,
                         void*       renderer)
 {
+    GLuint                            default_fbo_id = 0;
     const ogl_context_gl_entrypoints* entry_points = NULL;
 
+    ogl_context_get_property(context,
+                             OGL_CONTEXT_PROPERTY_DEFAULT_FBO_ID,
+                            &default_fbo_id);
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
                             &entry_points);
@@ -307,7 +311,7 @@ void _rendering_handler(ogl_context context,
                                      0, /* blue */
                                      1); /* alpha */
     entry_points->pGLBindFramebuffer(GL_FRAMEBUFFER,
-                                     0);
+                                     default_fbo_id);
     entry_points->pGLClear          (GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     ogl_pipeline_draw_stage(_pipeline,
@@ -476,8 +480,8 @@ float main_get_specularity()
                                                                8,  /* color_buffer_green_bits */
                                                                8,  /* color_buffer_blue_bits  */
                                                                0,  /* color_buffer_alpha_bits */
-                                                               8,  /* depth_buffer_bits       */
-                                                               1,  /* n_samples               */
+                                                               0,  /* depth_buffer_bits       */
+                                                               16, /* n_samples               */
                                                                0); /* stencil_buffer_bits     */
 
     system_window_get_centered_window_position_for_primary_monitor(_window_resolution,

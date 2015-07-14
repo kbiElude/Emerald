@@ -219,6 +219,9 @@ void _rendering_handler(ogl_context context,
                                   &n_frames_rendered);
 
     /* Copy the result data to the back buffer */
+    entry_points->pGLBindFramebuffer(GL_READ_FRAMEBUFFER,
+                                     _read_fbo_id);
+
     entry_points->pGLMemoryBarrier  (GL_FRAMEBUFFER_BARRIER_BIT);
     entry_points->pGLBlitFramebuffer(0,
                                      0,
@@ -305,7 +308,7 @@ PRIVATE void _window_closing_callback_handler(system_window window)
                                                                         8,  /* color_buffer_green_bits */
                                                                         8,  /* color_buffer_blue_bits  */
                                                                         0,  /* color_buffer_alpha_bits */
-                                                                        8,  /* depth_buffer_bits       */
+                                                                        16, /* depth_buffer_bits       */
                                                                         1,  /* n_samples               */
                                                                         0); /* stencil_buffer_bits     */
     int                 window_x1y1x2y2[4] = {0};

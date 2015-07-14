@@ -3598,6 +3598,7 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_shadow_mapping_toggle(ogl_shadow_mapping 
     } /* if (should_enable) */
     else
     {
+        GLuint        context_default_fbo_id = -1;
         system_window context_window         = NULL;
         int32_t       context_window_size[2] = {0};
 
@@ -3611,6 +3612,9 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_shadow_mapping_toggle(ogl_shadow_mapping 
         /* Bring back the face culling setting */
         entry_points->pGLCullFace(GL_BACK);
 
+        ogl_context_get_property    (handler_ptr->context,
+                                     OGL_CONTEXT_PROPERTY_DEFAULT_FBO_ID,
+                                    &context_default_fbo_id);
         ogl_context_get_property    (handler_ptr->context,
                                      OGL_CONTEXT_PROPERTY_WINDOW,
                                     &context_window);
@@ -3626,7 +3630,7 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_shadow_mapping_toggle(ogl_shadow_mapping 
 
         /* Unbind the SM FBO */
         entry_points->pGLBindFramebuffer(GL_DRAW_FRAMEBUFFER,
-                                         0);
+                                         context_default_fbo_id);
 
         /* Blur the SM if it makes sense */
         scene_light_shadow_map_algorithm light_shadow_map_algorithm = SCENE_LIGHT_SHADOW_MAP_ALGORITHM_UNKNOWN;

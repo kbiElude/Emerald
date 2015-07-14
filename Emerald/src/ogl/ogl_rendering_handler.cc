@@ -89,8 +89,14 @@ PRIVATE void _ogl_rendering_handler_thread_entrypoint(void* in_arg)
         system_event_wait_single(rendering_handler->context_set_event);
 
         /* Cache some variables.. */
+        ogl_context_type          context_type          = OGL_CONTEXT_TYPE_UNDEFINED;
         system_window             context_window        = NULL;
         system_hashed_ansi_string context_window_name   = NULL;
+        GLuint                    default_fbo_id        = -1;
+        bool                      default_fbo_id_set    = false;
+        bool                      is_root_window        = false;
+        PFNGLBINDFRAMEBUFFERPROC  pGLBindFramebuffer    = NULL;
+        PFNGLBLITFRAMEBUFFERPROC  pGLBlitFramebuffer    = NULL;
         bool                      should_live           = true;
         const system_event        wait_events[]         =
         {
@@ -99,13 +105,53 @@ PRIVATE void _ogl_rendering_handler_thread_entrypoint(void* in_arg)
             rendering_handler->unbind_context_request_event,
             rendering_handler->playback_in_progress_event
         };
+        GLint                     window_size[2] = {0};
 
+        ogl_context_get_property  (rendering_handler->context,
+                                   OGL_CONTEXT_PROPERTY_TYPE,
+                                  &context_type);
         ogl_context_get_property  (rendering_handler->context,
                                    OGL_CONTEXT_PROPERTY_WINDOW,
                                   &context_window);
         system_window_get_property(context_window,
+                                   SYSTEM_WINDOW_PROPERTY_DIMENSIONS,
+                                   window_size);
+        system_window_get_property(context_window,
+                                   SYSTEM_WINDOW_PROPERTY_IS_ROOT_WINDOW,
+                                  &is_root_window);
+        system_window_get_property(context_window,
                                    SYSTEM_WINDOW_PROPERTY_NAME,
                                   &context_window_name);
+
+        ASSERT_DEBUG_SYNC(window_size[0] != 0 &&
+                          window_size[1] != 0,
+                          "Rendering window's width or height is 0");
+
+        if (context_type == OGL_CONTEXT_TYPE_ES)
+        {
+            const ogl_context_es_entrypoints* entrypoints = NULL;
+
+            ogl_context_get_property(rendering_handler->context,
+                                     OGL_CONTEXT_PROPERTY_ENTRYPOINTS_ES,
+                                    &entrypoints);
+
+            pGLBindFramebuffer = entrypoints->pGLBindFramebuffer;
+            pGLBlitFramebuffer = entrypoints->pGLBlitFramebuffer;
+        }
+        else
+        {
+            const ogl_context_gl_entrypoints* entrypoints = NULL;
+
+            ASSERT_DEBUG_SYNC(context_type == OGL_CONTEXT_TYPE_GL,
+                              "Unrecognized context type");
+
+            ogl_context_get_property(rendering_handler->context,
+                                     OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
+                                    &entrypoints);
+
+            pGLBindFramebuffer = entrypoints->pGLBindFramebuffer;
+            pGLBlitFramebuffer = entrypoints->pGLBlitFramebuffer;
+        }
 
         /* Bind the thread to GL */
         ogl_context_bind_to_current_thread(rendering_handler->context);
@@ -218,13 +264,47 @@ PRIVATE void _ogl_rendering_handler_thread_entrypoint(void* in_arg)
                             }
                         } /* switch (rendering_handler->policy) */
 
-                        /* Call the user app's call-back */
-                        if (rendering_handler->pfn_rendering_callback != NULL)
+                        /* Bind the context's default FBO and call the user app's call-back */
+                        if (!default_fbo_id_set)
                         {
+                            ogl_context_get_property(rendering_handler->context,
+                                                     OGL_CONTEXT_PROPERTY_DEFAULT_FBO_ID,
+                                                    &default_fbo_id);
+
+                            ASSERT_DEBUG_SYNC( is_root_window && default_fbo_id == 0 ||
+                                              !is_root_window && default_fbo_id != 0,
+                                             "Rendering context's default FBO is assigned an invalid ID");
+
+                            default_fbo_id_set = true;
+                        }
+
+                        if (rendering_handler->pfn_rendering_callback != NULL &&
+                            default_fbo_id_set && default_fbo_id      != 0)
+                        {
+                            pGLBindFramebuffer(GL_DRAW_FRAMEBUFFER,
+                                               default_fbo_id);
+
                             rendering_handler->pfn_rendering_callback(rendering_handler->context,
                                                                       frame_index,
                                                                       new_frame_time,
                                                                       rendering_handler->rendering_callback_user_arg);
+
+                            /* Blit the context FBO's contents to the back buffer */
+                            pGLBindFramebuffer(GL_DRAW_FRAMEBUFFER,
+                                               0);
+                            pGLBindFramebuffer(GL_READ_FRAMEBUFFER,
+                                               default_fbo_id);
+
+                            pGLBlitFramebuffer(0,              /* srcX0 */
+                                               0,              /* srcY0 */
+                                               window_size[0], /* srcX1 */
+                                               window_size[1], /* srcY1 */
+                                               0,              /* dstX0 */
+                                               0,              /* dstY0 */
+                                               window_size[0], /* dstX1 */
+                                               window_size[1], /* dstY1 */
+                                               GL_COLOR_BUFFER_BIT,
+                                               GL_NEAREST);
                         }
 
                         /* Swap back buffer with the front buffer now */

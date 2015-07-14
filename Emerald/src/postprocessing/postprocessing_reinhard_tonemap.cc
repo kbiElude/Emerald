@@ -405,10 +405,14 @@ PUBLIC EMERALD_API void postprocessing_reinhard_tonemap_execute(postprocessing_r
                                                                 float                           white_level,
                                                                 ogl_texture                     out_texture)
 {
-    const ogl_context_gl_entrypoints* entry_points   = NULL;
-    _postprocessing_reinhard_tonemap* tonemapper_ptr = (_postprocessing_reinhard_tonemap*) tonemapper;
-    GLuint                            vao_id         = 0;
+    GLuint                            context_default_fbo_id = -1;
+    const ogl_context_gl_entrypoints* entry_points           = NULL;
+    _postprocessing_reinhard_tonemap* tonemapper_ptr         = (_postprocessing_reinhard_tonemap*) tonemapper;
+    GLuint                            vao_id                 = 0;
 
+    ogl_context_get_property(tonemapper_ptr->context,
+                             OGL_CONTEXT_PROPERTY_DEFAULT_FBO_ID,
+                            &context_default_fbo_id);
     ogl_context_get_property(tonemapper_ptr->context,
                              OGL_CONTEXT_PROPERTY_VAO_NO_VAAS,
                             &vao_id);
@@ -537,7 +541,7 @@ PUBLIC EMERALD_API void postprocessing_reinhard_tonemap_execute(postprocessing_r
     else
     {
         entry_points->pGLBindFramebuffer(GL_FRAMEBUFFER,
-                                         0);
+                                         context_default_fbo_id);
     }
 
     entry_points->pGLViewport(0, /* x */
