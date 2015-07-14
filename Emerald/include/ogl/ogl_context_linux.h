@@ -20,9 +20,6 @@ PUBLIC void ogl_context_linux_deinit(ogl_context_linux context_linux);
 /** TODO */
 PUBLIC void ogl_context_linux_deinit_global();
 
-/** TODO */
-PUBLIC void ogl_context_linux_enumerate_supported_msaa_modes(ogl_context_linux context_linux);
-
 /** TODO
  *
  *  @param out_fb_configs_ptr TODO. Must not be NULL. Result list must be freed with a XFree() call */

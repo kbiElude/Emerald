@@ -71,6 +71,9 @@ typedef enum
     SYSTEM_WINDOW_PROPERTY_IS_FULLSCREEN,
 
     /* not settable, bool */
+    SYSTEM_WINDOW_PROPERTY_IS_ROOT_WINDOW,
+
+    /* not settable, bool */
     SYSTEM_WINDOW_PROPERTY_IS_SCALABLE,
 
     /* not settable, bool */

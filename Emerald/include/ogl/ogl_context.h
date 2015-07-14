@@ -34,6 +34,9 @@ typedef enum ogl_context_property
     /* not settable, ogl_context_buffers. */
     OGL_CONTEXT_PROPERTY_BUFFERS,
 
+    /* not settable, GLuint */
+    OGL_CONTEXT_PROPERTY_DEFAULT_FBO_ID,
+
     /* not settable, ogl_context_es_entrypoints*.
      *
      * Only accessible for ES contexts
@@ -98,24 +101,6 @@ typedef enum ogl_context_property
 
     /* not settable, ogl_materials */
     OGL_CONTEXT_PROPERTY_MATERIALS,
-
-    /* settable, not queriable, uint32_t.
-     *
-     * Adjusts the rendering context's platform-specific MSAA setting.
-     */
-    OGL_CONTEXT_PROPERTY_MSAA_SAMPLES,
-
-    /* not settable, uint32_t.
-     *
-     * Tells how many entries can be accessed under OGL_CONTXT_PROPERTY_MSAA_SUPPORTED_SAMPLES.
-     */
-    OGL_CONTEXT_PROPERTY_MSAA_N_SUPPORTED_SAMPLES,
-
-    /* settable, uint32_t*.
-     *
-     * An array of supported MSAA samples.
-     */
-    OGL_CONTEXT_PROPERTY_MSAA_SUPPORTED_SAMPLES,
 
     /* not settable, ogl_context */
     OGL_CONTEXT_PROPERTY_PARENT_CONTEXT,

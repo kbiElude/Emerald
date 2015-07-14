@@ -1208,6 +1208,7 @@ typedef struct
     PFNGLPUSHDEBUGGROUPPROC                              pGLPushDebugGroup;
     PFNGLREADBUFFERPROC                                  pGLReadBuffer;
     PFNGLREADPIXELSPROC                                  pGLReadPixels;
+    PFNGLRENDERBUFFERSTORAGEPROC                         pGLRenderbufferStorage;
     PFNGLRENDERBUFFERSTORAGEMULTISAMPLEPROC              pGLRenderbufferStorageMultisample;
     PFNGLRESUMETRANSFORMFEEDBACKPROC                     pGLResumeTransformFeedback;
     PFNGLSAMPLECOVERAGEPROC                              pGLSampleCoverage;

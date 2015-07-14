@@ -3047,6 +3047,50 @@ PUBLIC void APIENTRY ogl_context_wrappers_glFramebufferReadBufferEXT(GLuint fram
 }
 
 /* Please see header for specification */
+PUBLIC void APIENTRY ogl_context_wrappers_glFramebufferRenderbuffer(GLenum target,
+                                                                    GLenum attachment,
+                                                                    GLenum renderbuffertarget,
+                                                                    GLuint renderbuffer)
+{
+    ogl_context             context     = ogl_context_get_current_context();
+    ogl_context_state_cache state_cache = NULL;
+
+    ogl_context_get_property(context,
+                             OGL_CONTEXT_PROPERTY_STATE_CACHE,
+                            &state_cache);
+
+    switch (target)
+    {
+        case GL_DRAW_FRAMEBUFFER:
+        {
+            ogl_context_state_cache_sync(state_cache,
+                                         STATE_CACHE_SYNC_BIT_ACTIVE_DRAW_FRAMEBUFFER);
+
+            break;
+        }
+
+        case GL_READ_FRAMEBUFFER:
+        {
+            ogl_context_state_cache_sync(state_cache,
+                                         STATE_CACHE_SYNC_BIT_ACTIVE_READ_FRAMEBUFFER);
+
+            break;
+        }
+
+        default:
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Unrecognized FB BP");
+        }
+    } /* switch (target) */
+
+    _private_entrypoints_ptr->pGLFramebufferRenderbuffer(target,
+                                                         attachment,
+                                                         renderbuffertarget,
+                                                         renderbuffer);
+}
+
+/* Please see header for specification */
 PUBLIC void APIENTRY ogl_context_wrappers_glFramebufferTexture(GLenum      target,
                                                                GLenum      attachment,
                                                                ogl_texture texture,

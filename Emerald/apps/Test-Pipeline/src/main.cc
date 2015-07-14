@@ -281,11 +281,15 @@ static void _stage_step_modify_data(ogl_context context,
                                     system_time time,
                                     void*       not_used)
 {
+    GLuint                                                    default_fbo_id   = 0;
     const ogl_context_gl_entrypoints_ext_direct_state_access* dsa_entry_points = NULL;
     const ogl_context_gl_entrypoints*                         entry_points     = NULL;
     uint32_t                                                  time_ms          = 0;
     float                                                     time_ms_as_s     = ((float) time_ms) / 1000.0f;
 
+    ogl_context_get_property(_context,
+                             OGL_CONTEXT_PROPERTY_DEFAULT_FBO_ID,
+                            &default_fbo_id);
     ogl_context_get_property(_context,
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL_EXT_DIRECT_STATE_ACCESS,
                             &dsa_entry_points);
@@ -302,7 +306,7 @@ static void _stage_step_modify_data(ogl_context context,
                                              _to_1);
 
     entry_points->pGLBindFramebuffer(GL_DRAW_FRAMEBUFFER,
-                                     0);
+                                     default_fbo_id);
     entry_points->pGLDrawArrays     (GL_TRIANGLE_FAN,
                                      0, /* first */
                                      4);/* count */
@@ -363,13 +367,13 @@ PRIVATE void _window_closing_callback_handler(system_window window)
     _window_size[1] = 480;
 
     /* Carry on */
-    system_pixel_format window_pf = system_pixel_format_create(8,  /* color_buffer_red_bits   */
-                                                               8,  /* color_buffer_green_bits */
-                                                               8,  /* color_buffer_blue_bits  */
-                                                               0,  /* color_buffer_alpha_bits */
-                                                               8,  /* depth_buffer_bits       */
-                                                               1,  /* n_samples               */
-                                                               0); /* stencil_buffer_bits     */
+    system_pixel_format window_pf = system_pixel_format_create(8, /* color_buffer_red_bits   */
+                                                               8, /* color_buffer_green_bits */
+                                                               8, /* color_buffer_blue_bits  */
+                                                               0, /* color_buffer_alpha_bits */
+                                                               0, /* depth_buffer_bits       */
+                                                               1, /* n_samples               */
+                                                               0);/* stencil_buffer_bits     */
 
     system_window_get_centered_window_position_for_primary_monitor(_window_size,
                                                                    window_x1y1x2y2);
