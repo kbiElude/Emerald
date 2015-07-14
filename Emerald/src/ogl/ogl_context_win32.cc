@@ -22,10 +22,6 @@ typedef struct _ogl_context_win32
     HMODULE opengl32_dll_handle;
     HGLRC   wgl_rendering_context;
 
-    /* MSAA support */
-    uint32_t  n_supported_msaa_samples;
-    uint32_t* supported_msaa_samples;
-
     /* WGL extensions */
     bool wgl_swap_control_support;
     bool wgl_swap_control_tear_support;
@@ -39,13 +35,11 @@ typedef struct _ogl_context_win32
     {
         context                       = NULL;
         device_context_handle         = NULL;
-        n_supported_msaa_samples      = 0;
         opengl32_dll_handle           = NULL;
         pWGLChoosePixelFormatARB      = NULL;
         pWGLCreateContextAttribsARB   = NULL;
         pWGLGetExtensionsStringEXT    = NULL;
         pWGLSwapIntervalEXT           = NULL;
-        supported_msaa_samples        = NULL;
         wgl_rendering_context         = NULL;
         wgl_swap_control_support      = false;
         wgl_swap_control_tear_support = false;
@@ -176,88 +170,8 @@ PUBLIC void ogl_context_win32_deinit(ogl_context_win32 context_win32)
         win32_ptr->opengl32_dll_handle = NULL;
     }
 
-    if (win32_ptr->supported_msaa_samples != NULL)
-    {
-        delete [] win32_ptr->supported_msaa_samples;
-
-        win32_ptr->supported_msaa_samples = NULL;
-    }
-
     delete win32_ptr;
     win32_ptr = NULL;
-}
-
-/** Please see header for spec */
-PUBLIC void ogl_context_win32_enumerate_supported_msaa_modes(ogl_context_win32 context_win32)
-{
-    system_pixel_format          context_pf        = NULL;
-    const ogl_context_gl_limits* limits_ptr        = NULL;
-    uint32_t                     n_current_samples = 0;
-    int                          n_stored_entries  = 0;
-    bool                         status            = false;
-    _ogl_context_win32*          win32_ptr         = (_ogl_context_win32*) context_win32;
-
-    ASSERT_DEBUG_SYNC(win32_ptr != NULL,
-                      "Input argument is NULL");
-    ASSERT_DEBUG_SYNC(win32_ptr->n_supported_msaa_samples == 0,
-                      "ogl_context_win32_enumerate_supported_msaa_modes() called more than once for the same context");
-
-    ogl_context_get_property(win32_ptr->context,
-                             OGL_CONTEXT_PROPERTY_PIXEL_FORMAT,
-                            &context_pf);
-    ogl_context_get_property(win32_ptr->context,
-                             OGL_CONTEXT_PROPERTY_LIMITS,
-                            &limits_ptr);
-
-    system_pixel_format_get_property(context_pf,
-                                     SYSTEM_PIXEL_FORMAT_PROPERTY_N_SAMPLES,
-                                    &n_current_samples);
-
-    for (int n_iteration = 0;
-             n_iteration < 2;
-           ++n_iteration)
-    {
-        if (n_iteration == 1)
-        {
-            /* If this is second iteration, we know how many entries we need to allocate for the array storing
-             * information on supported "amount of samples" setting for given context. */
-            win32_ptr->supported_msaa_samples = new uint32_t[win32_ptr->n_supported_msaa_samples];
-
-            ASSERT_ALWAYS_SYNC(win32_ptr->supported_msaa_samples != NULL,
-                               "Out of memory while allocating \"multisampling supported sample\" array.");
-        }
-
-        for (int n_samples = 1;
-                 n_samples < limits_ptr->max_color_texture_samples;
-               ++n_samples)
-        {
-            status = _ogl_context_win32_set_pixel_format_multisampling(win32_ptr,
-                                                                       n_samples);
-
-            if (status)
-            {
-                /* If this is first iteration, just count this supported samples setting in. */
-                if (n_iteration == 0)
-                {
-                    win32_ptr->n_supported_msaa_samples++;
-                }
-                else
-                {
-                    /* Second one? Store it. */
-                    win32_ptr->supported_msaa_samples[n_stored_entries] = n_samples;
-
-                    n_stored_entries++;
-                }
-            }
-        } /* for (int n_samples = 0; n_samples < _result->limits.max_color_texture_samples; ++n_samples) */
-    } /* for (int n_iteration = 0; n_iteration < 2; ++n_iteration) */
-
-    /* Bring back the requested sample count */
-    status = _ogl_context_win32_set_pixel_format_multisampling(win32_ptr,
-                                                               n_current_samples);
-
-    ASSERT_DEBUG_SYNC(status,
-                      "Failed to re-set the requested number of MSAA samples");
 }
 
 /** Please see header for spec */
@@ -296,22 +210,6 @@ PUBLIC bool ogl_context_win32_get_property(ogl_context_win32    context_win32,
         {
             *((HDC*) out_result) = win32_ptr->device_context_handle;
                      result      = true;
-
-            break;
-        }
-
-        case OGL_CONTEXT_PROPERTY_MSAA_N_SUPPORTED_SAMPLES:
-        {
-            *(uint32_t*) out_result = win32_ptr->n_supported_msaa_samples;
-                         result     = true;
-
-            break;
-        }
-
-        case OGL_CONTEXT_PROPERTY_MSAA_SUPPORTED_SAMPLES:
-        {
-            *(uint32_t**) out_result = win32_ptr->supported_msaa_samples;
-                          result     = true;
 
             break;
         }
@@ -552,22 +450,6 @@ PUBLIC bool ogl_context_win32_set_property(ogl_context_win32    context_win32,
 
     switch (property)
     {
-        case OGL_CONTEXT_PROPERTY_MSAA_SAMPLES:
-        {
-            result = _ogl_context_win32_set_pixel_format_multisampling(win32_ptr,
-                                                                       *(uint32_t*) data);
-
-            break;
-        }
-
-        case OGL_CONTEXT_PROPERTY_MSAA_SUPPORTED_SAMPLES:
-        {
-            win32_ptr->supported_msaa_samples = *(unsigned int**) data;
-            result                            = true;
-
-            break;
-        }
-
         case OGL_CONTEXT_PROPERTY_VSYNC_ENABLED:
         {
             bool vsync_enabled = *(bool*) data;

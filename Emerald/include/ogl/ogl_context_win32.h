@@ -18,9 +18,6 @@ PUBLIC void ogl_context_win32_bind_to_current_thread(ogl_context_win32 context_w
 PUBLIC void ogl_context_win32_deinit(ogl_context_win32 context_win32);
 
 /** TODO */
-PUBLIC void ogl_context_win32_enumerate_supported_msaa_modes(ogl_context_win32 context_win32);
-
-/** TODO */
 PUBLIC void* ogl_context_win32_get_func_ptr(ogl_context_win32 context_win32,
                                             const char*       name);
 
