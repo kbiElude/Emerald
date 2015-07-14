@@ -176,7 +176,12 @@ typedef enum ogl_context_property
     /* not settable, ogl_context_vaos */
     OGL_CONTEXT_PROPERTY_VAOS,
 
-    /* settable, bool */
+    /* settable, bool
+     *
+     * NOTE: Under Windows, this property can only be changed if the affected window is not
+     *                      assigned a rendering context at the time of the setter call.
+     * NOTE: Under Linux,   this property can only be changed for VISIBLE (mapped) windows!
+     */
     OGL_CONTEXT_PROPERTY_VSYNC_ENABLED,
 
 #ifdef _WIN32

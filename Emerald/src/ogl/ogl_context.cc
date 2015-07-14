@@ -962,10 +962,14 @@ PRIVATE void _ogl_context_init_context_after_creation( ogl_context context)
         context_ptr->programs = ogl_programs_create();
     }
 
-    /* Set up vertical sync */
-    context_ptr->pfn_set_property(context_ptr->context_platform,
-                                  OGL_CONTEXT_PROPERTY_VSYNC_ENABLED,
-                                 &context_ptr->vsync_enabled);
+    #ifdef _WIN32
+    {
+        /* Set up vertical sync. */
+        context_ptr->pfn_set_property(context_ptr->context_platform,
+                                    OGL_CONTEXT_PROPERTY_VSYNC_ENABLED,
+                                    &context_ptr->vsync_enabled);
+    }
+    #endif
 
     /* Bind the context to the running thread for a few seconds.. */
     ogl_context_unbind_from_current_thread( (ogl_context) context_ptr);
@@ -1125,6 +1129,14 @@ PRIVATE void _ogl_context_init_context_after_creation( ogl_context context)
     /* Initialize the FBO we will use to render contents, to be later blitted into the back buffer */
     _ogl_context_initialize_fbo(context_ptr);
 
+    #ifdef __linux
+    {
+        /* Set up vertical sync. */
+        context_ptr->pfn_set_property(context_ptr->context_platform,
+                                    OGL_CONTEXT_PROPERTY_VSYNC_ENABLED,
+                                    &context_ptr->vsync_enabled);
+    }
+    #endif
 end:
     /* Unbind the thread from the context. It is to be picked up by rendering thread */
     ogl_context_unbind_from_current_thread( (ogl_context) context_ptr);

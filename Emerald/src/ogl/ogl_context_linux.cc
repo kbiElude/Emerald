@@ -713,9 +713,9 @@ PUBLIC void ogl_context_linux_unbind_from_current_thread(ogl_context_linux conte
 
     XLockDisplay(display);
     {
-        glXMakeCurrent(              display,
-                       (GLXDrawable) NULL,  /* drawable */
-                                     NULL); /* ctx      */
+        glXMakeCurrent(display,
+                       None,
+                       NULL); /* ctx */
     }
     XUnlockDisplay(display);
 }
