@@ -247,9 +247,9 @@ LRESULT CALLBACK _system_window_class_message_loop_entrypoint(HWND   window_hand
              *
              * The entry-point we're pointing the task at does exactly that.
              */
-            system_thread_pool_task_descriptor task = system_thread_pool_create_task_descriptor_handler_only(THREAD_POOL_TASK_PRIORITY_CRITICAL,
-                                                                                                             _system_window_teardown_thread_pool_callback,
-                                                                                                             (void*) win32_ptr);
+            system_thread_pool_task task = system_thread_pool_create_task_handler_only(THREAD_POOL_TASK_PRIORITY_CRITICAL,
+                                                                                       _system_window_teardown_thread_pool_callback,
+                                                                                       (void*) win32_ptr);
 
             system_thread_pool_submit_single_task(task);
 

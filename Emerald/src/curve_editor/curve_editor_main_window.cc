@@ -779,10 +779,10 @@ PRIVATE INT_PTR CALLBACK _curve_editor_dialog_window_message_handler(HWND   dial
             /* In order to close the dialog, we need to perform the whole process from another thread. Otherwise we'll get a classical thread lock-up,
              * as curve_editor_main_window_release() blocks until the window thread exits, which can't happen from within a message handler.
              */
-            _curve_editor_main_window*         descriptor = (_curve_editor_main_window*) ::GetWindowLongPtr(dialog_handle, GWLP_USERDATA);
-            system_thread_pool_task_descriptor task       = system_thread_pool_create_task_descriptor_handler_only(THREAD_POOL_TASK_PRIORITY_NORMAL,
-                                                                                                                   _curve_editor_dialog_close_button_handler,
-                                                                                                                   descriptor);
+            _curve_editor_main_window* descriptor = (_curve_editor_main_window*) ::GetWindowLongPtr(dialog_handle, GWLP_USERDATA);
+            system_thread_pool_task    task       = system_thread_pool_create_task_handler_only    (THREAD_POOL_TASK_PRIORITY_NORMAL,
+                                                                                                    _curve_editor_dialog_close_button_handler,
+                                                                                                    descriptor);
 
             /* Disable close button first */
             ::EnableMenuItem(::GetSystemMenu(descriptor->window_handle,

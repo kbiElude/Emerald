@@ -114,11 +114,11 @@ PRIVATE INT_PTR CALLBACK _curve_editor_curve_window_dialog_message_handler(HWND 
             /* In order to close the dialog, we need to perform the whole process from another thread. Otherwise we'll get a classical thread lock-up,
              * as curve_editor_curve_window_release() blocks until the window thread exits, which can't happen from within a message handler.
              */
-            _curve_editor_curve_window*        descriptor = (_curve_editor_curve_window*) ::GetWindowLongPtr      (dialog_handle,
-                                                                                                                   GWLP_USERDATA);
-            system_thread_pool_task_descriptor task       = system_thread_pool_create_task_descriptor_handler_only(THREAD_POOL_TASK_PRIORITY_NORMAL,
-                                                                                                                   _curve_editor_curve_window_dialog_close_button_handler,
-                                                                                                                   descriptor);
+            _curve_editor_curve_window* descriptor = (_curve_editor_curve_window*) ::GetWindowLongPtr(dialog_handle,
+                                                                                                      GWLP_USERDATA);
+            system_thread_pool_task     task       = system_thread_pool_create_task_handler_only     (THREAD_POOL_TASK_PRIORITY_NORMAL,
+                                                                                                      _curve_editor_curve_window_dialog_close_button_handler,
+                                                                                                      descriptor);
 
             system_thread_pool_submit_single_task(task);
             break;
@@ -777,9 +777,9 @@ PRIVATE void _curve_editor_curve_window_initialize_dialog(_curve_editor_curve_wi
                               -1);
 
     /* Renderer must be initialized from a separate thread */
-    system_thread_pool_task_descriptor renderer_initialization_task = system_thread_pool_create_task_descriptor_handler_only(THREAD_POOL_TASK_PRIORITY_NORMAL,
-                                                                                                                             _curve_editor_curve_window_initialize_renderer,
-                                                                                                                             descriptor);
+    system_thread_pool_task renderer_initialization_task = system_thread_pool_create_task_handler_only(THREAD_POOL_TASK_PRIORITY_NORMAL,
+                                                                                                       _curve_editor_curve_window_initialize_renderer,
+                                                                                                       descriptor);
 
     ASSERT_DEBUG_SYNC(renderer_initialization_task != NULL,
                       "Could not create renderer initialization task.");
