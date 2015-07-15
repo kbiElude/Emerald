@@ -558,6 +558,25 @@ PUBLIC void APIENTRY ogl_context_wrappers_glBindMultiTextureEXT(GLenum      texu
 }
 
 /** Please see header for spec */
+PUBLIC void APIENTRY ogl_context_wrappers_glBindRenderbuffer(GLenum target,
+                                                             GLuint renderbuffer)
+{
+    ogl_context             context     = ogl_context_get_current_context ();
+    ogl_context_state_cache state_cache = NULL;
+
+    ASSERT_DEBUG_SYNC(target == GL_RENDERBUFFER,
+                      "Unsupported renderbuffer target");
+
+    ogl_context_get_property(context,
+                             OGL_CONTEXT_PROPERTY_STATE_CACHE,
+                            &state_cache);
+
+    ogl_context_state_cache_set_property(state_cache,
+                                         OGL_CONTEXT_STATE_CACHE_PROPERTY_RENDERBUFFER,
+                                        &renderbuffer);
+}
+
+/** Please see header for spec */
 PUBLIC void APIENTRY ogl_context_wrappers_glBindSampler(GLuint unit,
                                                         GLuint sampler)
 {
@@ -2131,6 +2150,39 @@ PUBLIC void APIENTRY ogl_context_wrappers_glDeleteBuffers(GLsizei       n,
 }
 
 /** Please see header for spec */
+PUBLIC void APIENTRY ogl_context_wrappers_glDeleteRenderbuffers(GLsizei       n,
+                                                                const GLuint* renderbuffers)
+{
+    ogl_context             context        = ogl_context_get_current_context();
+    GLuint                  current_rbo_id = 0;
+    ogl_context_state_cache state_cache    = NULL;
+    static const GLuint     zero_rbo_id    = 0;
+
+    ogl_context_get_property            (context,
+                                         OGL_CONTEXT_PROPERTY_STATE_CACHE,
+                                        &state_cache);
+    ogl_context_state_cache_get_property(state_cache,
+                                         OGL_CONTEXT_STATE_CACHE_PROPERTY_RENDERBUFFER,
+                                        &current_rbo_id);
+
+    for (unsigned n_renderbuffer = 0;
+                  n_renderbuffer < n;
+                ++n_renderbuffer)
+    {
+        if (renderbuffers[n] == current_rbo_id)
+        {
+            ogl_context_state_cache_set_property(state_cache,
+                                                 OGL_CONTEXT_STATE_CACHE_PROPERTY_RENDERBUFFER,
+                                                &zero_rbo_id);
+
+            break;
+        }
+    }
+
+    _private_entrypoints_ptr->pGLDeleteRenderbuffers(n, renderbuffers);
+}
+
+/** Please see header for spec */
 PUBLIC void APIENTRY ogl_context_wrappers_glDeleteVertexArrays(GLsizei       n,
                                                                const GLuint* arrays)
 {
@@ -3064,7 +3116,7 @@ PUBLIC void APIENTRY ogl_context_wrappers_glFramebufferRenderbuffer(GLenum targe
         case GL_DRAW_FRAMEBUFFER:
         {
             ogl_context_state_cache_sync(state_cache,
-                                         STATE_CACHE_SYNC_BIT_ACTIVE_DRAW_FRAMEBUFFER);
+                                         STATE_CACHE_SYNC_BIT_ACTIVE_DRAW_FRAMEBUFFER | STATE_CACHE_SYNC_BIT_ACTIVE_RENDERBUFFER);
 
             break;
         }
@@ -3072,7 +3124,7 @@ PUBLIC void APIENTRY ogl_context_wrappers_glFramebufferRenderbuffer(GLenum targe
         case GL_READ_FRAMEBUFFER:
         {
             ogl_context_state_cache_sync(state_cache,
-                                         STATE_CACHE_SYNC_BIT_ACTIVE_READ_FRAMEBUFFER);
+                                         STATE_CACHE_SYNC_BIT_ACTIVE_READ_FRAMEBUFFER | STATE_CACHE_SYNC_BIT_ACTIVE_RENDERBUFFER);
 
             break;
         }
@@ -5072,6 +5124,52 @@ PUBLIC void APIENTRY ogl_context_wrappers_glReadPixels(GLint   x,
                                             format,
                                             type,
                                             pixels);
+}
+
+/** Please see header for spec */
+PUBLIC void APIENTRY ogl_context_wrappers_glRenderbufferStorage(GLenum  target,
+                                                                GLenum  internalformat,
+                                                                GLsizei width,
+                                                                GLsizei height)
+{
+    ogl_context             context     = ogl_context_get_current_context();
+    ogl_context_state_cache state_cache = NULL;
+
+    ogl_context_get_property(context,
+                             OGL_CONTEXT_PROPERTY_STATE_CACHE,
+                            &state_cache);
+
+    ogl_context_state_cache_sync(state_cache,
+                                 STATE_CACHE_SYNC_BIT_ACTIVE_RENDERBUFFER);
+
+    _private_entrypoints_ptr->pGLRenderbufferStorage(target,
+                                                     internalformat,
+                                                     width,
+                                                     height);
+}
+
+/** Please see header for spec */
+PUBLIC void APIENTRY ogl_context_wrappers_glRenderbufferStorageMultisample(GLenum  target,
+                                                                           GLsizei samples,
+                                                                           GLenum  internalformat,
+                                                                           GLsizei width,
+                                                                           GLsizei height)
+{
+    ogl_context             context     = ogl_context_get_current_context();
+    ogl_context_state_cache state_cache = NULL;
+
+    ogl_context_get_property(context,
+                             OGL_CONTEXT_PROPERTY_STATE_CACHE,
+                            &state_cache);
+
+    ogl_context_state_cache_sync(state_cache,
+                                 STATE_CACHE_SYNC_BIT_ACTIVE_RENDERBUFFER);
+
+    _private_entrypoints_ptr->pGLRenderbufferStorageMultisample(target,
+                                                                samples,
+                                                                internalformat,
+                                                                width,
+                                                                height);
 }
 
 /** Please see header for spec */

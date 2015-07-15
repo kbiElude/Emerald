@@ -2046,7 +2046,7 @@ PRIVATE void _ogl_context_retrieve_GL_function_pointers(_ogl_context* context_pt
         {&context_ptr->entry_points_private.pGLBindFramebuffer,                             "glBindFramebuffer"},
         {&context_ptr->entry_points_private.pGLBindImageTexture,                            "glBindImageTexture"},
         {&context_ptr->entry_points_gl.pGLBindProgramPipeline,                              "glBindProgramPipeline"},
-        {&context_ptr->entry_points_gl.pGLBindRenderbuffer,                                 "glBindRenderbuffer"},
+        {&context_ptr->entry_points_private.pGLBindRenderbuffer,                            "glBindRenderbuffer"},
         {&context_ptr->entry_points_private.pGLBindSampler,                                 "glBindSampler"},
         {&context_ptr->entry_points_private.pGLBindTexture,                                 "glBindTexture"},
         {&context_ptr->entry_points_gl.pGLBindTransformFeedback,                            "glBindTransformFeedback"},
@@ -2100,7 +2100,7 @@ PRIVATE void _ogl_context_retrieve_GL_function_pointers(_ogl_context* context_pt
         {&context_ptr->entry_points_gl.pGLDeleteFramebuffers,                               "glDeleteFramebuffers"},
         {&context_ptr->entry_points_gl.pGLDeleteProgram,                                    "glDeleteProgram"},
         {&context_ptr->entry_points_gl.pGLDeleteProgramPipelines,                           "glDeleteProgramPipelines"},
-        {&context_ptr->entry_points_gl.pGLDeleteRenderbuffers,                              "glDeleteRenderbuffers"},
+        {&context_ptr->entry_points_private.pGLDeleteRenderbuffers,                         "glDeleteRenderbuffers"},
         {&context_ptr->entry_points_gl.pGLDeleteSamplers,                                   "glDeleteSamplers"},
         {&context_ptr->entry_points_gl.pGLDeleteShader,                                     "glDeleteShader"},
         {&context_ptr->entry_points_gl.pGLDeleteTextures,                                   "glDeleteTextures"},
@@ -2305,8 +2305,8 @@ PRIVATE void _ogl_context_retrieve_GL_function_pointers(_ogl_context* context_pt
         {&context_ptr->entry_points_gl.pGLProgramUniformMatrix4x3fv,                        "glProgramUniformMatrix4x3fv"},
         {&context_ptr->entry_points_private.pGLReadBuffer,                                  "glReadBuffer"},
         {&context_ptr->entry_points_private.pGLReadPixels,                                  "glReadPixels"},
-        {&context_ptr->entry_points_gl.pGLRenderbufferStorage,                              "glRenderbufferStorage"},
-        {&context_ptr->entry_points_gl.pGLRenderbufferStorageMultisample,                   "glRenderbufferStorageMultisample"},
+        {&context_ptr->entry_points_private.pGLRenderbufferStorage,                         "glRenderbufferStorage"},
+        {&context_ptr->entry_points_private.pGLRenderbufferStorageMultisample,              "glRenderbufferStorageMultisample"},
         {&context_ptr->entry_points_private.pGLResumeTransformFeedback,                     "glResumeTransformFeedback"},
         {&context_ptr->entry_points_gl.pGLPointSize,                                        "glPointSize"},
         {&context_ptr->entry_points_gl.pGLPushDebugGroup,                                   "glPushDebugGroup"},
@@ -2431,6 +2431,7 @@ PRIVATE void _ogl_context_retrieve_GL_function_pointers(_ogl_context* context_pt
     context_ptr->entry_points_gl.pGLBindBufferRange                             = ogl_context_wrappers_glBindBufferRange;
     context_ptr->entry_points_gl.pGLBindFramebuffer                             = ogl_context_wrappers_glBindFramebuffer;
     context_ptr->entry_points_gl.pGLBindImageTexture                            = ogl_context_wrappers_glBindImageTextureEXT;
+    context_ptr->entry_points_gl.pGLBindRenderbuffer                            = ogl_context_wrappers_glBindRenderbuffer;
     context_ptr->entry_points_gl.pGLBindSampler                                 = ogl_context_wrappers_glBindSampler;
     context_ptr->entry_points_gl.pGLBindTexture                                 = ogl_context_wrappers_glBindTexture;
     context_ptr->entry_points_gl.pGLBindVertexArray                             = ogl_context_wrappers_glBindVertexArray;
@@ -2462,6 +2463,7 @@ PRIVATE void _ogl_context_retrieve_GL_function_pointers(_ogl_context* context_pt
     context_ptr->entry_points_gl.pGLCopyTexSubImage3D                           = ogl_context_wrappers_glCopyTexSubImage3D;
     context_ptr->entry_points_gl.pGLCullFace                                    = ogl_context_wrappers_glCullFace;
     context_ptr->entry_points_gl.pGLDeleteBuffers                               = ogl_context_wrappers_glDeleteBuffers;
+    context_ptr->entry_points_gl.pGLDeleteRenderbuffers                         = ogl_context_wrappers_glDeleteRenderbuffers;
     context_ptr->entry_points_gl.pGLDeleteVertexArrays                          = ogl_context_wrappers_glDeleteVertexArrays;
     context_ptr->entry_points_gl.pGLDepthFunc                                   = ogl_context_wrappers_glDepthFunc;
     context_ptr->entry_points_gl.pGLDepthMask                                   = ogl_context_wrappers_glDepthMask;
@@ -2537,6 +2539,8 @@ PRIVATE void _ogl_context_retrieve_GL_function_pointers(_ogl_context* context_pt
     context_ptr->entry_points_gl.pGLMultiDrawElementsIndirect                   = ogl_context_wrappers_glMultiDrawElementsIndirect;
     context_ptr->entry_points_gl.pGLReadBuffer                                  = ogl_context_wrappers_glReadBuffer;
     context_ptr->entry_points_gl.pGLReadPixels                                  = ogl_context_wrappers_glReadPixels;
+    context_ptr->entry_points_gl.pGLRenderbufferStorage                         = ogl_context_wrappers_glRenderbufferStorage;
+    context_ptr->entry_points_gl.pGLRenderbufferStorageMultisample              = ogl_context_wrappers_glRenderbufferStorageMultisample;
     context_ptr->entry_points_gl.pGLResumeTransformFeedback                     = ogl_context_wrappers_glResumeTransformFeedback;
     context_ptr->entry_points_gl.pGLSamplerParameterf                           = ogl_context_wrappers_glSamplerParameterf;
     context_ptr->entry_points_gl.pGLSamplerParameterfv                          = ogl_context_wrappers_glSamplerParameterfv;

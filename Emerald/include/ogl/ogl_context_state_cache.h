@@ -28,6 +28,7 @@ enum ogl_context_state_cache_property
     OGL_CONTEXT_STATE_CACHE_PROPERTY_FRONT_FACE,                                   /* settable, GLenum */
     OGL_CONTEXT_STATE_CACHE_PROPERTY_PROGRAM_OBJECT,                               /* settable, GLuint */
     OGL_CONTEXT_STATE_CACHE_PROPERTY_READ_FRAMEBUFFER,                             /* settable, GLuint */
+    OGL_CONTEXT_STATE_CACHE_PROPERTY_RENDERBUFFER,                                 /* settable, GLuint */
     OGL_CONTEXT_STATE_CACHE_PROPERTY_RENDERING_MODE_BLEND,                         /* settable, GLboolean */
     OGL_CONTEXT_STATE_CACHE_PROPERTY_RENDERING_MODE_COLOR_LOGIC_OP,                /* settable, GLboolean */
     OGL_CONTEXT_STATE_CACHE_PROPERTY_RENDERING_MODE_CULL_FACE,                     /* settable, GLboolean */
@@ -71,12 +72,13 @@ enum ogl_context_state_cache_sync_bit
     STATE_CACHE_SYNC_BIT_ACTIVE_FRONT_FACE          = 1 << 6,
     STATE_CACHE_SYNC_BIT_ACTIVE_PROGRAM_OBJECT      = 1 << 7,
     STATE_CACHE_SYNC_BIT_ACTIVE_READ_FRAMEBUFFER    = 1 << 8,
-    STATE_CACHE_SYNC_BIT_ACTIVE_RENDERING_MODES     = 1 << 9,
-    STATE_CACHE_SYNC_BIT_ACTIVE_SCISSOR_BOX         = 1 << 10,
-    STATE_CACHE_SYNC_BIT_ACTIVE_TEXTURE_UNIT        = 1 << 11,
-    STATE_CACHE_SYNC_BIT_ACTIVE_VERTEX_ARRAY_OBJECT = 1 << 12,
-    STATE_CACHE_SYNC_BIT_ACTIVE_VIEWPORT            = 1 << 13,
-    STATE_CACHE_SYNC_BIT_BLENDING                   = 1 << 14,
+    STATE_CACHE_SYNC_BIT_ACTIVE_RENDERBUFFER        = 1 << 9,
+    STATE_CACHE_SYNC_BIT_ACTIVE_RENDERING_MODES     = 1 << 10,
+    STATE_CACHE_SYNC_BIT_ACTIVE_SCISSOR_BOX         = 1 << 11,
+    STATE_CACHE_SYNC_BIT_ACTIVE_TEXTURE_UNIT        = 1 << 12,
+    STATE_CACHE_SYNC_BIT_ACTIVE_VERTEX_ARRAY_OBJECT = 1 << 13,
+    STATE_CACHE_SYNC_BIT_ACTIVE_VIEWPORT            = 1 << 14,
+    STATE_CACHE_SYNC_BIT_BLENDING                   = 1 << 15,
     STATE_CACHE_SYNC_BIT_ALL                        = 0xFFFFFFFF
 };
 

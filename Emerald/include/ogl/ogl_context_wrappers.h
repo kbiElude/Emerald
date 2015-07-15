@@ -63,6 +63,10 @@ PUBLIC void APIENTRY ogl_context_wrappers_glBindMultiTextureEXT(GLenum      texu
                                                                 ogl_texture texture);
 
 /** TODO */
+PUBLIC void APIENTRY ogl_context_wrappers_glBindRenderbuffer(GLenum target,
+                                                             GLuint renderbuffer);
+
+/** TODO */
 PUBLIC void APIENTRY ogl_context_wrappers_glBindSampler(GLuint unit,
                                                         GLuint sampler);
 
@@ -412,6 +416,10 @@ PUBLIC void APIENTRY ogl_context_wrappers_glCopyTextureSubImage3DEXT(ogl_texture
 
 /** TODO */
 PUBLIC void APIENTRY ogl_context_wrappers_glCullFace(GLenum mode);
+
+/** TODO */
+PUBLIC void APIENTRY ogl_context_wrappers_glDeleteRenderbuffers(GLsizei       n,
+                                                                const GLuint* renderbuffers);
 
 /** TODO */
 PUBLIC void APIENTRY ogl_context_wrappers_glDeleteVertexArrays(GLsizei       n,
@@ -954,6 +962,19 @@ PUBLIC void APIENTRY ogl_context_wrappers_glReadPixels(GLint   x,
                                                        GLenum  format,
                                                        GLenum  type,
                                                        GLvoid* pixels);
+
+/** TODO */
+PUBLIC void APIENTRY ogl_context_wrappers_glRenderbufferStorage(GLenum  target,
+                                                                GLenum  internalformat,
+                                                                GLsizei width,
+                                                                GLsizei height);
+
+/** TODO */
+PUBLIC void APIENTRY ogl_context_wrappers_glRenderbufferStorageMultisample(GLenum  target,
+                                                                           GLsizei samples,
+                                                                           GLenum  internalformat,
+                                                                           GLsizei width,
+                                                                           GLsizei height);
 
 /** TODO */
 PUBLIC void APIENTRY ogl_context_wrappers_glResumeTransformFeedback(void);

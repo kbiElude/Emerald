@@ -1329,6 +1329,7 @@ typedef struct
     PFNGLBINDBUFFERRANGEPROC                             pGLBindBufferRange;
     PFNGLBINDFRAMEBUFFERPROC                             pGLBindFramebuffer;
     PFNGLBINDIMAGETEXTUREPROC                            pGLBindImageTexture;
+    PFNGLBINDRENDERBUFFERPROC                            pGLBindRenderbuffer;
     PFNGLBINDSAMPLERPROC                                 pGLBindSampler;
     PFNGLBINDTEXTUREPROC                                 pGLBindTexture;
     PFNGLBINDVERTEXARRAYPROC                             pGLBindVertexArray;
@@ -1360,6 +1361,7 @@ typedef struct
     PFNGLCOPYTEXSUBIMAGE3DPROC                           pGLCopyTexSubImage3D;
     PFNGLCULLFACEPROC                                    pGLCullFace;
     PFNGLDELETEBUFFERSPROC                               pGLDeleteBuffers;
+    PFNGLDELETERENDERBUFFERSPROC                         pGLDeleteRenderbuffers;
     PFNGLDELETEVERTEXARRAYSPROC                          pGLDeleteVertexArrays;
     PFNGLDEPTHFUNCPROC                                   pGLDepthFunc;
     PFNGLDEPTHMASKPROC                                   pGLDepthMask;
@@ -1431,6 +1433,8 @@ typedef struct
     PFNGLMULTIDRAWELEMENTSINDIRECTPROC                   pGLMultiDrawElementsIndirect;
     PFNGLREADBUFFERPROC                                  pGLReadBuffer;
     PFNGLREADPIXELSPROC                                  pGLReadPixels;
+    PFNGLRENDERBUFFERSTORAGEPROC                         pGLRenderbufferStorage;
+    PFNGLRENDERBUFFERSTORAGEMULTISAMPLEPROC              pGLRenderbufferStorageMultisample;
     PFNGLRESUMETRANSFORMFEEDBACKPROC                     pGLResumeTransformFeedback;
     PFNGLSAMPLERPARAMETERFPROC                           pGLSamplerParameterf;
     PFNGLSAMPLERPARAMETERFVPROC                          pGLSamplerParameterfv;

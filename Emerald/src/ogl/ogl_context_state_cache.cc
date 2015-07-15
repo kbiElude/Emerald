@@ -39,11 +39,14 @@ typedef struct _ogl_context_state_cache
     GLenum active_front_face_context;
     GLenum active_front_face_local;
 
+    GLuint active_program_context;
+    GLuint active_program_local;
+
     GLuint active_read_fbo_context;
     GLuint active_read_fbo_local;
 
-    GLuint active_program_context;
-    GLuint active_program_local;
+    GLuint active_rbo_context;
+    GLuint active_rbo_local;
 
     GLint active_scissor_box_context[4];
     GLint active_scissor_box_local  [4];
@@ -264,6 +267,13 @@ PUBLIC void ogl_context_state_cache_get_property(const ogl_context_state_cache  
         case OGL_CONTEXT_STATE_CACHE_PROPERTY_READ_FRAMEBUFFER:
         {
             *(GLuint*) out_result = cache_ptr->active_read_fbo_local;
+
+            break;
+        }
+
+        case OGL_CONTEXT_STATE_CACHE_PROPERTY_RENDERBUFFER:
+        {
+            *(GLuint*) out_result = cache_ptr->active_rbo_local;
 
             break;
         }
@@ -511,6 +521,10 @@ PUBLIC void ogl_context_state_cache_init(ogl_context_state_cache                
     /* Set default state: active program */
     cache_ptr->active_program_context      = 0;
     cache_ptr->active_program_local        = 0;
+
+    /* Set default state: active renderbuffer binding */
+    cache_ptr->active_rbo_context = 0;
+    cache_ptr->active_rbo_local   = 0;
 
     /* Set default state: active read framebuffer */
     cache_ptr->active_read_fbo_context = 0;
@@ -787,6 +801,13 @@ PUBLIC void ogl_context_state_cache_set_property(ogl_context_state_cache        
         case OGL_CONTEXT_STATE_CACHE_PROPERTY_READ_FRAMEBUFFER:
         {
             cache_ptr->active_read_fbo_local = *(GLuint*) data;
+
+            break;
+        }
+
+        case OGL_CONTEXT_STATE_CACHE_PROPERTY_RENDERBUFFER:
+        {
+            cache_ptr->active_rbo_local = *(GLuint*) data;
 
             break;
         }
@@ -1153,6 +1174,15 @@ PUBLIC void ogl_context_state_cache_sync(ogl_context_state_cache cache,
                                                                    cache_ptr->active_read_fbo_local);
 
             cache_ptr->active_read_fbo_context = cache_ptr->active_read_fbo_local;
+        }
+
+        /* Renderbuffer */
+        if (sync_bits & STATE_CACHE_SYNC_BIT_ACTIVE_RENDERBUFFER)
+        {
+            cache_ptr->entrypoints_private_ptr->pGLBindRenderbuffer(GL_RENDERBUFFER,
+                                                                    cache_ptr->active_rbo_local);
+
+            cache_ptr->active_rbo_context = cache_ptr->active_rbo_local;
         }
 
         /* Rendering modes */
