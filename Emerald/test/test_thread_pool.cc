@@ -179,14 +179,15 @@ TEST(ThreadPoolTest, FewComplexTasksSubmittedSeparately)
     }
 }
 
-#if 0
 TEST(ThreadPoolTest, FewSimpleNonDistributableTasksInGroupTest)
 {
     unsigned char test_buffer[256] = {0};
     system_event  wait_events[4]   = {0};
 
     /* set up */
-    ZeroMemory(test_buffer, 256);
+    memset(test_buffer,
+           0,
+           sizeof(test_buffer) );
 
     for (unsigned int n = 0;
                       n < 4;
@@ -196,7 +197,7 @@ TEST(ThreadPoolTest, FewSimpleNonDistributableTasksInGroupTest)
     }
 
     /* go */
-    system_thread_pool_task_group_descriptor       task_group_descriptor = system_thread_pool_create_task_group_descriptor(false);
+    system_thread_pool_task_group                  task_group = system_thread_pool_create_task_group(false);
     few_simple_tasks_submitted_separately_argument inputs[4];
 
     for (unsigned int n = 0;
@@ -209,16 +210,16 @@ TEST(ThreadPoolTest, FewSimpleNonDistributableTasksInGroupTest)
         inputs[n].wait_event  = wait_events[n];
 
         /* Create task descriptor */
-        system_thread_pool_task_descriptor task_descriptor = system_thread_pool_create_task_descriptor_handler_only(THREAD_POOL_TASK_PRIORITY_NORMAL,
-                                                                                                                    _few_simple_tasks_submitted_separately_worker,
-                                                                                                                    inputs + n);
-        ASSERT_TRUE(task_descriptor != NULL);
+        system_thread_pool_task task = system_thread_pool_create_task_handler_only(THREAD_POOL_TASK_PRIORITY_NORMAL,
+                                                                                   _few_simple_tasks_submitted_separately_worker,
+                                                                                   inputs + n);
+        ASSERT_TRUE(task != NULL);
 
-        system_thread_pool_insert_task_to_task_group(task_group_descriptor,
-                                                     task_descriptor);
+        system_thread_pool_insert_task_to_task_group(task_group,
+                                                     task);
     }
 
-    system_thread_pool_submit_single_task_group(task_group_descriptor);
+    system_thread_pool_submit_single_task_group(task_group);
 
     /* wait till all tasks finish */
     system_event_wait_multiple(wait_events,
@@ -264,7 +265,7 @@ TEST(ThreadPoolTest, FewComplexDistributableTasksInGroupTest)
     }
 
     /* go */
-    system_thread_pool_task_group_descriptor        task_group_descriptor = system_thread_pool_create_task_group_descriptor(true);
+    system_thread_pool_task_group                   task_group = system_thread_pool_create_task_group(true);
     few_complex_tasks_submitted_separately_argument inputs[16];
 
     for (unsigned int n = 0;
@@ -276,16 +277,16 @@ TEST(ThreadPoolTest, FewComplexDistributableTasksInGroupTest)
         inputs[n].wait_event     = wait_events[n];
 
         /* Create task descriptor */
-        system_thread_pool_task_descriptor task_descriptor = system_thread_pool_create_task_descriptor_handler_only(THREAD_POOL_TASK_PRIORITY_NORMAL,
-                                                                                                                    _few_complex_tasks_submitted_separately_worker,
-                                                                                                                    inputs + n);
-        ASSERT_TRUE(task_descriptor != NULL);
+        system_thread_pool_task task = system_thread_pool_create_task_handler_only(THREAD_POOL_TASK_PRIORITY_NORMAL,
+                                                                                   _few_complex_tasks_submitted_separately_worker,
+                                                                                   inputs + n);
+        ASSERT_TRUE(task != NULL);
 
-        system_thread_pool_insert_task_to_task_group(task_group_descriptor,
-                                                     task_descriptor);
+        system_thread_pool_insert_task_to_task_group(task_group,
+                                                     task);
     }
 
-    system_thread_pool_submit_single_task_group(task_group_descriptor);
+    system_thread_pool_submit_single_task_group(task_group);
 
     /* wait till all tasks finish */
     system_event_wait_multiple(wait_events,
@@ -317,4 +318,3 @@ TEST(ThreadPoolTest, FewComplexDistributableTasksInGroupTest)
         system_event_release(wait_events[n]);
     }
 }
-#endif
