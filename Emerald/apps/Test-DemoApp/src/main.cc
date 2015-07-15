@@ -94,7 +94,7 @@ PUBLIC void _render_scene(ogl_context context,
     /* Update projection matrix */
     float            new_zfar   = CAMERA_SETTING_Z_FAR;
     float            new_znear  = 0.1f;
-    system_matrix4x4 projection = system_matrix4x4_create();
+    system_matrix4x4 projection = NULL;
     float            yfov_value;
 
     scene_camera_get_property(current_camera,
