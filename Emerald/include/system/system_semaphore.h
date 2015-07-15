@@ -20,13 +20,6 @@
 EMERALD_API system_semaphore system_semaphore_create(uint32_t semaphore_capacity,
                                                      uint32_t semaphore_default_value);
 
-/** Releases a semaphore object. Once called, do not use the object passed
- *  in the argument.
- *
- *  @param system_semaphore Semaphore to release.
- */
-EMERALD_API void system_semaphore_release(system_semaphore semaphore);
-
 /** Enters a semaphore. This function will block if semaphore is fully occupied and will return
  *  to caller only after sufficient number of semaphore slots become available.
  *
@@ -61,5 +54,12 @@ EMERALD_API void system_semaphore_leave(system_semaphore);
  */
 EMERALD_API void system_semaphore_leave_multiple(system_semaphore semaphore,
                                                  uint32_t         count);
+
+/** Releases a semaphore object. Once called, do not use the object passed
+ *  in the argument.
+ *
+ *  @param system_semaphore Semaphore to release.
+ */
+EMERALD_API void system_semaphore_release(system_semaphore semaphore);
 
 #endif /* SYSTEM_SEMAPHORE_H */

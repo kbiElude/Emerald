@@ -67,23 +67,6 @@ EMERALD_API system_semaphore system_semaphore_create(uint32_t semaphore_capacity
 }
 
 /** Please see header for specification */
-EMERALD_API void system_semaphore_release(system_semaphore semaphore)
-{
-    _system_semaphore* semaphore_ptr = (_system_semaphore*) semaphore;
-
-    if (semaphore_ptr != NULL)
-    {
-#ifdef _WIN32
-        ::CloseHandle(semaphore_ptr->semaphore);
-#else
-        sem_destroy(&semaphore_ptr->semaphore);
-#endif
-    }
-
-    delete semaphore_ptr;
-}
-
-/** Please see header for specification */
 EMERALD_API void system_semaphore_enter(system_semaphore semaphore,
                                         system_time      timeout,
                                         bool*            out_has_timed_out_ptr)
@@ -194,4 +177,21 @@ EMERALD_API void system_semaphore_leave_multiple(system_semaphore semaphore,
         }
 #endif
     }
+}
+
+/** Please see header for specification */
+EMERALD_API void system_semaphore_release(system_semaphore semaphore)
+{
+    _system_semaphore* semaphore_ptr = (_system_semaphore*) semaphore;
+
+    if (semaphore_ptr != NULL)
+    {
+#ifdef _WIN32
+        ::CloseHandle(semaphore_ptr->semaphore);
+#else
+        sem_destroy(&semaphore_ptr->semaphore);
+#endif
+    }
+
+    delete semaphore_ptr;
 }
