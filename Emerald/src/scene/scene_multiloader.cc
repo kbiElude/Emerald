@@ -912,9 +912,9 @@ PRIVATE bool _scene_multiloader_load_scene_internal_get_texture_data(_scene_mult
         ASSERT_DEBUG_SYNC(load_op_ptr != NULL,
                           "Load op descriptor is NULL");
 
-        system_thread_pool_task_descriptor task = system_thread_pool_create_task_descriptor_handler_only(THREAD_POOL_TASK_PRIORITY_NORMAL,
-                                                                                                         _scene_multiloader_load_scene_internal_load_gfx_image_entrypoint,
-                                                                                                         load_op_ptr);
+        system_thread_pool_task task = system_thread_pool_create_task_handler_only(THREAD_POOL_TASK_PRIORITY_NORMAL,
+                                                                                   _scene_multiloader_load_scene_internal_load_gfx_image_entrypoint,
+                                                                                   load_op_ptr);
 
         system_thread_pool_submit_single_task(task);
     }

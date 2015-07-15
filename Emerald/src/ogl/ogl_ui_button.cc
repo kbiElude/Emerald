@@ -638,9 +638,9 @@ PUBLIC void ogl_ui_button_on_lbm_up(void* internal_instance, const float* xy)
     if (ogl_ui_button_is_over(internal_instance, xy) &&
         button_ptr->pfn_fire_proc_ptr != NULL)
     {
-        system_thread_pool_task_descriptor task = system_thread_pool_create_task_descriptor_handler_only(THREAD_POOL_TASK_PRIORITY_NORMAL,
-                                                                                                         (PFNSYSTEMTHREADPOOLCALLBACKPROC) button_ptr->pfn_fire_proc_ptr,
-                                                                                                         button_ptr->fire_proc_user_arg);
+        system_thread_pool_task task = system_thread_pool_create_task_handler_only(THREAD_POOL_TASK_PRIORITY_NORMAL,
+                                                                                   (PFNSYSTEMTHREADPOOLCALLBACKPROC) button_ptr->pfn_fire_proc_ptr,
+                                                                                   button_ptr->fire_proc_user_arg);
 
         system_thread_pool_submit_single_task(task);
     }

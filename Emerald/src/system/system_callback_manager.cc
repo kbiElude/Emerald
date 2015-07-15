@@ -246,9 +246,9 @@ PUBLIC void system_callback_manager_call_back(system_callback_manager callback_m
                         }
 
                         /* Push the task to the thread pool */
-                        system_thread_pool_task_descriptor task = system_thread_pool_create_task_descriptor_handler_only(THREAD_POOL_TASK_PRIORITY_NORMAL,
-                                                                                                                         _system_callback_manager_call_back_handler,
-                                                                                                                         callback_data);
+                        system_thread_pool_task task = system_thread_pool_create_task_handler_only(THREAD_POOL_TASK_PRIORITY_NORMAL,
+                                                                                                   _system_callback_manager_call_back_handler,
+                                                                                                   callback_data);
 
                         system_thread_pool_submit_single_task(task);
 

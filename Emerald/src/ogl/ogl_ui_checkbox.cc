@@ -679,9 +679,9 @@ PUBLIC void ogl_ui_checkbox_on_lbm_up(void*        internal_instance,
     {
         if (checkbox_ptr->pfn_fire_proc_ptr != NULL)
         {
-            system_thread_pool_task_descriptor task = system_thread_pool_create_task_descriptor_handler_only(THREAD_POOL_TASK_PRIORITY_NORMAL,
-                                                                                                             (PFNSYSTEMTHREADPOOLCALLBACKPROC) checkbox_ptr->pfn_fire_proc_ptr,
-                                                                                                             checkbox_ptr->fire_proc_user_arg);
+            system_thread_pool_task task = system_thread_pool_create_task_handler_only(THREAD_POOL_TASK_PRIORITY_NORMAL,
+                                                                                       (PFNSYSTEMTHREADPOOLCALLBACKPROC) checkbox_ptr->pfn_fire_proc_ptr,
+                                                                                       checkbox_ptr->fire_proc_user_arg);
 
             system_thread_pool_submit_single_task(task);
         }

@@ -207,9 +207,9 @@ PUBLIC collada_data_geometry collada_data_geometry_create_async(tinyxml2::XMLEle
                 attachment_ptr->result_geometries                 = result_geometries;
                 attachment_ptr->result_geometries_by_id_map       = result_geometries_by_id_map;
 
-                system_thread_pool_task_descriptor new_task = system_thread_pool_create_task_descriptor_handler_only(THREAD_POOL_TASK_PRIORITY_NORMAL,
-                                                                                                                     _collada_data_init_geometry_task,
-                                                                                                                     attachment_ptr);
+                system_thread_pool_task new_task = system_thread_pool_create_task_handler_only(THREAD_POOL_TASK_PRIORITY_NORMAL,
+                                                                                               _collada_data_init_geometry_task,
+                                                                                               attachment_ptr);
 
                 system_thread_pool_submit_single_task(new_task);
             }

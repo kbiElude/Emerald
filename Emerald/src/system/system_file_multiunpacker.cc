@@ -135,14 +135,14 @@ PUBLIC EMERALD_API system_file_multiunpacker system_file_multiunpacker_create(co
         {
             _system_file_multiunpacker_unpacker* current_unpacker_ptr = new (std::nothrow) _system_file_multiunpacker_unpacker(packed_filenames[n_packed_filename],
                                                                                                                                new_multiunpacker_ptr);
-            system_thread_pool_task_descriptor   new_task;
+            system_thread_pool_task              new_task;
 
             ASSERT_DEBUG_SYNC(current_unpacker_ptr != NULL,
                               "Out of memory");
 
-            new_task = system_thread_pool_create_task_descriptor_handler_only(THREAD_POOL_TASK_PRIORITY_NORMAL,
-                                                                              _system_file_multiunpacker_spawn_unpacker_thread_entrypoint,
-                                                                              current_unpacker_ptr);
+            new_task = system_thread_pool_create_task_handler_only(THREAD_POOL_TASK_PRIORITY_NORMAL,
+                                                                   _system_file_multiunpacker_spawn_unpacker_thread_entrypoint,
+                                                                   current_unpacker_ptr);
 
             system_resizable_vector_push         (new_multiunpacker_ptr->unpackers,
                                                   current_unpacker_ptr);

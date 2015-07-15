@@ -634,8 +634,8 @@ typedef void* system_thread_pool_callback_argument;
 /** Thread pool call-back function pointer type */
 typedef volatile void (*PFNSYSTEMTHREADPOOLCALLBACKPROC)(system_thread_pool_callback_argument);
 /** Thread pool task descriptor */
-DECLARE_HANDLE(system_thread_pool_task_descriptor);
+DECLARE_HANDLE(system_thread_pool_task);
 /** Thread pool task group descriptor */
-DECLARE_HANDLE(system_thread_pool_task_group_descriptor);
+DECLARE_HANDLE(system_thread_pool_task_group);
 
 #endif /* SYSTEM_TYPES_H */

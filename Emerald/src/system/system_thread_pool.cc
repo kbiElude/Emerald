@@ -23,9 +23,9 @@
 /* Internal type definitions */
 typedef enum
 {
-    ORDER_TYPE_TASK,             /* single task */
-    ORDER_TYPE_GROUP_OF_TASKS,   /* multiple tasks */
-    ORDER_TYPE_JOB               /* multiple groups of tasks */
+    SYSTEM_THREAD_POOL_ORDER_TYPE_TASK,             /* single task */
+    SYSTEM_THREAD_POOL_ORDER_TYPE_GROUP_OF_TASKS,   /* multiple tasks */
+    SYSTEM_THREAD_POOL_ORDER_TYPE_JOB               /* multiple groups of tasks */
 } _system_thread_pool_order_type;
 
 typedef struct
@@ -43,7 +43,7 @@ typedef struct
     /** Priority of the task. Used for task scheduling */
     system_thread_pool_task_priority task_priority;
 
-} _system_thread_pool_task_descriptor;
+} _system_thread_pool_task;
 
 typedef struct
 {
@@ -54,7 +54,7 @@ typedef struct
      *  executed in order, one after another, from the same worker thread
      */
     bool is_distributable;
-} _system_thread_pool_task_group_descriptor;
+} _system_thread_pool_task_group;
 
 typedef struct
 {
@@ -63,14 +63,15 @@ typedef struct
 
     /* Depending on order_type:
      *
-     * _system_thread_pool_task_descriptor*       if order_type is ORDER_TYPE_TASK
-     * _system_thread_pool_task_group_descriptor* if order_type is ORDER_TYPE_GROUP_OF_TASKS
-     * _system_thread_pool_task_job_descriptor*   if order_type is ORDER_TYPE_JOB
+     * _system_thread_pool_task*       if order_type is SYSTEM_THREAD_POOL_ORDER_TYPE_TASK
+     * _system_thread_pool_task_group* if order_type is SYSTEM_THREAD_POOL_ORDER_TYPE_GROUP_OF_TASKS
+     * _system_thread_pool_task_job*   if order_type is SYSTEM_THREAD_POOL_ORDER_TYPE_JOB
      */
-    void* order_ptr; 
-} _system_thread_pool_order_descriptor;
+    void* order_ptr;
+} _system_thread_pool_order;
 
-typedef _system_thread_pool_order_descriptor* _system_thread_pool_order_descriptor_ptr;
+typedef _system_thread_pool_order* _system_thread_pool_order_ptr;
+
 
 /* Internal variables */
 bool                    is_alive                                                    =  false;
@@ -81,36 +82,76 @@ system_resizable_vector queued_tasks              [THREAD_POOL_TASK_PRIORITY_COU
 unsigned int            queued_tasks_counter                                        = 0;
 system_critical_section queued_tasks_cs                                             = {NULL};
 system_event            task_available_event                                        =  NULL;
-system_resource_pool    task_descriptor_pool                                        =  NULL;
-system_resource_pool    task_group_descriptor_pool                                  =  NULL;
+system_resource_pool    task_pool                                                   =  NULL;
+system_resource_pool    task_group_pool                                             =  NULL;
 system_event            threads_spawned_event                                       =  NULL;
 system_event            wait_table                [WAIT_TABLE_SIZE]                 = {NULL};
 
-#ifdef _WIN32
-    system_thread_id thread_id_array[THREAD_POOL_AMOUNT_OF_THREADS] = {NULL};
-#else
-    system_thread_id thread_id_array[THREAD_POOL_AMOUNT_OF_THREADS] = {0};
-#endif
+
+system_thread_id thread_id_array[THREAD_POOL_AMOUNT_OF_THREADS] = { (system_thread_id) NULL};
 
 
-/* Internal functions */
+/* Forward declarations */
+PRIVATE void        _system_thread_pool_deinit_system_thread_pool_task        (system_resource_pool_block          task_descriptor_block);
+PRIVATE void        _system_thread_pool_deinit_system_thread_pool_task_group  (system_resource_pool_block          task_group_block);
+PRIVATE void        _system_thread_pool_init_system_thread_pool_task          (system_resource_pool_block          task_block);
+PRIVATE void        _system_thread_pool_init_system_thread_pool_task_group    (system_resource_pool_block          task_group_block);
+PRIVATE inline void _system_thread_pool_submit_single_task                    (system_thread_pool_task             task,
+                                                                               bool                                enter_cs);
+PRIVATE void        _system_thread_pool_worker_entrypoint                     (system_threads_entry_point_argument);
+PRIVATE inline void _system_thread_pool_worker_execute_task                   (_system_thread_pool_task*           task_ptr);
+PRIVATE inline void _system_thread_pool_worker_execute_task_group             (_system_thread_pool_task_group*     task_group_ptr);
+PRIVATE inline void _system_thread_pool_worker_find_and_execute_available_task();
+
+
+/** TODO */
+PRIVATE void _system_thread_pool_deinit_system_thread_pool_task(system_resource_pool_block task_descriptor_block)
+{
+    /* Left blank for future if needed. */
+}
+
+/** TODO */
+PRIVATE void _system_thread_pool_deinit_system_thread_pool_task_group(system_resource_pool_block task_group_block)
+{
+    _system_thread_pool_task_group* task_group_ptr = (_system_thread_pool_task_group*) task_group_block;
+
+    system_resizable_vector_release(task_group_ptr->tasks);
+}
+
+/** TODO */
+PRIVATE void _system_thread_pool_init_system_thread_pool_task(system_resource_pool_block task_block)
+{
+    /* Left blank for future if needed. */
+}
+
+/** TODO */
+PRIVATE void _system_thread_pool_init_system_thread_pool_task_group(system_resource_pool_block task_group_block)
+{
+    _system_thread_pool_task_group* task_group_ptr = (_system_thread_pool_task_group*) task_group_block;
+
+    task_group_ptr->tasks = system_resizable_vector_create(THREAD_POOL_PREALLOCATED_TASK_SLOTS);
+
+    ASSERT_ALWAYS_SYNC(task_group_ptr->tasks != NULL,
+                       "Could not preallocate task slots for task group descriptor.");
+}
+
 /* This procedure implements the process of submitting a single task into a priority queue. The reason
  * it is split from system_thread_pool_submit_single_task() is that it is also called from task execution
- * routine which already handles CS. 
+ * routine which already handles CS.
  *
- * @param task_descriptor Descriptor of a task to submit.
- * @param enter_cs        True to enter queued_tasks_cs critical section before submitting, false if no need to.
- *                        False should only be used from private implementation!
+ * @param task     Descriptor of a task to submit.
+ * @param enter_cs True to enter queued_tasks_cs critical section before submitting, false if no need to.
+ *                 False should only be used from private implementation!
  */
-PRIVATE inline void _system_thread_pool_submit_single_task(system_thread_pool_task_descriptor task_descriptor,
-                                                           bool                               enter_cs)
+PRIVATE inline void _system_thread_pool_submit_single_task(system_thread_pool_task task,
+                                                           bool                    enter_cs)
 {
     /* Create order descriptor */
-    _system_thread_pool_order_descriptor_ptr new_order_descriptor     = (_system_thread_pool_order_descriptor_ptr) system_resource_pool_get_from_pool(order_pool);
-    _system_thread_pool_task_descriptor*     task_descriptor_internal = (_system_thread_pool_task_descriptor*)     task_descriptor;
+    _system_thread_pool_order_ptr new_order_ptr = (_system_thread_pool_order_ptr) system_resource_pool_get_from_pool(order_pool);
+    _system_thread_pool_task*     task_ptr      = (_system_thread_pool_task*)     task;
 
-    new_order_descriptor->order_type = ORDER_TYPE_TASK;
-    new_order_descriptor->order_ptr  = task_descriptor;
+    new_order_ptr->order_type = SYSTEM_THREAD_POOL_ORDER_TYPE_TASK;
+    new_order_ptr->order_ptr  = task_ptr;
 
     /* Insert into the queue. */
     if (enter_cs)
@@ -118,14 +159,14 @@ PRIVATE inline void _system_thread_pool_submit_single_task(system_thread_pool_ta
         system_critical_section_enter(queued_tasks_cs);
     }
     {
-        ASSERT_DEBUG_SYNC(task_descriptor_internal->task_priority >= THREAD_POOL_TASK_PRIORITY_FIRST &&
-                          task_descriptor_internal->task_priority  < THREAD_POOL_TASK_PRIORITY_COUNT,
+        ASSERT_DEBUG_SYNC(task_ptr->task_priority >= THREAD_POOL_TASK_PRIORITY_FIRST &&
+                          task_ptr->task_priority  < THREAD_POOL_TASK_PRIORITY_COUNT,
                           "Corrupt task priority [%d]", 
-                          task_descriptor_internal->task_priority
+                          task_ptr->task_priority
                          );
 
-        system_resizable_vector_push(queued_tasks[task_descriptor_internal->task_priority],
-                                     new_order_descriptor);
+        system_resizable_vector_push(queued_tasks[task_ptr->task_priority],
+                                     new_order_ptr);
 
         system_atomics_increment(&queued_tasks_counter);
         system_event_set        (task_available_event);
@@ -133,228 +174,6 @@ PRIVATE inline void _system_thread_pool_submit_single_task(system_thread_pool_ta
     if (enter_cs)
     {
         system_critical_section_leave(queued_tasks_cs);
-    }
-}
-
-/** TODO */
-void _init_system_thread_pool_task_descriptor(system_resource_pool_block task_descriptor_block)
-{
-    /* Left blank for future if needed. */
-}
-
-/** TODO */
-void _init_system_thread_pool_task_group_descriptor(system_resource_pool_block task_group_descriptor_block)
-{
-    _system_thread_pool_task_group_descriptor* task_group_descriptor = (_system_thread_pool_task_group_descriptor*) task_group_descriptor_block;
-
-    task_group_descriptor->tasks = system_resizable_vector_create(THREAD_POOL_PREALLOCATED_TASK_SLOTS);
-
-    ASSERT_ALWAYS_SYNC(task_group_descriptor->tasks != NULL,
-                       "Could not preallocate task slots for task group descriptor.");
-}
-
-/** TODO */
-void _deinit_system_thread_pool_task_descriptor(system_resource_pool_block task_descriptor_block)
-{
-    /* Left blank for future if needed. */
-}
-
-/** TODO */
-void _deinit_system_thread_pool_task_group_descriptor(system_resource_pool_block task_group_descriptor_block)
-{
-    _system_thread_pool_task_group_descriptor* task_group_descriptor = (_system_thread_pool_task_group_descriptor*) task_group_descriptor_block;
-
-    system_resizable_vector_release(task_group_descriptor->tasks);
-}
-
-/** Procedure that executes a task, according to its descriptor's contents.
- *
- *  @param task_descriptor Descriptor describing how the task should be executed. Cannot be NULL.
- */
-inline void _system_thread_pool_worker_execute_task(_system_thread_pool_task_descriptor* task_descriptor)
-{
-    /* Decrement the task counter */
-    system_atomics_decrement(&queued_tasks_counter);
-
-    /* Execute the task */
-    task_descriptor->on_execution_callback(task_descriptor->on_execution_callback_argument);
-
-    /* Execute any call-backs that were defined */
-    if (task_descriptor->on_finish_callback != NULL)
-    {
-        task_descriptor->on_finish_callback(task_descriptor->on_finish_callback_argument);
-    }
-
-    if (task_descriptor->event != NULL)
-    {
-        system_event_set(task_descriptor->event);
-    }
-}
-
-/** Procedure that either executes tasks one after another (if task group is not marked as distributable) or distributes the tasks
- *  for imminent execution to all available worker threads.
- *
- *  @param task_group_descriptor Task group descriptor. Cannot be NULL.
- */
-inline void _system_thread_pool_worker_execute_task_group(_system_thread_pool_task_group_descriptor* task_group_descriptor)
-{
-    system_resizable_vector& tasks_vector = task_group_descriptor->tasks;
-    unsigned int             n_tasks      = 0;
-
-    system_resizable_vector_get_property(tasks_vector,
-                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
-                                        &n_tasks);
-
-    if (task_group_descriptor->is_distributable)
-    {
-        /* Order does not matter - distribute the tasks through all available worker threads. */
-        while (true)
-        {
-            /* Popping is the fastest operation for the resizable vectors */
-            _system_thread_pool_task_descriptor* task_descriptor = NULL;
-            bool                                 result_get      = false;
-
-            result_get = system_resizable_vector_pop(task_group_descriptor->tasks,
-                                                    &task_descriptor);
-
-            if (task_descriptor != NULL)
-            {
-                _system_thread_pool_submit_single_task( (system_thread_pool_task_descriptor) task_descriptor,
-                                                        false);
-            }
-            else
-            {
-                if (result_get)
-                {
-                    unsigned int n_tasks = 0;
-
-                    system_resizable_vector_get_property(task_group_descriptor->tasks,
-                                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
-                                                        &n_tasks);
-
-                    ASSERT_DEBUG_SYNC(n_tasks == 0,
-                                      "Null task descriptor reported even though there are more tasks available!");
-                }
-
-                break;
-            }
-        }
-    }
-    else
-    {
-        /* Order matters - we can only execute the tasks in the current thread, one by one */
-        for (unsigned int n_task = 0;
-                          n_task < n_tasks;
-                        ++n_task)
-        {
-            _system_thread_pool_task_descriptor* task_descriptor = NULL;
-            bool                                 result_get      = false;
-
-            result_get = system_resizable_vector_get_element_at(task_group_descriptor->tasks,
-                                                                n_task,
-                                                               &task_descriptor);
-
-            ASSERT_DEBUG_SYNC(result_get,
-                              "Could not retrieve task descriptor");
-            ASSERT_ALWAYS_SYNC(task_descriptor != NULL,
-                               "Task descriptor is null!");
-
-            _system_thread_pool_worker_execute_task(task_descriptor);
-
-            system_resource_pool_return_to_pool(task_descriptor_pool,
-                                                (system_resource_pool_block) task_descriptor);
-        }
-
-        system_resizable_vector_empty(task_group_descriptor->tasks);
-    }
-}
-
-/** Procedure that searches through enqueued tasks (starting with the highest priority tasks, and moving
- *  on to the lowest priority ones). After findign a task, it handles it accordingly to its type.
- *
- **/
-PRIVATE inline void _system_thread_pool_worker_find_and_execute_available_task()
-{
-    system_critical_section_enter(queued_tasks_cs);
-    {
-        bool needs_to_leave_queued_tasks_cs = true;
-
-        /* Obtain an available task that is of the highest priority */
-        void* order_ptr = NULL;
-
-        for (system_thread_pool_task_priority current_priority  = (system_thread_pool_task_priority) (THREAD_POOL_TASK_PRIORITY_COUNT - 1);
-                                              current_priority >= THREAD_POOL_TASK_PRIORITY_FIRST;
-                                              ((int&)current_priority) --)
-        {
-            system_resizable_vector& queue = queued_tasks[current_priority];
-
-            bool result_get = system_resizable_vector_pop(queue,
-                                                         &order_ptr);
-
-            if (result_get &&
-                order_ptr != NULL)
-            {
-                break;
-            }
-        }
-
-        /* Handle the order */
-        if (order_ptr != NULL)
-        {
-            _system_thread_pool_order_descriptor_ptr order_descriptor = (_system_thread_pool_order_descriptor_ptr) order_ptr;
-
-            switch(order_descriptor->order_type)
-            {
-                case ORDER_TYPE_TASK:
-                {
-                    /* Leave the CS - we will be directly executing the task now so no need to keep the lock on */
-                    system_critical_section_leave(queued_tasks_cs);
-
-                    needs_to_leave_queued_tasks_cs = false;
-
-                    /* Execute the task now */
-                    _system_thread_pool_worker_execute_task((_system_thread_pool_task_descriptor*) order_descriptor->order_ptr);
-
-                    /* Return the descriptor back to the pool */
-                    system_resource_pool_return_to_pool(task_descriptor_pool,
-                                                        (system_resource_pool_block) order_descriptor->order_ptr);
-
-                    break;
-                }
-
-                case ORDER_TYPE_GROUP_OF_TASKS:
-                {
-                    /* Queue the encapsulated tasks. */
-                    _system_thread_pool_worker_execute_task_group((_system_thread_pool_task_group_descriptor*) order_descriptor->order_ptr);
-
-                    /* Leave the CS */
-                    system_critical_section_leave(queued_tasks_cs);
-
-                    needs_to_leave_queued_tasks_cs = false;
-
-                    /* Return the descriptor back to the pool */
-                    system_resource_pool_return_to_pool(task_group_descriptor_pool,
-                                                        (system_resource_pool_block) order_descriptor->order_ptr);
-
-                    break;
-                }
-
-                case ORDER_TYPE_JOB: /* TODO TODO TODO */
-                default:
-                {
-                    ASSERT_ALWAYS_SYNC(false,
-                                       "Unrecognized order type [%d]",
-                                       order_descriptor->order_type);
-
-                    system_critical_section_leave(queued_tasks_cs);
-                }
-            } /* switch(order_descriptor->order_type) */
-        } /* if (raw_ptr != NULL) */
-
-        if (needs_to_leave_queued_tasks_cs)
-        {
-            system_critical_section_leave(queued_tasks_cs);
-        }
     }
 }
 
@@ -427,78 +246,215 @@ PRIVATE void _system_thread_pool_worker_entrypoint(system_threads_entry_point_ar
     LOG_INFO("Worker thread [%d] ending.", current_thread_id);
 }
 
-/** Please see header for specification */
-PUBLIC EMERALD_API system_thread_pool_task_descriptor system_thread_pool_create_task_descriptor_handler_only(system_thread_pool_task_priority     task_priority,
-                                                                                                             PFNSYSTEMTHREADPOOLCALLBACKPROC      execution_handler,
-                                                                                                             system_thread_pool_callback_argument execution_handler_argument)
+/** Procedure that executes a task, according to its descriptor's contents.
+ *
+ *  @param task_descriptor Descriptor describing how the task should be executed. Cannot be NULL.
+ */
+PRIVATE inline void _system_thread_pool_worker_execute_task(_system_thread_pool_task* task_ptr)
 {
-    _system_thread_pool_task_descriptor* result = (_system_thread_pool_task_descriptor*) system_resource_pool_get_from_pool(task_descriptor_pool);
+    /* Decrement the task counter */
+    system_atomics_decrement(&queued_tasks_counter);
 
-    result->event                          = NULL;
-    result->on_execution_callback          = execution_handler;
-    result->on_execution_callback_argument = execution_handler_argument;
-    result->on_finish_callback             = NULL;
-    result->on_finish_callback_argument    = NULL;
-    result->task_priority                  = task_priority;
+    /* Execute the task */
+    task_ptr->on_execution_callback(task_ptr->on_execution_callback_argument);
 
-    return (system_thread_pool_task_descriptor) result;
-}
-
-/** Please see header for specification */
-PUBLIC EMERALD_API system_thread_pool_task_descriptor system_thread_pool_create_task_descriptor_handler_with_callback(system_thread_pool_task_priority     task_priority,
-                                                                                                                      PFNSYSTEMTHREADPOOLCALLBACKPROC      execution_handler,
-                                                                                                                      system_thread_pool_callback_argument execution_handler_argument,
-                                                                                                                      PFNSYSTEMTHREADPOOLCALLBACKPROC      on_finish_handler,
-                                                                                                                      system_thread_pool_callback_argument on_finish_handler_argument)
-{
-    _system_thread_pool_task_descriptor* result = (_system_thread_pool_task_descriptor*) system_resource_pool_get_from_pool(task_descriptor_pool);
-
-    result->event                          = NULL;
-    result->on_execution_callback          = execution_handler;
-    result->on_execution_callback_argument = execution_handler_argument;
-    result->on_finish_callback             = on_finish_handler;
-    result->on_finish_callback_argument    = on_finish_handler_argument;
-    result->task_priority                  = task_priority;
-
-    return (system_thread_pool_task_descriptor) result;
-}
-
-/** Please see header for specification */
-PUBLIC EMERALD_API system_thread_pool_task_descriptor system_thread_pool_create_task_descriptor_handler_with_event_signal(system_thread_pool_task_priority     task_priority,
-                                                                                                                          PFNSYSTEMTHREADPOOLCALLBACKPROC      execution_handler,
-                                                                                                                          system_thread_pool_callback_argument execution_handler_argument,
-                                                                                                                          system_event                         event)
-{
-    _system_thread_pool_task_descriptor* result = (_system_thread_pool_task_descriptor*) system_resource_pool_get_from_pool(task_descriptor_pool);
-
-    result->event                          = event;
-    result->on_execution_callback          = execution_handler;
-    result->on_execution_callback_argument = execution_handler_argument;
-    result->on_finish_callback             = NULL;
-    result->on_finish_callback_argument    = NULL;
-    result->task_priority                  = task_priority;
-
-    return (system_thread_pool_task_descriptor) result;
-}
-
-/** Please see header for specification */
-PUBLIC EMERALD_API system_thread_pool_task_group_descriptor system_thread_pool_create_task_group_descriptor(bool is_distributable)
-{
-    _system_thread_pool_task_group_descriptor* result = (_system_thread_pool_task_group_descriptor*) system_resource_pool_get_from_pool(task_group_descriptor_pool);
-
-    ASSERT_ALWAYS_SYNC(result != NULL,
-                       "Could not create task group descriptor.");
-
-    if (result != NULL)
+    /* Execute any call-backs that were defined */
+    if (task_ptr->on_finish_callback != NULL)
     {
-        ASSERT_DEBUG_SYNC(result->tasks != NULL,
+        task_ptr->on_finish_callback(task_ptr->on_finish_callback_argument);
+    }
+
+    if (task_ptr->event != NULL)
+    {
+        system_event_set(task_ptr->event);
+    }
+}
+
+/** Procedure that either executes tasks one after another (if task group is not marked as distributable) or distributes the tasks
+ *  for imminent execution to all available worker threads.
+ *
+ *  @param task_group_ptr Task group descriptor. Cannot be NULL.
+ */
+PRIVATE inline void _system_thread_pool_worker_execute_task_group(_system_thread_pool_task_group* task_group_ptr)
+{
+    system_resizable_vector& tasks_vector = task_group_ptr->tasks;
+    unsigned int             n_tasks      = 0;
+
+    system_resizable_vector_get_property(tasks_vector,
+                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                        &n_tasks);
+
+    if (task_group_ptr->is_distributable)
+    {
+        /* Order does not matter - distribute the tasks through all available worker threads. */
+        while (true)
+        {
+            /* Popping is the fastest operation for the resizable vectors */
+            _system_thread_pool_task* task_ptr   = NULL;
+            bool                      result_get = false;
+
+            result_get = system_resizable_vector_pop(task_group_ptr->tasks,
+                                                    &task_ptr);
+
+            if (task_ptr != NULL)
+            {
+                _system_thread_pool_submit_single_task( (system_thread_pool_task) task_ptr,
+                                                        false);
+            }
+            else
+            {
+                if (result_get)
+                {
+                    unsigned int n_tasks = 0;
+
+                    system_resizable_vector_get_property(task_group_ptr->tasks,
+                                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                                        &n_tasks);
+
+                    ASSERT_DEBUG_SYNC(n_tasks == 0,
+                                      "Null task descriptor reported even though there are more tasks available!");
+                }
+
+                break;
+            }
+        }
+    }
+    else
+    {
+        /* Order matters - we can only execute the tasks in the current thread, one by one */
+        for (unsigned int n_task = 0;
+                          n_task < n_tasks;
+                        ++n_task)
+        {
+            _system_thread_pool_task* task_ptr   = NULL;
+            bool                      result_get = false;
+
+            result_get = system_resizable_vector_get_element_at(task_group_ptr->tasks,
+                                                                n_task,
+                                                               &task_ptr);
+
+            ASSERT_DEBUG_SYNC(result_get,
+                              "Could not retrieve task descriptor");
+            ASSERT_ALWAYS_SYNC(task_ptr != NULL,
+                               "Task descriptor is null!");
+
+            _system_thread_pool_worker_execute_task(task_ptr);
+
+            system_resource_pool_return_to_pool(task_pool,
+                                                (system_resource_pool_block) task_ptr);
+        }
+
+        system_resizable_vector_empty(task_group_ptr->tasks);
+    }
+}
+
+/** Procedure that searches through enqueued tasks (starting with the highest priority tasks, and moving
+ *  on to the lowest priority ones). After findign a task, it handles it accordingly to its type.
+ *
+ **/
+PRIVATE inline void _system_thread_pool_worker_find_and_execute_available_task()
+{
+    system_critical_section_enter(queued_tasks_cs);
+    {
+        bool needs_to_leave_queued_tasks_cs = true;
+
+        /* Obtain an available task that is of the highest priority */
+        void* order = NULL;
+
+        for (system_thread_pool_task_priority current_priority  = (system_thread_pool_task_priority) (THREAD_POOL_TASK_PRIORITY_COUNT - 1);
+                                              current_priority >= THREAD_POOL_TASK_PRIORITY_FIRST;
+                                              ((int&)current_priority) --)
+        {
+            system_resizable_vector& queue = queued_tasks[current_priority];
+
+            bool result_get = system_resizable_vector_pop(queue,
+                                                         &order);
+
+            if (result_get && order != NULL)
+            {
+                break;
+            }
+        }
+
+        /* Handle the order */
+        if (order != NULL)
+        {
+            _system_thread_pool_order_ptr order_ptr = (_system_thread_pool_order_ptr) order;
+
+            switch(order_ptr->order_type)
+            {
+                case SYSTEM_THREAD_POOL_ORDER_TYPE_TASK:
+                {
+                    /* Leave the CS - we will be directly executing the task now so no need to keep the lock on */
+                    system_critical_section_leave(queued_tasks_cs);
+
+                    needs_to_leave_queued_tasks_cs = false;
+
+                    /* Execute the task now */
+                    _system_thread_pool_worker_execute_task((_system_thread_pool_task*) order_ptr->order_ptr);
+
+                    /* Return the descriptor back to the pool */
+                    system_resource_pool_return_to_pool(task_pool,
+                                                        (system_resource_pool_block) order_ptr->order_ptr);
+
+                    break;
+                }
+
+                case SYSTEM_THREAD_POOL_ORDER_TYPE_GROUP_OF_TASKS:
+                {
+                    /* Queue the encapsulated tasks. */
+                    _system_thread_pool_worker_execute_task_group((_system_thread_pool_task_group*) order_ptr->order_ptr);
+
+                    /* Leave the CS */
+                    system_critical_section_leave(queued_tasks_cs);
+
+                    needs_to_leave_queued_tasks_cs = false;
+
+                    /* Return the descriptor back to the pool */
+                    system_resource_pool_return_to_pool(task_group_pool,
+                                                        (system_resource_pool_block) order_ptr->order_ptr);
+
+                    break;
+                }
+
+                case SYSTEM_THREAD_POOL_ORDER_TYPE_JOB: /* TODO TODO TODO */
+                default:
+                {
+                    ASSERT_ALWAYS_SYNC(false,
+                                       "Unrecognized order type [%d]",
+                                       order_ptr->order_type);
+
+                    system_critical_section_leave(queued_tasks_cs);
+                }
+            } /* switch(order_ptr->order_type) */
+        } /* if (raw_ptr != NULL) */
+
+        if (needs_to_leave_queued_tasks_cs)
+        {
+            system_critical_section_leave(queued_tasks_cs);
+        }
+    }
+}
+
+
+/** Please see header for specification */
+PUBLIC EMERALD_API system_thread_pool_task_group system_thread_pool_create_task_group(bool is_distributable)
+{
+    _system_thread_pool_task_group* result_ptr = (_system_thread_pool_task_group*) system_resource_pool_get_from_pool(task_group_pool);
+
+    ASSERT_ALWAYS_SYNC(result_ptr != NULL,
+                       "Could not create task group.");
+
+    if (result_ptr != NULL)
+    {
+        ASSERT_DEBUG_SYNC(result_ptr->tasks != NULL,
                           "Tasks not allocated for a task group descriptor.");
 
-        if (result->tasks != NULL)
+        if (result_ptr->tasks != NULL)
         {
             unsigned int n_tasks = 0;
 
-            system_resizable_vector_get_property(result->tasks,
+            system_resizable_vector_get_property(result_ptr->tasks,
                                                  SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
                                                 &n_tasks);
 
@@ -506,69 +462,107 @@ PUBLIC EMERALD_API system_thread_pool_task_group_descriptor system_thread_pool_c
                               "Task group descriptor already cotnains task(s)!");
         }
 
-        result->is_distributable = is_distributable;
+        result_ptr->is_distributable = is_distributable;
     }
 
-    return (system_thread_pool_task_group_descriptor) result;
+    return (system_thread_pool_task_group) result_ptr;
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API void system_thread_pool_submit_single_task(system_thread_pool_task_descriptor task_descriptor)
+PUBLIC EMERALD_API system_thread_pool_task system_thread_pool_create_task_handler_only(system_thread_pool_task_priority     task_priority,
+                                                                                       PFNSYSTEMTHREADPOOLCALLBACKPROC      execution_handler,
+                                                                                       system_thread_pool_callback_argument execution_handler_argument)
 {
-    _system_thread_pool_submit_single_task(task_descriptor,
-                                           true); /* enter_cs */
+    _system_thread_pool_task* task_ptr = (_system_thread_pool_task*) system_resource_pool_get_from_pool(task_pool);
+
+    task_ptr->event                          = NULL;
+    task_ptr->on_execution_callback          = execution_handler;
+    task_ptr->on_execution_callback_argument = execution_handler_argument;
+    task_ptr->on_finish_callback             = NULL;
+    task_ptr->on_finish_callback_argument    = NULL;
+    task_ptr->task_priority                  = task_priority;
+
+    return (system_thread_pool_task) task_ptr;
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API void system_thread_pool_submit_single_task_group(system_thread_pool_task_group_descriptor task_descriptor)
+PUBLIC EMERALD_API system_thread_pool_task system_thread_pool_create_task_handler_with_callback(system_thread_pool_task_priority     task_priority,
+                                                                                                PFNSYSTEMTHREADPOOLCALLBACKPROC      execution_handler,
+                                                                                                system_thread_pool_callback_argument execution_handler_argument,
+                                                                                                PFNSYSTEMTHREADPOOLCALLBACKPROC      on_finish_handler,
+                                                                                                system_thread_pool_callback_argument on_finish_handler_argument)
 {
-    /* Create order descriptor */
-    _system_thread_pool_order_descriptor_ptr   new_order_descriptor           = (_system_thread_pool_order_descriptor_ptr)   system_resource_pool_get_from_pool(order_pool);
-    _system_thread_pool_task_group_descriptor* task_group_descriptor_internal = (_system_thread_pool_task_group_descriptor*) task_descriptor;
+    _system_thread_pool_task* task_ptr = (_system_thread_pool_task*) system_resource_pool_get_from_pool(task_pool);
 
-    new_order_descriptor->order_type = ORDER_TYPE_GROUP_OF_TASKS;
-    new_order_descriptor->order_ptr  = task_descriptor;
+    task_ptr->event                          = NULL;
+    task_ptr->on_execution_callback          = execution_handler;
+    task_ptr->on_execution_callback_argument = execution_handler_argument;
+    task_ptr->on_finish_callback             = on_finish_handler;
+    task_ptr->on_finish_callback_argument    = on_finish_handler_argument;
+    task_ptr->task_priority                  = task_priority;
 
-    /* Insert into the queue. */
-    system_critical_section_enter(queued_tasks_cs);
+    return (system_thread_pool_task) task_ptr;
+}
+
+/** Please see header for specification */
+PUBLIC EMERALD_API system_thread_pool_task system_thread_pool_create_task_handler_with_event_signal(system_thread_pool_task_priority     task_priority,
+                                                                                                    PFNSYSTEMTHREADPOOLCALLBACKPROC      execution_handler,
+                                                                                                    system_thread_pool_callback_argument execution_handler_argument,
+                                                                                                    system_event                         event)
+{
+    _system_thread_pool_task* task_ptr = (_system_thread_pool_task*) system_resource_pool_get_from_pool(task_pool);
+
+    task_ptr->event                          = event;
+    task_ptr->on_execution_callback          = execution_handler;
+    task_ptr->on_execution_callback_argument = execution_handler_argument;
+    task_ptr->on_finish_callback             = NULL;
+    task_ptr->on_finish_callback_argument    = NULL;
+    task_ptr->task_priority                  = task_priority;
+
+    return (system_thread_pool_task) task_ptr;
+}
+
+/** Please see header for specification */
+PUBLIC void _system_thread_pool_deinit()
+{
+    bool wait_result  = false;
+
+    /* Set the kill event and wait till all worker threads die out */
+    system_event_set          (kill_pool_event);
+    system_event_wait_multiple(kill_wait_table,
+                               THREAD_POOL_AMOUNT_OF_THREADS,
+                               true, /* wait_on_all_objects */
+                               SYSTEM_TIME_INFINITE,
+                              &wait_result);
+
+    /* All threads should have died by now. Deinit all remaining objects */
+    system_resource_pool_release(order_pool);
+    system_resource_pool_release(task_pool);
+    system_resource_pool_release(task_group_pool);
+    system_event_release        (kill_pool_event);
+    system_event_release        (threads_spawned_event);
+    system_event_release        (task_available_event);
+
+    system_critical_section_enter  (queued_tasks_cs);
+    system_critical_section_leave  (queued_tasks_cs);
+    system_critical_section_release(queued_tasks_cs);
+
+    for (unsigned int n_thread = 0;
+                      n_thread < THREAD_POOL_AMOUNT_OF_THREADS;
+                    ++n_thread)
     {
-        /* De-batching of the tasks should be performed with critical priority */
-        system_resizable_vector_push(queued_tasks[THREAD_POOL_TASK_PRIORITY_CRITICAL],
-                                     new_order_descriptor);
-        system_event_set            (task_available_event);
-    }
-    system_critical_section_leave(queued_tasks_cs);
-}
-
-/** Please see header for specification */
-PUBLIC EMERALD_API void system_thread_pool_release_task_group_descriptor(system_thread_pool_task_group_descriptor descriptor)
-{
-    ASSERT_DEBUG_SYNC(task_group_descriptor_pool != NULL, "Task group descriptor pool is NULL.");
-
-    if (task_group_descriptor_pool != NULL)
-    {
-        system_resource_pool_return_to_pool(task_group_descriptor_pool,
-                                            (system_resource_pool_block) descriptor);
+        system_event_release(kill_wait_table[n_thread]);
     }
 }
 
-/** Please see header for specification */
-PUBLIC EMERALD_API void system_thread_pool_insert_task_to_task_group(system_thread_pool_task_group_descriptor task_group_descriptor,
-                                                                     system_thread_pool_task_descriptor       task_descriptor)
-{
-    _system_thread_pool_task_group_descriptor* descriptor = (_system_thread_pool_task_group_descriptor*) task_group_descriptor;
-
-    system_resizable_vector_push(descriptor->tasks,
-                                 task_descriptor);
-}
 
 /** Please see header for specification */
 PUBLIC void _system_thread_pool_init()
 {
-    ASSERT_ALWAYS_SYNC(task_descriptor_pool == NULL,
-                       "Task descriptor pool has already been initialized.");
-    ASSERT_ALWAYS_SYNC(task_group_descriptor_pool == NULL,
-                       "Task group descriptor pool has already been initialized.");
+    ASSERT_ALWAYS_SYNC(task_pool == NULL,
+                       "Task pool has already been initialized.");
+    ASSERT_ALWAYS_SYNC(task_group_pool == NULL,
+                       "Task group pool has already been initialized.");
     ASSERT_ALWAYS_SYNC(kill_pool_event == NULL,
                        "Kill pool event already initialized.");
     ASSERT_ALWAYS_SYNC(queued_tasks_cs == NULL,
@@ -580,29 +574,29 @@ PUBLIC void _system_thread_pool_init()
     ASSERT_ALWAYS_SYNC(order_pool == NULL,
                        "Order pool already initialized.");
 
-    if (task_descriptor_pool       == NULL &&
-        task_group_descriptor_pool == NULL &&
-        kill_pool_event            == NULL &&
-        queued_tasks_cs            == NULL &&
-        threads_spawned_event      == NULL && 
-        task_available_event       == NULL &&
-        order_pool                 == NULL)
+    if (task_pool             == NULL &&
+        task_group_pool       == NULL &&
+        kill_pool_event       == NULL &&
+        queued_tasks_cs       == NULL &&
+        threads_spawned_event == NULL &&
+        task_available_event  == NULL &&
+        order_pool            == NULL)
     {
-        order_pool                 = system_resource_pool_create(sizeof(_system_thread_pool_order_descriptor),
-                                                                 THREAD_POOL_PREALLOCATED_ORDER_DESCRIPTORS,
-                                                                 0,  /* init_fn   */
-                                                                 0); /* deinit_fn */
-        task_descriptor_pool       = system_resource_pool_create(sizeof(_system_thread_pool_task_descriptor),
-                                                                 THREAD_POOL_PREALLOCATED_TASK_DESCRIPTORS,
-                                                                 _init_system_thread_pool_task_descriptor,
-                                                                 _deinit_system_thread_pool_task_descriptor);
-        task_group_descriptor_pool = system_resource_pool_create(sizeof(_system_thread_pool_task_group_descriptor),
-                                                                 THREAD_POOL_PREALLOCATED_TASK_GROUP_DESCRIPTORS,
-                                                                 _init_system_thread_pool_task_group_descriptor,
-                                                                 _deinit_system_thread_pool_task_group_descriptor);
-        kill_pool_event            = system_event_create        (true); /* manual_reset */
-        threads_spawned_event      = system_event_create        (true); /* manual_reset */
-        task_available_event       = system_event_create        (true); /* manual_reset */
+        order_pool            = system_resource_pool_create(sizeof(_system_thread_pool_order),
+                                                            THREAD_POOL_PREALLOCATED_ORDER_DESCRIPTORS,
+                                                            0,  /* init_fn   */
+                                                            0); /* deinit_fn */
+        task_pool             = system_resource_pool_create(sizeof(_system_thread_pool_task),
+                                                            THREAD_POOL_PREALLOCATED_TASK_DESCRIPTORS,
+                                                            _system_thread_pool_init_system_thread_pool_task,
+                                                            _system_thread_pool_deinit_system_thread_pool_task);
+        task_group_pool       = system_resource_pool_create(sizeof(_system_thread_pool_task_group),
+                                                            THREAD_POOL_PREALLOCATED_TASK_GROUP_DESCRIPTORS,
+                                                            _system_thread_pool_init_system_thread_pool_task_group,
+                                                            _system_thread_pool_deinit_system_thread_pool_task_group);
+        kill_pool_event       = system_event_create        (true); /* manual_reset */
+        threads_spawned_event = system_event_create        (true); /* manual_reset */
+        task_available_event  = system_event_create        (true); /* manual_reset */
 
         for (size_t n_priority = THREAD_POOL_TASK_PRIORITY_FIRST;
                     n_priority < THREAD_POOL_TASK_PRIORITY_COUNT;
@@ -618,10 +612,10 @@ PUBLIC void _system_thread_pool_init()
 
         ASSERT_ALWAYS_SYNC(order_pool != NULL,
                            "Order pool could not have been created.");
-        ASSERT_ALWAYS_SYNC(task_descriptor_pool != NULL,
-                           "Task descriptor pool could not have been created.");
-        ASSERT_ALWAYS_SYNC(task_group_descriptor_pool != NULL,
-                           "Task group descriptor pool could not have been created.");
+        ASSERT_ALWAYS_SYNC(task_pool != NULL,
+                           "Task pool could not have been created.");
+        ASSERT_ALWAYS_SYNC(task_group_pool != NULL,
+                           "Task group pool could not have been created.");
         ASSERT_ALWAYS_SYNC(kill_pool_event != NULL,
                            "Could not initialize kill pool event.");
         ASSERT_ALWAYS_SYNC(queued_tasks_cs != NULL,
@@ -631,12 +625,12 @@ PUBLIC void _system_thread_pool_init()
         ASSERT_ALWAYS_SYNC(task_available_event != NULL,
                            "Could not initialize task available event.");
 
-        if (task_descriptor_pool       != NULL &&
-            task_group_descriptor_pool != NULL &&
-            kill_pool_event            != NULL &&
-            threads_spawned_event      != NULL &&
-            task_available_event       != NULL &&
-            queued_tasks_cs            != NULL)
+        if (task_pool             != NULL &&
+            task_group_pool       != NULL &&
+            kill_pool_event       != NULL &&
+            threads_spawned_event != NULL &&
+            task_available_event  != NULL &&
+            queued_tasks_cs       != NULL)
         {
             /* Got to spawn thread pool worker threads now. */
             for (unsigned int n_thread = 0;
@@ -662,34 +656,51 @@ PUBLIC void _system_thread_pool_init()
 }
 
 /** Please see header for specification */
-PUBLIC void _system_thread_pool_deinit()
+PUBLIC EMERALD_API void system_thread_pool_insert_task_to_task_group(system_thread_pool_task_group task_group,
+                                                                     system_thread_pool_task       task)
 {
-    bool wait_result  = false;
+    _system_thread_pool_task_group* task_group_ptr = (_system_thread_pool_task_group*) task_group;
 
-    /* Set the kill event and wait till all worker threads die out */
-    system_event_set          (kill_pool_event);
-    system_event_wait_multiple(kill_wait_table,
-                               THREAD_POOL_AMOUNT_OF_THREADS,
-                               true, /* wait_on_all_objects */
-                               SYSTEM_TIME_INFINITE,
-                              &wait_result);
+    system_resizable_vector_push(task_group_ptr->tasks,
+                                 task);
+}
 
-    /* All threads should have died by now. Deinit all remaining objects */
-    system_resource_pool_release(order_pool);
-    system_resource_pool_release(task_descriptor_pool);
-    system_resource_pool_release(task_group_descriptor_pool);
-    system_event_release        (kill_pool_event);
-    system_event_release        (threads_spawned_event);
-    system_event_release        (task_available_event);
+/** Please see header for specification */
+PUBLIC EMERALD_API void system_thread_pool_release_task_group(system_thread_pool_task_group task_group)
+{
+    ASSERT_DEBUG_SYNC(task_group_pool != NULL,
+                      "Task group pool is NULL.");
 
-    system_critical_section_enter  (queued_tasks_cs);
-    system_critical_section_leave  (queued_tasks_cs);
-    system_critical_section_release(queued_tasks_cs);
-
-    for (unsigned int n_thread = 0;
-                      n_thread < THREAD_POOL_AMOUNT_OF_THREADS;
-                    ++n_thread)
+    if (task_group_pool != NULL)
     {
-        system_event_release(kill_wait_table[n_thread]);
+        system_resource_pool_return_to_pool(task_group_pool,
+                                            (system_resource_pool_block) task_group);
     }
+}
+
+/** Please see header for specification */
+PUBLIC EMERALD_API void system_thread_pool_submit_single_task(system_thread_pool_task task)
+{
+    _system_thread_pool_submit_single_task(task,
+                                           true); /* enter_cs */
+}
+
+/** Please see header for specification */
+PUBLIC EMERALD_API void system_thread_pool_submit_single_task_group(system_thread_pool_task_group task_group)
+{
+    /* Create order descriptor */
+    _system_thread_pool_order_ptr new_order_ptr = (_system_thread_pool_order_ptr) system_resource_pool_get_from_pool(order_pool);
+
+    new_order_ptr->order_type = SYSTEM_THREAD_POOL_ORDER_TYPE_GROUP_OF_TASKS;
+    new_order_ptr->order_ptr  = task_group;
+
+    /* Insert into the queue. */
+    system_critical_section_enter(queued_tasks_cs);
+    {
+        /* De-batching of the tasks should be performed with critical priority */
+        system_resizable_vector_push(queued_tasks[THREAD_POOL_TASK_PRIORITY_CRITICAL],
+                                     new_order_ptr);
+        system_event_set            (task_available_event);
+    }
+    system_critical_section_leave(queued_tasks_cs);
 }

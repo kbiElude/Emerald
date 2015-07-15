@@ -341,13 +341,12 @@ PUBLIC EMERALD_API system_file_serializer system_file_serializer_create_for_read
     if (async_read)
     {
         /* Submit a file reading task */
-        system_thread_pool_task_descriptor task_descriptor = system_thread_pool_create_task_descriptor_handler_with_event_signal(THREAD_POOL_TASK_PRIORITY_IDLE,
-                                                                                                                                 _system_file_serializer_read_task_executor,
-                                                                                                                                 new_descriptor,
-                                                                                                                                 new_descriptor->reading_finished_event
-                                                                                                                                );
+        system_thread_pool_task task = system_thread_pool_create_task_handler_with_event_signal(THREAD_POOL_TASK_PRIORITY_IDLE,
+                                                                                                _system_file_serializer_read_task_executor,
+                                                                                                new_descriptor,
+                                                                                                new_descriptor->reading_finished_event);
 
-        system_thread_pool_submit_single_task(task_descriptor);
+        system_thread_pool_submit_single_task(task);
     }
     else
     {

@@ -542,9 +542,9 @@ PRIVATE void _collada_scene_generator_create_textures(collada_data       data,
                  * we will be launching */
                 current_workload->n_workloads_to_process = n_workloads;
 
-                system_thread_pool_task_descriptor task = system_thread_pool_create_task_descriptor_handler_only(THREAD_POOL_TASK_PRIORITY_IDLE,
-                                                                                                                 _collada_scene_generator_process_workload,
-                                                                                                                 current_workload);
+                system_thread_pool_task task = system_thread_pool_create_task_handler_only(THREAD_POOL_TASK_PRIORITY_IDLE,
+                                                                                           _collada_scene_generator_process_workload,
+                                                                                           current_workload);
 
                 system_thread_pool_submit_single_task(task);
             }

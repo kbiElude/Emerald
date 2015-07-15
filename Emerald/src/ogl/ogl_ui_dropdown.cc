@@ -2092,9 +2092,9 @@ PUBLIC void ogl_ui_dropdown_on_lbm_up(void*        internal_instance,
                         event_ptr->fire_proc_user_arg = dropdown_ptr->fire_proc_user_arg;
                         event_ptr->pfn_fire_proc_ptr  = dropdown_ptr->pfn_fire_proc_ptr;
 
-                        system_thread_pool_task_descriptor task = system_thread_pool_create_task_descriptor_handler_only(THREAD_POOL_TASK_PRIORITY_NORMAL,
-                                                                                                                         _ogl_ui_dropdown_fire_callback,
-                                                                                                                         event_ptr);
+                        system_thread_pool_task task = system_thread_pool_create_task_handler_only(THREAD_POOL_TASK_PRIORITY_NORMAL,
+                                                                                                   _ogl_ui_dropdown_fire_callback,
+                                                                                                   event_ptr);
 
                         system_thread_pool_submit_single_task(task);
                     }

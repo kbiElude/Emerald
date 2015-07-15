@@ -90,13 +90,13 @@ TEST(ThreadPoolTest, FewSimpleTasksSubmittedSeparately)
         input->wait_event  = wait_events[n];
 
         /* Create task descriptor */
-        system_thread_pool_task_descriptor task_descriptor = system_thread_pool_create_task_descriptor_handler_only(THREAD_POOL_TASK_PRIORITY_NORMAL,
-                                                                                                                    _few_simple_tasks_submitted_separately_worker,
-                                                                                                                    input);
+        system_thread_pool_task task = system_thread_pool_create_task_handler_only(THREAD_POOL_TASK_PRIORITY_NORMAL,
+                                                                                   _few_simple_tasks_submitted_separately_worker,
+                                                                                   input);
 
-        ASSERT_TRUE(task_descriptor != NULL);
+        ASSERT_TRUE(task != NULL);
 
-        system_thread_pool_submit_single_task(task_descriptor);
+        system_thread_pool_submit_single_task(task);
     }
 
     /* wait till all tasks finish */
@@ -146,13 +146,13 @@ TEST(ThreadPoolTest, FewComplexTasksSubmittedSeparately)
         inputs[n].wait_event     = wait_events[n];
 
         /* Create task descriptor */
-        system_thread_pool_task_descriptor task_descriptor = system_thread_pool_create_task_descriptor_handler_only(THREAD_POOL_TASK_PRIORITY_NORMAL,
-                                                                                                                    _few_complex_tasks_submitted_separately_worker,
-                                                                                                                    inputs + n);
+        system_thread_pool_task task = system_thread_pool_create_task_handler_only(THREAD_POOL_TASK_PRIORITY_NORMAL,
+                                                                                   _few_complex_tasks_submitted_separately_worker,
+                                                                                   inputs + n);
 
-        ASSERT_TRUE(task_descriptor != NULL);
+        ASSERT_TRUE(task != NULL);
 
-        system_thread_pool_submit_single_task(task_descriptor);
+        system_thread_pool_submit_single_task(task);
     }
 
     /* wait till all tasks finish */
