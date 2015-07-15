@@ -8,6 +8,15 @@
 
 #include "system_types.h"
 
+#ifdef __linux
+    #include <semaphore.h>
+
+    #define MAX_SEMAPHORE_CAPACITY (SEM_VALUE_MAX)
+#else
+    #define MAX_SEMAPHORE_CAPACITY (0xFFFFFFFF)
+#endif
+
+
 /** Creates a semaphore object, allowing up to @param semaphore_capacity
  *  enter() calls from various threads before blocking the caller thread.
  *

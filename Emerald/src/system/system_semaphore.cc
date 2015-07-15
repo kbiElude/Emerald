@@ -8,7 +8,7 @@
 #include "system/system_semaphore.h"
 #include "system/system_time.h"
 
-#ifdef __linux__
+#ifdef __linux
     #include <semaphore.h>
 #endif
 
@@ -29,6 +29,8 @@ EMERALD_API system_semaphore system_semaphore_create(uint32_t semaphore_capacity
 {
     _system_semaphore* semaphore_ptr = new _system_semaphore;
 
+    ASSERT_DEBUG_SYNC(semaphore_capacity <= MAX_SEMAPHORE_CAPACITY,
+                      "Invalid semaphore capacity requested.");
     ASSERT_DEBUG_SYNC(semaphore_default_value <= semaphore_capacity,
                       "Invalid semaphore's default value requested.");
 
@@ -49,11 +51,11 @@ EMERALD_API system_semaphore system_semaphore_create(uint32_t semaphore_capacity
                       "Could not create a semaphore");
 
     /* Configure the semaphore to the user-specified value */
-    uint32_t diff = semaphore_capacity - semaphore_default_value;
+    int32_t diff = semaphore_capacity - semaphore_default_value;
 
-    for (uint32_t n = 0;
-                  n < diff;
-                ++n)
+    for (int32_t n = 0;
+                 n < diff;
+               ++n)
     {
         int result = sem_wait(&semaphore_ptr->semaphore);
 

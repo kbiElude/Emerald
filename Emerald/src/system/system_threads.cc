@@ -80,12 +80,12 @@ system_resource_pool    thread_descriptor_pool   = NULL;
     }
     #endif
 
+    /* Execute the user-specified entry-point */
+    callback_func(callback_func_arg);
+
     /* Release the descriptor back to the pool */
     system_resource_pool_return_to_pool(thread_descriptor_pool,
                                         (system_resource_pool_block) thread_descriptor);
-
-    /* Execute the user-specified entry-point */
-    callback_func(callback_func_arg);
 
     /* Unregister the thread */
     system_critical_section_enter(active_threads_vector_cs);
@@ -219,6 +219,9 @@ PUBLIC EMERALD_API system_thread_id system_threads_spawn(PFNSYSTEMTHREADSENTRYPO
              * to get the event to release at deinit time, we will free the event in just a bit */
             thread_descriptor->thread_id_submitted_event = system_event_create     (true); /* manual_reset */
             thread_descriptor->thread_spawn_index        = system_atomics_increment(&n_threads_spawned);
+
+            ASSERT_DEBUG_SYNC(thread_descriptor->thread_id_submitted_event != NULL,
+                              "Could not create 'thread ID submitted' event");
 
             int creation_result = pthread_create(&thread_descriptor->thread_handle,
                                                   NULL,
