@@ -512,10 +512,16 @@ PRIVATE void _ui_set_current_vsm_min_variance_value(void*          unused,
 PUBLIC void ui_deinit()
 {
     ogl_ui_bag_release(_ui_bag);
-    ogl_ui_release    (_ui);
-    ogl_text_release  (_text_renderer);
+    _ui_bag = NULL;
+
+    ogl_ui_release(_ui);
+    _ui = NULL;
+
+    ogl_text_release(_text_renderer);
+    _text_renderer = NULL;
 
     system_variant_release(_temp_variant_float);
+    _temp_variant_float = NULL;
 }
 
 /** Please see header for spec */

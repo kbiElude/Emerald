@@ -53,6 +53,8 @@ typedef struct _system_window_linux
     system_window_handle system_handle;
     system_window        window; /* DO NOT retain */
 
+    bool                 has_been_closed;
+    bool                 has_been_destroyed;
     system_event         teardown_completed_event;
 
     int cursor_position[2]; /* only updated prior to call-back execution! */
@@ -69,6 +71,8 @@ typedef struct _system_window_linux
         delete_window_atom                   = (Atom) NULL;
         display                              = NULL;
         hand_cursor_resource                 = 0;
+        has_been_closed                      = false;
+        has_been_destroyed                   = false;
         horizontal_resize_cursor_resource    = 0;
         move_cursor_resource                 = 0;
         system_handle                        = (system_window_handle) NULL;
@@ -148,8 +152,13 @@ typedef struct _system_window_linux
         if (display       != 0                      &&
             system_handle != (system_window_handle) NULL)
         {
-            XDestroyWindow(display,
-                           system_handle);
+            if (!has_been_destroyed)
+            {
+                XDestroyWindow(display,
+                            system_handle);
+
+                has_been_destroyed = true;
+            }
 
             system_handle = (system_window_handle) NULL;
         }
@@ -171,8 +180,11 @@ typedef struct _system_window_linux
 } _system_window_linux;
 
 /* Forward declarations */
-PRIVATE void _system_window_linux_handle_close_window_request(_system_window_linux* linux_ptr,
-                                                              bool                  remove_from_window_map);
+PRIVATE void _system_window_linux_handle_close_window_request               (_system_window_linux* linux_ptr,
+                                                                             bool                  remove_from_window_map);
+PRIVATE void _system_window_linux_handle_event                              (const XEvent*         event_ptr);
+PRIVATE void _system_window_linux_window_closing_rendering_thread_entrypoint(ogl_context           context,
+                                                                             void*                 user_arg);
 
 
 /* Main display which is used to listen for window events.
@@ -195,6 +207,76 @@ PRIVATE system_hash64map        message_pump_registered_windows_map = NULL; /* m
 PRIVATE system_event            message_pump_thread_died_event      = NULL;
 PRIVATE _system_window_linux*   root_window_linux_ptr               = NULL;
 
+
+/** TODO */
+PRIVATE void _system_window_linux_handle_close_window_request(_system_window_linux* linux_ptr,
+                                                              bool                  remove_from_window_map)
+{
+    ogl_context           context           = NULL;
+    ogl_rendering_handler rendering_handler = NULL;
+
+    if (linux_ptr->has_been_closed)
+    {
+        goto end;
+    }
+
+    /* Remove the window from the "registered windows" map */
+    if (remove_from_window_map)
+    {
+        system_critical_section_enter(message_pump_registered_windows_cs);
+        {
+            system_hash64map_remove(message_pump_registered_windows_map,
+                                    (system_hash64) linux_ptr->system_handle);
+
+            linux_ptr->system_handle = (system_window_handle) NULL;
+        }
+        system_critical_section_leave(message_pump_registered_windows_cs);
+    }
+
+    /* If the window is being closed per system request (eg. ALT+F4 was pressed), we need to stop
+     * the rendering process first! Otherwise we're very likely to end up with a nasty crash. */
+    system_window_get_property(linux_ptr->window,
+                               SYSTEM_WINDOW_PROPERTY_RENDERING_CONTEXT,
+                              &context);
+    system_window_get_property(linux_ptr->window,
+                               SYSTEM_WINDOW_PROPERTY_RENDERING_HANDLER,
+                              &rendering_handler);
+
+    if (rendering_handler != NULL)
+    {
+        ogl_rendering_handler_playback_status playback_status = RENDERING_HANDLER_PLAYBACK_STATUS_STOPPED;
+
+        ogl_rendering_handler_get_property(rendering_handler,
+                                           OGL_RENDERING_HANDLER_PROPERTY_PLAYBACK_STATUS,
+                                          &playback_status);
+
+        if (playback_status != RENDERING_HANDLER_PLAYBACK_STATUS_STOPPED)
+        {
+            ogl_rendering_handler_stop(rendering_handler);
+        } /* if (playback_status != RENDERING_HANDLER_PLAYBACK_STATUS_STOPPED) */
+
+        /* Call back the subscribers, First, ask for a rendering thread call-back to handle the
+        * "window closing" event subscribers. Once these call-backs are handled, proceed with
+        * the "window closed" event subscribers.
+        *
+        * While the distinction is kind of odd (after all, the window is likely to have been destroyed
+        * by the time this function is called), the context is still alive. We also need to fit the
+        * way Windows build works so, yeah.
+        */
+        ogl_context_request_callback_from_context_thread(context,
+                                                        _system_window_linux_window_closing_rendering_thread_entrypoint,
+                                                        linux_ptr);
+    }
+
+    system_window_execute_callback_funcs(linux_ptr->window,
+                                         SYSTEM_WINDOW_CALLBACK_FUNC_WINDOW_CLOSED);
+
+    system_event_set(linux_ptr->teardown_completed_event);
+
+    linux_ptr->has_been_closed = true;
+end:
+    ;
+}
 
 /** Global UI thread event handler.
  *
@@ -400,65 +482,11 @@ PRIVATE void _system_window_linux_handle_event(const XEvent* event_ptr)
 }
 
 /** TODO */
-PRIVATE void _system_window_linux_handle_close_window_request(_system_window_linux* linux_ptr,
-                                                              bool                  remove_from_window_map)
-{
-    /* TODO: ADD WINDOW_CLOSING CALLBACK SUPPORT */
-
-    /* Remove the window from the "registered windows" map */
-    ogl_context           context           = NULL;
-    ogl_rendering_handler rendering_handler = NULL;
-
-    if (remove_from_window_map)
-    {
-        system_critical_section_enter(message_pump_registered_windows_cs);
-        {
-            system_hash64map_remove(message_pump_registered_windows_map,
-                                    (system_hash64) linux_ptr->system_handle);
-
-            linux_ptr->system_handle = (system_window_handle) NULL;
-        }
-        system_critical_section_leave(message_pump_registered_windows_cs);
-    }
-
-    /* If the window is being closed per system request (eg. ALT+F4 was pressed), we need to stop
-     * the rendering process first! Otherwise we're very likely to end up with a nasty crash. */
-    system_window_get_property(linux_ptr->window,
-                               SYSTEM_WINDOW_PROPERTY_RENDERING_CONTEXT,
-                              &context);
-    system_window_get_property(linux_ptr->window,
-                               SYSTEM_WINDOW_PROPERTY_RENDERING_HANDLER,
-                              &rendering_handler);
-
-    if (rendering_handler != NULL)
-    {
-        ogl_rendering_handler_playback_status playback_status = RENDERING_HANDLER_PLAYBACK_STATUS_STOPPED;
-
-        ogl_rendering_handler_get_property(rendering_handler,
-                                           OGL_RENDERING_HANDLER_PROPERTY_PLAYBACK_STATUS,
-                                          &playback_status);
-
-        if (playback_status != RENDERING_HANDLER_PLAYBACK_STATUS_STOPPED)
-        {
-            ogl_rendering_handler_stop(rendering_handler);
-        } /* if (playback_status != RENDERING_HANDLER_PLAYBACK_STATUS_STOPPED) */
-    }
-
-    /* Call back the subscribers, if any */
-    system_window_execute_callback_funcs(linux_ptr->window,
-                                         SYSTEM_WINDOW_CALLBACK_FUNC_WINDOW_CLOSED);
-
-    system_event_set(linux_ptr->teardown_completed_event);
-}
-
-
-#if 0
-/** TODO */
-PRIVATE void _system_window_window_closing_rendering_thread_entrypoint(ogl_context context,
-                                                                       void*       user_arg)
+PRIVATE void _system_window_linux_window_closing_rendering_thread_entrypoint(ogl_context context,
+                                                                             void*       user_arg)
 {
     bool                  is_closing  = false;
-    _system_window_win32* window_ptr  = (_system_window_win32*) user_arg;
+    _system_window_linux* window_ptr  = (_system_window_linux*) user_arg;
 
     system_window_get_property(window_ptr->window,
                                SYSTEM_WINDOW_PROPERTY_IS_CLOSING,
@@ -480,7 +508,6 @@ PRIVATE void _system_window_window_closing_rendering_thread_entrypoint(ogl_conte
                                SYSTEM_WINDOW_PROPERTY_IS_CLOSING,
                               &is_closing);
 }
-#endif
 
 
 /** Please see header for spec */
@@ -493,8 +520,13 @@ PUBLIC void system_window_linux_close_window(system_window_linux window)
     ASSERT_DEBUG_SYNC(linux_ptr->system_handle != (system_window_handle) NULL,
                       "No window to close - system handle is NULL.");
 
-    XDestroyWindow(linux_ptr->display,
-                   linux_ptr->system_handle);
+    if (!linux_ptr->has_been_destroyed)
+    {
+        XDestroyWindow(linux_ptr->display,
+                       linux_ptr->system_handle);
+
+        linux_ptr->has_been_destroyed = true;
+    }
 }
 
 /** Please see header for spec */
