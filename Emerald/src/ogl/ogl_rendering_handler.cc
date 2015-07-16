@@ -12,6 +12,7 @@
 #include "system/system_event.h"
 #include "system/system_hashed_ansi_string.h"
 #include "system/system_log.h"
+#include "system/system_pixel_format.h"
 #include "system/system_threads.h"
 #include "system/system_time.h"
 #include "system/system_window.h"
@@ -89,23 +90,28 @@ PRIVATE void _ogl_rendering_handler_thread_entrypoint(void* in_arg)
         system_event_wait_single(rendering_handler->context_set_event);
 
         /* Cache some variables.. */
-        ogl_context_type          context_type          = OGL_CONTEXT_TYPE_UNDEFINED;
-        system_window             context_window        = NULL;
-        system_hashed_ansi_string context_window_name   = NULL;
-        GLuint                    default_fbo_id        = -1;
-        bool                      default_fbo_id_set    = false;
-        bool                      is_root_window        = false;
-        PFNGLBINDFRAMEBUFFERPROC  pGLBindFramebuffer    = NULL;
-        PFNGLBLITFRAMEBUFFERPROC  pGLBlitFramebuffer    = NULL;
-        bool                      should_live           = true;
-        const system_event        wait_events[]         =
+        ogl_context_type          context_type             = OGL_CONTEXT_TYPE_UNDEFINED;
+        system_window             context_window           = NULL;
+        unsigned char             context_window_n_samples = 0;
+        system_hashed_ansi_string context_window_name      = NULL;
+        system_pixel_format       context_window_pf        = NULL;
+        GLuint                    default_fbo_id           = -1;
+        bool                      default_fbo_id_set       = false;
+        bool                      is_multisample_pf        = false;
+        bool                      is_root_window           = false;
+        PFNGLBINDFRAMEBUFFERPROC  pGLBindFramebuffer       = NULL;
+        PFNGLBLITFRAMEBUFFERPROC  pGLBlitFramebuffer       = NULL;
+        PFNGLDISABLEPROC          pGLDisable               = NULL;
+        PFNGLENABLEPROC           pGLEnable                = NULL;
+        bool                      should_live              = true;
+        const system_event        wait_events[]            =
         {
             rendering_handler->shutdown_request_event,
             rendering_handler->callback_request_event,
             rendering_handler->unbind_context_request_event,
             rendering_handler->playback_in_progress_event
         };
-        GLint                     window_size[2] = {0};
+        GLint                     window_size[2]           = {0};
 
         ogl_context_get_property  (rendering_handler->context,
                                    OGL_CONTEXT_PROPERTY_TYPE,
@@ -120,8 +126,17 @@ PRIVATE void _ogl_rendering_handler_thread_entrypoint(void* in_arg)
                                    SYSTEM_WINDOW_PROPERTY_IS_ROOT_WINDOW,
                                   &is_root_window);
         system_window_get_property(context_window,
+                                   SYSTEM_WINDOW_PROPERTY_PIXEL_FORMAT,
+                                  &context_window_pf);
+        system_window_get_property(context_window,
                                    SYSTEM_WINDOW_PROPERTY_NAME,
                                   &context_window_name);
+
+        system_pixel_format_get_property(context_window_pf,
+                                         SYSTEM_PIXEL_FORMAT_PROPERTY_N_SAMPLES,
+                                        &context_window_n_samples);
+
+        is_multisample_pf = (context_window_n_samples > 1);
 
         ASSERT_DEBUG_SYNC(window_size[0] != 0 &&
                           window_size[1] != 0,
@@ -151,6 +166,8 @@ PRIVATE void _ogl_rendering_handler_thread_entrypoint(void* in_arg)
 
             pGLBindFramebuffer = entrypoints->pGLBindFramebuffer;
             pGLBlitFramebuffer = entrypoints->pGLBlitFramebuffer;
+            pGLDisable         = entrypoints->pGLDisable;
+            pGLEnable          = entrypoints->pGLEnable;
         }
 
         /* Bind the thread to GL */
@@ -284,10 +301,20 @@ PRIVATE void _ogl_rendering_handler_thread_entrypoint(void* in_arg)
                             pGLBindFramebuffer(GL_DRAW_FRAMEBUFFER,
                                                default_fbo_id);
 
+                            if (is_multisample_pf && context_type == OGL_CONTEXT_TYPE_GL)
+                            {
+                                pGLEnable(GL_MULTISAMPLE);
+                            }
+
                             rendering_handler->pfn_rendering_callback(rendering_handler->context,
                                                                       frame_index,
                                                                       new_frame_time,
                                                                       rendering_handler->rendering_callback_user_arg);
+
+                            if (is_multisample_pf && context_type == OGL_CONTEXT_TYPE_GL)
+                            {
+                                pGLDisable(GL_MULTISAMPLE);
+                            }
 
                             /* Blit the context FBO's contents to the back buffer */
                             pGLBindFramebuffer(GL_DRAW_FRAMEBUFFER,
