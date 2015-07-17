@@ -739,7 +739,7 @@ PUBLIC bool system_window_win32_open_window(system_window_win32 window,
     bool                      is_window_scalable   = false;
     system_window_handle      parent_window_handle = NULL;
     system_hashed_ansi_string window_title         = NULL;
-    int      x1y1x2y2[4];
+    int                       x1y1x2y2[4];
 
     system_window_get_property(win32_ptr->window,
                                SYSTEM_WINDOW_PROPERTY_IS_FULLSCREEN,
@@ -759,13 +759,9 @@ PUBLIC bool system_window_win32_open_window(system_window_win32 window,
 
     if (is_window_fullscreen)
     {
-        uint16_t fullscreen_bpp  = 0;
         uint16_t fullscreen_freq = 0;
         DEVMODEA new_device_mode;
 
-        system_window_get_property(win32_ptr->window,
-                                   SYSTEM_WINDOW_PROPERTY_FULLSCREEN_BPP,
-                                  &fullscreen_bpp);
         system_window_get_property(win32_ptr->window,
                                    SYSTEM_WINDOW_PROPERTY_FULLSCREEN_REFRESH_RATE,
                                   &fullscreen_freq);
@@ -774,20 +770,20 @@ PUBLIC bool system_window_win32_open_window(system_window_win32 window,
                0,
                sizeof(new_device_mode) );
 
-        new_device_mode.dmBitsPerPel       = fullscreen_bpp;
+        new_device_mode.dmSize             = sizeof(new_device_mode).dmSize;
+        new_device_mode.dmBitsPerPel       = 32;
         new_device_mode.dmDisplayFrequency = fullscreen_freq;
         new_device_mode.dmFields           = DM_BITSPERPEL | DM_DISPLAYFREQUENCY | DM_PELSHEIGHT | DM_PELSWIDTH;
         new_device_mode.dmPelsHeight       = x1y1x2y2[2] - x1y1x2y2[0];
         new_device_mode.dmPelsWidth        = x1y1x2y2[3] - x1y1x2y2[1];
 
         if (::ChangeDisplaySettingsA(&new_device_mode,
-                                     CDS_FULLSCREEN) )
+                                     CDS_FULLSCREEN) != DISP_CHANGE_SUCCESSFUL)
         {
-            LOG_FATAL("Could not switch to full-screen for: width=%d height=%d freq=%d bpp=%d", 
+            LOG_FATAL("Could not switch to full-screen for: width=%d height=%d freq=%d", 
                       x1y1x2y2[2] - x1y1x2y2[0],
                       x1y1x2y2[3] - x1y1x2y2[1],
-                      fullscreen_freq,
-                      fullscreen_bpp);
+                      fullscreen_freq);
 
             goto end;
         }

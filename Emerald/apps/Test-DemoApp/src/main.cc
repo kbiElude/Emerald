@@ -221,12 +221,11 @@ void _rendering_window_closing_callback_handler(system_window window)
     system_window_get_centered_window_position_for_primary_monitor(window_size,
                                                                    window_x1y1x2y2);
 
-    _window            = system_window_create_not_fullscreen         (OGL_CONTEXT_TYPE_GL,
-                                                                      window_x1y1x2y2,
-                                                                      system_hashed_ansi_string_create("Test window"),
-                                                                      false,
+    _window            = system_window_create_fullscreen             (OGL_CONTEXT_TYPE_GL,
+                                                                      window_x1y1x2y2[2],
+                                                                      window_x1y1x2y2[3],
+                                                                      60,
                                                                       false, /* vsync_enabled */
-                                                                      true,  /* visible */
                                                                       window_pf);
     _rendering_handler = ogl_rendering_handler_create_with_fps_policy(system_hashed_ansi_string_create("Default rendering handler"),
                                                                       TARGET_FPS,

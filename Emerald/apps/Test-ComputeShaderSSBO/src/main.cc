@@ -316,12 +316,11 @@ PRIVATE void _window_closing_callback_handler(system_window window)
     system_window_get_centered_window_position_for_primary_monitor(_window_size,
                                                                    window_x1y1x2y2);
 
-    system_window         window                   = system_window_create_not_fullscreen         (OGL_CONTEXT_TYPE_GL,
-                                                                                                  window_x1y1x2y2,
-                                                                                                  system_hashed_ansi_string_create("Test window"),
-                                                                                                  false,
-                                                                                                  false, /* vsync_enabled */
-                                                                                                  true,  /* visible */
+    system_window         window                   = system_window_create_fullscreen             (OGL_CONTEXT_TYPE_GL,
+                                                                                                  window_x1y1x2y2[2] - window_x1y1x2y2[0],
+                                                                                                  window_x1y1x2y2[3] - window_x1y1x2y2[1],
+                                                                                                  60,
+                                                                                                  true, /* vsync_enabled */
                                                                                                   window_pf);
     ogl_rendering_handler window_rendering_handler = ogl_rendering_handler_create_with_fps_policy(system_hashed_ansi_string_create("Default rendering handler"),
                                                                                                   60,

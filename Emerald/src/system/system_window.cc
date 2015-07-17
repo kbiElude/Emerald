@@ -62,7 +62,6 @@ typedef struct
 typedef struct
 {
     /** Full-screen only */
-    uint16_t fullscreen_bpp;
     uint16_t fullscreen_freq;
 
     ogl_context_type           context_type;
@@ -160,7 +159,6 @@ PRIVATE system_window _system_window_create_shared                             (
                                                                                 const int*                           x1y1x2y2,
                                                                                 system_hashed_ansi_string            title,
                                                                                 bool                                 is_scalable,
-                                                                                uint16_t                             fullscreen_bpp,
                                                                                 uint16_t                             fullscreen_freq,
                                                                                 bool                                 vsync_enabled,
                                                                                 system_window_handle                 parent_window_handle,
@@ -280,7 +278,6 @@ PRIVATE void _deinit_system_window(_system_window* window_ptr)
 /** TODO */
 PRIVATE void _init_system_window(_system_window* window_ptr)
 {
-    window_ptr->fullscreen_bpp               = 0;
     window_ptr->fullscreen_freq              = 0;
     window_ptr->is_cursor_visible            = false;
     window_ptr->is_fullscreen                = false;
@@ -789,7 +786,6 @@ PRIVATE void _system_window_create_root_window(ogl_context_type context_type)
                                                 root_window_x1y1x2y2,
                                                 system_hashed_ansi_string_create("Root window"),
                                                 false, /* scalable */
-                                                0,     /* fullscreen_bpp */
                                                 0,     /* fullscreen_freq */
                                                 false, /* vsync_enabled */
                                                 0,     /* parent_window_handle */
@@ -822,7 +818,6 @@ PRIVATE system_window _system_window_create_shared(ogl_context_type          con
                                                    const int*                x1y1x2y2,
                                                    system_hashed_ansi_string title,
                                                    bool                      is_scalable,
-                                                   uint16_t                  fullscreen_bpp,
                                                    uint16_t                  fullscreen_freq,
                                                    bool                      vsync_enabled,
                                                    system_window_handle      parent_window_handle,
@@ -841,7 +836,6 @@ PRIVATE system_window _system_window_create_shared(ogl_context_type          con
 
         /* Fill the descriptor with input values */
         new_window->context_type            = context_type;
-        new_window->fullscreen_bpp          = fullscreen_bpp;
         new_window->fullscreen_freq         = fullscreen_freq;
         new_window->x1y1x2y2[0]             = x1y1x2y2[0];
         new_window->x1y1x2y2[1]             = x1y1x2y2[1];
@@ -952,7 +946,6 @@ PUBLIC EMERALD_API system_window system_window_create_by_replacing_window(system
                                                   name,
                                                   false, /* not scalable */
                                                   0,
-                                                  0,
                                                   vsync_enabled,
                                                   ::GetParent(parent_window_handle),
                                                   true   /* visible */,
@@ -985,7 +978,6 @@ PUBLIC EMERALD_API system_window system_window_create_not_fullscreen(ogl_context
                                         title,
                                         scalable,
                                         0,
-                                        0,
                                         vsync_enabled,
                                         (system_window_handle) NULL, /* parent_window_handle */
                                         visible,
@@ -997,7 +989,6 @@ PUBLIC EMERALD_API system_window system_window_create_not_fullscreen(ogl_context
 PUBLIC EMERALD_API system_window system_window_create_fullscreen(ogl_context_type    context_type,
                                                                  uint16_t            width,
                                                                  uint16_t            height,
-                                                                 uint16_t            bpp,
                                                                  uint16_t            freq,
                                                                  bool                vsync_enabled,
                                                                  system_pixel_format pf)
@@ -1009,7 +1000,6 @@ PUBLIC EMERALD_API system_window system_window_create_fullscreen(ogl_context_typ
                                         x1y1x2y2,
                                         system_hashed_ansi_string_get_default_empty_string(),
                                         false,
-                                        bpp,
                                         freq,
                                         vsync_enabled,
                                         (system_window_handle) NULL,  /* parent_window_handle */
@@ -1634,13 +1624,6 @@ PUBLIC EMERALD_API void system_window_get_property(system_window          window
         case SYSTEM_WINDOW_PROPERTY_CONTEXT_TYPE:
         {
             *(ogl_context_type*) out_result = window_ptr->context_type;
-
-            break;
-        }
-
-        case SYSTEM_WINDOW_PROPERTY_FULLSCREEN_BPP:
-        {
-            *(uint16_t*) out_result = window_ptr->fullscreen_bpp;
 
             break;
         }

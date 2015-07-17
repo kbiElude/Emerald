@@ -1141,10 +1141,10 @@ PUBLIC void FillSceneWithMeshData(scene scene)
         system_event job_done_event = system_event_create(true); /* manual_reset */
 
         /* Spawn a worker thread so that we can report the progress. */
-        system_thread_pool_task_descriptor task = system_thread_pool_create_task_descriptor_handler_with_event_signal(THREAD_POOL_TASK_PRIORITY_NORMAL,
-                                                                                                                      ExtractMeshDataWorkerThreadEntryPoint,
-                                                                                                                      (void*) n_object,
-                                                                                                                      job_done_event);
+        system_thread_pool_task task = system_thread_pool_create_task_handler_with_event_signal(THREAD_POOL_TASK_PRIORITY_NORMAL,
+                                                                                                ExtractMeshDataWorkerThreadEntryPoint,
+                                                                                                (void*) n_object,
+                                                                                                job_done_event);
 
         system_thread_pool_submit_single_task(task);
         system_event_wait_single             (job_done_event);
@@ -1287,10 +1287,10 @@ PUBLIC void FillSceneWithMeshData(scene scene)
                                                                                                               scene);
 
                 /* Distribute the task to a worker thread. */
-                system_thread_pool_task_descriptor task = system_thread_pool_create_task_descriptor_handler_with_event_signal(THREAD_POOL_TASK_PRIORITY_NORMAL,
-                                                                                                                              BakeMeshGLBlobWorkerThreadEntryPoint,
-                                                                                                                              (void*) job_arg_ptr,
-                                                                                                                              job_done_event);
+                system_thread_pool_task task = system_thread_pool_create_task_handler_with_event_signal(THREAD_POOL_TASK_PRIORITY_NORMAL,
+                                                                                                        BakeMeshGLBlobWorkerThreadEntryPoint,
+                                                                                                        (void*) job_arg_ptr,
+                                                                                                        job_done_event);
 
                 system_thread_pool_submit_single_task(task);
 

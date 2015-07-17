@@ -51,9 +51,6 @@ typedef enum
     SYSTEM_WINDOW_PROPERTY_HANDLE,
 
     /* not settable, uint16_t */
-    SYSTEM_WINDOW_PROPERTY_FULLSCREEN_BPP,
-
-    /* not settable, uint16_t */
     SYSTEM_WINDOW_PROPERTY_FULLSCREEN_REFRESH_RATE,
 
     /* not settable, bool.
@@ -178,7 +175,6 @@ PUBLIC EMERALD_API system_window system_window_create_not_fullscreen(ogl_context
 PUBLIC EMERALD_API system_window system_window_create_fullscreen(ogl_context_type    context_type,
                                                                  uint16_t            width,
                                                                  uint16_t            height,
-                                                                 uint16_t            bpp,
                                                                  uint16_t            freq,
                                                                  bool                vsync_enabled,
                                                                  system_pixel_format pixel_format);

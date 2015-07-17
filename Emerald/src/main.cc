@@ -171,6 +171,7 @@ int main_deinit()
         system_hashed_ansi_string_deinit();
 
         _system_log_deinit();
+        system_capabilities_deinit();
 
         _deinited = true;
     }
