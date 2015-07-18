@@ -327,7 +327,7 @@ PRIVATE void _window_closing_callback_handler(system_window window)
                                                                8,  /* color_buffer_green_bits */
                                                                8,  /* color_buffer_blue_bits  */
                                                                0,  /* color_buffer_alpha_bits */
-                                                               8,  /* depth_buffer_bits       */
+                                                               16, /* depth_buffer_bits       */
                                                                1,  /* n_samples               */
                                                                0); /* stencil_buffer_bits     */
 

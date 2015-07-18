@@ -694,7 +694,7 @@ void _window_closing_callback_handler(system_window window)
                                                                8,  /* color_buffer_green_bits */
                                                                8,  /* color_buffer_blue_bits  */
                                                                0,  /* color_buffer_alpha_bits */
-                                                               8,  /* depth_buffer_bits       */
+                                                               16, /* depth_buffer_bits       */
                                                                1,  /* n_samples               */
                                                                0); /* stencil_buffer_bits     */
 
@@ -702,12 +702,12 @@ void _window_closing_callback_handler(system_window window)
                                                                    window_x1y1x2y2);
 
     _window = system_window_create_not_fullscreen(OGL_CONTEXT_TYPE_GL,
-                                                                   window_x1y1x2y2,
-                                                                   system_hashed_ansi_string_create("Test window"),
-                                                                   false,
-                                                                   false, /* vsync_enabled */
-                                                                   true,  /* visible */
-                                                                   window_pf);
+                                                  window_x1y1x2y2,
+                                                  system_hashed_ansi_string_create("Test window"),
+                                                  false,
+                                                  false, /* vsync_enabled */
+                                                  true,  /* visible */
+                                                  window_pf);
 
     ogl_rendering_handler window_rendering_handler = ogl_rendering_handler_create_with_fps_policy(system_hashed_ansi_string_create("Default rendering handler"),
                                                                                                   30, /* desired_fps */

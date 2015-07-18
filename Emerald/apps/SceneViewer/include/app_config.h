@@ -8,8 +8,8 @@
 
 #define CAMERA_SETTING_Z_FAR (100.0f)
 #define MOVEMENT_DELTA       (0.15f)
-#define WINDOW_WIDTH         (1280)
-#define WINDOW_HEIGHT        (720)
+#define WINDOW_WIDTH         (1920)
+#define WINDOW_HEIGHT        (1080)
 
 #define ENABLE_ANIMATION
 //#define ENABLE_BB_VISUALIZATION

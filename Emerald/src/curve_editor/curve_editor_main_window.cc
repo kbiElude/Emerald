@@ -271,7 +271,7 @@ PRIVATE bool _curve_editor_dialog_item_name_comparator(void* has_1,
     system_hashed_ansi_string string_2 = (system_hashed_ansi_string) has_2;
 
     return stricmp(system_hashed_ansi_string_get_buffer(string_1),
-                   system_hashed_ansi_string_get_buffer(string_2) ) < 0;
+                   system_hashed_ansi_string_get_buffer(string_2) ) <= 0;
 }
 
 /** TODO */

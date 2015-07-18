@@ -11,6 +11,7 @@
 #include "ogl/ogl_shader.h"
 #include "ogl/ogl_texture.h"
 #include "system/system_assertions.h"
+#include "system/system_capabilities.h"
 #include "system/system_event.h"
 #include "system/system_hashed_ansi_string.h"
 #include "system/system_pixel_format.h"
@@ -304,28 +305,47 @@ PRIVATE void _window_closing_callback_handler(system_window window)
     int main()
 #endif
 {
-    system_pixel_format window_pf          = system_pixel_format_create(8,  /* color_buffer_red_bits   */
-                                                                        8,  /* color_buffer_green_bits */
-                                                                        8,  /* color_buffer_blue_bits  */
-                                                                        0,  /* color_buffer_alpha_bits */
-                                                                        16, /* depth_buffer_bits       */
-                                                                        1,  /* n_samples               */
-                                                                        0); /* stencil_buffer_bits     */
-    int                 window_x1y1x2y2[4] = {0};
+    system_screen_mode    screen_mode              = NULL;
+    system_window         window                   = NULL;
+    system_pixel_format   window_pf                = NULL;
+    ogl_rendering_handler window_rendering_handler = NULL;
+    int                   window_x1y1x2y2[4]       = {0};
 
+    system_capabilities_get_screen_mode_for_resolution(_window_size[0],
+                                                       _window_size[1],
+                                                       60,
+                                                      &screen_mode);
+
+    window_pf = system_pixel_format_create(8,  /* color_buffer_red_bits   */
+                                           8,  /* color_buffer_green_bits */
+                                           8,  /* color_buffer_blue_bits  */
+                                           0,  /* color_buffer_alpha_bits */
+                                           16, /* depth_buffer_bits       */
+                                           1,  /* n_samples               */
+                                           0); /* stencil_buffer_bits     */
+
+#if 0
+    window = system_window_create_fullscreen(OGL_CONTEXT_TYPE_GL,
+                                             screen_mode,
+                                             true, /* vsync_enabled */
+                                             window_pf);
+#else
     system_window_get_centered_window_position_for_primary_monitor(_window_size,
                                                                    window_x1y1x2y2);
 
-    system_window         window                   = system_window_create_fullscreen             (OGL_CONTEXT_TYPE_GL,
-                                                                                                  window_x1y1x2y2[2] - window_x1y1x2y2[0],
-                                                                                                  window_x1y1x2y2[3] - window_x1y1x2y2[1],
-                                                                                                  60,
-                                                                                                  true, /* vsync_enabled */
-                                                                                                  window_pf);
-    ogl_rendering_handler window_rendering_handler = ogl_rendering_handler_create_with_fps_policy(system_hashed_ansi_string_create("Default rendering handler"),
-                                                                                                  60,
-                                                                                                  _rendering_handler,
-                                                                                                  NULL);
+    window = system_window_create_not_fullscreen(OGL_CONTEXT_TYPE_GL,
+                                                 window_x1y1x2y2,
+                                                 system_hashed_ansi_string_create("Test window"),
+                                                 false, /* scalable */
+                                                 true,  /* vsync_enabled */
+                                                 true,  /* visible */
+                                                 window_pf);
+#endif
+
+    window_rendering_handler = ogl_rendering_handler_create_with_fps_policy(system_hashed_ansi_string_create("Default rendering handler"),
+                                                                            60,
+                                                                            _rendering_handler,
+                                                                            NULL);
 
     system_window_get_property(window,
                                SYSTEM_WINDOW_PROPERTY_RENDERING_CONTEXT,

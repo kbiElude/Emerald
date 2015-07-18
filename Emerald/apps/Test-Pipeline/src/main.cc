@@ -14,6 +14,7 @@
 #include "ogl/ogl_shader.h"
 #include "ogl/ogl_texture.h"
 #include "shaders/shaders_vertex_fullscreen.h"
+#include "system/system_capabilities.h"
 #include "system/system_assertions.h"
 #include "system/system_event.h"
 #include "system/system_hashed_ansi_string.h"
@@ -361,6 +362,7 @@ PRIVATE void _window_closing_callback_handler(system_window window)
 #endif
 {
     ogl_rendering_handler window_rendering_handler = NULL;
+    system_screen_mode    window_screen_mode       = NULL;
     int                   window_x1y1x2y2[4]       = {0};
 
     _window_size[0] = 640;
@@ -375,16 +377,29 @@ PRIVATE void _window_closing_callback_handler(system_window window)
                                                                1, /* n_samples               */
                                                                0);/* stencil_buffer_bits     */
 
+#if 1
     system_window_get_centered_window_position_for_primary_monitor(_window_size,
                                                                    window_x1y1x2y2);
 
-    _window                  = system_window_create_not_fullscreen         (OGL_CONTEXT_TYPE_GL,
-                                                                            window_x1y1x2y2,
-                                                                            system_hashed_ansi_string_create("Test window"),
-                                                                            false,
-                                                                            false, /* vsync_enabled */
-                                                                            true,  /* visible */
-                                                                            window_pf);
+    _window = system_window_create_not_fullscreen(OGL_CONTEXT_TYPE_GL,
+                                                  window_x1y1x2y2,
+                                                  system_hashed_ansi_string_create("Test window"),
+                                                  false,
+                                                  false, /* vsync_enabled */
+                                                  true,  /* visible */
+                                                  window_pf);
+#else
+    system_capabilities_get_screen_mode_for_resolution(_window_size[0],
+                                                       _window_size[1],
+                                                       60, /* frequency */
+                                                      &window_screen_mode);
+
+    _window = system_window_create_fullscreen(OGL_CONTEXT_TYPE_GL,
+                                              window_screen_mode,
+                                              false, /* vsync_enabled */
+                                              window_pf);
+#endif
+
     window_rendering_handler = ogl_rendering_handler_create_with_fps_policy(system_hashed_ansi_string_create("Default rendering handler"),
                                                                             30,                 /* desired_fps */
                                                                             _rendering_handler,

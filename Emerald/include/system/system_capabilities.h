@@ -31,6 +31,12 @@ PUBLIC EMERALD_API bool system_capabilities_get_screen_mode(unsigned int        
                                                             system_screen_mode* out_screen_mode);
 
 /** TODO */
+PUBLIC EMERALD_API bool system_capabilities_get_screen_mode_for_resolution(unsigned int        width,
+                                                                           unsigned int        height,
+                                                                           unsigned int        frequency,
+                                                                           system_screen_mode* out_screen_mode);
+
+/** TODO */
 PUBLIC void system_capabilities_init();
 
 #endif /* SYSTEM_CAPABILITIES_H */

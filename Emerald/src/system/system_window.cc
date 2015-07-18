@@ -15,6 +15,7 @@
 #include "system/system_log.h"
 #include "system/system_pixel_format.h"
 #include "system/system_resizable_vector.h"
+#include "system/system_screen_mode.h"
 #include "system/system_threads.h"
 #include "system/system_thread_pool.h"
 #include "system/system_window.h"
@@ -61,9 +62,6 @@ typedef struct
 
 typedef struct
 {
-    /** Full-screen only */
-    uint16_t fullscreen_freq;
-
     ogl_context_type           context_type;
     bool                       is_closing; /* in the process of calling the "window closing" call-backs */
     bool                       is_cursor_visible;
@@ -71,6 +69,7 @@ typedef struct
     bool                       is_root_window;
     bool                       is_scalable;
     system_window_handle       parent_window_handle;
+    system_screen_mode         screen_mode;
     system_hashed_ansi_string  title;
     bool                       visible;
     bool                       vsync_enabled;
@@ -157,9 +156,9 @@ PRIVATE void          _system_window_create_root_window                        (
 PRIVATE system_window _system_window_create_shared                             (ogl_context_type                     context_type,
                                                                                 bool                                 is_fullscreen,
                                                                                 const int*                           x1y1x2y2,
+                                                                                system_screen_mode                   screen_mode,
                                                                                 system_hashed_ansi_string            title,
                                                                                 bool                                 is_scalable,
-                                                                                uint16_t                             fullscreen_freq,
                                                                                 bool                                 vsync_enabled,
                                                                                 system_window_handle                 parent_window_handle,
                                                                                 bool                                 visible,
@@ -278,7 +277,6 @@ PRIVATE void _deinit_system_window(_system_window* window_ptr)
 /** TODO */
 PRIVATE void _init_system_window(_system_window* window_ptr)
 {
-    window_ptr->fullscreen_freq              = 0;
     window_ptr->is_cursor_visible            = false;
     window_ptr->is_fullscreen                = false;
     window_ptr->is_scalable                  = false;
@@ -784,9 +782,9 @@ PRIVATE void _system_window_create_root_window(ogl_context_type context_type)
     root_window =  _system_window_create_shared(context_type,
                                                 false, /* is_fullscreen */
                                                 root_window_x1y1x2y2,
+                                                NULL, /* screen_mode */
                                                 system_hashed_ansi_string_create("Root window"),
                                                 false, /* scalable */
-                                                0,     /* fullscreen_freq */
                                                 false, /* vsync_enabled */
                                                 0,     /* parent_window_handle */
                                                 false, /* visible */
@@ -816,9 +814,9 @@ PRIVATE void _system_window_create_root_window(ogl_context_type context_type)
 PRIVATE system_window _system_window_create_shared(ogl_context_type          context_type,
                                                    bool                      is_fullscreen,
                                                    const int*                x1y1x2y2,
+                                                   system_screen_mode        screen_mode,
                                                    system_hashed_ansi_string title,
                                                    bool                      is_scalable,
-                                                   uint16_t                  fullscreen_freq,
                                                    bool                      vsync_enabled,
                                                    system_window_handle      parent_window_handle,
                                                    bool                      visible,
@@ -835,22 +833,41 @@ PRIVATE system_window _system_window_create_shared(ogl_context_type          con
         _init_system_window(new_window);
 
         /* Fill the descriptor with input values */
-        new_window->context_type            = context_type;
-        new_window->fullscreen_freq         = fullscreen_freq;
-        new_window->x1y1x2y2[0]             = x1y1x2y2[0];
-        new_window->x1y1x2y2[1]             = x1y1x2y2[1];
-        new_window->x1y1x2y2[2]             = x1y1x2y2[2];
-        new_window->x1y1x2y2[3]             = x1y1x2y2[3];
-        new_window->is_closing              = false;
-        new_window->is_cursor_visible       = false;
-        new_window->is_fullscreen           = is_fullscreen;
-        new_window->is_root_window          = is_root_window;
-        new_window->is_scalable             = is_scalable;
-        new_window->parent_window_handle    = parent_window_handle;
-        new_window->pf                      = pf;
-        new_window->title                   = title;
-        new_window->visible                 = visible;
-        new_window->vsync_enabled           = vsync_enabled;
+        new_window->context_type         = context_type;
+        new_window->is_closing           = false;
+        new_window->is_cursor_visible    = false;
+        new_window->is_fullscreen        = is_fullscreen;
+        new_window->is_root_window       = is_root_window;
+        new_window->is_scalable          = is_scalable;
+        new_window->parent_window_handle = parent_window_handle;
+        new_window->pf                   = pf;
+        new_window->screen_mode          = screen_mode;
+        new_window->title                = title;
+        new_window->visible              = visible;
+        new_window->vsync_enabled        = vsync_enabled;
+
+        if (x1y1x2y2 != NULL)
+        {
+            new_window->x1y1x2y2[0] = x1y1x2y2[0];
+            new_window->x1y1x2y2[1] = x1y1x2y2[1];
+            new_window->x1y1x2y2[2] = x1y1x2y2[2];
+            new_window->x1y1x2y2[3] = x1y1x2y2[3];
+        }
+        else
+        {
+            ASSERT_DEBUG_SYNC(screen_mode != NULL,
+                              "Both x1y1x2y2 and screen_mode arguments are NULL");
+
+            new_window->x1y1x2y2[0] = 0;
+            new_window->x1y1x2y2[1] = 0;
+
+            system_screen_mode_get_property(screen_mode,
+                                            SYSTEM_SCREEN_MODE_PROPERTY_WIDTH,
+                                            new_window->x1y1x2y2 + 2);
+            system_screen_mode_get_property(screen_mode,
+                                            SYSTEM_SCREEN_MODE_PROPERTY_HEIGHT,
+                                            new_window->x1y1x2y2 + 3);
+        }
 
         if (new_window->window_safe_to_release_event != NULL &&
             new_window->window_initialized_event     != NULL)
@@ -858,7 +875,7 @@ PRIVATE system_window _system_window_create_shared(ogl_context_type          con
            /* If this is the first window created during app life-time, spawn a root context window
             * before we continue.
             *
-            * NOTE: This will be done repeatedly if appn_windows_spawnedlication opens a window A, kills it, and then
+            * NOTE: This will be done repeatedly if application opens a window A, kills it, and then
             *       opens a window B. No damage done, but it will have performance implications.
             */
             int current_n_total_windows_spawned;
@@ -942,10 +959,10 @@ PUBLIC EMERALD_API system_window system_window_create_by_replacing_window(system
 
             result = _system_window_create_shared(context_type,
                                                   false,  /* not fullscreen */
-                                                  x1y1x2y2, 
+                                                  x1y1x2y2,
+                                                  NULL,  /* screen_mode */
                                                   name,
                                                   false, /* not scalable */
-                                                  0,
                                                   vsync_enabled,
                                                   ::GetParent(parent_window_handle),
                                                   true   /* visible */,
@@ -975,9 +992,9 @@ PUBLIC EMERALD_API system_window system_window_create_not_fullscreen(ogl_context
     return _system_window_create_shared(context_type,
                                         false,
                                         x1y1x2y2,
+                                        NULL, /* screen_mode */
                                         title,
                                         scalable,
-                                        0,
                                         vsync_enabled,
                                         (system_window_handle) NULL, /* parent_window_handle */
                                         visible,
@@ -987,20 +1004,18 @@ PUBLIC EMERALD_API system_window system_window_create_not_fullscreen(ogl_context
 
 /** Please see header for specification */
 PUBLIC EMERALD_API system_window system_window_create_fullscreen(ogl_context_type    context_type,
-                                                                 uint16_t            width,
-                                                                 uint16_t            height,
-                                                                 uint16_t            freq,
+                                                                 system_screen_mode  mode,
                                                                  bool                vsync_enabled,
                                                                  system_pixel_format pf)
 {
-    const int x1y1x2y2[4] = {0, 0, width, height};
+    int x1y1x2y2[4] = {0, 0};
 
     return _system_window_create_shared(context_type,
                                         true,
-                                        x1y1x2y2,
+                                        NULL, /* x1y1x2y2 */
+                                        mode,
                                         system_hashed_ansi_string_get_default_empty_string(),
-                                        false,
-                                        freq,
+                                        false, /* scalable */
                                         vsync_enabled,
                                         (system_window_handle) NULL,  /* parent_window_handle */
                                         true,  /* visible */
@@ -1628,13 +1643,6 @@ PUBLIC EMERALD_API void system_window_get_property(system_window          window
             break;
         }
 
-        case SYSTEM_WINDOW_PROPERTY_FULLSCREEN_REFRESH_RATE:
-        {
-            *(uint16_t*) out_result = window_ptr->fullscreen_freq;
-
-            break;
-        }
-
         case SYSTEM_WINDOW_PROPERTY_DIMENSIONS:
         {
             ((int*) out_result)[0] = window_ptr->x1y1x2y2[2] - window_ptr->x1y1x2y2[0];
@@ -1716,6 +1724,13 @@ PUBLIC EMERALD_API void system_window_get_property(system_window          window
         case SYSTEM_WINDOW_PROPERTY_RENDERING_HANDLER:
         {
             *(ogl_rendering_handler*) out_result = window_ptr->rendering_handler;
+
+            break;
+        }
+
+        case SYSTEM_WINDOW_PROPERTY_SCREEN_MODE:
+        {
+            *(system_screen_mode*) out_result = window_ptr->screen_mode;
 
             break;
         }

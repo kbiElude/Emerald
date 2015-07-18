@@ -22,6 +22,7 @@
 #include "ogl/ogl_ui_frame.h"
 #include "ogl/ogl_ui_label.h"
 #include "system/system_assertions.h"
+#include "system/system_capabilities.h"
 #include "system/system_event.h"
 #include "system/system_file_enumerator.h"
 #include "system/system_file_serializer.h"
@@ -1694,6 +1695,7 @@ void _update_ui_controls_strings()
 {
     bool                  context_result           = false;
     ogl_rendering_handler window_rendering_handler = NULL;
+    system_screen_mode    window_screen_mode       = NULL;
     int                   window_x1y1x2y2[4]       = {0};
 
     /* Carry on */
@@ -1701,20 +1703,33 @@ void _update_ui_controls_strings()
                                                                8,  /* color_buffer_green_bits */
                                                                8,  /* color_buffer_blue_bits  */
                                                                0,  /* color_buffer_alpha_bits */
-                                                               8,  /* depth_buffer_bits       */
+                                                               16, /* depth_buffer_bits       */
                                                                1,  /* n_samples               */
                                                                0); /* stencil_buffer_bits     */
 
+#if 0
     system_window_get_centered_window_position_for_primary_monitor(_window_size,
                                                                    window_x1y1x2y2);
 
-    _window                  = system_window_create_not_fullscreen         (OGL_CONTEXT_TYPE_GL,
-                                                                            window_x1y1x2y2,
-                                                                            system_hashed_ansi_string_create("Test window"),
-                                                                            false,
-                                                                            false, /* vsync_enabled */
-                                                                            true,  /* visible */
-                                                                            window_pf);
+    _window = system_window_create_not_fullscreen(OGL_CONTEXT_TYPE_GL,
+                                                  window_x1y1x2y2,
+                                                  system_hashed_ansi_string_create("Test window"),
+                                                  false,
+                                                  false, /* vsync_enabled */
+                                                  true,  /* visible */
+                                                  window_pf);
+#else
+    system_capabilities_get_screen_mode_for_resolution(_window_size[0],
+                                                       _window_size[1],
+                                                       60, /* frequency */
+                                                      &window_screen_mode);
+
+    _window = system_window_create_fullscreen(OGL_CONTEXT_TYPE_GL,
+                                              window_screen_mode,
+                                              false, /* vsync_enabled */
+                                              window_pf);
+#endif
+
     window_rendering_handler = ogl_rendering_handler_create_with_fps_policy(system_hashed_ansi_string_create("Default rendering handler"),
                                                                             60,                 /* desired_fps */
                                                                             _rendering_handler, /* pfn_rendering_callback */

@@ -32,8 +32,8 @@ PRIVATE void _system_capabilities_init_full_screen_modes()
     #ifdef _WIN32
     {
         /* For simplicity, always assume the user will only be interested in the default device */
-        DEVMODE current_device_mode;
-        DWORD   n_mode = 0;
+        DEVMODE current_device_mode = {0};
+        DWORD   n_mode              = 0;
 
         while (true)
         {
@@ -161,6 +161,73 @@ PUBLIC EMERALD_API bool system_capabilities_get_screen_mode(unsigned int        
                           n_screen_mode);
 
         result = false;
+    }
+
+    return result;
+}
+
+/** Please see header for spec */
+PUBLIC EMERALD_API bool system_capabilities_get_screen_mode_for_resolution(unsigned int        width,
+                                                                           unsigned int        height,
+                                                                           unsigned int        frequency,
+                                                                           system_screen_mode* out_screen_mode)
+{
+    system_screen_mode current_screen_mode  = NULL;
+    unsigned int       n_screen_modes      = 0;
+    bool               result              = false;
+
+    ASSERT_DEBUG_SYNC(screen_modes != NULL,
+                      "Screen modes vector is NULL");
+
+    system_resizable_vector_get_property(screen_modes,
+                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                        &n_screen_modes);
+
+    ASSERT_DEBUG_SYNC(n_screen_modes > 0,
+                      "No screen modes are registered");
+
+    for (unsigned int n_screen_mode = 0;
+                      n_screen_mode < n_screen_modes;
+                    ++n_screen_mode)
+    {
+        unsigned int       current_screen_frequency = 0;
+        unsigned int       current_screen_height    = 0;
+        unsigned int       current_screen_width     = 0;
+
+        if (!system_resizable_vector_get_element_at(screen_modes,
+                                                    n_screen_mode,
+                                                    &current_screen_mode) )
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Could not retrieve system_screen_mode_instance at index [%d]",
+                              n_screen_mode);
+
+            break;
+        }
+
+        system_screen_mode_get_property(current_screen_mode,
+                                        SYSTEM_SCREEN_MODE_PROPERTY_HEIGHT,
+                                       &current_screen_height);
+        system_screen_mode_get_property(current_screen_mode,
+                                        SYSTEM_SCREEN_MODE_PROPERTY_REFRESH_RATE,
+                                       &current_screen_frequency);
+        system_screen_mode_get_property(current_screen_mode,
+                                        SYSTEM_SCREEN_MODE_PROPERTY_WIDTH,
+                                       &current_screen_width);
+
+        if (current_screen_frequency == frequency &&
+            current_screen_height    == height    &&
+            current_screen_width     == width)
+        {
+            result = true;
+
+            break;
+        }
+    } /* for (all screen modes) */
+
+    if (result)
+    {
+        *out_screen_mode = current_screen_mode;
     }
 
     return result;
