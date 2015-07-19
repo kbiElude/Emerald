@@ -3046,14 +3046,16 @@ PUBLIC EMERALD_API void ogl_context_enumerate_msaa_samples(system_pixel_format p
                                                            unsigned int*       out_n_supported_samples,
                                                            unsigned int**      out_supported_samples)
 {
-    system_resizable_vector depth_stencil_samples_vector = NULL;
-    GLenum                  internalformat_color         = GL_NONE;
-    GLenum                  internalformat_depth_stencil = GL_NONE;
-    bool                    result                       = true;
-    system_resizable_vector result_vector                = NULL;
-    system_window           root_window                  = NULL;
-    ogl_context             root_window_context          = NULL;
-    _ogl_context*           root_window_context_ptr      = NULL;
+    bool                    consider_color_internalformats         = false;
+    bool                    consider_depth_stencil_internalformats = false;
+    system_resizable_vector depth_stencil_samples_vector           = NULL;
+    GLenum                  internalformat_color                   = GL_NONE;
+    GLenum                  internalformat_depth_stencil           = GL_NONE;
+    bool                    result                                 = true;
+    system_resizable_vector result_vector                          = NULL;
+    system_window           root_window                            = NULL;
+    ogl_context             root_window_context                    = NULL;
+    _ogl_context*           root_window_context_ptr                = NULL;
 
     result = _ogl_context_get_attachment_internalformats_for_system_pixel_format(pf,
                                                                                 &internalformat_color,
@@ -3105,8 +3107,8 @@ PUBLIC EMERALD_API void ogl_context_enumerate_msaa_samples(system_pixel_format p
      * used for color & depth attachments must match, we can only return values that are supported
      * for both internalformats.
      */
-    const bool consider_color_internalformats         = (root_window_context_ptr->msaa_enumeration_color_internalformat         != GL_NONE);
-    const bool consider_depth_stencil_internalformats = (root_window_context_ptr->msaa_enumeration_depth_stencil_internalformat != GL_NONE);
+    consider_color_internalformats         = (root_window_context_ptr->msaa_enumeration_color_internalformat         != GL_NONE);
+    consider_depth_stencil_internalformats = (root_window_context_ptr->msaa_enumeration_depth_stencil_internalformat != GL_NONE);
 
     if (consider_color_internalformats         && root_window_context_ptr->msaa_enumeration_color_n_samples         == 0 ||
         consider_depth_stencil_internalformats && root_window_context_ptr->msaa_enumeration_depth_stencil_n_samples == 0)
@@ -3165,6 +3167,7 @@ PUBLIC EMERALD_API void ogl_context_enumerate_msaa_samples(system_pixel_format p
 
     system_resizable_vector_sort(result_vector,
                                  _ogl_context_sort_descending);
+
 end:
     if (!result)
     {
