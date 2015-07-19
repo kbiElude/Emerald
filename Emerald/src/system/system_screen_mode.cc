@@ -46,12 +46,20 @@ typedef struct _system_screen_mode
 } _system_screen_mode;
 
 
+#ifdef __linux
+    /** TODO */
+    PRIVATE Display* display = NULL;
+    /* TODO */
+    PRIVATE XRRScreenConfiguration* screen_configuration_ptr = NULL;
+#endif
+
 /* holds system_screen_mode instances. The system blob property is set to:
  *
  * SizeID  value    - under Linux.
  * DEVMODE instance - under Windows.
  **/
 PRIVATE system_resizable_vector screen_modes = NULL;
+
 
 /* Forward declarations */
 PRIVATE void _system_screen_mode_init_full_screen_modes();
@@ -118,12 +126,12 @@ PRIVATE void _system_screen_mode_init_full_screen_modes()
          *
          * TODO: Enumerate all available displays!
          */
-        Display*                display                  = XOpenDisplay(":0");
-        int                     n_screen_sizes           = 0;
-        Window                  root_window              = (Window) NULL;
-        int                     screen                   = 0;
-        XRRScreenConfiguration* screen_configuration_ptr = NULL;
-        XRRScreenSize*          screen_sizes_ptr         = NULL;
+        int            n_screen_sizes   = 0;
+        Window         root_window      = (Window) NULL;
+        int            screen           = 0;
+        XRRScreenSize* screen_sizes_ptr = NULL;
+
+        display = XOpenDisplay(":0");
 
         if (display == NULL)
         {
@@ -198,20 +206,7 @@ PRIVATE void _system_screen_mode_init_full_screen_modes()
         } /* for (all screen sizes) */
 
 end:
-        /* Clean up */
-        if (screen_configuration_ptr != NULL)
-        {
-            XRRFreeScreenConfigInfo(screen_configuration_ptr);
-
-            screen_configuration_ptr = NULL;
-        }
-
-        if (display != NULL)
-        {
-            XCloseDisplay(display);
-
-            display = NULL;
-        }
+    ;
     }
     #endif
 
@@ -229,6 +224,46 @@ PRIVATE void _system_screen_mode_release_devmode(void* blob)
 }
 #endif
 
+
+/** Please see header for spec */
+PUBLIC bool system_screen_mode_activate(system_screen_mode screen_mode)
+{
+    bool result = true;
+
+    #ifdef _WIN32
+    {
+        _system_screen_mode* screen_mode_ptr = (_system_screen_mode*) screen_mode;
+
+        if (::ChangeDisplaySettingsA( (DEVMODE*) screen_mode_ptr->system_blob,
+                                     CDS_FULLSCREEN) != DISP_CHANGE_SUCCESSFUL)
+        {
+            ASSERT_ALWAYS_SYNC(false,
+                               "Could not switch to the requested screen mode.");
+
+            result = false;
+        }
+    }
+    #else
+    {
+        _system_screen_mode* screen_mode_ptr = (_system_screen_mode*) screen_mode;
+
+        if (XRRSetScreenConfig(display,
+                               screen_configuration_ptr,
+                               DefaultRootWindow(display),
+                               (SizeID) (intptr_t) screen_mode_ptr->system_blob,
+                               0, /* rotation */
+                               CurrentTime) != RRSetConfigSuccess)
+        {
+            ASSERT_ALWAYS_SYNC(false,
+                               "Could not switch to the requested screen mode.");
+
+            result = false;
+        }
+    }
+    #endif
+
+    return result;
+}
 
 /** Please see header for spec */
 PUBLIC system_screen_mode system_screen_mode_create(unsigned int             width,
@@ -252,6 +287,23 @@ PUBLIC system_screen_mode system_screen_mode_create(unsigned int             wid
 /** Please see header for spec */
 PUBLIC void system_screen_mode_deinit()
 {
+#ifdef __linux
+    if (screen_configuration_ptr != NULL)
+    {
+        XRRFreeScreenConfigInfo(screen_configuration_ptr);
+
+        screen_configuration_ptr = NULL;
+    }
+
+    /* Clean up */
+    if (display != NULL)
+    {
+        XCloseDisplay(display);
+
+        display = NULL;
+    }
+#endif
+
     if (screen_modes != NULL)
     {
         system_screen_mode current_screen_mode = NULL;
@@ -266,6 +318,7 @@ PUBLIC void system_screen_mode_deinit()
         system_resizable_vector_release(screen_modes);
         screen_modes = NULL;
     } /* if (screen_modes != NULL) */
+
 }
 
 /** Please see header for spec */

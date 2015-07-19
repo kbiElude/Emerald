@@ -15,6 +15,7 @@
 #include "system/system_log.h"
 #include "system/system_pixel_format.h"
 #include "system/system_resizable_vector.h"
+#include "system/system_screen_mode.h"
 #include "system/system_thread_pool.h"
 #include "system/system_threads.h"
 #include "system/system_window_linux.h"
@@ -909,8 +910,6 @@ PUBLIC bool system_window_linux_open_window(system_window_linux window,
 
     ASSERT_DEBUG_SYNC(!is_window_scalable,
                       "TODO: Scalable windows are not supported yet");
-    ASSERT_DEBUG_SYNC(!is_window_fullscreen,
-                      "TODO: Full-screen windows are not supported yet");
 
     /* Determine parent window handle */
     ASSERT_DEBUG_SYNC(parent_window_handle == (Cursor) NULL,
@@ -978,6 +977,35 @@ PUBLIC bool system_window_linux_open_window(system_window_linux window,
 
         result = false;
         goto end;
+    }
+
+    if (is_window_fullscreen)
+    {
+        /* Remove any window decorations which may get in the way! */
+        XEvent fullscreen_state_event;
+
+        fullscreen_state_event.xclient.type         = ClientMessage;
+        fullscreen_state_event.xclient.serial       = 0;
+        fullscreen_state_event.xclient.send_event   = True;
+        fullscreen_state_event.xclient.display      = linux_ptr->display;
+        fullscreen_state_event.xclient.window       = linux_ptr->system_handle;
+        fullscreen_state_event.xclient.message_type = XInternAtom(linux_ptr->display,
+                                                                  "_NET_WM_STATE",
+                                                                  False);
+        fullscreen_state_event.xclient.format       = 32;
+        fullscreen_state_event.xclient.data.l[0]    = 1;
+        fullscreen_state_event.xclient.data.l[1]    = XInternAtom(linux_ptr->display,
+                                                                  "_NET_WM_STATE_FULLSCREEN",
+                                                                  False);
+        fullscreen_state_event.xclient.data.l[2]    = 0;
+        fullscreen_state_event.xclient.data.l[3]    = 0;
+        fullscreen_state_event.xclient.data.l[4]    = 0;
+
+        XSendEvent(linux_ptr->display,
+                   XDefaultRootWindow(linux_ptr->display),
+                   False,
+                   StructureNotifyMask | ResizeRedirectMask,
+                   &fullscreen_state_event);
     }
 
     XSelectInput   (linux_ptr->display,

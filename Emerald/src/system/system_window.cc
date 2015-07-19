@@ -856,7 +856,7 @@ PRIVATE system_window _system_window_create_shared(ogl_context_type          con
         else
         {
             ASSERT_DEBUG_SYNC(screen_mode != NULL,
-                              "Both x1y1x2y2 and screen_mode arguments are NULL");
+                              "Both x1y1x2y2 and screen_mode arguments are NULL (screen mode requested by app is unsupported?)");
 
             new_window->x1y1x2y2[0] = 0;
             new_window->x1y1x2y2[1] = 0;
@@ -869,15 +869,46 @@ PRIVATE system_window _system_window_create_shared(ogl_context_type          con
                                             new_window->x1y1x2y2 + 3);
         }
 
+        /* Activate the requested screen mode, if we're dealing with a full-screen window.
+         * Chances are the root window is already around (eg. the user has earlier queried
+         * for the supported MSAA samples), in which case we must release it before we change
+         * the resolution. Reason is all sorts of bad stuff can happen if we switch the 
+         * resolution after a rendering context has been created. As an example, Windows NV
+         * driver is OK with this, but Linux version starts throwing OOMs right afterward.
+         *
+         * NOTE: Release of the root window is ONLY OK if the first window ever created is
+         *       full-screen. Any combinations of non-full-screen and full-screen windows
+         *       are unsupported, as their availability would be much more time-consuming to
+         *       make happen.. and frankly? we don't need it.
+         */
+        if (is_fullscreen)
+        {
+            static int n_fullscreen_windows_spawned = 0;
+
+            ASSERT_DEBUG_SYNC(n_fullscreen_windows_spawned == 0,
+                              "Only one full-screen window can be created during application's life-time");
+            ASSERT_DEBUG_SYNC(n_total_windows_spawned == 0,
+                              "No other windows can be created alongside a full-screen window");
+            ASSERT_DEBUG_SYNC(screen_mode != NULL,
+                              "NULL screen_mode instance for a full-screen window");
+
+            if (root_window != NULL)
+            {
+                /* Need to release the root window before we continue. */
+                system_window_close(root_window);
+
+                root_window = NULL;
+            }
+
+            system_screen_mode_activate(screen_mode);
+
+            n_fullscreen_windows_spawned++;
+        }
+
         if (new_window->window_safe_to_release_event != NULL &&
             new_window->window_initialized_event     != NULL)
         {
-           /* If this is the first window created during app life-time, spawn a root context window
-            * before we continue.
-            *
-            * NOTE: This will be done repeatedly if application opens a window A, kills it, and then
-            *       opens a window B. No damage done, but it will have performance implications.
-            */
+            /* Spawn root window, if there's none around. */
             int current_n_total_windows_spawned;
 
             system_critical_section_enter(n_total_windows_spawned_cs);
@@ -888,7 +919,7 @@ PRIVATE system_window _system_window_create_shared(ogl_context_type          con
             }
             system_critical_section_leave(n_total_windows_spawned_cs);
 
-            if (current_n_total_windows_spawned == 0)
+            if (!is_root_window && root_window == NULL)
             {
                 _system_window_create_root_window(context_type);
             }

@@ -27,6 +27,9 @@ typedef enum
 
 typedef void (*PFNRELEASESYSTEMBLOBPROC)(void* blob);
 
+/** TODO */
+PUBLIC bool system_screen_mode_activate(system_screen_mode screen_mode);
+
 /** TODO
  *
  *  NOTE: Internal use only.

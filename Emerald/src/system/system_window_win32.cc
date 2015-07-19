@@ -765,18 +765,13 @@ PUBLIC bool system_window_win32_open_window(system_window_win32 window,
 
     if (is_window_fullscreen)
     {
-        DEVMODE*           device_mode_ptr = NULL;
-        system_screen_mode screen_mode     = NULL;
+        system_screen_mode screen_mode = NULL;
 
-        system_window_get_property     (win32_ptr->window,
-                                        SYSTEM_WINDOW_PROPERTY_SCREEN_MODE,
-                                       &screen_mode);
-        system_screen_mode_get_property(screen_mode,
-                                        SYSTEM_SCREEN_MODE_PROPERTY_SYSTEM_BLOB,
-                                        &device_mode_ptr);
+        system_window_get_property(win32_ptr->window,
+                                   SYSTEM_WINDOW_PROPERTY_SCREEN_MODE,
+                                  &screen_mode);
 
-        if (::ChangeDisplaySettingsA(device_mode_ptr,
-                                     CDS_FULLSCREEN) != DISP_CHANGE_SUCCESSFUL)
+        if (!system_screen_mode_activate(screen_mode) )
         {
             ASSERT_ALWAYS_SYNC(false,
                                "Could not switch to the requested screen mode.");
