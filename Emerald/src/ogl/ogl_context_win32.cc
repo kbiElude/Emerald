@@ -309,8 +309,12 @@ PUBLIC void ogl_context_win32_init(ogl_context                     context,
     /* Create a temporary WGL context that we will use to initialize WGL context for the target version of OpenGL */
     HGLRC temp_wgl_context = ::wglCreateContext(new_win32_ptr->device_context_handle);
 
-    ::wglMakeCurrent(new_win32_ptr->device_context_handle,
-                     temp_wgl_context);
+    if (::wglMakeCurrent(new_win32_ptr->device_context_handle,
+                         temp_wgl_context) != TRUE)
+    {
+        ASSERT_ALWAYS_SYNC(false,
+                           "wglMakeCurrent() call failed.");
+    }
 
     /* Create WGL rendering context */
     new_win32_ptr->pWGLChoosePixelFormatARB    = (PFNWGLCHOOSEPIXELFORMATARBPROC)    ::wglGetProcAddress("wglChoosePixelFormatARB");

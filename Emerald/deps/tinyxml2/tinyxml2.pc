@@ -1,6 +1,6 @@
-prefix=/usr/local
+prefix=C:/Program Files (x86)/EMERALD
 exec_prefix=${prefix}
-libdir=lib/x86_64-linux-gnu
+libdir=lib
 includedir=include
 
 Name: TinyXML2

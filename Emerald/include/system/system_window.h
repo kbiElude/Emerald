@@ -50,12 +50,6 @@ typedef enum
     /* not settable, system_window_handle */
     SYSTEM_WINDOW_PROPERTY_HANDLE,
 
-    /* not settable, uint16_t */
-    SYSTEM_WINDOW_PROPERTY_FULLSCREEN_BPP,
-
-    /* not settable, uint16_t */
-    SYSTEM_WINDOW_PROPERTY_FULLSCREEN_REFRESH_RATE,
-
     /* not settable, bool.
      *
      * Only set after window is closed (either by the system, or by the user) */
@@ -107,6 +101,9 @@ typedef enum
     /* not settable, int */
     SYSTEM_WINDOW_PROPERTY_SCREEN_INDEX,
 #endif
+
+    /* not settable, system_screen_mode */
+    SYSTEM_WINDOW_PROPERTY_SCREEN_MODE,
 
     /* not settable, system_hashed ansi string */
     SYSTEM_WINDOW_PROPERTY_TITLE,
@@ -166,20 +163,14 @@ PUBLIC EMERALD_API system_window system_window_create_not_fullscreen(ogl_context
 /** TODO
  *
  *  @param context_type  TODO
- *  @param width         TODO
- *  @param height        TODO
- *  @param bpp           TODO
- *  @param freq          TODO
+ *  @param mode          TODO
  *  @param vsync_enabled TODO
  *  @param pixel_format  TODO. system_window takes over the ownership of the object.
  *
  *  @return TODO
  */
 PUBLIC EMERALD_API system_window system_window_create_fullscreen(ogl_context_type    context_type,
-                                                                 uint16_t            width,
-                                                                 uint16_t            height,
-                                                                 uint16_t            bpp,
-                                                                 uint16_t            freq,
+                                                                 system_screen_mode  mode,
                                                                  bool                vsync_enabled,
                                                                  system_pixel_format pixel_format);
 

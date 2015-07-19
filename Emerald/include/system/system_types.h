@@ -30,12 +30,6 @@ typedef enum
     PUBLIC EMERALD_API void prefix##_retain(public_handle_type);  \
     PUBLIC EMERALD_API void prefix##_release(public_handle_type&);
 
-/************************* CAPABILITIES *****************/
-typedef enum
-{
-    SYSTEM_CAPABILITIES_PROPERTY_NUMBER_OF_CPU_CORES /* unsigned int */
-} system_capabilities_property;
-
 /******************* OBJECT MANAGER ***************************************/
 #ifdef INCLUDE_OBJECT_MANAGER
 
@@ -506,6 +500,9 @@ typedef void (*PFNSYSTEMRESOURCEPOOLINITBLOCK)(system_resource_pool_block);
  * and returned to the pool.
  */
 typedef void (*PFNSYSTEMRESOURCEPOOLDEINITBLOCK)(system_resource_pool_block);
+
+/************************ SCREEN MODE *************************************/
+DECLARE_HANDLE(system_screen_mode);
 
 /******************** MEMORY MANAGER **********************************/
 DECLARE_HANDLE(system_memory_manager);

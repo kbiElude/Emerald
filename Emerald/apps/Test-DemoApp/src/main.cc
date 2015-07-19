@@ -23,6 +23,7 @@
 #include "system/system_matrix4x4.h"
 #include "system/system_pixel_format.h"
 #include "system/system_resizable_vector.h"
+#include "system/system_screen_mode.h"
 #include "system/system_window.h"
 #include "app_config.h"
 #include "state.h"
@@ -205,9 +206,10 @@ void _rendering_window_closing_callback_handler(system_window window)
     int main()
 #endif
 {
-    bool                  context_result           = false;
-    int                   window_size    [2]       = {WINDOW_WIDTH, WINDOW_HEIGHT};
-    int                   window_x1y1x2y2[4]       = {0};
+    bool               context_result     = false;
+    system_screen_mode screen_mode        = NULL;
+    int                window_size    [2] = {WINDOW_WIDTH, WINDOW_HEIGHT};
+    int                window_x1y1x2y2[4] = {0};
 
     /* Carry on */
     system_pixel_format window_pf = system_pixel_format_create(8,  /* color_buffer_red_bits   */
@@ -215,19 +217,30 @@ void _rendering_window_closing_callback_handler(system_window window)
                                                                8,  /* color_buffer_blue_bits  */
                                                                0,  /* color_buffer_alpha_bits */
                                                                24, /* depth_buffer_bits       */
-                                                               16, /* n_samples               */
+                                                               SYSTEM_PIXEL_FORMAT_USE_MAXIMUM_NUMBER_OF_SAMPLES,
                                                                0); /* stencil_buffer_bits     */
 
+#if 0
+    system_screen_mode_get(0,
+                          &screen_mode);
+
+    _window = system_window_create_fullscreen(OGL_CONTEXT_TYPE_GL,
+                                              screen_mode,
+                                              true, /* vsync_enabled */
+                                              window_pf);
+#else
     system_window_get_centered_window_position_for_primary_monitor(window_size,
                                                                    window_x1y1x2y2);
 
-    _window            = system_window_create_not_fullscreen         (OGL_CONTEXT_TYPE_GL,
-                                                                      window_x1y1x2y2,
-                                                                      system_hashed_ansi_string_create("Test window"),
-                                                                      false,
-                                                                      false, /* vsync_enabled */
-                                                                      true,  /* visible */
-                                                                      window_pf);
+    _window = system_window_create_not_fullscreen(OGL_CONTEXT_TYPE_GL,
+                                                  window_x1y1x2y2,
+                                                  system_hashed_ansi_string_create("Test window"),
+                                                  false, /* scalable */
+                                                  false, /* vsync_enabled */
+                                                  true,  /* visible */
+                                                  window_pf);
+#endif
+
     _rendering_handler = ogl_rendering_handler_create_with_fps_policy(system_hashed_ansi_string_create("Default rendering handler"),
                                                                       TARGET_FPS,
                                                                       _rendering_handler_entrypoint,

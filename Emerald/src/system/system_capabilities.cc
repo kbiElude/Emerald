@@ -11,8 +11,14 @@
 #endif
 
 
-PRIVATE unsigned int n_cpu_cores = 0;
+PRIVATE unsigned int n_cpu_cores  = 0;
 
+
+/** Please see header for spec */
+PUBLIC void system_capabilities_deinit()
+{
+    /* Stub */
+}
 
 /** Please see header for spec */
 PUBLIC EMERALD_API void system_capabilities_get(system_capabilities_property property,
@@ -37,7 +43,6 @@ PUBLIC EMERALD_API void system_capabilities_get(system_capabilities_property pro
         }
     } /* switch (property) */
 }
-
 
 /** Please see header for spec */
 PUBLIC void system_capabilities_init()

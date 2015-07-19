@@ -30,6 +30,7 @@
 #include "system/system_pixel_format.h"
 #include "system/system_resizable_vector.h"
 #include "system/system_resources.h"
+#include "system/system_screen_mode.h"
 #include "system/system_window.h"
 #include <sstream>
 
@@ -113,7 +114,7 @@ ogl_program                     _whiteline_po                          = NULL;
 ogl_shader                      _whiteline_vs                          = NULL;
 system_window                   _window                                = NULL;
 system_event                    _window_closed_event                   = system_event_create(true); /* manual_reset */
-const int                       _window_size[2]                        = {1280, 720};
+int                             _window_size[2]                        = {1280, 720};
 float                           _x1y1x2y2[4]                           = {0.0f, 0.0f, 0.0f, 0.0f};
 
 /** Shaders: preview */
@@ -1694,6 +1695,7 @@ void _update_ui_controls_strings()
 {
     bool                  context_result           = false;
     ogl_rendering_handler window_rendering_handler = NULL;
+    system_screen_mode    window_screen_mode       = NULL;
     int                   window_x1y1x2y2[4]       = {0};
 
     /* Carry on */
@@ -1701,20 +1703,37 @@ void _update_ui_controls_strings()
                                                                8,  /* color_buffer_green_bits */
                                                                8,  /* color_buffer_blue_bits  */
                                                                0,  /* color_buffer_alpha_bits */
-                                                               8,  /* depth_buffer_bits       */
+                                                               16, /* depth_buffer_bits       */
                                                                1,  /* n_samples               */
                                                                0); /* stencil_buffer_bits     */
 
+#if 1
     system_window_get_centered_window_position_for_primary_monitor(_window_size,
                                                                    window_x1y1x2y2);
 
-    _window                  = system_window_create_not_fullscreen         (OGL_CONTEXT_TYPE_GL,
-                                                                            window_x1y1x2y2,
-                                                                            system_hashed_ansi_string_create("Test window"),
-                                                                            false,
-                                                                            false, /* vsync_enabled */
-                                                                            true,  /* visible */
-                                                                            window_pf);
+    _window = system_window_create_not_fullscreen(OGL_CONTEXT_TYPE_GL,
+                                                  window_x1y1x2y2,
+                                                  system_hashed_ansi_string_create("Test window"),
+                                                  false,
+                                                  false, /* vsync_enabled */
+                                                  true,  /* visible */
+                                                  window_pf);
+#else
+    system_screen_mode_get         (0,
+                                   &window_screen_mode);
+    system_screen_mode_get_property(window_screen_mode,
+                                    SYSTEM_SCREEN_MODE_PROPERTY_WIDTH,
+                                    _window_size + 0);
+    system_screen_mode_get_property(window_screen_mode,
+                                    SYSTEM_SCREEN_MODE_PROPERTY_HEIGHT,
+                                    _window_size + 1);
+
+    _window = system_window_create_fullscreen(OGL_CONTEXT_TYPE_GL,
+                                              window_screen_mode,
+                                              false, /* vsync_enabled */
+                                              window_pf);
+#endif
+
     window_rendering_handler = ogl_rendering_handler_create_with_fps_policy(system_hashed_ansi_string_create("Default rendering handler"),
                                                                             60,                 /* desired_fps */
                                                                             _rendering_handler, /* pfn_rendering_callback */

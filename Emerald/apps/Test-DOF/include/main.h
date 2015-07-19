@@ -63,4 +63,10 @@ bool main_get_shadows_status();
 /** TODO */
 float main_get_specularity();
 
+/** TODO */
+unsigned int main_get_window_height();
+
+/** TODO */
+unsigned int main_get_window_width();
+
 #endif /* MAIN_H */

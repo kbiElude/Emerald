@@ -28,6 +28,7 @@
 #include "scene/scene_light.h"
 #include "scene/scene_mesh.h"
 #include "system/system_assertions.h"
+#include "system/system_capabilities.h"
 #include "system/system_critical_section.h"
 #include "system/system_event.h"
 #include "system/system_file_enumerator.h"
@@ -37,6 +38,7 @@
 #include "system/system_matrix4x4.h"
 #include "system/system_pixel_format.h"
 #include "system/system_resizable_vector.h"
+#include "system/system_screen_mode.h"
 #include "system/system_variant.h"
 #include "system/system_window.h"
 #include <string>
@@ -349,28 +351,72 @@ void _rendering_window_closing_callback_handler(system_window window)
     int main()
 #endif
 {
-    int window_size    [2] = {WINDOW_WIDTH, WINDOW_HEIGHT};
-    int window_x1y1x2y2[4] = {0};
+    system_screen_mode screen_mode        = NULL;
+    int                window_size[2]     = {WINDOW_WIDTH, WINDOW_HEIGHT};
+    int                window_x1y1x2y2[4] = {0};
+
+    /* Let the user select the scene file */
+    const system_hashed_ansi_string filters[] =
+    {
+        system_hashed_ansi_string_create("Packed Blob Files"),
+        system_hashed_ansi_string_create("Scene Blob Files")
+    };
+    const system_hashed_ansi_string filter_extensions[] =
+    {
+        system_hashed_ansi_string_create("*.packed"),
+        system_hashed_ansi_string_create("*.scene")
+    };
+
+    system_hashed_ansi_string scene_filename = system_file_enumerator_choose_file_via_ui(SYSTEM_FILE_ENUMERATOR_FILE_OPERATION_LOAD,
+                                                                                         2, /* n_filters */
+                                                                                         filters,
+                                                                                         filter_extensions,
+                                                                                         system_hashed_ansi_string_create("Select Emerald Scene file") );
+
+    if (scene_filename == NULL)
+    {
+        goto end;
+    }
 
     /* Carry on */
     system_pixel_format window_pf = system_pixel_format_create(8,  /* color_buffer_red_bits   */
                                                                8,  /* color_buffer_green_bits */
                                                                8,  /* color_buffer_blue_bits  */
                                                                0,  /* color_buffer_alpha_bits */
-                                                               8,  /* depth_buffer_bits       */
-                                                               1,  /* n_samples               */
+                                                               16, /* depth_buffer_bits       */
+                                                               SYSTEM_PIXEL_FORMAT_USE_MAXIMUM_NUMBER_OF_SAMPLES,
                                                                0); /* stencil_buffer_bits     */
+
+#if 0
+    system_screen_mode_get         (0,
+                                   &screen_mode);
+    system_screen_mode_get_property(screen_mode,
+                                    SYSTEM_SCREEN_MODE_PROPERTY_WIDTH,
+                                    window_size + 0);
+    system_screen_mode_get_property(screen_mode,
+                                    SYSTEM_SCREEN_MODE_PROPERTY_HEIGHT,
+                                    window_size + 1);
+
+    _window = system_window_create_fullscreen(OGL_CONTEXT_TYPE_GL,
+                                              screen_mode,
+                                              true, /* vsync_enabled */
+                                              window_pf);
+#else
+    window_size[0] /= 2;
+    window_size[1] /= 2;
 
     system_window_get_centered_window_position_for_primary_monitor(window_size,
                                                                    window_x1y1x2y2);
 
-    _window                  = system_window_create_not_fullscreen   (OGL_CONTEXT_TYPE_GL,
-                                                                      window_x1y1x2y2,
-                                                                      system_hashed_ansi_string_create("Test window"),
-                                                                      false,
-                                                                      true, /* vsync_enabled */
-                                                                      true,  /* visible */
-                                                                      window_pf);
+    _window = system_window_create_not_fullscreen(OGL_CONTEXT_TYPE_GL,
+                                                  window_x1y1x2y2,
+                                                  system_hashed_ansi_string_create("Test window"),
+                                                  false, /* scalable */
+                                                  false, /* vsync_enabled */
+                                                  true,  /* visible */
+                                                  window_pf);
+#endif
+
     _rendering_handler = ogl_rendering_handler_create_with_fps_policy(system_hashed_ansi_string_create("Default rendering handler"),
                                                                       60,
                                                                       _rendering_handler_callback,
@@ -408,29 +454,6 @@ void _rendering_window_closing_callback_handler(system_window window)
                                         SYSTEM_WINDOW_CALLBACK_FUNC_WINDOW_CLOSING,
                                         (void*) _rendering_window_closing_callback_handler,
                                         NULL);
-
-    /* Let the user select the scene file */
-    const system_hashed_ansi_string filters[] =
-    {
-        system_hashed_ansi_string_create("Packed Blob Files"),
-        system_hashed_ansi_string_create("Scene Blob Files")
-    };
-    const system_hashed_ansi_string filter_extensions[] =
-    {
-        system_hashed_ansi_string_create("*.packed"),
-        system_hashed_ansi_string_create("*.scene")
-    };
-
-    system_hashed_ansi_string scene_filename = system_file_enumerator_choose_file_via_ui(SYSTEM_FILE_ENUMERATOR_FILE_OPERATION_LOAD,
-                                                                                         2, /* n_filters */
-                                                                                         filters,
-                                                                                         filter_extensions,
-                                                                                         system_hashed_ansi_string_create("Select Emerald Scene file") );
-
-    if (scene_filename == NULL)
-    {
-        goto end;
-    }
 
     /* Initialize various states required to run the demo */
     if (!state_init(scene_filename) )

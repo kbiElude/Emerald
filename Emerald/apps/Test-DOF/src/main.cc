@@ -18,6 +18,7 @@
 #include "system/system_hashed_ansi_string.h"
 #include "system/system_matrix4x4.h"
 #include "system/system_pixel_format.h"
+#include "system/system_screen_mode.h"
 #include "system/system_window.h"
 #include "system/system_variant.h"
 #include "stage_step_background.h"
@@ -461,6 +462,19 @@ float main_get_specularity()
     return _specularity;
 }
 
+/** Please see header for specification */
+unsigned int main_get_window_height()
+{
+    return _window_resolution[1];
+}
+
+/** Please see header for specification */
+unsigned int main_get_window_width()
+{
+    return _window_resolution[0];
+}
+
+
 /** Entry point */
 #ifdef _WIN32
     int WINAPI WinMain(HINSTANCE instance_handle,
@@ -473,6 +487,7 @@ float main_get_specularity()
 {
     bool                  context_result           = false;
     ogl_rendering_handler window_rendering_handler = NULL;
+    system_screen_mode    window_screen_mode       = NULL;
     int                   window_x1y1x2y2[4]       = {0};
 
     /* Carry on */
@@ -481,19 +496,36 @@ float main_get_specularity()
                                                                8,  /* color_buffer_blue_bits  */
                                                                0,  /* color_buffer_alpha_bits */
                                                                0,  /* depth_buffer_bits       */
-                                                               16, /* n_samples               */
+                                                               SYSTEM_PIXEL_FORMAT_USE_MAXIMUM_NUMBER_OF_SAMPLES,
                                                                0); /* stencil_buffer_bits     */
 
+#if 0
     system_window_get_centered_window_position_for_primary_monitor(_window_resolution,
                                                                    window_x1y1x2y2);
 
-    _window                  = system_window_create_not_fullscreen         (OGL_CONTEXT_TYPE_GL,
-                                                                            window_x1y1x2y2,
-                                                                            system_hashed_ansi_string_create("Test window"),
-                                                                            false,
-                                                                            false, /* vsync_enabled */
-                                                                            true,  /* visible */
-                                                                            window_pf);
+    _window = system_window_create_not_fullscreen(OGL_CONTEXT_TYPE_GL,
+                                                  window_x1y1x2y2,
+                                                  system_hashed_ansi_string_create("Test window"),
+                                                  false,
+                                                  false, /* vsync_enabled */
+                                                  true,  /* visible */
+                                                  window_pf);
+#else
+    system_screen_mode_get         (0,
+                                   &window_screen_mode);
+    system_screen_mode_get_property(window_screen_mode,
+                                    SYSTEM_SCREEN_MODE_PROPERTY_WIDTH,
+                                    _window_resolution + 0);
+    system_screen_mode_get_property(window_screen_mode,
+                                    SYSTEM_SCREEN_MODE_PROPERTY_HEIGHT,
+                                    _window_resolution + 1);
+
+    _window = system_window_create_fullscreen(OGL_CONTEXT_TYPE_GL,
+                                              window_screen_mode,
+                                              true, /* vsync_enabled */
+                                              window_pf); 
+#endif
+
     window_rendering_handler = ogl_rendering_handler_create_with_fps_policy(system_hashed_ansi_string_create("Default rendering handler"),
                                                                             30,                 /* desired_fps */
                                                                             _rendering_handler,

@@ -612,9 +612,9 @@ PUBLIC void InitCurveData()
     job_done_event = system_event_create(false); /* manual_reset */
 
     /* Spawn a worker thread so that we can report the progress. */
-    system_thread_pool_task_descriptor task = system_thread_pool_create_task_descriptor_handler_only(THREAD_POOL_TASK_PRIORITY_NORMAL,
-                                                                                                     InitCurveDataWorkerThreadEntryPoint,
-                                                                                                     NULL); /* argument */
+    system_thread_pool_task task = system_thread_pool_create_task_handler_only(THREAD_POOL_TASK_PRIORITY_NORMAL,
+                                                                               InitCurveDataWorkerThreadEntryPoint,
+                                                                               NULL); /* argument */
 
     system_thread_pool_submit_single_task(task);
 

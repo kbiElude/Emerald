@@ -11,6 +11,7 @@
 #include "system/system_event.h"
 #include "system/system_log.h"
 #include "system/system_resizable_vector.h"
+#include "system/system_screen_mode.h"
 #include "system/system_thread_pool.h"
 #include "system/system_threads.h"
 #include "system/system_window_win32.h"
@@ -607,8 +608,8 @@ PUBLIC void system_window_win32_get_screen_size(int* out_screen_width_ptr,
                       out_screen_height_ptr != NULL,
                       "Input arguments are NULL");
 
-    *out_screen_width_ptr  = ::GetSystemMetrics(SM_CXFULLSCREEN);
-    *out_screen_height_ptr = ::GetSystemMetrics(SM_CYFULLSCREEN);
+    *out_screen_width_ptr  = ::GetSystemMetrics(SM_CXSCREEN);
+    *out_screen_height_ptr = ::GetSystemMetrics(SM_CYSCREEN);
 }
 
 /** Please see header for spec */
@@ -671,10 +672,14 @@ PUBLIC void system_window_win32_handle_window(system_window_win32 window)
 PUBLIC bool system_window_win32_open_window(system_window_win32 window,
                                             bool                is_first_window)
 {
-    DWORD                 ex_style  = 0;
-    bool                  result    = true;
-    DWORD                 style     = 0;
-    _system_window_win32* win32_ptr = (_system_window_win32*) window;
+    DWORD                 ex_style       = 0;
+    bool                  result         = true;
+    DWORD                 style          = 0;
+    _system_window_win32* win32_ptr      = (_system_window_win32*) window;
+    int                   x_border_width = 0;
+    int                   x1_delta       = 0;
+    int                   y_border_width = 0;
+    int                   y1_delta       = 0;
 
     /* Create window class, if necessary, and cache mouse cursors */
     if (is_first_window)
@@ -739,7 +744,7 @@ PUBLIC bool system_window_win32_open_window(system_window_win32 window,
     bool                      is_window_scalable   = false;
     system_window_handle      parent_window_handle = NULL;
     system_hashed_ansi_string window_title         = NULL;
-    int      x1y1x2y2[4];
+    int                       x1y1x2y2[4];
 
     system_window_get_property(win32_ptr->window,
                                SYSTEM_WINDOW_PROPERTY_IS_FULLSCREEN,
@@ -753,41 +758,23 @@ PUBLIC bool system_window_win32_open_window(system_window_win32 window,
     system_window_get_property(win32_ptr->window,
                                SYSTEM_WINDOW_PROPERTY_TITLE,
                               &window_title);
+
     system_window_get_property(win32_ptr->window,
                                SYSTEM_WINDOW_PROPERTY_X1Y1X2Y2,
                                x1y1x2y2);
 
     if (is_window_fullscreen)
     {
-        uint16_t fullscreen_bpp  = 0;
-        uint16_t fullscreen_freq = 0;
-        DEVMODEA new_device_mode;
+        system_screen_mode screen_mode = NULL;
 
         system_window_get_property(win32_ptr->window,
-                                   SYSTEM_WINDOW_PROPERTY_FULLSCREEN_BPP,
-                                  &fullscreen_bpp);
-        system_window_get_property(win32_ptr->window,
-                                   SYSTEM_WINDOW_PROPERTY_FULLSCREEN_REFRESH_RATE,
-                                  &fullscreen_freq);
+                                   SYSTEM_WINDOW_PROPERTY_SCREEN_MODE,
+                                  &screen_mode);
 
-        memset(&new_device_mode,
-               0,
-               sizeof(new_device_mode) );
-
-        new_device_mode.dmBitsPerPel       = fullscreen_bpp;
-        new_device_mode.dmDisplayFrequency = fullscreen_freq;
-        new_device_mode.dmFields           = DM_BITSPERPEL | DM_DISPLAYFREQUENCY | DM_PELSHEIGHT | DM_PELSWIDTH;
-        new_device_mode.dmPelsHeight       = x1y1x2y2[2] - x1y1x2y2[0];
-        new_device_mode.dmPelsWidth        = x1y1x2y2[3] - x1y1x2y2[1];
-
-        if (::ChangeDisplaySettingsA(&new_device_mode,
-                                     CDS_FULLSCREEN) )
+        if (!system_screen_mode_activate(screen_mode) )
         {
-            LOG_FATAL("Could not switch to full-screen for: width=%d height=%d freq=%d bpp=%d", 
-                      x1y1x2y2[2] - x1y1x2y2[0],
-                      x1y1x2y2[3] - x1y1x2y2[1],
-                      fullscreen_freq,
-                      fullscreen_bpp);
+            ASSERT_ALWAYS_SYNC(false,
+                               "Could not switch to the requested screen mode.");
 
             goto end;
         }
@@ -812,25 +799,23 @@ PUBLIC bool system_window_win32_open_window(system_window_win32 window,
         {
             style |= WS_THICKFRAME;
         }
-    }
 
-    /* Get system metrics we need to use for the window */
-    int x_border_width = ::GetSystemMetrics(SM_CXSIZEFRAME);
-    int y_border_width = ::GetSystemMetrics(SM_CYSIZEFRAME);
-    int x1_delta       = 0;
-    int y1_delta       = 0;
+        /* Get system metrics we need to use for the window */
+        x_border_width = ::GetSystemMetrics(SM_CXSIZEFRAME);
+        y_border_width = ::GetSystemMetrics(SM_CYSIZEFRAME);
 
-    if (!is_window_scalable)
-    {
-        x_border_width = 0;
-        y_border_width = 0;
-    }
+        if (!is_window_scalable)
+        {
+            x_border_width = 0;
+            y_border_width = 0;
+        }
 
-    if (parent_window_handle != NULL)
-    {
-        x1_delta = -::GetSystemMetrics(SM_CXFRAME);
-        y1_delta = (is_window_scalable ? -::GetSystemMetrics(SM_CYSIZEFRAME) :
-                                         -::GetSystemMetrics(SM_CYFRAME) )     - ::GetSystemMetrics(SM_CYCAPTION);
+        if (parent_window_handle != NULL)
+        {
+            x1_delta = -::GetSystemMetrics(SM_CXFRAME);
+            y1_delta = (is_window_scalable ? -::GetSystemMetrics(SM_CYSIZEFRAME) :
+                                             -::GetSystemMetrics(SM_CYFRAME) )     - ::GetSystemMetrics(SM_CYCAPTION);
+        }
     }
 
     win32_ptr->system_handle = ::CreateWindowExA(ex_style,

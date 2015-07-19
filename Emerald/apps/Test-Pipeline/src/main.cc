@@ -18,6 +18,7 @@
 #include "system/system_event.h"
 #include "system/system_hashed_ansi_string.h"
 #include "system/system_pixel_format.h"
+#include "system/system_screen_mode.h"
 #include "system/system_window.h"
 
 ogl_context   _context             = NULL;
@@ -58,11 +59,11 @@ const char* fragment_shader_modification = "#version 430 core\n"
                                            "\n"
                                            "in      vec2      uv;\n"
                                            "out     vec4      result;\n"
-                                           "uniform sampler2D input;\n"
+                                           "uniform sampler2D in_data;\n"
                                            "\n"
                                            "void main()\n"
                                            "{\n"
-                                           "    vec4 input_data = texture2D(input, uv);\n"
+                                           "    vec4 input_data = texture2D(in_data, uv);\n"
                                            "\n"
                                            "    if (uv.x >= 0.5)\n"
                                            "    {\n"
@@ -210,7 +211,7 @@ void _init_gl(ogl_context context,
                                     system_hashed_ansi_string_create("time"),
                                    &time_descriptor);
     ogl_program_get_uniform_by_name(_modification_po,
-                                    system_hashed_ansi_string_create("input"),
+                                    system_hashed_ansi_string_create("in_data"),
                                    &input_descriptor);
 
     _generation_po_time_ub_offset   = time_descriptor->block_offset;
@@ -361,6 +362,7 @@ PRIVATE void _window_closing_callback_handler(system_window window)
 #endif
 {
     ogl_rendering_handler window_rendering_handler = NULL;
+    system_screen_mode    window_screen_mode       = NULL;
     int                   window_x1y1x2y2[4]       = {0};
 
     _window_size[0] = 640;
@@ -372,19 +374,36 @@ PRIVATE void _window_closing_callback_handler(system_window window)
                                                                8, /* color_buffer_blue_bits  */
                                                                0, /* color_buffer_alpha_bits */
                                                                0, /* depth_buffer_bits       */
-                                                               1, /* n_samples               */
+                                                               SYSTEM_PIXEL_FORMAT_USE_MAXIMUM_NUMBER_OF_SAMPLES,
                                                                0);/* stencil_buffer_bits     */
 
+#if 1
     system_window_get_centered_window_position_for_primary_monitor(_window_size,
                                                                    window_x1y1x2y2);
 
-    _window                  = system_window_create_not_fullscreen         (OGL_CONTEXT_TYPE_GL,
-                                                                            window_x1y1x2y2,
-                                                                            system_hashed_ansi_string_create("Test window"),
-                                                                            false,
-                                                                            false, /* vsync_enabled */
-                                                                            true,  /* visible */
-                                                                            window_pf);
+    _window = system_window_create_not_fullscreen(OGL_CONTEXT_TYPE_GL,
+                                                  window_x1y1x2y2,
+                                                  system_hashed_ansi_string_create("Test window"),
+                                                  false,
+                                                  false, /* vsync_enabled */
+                                                  true,  /* visible */
+                                                  window_pf);
+#else
+    system_screen_mode_get         (0,
+                                   &window_screen_mode);
+    system_screen_mode_get_property(window_screen_mode,
+                                    SYSTEM_SCREEN_MODE_PROPERTY_WIDTH,
+                                    _window_size + 0);
+    system_screen_mode_get_property(window_screen_mode,
+                                    SYSTEM_SCREEN_MODE_PROPERTY_HEIGHT,
+                                    _window_size + 1);
+
+    _window = system_window_create_fullscreen(OGL_CONTEXT_TYPE_GL,
+                                              window_screen_mode,
+                                              false, /* vsync_enabled */
+                                              window_pf);
+#endif
+
     window_rendering_handler = ogl_rendering_handler_create_with_fps_policy(system_hashed_ansi_string_create("Default rendering handler"),
                                                                             30,                 /* desired_fps */
                                                                             _rendering_handler,
