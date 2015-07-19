@@ -59,11 +59,11 @@ const char* fragment_shader_modification = "#version 430 core\n"
                                            "\n"
                                            "in      vec2      uv;\n"
                                            "out     vec4      result;\n"
-                                           "uniform sampler2D input;\n"
+                                           "uniform sampler2D in_data;\n"
                                            "\n"
                                            "void main()\n"
                                            "{\n"
-                                           "    vec4 input_data = texture2D(input, uv);\n"
+                                           "    vec4 input_data = texture2D(in_data, uv);\n"
                                            "\n"
                                            "    if (uv.x >= 0.5)\n"
                                            "    {\n"
@@ -211,7 +211,7 @@ void _init_gl(ogl_context context,
                                     system_hashed_ansi_string_create("time"),
                                    &time_descriptor);
     ogl_program_get_uniform_by_name(_modification_po,
-                                    system_hashed_ansi_string_create("input"),
+                                    system_hashed_ansi_string_create("in_data"),
                                    &input_descriptor);
 
     _generation_po_time_ub_offset   = time_descriptor->block_offset;
@@ -374,7 +374,7 @@ PRIVATE void _window_closing_callback_handler(system_window window)
                                                                8, /* color_buffer_blue_bits  */
                                                                0, /* color_buffer_alpha_bits */
                                                                0, /* depth_buffer_bits       */
-                                                               1, /* n_samples               */
+                                                               SYSTEM_PIXEL_FORMAT_USE_MAXIMUM_NUMBER_OF_SAMPLES,
                                                                0);/* stencil_buffer_bits     */
 
 #if 1

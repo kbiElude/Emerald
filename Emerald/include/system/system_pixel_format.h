@@ -41,7 +41,28 @@ typedef enum
 } system_pixel_format_property;
 
 
-/** TODO */
+static const unsigned char SYSTEM_PIXEL_FORMAT_USE_MAXIMUM_NUMBER_OF_SAMPLES = 0xFF;
+
+
+/** TODO
+ *
+ *  @param color_buffer_red_bits   TODO.
+ *  @param color_buffer_green_bits TODO.
+ *  @param color_buffer_blue_bits  TODO.
+ *  @param color_buffer_alpha_bits TODO.
+ *  @param depth_buffer_bits       TODO.
+ *  @param n_samples               TODO. Can also be equal to SYSTEM_PIXEL_FORMAT_USE_MAXIMUM_NUMBER_OF_SAMPLES,
+ *                                 in which case a maximum number of samples reported by the driver to be supported
+ *                                 for the requested pixel format configuration will be used at context initialization
+ *                                 time.
+ *                                 NOTE: the actual number of samples is NOT determined at creation time, but at context's
+ *                                       init time. If you call get_property() for the n_samples enum, you will be returned
+ *                                       the constant value, NOT the number of samples that will be used for rendering!
+ *
+ *  @param stencil_buffer_bits     TODO.
+ *
+ *  @return TODO
+ */
 PUBLIC EMERALD_API system_pixel_format system_pixel_format_create(unsigned char color_buffer_red_bits,
                                                                   unsigned char color_buffer_green_bits,
                                                                   unsigned char color_buffer_blue_bits,

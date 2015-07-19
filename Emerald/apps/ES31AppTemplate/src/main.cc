@@ -67,7 +67,7 @@ int main()
                                                                8,  /* color_buffer_blue_bits  */
                                                                0,  /* color_buffer_alpha_bits */
                                                                24, /* depth_buffer_bits       */
-                                                               1,  /* n_samples               */
+                                                               SYSTEM_PIXEL_FORMAT_USE_MAXIMUM_NUMBER_OF_SAMPLES,
                                                                0); /* stencil_buffer_bits     */
 
 #if 1

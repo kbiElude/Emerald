@@ -1217,8 +1217,12 @@ PRIVATE void _ogl_context_initialize_fbo(_ogl_context* context_ptr)
     /* Determine what internalformats we need to use for the color, depth and stencil attachments.
      * While on it, also extract the number of samples the caller wants us to use.
      *
-     * Root window requests a pixel format with 0 bits for any of the attachments. Pay extra attention
+     * Root window may request a pixel format with 0 bits for any of the attachments. Pay extra attention
      * to detect this case. If we encounter it, do not initialize the FBO at all.
+     *
+     * system_pixel_format may also report SYSTEM_PIXEL_FORMAT_USE_MAXIMUM_NUMBER_OF_SAMPLES for the number
+     * of samples to be used for attachments. If that is the case, we need to check with the implementation,
+     * what value we should be using.
      */
     system_window_get_property(context_ptr->window,
                                SYSTEM_WINDOW_PROPERTY_PIXEL_FORMAT,
@@ -1236,6 +1240,37 @@ PRIVATE void _ogl_context_initialize_fbo(_ogl_context* context_ptr)
     system_pixel_format_get_property(pixel_format,
                                      SYSTEM_PIXEL_FORMAT_PROPERTY_N_SAMPLES,
                                     &n_samples);
+
+    if (n_samples == SYSTEM_PIXEL_FORMAT_USE_MAXIMUM_NUMBER_OF_SAMPLES)
+    {
+        unsigned int  reported_n_samples = 0;
+        unsigned int* reported_samples   = NULL;
+
+        ogl_context_enumerate_msaa_samples(pixel_format,
+                                          &reported_n_samples,
+                                          &reported_samples);
+
+        ASSERT_ALWAYS_SYNC(reported_n_samples >= 1,
+                           "No multisampling support for the requested rendering context FBO configuration!");
+
+        /* The values are sorted in a descending order so we need to take the first value and drop the others */
+        if (reported_n_samples < 1)
+        {
+            /* Disable multisampling once and for all. */
+            n_samples = 1;
+        }
+        else
+        {
+            n_samples = reported_samples[0];
+        }
+
+        if (reported_samples != NULL)
+        {
+            delete [] reported_samples;
+
+            reported_samples = NULL;
+        }
+    } /* if (n_samples == SYSTEM_PIXEL_FORMAT_USE_MAXIMUM_NUMBER_OF_SAMPLES) */
 
     if (!_ogl_context_get_attachment_internalformats_for_system_pixel_format(pixel_format,
                                                                             &internalformat_color,
@@ -3039,8 +3074,11 @@ PUBLIC EMERALD_API void ogl_context_enumerate_msaa_samples(system_pixel_format p
      * used for color & depth attachments must match, we can only return values that are supported
      * for both internalformats.
      */
-    if (root_window_context_ptr->msaa_enumeration_color_n_samples         == 0 ||
-        root_window_context_ptr->msaa_enumeration_depth_stencil_n_samples == 0)
+    const bool consider_color_internalformats         = (root_window_context_ptr->msaa_enumeration_color_internalformat         != GL_NONE);
+    const bool consider_depth_stencil_internalformats = (root_window_context_ptr->msaa_enumeration_depth_stencil_internalformat != GL_NONE);
+
+    if (consider_color_internalformats         && root_window_context_ptr->msaa_enumeration_color_n_samples         == 0 ||
+        consider_depth_stencil_internalformats && root_window_context_ptr->msaa_enumeration_depth_stencil_n_samples == 0)
     {
         ASSERT_DEBUG_SYNC(false,
                           "MSAA not supported for the requested color / depth / depth-stencil internalformats");
@@ -3049,8 +3087,12 @@ PUBLIC EMERALD_API void ogl_context_enumerate_msaa_samples(system_pixel_format p
         goto end;
     }
 
-    depth_stencil_samples_vector = system_resizable_vector_create(root_window_context_ptr->msaa_enumeration_depth_stencil_n_samples);
-    result_vector                = system_resizable_vector_create(32 /* capacity */);
+    if (consider_depth_stencil_internalformats && root_window_context_ptr->msaa_enumeration_depth_stencil_n_samples != 0)
+    {
+        depth_stencil_samples_vector = system_resizable_vector_create(root_window_context_ptr->msaa_enumeration_depth_stencil_n_samples);
+    }
+
+    result_vector = system_resizable_vector_create(32 /* capacity */);
 
     ASSERT_DEBUG_SYNC(result_vector != NULL,
                       "Out of memory");
@@ -3063,21 +3105,35 @@ PUBLIC EMERALD_API void ogl_context_enumerate_msaa_samples(system_pixel_format p
                                      (void*) root_window_context_ptr->msaa_enumeration_depth_stencil_samples[n_depth_stencil_n_samples]);
     }
 
-    for (unsigned int n_result_sample = 0;
-                      n_result_sample < root_window_context_ptr->msaa_enumeration_color_n_samples;
-                    ++n_result_sample)
-     {
-         /* Only store matches */
-         if (system_resizable_vector_find(depth_stencil_samples_vector,
-                                          (void*) root_window_context_ptr->msaa_enumeration_color_samples[n_result_sample]) != ITEM_NOT_FOUND)
-         {
-             system_resizable_vector_push(result_vector,
-                                          (void*) root_window_context_ptr->msaa_enumeration_color_samples[n_result_sample]);
-         }
-     }
+    if (depth_stencil_samples_vector != NULL)
+    {
+        for (unsigned int n_result_sample = 0;
+                          n_result_sample < root_window_context_ptr->msaa_enumeration_color_n_samples;
+                        ++n_result_sample)
+        {
+            /* Only store the matches */
+            if (system_resizable_vector_find(depth_stencil_samples_vector,
+                                             (void*) root_window_context_ptr->msaa_enumeration_color_samples[n_result_sample]) != ITEM_NOT_FOUND)
+            {
+                system_resizable_vector_push(result_vector,
+                                             (void*) root_window_context_ptr->msaa_enumeration_color_samples[n_result_sample]);
+            }
+        }
+    } /* if (depth_stencil_samples_vector != NULL) */
+    else
+    {
+        /* Treat the color samples data as the needed info */
+        for (unsigned int n_result_sample = 0;
+                          n_result_sample < root_window_context_ptr->msaa_enumeration_color_n_samples;
+                        ++n_result_sample)
+        {
+            system_resizable_vector_push(result_vector,
+                                         (void*) root_window_context_ptr->msaa_enumeration_color_samples[n_result_sample]);
+        }
+    }
 
-     system_resizable_vector_sort(result_vector,
-                                  _ogl_context_sort_descending);
+    system_resizable_vector_sort(result_vector,
+                                 _ogl_context_sort_descending);
 end:
     if (!result)
     {

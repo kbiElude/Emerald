@@ -496,10 +496,10 @@ unsigned int main_get_window_width()
                                                                8,  /* color_buffer_blue_bits  */
                                                                0,  /* color_buffer_alpha_bits */
                                                                0,  /* depth_buffer_bits       */
-                                                               1, /* n_samples               */
+                                                               SYSTEM_PIXEL_FORMAT_USE_MAXIMUM_NUMBER_OF_SAMPLES,
                                                                0); /* stencil_buffer_bits     */
 
-#if 1
+#if 0
     system_window_get_centered_window_position_for_primary_monitor(_window_resolution,
                                                                    window_x1y1x2y2);
 

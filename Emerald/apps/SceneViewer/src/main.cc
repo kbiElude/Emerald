@@ -384,14 +384,18 @@ void _rendering_window_closing_callback_handler(system_window window)
                                                                8,  /* color_buffer_blue_bits  */
                                                                0,  /* color_buffer_alpha_bits */
                                                                16, /* depth_buffer_bits       */
-                                                               1,  /* n_samples               */
+                                                               SYSTEM_PIXEL_FORMAT_USE_MAXIMUM_NUMBER_OF_SAMPLES,
                                                                0); /* stencil_buffer_bits     */
 
 #if 0
-    system_capabilities_get_screen_mode_for_resolution(WINDOW_WIDTH,
-                                                       WINDOW_HEIGHT,
-                                                       60,
-                                                      &screen_mode);
+    system_screen_mode_get         (0,
+                                   &screen_mode);
+    system_screen_mode_get_property(screen_mode,
+                                    SYSTEM_SCREEN_MODE_PROPERTY_WIDTH,
+                                    window_size + 0);
+    system_screen_mode_get_property(screen_mode,
+                                    SYSTEM_SCREEN_MODE_PROPERTY_HEIGHT,
+                                    window_size + 1);
 
     _window = system_window_create_fullscreen(OGL_CONTEXT_TYPE_GL,
                                               screen_mode,
