@@ -9,16 +9,27 @@
 #include "system/system_screen_mode.h"
 
 #ifdef __linux
+    #include <X11/extensions/Xrandr.h>
     #include <unistd.h>
 #endif
 
 
-PRIVATE unsigned int            n_cpu_cores  = 0;
-PRIVATE system_resizable_vector screen_modes = NULL; /* holds system_screen_mode instances */
+PRIVATE unsigned int n_cpu_cores  = 0;
+
+/* holds system_screen_mode instances. The system blob property is set to:
+ *
+ * SizeID value     - under Linux.
+ * DEVMODE instance - under Windows.
+ **/
+PRIVATE system_resizable_vector screen_modes = NULL;
+
 
 /* Forward declarations */
 PRIVATE void _system_capabilities_init_full_screen_modes();
-PRIVATE void _system_capabilities_release_devmode       (void* blob);
+
+#ifdef _WIN32
+    PRIVATE void _system_capabilities_release_devmode(void* blob);
+#endif
 
 
 /** TODO */
@@ -74,10 +85,110 @@ PRIVATE void _system_capabilities_init_full_screen_modes()
     }
     #else
     {
-        todo;
+        /* Open the display connection.
+         *
+         * TODO: Enumerate all available displays!
+         */
+        Display*                display                  = XOpenDisplay(":0");
+        int                     n_screen_sizes           = 0;
+        Window                  root_window              = (Window) NULL;
+        int                     screen                   = 0;
+        XRRScreenConfiguration* screen_configuration_ptr = NULL;
+        XRRScreenSize*          screen_sizes_ptr         = NULL;
+
+        if (display == NULL)
+        {
+            ASSERT_ALWAYS_SYNC(false,
+                              "Could not open display connection");
+
+            goto end;
+        }
+
+        screen                   = DefaultScreen(display);
+        root_window              = RootWindow      (display,
+                                                    screen);
+        screen_configuration_ptr = XRRGetScreenInfo(display,
+                                                    root_window);
+
+        if (screen_configuration_ptr == NULL)
+        {
+            ASSERT_ALWAYS_SYNC(false,
+                               "Could not retrieve screen information");
+
+            goto end;
+        }
+
+        screen_sizes_ptr = XRRConfigSizes(screen_configuration_ptr,
+                                         &n_screen_sizes);
+
+        if (screen_sizes_ptr == NULL)
+        {
+            ASSERT_ALWAYS_SYNC(false,
+                               "Could not retrieve screen sizes");
+
+            goto end;
+        }
+
+        /* Iterate over all screen sizes and create system_screen_mode instance for each entry */
+        for (unsigned int n_screen_size = 0;
+                          n_screen_size < n_screen_sizes;
+                        ++n_screen_size)
+        {
+            /* Query what refresh rates are supported for this resolution */
+            int    n_refresh_rates = 0;
+            short* refresh_rates   = NULL;
+
+            refresh_rates = XRRConfigRates(screen_configuration_ptr,
+                                           n_screen_size,
+                                          &n_refresh_rates);
+
+            if (refresh_rates == NULL)
+            {
+                ASSERT_ALWAYS_SYNC(false,
+                                   "Could not retrieve refresh rate array for screen size ID [%d]",
+                                   n_screen_size);
+
+                continue;
+            }
+
+            for (int n_refresh_rate = 0;
+                     n_refresh_rate < n_refresh_rates;
+                   ++n_refresh_rate)
+            {
+                int current_refresh_rate = (int) refresh_rates[n_refresh_rate];
+
+                system_screen_mode new_screen_mode = system_screen_mode_create(screen_sizes_ptr[n_screen_size].width,
+                                                                               screen_sizes_ptr[n_screen_size].height,
+                                                                               current_refresh_rate,
+                                                                               (void*) n_screen_size,
+                                                                               NULL); /* pfn_release_system_blob */
+
+                system_resizable_vector_push(screen_modes,
+                                             new_screen_mode);
+            } /* for (all refresh rates) */
+        } /* for (all screen sizes) */
+
+end:
+        /* Clean up */
+        if (screen_configuration_ptr != NULL)
+        {
+            XRRFreeScreenConfigInfo(screen_configuration_ptr);
+
+            screen_configuration_ptr = NULL;
+        }
+
+        if (display != NULL)
+        {
+            XCloseDisplay(display);
+
+            display = NULL;
+        }
     }
     #endif
+
 }
+
+#ifdef _WIN32
 
 /** TODO */
 PRIVATE void _system_capabilities_release_devmode(void* blob)
@@ -87,6 +198,7 @@ PRIVATE void _system_capabilities_release_devmode(void* blob)
 
     delete (DEVMODE*) blob;
 }
+#endif
 
 /** Please see header for spec */
 PUBLIC void system_capabilities_deinit()

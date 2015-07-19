@@ -7,7 +7,7 @@
 
 /* Defined if curve editor is to be included. In order to show its window, you need to call
  * relevant engine function! */
-#define INCLUDE_CURVE_EDITOR
+/* #undef INCLUDE_CURVE_EDITOR */
 
 /* Defined if OpenCL-specific bits are to be included */
 /* #undef INCLUDE_OPENCL */
