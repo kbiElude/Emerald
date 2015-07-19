@@ -14,11 +14,11 @@
 #include "ogl/ogl_shader.h"
 #include "ogl/ogl_texture.h"
 #include "shaders/shaders_vertex_fullscreen.h"
-#include "system/system_capabilities.h"
 #include "system/system_assertions.h"
 #include "system/system_event.h"
 #include "system/system_hashed_ansi_string.h"
 #include "system/system_pixel_format.h"
+#include "system/system_screen_mode.h"
 #include "system/system_window.h"
 
 ogl_context   _context             = NULL;
@@ -377,7 +377,7 @@ PRIVATE void _window_closing_callback_handler(system_window window)
                                                                1, /* n_samples               */
                                                                0);/* stencil_buffer_bits     */
 
-#if 1
+#if 0
     system_window_get_centered_window_position_for_primary_monitor(_window_size,
                                                                    window_x1y1x2y2);
 
@@ -389,10 +389,10 @@ PRIVATE void _window_closing_callback_handler(system_window window)
                                                   true,  /* visible */
                                                   window_pf);
 #else
-    system_capabilities_get_screen_mode_for_resolution(_window_size[0],
-                                                       _window_size[1],
-                                                       60, /* frequency */
-                                                      &window_screen_mode);
+    system_screen_mode_get_for_resolution(_window_size[0],
+                                          _window_size[1],
+                                          60,
+                                         &window_screen_mode);
 
     _window = system_window_create_fullscreen(OGL_CONTEXT_TYPE_GL,
                                               window_screen_mode,

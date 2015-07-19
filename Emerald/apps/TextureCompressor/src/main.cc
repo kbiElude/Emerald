@@ -22,7 +22,6 @@
 #include "ogl/ogl_ui_frame.h"
 #include "ogl/ogl_ui_label.h"
 #include "system/system_assertions.h"
-#include "system/system_capabilities.h"
 #include "system/system_event.h"
 #include "system/system_file_enumerator.h"
 #include "system/system_file_serializer.h"
@@ -31,6 +30,7 @@
 #include "system/system_pixel_format.h"
 #include "system/system_resizable_vector.h"
 #include "system/system_resources.h"
+#include "system/system_screen_mode.h"
 #include "system/system_window.h"
 #include <sstream>
 
@@ -1719,10 +1719,10 @@ void _update_ui_controls_strings()
                                                   true,  /* visible */
                                                   window_pf);
 #else
-    system_capabilities_get_screen_mode_for_resolution(_window_size[0],
-                                                       _window_size[1],
-                                                       60, /* frequency */
-                                                      &window_screen_mode);
+    system_screen_mode_get_for_resolution(_window_size[0],
+                                          _window_size[1],
+                                          60,
+                                         &window_screen_mode);
 
     _window = system_window_create_fullscreen(OGL_CONTEXT_TYPE_GL,
                                               window_screen_mode,

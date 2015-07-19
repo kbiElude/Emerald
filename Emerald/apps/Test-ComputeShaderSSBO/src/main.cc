@@ -11,10 +11,10 @@
 #include "ogl/ogl_shader.h"
 #include "ogl/ogl_texture.h"
 #include "system/system_assertions.h"
-#include "system/system_capabilities.h"
 #include "system/system_event.h"
 #include "system/system_hashed_ansi_string.h"
 #include "system/system_pixel_format.h"
+#include "system/system_screen_mode.h"
 #include "system/system_window.h"
 #include <algorithm>
 
@@ -311,10 +311,10 @@ PRIVATE void _window_closing_callback_handler(system_window window)
     ogl_rendering_handler window_rendering_handler = NULL;
     int                   window_x1y1x2y2[4]       = {0};
 
-    system_capabilities_get_screen_mode_for_resolution(_window_size[0],
-                                                       _window_size[1],
-                                                       60,
-                                                      &screen_mode);
+    system_screen_mode_get_for_resolution(_window_size[0],
+                                          _window_size[1],
+                                          60,
+                                         &screen_mode);
 
     window_pf = system_pixel_format_create(8,  /* color_buffer_red_bits   */
                                            8,  /* color_buffer_green_bits */

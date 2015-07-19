@@ -47,9 +47,25 @@ PUBLIC system_screen_mode system_screen_mode_create(unsigned int             wid
                                                     PFNRELEASESYSTEMBLOBPROC pfn_release_system_blob);
 
 /** TODO */
+PUBLIC void system_screen_mode_deinit();
+
+/** TODO */
+PUBLIC EMERALD_API bool system_screen_mode_get(unsigned int        n_screen_mode,
+                                               system_screen_mode* out_screen_mode);
+
+/** TODO */
+PUBLIC EMERALD_API bool system_screen_mode_get_for_resolution(unsigned int        width,
+                                                              unsigned int        height,
+                                                              unsigned int        frequency,
+                                                              system_screen_mode* out_screen_mode);
+
+/** TODO */
 PUBLIC void system_screen_mode_get_property(system_screen_mode          screen_mode,
                                             system_screen_mode_property property,
                                             void*                       out_result);
+
+/** TODO */
+PUBLIC void system_screen_mode_init();
 
 /** TODO */
 PUBLIC void system_screen_mode_release(system_screen_mode screen_mode);

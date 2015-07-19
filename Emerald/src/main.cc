@@ -16,6 +16,7 @@
 #include "system/system_log.h"
 #include "system/system_matrix4x4.h"
 #include "system/system_resources.h"
+#include "system/system_screen_mode.h"
 #include "system/system_thread_pool.h"
 #include "system/system_threads.h"
 #include "system/system_time.h"
@@ -85,6 +86,7 @@ void main_init()
 
     system_callback_manager_init  ();
     system_capabilities_init      ();
+    system_screen_mode_init       ();
     system_hashed_ansi_string_init();
     system_global_init            ();
 
@@ -172,6 +174,7 @@ int main_deinit()
 
         _system_log_deinit();
         system_capabilities_deinit();
+        system_screen_mode_deinit();
 
         _deinited = true;
     }

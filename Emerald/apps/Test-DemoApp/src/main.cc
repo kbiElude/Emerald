@@ -15,7 +15,6 @@
 #include "scene/scene.h"
 #include "scene/scene_camera.h"
 #include "scene/scene_graph.h"
-#include "system/system_capabilities.h"
 #include "system/system_event.h"
 #include "system/system_file_enumerator.h"
 #include "system/system_file_serializer.h"
@@ -24,6 +23,7 @@
 #include "system/system_matrix4x4.h"
 #include "system/system_pixel_format.h"
 #include "system/system_resizable_vector.h"
+#include "system/system_screen_mode.h"
 #include "system/system_window.h"
 #include "app_config.h"
 #include "state.h"
@@ -221,10 +221,10 @@ void _rendering_window_closing_callback_handler(system_window window)
                                                                0); /* stencil_buffer_bits     */
 
 #if 0
-    system_capabilities_get_screen_mode_for_resolution(window_size[0],
-                                                       window_size[1],
-                                                       60, /* frequency */
-                                                      &screen_mode);
+    system_screen_mode_get_for_resolution(window_size[0],
+                                          window_size[1],
+                                          60,
+                                         &screen_mode);
 
     _window = system_window_create_fullscreen(OGL_CONTEXT_TYPE_GL,
                                               screen_mode,

@@ -13,11 +13,11 @@
 #include "ogl/ogl_rendering_handler.h"
 #include "ogl/ogl_ui.h"
 #include "system/system_assertions.h"
-#include "system/system_capabilities.h"
 #include "system/system_event.h"
 #include "system/system_hashed_ansi_string.h"
 #include "system/system_matrix4x4.h"
 #include "system/system_pixel_format.h"
+#include "system/system_screen_mode.h"
 #include "system/system_window.h"
 #include "system/system_variant.h"
 #include "stage_step_julia.h"
@@ -725,10 +725,10 @@ float main_get_specularity()
                                                   true,  /* visible */
                                                   window_pf);
 #else
-    system_capabilities_get_screen_mode_for_resolution(window_size[0],
-                                                       window_size[1],
-                                                       60, /* frequency */
-                                                      &window_screen_mode);
+    system_screen_mode_get_for_resolution(window_size[0],
+                                          window_size[1],
+                                          60,
+                                         &window_screen_mode);
 
     _window = system_window_create_fullscreen(OGL_CONTEXT_TYPE_GL,
                                               window_screen_mode,
