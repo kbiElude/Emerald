@@ -608,8 +608,8 @@ PUBLIC void system_window_win32_get_screen_size(int* out_screen_width_ptr,
                       out_screen_height_ptr != NULL,
                       "Input arguments are NULL");
 
-    *out_screen_width_ptr  = ::GetSystemMetrics(SM_CXFULLSCREEN);
-    *out_screen_height_ptr = ::GetSystemMetrics(SM_CYFULLSCREEN);
+    *out_screen_width_ptr  = ::GetSystemMetrics(SM_CXSCREEN);
+    *out_screen_height_ptr = ::GetSystemMetrics(SM_CYSCREEN);
 }
 
 /** Please see header for spec */

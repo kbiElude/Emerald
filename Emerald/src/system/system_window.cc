@@ -1641,6 +1641,9 @@ PUBLIC EMERALD_API bool system_window_get_centered_window_position_for_primary_m
     }
     else
     {
+        ASSERT_ALWAYS_SYNC(false,
+                           "Requested window is larger than the screen's size.");
+
         return false;
     }
 }
