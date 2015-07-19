@@ -34,12 +34,12 @@ static void _stage_step_preview_execute(ogl_context context,
                                     draw_fbo_id);
     entrypoints->pGLBlitFramebuffer(0,    /* srcX0 */
                                     0,    /* srcY0 */
-                                    1280, /* srcX1 */
-                                    720,  /* srcY1 */
+                                    main_get_window_width(),  /* srcX1 */
+                                    main_get_window_height(), /* srcY1 */
                                     0,    /* dstX0 */
                                     0,    /* dstY0 */
-                                    1280, /* dstX1 */
-                                    720,  /* dstY1 */
+                                    main_get_window_width(),  /* dstX1 */
+                                    main_get_window_height(), /* dstY1 */
                                     GL_COLOR_BUFFER_BIT,
                                     GL_NEAREST);
 }

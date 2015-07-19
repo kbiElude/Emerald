@@ -462,6 +462,19 @@ float main_get_specularity()
     return _specularity;
 }
 
+/** Please see header for specification */
+unsigned int main_get_window_height()
+{
+    return _window_resolution[1];
+}
+
+/** Please see header for specification */
+unsigned int main_get_window_width()
+{
+    return _window_resolution[0];
+}
+
+
 /** Entry point */
 #ifdef _WIN32
     int WINAPI WinMain(HINSTANCE instance_handle,
@@ -483,7 +496,7 @@ float main_get_specularity()
                                                                8,  /* color_buffer_blue_bits  */
                                                                0,  /* color_buffer_alpha_bits */
                                                                0,  /* depth_buffer_bits       */
-                                                               16, /* n_samples               */
+                                                               1, /* n_samples               */
                                                                0); /* stencil_buffer_bits     */
 
 #if 1
@@ -498,10 +511,14 @@ float main_get_specularity()
                                                   true,  /* visible */
                                                   window_pf);
 #else
-    system_screen_mode_get_for_resolution(_window_resolution[0],
-                                          _window_resolution[1],
-                                          60,
-                                         &window_screen_mode);
+    system_screen_mode_get         (0,
+                                   &window_screen_mode);
+    system_screen_mode_get_property(window_screen_mode,
+                                    SYSTEM_SCREEN_MODE_PROPERTY_WIDTH,
+                                    _window_resolution + 0);
+    system_screen_mode_get_property(window_screen_mode,
+                                    SYSTEM_SCREEN_MODE_PROPERTY_HEIGHT,
+                                    _window_resolution + 1);
 
     _window = system_window_create_fullscreen(OGL_CONTEXT_TYPE_GL,
                                               window_screen_mode,

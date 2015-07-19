@@ -114,7 +114,7 @@ ogl_program                     _whiteline_po                          = NULL;
 ogl_shader                      _whiteline_vs                          = NULL;
 system_window                   _window                                = NULL;
 system_event                    _window_closed_event                   = system_event_create(true); /* manual_reset */
-const int                       _window_size[2]                        = {1280, 720};
+int                             _window_size[2]                        = {1280, 720};
 float                           _x1y1x2y2[4]                           = {0.0f, 0.0f, 0.0f, 0.0f};
 
 /** Shaders: preview */
@@ -1707,7 +1707,7 @@ void _update_ui_controls_strings()
                                                                1,  /* n_samples               */
                                                                0); /* stencil_buffer_bits     */
 
-#if 0
+#if 1
     system_window_get_centered_window_position_for_primary_monitor(_window_size,
                                                                    window_x1y1x2y2);
 
@@ -1719,10 +1719,14 @@ void _update_ui_controls_strings()
                                                   true,  /* visible */
                                                   window_pf);
 #else
-    system_screen_mode_get_for_resolution(_window_size[0],
-                                          _window_size[1],
-                                          60,
-                                         &window_screen_mode);
+    system_screen_mode_get         (0,
+                                   &window_screen_mode);
+    system_screen_mode_get_property(window_screen_mode,
+                                    SYSTEM_SCREEN_MODE_PROPERTY_WIDTH,
+                                    _window_size + 0);
+    system_screen_mode_get_property(window_screen_mode,
+                                    SYSTEM_SCREEN_MODE_PROPERTY_HEIGHT,
+                                    _window_size + 1);
 
     _window = system_window_create_fullscreen(OGL_CONTEXT_TYPE_GL,
                                               window_screen_mode,

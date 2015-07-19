@@ -29,7 +29,7 @@ int          _local_workgroup_size = 0;
 ogl_program  _program              = NULL;
 ogl_texture  _texture              = NULL;
 system_event _window_closed_event  = system_event_create(true); /* manual_reset */
-const int    _window_size[2]       = {1280, 720};
+int          _window_size[2]       = {1280, 720};
 
 const char* _cs_body_preamble = "#version 430 core\n"
                                 "\n"
@@ -311,10 +311,14 @@ PRIVATE void _window_closing_callback_handler(system_window window)
     ogl_rendering_handler window_rendering_handler = NULL;
     int                   window_x1y1x2y2[4]       = {0};
 
-    system_screen_mode_get_for_resolution(_window_size[0],
-                                          _window_size[1],
-                                          60,
-                                         &screen_mode);
+    system_screen_mode_get         (0,
+                                   &screen_mode);
+    system_screen_mode_get_property(screen_mode,
+                                    SYSTEM_SCREEN_MODE_PROPERTY_WIDTH,
+                                    _window_size + 0);
+    system_screen_mode_get_property(screen_mode,
+                                    SYSTEM_SCREEN_MODE_PROPERTY_HEIGHT,
+                                    _window_size + 1);
 
     window_pf = system_pixel_format_create(8,  /* color_buffer_red_bits   */
                                            8,  /* color_buffer_green_bits */

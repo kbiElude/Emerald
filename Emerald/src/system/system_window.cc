@@ -743,8 +743,8 @@ PRIVATE void _system_window_create_root_window(ogl_context_type context_type)
     {
         0,
         0,
-        1,
-        1
+        64,
+        64
     };
 
     /* Sanity checks */
@@ -772,13 +772,13 @@ PRIVATE void _system_window_create_root_window(ogl_context_type context_type)
      *       to render anything to the window; we only use it as a mean to share objects
      *       between contexts.
      */
-    system_pixel_format root_window_pf = system_pixel_format_create(0, /* red_bits     */
-                                                                    0, /* green_bits   */
-                                                                    0, /* blue_bits    */
-                                                                    0, /* alpha_bits   */
-                                                                    0, /* depth_bits   */
-                                                                    1, /* n_samples    */
-                                                                    0);/* stencil_bits */
+    system_pixel_format root_window_pf = system_pixel_format_create(8,  /* red_bits     */
+                                                                    8,  /* green_bits   */
+                                                                    8,  /* blue_bits    */
+                                                                    0,  /* alpha_bits   */
+                                                                    24, /* depth_bits   */
+                                                                    1,  /* n_samples    */
+                                                                    0); /* stencil_bits */
     root_window =  _system_window_create_shared(context_type,
                                                 false, /* is_fullscreen */
                                                 root_window_x1y1x2y2,

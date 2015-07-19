@@ -221,10 +221,8 @@ void _rendering_window_closing_callback_handler(system_window window)
                                                                0); /* stencil_buffer_bits     */
 
 #if 0
-    system_screen_mode_get_for_resolution(window_size[0],
-                                          window_size[1],
-                                          60,
-                                         &screen_mode);
+    system_screen_mode_get(0,
+                          &screen_mode);
 
     _window = system_window_create_fullscreen(OGL_CONTEXT_TYPE_GL,
                                               screen_mode,

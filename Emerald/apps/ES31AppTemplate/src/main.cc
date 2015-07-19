@@ -10,6 +10,7 @@
 #include "system/system_event.h"
 #include "system/system_hashed_ansi_string.h"
 #include "system/system_pixel_format.h"
+#include "system/system_screen_mode.h"
 #include "system/system_window.h"
 
 ogl_context   _context             = NULL;
@@ -56,6 +57,7 @@ int main()
 {
     bool                  context_result           = false;
     ogl_rendering_handler window_rendering_handler = NULL;
+    system_screen_mode    window_screen_mode       = NULL;
     int                   window_size    [2]       = {640, 480};
     int                   window_x1y1x2y2[4]       = {0};
 
@@ -64,20 +66,37 @@ int main()
                                                                8,  /* color_buffer_green_bits */
                                                                8,  /* color_buffer_blue_bits  */
                                                                0,  /* color_buffer_alpha_bits */
-                                                               8,  /* depth_buffer_bits       */
+                                                               24, /* depth_buffer_bits       */
                                                                1,  /* n_samples               */
                                                                0); /* stencil_buffer_bits     */
 
+#if 1
     system_window_get_centered_window_position_for_primary_monitor(window_size,
                                                                    window_x1y1x2y2);
 
-    _window                  = system_window_create_not_fullscreen         (OGL_CONTEXT_TYPE_ES,
-                                                                            window_x1y1x2y2,
-                                                                            system_hashed_ansi_string_create("Test window"),
-                                                                            false,
-                                                                            false, /* vsync_enabled */
-                                                                            true,  /* visible */
-                                                                            window_pf);
+    _window = system_window_create_not_fullscreen(OGL_CONTEXT_TYPE_ES,
+                                                  window_x1y1x2y2,
+                                                  system_hashed_ansi_string_create("Test window"),
+                                                  false,
+                                                  false, /* vsync_enabled */
+                                                  true,  /* visible */
+                                                  window_pf);
+#else
+    system_screen_mode_get         (0,
+                                   &window_screen_mode);
+    system_screen_mode_get_property(window_screen_mode,
+                                    SYSTEM_SCREEN_MODE_PROPERTY_WIDTH,
+                                    window_size + 0);
+    system_screen_mode_get_property(window_screen_mode,
+                                    SYSTEM_SCREEN_MODE_PROPERTY_HEIGHT,
+                                    window_size + 1);
+
+    _window = system_window_create_fullscreen(OGL_CONTEXT_TYPE_ES,
+                                              window_screen_mode,
+                                              false, /* vsync_enabled */
+                                              window_pf);
+#endif
+
     window_rendering_handler = ogl_rendering_handler_create_with_fps_policy(system_hashed_ansi_string_create("Default rendering handler"),
                                                                             60,                 /* desired_fps */
                                                                             _rendering_handler,

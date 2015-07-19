@@ -751,14 +751,14 @@ PUBLIC void stage_step_julia_init(ogl_context  context,
                                             GL_TEXTURE_2D,
                                             1,         /* levels */
                                             GL_RGBA32F,
-                                            1280,      /* width */
-                                            720);      /* height */
+                                            main_get_window_width(),
+                                            main_get_window_height() );
     dsa_entrypoints->pGLTextureStorage2DEXT(_julia_fbo_depth_to,
                                             GL_TEXTURE_2D,
                                             1,                     /* levels */
                                             GL_DEPTH_COMPONENT32F,
-                                            1280,                  /* width */
-                                            720);                  /* height */
+                                            main_get_window_width(),
+                                            main_get_window_height() );
 
     dsa_entrypoints->pGLNamedFramebufferTexture2DEXT(_julia_fbo_id,
                                                      GL_COLOR_ATTACHMENT0,

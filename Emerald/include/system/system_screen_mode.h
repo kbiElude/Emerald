@@ -63,9 +63,9 @@ PUBLIC EMERALD_API bool system_screen_mode_get_for_resolution(unsigned int      
                                                               system_screen_mode* out_screen_mode);
 
 /** TODO */
-PUBLIC void system_screen_mode_get_property(system_screen_mode          screen_mode,
-                                            system_screen_mode_property property,
-                                            void*                       out_result);
+PUBLIC EMERALD_API void system_screen_mode_get_property(system_screen_mode          screen_mode,
+                                                        system_screen_mode_property property,
+                                                        void*                       out_result);
 
 /** TODO */
 PUBLIC void system_screen_mode_init();

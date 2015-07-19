@@ -713,7 +713,7 @@ float main_get_specularity()
                                                                16, /* n_samples               */
                                                                0); /* stencil_buffer_bits     */
 
-#if 0
+#if 1
     system_window_get_centered_window_position_for_primary_monitor(window_size,
                                                                    window_x1y1x2y2);
 
@@ -725,10 +725,8 @@ float main_get_specularity()
                                                   true,  /* visible */
                                                   window_pf);
 #else
-    system_screen_mode_get_for_resolution(window_size[0],
-                                          window_size[1],
-                                          60,
-                                         &window_screen_mode);
+    system_screen_mode_get(0,
+                          &window_screen_mode);
 
     _window = system_window_create_fullscreen(OGL_CONTEXT_TYPE_GL,
                                               window_screen_mode,

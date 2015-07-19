@@ -68,6 +68,9 @@ PRIVATE void _system_screen_mode_init_full_screen_modes();
     PRIVATE void _system_screen_mode_release_devmode(void* blob);
 #endif
 
+PRIVATE bool _system_screen_mode_sort_descending(void* in_screen_mode_1,
+                                                 void* in_screen_mode_2);
+
 
 /** TODO */
 PRIVATE void _system_screen_mode_init_full_screen_modes()
@@ -210,6 +213,10 @@ end:
     }
     #endif
 
+    /* Sort the screen modes. The largest screen resolution with the largest refresh rate should
+     * score higher than the same resolution with a smaller refresh rate. */
+    system_resizable_vector_sort(screen_modes,
+                                 _system_screen_mode_sort_descending);
 }
 
 #ifdef _WIN32
@@ -223,6 +230,22 @@ PRIVATE void _system_screen_mode_release_devmode(void* blob)
     delete (DEVMODE*) blob;
 }
 #endif
+
+/** TODO */
+PRIVATE bool _system_screen_mode_sort_descending(void* in_screen_mode_1,
+                                                 void* in_screen_mode_2)
+{
+    const _system_screen_mode* screen_mode_1_ptr   = (const _system_screen_mode*) in_screen_mode_1;
+    uint64_t                   screen_mode_1_score = uint64_t(screen_mode_1_ptr->height)       *
+                                                     uint64_t(screen_mode_1_ptr->refresh_rate) *
+                                                     uint64_t(screen_mode_1_ptr->width);
+    const _system_screen_mode* screen_mode_2_ptr   = (const _system_screen_mode*) in_screen_mode_2;
+    uint64_t                   screen_mode_2_score = uint64_t(screen_mode_2_ptr->height)       *
+                                                     uint64_t(screen_mode_2_ptr->refresh_rate) *
+                                                     uint64_t(screen_mode_2_ptr->width);
+
+    return (screen_mode_1_score >= screen_mode_2_score);
+}
 
 
 /** Please see header for spec */
@@ -345,9 +368,9 @@ PUBLIC EMERALD_API bool system_screen_mode_get(unsigned int        n_screen_mode
 }
 
 /** Please see header for spec */
-PUBLIC void system_screen_mode_get_property(system_screen_mode          screen_mode,
-                                            system_screen_mode_property property,
-                                            void*                       out_result)
+PUBLIC EMERALD_API void system_screen_mode_get_property(system_screen_mode          screen_mode,
+                                                        system_screen_mode_property property,
+                                                        void*                       out_result)
 {
     const _system_screen_mode* screen_mode_ptr = (const _system_screen_mode*) screen_mode;
 
