@@ -199,6 +199,7 @@ PRIVATE bool                      _ogl_context_get_depth_stencil_attachment_inte
 PRIVATE bool                      _ogl_context_get_function_pointers                                 (_ogl_context*                context_ptr,
                                                                                                       func_ptr_table_entry*        entries,
                                                                                                       uint32_t                     n_entries);
+PRIVATE const char*               _ogl_context_get_internalformat_string                             (GLenum                       internalformat);
 PRIVATE void                      _ogl_context_gl_info_deinit                                        (ogl_context_gl_info*         info_ptr);
 PRIVATE void                      _ogl_context_gl_info_init                                          (ogl_context_gl_info*         info_ptr,
                                                                                                       const ogl_context_gl_limits* limits_ptr);
@@ -870,6 +871,28 @@ PRIVATE bool _ogl_context_get_function_pointers(_ogl_context*         context_pt
 }
 
 /** TODO */
+PRIVATE const char* _ogl_context_get_internalformat_string(GLenum internalformat)
+{
+    const char* result = "?!";
+
+    switch (internalformat)
+    {
+        case GL_DEPTH_COMPONENT16: result = "GL_DEPTH_COMPONENT16"; break;
+        case GL_DEPTH_COMPONENT24: result = "GL_DEPTH_COMPONENT24"; break;
+        case GL_DEPTH_COMPONENT32: result = "GL_DEPTH_COMPONENT32"; break;
+        case GL_DEPTH24_STENCIL8:  result = "GL_DEPTH24_STENCIL8";  break;
+        case GL_DEPTH32F_STENCIL8: result = "GL_DEPTH32F_STENCIL8"; break;
+        case GL_NONE:              result = "GL_NONE";              break;
+        case GL_RGB8:              result = "GL_RGB8";              break;
+        case GL_RGBA8:             result = "GL_RGBA8";             break;
+        case GL_SRGB8:             result = "GL_SRGB8";             break;
+        case GL_SRGB8_ALPHA8:      result = "GL_SRGB8_ALPHA8";      break;
+    } /* switch (internalformat) */
+
+    return result;
+}
+
+/** TODO */
 PRIVATE void _ogl_context_gl_info_deinit(ogl_context_gl_info* info_ptr)
 {
     ASSERT_DEBUG_SYNC(info_ptr != NULL,
@@ -1394,6 +1417,14 @@ PRIVATE void _ogl_context_initialize_fbo(_ogl_context* context_ptr)
         }
     } /* if (any of the attachments need to have a physical backing) */
 
+    /* Log the context's FBO configuration. Could be useful for debugging in the future. */
+    LOG_INFO("Using the following FBO configuration for the rendering context:\n"
+             "* Color RBO:         [%s]\n"
+             "* Depth RBO:         [%s]\n"
+             "* Number of samples: [%d]\n",
+             _ogl_context_get_internalformat_string(internalformat_color),
+             _ogl_context_get_internalformat_string(internalformat_depth_stencil),
+             n_samples);
 end:
     ;
 }
