@@ -6,6 +6,7 @@
 #include "shared.h"
 #include <stdlib.h>
 #include "main.h"
+#include "audio/audio_device.h"
 #include "ogl/ogl_context.h"
 #include "system/system_assertions.h"
 #include "system/system_callback_manager.h"
@@ -122,6 +123,7 @@ void main_init()
     #endif
 
     ogl_context_init_global();
+    audio_device_init();
 }
 
 /** Deinitializes all sub-modules. Called when DLL is about to be unloaded from process' space.
@@ -152,6 +154,7 @@ int main_deinit()
         #endif
 
         ogl_context_deinit_global();
+        audio_device_deinit();
 
         #ifdef INCLUDE_OPENCL
             _ocl_deinit();

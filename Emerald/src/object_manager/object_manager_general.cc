@@ -78,6 +78,7 @@ static system_hashed_ansi_string _object_type_shaders_vertex_combinedmvp_generic
 static system_hashed_ansi_string _object_type_shaders_vertex_combinedmvp_simplified_two_point          = NULL;
 static system_hashed_ansi_string _object_type_shaders_vertex_fullscreen                                = NULL;
 static system_hashed_ansi_string _object_type_shaders_vertex_uber                                      = NULL;
+static system_hashed_ansi_string _object_type_system_file_serializer_hashed_ansi_string                = NULL;
 static system_hashed_ansi_string _object_type_system_randomizer_hashed_ansi_string                     = NULL;
 static system_hashed_ansi_string _object_type_system_window_hashed_ansi_string                         = NULL;
 static system_hashed_ansi_string _object_type_unknown_hashed_ansi_string                               = NULL;
@@ -151,6 +152,7 @@ PUBLIC system_hashed_ansi_string object_manager_convert_object_manager_object_ty
         case OBJECT_TYPE_SHADERS_VERTEX_COMBINEDMVP_GENERIC:              return _object_type_shaders_vertex_combinedmvp_generic;
         case OBJECT_TYPE_SHADERS_VERTEX_COMBINEDMVP_SIMPLIFIED_TWO_POINT: return _object_type_shaders_vertex_combinedmvp_simplified_two_point;
         case OBJECT_TYPE_SHADERS_VERTEX_UBER:                             return _object_type_shaders_vertex_uber;
+        case OBJECT_TYPE_SYSTEM_FILE_SERIALIZER:                          return _object_type_system_file_serializer_hashed_ansi_string;
         case OBJECT_TYPE_SYSTEM_RANDOMIZER:                               return _object_type_system_randomizer_hashed_ansi_string;
         case OBJECT_TYPE_SYSTEM_WINDOW:                                   return _object_type_system_window_hashed_ansi_string;
         default:                                                          return _object_type_unknown_hashed_ansi_string;
@@ -396,6 +398,7 @@ PUBLIC void _object_manager_init()
     _object_type_shaders_vertex_combinedmvp_simplified_two_point          = system_hashed_ansi_string_create("Combined MVP Simplified 2-point Vertex Shaders");
     _object_type_shaders_vertex_fullscreen                                = system_hashed_ansi_string_create("Full-screen Vertex Shaders");
     _object_type_shaders_vertex_uber                                      = system_hashed_ansi_string_create("Uber Vertex Shaders");
+    _object_type_system_file_serializer_hashed_ansi_string                = system_hashed_ansi_string_create("File Serializers");
     _object_type_system_randomizer_hashed_ansi_string                     = system_hashed_ansi_string_create("System Randomizers");
     _object_type_system_window_hashed_ansi_string                         = system_hashed_ansi_string_create("System Windows"); 
     _object_type_unknown_hashed_ansi_string                               = system_hashed_ansi_string_create("Unknown");

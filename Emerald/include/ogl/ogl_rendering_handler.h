@@ -24,7 +24,7 @@ typedef enum
 /** TODO */
 PUBLIC EMERALD_API ogl_rendering_handler ogl_rendering_handler_create_with_render_per_request_policy(system_hashed_ansi_string               name,
                                                                                                      PFNOGLRENDERINGHANDLERRENDERINGCALLBACK pfn_rendering_callback,
-                                                                                                         void*                                   user_arg);
+                                                                                                     void*                                   user_arg);
 
 /** TODO */
 PUBLIC EMERALD_API ogl_rendering_handler ogl_rendering_handler_create_with_fps_policy(system_hashed_ansi_string               name,

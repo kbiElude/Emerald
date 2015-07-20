@@ -21,6 +21,13 @@ typedef enum
 
 typedef enum
 {
+    /* settable, audio_device
+     *
+     * Can only be set once. Further set attempts will throw an assertion failure.
+     * Can only be set when the rendering handler is not playing any frames.
+     */
+    SYSTEM_WINDOW_PROPERTY_AUDIO_DEVICE,
+
     /* not settable, int[2].
      *
      * Returned coordinates are in screen space. */

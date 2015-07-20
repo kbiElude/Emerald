@@ -24,6 +24,9 @@
 #include "curve/curve_types.h"
 #include "system/system_types.h"
 
+REFCOUNT_INSERT_DECLARATIONS(system_file_serializer,
+                             system_file_serializer)
+
 
 typedef enum
 {
@@ -132,12 +135,6 @@ PUBLIC EMERALD_API bool system_file_serializer_read_matrix4x4(system_file_serial
 /** TODO */
 PUBLIC EMERALD_API bool system_file_serializer_read_variant(system_file_serializer serializer,
                                                             system_variant         out_result);
-
-/** Releases an existing file serializer instance. If serializer was created for writing, data will be written to the file.
- *
- *  @param system_file_serializer File serializer to release.
- */
-PUBLIC EMERALD_API void system_file_serializer_release(system_file_serializer serializer);
 
 /** TODO */
 PUBLIC EMERALD_API void system_file_serializer_set_property(system_file_serializer          serializer,
