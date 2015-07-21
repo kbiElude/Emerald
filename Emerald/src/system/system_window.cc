@@ -5,6 +5,7 @@
  */
 #include "shared.h"
 #include "audio/audio_device.h"
+#include "audio/audio_stream.h"
 #include "ogl/ogl_context.h"
 #include "ogl/ogl_rendering_handler.h"
 #include "ogl/ogl_types.h"
@@ -64,6 +65,7 @@ typedef struct
 typedef struct
 {
     audio_device               audio_dev;
+    audio_stream               audio_strm;
     ogl_context_type           context_type;
     bool                       is_closing; /* in the process of calling the "window closing" call-backs */
     bool                       is_cursor_visible;
@@ -280,6 +282,7 @@ PRIVATE void _deinit_system_window(_system_window* window_ptr)
 PRIVATE void _init_system_window(_system_window* window_ptr)
 {
     window_ptr->audio_dev                    = NULL;
+    window_ptr->audio_strm                   = NULL;
     window_ptr->is_cursor_visible            = false;
     window_ptr->is_fullscreen                = false;
     window_ptr->is_scalable                  = false;
@@ -1680,6 +1683,13 @@ PUBLIC EMERALD_API void system_window_get_property(system_window          window
             break;
         }
 
+        case SYSTEM_WINDOW_PROPERTY_AUDIO_STREAM:
+        {
+            *(audio_stream*) out_result = window_ptr->audio_strm;
+
+            break;
+        }
+
         case SYSTEM_WINDOW_PROPERTY_CONTEXT_TYPE:
         {
             *(ogl_context_type*) out_result = window_ptr->context_type;
@@ -1857,6 +1867,7 @@ PUBLIC EMERALD_API bool system_window_set_property(system_window          window
         switch (property)
         {
             case SYSTEM_WINDOW_PROPERTY_AUDIO_DEVICE:
+            case SYSTEM_WINDOW_PROPERTY_AUDIO_STREAM:
             {
                 ogl_rendering_handler_playback_status playback_status = RENDERING_HANDLER_PLAYBACK_STATUS_STOPPED;
 
@@ -1875,10 +1886,26 @@ PUBLIC EMERALD_API bool system_window_set_property(system_window          window
 
                 if (playback_status == RENDERING_HANDLER_PLAYBACK_STATUS_STOPPED)
                 {
-                    window_ptr->audio_dev = *(audio_device*) data;
+                    if (property == SYSTEM_WINDOW_PROPERTY_AUDIO_DEVICE)
+                    {
+                        window_ptr->audio_dev = *(audio_device*) data;
 
-                    ASSERT_DEBUG_SYNC(window_ptr->audio_dev != NULL,
-                                      "A NULL audio device was assigned to a window instance");
+                        ASSERT_DEBUG_SYNC(window_ptr->audio_dev != NULL,
+                                          "A NULL audio device was assigned to a window instance");
+
+                        if (!audio_device_activate(window_ptr->audio_dev) )
+                        {
+                            ASSERT_ALWAYS_SYNC(false,
+                                               "Could not activate the audio device");
+                        }
+                    }
+                    else
+                    {
+                        window_ptr->audio_strm = *(audio_stream*) data;
+
+                        ASSERT_DEBUG_SYNC(window_ptr->audio_strm != NULL,
+                                          "A NULL audio stream was assigned to a window instance");
+                    }
                 } /* if (playback_status == RENDERING_HANDLER_PLAYBACK_STATUS_STOPPED) */
 
                 break;

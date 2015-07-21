@@ -585,6 +585,19 @@ PUBLIC EMERALD_API bool ogl_rendering_handler_play(ogl_rendering_handler renderi
             {
                 if (rendering_handler_ptr->playback_status == RENDERING_HANDLER_PLAYBACK_STATUS_STOPPED)
                 {
+                    /* We need to consider audio latency at this point. Two cases here:
+                     *
+                     * 1) Non-continuous playback is needed ("per-frame policy"): audio playback is not
+                     *    necessary. This is the easy case.
+                     *
+                     * 2) Continuous playback is needed ("max performance / fps policies"): audio playback
+                     *    is necessary. In this case, we need to move backward as many frames as it takes for
+                     *    the audio packets to be decoded and physically played. Since this can cause a situation
+                     *    where the requested frame is negative (example: frame 0 playback request, but the latency
+                     *    is ~10 frames, we'd need to start from frame -10!), we will NOT render frame contents
+                     *    until the rendering loop reaches the frame corresponding to @param start_time. */
+                    todo;
+
                     rendering_handler_ptr->n_frames_rendered   = 0;
                     rendering_handler_ptr->playback_start_time = system_time_now() + start_time;
 

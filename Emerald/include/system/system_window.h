@@ -24,9 +24,16 @@ typedef enum
     /* settable, audio_device
      *
      * Can only be set once. Further set attempts will throw an assertion failure.
-     * Can only be set when the rendering handler is not playing any frames.
+     * Can only be set when the rendering handler is not currently playing.
      */
     SYSTEM_WINDOW_PROPERTY_AUDIO_DEVICE,
+
+    /* settable, audio_stream
+     *
+     * Can only be set once. Further set attempts will throw an assertion failure. (TODO: remove this limitation?)
+     * Can only be set when the rendering handler is not currently playing.
+     */
+    SYSTEM_WINDOW_PROPERTY_AUDIO_STREAM,
 
     /* not settable, int[2].
      *

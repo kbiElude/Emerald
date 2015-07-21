@@ -15,6 +15,7 @@
 /* Private variables */
 object_manager_directory _root = NULL;
 
+static system_hashed_ansi_string _object_type_audio_stream_hashed_ansi_string                          = NULL;
 static system_hashed_ansi_string _object_type_collada_data_hashed_ansi_string                          = NULL;
 static system_hashed_ansi_string _object_type_context_menu_hashed_ansi_string                          = NULL;
 static system_hashed_ansi_string _object_type_curve_container_hashed_ansi_string                       = NULL;
@@ -89,6 +90,7 @@ PUBLIC system_hashed_ansi_string object_manager_convert_object_manager_object_ty
 {
     switch (object_type)
     {
+        case OBJECT_TYPE_AUDIO_STREAM:                                    return _object_type_audio_stream_hashed_ansi_string;
         case OBJECT_TYPE_COLLADA_DATA:                                    return _object_type_collada_data_hashed_ansi_string;
         case OBJECT_TYPE_CONTEXT_MENU:                                    return _object_type_context_menu_hashed_ansi_string;
         case OBJECT_TYPE_CURVE_CONTAINER:                                 return _object_type_curve_container_hashed_ansi_string;
@@ -335,6 +337,7 @@ PUBLIC void _object_manager_init()
     _root = object_manager_directory_create(system_hashed_ansi_string_create("") );
 
     /* Initialize HASes for all object types */
+    _object_type_audio_stream_hashed_ansi_string                          = system_hashed_ansi_string_create("Audio Streams");
     _object_type_collada_data_hashed_ansi_string                          = system_hashed_ansi_string_create("COLLADA Data");
     _object_type_context_menu_hashed_ansi_string                          = system_hashed_ansi_string_create("Context Menus");
     _object_type_curve_container_hashed_ansi_string                       = system_hashed_ansi_string_create("Curves");

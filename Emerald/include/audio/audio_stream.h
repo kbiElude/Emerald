@@ -16,6 +16,9 @@
 
 #include "system/system_types.h"
 
+REFCOUNT_INSERT_DECLARATIONS(audio_stream,
+                             audio_stream)
+
 
 /** TODO */
 PUBLIC EMERALD_API audio_stream audio_stream_create(system_file_serializer serializer);
