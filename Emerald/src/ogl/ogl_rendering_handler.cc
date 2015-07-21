@@ -4,6 +4,8 @@
  *
  */
 #include "shared.h"
+#include "audio/audio_device.h"
+#include "audio/audio_stream.h"
 #include "ogl/ogl_context.h"
 #include "ogl/ogl_rendering_handler.h"
 #include "ogl/ogl_text.h"
@@ -21,6 +23,7 @@
 /** Internal type definitions */
 typedef struct
 {
+    audio_stream                          active_audio_stream;
     ogl_context                           context;
     system_event                          context_set_event;
     uint32_t                              fps;
@@ -432,6 +435,7 @@ PRIVATE ogl_rendering_handler ogl_rendering_handler_create_shared(system_hashed_
                                                        system_hashed_ansi_string_create_by_merging_two_strings("\\OpenGL Rendering Handlers\\",
                                                                                                                system_hashed_ansi_string_get_buffer(name)) );
 
+        new_handler->active_audio_stream              = NULL;
         new_handler->bind_context_request_event       = system_event_create(false); /* manual_reset */
         new_handler->bind_context_request_ack_event   = system_event_create(false); /* manual_reset */
         new_handler->callback_request_ack_event       = system_event_create(false); /* manual_reset */
@@ -585,7 +589,8 @@ PUBLIC EMERALD_API bool ogl_rendering_handler_play(ogl_rendering_handler renderi
             {
                 if (rendering_handler_ptr->playback_status == RENDERING_HANDLER_PLAYBACK_STATUS_STOPPED)
                 {
-                    /* We need to consider audio latency at this point. Two cases here:
+                    /* We need to consider audio latency at this point, otherwise things will get out-of-sync
+                     * on some machines. Two cases here:
                      *
                      * 1) Non-continuous playback is needed ("per-frame policy"): audio playback is not
                      *    necessary. This is the easy case.
@@ -595,17 +600,75 @@ PUBLIC EMERALD_API bool ogl_rendering_handler_play(ogl_rendering_handler renderi
                      *    the audio packets to be decoded and physically played. Since this can cause a situation
                      *    where the requested frame is negative (example: frame 0 playback request, but the latency
                      *    is ~10 frames, we'd need to start from frame -10!), we will NOT render frame contents
-                     *    until the rendering loop reaches the frame corresponding to @param start_time. */
-                    todo;
+                     *    until the rendering loop starts drawing the frame corresponding to @param start_time. */
+                    system_time   audio_latency               = 0;
+                    system_window context_window              = NULL;
+                    audio_stream  context_window_audio_stream = NULL;
+                    bool          use_audio_playback          = false;
 
+                    ogl_context_get_property(rendering_handler_ptr->context,
+                                             OGL_CONTEXT_PROPERTY_WINDOW,
+                                            &context_window);
+
+                    ASSERT_DEBUG_SYNC(context_window != NULL,
+                                      "No window associated with the renering context!");
+
+                    system_window_get_property(context_window,
+                                               SYSTEM_WINDOW_PROPERTY_AUDIO_STREAM,
+                                              &context_window_audio_stream);
+
+                    use_audio_playback = (context_window_audio_stream != NULL);
+
+                    if ( use_audio_playback                                                         &&
+                        (rendering_handler_ptr->policy == RENDERING_HANDLER_POLICY_FPS              ||
+                         rendering_handler_ptr->policy == RENDERING_HANDLER_POLICY_MAX_PERFORMANCE))
+                    {
+                        audio_device stream_audio_device = NULL;
+
+                        audio_stream_get_property(context_window_audio_stream,
+                                                  AUDIO_STREAM_PROPERTY_AUDIO_DEVICE,
+                                                 &stream_audio_device);
+
+                        ASSERT_DEBUG_SYNC(stream_audio_device != NULL,
+                                          "No audio_device instance associated with an audio_stream instance.");
+
+                        audio_device_get_property(stream_audio_device,
+                                                  AUDIO_DEVICE_PROPERTY_LATENCY,
+                                                 &audio_latency);
+
+                        /* Start the audio playback. */
+                        audio_stream_play(context_window_audio_stream,
+                                          start_time);
+                    }
+
+                    rendering_handler_ptr->active_audio_stream = (use_audio_playback) ? context_window_audio_stream
+                                                                                      : NULL;
                     rendering_handler_ptr->n_frames_rendered   = 0;
-                    rendering_handler_ptr->playback_start_time = system_time_now() + start_time;
+                    rendering_handler_ptr->playback_start_time = system_time_now() + start_time + audio_latency;
 
                     system_event_set(rendering_handler_ptr->playback_in_progress_event);
                 }
                 else
                 {
                     /* Must be paused then. */
+                    if (rendering_handler_ptr->active_audio_stream != NULL)
+                    {
+                        /* Resume the audio stream playback */
+                        system_time  audio_latency             = 0;
+                        audio_device audio_stream_audio_device = NULL;
+
+                        audio_stream_get_property(rendering_handler_ptr->active_audio_stream,
+                                                  AUDIO_STREAM_PROPERTY_AUDIO_DEVICE,
+                                                 &audio_stream_audio_device);
+                        audio_device_get_property(audio_stream_audio_device,
+                                                  AUDIO_DEVICE_PROPERTY_LATENCY,
+                                                 &audio_latency);
+
+                        audio_stream_resume(rendering_handler_ptr->active_audio_stream);
+
+                        rendering_handler_ptr->playback_start_time += audio_latency;
+                    }
+
                     system_event_set(rendering_handler_ptr->playback_in_progress_event);
                 }
 
@@ -701,7 +764,15 @@ PUBLIC EMERALD_API bool ogl_rendering_handler_stop(ogl_rendering_handler renderi
             }
             system_critical_section_leave(rendering_handler_ptr->rendering_cs);
 
-            /* Wait until the playback starts */
+            /* Stop the audio stream (if one is used) */
+            if (rendering_handler_ptr->active_audio_stream != NULL)
+            {
+                audio_stream_stop(rendering_handler_ptr->active_audio_stream);
+
+                rendering_handler_ptr->active_audio_stream = NULL;
+            } /* if (rendering_handler_ptr->active_audio_stream != NULL) */
+
+            /* Wait until the rendering process stops */
             system_event_wait_single(rendering_handler_ptr->playback_waiting_event);
 
             result = true;

@@ -9,10 +9,11 @@
 #include "system/system_atomics.h"
 #include "system/system_resizable_vector.h"
 #include "system/system_time.h"
+#include "system/system_window.h"
 
 typedef struct _audio_device
 {
-    int         device_index;
+    int         device_index; /* strictly private ! */
     bool        is_activated;
     bool        is_default;
     system_time latency;
@@ -39,14 +40,18 @@ PRIVATE system_resizable_vector audio_devices             = NULL;
 PRIVATE audio_device            default_audio_device      = NULL;
 PRIVATE unsigned int            n_audio_devices_activated = 0;
 
+
 /** Please see header for spec */
-PUBLIC bool audio_device_activate(audio_device device)
+PUBLIC bool audio_device_activate(audio_device  device,
+                                  system_window owner_window)
 {
     _audio_device* device_ptr = (_audio_device*) device;
     bool           result     = false;
 
     ASSERT_DEBUG_SYNC(device_ptr != NULL,
                       "Input audio_device instance is NULL");
+    ASSERT_DEBUG_SYNC(owner_window != NULL,
+                      "Owner window instance cannot be NULL");
     ASSERT_DEBUG_SYNC(!device_ptr->is_activated,
                       "Input audio_device instance is already activated.");
 
@@ -62,7 +67,13 @@ PUBLIC bool audio_device_activate(audio_device device)
     else
     if (!device_ptr->is_activated)
     {
-        BASS_INFO binding_info;
+        BASS_INFO            binding_info;
+        system_window_handle window_handle = (system_window_handle) NULL;
+
+        /* Retrieve the window system handle. We need it for latency calculations */
+        system_window_get_property(owner_window,
+                                   SYSTEM_WINDOW_PROPERTY_HANDLE,
+                                  &window_handle);
 
         /* Initialize the audio device.
          *
@@ -71,7 +82,7 @@ PUBLIC bool audio_device_activate(audio_device device)
         result = (BASS_Init(device_ptr->device_index,
                             0,                   /* freq - ignored */
                             BASS_DEVICE_LATENCY, /* also calculate the latency */
-                            NULL,                /* win - ignored */
+                            window_handle,
                             NULL) == TRUE);      /* dsguid - ignored */
 
         ASSERT_DEBUG_SYNC(result,
@@ -93,6 +104,21 @@ PUBLIC bool audio_device_activate(audio_device device)
     } /* if (!device_ptr->is_activated) */
 
     return result;
+}
+
+/** Please see header for spec */
+PUBLIC EMERALD_API void audio_device_bind_to_thread(audio_device device)
+{
+    _audio_device* device_ptr = (_audio_device*) device;
+
+    ASSERT_DEBUG_SYNC(device != NULL,
+                      "Input audio_device instance is NULL.");
+
+    if (BASS_SetDevice(device_ptr->device_index) == FALSE)
+    {
+        ASSERT_DEBUG_SYNC(false,
+                          "Could not bind the audio_device instance to the current thread.");
+    }
 }
 
 /** Please see header for spec */
@@ -130,13 +156,6 @@ PUBLIC EMERALD_API void audio_device_get_property(audio_device          device,
 
     switch (property)
     {
-        case AUDIO_DEVICE_PROPERTY_DEVICE_INDEX:
-        {
-            *(int*) out_result = device_ptr->device_index;
-
-            break;
-        }
-
         case AUDIO_DEVICE_PROPERTY_IS_ACTIVATED:
         {
             *(bool*) out_result = device_ptr->is_activated;

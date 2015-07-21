@@ -5,21 +5,28 @@
  */
 #include "shared.h"
 #include "bass.h"
+#include "audio/audio_device.h"
 #include "audio/audio_stream.h"
 #include "system/system_assertions.h"
 #include "system/system_file_serializer.h"
 #include "system/system_log.h"
+#include "system/system_time.h"
 
 typedef struct _audio_stream
 {
+    audio_device           device;
+    bool                   is_playing;
     system_file_serializer serializer;
     HSTREAM                stream;
 
     REFCOUNT_INSERT_VARIABLES
 
 
-    explicit _audio_stream(system_file_serializer in_serializer)
+    explicit _audio_stream(audio_device           in_device,
+                           system_file_serializer in_serializer)
     {
+        device     = in_device;
+        is_playing = false;
         serializer = in_serializer;
         stream     = NULL;
 
@@ -63,7 +70,8 @@ PRIVATE void _audio_stream_release(void* stream)
 
 
 /** Please see header for spec */
-PUBLIC EMERALD_API audio_stream audio_stream_create(system_file_serializer serializer)
+PUBLIC EMERALD_API audio_stream audio_stream_create(audio_device           device,
+                                                    system_file_serializer serializer)
 {
     _audio_stream*            new_audio_stream_ptr        = NULL;
     const char*               raw_serializer_storage      = NULL;
@@ -71,11 +79,14 @@ PUBLIC EMERALD_API audio_stream audio_stream_create(system_file_serializer seria
     system_hashed_ansi_string serializer_name             = NULL;
     char                      temp_buffer[256];
 
+    ASSERT_DEBUG_SYNC(device != NULL,
+                      "Input audio device instance is NULL");
     ASSERT_DEBUG_SYNC(serializer != NULL,
                       "Input serializer is NULL");
 
     /* Spawn the new descriptor */
-    new_audio_stream_ptr = new (std::nothrow) _audio_stream(serializer);
+    new_audio_stream_ptr = new (std::nothrow) _audio_stream(device,
+                                                            serializer);
 
     ASSERT_ALWAYS_SYNC(new_audio_stream_ptr != NULL,
                        "Out of memory");
@@ -131,3 +142,112 @@ end_error:
     return NULL;
 }
 
+/** Please see header for spec */
+PUBLIC EMERALD_API bool audio_stream_pause(audio_stream stream)
+{
+    bool           result     = false;
+    _audio_stream* stream_ptr = (_audio_stream*) stream;
+
+    ASSERT_DEBUG_SYNC(stream != NULL,
+                      "Input audio_stream instance is NULL");
+    ASSERT_DEBUG_SYNC(stream_ptr->is_playing,
+                      "Invalid audio_stream_play() call: Stream has not been playing at the time of the call");
+
+    if (BASS_ChannelPause(stream_ptr->stream) == FALSE)
+    {
+        ASSERT_DEBUG_SYNC(false,
+                          "Could not pause audio_stream playback");
+    }
+    else
+    {
+        stream_ptr->is_playing = false;
+        result                 = true;
+    }
+
+    return result;
+}
+
+/** Please see header for spec */
+PUBLIC EMERALD_API bool audio_stream_play(audio_stream stream,
+                                          system_time  start_time,
+                                          bool         should_resume)
+{
+    bool           result                = false;
+    double         start_time_bass       = 0.0;
+    uint32_t       start_time_msec       = 0;
+    QWORD          start_time_stream_pos = 0;
+    _audio_stream* stream_ptr            = (_audio_stream*) stream;
+
+    ASSERT_DEBUG_SYNC(stream != NULL,
+                      "Input audio_stream instance is NULL");
+    ASSERT_DEBUG_SYNC(!stream_ptr->is_playing,
+                      "Invalid audio_stream_play() call: Stream is already playing");
+
+    system_time_get_msec_for_time(start_time,
+                                 &start_time_msec);
+
+    start_time_bass       = double(start_time_msec) / 1000.0;
+    start_time_stream_pos = BASS_ChannelSeconds2Bytes(stream_ptr->stream,
+                                                      start_time_bass);
+
+    ASSERT_DEBUG_SYNC(start_time_stream_pos != -1,
+                      "Could not determine stream position for the requested start time");
+
+    if (start_time_stream_pos != -1)
+    {
+        result = true;
+
+        audio_device_bind_to_thread(stream_ptr->device);
+
+        if (BASS_ChannelSetPosition(stream_ptr->stream,
+                                    start_time_stream_pos,
+                                    BASS_POS_BYTE) == FALSE)
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Could not update stream position");
+
+            result = false;
+        }
+
+        if (BASS_ChannelPlay(stream_ptr->stream,
+                             should_resume ? TRUE : FALSE) == FALSE)
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Could not start stream playback");
+
+            result = false;
+        }
+    } /* if (start_time_stream_pos != -1) */
+
+    if (result)
+    {
+        stream_ptr->is_playing = true;
+    }
+
+    return result;
+}
+
+/** Please see header for spec */
+PUBLIC EMERALD_API bool audio_stream_stop(audio_stream stream)
+{
+    bool           result     = false;
+    _audio_stream* stream_ptr = (_audio_stream*) stream;
+
+    ASSERT_DEBUG_SYNC(stream != NULL,
+                      "Input audio_stream instance is NULL");
+    ASSERT_DEBUG_SYNC(stream_ptr->is_playing,
+                      "Invalid audio_stream_stop() call: Stream has not been playing at the time of the call");
+
+    if (BASS_ChannelStop(stream_ptr->stream) == FALSE)
+    {
+        ASSERT_DEBUG_SYNC(false,
+                          "Could not stop audio_stream playback");
+    }
+    else
+    {
+        stream_ptr->is_playing = false;
+        result                 = true;
+    }
+
+    return result;
+}
