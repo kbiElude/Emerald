@@ -98,7 +98,7 @@ TEST(AudioTest, StreamPlaybackTest)
 #ifdef _WIN32
     Sleep(1000);
 #else
-    usleep(1000000000);
+    usleep(1000000);
 #endif
 
     /* Restart the playback, this time from the second second. */
@@ -115,7 +115,7 @@ TEST(AudioTest, StreamPlaybackTest)
 #ifdef _WIN32
     Sleep(1000);
 #else
-    usleep(1000000000);
+    usleep(1000000);
 #endif
 
     ogl_rendering_handler_stop(rendering_handler);

@@ -304,4 +304,7 @@ IF (MSVC)
     FILE(COPY "${EMERALD_SOURCE_DIR}/deps/misc/test.mp3" DESTINATION "${TEST_BINARY_DIR}/")
     FILE(COPY "${EMERALD_SOURCE_DIR}/deps/misc/test.mp3" DESTINATION "${TEST_BINARY_DIR}/bin/Debug")
     FILE(COPY "${EMERALD_SOURCE_DIR}/deps/misc/test.mp3" DESTINATION "${TEST_BINARY_DIR}/bin/Release")
+ELSE (MSVC)
+    # Copy a test MP3 file to the same directory. We need that file for the unit test project.
+    FILE(COPY "${EMERALD_SOURCE_DIR}/deps/misc/test.mp3" DESTINATION "${EMERALD_BINARY_DIR}/bin")
 ENDIF (MSVC)

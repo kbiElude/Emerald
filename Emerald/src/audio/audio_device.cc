@@ -208,7 +208,12 @@ PUBLIC EMERALD_API void audio_device_get_property(audio_device          device,
 PUBLIC void audio_device_init()
 {
     BASS_DEVICEINFO current_device_info;
-    unsigned int    n_current_device = 1; /* audible devices start from 1 under Windows BASS */
+
+#ifdef _WIN32
+    unsigned int n_current_device = 1; /* audible devices start from 1 under Windows BASS */
+#else
+    unsigned int n_current_device = 1; /* different situation under Linux */
+#endif
 
     ASSERT_DEBUG_SYNC(audio_devices == NULL,
                       "Audio devices vector is not NULL");
