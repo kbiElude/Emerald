@@ -95,7 +95,11 @@ TEST(AudioTest, StreamPlaybackTest)
     ASSERT_TRUE(result);
 
     /* Wait for 1s */
+#ifdef _WIN32
     Sleep(1000);
+#else
+    usleep(1000000000);
+#endif
 
     /* Restart the playback, this time from the second second. */
     printf("Playing from 2s for 1s..\n");
@@ -108,7 +112,11 @@ TEST(AudioTest, StreamPlaybackTest)
     ASSERT_TRUE(result);
 
     /* Wait for 1s */
+#ifdef _WIN32
     Sleep(1000);
+#else
+    usleep(1000000000);
+#endif
 
     ogl_rendering_handler_stop(rendering_handler);
 

@@ -72,7 +72,11 @@ PUBLIC bool audio_device_activate(audio_device  device,
         result = (BASS_Init(device_ptr->device_index,
                             44100,               /* freq - ignored */
                             BASS_DEVICE_LATENCY, /* also calculate the latency */
+#ifdef _WIN32
                             window_handle,
+#else
+                            NULL,                /* win - ignored */
+#endif
                             NULL) == TRUE);      /* dsguid - ignored */
 
         ASSERT_DEBUG_SYNC(result,
@@ -203,6 +207,9 @@ PUBLIC EMERALD_API void audio_device_get_property(audio_device          device,
 /** Please see header for spec */
 PUBLIC void audio_device_init()
 {
+    BASS_DEVICEINFO current_device_info;
+    unsigned int    n_current_device = 1; /* audible devices start from 1 under Windows BASS */
+
     ASSERT_DEBUG_SYNC(audio_devices == NULL,
                       "Audio devices vector is not NULL");
 
@@ -221,9 +228,6 @@ PUBLIC void audio_device_init()
     }
 
     /* Enumerate all available audio devices */
-    BASS_DEVICEINFO current_device_info;
-    unsigned int    n_current_device = 1; /* audible devices start from 1 under Windows BASS */
-
     while (true)
     {
         if (!BASS_GetDeviceInfo(n_current_device,

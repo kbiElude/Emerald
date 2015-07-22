@@ -37,7 +37,7 @@ typedef struct _audio_stream
         is_playing      = false;
         playback_status = AUDIO_STREAM_PLAYBACK_STATUS_STOPPED;
         serializer      = in_serializer;
-        stream          = NULL;
+        stream          = (HSTREAM) NULL;
 
         system_file_serializer_retain(in_serializer);
     }
@@ -51,11 +51,11 @@ typedef struct _audio_stream
             serializer = NULL;
         } /* if (serializer != NULL) */
 
-        if (stream != NULL)
+        if (stream != (HSTREAM) NULL)
         {
             BASS_StreamFree(stream);
 
-            stream = NULL;
+            stream = (HSTREAM) NULL;
         }
     }
 } _audio_stream;
@@ -129,10 +129,10 @@ PUBLIC EMERALD_API audio_stream audio_stream_create(audio_device           devic
                                                          BASS_SAMPLE_FLOAT | BASS_STREAM_PRESCAN);
 
 
-    ASSERT_ALWAYS_SYNC(new_audio_stream_ptr->stream != NULL,
+    ASSERT_ALWAYS_SYNC(new_audio_stream_ptr->stream != (HSTREAM) NULL,
                        "Could not create a BASS stream!");
 
-    if (new_audio_stream_ptr->stream == NULL)
+    if (new_audio_stream_ptr->stream == (HSTREAM) NULL)
     {
         goto end_error;
     }
