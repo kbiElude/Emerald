@@ -55,16 +55,6 @@ PUBLIC bool audio_device_activate(audio_device  device,
     ASSERT_DEBUG_SYNC(!device_ptr->is_activated,
                       "Input audio_device instance is already activated.");
 
-    if (system_atomics_increment(&n_audio_devices_activated) != 1)
-    {
-        /* NOTE: BASS can handle more than 1 audio device at the time but, in
-         *       order to avoid the thread<->audio device binding management
-         *       hell, we introduce this little limitation.
-         */
-        ASSERT_ALWAYS_SYNC(false,
-                           "Only one audio device may be activated at the same time");
-    }
-    else
     if (!device_ptr->is_activated)
     {
         BASS_INFO            binding_info;
@@ -80,7 +70,7 @@ PUBLIC bool audio_device_activate(audio_device  device,
          * NOTE: This call binds the device to the calling thread.
          */
         result = (BASS_Init(device_ptr->device_index,
-                            0,                   /* freq - ignored */
+                            44100,               /* freq - ignored */
                             BASS_DEVICE_LATENCY, /* also calculate the latency */
                             window_handle,
                             NULL) == TRUE);      /* dsguid - ignored */
@@ -98,7 +88,18 @@ PUBLIC bool audio_device_activate(audio_device  device,
 
             if (result)
             {
-                device_ptr->latency = system_time_get_time_for_msec(binding_info.latency);
+                device_ptr->is_activated = true;
+                device_ptr->latency      = system_time_get_time_for_msec(binding_info.latency);
+
+                if (system_atomics_increment(&n_audio_devices_activated) != 1)
+                {
+                    /* NOTE: BASS can handle more than 1 audio device at the time but, in
+                     *       order to avoid the thread<->audio device binding management
+                     *       hell, we introduce this little limitation.
+                     */
+                    ASSERT_ALWAYS_SYNC(false,
+                                       "Only one audio device may be activated at the same time");
+                }
             } /* if (result) */
         } /* if (result) */
     } /* if (!device_ptr->is_activated) */
@@ -107,9 +108,10 @@ PUBLIC bool audio_device_activate(audio_device  device,
 }
 
 /** Please see header for spec */
-PUBLIC EMERALD_API void audio_device_bind_to_thread(audio_device device)
+PUBLIC EMERALD_API bool audio_device_bind_to_thread(audio_device device)
 {
     _audio_device* device_ptr = (_audio_device*) device;
+    bool           result     = false;
 
     ASSERT_DEBUG_SYNC(device != NULL,
                       "Input audio_device instance is NULL.");
@@ -119,6 +121,12 @@ PUBLIC EMERALD_API void audio_device_bind_to_thread(audio_device device)
         ASSERT_DEBUG_SYNC(false,
                           "Could not bind the audio_device instance to the current thread.");
     }
+    else
+    {
+        result = true;
+    }
+
+    return result;
 }
 
 /** Please see header for spec */
@@ -166,6 +174,13 @@ PUBLIC EMERALD_API void audio_device_get_property(audio_device          device,
         case AUDIO_DEVICE_PROPERTY_IS_DEFAULT:
         {
             *(bool*) out_result = device_ptr->is_default;
+
+            break;
+        }
+
+        case AUDIO_DEVICE_PROPERTY_LATENCY:
+        {
+            *(system_time*) out_result = device_ptr->latency;
 
             break;
         }

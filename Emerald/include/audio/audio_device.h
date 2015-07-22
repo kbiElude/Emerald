@@ -39,7 +39,7 @@ PUBLIC bool audio_device_activate(audio_device  device,
                                   system_window owner_window);
 
 /** TODO */
-PUBLIC EMERALD_API void audio_device_bind_to_thread(audio_device device);
+PUBLIC EMERALD_API bool audio_device_bind_to_thread(audio_device device);
 
 /** TODO.
  *

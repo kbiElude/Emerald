@@ -26,21 +26,26 @@ typedef enum
     AUDIO_STREAM_PROPERTY_AUDIO_DEVICE
 } audio_stream_property;
 
+
 /** TODO */
 PUBLIC EMERALD_API audio_stream audio_stream_create(audio_device           device,
-                                                    system_file_serializer serializer);
+                                                    system_file_serializer serializer,
+                                                    system_window          window);
 
 /** TODO */
 PUBLIC EMERALD_API void audio_stream_get_property(audio_stream          stream,
                                                   audio_stream_property property,
                                                   void*                 out_result);
+
 /** TODO */
 PUBLIC EMERALD_API bool audio_stream_pause(audio_stream stream);
 
 /** TODO */
+PUBLIC EMERALD_API bool audio_stream_resume(audio_stream stream);
+
+/** TODO */
 PUBLIC EMERALD_API bool audio_stream_play(audio_stream stream,
-                                          system_time  start_time,
-                                          bool         should_resume = false);
+                                          system_time  start_time);
 
 /** TODO */
 PUBLIC EMERALD_API bool audio_stream_stop(audio_stream stream);

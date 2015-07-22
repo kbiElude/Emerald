@@ -293,6 +293,13 @@ ADD_DEPENDENCIES(EMERALD LIB_ZLIB)
 ADD_DEPENDENCIES(EMERALD tinyxml2static)
 ADD_DEPENDENCIES(TEST    EMERALD)
 
-# Copy the BASS library to the directory where the result binaries are stored.
-FILE(COPY "${EMERALD_SOURCE_DIR}/deps/bass_windows_x86/bass.dll" DESTINATION "${EMERALD_BINARY_DIR}/bin/Debug")
-FILE(COPY "${EMERALD_SOURCE_DIR}/deps/bass_windows_x86/bass.dll" DESTINATION "${EMERALD_BINARY_DIR}/bin/Release")
+IF (MSVC)
+    # Copy the BASS library to the directory where the result binaries are stored.
+    FILE(COPY "${EMERALD_SOURCE_DIR}/deps/bass_windows_x86/bass.dll" DESTINATION "${EMERALD_BINARY_DIR}/bin/Debug")
+    FILE(COPY "${EMERALD_SOURCE_DIR}/deps/bass_windows_x86/bass.dll" DESTINATION "${EMERALD_BINARY_DIR}/bin/Release")
+
+    # Copy a test MP3 file to the same directory. We need that file for the unit test project.
+    FILE(COPY "${EMERALD_SOURCE_DIR}/deps/misc/test.mp3" DESTINATION "${TEST_BINARY_DIR}/")
+    FILE(COPY "${EMERALD_SOURCE_DIR}/deps/misc/test.mp3" DESTINATION "${TEST_BINARY_DIR}/bin/Debug")
+    FILE(COPY "${EMERALD_SOURCE_DIR}/deps/misc/test.mp3" DESTINATION "${TEST_BINARY_DIR}/bin/Release")
+ENDIF (MSVC)
