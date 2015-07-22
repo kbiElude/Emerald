@@ -30,16 +30,6 @@ IF (NOT MSVC)
     # for the functionality, based on conditional variables.
     ADD_DEFINITIONS(-DUSE_EMULATED_EVENTS)
 
-IF (0)
-    SET            (Command ld -melf_i386 --oformat=elf32-i386 -r -b binary -o ${EMERALD_BINARY_DIR}/meiryo_36_bmp.o meiryo_36.bmp)
-    EXECUTE_PROCESS(COMMAND           ${Command}
-                    WORKING_DIRECTORY ${EMERALD_SOURCE_DIR})
-
-    SET            (Command ld -melf_i386 --oformat=elf32-i386 -r -b binary -o ${EMERALD_BINARY_DIR}/meiryo_36_dat.o meiryo_36.dat)
-    EXECUTE_PROCESS(COMMAND           ${Command}
-                    WORKING_DIRECTORY ${EMERALD_SOURCE_DIR})
-ENDIF(0)
-
     SET            (Command xxd -i meiryo_36.bmp)
     EXECUTE_PROCESS(COMMAND           ${Command}
                     WORKING_DIRECTORY ${EMERALD_SOURCE_DIR}
@@ -55,27 +45,33 @@ ENDIF(NOT MSVC)
 
 CONFIGURE_FILE ("${EMERALD_SOURCE_DIR}/include/config.h.in" "${EMERALD_SOURCE_DIR}/include/config.h")
 
-SET(CMAKE_INCLUDE_PATH "${EMERALD_SOURCE_DIR}/include")
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY  "${EMERALD_BINARY_DIR}/bin")
+SET(CMAKE_INCLUDE_PATH             "${EMERALD_SOURCE_DIR}/include")
+SET(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${EMERALD_BINARY_DIR}/bin")
 
 MACRO(ADD_MSVC_PRECOMPILED_HEADER PrecompiledHeader PrecompiledSource SourcesVar)
   IF(MSVC)
     GET_FILENAME_COMPONENT(PrecompiledBasename ${PrecompiledHeader} NAME_WE)
+
     SET(PrecompiledBinary "${CMAKE_CURRENT_BINARY_DIR}/${PrecompiledBasename}.pch")
-    SET(Sources ${${SourcesVar}})
+    SET(Sources           ${${SourcesVar}})
 
     SET_SOURCE_FILES_PROPERTIES(${PrecompiledSource}
-                                PROPERTIES COMPILE_FLAGS "/analyze /Yc\"${PrecompiledHeader}\" /Fp\"${PrecompiledBinary}\""
+                                PROPERTIES COMPILE_FLAGS  "/analyze /Yc\"${PrecompiledHeader}\" /Fp\"${PrecompiledBinary}\""
                                            OBJECT_OUTPUTS "${PrecompiledBinary}")
     SET_SOURCE_FILES_PROPERTIES(${Sources}
-                                PROPERTIES COMPILE_FLAGS "/W3 /analyze /Yu\"${PrecompiledHeader}\" /FI\"${PrecompiledHeader}\" /Fp\"${PrecompiledBinary}\""
+                                PROPERTIES COMPILE_FLAGS  "/W3 /analyze /Yu\"${PrecompiledHeader}\" /FI\"${PrecompiledHeader}\" /Fp\"${PrecompiledBinary}\""
                                            OBJECT_DEPENDS "${PrecompiledBinary}")
+
     LIST(APPEND ${SourcesVar} ${PrecompiledSource})
   ENDIF(MSVC)
 ENDMACRO(ADD_MSVC_PRECOMPILED_HEADER)
 
 IF(MSVC)
     SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /MP")
+
+    INCLUDE_DIRECTORIES("${EMERALD_SOURCE_DIR}/deps/bass_windows_x86")
+else (MSVC)
+    INCLUDE_DIRECTORIES("${EMERALD_SOURCE_DIR}/deps/bass_linux_x86")
 ENDIF(MSVC)
 
 INCLUDE_DIRECTORIES("${EMERALD_SOURCE_DIR}/include")
@@ -87,6 +83,8 @@ INCLUDE_DIRECTORIES("${EMERALD_SOURCE_DIR}/deps/zlib-1.2.8")
 INCLUDE_DIRECTORIES("gtest-1.6.0/include")
 INCLUDE_DIRECTORIES("gtest-1.6.0/")
 
+FILE(GLOB AudioIncludes          "${EMERALD_SOURCE_DIR}/include/audio/*.h")
+FILE(GLOB AudioSources           "${EMERALD_SOURCE_DIR}/src/audio/*.cc")
 FILE(GLOB ColladaIncludes        "${EMERALD_SOURCE_DIR}/include/collada/*.h")
 FILE(GLOB ColladaSources         "${EMERALD_SOURCE_DIR}/src/collada/*.cc")
 FILE(GLOB CurveIncludes          "${EMERALD_SOURCE_DIR}/include/curve/*.h")
@@ -114,7 +112,7 @@ FILE(GLOB TextureSources         "${EMERALD_SOURCE_DIR}/src/texture/*.cc")
 
 IF (INCLUDE_WEBCAM_MANAGER)
     FILE(GLOB WebcamIncludes "${EMERALD_SOURCE_DIR}/include/webcam/*.h")
-    FILE(GLOB WebcamSources "${EMERALD_SOURCE_DIR}/src/webcam/*.cc")
+    FILE(GLOB WebcamSources  "${EMERALD_SOURCE_DIR}/src/webcam/*.cc")
 
     FIND_LIBRARY(STRMIIDS_LIB strmiids)
 ENDIF (INCLUDE_WEBCAM_MANAGER)
@@ -134,9 +132,9 @@ ENDIF (INCLUDE_CURVE_EDITOR)
 IF (INCLUDE_OPENCL)
  IF (MSVC)
     FILE(GLOB OpenCLIncludes "${EMERALD_SOURCE_DIR}/include/ocl/*.h")
-    FILE(GLOB OpenCLSources "${EMERALD_SOURCE_DIR}/src/ocl/*.cc")
-    FILE(GLOB ShIncludes "${EMERALD_SOURCE_DIR}/include/sh/*.h")
-    FILE(GLOB ShSources "${EMERALD_SOURCE_DIR}/src/sh/*.cc")
+    FILE(GLOB OpenCLSources  "${EMERALD_SOURCE_DIR}/src/ocl/*.cc")
+    FILE(GLOB ShIncludes     "${EMERALD_SOURCE_DIR}/include/sh/*.h")
+    FILE(GLOB ShSources      "${EMERALD_SOURCE_DIR}/src/sh/*.cc")
 
     IF (INCLUDE_SH_LIGHT_EDITOR)
        FILE(GLOB ShLightEditorIncludes "${EMERALD_SOURCE_DIR}/include/sh_light_editor/*.h")
@@ -146,7 +144,9 @@ IF (INCLUDE_OPENCL)
  ENDIF(MSVC)
 ENDIF (INCLUDE_OPENCL)
 
-SET(AllSources ${GeneralSources}
+SET(AllSources
+               ${AudioSources}
+               ${GeneralSources}
                ${ColladaSources}
                ${SystemSources}
                ${CurveSources}
@@ -175,79 +175,82 @@ IF (MSVC)
                                 "${EMERALD_SOURCE_DIR}/src/system/system_window_linux.h")
 ELSE (MSVC)
     LIST(REMOVE_ITEM AllSources "${EMERALD_SOURCE_DIR}/src/ogl/ogl_context_win32.cc"
-                                "${EMERALD_SOURCE_DIR}/src/ogl/ogl_context_wim32.h"
+                                "${EMERALD_SOURCE_DIR}/src/ogl/ogl_context_win32.h"
                                 "${EMERALD_SOURCE_DIR}/src/system/system_window_win32.cc"
                                 "${EMERALD_SOURCE_DIR}/src/system/system_window_win32.h")
 ENDIF (MSVC)
 
 ADD_LIBRARY(EMERALD SHARED ${AllSources}
-    ${ColladaIncludes}
-    ${CurveIncludes}
-    ${GeneralIncludes}
-    ${LWIncludes}
-    ${GFXIncludes}
-    ${SystemIncludes}
-    ${OpenGLIncludes}
-    ${WebcamIncludes}
-    ${ShadersIncludes}
-    ${ObjectManagerIncludes}
-    ${CurveEditorIncludes}
-    ${PostProcessingIncludes}
-    ${ShIncludes}
-    ${ShLightEditorIncludes}
-    ${ProceduralIncludes}
-    ${SceneIncludes}
-    ${MeshIncludes}
-    ${OpenCLIncludes}
-    ${TextureIncludes}
-     Emerald.rc)
+                           ${AudioIncludes}
+                           ${ColladaIncludes}
+                           ${CurveIncludes}
+                           ${GeneralIncludes}
+                           ${LWIncludes}
+                           ${GFXIncludes}
+                           ${SystemIncludes}
+                           ${OpenGLIncludes}
+                           ${WebcamIncludes}
+                           ${ShadersIncludes}
+                           ${ObjectManagerIncludes}
+                           ${CurveEditorIncludes}
+                           ${PostProcessingIncludes}
+                           ${ShIncludes}
+                           ${ShLightEditorIncludes}
+                           ${ProceduralIncludes}
+                           ${SceneIncludes}
+                           ${MeshIncludes}
+                           ${OpenCLIncludes}
+                           ${TextureIncludes}
+                            Emerald.rc)
 
-GENERATE_EXPORT_HEADER( EMERALD
-	BASE_NAME EMERALD
-	EXPORT_MACRO_NAME _EMERALD_API
-	EXPORT_FILE_NAME ${EMERALD_SOURCE_DIR}/include/generated_dll_exports.h
+GENERATE_EXPORT_HEADER(EMERALD
+                       BASE_NAME         EMERALD
+                       EXPORT_MACRO_NAME _EMERALD_API
+                       EXPORT_FILE_NAME  ${EMERALD_SOURCE_DIR}/include/generated_dll_exports.h
 )
 
 SET(LIBRARY_OUTPUT_PATH ${EMERALD_BINARY_DIR}/bin)
 
-SOURCE_GROUP ("Collada includes" FILES ${ColladaIncludes})
-SOURCE_GROUP ("Collada sources" FILES ${ColladaSources})
-SOURCE_GROUP ("Curve Editor includes" FILES ${CurveEditorIncludes})
-SOURCE_GROUP ("Curve Editor sources" FILES ${CurveEditorSources})
-SOURCE_GROUP ("Curve includes" FILES ${CurveIncludes})
-SOURCE_GROUP ("Curve sources" FILES ${CurveSources})
-SOURCE_GROUP ("General includes" FILES ${GeneralIncludes})
-SOURCE_GROUP ("General sources" FILES ${GeneralSources})
-SOURCE_GROUP ("GFX includes" FILES ${GFXIncludes})
-SOURCE_GROUP ("GFX sources" FILES ${GFXSources})
-SOURCE_GROUP ("Mesh includes" FILES ${MeshIncludes})
-SOURCE_GROUP ("Mesh sources" FILES ${MeshSources})
-SOURCE_GROUP ("Object Manager includes" FILES ${ObjectManagerIncludes})
-SOURCE_GROUP ("Object Manager sources" FILES ${ObjectManagerSources})
-SOURCE_GROUP ("OpenCL includes" FILES ${OpenCLIncludes})
-SOURCE_GROUP ("OpenCL sources" FILES ${OpenCLSources})
-SOURCE_GROUP ("OpenGL includes" FILES ${OpenGLIncludes})
-SOURCE_GROUP ("OpenGL sources" FILES ${OpenGLSources})
+SOURCE_GROUP ("Audio includes"           FILES ${AudioIncludes})
+SOURCE_GROUP ("Audio sources"            FILES ${AudioSources})
+SOURCE_GROUP ("Collada includes"         FILES ${ColladaIncludes})
+SOURCE_GROUP ("Collada sources"          FILES ${ColladaSources})
+SOURCE_GROUP ("Curve Editor includes"    FILES ${CurveEditorIncludes})
+SOURCE_GROUP ("Curve Editor sources"     FILES ${CurveEditorSources})
+SOURCE_GROUP ("Curve includes"           FILES ${CurveIncludes})
+SOURCE_GROUP ("Curve sources"            FILES ${CurveSources})
+SOURCE_GROUP ("General includes"         FILES ${GeneralIncludes})
+SOURCE_GROUP ("General sources"          FILES ${GeneralSources})
+SOURCE_GROUP ("GFX includes"             FILES ${GFXIncludes})
+SOURCE_GROUP ("GFX sources"              FILES ${GFXSources})
+SOURCE_GROUP ("Mesh includes"            FILES ${MeshIncludes})
+SOURCE_GROUP ("Mesh sources"             FILES ${MeshSources})
+SOURCE_GROUP ("Object Manager includes"  FILES ${ObjectManagerIncludes})
+SOURCE_GROUP ("Object Manager sources"   FILES ${ObjectManagerSources})
+SOURCE_GROUP ("OpenCL includes"          FILES ${OpenCLIncludes})
+SOURCE_GROUP ("OpenCL sources"           FILES ${OpenCLSources})
+SOURCE_GROUP ("OpenGL includes"          FILES ${OpenGLIncludes})
+SOURCE_GROUP ("OpenGL sources"           FILES ${OpenGLSources})
 SOURCE_GROUP ("Post-processing includes" FILES ${PostProcessingIncludes})
-SOURCE_GROUP ("Post-processing sources" FILES ${PostProcessingSources})
-SOURCE_GROUP ("Procedural includes" FILES ${ProceduralIncludes})
-SOURCE_GROUP ("Procedural sources" FILES ${ProceduralSources})
-SOURCE_GROUP ("Scene includes" FILES ${SceneIncludes})
-SOURCE_GROUP ("Scene sources" FILES ${SceneSources})
-SOURCE_GROUP ("Shaders includes" FILES ${ShadersIncludes})
-SOURCE_GROUP ("Shaders sources" FILES ${ShadersSources})
-SOURCE_GROUP ("SH includes" FILES ${ShIncludes})
-SOURCE_GROUP ("SH sources" FILES ${ShSources})
+SOURCE_GROUP ("Post-processing sources"  FILES ${PostProcessingSources})
+SOURCE_GROUP ("Procedural includes"      FILES ${ProceduralIncludes})
+SOURCE_GROUP ("Procedural sources"       FILES ${ProceduralSources})
+SOURCE_GROUP ("Scene includes"           FILES ${SceneIncludes})
+SOURCE_GROUP ("Scene sources"            FILES ${SceneSources})
+SOURCE_GROUP ("Shaders includes"         FILES ${ShadersIncludes})
+SOURCE_GROUP ("Shaders sources"          FILES ${ShadersSources})
+SOURCE_GROUP ("SH includes"              FILES ${ShIncludes})
+SOURCE_GROUP ("SH sources"               FILES ${ShSources})
 SOURCE_GROUP ("SH Light Editor includes" FILES ${ShLightEditorIncludes})
-SOURCE_GROUP ("SH Light Editor sources" FILES ${ShLightEditorSources})
-SOURCE_GROUP ("System includes" FILES ${SystemIncludes})
-SOURCE_GROUP ("System sources" FILES ${SystemSources})
-SOURCE_GROUP ("Texture includes" FILES ${TextureIncludes})
-SOURCE_GROUP ("Texture sources" FILES ${TextureSources})
-SOURCE_GROUP ("Webcam includes" FILES ${WebcamIncludes})
-SOURCE_GROUP ("Webcam sources" FILES ${WebcamSources})
+SOURCE_GROUP ("SH Light Editor sources"  FILES ${ShLightEditorSources})
+SOURCE_GROUP ("System includes"          FILES ${SystemIncludes})
+SOURCE_GROUP ("System sources"           FILES ${SystemSources})
+SOURCE_GROUP ("Texture includes"         FILES ${TextureIncludes})
+SOURCE_GROUP ("Texture sources"          FILES ${TextureSources})
+SOURCE_GROUP ("Webcam includes"          FILES ${WebcamIncludes})
+SOURCE_GROUP ("Webcam sources"           FILES ${WebcamSources})
 
-FILE(GLOB TestSources "test/*.cc")
+FILE          (GLOB   TestSources  "test/*.cc")
 ADD_EXECUTABLE(TEST ${TestSources} "gtest-1.6.0/src/gtest-all.cc")
 
 FIND_PACKAGE(OpenGL)
@@ -256,7 +259,9 @@ ADD_SUBDIRECTORY(apps)
 ADD_SUBDIRECTORY(deps)
 
 IF (NOT MSVC)
-    SET(ADDITIONAL_LIBS pthread Xrandr)
+    SET(ADDITIONAL_LIBS pthread Xrandr "${EMERALD_SOURCE_DIR}/deps/bass_linux_x86/libbass.so")
+ELSE (NOT MSVC)
+    SET(ADDITIONAL_LIBS "${EMERALD_SOURCE_DIR}/deps/bass_windows_x86/bass.lib")
 ENDIF (NOT MSVC)
 
 IF (NOT MSVC)
@@ -275,12 +280,31 @@ IF (NOT MSVC)
                                                     LINK_FLAGS    "-m32")
 ENDIF (NOT MSVC)
 
-TARGET_LINK_LIBRARIES(EMERALD ${OPENGL_LIBRARIES} ${STRMIIDS_LIB} lib_jpeg LIB_PNG LIB_ZLIB tinyxml2static ${ADDITIONAL_LIBS})
-TARGET_LINK_LIBRARIES(TEST EMERALD)
+TARGET_LINK_LIBRARIES(EMERALD ${OPENGL_LIBRARIES}
+                              ${STRMIIDS_LIB}
+                               lib_jpeg
+                               LIB_PNG
+                               LIB_ZLIB
+                               tinyxml2static
+                              ${ADDITIONAL_LIBS})
+TARGET_LINK_LIBRARIES(TEST     EMERALD)
 
 ADD_DEPENDENCIES(EMERALD lib_jpeg)
 ADD_DEPENDENCIES(EMERALD LIB_PNG)
 ADD_DEPENDENCIES(EMERALD LIB_ZLIB)
 ADD_DEPENDENCIES(EMERALD tinyxml2static)
-ADD_DEPENDENCIES(TEST EMERALD)
+ADD_DEPENDENCIES(TEST    EMERALD)
 
+IF (MSVC)
+    # Copy the BASS library to the directory where the result binaries are stored.
+    FILE(COPY "${EMERALD_SOURCE_DIR}/deps/bass_windows_x86/bass.dll" DESTINATION "${EMERALD_BINARY_DIR}/bin/Debug")
+    FILE(COPY "${EMERALD_SOURCE_DIR}/deps/bass_windows_x86/bass.dll" DESTINATION "${EMERALD_BINARY_DIR}/bin/Release")
+
+    # Copy a test MP3 file to the same directory. We need that file for the unit test project.
+    FILE(COPY "${EMERALD_SOURCE_DIR}/deps/misc/test.mp3" DESTINATION "${TEST_BINARY_DIR}/")
+    FILE(COPY "${EMERALD_SOURCE_DIR}/deps/misc/test.mp3" DESTINATION "${TEST_BINARY_DIR}/bin/Debug")
+    FILE(COPY "${EMERALD_SOURCE_DIR}/deps/misc/test.mp3" DESTINATION "${TEST_BINARY_DIR}/bin/Release")
+ELSE (MSVC)
+    # Copy a test MP3 file to the same directory. We need that file for the unit test project.
+    FILE(COPY "${EMERALD_SOURCE_DIR}/deps/misc/test.mp3" DESTINATION "${EMERALD_BINARY_DIR}/bin")
+ENDIF (MSVC)

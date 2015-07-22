@@ -54,12 +54,24 @@ typedef struct
     system_event                 reading_finished_event; /* reading only */
     _system_file_serializer_type type;
     uint32_t                     writing_capacity;       /* writing only */
-} _system_file_serializer_descriptor;
+
+    REFCOUNT_INSERT_VARIABLES
+} _system_file_serializer;
+
+/* Forward declarations */
+PRIVATE THREAD_POOL_TASK_HANDLER void _system_file_serializer_read_task_executor     (system_thread_pool_callback_argument argument);
+PRIVATE                          void _system_file_serializer_release                (void*                                serializer);
+PRIVATE                          void _system_file_serializer_write_down_data_to_file(_system_file_serializer*             serializer_ptr);
+
+/** Reference counter impl */
+REFCOUNT_INSERT_IMPLEMENTATION(system_file_serializer,
+                               system_file_serializer,
+                              _system_file_serializer);
 
 
 /** Function that reads the file and sets the internal event, so that normal function can make full use of the read data.
  *
- *  @param argument Pointer to _system_file_serializer_descriptor instance.
+ *  @param argument Pointer to _system_file_serializer instance.
  */
 PRIVATE THREAD_POOL_TASK_HANDLER void _system_file_serializer_read_task_executor(system_thread_pool_callback_argument argument)
 {
@@ -71,106 +83,106 @@ PRIVATE THREAD_POOL_TASK_HANDLER void _system_file_serializer_read_task_executor
     ssize_t     n_bytes_read = 0;
 #endif
 
-    _system_file_serializer_descriptor* serializer_descriptor = (_system_file_serializer_descriptor*) argument;
+    _system_file_serializer* serializer_ptr = (_system_file_serializer*) argument;
 
-    ASSERT_DEBUG_SYNC(serializer_descriptor->type == SYSTEM_FILE_SERIALIZER_TYPE_FILE,
+    ASSERT_DEBUG_SYNC(serializer_ptr->type == SYSTEM_FILE_SERIALIZER_TYPE_FILE,
                       "_system_file_serializer_read_task_executor() can only be called for file serializers.");
 
     /* Open the file */
 #ifdef _WIN32
-    serializer_descriptor->file_handle = ::CreateFile(system_hashed_ansi_string_get_buffer(serializer_descriptor->file_name),
-                                                      GENERIC_READ,
-                                                      FILE_SHARE_READ | FILE_SHARE_WRITE,
-                                                      NULL,                   /* no specific security attributes */
-                                                      OPEN_EXISTING,          /* only open an existing file */
-                                                      FILE_ATTRIBUTE_NORMAL,
-                                                      NULL);                  /* no template file */
+    serializer_ptr->file_handle = ::CreateFile(system_hashed_ansi_string_get_buffer(serializer_ptr->file_name),
+                                               GENERIC_READ,
+                                               FILE_SHARE_READ | FILE_SHARE_WRITE,
+                                               NULL,                   /* no specific security attributes */
+                                               OPEN_EXISTING,          /* only open an existing file */
+                                               FILE_ATTRIBUTE_NORMAL,
+                                               NULL);                  /* no template file */
 #else
-    serializer_descriptor->file_handle = open(system_hashed_ansi_string_get_buffer(serializer_descriptor->file_name),
-                                              O_RDONLY,
-                                              0); /* mode - not used */
+    serializer_ptr->file_handle = open(system_hashed_ansi_string_get_buffer(serializer_ptr->file_name),
+                                       O_RDONLY,
+                                       0); /* mode - not used */
 #endif
 
-    if (serializer_descriptor->file_handle == file_handle_invalid)
+    if (serializer_ptr->file_handle == file_handle_invalid)
     {
         LOG_ERROR("File %s could not have been opened for reading",
-                  system_hashed_ansi_string_get_buffer(serializer_descriptor->file_name)
+                  system_hashed_ansi_string_get_buffer(serializer_ptr->file_name)
                  );
     }
     else
     {
         /* Retrieve the file size */
 #ifdef _WIN32
-        serializer_descriptor->file_size = ::GetFileSize(serializer_descriptor->file_handle,
-                                                         NULL);
+        serializer_ptr->file_size = ::GetFileSize(serializer_ptr->file_handle,
+                                                  NULL);
 #else
-        if (fstat(serializer_descriptor->file_handle,
+        if (fstat(serializer_ptr->file_handle,
                  &file_info) != 0)
         {
             ASSERT_DEBUG_SYNC(false,
                               "Could not retrieve file info structure");
         }
 
-        serializer_descriptor->file_size = file_info.st_size;
+        serializer_ptr->file_size = file_info.st_size;
 #endif
 
         /* Allocate a buffer to hold the file contents */
-        serializer_descriptor->contents = new (std::nothrow) char[serializer_descriptor->file_size + 1];
+        serializer_ptr->contents = new (std::nothrow) char[serializer_ptr->file_size + 1];
 
-        memset(serializer_descriptor->contents,
+        memset(serializer_ptr->contents,
                0,
-               serializer_descriptor->file_size + 1);
+               serializer_ptr->file_size + 1);
 
         /* Read the contents. */
 #ifdef _WIN32
         n_bytes_read = 0;
-        result       = ::ReadFile(serializer_descriptor->file_handle,
-                                  serializer_descriptor->contents,
-                                  serializer_descriptor->file_size,
+        result       = ::ReadFile(serializer_ptr->file_handle,
+                                  serializer_ptr->contents,
+                                  serializer_ptr->file_size,
                                  &n_bytes_read,
                                   NULL);                           /* overlapped access not needed */
 
         ASSERT_ALWAYS_SYNC(result == TRUE,
                            "Could not read %d bytes for file [%s]",
-                           serializer_descriptor->file_size,
-                           system_hashed_ansi_string_get_buffer(serializer_descriptor->file_name)
+                           serializer_ptr->file_size,
+                           system_hashed_ansi_string_get_buffer(serializer_ptr->file_name)
                           );
 #else
-        ASSERT_DEBUG_SYNC(serializer_descriptor->file_size < SSIZE_MAX,
+        ASSERT_DEBUG_SYNC(serializer_ptr->file_size < SSIZE_MAX,
                           "File too large to read.");
 
-        n_bytes_read = read(serializer_descriptor->file_handle,
-                            serializer_descriptor->contents,
-                            serializer_descriptor->file_size);
+        n_bytes_read = read(serializer_ptr->file_handle,
+                            serializer_ptr->contents,
+                            serializer_ptr->file_size);
 
-        ASSERT_ALWAYS_SYNC(n_bytes_read == serializer_descriptor->file_size,
+        ASSERT_ALWAYS_SYNC(n_bytes_read == serializer_ptr->file_size,
                            "Could not read %d bytes for file [%s]",
-                           serializer_descriptor->file_size,
-                           system_hashed_ansi_string_get_buffer(serializer_descriptor->file_name)
+                           serializer_ptr->file_size,
+                           system_hashed_ansi_string_get_buffer(serializer_ptr->file_name)
                           );
 #endif
 
         /* Clsoe the file, won't need it anymore. */
 #ifdef _WIN32
-        ::CloseHandle(serializer_descriptor->file_handle);
+        ::CloseHandle(serializer_ptr->file_handle);
 
-        serializer_descriptor->file_handle = NULL;
+        serializer_ptr->file_handle = NULL;
 #else
-        if (close(serializer_descriptor->file_handle) == -1)
+        if (close(serializer_ptr->file_handle) == -1)
         {
             ASSERT_ALWAYS_SYNC(false,
                                "Could not close file handle.");
         }
 
-        serializer_descriptor->file_handle = 0;
+        serializer_ptr->file_handle = 0;
 #endif
 
         LOG_INFO("Contents cached for file [%s]",
-                 system_hashed_ansi_string_get_buffer(serializer_descriptor->file_name) );
+                 system_hashed_ansi_string_get_buffer(serializer_ptr->file_name) );
 
         /* Now retrieve path to the file */
 #ifdef _WIN32
-        DWORD path_length_wo_terminator = ::GetFullPathName(system_hashed_ansi_string_get_buffer(serializer_descriptor->file_name),
+        DWORD path_length_wo_terminator = ::GetFullPathName(system_hashed_ansi_string_get_buffer(serializer_ptr->file_name),
                                                             0,     /* nBufferLength */
                                                             NULL,  /* lpBuffer */
                                                             NULL); /* lpFilePart */
@@ -187,25 +199,25 @@ PRIVATE THREAD_POOL_TASK_HANDLER void _system_file_serializer_read_task_executor
                    0,
                    path_length_wo_terminator + 1);
 
-            ::GetFullPathName(system_hashed_ansi_string_get_buffer(serializer_descriptor->file_name),
+            ::GetFullPathName(system_hashed_ansi_string_get_buffer(serializer_ptr->file_name),
                               path_length_wo_terminator + 1,
                               path,
                               &file_inside_path);
 
             path[file_inside_path - path] = 0;
 
-            serializer_descriptor->file_path = system_hashed_ansi_string_create(path);
+            serializer_ptr->file_path = system_hashed_ansi_string_create(path);
         }
 
         delete [] path;
         path = NULL;
 #else
-    char* file_path = realpath(system_hashed_ansi_string_get_buffer(serializer_descriptor->file_name),
+    char* file_path = realpath(system_hashed_ansi_string_get_buffer(serializer_ptr->file_name),
                                NULL); /* resolved_path */
 
     ASSERT_DEBUG_SYNC(file_path != NULL,
                       "Could not determine file path for the file [%s]",
-                      system_hashed_ansi_string_get_buffer(serializer_descriptor->file_name) );
+                      system_hashed_ansi_string_get_buffer(serializer_ptr->file_name) );
 
     if (file_path != NULL)
     {
@@ -218,7 +230,7 @@ PRIVATE THREAD_POOL_TASK_HANDLER void _system_file_serializer_read_task_executor
 
         *(file_path_last_slash + 1) = 0;
 
-        serializer_descriptor->file_path = system_hashed_ansi_string_create(file_path);
+        serializer_ptr->file_path = system_hashed_ansi_string_create(file_path);
 
         free(file_path);
         file_path = NULL;
@@ -227,13 +239,61 @@ PRIVATE THREAD_POOL_TASK_HANDLER void _system_file_serializer_read_task_executor
     }
 
     /* Set the event so that cache-based functions can follow. */
-    system_event_set(serializer_descriptor->reading_finished_event);
+    system_event_set(serializer_ptr->reading_finished_event);
+}
+
+/** Please see header file for specification */
+PRIVATE void _system_file_serializer_release(void* serializer)
+{
+    _system_file_serializer* serializer_ptr = (_system_file_serializer*) serializer;
+
+    if (serializer_ptr->for_reading)
+    {
+        /* Wait till reading finishes */
+        system_event_wait_single(serializer_ptr->reading_finished_event);
+
+        /* Release reading-specific fields */
+        system_event_release(serializer_ptr->reading_finished_event);
+
+        if (serializer_ptr->type == SYSTEM_FILE_SERIALIZER_TYPE_FILE)
+        {
+            delete [] serializer_ptr->contents;
+
+            serializer_ptr->contents = NULL;
+        }
+    }
+    else
+    {
+        _system_file_serializer_write_down_data_to_file(serializer_ptr);
+
+#ifdef _WIN32
+        if (serializer_ptr->file_handle != file_handle_invalid &&
+            serializer_ptr->file_handle != NULL)
+#else
+        if (serializer_ptr->file_handle != file_handle_invalid)
+#endif
+        {
+            /* Cool to close the file now. */
+#ifdef _WIN32
+            ::CloseHandle(serializer_ptr->file_handle);
+#else
+            close(serializer_ptr->file_handle);
+#endif
+
+            serializer_ptr->file_handle = file_handle_invalid;
+        }
+
+        /* Release all occupied blocks */
+        delete [] serializer_ptr->contents;
+
+        serializer_ptr->contents = NULL;
+    }
 }
 
 /** TODO */
-PRIVATE void _system_file_serializer_write_down_data_to_file(_system_file_serializer_descriptor* descriptor)
+PRIVATE void _system_file_serializer_write_down_data_to_file(_system_file_serializer* serializer_ptr)
 {
-    ASSERT_DEBUG_SYNC(descriptor->type == SYSTEM_FILE_SERIALIZER_TYPE_FILE,
+    ASSERT_DEBUG_SYNC(serializer_ptr->type == SYSTEM_FILE_SERIALIZER_TYPE_FILE,
                       "_system_file_serializer_write_down_data_to_file() can only be called for file serializers.");
 
 #ifdef _WIN32
@@ -244,61 +304,61 @@ PRIVATE void _system_file_serializer_write_down_data_to_file(_system_file_serial
     ssize_t result          = 0;
 #endif
 
-    if (descriptor->file_handle == file_handle_invalid)
+    if (serializer_ptr->file_handle == file_handle_invalid)
     {
         /* Open the file for writing. If a file already exists, overwrite it */
 #ifdef _WIN32
-        descriptor->file_handle = ::CreateFile(system_hashed_ansi_string_get_buffer(descriptor->file_name),
-                                               GENERIC_WRITE,
-                                               0,                      /* no sharing */
-                                               NULL,                   /* no specific security attributes */
-                                               CREATE_ALWAYS,          /* always create a new file*/
-                                               FILE_ATTRIBUTE_NORMAL,
-                                               NULL);                  /* no template file */
+        serializer_ptr->file_handle = ::CreateFile(system_hashed_ansi_string_get_buffer(serializer_ptr->file_name),
+                                                   GENERIC_WRITE,
+                                                   0,                      /* no sharing */
+                                                   NULL,                   /* no specific security attributes */
+                                                   CREATE_ALWAYS,          /* always create a new file*/
+                                                   FILE_ATTRIBUTE_NORMAL,
+                                                   NULL);                  /* no template file */
 #else
-        descriptor->file_handle = open(system_hashed_ansi_string_get_buffer(descriptor->file_name),
-                                       O_CREAT | O_WRONLY,
-                                       S_IRUSR | S_IWUSR); /* read/write permissions for the owner */
+        serializer_ptr->file_handle = open(system_hashed_ansi_string_get_buffer(serializer_ptr->file_name),
+                                           O_CREAT | O_WRONLY,
+                                           S_IRUSR | S_IWUSR); /* read/write permissions for the owner */
 #endif
 
-        ASSERT_ALWAYS_SYNC(descriptor->file_handle != file_handle_invalid,
+        ASSERT_ALWAYS_SYNC(serializer_ptr->file_handle != file_handle_invalid,
                            "File %s could not have been created for writing",
-                           system_hashed_ansi_string_get_buffer(descriptor->file_name)
+                           system_hashed_ansi_string_get_buffer(serializer_ptr->file_name)
                           );
     }
 
-    if (descriptor->file_handle != file_handle_invalid)
+    if (serializer_ptr->file_handle != file_handle_invalid)
     {
 #ifdef _WIN32
-        result = ::WriteFile(descriptor->file_handle,
-                             descriptor->contents,
-                             descriptor->file_size,
+        result = ::WriteFile(serializer_ptr->file_handle,
+                             serializer_ptr->contents,
+                             serializer_ptr->file_size,
                             &n_bytes_written,
                              NULL);              /* no overlapped behavior needed */
 
         ASSERT_ALWAYS_SYNC(result == TRUE,
                           "Could not write file [%s]",
-                          system_hashed_ansi_string_get_buffer(descriptor->file_name) );
+                          system_hashed_ansi_string_get_buffer(serializer_ptr->file_name) );
 #else
-        result = write(descriptor->file_handle,
-                       descriptor->contents,
-                       descriptor->file_size);
+        result = write(serializer_ptr->file_handle,
+                       serializer_ptr->contents,
+                       serializer_ptr->file_size);
 
         n_bytes_written = (result >= 0) ? result : 0;
 
         ASSERT_ALWAYS_SYNC(result != -1,
                           "Could not write file [%s]",
-                          system_hashed_ansi_string_get_buffer(descriptor->file_name) );
+                          system_hashed_ansi_string_get_buffer(serializer_ptr->file_name) );
 #endif
 
-        ASSERT_ALWAYS_SYNC(n_bytes_written == descriptor->file_size,
+        ASSERT_ALWAYS_SYNC(n_bytes_written == serializer_ptr->file_size,
                            "Could not fully write file [%s] (%d bytes written out of %db)",
-                           system_hashed_ansi_string_get_buffer(descriptor->file_name),
+                           system_hashed_ansi_string_get_buffer(serializer_ptr->file_name),
                            n_bytes_written,
-                           descriptor->file_size);
+                           serializer_ptr->file_size);
 
         /* Reset the index used for storing incoming data*/
-        descriptor->file_size = 0;
+        serializer_ptr->file_size = 0;
     }
 }
 
@@ -307,88 +367,114 @@ PRIVATE void _system_file_serializer_write_down_data_to_file(_system_file_serial
 PUBLIC EMERALD_API system_file_serializer system_file_serializer_create_for_reading_memory_region(void*        data,
                                                                                                   unsigned int data_size)
 {
-    _system_file_serializer_descriptor* new_descriptor = new _system_file_serializer_descriptor;
+    static unsigned int      n_instances_created = 0;
+    unsigned int             n_this_instance     = system_atomics_increment(&n_instances_created);
+    _system_file_serializer* serializer_ptr      = new _system_file_serializer;
+    char                     temp_buffer[128]    = {0};
 
-    new_descriptor->contents               = (char*) data;
-    new_descriptor->current_index          = 0;
-    new_descriptor->file_handle            = file_handle_invalid;
-    new_descriptor->file_name              = NULL;
-    new_descriptor->file_size              = data_size;
-    new_descriptor->for_reading            = true;
-    new_descriptor->reading_finished_event = system_event_create(true); /* manual_reset */
-    new_descriptor->type                   = SYSTEM_FILE_SERIALIZER_TYPE_MEMORY_REGION;
+    serializer_ptr->contents               = (char*) data;
+    serializer_ptr->current_index          = 0;
+    serializer_ptr->file_handle            = file_handle_invalid;
+    serializer_ptr->file_name              = NULL;
+    serializer_ptr->file_size              = data_size;
+    serializer_ptr->for_reading            = true;
+    serializer_ptr->reading_finished_event = system_event_create(true); /* manual_reset */
+    serializer_ptr->type                   = SYSTEM_FILE_SERIALIZER_TYPE_MEMORY_REGION;
 
-    system_event_set(new_descriptor->reading_finished_event);
+    system_event_set(serializer_ptr->reading_finished_event);
 
-    return (system_file_serializer) new_descriptor;
+    snprintf(temp_buffer,
+             sizeof(temp_buffer),
+             "Memory region serializer %d",
+             n_this_instance);
+
+    REFCOUNT_INSERT_INIT_CODE_WITH_RELEASE_HANDLER(serializer_ptr,
+                                                   _system_file_serializer_release,
+                                                   OBJECT_TYPE_SYSTEM_FILE_SERIALIZER,
+                                                   system_hashed_ansi_string_create_by_merging_two_strings("\\File Serializers\\",
+                                                                                                           temp_buffer) );
+
+    return (system_file_serializer) serializer_ptr;
 }
 
 /** Please see header file for specification */
 PUBLIC EMERALD_API system_file_serializer system_file_serializer_create_for_reading(system_hashed_ansi_string file_name,
                                                                                     bool                      async_read)
 {
-    _system_file_serializer_descriptor* new_descriptor = new _system_file_serializer_descriptor;
+    _system_file_serializer* serializer_ptr = new _system_file_serializer;
 
-    new_descriptor->contents               = NULL;
-    new_descriptor->current_index          = 0;
-    new_descriptor->file_handle            = file_handle_invalid;
-    new_descriptor->file_name              = file_name;
-    new_descriptor->file_size              = 0;
-    new_descriptor->for_reading            = true;
-    new_descriptor->reading_finished_event = system_event_create(true); /* manual_reset */
-    new_descriptor->type                   = SYSTEM_FILE_SERIALIZER_TYPE_FILE;
+    serializer_ptr->contents               = NULL;
+    serializer_ptr->current_index          = 0;
+    serializer_ptr->file_handle            = file_handle_invalid;
+    serializer_ptr->file_name              = file_name;
+    serializer_ptr->file_size              = 0;
+    serializer_ptr->for_reading            = true;
+    serializer_ptr->reading_finished_event = system_event_create(true); /* manual_reset */
+    serializer_ptr->type                   = SYSTEM_FILE_SERIALIZER_TYPE_FILE;
+
+    REFCOUNT_INSERT_INIT_CODE_WITH_RELEASE_HANDLER(serializer_ptr,
+                                                   _system_file_serializer_release,
+                                                   OBJECT_TYPE_SYSTEM_FILE_SERIALIZER,
+                                                   system_hashed_ansi_string_create_by_merging_two_strings("\\File Serializers\\",
+                                                                                                           system_hashed_ansi_string_get_buffer(file_name) ) );
 
     if (async_read)
     {
         /* Submit a file reading task */
         system_thread_pool_task task = system_thread_pool_create_task_handler_with_event_signal(THREAD_POOL_TASK_PRIORITY_IDLE,
                                                                                                 _system_file_serializer_read_task_executor,
-                                                                                                new_descriptor,
-                                                                                                new_descriptor->reading_finished_event);
+                                                                                                serializer_ptr,
+                                                                                                serializer_ptr->reading_finished_event);
 
         system_thread_pool_submit_single_task(task);
     }
     else
     {
-        _system_file_serializer_read_task_executor(new_descriptor);
+        _system_file_serializer_read_task_executor(serializer_ptr);
 
-        system_event_set(new_descriptor->reading_finished_event);
+        system_event_set(serializer_ptr->reading_finished_event);
     }
 
-    return (system_file_serializer) new_descriptor;
+    return (system_file_serializer) serializer_ptr;
 }
 
 /** Please see header file for specification */
 PUBLIC EMERALD_API system_file_serializer system_file_serializer_create_for_writing(system_hashed_ansi_string file_name)
 {
-    _system_file_serializer_descriptor* new_descriptor = new (std::nothrow) _system_file_serializer_descriptor;
+    _system_file_serializer* serializer_ptr = new (std::nothrow) _system_file_serializer;
 
-    ASSERT_ALWAYS_SYNC(new_descriptor != NULL,
-                       "Could not alloc new descriptor");
+    ASSERT_ALWAYS_SYNC(serializer_ptr != NULL,
+                       "Could not alloc new serializer");
 
-    if (new_descriptor != NULL)
+    if (serializer_ptr != NULL)
     {
-        new_descriptor->contents               = new (std::nothrow) char[FILE_SERIALIZER_START_CAPACITY];
-        new_descriptor->current_index          = 0;
-        new_descriptor->file_handle            = file_handle_invalid;
-        new_descriptor->file_name              = file_name;
-        new_descriptor->file_size              = 0;
-        new_descriptor->for_reading            = false;
-        new_descriptor->reading_finished_event = NULL;
-        new_descriptor->type                   = SYSTEM_FILE_SERIALIZER_TYPE_FILE;
-        new_descriptor->writing_capacity       = FILE_SERIALIZER_START_CAPACITY;
+        serializer_ptr->contents               = new (std::nothrow) char[FILE_SERIALIZER_START_CAPACITY];
+        serializer_ptr->current_index          = 0;
+        serializer_ptr->file_handle            = file_handle_invalid;
+        serializer_ptr->file_name              = file_name;
+        serializer_ptr->file_size              = 0;
+        serializer_ptr->for_reading            = false;
+        serializer_ptr->reading_finished_event = NULL;
+        serializer_ptr->type                   = SYSTEM_FILE_SERIALIZER_TYPE_FILE;
+        serializer_ptr->writing_capacity       = FILE_SERIALIZER_START_CAPACITY;
 
-        ASSERT_ALWAYS_SYNC(new_descriptor->contents != NULL,
+        REFCOUNT_INSERT_INIT_CODE_WITH_RELEASE_HANDLER(serializer_ptr,
+                                                       _system_file_serializer_release,
+                                                       OBJECT_TYPE_SYSTEM_FILE_SERIALIZER,
+                                                       system_hashed_ansi_string_create_by_merging_two_strings("\\File Serializers\\",
+                                                                                                               system_hashed_ansi_string_get_buffer(file_name) ) );
+
+        ASSERT_ALWAYS_SYNC(serializer_ptr->contents != NULL,
                            "Could not allocate writing buffer.");
     }
 
-    return (system_file_serializer) new_descriptor;
+    return (system_file_serializer) serializer_ptr;
 }
 
 /** Please see header file for specification */
 PUBLIC EMERALD_API void system_file_serializer_flush_writes(system_file_serializer serializer)
 {
-    _system_file_serializer_write_down_data_to_file( (_system_file_serializer_descriptor*) serializer);
+    _system_file_serializer_write_down_data_to_file( (_system_file_serializer*) serializer);
 }
 
 /** Please see header file for specification */
@@ -396,7 +482,7 @@ PUBLIC EMERALD_API void system_file_serializer_get_property(system_file_serializ
                                                             system_file_serializer_property property,
                                                             void*                           out_data)
 {
-    _system_file_serializer_descriptor* serializer_ptr = (_system_file_serializer_descriptor*) serializer;
+    _system_file_serializer* serializer_ptr = (_system_file_serializer*) serializer;
 
     switch (property)
     {
@@ -489,28 +575,29 @@ PUBLIC EMERALD_API bool system_file_serializer_read(system_file_serializer seria
                                                     uint32_t               n_bytes,
                                                     void*                  out_result)
 {
-    _system_file_serializer_descriptor* descriptor = (_system_file_serializer_descriptor*) serializer;
-    bool                                result     = false;
+    bool                     result         = false;
+    _system_file_serializer* serializer_ptr = (_system_file_serializer*) serializer;
 
-    if (descriptor->for_reading)
+    if (serializer_ptr->for_reading)
     {
-        system_event_wait_single(descriptor->reading_finished_event);
+        system_event_wait_single(serializer_ptr->reading_finished_event);
 
-        if (descriptor->current_index + n_bytes <= descriptor->file_size)
+        if (serializer_ptr->current_index + n_bytes <= serializer_ptr->file_size)
         {
             if (out_result != NULL)
             {
                 memcpy(out_result,
-                       descriptor->contents + descriptor->current_index,
+                       serializer_ptr->contents + serializer_ptr->current_index,
                        n_bytes);
             }
 
-            descriptor->current_index += n_bytes;
-            result                     = true;
+            serializer_ptr->current_index += n_bytes;
+            result                         = true;
         }
     }
 
-    ASSERT_DEBUG_SYNC(result, "Reading operation failed");
+    ASSERT_DEBUG_SYNC(result,
+                      "Reading operation failed");
 
     return result;
 }
@@ -1204,59 +1291,11 @@ PUBLIC EMERALD_API bool system_file_serializer_read_variant(system_file_serializ
 }
 
 /** Please see header file for specification */
-PUBLIC EMERALD_API void system_file_serializer_release(system_file_serializer serializer)
-{
-    _system_file_serializer_descriptor* descriptor = (_system_file_serializer_descriptor*) serializer;
-
-    if (descriptor->for_reading)
-    {
-        /* Wait till reading finishes */
-        system_event_wait_single(descriptor->reading_finished_event);
-
-        /* Release reading-specific fields */
-        system_event_release(descriptor->reading_finished_event);
-
-        if (descriptor->type == SYSTEM_FILE_SERIALIZER_TYPE_FILE)
-        {
-            delete [] descriptor->contents;
-
-            descriptor->contents = NULL;
-        }
-    }
-    else
-    {
-        _system_file_serializer_write_down_data_to_file(descriptor);
-
-#ifdef _WIN32
-        if (descriptor->file_handle != file_handle_invalid &&
-            descriptor->file_handle != NULL)
-#else
-        if (descriptor->file_handle != file_handle_invalid)
-#endif
-        {
-            /* Cool to close the file now. */
-#ifdef _WIN32
-            ::CloseHandle(descriptor->file_handle);
-#else
-            close(descriptor->file_handle);
-#endif
-
-            descriptor->file_handle = file_handle_invalid;
-        }
-
-        /* Release all occupied blocks */
-        delete [] descriptor->contents;
-    }
-
-    delete descriptor;
-}
-
-/** Please see header file for specification */
 PUBLIC EMERALD_API void system_file_serializer_set_property(system_file_serializer          serializer,
                                                             system_file_serializer_property property,
                                                             void*                           data)
 {
-    _system_file_serializer_descriptor* serializer_ptr = (_system_file_serializer_descriptor*) serializer;
+    _system_file_serializer* serializer_ptr = (_system_file_serializer*) serializer;
 
     switch (property)
     {
@@ -1280,16 +1319,16 @@ PUBLIC EMERALD_API bool system_file_serializer_write(system_file_serializer seri
                                                      uint32_t               n_bytes,
                                                      const void*            data_to_write)
 {
-    _system_file_serializer_descriptor* descriptor = (_system_file_serializer_descriptor*) serializer;
-    bool                                result     = false;
+    bool                     result         = false;
+    _system_file_serializer* serializer_ptr = (_system_file_serializer*) serializer;
 
-    if (!descriptor->for_reading)
+    if (!serializer_ptr->for_reading)
     {
-        uint32_t new_capacity = descriptor->writing_capacity;
+        uint32_t new_capacity = serializer_ptr->writing_capacity;
 
-        if (descriptor->file_size + n_bytes >= new_capacity)
+        if (serializer_ptr->file_size + n_bytes >= new_capacity)
         {
-            while (new_capacity < (descriptor->file_size + n_bytes) )
+            while (new_capacity < (serializer_ptr->file_size + n_bytes) )
             {
                 new_capacity <<= 1;
             }
@@ -1301,12 +1340,12 @@ PUBLIC EMERALD_API bool system_file_serializer_write(system_file_serializer seri
             {
                 /* Copy existing data */
                 memcpy(new_contents,
-                       descriptor->contents,
-                       descriptor->file_size);
+                       serializer_ptr->contents,
+                       serializer_ptr->file_size);
 
-                delete [] descriptor->contents;
-                descriptor->contents         = new_contents;
-                descriptor->writing_capacity = new_capacity;
+                delete [] serializer_ptr->contents;
+                serializer_ptr->contents         = new_contents;
+                serializer_ptr->writing_capacity = new_capacity;
             }
             else
             {
@@ -1316,17 +1355,17 @@ PUBLIC EMERALD_API bool system_file_serializer_write(system_file_serializer seri
                  * NOTE: This happens in LW exporter plug-in for large scenes,
                  *       so until we move to AWE, we need this.
                  */
-                _system_file_serializer_write_down_data_to_file(descriptor);
+                _system_file_serializer_write_down_data_to_file(serializer_ptr);
             }
         }
 
         /* Append new data */
-        memcpy(descriptor->contents + descriptor->file_size,
+        memcpy(serializer_ptr->contents + serializer_ptr->file_size,
                data_to_write,
                n_bytes);
 
-        descriptor->file_size += n_bytes;
-        result                 = true;
+        serializer_ptr->file_size += n_bytes;
+        result                     = true;
     }
 
     ASSERT_DEBUG_SYNC(result,

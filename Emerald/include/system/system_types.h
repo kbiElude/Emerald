@@ -40,7 +40,8 @@ typedef enum
     {
         OBJECT_TYPE_FIRST,
 
-        OBJECT_TYPE_COLLADA_DATA = OBJECT_TYPE_FIRST,
+        OBJECT_TYPE_AUDIO_STREAM = OBJECT_TYPE_FIRST,
+        OBJECT_TYPE_COLLADA_DATA,
         OBJECT_TYPE_CONTEXT_MENU,
         OBJECT_TYPE_SYSTEM_CRITICAL_SECTION,
         OBJECT_TYPE_CURVE_CONTAINER,
@@ -105,6 +106,7 @@ typedef enum
         OBJECT_TYPE_SHADERS_VERTEX_COMBINEDMVP_SIMPLIFIED_TWO_POINT,
         OBJECT_TYPE_SHADERS_VERTEX_FULLSCREEN,
         OBJECT_TYPE_SHADERS_VERTEX_UBER,
+        OBJECT_TYPE_SYSTEM_FILE_SERIALIZER,
         OBJECT_TYPE_SYSTEM_RANDOMIZER,
         OBJECT_TYPE_SYSTEM_WINDOW,
 
@@ -113,6 +115,12 @@ typedef enum
     } object_manager_object_type;
 
 #endif /* INCLUDE_OBJECT_MANAGER */
+
+/********************* AUDIO DEVICE ***************************************/
+DECLARE_HANDLE(audio_device);
+
+/********************* AUDIO STREAM ***************************************/
+DECLARE_HANDLE(audio_stream);
 
 /************************ WINDOW ******************************************/
 DECLARE_HANDLE(system_window);
