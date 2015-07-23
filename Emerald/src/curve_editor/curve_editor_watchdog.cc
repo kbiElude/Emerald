@@ -128,7 +128,8 @@ PUBLIC curve_editor_watchdog curve_editor_watchdog_create()
         /* Spawn the worker thread */
         system_threads_spawn(_curve_editor_watchdog_monitor_thread_entrypoint,
                              watchdog_ptr,
-                             &watchdog_ptr->wakeup_thread_killed_event);
+                            &watchdog_ptr->wakeup_thread_killed_event,
+                             system_hashed_ansi_string_create("Curve editor watchdog") );
     }
 
     return (curve_editor_watchdog) watchdog_ptr;

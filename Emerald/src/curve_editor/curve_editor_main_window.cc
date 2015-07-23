@@ -939,7 +939,8 @@ PUBLIC curve_editor_main_window curve_editor_main_window_create(PFNONMAINWINDOWR
          */
         system_threads_spawn(_curve_editor_dialog_thread_entrypoint,
                              result,
-                            &result->dialog_thread_event);
+                            &result->dialog_thread_event,
+                             system_hashed_ansi_string_create("Curve editor dialog thread") );
 
         /* Block till everything is ready */
         system_event_wait_single(result->dialog_created_event);

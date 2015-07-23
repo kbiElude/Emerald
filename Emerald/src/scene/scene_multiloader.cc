@@ -1663,7 +1663,8 @@ PUBLIC EMERALD_API void scene_multiloader_load_async(scene_multiloader loader)
 
         system_threads_spawn(_scene_multiloader_load_scene_thread_entrypoint,
                              scene_ptr,
-                             NULL); /* thread_wait_event */
+                             NULL, /* thread_wait_event */
+                             system_hashed_ansi_string_create("Scene multi-loader thread") );
     } /* for (all enqueued scenes) */
 
 end:

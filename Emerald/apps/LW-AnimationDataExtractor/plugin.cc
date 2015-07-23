@@ -241,7 +241,8 @@ XCALL_(int) ExportData(int         version,
      */
     system_threads_spawn(WorkerThreadEntryPoint,
                          NULL, /* argument */
-                         NULL  /* thread_wait_event */);
+                         NULL,  /* thread_wait_event */
+                         system_hashed_ansi_string_create("Worked thread") );
 
     return AFUNC_OK;
 }

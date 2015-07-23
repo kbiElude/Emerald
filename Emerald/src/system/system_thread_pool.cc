@@ -566,9 +566,17 @@ PUBLIC void _system_thread_pool_init()
                           n_thread < THREAD_POOL_AMOUNT_OF_THREADS;
                         ++n_thread)
         {
+            char temp_buffer[64];
+
+            snprintf(temp_buffer,
+                     sizeof(temp_buffer),
+                     "Thread pool worker thread %d",
+                     n_thread);
+
             thread_id_array[n_thread] = system_threads_spawn(_system_thread_pool_worker_entrypoint,
-                                                             NULL,
-                                                             thread_wait_events + n_thread);
+                                                             NULL, /* callback_func_argument */
+                                                             thread_wait_events + n_thread,
+                                                             system_hashed_ansi_string_create(temp_buffer) );
 
             ASSERT_ALWAYS_SYNC(thread_id_array[n_thread] != (system_thread_id) NULL,
                                "Could not spawn worker thread [%d] !",

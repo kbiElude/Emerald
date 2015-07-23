@@ -43,7 +43,19 @@ typedef struct
     unsigned int thread_spawn_index;
 #endif
 
-} _system_threads_thread_descriptor;
+} _system_threads_thread;
+
+#ifdef _WIN32
+    #pragma pack(push, 8)
+        typedef struct
+        {
+           DWORD  type;      /* Must be 0x1000.                       */
+           LPCSTR name;      /* Pointer to name (in user addr space). */
+           DWORD  thread_id; /* Thread ID       (-1 = caller thread). */
+           DWORD  flags;
+        } _vs_thread_name;
+    #pragma pack(pop)
+#endif
 
 /** Internal variables */
 system_resizable_vector active_threads_vector    = NULL; /* contains system handles of active threads. */
@@ -54,7 +66,7 @@ system_resource_pool    thread_descriptor_pool   = NULL;
 /** Internal functions */
 /** Entry point wrapper.
  *
- *  @param argument _system_threads_thread_descriptor*
+ *  @param argument _system_threads_thread*
  */
 #ifdef _WIN32
     DWORD WINAPI _system_threads_entry_point_wrapper(LPVOID argument)
@@ -62,17 +74,17 @@ system_resource_pool    thread_descriptor_pool   = NULL;
     void* _system_threads_entry_point_wrapper(void* argument)
 #endif
 {
-    _system_threads_thread_descriptor*  thread_descriptor = (_system_threads_thread_descriptor*) argument;
-    PFNSYSTEMTHREADSENTRYPOINTPROC      callback_func     = thread_descriptor->callback_func;
-    system_threads_entry_point_argument callback_func_arg = thread_descriptor->callback_func_argument;
-    system_event                        exit_event        = thread_descriptor->kill_event;
-    system_thread                       thread_handle     = thread_descriptor->thread_handle;
+    _system_threads_thread*             thread_ptr        = (_system_threads_thread*) argument;
+    PFNSYSTEMTHREADSENTRYPOINTPROC      callback_func     = thread_ptr->callback_func;
+    system_threads_entry_point_argument callback_func_arg = thread_ptr->callback_func_argument;
+    system_event                        exit_event        = thread_ptr->kill_event;
+    system_thread                       thread_handle     = thread_ptr->thread_handle;
 
     #ifdef __linux
     {
-        thread_descriptor->thread_id = system_threads_get_thread_id();
+        thread_ptr->thread_id = system_threads_get_thread_id();
 
-        system_event_set(thread_descriptor->thread_id_submitted_event);
+        system_event_set(thread_ptr->thread_id_submitted_event);
     }
     #else
     {
@@ -85,7 +97,7 @@ system_resource_pool    thread_descriptor_pool   = NULL;
 
     /* Release the descriptor back to the pool */
     system_resource_pool_return_to_pool(thread_descriptor_pool,
-                                        (system_resource_pool_block) thread_descriptor);
+                                        (system_resource_pool_block) thread_ptr);
 
     /* Unregister the thread */
     system_critical_section_enter(active_threads_vector_cs);
@@ -181,6 +193,7 @@ PUBLIC EMERALD_API void system_threads_join_thread(system_thread thread,
 PUBLIC EMERALD_API system_thread_id system_threads_spawn(PFNSYSTEMTHREADSENTRYPOINTPROC      callback_func,
                                                          system_threads_entry_point_argument callback_func_argument,
                                                          system_event*                       thread_wait_event,
+                                                         system_hashed_ansi_string           thread_name,
                                                          system_thread*                      out_thread_ptr)
 {
     /* Create a new descriptor */
@@ -191,77 +204,114 @@ PUBLIC EMERALD_API system_thread_id system_threads_spawn(PFNSYSTEMTHREADSENTRYPO
 
     if (thread_descriptor_pool != NULL)
     {
-        _system_threads_thread_descriptor* thread_descriptor = (_system_threads_thread_descriptor*) system_resource_pool_get_from_pool(thread_descriptor_pool);
+        _system_threads_thread* thread_ptr = (_system_threads_thread*) system_resource_pool_get_from_pool(thread_descriptor_pool);
 
-        ASSERT_ALWAYS_SYNC(thread_descriptor != NULL,
+        ASSERT_ALWAYS_SYNC(thread_ptr != NULL,
                            "Could not allocate thread descriptor");
 
-        if (thread_descriptor != NULL)
+        if (thread_ptr != NULL)
         {
-            thread_descriptor->callback_func          = callback_func;
-            thread_descriptor->callback_func_argument = callback_func_argument;
+            thread_ptr->callback_func          = callback_func;
+            thread_ptr->callback_func_argument = callback_func_argument;
 
             /* Spawn the thread. */
 #ifdef _WIN32
-            thread_descriptor->thread_handle = ::CreateThread(NULL,                                /* no security attribs */
-                                                              0,                                   /* default stack size */
-                                                             &_system_threads_entry_point_wrapper,
-                                                              thread_descriptor,
-                                                              0,                                   /* run immediately after creation */
-                                                             &thread_descriptor->thread_id);
+            thread_ptr->thread_handle = ::CreateThread(NULL,                                /* no security attribs */
+                                                       0,                                   /* default stack size */
+                                                      &_system_threads_entry_point_wrapper,
+                                                       thread_ptr,
+                                                       0,                                   /* run immediately after creation */
+                                                      &thread_ptr->thread_id);
 
-            ASSERT_ALWAYS_SYNC(thread_descriptor->thread_handle != NULL,
+            ASSERT_ALWAYS_SYNC(thread_ptr->thread_handle != NULL,
                                "Could not create a new thread");
 #else
             /* Instantiate a 'thread started' event we will use to wait until the newly spawned thread
              * submits its thread ID to the descriptor.
              * Since we're using resource pool to manage descriptors and it would require a bit of work
              * to get the event to release at deinit time, we will free the event in just a bit */
-            thread_descriptor->thread_id_submitted_event = system_event_create     (true); /* manual_reset */
-            thread_descriptor->thread_spawn_index        = system_atomics_increment(&n_threads_spawned);
+            thread_ptr->thread_id_submitted_event = system_event_create     (true); /* manual_reset */
+            thread_ptr->thread_spawn_index        = system_atomics_increment(&n_threads_spawned);
 
-            ASSERT_DEBUG_SYNC(thread_descriptor->thread_id_submitted_event != NULL,
+            ASSERT_DEBUG_SYNC(thread_ptr->thread_id_submitted_event != NULL,
                               "Could not create 'thread ID submitted' event");
 
-            int creation_result = pthread_create(&thread_descriptor->thread_handle,
+            int creation_result = pthread_create(&thread_ptr->thread_handle,
                                                   NULL,
                                                   _system_threads_entry_point_wrapper,
-                                                  thread_descriptor);
+                                                  thread_ptr);
 
             ASSERT_ALWAYS_SYNC(creation_result == 0,
                                "Could not create a new thread");
 
-            system_event_wait_single(thread_descriptor->thread_id_submitted_event);
+            system_event_wait_single(thread_ptr->thread_id_submitted_event);
 
-            system_event_release(thread_descriptor->thread_id_submitted_event);
-            thread_descriptor->thread_id_submitted_event = NULL;
+            system_event_release(thread_ptr->thread_id_submitted_event);
+            thread_ptr->thread_id_submitted_event = NULL;
 #endif
 
-            result = thread_descriptor->thread_id;
+            result = thread_ptr->thread_id;
 
             if (out_thread_ptr != NULL)
             {
-                *out_thread_ptr = thread_descriptor->thread_handle;
+                *out_thread_ptr = thread_ptr->thread_handle;
             }
 
             if (thread_wait_event != NULL)
             {
-                *thread_wait_event            = system_event_create_from_thread(thread_descriptor->thread_handle);
-                thread_descriptor->kill_event = *thread_wait_event;
+                *thread_wait_event     = system_event_create_from_thread(thread_ptr->thread_handle);
+                thread_ptr->kill_event = *thread_wait_event;
             }
             else
             {
-                thread_descriptor->kill_event = NULL;
+                thread_ptr->kill_event = NULL;
             }
+
+            /* Assign a name to the thread, if one has been provided by the caller. */
+            if (thread_name != NULL)
+            {
+                #ifdef _WIN32
+                {
+                    /* Based on  https://msdn.microsoft.com/pl-pl/library/xcb2z8hs(v=vs.110).aspx */
+                    static const DWORD MS_VC_EXCEPTION=0x406D1388;
+                    _vs_thread_name    vs_thread_name;
+
+                    vs_thread_name.flags     = 0;
+                    vs_thread_name.name      = system_hashed_ansi_string_get_buffer(thread_name);
+                    vs_thread_name.thread_id = thread_ptr->thread_id;
+                    vs_thread_name.type      = 0x1000;
+
+                    __try
+                    {
+                        ::RaiseException(MS_VC_EXCEPTION,
+                                         0, /* dwExceptionFlags */
+                                         sizeof(vs_thread_name) / sizeof(ULONG_PTR),
+                                         (ULONG_PTR*) &vs_thread_name);
+                    }
+                    __except(EXCEPTION_EXECUTE_HANDLER)
+                    {
+                        LOG_FATAL("Could not assign a name to a newly spawned thread.");
+                    }
+                }
+                #else
+                {
+                    if (pthread_setname_np(thread_ptr->thread_handle,
+                                           system_hashed_ansi_string_get_buffer(thread_name) ) != 0)
+                    {
+                        LOG_FATAL("Could not assign a name to a newly spawned thread.");
+                    }
+                }
+                #endif
+            } /* if (thread_name != NULL) */
 
             system_critical_section_enter(active_threads_vector_cs);
             {
                 system_resizable_vector_push(active_threads_vector,
-                                             (void*) thread_descriptor->thread_handle);
+                                             (void*) thread_ptr->thread_handle);
             }
             system_critical_section_leave(active_threads_vector_cs);
 
-        } /* if (thread_descriptor != NULL) */
+        } /* if (thread_ptr != NULL) */
     }
 
     return result;
@@ -283,7 +333,7 @@ PUBLIC void _system_threads_init()
     {
         active_threads_vector    = system_resizable_vector_create(BASE_THREADS_CAPACITY);
         active_threads_vector_cs = system_critical_section_create();
-        thread_descriptor_pool   = system_resource_pool_create   (sizeof(_system_threads_thread_descriptor),
+        thread_descriptor_pool   = system_resource_pool_create   (sizeof(_system_threads_thread),
                                                                   BASE_THREADS_CAPACITY,
                                                                   NULL,  /* init_fn */
                                                                   NULL); /* deinit_fn */

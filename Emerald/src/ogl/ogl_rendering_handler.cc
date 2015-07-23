@@ -487,7 +487,8 @@ PRIVATE ogl_rendering_handler ogl_rendering_handler_create_shared(system_hashed_
 
         system_threads_spawn(_ogl_rendering_handler_thread_entrypoint,
                              new_handler,
-                             NULL);
+                             NULL, /* thread_wait_event */
+                             system_hashed_ansi_string_create("OpenGL rendering handler thread") );
     }
 
     return (ogl_rendering_handler) new_handler;

@@ -46,7 +46,8 @@ TEST(EventsTest, WaitThenSet)
     /* Spawn the setter thread */
     system_threads_spawn(_wait_then_set_test_setter_thread,
                          &data,
-                         NULL); /* thread_wait_event */
+                         NULL, /* thread_wait_event */
+                         system_hashed_ansi_string_create("Waiting thread") );
 
     /* Instantly wait on the event */
     system_event_wait_single(data.wakeup_event);

@@ -120,7 +120,8 @@ PUBLIC void InitUI()
     /* Spawn a new UI controller thread. */
     system_threads_spawn(UIThreadEntryPoint,
                          NULL, /* argument */
-                         NULL  /* thread_wait_event */);
+                         NULL, /* thread_wait_event */
+                         system_hashed_ansi_string_create("UI thread") );
 }
 
 /** Please see header for spec */

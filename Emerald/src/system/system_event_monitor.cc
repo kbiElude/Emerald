@@ -575,6 +575,7 @@ PUBLIC void system_event_monitor_init()
         system_threads_spawn(_system_event_monitor_thread_entrypoint,
                              NULL, /* callback_func_argument */
                              NULL, /* thread_wait_event */
+                             system_hashed_ansi_string_create("Event monitor thread"),
                             &monitor_ptr->thread);
     }
 }

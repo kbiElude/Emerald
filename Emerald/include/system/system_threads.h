@@ -21,15 +21,18 @@ PUBLIC EMERALD_API void system_threads_join_thread(system_thread thread,
 
 /** Spawns a new thread. Waits until the thread 
  *
- *  @param PFNSYSTEMTHREADSENTRYPOINTPROC      Entry point function pointer.
- *  @param system_threads_entry_point_argument Argument to pass on to the entry point function.
- *  @param thread_wait_event                   TODO
+ *  @param callback_func          Entry point function pointer.
+ *  @param callback_func_argument Argument to pass on to the entry point function.
+ *  @param thread_wait_event      TODO
+ *  @param thread_name            TODO. May be NULL.
+ *  @param out_thread_ptr         TODO
  *
- *  @return Thread if successful, 0 otherwise.
+ *  @return Thread ID if successful, 0 otherwise.
  */
 PUBLIC EMERALD_API system_thread_id system_threads_spawn(PFNSYSTEMTHREADSENTRYPOINTPROC      callback_func,
                                                          system_threads_entry_point_argument callback_func_argument,
                                                          system_event*                       thread_wait_event,
+                                                         system_hashed_ansi_string           thread_name = NULL,
                                                          system_thread*                      out_thread_ptr = NULL);
 
 /** Initializes threads module. Should only be called once from DLL entry point */

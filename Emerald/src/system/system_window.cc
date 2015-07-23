@@ -921,7 +921,8 @@ PRIVATE system_window _system_window_create_shared(ogl_context_type          con
             new_window->window_initialized_event     != NULL)
         {
             /* Spawn root window, if there's none around. */
-            int current_n_total_windows_spawned;
+            int  current_n_total_windows_spawned;
+            char temp_buffer[128];
 
             system_critical_section_enter(n_total_windows_spawned_cs);
             {
@@ -937,9 +938,15 @@ PRIVATE system_window _system_window_create_shared(ogl_context_type          con
             }
 
              /* Spawn window thread */
+            snprintf(temp_buffer,
+                     sizeof(temp_buffer),
+                     "Window [%s] thread",
+                     system_hashed_ansi_string_get_buffer(title) );
+
             system_threads_spawn(_system_window_thread_entrypoint,
                                  new_window,
-                                &new_window->window_thread_event);
+                                &new_window->window_thread_event,
+                                 system_hashed_ansi_string_create(temp_buffer) );
 
             /* Wait until window finishes initialization */
             system_event_wait_single(new_window->window_initialized_event);

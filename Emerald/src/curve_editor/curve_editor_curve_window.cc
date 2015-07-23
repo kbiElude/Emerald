@@ -1000,7 +1000,9 @@ PUBLIC curve_editor_curve_window curve_editor_curve_window_show(ogl_context     
     /** Allocate space for the object */
     _curve_editor_curve_window* result = new (std::nothrow) _curve_editor_curve_window;
 
-    ASSERT_DEBUG_SYNC(result != NULL, "Out of memory while allocating space for _curve_editor_curve_window instance.");
+    ASSERT_DEBUG_SYNC(result != NULL,
+                      "Out of memory while allocating space for _curve_editor_curve_window instance.");
+
     if (result != NULL)
     {
         /* Initialize the descriptor with default values */
@@ -1019,7 +1021,10 @@ PUBLIC curve_editor_curve_window curve_editor_curve_window_show(ogl_context     
                                                                   serialization_cs);
 
         /* Spawn a new thread for the dialog */
-        system_threads_spawn(_curve_editor_curve_window_dialog_thread_entrypoint, result, &result->dialog_thread_event);
+        system_threads_spawn(_curve_editor_curve_window_dialog_thread_entrypoint,
+                             result,
+                            &result->dialog_thread_event,
+                             system_hashed_ansi_string_create("Curve window dialog thread") );
     }
 
     return (curve_editor_curve_window) result;
@@ -1061,8 +1066,10 @@ PRIVATE void _curve_editor_select_lerp_node(_curve_editor_curve_window* curve_wi
                                             curve_segment               segment,
                                             curve_segment_node_id       node_id)
 {
-    ::SetWindowTextA(curve_window_ptr->window_handle_property_1_static, "1st value:");
-    ::SetWindowTextA(curve_window_ptr->window_handle_property_2_static, "2nd value:");
+    ::SetWindowTextA(curve_window_ptr->window_handle_property_1_static,
+                     "1st value:");
+    ::SetWindowTextA(curve_window_ptr->window_handle_property_2_static,
+                     "2nd value:");
 
     ::ShowWindow(curve_window_ptr->window_handle_property_1_editbox,
                  SW_SHOW);
@@ -1258,7 +1265,8 @@ PUBLIC void curve_editor_select_node(curve_editor_curve_window curve_window,
 {
     _curve_editor_curve_window* curve_window_ptr = (_curve_editor_curve_window*) curve_window;
 
-    if (segment_id == -1 || node_id == -1)
+    if (segment_id == -1 ||
+        node_id    == -1)
     {
         ::ShowWindow(curve_window_ptr->window_handle_property_1_editbox,
                      SW_HIDE);
