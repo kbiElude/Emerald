@@ -9,31 +9,41 @@
 #include "system/system_file_monitor.h"
 #include "system/system_hash64map.h"
 #include "system/system_log.h"
+#include "system/system_resizable_vector.h"
 #include "system/system_threads.h"
 
 
-typedef struct _system_file_monitor_callback
+typedef struct _system_file_monitor_directory_callback
+{
+    system_hashed_ansi_string directory;
+    system_hash64map          filename_to_callback_map;
+
+    explicit _system_file_monitor_directory_callback(system_hashed_ansi_string in_directory);
+            ~_system_file_monitor_directory_callback();
+};
+
+typedef struct _system_file_monitor_file_callback
 {
     PFNFILECHANGEDETECTEDPROC callback;
     void*                     callback_user_arg;
+    system_hashed_ansi_string directory;
     system_hashed_ansi_string filename;
-    system_event              wait_event;
 
-    explicit _system_file_monitor_callback(PFNFILECHANGEDETECTEDPROC in_callback,
-                                           void*                     in_callback_user_arg,
-                                           system_hashed_ansi_string in_filename);
-            ~_system_file_monitor_callback();
+    explicit _system_file_monitor_file_callback(PFNFILECHANGEDETECTEDPROC in_callback,
+                                                void*                     in_callback_user_arg,
+                                                system_hashed_ansi_string in_directory,
+                                                system_hashed_ansi_string in_filename);
 
-} _system_file_monitor_callback;
+} _system_file_monitor_file_callback;
 
 typedef struct _system_file_monitor
 {
+    system_critical_section cs;
     system_thread           monitor_thread;
-    system_critical_section monitor_thread_cs;
     system_event            monitor_thread_please_die_event;
     system_event            monitor_thread_wait_event;
-    system_hash64map        monitored_filename_hash_to_callback_map;
-    system_critical_section monitored_filename_hash_to_callback_map_cs;
+    system_hash64map        monitored_directory_name_hash_to_callback_map; /* maps directory name hashes to _system_file_monitor_directory_callback instances */
+    system_hash64map        monitored_filename_hash_to_callback_map;       /* maps file      name hashes to _system_file_monitor_file_callback      instances */
 
     system_event* wait_table;
     system_event  wait_table_needs_an_update_ack_event;
@@ -50,53 +60,44 @@ typedef struct _system_file_monitor
 PRIVATE _system_file_monitor* file_monitor_ptr = NULL;
 
 /** Forward declarations */
-PRIVATE void _system_file_monitor_monitor_thread_entrypoint (void*                          unused);
-PRIVATE bool _system_file_monitor_register_system_callback  (system_hashed_ansi_string      file_name,
-                                                             system_event*                  out_wait_event_ptr);
-PRIVATE void _system_file_monitor_unregister_system_callback(_system_file_monitor_callback* callback_ptr);
+PRIVATE void _system_file_monitor_monitor_thread_entrypoint (void*                               unused);
+PRIVATE bool _system_file_monitor_register_system_callback  (system_hashed_ansi_string           file_name,
+                                                             system_event*                       out_wait_event_ptr);
+PRIVATE void _system_file_monitor_unregister_system_callback(_system_file_monitor_file_callback* callback_ptr);
 
 
 /** TODO */
-_system_file_monitor_callback::_system_file_monitor_callback(PFNFILECHANGEDETECTEDPROC in_callback,
-                                                             void*                     in_callback_user_arg,
-                                                             system_hashed_ansi_string in_filename)
+_system_file_monitor_file_callback::_system_file_monitor_file_callback(PFNFILECHANGEDETECTEDPROC in_callback,
+                                                                       void*                     in_callback_user_arg,
+                                                                       system_hashed_ansi_string in_directory,
+                                                                       system_hashed_ansi_string in_filename)
 {
     ASSERT_DEBUG_SYNC(in_callback != NULL,
                       "Call-back function pointer is NULL");
+    ASSERT_DEBUG_SYNC(in_directory != NULL,
+                      "Directory is NULL");
     ASSERT_DEBUG_SYNC(in_filename != NULL,
                       "Filename is NULL");
 
     callback          = in_callback;
     callback_user_arg = in_callback_user_arg;
+    directory         = in_directory;
     filename          = in_filename;
-    wait_event        = NULL;
-}
-
-/** TODO */
-_system_file_monitor_callback::~_system_file_monitor_callback()
-{
-    /* Release other stuff */
-    if (wait_event != NULL)
-    {
-        system_event_release(wait_event);
-
-        wait_event = NULL;
-    } /* if (wait_event != NULL) */
 }
 
 /** TODO */
 _system_file_monitor::_system_file_monitor()
 {
-    monitor_thread                             = (system_thread) 0;
-    monitor_thread_cs                          = system_critical_section_create();
-    monitor_thread_please_die_event            = system_event_create(true); /* manual_reset */
-    monitor_thread_wait_event                  = NULL;
-    monitored_filename_hash_to_callback_map    = system_hash64map_create(sizeof(_system_file_monitor_callback*) );
-    monitored_filename_hash_to_callback_map_cs = system_critical_section_create();
+    cs                                            = system_critical_section_create();
+    monitor_thread                                = (system_thread) 0;
+    monitor_thread_please_die_event               = system_event_create    (true); /* manual_reset */
+    monitor_thread_wait_event                     = NULL;
+    monitored_directory_name_hash_to_callback_map = system_hash64map_create(sizeof(_system_file_monitor_directory_callback*) );
+    monitored_filename_hash_to_callback_map       = system_hash64map_create(sizeof(_system_file_monitor_file_callback*) );
 
-    wait_table_needs_an_update_ack_event = system_event_create(true); /* manual_reset */
-    wait_table_needs_an_update_event     = system_event_create(true); /* manual_reset */
-    wait_table_updated_event             = system_event_create(true); /* manual_reset */
+    wait_table_needs_an_update_ack_event     = system_event_create(true); /* manual_reset */
+    wait_table_needs_an_update_event         = system_event_create(true); /* manual_reset */
+    wait_table_updated_event                 = system_event_create(true); /* manual_reset */
 
     /* By default, the wait table should only consist of the "please die" and "wait table needs an update" event. */
     wait_table = new (std::nothrow) system_event[2];
@@ -118,12 +119,12 @@ _system_file_monitor::~_system_file_monitor()
                              SYSTEM_TIME_INFINITE);
 
     /* Release other stuff */
-    if (monitor_thread_cs != NULL)
+    if (cs != NULL)
     {
-        system_critical_section_release(monitor_thread_cs);
+        system_critical_section_release(cs);
 
-        monitor_thread_cs = NULL;
-    } /* if (monitor_thread_cs != NULL) */
+        cs = NULL;
+    } /* if (cs != NULL) */
 
     if (monitor_thread_please_die_event != NULL)
     {
@@ -139,6 +140,40 @@ _system_file_monitor::~_system_file_monitor()
         monitor_thread_wait_event = NULL;
     } /* if (monitor_thread_wait_event != NULL) */
 
+    if (monitored_directory_name_hash_to_callback_map != NULL)
+    {
+        unsigned int n_monitored_directory_names = 0;
+
+        system_hash64map_get_property(monitored_directory_name_hash_to_callback_map,
+                                      SYSTEM_HASH64MAP_PROPERTY_N_ELEMENTS,
+                                     &n_monitored_directory_names);
+
+        for (unsigned int n_monitored_directory_name = 0;
+                          n_monitored_directory_name < n_monitored_directory_names;
+                        ++n_monitored_directory_name)
+        {
+            _system_file_monitor_directory_callback* callback_ptr = NULL;
+
+            if (!system_hash64map_get_element_at(monitored_directory_name_hash_to_callback_map,
+                                                 n_monitored_directory_name,
+                                                &callback_ptr,
+                                                 NULL) ) /* result_hash */
+            {
+                ASSERT_DEBUG_SYNC(false,
+                                  "Could not retrieve hash-map item at index [%d]",
+                                  n_monitored_directory_name);
+
+                continue;
+            }
+
+            delete callback_ptr;
+            callback_ptr = NULL;
+        } /* for (all monitored directory names) */
+
+        system_hash64map_release(monitored_directory_name_hash_to_callback_map);
+        monitored_directory_name_hash_to_callback_map = NULL;
+    } /* if (monitored_directory_name_hash_to_callback_map != NULL) */
+
     if (monitored_filename_hash_to_callback_map != NULL)
     {
         unsigned int n_monitored_filenames = 0;
@@ -151,7 +186,7 @@ _system_file_monitor::~_system_file_monitor()
                           n_monitored_filename < n_monitored_filenames;
                         ++n_monitored_filename)
         {
-            _system_file_monitor_callback* callback_ptr = NULL;
+            _system_file_monitor_file_callback* callback_ptr = NULL;
 
             if (!system_hash64map_get_element_at(monitored_filename_hash_to_callback_map,
                                                  n_monitored_filename,
@@ -167,18 +202,11 @@ _system_file_monitor::~_system_file_monitor()
 
             delete callback_ptr;
             callback_ptr = NULL;
-        } /* for 9all monitored filenames) */
+        } /* for (all monitored filenames) */
 
         system_hash64map_release(monitored_filename_hash_to_callback_map);
         monitored_filename_hash_to_callback_map = NULL;
     } /* if (monitored_filename_hash_to_callback_map != NULL) */
-
-    if (monitored_filename_hash_to_callback_map_cs != NULL)
-    {
-        system_critical_section_release(monitored_filename_hash_to_callback_map_cs);
-
-        monitored_filename_hash_to_callback_map_cs = NULL;
-    } /* if (monitored_filename_hash_to_callback_map_cs != NULL) */
 
     if (wait_table != NULL)
     {
@@ -245,9 +273,9 @@ PRIVATE void _system_file_monitor_monitor_thread_entrypoint(void* unused)
         else
         {
             /* This must be a system call-back */
-            system_critical_section_enter(file_monitor_ptr->monitored_filename_hash_to_callback_map_cs);
+            system_critical_section_enter(file_monitor_ptr->cs);
             {
-                _system_file_monitor_callback* callback_ptr = NULL;
+                _system_file_monitor_file_callback* callback_ptr = NULL;
 
                 if (!system_hash64map_get_element_at(file_monitor_ptr->monitored_filename_hash_to_callback_map,
                                                      (n_event - 2),
@@ -263,7 +291,7 @@ PRIVATE void _system_file_monitor_monitor_thread_entrypoint(void* unused)
                                            callback_ptr->callback_user_arg);
                 }
             }
-            system_critical_section_leave(file_monitor_ptr->monitored_filename_hash_to_callback_map_cs);
+            system_critical_section_leave(file_monitor_ptr->cs);
         }
     } /* while (true) */
 
@@ -274,14 +302,59 @@ PRIVATE void _system_file_monitor_monitor_thread_entrypoint(void* unused)
 PRIVATE bool _system_file_monitor_register_system_callback(system_hashed_ansi_string file_name,
                                                            system_event*             out_wait_event_ptr)
 {
-    ASSERT_DEBUG_SYNC(file_name != NULL,
-                      "Input file name is NULL");
+    const char*               file_name_raw            = system_hashed_ansi_string_get_buffer(file_name);
+    char*                     file_path                = NULL;
+    system_hashed_ansi_string file_path_has            = NULL;
+    DWORD                     n_temp_buffer_bytes_used = 0;
+    bool                      result                   = false;
+    system_event              result_wait_event        = NULL;
+    char                      temp_buffer[MAX_PATH];
+    char*                     temp_buffer_file_name    = NULL;
 
-    // todo
+    /* Extract path name from the file name */
+    n_temp_buffer_bytes_used = ::GetFullPathName(file_name_raw,
+                                                 sizeof(temp_buffer),
+                                                 temp_buffer,
+                                                &temp_buffer_file_name);
+
+    ASSERT_DEBUG_SYNC(n_temp_buffer_bytes_used > 0 &&
+                      n_temp_buffer_bytes_used < sizeof(temp_buffer),
+                      "GetFullPathName() failed.");
+
+    *temp_buffer_file_name = 0;
+     file_path             = temp_buffer;
+     file_path_has         = system_hashed_ansi_string_create(file_path);
+
+    /* Ensure we are not already subscribed to receive directory change notifications for
+     * this specific folder. */
+     if (!system_hash64map_contains(file_monitor_ptr->monitored_directory_name_hash_to_callback_map,
+                                    system_hashed_ansi_string_get_hash(file_path_has)) == ITEM_NOT_FOUND)
+    {
+        /* We're not. Sign up now. */
+        system_event new_wait_event  = NULL;
+        HANDLE       new_wait_handle = ::FindFirstChangeNotification(file_path,
+                                                                     false, /* bWatchSubtree */
+                                                                     FILE_NOTIFY_CHANGE_LAST_WRITE);
+
+        ASSERT_DEBUG_SYNC(new_wait_handle != NULL,
+                          "Could not sign up for directory change notifications - NULL event returned.");
+
+        /* Create an event out of the handle */
+        result_wait_event = system_event_create_from_handle(new_wait_handle);
+
+        ASSERT_DEBUG_SYNC(result_wait_event != NULL,
+                          "Could not create an event out of directory change notification handle.");
+
+        /* Instantiate a directory descriptor */
+       todo;
+    } /* if (directory is not already being monitored) */
+
+    /* Sign up for change notifications of the specified file */
+    return true;
 }
 
 /** TODO */
-PRIVATE void _system_file_monitor_unregister_system_callback(_system_file_monitor_callback* callback_ptr)
+PRIVATE void _system_file_monitor_unregister_system_callback(_system_file_monitor_file_callback* callback_ptr)
 {
     ASSERT_DEBUG_SYNC(callback_ptr != NULL,
                       "Input argument is NULL");
@@ -312,10 +385,10 @@ PUBLIC void system_file_monitor_init()
 }
 
 /** Please see header for spec */
-PUBLIC void system_file_monitor_monitor_file_changes(system_hashed_ansi_string file_name,
-                                                     bool                      should_enable,
-                                                     PFNFILECHANGEDETECTEDPROC pfn_file_changed_proc,
-                                                     void*                     user_arg)
+PUBLIC EMERALD_API void system_file_monitor_monitor_file_changes(system_hashed_ansi_string file_name,
+                                                                 bool                      should_enable,
+                                                                 PFNFILECHANGEDETECTEDPROC pfn_file_changed_proc,
+                                                                 void*                     user_arg)
 {
     const system_hash64 file_name_hash = system_hashed_ansi_string_get_hash(file_name);
 
@@ -325,8 +398,11 @@ PUBLIC void system_file_monitor_monitor_file_changes(system_hashed_ansi_string f
 
     /* Chances are this is the first file we are asked to look after. If this is the case,
      * spawn the monitoring thread */
-    system_critical_section_enter(file_monitor_ptr->monitor_thread_cs);
+    system_critical_section_enter(file_monitor_ptr->cs);
     {
+        uint32_t n_files_monitored = 0;
+        bool     should_continue   = true;
+
         if (file_monitor_ptr->monitor_thread == NULL)
         {
             system_threads_spawn(_system_file_monitor_monitor_thread_entrypoint,
@@ -338,14 +414,6 @@ PUBLIC void system_file_monitor_monitor_file_changes(system_hashed_ansi_string f
             ASSERT_DEBUG_SYNC(file_monitor_ptr->monitor_thread != NULL,
                               "Could not spawn the file monitor thread");
         } /* if (file_monitor_ptr->monitor_thread == NULL) */
-    }
-    system_critical_section_leave(file_monitor_ptr->monitor_thread_cs);
-
-    /* Update the wait table */
-    system_critical_section_enter(file_monitor_ptr->monitored_filename_hash_to_callback_map_cs);
-    {
-        uint32_t n_files_monitored = 0;
-        bool     should_continue   = true;
 
         /* Lock the monitor thread */
         system_event_set        (file_monitor_ptr->wait_table_needs_an_update_event);
@@ -355,7 +423,7 @@ PUBLIC void system_file_monitor_monitor_file_changes(system_hashed_ansi_string f
         /* If the caller requested a certain callback to be removed, remove & release it now */
         if (!should_enable)
         {
-            _system_file_monitor_callback* callback_ptr = NULL;
+            _system_file_monitor_file_callback* callback_ptr = NULL;
 
             if (!system_hash64map_get(file_monitor_ptr->monitored_filename_hash_to_callback_map,
                                       file_name_hash,
@@ -379,11 +447,11 @@ PUBLIC void system_file_monitor_monitor_file_changes(system_hashed_ansi_string f
         else
         {
             /* Register a new call-back */
-            _system_file_monitor_callback* new_callback_ptr = NULL;
+            _system_file_monitor_file_callback* new_callback_ptr = NULL;
 
-            new_callback_ptr = new (std::nothrow) _system_file_monitor_callback(pfn_file_changed_proc,
-                                                                                user_arg,
-                                                                                file_name);
+            new_callback_ptr = new (std::nothrow) _system_file_monitor_file_callback(pfn_file_changed_proc,
+                                                                                     user_arg,
+                                                                                     file_name);
 
             ASSERT_DEBUG_SYNC(new_callback_ptr != NULL,
                               "Out of memory");
@@ -436,7 +504,7 @@ PUBLIC void system_file_monitor_monitor_file_changes(system_hashed_ansi_string f
                               n_filename < n_files_monitored;
                             ++n_filename)
             {
-                _system_file_monitor_callback* current_callback_ptr = NULL;
+                _system_file_monitor_file_callback* current_callback_ptr = NULL;
 
                 if (!system_hash64map_get_element_at(file_monitor_ptr->monitored_filename_hash_to_callback_map,
                                                      n_filename,
@@ -457,5 +525,5 @@ PUBLIC void system_file_monitor_monitor_file_changes(system_hashed_ansi_string f
         /* Wake up the monitor thread */
         system_event_set(file_monitor_ptr->wait_table_updated_event);
     }
-    system_critical_section_leave(file_monitor_ptr->monitored_filename_hash_to_callback_map_cs);
+    system_critical_section_leave(file_monitor_ptr->cs);
 }
