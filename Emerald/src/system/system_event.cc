@@ -88,7 +88,7 @@ PUBLIC EMERALD_API system_event system_event_create(bool manual_reset)
                            "Out of memory");
 
         event_ptr->event        = handle;
-        event_ptr->manual_reset = true;
+        event_ptr->manual_reset = false;
 
         #if !defined(USE_RAW_HANDLES)
         {
@@ -134,6 +134,21 @@ PUBLIC void system_event_get_property(system_event          event,
 
     switch (property)
     {
+        #ifdef _WIN32
+            case SYSTEM_EVENT_PROPERTY_CHANGE_NOTIFICATION_HANDLE:
+            {
+                ASSERT_DEBUG_SYNC(event_ptr->type == SYSTEM_EVENT_TYPE_CHANGE_NOTIFICATION_HANDLE,
+                                  "SYSTEM_EVENT_PROPERTY_CHANGE_NOTIFICATION_HANDLE property queried for an event of an invalid type.");
+
+                if (event_ptr->type == SYSTEM_EVENT_TYPE_CHANGE_NOTIFICATION_HANDLE)
+                {
+                    *(HANDLE*) out_result = event_ptr->event;
+                }
+
+                break;
+            }
+        #endif
+
         case SYSTEM_EVENT_PROPERTY_MANUAL_RESET:
         {
             *(bool*) out_result = event_ptr->manual_reset;

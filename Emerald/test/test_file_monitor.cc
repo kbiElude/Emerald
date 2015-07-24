@@ -19,11 +19,10 @@ PRIVATE void _on_file_contents_changed(system_hashed_ansi_string file_name,
     system_event_set(*event_ptr);
 }
 
-TEST(FilesTest, FileMonitor)
+TEST(FilesTest, FileMonitorTest)
 {
     system_event              callback_received_event = system_event_create(true); /* manual_reset */
     FILE*                     file_handle             = NULL;
-    bool                      has_test_passed         = false;
     const char                test_contents[]         = "This is an example sentence.";
     const char                test_contents2[]        = "That";
     const char*               test_file_name          = "Oink";
@@ -46,7 +45,7 @@ TEST(FilesTest, FileMonitor)
     system_file_monitor_monitor_file_changes(test_file_name_has,
                                              true, /* should_enable */
                                             &_on_file_contents_changed,
-                                            &has_test_passed);
+                                            &callback_received_event);
 
     /* Write some more stuff to the file */
     file_handle = fopen(test_file_name,
@@ -60,7 +59,17 @@ TEST(FilesTest, FileMonitor)
            file_handle);
     fclose(file_handle);
 
+    /* Wait till we hear back. */
     system_event_wait_single(callback_received_event);
-    system_event_release    (callback_received_event);
+
+    /* Unregister from notifications. This must be done BEFORE
+     * we release the 'callback received' event. Otherwise, spurious
+     * call-backs may crash the unit test project.. */
+    system_file_monitor_monitor_file_changes(test_file_name_has,
+                                             false, /* should_enable */
+                                             NULL,  /* pfn_file_changed_proc */
+                                             NULL); /* user_arg */
+
+    system_event_release(callback_received_event);
 }
 

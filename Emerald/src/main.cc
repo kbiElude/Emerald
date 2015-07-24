@@ -174,13 +174,13 @@ int main_deinit()
         }
         #endif
 
+        system_file_monitor_deinit();
         _system_threads_deinit();
         system_hashed_ansi_string_deinit();
 
         _system_log_deinit();
         system_capabilities_deinit();
         system_screen_mode_deinit();
-        system_file_monitor_deinit();
 
         _deinited = true;
     }

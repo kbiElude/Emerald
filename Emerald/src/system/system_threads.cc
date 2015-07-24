@@ -396,7 +396,7 @@ PUBLIC void _system_threads_deinit()
                                           "Could not retrieve thread handle.");
 
 #ifdef _WIN32
-                        memcpy(threads[n_thread],
+                        memcpy(threads + n_thread,
                               &thread_handle,
                               sizeof(HANDLE) );
 #else

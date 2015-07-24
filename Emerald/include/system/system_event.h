@@ -11,6 +11,14 @@
 
 typedef enum
 {
+    #ifdef _WIN32
+        /* HANDLE.
+         *
+         * Internal usage only. Only valid for change notification events.
+         */
+        SYSTEM_EVENT_PROPERTY_CHANGE_NOTIFICATION_HANDLE,
+    #endif
+
     /* bool */
     SYSTEM_EVENT_PROPERTY_MANUAL_RESET,
 

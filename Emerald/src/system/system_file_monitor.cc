@@ -397,7 +397,8 @@ PRIVATE void _system_file_monitor_monitor_thread_entrypoint(void* unused)
              */
             system_critical_section_enter(file_monitor_ptr->cs);
             {
-                _system_file_monitor_directory_callback* callback_ptr = NULL;
+                _system_file_monitor_directory_callback* callback_ptr   = NULL;
+                void*                                    wait_event_raw = NULL;
 
                 if (!system_hash64map_get_element_at(file_monitor_ptr->monitored_directory_name_hash_to_callback_map,
                                                      (n_event - 2),
@@ -446,14 +447,16 @@ PRIVATE void _system_file_monitor_monitor_thread_entrypoint(void* unused)
                             continue;
                         }
 
-                        if (current_file_callback_ptr->last_write_time.dwLowDateTime  != current_file_last_write_time.dwLowDateTime  &&
+                        if (current_file_callback_ptr->last_write_time.dwLowDateTime  != current_file_last_write_time.dwLowDateTime  ||
                             current_file_callback_ptr->last_write_time.dwHighDateTime != current_file_last_write_time.dwHighDateTime)
                         {
                             /* We have a match! */
                             current_file_callback_ptr->callback(current_file_callback_ptr->filename,
                                                                 current_file_callback_ptr->callback_user_arg);
 
-                            has_found_modified_file = true;
+                            current_file_callback_ptr->last_write_time = current_file_last_write_time;
+                            has_found_modified_file                    = true;
+
                             break;
                         }
                     } /* for (all files monitored in the directory) */
@@ -464,7 +467,11 @@ PRIVATE void _system_file_monitor_monitor_thread_entrypoint(void* unused)
                 }
 
                 /* Restart the monitoring process */
-                if (::FindNextChangeNotification(callback_ptr->wait_event) == FALSE)
+                system_event_get_property(callback_ptr->wait_event,
+                                          SYSTEM_EVENT_PROPERTY_CHANGE_NOTIFICATION_HANDLE,
+                                          &wait_event_raw);
+
+                if (::FindNextChangeNotification(wait_event_raw) == FALSE)
                 {
                     ASSERT_DEBUG_SYNC(false,
                                       "Could not restart file monitoring process");
