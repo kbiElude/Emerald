@@ -78,6 +78,28 @@ PUBLIC EMERALD_API system_event system_event_create(bool manual_reset)
     return (system_event) event_ptr;
 }
 
+#ifdef _WIN32
+    /** Please see header for specification */
+    PUBLIC EMERALD_API system_event system_event_create_from_change_notification_handle(HANDLE handle)
+    {
+        _system_event* event_ptr = new (std::nothrow) _system_event(SYSTEM_EVENT_TYPE_CHANGE_NOTIFICATION_HANDLE);
+
+        ASSERT_ALWAYS_SYNC(event_ptr != NULL,
+                           "Out of memory");
+
+        event_ptr->event        = handle;
+        event_ptr->manual_reset = true;
+
+        #if !defined(USE_RAW_HANDLES)
+        {
+            system_event_monitor_add_event( (system_event) event_ptr);
+        }
+        #endif
+
+        return (system_event) event_ptr;
+    }
+#endif
+
 /** Please see header for specification */
 PUBLIC EMERALD_API system_event system_event_create_from_thread(system_thread thread)
 {
@@ -151,10 +173,32 @@ PUBLIC EMERALD_API void system_event_release(system_event event)
     {
         if (event != NULL)
         {
-            HANDLE descriptor = ((_system_event*) event)->event;
+            _system_event* event_ptr = (_system_event*) event;
 
-            ::CloseHandle(descriptor);
-        }
+            switch (event_ptr->type)
+            {
+                case SYSTEM_EVENT_TYPE_CHANGE_NOTIFICATION_HANDLE:
+                {
+                    ::FindCloseChangeNotification(event_ptr->event);
+
+                    break;
+                }
+
+                case SYSTEM_EVENT_TYPE_REGULAR:
+                case SYSTEM_EVENT_TYPE_THREAD:
+                {
+                    ::CloseHandle(event_ptr->event);
+
+                    break;
+                }
+
+                default:
+                {
+                    ASSERT_DEBUG_SYNC(false,
+                                      "Unrecognized event type");
+                }
+            }
+        } /* if (event != NULL) */
     }
     #else
     {

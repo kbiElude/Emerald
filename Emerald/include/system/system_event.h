@@ -31,6 +31,11 @@ typedef enum
     /* Created by system_event_create_from_thread() */
     SYSTEM_EVENT_TYPE_THREAD,
 
+    #ifdef _WIN32
+        /* Created by system_event_create_from_change_notification_handle(). */
+        SYSTEM_EVENT_TYPE_CHANGE_NOTIFICATION_HANDLE,
+    #endif
+
     SYSTEM_EVENT_TYPE_UNDEFINED
 } system_event_type;
 
@@ -45,6 +50,11 @@ typedef enum
  *  @return Event handle object.
  */
 PUBLIC EMERALD_API system_event system_event_create(bool manual_reset);
+
+#ifdef _WIN32
+    /** TODO */
+    PUBLIC EMERALD_API system_event system_event_create_from_change_notification_handle(HANDLE handle);
+#endif
 
 /** Creates an event synchronization object, wrapping a thread. The event will be signalled, the moment
  *  the thread dies.
