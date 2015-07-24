@@ -447,6 +447,11 @@ PUBLIC EMERALD_API size_t system_event_wait_multiple(const system_event* events,
                                               internal_events,
                                               wait_on_all_objects ? TRUE : FALSE,
                                               timeout_winapi);
+
+            if (out_has_timed_out_ptr != NULL)
+            {
+                *out_has_timed_out_ptr = (result == WAIT_TIMEOUT);
+            }
         }
 
     end:
