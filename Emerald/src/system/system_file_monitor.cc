@@ -183,10 +183,13 @@ _system_file_monitor::_system_file_monitor()
 /** TODO */
 _system_file_monitor::~_system_file_monitor()
 {
-    /* Make sure the monitor thread is killed before we continue */
-    system_event_set        (monitor_thread_please_die_event);
-    system_event_wait_single(monitor_thread_wait_event,
-                             SYSTEM_TIME_INFINITE);
+    if (monitor_thread != 0)
+    {
+        /* Make sure the monitor thread is killed before we continue */
+        system_event_set        (monitor_thread_please_die_event);
+        system_event_wait_single(monitor_thread_wait_event,
+                                 SYSTEM_TIME_INFINITE);
+    }
 
     /* Release other stuff */
     if (cs != NULL)

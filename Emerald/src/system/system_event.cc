@@ -23,7 +23,8 @@
 
 typedef struct _system_event
 {
-    #if defined(USE_RAW_HANDLES)
+    #if defined(_WIN32)
+        /* Holds change notification and regular event handles. */
         HANDLE event;
     #endif
 
@@ -87,11 +88,15 @@ PUBLIC EMERALD_API system_event system_event_create(bool manual_reset)
         ASSERT_ALWAYS_SYNC(event_ptr != NULL,
                            "Out of memory");
 
-        event_ptr->event        = handle;
-        event_ptr->manual_reset = false;
-
-        #if !defined(USE_RAW_HANDLES)
+        #if defined(USE_RAW_HANDLES)
         {
+            event_ptr->event        = handle;
+            event_ptr->manual_reset = false;
+        }
+        #else
+        {
+            event_ptr->event = handle;
+
             system_event_monitor_add_event( (system_event) event_ptr);
         }
         #endif
@@ -134,7 +139,7 @@ PUBLIC void system_event_get_property(system_event          event,
 
     switch (property)
     {
-        #ifdef _WIN32
+        #if defined(_WIN32)
             case SYSTEM_EVENT_PROPERTY_CHANGE_NOTIFICATION_HANDLE:
             {
                 ASSERT_DEBUG_SYNC(event_ptr->type == SYSTEM_EVENT_TYPE_CHANGE_NOTIFICATION_HANDLE,
@@ -535,7 +540,6 @@ PUBLIC EMERALD_API size_t system_event_wait_multiple(const system_event* events,
             ASSERT_DEBUG_SYNC(n_elements < MAXIMUM_WAIT_OBJECTS,
                               "Too many events to wait on at once.");
 
-            bool         has_timed_out;
             system_event internal_events[MAXIMUM_WAIT_OBJECTS];
 
             memcpy(internal_events,

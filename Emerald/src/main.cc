@@ -167,6 +167,7 @@ int main_deinit()
          *       (under Windows this can also be optionally enabled).
          */
         _system_thread_pool_deinit();
+        system_file_monitor_deinit();
 
         #ifdef USE_EMULATED_EVENTS
         {
@@ -174,7 +175,6 @@ int main_deinit()
         }
         #endif
 
-        system_file_monitor_deinit();
         _system_threads_deinit();
         system_hashed_ansi_string_deinit();
 
