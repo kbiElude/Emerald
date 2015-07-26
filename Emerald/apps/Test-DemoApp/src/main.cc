@@ -4,8 +4,6 @@
  *
  */
 #include "shared.h"
-#include "audio/audio_device.h"
-#include "audio/audio_stream.h"
 #include "ogl/ogl_context.h"
 #include "ogl/ogl_materials.h"
 #include "ogl/ogl_pipeline.h"
@@ -208,12 +206,10 @@ void _rendering_window_closing_callback_handler(system_window window)
     int main()
 #endif
 {
-    bool                   context_result     = false;
-    system_screen_mode     screen_mode        = NULL;
-    system_file_serializer test_serializer    = NULL;
-    audio_stream           test_stream        = NULL;
-    int                    window_size    [2] = {WINDOW_WIDTH, WINDOW_HEIGHT};
-    int                    window_x1y1x2y2[4] = {0};
+    bool               context_result     = false;
+    system_screen_mode screen_mode        = NULL;
+    int                window_size    [2] = {WINDOW_WIDTH, WINDOW_HEIGHT};
+    int                window_x1y1x2y2[4] = {0};
 
     /* Carry on */
     system_pixel_format window_pf = system_pixel_format_create(8,  /* color_buffer_red_bits   */
@@ -244,22 +240,6 @@ void _rendering_window_closing_callback_handler(system_window window)
                                                   true,  /* visible */
                                                   window_pf);
 #endif
-
-    /* Set up the audio stream */
-    test_serializer = system_file_serializer_create_for_reading(system_hashed_ansi_string_create("c:\\temp\\mpthreetest.mp3") );
-    test_stream     = audio_stream_create                      (audio_device_get_default_device(),
-                                                                test_serializer,
-                                                                _window);
-
-    system_window_set_property(_window,
-                               SYSTEM_WINDOW_PROPERTY_AUDIO_STREAM,
-                              &test_stream);
-
-    audio_stream_release          (test_stream);
-    system_file_serializer_release(test_serializer);
-
-    test_serializer = NULL;
-    test_stream     = NULL;
 
     _rendering_handler = ogl_rendering_handler_create_with_fps_policy(system_hashed_ansi_string_create("Default rendering handler"),
                                                                       TARGET_FPS,
