@@ -141,7 +141,7 @@ DECLARE_HANDLE(system_window);
 #endif
 
 /******************** TIME REPRESENTATION *********************************/
-typedef uint32_t system_time;
+typedef int32_t system_time;
 
 /** TODO */
 typedef enum

@@ -68,6 +68,9 @@ PUBLIC void state_set_color_shadow_map_blur_resolution(postprocessing_blur_gauss
 PUBLIC void state_set_color_shadow_map_internalformat(ogl_texture_internalformat new_internalformat);
 
 /** TODO */
+PUBLIC void state_set_current_frame_time(system_time frame_time);
+
+/** TODO */
 PUBLIC void state_set_depth_shadow_map_internalformat(ogl_texture_internalformat new_internalformat);
 
 /** TODO */

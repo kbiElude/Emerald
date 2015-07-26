@@ -1753,6 +1753,13 @@ PUBLIC EMERALD_API void system_window_get_property(system_window          window
             break;
         }
 
+        case SYSTEM_WINDOW_PROPERTY_IS_VSYNC_ENABLED:
+        {
+            *(bool*) out_result = window_ptr->vsync_enabled;
+
+            break;
+        }
+
         case SYSTEM_WINDOW_PROPERTY_NAME:
         {
             *(system_hashed_ansi_string*) out_result = window_ptr->title;

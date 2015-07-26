@@ -80,6 +80,9 @@ typedef enum
     /* not settable, bool */
     SYSTEM_WINDOW_PROPERTY_IS_VISIBLE,
 
+    /* not settable, bool */
+    SYSTEM_WINDOW_PROPERTY_IS_VSYNC_ENABLED,
+
     /* not settable, system_hashed_ansi_string */
     SYSTEM_WINDOW_PROPERTY_NAME,
 

@@ -15,6 +15,7 @@
 #include "system/system_hashed_ansi_string.h"
 #include "system/system_log.h"
 #include "system/system_pixel_format.h"
+#include "system/system_screen_mode.h"
 #include "system/system_threads.h"
 #include "system/system_time.h"
 #include "system/system_window.h"
@@ -28,12 +29,20 @@ typedef struct
     system_event                          context_set_event;
     uint32_t                              fps;
     uint32_t                              last_frame_index;      /* only when fps policy is used */
+    system_time                           last_frame_time;       /* cached for the runtime time adjustment mode support */
     volatile uint32_t                     n_frames_rendered;     /* NOTE: must be volatile for release builds to work correctly! */
     system_time                           playback_start_time;
     ogl_rendering_handler_playback_status playback_status;
     ogl_rendering_handler_policy          policy;
+    bool                                  runtime_time_adjustment_mode;
     ogl_text_string_id                    text_string_id;
     system_thread_id                      thread_id;
+
+    bool        is_left_arrow_key_pressed;
+    bool        is_right_arrow_key_pressed;
+    bool        is_space_key_pressed;
+    bool        runtime_time_adjustment_is_paused;
+    system_time runtime_time_adjustment_paused_frame_time;
 
     PFNOGLRENDERINGHANDLERRENDERINGCALLBACK pfn_rendering_callback;
     void*                                   rendering_callback_user_arg;
@@ -65,6 +74,153 @@ REFCOUNT_INSERT_IMPLEMENTATION(ogl_rendering_handler,
                               _ogl_rendering_handler);
 
 /** Internal variables */
+
+/** TODO */
+PUBLIC bool _ogl_rendering_handler_key_down_callback(system_window window,
+                                                     unsigned char keycode,
+                                                     void*         user_arg)
+{
+    _ogl_rendering_handler* rendering_handler_ptr = (_ogl_rendering_handler*) user_arg;
+    bool                    result                = rendering_handler_ptr->runtime_time_adjustment_mode;
+
+    /* The rendering handler is only interested in key press notifications, if the
+     * runtime time adjustment mode is enabled. The mode lets the user adjust the
+     * frame time during the play-back, taking care of synchronizing the audio input
+     * along the way.
+     */
+    if (rendering_handler_ptr->runtime_time_adjustment_mode)
+    {
+        switch (keycode)
+        {
+            case VK_LEFT:
+            {
+                if (rendering_handler_ptr->is_left_arrow_key_pressed)
+                {
+                    /* Left arrow key press notification: continuous mode */
+                    // ..
+                }
+                else
+                {
+                    /* Left arrow key press notification: one-shot, potentially continuous. */
+                    // ..
+
+                    rendering_handler_ptr->is_left_arrow_key_pressed = true;
+                }
+
+                break;
+            }
+
+            case VK_RIGHT:
+            {
+                if (rendering_handler_ptr->is_right_arrow_key_pressed)
+                {
+                    /* Right arrow key press notification: continuous mode */
+                    // ..
+                }
+                else
+                {
+                    /* Right arrow key press notification: one-shot, potentially continuous. */
+                    // ..
+
+                    rendering_handler_ptr->is_right_arrow_key_pressed = true;
+                }
+
+                break;
+            }
+
+            case VK_SPACE:
+            {
+                if (rendering_handler_ptr->is_space_key_pressed)
+                {
+                    /* Space press notification: Ignore continuous mode. */
+                }
+                else
+                {
+                    rendering_handler_ptr->is_space_key_pressed = true;
+
+                    /* Space key press notification: one-shot.
+                     *
+                     * Pause or resume the animation, depending on whether the playback is currently
+                     * paused or not. */
+                    if (rendering_handler_ptr->runtime_time_adjustment_is_paused)
+                    {
+                        ogl_rendering_handler_play( (ogl_rendering_handler) rendering_handler_ptr,
+                                                   rendering_handler_ptr->runtime_time_adjustment_paused_frame_time);
+
+                        rendering_handler_ptr->runtime_time_adjustment_is_paused = false;
+                    } /* if (rendering_handler_ptr->runtime_time_adjustment_is_paused) */
+                    else
+                    {
+                        ogl_rendering_handler_stop( (ogl_rendering_handler) rendering_handler_ptr);
+
+                        rendering_handler_ptr->runtime_time_adjustment_is_paused         = true;
+                        rendering_handler_ptr->runtime_time_adjustment_paused_frame_time = rendering_handler_ptr->last_frame_time;
+                    }
+                }
+
+                break;
+            }
+
+            default:
+            {
+                /* Ignore any other keycodes. */
+                result = false;
+            }
+        } /* switch (keycode) */
+    } /* if (rendering_handler_ptr->runtime_time_adjustment_mode) */
+
+    return result;
+}
+
+/** TODO */
+PUBLIC bool _ogl_rendering_handler_key_up_callback(system_window window,
+                                                   unsigned char keycode,
+                                                   void*         user_arg)
+{
+    /* Please see _ogl_rendering_handler_key_down_callback() documentation for more details */
+    _ogl_rendering_handler* rendering_handler_ptr = (_ogl_rendering_handler*) user_arg;
+    bool                    result                = rendering_handler_ptr->runtime_time_adjustment_mode;
+
+    /* The rendering handler is only interested in key press notifications, if the
+     * runtime time adjustment mode is enabled. The mode lets the user adjust the
+     * frame time during the play-back, taking care of synchronizing the audio input
+     * along the way.
+     */
+    if (rendering_handler_ptr->runtime_time_adjustment_mode)
+    {
+        switch (keycode)
+        {
+            case VK_LEFT:
+            {
+                rendering_handler_ptr->is_left_arrow_key_pressed = false;
+
+                break;
+            }
+
+            case VK_RIGHT:
+            {
+                rendering_handler_ptr->is_right_arrow_key_pressed = false;
+
+                break;
+            }
+
+            case VK_SPACE:
+            {
+                rendering_handler_ptr->is_space_key_pressed = false;
+
+                break;
+            }
+
+            default:
+            {
+                /* Ignore any other keycodes. */
+                result = false;
+            }
+        } /* switch (keycode) */
+    } /* if (rendering_handler_ptr->runtime_time_adjustment_mode) */
+
+    return result;
+}
 
 /** TODO */
 PUBLIC EMERALD_API void ogl_rendering_handler_lock_bound_context(ogl_rendering_handler rendering_handler)
@@ -106,6 +262,7 @@ PRIVATE void _ogl_rendering_handler_thread_entrypoint(void* in_arg)
         PFNGLBLITFRAMEBUFFERPROC  pGLBlitFramebuffer       = NULL;
         PFNGLDISABLEPROC          pGLDisable               = NULL;
         PFNGLENABLEPROC           pGLEnable                = NULL;
+        PFNGLFINISHPROC           pGLFinish                = NULL;
         bool                      should_live              = true;
         const system_event        wait_events[]            =
         {
@@ -155,6 +312,7 @@ PRIVATE void _ogl_rendering_handler_thread_entrypoint(void* in_arg)
 
             pGLBindFramebuffer = entrypoints->pGLBindFramebuffer;
             pGLBlitFramebuffer = entrypoints->pGLBlitFramebuffer;
+            pGLFinish          = entrypoints->pGLFinish;
         }
         else
         {
@@ -171,6 +329,7 @@ PRIVATE void _ogl_rendering_handler_thread_entrypoint(void* in_arg)
             pGLBlitFramebuffer = entrypoints->pGLBlitFramebuffer;
             pGLDisable         = entrypoints->pGLDisable;
             pGLEnable          = entrypoints->pGLEnable;
+            pGLFinish          = entrypoints->pGLFinish;
         }
 
         /* Bind the thread to GL */
@@ -236,14 +395,20 @@ PRIVATE void _ogl_rendering_handler_thread_entrypoint(void* in_arg)
             else
             {
                 /* Playback in progress - determine frame index and frame time. */
-                system_critical_section_enter(rendering_handler->rendering_cs);
-                {
-                    if (rendering_handler->playback_status == RENDERING_HANDLER_PLAYBACK_STATUS_STARTED)
-                    {
-                        system_time curr_time      = system_time_now();
-                        system_time new_frame_time = 0;
-                        uint32_t    frame_index    = 0;
+                bool is_vsync_enabled = false;
 
+                system_window_get_property(context_window,
+                                           SYSTEM_WINDOW_PROPERTY_IS_VSYNC_ENABLED,
+                                          &is_vsync_enabled);
+
+                if (rendering_handler->playback_status == RENDERING_HANDLER_PLAYBACK_STATUS_STARTED)
+                {
+                    system_time curr_time      = system_time_now();
+                    system_time new_frame_time = 0;
+                    int32_t     frame_index    = 0;
+
+                    system_critical_section_enter(rendering_handler->rendering_cs);
+                    {
                         switch (rendering_handler->policy)
                         {
                             case RENDERING_HANDLER_POLICY_MAX_PERFORMANCE:
@@ -256,11 +421,18 @@ PRIVATE void _ogl_rendering_handler_thread_entrypoint(void* in_arg)
 
                             case RENDERING_HANDLER_POLICY_FPS:
                             {
-                                new_frame_time = curr_time - rendering_handler->playback_start_time;
-                                frame_index    = new_frame_time * rendering_handler->fps / HZ_PER_SEC;
+                                system_time frame_time = (curr_time - rendering_handler->playback_start_time);
+                                int32_t     frame_time_msec;
+                                int32_t     new_frame_time_msec;
 
-                                new_frame_time = rendering_handler->playback_start_time +
-                                                 frame_index * HZ_PER_SEC * rendering_handler->fps / 1000;
+                                system_time_get_msec_for_time(frame_time,
+                                                              (uint32_t*) &frame_time_msec);
+
+                                frame_index         = frame_time_msec * rendering_handler->fps / 1000 /* ms in s */;
+                                new_frame_time_msec = frame_index     * 1000 /* ms in s */     / rendering_handler->fps;
+                                new_frame_time      = system_time_get_time_for_msec(new_frame_time_msec);
+
+                                LOG_INFO("Frame index [%d]", frame_index);
 
                                 rendering_handler->n_frames_rendered++;
 
@@ -339,8 +511,24 @@ PRIVATE void _ogl_rendering_handler_thread_entrypoint(void* in_arg)
 
                         /* Swap back buffer with the front buffer now */
                         rendering_handler->last_frame_index = frame_index;
+                        rendering_handler->last_frame_time  = new_frame_time;
 
                         ogl_context_swap_buffers(rendering_handler->context);
+
+                        /* If vertical sync is enabled, force a full pipeline flush + GPU-side execution
+                         * of the enqueued commands. This helps fighting the tearing A LOT for scenes
+                         * that take more time to render (eg. the test "greets" scene which slides
+                         * from right to left), since the frame misses are less frequent. It also puts
+                         * less pressure on the CPU, since we're no longer spinning.
+                         */
+                        if (is_vsync_enabled)
+                        {
+                            system_critical_section_leave(rendering_handler->rendering_cs);
+                            {
+                                pGLFinish();
+                            }
+                            system_critical_section_enter(rendering_handler->rendering_cs);
+                        } /* if (is_vsync_enabled) */
 
                         if (rendering_handler->policy == RENDERING_HANDLER_POLICY_RENDER_PER_REQUEST)
                         {
@@ -348,10 +536,10 @@ PRIVATE void _ogl_rendering_handler_thread_entrypoint(void* in_arg)
 
                             system_event_reset(rendering_handler->playback_in_progress_event);
                         }
-                    } /* if (rendering_handler->playback_status == RENDERING_HANDLER_PLAYBACK_STATUS_STARTED) */
-                }
-                system_critical_section_leave(rendering_handler->rendering_cs);
-            }
+                    }
+                    system_critical_section_leave(rendering_handler->rendering_cs);
+                } /* if (rendering_handler->playback_status == RENDERING_HANDLER_PLAYBACK_STATUS_STARTED) */
+            } /* if (event_set == 3) */
         }
 
         /* Set the 'playback waiting' event in case there's a stop/play() operation outstanding */
@@ -394,6 +582,26 @@ PRIVATE void _ogl_rendering_handler_release(void* in_arg)
     system_event_release(rendering_handler->unbind_context_request_event);
     system_event_release(rendering_handler->unbind_context_request_ack_event);
 
+    /* Unsubscribe from the window call-backs */
+    if (rendering_handler->context != NULL)
+    {
+        system_window window = NULL;
+
+        ogl_context_get_property(rendering_handler->context,
+                                 OGL_CONTEXT_PROPERTY_WINDOW,
+                                &window);
+
+        system_window_delete_callback_func(window,
+                                           SYSTEM_WINDOW_CALLBACK_FUNC_KEY_DOWN,
+                                           _ogl_rendering_handler_key_down_callback,
+                                           rendering_handler);
+
+        system_window_delete_callback_func(window,
+                                           SYSTEM_WINDOW_CALLBACK_FUNC_KEY_UP,
+                                           _ogl_rendering_handler_key_up_callback,
+                                           rendering_handler);
+    } /* if (rendering_handler->context != NULL) */
+
     /* Release rendering cs */
     system_critical_section_release(rendering_handler->rendering_cs);
 
@@ -435,30 +643,45 @@ PRIVATE ogl_rendering_handler ogl_rendering_handler_create_shared(system_hashed_
                                                        system_hashed_ansi_string_create_by_merging_two_strings("\\OpenGL Rendering Handlers\\",
                                                                                                                system_hashed_ansi_string_get_buffer(name)) );
 
-        new_handler->active_audio_stream              = NULL;
-        new_handler->bind_context_request_event       = system_event_create(false); /* manual_reset */
-        new_handler->bind_context_request_ack_event   = system_event_create(false); /* manual_reset */
-        new_handler->callback_request_ack_event       = system_event_create(false); /* manual_reset */
-        new_handler->callback_request_event           = system_event_create(false); /* manual_reset */
-        new_handler->callback_request_cs              = system_critical_section_create();
-        new_handler->callback_request_user_arg        = NULL;
-        new_handler->context                          = NULL;
-        new_handler->context_set_event                = system_event_create(true); /* manual_reset */
-        new_handler->fps                              = desired_fps;
-        new_handler->n_frames_rendered                = 0;
-        new_handler->playback_in_progress_event       = system_event_create(true); /* manual_reset */
-        new_handler->playback_start_time              = 0;
-        new_handler->playback_status                  = RENDERING_HANDLER_PLAYBACK_STATUS_STOPPED;
-        new_handler->playback_waiting_event           = system_event_create(false); /* manual_reset */
-        new_handler->pfn_callback_proc                = NULL;
-        new_handler->pfn_rendering_callback           = pfn_rendering_callback;
-        new_handler->policy                           = policy;
-        new_handler->rendering_callback_user_arg      = user_arg;
-        new_handler->rendering_cs                     = system_critical_section_create();
-        new_handler->shutdown_request_event           = system_event_create(true);  /* manual_reset */
-        new_handler->shutdown_request_ack_event       = system_event_create(true);  /* manual_reset */
-        new_handler->unbind_context_request_event     = system_event_create(false); /* manual_reset */
-        new_handler->unbind_context_request_ack_event = system_event_create(false); /* manual_reset */
+        new_handler->active_audio_stream                       = NULL;
+        new_handler->bind_context_request_event                = system_event_create(false); /* manual_reset */
+        new_handler->bind_context_request_ack_event            = system_event_create(false); /* manual_reset */
+        new_handler->callback_request_ack_event                = system_event_create(false); /* manual_reset */
+        new_handler->callback_request_event                    = system_event_create(false); /* manual_reset */
+        new_handler->callback_request_cs                       = system_critical_section_create();
+        new_handler->callback_request_user_arg                 = NULL;
+        new_handler->context                                   = NULL;
+        new_handler->context_set_event                         = system_event_create(true); /* manual_reset */
+        new_handler->fps                                       = desired_fps;
+        new_handler->is_left_arrow_key_pressed                 = false;
+        new_handler->is_right_arrow_key_pressed                = false;
+        new_handler->is_space_key_pressed                      = false;
+        new_handler->n_frames_rendered                         = 0;
+        new_handler->playback_in_progress_event                = system_event_create(true); /* manual_reset */
+        new_handler->playback_start_time                       = 0;
+        new_handler->playback_status                           = RENDERING_HANDLER_PLAYBACK_STATUS_STOPPED;
+        new_handler->playback_waiting_event                    = system_event_create(false); /* manual_reset */
+        new_handler->pfn_callback_proc                         = NULL;
+        new_handler->pfn_rendering_callback                    = pfn_rendering_callback;
+        new_handler->policy                                    = policy;
+        new_handler->rendering_callback_user_arg               = user_arg;
+        new_handler->rendering_cs                              = system_critical_section_create();
+        new_handler->runtime_time_adjustment_is_paused         = false;
+        new_handler->runtime_time_adjustment_paused_frame_time = 0;
+        new_handler->shutdown_request_event                    = system_event_create(true);  /* manual_reset */
+        new_handler->shutdown_request_ack_event                = system_event_create(true);  /* manual_reset */
+        new_handler->unbind_context_request_event              = system_event_create(false); /* manual_reset */
+        new_handler->unbind_context_request_ack_event          = system_event_create(false); /* manual_reset */
+
+        #ifdef _DEBUG
+        {
+            new_handler->runtime_time_adjustment_mode = true;
+        }
+        #else
+        {
+            new_handler->runtime_time_adjustment_mode = false;
+        }
+        #endif
 
         ASSERT_ALWAYS_SYNC(new_handler->bind_context_request_event != NULL,
                            "Could not create 'bind context request' event");
@@ -554,6 +777,13 @@ PUBLIC EMERALD_API void ogl_rendering_handler_get_property(ogl_rendering_handler
             break;
         }
 
+        case OGL_RENDERING_HANDLER_PROPERTY_RUNTIME_TIME_ADJUSTMENT_MODE:
+        {
+            *(bool*) out_result = rendering_handler_ptr->runtime_time_adjustment_mode;
+
+            break;
+        }
+
         default:
         {
             ASSERT_DEBUG_SYNC(false,
@@ -612,7 +842,7 @@ PUBLIC EMERALD_API bool ogl_rendering_handler_play(ogl_rendering_handler renderi
                                             &context_window);
 
                     ASSERT_DEBUG_SYNC(context_window != NULL,
-                                      "No window associated with the renering context!");
+                                      "No window associated with the rendering context!");
 
                     system_window_get_property(context_window,
                                                SYSTEM_WINDOW_PROPERTY_AUDIO_STREAM,
@@ -645,8 +875,9 @@ PUBLIC EMERALD_API bool ogl_rendering_handler_play(ogl_rendering_handler renderi
                     rendering_handler_ptr->active_audio_stream = (use_audio_playback) ? context_window_audio_stream
                                                                                       : NULL;
                     rendering_handler_ptr->n_frames_rendered   = 0;
-                    rendering_handler_ptr->playback_start_time = system_time_now() + start_time + audio_latency;
+                    rendering_handler_ptr->playback_start_time = system_time_now() - start_time - audio_latency;
 
+                    /* All done! */
                     system_event_set(rendering_handler_ptr->playback_in_progress_event);
                 }
                 else
@@ -745,6 +976,30 @@ PUBLIC EMERALD_API bool ogl_rendering_handler_request_callback_from_context_thre
 }
 
 /** Please see header for specification */
+PUBLIC EMERALD_API void ogl_rendering_handler_set_property(ogl_rendering_handler          rendering_handler,
+                                                           ogl_rendering_handler_property property,
+                                                           const void*                    value)
+{
+    _ogl_rendering_handler* rendering_handler_ptr = (_ogl_rendering_handler*) rendering_handler;
+
+    switch (property)
+    {
+        case OGL_RENDERING_HANDLER_PROPERTY_RUNTIME_TIME_ADJUSTMENT_MODE:
+        {
+            rendering_handler_ptr->runtime_time_adjustment_mode = *(bool*) value;
+
+            break;
+        }
+
+        default:
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Unrecognized ogl_rendering_handler_property value requested.");
+        }
+    } /* switch (property) */
+}
+
+/** Please see header for specification */
 PUBLIC EMERALD_API bool ogl_rendering_handler_stop(ogl_rendering_handler rendering_handler)
 {
     _ogl_rendering_handler* rendering_handler_ptr = (_ogl_rendering_handler*) rendering_handler;
@@ -795,12 +1050,39 @@ PUBLIC bool _ogl_rendering_handler_on_bound_to_context(ogl_rendering_handler ren
 
     if (rendering_handler_ptr->context == NULL)
     {
+        system_window context_window = NULL;
+
+        ogl_context_get_property(context,
+                                 OGL_CONTEXT_PROPERTY_WINDOW,
+                                &context_window);
+
+        ASSERT_DEBUG_SYNC(context_window != NULL,
+                          "No rendering window associated with the rendering context.");
+
         rendering_handler_ptr->context = context;
         result                         = true;
 
         ogl_context_retain(context);
         system_event_set  (rendering_handler_ptr->context_set_event);
-    }
+
+        /* Register for key press callbacks. These are essential for the "runtime time adjustment" mode
+         * to work correctly.
+         */
+        if (!system_window_add_callback_func(context_window,
+                                             SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_NORMAL,
+                                             SYSTEM_WINDOW_CALLBACK_FUNC_KEY_DOWN,
+                                             _ogl_rendering_handler_key_down_callback,
+                                             rendering_handler_ptr)                       ||
+            !system_window_add_callback_func(context_window,
+                                             SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_NORMAL,
+                                             SYSTEM_WINDOW_CALLBACK_FUNC_KEY_UP,
+                                             _ogl_rendering_handler_key_up_callback,
+                                             rendering_handler_ptr) )
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Could not subscribe for key press notifications");
+        }
+    } /* if (rendering_handler_ptr->context == NULL) */
 
     return result;
 }
