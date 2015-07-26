@@ -9,6 +9,7 @@
 #include "system/system_time.h"
 
 #ifdef __linux
+    #include <errno.h>
     #include <semaphore.h>
 #endif
 
@@ -105,6 +106,7 @@ EMERALD_API void system_semaphore_enter(system_semaphore semaphore,
         }
         else
         {
+            int             result;
             struct timespec timeout_api;
             unsigned int    timeout_msec = 0;
 
@@ -113,6 +115,25 @@ EMERALD_API void system_semaphore_enter(system_semaphore semaphore,
 
             timeout_api.tv_sec  = timeout_msec / 1000;
             timeout_api.tv_nsec = long(timeout_msec % 1000) * NSEC_PER_SEC;
+
+            result = sem_timedwait(&semaphore_ptr->semaphore,
+                                   &timeout_api);
+
+            if (result == -1        &&
+                errno  == ETIMEDOUT)
+            {
+                if (out_has_timed_out_ptr != NULL)
+                {
+                    *out_has_timed_out_ptr = true;
+                }
+            }
+            else
+            {
+                if (out_has_timed_out_ptr != NULL)
+                {
+                    *out_has_timed_out_ptr = false;
+                }
+            }
         }
 #endif
     }
