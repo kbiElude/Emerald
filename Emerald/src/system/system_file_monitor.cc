@@ -675,7 +675,7 @@ PRIVATE void _system_file_monitor_monitor_thread_entrypoint(void* unused)
         while (select_result = select(file_monitor_ptr->file_inotify + 1,
                                      &file_monitor_ptr->file_inotify_fdset, /* readfds   */
                                       NULL,                                 /* writefds  */
-                                     &file_monitor_ptr->file_inotify_fdset, /* readfds   */
+                                      NULL,                                 /* exceptfds */
                                      &timeout) )
         {
             int n_current_byte = 0;
