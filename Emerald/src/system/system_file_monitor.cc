@@ -87,6 +87,7 @@ typedef struct _system_file_monitor
 
     #ifdef __linux
         int              file_inotify;
+        fd_set           file_inotify_fdset;
         system_hash64map monitored_file_name_hash_to_callback_map;      /* maps file name hashes to _system_file_monitor_file_callback instances */
         system_hash64map monitored_watch_index_to_callback_map;         /* maps watch index values to _system_file_monitor_file_callback instances */
     #else
@@ -264,6 +265,9 @@ _system_file_monitor::_system_file_monitor()
 
         ASSERT_ALWAYS_SYNC(file_inotify >= 0,
                            "Could not initialize inotify file descriptor. Does your kernel provide inotify support?");
+
+        FD_ZERO(&file_inotify_fdset);
+        FD_SET ( file_inotify, &file_inotify_fdset);
     }
     #endif /* __linux */
 
@@ -657,14 +661,27 @@ PRIVATE void _system_file_monitor_monitor_thread_entrypoint(void* unused)
     }
     #else /* _WIN32 */
     {
-        char event_buffer[sizeof(inotify_event) + NAME_MAX + 1];
-        int  n_bytes_available;
+        char           event_buffer[sizeof(inotify_event) + NAME_MAX + 1];
+        int            n_bytes_available;
+        int            select_result;
+        struct timeval timeout;
 
-        while ( (n_bytes_available = read(file_monitor_ptr->file_inotify,
-                                          event_buffer,
-                                          sizeof(event_buffer) )) > 0)
+        /* Set up polling time */
+        timeout.tv_sec  = 1;
+        timeout.tv_usec = 0;
+
+        /* Run the loop */
+        while (select_result = select(file_monitor_ptr->file_inotify + 1,
+                                     &file_monitor_ptr->file_inotify_fdset, /* readfds   */
+                                      NULL,                                 /* writefds  */
+                                     &file_monitor_ptr->file_inotify_fdset, /* readfds   */
+                                     &timeout) )
         {
             int n_current_byte = 0;
+
+            n_bytes_available = read(file_monitor_ptr->file_inotify,
+                                          event_buffer,
+                                          sizeof(event_buffer) );
 
             while (n_current_byte < n_bytes_available)
             {

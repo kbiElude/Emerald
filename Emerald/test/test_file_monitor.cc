@@ -40,7 +40,7 @@ PRIVATE void _on_file_contents_changed(system_hashed_ansi_string file_name,
     system_event_set(*event_ptr);
 }
 
-
+#if 0
 TEST(FilesTest, NoCallbackFromFileMonitorForReadFilesTest)
 {
     system_event              callback_received_event = system_event_create(true); /* manual_reset */
@@ -89,6 +89,7 @@ TEST(FilesTest, NoCallbackFromFileMonitorForReadFilesTest)
 
     system_event_release(callback_received_event);
 }
+#endif
 
 TEST(FilesTest, SingleFileMonitorTest)
 {
