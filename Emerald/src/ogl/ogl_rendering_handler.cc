@@ -20,6 +20,10 @@
 #include "system/system_time.h"
 #include "system/system_window.h"
 
+#define REWIND_LARGE_DELTA_TIME_MSEC    (5000)
+#define REWIND_SMALL_DELTA_TIME_MSEC    (2500)
+#define REWIND_STEP_MIN_DELTA_TIME_MSEC (500)
+
 
 /** Internal type definitions */
 typedef struct
@@ -38,9 +42,12 @@ typedef struct
     ogl_text_string_id                    text_string_id;
     system_thread_id                      thread_id;
 
-    bool        is_left_arrow_key_pressed;
-    bool        is_right_arrow_key_pressed;
     bool        is_space_key_pressed;
+    system_time left_arrow_key_press_start_time;
+    system_time rewind_large_delta;
+    system_time rewind_small_delta;
+    system_time rewind_step_min_delta;
+    system_time right_arrow_key_press_start_time;
     bool        runtime_time_adjustment_is_paused;
     system_time runtime_time_adjustment_paused_frame_time;
 
@@ -94,17 +101,17 @@ PUBLIC bool _ogl_rendering_handler_key_down_callback(system_window window,
         {
             case VK_LEFT:
             {
-                if (rendering_handler_ptr->is_left_arrow_key_pressed)
+                if (rendering_handler_ptr->left_arrow_key_press_start_time != 0)
                 {
                     /* Left arrow key press notification: continuous mode */
-                    // ..
+
+                    // TODO: Move backward by REWIND_ITERATION_FRAME_LARGE_DELTA_TIME_MSEC
                 }
                 else
                 {
                     /* Left arrow key press notification: one-shot, potentially continuous. */
-                    // ..
+                    rendering_handler_ptr->left_arrow_key_press_start_time = system_time_now();
 
-                    rendering_handler_ptr->is_left_arrow_key_pressed = true;
                 }
 
                 break;
@@ -112,17 +119,16 @@ PUBLIC bool _ogl_rendering_handler_key_down_callback(system_window window,
 
             case VK_RIGHT:
             {
-                if (rendering_handler_ptr->is_right_arrow_key_pressed)
+                if (rendering_handler_ptr->right_arrow_key_press_start_time != 0)
                 {
                     /* Right arrow key press notification: continuous mode */
-                    // ..
+
+                    // TODO: Move forward by REWIND_ITERATION_FRAME_LARGE_DELTA_TIME_MSEC
                 }
                 else
                 {
                     /* Right arrow key press notification: one-shot, potentially continuous. */
-                    // ..
-
-                    rendering_handler_ptr->is_right_arrow_key_pressed = true;
+                    rendering_handler_ptr->right_arrow_key_press_start_time = system_time_now();
                 }
 
                 break;
@@ -180,6 +186,7 @@ PUBLIC bool _ogl_rendering_handler_key_up_callback(system_window window,
     /* Please see _ogl_rendering_handler_key_down_callback() documentation for more details */
     _ogl_rendering_handler* rendering_handler_ptr = (_ogl_rendering_handler*) user_arg;
     bool                    result                = rendering_handler_ptr->runtime_time_adjustment_mode;
+    const system_time       time_now              = system_time_now();
 
     /* The rendering handler is only interested in key press notifications, if the
      * runtime time adjustment mode is enabled. The mode lets the user adjust the
@@ -192,14 +199,32 @@ PUBLIC bool _ogl_rendering_handler_key_up_callback(system_window window,
         {
             case VK_LEFT:
             {
-                rendering_handler_ptr->is_left_arrow_key_pressed = false;
+                if ( (time_now - rendering_handler_ptr->left_arrow_key_press_start_time) >= rendering_handler_ptr->rewind_step_min_delta)
+                {
+                    // TODO: Move backward by REWIND_ITERATION_FRAME_LARGE_DELTA_TIME_MSEC
+                }
+                else
+                {
+                    // TODO: Move backward by REWIND_ITERATION_FRAME_SMALL_DELTA_TIME_MSEC
+                }
+
+                rendering_handler_ptr->left_arrow_key_press_start_time = 0;
 
                 break;
             }
 
             case VK_RIGHT:
             {
-                rendering_handler_ptr->is_right_arrow_key_pressed = false;
+                if ( (time_now - rendering_handler_ptr->right_arrow_key_press_start_time) >= rendering_handler_ptr->rewind_step_min_delta)
+                {
+                    // TODO: Move forward by REWIND_ITERATION_FRAME_LARGE_DELTA_TIME_MSEC
+                }
+                else
+                {
+                    // TODO: Move forward by REWIND_ITERATION_FRAME_SMALL_DELTA_TIME_MSEC
+                }
+
+                rendering_handler_ptr->right_arrow_key_press_start_time = 0;
 
                 break;
             }
@@ -653,9 +678,8 @@ PRIVATE ogl_rendering_handler ogl_rendering_handler_create_shared(system_hashed_
         new_handler->context                                   = NULL;
         new_handler->context_set_event                         = system_event_create(true); /* manual_reset */
         new_handler->fps                                       = desired_fps;
-        new_handler->is_left_arrow_key_pressed                 = false;
-        new_handler->is_right_arrow_key_pressed                = false;
         new_handler->is_space_key_pressed                      = false;
+        new_handler->left_arrow_key_press_start_time           = 0;
         new_handler->n_frames_rendered                         = 0;
         new_handler->playback_in_progress_event                = system_event_create(true); /* manual_reset */
         new_handler->playback_start_time                       = 0;
@@ -666,6 +690,10 @@ PRIVATE ogl_rendering_handler ogl_rendering_handler_create_shared(system_hashed_
         new_handler->policy                                    = policy;
         new_handler->rendering_callback_user_arg               = user_arg;
         new_handler->rendering_cs                              = system_critical_section_create();
+        new_handler->rewind_large_delta                        = system_time_get_time_for_msec(REWIND_LARGE_DELTA_TIME_MSEC);
+        new_handler->rewind_small_delta                        = system_time_get_time_for_msec(REWIND_SMALL_DELTA_TIME_MSEC);
+        new_handler->rewind_step_min_delta                     = system_time_get_time_for_msec(REWIND_STEP_MIN_DELTA_TIME_MSEC);
+        new_handler->right_arrow_key_press_start_time          = 0;
         new_handler->runtime_time_adjustment_is_paused         = false;
         new_handler->runtime_time_adjustment_paused_frame_time = 0;
         new_handler->shutdown_request_event                    = system_event_create(true);  /* manual_reset */
