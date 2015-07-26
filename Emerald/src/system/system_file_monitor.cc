@@ -130,7 +130,7 @@ PRIVATE bool _system_file_monitor_register_file_callback   (system_hashed_ansi_s
 #endif
 
 
-#ifdef __WIN32
+#ifdef _WIN32
     /** TODO */
     _system_file_monitor_directory_callback::_system_file_monitor_directory_callback(system_hashed_ansi_string in_directory,
                                                                                      system_event              in_wait_event)
@@ -189,7 +189,7 @@ PRIVATE bool _system_file_monitor_register_file_callback   (system_hashed_ansi_s
     }
 #endif /* _WIN32 */
 
-#ifdef __WIN32
+#ifdef _WIN32
     /** TODO */
     _system_file_monitor_file_callback::_system_file_monitor_file_callback(PFNFILECHANGEDETECTEDPROC in_callback,
                                                                            void*                     in_callback_user_arg,
@@ -205,7 +205,7 @@ PRIVATE bool _system_file_monitor_register_file_callback   (system_hashed_ansi_s
     ASSERT_DEBUG_SYNC(in_callback != NULL,
                       "Call-back function pointer is NULL");
 
-    #ifdef __WIN32
+    #ifdef _WIN32
     {
         ASSERT_DEBUG_SYNC(in_directory != NULL,
                           "Directory is NULL");
@@ -226,6 +226,7 @@ PRIVATE bool _system_file_monitor_register_file_callback   (system_hashed_ansi_s
     {
         directory = in_directory;
         filename  = in_filename;
+    }
     #else /* _WIN32 */
     {
         filename_with_path = in_filename_with_path;

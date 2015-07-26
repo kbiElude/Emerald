@@ -474,7 +474,13 @@ void _rendering_window_closing_callback_handler(system_window window)
     ogl_rendering_handler_stop(_rendering_handler);
 
 end:
-    system_window_close (_window);
+    if (_window != NULL)
+    {
+        system_window_close(_window);
+
+        _window = NULL;
+    }
+
     system_event_release(_window_closed_event);
 
     main_force_deinit();
