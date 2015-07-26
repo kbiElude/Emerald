@@ -12,6 +12,7 @@
 #include "system/system_callback_manager.h"
 #include "system/system_capabilities.h"
 #include "system/system_event_monitor.h"
+#include "system/system_file_monitor.h"
 #include "system/system_global.h"
 #include "system/system_hashed_ansi_string.h"
 #include "system/system_log.h"
@@ -124,6 +125,7 @@ void main_init()
 
     ogl_context_init_global();
     audio_device_init();
+    system_file_monitor_init();
 }
 
 /** Deinitializes all sub-modules. Called when DLL is about to be unloaded from process' space.
@@ -165,6 +167,7 @@ int main_deinit()
          *       (under Windows this can also be optionally enabled).
          */
         _system_thread_pool_deinit();
+        system_file_monitor_deinit();
 
         #ifdef USE_EMULATED_EVENTS
         {

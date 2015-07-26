@@ -23,7 +23,8 @@
 
 typedef struct _system_event
 {
-    #if defined(USE_RAW_HANDLES)
+    #if defined(_WIN32)
+        /* Holds change notification and regular event handles. */
         HANDLE event;
     #endif
 
@@ -78,6 +79,32 @@ PUBLIC EMERALD_API system_event system_event_create(bool manual_reset)
     return (system_event) event_ptr;
 }
 
+#ifdef _WIN32
+    /** Please see header for specification */
+    PUBLIC EMERALD_API system_event system_event_create_from_change_notification_handle(HANDLE handle)
+    {
+        _system_event* event_ptr = new (std::nothrow) _system_event(SYSTEM_EVENT_TYPE_CHANGE_NOTIFICATION_HANDLE);
+
+        ASSERT_ALWAYS_SYNC(event_ptr != NULL,
+                           "Out of memory");
+
+        #if defined(USE_RAW_HANDLES)
+        {
+            event_ptr->event        = handle;
+            event_ptr->manual_reset = false;
+        }
+        #else
+        {
+            event_ptr->event = handle;
+
+            system_event_monitor_add_event( (system_event) event_ptr);
+        }
+        #endif
+
+        return (system_event) event_ptr;
+    }
+#endif
+
 /** Please see header for specification */
 PUBLIC EMERALD_API system_event system_event_create_from_thread(system_thread thread)
 {
@@ -112,6 +139,21 @@ PUBLIC void system_event_get_property(system_event          event,
 
     switch (property)
     {
+        #if defined(_WIN32)
+            case SYSTEM_EVENT_PROPERTY_CHANGE_NOTIFICATION_HANDLE:
+            {
+                ASSERT_DEBUG_SYNC(event_ptr->type == SYSTEM_EVENT_TYPE_CHANGE_NOTIFICATION_HANDLE,
+                                  "SYSTEM_EVENT_PROPERTY_CHANGE_NOTIFICATION_HANDLE property queried for an event of an invalid type.");
+
+                if (event_ptr->type == SYSTEM_EVENT_TYPE_CHANGE_NOTIFICATION_HANDLE)
+                {
+                    *(HANDLE*) out_result = event_ptr->event;
+                }
+
+                break;
+            }
+        #endif
+
         case SYSTEM_EVENT_PROPERTY_MANUAL_RESET:
         {
             *(bool*) out_result = event_ptr->manual_reset;
@@ -151,10 +193,32 @@ PUBLIC EMERALD_API void system_event_release(system_event event)
     {
         if (event != NULL)
         {
-            HANDLE descriptor = ((_system_event*) event)->event;
+            _system_event* event_ptr = (_system_event*) event;
 
-            ::CloseHandle(descriptor);
-        }
+            switch (event_ptr->type)
+            {
+                case SYSTEM_EVENT_TYPE_CHANGE_NOTIFICATION_HANDLE:
+                {
+                    ::FindCloseChangeNotification(event_ptr->event);
+
+                    break;
+                }
+
+                case SYSTEM_EVENT_TYPE_REGULAR:
+                case SYSTEM_EVENT_TYPE_THREAD:
+                {
+                    ::CloseHandle(event_ptr->event);
+
+                    break;
+                }
+
+                default:
+                {
+                    ASSERT_DEBUG_SYNC(false,
+                                      "Unrecognized event type");
+                }
+            }
+        } /* if (event != NULL) */
     }
     #else
     {
@@ -388,6 +452,11 @@ PUBLIC EMERALD_API size_t system_event_wait_multiple(const system_event* events,
                                               internal_events,
                                               wait_on_all_objects ? TRUE : FALSE,
                                               timeout_winapi);
+
+            if (out_has_timed_out_ptr != NULL)
+            {
+                *out_has_timed_out_ptr = (result == WAIT_TIMEOUT);
+            }
         }
 
     end:
@@ -471,7 +540,6 @@ PUBLIC EMERALD_API size_t system_event_wait_multiple(const system_event* events,
             ASSERT_DEBUG_SYNC(n_elements < MAXIMUM_WAIT_OBJECTS,
                               "Too many events to wait on at once.");
 
-            bool         has_timed_out;
             system_event internal_events[MAXIMUM_WAIT_OBJECTS];
 
             memcpy(internal_events,

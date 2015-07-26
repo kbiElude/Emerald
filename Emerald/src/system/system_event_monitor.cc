@@ -37,6 +37,10 @@ typedef struct
 
 typedef struct
 {
+    #ifdef _WIN32
+        HANDLE change_notification_handle;
+    #endif
+
     bool              manual_reset;
     bool              regular_event_status;
     system_thread     thread_event_thread;
@@ -207,6 +211,17 @@ __forceinline bool _system_event_monitor_is_event_signalled(_system_event_monito
         result = event_ptr->regular_event_status;
     }
     else
+
+    #ifdef _WIN32
+        if (event_ptr->type == SYSTEM_EVENT_TYPE_CHANGE_NOTIFICATION_HANDLE)
+        {
+            /* This might seem odd, but we need event monitor to support Win32-specific handles, too. */
+            result = (::WaitForSingleObject(event_ptr->change_notification_handle,
+                                            0) == WAIT_OBJECT_0); /* dwMilliSeconds */
+        }
+        else
+    #endif
+
     {
         bool has_timed_out = false;
 
@@ -406,7 +421,11 @@ PRIVATE void _system_event_monitor_thread_entrypoint(system_threads_entry_point_
                             has_found_signalled_event = true;
                         }
                         else
-                        if (current_event_ptr->type == SYSTEM_EVENT_TYPE_THREAD)
+                        if (
+#ifdef _WIN32
+                            current_event_ptr->type == SYSTEM_EVENT_TYPE_CHANGE_NOTIFICATION_HANDLE ||
+#endif
+                            current_event_ptr->type == SYSTEM_EVENT_TYPE_THREAD)
                         {
                             has_found_signalled_event = true;
                         }
@@ -477,14 +496,21 @@ PUBLIC void system_event_monitor_add_event(system_event event)
                                   SYSTEM_EVENT_PROPERTY_TYPE,
                                  &internal_event_ptr->type);
 
-        if (internal_event_ptr->type == SYSTEM_EVENT_TYPE_REGULAR)
-        {
-            internal_event_ptr->regular_event_status = false; /* NOT signalled by default, as per system_event impl */
-        }
-        else
-        {
-            internal_event_ptr->regular_event_status = false; /* NOT signalled by default. */
+        internal_event_ptr->regular_event_status = false; /* NOT signalled by default, as per system_event impl */
 
+        #ifdef _WIN32
+        {
+            if (internal_event_ptr->type == SYSTEM_EVENT_TYPE_CHANGE_NOTIFICATION_HANDLE)
+            {
+                system_event_get_property(event,
+                                          SYSTEM_EVENT_PROPERTY_CHANGE_NOTIFICATION_HANDLE,
+                                         &internal_event_ptr->change_notification_handle);
+            }
+        }
+        #endif /* _WIN32 */
+
+        if (internal_event_ptr->type == SYSTEM_EVENT_TYPE_THREAD)
+        {
             system_event_get_property(event,
                                       SYSTEM_EVENT_PROPERTY_OWNED_THREAD,
                                      &internal_event_ptr->thread_event_thread);
