@@ -596,8 +596,10 @@ PUBLIC EMERALD_API bool system_file_serializer_read(system_file_serializer seria
         }
     }
 
-    ASSERT_DEBUG_SYNC(result,
-                      "Reading operation failed");
+    if (!result)
+    {
+        LOG_ERROR("Reading operation failed");
+    }
 
     return result;
 }

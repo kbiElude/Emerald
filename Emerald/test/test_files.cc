@@ -40,7 +40,6 @@ PRIVATE void _on_file_contents_changed(system_hashed_ansi_string file_name,
     system_event_set(*event_ptr);
 }
 
-#if 0
 TEST(FilesTest, NoCallbackFromFileMonitorForReadFilesTest)
 {
     system_event              callback_received_event = system_event_create(true); /* manual_reset */
@@ -89,7 +88,26 @@ TEST(FilesTest, NoCallbackFromFileMonitorForReadFilesTest)
 
     system_event_release(callback_received_event);
 }
-#endif
+
+/* Until recently, system_file_serializer used to lock up if you spawned a new instance
+ * for a non-existing file in an asynchronous mode, and then attempted to read something
+ * from it.
+ *
+ * This unit test verifies this bug no longer reproduces. */
+TEST(FilesTest, NoLockUpForAsyncSerializerInitializedForNonExistingFile)
+{
+    bool                   result     = true;
+    system_file_serializer serializer = system_file_serializer_create_for_reading(system_hashed_ansi_string_create("IAmNotHere"),
+                                                                                  true); /* async_read */
+    char                   temp;
+
+    result = system_file_serializer_read(serializer,
+                                         1, /* n_bytes */
+                                        &temp);
+    ASSERT_FALSE(result);
+
+    system_file_serializer_release(serializer);
+}
 
 TEST(FilesTest, SingleFileMonitorTest)
 {
