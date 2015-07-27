@@ -1163,14 +1163,17 @@ PUBLIC bool _ogl_rendering_handler_on_bound_to_context(ogl_rendering_handler ren
 
         /* Register for key press callbacks. These are essential for the "runtime time adjustment" mode
          * to work correctly.
+         *
+         * NOTE: The low priority is there for purpose. We definitely do not want to interfere with
+         *       other interceptors that might be out there (ogl_flyby, for the off-the-cuff example!)
          */
         if (!system_window_add_callback_func(context_window,
-                                             SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_NORMAL,
+                                             SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_LOW,
                                              SYSTEM_WINDOW_CALLBACK_FUNC_KEY_DOWN,
                                              _ogl_rendering_handler_key_down_callback,
                                              rendering_handler_ptr)                       ||
             !system_window_add_callback_func(context_window,
-                                             SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_NORMAL,
+                                             SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_LOW,
                                              SYSTEM_WINDOW_CALLBACK_FUNC_KEY_UP,
                                              _ogl_rendering_handler_key_up_callback,
                                              rendering_handler_ptr) )
