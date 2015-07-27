@@ -20,8 +20,7 @@
 #include "system/system_time.h"
 #include "system/system_window.h"
 
-#define REWIND_LARGE_DELTA_TIME_MSEC    (5000)
-#define REWIND_SMALL_DELTA_TIME_MSEC    (2500)
+#define REWIND_DELTA_TIME_MSEC          (1500)
 #define REWIND_STEP_MIN_DELTA_TIME_MSEC (500)
 
 
@@ -38,14 +37,14 @@ typedef struct
     system_time                           playback_start_time;
     ogl_rendering_handler_playback_status playback_status;
     ogl_rendering_handler_policy          policy;
+    system_time                           runtime_time_adjustment;
     bool                                  runtime_time_adjustment_mode;
     ogl_text_string_id                    text_string_id;
     system_thread_id                      thread_id;
 
     bool        is_space_key_pressed;
     system_time left_arrow_key_press_start_time;
-    system_time rewind_large_delta;
-    system_time rewind_small_delta;
+    system_time rewind_delta;
     system_time rewind_step_min_delta;
     system_time right_arrow_key_press_start_time;
     bool        runtime_time_adjustment_is_paused;
@@ -89,6 +88,7 @@ PUBLIC bool _ogl_rendering_handler_key_down_callback(system_window window,
 {
     _ogl_rendering_handler* rendering_handler_ptr = (_ogl_rendering_handler*) user_arg;
     bool                    result                = rendering_handler_ptr->runtime_time_adjustment_mode;
+    const system_time       time_now              = system_time_now();
 
     /* The rendering handler is only interested in key press notifications, if the
      * runtime time adjustment mode is enabled. The mode lets the user adjust the
@@ -104,9 +104,20 @@ PUBLIC bool _ogl_rendering_handler_key_down_callback(system_window window,
                 if (rendering_handler_ptr->left_arrow_key_press_start_time != 0)
                 {
                     /* Left arrow key press notification: continuous mode */
+                    system_critical_section_enter(rendering_handler_ptr->rendering_cs);
+                    {
+                        const system_time min_adjustment = -(time_now - rendering_handler_ptr->playback_start_time);
 
-                    // TODO: Move backward by REWIND_ITERATION_FRAME_LARGE_DELTA_TIME_MSEC
-                }
+                        rendering_handler_ptr->runtime_time_adjustment -= rendering_handler_ptr->rewind_delta;
+
+                        /* Prevent against asking the user to render frames for negative frame indices! */
+                        if (rendering_handler_ptr->runtime_time_adjustment < min_adjustment)
+                        {
+                            rendering_handler_ptr->runtime_time_adjustment = min_adjustment;
+                        }
+                    }
+                    system_critical_section_leave(rendering_handler_ptr->rendering_cs);
+                } /* if (rendering_handler_ptr->left_arrow_key_press_start_time != 0) */
                 else
                 {
                     /* Left arrow key press notification: one-shot, potentially continuous. */
@@ -122,9 +133,12 @@ PUBLIC bool _ogl_rendering_handler_key_down_callback(system_window window,
                 if (rendering_handler_ptr->right_arrow_key_press_start_time != 0)
                 {
                     /* Right arrow key press notification: continuous mode */
-
-                    // TODO: Move forward by REWIND_ITERATION_FRAME_LARGE_DELTA_TIME_MSEC
-                }
+                    system_critical_section_enter(rendering_handler_ptr->rendering_cs);
+                    {
+                        rendering_handler_ptr->runtime_time_adjustment += rendering_handler_ptr->rewind_delta;
+                    }
+                    system_critical_section_leave(rendering_handler_ptr->rendering_cs);
+                } /* if (rendering_handler_ptr->right_arrow_key_press_start_time != 0) */
                 else
                 {
                     /* Right arrow key press notification: one-shot, potentially continuous. */
@@ -199,14 +213,19 @@ PUBLIC bool _ogl_rendering_handler_key_up_callback(system_window window,
         {
             case VK_LEFT:
             {
-                if ( (time_now - rendering_handler_ptr->left_arrow_key_press_start_time) >= rendering_handler_ptr->rewind_step_min_delta)
+                system_critical_section_enter(rendering_handler_ptr->rendering_cs);
                 {
-                    // TODO: Move backward by REWIND_ITERATION_FRAME_LARGE_DELTA_TIME_MSEC
+                    const system_time min_adjustment = -(time_now - rendering_handler_ptr->playback_start_time);
+
+                    rendering_handler_ptr->runtime_time_adjustment -= rendering_handler_ptr->rewind_delta;
+
+                    /* Prevent against asking the user to render frames for negative frame indices! */
+                    if (rendering_handler_ptr->runtime_time_adjustment < min_adjustment)
+                    {
+                        rendering_handler_ptr->runtime_time_adjustment = min_adjustment;
+                    }
                 }
-                else
-                {
-                    // TODO: Move backward by REWIND_ITERATION_FRAME_SMALL_DELTA_TIME_MSEC
-                }
+                system_critical_section_leave(rendering_handler_ptr->rendering_cs);
 
                 rendering_handler_ptr->left_arrow_key_press_start_time = 0;
 
@@ -215,14 +234,11 @@ PUBLIC bool _ogl_rendering_handler_key_up_callback(system_window window,
 
             case VK_RIGHT:
             {
-                if ( (time_now - rendering_handler_ptr->right_arrow_key_press_start_time) >= rendering_handler_ptr->rewind_step_min_delta)
+                system_critical_section_enter(rendering_handler_ptr->rendering_cs);
                 {
-                    // TODO: Move forward by REWIND_ITERATION_FRAME_LARGE_DELTA_TIME_MSEC
+                    rendering_handler_ptr->runtime_time_adjustment += rendering_handler_ptr->rewind_delta;
                 }
-                else
-                {
-                    // TODO: Move forward by REWIND_ITERATION_FRAME_SMALL_DELTA_TIME_MSEC
-                }
+                system_critical_section_leave(rendering_handler_ptr->rendering_cs);
 
                 rendering_handler_ptr->right_arrow_key_press_start_time = 0;
 
@@ -439,25 +455,28 @@ PRIVATE void _ogl_rendering_handler_thread_entrypoint(void* in_arg)
                             case RENDERING_HANDLER_POLICY_MAX_PERFORMANCE:
                             {
                                 frame_index    = (rendering_handler->n_frames_rendered++);
-                                new_frame_time = curr_time - rendering_handler->playback_start_time;
+                                new_frame_time = curr_time                                  +
+                                                 rendering_handler->runtime_time_adjustment -
+                                                 rendering_handler->playback_start_time;
 
                                 break;
                             }
 
                             case RENDERING_HANDLER_POLICY_FPS:
                             {
-                                system_time frame_time = (curr_time - rendering_handler->playback_start_time);
+                                system_time frame_time = (curr_time                                  +
+                                                          rendering_handler->runtime_time_adjustment -
+                                                          rendering_handler->playback_start_time);
                                 int32_t     frame_time_msec;
                                 int32_t     new_frame_time_msec;
 
                                 system_time_get_msec_for_time(frame_time,
                                                               (uint32_t*) &frame_time_msec);
 
-                                frame_index         = frame_time_msec * rendering_handler->fps / 1000 /* ms in s */;
+                                frame_index = frame_time_msec * rendering_handler->fps / 1000 /* ms in s */;
+
                                 new_frame_time_msec = frame_index     * 1000 /* ms in s */     / rendering_handler->fps;
                                 new_frame_time      = system_time_get_time_for_msec(new_frame_time_msec);
-
-                                LOG_INFO("Frame index [%d]", frame_index);
 
                                 rendering_handler->n_frames_rendered++;
 
@@ -690,10 +709,10 @@ PRIVATE ogl_rendering_handler ogl_rendering_handler_create_shared(system_hashed_
         new_handler->policy                                    = policy;
         new_handler->rendering_callback_user_arg               = user_arg;
         new_handler->rendering_cs                              = system_critical_section_create();
-        new_handler->rewind_large_delta                        = system_time_get_time_for_msec(REWIND_LARGE_DELTA_TIME_MSEC);
-        new_handler->rewind_small_delta                        = system_time_get_time_for_msec(REWIND_SMALL_DELTA_TIME_MSEC);
+        new_handler->rewind_delta                              = system_time_get_time_for_msec(REWIND_DELTA_TIME_MSEC);
         new_handler->rewind_step_min_delta                     = system_time_get_time_for_msec(REWIND_STEP_MIN_DELTA_TIME_MSEC);
         new_handler->right_arrow_key_press_start_time          = 0;
+        new_handler->runtime_time_adjustment                   = 0;
         new_handler->runtime_time_adjustment_is_paused         = false;
         new_handler->runtime_time_adjustment_paused_frame_time = 0;
         new_handler->shutdown_request_event                    = system_event_create(true);  /* manual_reset */
