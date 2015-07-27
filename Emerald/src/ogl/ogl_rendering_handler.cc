@@ -164,6 +164,8 @@ PUBLIC bool _ogl_rendering_handler_key_down_callback(system_window window,
                      * paused or not. */
                     if (rendering_handler_ptr->runtime_time_adjustment_is_paused)
                     {
+                        rendering_handler_ptr->runtime_time_adjustment = 0;
+
                         ogl_rendering_handler_play( (ogl_rendering_handler) rendering_handler_ptr,
                                                    rendering_handler_ptr->runtime_time_adjustment_paused_frame_time);
 
