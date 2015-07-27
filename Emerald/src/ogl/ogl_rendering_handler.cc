@@ -99,7 +99,7 @@ PUBLIC bool _ogl_rendering_handler_key_down_callback(system_window window,
     {
         switch (keycode)
         {
-            case VK_LEFT:
+            case SYSTEM_WINDOW_KEY_LEFT:
             {
                 if (rendering_handler_ptr->left_arrow_key_press_start_time != 0)
                 {
@@ -127,7 +127,7 @@ PUBLIC bool _ogl_rendering_handler_key_down_callback(system_window window,
                 break;
             }
 
-            case VK_RIGHT:
+            case SYSTEM_WINDOW_KEY_RIGHT:
             {
                 if (rendering_handler_ptr->right_arrow_key_press_start_time != 0)
                 {
@@ -147,7 +147,7 @@ PUBLIC bool _ogl_rendering_handler_key_down_callback(system_window window,
                 break;
             }
 
-            case VK_SPACE:
+            case SYSTEM_WINDOW_KEY_SPACE:
             {
                 if (rendering_handler_ptr->is_space_key_pressed)
                 {
@@ -212,7 +212,7 @@ PUBLIC bool _ogl_rendering_handler_key_up_callback(system_window window,
     {
         switch (keycode)
         {
-            case VK_LEFT:
+            case SYSTEM_WINDOW_KEY_LEFT:
             {
                 system_critical_section_enter(rendering_handler_ptr->rendering_cs);
                 {
@@ -233,7 +233,7 @@ PUBLIC bool _ogl_rendering_handler_key_up_callback(system_window window,
                 break;
             }
 
-            case VK_RIGHT:
+            case SYSTEM_WINDOW_KEY_RIGHT:
             {
                 system_critical_section_enter(rendering_handler_ptr->rendering_cs);
                 {
@@ -246,7 +246,7 @@ PUBLIC bool _ogl_rendering_handler_key_up_callback(system_window window,
                 break;
             }
 
-            case VK_SPACE:
+            case SYSTEM_WINDOW_KEY_SPACE:
             {
                 rendering_handler_ptr->is_space_key_pressed = false;
 
