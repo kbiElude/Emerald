@@ -143,6 +143,17 @@ DECLARE_HANDLE(system_window);
 /******************** TIME REPRESENTATION *********************************/
 typedef int32_t system_time;
 
+/* Key symbol definitions */
+#ifdef _WIN32
+    #define SYSTEM_WINDOW_KEY_LEFT  VK_LEFT
+    #define SYSTEM_WINDOW_KEY_RIGHT VK_RIGHT
+    #define SYSTEM_WINDOW_KEY_SPACE VK_SPACE
+#else
+    #define SYSTEM_WINDOW_KEY_LEFT  XK_Left
+    #define SYSTEM_WINDOW_KEY_RIGHT XK_Right
+    #define SYSTEM_WINDOW_KEY_SPACE XK_space
+#endif
+
 /** TODO */
 typedef enum
 {

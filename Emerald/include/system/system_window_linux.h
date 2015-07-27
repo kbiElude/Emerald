@@ -16,24 +16,6 @@
 
 
 /** TODO */
-typedef enum
-{
-    /* TODO: Expand when needed ! */
-
-#ifdef _WIN32
-    SYSTEM_WINDOW_KEY_LEFT  = VK_LEFT,
-    SYSTEM_WINDOW_KEY_RIGHT = VK_RIGHT,
-    SYSTEM_WINDOW_KEY_SPACE = VK_SPACE,
-#else
-    SYSTEM_WINDOW_KEY_LEFT  = XK_Left,
-    SYSTEM_WINDOW_KEY_RIGHT = XK_Right,
-    SYSTEM_WINDOW_KEY_SPACE = XK_space,
-#endif
-
-} system_window_key;
-
-
-/** TODO */
 PUBLIC void system_window_linux_close_window(system_window_linux window);
 
 /** TODO */
