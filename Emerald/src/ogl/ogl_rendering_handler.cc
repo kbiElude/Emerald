@@ -82,9 +82,9 @@ REFCOUNT_INSERT_IMPLEMENTATION(ogl_rendering_handler,
 /** Internal variables */
 
 /** TODO */
-PUBLIC bool _ogl_rendering_handler_key_down_callback(system_window window,
-                                                     unsigned char keycode,
-                                                     void*         user_arg)
+PRIVATE bool _ogl_rendering_handler_key_down_callback(system_window window,
+                                                      unsigned int  keycode,
+                                                      void*         user_arg)
 {
     _ogl_rendering_handler* rendering_handler_ptr = (_ogl_rendering_handler*) user_arg;
     bool                    result                = rendering_handler_ptr->runtime_time_adjustment_mode;
@@ -194,9 +194,9 @@ PUBLIC bool _ogl_rendering_handler_key_down_callback(system_window window,
 }
 
 /** TODO */
-PUBLIC bool _ogl_rendering_handler_key_up_callback(system_window window,
-                                                   unsigned char keycode,
-                                                   void*         user_arg)
+PRIVATE bool _ogl_rendering_handler_key_up_callback(system_window window,
+                                                    unsigned int  keycode,
+                                                    void*         user_arg)
 {
     /* Please see _ogl_rendering_handler_key_down_callback() documentation for more details */
     _ogl_rendering_handler* rendering_handler_ptr = (_ogl_rendering_handler*) user_arg;
@@ -707,12 +707,12 @@ PRIVATE void _ogl_rendering_handler_release(void* in_arg)
 
         system_window_delete_callback_func(window,
                                            SYSTEM_WINDOW_CALLBACK_FUNC_KEY_DOWN,
-                                           _ogl_rendering_handler_key_down_callback,
+                                           (void*) &_ogl_rendering_handler_key_down_callback,
                                            rendering_handler);
 
         system_window_delete_callback_func(window,
                                            SYSTEM_WINDOW_CALLBACK_FUNC_KEY_UP,
-                                           _ogl_rendering_handler_key_up_callback,
+                                           (void*) &_ogl_rendering_handler_key_up_callback,
                                            rendering_handler);
     } /* if (rendering_handler->context != NULL) */
 
@@ -1191,12 +1191,12 @@ PUBLIC bool _ogl_rendering_handler_on_bound_to_context(ogl_rendering_handler ren
         if (!system_window_add_callback_func(context_window,
                                              SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_LOW,
                                              SYSTEM_WINDOW_CALLBACK_FUNC_KEY_DOWN,
-                                             _ogl_rendering_handler_key_down_callback,
+                                             (void*) _ogl_rendering_handler_key_down_callback,
                                              rendering_handler_ptr)                       ||
             !system_window_add_callback_func(context_window,
                                              SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_LOW,
                                              SYSTEM_WINDOW_CALLBACK_FUNC_KEY_UP,
-                                             _ogl_rendering_handler_key_up_callback,
+                                             (void*) _ogl_rendering_handler_key_up_callback,
                                              rendering_handler_ptr) )
         {
             ASSERT_DEBUG_SYNC(false,

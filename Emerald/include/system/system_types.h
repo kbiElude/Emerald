@@ -146,23 +146,6 @@ typedef int32_t system_time;
 /** TODO */
 typedef enum
 {
-    /* TODO: Expand when needed ! */
-
-#ifdef _WIN32
-    SYSTEM_WINDOW_KEY_LEFT  = VK_LEFT,
-    SYSTEM_WINDOW_KEY_RIGHT = VK_RIGHT,
-    SYSTEM_WINDOW_KEY_SPACE = VK_SPACE,
-#else
-    SYSTEM_WINDOW_KEY_LEFT  = XK_Left,
-    SYSTEM_WINDOW_KEY_RIGHT = XK_Right,
-    SYSTEM_WINDOW_KEY_SPACE = XK_space,
-#endif
-
-} system_window_key;
-
-/** TODO */
-typedef enum
-{
     SYSTEM_WINDOW_MOUSE_CURSOR_MOVE,
     SYSTEM_WINDOW_MOUSE_CURSOR_ARROW,
     SYSTEM_WINDOW_MOUSE_CURSOR_HORIZONTAL_RESIZE,
@@ -263,12 +246,12 @@ typedef bool (*PFNWINDOWEXITSIZEMOVECALLBACKPROC)(system_window window);
  *  If needs be, only post window messages. Never send messages to the window, as this
  *  will result in a lock-up.
  *
- *  arg1: ascii key code. (unsigned char)
+ *  arg1: ascii key code or SYSTEM_WINDOW_KEY_*
  *  arg2: not used.
  *
  */
 typedef bool (*PFNWINDOWKEYDOWNCALLBACKPROC)(system_window window,
-                                             unsigned char keycode,
+                                             unsigned int  keycode,
                                              void*         user_arg);
 
 /** TODO.
@@ -277,12 +260,12 @@ typedef bool (*PFNWINDOWKEYDOWNCALLBACKPROC)(system_window window,
  *  If needs be, only post window messages. Never send messages to the window, as this
  *  will result in a lock-up.
  *
- *  arg1: ascii key code. (unsigned char)
+ *  arg1: ascii key code or SYSTEM_WINDOW_KEY_*
  *  arg2: not used.
  *
  */
 typedef bool (*PFNWINDOWKEYUPCALLBACKPROC)(system_window window,
-                                           unsigned char keycode,
+                                           unsigned int  keycode,
                                            void*         user_arg);
 
 /** TODO.
