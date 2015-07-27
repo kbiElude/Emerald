@@ -403,6 +403,8 @@ PRIVATE void _ogl_rendering_handler_thread_entrypoint(void* in_arg)
                                          &text_scale);
 
         /* On with the loop */
+        unsigned int last_frame_index = 0;
+
         while (should_live)
         {
             size_t event_set = 0;
@@ -482,6 +484,7 @@ PRIVATE void _ogl_rendering_handler_thread_entrypoint(void* in_arg)
 
                             case RENDERING_HANDLER_POLICY_FPS:
                             {
+                                /* Calculate new frame's index */
                                 system_time frame_time = (curr_time                                  +
                                                           rendering_handler->runtime_time_adjustment -
                                                           rendering_handler->playback_start_time);
@@ -491,10 +494,28 @@ PRIVATE void _ogl_rendering_handler_thread_entrypoint(void* in_arg)
                                 system_time_get_msec_for_time(frame_time,
                                                               (uint32_t*) &frame_time_msec);
 
-                                frame_index         = frame_time_msec * rendering_handler->fps / 1000 /* ms in s */;
+                                frame_index = frame_time_msec * rendering_handler->fps / 1000 /* ms in s */;
+
+                                /* Now, this part is tricky. Occasionally, we may run into a situation where the newly
+                                 * calculated frame index is exactly the same as was used for the previous frame.
+                                 * This is unintended and causes irritating stuttering effect.
+                                 *
+                                 * To work around this, ensure we always move forward. This is not going to address the
+                                 * problem, if the animation is ever played in reverse - you'll need to come up with
+                                 * something more fancy, if you ever need to change the playback direction.
+                                 */
+                                if (frame_index == last_frame_index)
+                                {
+                                    frame_index++;
+                                }
+
+                                last_frame_index = frame_index;
+
+                                /* Convert the frame index to global frame time. */
                                 new_frame_time_msec = frame_index     * 1000 /* ms in s */     / rendering_handler->fps;
                                 new_frame_time      = system_time_get_time_for_msec(new_frame_time_msec);
 
+                                /* Count the frame and move on. */
                                 rendering_handler->n_frames_rendered++;
 
                                 break;
