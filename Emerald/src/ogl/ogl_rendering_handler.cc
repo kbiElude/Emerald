@@ -122,7 +122,6 @@ PUBLIC bool _ogl_rendering_handler_key_down_callback(system_window window,
                 {
                     /* Left arrow key press notification: one-shot, potentially continuous. */
                     rendering_handler_ptr->left_arrow_key_press_start_time = system_time_now();
-
                 }
 
                 break;
@@ -379,13 +378,29 @@ PRIVATE void _ogl_rendering_handler_thread_entrypoint(void* in_arg)
         ogl_context_bind_to_current_thread(rendering_handler->context);
 
         /* Create a new text string which we will use to show performance info */
-        ogl_text text_renderer = NULL;
+        const float text_color[4]          = {1.0f, 1.0f, 1.0f, 1.0f};
+        ogl_text    text_renderer          = NULL;
+        const float text_scale             = 0.75f;
+        const int   text_string_position[] = {0, window_size[1]};
 
         ogl_context_get_property(rendering_handler->context,
                                  OGL_CONTEXT_PROPERTY_TEXT_RENDERER,
                                 &text_renderer);
 
         rendering_handler->text_string_id = ogl_text_add_string(text_renderer);
+
+        ogl_text_set_text_string_property(text_renderer,
+                                          rendering_handler->text_string_id,
+                                          OGL_TEXT_STRING_PROPERTY_COLOR,
+                                          text_color);
+        ogl_text_set_text_string_property(text_renderer,
+                                          rendering_handler->text_string_id,
+                                          OGL_TEXT_STRING_PROPERTY_POSITION_PX,
+                                          text_string_position);
+        ogl_text_set_text_string_property(text_renderer,
+                                          rendering_handler->text_string_id,
+                                          OGL_TEXT_STRING_PROPERTY_SCALE,
+                                         &text_scale);
 
         /* On with the loop */
         while (should_live)
@@ -452,6 +467,7 @@ PRIVATE void _ogl_rendering_handler_thread_entrypoint(void* in_arg)
 
                     system_critical_section_enter(rendering_handler->rendering_cs);
                     {
+                        /* Determine current frame index & time */
                         switch (rendering_handler->policy)
                         {
                             case RENDERING_HANDLER_POLICY_MAX_PERFORMANCE:
@@ -475,8 +491,7 @@ PRIVATE void _ogl_rendering_handler_thread_entrypoint(void* in_arg)
                                 system_time_get_msec_for_time(frame_time,
                                                               (uint32_t*) &frame_time_msec);
 
-                                frame_index = frame_time_msec * rendering_handler->fps / 1000 /* ms in s */;
-
+                                frame_index         = frame_time_msec * rendering_handler->fps / 1000 /* ms in s */;
                                 new_frame_time_msec = frame_index     * 1000 /* ms in s */     / rendering_handler->fps;
                                 new_frame_time      = system_time_get_time_for_msec(new_frame_time_msec);
 
@@ -501,6 +516,38 @@ PRIVATE void _ogl_rendering_handler_thread_entrypoint(void* in_arg)
                                           rendering_handler->policy);
                             }
                         } /* switch (rendering_handler->policy) */
+
+                        /* Update the frame indicator, if the runtime time adjustment mode is on */
+                        if (rendering_handler->runtime_time_adjustment_mode)
+                        {
+                            uint32_t frame_time_hour;
+                            uint8_t  frame_time_minute;
+                            uint8_t  frame_time_second;
+                            uint32_t frame_time_msec;
+                            char     temp_buffer[256];
+
+                            system_time_get_hms_for_time (new_frame_time,
+                                                         &frame_time_hour,
+                                                         &frame_time_minute,
+                                                         &frame_time_second);
+                            system_time_get_msec_for_time(new_frame_time,
+                                                         &frame_time_msec);
+
+                            frame_time_msec %= 1000; /* cap the milliseconds at 999 */
+
+                            snprintf(temp_buffer,
+                                     sizeof(temp_buffer),
+                                     "[%02d:%02d:%02d.%03d frame:%d]",
+                                     (int) frame_time_hour,
+                                     (int) frame_time_minute,
+                                     (int) frame_time_second,
+                                     (int) frame_time_msec,
+                                     frame_index);
+
+                            ogl_text_set(text_renderer,
+                                         rendering_handler->text_string_id,
+                                         temp_buffer);
+                        }
 
                         /* Bind the context's default FBO and call the user app's call-back */
                         if (!default_fbo_id_set)
