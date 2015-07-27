@@ -92,6 +92,11 @@ PUBLIC EMERALD_API void system_time_get_hms_for_time(system_time time,
 
 /** Retrieves system_time for the time of call.
  *
+ *  NOTE: For rendering purposes, ALWAYS use the time reported by the rendering handler
+ *        via the call-back to the rendering handler entry-point provided by the user.
+ *        You WILL get awful desynchronization if you ignore this rule, should the user
+ *        ever make use of the time adjustment mode.
+ *
  *  @return Time at the moment of call */
 PUBLIC EMERALD_API system_time system_time_now();
 

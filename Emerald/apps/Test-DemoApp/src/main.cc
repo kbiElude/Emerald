@@ -46,6 +46,8 @@ void _rendering_handler_entrypoint(ogl_context context,
     const ogl_context_gl_entrypoints* entry_points   = NULL;
     static bool                       ui_initialized = false;
 
+    state_set_current_frame_time(frame_time);
+
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
                             &entry_points);
@@ -236,7 +238,7 @@ void _rendering_window_closing_callback_handler(system_window window)
                                                   window_x1y1x2y2,
                                                   system_hashed_ansi_string_create("Test window"),
                                                   false, /* scalable */
-                                                  false, /* vsync_enabled */
+                                                  true,  /* vsync_enabled */
                                                   true,  /* visible */
                                                   window_pf);
 #endif

@@ -1460,7 +1460,7 @@ PUBLIC void system_window_execute_callback_funcs(system_window               win
                         case SYSTEM_WINDOW_CALLBACK_FUNC_KEY_DOWN:
                         {
                             result = ((PFNWINDOWKEYDOWNCALLBACKPROC) callback_ptr->pfn_callback)(window,
-                                                                                                 (( (intptr_t) arg1) & 0xFF),
+                                                                                                 (intptr_t) arg1,
                                                                                                  callback_ptr->user_arg);
 
                             break;
@@ -1469,7 +1469,7 @@ PUBLIC void system_window_execute_callback_funcs(system_window               win
                         case SYSTEM_WINDOW_CALLBACK_FUNC_KEY_UP:
                         {
                             result = ((PFNWINDOWKEYUPCALLBACKPROC) callback_ptr->pfn_callback)(window,
-                                                                                               (( (intptr_t) arg1) & 0xFF),
+                                                                                               (intptr_t) arg1,
                                                                                                callback_ptr->user_arg);
 
                             break;
@@ -1749,6 +1749,13 @@ PUBLIC EMERALD_API void system_window_get_property(system_window          window
         case SYSTEM_WINDOW_PROPERTY_IS_VISIBLE:
         {
             *(bool*) out_result = window_ptr->visible;
+
+            break;
+        }
+
+        case SYSTEM_WINDOW_PROPERTY_IS_VSYNC_ENABLED:
+        {
+            *(bool*) out_result = window_ptr->vsync_enabled;
 
             break;
         }

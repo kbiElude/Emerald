@@ -20,9 +20,6 @@
 #include "system/system_threads.h"
 #include "system/system_window_linux.h"
 #include <unistd.h>
-#include <X11/cursorfont.h>
-#include <X11/Xlib.h>
-#include <X11/Xutil.h>
 
 
 typedef struct _system_window_linux
@@ -460,7 +457,7 @@ PRIVATE void _system_window_linux_handle_event(const XEvent* event_ptr)
             system_window_execute_callback_funcs(linux_ptr->window,
                                                  (event_ptr->type == KeyPress) ? SYSTEM_WINDOW_CALLBACK_FUNC_KEY_DOWN
                                                                                : SYSTEM_WINDOW_CALLBACK_FUNC_KEY_UP,
-                                                 (void*) (intptr_t) (key_symbol & 0xFF) );
+                                                 (void*) (intptr_t) (key_symbol) );
 
             break;
         }
@@ -836,10 +833,11 @@ PUBLIC bool system_window_linux_open_window(system_window_linux window,
         goto end;
     }
 
-    /* Configure the keyboard auto-repeat mode. We want it disabled, so that the key events arrives
-     * just like under Windows.
+    /* Configure the keyboard auto-repeat mode. We want it enabled for the majority of keys,
+     * so that the key events arrives just like under Windows. This is important for the
+     * ogl_rendering_handler's "run-time time adjustment" mode.
      */
-    keyboard_control.auto_repeat_mode = AutoRepeatModeOff;
+    keyboard_control.auto_repeat_mode = AutoRepeatModeOn;
 
     XChangeKeyboardControl(linux_ptr->display,
                            KBAutoRepeatMode,

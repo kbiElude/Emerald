@@ -10,6 +10,11 @@
 #include "system/system_types.h"
 #include "system/system_window.h"
 
+#include <X11/cursorfont.h>
+#include <X11/Xlib.h>
+#include <X11/Xutil.h>
+
+
 /** TODO */
 PUBLIC void system_window_linux_close_window(system_window_linux window);
 

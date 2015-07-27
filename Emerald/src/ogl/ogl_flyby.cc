@@ -97,9 +97,9 @@ REFCOUNT_INSERT_IMPLEMENTATION(ogl_flyby,
 
 
 /** TODO */
-PRIVATE bool _ogl_flyby_key_down_callback(system_window  window,
-                                          unsigned short key_char,
-                                          void*          arg)
+PRIVATE bool _ogl_flyby_key_down_callback(system_window window,
+                                          unsigned int  key_char,
+                                          void*         arg)
 {
     _ogl_flyby* descriptor = (_ogl_flyby*) arg;
 
@@ -151,9 +151,9 @@ PRIVATE bool _ogl_flyby_key_down_callback(system_window  window,
 }
 
 /** TODO */
-PRIVATE bool _ogl_flyby_key_up_callback(system_window  window,
-                                        unsigned short key_char,
-                                        void*          arg)
+PRIVATE bool _ogl_flyby_key_up_callback(system_window window,
+                                        unsigned int  key_char,
+                                        void*         arg)
 {
     _ogl_flyby* descriptor = (_ogl_flyby*) arg;
 

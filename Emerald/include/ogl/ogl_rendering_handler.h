@@ -19,6 +19,20 @@ typedef enum
     /* not settable, ogl_rendering_handler_policy */
     OGL_RENDERING_HANDLER_PROPERTY_POLICY,
 
+    /* settable, bool.
+     *
+     * Allows the user to fast forward/fast backward/pause/resume playback with key presses:
+     *
+     * fast backward:  hold the "left arrow" key pressed.
+     * backward:       press the "left arrow" key.
+     * fast forward:   hold the "right arrow" key pressed.
+     * forward:        press the "right arrow" key.
+     * pause / resume: press the "space" key.
+     *
+     * Debug builds:   enabled by default.
+     * Release builds: disabled by default.
+     */
+    OGL_RENDERING_HANDLER_PROPERTY_RUNTIME_TIME_ADJUSTMENT_MODE
 } ogl_rendering_handler_property;
 
 /** TODO */
@@ -57,6 +71,11 @@ PUBLIC EMERALD_API bool ogl_rendering_handler_request_callback_from_context_thre
                                                                                    PFNOGLCONTEXTCALLBACKFROMCONTEXTTHREADPROC pfn_callback_proc,
                                                                                    void*                                      user_arg,
                                                                                    bool                                       block_until_available = true);
+
+/** TODO */
+PUBLIC EMERALD_API void ogl_rendering_handler_set_property(ogl_rendering_handler          rendering_handler,
+                                                           ogl_rendering_handler_property property,
+                                                           const void*                    value);
 
 /** TODO */
 PUBLIC EMERALD_API bool ogl_rendering_handler_stop(ogl_rendering_handler rendering_handler);

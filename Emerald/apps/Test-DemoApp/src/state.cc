@@ -49,10 +49,10 @@ typedef struct _scene_descriptor
 system_hashed_ansi_string _scene_filenames[] =
 {
       system_hashed_ansi_string_create("blob/scene1/test.packed"),
-      system_hashed_ansi_string_create("blob/scene2/test.packed"),
-      system_hashed_ansi_string_create("blob/scene3/test.packed"),
-      system_hashed_ansi_string_create("blob/scene4/test.packed"),
-      system_hashed_ansi_string_create("blob/scene5/test.packed")
+      //system_hashed_ansi_string_create("blob/scene2/test.packed"),
+      //system_hashed_ansi_string_create("blob/scene3/test.packed"),
+      //system_hashed_ansi_string_create("blob/scene4/test.packed"),
+      //system_hashed_ansi_string_create("blob/scene5/test.packed")
 };
 const unsigned int _n_scene_filenames = sizeof(_scene_filenames) /
                                         sizeof(_scene_filenames[0]);
@@ -61,6 +61,7 @@ const unsigned int _n_scene_filenames = sizeof(_scene_filenames) /
 /* Other stuff */
 postprocessing_blur_gaussian_resolution     _color_shadow_map_blur_resolution           = POSTPROCESSING_BLUR_GAUSSIAN_RESOLUTION_ORIGINAL;
 ogl_texture_internalformat                  _color_shadow_map_internalformat            = OGL_TEXTURE_INTERNALFORMAT_GL_RG32F;
+system_time                                 _current_frame_time                         = 0;
 ogl_texture_internalformat                  _depth_shadow_map_internalformat            = OGL_TEXTURE_INTERNALFORMAT_GL_DEPTH_COMPONENT16;
 ogl_pipeline                                _pipeline                                   = NULL;
 uint32_t                                    _pipeline_stage_id                          = -1;
@@ -119,12 +120,12 @@ PUBLIC void state_get_current_frame_properties(scene*              out_current_s
 
     if (is_first_call)
     {
-        _playback_start_time = system_time_now();
+        _playback_start_time = _current_frame_time;
         is_first_call        = false;
     }
     else
     {
-        current_time = system_time_now() - _playback_start_time;
+        current_time = _current_frame_time - _playback_start_time;
     }
 
     n_times_scene_shown = current_time / _scenes_duration_summed[_n_scene_filenames - 1];
@@ -570,6 +571,12 @@ PUBLIC void state_set_color_shadow_map_blur_resolution(postprocessing_blur_gauss
 
     /* Unlock the rendering process */
     ogl_rendering_handler_unlock_bound_context(_rendering_handler);
+}
+
+/** Please see header for spec */
+PUBLIC void state_set_current_frame_time(system_time frame_time)
+{
+    _current_frame_time = frame_time;
 }
 
 /** Please see header for spec */
