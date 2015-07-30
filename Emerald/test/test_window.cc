@@ -83,7 +83,7 @@ static void _on_render_frame_callback(ogl_context context,
                             &entry_points);
 
     entry_points->pGLClearColor(0.75f, /* red */
-                                0,     /* green */
+                                1.0f,  /* green */
                                 0,     /* blue */
                                 1.0f); /* alpha */
     entry_points->pGLClear     (GL_COLOR_BUFFER_BIT);

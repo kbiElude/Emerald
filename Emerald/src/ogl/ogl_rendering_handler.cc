@@ -6,7 +6,9 @@
 #include "shared.h"
 #include "audio/audio_device.h"
 #include "audio/audio_stream.h"
+#include "demo/demo_timeline.h"
 #include "ogl/ogl_context.h"
+#include "ogl/ogl_pipeline.h"
 #include "ogl/ogl_rendering_handler.h"
 #include "ogl/ogl_text.h"
 #include "system/system_assertions.h"
@@ -41,6 +43,7 @@ typedef struct
     bool                                  runtime_time_adjustment_mode;
     ogl_text_string_id                    text_string_id;
     system_thread_id                      thread_id;
+    demo_timeline                         timeline;
 
     bool        is_space_key_pressed;
     system_time left_arrow_key_press_start_time;
@@ -302,6 +305,8 @@ PRIVATE void _ogl_rendering_handler_thread_entrypoint(void* in_arg)
         bool                      is_root_window           = false;
         PFNGLBINDFRAMEBUFFERPROC  pGLBindFramebuffer       = NULL;
         PFNGLBLITFRAMEBUFFERPROC  pGLBlitFramebuffer       = NULL;
+        PFNGLCLEARPROC            pGLClear                 = NULL;
+        PFNGLCLEARCOLORPROC       pGLClearColor            = NULL;
         PFNGLDISABLEPROC          pGLDisable               = NULL;
         PFNGLENABLEPROC           pGLEnable                = NULL;
         PFNGLFINISHPROC           pGLFinish                = NULL;
@@ -354,6 +359,10 @@ PRIVATE void _ogl_rendering_handler_thread_entrypoint(void* in_arg)
 
             pGLBindFramebuffer = entrypoints->pGLBindFramebuffer;
             pGLBlitFramebuffer = entrypoints->pGLBlitFramebuffer;
+            pGLClear           = entrypoints->pGLClear;
+            pGLClearColor      = entrypoints->pGLClearColor;
+            pGLDisable         = entrypoints->pGLDisable;
+            pGLEnable          = entrypoints->pGLEnable;
             pGLFinish          = entrypoints->pGLFinish;
         }
         else
@@ -369,6 +378,8 @@ PRIVATE void _ogl_rendering_handler_thread_entrypoint(void* in_arg)
 
             pGLBindFramebuffer = entrypoints->pGLBindFramebuffer;
             pGLBlitFramebuffer = entrypoints->pGLBlitFramebuffer;
+            pGLClear           = entrypoints->pGLClear;
+            pGLClearColor      = entrypoints->pGLClearColor;
             pGLDisable         = entrypoints->pGLDisable;
             pGLEnable          = entrypoints->pGLEnable;
             pGLFinish          = entrypoints->pGLFinish;
@@ -464,8 +475,8 @@ PRIVATE void _ogl_rendering_handler_thread_entrypoint(void* in_arg)
                 if (rendering_handler->playback_status == RENDERING_HANDLER_PLAYBACK_STATUS_STARTED)
                 {
                     system_time curr_time      = system_time_now();
-                    system_time new_frame_time = 0;
                     int32_t     frame_index    = 0;
+                    system_time new_frame_time = 0;
 
                     system_critical_section_enter(rendering_handler->rendering_cs);
                     {
@@ -512,7 +523,7 @@ PRIVATE void _ogl_rendering_handler_thread_entrypoint(void* in_arg)
                                 last_frame_index = frame_index;
 
                                 /* Convert the frame index to global frame time. */
-                                new_frame_time_msec = frame_index     * 1000 /* ms in s */     / rendering_handler->fps;
+                                new_frame_time_msec = frame_index * 1000 /* ms in s */ / rendering_handler->fps;
                                 new_frame_time      = system_time_get_time_for_msec(new_frame_time_msec);
 
                                 /* Count the frame and move on. */
@@ -595,10 +606,37 @@ PRIVATE void _ogl_rendering_handler_thread_entrypoint(void* in_arg)
                                 pGLEnable(GL_MULTISAMPLE);
                             }
 
-                            rendering_handler->pfn_rendering_callback(rendering_handler->context,
-                                                                      frame_index,
-                                                                      new_frame_time,
-                                                                      rendering_handler->rendering_callback_user_arg);
+                            /* If timeline instance is specified, prefer it over the rendering call-back func ptr */
+                            bool has_rendered_frame = false;
+
+                            if (rendering_handler->timeline != NULL)
+                            {
+                                has_rendered_frame = demo_timeline_render(rendering_handler->timeline,
+                                                                          new_frame_time);
+                            } /* if (rendering_handler->timeline != NULL) */
+                            else
+                            {
+                                if (rendering_handler->pfn_rendering_callback != NULL)
+                                {
+                                    rendering_handler->pfn_rendering_callback(rendering_handler->context,
+                                                                              frame_index,
+                                                                              new_frame_time,
+                                                                              rendering_handler->rendering_callback_user_arg);
+
+                                    has_rendered_frame = true;
+                                } /* if (rendering_handler->pfn_rendering_callback != NULL) */
+                            }
+
+                            if (!has_rendered_frame)
+                            {
+                                /* Well, if we get here, we're in trouble. Clear the color buffer with red color
+                                 * to indicate utter disaster. */
+                                pGLClearColor(1.0f,  /* red   */
+                                              0.0f,  /* green */
+                                              0.0f,  /* blue  */
+                                              1.0f); /* alpha */
+                                pGLClear     (GL_COLOR_BUFFER_BIT);
+                            } /* if (!has_rendered_frame) */
 
                             if (is_multisample_pf && context_type == OGL_CONTEXT_TYPE_GL)
                             {
@@ -716,6 +754,14 @@ PRIVATE void _ogl_rendering_handler_release(void* in_arg)
                                            rendering_handler);
     } /* if (rendering_handler->context != NULL) */
 
+    /* Release the timeline */
+    if (rendering_handler->timeline != NULL)
+    {
+        demo_timeline_release(rendering_handler->timeline);
+
+        rendering_handler->timeline = NULL;
+    }
+
     /* Release rendering cs */
     system_critical_section_release(rendering_handler->rendering_cs);
 
@@ -785,10 +831,11 @@ PRIVATE ogl_rendering_handler ogl_rendering_handler_create_shared(system_hashed_
         new_handler->runtime_time_adjustment                   = 0;
         new_handler->runtime_time_adjustment_is_paused         = false;
         new_handler->runtime_time_adjustment_paused_frame_time = 0;
-        new_handler->shutdown_request_event                    = system_event_create(true);  /* manual_reset */
-        new_handler->shutdown_request_ack_event                = system_event_create(true);  /* manual_reset */
-        new_handler->unbind_context_request_event              = system_event_create(false); /* manual_reset */
-        new_handler->unbind_context_request_ack_event          = system_event_create(false); /* manual_reset */
+        new_handler->shutdown_request_event                    = system_event_create (true);  /* manual_reset */
+        new_handler->shutdown_request_ack_event                = system_event_create (true);  /* manual_reset */
+        new_handler->timeline                                  = NULL;
+        new_handler->unbind_context_request_event              = system_event_create (false); /* manual_reset */
+        new_handler->unbind_context_request_ack_event          = system_event_create (false); /* manual_reset */
 
         #ifdef _DEBUG
         {
@@ -897,6 +944,13 @@ PUBLIC EMERALD_API void ogl_rendering_handler_get_property(ogl_rendering_handler
         case OGL_RENDERING_HANDLER_PROPERTY_RUNTIME_TIME_ADJUSTMENT_MODE:
         {
             *(bool*) out_result = rendering_handler_ptr->runtime_time_adjustment_mode;
+
+            break;
+        }
+
+        case OGL_RENDERING_HANDLER_PROPERTY_TIMELINE:
+        {
+            *(demo_timeline*) out_result = rendering_handler_ptr->timeline;
 
             break;
         }
@@ -1105,6 +1159,22 @@ PUBLIC EMERALD_API void ogl_rendering_handler_set_property(ogl_rendering_handler
         {
             rendering_handler_ptr->runtime_time_adjustment_mode = *(bool*) value;
 
+            break;
+        }
+
+        case OGL_RENDERING_HANDLER_PROPERTY_TIMELINE:
+        {
+            ASSERT_DEBUG_SYNC(rendering_handler_ptr->timeline == NULL,
+                              "Another timeline instance is already assigned to the rendering handler!");
+
+            if (rendering_handler_ptr->timeline != NULL)
+            {
+                demo_timeline_release(rendering_handler_ptr->timeline);
+            }
+
+            rendering_handler_ptr->timeline = *(demo_timeline*) value;
+
+            demo_timeline_retain(rendering_handler_ptr->timeline);
             break;
         }
 

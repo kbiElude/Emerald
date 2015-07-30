@@ -614,7 +614,7 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API bool ogl_pipeline_draw_stage(ogl_pipel
         /* If any UI controls are around, draw them now */
         ogl_ui_draw(pipeline_ptr->ui);
 
-        /* We only update timestamp step statistics AFTER a predefined number of samples have been accumulated.
+        /* We only update timestamp step statistics AFTER a predefined number of samples has been accumulated.
          * Check if any samples are available, and - if so - update the internal storage */
         for (size_t n_step = 0;
                     n_step < n_steps;
