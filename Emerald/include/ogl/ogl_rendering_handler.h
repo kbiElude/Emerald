@@ -32,7 +32,23 @@ typedef enum
      * Debug builds:   enabled by default.
      * Release builds: disabled by default.
      */
-    OGL_RENDERING_HANDLER_PROPERTY_RUNTIME_TIME_ADJUSTMENT_MODE
+    OGL_RENDERING_HANDLER_PROPERTY_RUNTIME_TIME_ADJUSTMENT_MODE,
+
+    /* settable, demo_timeline.
+     *
+     * The timeline will be used to drive the frame rendering process, once it is assigned to the
+     * rendering handler instance. Before that happens, the rendering callback function pointer,
+     * provided at construction time, will be used.
+     *
+     * This property can only be assigned a value once per a rendering handler instance. Any repeated
+     * attempts will result in an assertion failure.
+     *
+     * Setter for this property claims ownership of the assigned object. In other words, do NOT release
+     * it when the timeline instance is no longer needed. The rendering handler will do this for you at
+     * the right time.
+     */
+    OGL_RENDERING_HANDLER_PROPERTY_TIMELINE,
+
 } ogl_rendering_handler_property;
 
 /** TODO */
