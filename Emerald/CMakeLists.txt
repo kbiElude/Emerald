@@ -89,6 +89,8 @@ FILE(GLOB ColladaIncludes        "${EMERALD_SOURCE_DIR}/include/collada/*.h")
 FILE(GLOB ColladaSources         "${EMERALD_SOURCE_DIR}/src/collada/*.cc")
 FILE(GLOB CurveIncludes          "${EMERALD_SOURCE_DIR}/include/curve/*.h")
 FILE(GLOB CurveSources           "${EMERALD_SOURCE_DIR}/src/curve/*.cc")
+FILE(GLOB DemoIncludes           "${EMERALD_SOURCE_DIR}/include/demo/*.h")
+FILE(GLOB DemoSources            "${EMERALD_SOURCE_DIR}/src/demo/*.cc")
 FILE(GLOB GeneralIncludes        "${EMERALD_SOURCE_DIR}/include/*.h")
 FILE(GLOB GeneralSources         "${EMERALD_SOURCE_DIR}/src/main.cc")
 FILE(GLOB GFXIncludes            "${EMERALD_SOURCE_DIR}/include/gfx/*.h")
@@ -164,7 +166,9 @@ SET(AllSources
                ${SceneSources}
                ${MeshSources}
                ${OpenCLSources}
-               ${TextureSources})
+               ${TextureSources}
+               ${DemoSources})
+
 ADD_MSVC_PRECOMPILED_HEADER("shared.h" "src/shared.cc" AllSources)
 
 # Exclude platform-specific bits for other platforms
@@ -201,6 +205,7 @@ ADD_LIBRARY(EMERALD SHARED ${AllSources}
                            ${MeshIncludes}
                            ${OpenCLIncludes}
                            ${TextureIncludes}
+                           ${DemoIncludes}
                             Emerald.rc)
 
 GENERATE_EXPORT_HEADER(EMERALD
@@ -219,6 +224,8 @@ SOURCE_GROUP ("Curve Editor includes"    FILES ${CurveEditorIncludes})
 SOURCE_GROUP ("Curve Editor sources"     FILES ${CurveEditorSources})
 SOURCE_GROUP ("Curve includes"           FILES ${CurveIncludes})
 SOURCE_GROUP ("Curve sources"            FILES ${CurveSources})
+SOURCE_GROUP ("Demo includes"            FILES ${DemoIncludes})
+SOURCE_GROUP ("Demo sources"             FILES ${DemoSources})
 SOURCE_GROUP ("General includes"         FILES ${GeneralIncludes})
 SOURCE_GROUP ("General sources"          FILES ${GeneralSources})
 SOURCE_GROUP ("GFX includes"             FILES ${GFXIncludes})

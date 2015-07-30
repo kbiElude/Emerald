@@ -22,7 +22,8 @@
                                                                                      DEBUG_ONLY_ASSERTION, \
                                                                                      condition,            \
                                                                                      message,              \
-                                                                                     __VA_ARGS__);
+                                                                                     __VA_ARGS__);         \
+                                                            __assume(condition);
     #else
         #define ASSERT_DEBUG_ASYNC(condition, message, ...) system_assertions_assert(false,                \
                                                                                      DEBUG_ONLY_ASSERTION, \
