@@ -211,7 +211,7 @@ PRIVATE bool _demo_timeline_change_segment_start_end_times(_demo_timeline*      
     }
 
     /* Adjust start & end times of the segment */
-    ASSERT_DEBUG_SYNC(new_start_time > new_end_time,
+    ASSERT_DEBUG_SYNC(new_start_time < new_end_time,
                       "New segment's duration is <= 0!");
 
     segment_ptr->start_time = new_start_time;
@@ -322,6 +322,7 @@ PRIVATE bool _demo_timeline_is_region_segment_free(_demo_timeline*              
                     ++n_segment)
     {
         _demo_timeline_segment* current_segment_ptr = NULL;
+        bool                    does_not_overlap    = false;
         bool                    does_overlap        = true;
 
         if (!system_resizable_vector_get_element_at(segments_vector,
@@ -335,8 +336,11 @@ PRIVATE bool _demo_timeline_is_region_segment_free(_demo_timeline*              
             continue;
         }
 
-        does_overlap = (current_segment_ptr->end_time   <  start_time &&
-                        current_segment_ptr->start_time >= end_time);
+        does_not_overlap = (current_segment_ptr->start_time <= start_time  &&
+                            current_segment_ptr->end_time   <= start_time) ||
+                           (current_segment_ptr->start_time >= end_time    &&
+                            current_segment_ptr->end_time   >= end_time);
+        does_overlap     = !does_not_overlap;
 
         if (opt_excluded_segment_id_ptr != NULL)
         {
@@ -424,12 +428,14 @@ PRIVATE bool _demo_timeline_update_duration(_demo_timeline* timeline_ptr)
                 goto end;
             }
 
-            if (current_segment_ptr->end_time > timeline_ptr->duration)
+            if (current_segment_ptr->end_time > max_segment_end_time)
             {
-                timeline_ptr->duration = current_segment_ptr->end_time;
+                max_segment_end_time = current_segment_ptr->end_time;
             }
         } /* for (all known segments) */
     } /* for (all known segment types) */
+
+    timeline_ptr->duration = max_segment_end_time;
 
     /* All done */
     result = true;
@@ -445,7 +451,7 @@ PUBLIC EMERALD_API bool demo_timeline_add_video_segment(demo_timeline           
                                                         system_time                start_time,
                                                         system_time                end_time,
                                                         demo_timeline_segment_id*  out_segment_id_ptr,
-                                                        uint32_t*                  out_stage_id_ptr)
+                                                        uint32_t*                  opt_out_stage_id_ptr)
 {
     bool                     is_region_free         = false;
     demo_timeline_segment_id new_segment_id         = -1;
@@ -549,8 +555,13 @@ PUBLIC EMERALD_API bool demo_timeline_add_video_segment(demo_timeline           
 
         /* All done */
         *out_segment_id_ptr = new_segment_id;
-        *out_stage_id_ptr   = new_segment_stage_id;
-        result              = true;
+
+        if (opt_out_stage_id_ptr != NULL)
+        {
+            *opt_out_stage_id_ptr = new_segment_stage_id;
+        }
+
+        result = true;
     }
 
 end:
@@ -625,9 +636,8 @@ PUBLIC EMERALD_API bool demo_timeline_delete_segment(demo_timeline              
                                   (system_hash64) segment_id,
                                  &segment_ptr) )
         {
-            ASSERT_DEBUG_SYNC(false,
-                              "Could not retrieve a segment descriptor for segment id [%d]",
-                              segment_id);
+            LOG_ERROR("Could not retrieve a segment descriptor for segment id [%d]",
+                      segment_id);
 
             goto end;
         }
@@ -965,11 +975,12 @@ PUBLIC EMERALD_API bool demo_timeline_move_segment(demo_timeline              ti
                                                    demo_timeline_segment_id   segment_id,
                                                    system_time                new_segment_start_time)
 {
-    bool                    result            = false;
-    system_time             segment_duration  = 0;
-    system_hash64map        segment_hash64map = NULL;
-    _demo_timeline_segment* segment_ptr       = NULL;
-    _demo_timeline*         timeline_ptr      = (_demo_timeline*) timeline;
+    bool                    needs_duration_update = false;
+    bool                    result                = false;
+    system_time             segment_duration      = 0;
+    system_hash64map        segment_hash64map     = NULL;
+    _demo_timeline_segment* segment_ptr           = NULL;
+    _demo_timeline*         timeline_ptr          = (_demo_timeline*) timeline;
 
     ASSERT_DEBUG_SYNC(timeline != NULL,
                       "Input timeline instance is NULL");
@@ -1000,12 +1011,18 @@ PUBLIC EMERALD_API bool demo_timeline_move_segment(demo_timeline              ti
         }
 
         /* Move the segment, if feasible. */
-        segment_duration = segment_ptr->end_time - segment_ptr->start_time;
+        needs_duration_update = (timeline_ptr->duration == segment_ptr->end_time);
+        segment_duration      = segment_ptr->end_time - segment_ptr->start_time;
 
         result = _demo_timeline_change_segment_start_end_times(timeline_ptr,
                                                                segment_ptr,
                                                                new_segment_start_time,
                                                                new_segment_start_time + segment_duration);
+
+        if (result && needs_duration_update)
+        {
+            _demo_timeline_update_duration(timeline_ptr);
+        }
     }
 
 end:
@@ -1128,7 +1145,7 @@ PUBLIC EMERALD_API bool demo_timeline_resize_segment(demo_timeline              
         result = _demo_timeline_change_segment_start_end_times(timeline_ptr,
                                                                segment_ptr,
                                                                segment_ptr->start_time,
-                                                               new_segment_duration);
+                                                               segment_ptr->start_time + new_segment_duration);
     }
 
 end:

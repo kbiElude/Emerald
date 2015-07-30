@@ -92,12 +92,9 @@ PUBLIC EMERALD_API bool demo_timeline_add_video_segment(demo_timeline           
                                                         system_time                start_time,
                                                         system_time                end_time,
                                                         demo_timeline_segment_id*  out_segment_id_ptr,
-                                                        uint32_t*                  out_stage_id_ptr);
+                                                        uint32_t*                  opt_out_stage_id_ptr);
 
-/** TODO.
- *
- *  NOTE: Internal usage only.
- */
+/** TODO. */
 PUBLIC EMERALD_API demo_timeline demo_timeline_create(system_hashed_ansi_string name,
                                                       ogl_context               context);
 
