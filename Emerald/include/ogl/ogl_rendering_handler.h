@@ -42,6 +42,10 @@ typedef enum
      *
      * This property can only be assigned a value once per a rendering handler instance. Any repeated
      * attempts will result in an assertion failure.
+     *
+     * Setter for this property claims ownership of the assigned object. In other words, do NOT release
+     * it when the timeline instance is no longer needed. The rendering handler will do this for you at
+     * the right time.
      */
     OGL_RENDERING_HANDLER_PROPERTY_TIMELINE,
 

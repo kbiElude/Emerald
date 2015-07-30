@@ -50,6 +50,7 @@ typedef struct _demo_timeline_segment
 
 typedef struct _demo_timeline
 {
+    ogl_context             context;
     system_critical_section cs;
     system_time             duration;
     _demo_timeline_segment* last_used_video_segment_ptr;
@@ -67,11 +68,12 @@ typedef struct _demo_timeline
         ASSERT_DEBUG_SYNC(in_context != NULL,
                           "Input rendering context is NULL");
 
+        context                         = in_context;
         cs                              = system_critical_section_create();
         duration                        = 0;
         last_used_video_segment_ptr     = NULL;
         rendering_pipeline              = ogl_pipeline_create(in_context,
-                                                              true, /* should_overlay_performance_info */
+                                                              false, /* should_overlay_performance_info */
                                                               system_hashed_ansi_string_create("Demo timeline rendering pipeline") );
         segment_id_to_video_segment_map = system_hash64map_create(sizeof(_demo_timeline_segment*) );
         video_segment_id_counter        = 0;
@@ -81,6 +83,8 @@ typedef struct _demo_timeline
                            "Could not spawn a rendering pipeline instance.");
         ASSERT_ALWAYS_SYNC(segment_id_to_video_segment_map != NULL,
                            "Out of memory");
+
+        ogl_context_retain(in_context);
     }
 
     ~_demo_timeline()
@@ -97,6 +101,13 @@ typedef struct _demo_timeline
             ogl_pipeline_release(rendering_pipeline);
 
             rendering_pipeline = NULL;
+        }
+
+        if (context != NULL)
+        {
+            ogl_context_release(context);
+
+            context = NULL;
         }
 
         if (segment_id_to_video_segment_map != NULL)
@@ -311,7 +322,7 @@ PRIVATE bool _demo_timeline_is_region_segment_free(_demo_timeline*              
                     ++n_segment)
     {
         _demo_timeline_segment* current_segment_ptr = NULL;
-        bool                    does_not_overlap    = false;
+        bool                    does_overlap        = true;
 
         if (!system_resizable_vector_get_element_at(segments_vector,
                                                     n_segment,
@@ -324,12 +335,12 @@ PRIVATE bool _demo_timeline_is_region_segment_free(_demo_timeline*              
             continue;
         }
 
-        does_not_overlap = (current_segment_ptr->end_time   <= start_time &&
-                            current_segment_ptr->start_time >= end_time);
+        does_overlap = (current_segment_ptr->end_time   <  start_time &&
+                        current_segment_ptr->start_time >= end_time);
 
         if (opt_excluded_segment_id_ptr != NULL)
         {
-            if (!does_not_overlap                                       &&
+            if (does_overlap                                            &&
                 current_segment_ptr->id == *opt_excluded_segment_id_ptr)
             {
                 /* We were explicitly asked to skip this segment. */
@@ -337,7 +348,7 @@ PRIVATE bool _demo_timeline_is_region_segment_free(_demo_timeline*              
             }
         } /* if (opt_excluded_segment_id_ptr != NULL) */
 
-        if (!does_not_overlap)
+        if (does_overlap)
         {
             overlap_status = true;
 
@@ -348,7 +359,7 @@ PRIVATE bool _demo_timeline_is_region_segment_free(_demo_timeline*              
     /* All done */
     if (out_result_ptr != NULL)
     {
-        *out_result_ptr = overlap_status;
+        *out_result_ptr = !overlap_status;
     }
 
     result = true;
@@ -433,11 +444,12 @@ PUBLIC EMERALD_API bool demo_timeline_add_video_segment(demo_timeline           
                                                         system_hashed_ansi_string  name,
                                                         system_time                start_time,
                                                         system_time                end_time,
-                                                        ogl_pipeline               rendering_pipeline,  /* TODO: Remove OpenGL dependency! */
-                                                        demo_timeline_segment_id*  out_segment_id_ptr)
+                                                        demo_timeline_segment_id*  out_segment_id_ptr,
+                                                        uint32_t*                  out_stage_id_ptr)
 {
     bool                     is_region_free         = false;
     demo_timeline_segment_id new_segment_id         = -1;
+    uint32_t                 new_segment_stage_id   = -1;
     _demo_timeline_segment*  new_segment_ptr        = NULL;
     system_hash64map         owning_hash64map       = NULL;
     system_resizable_vector  owning_vector          = NULL;
@@ -447,15 +459,12 @@ PUBLIC EMERALD_API bool demo_timeline_add_video_segment(demo_timeline           
 
     ASSERT_DEBUG_SYNC(out_segment_id_ptr != NULL,
                       "Result segment ID destination is NULL");
-    ASSERT_DEBUG_SYNC(rendering_pipeline != NULL,
-                      "Input rendering pipeline is NULL");
     ASSERT_DEBUG_SYNC(start_time < end_time,
                       "Segment's start time must be smaller than its end time");
     ASSERT_DEBUG_SYNC(timeline_ptr != NULL,
                       "Timeline instance is NULL");
 
     if (out_segment_id_ptr == NULL     ||
-        rendering_pipeline == NULL     ||
         start_time         >= end_time ||
         timeline_ptr       == NULL)
     {
@@ -513,7 +522,8 @@ PUBLIC EMERALD_API bool demo_timeline_add_video_segment(demo_timeline           
             goto end;
         }
 
-        new_segment_ptr->pipeline_stage_id = ogl_pipeline_add_stage(timeline_ptr->rendering_pipeline);
+        new_segment_stage_id               = ogl_pipeline_add_stage(timeline_ptr->rendering_pipeline);
+        new_segment_ptr->pipeline_stage_id = new_segment_stage_id;
 
         /* Store it in the containers */
         if (!system_hash64map_insert(owning_hash64map,
@@ -539,6 +549,7 @@ PUBLIC EMERALD_API bool demo_timeline_add_video_segment(demo_timeline           
 
         /* All done */
         *out_segment_id_ptr = new_segment_id;
+        *out_stage_id_ptr   = new_segment_stage_id;
         result              = true;
     }
 
@@ -696,6 +707,13 @@ PUBLIC EMERALD_API bool demo_timeline_get_property(demo_timeline          timeli
             break;
         }
 
+        case DEMO_TIMELINE_SEGMENT_PROPERTY_PIPELINE:
+        {
+            *(ogl_pipeline*) out_result_ptr = timeline_ptr->rendering_pipeline;
+
+            break;
+        }
+
         default:
         {
             ASSERT_DEBUG_SYNC(false,
@@ -773,8 +791,8 @@ PUBLIC EMERALD_API bool demo_timeline_get_segment_at_time(demo_timeline         
                 continue;
             }
 
-            if (found_segment_ptr->start_time >= time &&
-                found_segment_ptr->end_time   <= time)
+            if (found_segment_ptr->start_time <= time &&
+                found_segment_ptr->end_time   >= time)
             {
                 /* Found the match */
                 result = true;

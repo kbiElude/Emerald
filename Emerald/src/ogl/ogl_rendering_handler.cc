@@ -713,6 +713,14 @@ PRIVATE void _ogl_rendering_handler_release(void* in_arg)
 {
     _ogl_rendering_handler* rendering_handler = (_ogl_rendering_handler*) in_arg;
 
+    /* Release the timeline, if one was assigned. */
+    if (rendering_handler->timeline != NULL)
+    {
+        demo_timeline_release(rendering_handler->timeline);
+
+        rendering_handler->timeline = NULL;
+    }
+
     /* Shut the rendering thread down */
     system_event_set        (rendering_handler->context_set_event);
     system_event_set        (rendering_handler->shutdown_request_event);
@@ -753,14 +761,6 @@ PRIVATE void _ogl_rendering_handler_release(void* in_arg)
                                            (void*) &_ogl_rendering_handler_key_up_callback,
                                            rendering_handler);
     } /* if (rendering_handler->context != NULL) */
-
-    /* Release the timeline */
-    if (rendering_handler->timeline != NULL)
-    {
-        demo_timeline_release(rendering_handler->timeline);
-
-        rendering_handler->timeline = NULL;
-    }
 
     /* Release rendering cs */
     system_critical_section_release(rendering_handler->rendering_cs);
@@ -1174,7 +1174,6 @@ PUBLIC EMERALD_API void ogl_rendering_handler_set_property(ogl_rendering_handler
 
             rendering_handler_ptr->timeline = *(demo_timeline*) value;
 
-            demo_timeline_retain(rendering_handler_ptr->timeline);
             break;
         }
 

@@ -41,6 +41,9 @@ typedef enum
 
     /* unsigned int; not settable. */
     DEMO_TIMELINE_PROPERTY_N_VIDEO_SEGMENTS,
+
+    /* ogl_pipeline; not settable. */
+    DEMO_TIMELINE_SEGMENT_PROPERTY_PIPELINE,
 } demo_timeline_property;
 
 typedef enum
@@ -88,7 +91,8 @@ PUBLIC EMERALD_API bool demo_timeline_add_video_segment(demo_timeline           
                                                         system_hashed_ansi_string  name,
                                                         system_time                start_time,
                                                         system_time                end_time,
-                                                        demo_timeline_segment_id*  out_segment_id_ptr);
+                                                        demo_timeline_segment_id*  out_segment_id_ptr,
+                                                        uint32_t*                  out_stage_id_ptr);
 
 /** TODO.
  *

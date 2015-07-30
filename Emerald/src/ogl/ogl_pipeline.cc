@@ -594,15 +594,21 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API bool ogl_pipeline_draw_stage(ogl_pipel
                                                       &step_ptr) )
             {
                 /* Kick off the timer and call user's code */
-                ogl_query_begin(step_ptr->primitives_generated_qo);
-                ogl_query_begin(step_ptr->timestamp_qo);
+                if (pipeline_ptr->should_overlay_performance_info)
+                {
+                    ogl_query_begin(step_ptr->primitives_generated_qo);
+                    ogl_query_begin(step_ptr->timestamp_qo);
+                }
                 {
                     step_ptr->pfn_step_callback(step_ptr->context,
                                                 time,
                                                 step_ptr->step_callback_user_arg);
                 }
-                ogl_query_end(step_ptr->timestamp_qo);
-                ogl_query_end(step_ptr->primitives_generated_qo);
+                if (pipeline_ptr->should_overlay_performance_info)
+                {
+                    ogl_query_end(step_ptr->timestamp_qo);
+                    ogl_query_end(step_ptr->primitives_generated_qo);
+                }
             } /* if (system_resizable_vector_get_element_at(pipeline_stage_ptr->steps, n_step, &step_ptr) ) */
             else
             {
@@ -614,70 +620,10 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API bool ogl_pipeline_draw_stage(ogl_pipel
         /* If any UI controls are around, draw them now */
         ogl_ui_draw(pipeline_ptr->ui);
 
-        /* We only update timestamp step statistics AFTER a predefined number of samples has been accumulated.
-         * Check if any samples are available, and - if so - update the internal storage */
-        for (size_t n_step = 0;
-                    n_step < n_steps;
-                  ++n_step)
+        if (pipeline_ptr->should_overlay_performance_info)
         {
-            if (system_resizable_vector_get_element_at(pipeline_stage_ptr->steps,
-                                                       n_step,
-                                                      &step_ptr) )
-            {
-                /* Retrieve the query result */
-                GLuint64 execution_time = 0;
-
-                if (ogl_query_peek_result(step_ptr->primitives_generated_qo,
-                                         &step_ptr->n_primitives_generated) )
-                {
-                    /* It may be a bold assumption, but at this point the timestamp data retrieval
-                     * process should not be that expensive to do..
-                     */
-                    while (!ogl_query_peek_result(step_ptr->timestamp_qo,
-                                                 &execution_time) )
-                    {
-                        /* Aw yiss, spin that lock. */
-                    }
-
-                    /* Store the result */
-                    step_ptr->execution_times[step_ptr->n_samples_gathered++] = execution_time;
-
-                    /* If enough samples are available, update the average */
-                    if (step_ptr->n_samples_gathered >= N_SAMPLES_PER_UPDATE)
-                    {
-                        GLuint64 summed_sample_time = 0;
-
-                        for (uint32_t n_sample = 0;
-                                      n_sample < N_SAMPLES_PER_UPDATE;
-                                    ++n_sample)
-                        {
-                            summed_sample_time += step_ptr->execution_times[n_sample];
-                        } /* for (uint32_t n_sample = 0; n_sample < N_SAMPLES_PER_UPDATE; ++n_sample) */
-
-                        step_ptr->average_sample_time = summed_sample_time / N_SAMPLES_PER_UPDATE;
-                        step_ptr->n_samples_gathered  = 0;
-
-                        /* We have the average value! Now stash it in our internal storage */
-                        step_ptr->average_sample_time = (uint64_t) ((double) (step_ptr->average_sample_time) * 1000000.0) /
-                                                                   ONE_SECOND_IN_NANOSECONDS;
-
-                        /* Average step time was updated - mark the stage as dirty */
-                        is_stage_dirty = true;
-                    } /* if (step_ptr->n_samples_gathered >= N_SAMPLES_PER_UPDATE) */
-                } /* if (primitives generated QO data available) */
-            } /* if (system_resizable_vector_get_element_at(pipeline_stage_ptr->steps, n_step, &step_ptr) )*/
-            else
-            {
-                ASSERT_DEBUG_SYNC(false,
-                                  "Could not retrieve step descriptor");
-            }
-        } /* for (size_t n_step = 0; n_step < n_steps; ++n_step) */
-
-        /* Update stage strings if marked as dirty */
-        if (is_stage_dirty)
-        {
-            uint32_t max_name_width = 0;
-
+            /* We only update timestamp step statistics AFTER a predefined number of samples has been accumulated.
+             * Check if any samples are available, and - if so - update the internal storage */
             for (size_t n_step = 0;
                         n_step < n_steps;
                       ++n_step)
@@ -686,37 +632,100 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API bool ogl_pipeline_draw_stage(ogl_pipel
                                                            n_step,
                                                           &step_ptr) )
                 {
-                    uint64_t step_ms = 0;
+                    /* Retrieve the query result */
+                    GLuint64 execution_time = 0;
 
-                    /* Convert the average sample time to a value represented in miliseconds */
-                    step_ms = step_ptr->average_sample_time;
-
-                    /* Clamp the step time */
-                    if (step_ms < 0)
+                    if (ogl_query_peek_result(step_ptr->primitives_generated_qo,
+                                             &step_ptr->n_primitives_generated) )
                     {
-                        step_ms = 0;
-                    }
+                        /* It may be a bold assumption, but at this point the timestamp data retrieval
+                         * process should not be that expensive to do..
+                         */
+                        while (!ogl_query_peek_result(step_ptr->timestamp_qo,
+                                                     &execution_time) )
+                        {
+                            /* Aw yiss, spin that lock. */
+                        }
 
-                    /* Form the string */
-                    char buffer[128] = {0};
+                        /* Store the result */
+                        step_ptr->execution_times[step_ptr->n_samples_gathered++] = execution_time;
 
-                    snprintf(buffer,
-                             sizeof(buffer),
-                             "%d.%03d ms [%llu primitives generated]",
-                             (unsigned int) step_ms / 1000,
-                             (unsigned int) step_ms % 1000,
-                             (long long unsigned int) step_ptr->n_primitives_generated);
+                        /* If enough samples are available, update the average */
+                        if (step_ptr->n_samples_gathered >= N_SAMPLES_PER_UPDATE)
+                        {
+                            GLuint64 summed_sample_time = 0;
 
-                    ogl_text_set(pipeline_ptr->text_renderer,
-                                 step_ptr->text_time_index,
-                                 buffer);
+                            for (uint32_t n_sample = 0;
+                                          n_sample < N_SAMPLES_PER_UPDATE;
+                                        ++n_sample)
+                            {
+                                summed_sample_time += step_ptr->execution_times[n_sample];
+                            } /* for (uint32_t n_sample = 0; n_sample < N_SAMPLES_PER_UPDATE; ++n_sample) */
+
+                            step_ptr->average_sample_time = summed_sample_time / N_SAMPLES_PER_UPDATE;
+                            step_ptr->n_samples_gathered  = 0;
+
+                            /* We have the average value! Now stash it in our internal storage */
+                            step_ptr->average_sample_time = (uint64_t) ((double) (step_ptr->average_sample_time) * 1000000.0) /
+                                                                       ONE_SECOND_IN_NANOSECONDS;
+
+                            /* Average step time was updated - mark the stage as dirty */
+                            is_stage_dirty = true;
+                        } /* if (step_ptr->n_samples_gathered >= N_SAMPLES_PER_UPDATE) */
+                    } /* if (primitives generated QO data available) */
+                } /* if (system_resizable_vector_get_element_at(pipeline_stage_ptr->steps, n_step, &step_ptr) )*/
+                else
+                {
+                    ASSERT_DEBUG_SYNC(false,
+                                      "Could not retrieve step descriptor");
                 }
-            }
-        } /* if (is_stage_dirty) */
+            } /* for (size_t n_step = 0; n_step < n_steps; ++n_step) */
 
-        /* Render the results as a final pass */
-        ogl_text_draw(pipeline_ptr->context,
-                      pipeline_ptr->text_renderer);
+            /* Update stage strings if marked as dirty */
+            if (is_stage_dirty)
+            {
+                uint32_t max_name_width = 0;
+
+                for (size_t n_step = 0;
+                            n_step < n_steps;
+                          ++n_step)
+                {
+                    if (system_resizable_vector_get_element_at(pipeline_stage_ptr->steps,
+                                                               n_step,
+                                                              &step_ptr) )
+                    {
+                        uint64_t step_ms = 0;
+
+                        /* Convert the average sample time to a value represented in miliseconds */
+                        step_ms = step_ptr->average_sample_time;
+
+                        /* Clamp the step time */
+                        if (step_ms < 0)
+                        {
+                            step_ms = 0;
+                        }
+
+                        /* Form the string */
+                        char buffer[128] = {0};
+
+                        snprintf(buffer,
+                                 sizeof(buffer),
+                                 "%d.%03d ms [%llu primitives generated]",
+                                 (unsigned int) step_ms / 1000,
+                                 (unsigned int) step_ms % 1000,
+                                 (long long unsigned int) step_ptr->n_primitives_generated);
+
+                        ogl_text_set(pipeline_ptr->text_renderer,
+                                     step_ptr->text_time_index,
+                                     buffer);
+                    }
+                }
+            } /* if (is_stage_dirty) */
+
+            /* Render the results as a final pass */
+            ogl_text_draw(pipeline_ptr->context,
+                          pipeline_ptr->text_renderer);
+        } /* if (pipeline_ptr->should_overlay_performance_info) */
 
         result = true;
     }
