@@ -616,7 +616,7 @@ PRIVATE void _ogl_rendering_handler_thread_entrypoint(void* in_arg)
                          */
                         {
                             const int rendering_area_width  = window_size[0];
-                            const int rendering_area_height = unsigned int(float(rendering_area_width) / aspect_ratio);
+                            const int rendering_area_height = (unsigned int) (float(rendering_area_width) / aspect_ratio);
 
                             rendering_area[0] = 0;
                             rendering_area[1] = (window_size[1] - rendering_area_height) / 2;
