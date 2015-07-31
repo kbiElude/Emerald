@@ -30,6 +30,7 @@
 typedef struct
 {
     audio_stream                          active_audio_stream;
+    float                                 aspect_ratio;
     ogl_context                           context;
     system_event                          context_set_event;
     uint32_t                              fps;
@@ -310,6 +311,8 @@ PRIVATE void _ogl_rendering_handler_thread_entrypoint(void* in_arg)
         PFNGLDISABLEPROC          pGLDisable               = NULL;
         PFNGLENABLEPROC           pGLEnable                = NULL;
         PFNGLFINISHPROC           pGLFinish                = NULL;
+        PFNGLSCISSORPROC          pGLScissor               = NULL;
+        PFNGLVIEWPORTPROC         pGLViewport              = NULL;
         bool                      should_live              = true;
         const system_event        wait_events[]            =
         {
@@ -364,6 +367,8 @@ PRIVATE void _ogl_rendering_handler_thread_entrypoint(void* in_arg)
             pGLDisable         = entrypoints->pGLDisable;
             pGLEnable          = entrypoints->pGLEnable;
             pGLFinish          = entrypoints->pGLFinish;
+            pGLScissor         = entrypoints->pGLScissor;
+            pGLViewport        = entrypoints->pGLViewport;
         }
         else
         {
@@ -383,6 +388,8 @@ PRIVATE void _ogl_rendering_handler_thread_entrypoint(void* in_arg)
             pGLDisable         = entrypoints->pGLDisable;
             pGLEnable          = entrypoints->pGLEnable;
             pGLFinish          = entrypoints->pGLFinish;
+            pGLScissor         = entrypoints->pGLScissor;
+            pGLViewport        = entrypoints->pGLViewport;
         }
 
         /* Bind the thread to GL */
@@ -474,9 +481,11 @@ PRIVATE void _ogl_rendering_handler_thread_entrypoint(void* in_arg)
 
                 if (rendering_handler->playback_status == RENDERING_HANDLER_PLAYBACK_STATUS_STARTED)
                 {
-                    system_time curr_time      = system_time_now();
-                    int32_t     frame_index    = 0;
-                    system_time new_frame_time = 0;
+                    float        aspect_ratio      = 0.0f;
+                    system_time  curr_time         = system_time_now();
+                    int32_t      frame_index       = 0;
+                    system_time  new_frame_time    = 0;
+                    int          rendering_area[4] = {0};
 
                     system_critical_section_enter(rendering_handler->rendering_cs);
                     {
@@ -581,6 +590,40 @@ PRIVATE void _ogl_rendering_handler_thread_entrypoint(void* in_arg)
                                          temp_buffer);
                         }
 
+                        /* Determine AR for the frame. The aspect ratio is configurable on two levels:
+                         *
+                         * 1) If the rendering handler has been assigned a timeline instance, we retrieve the AR
+                         *    value by querying the object.
+                         * 2) Otherwise, we use the OGL_RENDERING_HANDLER_PROPERTY_ASPECT_RATIO property value.
+                         */
+                        if (rendering_handler->timeline != NULL)
+                        {
+                            aspect_ratio = demo_timeline_get_aspect_ratio(rendering_handler->timeline,
+                                                                          new_frame_time);
+                        }
+                        else
+                        {
+                            aspect_ratio = rendering_handler->aspect_ratio;
+                        }
+
+                        /* Determine the rendering area. Note that we do NOT set either scissor box or viewport here.
+                         * The reason is that the user may need to modify these states during rendering and we would
+                         * have no way of forcing back the default scissor/viewport configuration in-between.
+                         *
+                         * Therefore, we will pass the rendering area data down to the rendering handlers and rely
+                         * on them taking this data into account. If they don't - well, it's a visual glitch that's
+                         * immediately visible :-)
+                         */
+                        {
+                            const int rendering_area_width  = window_size[0];
+                            const int rendering_area_height = unsigned int(float(rendering_area_width) / aspect_ratio);
+
+                            rendering_area[0] = 0;
+                            rendering_area[1] = (window_size[1] - rendering_area_height) / 2;
+                            rendering_area[2] = rendering_area_width;
+                            rendering_area[3] = rendering_area[1] + rendering_area_height;
+                        }
+
                         /* Bind the context's default FBO and call the user app's call-back */
                         if (!default_fbo_id_set)
                         {
@@ -595,12 +638,31 @@ PRIVATE void _ogl_rendering_handler_thread_entrypoint(void* in_arg)
                             default_fbo_id_set = true;
                         }
 
-                        if (rendering_handler->pfn_rendering_callback != NULL &&
-                            default_fbo_id_set && default_fbo_id      != 0)
+                        if ( (rendering_handler->pfn_rendering_callback != NULL  ||
+                              rendering_handler->timeline               != NULL) &&
+                            default_fbo_id_set                                   &&
+                            default_fbo_id                              != 0)
                         {
                             pGLBindFramebuffer(GL_DRAW_FRAMEBUFFER,
                                                default_fbo_id);
 
+                            /* Clear the attachments before we head on. Disable any rendering modes which
+                             * would affect the process */
+#if 0
+                            pGLScissor(0, /* x */
+                                       0, /* y */
+                                       window_size[0],
+                                       window_size[1]);
+                            pGLDisable(GL_SCISSOR_TEST);
+#endif
+
+                            pGLClearColor(0.0f,
+                                          0.0f,
+                                          0.0f,
+                                          1.0f);
+                            pGLClear     (GL_COLOR_BUFFER_BIT);
+
+                            /* Enable per-sample shading if needed */
                             if (is_multisample_pf && context_type == OGL_CONTEXT_TYPE_GL)
                             {
                                 pGLEnable(GL_MULTISAMPLE);
@@ -612,7 +674,8 @@ PRIVATE void _ogl_rendering_handler_thread_entrypoint(void* in_arg)
                             if (rendering_handler->timeline != NULL)
                             {
                                 has_rendered_frame = demo_timeline_render(rendering_handler->timeline,
-                                                                          new_frame_time);
+                                                                          new_frame_time,
+                                                                          rendering_area);
                             } /* if (rendering_handler->timeline != NULL) */
                             else
                             {
@@ -621,6 +684,7 @@ PRIVATE void _ogl_rendering_handler_thread_entrypoint(void* in_arg)
                                     rendering_handler->pfn_rendering_callback(rendering_handler->context,
                                                                               frame_index,
                                                                               new_frame_time,
+                                                                              rendering_area,
                                                                               rendering_handler->rendering_callback_user_arg);
 
                                     has_rendered_frame = true;
@@ -804,6 +868,7 @@ PRIVATE ogl_rendering_handler ogl_rendering_handler_create_shared(system_hashed_
                                                                                                                system_hashed_ansi_string_get_buffer(name)) );
 
         new_handler->active_audio_stream                       = NULL;
+        new_handler->aspect_ratio                              = 1.0f;
         new_handler->bind_context_request_event                = system_event_create(false); /* manual_reset */
         new_handler->bind_context_request_ack_event            = system_event_create(false); /* manual_reset */
         new_handler->callback_request_ack_event                = system_event_create(false); /* manual_reset */
@@ -927,6 +992,13 @@ PUBLIC EMERALD_API void ogl_rendering_handler_get_property(ogl_rendering_handler
 
     switch (property)
     {
+        case OGL_RENDERING_HANDLER_PROPERTY_ASPECT_RATIO:
+        {
+            *(float*) out_result = rendering_handler_ptr->aspect_ratio;
+
+            break;
+        }
+
         case OGL_RENDERING_HANDLER_PROPERTY_PLAYBACK_STATUS:
         {
             *(ogl_rendering_handler_playback_status*) out_result = rendering_handler_ptr->playback_status;
@@ -1155,6 +1227,17 @@ PUBLIC EMERALD_API void ogl_rendering_handler_set_property(ogl_rendering_handler
 
     switch (property)
     {
+        case OGL_RENDERING_HANDLER_PROPERTY_ASPECT_RATIO:
+        {
+            rendering_handler_ptr->aspect_ratio = *(float*) value;
+
+            ASSERT_DEBUG_SYNC(rendering_handler_ptr->aspect_ratio > 0.0f,
+                              "Invalid aspect ratio value (%.4f) assigned.",
+                              rendering_handler_ptr->aspect_ratio);
+
+            break;
+        }
+
         case OGL_RENDERING_HANDLER_PROPERTY_RUNTIME_TIME_ADJUSTMENT_MODE:
         {
             rendering_handler_ptr->runtime_time_adjustment_mode = *(bool*) value;
@@ -1237,6 +1320,7 @@ PUBLIC bool _ogl_rendering_handler_on_bound_to_context(ogl_rendering_handler ren
     if (rendering_handler_ptr->context == NULL)
     {
         system_window context_window = NULL;
+        int           window_size[2];
 
         ogl_context_get_property(context,
                                  OGL_CONTEXT_PROPERTY_WINDOW,
@@ -1271,6 +1355,13 @@ PUBLIC bool _ogl_rendering_handler_on_bound_to_context(ogl_rendering_handler ren
             ASSERT_DEBUG_SYNC(false,
                               "Could not subscribe for key press notifications");
         }
+
+        /* Update aspect ratio to match the window's proportions. */
+        system_window_get_property(context_window,
+                                   SYSTEM_WINDOW_PROPERTY_DIMENSIONS,
+                                   window_size);
+
+        rendering_handler_ptr->aspect_ratio = float(window_size[0]) / window_size[1];
     } /* if (rendering_handler_ptr->context == NULL) */
 
     return result;

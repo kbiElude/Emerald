@@ -34,6 +34,16 @@ typedef enum
 /* Timeline properties */
 typedef enum
 {
+    /* float; settable.
+     *
+     * Determines proportions of the viewport for frame times, for which no video segments
+     * are defined.
+     *
+     * Use special demo_timeline_get_aspect_ratio() getter to query the AR value for a specific
+     * frame time.
+     */
+    DEMO_TIMELINE_PROPERTY_ASPECT_RATIO,
+
     /* system_time; not settable.
      *
      * End time of the segment located the furthest from the beginning of the timeline */
@@ -62,6 +72,11 @@ typedef enum
 /* Timeline segment properties */
 typedef enum
 {
+    /* float; settable.
+     *
+     * Used by ogl_rendering_handler to configure the viewport. */
+    DEMO_TIMELINE_SEGMENT_PROPERTY_ASPECT_RATIO,
+
     /* system_time; not settable. */
     DEMO_TIMELINE_SEGMENT_PROPERTY_END_TIME,
 
@@ -104,7 +119,11 @@ PUBLIC EMERALD_API bool demo_timeline_delete_segment(demo_timeline              
                                                      demo_timeline_segment_id   segment_id);
 
 /** TODO */
-PUBLIC EMERALD_API bool demo_timeline_get_property(demo_timeline timeline,
+PUBLIC EMERALD_API float demo_timeline_get_aspect_ratio(demo_timeline timeline,
+                                                        system_time   frame_time);
+
+/** TODO */
+PUBLIC EMERALD_API bool demo_timeline_get_property(demo_timeline          timeline,
                                                    demo_timeline_property property,
                                                    void*                  out_result_ptr);
 
@@ -133,15 +152,31 @@ PUBLIC EMERALD_API bool demo_timeline_move_segment(demo_timeline              ti
                                                    demo_timeline_segment_id   segment_id,
                                                    system_time                new_segment_start_time);
 
-/** TODO */
+/** TODO
+ *
+ *  @param timeline          TODO
+ *  @param frame_time        TODO
+ *  @param rendering_area_px_topdown [0]: x1 of the rendering area (in pixels)
+ *                           [1]: y1 of the rendering area (in pixels)
+ *                           [2]: x2 of the rendering area (in pixels)
+ *                           [3]: y2 of the rendering area (in pixels)
+ *
+ *  @return TODO 
+ */
 PUBLIC EMERALD_API RENDERING_CONTEXT_CALL bool demo_timeline_render(demo_timeline timeline,
-                                                                    system_time   frame_time);
+                                                                    system_time   frame_time,
+                                                                    const int*    rendering_area_px_topdown);
 
 /** TODO */
 PUBLIC EMERALD_API bool demo_timeline_resize_segment(demo_timeline              timeline,
                                                      demo_timeline_segment_type segment_type,
                                                      demo_timeline_segment_id   segment_id,
                                                      system_time                new_segment_duration);
+
+/** TODO */
+PUBLIC EMERALD_API bool demo_timeline_set_property(demo_timeline          timeline,
+                                                   demo_timeline_property property,
+                                                   const void*            data);
 
 /** TODO */
 PUBLIC EMERALD_API bool demo_timeline_set_segment_property(demo_timeline                  timeline,

@@ -837,7 +837,9 @@ PUBLIC void APIENTRY ogl_context_wrappers_glBlitFramebuffer(GLint      srcX0,
 
     ogl_context_state_cache_sync(state_cache,
                                  STATE_CACHE_SYNC_BIT_ACTIVE_DRAW_FRAMEBUFFER |
-                                 STATE_CACHE_SYNC_BIT_ACTIVE_READ_FRAMEBUFFER);
+                                 STATE_CACHE_SYNC_BIT_ACTIVE_READ_FRAMEBUFFER |
+                                 STATE_CACHE_SYNC_BIT_ACTIVE_RENDERING_MODES  |
+                                 STATE_CACHE_SYNC_BIT_ACTIVE_SCISSOR_BOX);
 
     _private_entrypoints_ptr->pGLBlitFramebuffer(srcX0,
                                                  srcY0,
@@ -944,7 +946,8 @@ PUBLIC void APIENTRY ogl_context_wrappers_glClear(GLbitfield mask)
                                  STATE_CACHE_SYNC_BIT_ACTIVE_COLOR_DEPTH_MASK |
                                  STATE_CACHE_SYNC_BIT_ACTIVE_DRAW_FRAMEBUFFER |
                                  STATE_CACHE_SYNC_BIT_ACTIVE_RENDERING_MODES  |
-                                 STATE_CACHE_SYNC_BIT_ACTIVE_SCISSOR_BOX);
+                                 STATE_CACHE_SYNC_BIT_ACTIVE_SCISSOR_BOX      |
+                                 STATE_CACHE_SYNC_BIT_ACTIVE_VIEWPORT);
 
     _private_entrypoints_ptr->pGLClear(mask);
 }

@@ -236,6 +236,7 @@ void _init_gl(ogl_context context,
 /* Stage step 1: sample data generation */
 static void _stage_step_generate_data(ogl_context context,
                                       system_time time,
+                                      const int*  rendering_area_px_topdown,
                                       void*       not_used)
 {
     const ogl_context_gl_entrypoints_ext_direct_state_access* dsa_entry_points = NULL;
@@ -280,6 +281,7 @@ static void _stage_step_generate_data(ogl_context context,
 /* Stage step 2: sample data modification */
 static void _stage_step_modify_data(ogl_context context,
                                     system_time time,
+                                    const int*  rendering_area_px_topdown,
                                     void*       not_used)
 {
     GLuint                                                    default_fbo_id   = 0;
@@ -318,11 +320,13 @@ static void _stage_step_modify_data(ogl_context context,
 void _rendering_handler(ogl_context context,
                         uint32_t    n_frames_rendered,
                         system_time frame_time,
+                        const int*  rendering_area_px_topdown,
                         void*       renderer)
 {
     ogl_pipeline_draw_stage(_pipeline,
                             _pipeline_stage_id,
-                            frame_time);
+                            frame_time,
+                            rendering_area_px_topdown);
 }
 
 void _rendering_lbm_callback_handler(system_window           window,

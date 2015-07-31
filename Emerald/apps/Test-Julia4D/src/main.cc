@@ -469,11 +469,13 @@ PRIVATE void _init_ui()
 PRIVATE void _rendering_handler(ogl_context context,
                                 uint32_t    n_frames_rendered,
                                 system_time frame_time,
+                                const int*  rendering_area_px_topdown,
                                 void*       renderer)
 {
     ogl_pipeline_draw_stage(_pipeline,
                             _pipeline_stage_id,
-                            frame_time);
+                            frame_time,
+                            rendering_area_px_topdown);
 }
 
 PRIVATE void _rendering_lbm_callback_handler(system_window           window,

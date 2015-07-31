@@ -299,8 +299,9 @@ PRIVATE void _curve_editor_curve_window_renderer_init_tcb_segment_rendering(ogl_
                                                                             curve_container,
                                                                             curve_segment_id);
 PRIVATE void _curve_editor_curve_window_renderer_rendering_callback_handler(ogl_context,
-                                                                            uint32_t /* n_frame */,
+                                                                            uint32_t    /* n_frame */,
                                                                             system_time /* frame time */,
+                                                                            const int*  rendering_area,
                                                                             void*);
 PRIVATE bool _curve_editor_curve_window_renderer_on_left_button_down       (system_window,
                                                                             LONG,
@@ -2888,6 +2889,7 @@ PRIVATE bool _curve_editor_curve_window_renderer_on_mouse_wheel(system_window   
 PRIVATE void _curve_editor_curve_window_renderer_rendering_callback_handler(ogl_context          context,
                                                                             uint32_t,
                                                                             system_time,
+                                                                            const int*           rendering_area,
                                                                             void*                descriptor)
 {
     _curve_editor_curve_window_renderer* descriptor_ptr      = (_curve_editor_curve_window_renderer*) descriptor;

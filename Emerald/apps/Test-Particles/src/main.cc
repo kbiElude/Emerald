@@ -205,11 +205,13 @@ PRIVATE void _init_gl(ogl_context context,
 PRIVATE void _rendering_handler(ogl_context context,
                                 uint32_t    n_frames_rendered,
                                 system_time frame_time,
+                                const int*  rendering_area_px_topdown,
                                 void*       renderer)
 {
     ogl_pipeline_draw_stage(_pipeline,
                             stage_particle_get_stage_id(),
-                            frame_time);
+                            frame_time,
+                            rendering_area_px_topdown);
 }
 
 PRIVATE bool _rendering_rbm_callback_handler(system_window           window,

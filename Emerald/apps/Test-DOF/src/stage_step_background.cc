@@ -28,6 +28,7 @@ ogl_texture      _skybox_texture = NULL;
 /** TODO */
 static void _stage_step_background_execute(ogl_context context,
                                            system_time time,
+                                           const int*  rendering_area_px_topdown,
                                            void*       not_used)
 {
     const GLenum                      draw_buffer       = GL_COLOR_ATTACHMENT0;

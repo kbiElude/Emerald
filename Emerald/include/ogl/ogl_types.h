@@ -1836,10 +1836,22 @@ DECLARE_HANDLE(ogl_ui_bag);
 /* UI control handle */
 DECLARE_HANDLE(ogl_ui_control);
 
-/** Rendering handler call-back */
+/** Rendering handler call-back
+ *
+ *  @param context           TODO
+ *  @param n_frame           TODO
+ *  @param frame_time        TODO
+ *  @param rendering_area_px_topdown [0]: x1 of the rendering area (in pixels)
+ *                           [1]: y1 of the rendering area (in pixels)
+ *                           [2]: x2 of the rendering area (in pixels)
+ *                           [3]: y2 of the rendering area (in pixels)
+ *  @param user_arg          TODO
+ *
+ */
 typedef void (*PFNOGLRENDERINGHANDLERRENDERINGCALLBACK)   (ogl_context context,
                                                            uint32_t    n_frame,
                                                            system_time frame_time,
+                                                           const int*  rendering_area_px_topdown,
                                                            void*       user_arg);
 typedef void (*PFNOGLCONTEXTCALLBACKFROMCONTEXTTHREADPROC)(ogl_context context,
                                                            void*       user_arg);

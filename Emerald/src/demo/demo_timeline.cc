@@ -24,6 +24,7 @@
 
 typedef struct _demo_timeline_segment
 {
+    float                               aspect_ratio;       /* AR to use for the video segment */
     system_time                         end_time;
     demo_timeline_segment_id            id;
     system_hashed_ansi_string           name;
@@ -38,6 +39,7 @@ typedef struct _demo_timeline_segment
                                     system_time                in_end_time,
                                     demo_timeline_segment_id   in_id)
     {
+        aspect_ratio       = 1.0f;
         end_time           = in_end_time;
         id                 = in_id;
         name               = in_name;
@@ -50,6 +52,7 @@ typedef struct _demo_timeline_segment
 
 typedef struct _demo_timeline
 {
+    float                   aspect_ratio;                    /* AR for frame times, for which no video segments are defined */
     ogl_context             context;
     system_critical_section cs;
     system_time             duration;
@@ -68,6 +71,7 @@ typedef struct _demo_timeline
         ASSERT_DEBUG_SYNC(in_context != NULL,
                           "Input rendering context is NULL");
 
+        aspect_ratio                    = 1.0f;
         context                         = in_context;
         cs                              = system_critical_section_create();
         duration                        = 0;
@@ -637,7 +641,7 @@ PUBLIC EMERALD_API bool demo_timeline_delete_segment(demo_timeline              
                                  &segment_ptr) )
         {
             LOG_ERROR("Could not retrieve a segment descriptor for segment id [%d]",
-                      segment_id);
+                      (int) segment_id);
 
             goto end;
         }
@@ -681,6 +685,59 @@ end:
 }
 
 /** Please see header for spec */
+PUBLIC EMERALD_API float demo_timeline_get_aspect_ratio(demo_timeline timeline,
+                                                        system_time   frame_time)
+{
+    float                    result             = 0.0f;
+    _demo_timeline*          timeline_ptr       = (_demo_timeline*) timeline;
+    demo_timeline_segment_id video_segment_id   = 0;
+    _demo_timeline_segment*  video_segment_ptr  = NULL;
+    system_hash64map         video_segments_map = NULL;
+
+    ASSERT_DEBUG_SYNC(timeline != NULL,
+                      "Input timeline instance is NULL");
+
+    if (!demo_timeline_get_segment_at_time(timeline,
+                                           DEMO_TIMELINE_SEGMENT_TYPE_VIDEO,
+                                           frame_time,
+                                          &video_segment_id) )
+    {
+        /* No video segment defined for the requested time frame */
+        result = timeline_ptr->aspect_ratio;
+    }
+    else
+    {
+        if (!_demo_timeline_get_segment_containers(timeline_ptr,
+                                                   DEMO_TIMELINE_SEGMENT_TYPE_VIDEO,
+                                                   NULL, /* out_segment_id_counter_ptr_ptr */
+                                                   NULL, /* out_segment_vector_ptr */
+                                                  &video_segments_map) )
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Could not retrieve video segments hash-map.");
+
+            goto end;
+        }
+
+        if (!system_hash64map_get(video_segments_map,
+                                  (system_hash64) video_segment_id,
+                                 &video_segment_ptr) )
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Could not retrieve video segment descriptor for video segment id [%d]",
+                              video_segment_id);
+
+            goto end;
+        }
+
+        result = video_segment_ptr->aspect_ratio;
+    }
+
+end:
+    return result;
+}
+
+/** Please see header for spec */
 PUBLIC EMERALD_API bool demo_timeline_get_property(demo_timeline          timeline,
                                                    demo_timeline_property property,
                                                    void*                  out_result_ptr)
@@ -693,6 +750,13 @@ PUBLIC EMERALD_API bool demo_timeline_get_property(demo_timeline          timeli
 
     switch (property)
     {
+        case DEMO_TIMELINE_PROPERTY_ASPECT_RATIO:
+        {
+            *(float*) out_result_ptr = timeline_ptr->aspect_ratio;
+
+            break;
+        }
+
         case DEMO_TIMELINE_PROPERTY_DURATION:
         {
             system_critical_section_enter(timeline_ptr->cs);
@@ -927,6 +991,13 @@ PUBLIC EMERALD_API bool demo_timeline_get_segment_property(demo_timeline        
 
         switch (property)
         {
+            case DEMO_TIMELINE_SEGMENT_PROPERTY_ASPECT_RATIO:
+            {
+                *(float*) out_result_ptr = segment_ptr->aspect_ratio;
+
+                break;
+            }
+
             case DEMO_TIMELINE_SEGMENT_PROPERTY_END_TIME:
             {
                 *(system_time*) out_result_ptr = segment_ptr->end_time;
@@ -1033,7 +1104,8 @@ end:
 
 /** Please see header for spec */
 PUBLIC EMERALD_API RENDERING_CONTEXT_CALL bool demo_timeline_render(demo_timeline timeline,
-                                                                    system_time   frame_time)
+                                                                    system_time   frame_time,
+                                                                    const int*    rendering_area_px_topdown)
 {
     bool                     result           = false;
     _demo_timeline*          timeline_ptr     = (_demo_timeline*) timeline;
@@ -1092,7 +1164,8 @@ PUBLIC EMERALD_API RENDERING_CONTEXT_CALL bool demo_timeline_render(demo_timelin
         /* OK, render the stage corresponding to the video segment */
         result = ogl_pipeline_draw_stage(timeline_ptr->rendering_pipeline,
                                          video_segment_ptr->pipeline_stage_id,
-                                         rendering_pipeline_time);
+                                         rendering_pipeline_time,
+                                         rendering_area_px_topdown);
     }
 
     /* All done */
@@ -1155,6 +1228,41 @@ end:
 }
 
 /** Please see header for spec */
+PUBLIC EMERALD_API bool demo_timeline_set_property(demo_timeline          timeline,
+                                                   demo_timeline_property property,
+                                                   const void*            data)
+{
+    bool            result       = true;
+    _demo_timeline* timeline_ptr = (_demo_timeline*) timeline;
+
+    ASSERT_DEBUG_SYNC(timeline_ptr != NULL,
+                      "Input timeline instance is NULL");
+
+    switch (property)
+    {
+        case DEMO_TIMELINE_PROPERTY_ASPECT_RATIO:
+        {
+            timeline_ptr->aspect_ratio = *(float*) data;
+
+            ASSERT_DEBUG_SYNC(timeline_ptr->aspect_ratio > 0.0f,
+                              "An aspect ratio of a value <= 0.0 was requested!");
+
+            break;
+        }
+
+        default:
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Unrecognized demo_timeline_property value.");
+
+            result = false;
+        }
+    } /* switch (property) */
+
+    return result;
+}
+
+/** Please see header for spec */
 PUBLIC EMERALD_API bool demo_timeline_set_segment_property(demo_timeline                  timeline,
                                                            demo_timeline_segment_type     segment_type,
                                                            demo_timeline_segment_id       segment_id,
@@ -1198,6 +1306,15 @@ PUBLIC EMERALD_API bool demo_timeline_set_segment_property(demo_timeline        
 
         switch (property)
         {
+            case DEMO_TIMELINE_SEGMENT_PROPERTY_ASPECT_RATIO:
+            {
+                segment_ptr->aspect_ratio = *(float*) data;
+
+                ASSERT_DEBUG_SYNC(segment_ptr->aspect_ratio > 0.0f,
+                                  "A segment AR of <= 0.0 value was requested!");
+                break;
+            }
+
             case DEMO_TIMELINE_SEGMENT_PROPERTY_PIPELINE_TIME:
             {
                 segment_ptr->pipeline_time_mode = *(demo_timeline_segment_pipeline_time*) data;
