@@ -621,7 +621,7 @@ PRIVATE void _ogl_rendering_handler_thread_entrypoint(void* in_arg)
                             rendering_area[0] = 0;
                             rendering_area[1] = (window_size[1] - rendering_area_height) / 2;
                             rendering_area[2] = rendering_area_width;
-                            rendering_area[3] = rendering_area[1] + rendering_area_height;
+                            rendering_area[3] = window_size[1] - rendering_area[1];
                         }
 
                         /* Bind the context's default FBO and call the user app's call-back */
@@ -648,14 +648,6 @@ PRIVATE void _ogl_rendering_handler_thread_entrypoint(void* in_arg)
 
                             /* Clear the attachments before we head on. Disable any rendering modes which
                              * would affect the process */
-#if 0
-                            pGLScissor(0, /* x */
-                                       0, /* y */
-                                       window_size[0],
-                                       window_size[1]);
-                            pGLDisable(GL_SCISSOR_TEST);
-#endif
-
                             pGLClearColor(0.0f,
                                           0.0f,
                                           0.0f,
