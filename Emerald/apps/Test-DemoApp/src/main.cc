@@ -40,6 +40,7 @@ GLuint                _vao_id              = 0;
 void _rendering_handler_entrypoint(ogl_context context,
                                    uint32_t    n_frames_rendered,
                                    system_time frame_time,
+                                   const int*  rendering_area_px_topdown,
                                    void*       unused)
 {
     GLuint                            default_fbo_id = 0;
@@ -77,11 +78,13 @@ void _rendering_handler_entrypoint(ogl_context context,
     /* Render the scene */
     ogl_pipeline_draw_stage(state_get_pipeline(),
                             state_get_pipeline_stage_id(),
-                            frame_time);
+                            frame_time,
+                            rendering_area_px_topdown);
 }
 
 PUBLIC void _render_scene(ogl_context context,
                           system_time time,
+                          const int*  rendering_area_px_topdown,
                           void*       not_used)
 {
     scene_camera       current_camera   = NULL;

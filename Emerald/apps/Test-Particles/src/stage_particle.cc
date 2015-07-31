@@ -248,6 +248,7 @@ GLuint           _vao_id                                                = -1;
 /** TODO */
 static void _stage_particle_step_draw(ogl_context context,
                                       system_time time,
+                                      const int*  rendering_area_px_topdown,
                                       void*       not_used)
 {
     const ogl_context_gl_entrypoints_ext_direct_state_access* dsa_entrypoints = NULL;
@@ -314,6 +315,7 @@ static void _stage_particle_step_draw(ogl_context context,
 /** TODO */
 static void _stage_particle_step_init(ogl_context context,
                                       system_time time,
+                                      const int*  rendering_area_px_topdown,
                                       void*       not_used)
 {
     ogl_flyby flyby = NULL;
@@ -422,6 +424,7 @@ static void _stage_particle_step_init(ogl_context context,
 /** TODO */
 static void _stage_particle_step_update(ogl_context context,
                                         system_time time,
+                                        const int*  rendering_area_px_topdown,
                                         void*       not_used)
 {
     const ogl_context_gl_entrypoints_ext_direct_state_access* dsa_entrypoints = NULL;

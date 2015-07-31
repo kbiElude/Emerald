@@ -730,6 +730,7 @@ system_hashed_ansi_string _replace_extension(system_hashed_ansi_string original_
 void _rendering_handler(ogl_context context,
                         uint32_t    n_frames_rendered,
                         system_time frame_time,
+                        const int*  rendering_area_px_topdown,
                         void*       renderer)
 {
     const ogl_context_gl_entrypoints_ext_direct_state_access* dsa_entry_points = NULL;

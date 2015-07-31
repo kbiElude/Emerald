@@ -13,6 +13,12 @@ REFCOUNT_INSERT_DECLARATIONS(ogl_rendering_handler,
 
 typedef enum
 {
+    /* settable, float.
+     *
+     * The aspect ratio property value will be used if no timeline instance has been
+     * assigned to the renering handler instance. */
+    OGL_RENDERING_HANDLER_PROPERTY_ASPECT_RATIO,
+
     /* not settable, ogl_rendering_handler_playback_status */
     OGL_RENDERING_HANDLER_PROPERTY_PLAYBACK_STATUS,
 

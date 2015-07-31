@@ -310,6 +310,7 @@ const char* julia_vertex_shader_code = "#version 430 core\n"
 /** TODO */
 static void _stage_step_julia_execute(ogl_context context,
                                       system_time time,
+                                      const int*  rendering_area_px_topdown,
                                       void*       not_used)
 {
     const ogl_context_gl_entrypoints_ext_direct_state_access* dsa_entrypoints = NULL;

@@ -118,6 +118,7 @@ end:
 void _rendering_handler(ogl_context context,
                         uint32_t    n_frames_rendered,
                         system_time frame_time,
+                        const int*  rendering_area_px_topdown,
                         void*       unused)
 {
     const ogl_context_gl_entrypoints* entry_points = NULL;
@@ -137,11 +138,13 @@ void _rendering_handler(ogl_context context,
     /* Render the scene */
     ogl_pipeline_draw_stage(_pipeline,
                             _pipeline_stage_id,
-                            frame_time);
+                            frame_time,
+                            rendering_area_px_topdown);
 }
 
 void _render_scene(ogl_context context,
                    system_time time,
+                   const int*  rendering_area_px_topdown,
                    void*       not_used)
 {
     /* Update view matrix */

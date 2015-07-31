@@ -16,6 +16,7 @@
 
 static void _clear_color_buffer_with_color(ogl_context context,
                                            system_time unused,
+                                           const int*  rendering_area_px_topdown,
                                            void*       clear_color_arg)
 {
     const float*                clear_color = (const float*) clear_color_arg;
@@ -29,7 +30,16 @@ static void _clear_color_buffer_with_color(ogl_context context,
                                clear_color[1],
                                clear_color[2],
                                clear_color[3]);
-    entrypoints->pGLClear     (GL_COLOR_BUFFER_BIT);
+
+    entrypoints->pGLScissor(rendering_area_px_topdown[0],
+                            rendering_area_px_topdown[1],
+                            rendering_area_px_topdown[2] - rendering_area_px_topdown[0],
+                            rendering_area_px_topdown[3] - rendering_area_px_topdown[1]);
+    entrypoints->pGLEnable (GL_SCISSOR_TEST);
+    {
+        entrypoints->pGLClear(GL_COLOR_BUFFER_BIT);
+    }
+    entrypoints->pGLDisable(GL_SCISSOR_TEST);
 }
 
 static void _mouse_move_entrypoint(system_window           window,
@@ -94,6 +104,7 @@ TEST(WindowTest, CreationTest)
 static void _on_render_frame_callback(ogl_context context,
                                       uint32_t    n_frames_rendered,
                                       system_time frame_time,
+                                      const int*  rendering_area_px_topdown,
                                       void*)
 {
     const ogl_context_gl_entrypoints* entry_points = NULL;
@@ -215,20 +226,23 @@ TEST(WindowTest, RenderingHandlerTest)
 #endif
 }
 
-TEST(WindowTest, TimelineTest_ShouldRenderFourDifferentlyColoredScreens)
+TEST(WindowTest, TimelineTest_ShouldRenderFourDifferentlyColoredScreensWithDifferentARs)
 {
     /* Create the window */
     ogl_context              context            =  NULL;
+    const float              frame_1_ar         = 1.0f;
     const float              frame_1_color[]    = {0.0f, 1.0f, 0.0f, 1.0f};
     system_time              frame_1_end_time   =  0;
     demo_timeline_segment_id frame_1_segment_id = -1;
     uint32_t                 frame_1_stage_id   = -1;
     system_time              frame_1_start_time =  0;
+    const float              frame_2_ar         = 1.5f;
     const float              frame_2_color[]    = {0.0f, 1.0f, 1.0f, 1.0f};
     system_time              frame_2_end_time   =  0;
     demo_timeline_segment_id frame_2_segment_id = -1;
     uint32_t                 frame_2_stage_id   = -1;
     system_time              frame_2_start_time =  0;
+    const float              frame_3_ar         =  1.75f;
     const float              frame_3_color[]    = {0.0f, 0.0f, 1.0f, 1.0f};
     system_time              frame_3_end_time   =  0;
     demo_timeline_segment_id frame_3_segment_id = -1;
@@ -242,7 +256,7 @@ TEST(WindowTest, TimelineTest_ShouldRenderFourDifferentlyColoredScreens)
                                                                                       8,  /* color_buffer_green_bits */
                                                                                       8,  /* color_buffer_blue_bits  */
                                                                                       0,  /* color_buffer_alpha_bits */
-                                                                                      16, /* depth_buffer_bits       */
+                                                                                      0,  /* depth_buffer_bits       */
                                                                                       1,  /* n_samples               */
                                                                                       0); /* stencil_buffer_bits     */
     system_window            window_handle      = system_window_create_not_fullscreen(OGL_CONTEXT_TYPE_GL,
@@ -307,6 +321,22 @@ TEST(WindowTest, TimelineTest_ShouldRenderFourDifferentlyColoredScreens)
                                                 frame_3_end_time,
                                                &frame_3_segment_id,
                                                &frame_3_stage_id) );
+
+    ASSERT_TRUE(demo_timeline_set_segment_property(timeline,
+                                                   DEMO_TIMELINE_SEGMENT_TYPE_VIDEO,
+                                                   frame_1_segment_id,
+                                                   DEMO_TIMELINE_SEGMENT_PROPERTY_ASPECT_RATIO,
+                                                  &frame_1_ar) );
+    ASSERT_TRUE(demo_timeline_set_segment_property(timeline,
+                                                   DEMO_TIMELINE_SEGMENT_TYPE_VIDEO,
+                                                   frame_2_segment_id,
+                                                   DEMO_TIMELINE_SEGMENT_PROPERTY_ASPECT_RATIO,
+                                                  &frame_2_ar) );
+    ASSERT_TRUE(demo_timeline_set_segment_property(timeline,
+                                                   DEMO_TIMELINE_SEGMENT_TYPE_VIDEO,
+                                                   frame_3_segment_id,
+                                                   DEMO_TIMELINE_SEGMENT_PROPERTY_ASPECT_RATIO,
+                                                  &frame_3_ar) );
 
     ogl_pipeline_add_stage_step(timeline_pipeline,
                                 frame_1_stage_id,

@@ -22,6 +22,7 @@ system_event  _window_closed_event = system_event_create(true); /* manual_reset 
 void _rendering_handler(ogl_context context,
                         uint32_t    n_frames_rendered,
                         system_time frame_time,
+                        const int*  rendering_area_px_topdown,
                         void*       unused)
 {
     const ogl_context_es_entrypoints* entry_points = NULL;
