@@ -3672,7 +3672,6 @@ PUBLIC bool ogl_context_release_managers(ogl_context context)
         context_ptr->text_renderer = NULL;
     }
 
-
     if (context_ptr->programs != NULL)
     {
         ogl_programs_release(context_ptr->programs);
@@ -3708,6 +3707,16 @@ PUBLIC bool ogl_context_release_managers(ogl_context context)
         context_ptr->textures = NULL;
     }
 
+    ogl_context_bind_to_current_thread(context);
+    {
+        if (context_ptr->buffers != NULL)
+        {
+            ogl_buffers_release(context_ptr->buffers);
+
+            context_ptr->buffers = NULL;
+        }
+    }
+    ogl_context_unbind_from_current_thread(context);
 
 
     if (context_ptr->bo_bindings != NULL)

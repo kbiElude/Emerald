@@ -30,8 +30,6 @@ typedef struct _ogl_buffers_buffer
     struct _ogl_buffers*     buffers_ptr;
     _ogl_buffers_mappability mappability;
     system_memory_manager    manager;
-
-    ~_ogl_buffers_buffer();
 } _ogl_buffers_buffer;
 
 typedef struct _ogl_buffers
@@ -53,75 +51,7 @@ typedef struct _ogl_buffers
     system_resizable_vector                        sparse_buffers; /* sparse BOs are never mappable! */
 
     _ogl_buffers(ogl_context               in_context,
-                 system_hashed_ansi_string in_name)
-    {
-        are_sparse_buffers_in           = false;
-        bo_id_offset_hash_to_buffer_map = system_hash64map_create    (sizeof(_ogl_buffers_buffer*) );
-        buffer_descriptor_pool          = system_resource_pool_create(sizeof(_ogl_buffers_buffer),
-                                                                      16,    /* n_elements_to_preallocate */
-                                                                      NULL,  /* init_fn */
-                                                                      NULL); /* deinit_fn */
-        context                         = in_context;
-        entry_points_es                 = NULL;
-        entry_points_gl                 = NULL;
-        entry_points_gl_bs              = NULL;
-        entry_points_gl_sb              = NULL;
-        name                            = in_name;
-        page_size                       = 0;
-        sparse_buffers                  = system_resizable_vector_create(16); /* capacity */
-
-        /* Initialize non-sparse buffer vectors */
-        for (unsigned int n_buffer_usage = 0;
-                          n_buffer_usage < OGL_BUFFERS_USAGE_COUNT;
-                        ++n_buffer_usage)
-        {
-            nonsparse_buffers[n_buffer_usage] = system_resizable_vector_create(4); /* capacity */
-        } /* for (all buffer usage types) */
-
-        /* Cache the entry-points */
-        ogl_context_type context_type = OGL_CONTEXT_TYPE_UNDEFINED;
-
-        ogl_context_get_property(context,
-                                 OGL_CONTEXT_PROPERTY_TYPE,
-                                &context_type);
-
-        if (context_type == OGL_CONTEXT_TYPE_ES)
-        {
-            ogl_context_get_property(context,
-                                     OGL_CONTEXT_PROPERTY_ENTRYPOINTS_ES,
-                                    &entry_points_es);
-        } /* if (context_type == OGL_CONTEXT_TYPE_ES) */
-        else
-        {
-            ogl_context_get_property(context,
-                                     OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
-                                    &entry_points_gl);
-
-            ogl_context_get_property(context,
-                                     OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL_ARB_BUFFER_STORAGE,
-                                    &entry_points_gl_bs);
-
-            /* Are sparse buffers supported? */
-            ogl_context_get_property(context,
-                                     OGL_CONTEXT_PROPERTY_SUPPORT_GL_ARB_SPARSE_BUFFERS,
-                                    &are_sparse_buffers_in);
-        }
-
-        if (are_sparse_buffers_in)
-        {
-            /* Retrieve entry-point & limits descriptors */
-            const ogl_context_gl_limits_arb_sparse_buffer* limits_sb = NULL;
-
-            ogl_context_get_property(context,
-                                     OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL_ARB_SPARSE_BUFFER,
-                                    &entry_points_gl_sb);
-            ogl_context_get_property(context,
-                                     OGL_CONTEXT_PROPERTY_LIMITS_ARB_SPARSE_BUFFER,
-                                    &limits_sb);
-
-            page_size = limits_sb->sparse_buffer_page_size;
-        } /* if (are_sparse_buffers_in) */
-    }
+                 system_hashed_ansi_string in_name);
 
     ~_ogl_buffers()
     {
@@ -140,13 +70,18 @@ typedef struct _ogl_buffers
             {
                 _ogl_buffers_buffer* buffer_ptr = NULL;
 
+                /* Note: nonsparse buffer descriptors are carved out of the buffer descriptor pool.
+                 *       The pool takes care of releasing the embedded GL objects at the release time.
+                 *
+                 *       Calling a destructor here would be a unforgivable mistake, but we still need
+                 *       to return the descriptor to the pool.
+                 */
                 while (system_resizable_vector_pop(nonsparse_buffers[n_buffer_usage],
                                                   &buffer_ptr) )
                 {
-                    delete buffer_ptr;
-
-                    buffer_ptr = NULL;
-                } /* while (descriptors are available) */
+                    system_resource_pool_return_to_pool(buffer_descriptor_pool,
+                                                        (system_resource_pool_block) buffer_ptr);
+                }
 
                 system_resizable_vector_release(nonsparse_buffers[n_buffer_usage]);
 
@@ -158,12 +93,12 @@ typedef struct _ogl_buffers
         {
             _ogl_buffers_buffer* buffer_ptr = NULL;
 
+            /* The note above regarding the nonsparse buffer descriptors applies here, too. */
             while (system_resizable_vector_pop(sparse_buffers,
                                               &buffer_ptr) )
             {
-                delete buffer_ptr;
-
-                buffer_ptr = NULL;
+                system_resource_pool_return_to_pool(buffer_descriptor_pool,
+                                                    (system_resource_pool_block) buffer_ptr);
             } /* while (descriptors are available) */
 
             system_resizable_vector_release(sparse_buffers);
@@ -183,51 +118,94 @@ typedef struct _ogl_buffers
 
 
 /** Forward declarations */
-PRIVATE _ogl_buffers_buffer* _ogl_buffers_alloc_new_immutable_buffer    (_ogl_buffers*            buffers_ptr,
-                                                                         _ogl_buffers_mappability mappability,
-                                                                         _ogl_buffers_usage       usage,
-                                                                         unsigned int             required_size);
-PRIVATE _ogl_buffers_buffer* _ogl_buffers_alloc_new_sparse_buffer       (_ogl_buffers*            buffers_ptr);
-PRIVATE unsigned int         _ogl_buffers_get_nonsparse_buffer_size     (_ogl_buffers_usage       usage);
-PRIVATE void                 _ogl_buffers_on_sparse_memory_block_alloced(system_memory_manager    manager,
-                                                                         unsigned int             offset_aligned,
-                                                                         unsigned int             size,
-                                                                         void*                    user_arg);
-PRIVATE void                 _ogl_buffers_on_sparse_memory_block_freed  (system_memory_manager    manager,
-                                                                         unsigned int             offset_aligned,
-                                                                         unsigned int             size,
-                                                                         void*                    user_arg);
+PRIVATE _ogl_buffers_buffer* _ogl_buffers_alloc_new_immutable_buffer    (_ogl_buffers*              buffers_ptr,
+                                                                         _ogl_buffers_mappability   mappability,
+                                                                         _ogl_buffers_usage         usage,
+                                                                         unsigned int               required_size);
+PRIVATE _ogl_buffers_buffer* _ogl_buffers_alloc_new_sparse_buffer       (_ogl_buffers*              buffers_ptr);
+PRIVATE void                 _ogl_buffers_dealloc_sparse_buffer         (system_resource_pool_block buffer_block);
+PRIVATE unsigned int         _ogl_buffers_get_nonsparse_buffer_size     (_ogl_buffers_usage         usage);
+PRIVATE void                 _ogl_buffers_on_sparse_memory_block_alloced(system_memory_manager      manager,
+                                                                         unsigned int               offset_aligned,
+                                                                         unsigned int               size,
+                                                                         void*                      user_arg);
+PRIVATE void                 _ogl_buffers_on_sparse_memory_block_freed  (system_memory_manager      manager,
+                                                                         unsigned int               offset_aligned,
+                                                                         unsigned int               size,
+                                                                         void*                      user_arg);
+
 
 /** TODO */
-_ogl_buffers_buffer::~_ogl_buffers_buffer()
+_ogl_buffers::_ogl_buffers(ogl_context               in_context,
+                           system_hashed_ansi_string in_name)
 {
-    if (bo_id != 0)
+    are_sparse_buffers_in           = false;
+    bo_id_offset_hash_to_buffer_map = system_hash64map_create    (sizeof(_ogl_buffers_buffer*) );
+    buffer_descriptor_pool          = system_resource_pool_create(sizeof(_ogl_buffers_buffer),
+                                                                  16,                                  /* n_elements_to_preallocate */
+                                                                  NULL,                                /* init_fn */
+                                                                  _ogl_buffers_dealloc_sparse_buffer); /* deinit_fn */
+    context                         = in_context;
+    entry_points_es                 = NULL;
+    entry_points_gl                 = NULL;
+    entry_points_gl_bs              = NULL;
+    entry_points_gl_sb              = NULL;
+    name                            = in_name;
+    page_size                       = 0;
+    sparse_buffers                  = system_resizable_vector_create(16); /* capacity */
+
+    /* Initialize non-sparse buffer vectors */
+    for (unsigned int n_buffer_usage = 0;
+                      n_buffer_usage < OGL_BUFFERS_USAGE_COUNT;
+                    ++n_buffer_usage)
     {
-        if (buffers_ptr->entry_points_gl != NULL)
-        {
-            buffers_ptr->entry_points_gl->pGLDeleteBuffers(1,
-                                                          &bo_id);
-        }
-        else
-        {
-            ASSERT_DEBUG_SYNC(buffers_ptr->entry_points_es != NULL,
-                              "ES and GL entry-point descriptors are unavailable.");
+        nonsparse_buffers[n_buffer_usage] = system_resizable_vector_create(4); /* capacity */
+    } /* for (all buffer usage types) */
 
-            buffers_ptr->entry_points_es->pGLDeleteBuffers(1,
-                                                          &bo_id);
-        }
+    /* Cache the entry-points */
+    ogl_context_type context_type = OGL_CONTEXT_TYPE_UNDEFINED;
 
-        bo_id = 0;
+    ogl_context_get_property(context,
+                             OGL_CONTEXT_PROPERTY_TYPE,
+                            &context_type);
+
+    if (context_type == OGL_CONTEXT_TYPE_ES)
+    {
+        ogl_context_get_property(context,
+                                 OGL_CONTEXT_PROPERTY_ENTRYPOINTS_ES,
+                                &entry_points_es);
+    } /* if (context_type == OGL_CONTEXT_TYPE_ES) */
+    else
+    {
+        ogl_context_get_property(context,
+                                 OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
+                                &entry_points_gl);
+
+        ogl_context_get_property(context,
+                                 OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL_ARB_BUFFER_STORAGE,
+                                &entry_points_gl_bs);
+
+        /* Are sparse buffers supported? */
+        ogl_context_get_property(context,
+                                 OGL_CONTEXT_PROPERTY_SUPPORT_GL_ARB_SPARSE_BUFFERS,
+                                &are_sparse_buffers_in);
     }
 
-    if (manager != NULL)
+    if (are_sparse_buffers_in)
     {
-        system_memory_manager_release(manager);
+        /* Retrieve entry-point & limits descriptors */
+        const ogl_context_gl_limits_arb_sparse_buffer* limits_sb = NULL;
 
-        manager = NULL;
-    }
+        ogl_context_get_property(context,
+                                 OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL_ARB_SPARSE_BUFFER,
+                                &entry_points_gl_sb);
+        ogl_context_get_property(context,
+                                 OGL_CONTEXT_PROPERTY_LIMITS_ARB_SPARSE_BUFFER,
+                                &limits_sb);
+
+        page_size = limits_sb->sparse_buffer_page_size;
+    } /* if (are_sparse_buffers_in) */
 }
-
 
 /** TODO */
 PRIVATE _ogl_buffers_buffer* _ogl_buffers_alloc_new_immutable_buffer(_ogl_buffers*            buffers_ptr,
@@ -428,6 +406,38 @@ PRIVATE _ogl_buffers_buffer* _ogl_buffers_alloc_new_sparse_buffer(_ogl_buffers* 
     }
 
     return new_buffer_ptr;
+}
+
+/** TODO */
+PRIVATE void _ogl_buffers_dealloc_sparse_buffer(system_resource_pool_block buffer_block)
+{
+    _ogl_buffers_buffer* buffer_ptr = (_ogl_buffers_buffer*) buffer_block;
+
+    if (buffer_ptr->bo_id != 0)
+    {
+        if (buffer_ptr->buffers_ptr->entry_points_gl != NULL)
+        {
+            buffer_ptr->buffers_ptr->entry_points_gl->pGLDeleteBuffers(1,
+                                                                      &buffer_ptr->bo_id);
+        }
+        else
+        {
+            ASSERT_DEBUG_SYNC(buffer_ptr->buffers_ptr->entry_points_es != NULL,
+                              "ES and GL entry-point descriptors are unavailable.");
+
+            buffer_ptr->buffers_ptr->entry_points_es->pGLDeleteBuffers(1,
+                                                                      &buffer_ptr->bo_id);
+        }
+
+        buffer_ptr->bo_id = 0;
+    }
+
+    if (buffer_ptr->manager != NULL)
+    {
+        system_memory_manager_release(buffer_ptr->manager);
+
+        buffer_ptr->manager = NULL;
+    }
 }
 
 /** TODO */
