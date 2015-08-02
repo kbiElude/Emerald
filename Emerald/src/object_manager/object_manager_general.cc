@@ -28,6 +28,7 @@ static system_hashed_ansi_string _object_type_ocl_context_hashed_ansi_string    
 static system_hashed_ansi_string _object_type_ocl_kdtree_hashed_ansi_string                            = NULL;
 static system_hashed_ansi_string _object_type_ocl_kernel_hashed_ansi_string                            = NULL;
 static system_hashed_ansi_string _object_type_ocl_program_hashed_ansi_string                           = NULL;
+static system_hashed_ansi_string _object_type_ogl_buffers_hashed_ansi_string                           = NULL;
 static system_hashed_ansi_string _object_type_ogl_context_hashed_ansi_string                           = NULL;
 static system_hashed_ansi_string _object_type_ogl_curve_renderer_hashed_ansi_string                    = NULL;
 static system_hashed_ansi_string _object_type_ogl_flyby_hashed_ansi_string                             = NULL;
@@ -104,6 +105,7 @@ PUBLIC system_hashed_ansi_string object_manager_convert_object_manager_object_ty
         case OBJECT_TYPE_OCL_KDTREE:                                      return _object_type_ocl_kdtree_hashed_ansi_string;
         case OBJECT_TYPE_OCL_KERNEL:                                      return _object_type_ocl_kernel_hashed_ansi_string;
         case OBJECT_TYPE_OCL_PROGRAM:                                     return _object_type_ocl_program_hashed_ansi_string;
+        case OBJECT_TYPE_OGL_BUFFERS:                                     return _object_type_ogl_buffers_hashed_ansi_string;
         case OBJECT_TYPE_OGL_CONTEXT:                                     return _object_type_ogl_context_hashed_ansi_string;
         case OBJECT_TYPE_OGL_CURVE_RENDERER:                              return _object_type_ogl_curve_renderer_hashed_ansi_string;
         case OBJECT_TYPE_OGL_FLYBY:                                       return _object_type_ogl_flyby_hashed_ansi_string;
@@ -352,6 +354,7 @@ PUBLIC void _object_manager_init()
     _object_type_ocl_kdtree_hashed_ansi_string                            = system_hashed_ansi_string_create("OpenCL Kd Trees");
     _object_type_ocl_kernel_hashed_ansi_string                            = system_hashed_ansi_string_create("OpenCL Kernels");
     _object_type_ocl_program_hashed_ansi_string                           = system_hashed_ansi_string_create("OpenCL Programs");
+    _object_type_ogl_buffers_hashed_ansi_string                           = system_hashed_ansi_string_create("OpenGL Buffer Managers");
     _object_type_ogl_context_hashed_ansi_string                           = system_hashed_ansi_string_create("OpenGL Contexts");
     _object_type_ogl_curve_renderer_hashed_ansi_string                    = system_hashed_ansi_string_create("Curve Renderers");
     _object_type_ogl_flyby_hashed_ansi_string                             = system_hashed_ansi_string_create("Fly-by instances");

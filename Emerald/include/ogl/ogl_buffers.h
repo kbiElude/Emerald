@@ -31,6 +31,8 @@
 #include "ogl/ogl_types.h"
 #include "system/system_types.h"
 
+REFCOUNT_INSERT_DECLARATIONS(ogl_buffers,
+                             ogl_buffers)
 
 typedef enum
 {
@@ -81,12 +83,5 @@ PUBLIC ogl_buffers ogl_buffers_create(ogl_context               context,
 PUBLIC EMERALD_API void ogl_buffers_free_buffer_memory(ogl_buffers  buffers,
                                                        unsigned int bo_id,
                                                        unsigned int bo_offset);
-
-/** TODO.
- *
- *  Internal usage only.
- **/
-PUBLIC void ogl_buffers_release(ogl_buffers buffers);
-
 
 #endif /* OGL_BUFFERS_H */

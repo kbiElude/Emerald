@@ -50,6 +50,9 @@ typedef struct _ogl_buffers
     unsigned int                                   page_size;
     system_resizable_vector                        sparse_buffers; /* sparse BOs are never mappable! */
 
+    REFCOUNT_INSERT_VARIABLES
+
+
     _ogl_buffers(ogl_context               in_context,
                  system_hashed_ansi_string in_name);
 
@@ -116,6 +119,11 @@ typedef struct _ogl_buffers
     }
 } _ogl_buffers;
 
+/** Reference counter impl */
+REFCOUNT_INSERT_IMPLEMENTATION(ogl_buffers,
+                               ogl_buffers,
+                              _ogl_buffers);
+
 
 /** Forward declarations */
 PRIVATE _ogl_buffers_buffer* _ogl_buffers_alloc_new_immutable_buffer    (_ogl_buffers*              buffers_ptr,
@@ -133,6 +141,7 @@ PRIVATE void                 _ogl_buffers_on_sparse_memory_block_freed  (system_
                                                                          unsigned int               offset_aligned,
                                                                          unsigned int               size,
                                                                          void*                      user_arg);
+PRIVATE void                _ogl_buffers_release                        (void*                      buffers);
 
 
 /** TODO */
@@ -526,6 +535,11 @@ PRIVATE void _ogl_buffers_on_sparse_memory_block_freed(system_memory_manager man
                                                                                  GL_FALSE); /* commit */
 }
 
+/** TODO */
+PRIVATE void _ogl_buffers_release(void* buffers)
+{
+    /* Stub. The reference counter impl will call the actual destructor */
+}
 
 /** Please see header for spec */
 PUBLIC EMERALD_API bool ogl_buffers_allocate_buffer_memory(ogl_buffers              buffers,
@@ -730,6 +744,12 @@ PUBLIC ogl_buffers ogl_buffers_create(ogl_context               context,
 
     if (new_buffers != NULL)
     {
+        REFCOUNT_INSERT_INIT_CODE_WITH_RELEASE_HANDLER(new_buffers,
+                                                       _ogl_buffers_release,
+                                                       OBJECT_TYPE_OGL_BUFFERS,
+                                                       system_hashed_ansi_string_create_by_merging_two_strings("\\OpenGL Buffer Managers\\",
+                                                                                                               system_hashed_ansi_string_get_buffer(name)) );
+
         /* If sparse buffers are supported, allocate a single sparse buffer */
         if (new_buffers->are_sparse_buffers_in)
         {
@@ -788,11 +808,4 @@ PUBLIC EMERALD_API void ogl_buffers_free_buffer_memory(ogl_buffers  buffers,
 
 }
 
-/** Please see header for spec */
-PUBLIC void ogl_buffers_release(ogl_buffers buffers)
-{
-    delete (_ogl_buffers*) buffers;
-
-    buffers = NULL;
-}
 

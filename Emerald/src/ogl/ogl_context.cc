@@ -930,7 +930,7 @@ PRIVATE void _ogl_context_gl_info_init(      ogl_context_gl_info*   info_ptr,
 }
 
 /** TODO */
-PRIVATE void _ogl_context_init_context_after_creation( ogl_context context)
+PRIVATE void _ogl_context_init_context_after_creation(ogl_context context)
 {
     _ogl_context* context_ptr = (_ogl_context*) context;
 
@@ -1115,8 +1115,20 @@ PRIVATE void _ogl_context_init_context_after_creation( ogl_context context)
     } /* if (type == OGL_CONTEXT_TYPE_GL) */
 
     /* Set up the buffer object manager */
-    context_ptr->buffers = ogl_buffers_create((ogl_context) context_ptr,
-                                              system_hashed_ansi_string_create("Context-wide Buffer Object manager") );
+    if (context_ptr->parent_context == NULL)
+    {
+        context_ptr->buffers = ogl_buffers_create((ogl_context) context_ptr,
+                                                  system_hashed_ansi_string_create("Context-wide Buffer Object manager") );
+    }
+    else
+    {
+        context_ptr->buffers = ((_ogl_context*) context_ptr->parent_context)->buffers;
+
+        ASSERT_DEBUG_SYNC(context_ptr->buffers != NULL,
+                          "Parent context has a NULL buffer manager");
+
+        ogl_buffers_retain(context_ptr->buffers);
+    }
 
     /* Update gfx_image alternative file getter provider so that it can
      * search for compressed textures supported by this rendering context. */
