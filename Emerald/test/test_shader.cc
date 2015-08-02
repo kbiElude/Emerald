@@ -217,7 +217,7 @@ TEST(ShaderTest, FullViewportTriangleTest)
                                                                             8,  /* color_buffer_blue_bits  */
                                                                             0,  /* color_buffer_alpha_bits */
                                                                             0,  /* depth_buffer_bits       */
-                                                                            16, /* n_samples               */
+                                                                            SYSTEM_PIXEL_FORMAT_USE_MAXIMUM_NUMBER_OF_SAMPLES,
                                                                             0); /* stencil_buffer_bits     */
     system_window       window_handle = system_window_create_not_fullscreen(OGL_CONTEXT_TYPE_GL,
                                                                             xywh,
