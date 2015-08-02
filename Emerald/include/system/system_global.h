@@ -11,6 +11,15 @@
 
 typedef enum
 {
+    /* Please see SYSTEM_GLOBAL_PROPERTY_CURVE_CONTAINER_BEHAVIOR documentation for more details */
+    SYSTEM_GLOBAL_CURVE_CONTAINER_BEHAVIOR_DO_NOT_SERIALIZE,
+
+    /* Please see SYSTEM_GLOBAL_PROPERTY_CURVE_CONTAINER_BEHAVIOR documentation for more details */
+    SYSTEM_GLOBAL_CURVE_CONTAINER_BEHAVIOR_SERIALIZE
+} system_global_curve_container_behavior;
+
+typedef enum
+{
     /* indexed property; not_settable system_hashed_ansi_string
      *
      * For any scene the scene_multiloader loads, an asset path is taken and added to the global
@@ -21,6 +30,34 @@ typedef enum
      * let Emerald locate the assets.
      */
     SYSTEM_GLOBAL_PROPERTY_ASSET_PATH,
+
+    /* general property; settable. system_global_curve_container_behavior.
+     *
+     * Affects curve container instance behavior as defined below:
+     *
+     * 1) SYSTEM_GLOBAL_CURVE_CONTAINER_BEHAVIOR_DO_NOT_SERIALIZE
+     *
+     * Serialization is disabled. Curve container is instantiated as requested on the API-level, and all
+     * subsequent calls modifying the curve container state will be executed as expected. The instance's
+     * state will not be serialized to a text file under "curves/curve_name.curve", nor will such file be
+     * monitored for changes.
+     * This is the default setting.
+     *
+     * 2) SYSTEM_GLOBAL_CURVE_CONTAINER_BEHAVIOR_SERIALIZE
+     *
+     * If "curves/curve_name.curve" file is not present, the curve container is instantiated as requested
+     * on the API-level. Furthermore, all subsequent calls that modify curve container configuration will
+     * behave as expected. At the same time, the file will be re-generated every time the curve container
+     * configuration is changed. Any changes applied to the file will be ignored.
+     *
+     * If "curves/curve_name.curve" file is present, the curve container is instantiated as requested
+     * on the API_level, but its state will be configured as described in the text file. Should the text
+     * file be malformed, the curve container's state will be reset and an assertion failure will be
+     * generated.
+     * For details on the text file structure, please see curve_container documentation.
+     *
+     */
+     SYSTEM_GLOBAL_PROPERTY_CURVE_CONTAINER_BEHAVIOR,
 
     /* indexed property; not settable system_file_unpacker
      *
@@ -105,5 +142,9 @@ PUBLIC EMERALD_API void system_global_get_indexed_property(system_global_propert
  *  preferably at Emerald's initialization time.
  **/
 PUBLIC void system_global_init();
+
+/** TODO */
+PUBLIC EMERALD_API void system_global_set_general_property(system_global_property property,
+                                                           const void*            data);
 
 #endif /* SYSTEM_GLOBAL_H */

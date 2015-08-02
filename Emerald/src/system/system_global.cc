@@ -11,15 +11,17 @@
 /* Holds system global storage descriptor */
 typedef struct _system_global
 {
-    system_resizable_vector asset_paths;    /* system_hashed_ansi_string */
-    system_resizable_vector file_unpackers; /* system_file_unpacker      */
+    system_resizable_vector                asset_paths;    /* system_hashed_ansi_string */
+    system_global_curve_container_behavior curve_container_behavior;
+    system_resizable_vector                file_unpackers; /* system_file_unpacker      */
 
     _system_global()
     {
-        asset_paths    = system_resizable_vector_create(4,     /* capacity              */
-                                                        true); /* should_be_thread_safe */
-        file_unpackers = system_resizable_vector_create(4,     /* capacity              */
-                                                        true); /* should_be_thread_safe */
+        asset_paths              = system_resizable_vector_create(4,     /* capacity              */
+                                                                  true); /* should_be_thread_safe */
+        curve_container_behavior = SYSTEM_GLOBAL_CURVE_CONTAINER_BEHAVIOR_DO_NOT_SERIALIZE;
+        file_unpackers          = system_resizable_vector_create(4,     /* capacity              */
+                                                                 true); /* should_be_thread_safe */
 
         ASSERT_DEBUG_SYNC(asset_paths != NULL,
                           "Could not set up asset path storage.");
@@ -130,6 +132,13 @@ PUBLIC EMERALD_API void system_global_get_general_property(system_global_propert
 
     switch (property)
     {
+        case SYSTEM_GLOBAL_PROPERTY_CURVE_CONTAINER_BEHAVIOR:
+        {
+            *(system_global_curve_container_behavior*) out_result = global_ptr->curve_container_behavior;
+
+            break;
+        }
+
         case SYSTEM_GLOBAL_PROPERTY_N_ASSET_PATHS:
         {
             system_resizable_vector_get_property(global_ptr->asset_paths,
@@ -214,3 +223,26 @@ PUBLIC void system_global_init()
                        "Out of memory");
 }
 
+/** Please see header for spec */
+PUBLIC EMERALD_API void system_global_set_general_property(system_global_property property,
+                                                           const void*            data)
+{
+    ASSERT_DEBUG_SYNC(global_ptr != NULL,
+                      "Global storage was not initialized.");
+
+    switch (property)
+    {
+        case SYSTEM_GLOBAL_PROPERTY_CURVE_CONTAINER_BEHAVIOR:
+        {
+            global_ptr->curve_container_behavior = *(system_global_curve_container_behavior*) data;
+
+            break;
+        }
+
+        default:
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Unrecognized system_global_property value.");
+        }
+    } /* switch (property) */
+}
