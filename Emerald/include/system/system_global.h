@@ -40,7 +40,12 @@ typedef enum
      * Serialization is disabled. Curve container is instantiated as requested on the API-level, and all
      * subsequent calls modifying the curve container state will be executed as expected. The instance's
      * state will not be serialized to a text file under "curves/curve_name.curve", nor will such file be
-     * monitored for changes.
+     * monitored for changes. However, if the file exists at the instantiation time, its contents will be
+     * used to initialize curve contents and any API calls modifying curve state will be ignored. Under
+     * debug builds, the file will be monitored for changes; under release builds, it will not.
+     * Should the text file be malformed, the curve container's state will be reset and an assertion
+     * failure will be generated.
+     *
      * This is the default setting.
      *
      * 2) SYSTEM_GLOBAL_CURVE_CONTAINER_BEHAVIOR_SERIALIZE
@@ -50,12 +55,17 @@ typedef enum
      * behave as expected. At the same time, the file will be re-generated every time the curve container
      * configuration is changed. Any changes applied to the file will be ignored.
      *
-     * If "curves/curve_name.curve" file is present, the curve container is instantiated as requested
-     * on the API_level, but its state will be configured as described in the text file. Should the text
-     * file be malformed, the curve container's state will be reset and an assertion failure will be
-     * generated.
-     * For details on the text file structure, please see curve_container documentation.
+     * If "curves/curve_name.curve" file is present at the instantiation time, the behavior is the same as
+     * in SYSTEM_GLOBAL_CURVE_CONTAINER_BEHAVIOR_DO_NOT_SERIALIZE for the same case.
      *
+     *
+     * The intent behind these modes is to let the developer first use the API calls to set up curve contents
+     * and serialize them to the curve text file (which is what BEHAVIOR_SERIALIZE mode does), and then,
+     * at subsequent runs, tweak it by editing the created text file. This can be achieved by switching to
+     * the BEHAVIOR_DO_NOT_SERIALIZE mode.
+     *
+     * It is only legal to switch from BEHAVIOR_DO_NOT_SERIALIZE mode (the default value) to BEHAVIOR_SERIALIZE.
+     * Reversed order is illegal and will cause an assertion failure.
      */
      SYSTEM_GLOBAL_PROPERTY_CURVE_CONTAINER_BEHAVIOR,
 

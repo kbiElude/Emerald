@@ -4,6 +4,7 @@
  *
  */
 #include "shared.h"
+#include "curve/curve_watchdog.h"
 #include "system/system_global.h"
 #include "system/system_resizable_vector.h"
 
@@ -36,6 +37,11 @@ typedef struct _system_global
             system_resizable_vector_release(asset_paths);
 
             asset_paths = NULL;
+        }
+
+        if (curve_container_behavior == SYSTEM_GLOBAL_CURVE_CONTAINER_BEHAVIOR_SERIALIZE)
+        {
+            curve_watchdog_deinit();
         }
 
         if (file_unpackers != NULL)
@@ -234,7 +240,20 @@ PUBLIC EMERALD_API void system_global_set_general_property(system_global_propert
     {
         case SYSTEM_GLOBAL_PROPERTY_CURVE_CONTAINER_BEHAVIOR:
         {
-            global_ptr->curve_container_behavior = *(system_global_curve_container_behavior*) data;
+            system_global_curve_container_behavior new_behavior = *(system_global_curve_container_behavior*) data;
+
+            if (new_behavior                         == SYSTEM_GLOBAL_CURVE_CONTAINER_BEHAVIOR_SERIALIZE        &&
+                global_ptr->curve_container_behavior == SYSTEM_GLOBAL_CURVE_CONTAINER_BEHAVIOR_DO_NOT_SERIALIZE)
+            {
+                global_ptr->curve_container_behavior = new_behavior;
+
+                curve_watchdog_init();
+            }
+            else
+            {
+                ASSERT_DEBUG_SYNC(false,
+                                  "Invalid setter call for the SYSTEM_GLOBAL_PROPERTY_CURVE_CONTAINER_BEHAVIOR property");
+            }
 
             break;
         }

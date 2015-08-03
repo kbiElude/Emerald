@@ -15,9 +15,9 @@
  */
 typedef enum
 {
-    CALLBACK_ID_CURVE_CONTAINER_ADDED,   /* callback_proc_data: not used */
-    CALLBACK_ID_CURVE_CONTAINER_DELETED, /* callback_proc_data: not used */
-
+    CALLBACK_ID_CURVE_CONTAINER_ADDED,    /* callback_proc_data: created  curve_container instance                  */
+    CALLBACK_ID_CURVE_CONTAINER_DELETED,  /* callback_proc_data: deleted  curve_container instance (DO NOT access!) */
+    CALLBACK_ID_CURVE_CONTAINER_MODIFIED, /* callback_proc_data: modified curve_container instance                  */
 
     /* Always last */
     CALLBACK_ID_COUNT

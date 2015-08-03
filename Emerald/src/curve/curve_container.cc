@@ -119,7 +119,8 @@ PRIVATE bool _curve_container_add_segment_shared(curve_container   curve,
                                          end_time,
                                          -1) )
     {
-        ASSERT_DEBUG_SYNC(false, "Requested time region already contains segments");
+        ASSERT_DEBUG_SYNC(false,
+                          "Requested time region already contains segments");
 
         return false;
     }
@@ -165,6 +166,11 @@ PRIVATE bool _curve_container_add_segment_shared(curve_container   curve,
     system_read_write_mutex_unlock(curve_ptr->data.segments_read_write_mutex,
                                    ACCESS_WRITE);
 
+    /* Notify potential subscribers about the change */
+    system_callback_manager_call_back(system_callback_manager_get(),
+                                      CALLBACK_ID_CURVE_CONTAINER_MODIFIED,
+                                      curve_ptr);
+
     return true;
 }
 
@@ -182,7 +188,7 @@ PRIVATE void _curve_container_release(void* container)
     /* Inform any subscribers about the event */
     system_callback_manager_call_back(system_callback_manager_get(),
                                       CALLBACK_ID_CURVE_CONTAINER_DELETED,
-                                      NULL);
+                                      curve_container_ptr);
 }
 
 /* TODO */
@@ -353,6 +359,11 @@ PUBLIC EMERALD_API bool curve_container_add_general_node(curve_container        
     system_read_write_mutex_unlock(curve_data_ptr->segments_read_write_mutex,
                                    ACCESS_WRITE);
 
+    /* Notify potential subscribers about the change */
+    system_callback_manager_call_back(system_callback_manager_get(),
+                                      CALLBACK_ID_CURVE_CONTAINER_MODIFIED,
+                                      curve);
+
     return result;
 }
 
@@ -369,6 +380,7 @@ PUBLIC EMERALD_API bool curve_container_add_lerp_segment(curve_container   curve
                                                                 start_value,
                                                                 end_time,
                                                                 end_value);
+    bool              result      = false;
 
     if (new_segment != NULL)
     {
@@ -376,16 +388,22 @@ PUBLIC EMERALD_API bool curve_container_add_lerp_segment(curve_container   curve
                                                       _curve_container_on_curve_segment_changed,
                                                       &curve_ptr->data);
 
-        return _curve_container_add_segment_shared(curve,
-                                                   start_time,
-                                                   end_time,
-                                                   new_segment,
-                                                   out_segment_id);
+        result = _curve_container_add_segment_shared(curve,
+                                                     start_time,
+                                                     end_time,
+                                                     new_segment,
+                                                     out_segment_id);
     } /* if (new_segment != NULL) */
-    else
+
+    if (result)
     {
-        return false;
+        /* Notify potential subscribers about the change */
+        system_callback_manager_call_back(system_callback_manager_get(),
+                                          CALLBACK_ID_CURVE_CONTAINER_MODIFIED,
+                                          curve);
     }
+
+    return result;
 }
 
 /** Please see header for specification */
@@ -397,6 +415,7 @@ PUBLIC EMERALD_API bool curve_container_add_static_value_segment(curve_container
 {
     _curve_container* curve_ptr   = (_curve_container*) curve;
     curve_segment     new_segment = curve_segment_create_static(value);
+    bool              result      = false;
 
     if (new_segment != NULL)
     {
@@ -404,16 +423,22 @@ PUBLIC EMERALD_API bool curve_container_add_static_value_segment(curve_container
                                                       _curve_container_on_curve_segment_changed,
                                                       &curve_ptr->data);
 
-        return _curve_container_add_segment_shared(curve,
-                                                   start_time,
-                                                   end_time,
-                                                   new_segment,
-                                                   out_segment_id);
+        result = _curve_container_add_segment_shared(curve,
+                                                     start_time,
+                                                     end_time,
+                                                     new_segment,
+                                                     out_segment_id);
     } /* if (new_segment != NULL) */
-    else
+
+    if (result)
     {
-        return false;
+        /* Notify potential subscribers about the change */
+        system_callback_manager_call_back(system_callback_manager_get(),
+                                          CALLBACK_ID_CURVE_CONTAINER_MODIFIED,
+                                          curve);
     }
+
+    return result;
 }
 
 /** Please see header for specification */
@@ -489,6 +514,14 @@ PUBLIC EMERALD_API bool curve_container_add_tcb_node(curve_container        curv
     system_read_write_mutex_unlock(curve_data_ptr->segments_read_write_mutex,
                                    ACCESS_WRITE);
 
+    if (result)
+    {
+        /* Notify potential subscribers about the change */
+        system_callback_manager_call_back(system_callback_manager_get(),
+                                          CALLBACK_ID_CURVE_CONTAINER_MODIFIED,
+                                          curve);
+    }
+
     return result;
 }
 
@@ -506,6 +539,7 @@ PUBLIC EMERALD_API bool curve_container_add_tcb_segment(curve_container   curve,
                                                         float             end_bias,
                                                         curve_segment_id* out_segment_id)
 {
+    bool  result       = false;
     float start_tcb[3] = {start_tension,
                           start_continuity,
                           start_bias};
@@ -532,16 +566,22 @@ PUBLIC EMERALD_API bool curve_container_add_tcb_segment(curve_container   curve,
                                                       _curve_container_on_curve_segment_changed,
                                                       curve_container_data);
 
-        return _curve_container_add_segment_shared(curve,
-                                                   start_time,
-                                                   end_time,
-                                                   new_segment,
-                                                   out_segment_id);
+        result = _curve_container_add_segment_shared(curve,
+                                                     start_time,
+                                                     end_time,
+                                                     new_segment,
+                                                     out_segment_id);
     } /* if (new_segment != NULL) */
-    else
+
+    if (result)
     {
-        return false;
+        /* Notify potential subscribers about the change */
+        system_callback_manager_call_back(system_callback_manager_get(),
+                                          CALLBACK_ID_CURVE_CONTAINER_MODIFIED,
+                                          curve);
     }
+
+    return result;
 }
 
 /** Please see header for specification */
@@ -573,7 +613,7 @@ PUBLIC EMERALD_API curve_container curve_container_create(system_hashed_ansi_str
 
     system_callback_manager_call_back(system_callback_manager_get(),
                                       CALLBACK_ID_CURVE_CONTAINER_ADDED,
-                                      NULL); /* callback_proc_data */
+                                      new_container); /* callback_proc_data */
 
     /* Return the container */
     return (curve_container) new_container;
@@ -618,6 +658,14 @@ PUBLIC EMERALD_API bool curve_container_delete_node(curve_container       curve,
     }
     system_read_write_mutex_unlock(curve_data_ptr->segments_read_write_mutex,
                                    ACCESS_READ);
+
+    if (result)
+    {
+        /* Notify potential subscribers about the change */
+        system_callback_manager_call_back(system_callback_manager_get(),
+                                          CALLBACK_ID_CURVE_CONTAINER_MODIFIED,
+                                          curve);
+    }
 
     return result;
 }
@@ -675,6 +723,14 @@ PUBLIC EMERALD_API bool curve_container_delete_segment(curve_container  curve,
     } /* if (!curve_data_ptr->pre_post_behavior_status) */
 
 end:
+    if (result)
+    {
+        /* Notify potential subscribers about the change */
+        system_callback_manager_call_back(system_callback_manager_get(),
+                                          CALLBACK_ID_CURVE_CONTAINER_MODIFIED,
+                                          curve);
+    }
+
     return result;
 }
 
@@ -1456,6 +1512,14 @@ PUBLIC EMERALD_API bool curve_container_modify_node(curve_container       curve,
     system_read_write_mutex_unlock(curve_data_ptr->segments_read_write_mutex,
                                    ACCESS_WRITE);
 
+    if (result)
+    {
+        /* Notify potential subscribers about the change */
+        system_callback_manager_call_back(system_callback_manager_get(),
+                                          CALLBACK_ID_CURVE_CONTAINER_MODIFIED,
+                                          curve);
+    }
+
     return result;
 }
 
@@ -1470,6 +1534,11 @@ PUBLIC EMERALD_API bool curve_container_set_default_value(curve_container curve,
                        value,
                        false);
 
+    /* Notify potential subscribers about the change */
+    system_callback_manager_call_back(system_callback_manager_get(),
+                                      CALLBACK_ID_CURVE_CONTAINER_MODIFIED,
+                                      curve);
+
     return true;
 }
 
@@ -1479,6 +1548,7 @@ PUBLIC EMERALD_API void curve_container_set_property(curve_container          co
                                                      const void*              data)
 {
     _curve_container* container_ptr = (_curve_container*) container;
+    bool              has_modified  = true;
 
     switch (property)
     {
@@ -1532,8 +1602,18 @@ PUBLIC EMERALD_API void curve_container_set_property(curve_container          co
         {
             ASSERT_DEBUG_SYNC(false,
                               "Unrecognized curve_container_property value");
+
+            has_modified = false;
         }
     } /* switch (property) */
+
+    if (has_modified)
+    {
+        /* Notify potential subscribers about the change */
+        system_callback_manager_call_back(system_callback_manager_get(),
+                                          CALLBACK_ID_CURVE_CONTAINER_MODIFIED,
+                                          container);
+    }
 }
 
 /** Please see header for specification */
@@ -1544,7 +1624,7 @@ PUBLIC EMERALD_API void curve_container_set_segment_property(curve_container    
 {
     _curve_container_ptr         curve_container_ptr  = (_curve_container_ptr) curve;
     _curve_container_data*       curve_container_data = &curve_container_ptr->data;
-    bool                         result               = false;
+    bool                         has_modified         = true;
     _curve_container_segment_ptr segment_ptr          = NULL;
 
     system_hash64map_get(curve_container_data->segments,
@@ -1596,9 +1676,23 @@ PUBLIC EMERALD_API void curve_container_set_segment_property(curve_container    
             {
                 ASSERT_DEBUG_SYNC(false,
                                   "Unrecognized curve_container_segment_property value");
+
+                has_modified = false;
             }
         } /* switch (property) */
     } /* if (segment_ptr != NULL) */
+    else
+    {
+        has_modified = false;
+    }
+
+    if (has_modified)
+    {
+        /* Notify potential subscribers about the change */
+        system_callback_manager_call_back(system_callback_manager_get(),
+                                          CALLBACK_ID_CURVE_CONTAINER_MODIFIED,
+                                          curve);
+    }
 }
 
 /** Please see header for specification */
@@ -1875,6 +1969,14 @@ end:
 
     system_read_write_mutex_unlock(curve_container_data->segments_read_write_mutex,
                                    ACCESS_WRITE);
+
+    if (result)
+    {
+        /* Notify potential subscribers about the change */
+        system_callback_manager_call_back(system_callback_manager_get(),
+                                          CALLBACK_ID_CURVE_CONTAINER_MODIFIED,
+                                          curve);
+    }
 
     return result;
 }
