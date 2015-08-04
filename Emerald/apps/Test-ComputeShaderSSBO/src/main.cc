@@ -335,6 +335,9 @@ PRIVATE void _window_closing_callback_handler(system_window window)
                                              true, /* vsync_enabled */
                                              window_pf);
 #else
+    _window_size[0] /= 2;
+    _window_size[1] /= 2;
+
     system_window_get_centered_window_position_for_primary_monitor(_window_size,
                                                                    window_x1y1x2y2);
 
