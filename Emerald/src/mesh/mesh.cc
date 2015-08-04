@@ -5,7 +5,6 @@
  *
  */
 #include "shared.h"
-#include "curve/curve_container.h"
 #include "mesh/mesh.h"
 #include "mesh/mesh_material.h"
 #include "ogl/ogl_buffers.h"
@@ -30,11 +29,15 @@ const char* header_magic = "eld";
 
 
 /* Private declarations */
-
 typedef struct
 {
+    /* Common properties */
     system_hashed_ansi_string name;
     uint32_t                  n_gl_unique_vertices;
+    mesh_type                 type;
+
+    /* Custom renderer-only */
+    PFNRENDERCUSTOMMESHPROC  pfn_render_mesh;
 
     /* GL storage. This BO is maintained by ogl_buffers, so DO NOT release it with glDeleteBuffers().
      *
@@ -295,8 +298,12 @@ PRIVATE uint32_t _mesh_get_source_index_from_index_key(const uint32_t*          
                 {
                     result = key_ptr[2 * n_current_word + 1];
 
-                    ASSERT_DEBUG_SYNC(result != 0xcdcdcdcd,
-                                      "Whoops?");
+                    #ifdef _WIN32
+                    {
+                        ASSERT_DEBUG_SYNC(result != 0xcdcdcdcd,
+                                          "Whoops?");
+                    }
+                    #endif
 
                     goto end;
                 }
@@ -485,7 +492,7 @@ PRIVATE void _mesh_deinit_mesh_layer(const _mesh* mesh_ptr,
      */
     if (layer_ptr->data_streams != NULL)
     {
-        if (!do_full_deinit && !(mesh_ptr->creation_flags & MESH_KDTREE_GENERATION_SUPPORT) ||
+        if (!do_full_deinit && !(mesh_ptr->creation_flags & MESH_CREATION_FLAGS_KDTREE_GENERATION_SUPPORT) ||
              do_full_deinit)
         {
             _mesh_layer_data_stream* data_stream_ptr  = NULL;
@@ -549,8 +556,8 @@ PRIVATE void _mesh_deinit_mesh_layer_pass(const _mesh*            mesh_ptr,
                       n_stream_type ++)
     {
         /* Vertex elements should not be deleted at this point if KD tree generation functionality is required. */
-        if (n_stream_type == MESH_LAYER_DATA_STREAM_TYPE_VERTICES && !do_full_deinit && !(mesh_ptr->creation_flags & MESH_KDTREE_GENERATION_SUPPORT) ||
-            n_stream_type == MESH_LAYER_DATA_STREAM_TYPE_VERTICES &&  do_full_deinit                                                                 ||
+        if (n_stream_type == MESH_LAYER_DATA_STREAM_TYPE_VERTICES && !do_full_deinit && !(mesh_ptr->creation_flags & MESH_CREATION_FLAGS_KDTREE_GENERATION_SUPPORT) ||
+            n_stream_type == MESH_LAYER_DATA_STREAM_TYPE_VERTICES &&  do_full_deinit                                                                                ||
             n_stream_type != MESH_LAYER_DATA_STREAM_TYPE_VERTICES)
         {
             if (pass_ptr->index_data_maps[n_stream_type] != NULL)
@@ -693,7 +700,7 @@ PRIVATE void _mesh_fill_gl_buffers_renderer_callback(ogl_context context,
     } /* if (mesh_ptr->n_sh_bands != 0) */
 
     /* Safe to release GL processed data buffer now! */
-    if (!(mesh_ptr->creation_flags & MESH_SAVE_SUPPORT) )
+    if (!(mesh_ptr->creation_flags & MESH_CREATION_FLAGS_SAVE_SUPPORT) )
     {
         delete [] mesh_ptr->gl_processed_data;
 
@@ -919,12 +926,13 @@ PRIVATE void _mesh_init_mesh(_mesh*                    new_mesh,
     new_mesh->gl_tbo                                = 0;
     new_mesh->gl_thread_fill_gl_buffers_call_needed = false;
     new_mesh->instantiation_parent                  = NULL;
-    new_mesh->layers                                = system_resizable_vector_create(START_LAYERS);
-    new_mesh->materials                             = system_resizable_vector_create(4 /* capacity */);
+    new_mesh->layers                                = NULL;
+    new_mesh->materials                             = NULL;
     new_mesh->n_gl_unique_vertices                  = 0;
     new_mesh->n_sh_bands                            = 0;
     new_mesh->n_sh_components                       = SH_COMPONENTS_UNDEFINED;
     new_mesh->name                                  = name;
+    new_mesh->pfn_render_mesh                       = NULL;
     new_mesh->set_id_counter                        = 0;
     new_mesh->timestamp_last_modified               = system_time_now();
 
@@ -1398,8 +1406,10 @@ PUBLIC EMERALD_API mesh_layer_id mesh_add_layer(mesh instance)
     _mesh*        mesh_instance = (_mesh*) instance;
     mesh_layer_id result        = -1;
 
+    ASSERT_DEBUG_SYNC (mesh_instance->type == MESH_TYPE_REGULAR,
+                       "Entry-point is only compatible with regular meshes only.");
     ASSERT_ALWAYS_SYNC(!mesh_instance->gl_storage_initialized,
-                       "Cannot add mesh layers after GL storage has been initialized");\
+                       "Cannot add mesh layers after GL storage has been initialized");
 
     /* Create new layer */
     _mesh_layer* new_layer = new (std::nothrow) _mesh_layer;
@@ -1441,6 +1451,9 @@ PUBLIC EMERALD_API void mesh_add_layer_data_stream(mesh                        m
 {
     _mesh_layer* layer_ptr     = NULL;
     _mesh*       mesh_instance = (_mesh*) mesh;
+
+    ASSERT_DEBUG_SYNC (mesh_instance->type == MESH_TYPE_REGULAR,
+                       "Entry-point is only compatible with regular meshes only.");
 
     /* Store amount of SH bands if this is a SH data stream. */
     if (type == MESH_LAYER_DATA_STREAM_TYPE_SPHERICAL_HARMONIC_3BANDS ||
@@ -1566,6 +1579,8 @@ PUBLIC EMERALD_API mesh_layer_pass_id mesh_add_layer_pass(mesh          mesh_ins
     _mesh_layer*       mesh_layer_ptr = NULL;
     mesh_layer_pass_id result_id      = -1;
 
+    ASSERT_DEBUG_SYNC(mesh_ptr->type == MESH_TYPE_REGULAR,
+                      "Entry-point is only compatible with regular meshes only.");
     ASSERT_DEBUG_SYNC(n_elements % 3 == 0,
                       "n_elements is not divisible by three which is invalid");
 
@@ -1688,6 +1703,9 @@ PUBLIC EMERALD_API bool mesh_add_layer_pass_index_data(mesh                     
     bool               result         = false;
     mesh_layer_pass_id result_id      = -1;
 
+    ASSERT_DEBUG_SYNC(mesh_ptr->type == MESH_TYPE_REGULAR,
+                      "Entry-point is only compatible with regular meshes only.");
+
     if (system_resizable_vector_get_element_at(mesh_ptr->layers,
                                                layer_id,
                                               &mesh_layer_ptr) &&
@@ -1777,8 +1795,40 @@ PUBLIC EMERALD_API bool mesh_add_layer_pass_index_data(mesh                     
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API mesh mesh_create(mesh_creation_flags       flags,
-                                    system_hashed_ansi_string name)
+PUBLIC EMERALD_API mesh mesh_create_custom_mesh(PFNRENDERCUSTOMMESHPROC   pfn_render_mesh,
+                                                system_hashed_ansi_string name)
+{
+    _mesh* new_mesh = new (std::nothrow) _mesh;
+
+    ASSERT_DEBUG_SYNC(new_mesh != NULL,
+                      "Out of memory");
+
+    if (new_mesh != NULL)
+    {
+        _mesh_init_mesh(new_mesh,
+                        name,
+                        0); /* flags */
+
+        /* Initialize fields specific to custom meshes */
+        new_mesh->pfn_render_mesh = pfn_render_mesh;
+        new_mesh->type            = MESH_TYPE_CUSTOM;
+
+        REFCOUNT_INSERT_INIT_CODE_WITH_RELEASE_HANDLER(new_mesh,
+                                                       _mesh_release,
+                                                       OBJECT_TYPE_MESH,
+                                                       system_hashed_ansi_string_create_by_merging_two_strings("\\Meshes\\",
+                                                                                                               system_hashed_ansi_string_get_buffer(name)) );
+
+        LOG_INFO("Custom mesh [%s] created.",
+                 system_hashed_ansi_string_get_buffer(name) );
+    }
+
+    return (mesh) new_mesh;
+}
+
+/* Please see header for specification */
+PUBLIC EMERALD_API mesh mesh_create_regular_mesh(mesh_creation_flags       flags,
+                                                 system_hashed_ansi_string name)
 {
     _mesh* new_mesh = new (std::nothrow) _mesh;
 
@@ -1791,13 +1841,18 @@ PUBLIC EMERALD_API mesh mesh_create(mesh_creation_flags       flags,
                         name,
                         flags);
 
+        /* Initialize fields specific to regular meshes */
+        new_mesh->layers    = system_resizable_vector_create(START_LAYERS);
+        new_mesh->materials = system_resizable_vector_create(4 /* capacity */);
+        new_mesh->type      = MESH_TYPE_REGULAR;
+
         REFCOUNT_INSERT_INIT_CODE_WITH_RELEASE_HANDLER(new_mesh,
                                                        _mesh_release,
                                                        OBJECT_TYPE_MESH,
                                                        system_hashed_ansi_string_create_by_merging_two_strings("\\Meshes\\",
                                                                                                                system_hashed_ansi_string_get_buffer(name)) );
 
-        LOG_INFO("Mesh [%s] created.",
+        LOG_INFO("Regular mesh [%s] created.",
                  system_hashed_ansi_string_get_buffer(name) );
     }
 
@@ -1811,6 +1866,9 @@ PUBLIC EMERALD_API void mesh_create_single_indexed_representation(mesh instance)
           uint32_t n_layers              = 0;
           uint32_t n_indices_used_so_far = 0;
     const uint32_t sh_alignment          = mesh_ptr->n_sh_bands * 4;
+
+    ASSERT_DEBUG_SYNC(mesh_ptr->type == MESH_TYPE_REGULAR,
+                      "Entry-point is only compatible with regular meshes only.");
 
     system_resizable_vector_get_property(mesh_ptr->layers,
                                          SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
@@ -2422,7 +2480,7 @@ PUBLIC EMERALD_API void mesh_create_single_indexed_representation(mesh instance)
     }
 
     /* If saving support is not required, we can deallocate all the data buffers at this point! */
-    if (!((mesh_ptr->creation_flags & MESH_SAVE_SUPPORT) ))
+    if (!((mesh_ptr->creation_flags & MESH_CREATION_FLAGS_SAVE_SUPPORT) ))
     {
         for (uint32_t n_layer = 0;
                       n_layer < n_layers;
@@ -2456,6 +2514,9 @@ PUBLIC EMERALD_API bool mesh_fill_gl_buffers(mesh        instance,
 {
     _mesh* mesh_ptr = (_mesh*) instance;
     bool   result   = false;
+
+    ASSERT_DEBUG_SYNC(mesh_ptr->type == MESH_TYPE_REGULAR,
+                      "Entry-point is only compatible with regular meshes only.");
 
     /* Before we block renderer thread, we need to convert the loaded data into single-indexed representation.
      * We do not store it, since it's very likely to be bigger than n-indexed one we use for serialization. */
@@ -2501,6 +2562,9 @@ PUBLIC EMERALD_API void mesh_free_single_indexed_representation(mesh instance)
 {
     _mesh*   mesh_ptr = (_mesh*) instance;
     uint32_t n_layers = 0;
+
+    ASSERT_DEBUG_SYNC(mesh_ptr->type == MESH_TYPE_REGULAR,
+                      "Entry-point is only compatible with regular meshes only.");
 
     system_resizable_vector_get_property(mesh_ptr->layers,
                                          SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
@@ -2574,17 +2638,20 @@ PUBLIC EMERALD_API void mesh_free_single_indexed_representation(mesh instance)
 PUBLIC EMERALD_API void mesh_generate_normal_data(mesh mesh)
 {
     /* TODO: Should we move this to mesh_normal_data_generation.cc or sth? */
-    system_resizable_vector allocated_polygon_vectors  = system_resizable_vector_create                (4);
-    system_resource_pool    mesh_polygon_resource_pool = system_resource_pool_create                   (sizeof(_mesh_polygon),
-                                                                                                        4,     /* n_elements_to_preallocate */
-                                                                                                        NULL,  /* init_fn */
-                                                                                                        NULL); /* deinit_fn */
+    system_resizable_vector allocated_polygon_vectors  = system_resizable_vector_create(4);
+    system_resource_pool    mesh_polygon_resource_pool = system_resource_pool_create   (sizeof(_mesh_polygon),
+                                                                                        4,     /* n_elements_to_preallocate */
+                                                                                        NULL,  /* init_fn */
+                                                                                        NULL); /* deinit_fn */
     _mesh*                  mesh_ptr                   = (_mesh*) mesh;
     unsigned int            n_layers                   = 0;
-    system_resource_pool    vec3_resource_pool         = system_resource_pool_create                   (sizeof(float) * 3,
-                                                                                                        4,     /* n_elements_to_preallocate */
-                                                                                                        NULL,  /* init_fn */
-                                                                                                        NULL); /* deinit_fn */
+    system_resource_pool    vec3_resource_pool         = system_resource_pool_create   (sizeof(float) * 3,
+                                                                                        4,     /* n_elements_to_preallocate */
+                                                                                        NULL,  /* init_fn */
+                                                                                        NULL); /* deinit_fn */
+
+    ASSERT_DEBUG_SYNC(mesh_ptr->type == MESH_TYPE_REGULAR,
+                      "Entry-point is only compatible with regular meshes only.");
 
     system_resizable_vector_get_property(mesh_ptr->layers,
                                          SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
@@ -3215,6 +3282,9 @@ PUBLIC EMERALD_API uint32_t mesh_get_amount_of_layer_passes(mesh          instan
     _mesh_layer* mesh_layer_ptr = NULL;
     uint32_t     result         = 0;
 
+    ASSERT_DEBUG_SYNC(mesh_ptr->type == MESH_TYPE_REGULAR,
+                      "Entry-point is only compatible with regular meshes only.");
+
     if (system_resizable_vector_get_element_at(mesh_ptr->layers,
                                                layer_id,
                                               &mesh_layer_ptr) )
@@ -3242,6 +3312,9 @@ PUBLIC EMERALD_API void mesh_get_layer_data_stream_data(mesh                    
 {
     _mesh_layer* layer_ptr = NULL;
     _mesh*       mesh_ptr  = (_mesh*) mesh;
+
+    ASSERT_DEBUG_SYNC(mesh_ptr->type == MESH_TYPE_REGULAR,
+                      "Entry-point is only compatible with regular meshes only.");
 
     if (system_resizable_vector_get_element_at(mesh_ptr->layers,
                                                layer_id,
@@ -3288,6 +3361,8 @@ PUBLIC EMERALD_API void mesh_get_layer_data_stream_property(mesh                
 {
     _mesh* mesh_ptr = (_mesh*) mesh;
 
+    ASSERT_DEBUG_SYNC(mesh_ptr->type == MESH_TYPE_REGULAR,
+                      "Entry-point is only compatible with regular meshes only.");
     ASSERT_DEBUG_SYNC(type < MESH_LAYER_DATA_STREAM_TYPE_COUNT,
                       "Unrecognized stream type");
 
@@ -3326,7 +3401,13 @@ PUBLIC EMERALD_API bool mesh_get_property(mesh          instance,
     _mesh* mesh_ptr = (_mesh*) instance;
     bool   b_result = true;
 
-    switch(property)
+    ASSERT_DEBUG_SYNC(mesh_ptr->type == MESH_TYPE_CUSTOM  &&  (property == MESH_PROPERTY_RENDER_CUSTOM_MESH_FUNC_PTR ||
+                                                               property == MESH_PROPERTY_TYPE)                       ||
+                      mesh_ptr->type == MESH_TYPE_REGULAR && !(property == MESH_PROPERTY_RENDER_CUSTOM_MESH_FUNC_PTR ||
+                                                               property == MESH_PROPERTY_TYPE),
+                      "An invalid query was used for a mesh_get_property() call");
+
+    switch (property)
     {
         case MESH_PROPERTY_MODEL_AABB_MAX:
         {
@@ -3559,9 +3640,23 @@ PUBLIC EMERALD_API bool mesh_get_property(mesh          instance,
             break;
         }
 
+        case MESH_PROPERTY_RENDER_CUSTOM_MESH_FUNC_PTR:
+        {
+            *((PFNRENDERCUSTOMMESHPROC*) result) = mesh_ptr->pfn_render_mesh;
+
+            break;
+        }
+
         case MESH_PROPERTY_TIMESTAMP_MODIFICATION:
         {
             *((system_time*)result) = mesh_ptr->timestamp_last_modified;
+
+            break;
+        }
+
+        case MESH_PROPERTY_TYPE:
+        {
+            *((mesh_type*) result) = mesh_ptr->type;
 
             break;
         }
@@ -3588,6 +3683,9 @@ PUBLIC EMERALD_API bool mesh_get_layer_pass_property(mesh                instanc
     _mesh*       mesh_ptr       = (_mesh*) instance;
     _mesh_layer* mesh_layer_ptr = NULL;
     bool         result         = true;
+
+    ASSERT_DEBUG_SYNC(mesh_ptr->type == MESH_TYPE_REGULAR,
+                      "Entry-point is only compatible with regular meshes only.");
 
     if (system_resizable_vector_get_element_at(mesh_ptr->layers,
                                                n_layer,
@@ -3761,8 +3859,8 @@ PUBLIC EMERALD_API mesh mesh_load_with_serializer(ogl_context            context
                                                    sizeof(is_instantiated),
                                                   &is_instantiated);
 
-    result = mesh_create(flags,
-                         mesh_name);
+    result = mesh_create_regular_mesh(flags,
+                                      mesh_name);
 
     ASSERT_DEBUG_SYNC(result != NULL,
                       "Could not create mesh.");
@@ -4017,6 +4115,9 @@ PUBLIC EMERALD_API void mesh_release_layer_datum(mesh in_mesh)
     _mesh*   mesh_ptr = (_mesh*) in_mesh;
     uint32_t n_layers = 0;
 
+    ASSERT_DEBUG_SYNC(mesh_ptr->type == MESH_TYPE_REGULAR,
+                      "Entry-point is only compatible with regular meshes only.");
+
     system_resizable_vector_get_property(mesh_ptr->layers,
                                          SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
                                         &n_layers);
@@ -4153,11 +4254,14 @@ PUBLIC EMERALD_API bool mesh_save(mesh                      instance,
     bool                   result     = false;
     system_file_serializer serializer = NULL;
 
+    ASSERT_DEBUG_SYNC(mesh_ptr->type == MESH_TYPE_REGULAR,
+                      "Entry-point is only compatible with regular meshes only.");
+
     /* Make sure the mesh implementation has been asked to maintain the data buffers! */
-    ASSERT_ALWAYS_SYNC(mesh_ptr->creation_flags & MESH_SAVE_SUPPORT,
+    ASSERT_ALWAYS_SYNC(mesh_ptr->creation_flags & MESH_CREATION_FLAGS_SAVE_SUPPORT,
                        "Cannot save - mesh instance has not been created with save-enabled flag");
 
-    if (!(mesh_ptr->creation_flags & MESH_SAVE_SUPPORT) )
+    if (!(mesh_ptr->creation_flags & MESH_CREATION_FLAGS_SAVE_SUPPORT) )
     {
         goto end;
     }
@@ -4189,6 +4293,9 @@ PUBLIC EMERALD_API bool mesh_save_with_serializer(mesh                   instanc
 {
     _mesh* mesh_ptr = (_mesh*) instance;
     bool   result   = false;
+
+    ASSERT_DEBUG_SYNC(mesh_ptr->type == MESH_TYPE_REGULAR,
+                      "Entry-point is only compatible with regular meshes only.");
 
     /* Write header */
     system_file_serializer_write(serializer,
@@ -4388,6 +4495,10 @@ PUBLIC EMERALD_API void mesh_set_as_instantiated(mesh mesh_to_modify,
     ASSERT_DEBUG_SYNC(source_mesh_ptr->instantiation_parent == NULL,
                       "Source mesh is instantiated!");
 
+    ASSERT_DEBUG_SYNC(mesh_to_modify_ptr->type == MESH_TYPE_REGULAR &&
+                      source_mesh_ptr->type    == MESH_TYPE_REGULAR,
+                      "Entry-point is only compatible with regular meshes only.");
+
     /* Release layer data */
     _mesh_layer* layer_ptr = NULL;
 
@@ -4434,6 +4545,9 @@ PUBLIC EMERALD_API void mesh_set_layer_property(mesh                instance,
 {
     _mesh*       mesh_ptr       = (_mesh*) instance;
     _mesh_layer* mesh_layer_ptr = NULL;
+
+    ASSERT_DEBUG_SYNC(mesh_ptr->type == MESH_TYPE_REGULAR,
+                      "Entry-point is only compatible with regular meshes only.");
 
     if (system_resizable_vector_get_element_at(mesh_ptr->layers,
                                                n_layer,
@@ -4507,7 +4621,8 @@ PUBLIC EMERALD_API void mesh_set_layer_property(mesh                instance,
         } /* if (layer pass descriptor was retrieved) */
         else
         {
-            ASSERT_ALWAYS_SYNC(false, "Could not retrieve layer pass descriptor");
+            ASSERT_ALWAYS_SYNC(false,
+                               "Could not retrieve layer pass descriptor");
         }
 
         /* Update modification timestamp */
@@ -4515,7 +4630,8 @@ PUBLIC EMERALD_API void mesh_set_layer_property(mesh                instance,
     } /* if (layer descriptor was retrieved) */
     else
     {
-        ASSERT_ALWAYS_SYNC(false, "Could not retrieve layer descriptor");
+        ASSERT_ALWAYS_SYNC(false,
+                           "Could not retrieve layer descriptor");
     }
 }
 
@@ -4525,6 +4641,9 @@ PUBLIC EMERALD_API void mesh_set_processed_data_stream_start_offset(mesh        
                                                                     unsigned int                start_offset)
 {
     _mesh* mesh_ptr = (_mesh*) mesh;
+
+    ASSERT_DEBUG_SYNC(mesh_ptr->type == MESH_TYPE_REGULAR,
+                      "Entry-point is only compatible with regular meshes only.");
 
     mesh_ptr->gl_processed_data_stream_start_offset[stream_type] = start_offset;
 
@@ -4543,6 +4662,9 @@ PUBLIC EMERALD_API void mesh_set_property(mesh          instance,
     if (instance != NULL)
     {
         _mesh* mesh_ptr = (_mesh*) instance;
+
+        ASSERT_DEBUG_SYNC(mesh_ptr->type == MESH_TYPE_REGULAR,
+                          "Entry-point is only compatible with regular meshes only.");
 
         switch(property)
         {
@@ -4613,6 +4735,8 @@ PUBLIC EMERALD_API void mesh_set_single_indexed_representation(mesh             
 {
     _mesh* mesh_ptr = (_mesh*) mesh;
 
+    ASSERT_DEBUG_SYNC(mesh_ptr->type == MESH_TYPE_REGULAR,
+                      "Entry-point is only compatible with regular meshes only.");
     ASSERT_DEBUG_SYNC(mesh_ptr->gl_processed_data      == NULL &&
                       mesh_ptr->gl_processed_data_size == 0,
                       "Processed GL data already set");

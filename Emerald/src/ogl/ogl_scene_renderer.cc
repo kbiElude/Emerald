@@ -1842,7 +1842,7 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_scene_renderer_render_scene_graph(ogl_sce
                                             render_mode == RENDER_MODE_FORWARD_WITH_DEPTH_PREPASS    && n_pass == 1);
 
             uint32_t n_iterations = 0;
-            
+
             if (is_depth_prepass)
             {
                 n_iterations = 1;
@@ -1884,6 +1884,8 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_scene_renderer_render_scene_graph(ogl_sce
                           n_iteration < n_iterations; /* n_iterations = no of separate ogl_ubers needed to render the scene */
                         ++n_iteration)
             {
+                /* Depending on the pass, we may either need to use render mode-specific ogl_uber instance,
+                 * or one that corresponds to the current material. */
                 if (use_material_uber)
                 {
                     /* Retrieve ogl_uber instance */

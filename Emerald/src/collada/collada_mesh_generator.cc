@@ -978,8 +978,8 @@ PUBLIC mesh collada_mesh_generator_create(ogl_context  context,
     }
 
     /* Instantiate new mesh */
-    result = mesh_create(MESH_SAVE_SUPPORT,
-                         geometry_id);
+    result = mesh_create_regular_mesh(MESH_CREATION_FLAGS_SAVE_SUPPORT,
+                                      geometry_id);
 
     if (result == NULL)
     {
