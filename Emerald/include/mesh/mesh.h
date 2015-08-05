@@ -96,24 +96,15 @@ PUBLIC EMERALD_API bool mesh_add_layer_pass_index_data(mesh                     
 PUBLIC EMERALD_API mesh mesh_create_custom_mesh(PFNRENDERCUSTOMMESHPROC   pfn_render_mesh,
                                                 system_hashed_ansi_string name);
 
-/** TODO
- *
- *  NOTE: Can only be called for regular meshes.
- */
-PUBLIC EMERALD_API mesh mesh_create_from_meshes(mesh_creation_flags       flags,
-                                                system_hashed_ansi_string name,
-                                                uint32_t                  n_meshes,
-                                                mesh*                     meshes);
+/** TODO */
+PUBLIC EMERALD_API mesh mesh_create_regular_mesh(mesh_creation_flags       flags,
+                                                 system_hashed_ansi_string name);
 
 /** TODO. Can be freed with mesh_free_single_indexed_representation().
  *
  *  NOTE: Can only be called against regular meshes.
  **/
 PUBLIC EMERALD_API void mesh_create_single_indexed_representation(mesh instance);
-
-/** TODO */
-PUBLIC EMERALD_API mesh mesh_create_regular_mesh(mesh_creation_flags       flags,
-                                                 system_hashed_ansi_string name);
 
 /** TODO
  *
@@ -137,8 +128,8 @@ PUBLIC EMERALD_API bool mesh_delete_layer_pass_index_data(mesh                  
  *
  *  NOTE: Can only be called against regular meshes.
  */
-PUBLIC EMERALD_API bool mesh_fill_gl_buffers(mesh,
-                                             ogl_context);
+PUBLIC EMERALD_API bool mesh_fill_gl_buffers(mesh        instance,
+                                             ogl_context context);
 
 /** TODO.
  *
@@ -150,14 +141,14 @@ PUBLIC EMERALD_API void mesh_free_single_indexed_representation(mesh instance);
  *
  *  NOTE: Can only be called against regular meshes.
  */
-PUBLIC EMERALD_API void mesh_generate_normal_data(mesh);
+PUBLIC EMERALD_API void mesh_generate_normal_data(mesh mesh);
 
 /** TODO
  *
  *  NOTE: Can only be called against regular meshes.
  */
-PUBLIC EMERALD_API uint32_t mesh_get_amount_of_layer_passes(mesh,
-                                                            mesh_layer_id);
+PUBLIC EMERALD_API uint32_t mesh_get_amount_of_layer_passes(mesh          instance,
+                                                            mesh_layer_id layer_id);
 
 /** TODO
  *
@@ -176,25 +167,25 @@ PUBLIC EMERALD_API void mesh_get_layer_data_stream_data(mesh                    
 PUBLIC EMERALD_API void mesh_get_layer_data_stream_property(mesh                            mesh,
                                                             mesh_layer_data_stream_type     type,
                                                             mesh_layer_data_stream_property property,
-                                                            void*                           out_result);
+                                                            void*                           out_result_ptr);
 
 /** TODO
  *
  *  NOTE: Can only be called against regular meshes.
  */
-PUBLIC EMERALD_API bool mesh_get_layer_pass_property(mesh,
+PUBLIC EMERALD_API bool mesh_get_layer_pass_property(mesh                instance,
                                                      uint32_t            n_layer,
                                                      uint32_t            n_pass,
-                                                     mesh_layer_property,
-                                                     void*);
+                                                     mesh_layer_property property,
+                                                     void*               out_result_ptr);
 
 /** TODO
  *
  *  NOTE: Most of the properties only be queried for regular meshes.
  */
-PUBLIC EMERALD_API bool mesh_get_property(mesh,
-                                          mesh_property,
-                                          void*);
+PUBLIC EMERALD_API bool mesh_get_property(mesh          instance,
+                                          mesh_property property,
+                                          void*         out_result_ptr);
 
 /** TODO */
 PUBLIC EMERALD_API mesh mesh_load(ogl_context               context,
@@ -220,7 +211,7 @@ PUBLIC EMERALD_API void mesh_release_layer_datum(mesh);
  *
  *  NOTE: Can only be called against regular meshes.
  */
-PUBLIC EMERALD_API bool mesh_save(mesh,
+PUBLIC EMERALD_API bool mesh_save(mesh                      instance,
                                   system_hashed_ansi_string full_file_path,
                                   system_hash64map          material_name_to_id_map);
 
@@ -228,8 +219,8 @@ PUBLIC EMERALD_API bool mesh_save(mesh,
  *
  *  NOTE: Can only be called against regular meshes.
  */
-PUBLIC EMERALD_API bool mesh_save_with_serializer(mesh,
-                                                  system_file_serializer,
+PUBLIC EMERALD_API bool mesh_save_with_serializer(mesh                   instance,
+                                                  system_file_serializer serializer,
                                                   system_hash64map       mesh_material_to_id_map);
 
 /** TODO.
@@ -253,27 +244,27 @@ PUBLIC EMERALD_API void mesh_set_as_instantiated(mesh mesh_to_modify,
  *
  *  NOTE: Can only be called against regular meshes.
  */
-PUBLIC EMERALD_API void mesh_set_layer_property(mesh,
+PUBLIC EMERALD_API void mesh_set_layer_property(mesh                instance,
                                                 uint32_t            n_layer,
                                                 uint32_t            n_pass,
-                                                mesh_layer_property,
+                                                mesh_layer_property property,
                                                 const void*         data);
 
 /** TODO
  *
  *  NOTE: Can only be called against regular meshes.
  */
-PUBLIC EMERALD_API void mesh_set_processed_data_stream_start_offset(mesh,
+PUBLIC EMERALD_API void mesh_set_processed_data_stream_start_offset(mesh                        mesh,
                                                                     mesh_layer_data_stream_type stream_type,
-                                                                    unsigned int                offset);
+                                                                    unsigned int                start_offset);
 
 /** TODO
  *
  *  NOTE: Can only be called against regular meshes.
  */
-PUBLIC EMERALD_API void mesh_set_property(mesh,
-                                          mesh_property,
-                                          void*);
+PUBLIC EMERALD_API void mesh_set_property(mesh          instance,
+                                          mesh_property property,
+                                          const void*   value);
 
 /** TODO
  *

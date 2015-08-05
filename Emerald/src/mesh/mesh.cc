@@ -175,6 +175,7 @@ typedef struct _mesh_polygon
     float*            vertex_data   [3];
 } _mesh_polygon;
 
+
 /** Reference counter impl */
 REFCOUNT_INSERT_IMPLEMENTATION(mesh,
                                mesh,
@@ -367,13 +368,13 @@ PRIVATE bool _mesh_is_key_float_lower(size_t key_size,
                                       void*  arg1,
                                       void*  arg2)
 {
-    float*        arg1_float = (float*) arg1;
-    system_hash64 arg1_hash  = system_hash64_calculate((const char*) arg1,
-                                                       key_size);
-    float*        arg2_float = (float*) arg2;
-    system_hash64 arg2_hash  = system_hash64_calculate((const char*) arg2,
-                                                       key_size);
-    bool          result     = true;
+    float*        arg1_float_ptr = (float*) arg1;
+    system_hash64 arg1_hash      = system_hash64_calculate((const char*) arg1_float_ptr,
+                                                           key_size);
+    float*        arg2_float_ptr = (float*) arg2;
+    system_hash64 arg2_hash      = system_hash64_calculate((const char*) arg2_float_ptr,
+                                                           key_size);
+    bool          result         = true;
 
     if (arg1_hash != arg2_hash)
     {
@@ -386,7 +387,7 @@ PRIVATE bool _mesh_is_key_float_lower(size_t key_size,
                           n_key_item < key_size / sizeof(float);
                         ++n_key_item)
         {
-            if (arg1_float[n_key_item] >= arg2_float[n_key_item])
+            if (arg2_float_ptr[n_key_item] >= arg2_float_ptr[n_key_item])
             {
                 result = false;
 
@@ -403,15 +404,15 @@ PRIVATE bool _mesh_is_key_float_equal(size_t key_size,
                                       void*  arg1,
                                       void*  arg2)
 {
-    float* arg1_float = (float*) arg1;
-    float* arg2_float = (float*) arg2;
-    bool   result     = true;
+    float* arg1_float_ptr = (float*) arg1;
+    float* arg2_float_ptr = (float*) arg2;
+    bool   result         = true;
 
     for (unsigned int n_key_item = 0;
                       n_key_item < key_size / sizeof(float);
                     ++n_key_item)
     {
-        if (fabs(arg1_float[n_key_item] - arg2_float[n_key_item]) > 1e-5f)
+        if (fabs(arg1_float_ptr[n_key_item] - arg2_float_ptr[n_key_item]) > 1e-5f)
         {
             result = false;
 
@@ -427,13 +428,13 @@ PRIVATE bool _mesh_is_key_uint32_lower(size_t key_size,
                                        void*  arg1,
                                        void*  arg2)
 {
-    uint32_t*     arg1_uint = (uint32_t*) arg1;
-    system_hash64 arg1_hash = system_hash64_calculate( (const char*) arg1,
-                                                       key_size);
-    uint32_t*     arg2_uint = (uint32_t*) arg2;
-    system_hash64 arg2_hash = system_hash64_calculate( (const char*) arg2,
-                                                       key_size);
-    bool          result    = true;
+    uint32_t*     arg1_uint_ptr = (uint32_t*) arg1;
+    system_hash64 arg1_hash     = system_hash64_calculate( (const char*) arg1,
+                                                           key_size);
+    uint32_t*     arg2_uint_ptr = (uint32_t*) arg2;
+    system_hash64 arg2_hash     = system_hash64_calculate( (const char*) arg2,
+                                                           key_size);
+    bool          result        = true;
 
     if (arg1_hash != arg2_hash)
     {
@@ -446,7 +447,7 @@ PRIVATE bool _mesh_is_key_uint32_lower(size_t key_size,
                           n_key_item < key_size / sizeof(uint32_t);
                         ++n_key_item)
         {
-            if (!(arg1_uint[n_key_item] < arg2_uint[n_key_item]))
+            if (!(arg1_uint_ptr[n_key_item] < arg2_uint_ptr[n_key_item]))
             {
                 result = false;
 
@@ -463,15 +464,15 @@ PRIVATE bool _mesh_is_key_uint32_equal(size_t key_size,
                                        void*  arg1,
                                        void*  arg2)
 {
-    uint32_t* arg1_uint = (uint32_t*) arg1;
-    uint32_t* arg2_uint = (uint32_t*) arg2;
-    bool      result    = true;
+    uint32_t* arg1_uint_ptr = (uint32_t*) arg1;
+    uint32_t* arg2_uint_ptr = (uint32_t*) arg2;
+    bool      result        = true;
 
     for (unsigned int n_key_item = 0;
                       n_key_item < key_size / sizeof(uint32_t);
                     ++n_key_item)
     {
-        if (!(arg1_uint[n_key_item] == arg2_uint[n_key_item]))
+        if (!(arg1_uint_ptr[n_key_item] == arg2_uint_ptr[n_key_item]))
         {
             result = false;
 
@@ -621,9 +622,9 @@ PRIVATE void _mesh_fill_gl_buffers_renderer_callback(ogl_context context,
                                                      void*        arg)
 {
     ogl_buffers                                               buffers          = NULL;
-    _mesh*                                                    mesh_ptr         = (_mesh*) arg;
-    const ogl_context_gl_entrypoints*                         entry_points     = NULL;
     const ogl_context_gl_entrypoints_ext_direct_state_access* dsa_entry_points = NULL;
+    const ogl_context_gl_entrypoints*                         entry_points     = NULL;
+    _mesh*                                                    mesh_ptr         = (_mesh*) arg;
 
     _mesh_verify_context_type(context);
 
@@ -1271,28 +1272,29 @@ PRIVATE void _mesh_release(void* arg)
         /* Release layers */
         while (true)
         {
-            _mesh_layer* layer = NULL;
+            _mesh_layer* layer_ptr = NULL;
 
             if (!system_resizable_vector_pop(mesh->layers,
-                                            &layer) )
+                                            &layer_ptr) )
             {
                 break;
             }
 
-            ASSERT_DEBUG_SYNC(layer != NULL,
+            ASSERT_DEBUG_SYNC(layer_ptr != NULL,
                               "Cannot release layer info - layer is NULL");
 
-            if (layer != NULL)
+            if (layer_ptr != NULL)
             {
                 _mesh_deinit_mesh_layer(mesh,
-                                        layer,
+                                        layer_ptr,
                                         true);
 
-                delete layer;
+                delete layer_ptr;
             }
         }
 
         system_resizable_vector_release(mesh->layers);
+        mesh->layers = NULL;
     } /* if (mesh->layers != NULL) */
 
     /* Release GL stuff */
@@ -1403,40 +1405,40 @@ PRIVATE void _mesh_update_aabb(_mesh* mesh_ptr)
 /* Please see header for specification */
 PUBLIC EMERALD_API mesh_layer_id mesh_add_layer(mesh instance)
 {
-    _mesh*        mesh_instance = (_mesh*) instance;
-    mesh_layer_id result        = -1;
+    _mesh*        mesh_instance_ptr = (_mesh*) instance;
+    mesh_layer_id result            = -1;
 
-    ASSERT_DEBUG_SYNC (mesh_instance->type == MESH_TYPE_REGULAR,
+    ASSERT_DEBUG_SYNC (mesh_instance_ptr->type == MESH_TYPE_REGULAR,
                        "Entry-point is only compatible with regular meshes only.");
-    ASSERT_ALWAYS_SYNC(!mesh_instance->gl_storage_initialized,
+    ASSERT_ALWAYS_SYNC(!mesh_instance_ptr->gl_storage_initialized,
                        "Cannot add mesh layers after GL storage has been initialized");
 
     /* Create new layer */
-    _mesh_layer* new_layer = new (std::nothrow) _mesh_layer;
+    _mesh_layer* new_layer_ptr = new (std::nothrow) _mesh_layer;
 
-    ASSERT_DEBUG_SYNC(new_layer != NULL,
+    ASSERT_DEBUG_SYNC(new_layer_ptr != NULL,
                       "Out of memory");
 
-    if (new_layer != NULL)
+    if (new_layer_ptr != NULL)
     {
-        _mesh_init_mesh_layer(new_layer);
+        _mesh_init_mesh_layer(new_layer_ptr);
 
-        new_layer->passes = system_resizable_vector_create(4);
+        new_layer_ptr->passes = system_resizable_vector_create(4);
 
-        ASSERT_DEBUG_SYNC(new_layer->passes != NULL,
+        ASSERT_DEBUG_SYNC(new_layer_ptr->passes != NULL,
                           "Out of memory");
 
         /* Add the new layer */
-        system_resizable_vector_push(mesh_instance->layers,
-                                     new_layer);
+        system_resizable_vector_push(mesh_instance_ptr->layers,
+                                     new_layer_ptr);
 
-        system_resizable_vector_get_property(mesh_instance->layers,
+        system_resizable_vector_get_property(mesh_instance_ptr->layers,
                                              SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
                                             &result);
         result--;
 
         /* Update modification timestamp */
-        mesh_instance->timestamp_last_modified = system_time_now();
+        mesh_instance_ptr->timestamp_last_modified = system_time_now();
     }
 
     return result;
@@ -1449,10 +1451,10 @@ PUBLIC EMERALD_API void mesh_add_layer_data_stream(mesh                        m
                                                    unsigned int                n_items,
                                                    const void*                 data)
 {
-    _mesh_layer* layer_ptr     = NULL;
-    _mesh*       mesh_instance = (_mesh*) mesh;
+    _mesh_layer* layer_ptr         = NULL;
+    _mesh*       mesh_instance_ptr = (_mesh*) mesh;
 
-    ASSERT_DEBUG_SYNC (mesh_instance->type == MESH_TYPE_REGULAR,
+    ASSERT_DEBUG_SYNC (mesh_instance_ptr->type == MESH_TYPE_REGULAR,
                        "Entry-point is only compatible with regular meshes only.");
 
     /* Store amount of SH bands if this is a SH data stream. */
@@ -1460,36 +1462,36 @@ PUBLIC EMERALD_API void mesh_add_layer_data_stream(mesh                        m
         type == MESH_LAYER_DATA_STREAM_TYPE_SPHERICAL_HARMONIC_4BANDS)
     {
         /* We only support RGB spherical harmonics */
-        mesh_instance->n_sh_components = SH_COMPONENTS_RGB;
+        mesh_instance_ptr->n_sh_components = SH_COMPONENTS_RGB;
     }
 
     if (type == MESH_LAYER_DATA_STREAM_TYPE_SPHERICAL_HARMONIC_3BANDS)
     {
-        if (mesh_instance->n_sh_bands == 0)
+        if (mesh_instance_ptr->n_sh_bands == 0)
         {
-            mesh_instance->n_sh_bands = 3;
+            mesh_instance_ptr->n_sh_bands = 3;
         }
         else
         {
-            ASSERT_ALWAYS_SYNC(mesh_instance->n_sh_bands == 3,
+            ASSERT_ALWAYS_SYNC(mesh_instance_ptr->n_sh_bands == 3,
                                "Amount of SH bands must be shared between all mesh layers");
         }
     }
 
     if (type == MESH_LAYER_DATA_STREAM_TYPE_SPHERICAL_HARMONIC_4BANDS)
     {
-        if (mesh_instance->n_sh_bands == 0)
+        if (mesh_instance_ptr->n_sh_bands == 0)
         {
-            mesh_instance->n_sh_bands = 4;
+            mesh_instance_ptr->n_sh_bands = 4;
         }
         else
         {
-            ASSERT_ALWAYS_SYNC(mesh_instance->n_sh_bands == 4,
+            ASSERT_ALWAYS_SYNC(mesh_instance_ptr->n_sh_bands == 4,
                                "Amount of SH bands must be shared between all mesh layers");
         }
     }
 
-    if (system_resizable_vector_get_element_at(mesh_instance->layers,
+    if (system_resizable_vector_get_element_at(mesh_instance_ptr->layers,
                                                layer_id,
                                               &layer_ptr) )
     {
@@ -1502,7 +1504,7 @@ PUBLIC EMERALD_API void mesh_add_layer_data_stream(mesh                        m
             if (data_stream_ptr != NULL)
             {
                 _mesh_init_mesh_layer_data_stream(data_stream_ptr);
-                _mesh_get_stream_data_properties (mesh_instance,
+                _mesh_get_stream_data_properties (mesh_instance_ptr,
                                                   type,
                                                   &data_stream_ptr->data_type,
                                                   &data_stream_ptr->n_components,
@@ -1544,7 +1546,7 @@ PUBLIC EMERALD_API void mesh_add_layer_data_stream(mesh                        m
                                             NULL);
 
                     /* Update modification timestamp */
-                    mesh_instance->timestamp_last_modified = system_time_now();
+                    mesh_instance_ptr->timestamp_last_modified = system_time_now();
                 }
             }
             else
@@ -1721,32 +1723,32 @@ PUBLIC EMERALD_API bool mesh_add_layer_pass_index_data(mesh                     
             if (!system_hash64map_contains(pass_ptr->index_data_maps[stream_type],
                                            set_id) )
             {
-                _mesh_layer_pass_index_data* new_data_set = new (std::nothrow) _mesh_layer_pass_index_data;
+                _mesh_layer_pass_index_data* new_data_set_ptr = new (std::nothrow) _mesh_layer_pass_index_data;
 
-                ASSERT_ALWAYS_SYNC(new_data_set != NULL,
+                ASSERT_ALWAYS_SYNC(new_data_set_ptr != NULL,
                                    "Out of memory");
 
-                if (new_data_set != NULL)
+                if (new_data_set_ptr != NULL)
                 {
-                    ASSERT_DEBUG_SYNC(new_data_set->max_index >= new_data_set->min_index,
+                    ASSERT_DEBUG_SYNC(new_data_set_ptr->max_index >= new_data_set_ptr->min_index,
                                       "Invalid min/max mesh indices");
 
-                    new_data_set->data      = new (std::nothrow) uint32_t[pass_ptr->n_elements];
-                    new_data_set->max_index = max_index;
-                    new_data_set->min_index = min_index;
+                    new_data_set_ptr->data      = new (std::nothrow) uint32_t[pass_ptr->n_elements];
+                    new_data_set_ptr->max_index = max_index;
+                    new_data_set_ptr->min_index = min_index;
 
-                    ASSERT_ALWAYS_SYNC(new_data_set->data != NULL,
+                    ASSERT_ALWAYS_SYNC(new_data_set_ptr->data != NULL,
                                        "Out of memory");
 
-                    if (new_data_set->data != NULL)
+                    if (new_data_set_ptr->data != NULL)
                     {
-                        memcpy(new_data_set->data,
+                        memcpy(new_data_set_ptr->data,
                                index_data,
                                pass_ptr->n_elements * sizeof(unsigned int) );
 
                         system_hash64map_insert(pass_ptr->index_data_maps[stream_type],
                                                 set_id,
-                                                new_data_set,
+                                                new_data_set_ptr,
                                                 NULL,  /* on_remove_callback */
                                                 NULL); /* on_remove_callback_user_arg */
 
@@ -1798,22 +1800,22 @@ PUBLIC EMERALD_API bool mesh_add_layer_pass_index_data(mesh                     
 PUBLIC EMERALD_API mesh mesh_create_custom_mesh(PFNRENDERCUSTOMMESHPROC   pfn_render_mesh,
                                                 system_hashed_ansi_string name)
 {
-    _mesh* new_mesh = new (std::nothrow) _mesh;
+    _mesh* new_mesh_ptr = new (std::nothrow) _mesh;
 
-    ASSERT_DEBUG_SYNC(new_mesh != NULL,
+    ASSERT_DEBUG_SYNC(new_mesh_ptr != NULL,
                       "Out of memory");
 
-    if (new_mesh != NULL)
+    if (new_mesh_ptr != NULL)
     {
-        _mesh_init_mesh(new_mesh,
+        _mesh_init_mesh(new_mesh_ptr,
                         name,
                         0); /* flags */
 
         /* Initialize fields specific to custom meshes */
-        new_mesh->pfn_render_mesh = pfn_render_mesh;
-        new_mesh->type            = MESH_TYPE_CUSTOM;
+        new_mesh_ptr->pfn_render_mesh = pfn_render_mesh;
+        new_mesh_ptr->type            = MESH_TYPE_CUSTOM;
 
-        REFCOUNT_INSERT_INIT_CODE_WITH_RELEASE_HANDLER(new_mesh,
+        REFCOUNT_INSERT_INIT_CODE_WITH_RELEASE_HANDLER(new_mesh_ptr,
                                                        _mesh_release,
                                                        OBJECT_TYPE_MESH,
                                                        system_hashed_ansi_string_create_by_merging_two_strings("\\Meshes\\",
@@ -1823,30 +1825,30 @@ PUBLIC EMERALD_API mesh mesh_create_custom_mesh(PFNRENDERCUSTOMMESHPROC   pfn_re
                  system_hashed_ansi_string_get_buffer(name) );
     }
 
-    return (mesh) new_mesh;
+    return (mesh) new_mesh_ptr;
 }
 
 /* Please see header for specification */
 PUBLIC EMERALD_API mesh mesh_create_regular_mesh(mesh_creation_flags       flags,
                                                  system_hashed_ansi_string name)
 {
-    _mesh* new_mesh = new (std::nothrow) _mesh;
+    _mesh* new_mesh_ptr = new (std::nothrow) _mesh;
 
-    ASSERT_DEBUG_SYNC(new_mesh != NULL,
+    ASSERT_DEBUG_SYNC(new_mesh_ptr != NULL,
                       "Out of memory");
 
-    if (new_mesh != NULL)
+    if (new_mesh_ptr != NULL)
     {
-        _mesh_init_mesh(new_mesh,
+        _mesh_init_mesh(new_mesh_ptr,
                         name,
                         flags);
 
         /* Initialize fields specific to regular meshes */
-        new_mesh->layers    = system_resizable_vector_create(START_LAYERS);
-        new_mesh->materials = system_resizable_vector_create(4 /* capacity */);
-        new_mesh->type      = MESH_TYPE_REGULAR;
+        new_mesh_ptr->layers    = system_resizable_vector_create(START_LAYERS);
+        new_mesh_ptr->materials = system_resizable_vector_create(4 /* capacity */);
+        new_mesh_ptr->type      = MESH_TYPE_REGULAR;
 
-        REFCOUNT_INSERT_INIT_CODE_WITH_RELEASE_HANDLER(new_mesh,
+        REFCOUNT_INSERT_INIT_CODE_WITH_RELEASE_HANDLER(new_mesh_ptr,
                                                        _mesh_release,
                                                        OBJECT_TYPE_MESH,
                                                        system_hashed_ansi_string_create_by_merging_two_strings("\\Meshes\\",
@@ -1856,7 +1858,7 @@ PUBLIC EMERALD_API mesh mesh_create_regular_mesh(mesh_creation_flags       flags
                  system_hashed_ansi_string_get_buffer(name) );
     }
 
-    return (mesh) new_mesh;
+    return (mesh) new_mesh_ptr;
 }
 
 /* Please see header for specification */
@@ -2145,9 +2147,9 @@ PUBLIC EMERALD_API void mesh_create_single_indexed_representation(mesh instance)
 
                 _mesh_get_stream_data_properties(mesh_ptr,
                                                  (mesh_layer_data_stream_type) n_data_stream_type,
-                                                 &stream_data_type,
-                                                 &stream_n_components,
-                                                 &stream_required_bit_alignment);
+                                                &stream_data_type,
+                                                &stream_n_components,
+                                                &stream_required_bit_alignment);
 
                 _mesh_get_total_number_of_stream_sets_for_mesh(mesh_ptr,
                                                                (mesh_layer_data_stream_type) n_data_stream_type,
@@ -2262,7 +2264,7 @@ PUBLIC EMERALD_API void mesh_create_single_indexed_representation(mesh instance)
                                                                   &pass_ptr) &&
                             pass_ptr != NULL)
                         {
-                            pass_ptr->gl_bo_elements_offset = (char*) elements_traveller_ptr -
+                            pass_ptr->gl_bo_elements_offset = (char*) elements_traveller_ptr      -
                                                               (char*) mesh_ptr->gl_processed_data;
 
                             for (uint32_t n_element = 0;
@@ -2282,7 +2284,7 @@ PUBLIC EMERALD_API void mesh_create_single_indexed_representation(mesh instance)
 
                                 /* Find the final index */
                                 if (system_bst_get(datastreams_surfaceid_bst,
-                                                   (system_bst_key) key_ptr,
+                                                   (system_bst_key)     key_ptr,
                                                    (system_bst_value*) &final_index) )
                                 {
                                     /* Update max/min index values for the pass */
@@ -2357,7 +2359,7 @@ PUBLIC EMERALD_API void mesh_create_single_indexed_representation(mesh instance)
                                             _mesh_get_stream_data_properties(mesh_ptr,
                                                                              (mesh_layer_data_stream_type) n_data_stream_type,
                                                                              NULL,  /* out_data_type */
-                                                                             &stream_n_components,
+                                                                            &stream_n_components,
                                                                              NULL); /* out_required_bit_alignment */
 
                                             _mesh_get_amount_of_stream_data_sets(mesh_ptr,
@@ -2383,11 +2385,11 @@ PUBLIC EMERALD_API void mesh_create_single_indexed_representation(mesh instance)
 
                                                 if (pass_ptr->index_data_maps[actual_stream_type] != NULL)
                                                 {
-                                                    _mesh_layer_pass_index_data* set_index_data = NULL;
+                                                    _mesh_layer_pass_index_data* set_index_data_ptr = NULL;
 
                                                     if (!system_hash64map_get(pass_ptr->index_data_maps[actual_stream_type],
                                                                               n_set,
-                                                                             &set_index_data) )
+                                                                             &set_index_data_ptr) )
                                                     {
                                                         pass_index_data = n_element;
                                                     }
@@ -3357,7 +3359,7 @@ PUBLIC EMERALD_API void mesh_get_layer_data_stream_data(mesh                    
 PUBLIC EMERALD_API void mesh_get_layer_data_stream_property(mesh                            mesh,
                                                             mesh_layer_data_stream_type     type,
                                                             mesh_layer_data_stream_property property,
-                                                            void*                           out_result)
+                                                            void*                           out_result_ptr)
 {
     _mesh* mesh_ptr = (_mesh*) mesh;
 
@@ -3371,7 +3373,7 @@ PUBLIC EMERALD_API void mesh_get_layer_data_stream_property(mesh                
         mesh_get_layer_data_stream_property(mesh_ptr->instantiation_parent,
                                             type,
                                             property,
-                                            out_result);
+                                            out_result_ptr);
     } /* if (mesh_ptr->instantiation_parent != NULL) */
     else
     {
@@ -3379,7 +3381,7 @@ PUBLIC EMERALD_API void mesh_get_layer_data_stream_property(mesh                
         {
             case MESH_LAYER_DATA_STREAM_PROPERTY_START_OFFSET:
             {
-                *((uint32_t*) out_result) = mesh_ptr->gl_bo_start_offset + mesh_ptr->gl_processed_data_stream_start_offset[type];
+                *((uint32_t*) out_result_ptr) = mesh_ptr->gl_bo_start_offset + mesh_ptr->gl_processed_data_stream_start_offset[type];
 
                 break;
             }
@@ -3396,10 +3398,10 @@ PUBLIC EMERALD_API void mesh_get_layer_data_stream_property(mesh                
 /* Please see header for specification */
 PUBLIC EMERALD_API bool mesh_get_property(mesh          instance,
                                           mesh_property property,
-                                          void*         result)
+                                          void*         out_result_ptr)
 {
-    _mesh* mesh_ptr = (_mesh*) instance;
     bool   b_result = true;
+    _mesh* mesh_ptr = (_mesh*) instance;
 
     ASSERT_DEBUG_SYNC(mesh_ptr->type == MESH_TYPE_CUSTOM  &&  (property == MESH_PROPERTY_RENDER_CUSTOM_MESH_FUNC_PTR ||
                                                                property == MESH_PROPERTY_TYPE)                       ||
@@ -3411,21 +3413,21 @@ PUBLIC EMERALD_API bool mesh_get_property(mesh          instance,
     {
         case MESH_PROPERTY_MODEL_AABB_MAX:
         {
-            *((float**) result) = mesh_ptr->aabb_max;
+            *((float**) out_result_ptr) = mesh_ptr->aabb_max;
 
             break;
         }
 
         case MESH_PROPERTY_MODEL_AABB_MIN:
         {
-            *((float**) result) = mesh_ptr->aabb_min;
+            *((float**) out_result_ptr) = mesh_ptr->aabb_min;
 
             break;
         }
 
         case MESH_PROPERTY_CREATION_FLAGS:
         {
-            *((mesh_creation_flags*) result) = mesh_ptr->creation_flags;
+            *((mesh_creation_flags*) out_result_ptr) = mesh_ptr->creation_flags;
             break;
         }
 
@@ -3448,18 +3450,18 @@ PUBLIC EMERALD_API bool mesh_get_property(mesh          instance,
                     ASSERT_DEBUG_SYNC(mesh_ptr->gl_bo_id != 0,
                                       "Mesh BO ID is 0");
 
-                    *((GLuint*)result) = mesh_ptr->gl_bo_id;
+                    *((GLuint*) out_result_ptr) = mesh_ptr->gl_bo_id;
                 }
                 else
                 {
-                    *((GLuint*)result) = mesh_ptr->gl_bo_start_offset;
+                    *((GLuint*) out_result_ptr) = mesh_ptr->gl_bo_start_offset;
                 }
             } /* if (mesh_ptr->instantiation_parent == NULL) */
             else
             {
                 mesh_get_property(mesh_ptr->instantiation_parent,
                                   property,
-                                  result);
+                                  out_result_ptr);
             }
 
             break;
@@ -3469,13 +3471,13 @@ PUBLIC EMERALD_API bool mesh_get_property(mesh          instance,
         {
             if (mesh_ptr->instantiation_parent == NULL)
             {
-                *((_mesh_index_type*) result) = mesh_ptr->gl_index_type;
+                *((_mesh_index_type*) out_result_ptr) = mesh_ptr->gl_index_type;
             }
             else
             {
                 mesh_get_property(mesh_ptr->instantiation_parent,
                                   MESH_PROPERTY_GL_INDEX_TYPE,
-                                  result);
+                                  out_result_ptr);
             }
 
             break;
@@ -3486,7 +3488,8 @@ PUBLIC EMERALD_API bool mesh_get_property(mesh          instance,
             ASSERT_DEBUG_SYNC(mesh_ptr->gl_processed_data != NULL,
                               "Requested GL processed data is NULL");
 
-            *((void**) result) = mesh_ptr->gl_processed_data;
+            *((void**) out_result_ptr) = mesh_ptr->gl_processed_data;
+
             break;
         }
 
@@ -3494,13 +3497,13 @@ PUBLIC EMERALD_API bool mesh_get_property(mesh          instance,
         {
             if (mesh_ptr->instantiation_parent == NULL)
             {
-                *((uint32_t*) result) = mesh_ptr->gl_processed_data_size;
+                *((uint32_t*) out_result_ptr) = mesh_ptr->gl_processed_data_size;
             }
             else
             {
                 mesh_get_property(mesh_ptr->instantiation_parent,
                                   MESH_PROPERTY_GL_PROCESSED_DATA_SIZE,
-                                  result);
+                                  out_result_ptr);
             }
 
             break;
@@ -3513,13 +3516,13 @@ PUBLIC EMERALD_API bool mesh_get_property(mesh          instance,
                 ASSERT_DEBUG_SYNC(mesh_ptr->gl_processed_data_stride != 0,
                                   "Requested stride is 0");
 
-                *((uint32_t*) result) = mesh_ptr->gl_processed_data_stride;
+                *((uint32_t*) out_result_ptr) = mesh_ptr->gl_processed_data_stride;
             }
             else
             {
                 mesh_get_property(mesh_ptr->instantiation_parent,
                                   MESH_PROPERTY_GL_STRIDE,
-                                  result);
+                                  out_result_ptr);
             }
 
             break;
@@ -3531,13 +3534,13 @@ PUBLIC EMERALD_API bool mesh_get_property(mesh          instance,
             {
                 ASSERT_DEBUG_SYNC(mesh_ptr->gl_storage_initialized, "Cannot query GL TBO id - GL storage not initialized");
 
-                *((ogl_texture*)result) = mesh_ptr->gl_tbo;
+                *((ogl_texture*) out_result_ptr) = mesh_ptr->gl_tbo;
             }
             else
             {
                 mesh_get_property(mesh_ptr->instantiation_parent,
                                   MESH_PROPERTY_GL_TBO,
-                                  result);
+                                  out_result_ptr);
             }
 
             break;
@@ -3547,13 +3550,13 @@ PUBLIC EMERALD_API bool mesh_get_property(mesh          instance,
         {
             if (mesh_ptr->instantiation_parent == NULL)
             {
-                *(bool*) result = mesh_ptr->gl_thread_fill_gl_buffers_call_needed;
+                *(bool*) out_result_ptr = mesh_ptr->gl_thread_fill_gl_buffers_call_needed;
             }
             else
             {
                 mesh_get_property(mesh_ptr->instantiation_parent,
                                   MESH_PROPERTY_GL_THREAD_FILL_BUFFERS_CALL_NEEDED,
-                                  result);
+                                  out_result_ptr);
             }
 
             break;
@@ -3566,13 +3569,13 @@ PUBLIC EMERALD_API bool mesh_get_property(mesh          instance,
                 ASSERT_DEBUG_SYNC(mesh_ptr->gl_processed_data_total_elements != 0,
                                   "About to return 0 for MESH_PROPERTY_GL_TOTAL_ELEMENTS query");
 
-                *((uint32_t*) result) = mesh_ptr->gl_processed_data_total_elements;
+                *((uint32_t*) out_result_ptr) = mesh_ptr->gl_processed_data_total_elements;
             }
             else
             {
                 mesh_get_property(mesh_ptr->instantiation_parent,
                                   MESH_PROPERTY_GL_TOTAL_ELEMENTS,
-                                  result);
+                                  out_result_ptr);
             }
 
             break;
@@ -3580,14 +3583,14 @@ PUBLIC EMERALD_API bool mesh_get_property(mesh          instance,
 
         case MESH_PROPERTY_INSTANTIATION_PARENT:
         {
-            *(mesh*) result = mesh_ptr->instantiation_parent;
+            *(mesh*) out_result_ptr = mesh_ptr->instantiation_parent;
 
             break;
         }
 
         case MESH_PROPERTY_MATERIALS:
         {
-            *((system_resizable_vector*) result) = mesh_ptr->materials;
+            *((system_resizable_vector*) out_result_ptr) = mesh_ptr->materials;
 
             break;
         }
@@ -3596,13 +3599,13 @@ PUBLIC EMERALD_API bool mesh_get_property(mesh          instance,
         {
             if (mesh_ptr->instantiation_parent == NULL)
             {
-                *((uint32_t*)result) = mesh_ptr->n_sh_bands;
+                *((uint32_t*) out_result_ptr) = mesh_ptr->n_sh_bands;
             }
             else
             {
                 mesh_get_property(mesh_ptr->instantiation_parent,
                                   MESH_PROPERTY_N_SH_BANDS,
-                                  result);
+                                  out_result_ptr);
             }
 
             break;
@@ -3612,7 +3615,7 @@ PUBLIC EMERALD_API bool mesh_get_property(mesh          instance,
         {
             system_resizable_vector_get_property(((_mesh*)instance)->layers,
                                                  SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
-                                                 result);
+                                                 out_result_ptr);
 
             break;
         }
@@ -3621,13 +3624,13 @@ PUBLIC EMERALD_API bool mesh_get_property(mesh          instance,
         {
             if (mesh_ptr->instantiation_parent == NULL)
             {
-                *((uint32_t*)result) = mesh_ptr->n_gl_unique_vertices;
+                *((uint32_t*) out_result_ptr) = mesh_ptr->n_gl_unique_vertices;
             }
             else
             {
                 mesh_get_property(mesh_ptr->instantiation_parent,
                                   MESH_PROPERTY_N_GL_UNIQUE_VERTICES,
-                                  result);
+                                  out_result_ptr);
             }
 
             break;
@@ -3635,28 +3638,28 @@ PUBLIC EMERALD_API bool mesh_get_property(mesh          instance,
 
         case MESH_PROPERTY_NAME:
         {
-            *((system_hashed_ansi_string*) result) = mesh_ptr->name;
+            *((system_hashed_ansi_string*) out_result_ptr) = mesh_ptr->name;
 
             break;
         }
 
         case MESH_PROPERTY_RENDER_CUSTOM_MESH_FUNC_PTR:
         {
-            *((PFNRENDERCUSTOMMESHPROC*) result) = mesh_ptr->pfn_render_mesh;
+            *((PFNRENDERCUSTOMMESHPROC*) out_result_ptr) = mesh_ptr->pfn_render_mesh;
 
             break;
         }
 
         case MESH_PROPERTY_TIMESTAMP_MODIFICATION:
         {
-            *((system_time*)result) = mesh_ptr->timestamp_last_modified;
+            *((system_time*) out_result_ptr) = mesh_ptr->timestamp_last_modified;
 
             break;
         }
 
         case MESH_PROPERTY_TYPE:
         {
-            *((mesh_type*) result) = mesh_ptr->type;
+            *((mesh_type*) out_result_ptr) = mesh_ptr->type;
 
             break;
         }
@@ -3678,10 +3681,10 @@ PUBLIC EMERALD_API bool mesh_get_layer_pass_property(mesh                instanc
                                                      uint32_t            n_layer,
                                                      uint32_t            n_pass,
                                                      mesh_layer_property property,
-                                                     void*               out_result)
+                                                     void*               out_result_ptr)
 {
-    _mesh*       mesh_ptr       = (_mesh*) instance;
     _mesh_layer* mesh_layer_ptr = NULL;
+    _mesh*       mesh_ptr       = (_mesh*) instance;
     bool         result         = true;
 
     ASSERT_DEBUG_SYNC(mesh_ptr->type == MESH_TYPE_REGULAR,
@@ -3701,63 +3704,63 @@ PUBLIC EMERALD_API bool mesh_get_layer_pass_property(mesh                instanc
             {
                 case MESH_LAYER_PROPERTY_MODEL_AABB_MAX:
                 {
-                    *((float**) out_result) = mesh_layer_ptr->aabb_max;
+                    *((float**) out_result_ptr) = mesh_layer_ptr->aabb_max;
 
                     break;
                 }
 
                 case MESH_LAYER_PROPERTY_MODEL_AABB_MIN:
                 {
-                    *((float**) out_result) = mesh_layer_ptr->aabb_min;
+                    *((float**) out_result_ptr) = mesh_layer_ptr->aabb_min;
 
                     break;
                 }
 
                 case MESH_LAYER_PROPERTY_GL_BO_ELEMENTS_OFFSET:
                 {
-                    *((uint32_t*)out_result) = mesh_ptr->gl_bo_start_offset + mesh_layer_pass_ptr->gl_bo_elements_offset;
+                    *((uint32_t*) out_result_ptr) = mesh_ptr->gl_bo_start_offset + mesh_layer_pass_ptr->gl_bo_elements_offset;
 
                     break;
                 }
 
                 case MESH_LAYER_PROPERTY_GL_ELEMENTS_DATA:
                 {
-                    *((uint32_t**)out_result) = mesh_layer_pass_ptr->gl_elements;
+                    *((uint32_t**) out_result_ptr) = mesh_layer_pass_ptr->gl_elements;
 
                     break;
                 }
 
                 case MESH_LAYER_PROPERTY_GL_ELEMENTS_DATA_MAX_INDEX:
                 {
-                    *((uint32_t*)out_result) = mesh_layer_pass_ptr->gl_elements_max_index;
+                    *((uint32_t*) out_result_ptr) = mesh_layer_pass_ptr->gl_elements_max_index;
 
                     break;
                 }
 
                 case MESH_LAYER_PROPERTY_GL_ELEMENTS_DATA_MIN_INDEX:
                 {
-                    *((uint32_t*)out_result) = mesh_layer_pass_ptr->gl_elements_min_index;
+                    *((uint32_t*) out_result_ptr) = mesh_layer_pass_ptr->gl_elements_min_index;
 
                     break;
                 }
 
                 case MESH_LAYER_PROPERTY_MATERIAL:
                 {
-                    *((mesh_material*)out_result) = mesh_layer_pass_ptr->material;
+                    *((mesh_material*) out_result_ptr) = mesh_layer_pass_ptr->material;
 
                     break;
                 }
 
                 case MESH_LAYER_PROPERTY_N_ELEMENTS:
                 {
-                    *((uint32_t*)out_result) = mesh_layer_pass_ptr->n_elements;
+                    *((uint32_t*) out_result_ptr) = mesh_layer_pass_ptr->n_elements;
 
                     break;
                 }
 
                 case MESH_LAYER_PROPERTY_N_TRIANGLES:
                 {
-                    *((uint32_t*)out_result) = mesh_layer_pass_ptr->n_elements / 3;
+                    *((uint32_t*) out_result_ptr) = mesh_layer_pass_ptr->n_elements / 3;
 
                     break;
                 }
@@ -4543,8 +4546,8 @@ PUBLIC EMERALD_API void mesh_set_layer_property(mesh                instance,
                                                 mesh_layer_property property,
                                                 const void*         data)
 {
-    _mesh*       mesh_ptr       = (_mesh*) instance;
     _mesh_layer* mesh_layer_ptr = NULL;
+    _mesh*       mesh_ptr       = (_mesh*) instance;
 
     ASSERT_DEBUG_SYNC(mesh_ptr->type == MESH_TYPE_REGULAR,
                       "Entry-point is only compatible with regular meshes only.");
@@ -4654,7 +4657,7 @@ PUBLIC EMERALD_API void mesh_set_processed_data_stream_start_offset(mesh        
 /* Please see header for specification */
 PUBLIC EMERALD_API void mesh_set_property(mesh          instance,
                                           mesh_property property,
-                                          void*         value)
+                                          const void*   value)
 {
     ASSERT_DEBUG_SYNC(instance != NULL,
                       "Cannot set propetry - instance is NULL");
