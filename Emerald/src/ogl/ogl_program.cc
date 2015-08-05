@@ -90,7 +90,9 @@ typedef struct
     PFNGLLINKPROGRAMPROC                pGLLinkProgram;
     PFNGLPROGRAMBINARYPROC              pGLProgramBinary;
     PFNGLPROGRAMPARAMETERIPROC          pGLProgramParameteri;
+    PFNGLSHADERSTORAGEBLOCKBINDINGPROC  pGLShaderStorageBlockBinding;
     PFNGLTRANSFORMFEEDBACKVARYINGSPROC  pGLTransformFeedbackVaryings;
+    PFNGLUNIFORMBLOCKBINDINGPROC        pGLUniformBlockBinding;
 
     REFCOUNT_INSERT_VARIABLES
 } _ogl_program;
@@ -471,6 +473,34 @@ PRIVATE void _ogl_program_init_blocks_for_context(ogl_program_block_type block_t
             {
                 ASSERT_DEBUG_SYNC(false,
                                   "Unrecognized block type");
+            }
+        } /* switch (block_type) */
+
+        /* Set up the block binding */
+        switch (block_type)
+        {
+            case OGL_PROGRAM_BLOCK_TYPE_SHADER_STORAGE_BUFFER:
+            {
+                program_ptr->pGLShaderStorageBlockBinding(program_ptr->id,
+                                                          n_active_block,
+                                                          n_active_block);
+
+                break;
+            }
+
+            case OGL_PROGRAM_BLOCK_TYPE_UNIFORM_BUFFER:
+            {
+                program_ptr->pGLUniformBlockBinding(program_ptr->id,
+                                                    n_active_block,
+                                                    n_active_block);
+
+                break;
+            }
+
+            default:
+            {
+                ASSERT_DEBUG_SYNC(false,
+                                  "Unsupported block type.");
             }
         } /* switch (block_type) */
     } /* for (all blocks of the requested type) */
@@ -1538,7 +1568,9 @@ PUBLIC EMERALD_API ogl_program ogl_program_create(ogl_context                   
             result->pGLLinkProgram                = entry_points->pGLLinkProgram;
             result->pGLProgramBinary              = entry_points->pGLProgramBinary;
             result->pGLProgramParameteri          = entry_points->pGLProgramParameteri;
+            result->pGLShaderStorageBlockBinding  = entry_points->pGLShaderStorageBlockBinding;
             result->pGLTransformFeedbackVaryings  = entry_points->pGLTransformFeedbackVaryings;
+            result->pGLUniformBlockBinding        = entry_points->pGLUniformBlockBinding;
         }
         else
         {
@@ -1569,7 +1601,9 @@ PUBLIC EMERALD_API ogl_program ogl_program_create(ogl_context                   
             result->pGLLinkProgram                = entry_points->pGLLinkProgram;
             result->pGLProgramBinary              = entry_points->pGLProgramBinary;
             result->pGLProgramParameteri          = entry_points->pGLProgramParameteri;
+            result->pGLShaderStorageBlockBinding  = entry_points->pGLShaderStorageBlockBinding;
             result->pGLTransformFeedbackVaryings  = entry_points->pGLTransformFeedbackVaryings;
+            result->pGLUniformBlockBinding        = entry_points->pGLUniformBlockBinding;
         }
 
         /* Carry on */
@@ -2034,7 +2068,7 @@ PUBLIC EMERALD_API bool ogl_program_get_uniform_block_by_ub_index(ogl_program   
     if (program_ptr->syncable_ubs_mode == OGL_PROGRAM_SYNCABLE_UBS_MODE_ENABLE_PER_CONTEXT)
     {
         current_context = ogl_context_get_current_context();
-    }
+    } /* if (program_ptr->syncable_ubs_mode == OGL_PROGRAM_SYNCABLE_UBS_MODE_ENABLE_PER_CONTEXT) */
 
     if (!system_hash64map_contains(program_ptr->context_to_ub_name_to_ub_map,
                                    (system_hash64) current_context) )
@@ -2045,17 +2079,21 @@ PUBLIC EMERALD_API bool ogl_program_get_uniform_block_by_ub_index(ogl_program   
                                              ogl_context_get_current_context() );
     }
 
-    if (system_hash64map_get(program_ptr->context_to_ub_index_to_ub_map,
-                             (system_hash64) current_context,
-                            &ub_index_to_ub_map) )
+    if (system_hash64map_contains(program_ptr->context_to_ub_name_to_ub_map,
+                                  (system_hash64) current_context) )
     {
-        result = system_hash64map_get(ub_index_to_ub_map,
-                                      index,
-                                     &result_ub);
-
-        if (result)
+        if (system_hash64map_get(program_ptr->context_to_ub_index_to_ub_map,
+                                 (system_hash64) current_context,
+                                &ub_index_to_ub_map) )
         {
-            *out_ub_ptr = result_ub;
+            result = system_hash64map_get(ub_index_to_ub_map,
+                                          index,
+                                         &result_ub);
+
+            if (result)
+            {
+                *out_ub_ptr = result_ub;
+            }
         }
     }
 
@@ -2086,13 +2124,17 @@ PUBLIC EMERALD_API bool ogl_program_get_uniform_block_by_name(ogl_program       
                                              ogl_context_get_current_context() );
     }
 
-    if (system_hash64map_get(program_ptr->context_to_ub_name_to_ub_map,
-                             (system_hash64) current_context,
-                            &ub_name_to_ub_map) )
+    if (system_hash64map_contains(program_ptr->context_to_ub_name_to_ub_map,
+                                  (system_hash64) current_context) )
     {
-        result = system_hash64map_get(ub_name_to_ub_map,
-                                      system_hashed_ansi_string_get_hash(name),
-                                      out_ub_ptr);
+        if (system_hash64map_get(program_ptr->context_to_ub_name_to_ub_map,
+                                 (system_hash64) current_context,
+                                &ub_name_to_ub_map) )
+        {
+            result = system_hash64map_get(ub_name_to_ub_map,
+                                          system_hashed_ansi_string_get_hash(name),
+                                          out_ub_ptr);
+        }
     }
 
     return result;

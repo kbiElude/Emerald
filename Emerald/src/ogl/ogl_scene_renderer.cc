@@ -1007,15 +1007,6 @@ PRIVATE void _ogl_scene_renderer_render_traversed_scene_graph(_ogl_scene_rendere
                                                            frame_time);
                         } /* for (all meshes) */
                     } /* for (all uber items) */
-
-                    /* Any mesh helper visualization needed? */
-                    if (n_iteration_items > 0 &&
-                        uber_details_ptr  != NULL)
-                    {
-                        _ogl_scene_renderer_render_mesh_helper_visualizations(renderer_ptr,
-                                                                              n_iteration_items,
-                                                                              uber_details_ptr);
-                    }
                 } /* if (is_depth_prepass) */
                 else
                 {
@@ -1036,6 +1027,15 @@ PRIVATE void _ogl_scene_renderer_render_traversed_scene_graph(_ogl_scene_rendere
                                                        item_ptr->material,
                                                        frame_time);
                     } /* for (all meshes to be rendered with the material uber instance) */
+                }
+
+                /* Any mesh helper visualization needed? */
+                if (n_iteration_items > 0 &&
+                    uber_details_ptr  != NULL)
+                {
+                    _ogl_scene_renderer_render_mesh_helper_visualizations(renderer_ptr,
+                                                                          n_iteration_items,
+                                                                          uber_details_ptr);
                 }
             }
             ogl_uber_rendering_stop(material_uber);

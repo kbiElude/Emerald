@@ -274,15 +274,6 @@ PRIVATE void _ogl_context_scene_renderer_normals_preview_init_preview_program(_o
                                 OGL_PROGRAM_UB_PROPERTY_INDEXED_BP,
                                &preview_ptr->preview_program_ub_vs_ub_bp);
 
-    /* Set up SSBO bindings */
-    ogl_context_get_property(preview_ptr->context,
-                             OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
-                            &entrypoints_ptr);
-
-    entrypoints_ptr->pGLShaderStorageBlockBinding(ogl_program_get_id(preview_ptr->preview_program),
-                                                  0,  /* storageBlockIndex */
-                                                  0); /* storageBlockBinding */
-
     /* All done */
     goto end;
 
