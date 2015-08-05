@@ -36,8 +36,9 @@ typedef struct
     uint32_t                  n_gl_unique_vertices;
     mesh_type                 type;
 
-    /* Custom renderer-only */
-    PFNRENDERCUSTOMMESHPROC  pfn_render_mesh;
+    /* Custom mesh-specifics */
+    PFNGETCUSTOMMESHAABBPROC pfn_get_custom_mesh_aabb_proc;
+    PFNRENDERCUSTOMMESHPROC  pfn_render_custom_mesh_proc;
 
     /* GL storage. This BO is maintained by ogl_buffers, so DO NOT release it with glDeleteBuffers().
      *
@@ -202,7 +203,7 @@ PRIVATE void _mesh_release_normals_data  (      _mesh* mesh_ptr);
 
 
 /** TODO */
-PRIVATE void _mesh_get_index_key(uint32_t*               out_result,
+PRIVATE void _mesh_get_index_key(uint32_t*               out_result_ptr,
                                  const _mesh_layer_pass* layer_pass_ptr,
                                  unsigned int            n_element)
 {
@@ -237,13 +238,13 @@ PRIVATE void _mesh_get_index_key(uint32_t*               out_result,
                                          n_set,
                                         &unique_set_id) )
                 {
-                    out_result[n_current_word] = unique_set_id;
+                    out_result_ptr[n_current_word] = unique_set_id;
                     n_current_word ++;
 
                     ASSERT_DEBUG_SYNC(index_data_ptr->data[n_element] != 0xcdcdcdcd,
                                       "Invalid index data");
 
-                    out_result[n_current_word] = index_data_ptr->data[n_element];
+                    out_result_ptr[n_current_word] = index_data_ptr->data[n_element];
                     n_current_word ++;
                 }
                 else
@@ -251,10 +252,10 @@ PRIVATE void _mesh_get_index_key(uint32_t*               out_result,
                     ASSERT_DEBUG_SYNC(false,
                                       "Could not retrieve index data.");
 
-                    out_result[n_current_word] = 0;
+                    out_result_ptr[n_current_word] = 0;
                     n_current_word++;
 
-                    out_result[n_current_word] = 0;
+                    out_result_ptr[n_current_word] = 0;
                     n_current_word++;
                 }
             } /* for (all sets) */
@@ -264,7 +265,7 @@ PRIVATE void _mesh_get_index_key(uint32_t*               out_result,
     ASSERT_DEBUG_SYNC(sizeof(void*) == sizeof(uint32_t),
                       "32-bit only logic");
 
-    memcpy(out_result + n_current_word,
+    memcpy(out_result_ptr + n_current_word,
            layer_pass_ptr->material,
            sizeof(layer_pass_ptr->material) );
 }
@@ -624,6 +625,7 @@ PRIVATE void _mesh_fill_gl_buffers_renderer_callback(ogl_context context,
     ogl_buffers                                               buffers          = NULL;
     const ogl_context_gl_entrypoints_ext_direct_state_access* dsa_entry_points = NULL;
     const ogl_context_gl_entrypoints*                         entry_points     = NULL;
+    const ogl_context_gl_limits*                              limits_ptr       = NULL;
     _mesh*                                                    mesh_ptr         = (_mesh*) arg;
 
     _mesh_verify_context_type(context);
@@ -654,8 +656,6 @@ PRIVATE void _mesh_fill_gl_buffers_renderer_callback(ogl_context context,
      * NOTE: For normals preview renderer, we need to align
      *       mesh data on SSBO boundary.
      */
-    const ogl_context_gl_limits* limits_ptr = NULL;
-
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_LIMITS,
                             &limits_ptr);
@@ -718,13 +718,13 @@ PRIVATE void _mesh_get_amount_of_stream_data_sets(_mesh*                      me
                                                   mesh_layer_data_stream_type stream_type,
                                                   mesh_layer_id               layer_id,
                                                   mesh_layer_pass_id          layer_pass_id,
-                                                  uint32_t*                   out_n_stream_sets)
+                                                  uint32_t*                   out_n_stream_sets_ptr)
 {
-    if (out_n_stream_sets != NULL)
+    if (out_n_stream_sets_ptr != NULL)
     {
         _mesh_layer* layer_ptr = NULL;
 
-        *out_n_stream_sets = 0;
+        *out_n_stream_sets_ptr = 0;
 
         if (system_resizable_vector_get_element_at(mesh_ptr->layers,
                                                    layer_id,
@@ -746,7 +746,7 @@ PRIVATE void _mesh_get_amount_of_stream_data_sets(_mesh*                      me
 
                     if (n_sets > 0)
                     {
-                        *out_n_stream_sets += n_sets;
+                        *out_n_stream_sets_ptr += n_sets;
                     }
                 }
             }
@@ -769,9 +769,9 @@ PRIVATE void _mesh_get_amount_of_stream_data_sets(_mesh*                      me
 /** TODO */
 PRIVATE void _mesh_get_stream_data_properties(_mesh*                            mesh_ptr,
                                               mesh_layer_data_stream_type       stream_type,
-                                              mesh_layer_data_stream_data_type* out_data_type,
-                                              uint32_t*                         out_n_components,
-                                              uint32_t*                         out_required_bit_alignment)
+                                              mesh_layer_data_stream_data_type* out_data_type_ptr,
+                                              uint32_t*                         out_n_components_ptr,
+                                              uint32_t*                         out_required_bit_alignment_ptr)
 {
     mesh_layer_data_stream_data_type result_data_type              = MESH_LAYER_DATA_STREAM_DATA_TYPE_UNKNOWN;
     uint32_t                         result_n_components           = 0;
@@ -815,28 +815,28 @@ PRIVATE void _mesh_get_stream_data_properties(_mesh*                            
         }
     }
 
-    if (out_data_type != NULL)
+    if (out_data_type_ptr != NULL)
     {
-        *out_data_type = result_data_type;
+        *out_data_type_ptr = result_data_type;
     }
 
-    if (out_n_components != NULL)
+    if (out_n_components_ptr != NULL)
     {
-        *out_n_components = result_n_components;
+        *out_n_components_ptr = result_n_components;
     }
 
-    if (out_required_bit_alignment != NULL)
+    if (out_required_bit_alignment_ptr != NULL)
     {
-        *out_required_bit_alignment = result_required_bit_alignment;
+        *out_required_bit_alignment_ptr = result_required_bit_alignment;
     }
 }
 
 /** TODO */
 PRIVATE void _mesh_get_total_number_of_stream_sets_for_mesh(_mesh*                      mesh_ptr,
                                                             mesh_layer_data_stream_type stream_type,
-                                                            uint32_t*                   out_n_stream_sets)
+                                                            uint32_t*                   out_n_stream_sets_ptr)
 {
-    if (out_n_stream_sets != NULL)
+    if (out_n_stream_sets_ptr != NULL)
     {
         _mesh_layer* layer_ptr = NULL;
         unsigned int n_layers  = 0;
@@ -845,7 +845,7 @@ PRIVATE void _mesh_get_total_number_of_stream_sets_for_mesh(_mesh*              
                                              SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
                                             &n_layers);
 
-        *out_n_stream_sets = 0;
+        *out_n_stream_sets_ptr = 0;
 
         for (unsigned int n_layer = 0;
                           n_layer < n_layers;
@@ -880,7 +880,7 @@ PRIVATE void _mesh_get_total_number_of_stream_sets_for_mesh(_mesh*              
 
                             if (n_sets > 0)
                             {
-                                *out_n_stream_sets += n_sets;
+                                *out_n_stream_sets_ptr += n_sets;
                             }
                         }
                     }
@@ -903,92 +903,93 @@ PRIVATE void _mesh_get_total_number_of_stream_sets_for_mesh(_mesh*              
 }
 
 /** TODO */
-PRIVATE void _mesh_init_mesh(_mesh*                    new_mesh,
+PRIVATE void _mesh_init_mesh(_mesh*                    new_mesh_ptr,
                              system_hashed_ansi_string name,
                              mesh_creation_flags       flags)
 {
-    memset(new_mesh->aabb_max,
+    memset(new_mesh_ptr->aabb_max,
            0,
-           sizeof(new_mesh->aabb_max) );
-    memset(new_mesh->aabb_min,
+           sizeof(new_mesh_ptr->aabb_max) );
+    memset(new_mesh_ptr->aabb_min,
            0,
-           sizeof(new_mesh->aabb_min) );
+           sizeof(new_mesh_ptr->aabb_min) );
 
-    new_mesh->aabb_max[3]                           = 1;
-    new_mesh->aabb_min[3]                           = 1;
-    new_mesh->creation_flags                        = flags;
-    new_mesh->gl_bo_id                              = 0;
-    new_mesh->gl_bo_start_offset                    = -1;
-    new_mesh->gl_context                            = NULL;
-    new_mesh->gl_index_type                         = MESH_INDEX_TYPE_UNKNOWN;
-    new_mesh->gl_processed_data                     = NULL;
-    new_mesh->gl_processed_data_size                = 0;
-    new_mesh->gl_storage_initialized                = false;
-    new_mesh->gl_tbo                                = 0;
-    new_mesh->gl_thread_fill_gl_buffers_call_needed = false;
-    new_mesh->instantiation_parent                  = NULL;
-    new_mesh->layers                                = NULL;
-    new_mesh->materials                             = NULL;
-    new_mesh->n_gl_unique_vertices                  = 0;
-    new_mesh->n_sh_bands                            = 0;
-    new_mesh->n_sh_components                       = SH_COMPONENTS_UNDEFINED;
-    new_mesh->name                                  = name;
-    new_mesh->pfn_render_mesh                       = NULL;
-    new_mesh->set_id_counter                        = 0;
-    new_mesh->timestamp_last_modified               = system_time_now();
+    new_mesh_ptr->aabb_max[3]                           = 1;
+    new_mesh_ptr->aabb_min[3]                           = 1;
+    new_mesh_ptr->creation_flags                        = flags;
+    new_mesh_ptr->gl_bo_id                              = 0;
+    new_mesh_ptr->gl_bo_start_offset                    = -1;
+    new_mesh_ptr->gl_context                            = NULL;
+    new_mesh_ptr->gl_index_type                         = MESH_INDEX_TYPE_UNKNOWN;
+    new_mesh_ptr->gl_processed_data                     = NULL;
+    new_mesh_ptr->gl_processed_data_size                = 0;
+    new_mesh_ptr->gl_storage_initialized                = false;
+    new_mesh_ptr->gl_tbo                                = 0;
+    new_mesh_ptr->gl_thread_fill_gl_buffers_call_needed = false;
+    new_mesh_ptr->instantiation_parent                  = NULL;
+    new_mesh_ptr->layers                                = NULL;
+    new_mesh_ptr->materials                             = NULL;
+    new_mesh_ptr->n_gl_unique_vertices                  = 0;
+    new_mesh_ptr->n_sh_bands                            = 0;
+    new_mesh_ptr->n_sh_components                       = SH_COMPONENTS_UNDEFINED;
+    new_mesh_ptr->name                                  = name;
+    new_mesh_ptr->pfn_get_custom_mesh_aabb_proc         = NULL;
+    new_mesh_ptr->pfn_render_custom_mesh_proc           = NULL;
+    new_mesh_ptr->set_id_counter                        = 0;
+    new_mesh_ptr->timestamp_last_modified               = system_time_now();
 
     for (unsigned int n_stream_type = 0;
                       n_stream_type < MESH_LAYER_DATA_STREAM_TYPE_COUNT;
                       n_stream_type ++)
     {
-        new_mesh->gl_processed_data_stream_start_offset[n_stream_type] = -1;
+        new_mesh_ptr->gl_processed_data_stream_start_offset[n_stream_type] = -1;
     }
-    new_mesh->gl_processed_data_stride = -1;
+    new_mesh_ptr->gl_processed_data_stride = -1;
 }
 
 /** TODO */
-PRIVATE void _mesh_init_mesh_layer(_mesh_layer* new_mesh_layer)
+PRIVATE void _mesh_init_mesh_layer(_mesh_layer* new_mesh_layer_ptr)
 {
-    new_mesh_layer->data_streams         = system_hash64map_create(4 /* capacity */);
-    new_mesh_layer->n_gl_unique_elements = 0;
-    new_mesh_layer->passes_counter       = 1;
+    new_mesh_layer_ptr->data_streams         = system_hash64map_create(4 /* capacity */);
+    new_mesh_layer_ptr->n_gl_unique_elements = 0;
+    new_mesh_layer_ptr->passes_counter       = 1;
 
-    memset(new_mesh_layer->aabb_max,
+    memset(new_mesh_layer_ptr->aabb_max,
            0,
-           sizeof(new_mesh_layer->aabb_max) );
-    memset(new_mesh_layer->aabb_min,
+           sizeof(new_mesh_layer_ptr->aabb_max) );
+    memset(new_mesh_layer_ptr->aabb_min,
            0,
-           sizeof(new_mesh_layer->aabb_min) );
+           sizeof(new_mesh_layer_ptr->aabb_min) );
 
-    new_mesh_layer->aabb_max[3] = 1;
-    new_mesh_layer->aabb_min[3] = 1;
+    new_mesh_layer_ptr->aabb_max[3] = 1;
+    new_mesh_layer_ptr->aabb_min[3] = 1;
 }
 
 /** TODO */
-PRIVATE void _mesh_init_mesh_layer_data_stream(_mesh_layer_data_stream* new_mesh_layer_data_stream)
+PRIVATE void _mesh_init_mesh_layer_data_stream(_mesh_layer_data_stream* new_mesh_layer_data_stream_ptr)
 {
-    new_mesh_layer_data_stream->data                   = NULL;
-    new_mesh_layer_data_stream->data_type              = MESH_LAYER_DATA_STREAM_DATA_TYPE_UNKNOWN;
-    new_mesh_layer_data_stream->n_components           = 0;
-    new_mesh_layer_data_stream->n_items                = 0;
-    new_mesh_layer_data_stream->required_bit_alignment = 0;
+    new_mesh_layer_data_stream_ptr->data                   = NULL;
+    new_mesh_layer_data_stream_ptr->data_type              = MESH_LAYER_DATA_STREAM_DATA_TYPE_UNKNOWN;
+    new_mesh_layer_data_stream_ptr->n_components           = 0;
+    new_mesh_layer_data_stream_ptr->n_items                = 0;
+    new_mesh_layer_data_stream_ptr->required_bit_alignment = 0;
 }
 
 /** TODO */
-PRIVATE void _mesh_init_mesh_layer_pass(_mesh_layer_pass* new_mesh_layer_pass)
+PRIVATE void _mesh_init_mesh_layer_pass(_mesh_layer_pass* new_mesh_layer_pass_ptr)
 {
-    new_mesh_layer_pass->gl_bo_elements_offset = 0;
-    new_mesh_layer_pass->gl_elements           = NULL;
-    new_mesh_layer_pass->material              = NULL;
-    new_mesh_layer_pass->n_elements            = 0;
-    new_mesh_layer_pass->smoothing_angle       = 0.0f;
+    new_mesh_layer_pass_ptr->gl_bo_elements_offset = 0;
+    new_mesh_layer_pass_ptr->gl_elements           = NULL;
+    new_mesh_layer_pass_ptr->material              = NULL;
+    new_mesh_layer_pass_ptr->n_elements            = 0;
+    new_mesh_layer_pass_ptr->smoothing_angle       = 0.0f;
 
     for (mesh_layer_data_stream_type stream_type  = MESH_LAYER_DATA_STREAM_TYPE_FIRST;
                                      stream_type != MESH_LAYER_DATA_STREAM_TYPE_COUNT;
                              ++(int&)stream_type)
     {
-        new_mesh_layer_pass->index_data_maps        [stream_type] = system_hash64map_create(sizeof(_mesh_layer_pass_index_data*) );
-        new_mesh_layer_pass->set_id_to_unique_set_id[stream_type] = system_hash64map_create(sizeof(uint32_t) );
+        new_mesh_layer_pass_ptr->index_data_maps        [stream_type] = system_hash64map_create(sizeof(_mesh_layer_pass_index_data*) );
+        new_mesh_layer_pass_ptr->set_id_to_unique_set_id[stream_type] = system_hash64map_create(sizeof(uint32_t) );
     }
 }
 
@@ -1198,7 +1199,7 @@ PRIVATE void _mesh_release_renderer_callback(ogl_context context,
                                              void*       arg)
 {
     const ogl_context_gl_entrypoints* entry_points = NULL;
-    _mesh*                            mesh         = (_mesh*) arg;
+    _mesh*                            mesh_ptr     = (_mesh*) arg;
 
     _mesh_verify_context_type(context);
 
@@ -1206,8 +1207,8 @@ PRIVATE void _mesh_release_renderer_callback(ogl_context context,
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
                             &entry_points);
 
-    if (mesh->gl_bo_id != -1 &&
-        mesh->gl_bo_id != 0)
+    if (mesh_ptr->gl_bo_id != -1 &&
+        mesh_ptr->gl_bo_id != 0)
     {
         ogl_buffers buffers = NULL;
 
@@ -1216,25 +1217,25 @@ PRIVATE void _mesh_release_renderer_callback(ogl_context context,
                                 &buffers);
 
         ogl_buffers_free_buffer_memory(buffers,
-                                       mesh->gl_bo_id,
-                                       mesh->gl_bo_start_offset);
+                                       mesh_ptr->gl_bo_id,
+                                       mesh_ptr->gl_bo_start_offset);
     } /* if (mesh->gl_bo_id != -1) */
 
-    if (mesh->gl_tbo != NULL)
+    if (mesh_ptr->gl_tbo != NULL)
     {
-        ogl_texture_release(mesh->gl_tbo);
+        ogl_texture_release(mesh_ptr->gl_tbo);
     }
 }
 
 /** TODO */
 PRIVATE void _mesh_release(void* arg)
 {
-    _mesh* mesh = (_mesh*) arg;
+    _mesh* mesh_ptr = (_mesh*) arg;
 
     /* Sign out of material call-backs */
     uint32_t n_materials = 0;
 
-    system_resizable_vector_get_property(mesh->materials,
+    system_resizable_vector_get_property(mesh_ptr->materials,
                                          SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
                                         &n_materials);
 
@@ -1245,7 +1246,7 @@ PRIVATE void _mesh_release(void* arg)
         system_callback_manager callback_manager = NULL;
         mesh_material           material         = NULL;
 
-        if (!system_resizable_vector_get_element_at(mesh->materials,
+        if (!system_resizable_vector_get_element_at(mesh_ptr->materials,
                                                     n_material,
                                                    &material) )
         {
@@ -1263,18 +1264,18 @@ PRIVATE void _mesh_release(void* arg)
         system_callback_manager_unsubscribe_from_callbacks(callback_manager,
                                                            MESH_MATERIAL_CALLBACK_ID_VSA_CHANGED,
                                                            _mesh_material_setting_changed,
-                                                           mesh);
+                                                           mesh_ptr);
     } /* for (all mesh materials) */
 
     /* Carry on with the usual release process */
-    if (mesh->layers != NULL)
+    if (mesh_ptr->layers != NULL)
     {
         /* Release layers */
         while (true)
         {
             _mesh_layer* layer_ptr = NULL;
 
-            if (!system_resizable_vector_pop(mesh->layers,
+            if (!system_resizable_vector_pop(mesh_ptr->layers,
                                             &layer_ptr) )
             {
                 break;
@@ -1285,7 +1286,7 @@ PRIVATE void _mesh_release(void* arg)
 
             if (layer_ptr != NULL)
             {
-                _mesh_deinit_mesh_layer(mesh,
+                _mesh_deinit_mesh_layer(mesh_ptr,
                                         layer_ptr,
                                         true);
 
@@ -1293,43 +1294,43 @@ PRIVATE void _mesh_release(void* arg)
             }
         }
 
-        system_resizable_vector_release(mesh->layers);
-        mesh->layers = NULL;
+        system_resizable_vector_release(mesh_ptr->layers);
+        mesh_ptr->layers = NULL;
     } /* if (mesh->layers != NULL) */
 
     /* Release GL stuff */
-    if (mesh->gl_processed_data != NULL)
+    if (mesh_ptr->gl_processed_data != NULL)
     {
-        delete [] mesh->gl_processed_data;
+        delete [] mesh_ptr->gl_processed_data;
 
-        mesh->gl_processed_data = NULL;
+        mesh_ptr->gl_processed_data = NULL;
     }
 
     /* Request rendering thread call-back */
-    ogl_context_request_callback_from_context_thread(mesh->gl_context,
+    ogl_context_request_callback_from_context_thread(mesh_ptr->gl_context,
                                                      _mesh_release_renderer_callback,
-                                                     mesh);
+                                                     mesh_ptr);
 
-    if (mesh->gl_context != NULL)
+    if (mesh_ptr->gl_context != NULL)
     {
-        ogl_context_release(mesh->gl_context);
+        ogl_context_release(mesh_ptr->gl_context);
 
-        mesh->gl_context = NULL;
+        mesh_ptr->gl_context = NULL;
     }
 
     /* Release other helper structures */
-    if (mesh->instantiation_parent != NULL)
+    if (mesh_ptr->instantiation_parent != NULL)
     {
-        mesh_release(mesh->instantiation_parent);
+        mesh_release(mesh_ptr->instantiation_parent);
 
-        mesh->instantiation_parent = NULL;
+        mesh_ptr->instantiation_parent = NULL;
     }
 
-    if (mesh->materials != NULL)
+    if (mesh_ptr->materials != NULL)
     {
-        system_resizable_vector_release(mesh->materials);
+        system_resizable_vector_release(mesh_ptr->materials);
 
-        mesh->materials = NULL;
+        mesh_ptr->materials = NULL;
     }
 }
 
@@ -1506,9 +1507,9 @@ PUBLIC EMERALD_API void mesh_add_layer_data_stream(mesh                        m
                 _mesh_init_mesh_layer_data_stream(data_stream_ptr);
                 _mesh_get_stream_data_properties (mesh_instance_ptr,
                                                   type,
-                                                  &data_stream_ptr->data_type,
-                                                  &data_stream_ptr->n_components,
-                                                  &data_stream_ptr->required_bit_alignment);
+                                                 &data_stream_ptr->data_type,
+                                                 &data_stream_ptr->n_components,
+                                                 &data_stream_ptr->required_bit_alignment);
 
                 ASSERT_DEBUG_SYNC(data_stream_ptr->data_type == MESH_LAYER_DATA_STREAM_DATA_TYPE_FLOAT,
                                   "TODO");
@@ -1577,8 +1578,8 @@ PUBLIC EMERALD_API mesh_layer_pass_id mesh_add_layer_pass(mesh          mesh_ins
                                                           mesh_material material,
                                                           uint32_t      n_elements)
 {
-    _mesh*             mesh_ptr       = (_mesh*) mesh_instance;
     _mesh_layer*       mesh_layer_ptr = NULL;
+    _mesh*             mesh_ptr       = (_mesh*) mesh_instance;
     mesh_layer_pass_id result_id      = -1;
 
     ASSERT_DEBUG_SYNC(mesh_ptr->type == MESH_TYPE_REGULAR,
@@ -1797,7 +1798,8 @@ PUBLIC EMERALD_API bool mesh_add_layer_pass_index_data(mesh                     
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API mesh mesh_create_custom_mesh(PFNRENDERCUSTOMMESHPROC   pfn_render_mesh,
+PUBLIC EMERALD_API mesh mesh_create_custom_mesh(PFNRENDERCUSTOMMESHPROC   pfn_render_custom_mesh_proc,
+                                                PFNGETCUSTOMMESHAABBPROC  pfn_get_custom_mesh_aabb_proc,
                                                 system_hashed_ansi_string name)
 {
     _mesh* new_mesh_ptr = new (std::nothrow) _mesh;
@@ -1812,8 +1814,9 @@ PUBLIC EMERALD_API mesh mesh_create_custom_mesh(PFNRENDERCUSTOMMESHPROC   pfn_re
                         0); /* flags */
 
         /* Initialize fields specific to custom meshes */
-        new_mesh_ptr->pfn_render_mesh = pfn_render_mesh;
-        new_mesh_ptr->type            = MESH_TYPE_CUSTOM;
+        new_mesh_ptr->pfn_get_custom_mesh_aabb_proc = pfn_get_custom_mesh_aabb_proc;
+        new_mesh_ptr->pfn_render_custom_mesh_proc   = pfn_render_custom_mesh_proc;
+        new_mesh_ptr->type                          = MESH_TYPE_CUSTOM;
 
         REFCOUNT_INSERT_INIT_CODE_WITH_RELEASE_HANDLER(new_mesh_ptr,
                                                        _mesh_release,
@@ -2066,7 +2069,7 @@ PUBLIC EMERALD_API void mesh_create_single_indexed_representation(mesh instance)
                                                                           sizeof(uint32_t),
                                                                           _mesh_is_key_uint32_lower,
                                                                           _mesh_is_key_uint32_equal,
-                                                                          (system_bst_key)   key_ptr,
+                                                                          (system_bst_key)    key_ptr,
                                                                           (system_bst_value) &n_different_layer_elements);
 
                             n_different_layer_elements ++;
@@ -2076,11 +2079,11 @@ PUBLIC EMERALD_API void mesh_create_single_indexed_representation(mesh instance)
                             uint32_t temp = 0;
 
                             if (!system_bst_get(datastreams_surfaceid_bst,
-                                                (system_bst_key) key_ptr,
+                                                (system_bst_key)     key_ptr,
                                                 (system_bst_value*) &temp) )
                             {
                                 system_bst_insert(datastreams_surfaceid_bst,
-                                                  (system_bst_key)   key_ptr,
+                                                  (system_bst_key)    key_ptr,
                                                   (system_bst_value) &n_different_layer_elements);
 
                                 n_different_layer_elements ++;
@@ -3026,7 +3029,8 @@ PUBLIC EMERALD_API void mesh_generate_normal_data(mesh mesh)
             layer_pass_index_data  = new (std::nothrow) unsigned int[layer_pass_ptr->n_elements];
             layer_pass_normal_data = new (std::nothrow) float       [layer_pass_ptr->n_elements * 3 /* components */];
 
-            ASSERT_ALWAYS_SYNC(layer_pass_normal_data != NULL && layer_pass_index_data != NULL,
+            ASSERT_ALWAYS_SYNC(layer_pass_normal_data != NULL &&
+                               layer_pass_index_data  != NULL,
                                "Out of memory");
 
             memset(layer_pass_normal_data,
@@ -3280,8 +3284,8 @@ PUBLIC EMERALD_API void mesh_generate_normal_data(mesh mesh)
 PUBLIC EMERALD_API uint32_t mesh_get_amount_of_layer_passes(mesh          instance,
                                                             mesh_layer_id layer_id)
 {
-    _mesh*       mesh_ptr       = (_mesh*) instance;
     _mesh_layer* mesh_layer_ptr = NULL;
+    _mesh*       mesh_ptr       = (_mesh*) instance;
     uint32_t     result         = 0;
 
     ASSERT_DEBUG_SYNC(mesh_ptr->type == MESH_TYPE_REGULAR,
@@ -3428,6 +3432,7 @@ PUBLIC EMERALD_API bool mesh_get_property(mesh          instance,
         case MESH_PROPERTY_CREATION_FLAGS:
         {
             *((mesh_creation_flags*) out_result_ptr) = mesh_ptr->creation_flags;
+
             break;
         }
 
@@ -3645,7 +3650,7 @@ PUBLIC EMERALD_API bool mesh_get_property(mesh          instance,
 
         case MESH_PROPERTY_RENDER_CUSTOM_MESH_FUNC_PTR:
         {
-            *((PFNRENDERCUSTOMMESHPROC*) out_result_ptr) = mesh_ptr->pfn_render_mesh;
+            *((PFNRENDERCUSTOMMESHPROC*) out_result_ptr) = mesh_ptr->pfn_render_custom_mesh_proc;
 
             break;
         }

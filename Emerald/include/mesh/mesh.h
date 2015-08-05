@@ -42,11 +42,15 @@ typedef enum
     MESH_INDEX_TYPE_UNKNOWN
 } _mesh_index_type;
 
-typedef void (*PFNRENDERCUSTOMMESHPROC)(ogl_context            context,
-                                        const system_matrix4x4 model_matrix,
-                                        const system_matrix4x4 vp_matrix,
-                                        const system_matrix4x4 normal_matrix,
-                                        bool                   is_depth_prepass);
+typedef void (*PFNGETCUSTOMMESHAABBPROC)(void*                  user_arg,
+                                         float**                out_aabb_world_vec4_min,
+                                         float**                out_aabb_world_vec4_max);
+typedef void (*PFNRENDERCUSTOMMESHPROC) (ogl_context            context,
+                                         void*                  user_arg,
+                                         const system_matrix4x4 model_matrix,
+                                         const system_matrix4x4 vp_matrix,
+                                         const system_matrix4x4 normal_matrix,
+                                         bool                   is_depth_prepass);
 
 
 /** TODO
@@ -93,7 +97,8 @@ PUBLIC EMERALD_API bool mesh_add_layer_pass_index_data(mesh                     
                                                        unsigned int                max_index);
 
 /** TODO */
-PUBLIC EMERALD_API mesh mesh_create_custom_mesh(PFNRENDERCUSTOMMESHPROC   pfn_render_mesh,
+PUBLIC EMERALD_API mesh mesh_create_custom_mesh(PFNRENDERCUSTOMMESHPROC   pfn_render_custom_mesh_proc,
+                                                PFNGETCUSTOMMESHAABBPROC  pfn_get_custom_mesh_aabb_proc,
                                                 system_hashed_ansi_string name);
 
 /** TODO */
