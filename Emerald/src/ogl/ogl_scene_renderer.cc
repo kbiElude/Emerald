@@ -34,7 +34,21 @@
 
 /* Private type definitions */
 
-/** TODO: Do we really need the distinction between uber items and regular meshes??? */
+typedef struct _ogl_scene_renderer_mesh
+{
+    /** Model matrices should only be updated if necessary (eg. when the
+     *  new model matrix is different at the beginning of ogl_scene_renderer_render_scene_graph().
+     *
+     *  In future, for GPU code-paths, this should be replaced with a persistent buffer storage.
+     */
+    mesh             mesh_instance;
+    mesh_type        mesh_type;
+    system_matrix4x4 model_matrix;
+    system_matrix4x4 normal_matrix;
+
+} _ogl_scene_renderer_mesh;
+
+/** TODO: Do we really need the distinction between _ogl_scene_renderer_mesh and _ogl_scene_renderer_mesh_uber_item ??? */
 typedef struct _ogl_scene_renderer_mesh_uber_item
 {
     mesh_material    material;
@@ -73,22 +87,6 @@ typedef struct _ogl_scene_renderer_mesh_uber_item
     }
 
 } _ogl_scene_renderer_mesh_uber_item;
-
-
-typedef struct _ogl_scene_renderer_regular_mesh
-{
-    /** Model matrices should only be updated if necessary (eg. when the
-     *  new model matrix is different at the beginning of ogl_scene_renderer_render_scene_graph().
-     *
-     *  In future, for GPU code-paths, this should be replaced with a persistent buffer storage.
-     */
-    mesh             mesh_instance;
-    mesh_type        mesh_type;
-    system_matrix4x4 model_matrix;
-    system_matrix4x4 normal_matrix;
-
-} _ogl_scene_renderer_regular_mesh;
-
 
 typedef struct _ogl_scene_renderer_uber
 {
@@ -132,11 +130,11 @@ typedef struct _ogl_scene_renderer
     system_matrix4x4                         current_view;
     system_matrix4x4                         current_vp;
 
-    /** Maps mesh IDs to _ogl_scene_renderer_regular_mesh instances */
-    system_hash64map        mesh_id_to_regular_mesh_map;
+    /** Maps mesh IDs to _ogl_scene_renderer_mesh instances */
+    system_hash64map        mesh_id_to_mesh_map;
 
+    system_resource_pool    mesh_pool;           /* holds _ogl_scene_renderer_mesh instances */
     system_resource_pool    mesh_uber_items_pool;
-    system_resource_pool    regular_mesh_pool;
     system_resource_pool    vector_pool;
 
     system_hash64map        ubers_map;        /* key: ogl_uber; value: _ogl_scene_renderer_uber */
@@ -186,30 +184,30 @@ PRIVATE void _ogl_scene_renderer_update_ogl_uber_light_properties         (ogl_u
 _ogl_scene_renderer::_ogl_scene_renderer(ogl_context in_context,
                                          scene       in_scene)
 {
-    bbox_preview                = NULL;
-    context                     = in_context;
-    current_camera              = NULL;
-    current_model_matrix        = system_matrix4x4_create();
-    frustum_preview             = NULL;    /* can be instantiated at draw time */
-    lights_preview              = NULL;    /* can be instantiated at draw time */
-    material_manager            = NULL;
-    mesh_id_to_regular_mesh_map = system_hash64map_create    (sizeof(_ogl_scene_renderer_regular_mesh*) );
-    mesh_uber_items_pool        = system_resource_pool_create(sizeof(_ogl_scene_renderer_mesh_uber_item),
-                                                              4,     /* n_elements_to_preallocate */
-                                                              NULL,  /* init_fn */
-                                                              NULL); /* deinit_fn */
-    normals_preview             = NULL;
-    owned_scene                 = in_scene;
-    regular_mesh_pool           = system_resource_pool_create(sizeof(_ogl_scene_renderer_regular_mesh),
-                                                              4,     /* n_elements_to_preallocate */
-                                                              NULL,  /* init_fn */
-                                                              NULL); /* deinit_fn */
-    temp_variant_float          = system_variant_create      (SYSTEM_VARIANT_FLOAT);
-    ubers_map                   = system_hash64map_create    (sizeof(_ogl_scene_renderer_uber*) );
-    vector_pool                 = system_resource_pool_create(sizeof(system_resizable_vector),
-                                                              64, /* capacity */
-                                                              _ogl_scene_renderer_init_resizable_vector_for_resource_pool,
-                                                              _ogl_scene_renderer_deinit_resizable_vector_for_resource_pool);
+    bbox_preview         = NULL;
+    context              = in_context;
+    current_camera       = NULL;
+    current_model_matrix = system_matrix4x4_create();
+    frustum_preview      = NULL;    /* can be instantiated at draw time */
+    lights_preview       = NULL;    /* can be instantiated at draw time */
+    material_manager     = NULL;
+    mesh_id_to_mesh_map  = system_hash64map_create    (sizeof(_ogl_scene_renderer_mesh*) );
+    mesh_pool            = system_resource_pool_create(sizeof(_ogl_scene_renderer_mesh),
+                                                       4,     /* n_elements_to_preallocate */
+                                                       NULL,  /* init_fn */
+                                                       NULL); /* deinit_fn */
+    temp_variant_float   = system_variant_create      (SYSTEM_VARIANT_FLOAT);
+    mesh_uber_items_pool = system_resource_pool_create(sizeof(_ogl_scene_renderer_mesh_uber_item),
+                                                       4,     /* n_elements_to_preallocate */
+                                                       NULL,  /* init_fn */
+                                                       NULL); /* deinit_fn */
+    normals_preview      = NULL;
+    owned_scene          = in_scene;
+    ubers_map            = system_hash64map_create    (sizeof(_ogl_scene_renderer_uber*) );
+    vector_pool          = system_resource_pool_create(sizeof(system_resizable_vector),
+                                                       64, /* capacity */
+                                                       _ogl_scene_renderer_init_resizable_vector_for_resource_pool,
+                                                       _ogl_scene_renderer_deinit_resizable_vector_for_resource_pool);
 
     scene_retain(owned_scene);
 }
@@ -240,11 +238,18 @@ _ogl_scene_renderer::~_ogl_scene_renderer()
         lights_preview = NULL;
     }
 
-    if (mesh_id_to_regular_mesh_map != NULL)
+    if (mesh_id_to_mesh_map != NULL)
     {
-        system_hash64map_release(mesh_id_to_regular_mesh_map);
+        system_hash64map_release(mesh_id_to_mesh_map);
 
-        mesh_id_to_regular_mesh_map = NULL;
+        mesh_id_to_mesh_map = NULL;
+    }
+
+    if (mesh_pool != NULL)
+    {
+        system_resource_pool_release(mesh_pool);
+
+        mesh_pool = NULL;
     }
 
     if (mesh_uber_items_pool != NULL)
@@ -266,13 +271,6 @@ _ogl_scene_renderer::~_ogl_scene_renderer()
         scene_release(owned_scene);
 
         owned_scene = NULL;
-    }
-
-    if (regular_mesh_pool != NULL)
-    {
-        system_resource_pool_release(regular_mesh_pool);
-
-        regular_mesh_pool = NULL;
     }
 
     if (temp_variant_float != NULL)
@@ -600,13 +598,13 @@ PRIVATE void _ogl_scene_renderer_process_mesh_for_forward_rendering(scene_mesh s
         /* Store the data */
         if (renderer_ptr->current_helper_visualization != 0)
         {
-            _ogl_scene_renderer_regular_mesh* new_entry_ptr = (_ogl_scene_renderer_regular_mesh*) system_resource_pool_get_from_pool(renderer_ptr->regular_mesh_pool);
+            _ogl_scene_renderer_mesh* new_entry_ptr = (_ogl_scene_renderer_mesh*) system_resource_pool_get_from_pool(renderer_ptr->mesh_pool);
 
             new_entry_ptr->mesh_instance = new_mesh_item_ptr->mesh_instance;
             new_entry_ptr->model_matrix  = new_mesh_item_ptr->model_matrix;
             new_entry_ptr->normal_matrix = new_mesh_item_ptr->normal_matrix;
 
-            system_hash64map_insert(renderer_ptr->mesh_id_to_regular_mesh_map,
+            system_hash64map_insert(renderer_ptr->mesh_id_to_mesh_map,
                                     mesh_id,
                                     new_entry_ptr,
                                     NULL,  /* on_remove_callback */
@@ -956,7 +954,7 @@ PRIVATE void _ogl_scene_renderer_render_traversed_scene_graph(_ogl_scene_rendere
                                                  OGL_UBER_GENERAL_PROPERTY_VP,
                                                  renderer_ptr->current_vp);
 
-            /* Okay. Go on with the rendering. Start from the regular meshes. */
+            /* Okay. Go on with the rendering. Start from the regular meshes. These are stored in helper maps */
             ogl_uber_rendering_start(material_uber);
             {
                 if (is_depth_prepass)
@@ -2011,13 +2009,13 @@ PUBLIC void ogl_scene_renderer_get_indexed_property(const ogl_scene_renderer    
     {
         case OGL_SCENE_RENDERER_PROPERTY_MESH_INSTANCE:
         {
-            const _ogl_scene_renderer_regular_mesh* regular_mesh_ptr = NULL;
+            const _ogl_scene_renderer_mesh* mesh_ptr = NULL;
 
-            if (system_hash64map_get(renderer_ptr->mesh_id_to_regular_mesh_map,
+            if (system_hash64map_get(renderer_ptr->mesh_id_to_mesh_map,
                                      index,
-                                    &regular_mesh_ptr) )
+                                    &mesh_ptr) )
             {
-                *((mesh*) out_result) = regular_mesh_ptr->mesh_instance;
+                *((mesh*) out_result) = mesh_ptr->mesh_instance;
             }
             else
             {
@@ -2031,13 +2029,13 @@ PUBLIC void ogl_scene_renderer_get_indexed_property(const ogl_scene_renderer    
 
         case OGL_SCENE_RENDERER_PROPERTY_MESH_MODEL_MATRIX:
         {
-            const _ogl_scene_renderer_regular_mesh* regular_mesh_ptr = NULL;
+            const _ogl_scene_renderer_mesh* mesh_ptr = NULL;
 
-            if (system_hash64map_get(renderer_ptr->mesh_id_to_regular_mesh_map,
+            if (system_hash64map_get(renderer_ptr->mesh_id_to_mesh_map,
                                      index,
-                                     &regular_mesh_ptr) )
+                                    &mesh_ptr) )
             {
-                *((system_matrix4x4*) out_result) = regular_mesh_ptr->model_matrix;
+                *((system_matrix4x4*) out_result) = mesh_ptr->model_matrix;
             }
             else
             {
@@ -2051,13 +2049,13 @@ PUBLIC void ogl_scene_renderer_get_indexed_property(const ogl_scene_renderer    
 
         case OGL_SCENE_RENDERER_PROPERTY_MESH_NORMAL_MATRIX:
         {
-            const _ogl_scene_renderer_regular_mesh* regular_mesh_ptr = NULL;
+            const _ogl_scene_renderer_mesh* mesh_ptr = NULL;
 
-            if (system_hash64map_get(renderer_ptr->mesh_id_to_regular_mesh_map,
+            if (system_hash64map_get(renderer_ptr->mesh_id_to_mesh_map,
                                      index,
-                                     &regular_mesh_ptr) )
+                                    &mesh_ptr) )
             {
-                *((system_matrix4x4*) out_result) = regular_mesh_ptr->normal_matrix;
+                *((system_matrix4x4*) out_result) = mesh_ptr->normal_matrix;
             }
             else
             {
@@ -2263,8 +2261,8 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_scene_renderer_render_scene_graph(ogl_sce
      **/
     if (helper_visualization != 0)
     {
-        system_resource_pool_return_all_allocations(renderer_ptr->regular_mesh_pool);
-        system_hash64map_clear                     (renderer_ptr->mesh_id_to_regular_mesh_map);
+        system_resource_pool_return_all_allocations(renderer_ptr->mesh_pool);
+        system_hash64map_clear                     (renderer_ptr->mesh_id_to_mesh_map);
     }
 
     if (apply_shadow_mapping)
