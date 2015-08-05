@@ -396,8 +396,10 @@ PUBLIC EMERALD_API bool scene_add_mesh_instance_defined(scene      scene,
 /* Please see header for specification */
 PUBLIC EMERALD_API bool scene_add_mesh_instance(scene                     scene,
                                                 mesh                      mesh_data,
-                                                system_hashed_ansi_string name)
+                                                system_hashed_ansi_string name,
+                                                scene_mesh*               out_opt_result_mesh_ptr)
 {
+    mesh_type                 mesh_type;
     scene_mesh                new_instance     = NULL;
     bool                      result           = true;
     system_hashed_ansi_string scene_name       = NULL;
@@ -408,6 +410,9 @@ PUBLIC EMERALD_API bool scene_add_mesh_instance(scene                     scene,
                                          SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
                                         &n_mesh_instances);
 
+    mesh_get_property (mesh_data,
+                       MESH_PROPERTY_TYPE,
+                      &mesh_type);
     scene_get_property(scene,
                        SCENE_PROPERTY_NAME,
                       &scene_name);
@@ -423,8 +428,12 @@ PUBLIC EMERALD_API bool scene_add_mesh_instance(scene                     scene,
                                  new_instance);
 
     /* Store the GPU mesh representation in unique_meshes vector, but only
-     * if its instantiation parent is NULL */
-    if (system_resizable_vector_find(scene_ptr->unique_meshes,
+     * if its instantiation parent is NULL.
+     *
+     * NOTE: This is only needed for regular meshes! */
+
+    if (mesh_type == MESH_TYPE_REGULAR                             &&
+        system_resizable_vector_find(scene_ptr->unique_meshes,
                                      mesh_data) == ITEM_NOT_FOUND)
     {
         mesh mesh_gpu_instantiation_parent = NULL;
@@ -439,6 +448,14 @@ PUBLIC EMERALD_API bool scene_add_mesh_instance(scene                     scene,
                                          mesh_data);
 
             mesh_retain(mesh_data);
+        }
+    }
+
+    if (result)
+    {
+        if (out_opt_result_mesh_ptr != NULL)
+        {
+            *out_opt_result_mesh_ptr = new_instance;
         }
     }
 

@@ -12,7 +12,8 @@ REFCOUNT_INSERT_DECLARATIONS(scene_camera,
 
 typedef enum
 {
-    SCENE_CAMERA_CALLBACK_ID_SHOW_FRUSTUM_CHANGED, /* "show frustum" setting changed; callback_proc_data: source scene_camera instance */
+    /* "show frustum" setting changed; callback_proc_data: source scene_camera instance */
+    SCENE_CAMERA_CALLBACK_ID_SHOW_FRUSTUM_CHANGED,
 
     /* Always last */
     SCENE_CAMERA_CALLBACK_ID_COUNT
@@ -20,47 +21,94 @@ typedef enum
 
 enum scene_camera_property
 {
-    SCENE_CAMERA_PROPERTY_ASPECT_RATIO,                   /*     settable, float */
-    SCENE_CAMERA_PROPERTY_CALLBACK_MANAGER,               /* not settable, system_callback_manager */
-    SCENE_CAMERA_PROPERTY_F_STOP,                         /*     settable, curve_container */
-    SCENE_CAMERA_PROPERTY_FAR_PLANE_DISTANCE,             /*     settable, float */
-    SCENE_CAMERA_PROPERTY_FOCAL_DISTANCE,                 /*     settable, curve_container */
-    SCENE_CAMERA_PROPERTY_FRUSTUM_CENTROID,               /* not settable, float[3]. Model space coordinates.*/
-    SCENE_CAMERA_PROPERTY_FRUSTUM_FAR_BOTTOM_LEFT,        /* not settable, float[3]. Model space coordinates */
-    SCENE_CAMERA_PROPERTY_FRUSTUM_FAR_BOTTOM_RIGHT,       /* not settable, float[3]. Model space coordinates */
-    SCENE_CAMERA_PROPERTY_FRUSTUM_FAR_TOP_LEFT,           /* not settable, float[3]. Model space coordinates */
-    SCENE_CAMERA_PROPERTY_FRUSTUM_FAR_TOP_RIGHT,          /* not settable, float[3]. Model space coordinates */
-    SCENE_CAMERA_PROPERTY_FRUSTUM_NEAR_BOTTOM_LEFT,       /* not settable, float[3]. Model space coordinates */
-    SCENE_CAMERA_PROPERTY_FRUSTUM_NEAR_BOTTOM_RIGHT,      /* not settable, float[3]. Model space coordinates */
-    SCENE_CAMERA_PROPERTY_FRUSTUM_NEAR_TOP_LEFT,          /* not settable, float[3]. Model space coordinates */
-    SCENE_CAMERA_PROPERTY_FRUSTUM_NEAR_TOP_RIGHT,         /* not settable, float[3]. Model space coordinates */
-    SCENE_CAMERA_PROPERTY_NAME,                           /* not settable, system_hashed_ansi_string */
-    SCENE_CAMERA_PROPERTY_NEAR_PLANE_DISTANCE,            /*     settable, float */
-    SCENE_CAMERA_PROPERTY_OWNER_GRAPH_NODE,               /*     settable, scene_graph_node */
-    SCENE_CAMERA_PROPERTY_SHOW_FRUSTUM,                   /*     settable, bool; NOT serialized. */
-    SCENE_CAMERA_PROPERTY_TYPE,                           /*     settable, _scene_camera_type */
-    SCENE_CAMERA_PROPERTY_USE_CAMERA_PHYSICAL_PROPERTIES, /*     settable, bool.
-                                                           *
-                                                           * Causes getters for:
-                                                           *
-                                                           * - SCENE_CAMERA_PROPERTY_FAR_PLANE_DISTANCE
-                                                           * - SCENE_CAMERA_PROPERTY_NEAR_PLANE_DISTANCE
-                                                           *
-                                                           * to calculate the requested values using
-                                                           * F-Stop, Focal Distance and Zoom Factor curves.
-                                                           */
-    SCENE_CAMERA_PROPERTY_USE_CUSTOM_VERTICAL_FOV,        /*     settable, bool */
-    SCENE_CAMERA_PROPERTY_VERTICAL_FOV_CUSTOM,            /*     settable, curve_container;
-                                                           *
-                                                           * Getter will throw an assertion failure if use_custom_vertical_fov
-                                                           * is false.
-                                                           **/
-    SCENE_CAMERA_PROPERTY_VERTICAL_FOV_FROM_ZOOM_FACTOR,  /* not settable, float.
-                                                           *
-                                                           * Getter will throw an assertion failure if use_custom_vertical_fov
-                                                           * is true.
-                                                           */
-    SCENE_CAMERA_PROPERTY_ZOOM_FACTOR                     /* not settable, curve_container */
+    /* settable, float */
+    SCENE_CAMERA_PROPERTY_ASPECT_RATIO,
+
+    /* not settable, system_callback_manager */
+    SCENE_CAMERA_PROPERTY_CALLBACK_MANAGER,
+
+    /* settable, curve_container */
+    SCENE_CAMERA_PROPERTY_F_STOP,
+
+    /* settable, float */
+    SCENE_CAMERA_PROPERTY_FAR_PLANE_DISTANCE,
+
+    /* settable, curve_container */
+    SCENE_CAMERA_PROPERTY_FOCAL_DISTANCE,
+
+    /* not settable, float[3]. Model space coordinates.*/
+    SCENE_CAMERA_PROPERTY_FRUSTUM_CENTROID,
+
+    /* not settable, float[3]. Model space coordinates */
+    SCENE_CAMERA_PROPERTY_FRUSTUM_FAR_BOTTOM_LEFT,
+
+    /* not settable, float[3]. Model space coordinates */
+    SCENE_CAMERA_PROPERTY_FRUSTUM_FAR_BOTTOM_RIGHT,
+
+    /* not settable, float[3]. Model space coordinates */
+    SCENE_CAMERA_PROPERTY_FRUSTUM_FAR_TOP_LEFT,
+
+    /* not settable, float[3]. Model space coordinates */
+    SCENE_CAMERA_PROPERTY_FRUSTUM_FAR_TOP_RIGHT,
+
+    /* not settable, float[3]. Model space coordinates */
+    SCENE_CAMERA_PROPERTY_FRUSTUM_NEAR_BOTTOM_LEFT,
+
+    /* not settable, float[3]. Model space coordinates */
+    SCENE_CAMERA_PROPERTY_FRUSTUM_NEAR_BOTTOM_RIGHT,
+
+    /* not settable, float[3]. Model space coordinates */
+    SCENE_CAMERA_PROPERTY_FRUSTUM_NEAR_TOP_LEFT,
+
+    /* not settable, float[3]. Model space coordinates */
+    SCENE_CAMERA_PROPERTY_FRUSTUM_NEAR_TOP_RIGHT,
+
+    /* not settable, system_hashed_ansi_string */
+    SCENE_CAMERA_PROPERTY_NAME,
+
+    /* settable, float */
+    SCENE_CAMERA_PROPERTY_NEAR_PLANE_DISTANCE,
+
+    /* settable, scene_graph_node */
+    SCENE_CAMERA_PROPERTY_OWNER_GRAPH_NODE,
+
+    /* settable, bool; NOT serialized. */
+    SCENE_CAMERA_PROPERTY_SHOW_FRUSTUM,
+
+    /* settable, _scene_camera_type */
+    SCENE_CAMERA_PROPERTY_TYPE,
+
+    /* settable, bool.
+     *
+     * Causes getters for:
+     *
+     * - SCENE_CAMERA_PROPERTY_FAR_PLANE_DISTANCE
+     * - SCENE_CAMERA_PROPERTY_NEAR_PLANE_DISTANCE
+     *
+     * to calculate the requested values using
+     * F-Stop, Focal Distance and Zoom Factor curves.
+     */
+    SCENE_CAMERA_PROPERTY_USE_CAMERA_PHYSICAL_PROPERTIES,
+
+    /* settable, bool */
+    SCENE_CAMERA_PROPERTY_USE_CUSTOM_VERTICAL_FOV,
+
+    /* settable, curve_container;
+     *
+     * Getter will throw an assertion failure if use_custom_vertical_fov
+     * is false.
+     **/
+    SCENE_CAMERA_PROPERTY_VERTICAL_FOV_CUSTOM,
+
+    /* not settable, float.
+     *
+     * Getter will throw an assertion failure if use_custom_vertical_fov
+     * is true.
+     */
+    SCENE_CAMERA_PROPERTY_VERTICAL_FOV_FROM_ZOOM_FACTOR,
+
+    /* not settable, curve_container */
+    SCENE_CAMERA_PROPERTY_ZOOM_FACTOR
 };
 
 /** TODO */

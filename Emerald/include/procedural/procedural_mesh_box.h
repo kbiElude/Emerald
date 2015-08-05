@@ -2,6 +2,8 @@
  *
  * Emerald (kbi/elude @2012-2015)
  * 
+ * Generates a box spanning from <0, 0, 0> to <1, 1, 1>.
+ *
  * TODO: The generated data sets should be stride-based.
  *
  * Implementation is NOT culling-aware.
@@ -57,7 +59,7 @@ typedef enum
 PUBLIC EMERALD_API procedural_mesh_box procedural_mesh_box_create(ogl_context                   context,
                                                                   _procedural_mesh_data_bitmask mesh_data_bitmask,
                                                                   uint32_t                      n_horizontal_patches, /* number of horizontal patches per plane */
-                                                                  uint32_t                      n_vertical_patches, /* number of vertical patches per plane */
+                                                                  uint32_t                      n_vertical_patches,   /* number of vertical patches per plane */
                                                                   system_hashed_ansi_string     name);
 
 /** TODO */

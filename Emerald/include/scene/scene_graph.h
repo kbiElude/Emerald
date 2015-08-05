@@ -86,7 +86,11 @@ typedef enum
     SCENE_OBJECT_TYPE_UNDEFINED
 } _scene_object_type;
 
-/** TODO */
+/** TODO.
+ *
+ *  Takes ownership of @param node.
+ *
+ **/
 PUBLIC EMERALD_API void scene_graph_add_node(scene_graph,
                                              scene_graph_node parent_node,
                                              scene_graph_node node);

@@ -36,7 +36,7 @@ typedef struct
     /* True if column major data must be generated */
     bool is_data_dirty;
 
-} _system_matrix4x4_descriptor;
+} _system_matrix4x4;
 
 /*** Internal variables **/
 /** Resource pool storing 4x4 matrix instances */
@@ -47,27 +47,27 @@ system_resource_pool matrix_pool = NULL;
  *
  *  @param descriptor Descriptor to use for the process.
  */
-PRIVATE void _system_matrix4x4_generate_column_major_data(_system_matrix4x4_descriptor* descriptor)
+PRIVATE void _system_matrix4x4_generate_column_major_data(_system_matrix4x4* matrix_ptr)
 {
-    ASSERT_DEBUG_SYNC(descriptor->is_data_dirty,
+    ASSERT_DEBUG_SYNC(matrix_ptr->is_data_dirty,
                       "Invalid call detected");
 
-    descriptor->column_major_data[0]  = descriptor->data[0];
-    descriptor->column_major_data[4]  = descriptor->data[1];
-    descriptor->column_major_data[8]  = descriptor->data[2];
-    descriptor->column_major_data[12] = descriptor->data[3];
-    descriptor->column_major_data[1]  = descriptor->data[4];
-    descriptor->column_major_data[5]  = descriptor->data[5];
-    descriptor->column_major_data[9]  = descriptor->data[6];
-    descriptor->column_major_data[13] = descriptor->data[7];
-    descriptor->column_major_data[2]  = descriptor->data[8];
-    descriptor->column_major_data[6]  = descriptor->data[9];
-    descriptor->column_major_data[10] = descriptor->data[10];
-    descriptor->column_major_data[14] = descriptor->data[11];
-    descriptor->column_major_data[3]  = descriptor->data[12];
-    descriptor->column_major_data[7]  = descriptor->data[13];
-    descriptor->column_major_data[11] = descriptor->data[14];
-    descriptor->column_major_data[15] = descriptor->data[15];
+    matrix_ptr->column_major_data[0]  = matrix_ptr->data[0];
+    matrix_ptr->column_major_data[4]  = matrix_ptr->data[1];
+    matrix_ptr->column_major_data[8]  = matrix_ptr->data[2];
+    matrix_ptr->column_major_data[12] = matrix_ptr->data[3];
+    matrix_ptr->column_major_data[1]  = matrix_ptr->data[4];
+    matrix_ptr->column_major_data[5]  = matrix_ptr->data[5];
+    matrix_ptr->column_major_data[9]  = matrix_ptr->data[6];
+    matrix_ptr->column_major_data[13] = matrix_ptr->data[7];
+    matrix_ptr->column_major_data[2]  = matrix_ptr->data[8];
+    matrix_ptr->column_major_data[6]  = matrix_ptr->data[9];
+    matrix_ptr->column_major_data[10] = matrix_ptr->data[10];
+    matrix_ptr->column_major_data[14] = matrix_ptr->data[11];
+    matrix_ptr->column_major_data[3]  = matrix_ptr->data[12];
+    matrix_ptr->column_major_data[7]  = matrix_ptr->data[13];
+    matrix_ptr->column_major_data[11] = matrix_ptr->data[14];
+    matrix_ptr->column_major_data[15] = matrix_ptr->data[15];
 }
 
 /** Please see header for specification */
@@ -75,14 +75,14 @@ PUBLIC EMERALD_API system_matrix4x4 system_matrix4x4_create()
 {
     system_matrix4x4 result = (system_matrix4x4) system_resource_pool_get_from_pool(matrix_pool);
 
-    memset(((_system_matrix4x4_descriptor*)result)->column_major_data,
+    memset(((_system_matrix4x4*) result)->column_major_data,
            0,
            sizeof(float) * 16);
-    memset(((_system_matrix4x4_descriptor*)result)->data,
+    memset(((_system_matrix4x4*) result)->data,
            0,
            sizeof(float) * 16);
 
-    ((_system_matrix4x4_descriptor*)result)->is_data_dirty = false;
+    ((_system_matrix4x4*) result)->is_data_dirty = false;
 
     return result;
 }
@@ -92,11 +92,11 @@ PUBLIC EMERALD_API system_matrix4x4 system_matrix4x4_create_lookat_matrix(const 
                                                                           const float* look_at_point,
                                                                           const float* base_up_vector)
 {
-    float                         direction_vector[3];
-    system_matrix4x4              new_matrix          = system_matrix4x4_create();
-    _system_matrix4x4_descriptor* new_matrix_ptr      = (_system_matrix4x4_descriptor*) new_matrix;
-    float                         right_vector    [3];
-    float                         up_vector       [3];
+    float              direction_vector[3];
+    system_matrix4x4   new_matrix          = system_matrix4x4_create();
+    _system_matrix4x4* new_matrix_ptr      = (_system_matrix4x4*) new_matrix;
+    float              right_vector    [3];
+    float              up_vector       [3];
 
     /* Calculate direction vector */
     system_math_vector_minus3    (look_at_point,
@@ -150,8 +150,8 @@ PUBLIC EMERALD_API system_matrix4x4 system_matrix4x4_create_ortho_projection_mat
                                                                                     float z_near,
                                                                                     float z_far)
 {
-    system_matrix4x4              new_matrix     = system_matrix4x4_create();
-    _system_matrix4x4_descriptor* new_matrix_ptr = (_system_matrix4x4_descriptor*) new_matrix;
+    system_matrix4x4   new_matrix     = system_matrix4x4_create();
+    _system_matrix4x4* new_matrix_ptr = (_system_matrix4x4*) new_matrix;
 
     ASSERT_DEBUG_SYNC(left < right,
                       "Sanity check failed");
@@ -194,8 +194,8 @@ PUBLIC EMERALD_API system_matrix4x4 system_matrix4x4_create_perspective_projecti
                                                                                           float z_near,
                                                                                           float z_far)
 {
-    system_matrix4x4              new_matrix     = system_matrix4x4_create();
-    _system_matrix4x4_descriptor* new_matrix_ptr = (_system_matrix4x4_descriptor*) new_matrix;
+    system_matrix4x4   new_matrix     = system_matrix4x4_create();
+    _system_matrix4x4* new_matrix_ptr = (_system_matrix4x4*) new_matrix;
 
     /* D3DXMatrixPerspectiveFovRH() */
 #if 0
@@ -223,7 +223,7 @@ PUBLIC EMERALD_API system_matrix4x4 system_matrix4x4_create_perspective_projecti
     new_matrix_ptr->data[14] = -1;
     new_matrix_ptr->data[15] = 0;
 #else
-    float h = 1.0 / tan(fov_y / 2.0f);
+    float h = 1.0f / tan(fov_y / 2.0f);
     float w = h / ar;
 
     new_matrix_ptr->data[0 ] = w;
@@ -257,8 +257,8 @@ PUBLIC EMERALD_API system_matrix4x4 system_matrix4x4_create_perspective_projecti
                                                                                                  float z_near,
                                                                                                  float z_far)
 {
-    system_matrix4x4              new_matrix     = system_matrix4x4_create();
-    _system_matrix4x4_descriptor* new_matrix_ptr = (_system_matrix4x4_descriptor*) new_matrix;
+    system_matrix4x4   new_matrix     = system_matrix4x4_create();
+    _system_matrix4x4* new_matrix_ptr = (_system_matrix4x4*) new_matrix;
 
     ASSERT_DEBUG_SYNC(left < right,
                       "Sanity check failed");
@@ -299,32 +299,32 @@ PUBLIC EMERALD_API void system_matrix4x4_release(system_matrix4x4 matrix)
 /** Please see header for specification */
 PUBLIC EMERALD_API const float* system_matrix4x4_get_column_major_data(system_matrix4x4 matrix)
 {
-    _system_matrix4x4_descriptor* descriptor = (_system_matrix4x4_descriptor*) matrix;
+    _system_matrix4x4* matrix_ptr = (_system_matrix4x4*) matrix;
 
-    if (descriptor->is_data_dirty)
+    if (matrix_ptr->is_data_dirty)
     {
-        _system_matrix4x4_generate_column_major_data(descriptor);
+        _system_matrix4x4_generate_column_major_data(matrix_ptr);
 
-        descriptor->is_data_dirty = false;
+        matrix_ptr->is_data_dirty = false;
     }
 
-    return descriptor->column_major_data;
+    return matrix_ptr->column_major_data;
 }
 
 /** Please see header for specification */
 PUBLIC EMERALD_API const float* system_matrix4x4_get_row_major_data(system_matrix4x4 matrix)
 {
-    return ((_system_matrix4x4_descriptor*) matrix)->data;
+    return ((_system_matrix4x4*) matrix)->data;
 }
 
 /** Please see header for specification */
 PUBLIC EMERALD_API system_matrix4x4 system_matrix4x4_create_by_mul(system_matrix4x4 mat_a,
                                                                    system_matrix4x4 mat_b)
 {
-    system_matrix4x4              result            = system_matrix4x4_create();
-    _system_matrix4x4_descriptor* mat_a_descriptor  = (_system_matrix4x4_descriptor*) mat_a;
-    _system_matrix4x4_descriptor* mat_b_descriptor  = (_system_matrix4x4_descriptor*) mat_b;
-    _system_matrix4x4_descriptor* result_descriptor = (_system_matrix4x4_descriptor*) result;
+    system_matrix4x4   result     = system_matrix4x4_create();
+    _system_matrix4x4* mat_a_ptr  = (_system_matrix4x4*) mat_a;
+    _system_matrix4x4* mat_b_ptr  = (_system_matrix4x4*) mat_b;
+    _system_matrix4x4* result_ptr = (_system_matrix4x4*) result;
 
     for (unsigned char column = 0;
                        column < 4;
@@ -334,15 +334,15 @@ PUBLIC EMERALD_API system_matrix4x4 system_matrix4x4_create_by_mul(system_matrix
                            row < 4;
                          ++row)
         {
-            result_descriptor->data[WORD_INDEX(column, row)] = 
-             mat_a_descriptor->data[WORD_INDEX(0,      row)] * mat_b_descriptor->data[WORD_INDEX(column, 0)] + 
-             mat_a_descriptor->data[WORD_INDEX(1,      row)] * mat_b_descriptor->data[WORD_INDEX(column, 1)] + 
-             mat_a_descriptor->data[WORD_INDEX(2,      row)] * mat_b_descriptor->data[WORD_INDEX(column, 2)] +
-             mat_a_descriptor->data[WORD_INDEX(3,      row)] * mat_b_descriptor->data[WORD_INDEX(column, 3)];
+            result_ptr->data[WORD_INDEX(column, row)] = 
+             mat_a_ptr->data[WORD_INDEX(0,      row)] * mat_b_ptr->data[WORD_INDEX(column, 0)] +
+             mat_a_ptr->data[WORD_INDEX(1,      row)] * mat_b_ptr->data[WORD_INDEX(column, 1)] +
+             mat_a_ptr->data[WORD_INDEX(2,      row)] * mat_b_ptr->data[WORD_INDEX(column, 2)] +
+             mat_a_ptr->data[WORD_INDEX(3,      row)] * mat_b_ptr->data[WORD_INDEX(column, 3)];
         } /* for (all rows) */
     } /* for (all columns) */
 
-    result_descriptor->is_data_dirty = true;
+    result_ptr->is_data_dirty = true;
 
     return result;
 }
@@ -351,32 +351,32 @@ PUBLIC EMERALD_API system_matrix4x4 system_matrix4x4_create_by_mul(system_matrix
 PUBLIC EMERALD_API bool system_matrix4x4_invert(system_matrix4x4 matrix)
 {
     // Naive implementatino from http://www.euclideanspace.com/maths/algebra/matrix/functions/inverse/fourD/index.htm 
-    float                         m[16];
-    _system_matrix4x4_descriptor* matrix_descriptor = (_system_matrix4x4_descriptor*) matrix;
-    float                         det               = matrix_descriptor->data[WORD_INDEX(0,3)] * matrix_descriptor->data[WORD_INDEX(1,2)] * matrix_descriptor->data[WORD_INDEX(2,1)] * matrix_descriptor->data[WORD_INDEX(3,0)] -
-                                                      matrix_descriptor->data[WORD_INDEX(0,2)] * matrix_descriptor->data[WORD_INDEX(1,3)] * matrix_descriptor->data[WORD_INDEX(2,1)] * matrix_descriptor->data[WORD_INDEX(3,0)] -
-                                                      matrix_descriptor->data[WORD_INDEX(0,3)] * matrix_descriptor->data[WORD_INDEX(1,1)] * matrix_descriptor->data[WORD_INDEX(2,2)] * matrix_descriptor->data[WORD_INDEX(3,0)] + 
-                                                      matrix_descriptor->data[WORD_INDEX(0,1)] * matrix_descriptor->data[WORD_INDEX(1,3)] * matrix_descriptor->data[WORD_INDEX(2,2)] * matrix_descriptor->data[WORD_INDEX(3,0)] +
-                                                      matrix_descriptor->data[WORD_INDEX(0,2)] * matrix_descriptor->data[WORD_INDEX(1,1)] * matrix_descriptor->data[WORD_INDEX(2,3)] * matrix_descriptor->data[WORD_INDEX(3,0)] - 
-                                                      matrix_descriptor->data[WORD_INDEX(0,1)] * matrix_descriptor->data[WORD_INDEX(1,2)] * matrix_descriptor->data[WORD_INDEX(2,3)] * matrix_descriptor->data[WORD_INDEX(3,0)] -
-                                                      matrix_descriptor->data[WORD_INDEX(0,3)] * matrix_descriptor->data[WORD_INDEX(1,2)] * matrix_descriptor->data[WORD_INDEX(2,0)] * matrix_descriptor->data[WORD_INDEX(3,1)] + 
-                                                      matrix_descriptor->data[WORD_INDEX(0,2)] * matrix_descriptor->data[WORD_INDEX(1,3)] * matrix_descriptor->data[WORD_INDEX(2,0)] * matrix_descriptor->data[WORD_INDEX(3,1)] +
-                                                      matrix_descriptor->data[WORD_INDEX(0,3)] * matrix_descriptor->data[WORD_INDEX(1,0)] * matrix_descriptor->data[WORD_INDEX(2,2)] * matrix_descriptor->data[WORD_INDEX(3,1)] -
-                                                      matrix_descriptor->data[WORD_INDEX(0,0)] * matrix_descriptor->data[WORD_INDEX(1,3)] * matrix_descriptor->data[WORD_INDEX(2,2)] * matrix_descriptor->data[WORD_INDEX(3,1)] - 
-                                                      matrix_descriptor->data[WORD_INDEX(0,2)] * matrix_descriptor->data[WORD_INDEX(1,0)] * matrix_descriptor->data[WORD_INDEX(2,3)] * matrix_descriptor->data[WORD_INDEX(3,1)] +
-                                                      matrix_descriptor->data[WORD_INDEX(0,0)] * matrix_descriptor->data[WORD_INDEX(1,2)] * matrix_descriptor->data[WORD_INDEX(2,3)] * matrix_descriptor->data[WORD_INDEX(3,1)] +
-                                                      matrix_descriptor->data[WORD_INDEX(0,3)] * matrix_descriptor->data[WORD_INDEX(1,1)] * matrix_descriptor->data[WORD_INDEX(2,0)] * matrix_descriptor->data[WORD_INDEX(3,2)] - 
-                                                      matrix_descriptor->data[WORD_INDEX(0,1)] * matrix_descriptor->data[WORD_INDEX(1,3)] * matrix_descriptor->data[WORD_INDEX(2,0)] * matrix_descriptor->data[WORD_INDEX(3,2)] -
-                                                      matrix_descriptor->data[WORD_INDEX(0,3)] * matrix_descriptor->data[WORD_INDEX(1,0)] * matrix_descriptor->data[WORD_INDEX(2,1)] * matrix_descriptor->data[WORD_INDEX(3,2)] +
-                                                      matrix_descriptor->data[WORD_INDEX(0,0)] * matrix_descriptor->data[WORD_INDEX(1,3)] * matrix_descriptor->data[WORD_INDEX(2,1)] * matrix_descriptor->data[WORD_INDEX(3,2)] +
-                                                      matrix_descriptor->data[WORD_INDEX(0,1)] * matrix_descriptor->data[WORD_INDEX(1,0)] * matrix_descriptor->data[WORD_INDEX(2,3)] * matrix_descriptor->data[WORD_INDEX(3,2)] -
-                                                      matrix_descriptor->data[WORD_INDEX(0,0)] * matrix_descriptor->data[WORD_INDEX(1,1)] * matrix_descriptor->data[WORD_INDEX(2,3)] * matrix_descriptor->data[WORD_INDEX(3,2)] - 
-                                                      matrix_descriptor->data[WORD_INDEX(0,2)] * matrix_descriptor->data[WORD_INDEX(1,1)] * matrix_descriptor->data[WORD_INDEX(2,0)] * matrix_descriptor->data[WORD_INDEX(3,3)] + 
-                                                      matrix_descriptor->data[WORD_INDEX(0,1)] * matrix_descriptor->data[WORD_INDEX(1,2)] * matrix_descriptor->data[WORD_INDEX(2,0)] * matrix_descriptor->data[WORD_INDEX(3,3)] +
-                                                      matrix_descriptor->data[WORD_INDEX(0,2)] * matrix_descriptor->data[WORD_INDEX(1,0)] * matrix_descriptor->data[WORD_INDEX(2,1)] * matrix_descriptor->data[WORD_INDEX(3,3)] -
-                                                      matrix_descriptor->data[WORD_INDEX(0,0)] * matrix_descriptor->data[WORD_INDEX(1,2)] * matrix_descriptor->data[WORD_INDEX(2,1)] * matrix_descriptor->data[WORD_INDEX(3,3)] -
-                                                      matrix_descriptor->data[WORD_INDEX(0,1)] * matrix_descriptor->data[WORD_INDEX(1,0)] * matrix_descriptor->data[WORD_INDEX(2,2)] * matrix_descriptor->data[WORD_INDEX(3,3)] +
-                                                      matrix_descriptor->data[WORD_INDEX(0,0)] * matrix_descriptor->data[WORD_INDEX(1,1)] * matrix_descriptor->data[WORD_INDEX(2,2)] * matrix_descriptor->data[WORD_INDEX(3,3)];
+    float              m[16];
+    _system_matrix4x4* matrix_ptr = (_system_matrix4x4*) matrix;
+    float              det        = matrix_ptr->data[WORD_INDEX(0,3)] * matrix_ptr->data[WORD_INDEX(1,2)] * matrix_ptr->data[WORD_INDEX(2,1)] * matrix_ptr->data[WORD_INDEX(3,0)] -
+                                    matrix_ptr->data[WORD_INDEX(0,2)] * matrix_ptr->data[WORD_INDEX(1,3)] * matrix_ptr->data[WORD_INDEX(2,1)] * matrix_ptr->data[WORD_INDEX(3,0)] -
+                                    matrix_ptr->data[WORD_INDEX(0,3)] * matrix_ptr->data[WORD_INDEX(1,1)] * matrix_ptr->data[WORD_INDEX(2,2)] * matrix_ptr->data[WORD_INDEX(3,0)] +
+                                    matrix_ptr->data[WORD_INDEX(0,1)] * matrix_ptr->data[WORD_INDEX(1,3)] * matrix_ptr->data[WORD_INDEX(2,2)] * matrix_ptr->data[WORD_INDEX(3,0)] +
+                                    matrix_ptr->data[WORD_INDEX(0,2)] * matrix_ptr->data[WORD_INDEX(1,1)] * matrix_ptr->data[WORD_INDEX(2,3)] * matrix_ptr->data[WORD_INDEX(3,0)] -
+                                    matrix_ptr->data[WORD_INDEX(0,1)] * matrix_ptr->data[WORD_INDEX(1,2)] * matrix_ptr->data[WORD_INDEX(2,3)] * matrix_ptr->data[WORD_INDEX(3,0)] -
+                                    matrix_ptr->data[WORD_INDEX(0,3)] * matrix_ptr->data[WORD_INDEX(1,2)] * matrix_ptr->data[WORD_INDEX(2,0)] * matrix_ptr->data[WORD_INDEX(3,1)] +
+                                    matrix_ptr->data[WORD_INDEX(0,2)] * matrix_ptr->data[WORD_INDEX(1,3)] * matrix_ptr->data[WORD_INDEX(2,0)] * matrix_ptr->data[WORD_INDEX(3,1)] +
+                                    matrix_ptr->data[WORD_INDEX(0,3)] * matrix_ptr->data[WORD_INDEX(1,0)] * matrix_ptr->data[WORD_INDEX(2,2)] * matrix_ptr->data[WORD_INDEX(3,1)] -
+                                    matrix_ptr->data[WORD_INDEX(0,0)] * matrix_ptr->data[WORD_INDEX(1,3)] * matrix_ptr->data[WORD_INDEX(2,2)] * matrix_ptr->data[WORD_INDEX(3,1)] -
+                                    matrix_ptr->data[WORD_INDEX(0,2)] * matrix_ptr->data[WORD_INDEX(1,0)] * matrix_ptr->data[WORD_INDEX(2,3)] * matrix_ptr->data[WORD_INDEX(3,1)] +
+                                    matrix_ptr->data[WORD_INDEX(0,0)] * matrix_ptr->data[WORD_INDEX(1,2)] * matrix_ptr->data[WORD_INDEX(2,3)] * matrix_ptr->data[WORD_INDEX(3,1)] +
+                                    matrix_ptr->data[WORD_INDEX(0,3)] * matrix_ptr->data[WORD_INDEX(1,1)] * matrix_ptr->data[WORD_INDEX(2,0)] * matrix_ptr->data[WORD_INDEX(3,2)] -
+                                    matrix_ptr->data[WORD_INDEX(0,1)] * matrix_ptr->data[WORD_INDEX(1,3)] * matrix_ptr->data[WORD_INDEX(2,0)] * matrix_ptr->data[WORD_INDEX(3,2)] -
+                                    matrix_ptr->data[WORD_INDEX(0,3)] * matrix_ptr->data[WORD_INDEX(1,0)] * matrix_ptr->data[WORD_INDEX(2,1)] * matrix_ptr->data[WORD_INDEX(3,2)] +
+                                    matrix_ptr->data[WORD_INDEX(0,0)] * matrix_ptr->data[WORD_INDEX(1,3)] * matrix_ptr->data[WORD_INDEX(2,1)] * matrix_ptr->data[WORD_INDEX(3,2)] +
+                                    matrix_ptr->data[WORD_INDEX(0,1)] * matrix_ptr->data[WORD_INDEX(1,0)] * matrix_ptr->data[WORD_INDEX(2,3)] * matrix_ptr->data[WORD_INDEX(3,2)] -
+                                    matrix_ptr->data[WORD_INDEX(0,0)] * matrix_ptr->data[WORD_INDEX(1,1)] * matrix_ptr->data[WORD_INDEX(2,3)] * matrix_ptr->data[WORD_INDEX(3,2)] -
+                                    matrix_ptr->data[WORD_INDEX(0,2)] * matrix_ptr->data[WORD_INDEX(1,1)] * matrix_ptr->data[WORD_INDEX(2,0)] * matrix_ptr->data[WORD_INDEX(3,3)] +
+                                    matrix_ptr->data[WORD_INDEX(0,1)] * matrix_ptr->data[WORD_INDEX(1,2)] * matrix_ptr->data[WORD_INDEX(2,0)] * matrix_ptr->data[WORD_INDEX(3,3)] +
+                                    matrix_ptr->data[WORD_INDEX(0,2)] * matrix_ptr->data[WORD_INDEX(1,0)] * matrix_ptr->data[WORD_INDEX(2,1)] * matrix_ptr->data[WORD_INDEX(3,3)] -
+                                    matrix_ptr->data[WORD_INDEX(0,0)] * matrix_ptr->data[WORD_INDEX(1,2)] * matrix_ptr->data[WORD_INDEX(2,1)] * matrix_ptr->data[WORD_INDEX(3,3)] -
+                                    matrix_ptr->data[WORD_INDEX(0,1)] * matrix_ptr->data[WORD_INDEX(1,0)] * matrix_ptr->data[WORD_INDEX(2,2)] * matrix_ptr->data[WORD_INDEX(3,3)] +
+                                    matrix_ptr->data[WORD_INDEX(0,0)] * matrix_ptr->data[WORD_INDEX(1,1)] * matrix_ptr->data[WORD_INDEX(2,2)] * matrix_ptr->data[WORD_INDEX(3,3)];
 
     if (fabs(det) <= 0.0000001f)
     {
@@ -386,102 +386,102 @@ PUBLIC EMERALD_API bool system_matrix4x4_invert(system_matrix4x4 matrix)
         return false;
     }
 
-    m[WORD_INDEX(0, 0)] = matrix_descriptor->data[WORD_INDEX(1,2)]*matrix_descriptor->data[WORD_INDEX(2,3)]*matrix_descriptor->data[WORD_INDEX(3,1)] - 
-                          matrix_descriptor->data[WORD_INDEX(1,3)]*matrix_descriptor->data[WORD_INDEX(2,2)]*matrix_descriptor->data[WORD_INDEX(3,1)] +
-                          matrix_descriptor->data[WORD_INDEX(1,3)]*matrix_descriptor->data[WORD_INDEX(2,1)]*matrix_descriptor->data[WORD_INDEX(3,2)] -
-                          matrix_descriptor->data[WORD_INDEX(1,1)]*matrix_descriptor->data[WORD_INDEX(2,3)]*matrix_descriptor->data[WORD_INDEX(3,2)] -
-                          matrix_descriptor->data[WORD_INDEX(1,2)]*matrix_descriptor->data[WORD_INDEX(2,1)]*matrix_descriptor->data[WORD_INDEX(3,3)] + 
-                          matrix_descriptor->data[WORD_INDEX(1,1)]*matrix_descriptor->data[WORD_INDEX(2,2)]*matrix_descriptor->data[WORD_INDEX(3,3)];
-    m[WORD_INDEX(0, 1)] = matrix_descriptor->data[WORD_INDEX(0,3)]*matrix_descriptor->data[WORD_INDEX(2,2)]*matrix_descriptor->data[WORD_INDEX(3,1)] -
-                          matrix_descriptor->data[WORD_INDEX(0,2)]*matrix_descriptor->data[WORD_INDEX(2,3)]*matrix_descriptor->data[WORD_INDEX(3,1)] -
-                          matrix_descriptor->data[WORD_INDEX(0,3)]*matrix_descriptor->data[WORD_INDEX(2,1)]*matrix_descriptor->data[WORD_INDEX(3,2)] +
-                          matrix_descriptor->data[WORD_INDEX(0,1)]*matrix_descriptor->data[WORD_INDEX(2,3)]*matrix_descriptor->data[WORD_INDEX(3,2)] +
-                          matrix_descriptor->data[WORD_INDEX(0,2)]*matrix_descriptor->data[WORD_INDEX(2,1)]*matrix_descriptor->data[WORD_INDEX(3,3)] -
-                          matrix_descriptor->data[WORD_INDEX(0,1)]*matrix_descriptor->data[WORD_INDEX(2,2)]*matrix_descriptor->data[WORD_INDEX(3,3)];
-    m[WORD_INDEX(0, 2)] = matrix_descriptor->data[WORD_INDEX(0,2)]*matrix_descriptor->data[WORD_INDEX(1,3)]*matrix_descriptor->data[WORD_INDEX(3,1)] -
-                          matrix_descriptor->data[WORD_INDEX(0,3)]*matrix_descriptor->data[WORD_INDEX(1,2)]*matrix_descriptor->data[WORD_INDEX(3,1)] +
-                          matrix_descriptor->data[WORD_INDEX(0,3)]*matrix_descriptor->data[WORD_INDEX(1,1)]*matrix_descriptor->data[WORD_INDEX(3,2)] -
-                          matrix_descriptor->data[WORD_INDEX(0,1)]*matrix_descriptor->data[WORD_INDEX(1,3)]*matrix_descriptor->data[WORD_INDEX(3,2)] -
-                          matrix_descriptor->data[WORD_INDEX(0,2)]*matrix_descriptor->data[WORD_INDEX(1,1)]*matrix_descriptor->data[WORD_INDEX(3,3)] +
-                          matrix_descriptor->data[WORD_INDEX(0,1)]*matrix_descriptor->data[WORD_INDEX(1,2)]*matrix_descriptor->data[WORD_INDEX(3,3)];
-    m[WORD_INDEX(0, 3)] = matrix_descriptor->data[WORD_INDEX(0,3)]*matrix_descriptor->data[WORD_INDEX(1,2)]*matrix_descriptor->data[WORD_INDEX(2,1)] -
-                          matrix_descriptor->data[WORD_INDEX(0,2)]*matrix_descriptor->data[WORD_INDEX(1,3)]*matrix_descriptor->data[WORD_INDEX(2,1)] -
-                          matrix_descriptor->data[WORD_INDEX(0,3)]*matrix_descriptor->data[WORD_INDEX(1,1)]*matrix_descriptor->data[WORD_INDEX(2,2)] +
-                          matrix_descriptor->data[WORD_INDEX(0,1)]*matrix_descriptor->data[WORD_INDEX(1,3)]*matrix_descriptor->data[WORD_INDEX(2,2)] +
-                          matrix_descriptor->data[WORD_INDEX(0,2)]*matrix_descriptor->data[WORD_INDEX(1,1)]*matrix_descriptor->data[WORD_INDEX(2,3)] -
-                          matrix_descriptor->data[WORD_INDEX(0,1)]*matrix_descriptor->data[WORD_INDEX(1,2)]*matrix_descriptor->data[WORD_INDEX(2,3)];
-    m[WORD_INDEX(1, 0)] = matrix_descriptor->data[WORD_INDEX(1,3)]*matrix_descriptor->data[WORD_INDEX(2,2)]*matrix_descriptor->data[WORD_INDEX(3,0)] -
-                          matrix_descriptor->data[WORD_INDEX(1,2)]*matrix_descriptor->data[WORD_INDEX(2,3)]*matrix_descriptor->data[WORD_INDEX(3,0)] -
-                          matrix_descriptor->data[WORD_INDEX(1,3)]*matrix_descriptor->data[WORD_INDEX(2,0)]*matrix_descriptor->data[WORD_INDEX(3,2)] +
-                          matrix_descriptor->data[WORD_INDEX(1,0)]*matrix_descriptor->data[WORD_INDEX(2,3)]*matrix_descriptor->data[WORD_INDEX(3,2)] + 
-                          matrix_descriptor->data[WORD_INDEX(1,2)]*matrix_descriptor->data[WORD_INDEX(2,0)]*matrix_descriptor->data[WORD_INDEX(3,3)] - 
-                          matrix_descriptor->data[WORD_INDEX(1,0)]*matrix_descriptor->data[WORD_INDEX(2,2)]*matrix_descriptor->data[WORD_INDEX(3,3)];
-    m[WORD_INDEX(1, 1)] = matrix_descriptor->data[WORD_INDEX(0,2)]*matrix_descriptor->data[WORD_INDEX(2,3)]*matrix_descriptor->data[WORD_INDEX(3,0)] -
-                          matrix_descriptor->data[WORD_INDEX(0,3)]*matrix_descriptor->data[WORD_INDEX(2,2)]*matrix_descriptor->data[WORD_INDEX(3,0)] +
-                          matrix_descriptor->data[WORD_INDEX(0,3)]*matrix_descriptor->data[WORD_INDEX(2,0)]*matrix_descriptor->data[WORD_INDEX(3,2)] -
-                          matrix_descriptor->data[WORD_INDEX(0,0)]*matrix_descriptor->data[WORD_INDEX(2,3)]*matrix_descriptor->data[WORD_INDEX(3,2)] -
-                          matrix_descriptor->data[WORD_INDEX(0,2)]*matrix_descriptor->data[WORD_INDEX(2,0)]*matrix_descriptor->data[WORD_INDEX(3,3)] +
-                          matrix_descriptor->data[WORD_INDEX(0,0)]*matrix_descriptor->data[WORD_INDEX(2,2)]*matrix_descriptor->data[WORD_INDEX(3,3)];
-    m[WORD_INDEX(1, 2)] = matrix_descriptor->data[WORD_INDEX(0,3)]*matrix_descriptor->data[WORD_INDEX(1,2)]*matrix_descriptor->data[WORD_INDEX(3,0)] -
-                          matrix_descriptor->data[WORD_INDEX(0,2)]*matrix_descriptor->data[WORD_INDEX(1,3)]*matrix_descriptor->data[WORD_INDEX(3,0)] -
-                          matrix_descriptor->data[WORD_INDEX(0,3)]*matrix_descriptor->data[WORD_INDEX(1,0)]*matrix_descriptor->data[WORD_INDEX(3,2)] +
-                          matrix_descriptor->data[WORD_INDEX(0,0)]*matrix_descriptor->data[WORD_INDEX(1,3)]*matrix_descriptor->data[WORD_INDEX(3,2)] +
-                          matrix_descriptor->data[WORD_INDEX(0,2)]*matrix_descriptor->data[WORD_INDEX(1,0)]*matrix_descriptor->data[WORD_INDEX(3,3)] -
-                          matrix_descriptor->data[WORD_INDEX(0,0)]*matrix_descriptor->data[WORD_INDEX(1,2)]*matrix_descriptor->data[WORD_INDEX(3,3)];
-    m[WORD_INDEX(1, 3)] = matrix_descriptor->data[WORD_INDEX(0,2)]*matrix_descriptor->data[WORD_INDEX(1,3)]*matrix_descriptor->data[WORD_INDEX(2,0)] -
-                          matrix_descriptor->data[WORD_INDEX(0,3)]*matrix_descriptor->data[WORD_INDEX(1,2)]*matrix_descriptor->data[WORD_INDEX(2,0)] + 
-                          matrix_descriptor->data[WORD_INDEX(0,3)]*matrix_descriptor->data[WORD_INDEX(1,0)]*matrix_descriptor->data[WORD_INDEX(2,2)] - 
-                          matrix_descriptor->data[WORD_INDEX(0,0)]*matrix_descriptor->data[WORD_INDEX(1,3)]*matrix_descriptor->data[WORD_INDEX(2,2)] -
-                          matrix_descriptor->data[WORD_INDEX(0,2)]*matrix_descriptor->data[WORD_INDEX(1,0)]*matrix_descriptor->data[WORD_INDEX(2,3)] + 
-                          matrix_descriptor->data[WORD_INDEX(0,0)]*matrix_descriptor->data[WORD_INDEX(1,2)]*matrix_descriptor->data[WORD_INDEX(2,3)];
-    m[WORD_INDEX(2, 0)] = matrix_descriptor->data[WORD_INDEX(1,1)]*matrix_descriptor->data[WORD_INDEX(2,3)]*matrix_descriptor->data[WORD_INDEX(3,0)] -
-                          matrix_descriptor->data[WORD_INDEX(1,3)]*matrix_descriptor->data[WORD_INDEX(2,1)]*matrix_descriptor->data[WORD_INDEX(3,0)] +
-                          matrix_descriptor->data[WORD_INDEX(1,3)]*matrix_descriptor->data[WORD_INDEX(2,0)]*matrix_descriptor->data[WORD_INDEX(3,1)] - 
-                          matrix_descriptor->data[WORD_INDEX(1,0)]*matrix_descriptor->data[WORD_INDEX(2,3)]*matrix_descriptor->data[WORD_INDEX(3,1)] - 
-                          matrix_descriptor->data[WORD_INDEX(1,1)]*matrix_descriptor->data[WORD_INDEX(2,0)]*matrix_descriptor->data[WORD_INDEX(3,3)] +
-                          matrix_descriptor->data[WORD_INDEX(1,0)]*matrix_descriptor->data[WORD_INDEX(2,1)]*matrix_descriptor->data[WORD_INDEX(3,3)];
-    m[WORD_INDEX(2, 1)] = matrix_descriptor->data[WORD_INDEX(0,3)]*matrix_descriptor->data[WORD_INDEX(2,1)]*matrix_descriptor->data[WORD_INDEX(3,0)] -
-                          matrix_descriptor->data[WORD_INDEX(0,1)]*matrix_descriptor->data[WORD_INDEX(2,3)]*matrix_descriptor->data[WORD_INDEX(3,0)] -
-                          matrix_descriptor->data[WORD_INDEX(0,3)]*matrix_descriptor->data[WORD_INDEX(2,0)]*matrix_descriptor->data[WORD_INDEX(3,1)] +
-                          matrix_descriptor->data[WORD_INDEX(0,0)]*matrix_descriptor->data[WORD_INDEX(2,3)]*matrix_descriptor->data[WORD_INDEX(3,1)] + 
-                          matrix_descriptor->data[WORD_INDEX(0,1)]*matrix_descriptor->data[WORD_INDEX(2,0)]*matrix_descriptor->data[WORD_INDEX(3,3)] - 
-                          matrix_descriptor->data[WORD_INDEX(0,0)]*matrix_descriptor->data[WORD_INDEX(2,1)]*matrix_descriptor->data[WORD_INDEX(3,3)];
-    m[WORD_INDEX(2, 2)] = matrix_descriptor->data[WORD_INDEX(0,1)]*matrix_descriptor->data[WORD_INDEX(1,3)]*matrix_descriptor->data[WORD_INDEX(3,0)] -
-                          matrix_descriptor->data[WORD_INDEX(0,3)]*matrix_descriptor->data[WORD_INDEX(1,1)]*matrix_descriptor->data[WORD_INDEX(3,0)] + 
-                          matrix_descriptor->data[WORD_INDEX(0,3)]*matrix_descriptor->data[WORD_INDEX(1,0)]*matrix_descriptor->data[WORD_INDEX(3,1)] -
-                          matrix_descriptor->data[WORD_INDEX(0,0)]*matrix_descriptor->data[WORD_INDEX(1,3)]*matrix_descriptor->data[WORD_INDEX(3,1)] - 
-                          matrix_descriptor->data[WORD_INDEX(0,1)]*matrix_descriptor->data[WORD_INDEX(1,0)]*matrix_descriptor->data[WORD_INDEX(3,3)] + 
-                          matrix_descriptor->data[WORD_INDEX(0,0)]*matrix_descriptor->data[WORD_INDEX(1,1)]*matrix_descriptor->data[WORD_INDEX(3,3)];
-    m[WORD_INDEX(2, 3)] = matrix_descriptor->data[WORD_INDEX(0,3)]*matrix_descriptor->data[WORD_INDEX(1,1)]*matrix_descriptor->data[WORD_INDEX(2,0)] -
-                          matrix_descriptor->data[WORD_INDEX(0,1)]*matrix_descriptor->data[WORD_INDEX(1,3)]*matrix_descriptor->data[WORD_INDEX(2,0)] - 
-                          matrix_descriptor->data[WORD_INDEX(0,3)]*matrix_descriptor->data[WORD_INDEX(1,0)]*matrix_descriptor->data[WORD_INDEX(2,1)] + 
-                          matrix_descriptor->data[WORD_INDEX(0,0)]*matrix_descriptor->data[WORD_INDEX(1,3)]*matrix_descriptor->data[WORD_INDEX(2,1)] + 
-                          matrix_descriptor->data[WORD_INDEX(0,1)]*matrix_descriptor->data[WORD_INDEX(1,0)]*matrix_descriptor->data[WORD_INDEX(2,3)] - 
-                          matrix_descriptor->data[WORD_INDEX(0,0)]*matrix_descriptor->data[WORD_INDEX(1,1)]*matrix_descriptor->data[WORD_INDEX(2,3)];
-    m[WORD_INDEX(3, 0)] = matrix_descriptor->data[WORD_INDEX(1,2)]*matrix_descriptor->data[WORD_INDEX(2,1)]*matrix_descriptor->data[WORD_INDEX(3,0)] -
-                          matrix_descriptor->data[WORD_INDEX(1,1)]*matrix_descriptor->data[WORD_INDEX(2,2)]*matrix_descriptor->data[WORD_INDEX(3,0)] -
-                          matrix_descriptor->data[WORD_INDEX(1,2)]*matrix_descriptor->data[WORD_INDEX(2,0)]*matrix_descriptor->data[WORD_INDEX(3,1)] +
-                          matrix_descriptor->data[WORD_INDEX(1,0)]*matrix_descriptor->data[WORD_INDEX(2,2)]*matrix_descriptor->data[WORD_INDEX(3,1)] +
-                          matrix_descriptor->data[WORD_INDEX(1,1)]*matrix_descriptor->data[WORD_INDEX(2,0)]*matrix_descriptor->data[WORD_INDEX(3,2)] - 
-                          matrix_descriptor->data[WORD_INDEX(1,0)]*matrix_descriptor->data[WORD_INDEX(2,1)]*matrix_descriptor->data[WORD_INDEX(3,2)];
-    m[WORD_INDEX(3, 1)] = matrix_descriptor->data[WORD_INDEX(0,1)]*matrix_descriptor->data[WORD_INDEX(2,2)]*matrix_descriptor->data[WORD_INDEX(3,0)] -
-                          matrix_descriptor->data[WORD_INDEX(0,2)]*matrix_descriptor->data[WORD_INDEX(2,1)]*matrix_descriptor->data[WORD_INDEX(3,0)] +
-                          matrix_descriptor->data[WORD_INDEX(0,2)]*matrix_descriptor->data[WORD_INDEX(2,0)]*matrix_descriptor->data[WORD_INDEX(3,1)] -
-                          matrix_descriptor->data[WORD_INDEX(0,0)]*matrix_descriptor->data[WORD_INDEX(2,2)]*matrix_descriptor->data[WORD_INDEX(3,1)] - 
-                          matrix_descriptor->data[WORD_INDEX(0,1)]*matrix_descriptor->data[WORD_INDEX(2,0)]*matrix_descriptor->data[WORD_INDEX(3,2)] + 
-                          matrix_descriptor->data[WORD_INDEX(0,0)]*matrix_descriptor->data[WORD_INDEX(2,1)]*matrix_descriptor->data[WORD_INDEX(3,2)];
-    m[WORD_INDEX(3, 2)] = matrix_descriptor->data[WORD_INDEX(0,2)]*matrix_descriptor->data[WORD_INDEX(1,1)]*matrix_descriptor->data[WORD_INDEX(3,0)] -
-                          matrix_descriptor->data[WORD_INDEX(0,1)]*matrix_descriptor->data[WORD_INDEX(1,2)]*matrix_descriptor->data[WORD_INDEX(3,0)] -
-                          matrix_descriptor->data[WORD_INDEX(0,2)]*matrix_descriptor->data[WORD_INDEX(1,0)]*matrix_descriptor->data[WORD_INDEX(3,1)] +
-                          matrix_descriptor->data[WORD_INDEX(0,0)]*matrix_descriptor->data[WORD_INDEX(1,2)]*matrix_descriptor->data[WORD_INDEX(3,1)] + 
-                          matrix_descriptor->data[WORD_INDEX(0,1)]*matrix_descriptor->data[WORD_INDEX(1,0)]*matrix_descriptor->data[WORD_INDEX(3,2)] - 
-                          matrix_descriptor->data[WORD_INDEX(0,0)]*matrix_descriptor->data[WORD_INDEX(1,1)]*matrix_descriptor->data[WORD_INDEX(3,2)];
-    m[WORD_INDEX(3, 3)] = matrix_descriptor->data[WORD_INDEX(0,1)]*matrix_descriptor->data[WORD_INDEX(1,2)]*matrix_descriptor->data[WORD_INDEX(2,0)] -
-                          matrix_descriptor->data[WORD_INDEX(0,2)]*matrix_descriptor->data[WORD_INDEX(1,1)]*matrix_descriptor->data[WORD_INDEX(2,0)] +
-                          matrix_descriptor->data[WORD_INDEX(0,2)]*matrix_descriptor->data[WORD_INDEX(1,0)]*matrix_descriptor->data[WORD_INDEX(2,1)] -
-                          matrix_descriptor->data[WORD_INDEX(0,0)]*matrix_descriptor->data[WORD_INDEX(1,2)]*matrix_descriptor->data[WORD_INDEX(2,1)] -
-                          matrix_descriptor->data[WORD_INDEX(0,1)]*matrix_descriptor->data[WORD_INDEX(1,0)]*matrix_descriptor->data[WORD_INDEX(2,2)] + 
-                          matrix_descriptor->data[WORD_INDEX(0,0)]*matrix_descriptor->data[WORD_INDEX(1,1)]*matrix_descriptor->data[WORD_INDEX(2,2)];
+    m[WORD_INDEX(0, 0)] = matrix_ptr->data[WORD_INDEX(1,2)] * matrix_ptr->data[WORD_INDEX(2,3)] * matrix_ptr->data[WORD_INDEX(3,1)] -
+                          matrix_ptr->data[WORD_INDEX(1,3)] * matrix_ptr->data[WORD_INDEX(2,2)] * matrix_ptr->data[WORD_INDEX(3,1)] +
+                          matrix_ptr->data[WORD_INDEX(1,3)] * matrix_ptr->data[WORD_INDEX(2,1)] * matrix_ptr->data[WORD_INDEX(3,2)] -
+                          matrix_ptr->data[WORD_INDEX(1,1)] * matrix_ptr->data[WORD_INDEX(2,3)] * matrix_ptr->data[WORD_INDEX(3,2)] -
+                          matrix_ptr->data[WORD_INDEX(1,2)] * matrix_ptr->data[WORD_INDEX(2,1)] * matrix_ptr->data[WORD_INDEX(3,3)] +
+                          matrix_ptr->data[WORD_INDEX(1,1)] * matrix_ptr->data[WORD_INDEX(2,2)] * matrix_ptr->data[WORD_INDEX(3,3)];
+    m[WORD_INDEX(0, 1)] = matrix_ptr->data[WORD_INDEX(0,3)] * matrix_ptr->data[WORD_INDEX(2,2)] * matrix_ptr->data[WORD_INDEX(3,1)] -
+                          matrix_ptr->data[WORD_INDEX(0,2)] * matrix_ptr->data[WORD_INDEX(2,3)] * matrix_ptr->data[WORD_INDEX(3,1)] -
+                          matrix_ptr->data[WORD_INDEX(0,3)] * matrix_ptr->data[WORD_INDEX(2,1)] * matrix_ptr->data[WORD_INDEX(3,2)] +
+                          matrix_ptr->data[WORD_INDEX(0,1)] * matrix_ptr->data[WORD_INDEX(2,3)] * matrix_ptr->data[WORD_INDEX(3,2)] +
+                          matrix_ptr->data[WORD_INDEX(0,2)] * matrix_ptr->data[WORD_INDEX(2,1)] * matrix_ptr->data[WORD_INDEX(3,3)] -
+                          matrix_ptr->data[WORD_INDEX(0,1)] * matrix_ptr->data[WORD_INDEX(2,2)] * matrix_ptr->data[WORD_INDEX(3,3)];
+    m[WORD_INDEX(0, 2)] = matrix_ptr->data[WORD_INDEX(0,2)] * matrix_ptr->data[WORD_INDEX(1,3)] * matrix_ptr->data[WORD_INDEX(3,1)] -
+                          matrix_ptr->data[WORD_INDEX(0,3)] * matrix_ptr->data[WORD_INDEX(1,2)] * matrix_ptr->data[WORD_INDEX(3,1)] +
+                          matrix_ptr->data[WORD_INDEX(0,3)] * matrix_ptr->data[WORD_INDEX(1,1)] * matrix_ptr->data[WORD_INDEX(3,2)] -
+                          matrix_ptr->data[WORD_INDEX(0,1)] * matrix_ptr->data[WORD_INDEX(1,3)] * matrix_ptr->data[WORD_INDEX(3,2)] -
+                          matrix_ptr->data[WORD_INDEX(0,2)] * matrix_ptr->data[WORD_INDEX(1,1)] * matrix_ptr->data[WORD_INDEX(3,3)] +
+                          matrix_ptr->data[WORD_INDEX(0,1)] * matrix_ptr->data[WORD_INDEX(1,2)] * matrix_ptr->data[WORD_INDEX(3,3)];
+    m[WORD_INDEX(0, 3)] = matrix_ptr->data[WORD_INDEX(0,3)] * matrix_ptr->data[WORD_INDEX(1,2)] * matrix_ptr->data[WORD_INDEX(2,1)] -
+                          matrix_ptr->data[WORD_INDEX(0,2)] * matrix_ptr->data[WORD_INDEX(1,3)] * matrix_ptr->data[WORD_INDEX(2,1)] -
+                          matrix_ptr->data[WORD_INDEX(0,3)] * matrix_ptr->data[WORD_INDEX(1,1)] * matrix_ptr->data[WORD_INDEX(2,2)] +
+                          matrix_ptr->data[WORD_INDEX(0,1)] * matrix_ptr->data[WORD_INDEX(1,3)] * matrix_ptr->data[WORD_INDEX(2,2)] +
+                          matrix_ptr->data[WORD_INDEX(0,2)] * matrix_ptr->data[WORD_INDEX(1,1)] * matrix_ptr->data[WORD_INDEX(2,3)] -
+                          matrix_ptr->data[WORD_INDEX(0,1)] * matrix_ptr->data[WORD_INDEX(1,2)] * matrix_ptr->data[WORD_INDEX(2,3)];
+    m[WORD_INDEX(1, 0)] = matrix_ptr->data[WORD_INDEX(1,3)] * matrix_ptr->data[WORD_INDEX(2,2)] * matrix_ptr->data[WORD_INDEX(3,0)] -
+                          matrix_ptr->data[WORD_INDEX(1,2)] * matrix_ptr->data[WORD_INDEX(2,3)] * matrix_ptr->data[WORD_INDEX(3,0)] -
+                          matrix_ptr->data[WORD_INDEX(1,3)] * matrix_ptr->data[WORD_INDEX(2,0)] * matrix_ptr->data[WORD_INDEX(3,2)] +
+                          matrix_ptr->data[WORD_INDEX(1,0)] * matrix_ptr->data[WORD_INDEX(2,3)] * matrix_ptr->data[WORD_INDEX(3,2)] +
+                          matrix_ptr->data[WORD_INDEX(1,2)] * matrix_ptr->data[WORD_INDEX(2,0)] * matrix_ptr->data[WORD_INDEX(3,3)] -
+                          matrix_ptr->data[WORD_INDEX(1,0)] * matrix_ptr->data[WORD_INDEX(2,2)] * matrix_ptr->data[WORD_INDEX(3,3)];
+    m[WORD_INDEX(1, 1)] = matrix_ptr->data[WORD_INDEX(0,2)] * matrix_ptr->data[WORD_INDEX(2,3)] * matrix_ptr->data[WORD_INDEX(3,0)] -
+                          matrix_ptr->data[WORD_INDEX(0,3)] * matrix_ptr->data[WORD_INDEX(2,2)] * matrix_ptr->data[WORD_INDEX(3,0)] +
+                          matrix_ptr->data[WORD_INDEX(0,3)] * matrix_ptr->data[WORD_INDEX(2,0)] * matrix_ptr->data[WORD_INDEX(3,2)] -
+                          matrix_ptr->data[WORD_INDEX(0,0)] * matrix_ptr->data[WORD_INDEX(2,3)] * matrix_ptr->data[WORD_INDEX(3,2)] -
+                          matrix_ptr->data[WORD_INDEX(0,2)] * matrix_ptr->data[WORD_INDEX(2,0)] * matrix_ptr->data[WORD_INDEX(3,3)] +
+                          matrix_ptr->data[WORD_INDEX(0,0)] * matrix_ptr->data[WORD_INDEX(2,2)] * matrix_ptr->data[WORD_INDEX(3,3)];
+    m[WORD_INDEX(1, 2)] = matrix_ptr->data[WORD_INDEX(0,3)] * matrix_ptr->data[WORD_INDEX(1,2)] * matrix_ptr->data[WORD_INDEX(3,0)] -
+                          matrix_ptr->data[WORD_INDEX(0,2)] * matrix_ptr->data[WORD_INDEX(1,3)] * matrix_ptr->data[WORD_INDEX(3,0)] -
+                          matrix_ptr->data[WORD_INDEX(0,3)] * matrix_ptr->data[WORD_INDEX(1,0)] * matrix_ptr->data[WORD_INDEX(3,2)] +
+                          matrix_ptr->data[WORD_INDEX(0,0)] * matrix_ptr->data[WORD_INDEX(1,3)] * matrix_ptr->data[WORD_INDEX(3,2)] +
+                          matrix_ptr->data[WORD_INDEX(0,2)] * matrix_ptr->data[WORD_INDEX(1,0)] * matrix_ptr->data[WORD_INDEX(3,3)] -
+                          matrix_ptr->data[WORD_INDEX(0,0)] * matrix_ptr->data[WORD_INDEX(1,2)] * matrix_ptr->data[WORD_INDEX(3,3)];
+    m[WORD_INDEX(1, 3)] = matrix_ptr->data[WORD_INDEX(0,2)] * matrix_ptr->data[WORD_INDEX(1,3)] * matrix_ptr->data[WORD_INDEX(2,0)] -
+                          matrix_ptr->data[WORD_INDEX(0,3)] * matrix_ptr->data[WORD_INDEX(1,2)] * matrix_ptr->data[WORD_INDEX(2,0)] +
+                          matrix_ptr->data[WORD_INDEX(0,3)] * matrix_ptr->data[WORD_INDEX(1,0)] * matrix_ptr->data[WORD_INDEX(2,2)] -
+                          matrix_ptr->data[WORD_INDEX(0,0)] * matrix_ptr->data[WORD_INDEX(1,3)] * matrix_ptr->data[WORD_INDEX(2,2)] -
+                          matrix_ptr->data[WORD_INDEX(0,2)] * matrix_ptr->data[WORD_INDEX(1,0)] * matrix_ptr->data[WORD_INDEX(2,3)] +
+                          matrix_ptr->data[WORD_INDEX(0,0)] * matrix_ptr->data[WORD_INDEX(1,2)] * matrix_ptr->data[WORD_INDEX(2,3)];
+    m[WORD_INDEX(2, 0)] = matrix_ptr->data[WORD_INDEX(1,1)] * matrix_ptr->data[WORD_INDEX(2,3)] * matrix_ptr->data[WORD_INDEX(3,0)] -
+                          matrix_ptr->data[WORD_INDEX(1,3)] * matrix_ptr->data[WORD_INDEX(2,1)] * matrix_ptr->data[WORD_INDEX(3,0)] +
+                          matrix_ptr->data[WORD_INDEX(1,3)] * matrix_ptr->data[WORD_INDEX(2,0)] * matrix_ptr->data[WORD_INDEX(3,1)] -
+                          matrix_ptr->data[WORD_INDEX(1,0)] * matrix_ptr->data[WORD_INDEX(2,3)] * matrix_ptr->data[WORD_INDEX(3,1)] -
+                          matrix_ptr->data[WORD_INDEX(1,1)] * matrix_ptr->data[WORD_INDEX(2,0)] * matrix_ptr->data[WORD_INDEX(3,3)] +
+                          matrix_ptr->data[WORD_INDEX(1,0)] * matrix_ptr->data[WORD_INDEX(2,1)] * matrix_ptr->data[WORD_INDEX(3,3)];
+    m[WORD_INDEX(2, 1)] = matrix_ptr->data[WORD_INDEX(0,3)] * matrix_ptr->data[WORD_INDEX(2,1)] * matrix_ptr->data[WORD_INDEX(3,0)] -
+                          matrix_ptr->data[WORD_INDEX(0,1)] * matrix_ptr->data[WORD_INDEX(2,3)] * matrix_ptr->data[WORD_INDEX(3,0)] -
+                          matrix_ptr->data[WORD_INDEX(0,3)] * matrix_ptr->data[WORD_INDEX(2,0)] * matrix_ptr->data[WORD_INDEX(3,1)] +
+                          matrix_ptr->data[WORD_INDEX(0,0)] * matrix_ptr->data[WORD_INDEX(2,3)] * matrix_ptr->data[WORD_INDEX(3,1)] +
+                          matrix_ptr->data[WORD_INDEX(0,1)] * matrix_ptr->data[WORD_INDEX(2,0)] * matrix_ptr->data[WORD_INDEX(3,3)] -
+                          matrix_ptr->data[WORD_INDEX(0,0)] * matrix_ptr->data[WORD_INDEX(2,1)] * matrix_ptr->data[WORD_INDEX(3,3)];
+    m[WORD_INDEX(2, 2)] = matrix_ptr->data[WORD_INDEX(0,1)] * matrix_ptr->data[WORD_INDEX(1,3)] * matrix_ptr->data[WORD_INDEX(3,0)] -
+                          matrix_ptr->data[WORD_INDEX(0,3)] * matrix_ptr->data[WORD_INDEX(1,1)] * matrix_ptr->data[WORD_INDEX(3,0)] +
+                          matrix_ptr->data[WORD_INDEX(0,3)] * matrix_ptr->data[WORD_INDEX(1,0)] * matrix_ptr->data[WORD_INDEX(3,1)] -
+                          matrix_ptr->data[WORD_INDEX(0,0)] * matrix_ptr->data[WORD_INDEX(1,3)] * matrix_ptr->data[WORD_INDEX(3,1)] -
+                          matrix_ptr->data[WORD_INDEX(0,1)] * matrix_ptr->data[WORD_INDEX(1,0)] * matrix_ptr->data[WORD_INDEX(3,3)] +
+                          matrix_ptr->data[WORD_INDEX(0,0)] * matrix_ptr->data[WORD_INDEX(1,1)] * matrix_ptr->data[WORD_INDEX(3,3)];
+    m[WORD_INDEX(2, 3)] = matrix_ptr->data[WORD_INDEX(0,3)] * matrix_ptr->data[WORD_INDEX(1,1)] * matrix_ptr->data[WORD_INDEX(2,0)] -
+                          matrix_ptr->data[WORD_INDEX(0,1)] * matrix_ptr->data[WORD_INDEX(1,3)] * matrix_ptr->data[WORD_INDEX(2,0)] -
+                          matrix_ptr->data[WORD_INDEX(0,3)] * matrix_ptr->data[WORD_INDEX(1,0)] * matrix_ptr->data[WORD_INDEX(2,1)] +
+                          matrix_ptr->data[WORD_INDEX(0,0)] * matrix_ptr->data[WORD_INDEX(1,3)] * matrix_ptr->data[WORD_INDEX(2,1)] +
+                          matrix_ptr->data[WORD_INDEX(0,1)] * matrix_ptr->data[WORD_INDEX(1,0)] * matrix_ptr->data[WORD_INDEX(2,3)] -
+                          matrix_ptr->data[WORD_INDEX(0,0)] * matrix_ptr->data[WORD_INDEX(1,1)] * matrix_ptr->data[WORD_INDEX(2,3)];
+    m[WORD_INDEX(3, 0)] = matrix_ptr->data[WORD_INDEX(1,2)] * matrix_ptr->data[WORD_INDEX(2,1)] * matrix_ptr->data[WORD_INDEX(3,0)] -
+                          matrix_ptr->data[WORD_INDEX(1,1)] * matrix_ptr->data[WORD_INDEX(2,2)] * matrix_ptr->data[WORD_INDEX(3,0)] -
+                          matrix_ptr->data[WORD_INDEX(1,2)] * matrix_ptr->data[WORD_INDEX(2,0)] * matrix_ptr->data[WORD_INDEX(3,1)] +
+                          matrix_ptr->data[WORD_INDEX(1,0)] * matrix_ptr->data[WORD_INDEX(2,2)] * matrix_ptr->data[WORD_INDEX(3,1)] +
+                          matrix_ptr->data[WORD_INDEX(1,1)] * matrix_ptr->data[WORD_INDEX(2,0)] * matrix_ptr->data[WORD_INDEX(3,2)] -
+                          matrix_ptr->data[WORD_INDEX(1,0)] * matrix_ptr->data[WORD_INDEX(2,1)] * matrix_ptr->data[WORD_INDEX(3,2)];
+    m[WORD_INDEX(3, 1)] = matrix_ptr->data[WORD_INDEX(0,1)] * matrix_ptr->data[WORD_INDEX(2,2)] * matrix_ptr->data[WORD_INDEX(3,0)] -
+                          matrix_ptr->data[WORD_INDEX(0,2)] * matrix_ptr->data[WORD_INDEX(2,1)] * matrix_ptr->data[WORD_INDEX(3,0)] +
+                          matrix_ptr->data[WORD_INDEX(0,2)] * matrix_ptr->data[WORD_INDEX(2,0)] * matrix_ptr->data[WORD_INDEX(3,1)] -
+                          matrix_ptr->data[WORD_INDEX(0,0)] * matrix_ptr->data[WORD_INDEX(2,2)] * matrix_ptr->data[WORD_INDEX(3,1)] -
+                          matrix_ptr->data[WORD_INDEX(0,1)] * matrix_ptr->data[WORD_INDEX(2,0)] * matrix_ptr->data[WORD_INDEX(3,2)] +
+                          matrix_ptr->data[WORD_INDEX(0,0)] * matrix_ptr->data[WORD_INDEX(2,1)] * matrix_ptr->data[WORD_INDEX(3,2)];
+    m[WORD_INDEX(3, 2)] = matrix_ptr->data[WORD_INDEX(0,2)] * matrix_ptr->data[WORD_INDEX(1,1)] * matrix_ptr->data[WORD_INDEX(3,0)] -
+                          matrix_ptr->data[WORD_INDEX(0,1)] * matrix_ptr->data[WORD_INDEX(1,2)] * matrix_ptr->data[WORD_INDEX(3,0)] -
+                          matrix_ptr->data[WORD_INDEX(0,2)] * matrix_ptr->data[WORD_INDEX(1,0)] * matrix_ptr->data[WORD_INDEX(3,1)] +
+                          matrix_ptr->data[WORD_INDEX(0,0)] * matrix_ptr->data[WORD_INDEX(1,2)] * matrix_ptr->data[WORD_INDEX(3,1)] +
+                          matrix_ptr->data[WORD_INDEX(0,1)] * matrix_ptr->data[WORD_INDEX(1,0)] * matrix_ptr->data[WORD_INDEX(3,2)] -
+                          matrix_ptr->data[WORD_INDEX(0,0)] * matrix_ptr->data[WORD_INDEX(1,1)] * matrix_ptr->data[WORD_INDEX(3,2)];
+    m[WORD_INDEX(3, 3)] = matrix_ptr->data[WORD_INDEX(0,1)] * matrix_ptr->data[WORD_INDEX(1,2)] * matrix_ptr->data[WORD_INDEX(2,0)] -
+                          matrix_ptr->data[WORD_INDEX(0,2)] * matrix_ptr->data[WORD_INDEX(1,1)] * matrix_ptr->data[WORD_INDEX(2,0)] +
+                          matrix_ptr->data[WORD_INDEX(0,2)] * matrix_ptr->data[WORD_INDEX(1,0)] * matrix_ptr->data[WORD_INDEX(2,1)] -
+                          matrix_ptr->data[WORD_INDEX(0,0)] * matrix_ptr->data[WORD_INDEX(1,2)] * matrix_ptr->data[WORD_INDEX(2,1)] -
+                          matrix_ptr->data[WORD_INDEX(0,1)] * matrix_ptr->data[WORD_INDEX(1,0)] * matrix_ptr->data[WORD_INDEX(2,2)] +
+                          matrix_ptr->data[WORD_INDEX(0,0)] * matrix_ptr->data[WORD_INDEX(1,1)] * matrix_ptr->data[WORD_INDEX(2,2)];
 
     const float invDet = 1.0f / det;
 
@@ -489,10 +489,10 @@ PUBLIC EMERALD_API bool system_matrix4x4_invert(system_matrix4x4 matrix)
              i < 16;
              i++)
     {
-        matrix_descriptor->data[i] = m[i] * invDet;
+        matrix_ptr->data[i] = m[i] * invDet;
     }
 
-    matrix_descriptor->is_data_dirty = true;
+    matrix_ptr->is_data_dirty = true;
     return true;
 }
 
@@ -501,7 +501,7 @@ PUBLIC EMERALD_API void system_matrix4x4_get_clipping_plane(system_matrix4x4    
                                                             system_matrix4x4_clipping_plane clipping_plane,
                                                             float*                          out_plane_coeffs)
 {
-    _system_matrix4x4_descriptor* mvp_ptr = (_system_matrix4x4_descriptor*) mvp;
+    _system_matrix4x4* mvp_ptr = (_system_matrix4x4*) mvp;
 
     if (mvp_ptr->is_data_dirty)
     {
@@ -612,9 +612,9 @@ PUBLIC EMERALD_API void system_matrix4x4_get_clipping_plane(system_matrix4x4    
 PUBLIC EMERALD_API bool system_matrix4x4_is_equal(const system_matrix4x4 a,
                                                   const system_matrix4x4 b)
 {
-    const _system_matrix4x4_descriptor* a_ptr  = (const _system_matrix4x4_descriptor*) a;
-    const _system_matrix4x4_descriptor* b_ptr  = (const _system_matrix4x4_descriptor*) b;
-    bool                                result = true;
+    const _system_matrix4x4* a_ptr  = (const _system_matrix4x4*) a;
+    const _system_matrix4x4* b_ptr  = (const _system_matrix4x4*) b;
+    bool                     result = true;
 
     for (int n = 0;
              n < 16;
@@ -718,9 +718,9 @@ PUBLIC EMERALD_API void system_matrix4x4_multiply_by_lookat(system_matrix4x4 mat
 PUBLIC EMERALD_API void system_matrix4x4_multiply_by_matrix4x4(system_matrix4x4 a,
                                                                system_matrix4x4 b)
 {
-    _system_matrix4x4_descriptor* a_ptr = (_system_matrix4x4_descriptor*) a;
-    _system_matrix4x4_descriptor* b_ptr = (_system_matrix4x4_descriptor*) b;
-    _system_matrix4x4_descriptor  temp;
+    _system_matrix4x4* a_ptr = (_system_matrix4x4*) a;
+    _system_matrix4x4* b_ptr = (_system_matrix4x4*) b;
+    _system_matrix4x4  temp;
 
     for (unsigned char column = 0;
                        column < 4;
@@ -749,27 +749,27 @@ PUBLIC EMERALD_API void system_matrix4x4_multiply_by_vector4(system_matrix4x4 ma
                                                              const float*     vector,
                                                              float*           result)
 {
-    _system_matrix4x4_descriptor* descriptor = (_system_matrix4x4_descriptor*) matrix;
+    _system_matrix4x4* matrix_ptr = (_system_matrix4x4*) matrix;
 
     ASSERT_DEBUG_SYNC(vector != result,
                       "In data cannot be equal to out data!");
 
-    result[0] = descriptor->data[WORD_INDEX(0, 0)] * vector[0] +
-                descriptor->data[WORD_INDEX(1, 0)] * vector[1] +
-                descriptor->data[WORD_INDEX(2, 0)] * vector[2] +
-                descriptor->data[WORD_INDEX(3, 0)] * vector[3];
-    result[1] = descriptor->data[WORD_INDEX(0, 1)] * vector[0] +
-                descriptor->data[WORD_INDEX(1, 1)] * vector[1] +
-                descriptor->data[WORD_INDEX(2, 1)] * vector[2] +
-                descriptor->data[WORD_INDEX(3, 1)] * vector[3];
-    result[2] = descriptor->data[WORD_INDEX(0, 2)] * vector[0] +
-                descriptor->data[WORD_INDEX(1, 2)] * vector[1] +
-                descriptor->data[WORD_INDEX(2, 2)] * vector[2] +
-                descriptor->data[WORD_INDEX(3, 2)] * vector[3];
-    result[3] = descriptor->data[WORD_INDEX(0, 3)] * vector[0] +
-                descriptor->data[WORD_INDEX(1, 3)] * vector[1] +
-                descriptor->data[WORD_INDEX(2, 3)] * vector[2] +
-                descriptor->data[WORD_INDEX(3, 3)] * vector[3];
+    result[0] = matrix_ptr->data[WORD_INDEX(0, 0)] * vector[0] +
+                matrix_ptr->data[WORD_INDEX(1, 0)] * vector[1] +
+                matrix_ptr->data[WORD_INDEX(2, 0)] * vector[2] +
+                matrix_ptr->data[WORD_INDEX(3, 0)] * vector[3];
+    result[1] = matrix_ptr->data[WORD_INDEX(0, 1)] * vector[0] +
+                matrix_ptr->data[WORD_INDEX(1, 1)] * vector[1] +
+                matrix_ptr->data[WORD_INDEX(2, 1)] * vector[2] +
+                matrix_ptr->data[WORD_INDEX(3, 1)] * vector[3];
+    result[2] = matrix_ptr->data[WORD_INDEX(0, 2)] * vector[0] +
+                matrix_ptr->data[WORD_INDEX(1, 2)] * vector[1] +
+                matrix_ptr->data[WORD_INDEX(2, 2)] * vector[2] +
+                matrix_ptr->data[WORD_INDEX(3, 2)] * vector[3];
+    result[3] = matrix_ptr->data[WORD_INDEX(0, 3)] * vector[0] +
+                matrix_ptr->data[WORD_INDEX(1, 3)] * vector[1] +
+                matrix_ptr->data[WORD_INDEX(2, 3)] * vector[2] +
+                matrix_ptr->data[WORD_INDEX(3, 3)] * vector[3];
 }
 
 /** Please see header for specification */
@@ -777,20 +777,20 @@ PUBLIC EMERALD_API void system_matrix4x4_multiply_by_vector3(system_matrix4x4 ma
                                                              const float*     vector,
                                                              float*           result)
 {
-    _system_matrix4x4_descriptor* descriptor = (_system_matrix4x4_descriptor*) matrix;
+    _system_matrix4x4* matrix_ptr = (_system_matrix4x4*) matrix;
 
     ASSERT_DEBUG_SYNC(vector != result,
                       "In data cannot be equal to out data!");
 
-    result[0] = descriptor->data[WORD_INDEX(0, 0)] * vector[0] +
-                descriptor->data[WORD_INDEX(1, 0)] * vector[1] +
-                descriptor->data[WORD_INDEX(2, 0)] * vector[2];
-    result[1] = descriptor->data[WORD_INDEX(0, 1)] * vector[0] +
-                descriptor->data[WORD_INDEX(1, 1)] * vector[1] +
-                descriptor->data[WORD_INDEX(2, 1)] * vector[2]; 
-    result[2] = descriptor->data[WORD_INDEX(0, 2)] * vector[0] +
-                descriptor->data[WORD_INDEX(1, 2)] * vector[1] +
-                descriptor->data[WORD_INDEX(2, 2)] * vector[2]; 
+    result[0] = matrix_ptr->data[WORD_INDEX(0, 0)] * vector[0] +
+                matrix_ptr->data[WORD_INDEX(1, 0)] * vector[1] +
+                matrix_ptr->data[WORD_INDEX(2, 0)] * vector[2];
+    result[1] = matrix_ptr->data[WORD_INDEX(0, 1)] * vector[0] +
+                matrix_ptr->data[WORD_INDEX(1, 1)] * vector[1] +
+                matrix_ptr->data[WORD_INDEX(2, 1)] * vector[2];
+    result[2] = matrix_ptr->data[WORD_INDEX(0, 2)] * vector[0] +
+                matrix_ptr->data[WORD_INDEX(1, 2)] * vector[1] +
+                matrix_ptr->data[WORD_INDEX(2, 2)] * vector[2];
 }
 
 /** Please see header for specification */
@@ -798,8 +798,8 @@ PUBLIC EMERALD_API void system_matrix4x4_rotate(system_matrix4x4 matrix,
                                                 float            angle,
                                                 const float*     xyz)
 {
-    system_matrix4x4              rotation_matrix            = system_matrix4x4_create();
-    _system_matrix4x4_descriptor* rotation_matrix_descriptor = (_system_matrix4x4_descriptor*) rotation_matrix;
+    system_matrix4x4   rotation_matrix     = system_matrix4x4_create();
+    _system_matrix4x4* rotation_matrix_ptr = (_system_matrix4x4*) rotation_matrix;
 
     float c   = cos(angle);
     float s   = sin(angle);
@@ -832,33 +832,33 @@ PUBLIC EMERALD_API void system_matrix4x4_rotate(system_matrix4x4 matrix,
     float zs        = z * s;
     float oneMinusC = 1 - c;
 
-    rotation_matrix_descriptor->data[WORD_INDEX(0, 0)] = x_2 * oneMinusC + c;
-    rotation_matrix_descriptor->data[WORD_INDEX(1, 0)] = xy  * oneMinusC - zs;
-    rotation_matrix_descriptor->data[WORD_INDEX(2, 0)] = xz  * oneMinusC + ys;
-    rotation_matrix_descriptor->data[WORD_INDEX(3, 0)] = 0;
-    rotation_matrix_descriptor->data[WORD_INDEX(0, 1)] = xy  * oneMinusC + zs;
-    rotation_matrix_descriptor->data[WORD_INDEX(1, 1)] = y_2 * oneMinusC + c;
-    rotation_matrix_descriptor->data[WORD_INDEX(2, 1)] = yz  * oneMinusC - xs;
-    rotation_matrix_descriptor->data[WORD_INDEX(3, 1)] = 0;
-    rotation_matrix_descriptor->data[WORD_INDEX(0, 2)] = xz  * oneMinusC - ys;
-    rotation_matrix_descriptor->data[WORD_INDEX(1, 2)] = yz  * oneMinusC + xs;
-    rotation_matrix_descriptor->data[WORD_INDEX(2, 2)] = z_2 * oneMinusC + c;
-    rotation_matrix_descriptor->data[WORD_INDEX(3, 2)] = 0;
-    rotation_matrix_descriptor->data[WORD_INDEX(0, 3)] = 0;
-    rotation_matrix_descriptor->data[WORD_INDEX(1, 3)] = 0;
-    rotation_matrix_descriptor->data[WORD_INDEX(2, 3)] = 0;
-    rotation_matrix_descriptor->data[WORD_INDEX(3, 3)] = 1;
+    rotation_matrix_ptr->data[WORD_INDEX(0, 0)] = x_2 * oneMinusC + c;
+    rotation_matrix_ptr->data[WORD_INDEX(1, 0)] = xy  * oneMinusC - zs;
+    rotation_matrix_ptr->data[WORD_INDEX(2, 0)] = xz  * oneMinusC + ys;
+    rotation_matrix_ptr->data[WORD_INDEX(3, 0)] = 0;
+    rotation_matrix_ptr->data[WORD_INDEX(0, 1)] = xy  * oneMinusC + zs;
+    rotation_matrix_ptr->data[WORD_INDEX(1, 1)] = y_2 * oneMinusC + c;
+    rotation_matrix_ptr->data[WORD_INDEX(2, 1)] = yz  * oneMinusC - xs;
+    rotation_matrix_ptr->data[WORD_INDEX(3, 1)] = 0;
+    rotation_matrix_ptr->data[WORD_INDEX(0, 2)] = xz  * oneMinusC - ys;
+    rotation_matrix_ptr->data[WORD_INDEX(1, 2)] = yz  * oneMinusC + xs;
+    rotation_matrix_ptr->data[WORD_INDEX(2, 2)] = z_2 * oneMinusC + c;
+    rotation_matrix_ptr->data[WORD_INDEX(3, 2)] = 0;
+    rotation_matrix_ptr->data[WORD_INDEX(0, 3)] = 0;
+    rotation_matrix_ptr->data[WORD_INDEX(1, 3)] = 0;
+    rotation_matrix_ptr->data[WORD_INDEX(2, 3)] = 0;
+    rotation_matrix_ptr->data[WORD_INDEX(3, 3)] = 1;
 
-    system_matrix4x4              result_matrix            = system_matrix4x4_create_by_mul(matrix,
-                                                                                            rotation_matrix);
-    _system_matrix4x4_descriptor* result_matrix_descriptor = (_system_matrix4x4_descriptor*) result_matrix;
-    _system_matrix4x4_descriptor* matrix_descriptor        = (_system_matrix4x4_descriptor*) matrix;
+    system_matrix4x4   result_matrix     = system_matrix4x4_create_by_mul(matrix,
+                                                                          rotation_matrix);
+    _system_matrix4x4* result_matrix_ptr = (_system_matrix4x4*) result_matrix;
+    _system_matrix4x4* matrix_ptr        = (_system_matrix4x4*) matrix;
 
-    memcpy(matrix_descriptor->data,
-           result_matrix_descriptor->data,
+    memcpy(matrix_ptr->data,
+           result_matrix_ptr->data,
            sizeof(float) * 16);
 
-    matrix_descriptor->is_data_dirty = true;
+    matrix_ptr->is_data_dirty = true;
 
     system_matrix4x4_release(result_matrix);
     system_matrix4x4_release(rotation_matrix);
@@ -868,25 +868,25 @@ PUBLIC EMERALD_API void system_matrix4x4_rotate(system_matrix4x4 matrix,
 PUBLIC EMERALD_API void system_matrix4x4_scale(system_matrix4x4 matrix,
                                                const float*     xyz)
 {
-    system_matrix4x4              scale_matrix            = system_matrix4x4_create();
-    _system_matrix4x4_descriptor* scale_matrix_descriptor = (_system_matrix4x4_descriptor*) scale_matrix;
+    system_matrix4x4   scale_matrix     = system_matrix4x4_create();
+    _system_matrix4x4* scale_matrix_ptr = (_system_matrix4x4*) scale_matrix;
 
     system_matrix4x4_set_to_identity(scale_matrix);
 
-    scale_matrix_descriptor->data[WORD_INDEX(0, 0)] = xyz[0];
-    scale_matrix_descriptor->data[WORD_INDEX(1, 1)] = xyz[1];
-    scale_matrix_descriptor->data[WORD_INDEX(2, 2)] = xyz[2];
+    scale_matrix_ptr->data[WORD_INDEX(0, 0)] = xyz[0];
+    scale_matrix_ptr->data[WORD_INDEX(1, 1)] = xyz[1];
+    scale_matrix_ptr->data[WORD_INDEX(2, 2)] = xyz[2];
 
-    system_matrix4x4              result_matrix            = system_matrix4x4_create_by_mul(matrix,
-                                                                                            scale_matrix);
-    _system_matrix4x4_descriptor* result_matrix_descriptor = (_system_matrix4x4_descriptor*) result_matrix;
-    _system_matrix4x4_descriptor* matrix_descriptor        = (_system_matrix4x4_descriptor*) matrix;
+    system_matrix4x4   result_matrix     = system_matrix4x4_create_by_mul(matrix,
+                                                                          scale_matrix);
+    _system_matrix4x4* result_matrix_ptr = (_system_matrix4x4*) result_matrix;
+    _system_matrix4x4* matrix_ptr        = (_system_matrix4x4*) matrix;
 
-    memcpy(matrix_descriptor->data,
-           result_matrix_descriptor->data,
+    memcpy(matrix_ptr->data,
+           result_matrix_ptr->data,
            sizeof(float) * 16);
 
-    matrix_descriptor->is_data_dirty = true;
+    matrix_ptr->is_data_dirty = true;
 
     system_matrix4x4_release(result_matrix);
     system_matrix4x4_release(scale_matrix);
@@ -896,7 +896,7 @@ PUBLIC EMERALD_API void system_matrix4x4_scale(system_matrix4x4 matrix,
 PUBLIC EMERALD_API void system_matrix4x4_set_to_float(system_matrix4x4 matrix,
                                                       float            value)
 {
-    _system_matrix4x4_descriptor* matrix_ptr = (_system_matrix4x4_descriptor*) matrix;
+    _system_matrix4x4* matrix_ptr = (_system_matrix4x4*) matrix;
 
     for (unsigned char n = 0;
                        n < 16;
@@ -913,30 +913,25 @@ PUBLIC EMERALD_API void system_matrix4x4_set_to_float(system_matrix4x4 matrix,
 /** Please see header for specification */
 PUBLIC EMERALD_API void system_matrix4x4_set_to_identity(system_matrix4x4 matrix)
 {
-    _system_matrix4x4_descriptor* matrix_descriptor = (_system_matrix4x4_descriptor*) matrix;
+    _system_matrix4x4* matrix_ptr = (_system_matrix4x4*) matrix;
 
     for (unsigned char n = 0;
                        n < 16;
                      ++n)
     {
-        if (n == 0  ||
-            n == 5  ||
-            n == 10 ||
-            n == 15)
-        {
-            matrix_descriptor->data[n] = 1.0f;
-        }
-        else
-        {
-            matrix_descriptor->data[n] = 0.0f;
-        }
+        matrix_ptr->data[n] = 0.0f;
     } /* for (all matrix items) */
 
-    memcpy(matrix_descriptor->column_major_data,
-           matrix_descriptor->data,
+    matrix_ptr->data[0]  = 1.0f;
+    matrix_ptr->data[5]  = 1.0f;
+    matrix_ptr->data[10] = 1.0f;
+    matrix_ptr->data[15] = 1.0f;
+
+    memcpy(matrix_ptr->column_major_data,
+           matrix_ptr->data,
            sizeof(float) * 16);
 
-    matrix_descriptor->is_data_dirty = false;
+    matrix_ptr->is_data_dirty = false;
 }
 
 /** Please see header for specification */
@@ -944,80 +939,80 @@ PUBLIC EMERALD_API void system_matrix4x4_set_element(system_matrix4x4 matrix,
                                                      unsigned char    location_data,
                                                      float            value)
 {
-    _system_matrix4x4_descriptor* matrix_descriptor = (_system_matrix4x4_descriptor*) matrix;
+    _system_matrix4x4* matrix_ptr = (_system_matrix4x4*) matrix;
 
     ASSERT_ALWAYS_SYNC(false,
                        "verify");
 
-    matrix_descriptor->data[WORD_INDEX(COL_FROM_ELEMENT_INDEX(location_data),
-                                       ROW_FROM_ELEMENT_INDEX(location_data) )] = value;
-    matrix_descriptor->is_data_dirty                                            = true;
+    matrix_ptr->data[WORD_INDEX(COL_FROM_ELEMENT_INDEX(location_data),
+                                ROW_FROM_ELEMENT_INDEX(location_data) )] = value;
+    matrix_ptr->is_data_dirty                                            = true;
 }
 
 /** Please see header for specification */
 PUBLIC EMERALD_API void system_matrix4x4_set_from_column_major_raw(system_matrix4x4 matrix,
                                                                    const float*     data)
 {
-    _system_matrix4x4_descriptor* matrix_descriptor = (_system_matrix4x4_descriptor*) matrix;
-    
-    matrix_descriptor->data[0] = data[0];  matrix_descriptor->data[4] = data[1];  matrix_descriptor->data[8]  = data[2];  matrix_descriptor->data[12] = data[3];
-    matrix_descriptor->data[1] = data[4];  matrix_descriptor->data[5] = data[5];  matrix_descriptor->data[9]  = data[6];  matrix_descriptor->data[13] = data[7];
-    matrix_descriptor->data[2] = data[8];  matrix_descriptor->data[6] = data[9];  matrix_descriptor->data[10] = data[10]; matrix_descriptor->data[14] = data[11];
-    matrix_descriptor->data[3] = data[12]; matrix_descriptor->data[7] = data[13]; matrix_descriptor->data[11] = data[14]; matrix_descriptor->data[15] = data[15];
+    _system_matrix4x4* matrix_ptr = (_system_matrix4x4*) matrix;
 
-    matrix_descriptor->is_data_dirty = true;
+    matrix_ptr->data[0] = data[0];  matrix_ptr->data[4] = data[1];  matrix_ptr->data[8]  = data[2];  matrix_ptr->data[12] = data[3];
+    matrix_ptr->data[1] = data[4];  matrix_ptr->data[5] = data[5];  matrix_ptr->data[9]  = data[6];  matrix_ptr->data[13] = data[7];
+    matrix_ptr->data[2] = data[8];  matrix_ptr->data[6] = data[9];  matrix_ptr->data[10] = data[10]; matrix_ptr->data[14] = data[11];
+    matrix_ptr->data[3] = data[12]; matrix_ptr->data[7] = data[13]; matrix_ptr->data[11] = data[14]; matrix_ptr->data[15] = data[15];
+
+    matrix_ptr->is_data_dirty = true;
 }
 
 /** Please see header for specification */
 PUBLIC EMERALD_API void system_matrix4x4_set_from_row_major_raw(system_matrix4x4 matrix,
                                                                 const float*     data)
 {
-    _system_matrix4x4_descriptor* matrix_descriptor = (_system_matrix4x4_descriptor*) matrix;
+    _system_matrix4x4* matrix_ptr = (_system_matrix4x4*) matrix;
 
-    memcpy(matrix_descriptor->data,
+    memcpy(matrix_ptr->data,
            data,
            sizeof(float) * 16);
 
-    matrix_descriptor->is_data_dirty = true;
+    matrix_ptr->is_data_dirty = true;
 }
 
 /** Please see header for specification */
 PUBLIC EMERALD_API void system_matrix4x4_set_from_matrix4x4(system_matrix4x4 dst_matrix,
                                                             system_matrix4x4 src_matrix)
 {
-    _system_matrix4x4_descriptor* dst_matrix_descriptor = (_system_matrix4x4_descriptor*) dst_matrix;
-    _system_matrix4x4_descriptor* src_matrix_descriptor = (_system_matrix4x4_descriptor*) src_matrix;
+    _system_matrix4x4* dst_matrix_ptr = (_system_matrix4x4*) dst_matrix;
+    _system_matrix4x4* src_matrix_ptr = (_system_matrix4x4*) src_matrix;
 
-    memcpy(dst_matrix_descriptor,
-           src_matrix_descriptor,
-           sizeof(_system_matrix4x4_descriptor) );
+    memcpy(dst_matrix_ptr,
+           src_matrix_ptr,
+           sizeof(_system_matrix4x4) );
 }
 
 /** Please see header for specification */
 PUBLIC EMERALD_API void system_matrix4x4_translate(system_matrix4x4 matrix,
                                                    const float*     xyz)
 {
-    system_matrix4x4              result_matrix                 = NULL;
-    system_matrix4x4              translation_matrix            = system_matrix4x4_create();
-    _system_matrix4x4_descriptor* matrix_descriptor             = (_system_matrix4x4_descriptor*) matrix;
-    _system_matrix4x4_descriptor* result_matrix_descriptor      = NULL;
-    _system_matrix4x4_descriptor* translation_matrix_descriptor = (_system_matrix4x4_descriptor*) translation_matrix;
+    system_matrix4x4   result_matrix          = NULL;
+    system_matrix4x4   translation_matrix     = system_matrix4x4_create();
+    _system_matrix4x4* matrix_ptr             = (_system_matrix4x4*) matrix;
+    _system_matrix4x4* result_matrix_ptr      = NULL;
+    _system_matrix4x4* translation_matrix_ptr = (_system_matrix4x4*) translation_matrix;
 
     system_matrix4x4_set_to_identity(translation_matrix);
-    
-    translation_matrix_descriptor->data[WORD_INDEX(3, 0)] = xyz[0];
-    translation_matrix_descriptor->data[WORD_INDEX(3, 1)] = xyz[1];
-    translation_matrix_descriptor->data[WORD_INDEX(3, 2)] = xyz[2];
 
-    result_matrix            = system_matrix4x4_create_by_mul(matrix,
-                                                              translation_matrix);
-    result_matrix_descriptor = (_system_matrix4x4_descriptor*) result_matrix;
+    translation_matrix_ptr->data[WORD_INDEX(3, 0)] = xyz[0];
+    translation_matrix_ptr->data[WORD_INDEX(3, 1)] = xyz[1];
+    translation_matrix_ptr->data[WORD_INDEX(3, 2)] = xyz[2];
 
-    memcpy(matrix_descriptor->data,
-           result_matrix_descriptor->data,
+    result_matrix     = system_matrix4x4_create_by_mul(matrix,
+                                                       translation_matrix);
+    result_matrix_ptr = (_system_matrix4x4*) result_matrix;
+
+    memcpy(matrix_ptr->data,
+           result_matrix_ptr->data,
            sizeof(float) * 16);
 
-    matrix_descriptor->is_data_dirty = true;
+    matrix_ptr->is_data_dirty = true;
 
     system_matrix4x4_release(result_matrix);
     system_matrix4x4_release(translation_matrix);
@@ -1026,8 +1021,8 @@ PUBLIC EMERALD_API void system_matrix4x4_translate(system_matrix4x4 matrix,
 /** Please see header for specification */
 PUBLIC EMERALD_API void system_matrix4x4_transpose(system_matrix4x4 matrix)
 {
-    _system_matrix4x4_descriptor* matrix_descriptor = (_system_matrix4x4_descriptor*) matrix;
-    float                         data[16];
+    _system_matrix4x4* matrix_ptr = (_system_matrix4x4*) matrix;
+    float              data[16];
 
     for (unsigned char x = 0;
                        x < 4;
@@ -1037,15 +1032,15 @@ PUBLIC EMERALD_API void system_matrix4x4_transpose(system_matrix4x4 matrix)
                            y < 4;
                          ++y)
         {
-            data[WORD_INDEX(y, x)] = matrix_descriptor->data[WORD_INDEX(x, y)];
+            data[WORD_INDEX(y, x)] = matrix_ptr->data[WORD_INDEX(x, y)];
         } /* for (all rows) */
     } /* for (all columns) */
 
-    memcpy(matrix_descriptor->data,
+    memcpy(matrix_ptr->data,
            data,
            sizeof(float) * 16);
 
-    matrix_descriptor->is_data_dirty = true;
+    matrix_ptr->is_data_dirty = true;
 }
 
 /** Please see header for specification */
@@ -1056,7 +1051,7 @@ PUBLIC void _system_matrix4x4_init()
 
     if (matrix_pool == NULL)
     {
-        matrix_pool = system_resource_pool_create(sizeof(_system_matrix4x4_descriptor),
+        matrix_pool = system_resource_pool_create(sizeof(_system_matrix4x4),
                                                   MATRIX4X4_BASE_CAPACITY,
                                                   NULL, /* init_fn   */
                                                   0);   /* deinit_fn */

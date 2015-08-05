@@ -42,11 +42,11 @@ typedef enum
     MESH_INDEX_TYPE_UNKNOWN
 } _mesh_index_type;
 
-typedef void (*PFNGETCUSTOMMESHAABBPROC)(void*                  user_arg,
-                                         float**                out_aabb_world_vec4_min,
-                                         float**                out_aabb_world_vec4_max);
+typedef void (*PFNGETCUSTOMMESHAABBPROC)(const void*            user_arg,
+                                         float*                 out_aabb_model_vec3_min,
+                                         float*                 out_aabb_model_vec3_max);
 typedef void (*PFNRENDERCUSTOMMESHPROC) (ogl_context            context,
-                                         void*                  user_arg,
+                                         const void*            user_arg,
                                          const system_matrix4x4 model_matrix,
                                          const system_matrix4x4 vp_matrix,
                                          const system_matrix4x4 normal_matrix,

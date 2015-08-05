@@ -69,7 +69,8 @@ PUBLIC EMERALD_API bool scene_add_material(scene          scene_instance,
 /** TODO */
 PUBLIC EMERALD_API bool scene_add_mesh_instance(scene                     scene,
                                                 mesh                      mesh_data,
-                                                system_hashed_ansi_string name);
+                                                system_hashed_ansi_string name,
+                                                scene_mesh*               out_opt_result_mesh_ptr = NULL);
 
 /** TODO */
 PUBLIC EMERALD_API bool scene_add_mesh_instance_defined(scene      scene,

@@ -467,6 +467,7 @@ PRIVATE void _ogl_scene_renderer_process_mesh_for_forward_rendering(scene_mesh s
     bool                    is_shadow_receiver            = false;
     mesh_material           material                      = NULL;
     mesh                    mesh_gpu                      = NULL;
+    mesh_type               mesh_instance_type;
     mesh                    mesh_instantiation_parent_gpu = NULL;
     uint32_t                mesh_id                       = -1;
     system_resizable_vector mesh_materials                = NULL;
@@ -479,25 +480,36 @@ PRIVATE void _ogl_scene_renderer_process_mesh_for_forward_rendering(scene_mesh s
                            &mesh_gpu);
 
     mesh_get_property(mesh_gpu,
-                      MESH_PROPERTY_INSTANTIATION_PARENT,
-                     &mesh_instantiation_parent_gpu);
+                      MESH_PROPERTY_TYPE,
+                     &mesh_instance_type);
 
-    if (mesh_instantiation_parent_gpu == NULL)
+    if (mesh_instance_type == MESH_TYPE_REGULAR)
+    {
+        mesh_get_property(mesh_gpu,
+                          MESH_PROPERTY_INSTANTIATION_PARENT,
+                         &mesh_instantiation_parent_gpu);
+
+        if (mesh_instantiation_parent_gpu == NULL)
+        {
+            mesh_instantiation_parent_gpu = mesh_gpu;
+        }
+
+        mesh_get_property(mesh_instantiation_parent_gpu,
+                          MESH_PROPERTY_MATERIALS,
+                         &mesh_materials);
+
+        scene_mesh_get_property(scene_mesh_instance,
+                                SCENE_MESH_PROPERTY_ID,
+                               &mesh_id);
+
+        system_resizable_vector_get_property(mesh_materials,
+                                             SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                            &n_mesh_materials);
+    }
+    else
     {
         mesh_instantiation_parent_gpu = mesh_gpu;
     }
-
-    mesh_get_property(mesh_instantiation_parent_gpu,
-                      MESH_PROPERTY_MATERIALS,
-                     &mesh_materials);
-
-    scene_mesh_get_property(scene_mesh_instance,
-                            SCENE_MESH_PROPERTY_ID,
-                           &mesh_id);
-
-    system_resizable_vector_get_property(mesh_materials,
-                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
-                                        &n_mesh_materials);
 
     /* Perform frustum culling to make sure it actually makes sense to render
      * this mesh.
@@ -522,98 +534,108 @@ PRIVATE void _ogl_scene_renderer_process_mesh_for_forward_rendering(scene_mesh s
                            &is_shadow_receiver);
 
     /* Cache the mesh for rendering */
-    for (unsigned int n_mesh_material = 0;
-                      n_mesh_material < n_mesh_materials;
-                    ++n_mesh_material)
+    if (mesh_instance_type == MESH_TYPE_REGULAR)
     {
-        _ogl_scene_renderer_uber* uber_ptr = NULL;
-
-        if (!system_resizable_vector_get_element_at(mesh_materials,
-                                                    n_mesh_material,
-                                                   &material) )
+        for (unsigned int n_mesh_material = 0;
+                          n_mesh_material < n_mesh_materials;
+                        ++n_mesh_material)
         {
-            ASSERT_DEBUG_SYNC(false,
-                              "Could not retrieve mesh material at index [%d]",
-                              n_mesh_material);
-        }
+            _ogl_scene_renderer_uber* uber_ptr = NULL;
 
-        /* Retrieve ogl_uber that can render the material for the currently processed
-         * scene configuration.
-         */
-        mesh_uber = mesh_material_get_ogl_uber(material,
-                                               renderer_ptr->owned_scene,
-                                               is_shadow_receiver);
+            if (!system_resizable_vector_get_element_at(mesh_materials,
+                                                        n_mesh_material,
+                                                       &material) )
+            {
+                ASSERT_DEBUG_SYNC(false,
+                                  "Could not retrieve mesh material at index [%d]",
+                                  n_mesh_material);
+            }
 
-        if (!system_hash64map_get(renderer_ptr->ubers_map,
-                                  (system_hash64) mesh_uber,
-                                 &uber_ptr) )
-        {
-            /* NOTE: This will only be called once, every time ogl_uber is used for the
-             *       first time for current scene renderer instance. This should be a
-             *       negligible cost, so let's leave this memory allocation here, in order
-             *       to avoid making code more complex.
-             *       We cannot resource pool this allocation, since the constructor instantiates
-             *       a resizable vector.
+            /* Retrieve ogl_uber that can render the material for the currently processed
+             * scene configuration.
              */
-            uber_ptr = new (std::nothrow) _ogl_scene_renderer_uber;
+            mesh_uber = mesh_material_get_ogl_uber(material,
+                                                   renderer_ptr->owned_scene,
+                                                   is_shadow_receiver);
 
-            ASSERT_ALWAYS_SYNC(uber_ptr != NULL,
+            if (!system_hash64map_get(renderer_ptr->ubers_map,
+                                      (system_hash64) mesh_uber,
+                                     &uber_ptr) )
+            {
+                /* NOTE: This will only be called once, every time ogl_uber is used for the
+                 *       first time for current scene renderer instance. This should be a
+                 *       negligible cost, so let's leave this memory allocation here, in order
+                 *       to avoid making code more complex.
+                 *       We cannot resource pool this allocation, since the constructor instantiates
+                 *       a resizable vector.
+                 */
+                uber_ptr = new (std::nothrow) _ogl_scene_renderer_uber;
+
+                ASSERT_ALWAYS_SYNC(uber_ptr != NULL,
+                                   "Out of memory");
+
+                uber_ptr->mesh_items = system_resizable_vector_create(64 /* capacity */);
+
+                system_hash64map_insert(renderer_ptr->ubers_map,
+                                        (system_hash64) mesh_uber,
+                                        uber_ptr,
+                                        NULL,  /* on_remove_callback */
+                                        NULL); /* on_remove_callback_argument */
+            }
+
+            /* This is a new user of the material. Store it in the vector */
+            _ogl_scene_renderer_mesh_uber_item* new_mesh_item_ptr = (_ogl_scene_renderer_mesh_uber_item*) system_resource_pool_get_from_pool(renderer_ptr->mesh_uber_items_pool);
+
+            ASSERT_ALWAYS_SYNC(new_mesh_item_ptr != NULL,
                                "Out of memory");
 
-            uber_ptr->mesh_items = system_resizable_vector_create(64 /* capacity */);
+            new_mesh_item_ptr->material      = material;
+            new_mesh_item_ptr->mesh_id       = mesh_id;
+            new_mesh_item_ptr->mesh_instance = mesh_gpu;
+            new_mesh_item_ptr->model_matrix  = system_matrix4x4_create();
+            new_mesh_item_ptr->normal_matrix = system_matrix4x4_create();
 
-            system_hash64map_insert(renderer_ptr->ubers_map,
-                                    (system_hash64) mesh_uber,
-                                    uber_ptr,
-                                    NULL,  /* on_remove_callback */
-                                    NULL); /* on_remove_callback_argument */
-        }
+            system_matrix4x4_set_from_matrix4x4(new_mesh_item_ptr->model_matrix,
+                                                renderer_ptr->current_model_matrix);
 
-        /* This is a new user of the material. Store it in the vector */
-        _ogl_scene_renderer_mesh_uber_item* new_mesh_item_ptr = (_ogl_scene_renderer_mesh_uber_item*) system_resource_pool_get_from_pool(renderer_ptr->mesh_uber_items_pool);
+            /* Form normal matrix.
+             *
+             * TODO: This could be cached. Also, normal matrix is equal to model matrix,
+             *       as long as no non-uniform scaling operator is applied. We could use
+             *       this to avoid the calculations below.
+             */
+            system_matrix4x4_set_from_matrix4x4(new_mesh_item_ptr->normal_matrix,
+                                                renderer_ptr->current_model_matrix);
+            system_matrix4x4_invert            (new_mesh_item_ptr->normal_matrix);
+            system_matrix4x4_transpose         (new_mesh_item_ptr->normal_matrix);
 
-        ASSERT_ALWAYS_SYNC(new_mesh_item_ptr != NULL,
-                           "Out of memory");
+            /* Store the data */
+            if (renderer_ptr->current_helper_visualization != 0)
+            {
+                _ogl_scene_renderer_mesh* new_entry_ptr = (_ogl_scene_renderer_mesh*) system_resource_pool_get_from_pool(renderer_ptr->mesh_pool);
 
-        new_mesh_item_ptr->material      = material;
-        new_mesh_item_ptr->mesh_id       = mesh_id;
-        new_mesh_item_ptr->mesh_instance = mesh_gpu;
-        new_mesh_item_ptr->model_matrix  = system_matrix4x4_create();
-        new_mesh_item_ptr->normal_matrix = system_matrix4x4_create();
+                new_entry_ptr->mesh_instance = new_mesh_item_ptr->mesh_instance;
+                new_entry_ptr->model_matrix  = new_mesh_item_ptr->model_matrix;
+                new_entry_ptr->normal_matrix = new_mesh_item_ptr->normal_matrix;
 
-        system_matrix4x4_set_from_matrix4x4(new_mesh_item_ptr->model_matrix,
-                                            renderer_ptr->current_model_matrix);
+                system_hash64map_insert(renderer_ptr->mesh_id_to_mesh_map,
+                                        mesh_id,
+                                        new_entry_ptr,
+                                        NULL,  /* on_remove_callback */
+                                        NULL); /* on_remove_callback_user_arg */
+            }
 
-        /* Form normal matrix.
-         *
-         * TODO: This could be cached. Also, normal matrix is equal to model matrix,
-         *       as long as no non-uniform scaling operator is applied. We could use
-         *       this to avoid the calculations below.
-         */
-        system_matrix4x4_set_from_matrix4x4(new_mesh_item_ptr->normal_matrix,
-                                            renderer_ptr->current_model_matrix);
-        system_matrix4x4_invert            (new_mesh_item_ptr->normal_matrix);
-        system_matrix4x4_transpose         (new_mesh_item_ptr->normal_matrix);
+            system_resizable_vector_push(uber_ptr->mesh_items,
+                                         new_mesh_item_ptr);
+        } /* for (all mesh materials) */
+    }
+    else
+    {
+        ASSERT_DEBUG_SYNC(mesh_instance_type == MESH_TYPE_CUSTOM,
+                          "Unrecognized mesh type.");
 
-        /* Store the data */
-        if (renderer_ptr->current_helper_visualization != 0)
-        {
-            _ogl_scene_renderer_mesh* new_entry_ptr = (_ogl_scene_renderer_mesh*) system_resource_pool_get_from_pool(renderer_ptr->mesh_pool);
-
-            new_entry_ptr->mesh_instance = new_mesh_item_ptr->mesh_instance;
-            new_entry_ptr->model_matrix  = new_mesh_item_ptr->model_matrix;
-            new_entry_ptr->normal_matrix = new_mesh_item_ptr->normal_matrix;
-
-            system_hash64map_insert(renderer_ptr->mesh_id_to_mesh_map,
-                                    mesh_id,
-                                    new_entry_ptr,
-                                    NULL,  /* on_remove_callback */
-                                    NULL); /* on_remove_callback_user_arg */
-        }
-
-        system_resizable_vector_push(uber_ptr->mesh_items,
-                                     new_mesh_item_ptr);
-    } /* for (all mesh materials) */
+        todo;
+    }
 
 end:
     ;
