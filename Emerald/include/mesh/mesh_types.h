@@ -65,6 +65,12 @@ typedef enum
      */
     MESH_PROPERTY_RENDER_CUSTOM_MESH_FUNC_PTR,
 
+    /* not settable, void*
+     *
+     * Property only valid for custom meshes.
+     */
+    MESH_PROPERTY_RENDER_CUSTOM_MESH_FUNC_USER_ARG,
+
     /* not settable, system_time    */
     MESH_PROPERTY_TIMESTAMP_MODIFICATION,
 

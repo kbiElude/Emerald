@@ -66,7 +66,12 @@ PUBLIC EMERALD_API bool scene_add_light(scene       scene_instance,
 /** TODO */
 PUBLIC EMERALD_API bool scene_add_material(scene          scene_instance,
                                            scene_material material);
-/** TODO */
+
+/** TODO.
+ *
+ *  NOTE: Object will be released at scene tear-down time. Make sure to retain the object if
+ *        you know you're going to need it after the time.
+ **/
 PUBLIC EMERALD_API bool scene_add_mesh_instance(scene                     scene,
                                                 mesh                      mesh_data,
                                                 system_hashed_ansi_string name,

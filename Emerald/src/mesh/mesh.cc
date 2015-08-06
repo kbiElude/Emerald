@@ -37,8 +37,10 @@ typedef struct
     mesh_type                 type;
 
     /* Custom mesh-specifics */
+    void*                    get_custom_mesh_aabb_proc_user_arg;
     PFNGETCUSTOMMESHAABBPROC pfn_get_custom_mesh_aabb_proc;
     PFNRENDERCUSTOMMESHPROC  pfn_render_custom_mesh_proc;
+    void*                    render_custom_mesh_proc_user_arg;
 
     /* GL storage. This BO is maintained by ogl_buffers, so DO NOT release it with glDeleteBuffers().
      *
@@ -917,6 +919,7 @@ PRIVATE void _mesh_init_mesh(_mesh*                    new_mesh_ptr,
     new_mesh_ptr->aabb_max[3]                           = 1;
     new_mesh_ptr->aabb_min[3]                           = 1;
     new_mesh_ptr->creation_flags                        = flags;
+    new_mesh_ptr->get_custom_mesh_aabb_proc_user_arg    = NULL;
     new_mesh_ptr->gl_bo_id                              = 0;
     new_mesh_ptr->gl_bo_start_offset                    = -1;
     new_mesh_ptr->gl_context                            = NULL;
@@ -935,6 +938,7 @@ PRIVATE void _mesh_init_mesh(_mesh*                    new_mesh_ptr,
     new_mesh_ptr->name                                  = name;
     new_mesh_ptr->pfn_get_custom_mesh_aabb_proc         = NULL;
     new_mesh_ptr->pfn_render_custom_mesh_proc           = NULL;
+    new_mesh_ptr->render_custom_mesh_proc_user_arg      = NULL;
     new_mesh_ptr->set_id_counter                        = 0;
     new_mesh_ptr->timestamp_last_modified               = system_time_now();
 
@@ -1233,39 +1237,42 @@ PRIVATE void _mesh_release(void* arg)
     _mesh* mesh_ptr = (_mesh*) arg;
 
     /* Sign out of material call-backs */
-    uint32_t n_materials = 0;
-
-    system_resizable_vector_get_property(mesh_ptr->materials,
-                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
-                                        &n_materials);
-
-    for (uint32_t n_material = 0;
-                  n_material < n_materials;
-                ++n_material)
+    if (mesh_ptr->materials != NULL)
     {
-        system_callback_manager callback_manager = NULL;
-        mesh_material           material         = NULL;
+        uint32_t n_materials = 0;
 
-        if (!system_resizable_vector_get_element_at(mesh_ptr->materials,
-                                                    n_material,
-                                                   &material) )
+        system_resizable_vector_get_property(mesh_ptr->materials,
+                                             SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                            &n_materials);
+
+        for (uint32_t n_material = 0;
+                      n_material < n_materials;
+                    ++n_material)
         {
-            ASSERT_DEBUG_SYNC(false,
-                              "Could not retrieve mesh material at index [%d]",
-                              n_material);
+            system_callback_manager callback_manager = NULL;
+            mesh_material           material         = NULL;
 
-            continue;
-        }
+            if (!system_resizable_vector_get_element_at(mesh_ptr->materials,
+                                                        n_material,
+                                                       &material) )
+            {
+                ASSERT_DEBUG_SYNC(false,
+                                  "Could not retrieve mesh material at index [%d]",
+                                  n_material);
 
-        mesh_material_get_property(material,
-                                   MESH_MATERIAL_PROPERTY_CALLBACK_MANAGER,
-                                  &callback_manager);
+                continue;
+            }
 
-        system_callback_manager_unsubscribe_from_callbacks(callback_manager,
-                                                           MESH_MATERIAL_CALLBACK_ID_VSA_CHANGED,
-                                                           _mesh_material_setting_changed,
-                                                           mesh_ptr);
-    } /* for (all mesh materials) */
+            mesh_material_get_property(material,
+                                       MESH_MATERIAL_PROPERTY_CALLBACK_MANAGER,
+                                      &callback_manager);
+
+            system_callback_manager_unsubscribe_from_callbacks(callback_manager,
+                                                               MESH_MATERIAL_CALLBACK_ID_VSA_CHANGED,
+                                                               _mesh_material_setting_changed,
+                                                               mesh_ptr);
+        } /* for (all mesh materials) */
+    } /* if (mesh_ptr->materials != NULL) */
 
     /* Carry on with the usual release process */
     if (mesh_ptr->layers != NULL)
@@ -1307,14 +1314,13 @@ PRIVATE void _mesh_release(void* arg)
     }
 
     /* Request rendering thread call-back */
-    ogl_context_request_callback_from_context_thread(mesh_ptr->gl_context,
-                                                     _mesh_release_renderer_callback,
-                                                     mesh_ptr);
-
     if (mesh_ptr->gl_context != NULL)
     {
-        ogl_context_release(mesh_ptr->gl_context);
+        ogl_context_request_callback_from_context_thread(mesh_ptr->gl_context,
+                                                         _mesh_release_renderer_callback,
+                                                         mesh_ptr);
 
+        ogl_context_release(mesh_ptr->gl_context);
         mesh_ptr->gl_context = NULL;
     }
 
@@ -1799,7 +1805,9 @@ PUBLIC EMERALD_API bool mesh_add_layer_pass_index_data(mesh                     
 
 /* Please see header for specification */
 PUBLIC EMERALD_API mesh mesh_create_custom_mesh(PFNRENDERCUSTOMMESHPROC   pfn_render_custom_mesh_proc,
+                                                void*                     render_custom_mesh_proc_user_arg,
                                                 PFNGETCUSTOMMESHAABBPROC  pfn_get_custom_mesh_aabb_proc,
+                                                void*                     get_custom_mesh_aabb_proc_user_arg,
                                                 system_hashed_ansi_string name)
 {
     _mesh* new_mesh_ptr = new (std::nothrow) _mesh;
@@ -1814,9 +1822,11 @@ PUBLIC EMERALD_API mesh mesh_create_custom_mesh(PFNRENDERCUSTOMMESHPROC   pfn_re
                         0); /* flags */
 
         /* Initialize fields specific to custom meshes */
-        new_mesh_ptr->pfn_get_custom_mesh_aabb_proc = pfn_get_custom_mesh_aabb_proc;
-        new_mesh_ptr->pfn_render_custom_mesh_proc   = pfn_render_custom_mesh_proc;
-        new_mesh_ptr->type                          = MESH_TYPE_CUSTOM;
+        new_mesh_ptr->get_custom_mesh_aabb_proc_user_arg = get_custom_mesh_aabb_proc_user_arg;
+        new_mesh_ptr->pfn_get_custom_mesh_aabb_proc      = pfn_get_custom_mesh_aabb_proc;
+        new_mesh_ptr->pfn_render_custom_mesh_proc        = pfn_render_custom_mesh_proc;
+        new_mesh_ptr->render_custom_mesh_proc_user_arg   = render_custom_mesh_proc_user_arg;
+        new_mesh_ptr->type                               = MESH_TYPE_CUSTOM;
 
         REFCOUNT_INSERT_INIT_CODE_WITH_RELEASE_HANDLER(new_mesh_ptr,
                                                        _mesh_release,
@@ -3407,16 +3417,33 @@ PUBLIC EMERALD_API bool mesh_get_property(mesh          instance,
     bool   b_result = true;
     _mesh* mesh_ptr = (_mesh*) instance;
 
-    ASSERT_DEBUG_SYNC(mesh_ptr->type == MESH_TYPE_CUSTOM  &&  (property == MESH_PROPERTY_RENDER_CUSTOM_MESH_FUNC_PTR ||
-                                                               property == MESH_PROPERTY_TYPE)                       ||
-                      mesh_ptr->type == MESH_TYPE_REGULAR && !(property == MESH_PROPERTY_RENDER_CUSTOM_MESH_FUNC_PTR ||
-                                                               property == MESH_PROPERTY_TYPE),
-                      "An invalid query was used for a mesh_get_property() call");
+    #ifdef _DEBUG
+    {
+        const bool is_custom_mesh_property = (property == MESH_PROPERTY_RENDER_CUSTOM_MESH_FUNC_PTR      ||
+                                              property == MESH_PROPERTY_RENDER_CUSTOM_MESH_FUNC_USER_ARG);
+        const bool is_shared_mesh_property = (property == MESH_PROPERTY_MODEL_AABB_MAX                   ||
+                                              property == MESH_PROPERTY_MODEL_AABB_MIN                   ||
+                                              property == MESH_PROPERTY_TYPE);
+
+        ASSERT_DEBUG_SYNC(mesh_ptr->type == MESH_TYPE_CUSTOM  && ( is_custom_mesh_property || is_shared_mesh_property) ||
+                          mesh_ptr->type == MESH_TYPE_REGULAR && (!is_custom_mesh_property || is_shared_mesh_property),
+                          "An invalid query was used for a mesh_get_property() call");
+    }
+    #endif /* _DEBUG */
 
     switch (property)
     {
         case MESH_PROPERTY_MODEL_AABB_MAX:
         {
+            if (mesh_ptr->type == MESH_TYPE_CUSTOM)
+            {
+                float temp_aabb_min[4];
+
+                mesh_ptr->pfn_get_custom_mesh_aabb_proc(mesh_ptr->get_custom_mesh_aabb_proc_user_arg,
+                                                        temp_aabb_min,
+                                                        mesh_ptr->aabb_max);
+            }
+
             *((float**) out_result_ptr) = mesh_ptr->aabb_max;
 
             break;
@@ -3424,6 +3451,15 @@ PUBLIC EMERALD_API bool mesh_get_property(mesh          instance,
 
         case MESH_PROPERTY_MODEL_AABB_MIN:
         {
+            if (mesh_ptr->type == MESH_TYPE_CUSTOM)
+            {
+                float temp_aabb_max[4];
+
+                mesh_ptr->pfn_get_custom_mesh_aabb_proc(mesh_ptr->get_custom_mesh_aabb_proc_user_arg,
+                                                        mesh_ptr->aabb_min,
+                                                        temp_aabb_max);
+            }
+
             *((float**) out_result_ptr) = mesh_ptr->aabb_min;
 
             break;
@@ -3651,6 +3687,13 @@ PUBLIC EMERALD_API bool mesh_get_property(mesh          instance,
         case MESH_PROPERTY_RENDER_CUSTOM_MESH_FUNC_PTR:
         {
             *((PFNRENDERCUSTOMMESHPROC*) out_result_ptr) = mesh_ptr->pfn_render_custom_mesh_proc;
+
+            break;
+        }
+
+        case MESH_PROPERTY_RENDER_CUSTOM_MESH_FUNC_USER_ARG:
+        {
+            *(void**) out_result_ptr = mesh_ptr->render_custom_mesh_proc_user_arg;
 
             break;
         }

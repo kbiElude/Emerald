@@ -98,7 +98,9 @@ PUBLIC EMERALD_API bool mesh_add_layer_pass_index_data(mesh                     
 
 /** TODO */
 PUBLIC EMERALD_API mesh mesh_create_custom_mesh(PFNRENDERCUSTOMMESHPROC   pfn_render_custom_mesh_proc,
+                                                void*                     render_custom_mesh_proc_user_arg,
                                                 PFNGETCUSTOMMESHAABBPROC  pfn_get_custom_mesh_aabb_proc,
+                                                void*                     get_custom_mesh_aabb_proc_user_arg,
                                                 system_hashed_ansi_string name);
 
 /** TODO */

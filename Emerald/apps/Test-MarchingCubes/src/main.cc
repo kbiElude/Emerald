@@ -26,26 +26,26 @@
 #include "system/system_screen_mode.h"
 #include "system/system_window.h"
 #include <algorithm>
+#include "main.h"
 
 #ifdef _WIN32
     #undef min
 #endif
 
-PRIVATE procedural_mesh_box _box                      = NULL;
-PRIVATE mesh                _box_custom_mesh          = NULL;
-PRIVATE scene_mesh          _box_custom_mesh_instance = NULL;
-PRIVATE ogl_context         _context                  = NULL;
-PRIVATE ogl_flyby           _context_flyby            = NULL;
-PRIVATE system_matrix4x4    _projection_matrix        = NULL;
-PRIVATE scene               _scene                    = NULL;
-PRIVATE scene_graph_node    _scene_box_node           = NULL;
-PRIVATE scene_camera        _scene_camera             = NULL;
-PRIVATE scene_graph_node    _scene_camera_node        = NULL;
-PRIVATE scene_graph         _scene_graph              = NULL; /* do not release */
-PRIVATE ogl_scene_renderer  _scene_renderer           = NULL;
-PRIVATE system_event        _window_closed_event      = system_event_create(true); /* manual_reset */
-PRIVATE int                 _window_size[2]           = {1280, 720};
-PRIVATE system_matrix4x4    _view_matrix              = NULL;
+PRIVATE procedural_mesh_box _box                 = NULL;
+PRIVATE mesh                _box_custom_mesh     = NULL;
+PRIVATE ogl_context         _context             = NULL;
+PRIVATE ogl_flyby           _context_flyby       = NULL;
+PRIVATE system_matrix4x4    _projection_matrix   = NULL;
+PRIVATE scene               _scene               = NULL;
+PRIVATE scene_graph_node    _scene_box_node      = NULL;
+PRIVATE scene_camera        _scene_camera        = NULL;
+PRIVATE scene_graph_node    _scene_camera_node   = NULL;
+PRIVATE scene_graph         _scene_graph         = NULL; /* do not release */
+PRIVATE ogl_scene_renderer  _scene_renderer      = NULL;
+PRIVATE system_event        _window_closed_event = system_event_create(true); /* manual_reset */
+PRIVATE int                 _window_size[2]      = {1280, 720};
+PRIVATE system_matrix4x4    _view_matrix         = NULL;
 
 
 /* Forward declarations */
@@ -90,6 +90,8 @@ PRIVATE void _get_bounding_box_aabb(const void* user_arg,
 /** TODO */
 PRIVATE void _init_scene()
 {
+    scene_mesh box_custom_scene_mesh = NULL;
+
     /* Set up the test mesh */
     _box = procedural_mesh_box_create(_context,
                                       DATA_BO_ELEMENTS,
@@ -98,7 +100,9 @@ PRIVATE void _init_scene()
                                       system_hashed_ansi_string_create("Bounding box") );
 
     _box_custom_mesh = mesh_create_custom_mesh(&_render_bounding_box,
+                                                NULL, /* render_custom_mesh_proc_user_arg */
                                                &_get_bounding_box_aabb,
+                                                NULL, /* get_custom_mesh_aabb_proc_user_arg */
                                                 system_hashed_ansi_string_create("Test box") );
 
     /* Set up the scene */
@@ -118,7 +122,7 @@ PRIVATE void _init_scene()
     scene_add_mesh_instance(_scene,
                             _box_custom_mesh,
                             box_has,
-                           &_box_custom_mesh_instance);
+                           &box_custom_scene_mesh);
 
     /* Set up the scene graph */
     system_matrix4x4 identity_matrix = system_matrix4x4_create(); /* TEMP */
@@ -136,11 +140,11 @@ PRIVATE void _init_scene()
     scene_graph_attach_object_to_node(_scene_graph,
                                       _scene_box_node,
                                       SCENE_OBJECT_TYPE_MESH,
-                                     &_box_custom_mesh_instance);
+                                      box_custom_scene_mesh);
     scene_graph_attach_object_to_node(_scene_graph,
                                       _scene_camera_node,
                                       SCENE_OBJECT_TYPE_CAMERA,
-                                     &_scene_camera);
+                                      _scene_camera);
 
     scene_graph_add_node(_scene_graph,
                          scene_graph_get_root_node(_scene_graph),
@@ -261,13 +265,6 @@ PRIVATE void _window_closing_callback_handler(system_window window)
         mesh_release(_box_custom_mesh);
 
         _box_custom_mesh = NULL;
-    }
-
-    if (_box_custom_mesh_instance != NULL)
-    {
-        scene_mesh_release(_box_custom_mesh_instance);
-
-        _box_custom_mesh_instance = NULL;
     }
 
     if (_projection_matrix != NULL)
@@ -406,6 +403,8 @@ PRIVATE void _window_closing_callback_handler(system_window window)
      */
     system_window_close (window);
     system_event_release(_window_closed_event);
+
+    main_force_deinit();
 
     return 0;
 }

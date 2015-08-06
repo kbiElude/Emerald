@@ -88,6 +88,19 @@ PUBLIC EMERALD_API system_matrix4x4 system_matrix4x4_create()
 }
 
 /** Please see header for specification */
+PUBLIC EMERALD_API system_matrix4x4 system_matrix4x4_create_copy(system_matrix4x4 src_matrix)
+{
+    _system_matrix4x4* new_matrix_ptr = (_system_matrix4x4*) system_resource_pool_get_from_pool(matrix_pool);
+    _system_matrix4x4* src_matrix_ptr = (_system_matrix4x4*) src_matrix;
+
+    memcpy(new_matrix_ptr,
+           src_matrix_ptr,
+           sizeof(*new_matrix_ptr) );
+
+    return (system_matrix4x4) new_matrix_ptr;
+}
+
+/** Please see header for specification */
 PUBLIC EMERALD_API system_matrix4x4 system_matrix4x4_create_lookat_matrix(const float* camera_location,
                                                                           const float* look_at_point,
                                                                           const float* base_up_vector)
