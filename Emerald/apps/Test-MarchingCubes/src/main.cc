@@ -21,6 +21,7 @@
 #include "system/system_assertions.h"
 #include "system/system_event.h"
 #include "system/system_hashed_ansi_string.h"
+#include "system/system_log.h"
 #include "system/system_matrix4x4.h"
 #include "system/system_pixel_format.h"
 #include "system/system_screen_mode.h"
@@ -161,8 +162,8 @@ PRIVATE void _init_scene()
     /* Set up the test mesh data provider */
     _box = procedural_mesh_box_create(_context,
                                       DATA_BO_ARRAYS,
-                                      1, /* n_horizontal_patches */
-                                      1, /* n_vertical_patches */
+                                      0, /* n_horizontal_patches */
+                                      0, /* n_vertical_patches */
                                       system_hashed_ansi_string_create("Bounding box") );
 
     procedural_mesh_box_get_property(_box,
@@ -268,6 +269,7 @@ PRIVATE void _render_bounding_box(ogl_context             context,
 {
     const ogl_context_gl_entrypoints* entrypoints_ptr = NULL;
 
+#if 0
     /* Set up the unifrom block contents */
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
@@ -300,6 +302,7 @@ PRIVATE void _render_bounding_box(ogl_context             context,
 
     entrypoints_ptr->pGLPolygonMode    (GL_FRONT_AND_BACK,
                                         GL_FILL);
+#endif
 }
 
 /** TODO */
@@ -365,7 +368,8 @@ PRIVATE void _rendering_handler(ogl_context context,
                                           _scene_camera,
                                           RENDER_MODE_FORWARD_WITHOUT_DEPTH_PREPASS,
                                           false, /* apply_shadow_mapping */
-                                          (_ogl_scene_renderer_helper_visualization) 0,
+                                          //(_ogl_scene_renderer_helper_visualization) 0,
+                                          HELPER_VISUALIZATION_BOUNDING_BOXES,
                                           frame_time);
 }
 

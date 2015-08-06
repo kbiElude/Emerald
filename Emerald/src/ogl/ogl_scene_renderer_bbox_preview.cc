@@ -325,6 +325,7 @@ PRIVATE void _ogl_context_scene_renderer_bbox_preview_init_ub_data(_ogl_scene_re
             scene_mesh mesh_instance             = scene_get_mesh_instance_by_index(preview_ptr->owned_scene,
                                                                                     n_mesh);
             mesh       mesh_current              = NULL;
+            mesh_type  mesh_instance_type;
             mesh       mesh_instantiation_parent = NULL;
 
             scene_mesh_get_property(mesh_instance,
@@ -335,12 +336,23 @@ PRIVATE void _ogl_context_scene_renderer_bbox_preview_init_ub_data(_ogl_scene_re
                                    &mesh_current);
 
             mesh_get_property(mesh_current,
-                              MESH_PROPERTY_INSTANTIATION_PARENT,
-                             &mesh_instantiation_parent);
+                              MESH_PROPERTY_TYPE,
+                             &mesh_instance_type);
 
-            if (mesh_instantiation_parent != NULL)
+            if (mesh_instance_type == MESH_TYPE_REGULAR)
             {
-                mesh_current = mesh_instantiation_parent;
+                mesh_get_property(mesh_current,
+                                  MESH_PROPERTY_INSTANTIATION_PARENT,
+                                 &mesh_instantiation_parent);
+
+                if (mesh_instantiation_parent != NULL)
+                {
+                    mesh_current = mesh_instantiation_parent;
+                }
+            }
+            else
+            {
+                mesh_instantiation_parent = mesh_current;
             }
 
             mesh_get_property(mesh_current,

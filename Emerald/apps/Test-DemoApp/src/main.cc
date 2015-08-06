@@ -170,7 +170,7 @@ PUBLIC void _render_scene(ogl_context context,
                                           current_camera,
                                           RENDER_MODE_FORWARD_WITHOUT_DEPTH_PREPASS,
                                           true,  /* apply_shadow_mapping */
-                                          HELPER_VISUALIZATION_NONE,
+                                          HELPER_VISUALIZATION_BOUNDING_BOXES,
                                           frame_time
                                          );
 

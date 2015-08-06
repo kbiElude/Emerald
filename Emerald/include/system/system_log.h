@@ -15,7 +15,7 @@
 #ifdef EMERALD_EXPORTS
     extern system_critical_section log_file_handle_cs;
 #else
-    static system_critical_section log_file_handle_cs = NULL;
+    static system_critical_section log_file_handle_cs = system_critical_section_create();
 #endif
 
 #define _LOG(level,file,line,text,...)                       \

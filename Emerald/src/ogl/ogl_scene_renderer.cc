@@ -41,6 +41,7 @@ typedef struct _ogl_scene_renderer_mesh
      *
      *  In future, for GPU code-paths, this should be replaced with a persistent buffer storage.
      */
+    uint32_t         mesh_id;
     mesh             mesh_instance;
     mesh_type        mesh_type;
     system_matrix4x4 model_matrix;
@@ -194,7 +195,6 @@ PRIVATE void _ogl_scene_renderer_process_mesh_for_shadow_map_pre_pass     (scene
 PRIVATE void _ogl_scene_renderer_render_helper_visualization              (_ogl_scene_renderer*            renderer_ptr,
                                                                            system_time                     frame_time);
 PRIVATE void _ogl_scene_renderer_render_mesh_helper_visualization         (_ogl_scene_renderer*            renderer_ptr,
-                                                                           unsigned int                    n_iteration_items,
                                                                            _ogl_scene_renderer_uber*       uber_details_ptr);
 PRIVATE void _ogl_scene_renderer_return_shadow_maps_to_pool               (ogl_scene_renderer              renderer);
 PRIVATE void _ogl_scene_renderer_update_frustum_preview_assigned_cameras  (struct _ogl_scene_renderer*     renderer_ptr);
@@ -538,9 +538,12 @@ PRIVATE void _ogl_scene_renderer_process_mesh_for_forward_rendering(scene_mesh s
                             SCENE_MESH_PROPERTY_MESH,
                            &mesh_gpu);
 
-    mesh_get_property(mesh_gpu,
-                      MESH_PROPERTY_TYPE,
-                     &mesh_instance_type);
+    mesh_get_property      (mesh_gpu,
+                            MESH_PROPERTY_TYPE,
+                           &mesh_instance_type);
+    scene_mesh_get_property(scene_mesh_instance,
+                            SCENE_MESH_PROPERTY_ID,
+                           &mesh_id);
 
     if (mesh_instance_type == MESH_TYPE_REGULAR)
     {
@@ -556,10 +559,6 @@ PRIVATE void _ogl_scene_renderer_process_mesh_for_forward_rendering(scene_mesh s
         mesh_get_property(mesh_instantiation_parent_gpu,
                           MESH_PROPERTY_MATERIALS,
                          &mesh_materials);
-
-        scene_mesh_get_property(scene_mesh_instance,
-                                SCENE_MESH_PROPERTY_ID,
-                               &mesh_id);
 
         system_resizable_vector_get_property(mesh_materials,
                                              SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
@@ -657,25 +656,9 @@ PRIVATE void _ogl_scene_renderer_process_mesh_for_forward_rendering(scene_mesh s
                                                             &new_mesh_item_ptr->model_matrix,
                                                             &new_mesh_item_ptr->normal_matrix);
 
+            /* Store the data */
             system_resizable_vector_push(uber_ptr->regular_mesh_items,
                                          new_mesh_item_ptr);
-
-            /* Store the data */
-            if (renderer_ptr->current_helper_visualization != 0)
-            {
-                _ogl_scene_renderer_mesh* new_entry_ptr = (_ogl_scene_renderer_mesh*) system_resource_pool_get_from_pool(renderer_ptr->mesh_pool);
-
-                new_entry_ptr->mesh_instance = new_mesh_item_ptr->mesh_instance;
-                new_entry_ptr->mesh_type     = MESH_TYPE_REGULAR;
-                new_entry_ptr->model_matrix  = system_matrix4x4_create_copy(new_mesh_item_ptr->model_matrix);
-                new_entry_ptr->normal_matrix = system_matrix4x4_create_copy(new_mesh_item_ptr->normal_matrix);
-
-                system_hash64map_insert(renderer_ptr->mesh_id_to_regular_mesh_map,
-                                        mesh_id,
-                                        new_entry_ptr,
-                                        NULL,  /* on_remove_callback */
-                                        NULL); /* on_remove_callback_user_arg */
-            }
         } /* for (all mesh materials) */
     }
     else
@@ -695,6 +678,7 @@ PRIVATE void _ogl_scene_renderer_process_mesh_for_forward_rendering(scene_mesh s
                           MESH_PROPERTY_RENDER_CUSTOM_MESH_FUNC_USER_ARG,
                          &new_entry_ptr->custom_mesh_render_proc_user_arg);
 
+        new_entry_ptr->mesh_id                          = mesh_id;
         new_entry_ptr->mesh_instance                    = mesh_gpu;
         new_entry_ptr->mesh_type                        = MESH_TYPE_CUSTOM;
         new_entry_ptr->custom_mesh_render_proc_user_arg = custom_mesh_render_proc_user_arg;
@@ -705,6 +689,25 @@ PRIVATE void _ogl_scene_renderer_process_mesh_for_forward_rendering(scene_mesh s
 
         system_resizable_vector_push(renderer_ptr->current_custom_meshes_to_render,
                                      new_entry_ptr);
+    }
+
+    if (renderer_ptr->current_helper_visualization != 0)
+    {
+        _ogl_scene_renderer_mesh* new_entry_ptr = (_ogl_scene_renderer_mesh*) system_resource_pool_get_from_pool(renderer_ptr->mesh_pool);
+
+        new_entry_ptr->mesh_id       = mesh_id;
+        new_entry_ptr->mesh_instance = mesh_gpu;
+        new_entry_ptr->mesh_type     = mesh_instance_type;
+
+        _ogl_scene_renderer_create_model_normal_matrices(renderer_ptr,
+                                                        &new_entry_ptr->model_matrix,
+                                                        &new_entry_ptr->normal_matrix);
+
+        system_hash64map_insert(renderer_ptr->mesh_id_to_regular_mesh_map,
+                                mesh_id,
+                                new_entry_ptr,
+                                NULL,  /* on_remove_callback */
+                                NULL); /* on_remove_callback_user_arg */
     }
 
 end:
@@ -828,11 +831,31 @@ PRIVATE void _ogl_scene_renderer_render_helper_visualizations(_ogl_scene_rendere
     }
 }
 
-/** TODO */
+/** TODO.
+ *
+ *  @param renderer_ptr     TODO
+ *  @param uber_details_ptr TODO. May be NULL, in which case the helper visualizations will be rendered
+ *                          for custom meshes.
+ **/
 PRIVATE void _ogl_scene_renderer_render_mesh_helper_visualizations(_ogl_scene_renderer*      renderer_ptr,
-                                                                   unsigned int              n_iteration_items,
                                                                    _ogl_scene_renderer_uber* uber_details_ptr)
 {
+    unsigned int n_custom_meshes = 0;
+    unsigned int n_uber_items    = 0;
+
+    if (uber_details_ptr != NULL)
+    {
+        system_resizable_vector_get_property(uber_details_ptr->regular_mesh_items,
+                                             SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                            &n_uber_items);
+    }
+    else
+    {
+        system_resizable_vector_get_property(renderer_ptr->current_custom_meshes_to_render,
+                                             SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                            &n_custom_meshes);
+    }
+
     if (renderer_ptr->current_helper_visualization & HELPER_VISUALIZATION_BOUNDING_BOXES)
     {
         if (renderer_ptr->bbox_preview == NULL)
@@ -845,24 +868,45 @@ PRIVATE void _ogl_scene_renderer_render_mesh_helper_visualizations(_ogl_scene_re
         ogl_scene_renderer_bbox_preview_start(renderer_ptr->bbox_preview,
                                               renderer_ptr->current_vp);
         {
-            _ogl_scene_renderer_mesh_uber_item* mesh_uber_item_ptr = NULL;
-
-            for (uint32_t n_vector_item = 0;
-                          n_vector_item < n_iteration_items;
-                        ++n_vector_item)
+            if (uber_details_ptr != NULL)
             {
-                system_resizable_vector_get_element_at(uber_details_ptr->regular_mesh_items,
-                                                       n_vector_item,
-                                                      &mesh_uber_item_ptr);
+                _ogl_scene_renderer_mesh_uber_item* mesh_uber_item_ptr = NULL;
 
-                ogl_scene_renderer_bbox_preview_render(renderer_ptr->bbox_preview,
-                                                       mesh_uber_item_ptr->mesh_id);
+                for (uint32_t n_vector_item = 0;
+                              n_vector_item < n_uber_items;
+                            ++n_vector_item)
+                {
+                    system_resizable_vector_get_element_at(uber_details_ptr->regular_mesh_items,
+                                                           n_vector_item,
+                                                          &mesh_uber_item_ptr);
+
+                    ogl_scene_renderer_bbox_preview_render(renderer_ptr->bbox_preview,
+                                                           mesh_uber_item_ptr->mesh_id);
+                }
+            } /* if (uber_details_ptr != NULL) */
+            else
+            {
+                _ogl_scene_renderer_mesh* mesh_ptr = NULL;
+
+                for (unsigned int n_custom_mesh = 0;
+                                  n_custom_mesh < n_custom_meshes;
+                                ++n_custom_mesh)
+                {
+                    system_resizable_vector_get_element_at(renderer_ptr->current_custom_meshes_to_render,
+                                                           n_custom_mesh,
+                                                          &mesh_ptr);
+
+                    ogl_scene_renderer_bbox_preview_render(renderer_ptr->bbox_preview,
+                                                           mesh_ptr->mesh_id);
+                } /* for (all custom meshes) */
             }
         }
         ogl_scene_renderer_bbox_preview_stop(renderer_ptr->bbox_preview);
     } /* if (helper_visualization & HELPER_VISUALIZATION_BOUNDING_BOXES && n_iteration_items > 0) */
 
-    if (renderer_ptr->current_helper_visualization & HELPER_VISUALIZATION_NORMALS)
+    /* Normals visualization is only supported for regular meshes */
+    if (renderer_ptr->current_helper_visualization & HELPER_VISUALIZATION_NORMALS &&
+        uber_details_ptr != NULL)
     {
         if (renderer_ptr->normals_preview == NULL)
         {
@@ -877,7 +921,7 @@ PRIVATE void _ogl_scene_renderer_render_mesh_helper_visualizations(_ogl_scene_re
             _ogl_scene_renderer_mesh_uber_item* mesh_uber_item_ptr = NULL;
 
             for (uint32_t n_vector_item = 0;
-                          n_vector_item < n_iteration_items;
+                          n_vector_item < n_uber_items;
                         ++n_vector_item)
             {
                 system_resizable_vector_get_element_at(uber_details_ptr->regular_mesh_items,
@@ -1125,7 +1169,6 @@ PRIVATE void _ogl_scene_renderer_render_traversed_scene_graph(_ogl_scene_rendere
                     uber_details_ptr  != NULL)
                 {
                     _ogl_scene_renderer_render_mesh_helper_visualizations(renderer_ptr,
-                                                                          n_iteration_items,
                                                                           uber_details_ptr);
                 }
             }
@@ -1160,6 +1203,12 @@ PRIVATE void _ogl_scene_renderer_render_traversed_scene_graph(_ogl_scene_rendere
     system_resizable_vector_get_property(renderer_ptr->current_custom_meshes_to_render,
                                          SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
                                         &n_custom_meshes_to_render);
+
+    if (n_custom_meshes_to_render > 0)
+    {
+        _ogl_scene_renderer_render_mesh_helper_visualizations(renderer_ptr,
+                                                              NULL); /* uber_details_ptr */
+    }
 
     for (uint32_t n_pass = 0;
                   n_pass < n_passes;
