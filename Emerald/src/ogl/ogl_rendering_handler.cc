@@ -295,33 +295,37 @@ PRIVATE void _ogl_rendering_handler_thread_entrypoint(void* in_arg)
         system_event_wait_single(rendering_handler->context_set_event);
 
         /* Cache some variables.. */
-        ogl_context_type          context_type             = OGL_CONTEXT_TYPE_UNDEFINED;
-        system_window             context_window           = NULL;
-        unsigned char             context_window_n_samples = 0;
-        system_hashed_ansi_string context_window_name      = NULL;
-        system_pixel_format       context_window_pf        = NULL;
-        GLuint                    default_fbo_id           = -1;
-        bool                      default_fbo_id_set       = false;
-        bool                      is_multisample_pf        = false;
-        bool                      is_root_window           = false;
-        PFNGLBINDFRAMEBUFFERPROC  pGLBindFramebuffer       = NULL;
-        PFNGLBLITFRAMEBUFFERPROC  pGLBlitFramebuffer       = NULL;
-        PFNGLCLEARPROC            pGLClear                 = NULL;
-        PFNGLCLEARCOLORPROC       pGLClearColor            = NULL;
-        PFNGLDISABLEPROC          pGLDisable               = NULL;
-        PFNGLENABLEPROC           pGLEnable                = NULL;
-        PFNGLFINISHPROC           pGLFinish                = NULL;
-        PFNGLSCISSORPROC          pGLScissor               = NULL;
-        PFNGLVIEWPORTPROC         pGLViewport              = NULL;
-        bool                      should_live              = true;
-        const system_event        wait_events[]            =
+        ogl_context_type          context_type                       = OGL_CONTEXT_TYPE_UNDEFINED;
+        system_window             context_window                     = NULL;
+        unsigned char             context_window_n_depth_bits        = 0;
+        unsigned char             context_window_n_stencil_bits      = 0;
+        unsigned char             context_window_n_samples           = 0;
+        system_hashed_ansi_string context_window_name                = NULL;
+        system_pixel_format       context_window_pf                  = NULL;
+        bool                      default_fbo_has_depth_attachment   = false;
+        bool                      default_fbo_has_stencil_attachment = false;
+        GLuint                    default_fbo_id                     = -1;
+        bool                      default_fbo_id_set                 = false;
+        bool                      is_multisample_pf                  = false;
+        bool                      is_root_window                     = false;
+        PFNGLBINDFRAMEBUFFERPROC  pGLBindFramebuffer                 = NULL;
+        PFNGLBLITFRAMEBUFFERPROC  pGLBlitFramebuffer                 = NULL;
+        PFNGLCLEARPROC            pGLClear                           = NULL;
+        PFNGLCLEARCOLORPROC       pGLClearColor                      = NULL;
+        PFNGLDISABLEPROC          pGLDisable                         = NULL;
+        PFNGLENABLEPROC           pGLEnable                          = NULL;
+        PFNGLFINISHPROC           pGLFinish                          = NULL;
+        PFNGLSCISSORPROC          pGLScissor                         = NULL;
+        PFNGLVIEWPORTPROC         pGLViewport                        = NULL;
+        bool                      should_live                        = true;
+        const system_event        wait_events[]                      =
         {
             rendering_handler->shutdown_request_event,
             rendering_handler->callback_request_event,
             rendering_handler->unbind_context_request_event,
             rendering_handler->playback_in_progress_event
         };
-        GLint                     window_size[2]           = {0};
+        GLint                     window_size[2]                    = {0};
 
         ogl_context_get_property  (rendering_handler->context,
                                    OGL_CONTEXT_PROPERTY_TYPE,
@@ -345,8 +349,16 @@ PRIVATE void _ogl_rendering_handler_thread_entrypoint(void* in_arg)
         system_pixel_format_get_property(context_window_pf,
                                          SYSTEM_PIXEL_FORMAT_PROPERTY_N_SAMPLES,
                                         &context_window_n_samples);
+        system_pixel_format_get_property(context_window_pf,
+                                         SYSTEM_PIXEL_FORMAT_PROPERTY_DEPTH_BITS,
+                                        &context_window_n_depth_bits);
+        system_pixel_format_get_property(context_window_pf,
+                                         SYSTEM_PIXEL_FORMAT_PROPERTY_STENCIL_BITS,
+                                        &context_window_n_stencil_bits);
 
-        is_multisample_pf = (context_window_n_samples > 1);
+        default_fbo_has_depth_attachment   = (context_window_n_depth_bits   > 0);
+        default_fbo_has_stencil_attachment = (context_window_n_stencil_bits > 0);
+        is_multisample_pf                  = (context_window_n_samples      > 1);
 
         ASSERT_DEBUG_SYNC(window_size[0] != 0 &&
                           window_size[1] != 0,
@@ -652,9 +664,9 @@ PRIVATE void _ogl_rendering_handler_thread_entrypoint(void* in_arg)
                                           0.0f,
                                           0.0f,
                                           1.0f);
-                            pGLClear     (GL_COLOR_BUFFER_BIT   |
-                                          GL_DEPTH_BUFFER_BIT   |
-                                          GL_STENCIL_BUFFER_BIT);
+                            pGLClear     (GL_COLOR_BUFFER_BIT                                              |
+                                          (default_fbo_has_depth_attachment   ? GL_DEPTH_BUFFER_BIT   : 0) |
+                                          (default_fbo_has_stencil_attachment ? GL_STENCIL_BUFFER_BIT : 0) );
 
                             /* Enable per-sample shading if needed */
                             if (is_multisample_pf && context_type == OGL_CONTEXT_TYPE_GL)

@@ -515,7 +515,14 @@ PRIVATE void _procedural_mesh_box_create_renderer_callback(ogl_context context,
     } /* if (mesh_box->data & DATA_BO_ELEMENTS) */
 
     /* Update "number of points" to a value that will make sense to end-user */
-    mesh_box->n_points = n_ordered_indexes;
+    if (mesh_box->data & DATA_BO_ELEMENTS)
+    {
+        mesh_box->n_points = n_ordered_indexes;
+    }
+    else
+    {
+        mesh_box->n_points = mesh_box->n_triangles * 3;
+    }
 
     /* Okay, we're cool to release the buffers now */
     delete [] nonindexed_points;

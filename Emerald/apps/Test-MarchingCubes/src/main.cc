@@ -289,11 +289,17 @@ PRIVATE void _render_bounding_box(ogl_context             context,
 
     /* Draw stuff */
     entrypoints_ptr->pGLDisable        (GL_CULL_FACE);
+    entrypoints_ptr->pGLPolygonMode    (GL_FRONT_AND_BACK,
+                                        GL_LINE);
+
     entrypoints_ptr->pGLUseProgram     (ogl_program_get_id(_po) );
     entrypoints_ptr->pGLBindVertexArray(_vao_id);
     entrypoints_ptr->pGLDrawArrays     (GL_TRIANGLES,
                                         0, /* first */
-                                        _box_n_vertices * 3);
+                                        _box_n_vertices);
+
+    entrypoints_ptr->pGLPolygonMode    (GL_FRONT_AND_BACK,
+                                        GL_FILL);
 }
 
 /** TODO */
