@@ -698,16 +698,16 @@ PUBLIC EMERALD_API void procedural_mesh_box_get_property(procedural_mesh_box    
             break;
         }
 
-        case PROCEDURAL_MESH_BOX_PROPERTY_N_POINTS:
+        case PROCEDURAL_MESH_BOX_PROPERTY_N_TRIANGLES:
         {
-            *(unsigned int*) out_result = mesh_box_ptr->n_points;
+            *(unsigned int*) out_result = mesh_box_ptr->n_triangles;
 
             break;
         }
 
-        case PROCEDURAL_MESH_BOX_PROPERTY_N_TRIANGLES:
+        case PROCEDURAL_MESH_BOX_PROPERTY_N_VERTICES:
         {
-            *(unsigned int*) out_result = mesh_box_ptr->n_triangles;
+            *(unsigned int*) out_result = mesh_box_ptr->n_points;
 
             break;
         }

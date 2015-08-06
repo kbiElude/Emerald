@@ -899,9 +899,10 @@ PRIVATE void _ogl_scene_renderer_render_traversed_scene_graph(_ogl_scene_rendere
                                                               system_time                            frame_time)
 {
     float         camera_location[4];
-    system_hash64 material_hash     = 0;
-    ogl_uber      material_uber     = NULL;
-    ogl_materials materials         = NULL;
+    system_hash64 material_hash             = 0;
+    ogl_uber      material_uber             = NULL;
+    ogl_materials materials                 = NULL;
+    uint32_t      n_custom_meshes_to_render = 0;
 
     ogl_context_get_property(renderer_ptr->context,
                              OGL_CONTEXT_PROPERTY_MATERIALS,
@@ -944,7 +945,6 @@ PRIVATE void _ogl_scene_renderer_render_traversed_scene_graph(_ogl_scene_rendere
         const bool use_material_uber = (render_mode == RENDER_MODE_FORWARD_WITHOUT_DEPTH_PREPASS                ||
                                         render_mode == RENDER_MODE_FORWARD_WITH_DEPTH_PREPASS    && n_pass == 1);
 
-
         if (is_depth_prepass)
         {
             n_iterations = 1;
@@ -986,9 +986,8 @@ PRIVATE void _ogl_scene_renderer_render_traversed_scene_graph(_ogl_scene_rendere
                       n_iteration < n_iterations; /* n_iterations = no of separate ogl_ubers needed to render the scene */
                     ++n_iteration)
         {
-            uint32_t                  n_custom_meshes_to_render = 0;
-            uint32_t                  n_iteration_items         = 0;
-            _ogl_scene_renderer_uber* uber_details_ptr          = NULL;
+            uint32_t                  n_iteration_items = 0;
+            _ogl_scene_renderer_uber* uber_details_ptr  = NULL;
 
             /* Depending on the pass, we may either need to use render mode-specific ogl_uber instance,
              * or one that corresponds to the current material. */
@@ -1132,36 +1131,6 @@ PRIVATE void _ogl_scene_renderer_render_traversed_scene_graph(_ogl_scene_rendere
             }
             ogl_uber_rendering_stop(material_uber);
 
-            /* Continue with custom meshes. */
-            system_resizable_vector_get_property(renderer_ptr->current_custom_meshes_to_render,
-                                                 SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
-                                                &n_custom_meshes_to_render);
-
-            for (uint32_t n_custom_mesh = 0;
-                          n_custom_mesh < n_custom_meshes_to_render;
-                        ++n_custom_mesh)
-            {
-                _ogl_scene_renderer_mesh* custom_mesh_ptr = NULL;
-
-                if (!system_resizable_vector_get_element_at(renderer_ptr->current_custom_meshes_to_render,
-                                                            n_custom_mesh,
-                                                           &custom_mesh_ptr) )
-                {
-                    ASSERT_DEBUG_SYNC(false,
-                                      "Could not retrieve descriptor for the custom mesh at index [%d]",
-                                      n_custom_mesh);
-
-                    continue;
-                }
-
-                custom_mesh_ptr->pfn_render_custom_mesh_proc(renderer_ptr->context,
-                                                             custom_mesh_ptr->custom_mesh_render_proc_user_arg,
-                                                             custom_mesh_ptr->model_matrix,
-                                                             renderer_ptr->current_vp,
-                                                             custom_mesh_ptr->normal_matrix,
-                                                             is_depth_prepass);
-            } /* for (all custom meshes to render) */
-
             /* Clean up */
             if (use_material_uber)
             {
@@ -1186,6 +1155,51 @@ PRIVATE void _ogl_scene_renderer_render_traversed_scene_graph(_ogl_scene_rendere
             }
         } /* for (all required rendering passes <depth pre-pass, rendering pass>) */
     } /* for (all uber instances) */
+
+    /* Continue with custom meshes. */
+    system_resizable_vector_get_property(renderer_ptr->current_custom_meshes_to_render,
+                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                        &n_custom_meshes_to_render);
+
+    for (uint32_t n_pass = 0;
+                  n_pass < n_passes;
+                ++n_pass)
+    {
+        const bool is_depth_prepass = (render_mode == RENDER_MODE_FORWARD_WITH_DEPTH_PREPASS && n_pass == 0);
+
+        for (uint32_t n_custom_mesh = 0;
+                      n_custom_mesh < n_custom_meshes_to_render;
+                    ++n_custom_mesh)
+        {
+            _ogl_scene_renderer_mesh* custom_mesh_ptr = NULL;
+
+            if (!system_resizable_vector_get_element_at(renderer_ptr->current_custom_meshes_to_render,
+                                                        n_custom_mesh,
+                                                       &custom_mesh_ptr) )
+            {
+                ASSERT_DEBUG_SYNC(false,
+                                  "Could not retrieve descriptor for the custom mesh at index [%d]",
+                                  n_custom_mesh);
+
+                continue;
+            }
+
+            custom_mesh_ptr->pfn_render_custom_mesh_proc(renderer_ptr->context,
+                                                         custom_mesh_ptr->custom_mesh_render_proc_user_arg,
+                                                         custom_mesh_ptr->model_matrix,
+                                                         renderer_ptr->current_vp,
+                                                         custom_mesh_ptr->normal_matrix,
+                                                         is_depth_prepass);
+
+            if (n_pass == (n_passes - 1) )
+            {
+                system_resource_pool_return_to_pool(renderer_ptr->mesh_pool,
+                                                    (system_resource_pool_block) custom_mesh_ptr);
+            }
+        } /* for (all custom meshes to render) */
+    }
+
+    system_resizable_vector_clear(renderer_ptr->current_custom_meshes_to_render);
 
     /* Any helper visualization, handle it at this point */
     _ogl_scene_renderer_render_helper_visualizations(renderer_ptr,

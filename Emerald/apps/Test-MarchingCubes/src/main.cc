@@ -8,7 +8,7 @@
 #include "ogl/ogl_context.h"
 #include "ogl/ogl_flyby.h"
 #include "ogl/ogl_program.h"
-#include "ogl/ogl_program_ssb.h"
+#include "ogl/ogl_program_ub.h"
 #include "ogl/ogl_rendering_handler.h"
 #include "ogl/ogl_scene_renderer.h"
 #include "ogl/ogl_shader.h"
@@ -28,49 +28,53 @@
 #include <algorithm>
 #include "main.h"
 
-#ifdef _WIN32
-    #undef min
-#endif
-
-PRIVATE procedural_mesh_box _box                 = NULL;
-PRIVATE mesh                _box_custom_mesh     = NULL;
-PRIVATE ogl_context         _context             = NULL;
-PRIVATE ogl_flyby           _context_flyby       = NULL;
-PRIVATE system_matrix4x4    _projection_matrix   = NULL;
-PRIVATE scene               _scene               = NULL;
-PRIVATE scene_graph_node    _scene_box_node      = NULL;
-PRIVATE scene_camera        _scene_camera        = NULL;
-PRIVATE scene_graph_node    _scene_camera_node   = NULL;
-PRIVATE scene_graph         _scene_graph         = NULL; /* do not release */
-PRIVATE ogl_scene_renderer  _scene_renderer      = NULL;
-PRIVATE system_event        _window_closed_event = system_event_create(true); /* manual_reset */
-PRIVATE int                 _window_size[2]      = {1280, 720};
-PRIVATE system_matrix4x4    _view_matrix         = NULL;
+PRIVATE procedural_mesh_box _box                          = NULL;
+PRIVATE mesh                _box_custom_mesh              = NULL;
+PRIVATE unsigned int        _box_n_vertices               = -1;
+PRIVATE ogl_context         _context                      = NULL;
+PRIVATE ogl_flyby           _context_flyby                = NULL;
+PRIVATE ogl_program         _po                           = NULL;
+PRIVATE ogl_program_ub      _po_ub_vsdata                 = NULL;
+PRIVATE GLint               _po_ub_vsdata_bo_id           = -1;
+PRIVATE GLuint              _po_ub_vsdata_bo_start_offset = -1;
+PRIVATE system_matrix4x4    _projection_matrix            = NULL;
+PRIVATE scene               _scene                        = NULL;
+PRIVATE scene_graph_node    _scene_box_node               = NULL;
+PRIVATE scene_camera        _scene_camera                 = NULL;
+PRIVATE scene_graph_node    _scene_camera_node            = NULL;
+PRIVATE scene_graph         _scene_graph                  = NULL; /* do not release */
+PRIVATE ogl_scene_renderer  _scene_renderer               = NULL;
+PRIVATE system_event        _window_closed_event          = system_event_create(true); /* manual_reset */
+PRIVATE int                 _window_size[2]               = {1280, 720};
+PRIVATE GLuint              _vao_id                       = 0;
+PRIVATE system_matrix4x4    _view_matrix                  = NULL;
 
 
 /* Forward declarations */
-PRIVATE void _get_bounding_box_aabb          (void*                  user_arg,
-                                              float**                out_aabb_model_vec4_min,
-                                              float**                out_aabb_model_vec4_max);
+PRIVATE void _get_bounding_box_aabb          (void*                             user_arg,
+                                              float**                           out_aabb_model_vec4_min,
+                                              float**                           out_aabb_model_vec4_max);
+PRIVATE void _init_program_objects           (const ogl_context_gl_entrypoints* entry_points);
 PRIVATE void _init_scene                     ();
-PRIVATE void _render_bounding_box            (ogl_context             context,
-                                              const void*             user_arg,
-                                              const system_matrix4x4  model_matrix,
-                                              const system_matrix4x4  vp_matrix,
-                                              const system_matrix4x4  normal_matrix,
-                                              bool                    is_depth_prepass);
-PRIVATE void _rendering_handler              (ogl_context             context,
-                                              uint32_t                n_frames_rendered,
-                                              system_time             frame_time,
-                                              const int*              rendering_area_px_topdown,
-                                              void*                   renderer);
-PRIVATE bool _rendering_lbm_callback_handler (system_window           window,
-                                              unsigned short          x,
-                                              unsigned short          y,
-                                              system_window_vk_status new_status,
+PRIVATE void _init_vao                       (const ogl_context_gl_entrypoints* entry_points);
+PRIVATE void _render_bounding_box            (ogl_context                       context,
+                                              const void*                       user_arg,
+                                              const system_matrix4x4            model_matrix,
+                                              const system_matrix4x4            vp_matrix,
+                                              const system_matrix4x4            normal_matrix,
+                                              bool                              is_depth_prepass);
+PRIVATE void _rendering_handler              (ogl_context                       context,
+                                              uint32_t                          n_frames_rendered,
+                                              system_time                       frame_time,
+                                              const int*                        rendering_area_px_topdown,
+                                              void*                             renderer);
+PRIVATE bool _rendering_rbm_callback_handler (system_window                     window,
+                                              unsigned short                    x,
+                                              unsigned short                    y,
+                                              system_window_vk_status           new_status,
                                               void*);
-PRIVATE void _window_closed_callback_handler (system_window           window);
-PRIVATE void _window_closing_callback_handler(system_window           window);
+PRIVATE void _window_closed_callback_handler (system_window                     window);
+PRIVATE void _window_closing_callback_handler(system_window                     window);
 
 
 /** TODO */
@@ -88,22 +92,90 @@ PRIVATE void _get_bounding_box_aabb(const void* user_arg,
 }
 
 /** TODO */
+PRIVATE void _init_program_objects(const ogl_context_gl_entrypoints* entry_points)
+{
+    const char* fs_body = "#version 430 core\n"
+                          "\n"
+                          "out vec4 result;\n"
+                          "\n"
+                          "void main()\n"
+                          "{\n"
+                          "    result = vec4(gl_FragCoord.xy / vec2(1280.0, 720.0f), 0.0, 1.0);\n"
+                          "}\n";
+    const char* vs_body = "#version 430 core\n"
+                          "\n"
+                          "uniform data\n"
+                          "{\n"
+                          "    mat4 vp;\n"
+                          "};\n"
+                          "\n"
+                          "in vec4 vertex;\n"
+                          "\n"
+                          "void main()\n"
+                          "{\n"
+                          "    gl_Position = vp * vertex;\n"
+                          "}\n";
+
+    ogl_shader  fs = ogl_shader_create (_context,
+                                        SHADER_TYPE_FRAGMENT,
+                                        system_hashed_ansi_string_create("fs") );
+    ogl_shader  vs = ogl_shader_create (_context,
+                                        SHADER_TYPE_VERTEX,
+                                        system_hashed_ansi_string_create("vs") );
+
+    ogl_shader_set_body(fs,
+                        system_hashed_ansi_string_create(fs_body) );
+    ogl_shader_set_body(vs,
+                        system_hashed_ansi_string_create(vs_body) );
+
+    _po = ogl_program_create(_context,
+                             system_hashed_ansi_string_create("po"),
+                             OGL_PROGRAM_SYNCABLE_UBS_MODE_ENABLE_GLOBAL);
+
+    ogl_program_attach_shader(_po,
+                              fs);
+    ogl_program_attach_shader(_po,
+                              vs);
+
+    ogl_program_link(_po);
+
+    ogl_program_get_uniform_block_by_name(_po,
+                                          system_hashed_ansi_string_create("data"),
+                                         &_po_ub_vsdata);
+    ogl_program_ub_get_property          (_po_ub_vsdata,
+                                          OGL_PROGRAM_UB_PROPERTY_BO_ID,
+                                         &_po_ub_vsdata_bo_id);
+    ogl_program_ub_get_property          (_po_ub_vsdata,
+                                          OGL_PROGRAM_UB_PROPERTY_BO_START_OFFSET,
+                                         &_po_ub_vsdata_bo_start_offset);
+
+    ogl_shader_release(fs);
+    ogl_shader_release(vs);
+}
+
+/** TODO */
 PRIVATE void _init_scene()
 {
     scene_mesh box_custom_scene_mesh = NULL;
 
-    /* Set up the test mesh */
+    /* Set up the test mesh data provider */
     _box = procedural_mesh_box_create(_context,
-                                      DATA_BO_ELEMENTS,
+                                      DATA_BO_ARRAYS,
                                       1, /* n_horizontal_patches */
                                       1, /* n_vertical_patches */
                                       system_hashed_ansi_string_create("Bounding box") );
 
+    procedural_mesh_box_get_property(_box,
+                                     PROCEDURAL_MESH_BOX_PROPERTY_N_VERTICES,
+                                    &_box_n_vertices);
+
+    /* Set up the test mesh instance */
     _box_custom_mesh = mesh_create_custom_mesh(&_render_bounding_box,
                                                 NULL, /* render_custom_mesh_proc_user_arg */
                                                &_get_bounding_box_aabb,
                                                 NULL, /* get_custom_mesh_aabb_proc_user_arg */
                                                 system_hashed_ansi_string_create("Test box") );
+
 
     /* Set up the scene */
     system_hashed_ansi_string box_has        = system_hashed_ansi_string_create("Test box");
@@ -159,6 +231,34 @@ PRIVATE void _init_scene()
 }
 
 /** TODO */
+PRIVATE void _init_vao(const ogl_context_gl_entrypoints* entry_points)
+{
+    GLuint box_custom_mesh_bo_id                          = 0;
+    GLuint box_custom_mesh_bo_id_vertex_data_start_offset = 0;
+
+    procedural_mesh_box_get_property(_box,
+                                     PROCEDURAL_MESH_BOX_PROPERTY_ARRAYS_BO_ID,
+                                    &box_custom_mesh_bo_id);
+    procedural_mesh_box_get_property(_box,
+                                     PROCEDURAL_MESH_BOX_PROPERTY_ARRAYS_BO_VERTEX_DATA_OFFSET,
+                                    &box_custom_mesh_bo_id_vertex_data_start_offset);
+
+    entry_points->pGLGenVertexArrays(1,
+                                    &_vao_id);
+
+    entry_points->pGLBindVertexArray        (_vao_id);
+    entry_points->pGLBindBuffer             (GL_ARRAY_BUFFER,
+                                             box_custom_mesh_bo_id);
+    entry_points->pGLVertexAttribPointer    (0,        /* index */
+                                             3,        /* size */
+                                             GL_FLOAT,
+                                             GL_FALSE, /* normalized */
+                                             0,        /* stride */
+                                             (GLvoid*) box_custom_mesh_bo_id_vertex_data_start_offset); /* pointer */
+    entry_points->pGLEnableVertexAttribArray(0); /* index */
+}
+
+/** TODO */
 PRIVATE void _render_bounding_box(ogl_context             context,
                                   const void*             user_arg,
                                   const system_matrix4x4  model_matrix,
@@ -168,11 +268,32 @@ PRIVATE void _render_bounding_box(ogl_context             context,
 {
     const ogl_context_gl_entrypoints* entrypoints_ptr = NULL;
 
+    /* Set up the unifrom block contents */
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
                             &entrypoints_ptr);
 
-    // ..
+    ogl_program_ub_set_nonarrayed_uniform_value(_po_ub_vsdata,
+                                                0, /* ub_uniform_offset */
+                                                system_matrix4x4_get_column_major_data(vp_matrix),
+                                                0, /* src_data_flags */
+                                                sizeof(float) * 16);
+    ogl_program_ub_sync                        (_po_ub_vsdata);
+
+    /* Set up the uniform buffer binding */
+    entrypoints_ptr->pGLBindBufferRange(GL_UNIFORM_BUFFER,
+                                        0, /* index */
+                                        _po_ub_vsdata_bo_id,
+                                        _po_ub_vsdata_bo_start_offset,
+                                        sizeof(float) * 16);
+
+    /* Draw stuff */
+    entrypoints_ptr->pGLDisable        (GL_CULL_FACE);
+    entrypoints_ptr->pGLUseProgram     (ogl_program_get_id(_po) );
+    entrypoints_ptr->pGLBindVertexArray(_vao_id);
+    entrypoints_ptr->pGLDrawArrays     (GL_TRIANGLES,
+                                        0, /* first */
+                                        _box_n_vertices * 3);
 }
 
 /** TODO */
@@ -202,6 +323,8 @@ PRIVATE void _rendering_handler(ogl_context context,
                                                                                    10.0f); /* z_far  */
         _view_matrix       = system_matrix4x4_create                              ();
 
+        system_matrix4x4_set_to_identity(_view_matrix);
+
         /* Initialize the flyby */
         static const bool is_flyby_active = true;
 
@@ -211,6 +334,12 @@ PRIVATE void _rendering_handler(ogl_context context,
         ogl_flyby_set_property  (_context_flyby,
                                  OGL_FLYBY_PROPERTY_IS_ACTIVE,
                                 &is_flyby_active);
+
+        /* Initialize program objects */
+        _init_program_objects(entrypoints_ptr);
+
+        /* Initialize VAO */
+        _init_vao(entrypoints_ptr);
 
         /* All done */
         is_initialized = true;
@@ -235,7 +364,7 @@ PRIVATE void _rendering_handler(ogl_context context,
 }
 
 /** Event callback handlers */
-PRIVATE bool _rendering_lbm_callback_handler(system_window           window,
+PRIVATE bool _rendering_rbm_callback_handler(system_window           window,
                                              unsigned short          x,
                                              unsigned short          y,
                                              system_window_vk_status new_status,
@@ -265,6 +394,13 @@ PRIVATE void _window_closing_callback_handler(system_window window)
         mesh_release(_box_custom_mesh);
 
         _box_custom_mesh = NULL;
+    }
+
+    if (_po != NULL)
+    {
+        ogl_program_release(_po);
+
+        _po = NULL;
     }
 
     if (_projection_matrix != NULL)
@@ -378,8 +514,8 @@ PRIVATE void _window_closing_callback_handler(system_window window)
     /* Set up mouse click & window tear-down callbacks */
     system_window_add_callback_func    (window,
                                         SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_NORMAL,
-                                        SYSTEM_WINDOW_CALLBACK_FUNC_LEFT_BUTTON_DOWN,
-                                        (void*) _rendering_lbm_callback_handler,
+                                        SYSTEM_WINDOW_CALLBACK_FUNC_RIGHT_BUTTON_DOWN,
+                                        (void*) _rendering_rbm_callback_handler,
                                         NULL);
     system_window_add_callback_func    (window,
                                         SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_NORMAL,

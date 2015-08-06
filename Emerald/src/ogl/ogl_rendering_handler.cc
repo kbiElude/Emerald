@@ -652,7 +652,9 @@ PRIVATE void _ogl_rendering_handler_thread_entrypoint(void* in_arg)
                                           0.0f,
                                           0.0f,
                                           1.0f);
-                            pGLClear     (GL_COLOR_BUFFER_BIT);
+                            pGLClear     (GL_COLOR_BUFFER_BIT   |
+                                          GL_DEPTH_BUFFER_BIT   |
+                                          GL_STENCIL_BUFFER_BIT);
 
                             /* Enable per-sample shading if needed */
                             if (is_multisample_pf && context_type == OGL_CONTEXT_TYPE_GL)

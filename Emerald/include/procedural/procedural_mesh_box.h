@@ -4,6 +4,9 @@
  * 
  * Generates a box spanning from <0, 0, 0> to <1, 1, 1>.
  *
+ * Culling:     NOT taken into account (TODO).
+ * Vertex data: vec3.
+ *
  * TODO: The generated data sets should be stride-based.
  *
  * Implementation is NOT culling-aware.
@@ -44,10 +47,10 @@ typedef enum
 
 
     /* unsigned int */
-    PROCEDURAL_MESH_BOX_PROPERTY_N_POINTS,
+    PROCEDURAL_MESH_BOX_PROPERTY_N_TRIANGLES,
 
     /* unsigned int */
-    PROCEDURAL_MESH_BOX_PROPERTY_N_TRIANGLES,
+    PROCEDURAL_MESH_BOX_PROPERTY_N_VERTICES,
 
     /* GLuint */
     PROCEDURAL_MESH_BOX_PROPERTY_RESTART_INDEX
