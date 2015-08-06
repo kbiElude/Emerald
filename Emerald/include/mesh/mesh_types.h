@@ -11,23 +11,71 @@ DECLARE_HANDLE(mesh_material);
 
 typedef enum
 {
-    MESH_PROPERTY_MODEL_AABB_MAX,                                /*     settable,  float[4]                */
-    MESH_PROPERTY_MODEL_AABB_MIN,                                /*     settable,  float[4]                */
-    MESH_PROPERTY_CREATION_FLAGS,                                /* not settable,  mesh_creation_flags     */
-    MESH_PROPERTY_GL_BO_ID,                                      /* not settable,  GLuint                  */
-    MESH_PROPERTY_GL_BO_START_OFFSET,                            /* not settable,  unsigned int            */
-    MESH_PROPERTY_GL_INDEX_TYPE,                                 /* not settable,  _mesh_index_type        */
-    MESH_PROPERTY_GL_PROCESSED_DATA,                             /* not settable,  void*                   */
-    MESH_PROPERTY_GL_PROCESSED_DATA_SIZE,                        /* not settable,  uint32_t                */
-    MESH_PROPERTY_GL_STRIDE,                                     /*     settable,  uint32_t                */
-    MESH_PROPERTY_GL_TBO,                                        /* not settable,  ogl_texture             */
-    MESH_PROPERTY_GL_TOTAL_ELEMENTS,                             /*     settable,  uint32_t                */
-    MESH_PROPERTY_MATERIALS,                                     /* not settable,  system_resizable_vector - DO NOT MODIFY OR RELEASE */
-    MESH_PROPERTY_NAME,                                          /* not settable,  system_hashed_ansi_string */
-    MESH_PROPERTY_N_GL_UNIQUE_VERTICES,                          /* not settable,  uint32_t                */
-    MESH_PROPERTY_N_LAYERS,                                      /* not settable,  uint32_t                */
-    MESH_PROPERTY_N_SH_BANDS,                                    /* settable ONCE, uint32_t                */
-    MESH_PROPERTY_TIMESTAMP_MODIFICATION,                        /* not settable,  system_time    */
+    /* settable, float[4] */
+    MESH_PROPERTY_MODEL_AABB_MAX,
+
+    /* settable, float[4] */
+    MESH_PROPERTY_MODEL_AABB_MIN,
+
+    /* not settable, mesh_creation_flags */
+    MESH_PROPERTY_CREATION_FLAGS,
+
+    /* not settable, GLuint */
+    MESH_PROPERTY_GL_BO_ID,
+
+    /* not settable, unsigned int */
+    MESH_PROPERTY_GL_BO_START_OFFSET,
+
+    /* not settable, _mesh_index_type */
+    MESH_PROPERTY_GL_INDEX_TYPE,
+
+    /* not settable, void* */
+    MESH_PROPERTY_GL_PROCESSED_DATA,
+
+    /* not settable, uint32_t */
+    MESH_PROPERTY_GL_PROCESSED_DATA_SIZE,
+
+    /* settable, uint32_t */
+    MESH_PROPERTY_GL_STRIDE,
+
+    /* not settable, ogl_texture */
+    MESH_PROPERTY_GL_TBO,
+
+    /* settable, uint32_t */
+    MESH_PROPERTY_GL_TOTAL_ELEMENTS,
+
+    /* not settable, system_resizable_vector - DO NOT MODIFY OR RELEASE */
+    MESH_PROPERTY_MATERIALS,
+
+    /* not settable, system_hashed_ansi_string */
+    MESH_PROPERTY_NAME,
+
+    /* not settable, uint32_t */
+    MESH_PROPERTY_N_GL_UNIQUE_VERTICES,
+
+    /* not settable, uint32_t */
+    MESH_PROPERTY_N_LAYERS,
+
+    /* settable ONCE, uint32_t */
+    MESH_PROPERTY_N_SH_BANDS,
+
+    /* not settable, PFNRENDERCUSTOMMESH
+     *
+     * Property only valid for custom meshes.
+     */
+    MESH_PROPERTY_RENDER_CUSTOM_MESH_FUNC_PTR,
+
+    /* not settable, void*
+     *
+     * Property only valid for custom meshes.
+     */
+    MESH_PROPERTY_RENDER_CUSTOM_MESH_FUNC_USER_ARG,
+
+    /* not settable, system_time    */
+    MESH_PROPERTY_TIMESTAMP_MODIFICATION,
+
+    /* not settable, mesh_type */
+    MESH_PROPERTY_TYPE,
 
     /* not settable, bool.
      *
@@ -55,17 +103,38 @@ typedef enum
 
 typedef enum
 {
-    MESH_LAYER_PROPERTY_MODEL_AABB_MAX,             /*     settable, float*        (this property has the same value for all passes) */
-    MESH_LAYER_PROPERTY_MODEL_AABB_MIN,             /*     settable, float*        (this property has the same value for all passes) */
-    MESH_LAYER_PROPERTY_GL_BO_ELEMENTS_OFFSET,      /*     settable, uint32_t                                                        */
-    MESH_LAYER_PROPERTY_GL_ELEMENTS_DATA_MAX_INDEX, /*     settable, uint32_t                                                        */
-    MESH_LAYER_PROPERTY_GL_ELEMENTS_DATA_MIN_INDEX, /*     settable, uint32_t                                                        */
-    MESH_LAYER_PROPERTY_GL_ELEMENTS_DATA,           /* not settable, uint32_t*                                                       */
-    MESH_LAYER_PROPERTY_GL_N_UNIQUE_ELEMENTS,       /*     settable, uint32_t      (this property has the same value for all passes) */
-    MESH_LAYER_PROPERTY_MATERIAL,                   /* not settable, mesh_material                                                   */
-    MESH_LAYER_PROPERTY_N_ELEMENTS,                 /* not settable, uint32_t                                                        */
-    MESH_LAYER_PROPERTY_N_TRIANGLES,                /* not settable, uint32_t                                                        */
-    MESH_LAYER_PROPERTY_VERTEX_SMOOTHING_ANGLE,     /*     settable, float.   setter does not invoke GL blob re-generation!          */
+    /* settable, float* (this property has the same value for all passes) */
+    MESH_LAYER_PROPERTY_MODEL_AABB_MAX,
+
+    /* settable, float* (this property has the same value for all passes) */
+    MESH_LAYER_PROPERTY_MODEL_AABB_MIN,
+
+    /* settable, uint32_t */
+    MESH_LAYER_PROPERTY_GL_BO_ELEMENTS_OFFSET,
+
+    /* settable, uint32_t */
+    MESH_LAYER_PROPERTY_GL_ELEMENTS_DATA_MAX_INDEX,
+
+    /* settable, uint32_t */
+    MESH_LAYER_PROPERTY_GL_ELEMENTS_DATA_MIN_INDEX,
+
+    /* not settable, uint32_t* */
+    MESH_LAYER_PROPERTY_GL_ELEMENTS_DATA,
+
+    /* settable, uint32_t (this property has the same value for all passes) */
+    MESH_LAYER_PROPERTY_GL_N_UNIQUE_ELEMENTS,
+
+    /* not settable, mesh_material */
+    MESH_LAYER_PROPERTY_MATERIAL,
+
+    /* not settable, uint32_t */
+    MESH_LAYER_PROPERTY_N_ELEMENTS,
+
+    /* not settable, uint32_t */
+    MESH_LAYER_PROPERTY_N_TRIANGLES,
+
+    /*  settable, float. setter does not invoke GL blob re-generation! */
+    MESH_LAYER_PROPERTY_VERTEX_SMOOTHING_ANGLE,
 } mesh_layer_property;
 
 typedef enum
@@ -84,13 +153,20 @@ typedef enum
     MESH_LAYER_DATA_STREAM_TYPE_NORMALS,
     MESH_LAYER_DATA_STREAM_TYPE_TEXCOORDS,
 
-    MESH_LAYER_DATA_STREAM_TYPE_SPHERICAL_HARMONIC_3BANDS, /* note: recommended to keep sh at the end */
-    MESH_LAYER_DATA_STREAM_TYPE_SPHERICAL_HARMONIC_4BANDS, /* note: recommended to keep sh at the end */
+    /* note: recommended to keep sh at the end */
+    MESH_LAYER_DATA_STREAM_TYPE_SPHERICAL_HARMONIC_3BANDS,
+    MESH_LAYER_DATA_STREAM_TYPE_SPHERICAL_HARMONIC_4BANDS,
 
     /* Always last */
     MESH_LAYER_DATA_STREAM_TYPE_COUNT,
     MESH_LAYER_DATA_STREAM_TYPE_UNKNOWN = MESH_LAYER_DATA_STREAM_TYPE_COUNT
 } mesh_layer_data_stream_type;
+
+typedef enum
+{
+    MESH_TYPE_CUSTOM,
+    MESH_TYPE_REGULAR,
+} mesh_type;
 
 /* Mesh creation flags */
 typedef int mesh_creation_flags;
@@ -98,9 +174,9 @@ typedef int mesh_creation_flags;
 /* Keeps mesh layer & layer pass data after GL buffers are created.
  * This allows to change eg. vertex smoothing angles for baked objects.
  */
-const int MESH_SAVE_SUPPORT              = 0x1;
-const int MESH_KDTREE_GENERATION_SUPPORT = 0x2;
-//const int MESH_MERGE_SUPPORT             = 0x4; <- support for merging was removed in Nov 2014.
+const int MESH_CREATION_FLAGS_SAVE_SUPPORT              = 0x1;
+const int MESH_CREATION_FLAGS_KDTREE_GENERATION_SUPPORT = 0x2;
+//const int MESH_CREATION_FLAGS_MERGE_SUPPORT             = 0x4; <- support for merging was removed in Nov 2014.
 
 
 typedef uint32_t mesh_layer_id;

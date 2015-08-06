@@ -33,7 +33,9 @@ typedef enum
     /* not settable.
      *
      * Will set @param out_result to the contents of the view matrix
-     * assigned to the flyby at the time of the call.
+     * assigned to the flyby at the time of the call. Therefore the
+     * pointer passed as an argument to the ogl_flyby_get_property()
+     * must NOT be NULL.
      */
     OGL_FLYBY_PROPERTY_VIEW_MATRIX,
 } ogl_flyby_property;

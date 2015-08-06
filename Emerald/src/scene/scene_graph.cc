@@ -1934,7 +1934,7 @@ PRIVATE bool _scene_graph_save_node(system_file_serializer   serializer,
                   n_mesh_instance < n_mesh_instances;
                 ++n_mesh_instance)
     {
-        scene_light current_mesh = NULL;
+        scene_mesh current_mesh = NULL;
 
         if (system_resizable_vector_get_element_at(node_ptr->attached_meshes,
                                                    n_mesh_instance,
@@ -3139,7 +3139,8 @@ PUBLIC EMERALD_API void scene_graph_release(scene_graph graph)
     {
         _scene_graph_node* node_ptr = NULL;
 
-        while (system_resizable_vector_pop(graph_ptr->nodes, &node_ptr) )
+        while (system_resizable_vector_pop(graph_ptr->nodes,
+                                           &node_ptr) )
         {
             delete node_ptr;
 

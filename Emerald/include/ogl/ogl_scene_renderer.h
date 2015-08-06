@@ -153,6 +153,22 @@ PUBLIC EMERALD_API void ogl_scene_renderer_get_property(ogl_scene_renderer      
 /** TODO.
  *
  *  TODO: state-ify render_mode / shadow_mapping_type / helper_visualization arguments..
+ *        (issue #126)
+ *
+ *  @param renderer             TODO
+ *  @param view                 View matrix, to be used for rendering meshes in the final pass.
+ *  @param projection           Projection matrix, to be used for rendering the scene meshes in the
+ *                              final pass.
+ *  @param camera               scene_camera instance which describes properties of the camera which
+ *                              should be used for rendering.
+ *                              TODO: There's a bug currently which causes the module to use camera's
+ *                                    transformation matrix for shadow mapping, and view+projection
+ *                                    matrices for final pass rendering. (issue #126)
+ *  @param render_mode          TODO
+ *  @param apply_shadow_mapping TODO
+ *  @param helper_visualization TODO
+ *  @param frame_time           TODO
+ *
  **/
 PUBLIC EMERALD_API RENDERING_CONTEXT_CALL void ogl_scene_renderer_render_scene_graph(ogl_scene_renderer                       renderer,
                                                                                      system_matrix4x4                         view,

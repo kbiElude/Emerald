@@ -2093,7 +2093,8 @@ PUBLIC void ogl_uber_rendering_render_mesh(mesh             mesh_gpu,
                                              MESH_LAYER_PROPERTY_N_ELEMENTS,
                                             &layer_pass_n_elements);
 
-                if (layer_pass_material != material && material != NULL)
+                if (layer_pass_material != material &&
+                    material            != NULL)
                 {
                     continue;
                 }

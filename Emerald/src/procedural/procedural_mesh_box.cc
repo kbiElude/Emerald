@@ -515,7 +515,14 @@ PRIVATE void _procedural_mesh_box_create_renderer_callback(ogl_context context,
     } /* if (mesh_box->data & DATA_BO_ELEMENTS) */
 
     /* Update "number of points" to a value that will make sense to end-user */
-    mesh_box->n_points = n_ordered_indexes;
+    if (mesh_box->data & DATA_BO_ELEMENTS)
+    {
+        mesh_box->n_points = n_ordered_indexes;
+    }
+    else
+    {
+        mesh_box->n_points = mesh_box->n_triangles * 3;
+    }
 
     /* Okay, we're cool to release the buffers now */
     delete [] nonindexed_points;
@@ -698,16 +705,16 @@ PUBLIC EMERALD_API void procedural_mesh_box_get_property(procedural_mesh_box    
             break;
         }
 
-        case PROCEDURAL_MESH_BOX_PROPERTY_N_POINTS:
+        case PROCEDURAL_MESH_BOX_PROPERTY_N_TRIANGLES:
         {
-            *(unsigned int*) out_result = mesh_box_ptr->n_points;
+            *(unsigned int*) out_result = mesh_box_ptr->n_triangles;
 
             break;
         }
 
-        case PROCEDURAL_MESH_BOX_PROPERTY_N_TRIANGLES:
+        case PROCEDURAL_MESH_BOX_PROPERTY_N_VERTICES:
         {
-            *(unsigned int*) out_result = mesh_box_ptr->n_triangles;
+            *(unsigned int*) out_result = mesh_box_ptr->n_points;
 
             break;
         }

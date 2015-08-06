@@ -35,7 +35,7 @@ typedef struct _ogl_program_block
     unsigned char*         block_data;
     GLint                  block_data_size;
     ogl_program_block_type block_type;
-    GLuint                 indexed_bp;
+    GLint                  indexed_bp;
 
     bool                      is_intel_driver;
     system_hashed_ansi_string name;
@@ -43,13 +43,11 @@ typedef struct _ogl_program_block
     system_hash64map          offset_to_uniform_descriptor_map; /* uniform offset -> const ogl_program_variable*. Rules as above apply. Only used for UBs */
     bool                      syncable;
 
-    PFNGLBINDBUFFERPROC                pGLBindBuffer;
-    PFNGLBUFFERSUBDATAPROC             pGLBufferSubData;
-    PFNGLFINISHPROC                    pGLFinish;
-    PFNGLGETPROGRAMRESOURCEIVPROC      pGLGetProgramResourceiv;
-    PFNGLNAMEDBUFFERSUBDATAEXTPROC     pGLNamedBufferSubDataEXT;
-    PFNGLSHADERSTORAGEBLOCKBINDINGPROC pGLShaderStorageBlockBinding;
-    PFNGLUNIFORMBLOCKBINDINGPROC       pGLUniformBlockBinding;
+    PFNGLBINDBUFFERPROC            pGLBindBuffer;
+    PFNGLBUFFERSUBDATAPROC         pGLBufferSubData;
+    PFNGLFINISHPROC                pGLFinish;
+    PFNGLGETPROGRAMRESOURCEIVPROC  pGLGetProgramResourceiv;
+    PFNGLNAMEDBUFFERSUBDATAEXTPROC pGLNamedBufferSubDataEXT;
 
     /* Delimits a region which needs to be re-uploaded to the GPU upon next
      * synchronisation request.
@@ -102,8 +100,6 @@ typedef struct _ogl_program_block
         pGLFinish                        = NULL;
         pGLGetProgramResourceiv          = NULL;
         pGLNamedBufferSubDataEXT         = NULL;
-        pGLShaderStorageBlockBinding     = NULL;
-        pGLUniformBlockBinding           = NULL;
         syncable                         = in_syncable;
 
         if (in_type == OGL_PROGRAM_BLOCK_TYPE_UNIFORM_BUFFER)
@@ -334,11 +330,19 @@ PRIVATE unsigned int _ogl_program_block_get_n_matrix_rows(const ogl_program_vari
     return result;
 }
 
-/** TODO */
+/** TODO.
+ *
+ *  NOTE: This function does not initialize SSB/UB bindings for a reason. If we tried to do that,
+ *        we would overflow the stack, as the context wrapper's glShaderStorageBlockBinding() and
+ *        glUniformBlockBinding() implementations would eventually call this function again.
+ *        Instead, we configure the bindings in the linking handler, after all blocks are
+ *        enumerated.
+ */
 PRIVATE bool _ogl_program_block_init(_ogl_program_block* block_ptr)
 {
     GLint* active_variable_indices = NULL;
     GLint  n_active_variables      = 0;
+    GLuint po_id                   = ogl_program_get_id(block_ptr->owner);
     bool   result                  = true;
 
     ASSERT_DEBUG_SYNC(block_ptr != NULL,
@@ -371,13 +375,11 @@ PRIVATE bool _ogl_program_block_init(_ogl_program_block* block_ptr)
                                  OGL_CONTEXT_PROPERTY_LIMITS,
                                 &limits_ptr);
 
-        block_ptr->pGLBindBuffer                = entry_points->pGLBindBuffer;
-        block_ptr->pGLBufferSubData             = entry_points->pGLBufferSubData;
-        block_ptr->pGLFinish                    = entry_points->pGLFinish;
-        block_ptr->pGLGetProgramResourceiv      = entry_points->pGLGetProgramResourceiv;
-        block_ptr->pGLShaderStorageBlockBinding = entry_points->pGLShaderStorageBlockBinding;
-        block_ptr->pGLUniformBlockBinding       = entry_points->pGLUniformBlockBinding;
-        uniform_buffer_offset_alignment         = limits_ptr->uniform_buffer_offset_alignment;
+        block_ptr->pGLBindBuffer           = entry_points->pGLBindBuffer;
+        block_ptr->pGLBufferSubData        = entry_points->pGLBufferSubData;
+        block_ptr->pGLFinish               = entry_points->pGLFinish;
+        block_ptr->pGLGetProgramResourceiv = entry_points->pGLGetProgramResourceiv;
+        uniform_buffer_offset_alignment    = limits_ptr->uniform_buffer_offset_alignment;
 
         if (entry_points_dsa->pGLNamedBufferSubDataEXT != NULL)
         {
@@ -399,12 +401,10 @@ PRIVATE bool _ogl_program_block_init(_ogl_program_block* block_ptr)
         entry_points->pGLGetIntegerv(GL_UNIFORM_BUFFER_OFFSET_ALIGNMENT,
                                     &uniform_buffer_offset_alignment);
 
-        block_ptr->pGLBindBuffer                = entry_points->pGLBindBuffer;
-        block_ptr->pGLBufferSubData             = entry_points->pGLBufferSubData;
-        block_ptr->pGLFinish                    = entry_points->pGLFinish;
-        block_ptr->pGLGetProgramResourceiv      = entry_points->pGLGetProgramResourceiv;
-        block_ptr->pGLShaderStorageBlockBinding = entry_points->pGLShaderStorageBlockBinding;
-        block_ptr->pGLUniformBlockBinding       = entry_points->pGLUniformBlockBinding;
+        block_ptr->pGLBindBuffer           = entry_points->pGLBindBuffer;
+        block_ptr->pGLBufferSubData        = entry_points->pGLBufferSubData;
+        block_ptr->pGLFinish               = entry_points->pGLFinish;
+        block_ptr->pGLGetProgramResourceiv = entry_points->pGLGetProgramResourceiv;
     }
 
     /* Convert the block type to GL interface type */
@@ -421,7 +421,6 @@ PRIVATE bool _ogl_program_block_init(_ogl_program_block* block_ptr)
     static const GLenum block_property_num_active_variables = GL_NUM_ACTIVE_VARIABLES;
                  GLint  n_active_uniform_blocks             = 0;
                  GLint  n_active_uniform_block_max_length   = 0;
-                 GLuint po_id                               = ogl_program_get_id(block_ptr->owner);
 
     block_ptr->pGLGetProgramResourceiv(po_id,
                                        block_type_gl,
@@ -515,7 +514,7 @@ PRIVATE bool _ogl_program_block_init(_ogl_program_block* block_ptr)
                  */
                 if (block_ptr->block_type == OGL_PROGRAM_BLOCK_TYPE_SHADER_STORAGE_BUFFER)
                 {
-                    variable_ptr = new (std::nothrow) ogl_program_variable();
+                    variable_ptr = new (std::nothrow) ogl_program_variable;
 
                     ogl_program_fill_ogl_program_variable(block_ptr->owner,
                                                           0,    /* temp_variable_name_storage */

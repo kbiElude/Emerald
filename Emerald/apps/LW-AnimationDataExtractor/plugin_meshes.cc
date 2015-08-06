@@ -1267,8 +1267,8 @@ PUBLIC void FillSceneWithMeshData(scene scene)
             /* Instantiate the "GPU mesh" first */
             mesh_layer_id new_mesh_layer = NULL;
 
-            instance_ptr->mesh_gpu = mesh_create(MESH_SAVE_SUPPORT,
-                                                 instance_ptr->name);
+            instance_ptr->mesh_gpu = mesh_create_regular_mesh(MESH_CREATION_FLAGS_SAVE_SUPPORT,
+                                                              instance_ptr->name);
 
             ASSERT_ALWAYS_SYNC(instance_ptr->mesh_gpu != NULL,
                                "mesh_create() failed.");
