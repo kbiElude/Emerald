@@ -16,10 +16,10 @@
 /* Internal 64-bit hash-map bin entry descriptor */
 struct _system_hash64map_bin_entry
 {
-    void*                                         element;
-    system_hash64                                 hash;
-    PFNSYSTEMHASH64MAPONREMOVECALLBACKPROC        remove_callback;
-    _system_hash64map_on_remove_callback_argument remove_callback_argument;
+    void*                                  element;
+    system_hash64                          hash;
+    PFNSYSTEMHASH64MAPONREMOVECALLBACKPROC remove_callback;
+    void*                                  remove_callback_argument;
 };
 
 /* Internal 64-bit hash-map descriptor */
@@ -37,11 +37,11 @@ struct _system_hash64map
 };
 
 /** TODO */
-PRIVATE void _system_hash64map_bin_entry_init(_system_hash64map_bin_entry*                  entry_ptr,
-                                              system_hash64                                 hash,
-                                              void*                                         element,
-                                              PFNSYSTEMHASH64MAPONREMOVECALLBACKPROC        remove_callback,
-                                              _system_hash64map_on_remove_callback_argument remove_callback_argument)
+PRIVATE void _system_hash64map_bin_entry_init(_system_hash64map_bin_entry*           entry_ptr,
+                                              system_hash64                          hash,
+                                              void*                                  element,
+                                              PFNSYSTEMHASH64MAPONREMOVECALLBACKPROC remove_callback,
+                                              void*                                  remove_callback_argument)
 {
     entry_ptr->element                  = element;
     entry_ptr->hash                     = hash;
@@ -479,11 +479,11 @@ PUBLIC EMERALD_API void system_hash64map_get_property(system_hash64map          
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API bool system_hash64map_insert(system_hash64map                              map,
-                                                system_hash64                                 hash,
-                                                void*                                         element,
-                                                PFNSYSTEMHASH64MAPONREMOVECALLBACKPROC        callback,
-                                                _system_hash64map_on_remove_callback_argument callback_argument)
+PUBLIC EMERALD_API bool system_hash64map_insert(system_hash64map                       map,
+                                                system_hash64                          hash,
+                                                void*                                  element,
+                                                PFNSYSTEMHASH64MAPONREMOVECALLBACKPROC callback,
+                                                void*                                  callback_argument)
 {
     _system_hash64map* hash64map_ptr = (_system_hash64map*) map;
 

@@ -80,19 +80,19 @@ PUBLIC EMERALD_API bool system_hash64map_is_equal(system_hash64map map_1,
 
 /** Inserts a new element into a 64-bit hash-map.
  *
- *  @param system_hash64map                              64-bit hash-map to operate on.
- *  @param system_hash64                                 Hash the item should use.
- *  @param void*                                         Element to insert. Note that this value will be copied by value to internal storage of the hash-map.
- *  @param PFNSYSTEMHASH64MAPONREMOVECALLBACKPROC        Function pointer to be used if the item is ever released. Can be null.
- *  @param _system_hash64map_on_remove_callback_argument Argument to be passed with on-removal callback. Can be null
+ *  @param map               64-bit hash-map to operate on.
+ *  @param hash              Hash the item should use.
+ *  @param element           Element to insert. Note that this value will be copied by value to internal storage of the hash-map.
+ *  @param callback          Function pointer to be used if the item is ever released. Can be null.
+ *  @param callback_argument Argument to be passed with on-removal callback. Can be null
  *
  *  @return true if successful, false otherwise.
  */
-PUBLIC EMERALD_API bool system_hash64map_insert(system_hash64map                              map,
-                                                system_hash64                                 hash,
-                                                void*                                         element,
-                                                PFNSYSTEMHASH64MAPONREMOVECALLBACKPROC        callback,
-                                                _system_hash64map_on_remove_callback_argument callback_argument);
+PUBLIC EMERALD_API bool system_hash64map_insert(system_hash64map                       map,
+                                                system_hash64                          hash,
+                                                void*                                  element,
+                                                PFNSYSTEMHASH64MAPONREMOVECALLBACKPROC callback,
+                                                void*                                  callback_argument);
 
 /** TODO */
 PUBLIC EMERALD_API void system_hash64map_lock(system_hash64map                    map,
