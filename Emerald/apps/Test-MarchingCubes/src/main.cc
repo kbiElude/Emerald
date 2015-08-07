@@ -368,7 +368,6 @@ PRIVATE void _rendering_handler(ogl_context context,
                                           _scene_camera,
                                           RENDER_MODE_FORWARD_WITHOUT_DEPTH_PREPASS,
                                           false, /* apply_shadow_mapping */
-                                          //(_ogl_scene_renderer_helper_visualization) 0,
                                           HELPER_VISUALIZATION_BOUNDING_BOXES,
                                           frame_time);
 }

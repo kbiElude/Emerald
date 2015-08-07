@@ -37,44 +37,44 @@ struct _system_hash64map
 };
 
 /** TODO */
-PRIVATE void _system_hash64map_bin_entry_init_descriptor(_system_hash64map_bin_entry*                  descriptor,
-                                                         system_hash64                                 hash,
-                                                         void*                                         element,
-                                                         PFNSYSTEMHASH64MAPONREMOVECALLBACKPROC        remove_callback,
-                                                         _system_hash64map_on_remove_callback_argument remove_callback_argument)
+PRIVATE void _system_hash64map_bin_entry_init(_system_hash64map_bin_entry*                  entry_ptr,
+                                              system_hash64                                 hash,
+                                              void*                                         element,
+                                              PFNSYSTEMHASH64MAPONREMOVECALLBACKPROC        remove_callback,
+                                              _system_hash64map_on_remove_callback_argument remove_callback_argument)
 {
-    descriptor->element                  = element;
-    descriptor->hash                     = hash;
-    descriptor->remove_callback          = remove_callback;
-    descriptor->remove_callback_argument = remove_callback_argument;
+    entry_ptr->element                  = element;
+    entry_ptr->hash                     = hash;
+    entry_ptr->remove_callback          = remove_callback;
+    entry_ptr->remove_callback_argument = remove_callback_argument;
 }
 
 /** TODO */
-PRIVATE void _system_hash64map_init_descriptor(_system_hash64map* descriptor,
-                                               uint32_t           n_bins,
-                                               size_t             element_size,
-                                               bool               should_be_thread_safe)
+PRIVATE void _system_hash64map_init(_system_hash64map* hash64map_ptr,
+                                    uint32_t           n_bins,
+                                    size_t             element_size,
+                                    bool               should_be_thread_safe)
 {
-    descriptor->access_mutex                   = NULL;
-    descriptor->any_entry_used_remove_callback = false;
-    descriptor->bin_entry_pool                 = system_resource_pool_create(sizeof(_system_hash64map_bin_entry),
-                                                                             128 /* n-elements */,
-                                                                             NULL /* init_fn */,
-                                                                             NULL /* deinit_fn */);
-    descriptor->bins                           = new system_resizable_vector[n_bins];
-    descriptor->element_size                   = element_size;
-    descriptor->n_bins                         = n_bins;
+    hash64map_ptr->access_mutex                   = NULL;
+    hash64map_ptr->any_entry_used_remove_callback = false;
+    hash64map_ptr->bin_entry_pool                 = system_resource_pool_create(sizeof(_system_hash64map_bin_entry),
+                                                                                128 /* n-elements */,
+                                                                                NULL /* init_fn */,
+                                                                                NULL /* deinit_fn */);
+    hash64map_ptr->bins                           = new system_resizable_vector[n_bins];
+    hash64map_ptr->element_size                   = element_size;
+    hash64map_ptr->n_bins                         = n_bins;
 
     for (uint32_t n_bin = 0;
                   n_bin < n_bins;
                 ++n_bin)
     {
-        descriptor->bins[n_bin] = system_resizable_vector_create(HASH64MAP_BIN_ENTRIES_AMOUNT);
+        hash64map_ptr->bins[n_bin] = system_resizable_vector_create(HASH64MAP_BIN_ENTRIES_AMOUNT);
     }
 
     if (should_be_thread_safe)
     {
-        descriptor->access_mutex = system_read_write_mutex_create();
+        hash64map_ptr->access_mutex = system_read_write_mutex_create();
     }
 }
 
@@ -83,53 +83,53 @@ PRIVATE void _system_hash64map_init_descriptor(_system_hash64map* descriptor,
  *  @param pool_ptr   TODO
  *  @param descriptor Descriptor to release.
  **/
-PRIVATE void _system_hash64map_bin_entry_deinit_descriptor(_system_hash64map*           pool_ptr,
-                                                           _system_hash64map_bin_entry* descriptor)
+PRIVATE void _system_hash64map_bin_entry_deinit(_system_hash64map*           hash64map_ptr,
+                                                _system_hash64map_bin_entry* entry_ptr)
 {
-    if (descriptor->remove_callback != NULL)
+    if (entry_ptr->remove_callback != NULL)
     {
-        descriptor->remove_callback(descriptor->remove_callback_argument);
+        entry_ptr->remove_callback(entry_ptr->remove_callback_argument);
     }
 
-    system_resource_pool_return_to_pool(pool_ptr->bin_entry_pool,
-                                        (system_resource_pool_block) descriptor);
+    system_resource_pool_return_to_pool(hash64map_ptr->bin_entry_pool,
+                                        (system_resource_pool_block) entry_ptr);
 }
 
 /** Releases a 64-bit hash-map descriptor. Do not access the descriptor after calling this function.
  *
  *  @param descriptor Descriptor to release.
  **/
-PRIVATE void _system_hash64map_deinit_descriptor(_system_hash64map* descriptor)
+PRIVATE void _system_hash64map_deinit(_system_hash64map* hash64map_ptr)
 {
     for (uint32_t n_bin = 0;
-                  n_bin < descriptor->n_bins;
+                  n_bin < hash64map_ptr->n_bins;
                 ++n_bin)
     {
-        system_resizable_vector_release(descriptor->bins[n_bin]);
+        system_resizable_vector_release(hash64map_ptr->bins[n_bin]);
     }
 
-    if (descriptor->access_mutex != NULL)
+    if (hash64map_ptr->access_mutex != NULL)
     {
-        system_read_write_mutex_release(descriptor->access_mutex);
+        system_read_write_mutex_release(hash64map_ptr->access_mutex);
 
-        descriptor->access_mutex = NULL;
+        hash64map_ptr->access_mutex = NULL;
     }
 
-    if (descriptor->bins != NULL)
+    if (hash64map_ptr->bins != NULL)
     {
-        delete [] descriptor->bins;
+        delete [] hash64map_ptr->bins;
 
-        descriptor->bins = NULL;
+        hash64map_ptr->bins = NULL;
     }
 
-    if (descriptor->bin_entry_pool)
+    if (hash64map_ptr->bin_entry_pool)
     {
-        system_resource_pool_release(descriptor->bin_entry_pool);
+        system_resource_pool_release(hash64map_ptr->bin_entry_pool);
 
-        descriptor->bin_entry_pool = NULL;
+        hash64map_ptr->bin_entry_pool = NULL;
     }
 
-    delete descriptor;
+    delete hash64map_ptr;
 }
 
 /** Please see header for spec */
@@ -143,25 +143,42 @@ PUBLIC EMERALD_API void system_hash64map_clear(system_hash64map map)
                                      ACCESS_WRITE);
     }
 
-    if (map_ptr->any_entry_used_remove_callback)
+    for (uint32_t n_bin = 0;
+                  n_bin < map_ptr->n_bins;
+                ++n_bin)
     {
-        /** TODO */
-        ASSERT_ALWAYS_SYNC(false,
-                           "Unsupported code-path");
-    }
-    else
-    {
-        /* Since no entry uses remove call-back, we can just tell the resource pool to reset! */
-        system_resource_pool_return_all_allocations(map_ptr->bin_entry_pool);
+        uint32_t n_bin_elements = 0;
 
-        /* Clear all bins. This should be fast since we only need to reset vector descriptors */
-        for (uint32_t n_bin = 0;
-                      n_bin < map_ptr->n_bins;
-                    ++n_bin)
+        if (map_ptr->any_entry_used_remove_callback)
         {
-            system_resizable_vector_clear(map_ptr->bins[n_bin]);
-        } /* for (all bins) */
-    }
+            system_resizable_vector_get_property(map_ptr->bins[n_bin],
+                                                 SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                                &n_bin_elements);
+
+            for (uint32_t n_element = 0;
+                          n_element < n_bin_elements;
+                        ++n_element)
+            {
+                _system_hash64map_bin_entry* entry_ptr = NULL;
+
+                system_resizable_vector_get_element_at(map_ptr->bins[n_bin],
+                                                       n_element,
+                                                      &entry_ptr);
+
+                if (entry_ptr->remove_callback != NULL)
+                {
+                    entry_ptr->remove_callback(entry_ptr->remove_callback_argument);
+                }
+            }
+        }
+
+        system_resizable_vector_clear(map_ptr->bins[n_bin]);
+    } /* for (all bins) */
+
+    /* Since no entry uses remove call-back, we can just tell the resource pool to reset! */
+    system_resource_pool_return_all_allocations(map_ptr->bin_entry_pool);
+
+    map_ptr->any_entry_used_remove_callback = false;
 
     if (map_ptr->access_mutex != NULL)
     {
@@ -174,32 +191,32 @@ PUBLIC EMERALD_API void system_hash64map_clear(system_hash64map map)
 PUBLIC EMERALD_API system_hash64map system_hash64map_create(size_t element_size,
                                                             bool   should_be_thread_safe)
 {
-    _system_hash64map* new_descriptor = new _system_hash64map;
+    _system_hash64map* hash64map_ptr = new _system_hash64map;
 
-    _system_hash64map_init_descriptor(new_descriptor,
-                                      HASH64MAP_BINS_AMOUNT,
-                                      element_size,
-                                      should_be_thread_safe);
+    _system_hash64map_init(hash64map_ptr,
+                           HASH64MAP_BINS_AMOUNT,
+                           element_size,
+                           should_be_thread_safe);
 
     /* Return the descriptor */
-    return (system_hash64map) new_descriptor;
+    return (system_hash64map) hash64map_ptr;
 }
 
 /** Please see header for specification */
 PUBLIC EMERALD_API bool system_hash64map_contains(system_hash64map hash_map,
                                                   system_hash64    hash)
 {
-    _system_hash64map* descriptor = (_system_hash64map*) hash_map;
+    _system_hash64map* hash64map_ptr = (_system_hash64map*) hash_map;
 
-    if (descriptor->access_mutex != NULL)
+    if (hash64map_ptr->access_mutex != NULL)
     {
-        system_read_write_mutex_lock(descriptor->access_mutex,
+        system_read_write_mutex_lock(hash64map_ptr->access_mutex,
                                      ACCESS_READ);
     }
 
     bool                    result            = false;
-    uint32_t                hash_index        = hash % descriptor->n_bins;
-    system_resizable_vector bin               = descriptor->bins[hash_index];
+    uint32_t                hash_index        = hash % hash64map_ptr->n_bins;
+    system_resizable_vector bin               = hash64map_ptr->bins[hash_index];
     uint32_t                n_vector_elements = 0;
 
     system_resizable_vector_get_property(bin,
@@ -228,9 +245,9 @@ PUBLIC EMERALD_API bool system_hash64map_contains(system_hash64map hash_map,
         }
     }
 
-    if (descriptor->access_mutex != NULL)
+    if (hash64map_ptr->access_mutex != NULL)
     {
-        system_read_write_mutex_unlock(descriptor->access_mutex,
+        system_read_write_mutex_unlock(hash64map_ptr->access_mutex,
                                        ACCESS_READ);
     }
 
@@ -240,19 +257,19 @@ PUBLIC EMERALD_API bool system_hash64map_contains(system_hash64map hash_map,
 /** Please see header for specification */
 PUBLIC EMERALD_API bool system_hash64map_get(system_hash64map map,
                                              system_hash64    hash,
-                                             void*            result_element)
+                                             void*            result_element_ptr)
 {
-    _system_hash64map* descriptor = (_system_hash64map*) map;
+    _system_hash64map* hash64map_ptr = (_system_hash64map*) map;
 
-    if (descriptor->access_mutex != NULL)
+    if (hash64map_ptr->access_mutex != NULL)
     {
-        system_read_write_mutex_lock(descriptor->access_mutex,
+        system_read_write_mutex_lock(hash64map_ptr->access_mutex,
                                      ACCESS_READ);
     }
 
     bool                    result            = false;
-    uint32_t                hash_index        = hash % descriptor->n_bins;
-    system_resizable_vector bin               = descriptor->bins[hash_index];
+    uint32_t                hash_index        = hash % hash64map_ptr->n_bins;
+    system_resizable_vector bin               = hash64map_ptr->bins[hash_index];
     uint32_t                n_vector_elements = 0;
 
     system_resizable_vector_get_property(bin,
@@ -273,11 +290,11 @@ PUBLIC EMERALD_API bool system_hash64map_get(system_hash64map map,
 
         if (bin_entry_descriptor->hash == hash)
         {
-            if (result_element != NULL)
+            if (result_element_ptr != NULL)
             {
-                memcpy(result_element,
+                memcpy(result_element_ptr,
                       &bin_entry_descriptor->element,
-                       descriptor->element_size);
+                       hash64map_ptr->element_size);
             }
 
             result = true;
@@ -285,9 +302,9 @@ PUBLIC EMERALD_API bool system_hash64map_get(system_hash64map map,
         }
     }
 
-    if (descriptor->access_mutex != NULL)
+    if (hash64map_ptr->access_mutex != NULL)
     {
-        system_read_write_mutex_unlock(descriptor->access_mutex,
+        system_read_write_mutex_unlock(hash64map_ptr->access_mutex,
                                        ACCESS_READ);
     }
 
@@ -297,14 +314,14 @@ PUBLIC EMERALD_API bool system_hash64map_get(system_hash64map map,
 /** Please see header for specification */
 PUBLIC EMERALD_API bool system_hash64map_get_element_at(system_hash64map map,
                                                         size_t           n_element,
-                                                        void*            result_element,
-                                                        system_hash64*   result_hash)
+                                                        void*            result_element_ptr,
+                                                        system_hash64*   result_hash_ptr)
 {
-    _system_hash64map* descriptor = (_system_hash64map*) map;
+    _system_hash64map* hash64map_ptr = (_system_hash64map*) map;
 
-    if (descriptor->access_mutex != NULL)
+    if (hash64map_ptr->access_mutex != NULL)
     {
-        system_read_write_mutex_lock(descriptor->access_mutex,
+        system_read_write_mutex_lock(hash64map_ptr->access_mutex,
                                      ACCESS_READ);
     }
 
@@ -312,38 +329,38 @@ PUBLIC EMERALD_API bool system_hash64map_get_element_at(system_hash64map map,
     bool     result             = false;
 
     for (uint32_t n_bin = 0;
-                  n_bin < descriptor->n_bins;
+                  n_bin < hash64map_ptr->n_bins;
                 ++n_bin)
     {
         uint32_t n_elements_in_bin = 0;
 
-        system_resizable_vector_get_property(descriptor->bins[n_bin],
+        system_resizable_vector_get_property(hash64map_ptr->bins[n_bin],
                                              SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
                                             &n_elements_in_bin);
 
         if (n_elements_counted + n_elements_in_bin > n_element)
         {
             // The element is located in this bin.
-            _system_hash64map_bin_entry* bin_entry_descriptor = NULL;
-            bool                         result_get           = false;
+            _system_hash64map_bin_entry* bin_entry_ptr = NULL;
+            bool                         result_get    = false;
 
-            result_get = system_resizable_vector_get_element_at(descriptor->bins[n_bin],
+            result_get = system_resizable_vector_get_element_at(hash64map_ptr->bins[n_bin],
                                                                 n_element - n_elements_counted,
-                                                               &bin_entry_descriptor);
+                                                               &bin_entry_ptr);
 
             ASSERT_DEBUG_SYNC(result_get,
                               "Could not retrieve hash64map bin descriptor.");
 
-            if (result_element != NULL)
+            if (result_element_ptr != NULL)
             {
-                memcpy(result_element,
-                      &bin_entry_descriptor->element,
-                       descriptor->element_size);
+                memcpy(result_element_ptr,
+                      &bin_entry_ptr->element,
+                       hash64map_ptr->element_size);
             }
 
-            if (result_hash != NULL)
+            if (result_hash_ptr != NULL)
             {
-                *result_hash = bin_entry_descriptor->hash;
+                *result_hash_ptr = bin_entry_ptr->hash;
             }
 
             result = true;
@@ -356,9 +373,9 @@ PUBLIC EMERALD_API bool system_hash64map_get_element_at(system_hash64map map,
         }
     }
 
-    if (descriptor->access_mutex != NULL)
+    if (hash64map_ptr->access_mutex != NULL)
     {
-        system_read_write_mutex_unlock(descriptor->access_mutex,
+        system_read_write_mutex_unlock(hash64map_ptr->access_mutex,
                                        ACCESS_READ);
     }
 
@@ -369,43 +386,43 @@ PUBLIC EMERALD_API bool system_hash64map_get_element_at(system_hash64map map,
 PUBLIC EMERALD_API bool system_hash64map_is_equal(system_hash64map map_1,
                                                   system_hash64map map_2)
 {
-    _system_hash64map* descriptor_1 = (_system_hash64map*) map_1;
-    _system_hash64map* descriptor_2 = (_system_hash64map*) map_2;
+    _system_hash64map* map_1_ptr = (_system_hash64map*) map_1;
+    _system_hash64map* map_2_ptr = (_system_hash64map*) map_2;
     bool               result       = false;
 
-    if (descriptor_1->access_mutex != NULL)
+    if (map_1_ptr->access_mutex != NULL)
     {
-        system_read_write_mutex_lock(descriptor_1->access_mutex,
+        system_read_write_mutex_lock(map_1_ptr->access_mutex,
                                      ACCESS_READ);
     }
-    if (descriptor_2->access_mutex != NULL)
+    if (map_2_ptr->access_mutex != NULL)
     {
-        system_read_write_mutex_lock(descriptor_2->access_mutex,
+        system_read_write_mutex_lock(map_2_ptr->access_mutex,
                                      ACCESS_READ);
     }
 
-    if (descriptor_1->element_size == descriptor_2->element_size &&
-        descriptor_1->n_bins       == descriptor_2->n_bins)
+    if (map_1_ptr->element_size == map_2_ptr->element_size &&
+        map_1_ptr->n_bins       == map_2_ptr->n_bins)
     {
         result = true;
 
         for (uint32_t n_bin = 0;
-                      n_bin < descriptor_1->n_bins && result;
+                      n_bin < map_1_ptr->n_bins && result;
                     ++n_bin)
         {
-            result = system_resizable_vector_is_equal(descriptor_1->bins[n_bin],
-                                                      descriptor_2->bins[n_bin]);
+            result = system_resizable_vector_is_equal(map_1_ptr->bins[n_bin],
+                                                      map_2_ptr->bins[n_bin]);
         }
     }
 
-    if (descriptor_1->access_mutex != NULL)
+    if (map_1_ptr->access_mutex != NULL)
     {
-        system_read_write_mutex_unlock(descriptor_1->access_mutex,
+        system_read_write_mutex_unlock(map_1_ptr->access_mutex,
                                        ACCESS_READ);
     }
-    if (descriptor_2->access_mutex != NULL)
+    if (map_2_ptr->access_mutex != NULL)
     {
-        system_read_write_mutex_unlock(descriptor_2->access_mutex,
+        system_read_write_mutex_unlock(map_2_ptr->access_mutex,
                                        ACCESS_READ);
     }
 
@@ -415,7 +432,7 @@ PUBLIC EMERALD_API bool system_hash64map_is_equal(system_hash64map map_1,
 /** Please see header for specification */
 PUBLIC EMERALD_API void system_hash64map_get_property(system_hash64map          map,
                                                       system_hash64map_property property,
-                                                      void*                     out_result)
+                                                      void*                     out_result_ptr)
 {
     _system_hash64map* map_ptr = (_system_hash64map*) map;
 
@@ -443,7 +460,7 @@ PUBLIC EMERALD_API void system_hash64map_get_property(system_hash64map          
                 result += temp;
             }
 
-            *(uint32_t*) out_result = result;
+            *(uint32_t*) out_result_ptr = result;
             break;
         }
 
@@ -468,31 +485,35 @@ PUBLIC EMERALD_API bool system_hash64map_insert(system_hash64map                
                                                 PFNSYSTEMHASH64MAPONREMOVECALLBACKPROC        callback,
                                                 _system_hash64map_on_remove_callback_argument callback_argument)
 {
-    _system_hash64map* descriptor = (_system_hash64map*) map;
+    _system_hash64map* hash64map_ptr = (_system_hash64map*) map;
 
     /* Lock rw mutex */
-    if (descriptor->access_mutex != NULL)
+    if (hash64map_ptr->access_mutex != NULL)
     {
-        system_read_write_mutex_lock(descriptor->access_mutex,
+        system_read_write_mutex_lock(hash64map_ptr->access_mutex,
                                      ACCESS_WRITE);
     }
 
-    uint32_t                hash_index = hash % descriptor->n_bins;
-    system_resizable_vector bin        = descriptor->bins[hash_index];
+    uint32_t                hash_index = hash % hash64map_ptr->n_bins;
+    system_resizable_vector bin        = hash64map_ptr->bins[hash_index];
 
     /* Create bin entry descriptor */
-    _system_hash64map_bin_entry* new_bin_entry_descriptor = NULL;
+    _system_hash64map_bin_entry* new_bin_entry_ptr = NULL;
 
-    new_bin_entry_descriptor = (_system_hash64map_bin_entry*) system_resource_pool_get_from_pool(descriptor->bin_entry_pool);
+    new_bin_entry_ptr = (_system_hash64map_bin_entry*) system_resource_pool_get_from_pool(hash64map_ptr->bin_entry_pool);
 
-    _system_hash64map_bin_entry_init_descriptor(new_bin_entry_descriptor,
-                                                hash,
-                                                element,
-                                                callback,
-                                                callback_argument);
+    _system_hash64map_bin_entry_init(new_bin_entry_ptr,
+                                     hash,
+                                     element,
+                                     callback,
+                                     callback_argument);
 
     /* In debug mode, before storing the entry, verify such element has not already
-     * been stored. */
+     * been stored.
+     *
+     * NOTE: The check below has been disabled owing to significant cost at execution
+     *       time. Only enable for debugging purposes.
+     */
 #if 0
     #ifdef _DEBUG
     {
@@ -520,16 +541,16 @@ PUBLIC EMERALD_API bool system_hash64map_insert(system_hash64map                
     /* Store the entry */
     if (callback != NULL)
     {
-        descriptor->any_entry_used_remove_callback = true;
+        hash64map_ptr->any_entry_used_remove_callback = true;
     }
 
     system_resizable_vector_push(bin,
-                                 new_bin_entry_descriptor);
+                                 new_bin_entry_ptr);
 
     /* Unlock rw mutex */
-    if (descriptor->access_mutex != NULL)
+    if (hash64map_ptr->access_mutex != NULL)
     {
-        system_read_write_mutex_unlock(descriptor->access_mutex,
+        system_read_write_mutex_unlock(hash64map_ptr->access_mutex,
                                        ACCESS_WRITE);
     }
 
@@ -553,17 +574,17 @@ PUBLIC EMERALD_API void system_hash64map_lock(system_hash64map                  
 PUBLIC EMERALD_API bool system_hash64map_remove( system_hash64map map,
                                                  system_hash64    hash)
 {
-    _system_hash64map* descriptor = (_system_hash64map*) map;
+    _system_hash64map* hash64map_ptr = (_system_hash64map*) map;
 
-    if (descriptor->access_mutex != NULL)
+    if (hash64map_ptr->access_mutex != NULL)
     {
-        system_read_write_mutex_lock(descriptor->access_mutex,
+        system_read_write_mutex_lock(hash64map_ptr->access_mutex,
                                      ACCESS_WRITE);
     }
 
     bool                    result            = false;
-    uint32_t                hash_index        = hash % descriptor->n_bins;
-    system_resizable_vector bin               = descriptor->bins[hash_index];
+    uint32_t                hash_index        = hash % hash64map_ptr->n_bins;
+    system_resizable_vector bin               = hash64map_ptr->bins[hash_index];
     uint32_t                n_vector_elements = 0;
 
     system_resizable_vector_get_property(bin,
@@ -574,31 +595,31 @@ PUBLIC EMERALD_API bool system_hash64map_remove( system_hash64map map,
                   n_element < n_vector_elements;
                 ++n_element)
     {
-        _system_hash64map_bin_entry* element_descriptor = NULL;
-        bool                         result_get         = false;
+        _system_hash64map_bin_entry* element_ptr = NULL;
+        bool                         result_get  = false;
 
         result_get = system_resizable_vector_get_element_at(bin,
                                                             n_element,
-                                                           &element_descriptor);
+                                                           &element_ptr);
 
         ASSERT_DEBUG_SYNC(result_get,
                           "Could not retrieve hash64map bin entry descriptor.");
 
-        if (element_descriptor->hash == hash)
+        if (element_ptr->hash == hash)
         {
             result = system_resizable_vector_delete_element_at(bin,
                                                                n_element);
 
-            _system_hash64map_bin_entry_deinit_descriptor(descriptor,
-                                                          element_descriptor);
+            _system_hash64map_bin_entry_deinit(hash64map_ptr,
+                                               element_ptr);
 
             break;
         }
     }
 
-    if (descriptor->access_mutex != NULL)
+    if (hash64map_ptr->access_mutex != NULL)
     {
-        system_read_write_mutex_unlock(descriptor->access_mutex,
+        system_read_write_mutex_unlock(hash64map_ptr->access_mutex,
                                        ACCESS_WRITE);
     }
 
@@ -608,7 +629,7 @@ PUBLIC EMERALD_API bool system_hash64map_remove( system_hash64map map,
 /** Please see header for specification */
 PUBLIC EMERALD_API void system_hash64map_release(system_hash64map map)
 {
-    _system_hash64map_deinit_descriptor( (_system_hash64map*) map);
+    _system_hash64map_deinit( (_system_hash64map*) map);
 }
 
 /** Please see header for specification */
