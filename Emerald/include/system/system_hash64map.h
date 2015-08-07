@@ -47,7 +47,7 @@ PUBLIC EMERALD_API bool system_hash64map_contains(system_hash64map hash_map,
  */
 PUBLIC EMERALD_API bool	system_hash64map_get(system_hash64map map,
                                              system_hash64    hash,
-                                             void*            result_element);
+                                             void*            out_element_ptr);
 
 /** Retrieves element at a given index of the 64-bit hash-map.
  *
@@ -60,13 +60,13 @@ PUBLIC EMERALD_API bool	system_hash64map_get(system_hash64map map,
  */
 PUBLIC EMERALD_API bool system_hash64map_get_element_at(system_hash64map map,
                                                         size_t           n_element,
-                                                        void*            result_element,
-                                                        system_hash64*   result_hash);
+                                                        void*            result_element_ptr,
+                                                        system_hash64*   result_hash_ptr);
 
 /** TODO */
 PUBLIC EMERALD_API void system_hash64map_get_property(system_hash64map          map,
                                                       system_hash64map_property property,
-                                                      void*                     out_result);
+                                                      void*                     out_result_ptr);
 
 /** Compares two 64-bit hash-maps.
  *

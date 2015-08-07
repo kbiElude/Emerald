@@ -568,10 +568,8 @@ DECLARE_HANDLE(system_linear_alloc_pin);
 typedef __uint64 system_hash64;
 /** Hash64-based map type */
 DECLARE_HANDLE(system_hash64map);
-/** Type of an argument passed with on-removal call-back */
-typedef void* _system_hash64map_on_remove_callback_argument;
 /** Hash64-based map on-removal call-back function pointer type */
-typedef void (*PFNSYSTEMHASH64MAPONREMOVECALLBACKPROC)(_system_hash64map_on_remove_callback_argument);
+typedef void (*PFNSYSTEMHASH64MAPONREMOVECALLBACKPROC)(void*);
 /******************** RESIZABLE VECTOR ***********************************/
 /** Represents a resizable vector instance */
 DECLARE_HANDLE(system_resizable_vector);

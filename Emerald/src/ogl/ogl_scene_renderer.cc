@@ -53,7 +53,9 @@ typedef struct _ogl_scene_renderer_mesh
 
 } _ogl_scene_renderer_mesh;
 
-/** TODO: Do we really need the distinction between _ogl_scene_renderer_mesh and _ogl_scene_renderer_mesh_uber_item ??? */
+/** TODO: Do we really need the distinction between _ogl_scene_renderer_mesh and _ogl_scene_renderer_mesh_uber_item ???
+ *        The pools would need to be separated, but it seems like we could re-use the same structure type.
+ */
 typedef struct _ogl_scene_renderer_mesh_uber_item
 {
     mesh_material    material;
@@ -199,6 +201,7 @@ PRIVATE void _ogl_scene_renderer_process_mesh_for_shadow_map_rendering    (scene
                                                                            void*                           renderer);
 PRIVATE void _ogl_scene_renderer_process_mesh_for_shadow_map_pre_pass     (scene_mesh                      scene_mesh_instance,
                                                                            void*                           renderer);
+PRIVATE void _ogl_scene_renderer_release_mesh_matrices                    (void*                           mesh_entry);
 PRIVATE void _ogl_scene_renderer_render_helper_visualization              (_ogl_scene_renderer*            renderer_ptr,
                                                                            system_time                     frame_time);
 PRIVATE void _ogl_scene_renderer_render_mesh_helper_visualization         (_ogl_scene_renderer*            renderer_ptr,
@@ -548,9 +551,13 @@ PRIVATE void _ogl_scene_renderer_process_mesh_for_forward_rendering(scene_mesh s
     mesh_get_property      (mesh_gpu,
                             MESH_PROPERTY_TYPE,
                            &mesh_instance_type);
+
     scene_mesh_get_property(scene_mesh_instance,
                             SCENE_MESH_PROPERTY_ID,
                            &mesh_id);
+    scene_mesh_get_property(scene_mesh_instance,
+                            SCENE_MESH_PROPERTY_IS_SHADOW_RECEIVER,
+                           &is_shadow_receiver);
 
     if (mesh_instance_type == MESH_TYPE_REGULAR)
     {
@@ -593,10 +600,25 @@ PRIVATE void _ogl_scene_renderer_process_mesh_for_forward_rendering(scene_mesh s
         goto end;
     }
 
-    /* Is this mesh a shadow receiver? */
-    scene_mesh_get_property(scene_mesh_instance,
-                            SCENE_MESH_PROPERTY_IS_SHADOW_RECEIVER,
-                           &is_shadow_receiver);
+    /* If any helper visualization is needed, we need to store a _mesh instance */
+    if (renderer_ptr->current_helper_visualization != 0)
+    {
+        _ogl_scene_renderer_mesh* new_entry_ptr = (_ogl_scene_renderer_mesh*) system_resource_pool_get_from_pool(renderer_ptr->mesh_pool);
+
+        new_entry_ptr->mesh_id       = mesh_id;
+        new_entry_ptr->mesh_instance = mesh_gpu;
+        new_entry_ptr->mesh_type     = mesh_instance_type;
+
+        _ogl_scene_renderer_create_model_normal_matrices(renderer_ptr,
+                                                        &new_entry_ptr->model_matrix,
+                                                        &new_entry_ptr->normal_matrix);
+
+        system_hash64map_insert(renderer_ptr->current_mesh_id_to_mesh_map,
+                                mesh_id,
+                                new_entry_ptr,
+                                _ogl_scene_renderer_release_mesh_matrices, /* on_remove_callback */
+                                new_entry_ptr);                            /* on_remove_callback_user_arg */
+    }
 
     /* Cache the mesh for rendering */
     if (mesh_instance_type == MESH_TYPE_REGULAR)
@@ -616,7 +638,7 @@ PRIVATE void _ogl_scene_renderer_process_mesh_for_forward_rendering(scene_mesh s
                                   n_mesh_material);
             }
 
-            /* 
+            /*
             /* Retrieve ogl_uber that can render the material for the currently processed
              * scene configuration.
              */
@@ -698,27 +720,28 @@ PRIVATE void _ogl_scene_renderer_process_mesh_for_forward_rendering(scene_mesh s
                                      new_entry_ptr);
     }
 
-    if (renderer_ptr->current_helper_visualization != 0)
-    {
-        _ogl_scene_renderer_mesh* new_entry_ptr = (_ogl_scene_renderer_mesh*) system_resource_pool_get_from_pool(renderer_ptr->mesh_pool);
-
-        new_entry_ptr->mesh_id       = mesh_id;
-        new_entry_ptr->mesh_instance = mesh_gpu;
-        new_entry_ptr->mesh_type     = mesh_instance_type;
-
-        _ogl_scene_renderer_create_model_normal_matrices(renderer_ptr,
-                                                        &new_entry_ptr->model_matrix,
-                                                        &new_entry_ptr->normal_matrix);
-
-        system_hash64map_insert(renderer_ptr->current_mesh_id_to_mesh_map,
-                                mesh_id,
-                                new_entry_ptr,
-                                NULL,  /* on_remove_callback */
-                                NULL); /* on_remove_callback_user_arg */
-    }
-
 end:
     ;
+}
+
+/** TODO */
+PRIVATE void _ogl_scene_renderer_release_mesh_matrices(void* mesh_entry)
+{
+    _ogl_scene_renderer_mesh* mesh_entry_ptr = (_ogl_scene_renderer_mesh*) mesh_entry;
+
+    if (mesh_entry_ptr->model_matrix != NULL)
+    {
+        system_matrix4x4_release(mesh_entry_ptr->model_matrix);
+
+        mesh_entry_ptr->model_matrix = NULL;
+    }
+
+    if (mesh_entry_ptr->normal_matrix != NULL)
+    {
+        system_matrix4x4_release(mesh_entry_ptr->normal_matrix);
+
+        mesh_entry_ptr->normal_matrix = NULL;
+    }
 }
 
 /** TODO */
@@ -1253,19 +1276,7 @@ PRIVATE void _ogl_scene_renderer_render_traversed_scene_graph(_ogl_scene_rendere
 
             if (n_pass == (n_passes - 1) )
             {
-                if (custom_mesh_ptr->model_matrix != NULL)
-                {
-                    system_matrix4x4_release(custom_mesh_ptr->model_matrix);
-
-                    custom_mesh_ptr->model_matrix = NULL;
-                }
-
-                if (custom_mesh_ptr->normal_matrix != NULL)
-                {
-                    system_matrix4x4_release(custom_mesh_ptr->normal_matrix);
-
-                    custom_mesh_ptr->normal_matrix = NULL;
-                }
+                _ogl_scene_renderer_release_mesh_matrices(custom_mesh_ptr);
 
                 system_resource_pool_return_to_pool(renderer_ptr->mesh_pool,
                                                     (system_resource_pool_block) custom_mesh_ptr);
@@ -2249,7 +2260,7 @@ PUBLIC void ogl_scene_renderer_get_indexed_property(const ogl_scene_renderer    
             else
             {
                 ASSERT_DEBUG_SYNC(false,
-                                  "Could not retrieve model matrix for mesh id [%d]",
+                                  "Could not retrieve mesh instance for mesh id [%d]",
                                   index);
             }
 
