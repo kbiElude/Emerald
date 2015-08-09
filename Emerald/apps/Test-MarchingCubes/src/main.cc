@@ -119,48 +119,47 @@ PRIVATE void _init_scalar_field(const ogl_context_gl_entrypoints* entrypoints_pt
                                    "const uvec3 blob_size             = uvec3(BLOB_SIZE_X,      BLOB_SIZE_Y,      BLOB_SIZE_Z);\n"
                                    "const uvec3 global_workgroup_size = uvec3(GLOBAL_WG_SIZE_X, GLOBAL_WG_SIZE_Y, GLOBAL_WG_SIZE_Z);\n"
                                    "\n"
-                                   "const struct\n"
-                                   "{\n"
-                                   "    vec3  xyz3;\n"
-                                   "    float radius;\n"
-                                   "} spheres[3] =\n"
-                                   "{\n"
-                                   "    {vec3(0.0,  0.0,  0.0), 0.25},\n"
-                                   "    {vec3(0.25, 0.25, 0.5), 0.5 },\n"
-                                   "    {vec3(0.75, 0.5,  0.3), 0.6 } };\n"
-                                   "const uint n_spheres = 3;\n"
-                                   "\n"
-                                   "\n"
                                    "void main()\n"
                                    "{\n"
+                                   "    struct\n" /* TODO: Constifying this on Intel driver causes compilation errors? */
+                                   "    {\n"
+                                   "        vec3  xyz;\n"
+                                   "        float radius;\n"
+                                   "    } spheres[3] =\n"
+                                   "    {\n"
+                                   "        {vec3(0.0,  0.0,  0.0), 0.25},\n"
+                                   "        {vec3(0.25, 0.25, 0.5), 0.3 },\n"
+                                   "        {vec3(0.75, 0.6,  0.8), 0.5 } };\n"
+                                   "    const uint n_spheres = 3;\n"
+                                   "    \n"
                                    "    const uint global_invocation_id_flat = gl_GlobalInvocationID.z * (global_workgroup_size.x * global_workgroup_size.y) +\n"
                                    "                                           gl_GlobalInvocationID.y * (global_workgroup_size.x)                           +\n"
                                    "                                           gl_GlobalInvocationID.x                                                       + \n"
                                    "                                           gl_LocalInvocationIndex;\n"
-                                   "    const uint blob_x =  global_invocation_id_flat                                % blob_size.x;\n"
-                                   "    const uint blob_y = (global_invocation_id_flat /  blob_size.x)                % blob_size.y;\n"
-                                   "    const uint blob_z = (global_invocation_id_flat / (blob_size.x * blob_size.y));\n"
+                                   "    const uint cube_x =  global_invocation_id_flat                                % blob_size.x;\n"
+                                   "    const uint cube_y = (global_invocation_id_flat /  blob_size.x)                % blob_size.y;\n"
+                                   "    const uint cube_z = (global_invocation_id_flat / (blob_size.x * blob_size.y));\n"
                                    "\n"
-                                   "    if (blob_z >= blob_size.z)\n"
+                                   "    if (cube_z >= blob_size.z)\n"
                                    "    {\n"
                                    "        return;\n"
                                    "    }\n"
                                    "\n"
-                                   "    const float blob_x_normalized = float(blob_x) / float(blob_size.x - 1);\n"
-                                   "    const float blob_y_normalized = float(blob_y) / float(blob_size.y - 1);\n"
-                                   "    const float blob_z_normalized = float(blob_z) / float(blob_size.z - 1);\n"
+                                   "    const float cube_x_normalized = float(cube_x) / float(blob_size.x - 1);\n"
+                                   "    const float cube_y_normalized = float(cube_y) / float(blob_size.y - 1);\n"
+                                   "    const float cube_z_normalized = float(cube_z) / float(blob_size.z - 1);\n"
                                    "\n"
                                    "    float max_power = 0.0;\n"
                                    "\n"
-                                   "    for (unsigned int n_sphere = 0;\n"
-                                   "                      n_sphere < n_spheres;\n"
-                                   "                    ++n_sphere)\n"
+                                   "    for (uint n_sphere = 0;\n"
+                                   "              n_sphere < n_spheres;\n"
+                                   "            ++n_sphere)\n"
                                    "    {\n"
-                                   "        float delta_x = blob_x_normalized - spheres[n_sphere].xyz3[0];\n"
-                                   "        float delta_y = blob_y_normalized - spheres[n_sphere].xyz3[1];\n"
-                                   "        float delta_z = blob_z_normalized - spheres[n_sphere].xyz3[2];\n"
+                                   "        float delta_x = cube_x_normalized - spheres[n_sphere].xyz[0];\n"
+                                   "        float delta_y = cube_y_normalized - spheres[n_sphere].xyz[1];\n"
+                                   "        float delta_z = cube_z_normalized - spheres[n_sphere].xyz[2];\n"
                                    "\n"
-                                   "        float power = sqrt(delta_x * delta_x + delta_y * delta_y + delta_z * delta_z);\n"
+                                   "        float power = 1.0 - clamp(sqrt(delta_x * delta_x + delta_y * delta_y + delta_z * delta_z) / spheres[n_sphere].radius, 0.0, 1.0);\n"
                                    "\n"
                                    "        max_power = max(max_power, power);\n"
                                    "    }\n"
@@ -343,7 +342,8 @@ PRIVATE void _init_scalar_field_renderer(const ogl_context_gl_entrypoints* entry
                           "\n"
                           "void main()\n"
                           "{\n"
-                          "    gl_Position = cube_aabb_min[0];\n"
+                          "    gl_PointSize = scalar_value[0] * 16.0;\n"
+                          "    gl_Position  = cube_aabb_min[0];\n"
                           "    EmitVertex();\n"
                           "}\n";
     const char* vs_body = "#version 430 core\n"
@@ -585,6 +585,14 @@ PRIVATE void _render_blob(ogl_context             context,
                                         _po_scalar_field_renderer_data_ub_bo_start_offset,
                                         sizeof(float) * 32);
 
+    /* Sync SSBO data.
+     *
+     * NOTE: Currently, this is an overkill and is only needed once (after the field generation pass
+     *       is ran). However, in the near future, we will re-generate the scalars every frame and
+     *       that's where the per-frame barrier will be required.
+     */
+    entrypoints_ptr->pGLMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
+
     /* Draw stuff */
     GLuint zero_vaas_vao_id = 0;
 
@@ -592,6 +600,7 @@ PRIVATE void _render_blob(ogl_context             context,
                              OGL_CONTEXT_PROPERTY_VAO_NO_VAAS,
                             &zero_vaas_vao_id);
 
+    entrypoints_ptr->pGLEnable         (GL_PROGRAM_POINT_SIZE);
     entrypoints_ptr->pGLUseProgram     (ogl_program_get_id(_po_scalar_field_renderer) );
     entrypoints_ptr->pGLBindVertexArray(zero_vaas_vao_id);
     entrypoints_ptr->pGLDrawArrays     (GL_POINTS,

@@ -2324,15 +2324,24 @@ PUBLIC void APIENTRY ogl_context_wrappers_glDispatchCompute(GLuint num_groups_x,
                                                             GLuint num_groups_y,
                                                             GLuint num_groups_z)
 {
+    ogl_context_bo_bindings bo_bindings = NULL;
     ogl_context             context     = ogl_context_get_current_context();
     ogl_context_state_cache state_cache = NULL;
 
+    ogl_context_get_property(context,
+                             OGL_CONTEXT_PROPERTY_BO_BINDINGS,
+                            &bo_bindings);
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_STATE_CACHE,
                             &state_cache);
 
     ogl_context_state_cache_sync(state_cache,
                                  STATE_CACHE_SYNC_BIT_ACTIVE_PROGRAM_OBJECT);
+    ogl_context_bo_bindings_sync(bo_bindings,
+                                 BO_BINDINGS_SYNC_BIT_ATOMIC_COUNTER_BUFFER     |
+                                 BO_BINDINGS_SYNC_BIT_SHADER_STORAGE_BUFFER     |
+                                 BO_BINDINGS_SYNC_BIT_TRANSFORM_FEEDBACK_BUFFER |
+                                 BO_BINDINGS_SYNC_BIT_UNIFORM_BUFFER);
 
     _private_entrypoints_ptr->pGLDispatchCompute(num_groups_x,
                                                  num_groups_y,
@@ -2342,15 +2351,24 @@ PUBLIC void APIENTRY ogl_context_wrappers_glDispatchCompute(GLuint num_groups_x,
 /** Please see header for spec */
 PUBLIC void APIENTRY ogl_context_wrappers_glDispatchComputeIndirect(GLintptr indirect)
 {
+    ogl_context_bo_bindings bo_bindings = NULL;
     ogl_context             context     = ogl_context_get_current_context();
     ogl_context_state_cache state_cache = NULL;
 
+    ogl_context_get_property(context,
+                             OGL_CONTEXT_PROPERTY_BO_BINDINGS,
+                            &bo_bindings);
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_STATE_CACHE,
                             &state_cache);
 
     ogl_context_state_cache_sync(state_cache,
                                  STATE_CACHE_SYNC_BIT_ACTIVE_PROGRAM_OBJECT);
+    ogl_context_bo_bindings_sync(bo_bindings,
+                                 BO_BINDINGS_SYNC_BIT_ATOMIC_COUNTER_BUFFER     |
+                                 BO_BINDINGS_SYNC_BIT_SHADER_STORAGE_BUFFER     |
+                                 BO_BINDINGS_SYNC_BIT_TRANSFORM_FEEDBACK_BUFFER |
+                                 BO_BINDINGS_SYNC_BIT_UNIFORM_BUFFER);
 
     _private_entrypoints_ptr->pGLDispatchComputeIndirect(indirect);
 }
