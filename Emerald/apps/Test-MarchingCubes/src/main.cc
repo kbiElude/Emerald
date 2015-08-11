@@ -29,7 +29,7 @@
 #include <algorithm>
 #include "main.h"
 
-PRIVATE const unsigned int _blob_size[] = {15, 15, 15};
+PRIVATE const unsigned int _blob_size[] = {100, 100, 100};
 
 PRIVATE GLuint              _blob_scalar_field_bo_id                                    = 0;
 PRIVATE unsigned int        _blob_scalar_field_bo_size                                  = 0;
@@ -430,9 +430,9 @@ PRIVATE void _init_scalar_field(const ogl_context_gl_entrypoints* entrypoints_pt
                                    "        float radius;\n"
                                    "    } spheres[3] =\n"
                                    "    {\n"
-                                   "        {vec3(0.0,  0.0,  0.0), 0.25},\n"  /* corner case lol */
-                                   "        {vec3(0.25, 0.25, 0.5), 0.3 },\n"
-                                   "        {vec3(0.5, 0.5,  0.5), 0.5 } };\n"
+                                   "        {vec3(0.17, 0.17, 0.17), 0.1 },\n"  /* corner case lol */
+                                   "        {vec3(0.3,  0.3,  0.3),  0.2 },\n"
+                                   "        {vec3(0.5,  0.5,  0.5),  0.4 } };\n"
                                    "    const uint n_spheres = 3;\n"
                                    "    \n"
                                    "    const uint global_invocation_id_flat = (gl_GlobalInvocationID.z * (LOCAL_WG_SIZE_X * LOCAL_WG_SIZE_Y) +\n"
@@ -624,16 +624,28 @@ PRIVATE void _init_scalar_field_renderer(const ogl_context_gl_entrypoints* entry
 {
     const char* fs_body = "#version 430 core\n"
                           "\n"
+#if 1
+                          "in  vec3 normal;\n"
+#endif
                           "out vec4 result;\n"
                           "\n"
                           "void main()\n"
                           "{\n"
+#if 1
+                          "    result = vec4(abs(normal), 1.0);\n"
+#else
                           "    result = vec4(1.0);\n"
+#endif
                           "}\n";
     const char* gs_body = "#version 430 core\n"
                           "\n"
                           "layout(points)                            in;\n"
                           "layout(triangle_strip, max_vertices = 15) out;\n"
+                          "\n"
+                          "layout(shared) readonly buffer data\n"
+                          "{\n"
+                          "    restrict vec4 scalar_field[];\n"
+                          "};\n"
                           "\n"
                           "layout(packed) uniform edge_tableUB\n"
                           "{\n"
@@ -647,9 +659,7 @@ PRIVATE void _init_scalar_field_renderer(const ogl_context_gl_entrypoints* entry
                           "\n"
                           "in VSData\n"
                           "{\n"
-                          "    vec3 cube_aabb_max_model;\n"
-                          "    vec3 cube_aabb_min_model;\n"
-                          "    vec4 scalar_values[2];\n"
+                          "    uint vertex_id;\n"
                           "} vs_data[];\n"
                           "\n"
                           "layout(packed) uniform dataUB\n"
@@ -659,10 +669,17 @@ PRIVATE void _init_scalar_field_renderer(const ogl_context_gl_entrypoints* entry
                           "    mat4  vp;\n"
                           "};\n"
                           "\n"
-                          "vec4 get_interpolated_vertex(in vec3  vertex1,\n"
-                          "                             in vec3  vertex2,\n"
-                          "                             in float vertex1_value,\n"
-                          "                             in float vertex2_value)\n"
+#if 1
+                          "out vec3 normal;\n"
+#endif
+                          "\n"
+                          "const uint n_ids_per_row    = BLOB_SIZE_X;\n"
+                          "const uint n_ids_per_slice  = BLOB_SIZE_X * BLOB_SIZE_Y;\n"
+                          "\n"
+                          "vec4 get_interpolated_value(in vec3  vertex1,\n"
+                          "                            in vec3  vertex2,\n"
+                          "                            in float vertex1_value,\n"
+                          "                            in float vertex2_value)\n"
                           "{\n"
                           /* TODO: Use the improved version? */
                           "    if (abs(isolevel - vertex1_value) < 1e-5) return vec4(vertex1, 1.0);\n"
@@ -675,89 +692,40 @@ PRIVATE void _init_scalar_field_renderer(const ogl_context_gl_entrypoints* entry
                           "    return vec4(vertex1 + vec3(coeff) * (vertex2 - vertex1), 1.0);\n"
                           "}\n"
                           "\n"
+                          "vec3 get_normal_for_scalar_field_item_index(in uint base_index)\n"
+                          "{\n"
+                          "    vec3 vertex0_scalar_preceeding = vec3(scalar_field[(base_index - 1)               / 4][(base_index - 1)               % 4],\n"
+                          "                                          scalar_field[(base_index - n_ids_per_row)   / 4][(base_index - n_ids_per_row)   % 4],\n"
+                          "                                          scalar_field[(base_index - n_ids_per_slice) / 4][(base_index - n_ids_per_slice) % 4]);\n"
+                          "    vec3 vertex0_scalar_proceeding = vec3(scalar_field[(base_index + 1)               / 4][(base_index + 1)               % 4],\n"
+                          "                                          scalar_field[(base_index + n_ids_per_row)   / 4][(base_index + n_ids_per_row)   % 4],\n"
+                          "                                          scalar_field[(base_index + n_ids_per_slice) / 4][(base_index + n_ids_per_slice) % 4]);\n"
+                          "\n"
+                          /* NOTE: Normalization is performed at vertex emission time */
+                          "    return (vertex0_scalar_proceeding - vertex0_scalar_preceeding);\n"
+                          "}\n"
+                          "\n"
                           "void main()\n"
                           "{\n"
-                          /* Determine edge index */
-                          "    uint edge_index = 0;\n"
+                          /* Extract scalar field values */
+                          "    const uvec3 cube_xyz = uvec3( vs_data[0].vertex_id                                % BLOB_SIZE_X,\n"
+                          "                                 (vs_data[0].vertex_id /  BLOB_SIZE_X)                % BLOB_SIZE_Y,\n"
+                          "                                  vs_data[0].vertex_id / (BLOB_SIZE_X * BLOB_SIZE_Y));\n"
                           "\n"
-                          "    if (vs_data[0].scalar_values[0].x < isolevel) edge_index |= 1;\n"
-                          "    if (vs_data[0].scalar_values[0].y < isolevel) edge_index |= 2;\n"
-                          "    if (vs_data[0].scalar_values[0].z < isolevel) edge_index |= 4;\n"
-                          "    if (vs_data[0].scalar_values[0].w < isolevel) edge_index |= 8;\n"
-                          "    if (vs_data[0].scalar_values[1].x < isolevel) edge_index |= 16;\n"
-                          "    if (vs_data[0].scalar_values[1].y < isolevel) edge_index |= 32;\n"
-                          "    if (vs_data[0].scalar_values[1].z < isolevel) edge_index |= 64;\n"
-                          "    if (vs_data[0].scalar_values[1].w < isolevel) edge_index |= 128;\n"
+                          "    const vec3 cube_x1y1z1         = vec3(cube_xyz) / vec3(BLOB_SIZE_X, BLOB_SIZE_Y, BLOB_SIZE_Z);\n"
+                          "    const vec3 cube_size           = vec3(1.0)      / vec3(BLOB_SIZE_X, BLOB_SIZE_Y, BLOB_SIZE_Z);\n"
+                          "    const vec3 cube_aabb_min_model = cube_x1y1z1;\n"
+                          "    const vec3 cube_aabb_max_model = cube_x1y1z1 + cube_size;\n"
                           "\n"
-                          "    if (edge_table[edge_index] == 0)\n"
+                          "    const uint top_plane_ids[4] =\n"
                           "    {\n"
-                          "        return;\n"
-                          "    }\n"
-                          "\n"
-                          /* Build an array of interpolated vertices for the edge we're processing */
-                          "    vec4 lerped_vertex_screenspace_list[12];\n"
-                          "    vec3 vertex_model                  [8] =\n"
-                          "    {\n"
-                          "        vec3(vs_data[0].cube_aabb_min_model.x,  vs_data[0].cube_aabb_max_model.y,  vs_data[0].cube_aabb_min_model.z),\n"
-                          "        vec3(vs_data[0].cube_aabb_max_model.xy, vs_data[0].cube_aabb_min_model.z),\n"
-                          "             vs_data[0].cube_aabb_max_model,\n"
-                          "        vec3(vs_data[0].cube_aabb_min_model.x,  vs_data[0].cube_aabb_max_model.yz),\n"
-                          "             vs_data[0].cube_aabb_min_model,\n"
-                          "        vec3(vs_data[0].cube_aabb_max_model.x,  vs_data[0].cube_aabb_min_model.yz),\n"
-                          "        vec3(vs_data[0].cube_aabb_max_model.x,  vs_data[0].cube_aabb_min_model.y,  vs_data[0].cube_aabb_max_model.z),\n"
-                          "        vec3(vs_data[0].cube_aabb_min_model.xy, vs_data[0].cube_aabb_max_model.z),\n"
+                          "        vs_data[0].vertex_id,\n"
+                          "        vs_data[0].vertex_id                   + 1,\n"
+                          "        vs_data[0].vertex_id + n_ids_per_slice + 1,\n"
+                          "        vs_data[0].vertex_id + n_ids_per_slice\n"
                           "    };\n"
                           "\n"
-                          "    const mat4 mvp = vp * model;\n"
-                          "\n"
-                          "    if ((edge_table[edge_index] & 1)    != 0) lerped_vertex_screenspace_list[0]  = mvp * get_interpolated_vertex(vertex_model[0], vertex_model[1], vs_data[0].scalar_values[0].x, vs_data[0].scalar_values[0].y);\n"
-                          "    if ((edge_table[edge_index] & 2)    != 0) lerped_vertex_screenspace_list[1]  = mvp * get_interpolated_vertex(vertex_model[1], vertex_model[2], vs_data[0].scalar_values[0].y, vs_data[0].scalar_values[0].z);\n"
-                          "    if ((edge_table[edge_index] & 4)    != 0) lerped_vertex_screenspace_list[2]  = mvp * get_interpolated_vertex(vertex_model[2], vertex_model[3], vs_data[0].scalar_values[0].z, vs_data[0].scalar_values[0].w);\n"
-                          "    if ((edge_table[edge_index] & 8)    != 0) lerped_vertex_screenspace_list[3]  = mvp * get_interpolated_vertex(vertex_model[3], vertex_model[0], vs_data[0].scalar_values[0].w, vs_data[0].scalar_values[0].x);\n"
-                          "    if ((edge_table[edge_index] & 16)   != 0) lerped_vertex_screenspace_list[4]  = mvp * get_interpolated_vertex(vertex_model[4], vertex_model[5], vs_data[0].scalar_values[1].x, vs_data[0].scalar_values[1].y);\n"
-                          "    if ((edge_table[edge_index] & 32)   != 0) lerped_vertex_screenspace_list[5]  = mvp * get_interpolated_vertex(vertex_model[5], vertex_model[6], vs_data[0].scalar_values[1].y, vs_data[0].scalar_values[1].z);\n"
-                          "    if ((edge_table[edge_index] & 64)   != 0) lerped_vertex_screenspace_list[6]  = mvp * get_interpolated_vertex(vertex_model[6], vertex_model[7], vs_data[0].scalar_values[1].z, vs_data[0].scalar_values[1].w);\n"
-                          "    if ((edge_table[edge_index] & 128)  != 0) lerped_vertex_screenspace_list[7]  = mvp * get_interpolated_vertex(vertex_model[7], vertex_model[4], vs_data[0].scalar_values[1].w, vs_data[0].scalar_values[1].x);\n"
-                          "    if ((edge_table[edge_index] & 256)  != 0) lerped_vertex_screenspace_list[8]  = mvp * get_interpolated_vertex(vertex_model[0], vertex_model[4], vs_data[0].scalar_values[0].x, vs_data[0].scalar_values[1].x);\n"
-                          "    if ((edge_table[edge_index] & 512)  != 0) lerped_vertex_screenspace_list[9]  = mvp * get_interpolated_vertex(vertex_model[1], vertex_model[5], vs_data[0].scalar_values[0].y, vs_data[0].scalar_values[1].y);\n"
-                          "    if ((edge_table[edge_index] & 1024) != 0) lerped_vertex_screenspace_list[10] = mvp * get_interpolated_vertex(vertex_model[2], vertex_model[6], vs_data[0].scalar_values[0].z, vs_data[0].scalar_values[1].z);\n"
-                          "    if ((edge_table[edge_index] & 2048) != 0) lerped_vertex_screenspace_list[11] = mvp * get_interpolated_vertex(vertex_model[3], vertex_model[7], vs_data[0].scalar_values[0].w, vs_data[0].scalar_values[1].w);\n"
-                          "\n"
-                          /* Emit triangles */
-                          "    for (uint n_triangle = 0;\n"
-                          "              n_triangle < 5;\n"
-                          "              n_triangle++)\n"
-                          "    {\n"
-                          "        const uint n_triangle_base_vertex = n_triangle * 3;\n"
-                          "\n"
-                          "        if (triangle_table[edge_index * 15 + n_triangle_base_vertex] == -1)\n"
-                          "        {\n"
-                          "            return;"
-                          "        }\n"
-                          "\n"
-                          "        gl_Position = lerped_vertex_screenspace_list[ triangle_table[edge_index * 15 + n_triangle_base_vertex] ];\n"
-                          "        EmitVertex();\n"
-                          "\n"
-                          "        gl_Position = lerped_vertex_screenspace_list[ triangle_table[edge_index * 15 + n_triangle_base_vertex + 1] ];\n"
-                          "        EmitVertex();\n"
-                          "\n"
-                          "        gl_Position = lerped_vertex_screenspace_list[ triangle_table[edge_index * 15 + n_triangle_base_vertex + 2] ];\n"
-                          "        EmitVertex();\n"
-                          "        EndPrimitive();\n"
-                          "    }\n"
-                          "}\n";
-    const char* vs_body = "#version 430 core\n"
-                          "\n"
-                          "layout(shared) readonly buffer data\n"
-                          "{\n"
-#if 1
-                          "    restrict vec4 scalar_field[];\n"
-#else
-                          "    restrict float scalar_field[];\n"
-#endif
-                          "};\n"
-                          "\n"
-                          /* This holds scalar field values for vertices in the following order: (XZ plane is assumed)
+                          /* The scalar_values vector array holds scalar field values for vertices in the following order: (XZ plane is assumed)
                            *
                            * [0]: BOTTOM PLANE, top-left     vertex
                            * [1]: BOTTOM PLANE, top-right    vertex
@@ -768,95 +736,296 @@ PRIVATE void _init_scalar_field_renderer(const ogl_context_gl_entrypoints* entry
                            * [6]: TOP    PLANE, bottom-right vertex
                            * [7]: TOP    PLANE, bottom-left  vertex
                            */
-                          "out VSData\n"
-                          "{\n"
-                          "    vec3 cube_aabb_max_model;\n"
-                          "    vec3 cube_aabb_min_model;\n"
                           "    vec4 scalar_values[2];\n"
-                          "} vs_data;\n"
                           "\n"
-                          "uniform dataUB\n"
-                          "{\n"
-                          "    float isolevel;\n"
-                          "    mat4  model;\n"
-                          "    mat4  vp;\n"
-                          "};\n"
-                          "\n"
-                          "void main()\n"
-                          "{\n"
-                          "    const uint cube_x =  gl_VertexID                                % BLOB_SIZE_X;\n"
-                          "    const uint cube_y = (gl_VertexID /  BLOB_SIZE_X)                % BLOB_SIZE_Y;\n"
-                          "    const uint cube_z = (gl_VertexID / (BLOB_SIZE_X * BLOB_SIZE_Y));\n"
-                          "\n"
-                          "    const vec3 cube_x1y1z1 = vec3(float(cube_x) / float(BLOB_SIZE_X),\n"
-                          "                                  float(cube_y) / float(BLOB_SIZE_Y),\n"
-                          "                                  float(cube_z) / float(BLOB_SIZE_Z) );\n"
-                          "    const vec3 cube_size   = vec3(1.0) / vec3(BLOB_SIZE_X, BLOB_SIZE_Y, BLOB_SIZE_Z);\n"
-                          "\n"
-                          "    vs_data.cube_aabb_min_model = cube_x1y1z1;\n"
-                          "    vs_data.cube_aabb_max_model = cube_x1y1z1 + vec3(cube_size);\n"
-                          "\n"
-                          "    const uint n_ids_per_row    = BLOB_SIZE_X;\n"
-                          "    const uint n_ids_per_slice  = BLOB_SIZE_X * BLOB_SIZE_Y;\n"
-                          "    const uint top_plane_ids[4] =\n"
+                          "    if (cube_xyz[0] > 0 && cube_xyz[0] < (BLOB_SIZE_X - 1)  &&\n"
+                          "        cube_xyz[1] > 0 && cube_xyz[1] < (BLOB_SIZE_Y - 1)  &&\n"
+                          "        cube_xyz[2] > 0 && cube_xyz[2] < (BLOB_SIZE_Z - 1) )\n"
                           "    {\n"
-                          "        gl_VertexID,\n"
-                          "        gl_VertexID                   + 1,\n"
-                          "        gl_VertexID + n_ids_per_slice + 1,\n"
-                          "        gl_VertexID + n_ids_per_slice\n"
-                          "    };\n"
-                          "\n"
-                          "    if (cube_x != (BLOB_SIZE_X - 1) && cube_y != (BLOB_SIZE_Y - 1))\n"
-                          "    {\n"
-                          "        vs_data.scalar_values[1].x = scalar_field[ top_plane_ids[0]                  / 4][ top_plane_ids[0]                  % 4];\n"
-                          "        vs_data.scalar_values[1].y = scalar_field[ top_plane_ids[1]                  / 4][ top_plane_ids[1]                  % 4];\n"
-                          "        vs_data.scalar_values[1].z = scalar_field[ top_plane_ids[2]                  / 4][ top_plane_ids[2]                  % 4];\n"
-                          "        vs_data.scalar_values[1].w = scalar_field[ top_plane_ids[3]                  / 4][ top_plane_ids[3]                  % 4];\n"
-                          "        vs_data.scalar_values[0].x = scalar_field[(top_plane_ids[0] + n_ids_per_row) / 4][(top_plane_ids[0] + n_ids_per_row) % 4];\n"
-                          "        vs_data.scalar_values[0].y = scalar_field[(top_plane_ids[1] + n_ids_per_row) / 4][(top_plane_ids[1] + n_ids_per_row) % 4];\n"
-                          "        vs_data.scalar_values[0].z = scalar_field[(top_plane_ids[2] + n_ids_per_row) / 4][(top_plane_ids[2] + n_ids_per_row) % 4];\n"
-                          "        vs_data.scalar_values[0].w = scalar_field[(top_plane_ids[3] + n_ids_per_row) / 4][(top_plane_ids[3] + n_ids_per_row) % 4];\n"
+                          "        scalar_values[1].x = scalar_field[ top_plane_ids[0]                  / 4][ top_plane_ids[0]                  % 4];\n"
+                          "        scalar_values[1].y = scalar_field[ top_plane_ids[1]                  / 4][ top_plane_ids[1]                  % 4];\n"
+                          "        scalar_values[1].z = scalar_field[ top_plane_ids[2]                  / 4][ top_plane_ids[2]                  % 4];\n"
+                          "        scalar_values[1].w = scalar_field[ top_plane_ids[3]                  / 4][ top_plane_ids[3]                  % 4];\n"
+                          "        scalar_values[0].x = scalar_field[(top_plane_ids[0] + n_ids_per_row) / 4][(top_plane_ids[0] + n_ids_per_row) % 4];\n"
+                          "        scalar_values[0].y = scalar_field[(top_plane_ids[1] + n_ids_per_row) / 4][(top_plane_ids[1] + n_ids_per_row) % 4];\n"
+                          "        scalar_values[0].z = scalar_field[(top_plane_ids[2] + n_ids_per_row) / 4][(top_plane_ids[2] + n_ids_per_row) % 4];\n"
+                          "        scalar_values[0].w = scalar_field[(top_plane_ids[3] + n_ids_per_row) / 4][(top_plane_ids[3] + n_ids_per_row) % 4];\n"
                           "    }\n"
                           "    else\n"
                           "    {\n"
-                          "        vs_data.scalar_values[0] = vec4(-1.0);\n"
-                          "        vs_data.scalar_values[1] = vec4(-1.0);\n"
+                          "        return;\n"
                           "    }\n"
+                          "\n"
+                          /* Determine edge index */
+                          "    uint edge_index = 0;\n"
+                          "\n"
+                          "    if (scalar_values[0].x < isolevel) edge_index |= 1;\n"
+                          "    if (scalar_values[0].y < isolevel) edge_index |= 2;\n"
+                          "    if (scalar_values[0].z < isolevel) edge_index |= 4;\n"
+                          "    if (scalar_values[0].w < isolevel) edge_index |= 8;\n"
+                          "    if (scalar_values[1].x < isolevel) edge_index |= 16;\n"
+                          "    if (scalar_values[1].y < isolevel) edge_index |= 32;\n"
+                          "    if (scalar_values[1].z < isolevel) edge_index |= 64;\n"
+                          "    if (scalar_values[1].w < isolevel) edge_index |= 128;\n"
+                          "\n"
+                          "    if (edge_table[edge_index] == 0)\n"
+                          "    {\n"
+                          "        return;\n"
+                          "    }\n"
+                          "\n"
+                          /* Build an array of interpolated vertices for the edge we're processing
+                           *
+                           * TOP PLANE:    0->1
+                           *                  |
+                           *               3<-2
+                           *
+                           * BOTTOM PLANE: 4->5
+                           *                  |
+                           *               7<-6
+                           */
+                          "    vec3 lerped_normal_list[12];\n"
+                          "    vec4 lerped_vertex_list[12];\n"
+                          "    vec3 vertex_model      [8] =\n"
+                          "    {\n"
+                          /* 0: */
+                          "        vec3(cube_aabb_min_model.x,  cube_aabb_max_model.y,  cube_aabb_min_model.z),\n"
+                          /* 1: */
+                          "        vec3(cube_aabb_max_model.xy, cube_aabb_min_model.z),\n"
+                          /* 2: */
+                          "             cube_aabb_max_model,\n"
+                          /* 3: */
+                          "        vec3(cube_aabb_min_model.x,  cube_aabb_max_model.yz),\n"
+                          /* 4: */
+                          "             cube_aabb_min_model,\n"
+                          /* 5: */
+                          "        vec3(cube_aabb_max_model.x,  cube_aabb_min_model.yz),\n"
+                          /* 6: */
+                          "        vec3(cube_aabb_max_model.x,  cube_aabb_min_model.y,  cube_aabb_max_model.z),\n"
+                          /* 7: */
+                          "        vec3(cube_aabb_min_model.xy, cube_aabb_max_model.z),\n"
+                          "    };\n"
+                          "\n"
+                          "    const mat4 mvp = vp * model;\n"
+                          "\n"
+                          "    if ((edge_table[edge_index] & 1) != 0)\n"
+                          "    {\n"
+                          "        lerped_normal_list[0] = get_interpolated_value(get_normal_for_scalar_field_item_index(top_plane_ids[0] + n_ids_per_row),\n"
+                          "                                                       get_normal_for_scalar_field_item_index(top_plane_ids[1] + n_ids_per_row),\n"
+                          "                                                       scalar_values[0].x,\n"
+                          "                                                       scalar_values[0].y).xyz;\n"
+                          "        lerped_vertex_list[0] = get_interpolated_value(vertex_model[0],\n"
+                          "                                                       vertex_model[1],\n"
+                          "                                                       scalar_values[0].x,\n"
+                          "                                                       scalar_values[0].y);\n"
+                          "    }\n"
+                          "\n"
+                          "    if ((edge_table[edge_index] & 2) != 0)\n"
+                          "    {\n"
+                          "        lerped_normal_list[1] = get_interpolated_value(get_normal_for_scalar_field_item_index(top_plane_ids[1] + n_ids_per_row),\n"
+                          "                                                       get_normal_for_scalar_field_item_index(top_plane_ids[2] + n_ids_per_row),\n"
+                          "                                                       scalar_values[0].y,\n"
+                          "                                                       scalar_values[0].z).xyz;\n"
+                          "        lerped_vertex_list[1] = get_interpolated_value(vertex_model[1],\n"
+                          "                                                       vertex_model[2],\n"
+                          "                                                       scalar_values[0].y,\n"
+                          "                                                       scalar_values[0].z);\n"
+                          "    }\n"
+                          "\n"
+                          "    if ((edge_table[edge_index] & 4) != 0)\n"
+                          "    {\n"
+                          "        lerped_normal_list[2] = get_interpolated_value(get_normal_for_scalar_field_item_index(top_plane_ids[2] + n_ids_per_row),\n"
+                          "                                                       get_normal_for_scalar_field_item_index(top_plane_ids[3] + n_ids_per_row),\n"
+                          "                                                       scalar_values[0].z,\n"
+                          "                                                       scalar_values[0].w).xyz;\n"
+                          "        lerped_vertex_list[2] = get_interpolated_value(vertex_model[2],\n"
+                          "                                                       vertex_model[3],\n"
+                          "                                                       scalar_values[0].z,\n"
+                          "                                                       scalar_values[0].w);\n"
+                          "    }\n"
+                          "\n"
+                          "    if ((edge_table[edge_index] & 8) != 0)\n"
+                          "    {\n"
+                          "        lerped_normal_list[3] = get_interpolated_value(get_normal_for_scalar_field_item_index(top_plane_ids[3] + n_ids_per_row),\n"
+                          "                                                       get_normal_for_scalar_field_item_index(top_plane_ids[0] + n_ids_per_row),\n"
+                          "                                                       scalar_values[0].w,\n"
+                          "                                                       scalar_values[0].x).xyz;\n"
+                          "        lerped_vertex_list[3] = get_interpolated_value(vertex_model[3],\n"
+                          "                                                       vertex_model[0],\n"
+                          "                                                       scalar_values[0].w,\n"
+                          "                                                       scalar_values[0].x);\n"
+                          "    }\n"
+                          "\n"
+                          "    if ((edge_table[edge_index] & 16) != 0)\n"
+                          "    {\n"
+                          "        lerped_normal_list[4] = get_interpolated_value(get_normal_for_scalar_field_item_index(top_plane_ids[0]),\n"
+                          "                                                       get_normal_for_scalar_field_item_index(top_plane_ids[1]),\n"
+                          "                                                       scalar_values[1].x,\n"
+                          "                                                       scalar_values[1].y).xyz;\n"
+                          "        lerped_vertex_list[4] = get_interpolated_value(vertex_model[4],\n"
+                          "                                                       vertex_model[5],\n"
+                          "                                                       scalar_values[1].x,\n"
+                          "                                                       scalar_values[1].y);\n"
+                          "    }\n"
+                          "\n"
+                          "    if ((edge_table[edge_index] & 32) != 0)\n"
+                          "    {\n"
+                          "        lerped_normal_list[5] = get_interpolated_value(get_normal_for_scalar_field_item_index(top_plane_ids[1]),\n"
+                          "                                                       get_normal_for_scalar_field_item_index(top_plane_ids[2]),\n"
+                          "                                                       scalar_values[1].y,\n"
+                          "                                                       scalar_values[1].z).xyz;\n"
+                          "        lerped_vertex_list[5] = get_interpolated_value(vertex_model[5],\n"
+                          "                                                       vertex_model[6],\n"
+                          "                                                       scalar_values[1].y,\n"
+                          "                                                       scalar_values[1].z);\n"
+                          "    }\n"
+                          "    if ((edge_table[edge_index] & 64) != 0)\n"
+                          "    {\n"
+                          "        lerped_normal_list[6] = get_interpolated_value(get_normal_for_scalar_field_item_index(top_plane_ids[2]),\n"
+                          "                                                       get_normal_for_scalar_field_item_index(top_plane_ids[3]),\n"
+                          "                                                       scalar_values[1].z,\n"
+                          "                                                       scalar_values[1].w).xyz;\n"
+                          "        lerped_vertex_list[6] = get_interpolated_value(vertex_model[6],\n"
+                          "                                                       vertex_model[7],\n"
+                          "                                                       scalar_values[1].z,\n"
+                          "                                                       scalar_values[1].w);\n"
+                          "    }\n"
+                          "\n"
+                          "    if ((edge_table[edge_index] & 128) != 0)\n"
+                          "    {\n"
+                          "        lerped_normal_list[7] = get_interpolated_value(get_normal_for_scalar_field_item_index(top_plane_ids[3]),\n"
+                          "                                                       get_normal_for_scalar_field_item_index(top_plane_ids[0]),\n"
+                          "                                                       scalar_values[1].w,\n"
+                          "                                                       scalar_values[1].x).xyz;\n"
+                          "        lerped_vertex_list[7] = get_interpolated_value(vertex_model[7],\n"
+                          "                                                       vertex_model[4],\n"
+                          "                                                       scalar_values[1].w,\n"
+                          "                                                       scalar_values[1].x);\n"
+                          "    }\n"
+                          "\n"
+                          "    if ((edge_table[edge_index] & 256) != 0)\n"
+                          "    {\n"
+                          "        lerped_normal_list[8] = get_interpolated_value(get_normal_for_scalar_field_item_index(top_plane_ids[0] + n_ids_per_row),\n"
+                          "                                                       get_normal_for_scalar_field_item_index(top_plane_ids[0]),\n"
+                          "                                                       scalar_values[0].x,\n"
+                          "                                                       scalar_values[1].x).xyz;\n"
+                          "        lerped_vertex_list[8] = get_interpolated_value(vertex_model[0],\n"
+                          "                                                       vertex_model[4],\n"
+                          "                                                       scalar_values[0].x,\n"
+                          "                                                       scalar_values[1].x);\n"
+                          "    }\n"
+                          "\n"
+                          "    if ((edge_table[edge_index] & 512) != 0)\n"
+                          "    {\n"
+                          "        lerped_normal_list[9] = get_interpolated_value(get_normal_for_scalar_field_item_index(top_plane_ids[1] + n_ids_per_row),\n"
+                          "                                                       get_normal_for_scalar_field_item_index(top_plane_ids[1]),\n"
+                          "                                                       scalar_values[0].y,\n"
+                          "                                                       scalar_values[1].y).xyz;\n"
+                          "        lerped_vertex_list[9] = get_interpolated_value(vertex_model[1],\n"
+                          "                                                       vertex_model[5],\n"
+                          "                                                       scalar_values[0].y,\n"
+                          "                                                       scalar_values[1].y);\n"
+                          "    }\n"
+                          "\n"
+                          "    if ((edge_table[edge_index] & 1024) != 0)\n"
+                          "    {\n"
+                          "        lerped_normal_list[10] = get_interpolated_value(get_normal_for_scalar_field_item_index(top_plane_ids[2] + n_ids_per_row),\n"
+                          "                                                        get_normal_for_scalar_field_item_index(top_plane_ids[2]),\n"
+                          "                                                        scalar_values[0].z,\n"
+                          "                                                        scalar_values[1].z).xyz;\n"
+                          "        lerped_vertex_list[10] = get_interpolated_value(vertex_model[2],\n"
+                          "                                                        vertex_model[6],\n"
+                          "                                                        scalar_values[0].z,\n"
+                          "                                                        scalar_values[1].z);\n"
+                          "    }\n"
+                          "\n"
+                          "    if ((edge_table[edge_index] & 2048) != 0)\n"
+                          "    {\n"
+                          "        lerped_normal_list[11] = get_interpolated_value(get_normal_for_scalar_field_item_index(top_plane_ids[3] + n_ids_per_row),\n"
+                          "                                                        get_normal_for_scalar_field_item_index(top_plane_ids[3]),\n"
+                          "                                                        scalar_values[0].w,\n"
+                          "                                                        scalar_values[1].w).xyz;\n"
+                          "        lerped_vertex_list[11] = get_interpolated_value(vertex_model[3],\n"
+                          "                                                        vertex_model[7],\n"
+                          "                                                        scalar_values[0].w,\n"
+                          "                                                        scalar_values[1].w);\n"
+                          "    }\n"
+                          "\n"
+                          /* Emit triangles */
+                          "    for (uint n_triangle = 0;\n"
+                          "              n_triangle < 5;\n"
+                          "              n_triangle++)\n"
+                          "    {\n"
+                          "        const uint n_triangle_base_vertex = n_triangle * 3;\n"
+                          "        vec4       current_vertex;\n"
+                          "\n"
+                          "        if (triangle_table[edge_index * 15 + n_triangle_base_vertex] == -1)\n"
+                          "        {\n"
+                          "            return;"
+                          "        }\n"
+                          "\n"
+                          "        current_vertex = lerped_vertex_list[ triangle_table[edge_index * 15 + n_triangle_base_vertex] ];\n"
+                          "        normal         = normalize(lerped_normal_list[ triangle_table[edge_index * 15 + n_triangle_base_vertex] ]);\n"
+                          "        gl_Position    = mvp * current_vertex;\n"
+                          "        EmitVertex();\n"
+                          "\n"
+                          "        current_vertex = lerped_vertex_list[ triangle_table[edge_index * 15 + n_triangle_base_vertex + 1] ];\n"
+                          "        normal         = normalize(lerped_normal_list[ triangle_table[edge_index * 15 + n_triangle_base_vertex + 1] ]);\n"
+                          "        gl_Position    = mvp * current_vertex;\n"
+                          "        EmitVertex();\n"
+                          "\n"
+                          "        current_vertex = lerped_vertex_list[ triangle_table[edge_index * 15 + n_triangle_base_vertex + 2] ];\n"
+                          "        normal         = normalize(lerped_normal_list[ triangle_table[edge_index * 15 + n_triangle_base_vertex + 2] ]);\n"
+                          "        gl_Position    = mvp * current_vertex;\n"
+                          "        EmitVertex();\n"
+                          "        EndPrimitive();\n"
+                          "    }\n"
+                          "}\n";
+    const char* vs_body = "#version 430 core\n"
+                          "\n"
+                          "out VSData\n"
+                          "{\n"
+                          "    uint vertex_id;\n"
+                          "} vs_data;\n"
+                          "\n"
+                          "void main()\n"
+                          "{\n"
+                          "    vs_data.vertex_id = gl_VertexID;\n"
+                          "\n"
                           "}\n";
 
     /* Set up vertex body token key/value arrays */
-    char                            temp_buffer[256];
-    const system_hashed_ansi_string vs_body_token_keys[] =
+    const system_hashed_ansi_string gs_body_token_keys[] =
     {
         system_hashed_ansi_string_create("BLOB_SIZE_X"),
         system_hashed_ansi_string_create("BLOB_SIZE_Y"),
         system_hashed_ansi_string_create("BLOB_SIZE_Z")
     };
-    system_hashed_ansi_string       vs_body_token_values[] =
+    system_hashed_ansi_string       gs_body_token_values[] =
     {
         NULL,
         NULL,
         NULL
     };
-    const uint32_t n_vs_body_tokens = sizeof(vs_body_token_keys) / sizeof(vs_body_token_keys[0]);
+    const uint32_t n_gs_body_tokens = sizeof(gs_body_token_keys) / sizeof(gs_body_token_keys[0]);
+    char           temp_buffer[256];
 
     snprintf(temp_buffer,
              sizeof(temp_buffer),
              "%d",
              _blob_size[0]);
-    vs_body_token_values[0] = system_hashed_ansi_string_create(temp_buffer);
+    gs_body_token_values[0] = system_hashed_ansi_string_create(temp_buffer);
 
     snprintf(temp_buffer,
              sizeof(temp_buffer),
              "%d",
              _blob_size[1]);
-    vs_body_token_values[1] = system_hashed_ansi_string_create(temp_buffer);
+    gs_body_token_values[1] = system_hashed_ansi_string_create(temp_buffer);
 
     snprintf(temp_buffer,
              sizeof(temp_buffer),
              "%d",
              _blob_size[2]);
-    vs_body_token_values[2] = system_hashed_ansi_string_create(temp_buffer);
+    gs_body_token_values[2] = system_hashed_ansi_string_create(temp_buffer);
 
     /* Initialize the shaders */
     ogl_shader fs = ogl_shader_create(_context,
@@ -871,13 +1040,13 @@ PRIVATE void _init_scalar_field_renderer(const ogl_context_gl_entrypoints* entry
 
     ogl_shader_set_body                       (fs,
                                                system_hashed_ansi_string_create(fs_body) );
-    ogl_shader_set_body                       (gs,
-                                               system_hashed_ansi_string_create(gs_body) );
-    ogl_shader_set_body_with_token_replacement(vs,
-                                               vs_body,
-                                               n_vs_body_tokens,
-                                               vs_body_token_keys,
-                                               vs_body_token_values);
+    ogl_shader_set_body_with_token_replacement(gs,
+                                               gs_body,
+                                               n_gs_body_tokens,
+                                               gs_body_token_keys,
+                                               gs_body_token_values);
+    ogl_shader_set_body                       (vs,
+                                               system_hashed_ansi_string_create(vs_body) );
 
     /* Prepare & link the program object */
     _po_scalar_field_renderer = ogl_program_create(_context,
@@ -1042,7 +1211,7 @@ PRIVATE void _render_blob(ogl_context             context,
                           bool                    is_depth_prepass)
 {
     const ogl_context_gl_entrypoints* entrypoints_ptr = NULL;
-    const float                       isolevel        = 0.3f;
+    const float                       isolevel        = 0.1f;
 
     /* Set up the unifrom block contents */
     ogl_context_get_property(context,
@@ -1121,9 +1290,6 @@ PRIVATE void _render_blob(ogl_context             context,
                              OGL_CONTEXT_PROPERTY_VAO_NO_VAAS,
                             &zero_vaas_vao_id);
 
-    entrypoints_ptr->pGLPolygonMode    (GL_FRONT_AND_BACK,
-                                        GL_LINE);
-    entrypoints_ptr->pGLDisable        (GL_CULL_FACE);
     entrypoints_ptr->pGLUseProgram     (ogl_program_get_id(_po_scalar_field_renderer) );
     entrypoints_ptr->pGLBindVertexArray(zero_vaas_vao_id);
     entrypoints_ptr->pGLDrawArrays     (GL_POINTS,
@@ -1328,7 +1494,7 @@ PRIVATE void _window_closing_callback_handler(system_window window)
                                                  window_x1y1x2y2,
                                                  system_hashed_ansi_string_create("Test window"),
                                                  false, /* scalable */
-                                                 true,  /* vsync_enabled */
+                                                 false,  /* vsync_enabled */
                                                  true,  /* visible */
                                                  window_pf);
 #endif
