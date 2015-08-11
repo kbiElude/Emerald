@@ -430,7 +430,7 @@ PRIVATE void _init_scalar_field(const ogl_context_gl_entrypoints* entrypoints_pt
                                    "        float radius;\n"
                                    "    } spheres[3] =\n"
                                    "    {\n"
-                                   "        {vec3(0.3,  0.3,  0.3), 0.25},\n"  /* corner case lol */
+                                   "        {vec3(0.0,  0.0,  0.0), 0.25},\n"  /* corner case lol */
                                    "        {vec3(0.25, 0.25, 0.5), 0.3 },\n"
                                    "        {vec3(0.5, 0.5,  0.5), 0.5 } };\n"
                                    "    const uint n_spheres = 3;\n"
@@ -750,7 +750,7 @@ PRIVATE void _init_scalar_field_renderer(const ogl_context_gl_entrypoints* entry
                           "\n"
                           "layout(shared) readonly buffer data\n"
                           "{\n"
-#if 0
+#if 1
                           "    restrict vec4 scalar_field[];\n"
 #else
                           "    restrict float scalar_field[];\n"
@@ -806,25 +806,22 @@ PRIVATE void _init_scalar_field_renderer(const ogl_context_gl_entrypoints* entry
                           "        gl_VertexID + n_ids_per_slice\n"
                           "    };\n"
                           "\n"
-#if 0
-                          "    vs_data.scalar_values[0].x = scalar_field[(top_plane_ids[0] + n_ids_per_row) / 4][(top_plane_ids[0] + n_ids_per_row) % 4];\n"
-                          "    vs_data.scalar_values[0].y = scalar_field[(top_plane_ids[1] + n_ids_per_row) / 4][(top_plane_ids[1] + n_ids_per_row) % 4];\n"
-                          "    vs_data.scalar_values[0].z = scalar_field[(top_plane_ids[2] + n_ids_per_row) / 4][(top_plane_ids[2] + n_ids_per_row) % 4];\n"
-                          "    vs_data.scalar_values[0].w = scalar_field[(top_plane_ids[3] + n_ids_per_row) / 4][(top_plane_ids[3] + n_ids_per_row) % 4];\n"
-                          "    vs_data.scalar_values[1].x = scalar_field[ top_plane_ids[0]                  / 4][ top_plane_ids[0]                  % 4];\n"
-                          "    vs_data.scalar_values[1].y = scalar_field[ top_plane_ids[1]                  / 4][ top_plane_ids[1]                  % 4];\n"
-                          "    vs_data.scalar_values[1].z = scalar_field[ top_plane_ids[2]                  / 4][ top_plane_ids[2]                  % 4];\n"
-                          "    vs_data.scalar_values[1].w = scalar_field[ top_plane_ids[3]                  / 4][ top_plane_ids[3]                  % 4];\n"
-#else
-                          "    vs_data.scalar_values[1].x = scalar_field[ top_plane_ids[0]                  ];\n"
-                          "    vs_data.scalar_values[1].y = scalar_field[ top_plane_ids[1]                  ];\n"
-                          "    vs_data.scalar_values[1].z = scalar_field[ top_plane_ids[2]                  ];\n"
-                          "    vs_data.scalar_values[1].w = scalar_field[ top_plane_ids[3]                  ];\n"
-                          "    vs_data.scalar_values[0].x = scalar_field[(top_plane_ids[0] + n_ids_per_row) ];\n"
-                          "    vs_data.scalar_values[0].y = scalar_field[(top_plane_ids[1] + n_ids_per_row) ];\n"
-                          "    vs_data.scalar_values[0].z = scalar_field[(top_plane_ids[2] + n_ids_per_row) ];\n"
-                          "    vs_data.scalar_values[0].w = scalar_field[(top_plane_ids[3] + n_ids_per_row) ];\n"
-#endif
+                          "    if (cube_x != (BLOB_SIZE_X - 1) && cube_y != (BLOB_SIZE_Y - 1))\n"
+                          "    {\n"
+                          "        vs_data.scalar_values[1].x = scalar_field[ top_plane_ids[0]                  / 4][ top_plane_ids[0]                  % 4];\n"
+                          "        vs_data.scalar_values[1].y = scalar_field[ top_plane_ids[1]                  / 4][ top_plane_ids[1]                  % 4];\n"
+                          "        vs_data.scalar_values[1].z = scalar_field[ top_plane_ids[2]                  / 4][ top_plane_ids[2]                  % 4];\n"
+                          "        vs_data.scalar_values[1].w = scalar_field[ top_plane_ids[3]                  / 4][ top_plane_ids[3]                  % 4];\n"
+                          "        vs_data.scalar_values[0].x = scalar_field[(top_plane_ids[0] + n_ids_per_row) / 4][(top_plane_ids[0] + n_ids_per_row) % 4];\n"
+                          "        vs_data.scalar_values[0].y = scalar_field[(top_plane_ids[1] + n_ids_per_row) / 4][(top_plane_ids[1] + n_ids_per_row) % 4];\n"
+                          "        vs_data.scalar_values[0].z = scalar_field[(top_plane_ids[2] + n_ids_per_row) / 4][(top_plane_ids[2] + n_ids_per_row) % 4];\n"
+                          "        vs_data.scalar_values[0].w = scalar_field[(top_plane_ids[3] + n_ids_per_row) / 4][(top_plane_ids[3] + n_ids_per_row) % 4];\n"
+                          "    }\n"
+                          "    else\n"
+                          "    {\n"
+                          "        vs_data.scalar_values[0] = vec4(-1.0);\n"
+                          "        vs_data.scalar_values[1] = vec4(-1.0);\n"
+                          "    }\n"
                           "}\n";
 
     /* Set up vertex body token key/value arrays */
@@ -1045,7 +1042,7 @@ PRIVATE void _render_blob(ogl_context             context,
                           bool                    is_depth_prepass)
 {
     const ogl_context_gl_entrypoints* entrypoints_ptr = NULL;
-    const float                       isolevel        = 0.5f;
+    const float                       isolevel        = 0.3f;
 
     /* Set up the unifrom block contents */
     ogl_context_get_property(context,
