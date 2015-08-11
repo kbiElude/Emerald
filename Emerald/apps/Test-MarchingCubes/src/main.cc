@@ -29,7 +29,7 @@
 #include <algorithm>
 #include "main.h"
 
-PRIVATE const unsigned int _blob_size[] = {50, 50, 50};
+PRIVATE const unsigned int _blob_size[] = {100, 100, 100};
 
 PRIVATE GLuint              _blob_scalar_field_bo_id                                    = 0;
 PRIVATE unsigned int        _blob_scalar_field_bo_size                                  = 0;
@@ -45,9 +45,8 @@ PRIVATE GLuint              _po_scalar_field_renderer_data_ub_bo_id             
 PRIVATE GLuint              _po_scalar_field_renderer_data_ub_bo_start_offset           = -1;
 PRIVATE GLuint              _po_scalar_field_renderer_data_ub_bp                        = -1;
 PRIVATE GLuint              _po_scalar_field_renderer_data_ub_isolevel_offset           = -1;
-PRIVATE GLuint              _po_scalar_field_renderer_data_ub_model_offset              = -1;
+PRIVATE GLuint              _po_scalar_field_renderer_data_ub_mvp_offset                = -1;
 PRIVATE GLuint              _po_scalar_field_renderer_data_ub_normal_matrix_offset      = -1;
-PRIVATE GLuint              _po_scalar_field_renderer_data_ub_vp_offset                 = -1;
 PRIVATE ogl_program_ub      _po_scalar_field_renderer_edge_table_ub                     = NULL;
 PRIVATE GLuint              _po_scalar_field_renderer_edge_table_ub_bo_id               = 0;
 PRIVATE GLuint              _po_scalar_field_renderer_edge_table_ub_bo_size             = 0;
@@ -660,9 +659,8 @@ PRIVATE void _init_scalar_field_renderer(const ogl_context_gl_entrypoints* entry
                           "layout(packed) uniform dataUB\n"
                           "{\n"
                           "    float isolevel;\n"
-                          "    mat4  model;\n" /* TODO: use a merged mvp */
+                          "    mat4  mvp;\n"
                           "    mat4  normal_matrix;\n"
-                          "    mat4  vp;\n"
                           "};\n"
                           "\n"
 #if 1
@@ -819,8 +817,6 @@ PRIVATE void _init_scalar_field_renderer(const ogl_context_gl_entrypoints* entry
                           /* 7: */
                           "        vec3(cube_aabb_min_model.xy, cube_aabb_max_model.z),\n"
                           "    };\n"
-                          "\n"
-                          "    const mat4 mvp = vp * model;\n"
                           "\n"
                           "    if ((edge_table[edge_index] & 1) != 0)\n"
                           "    {\n"
@@ -1084,9 +1080,8 @@ PRIVATE void _init_scalar_field_renderer(const ogl_context_gl_entrypoints* entry
 
     /* Retrieve data UB properties */
     const ogl_program_variable* uniform_isolevel_ptr      = NULL;
-    const ogl_program_variable* uniform_model_ptr         = NULL;
+    const ogl_program_variable* uniform_mvp_ptr           = NULL;
     const ogl_program_variable* uniform_normal_matrix_ptr = NULL;
-    const ogl_program_variable* uniform_vp_ptr            = NULL;
 
     ogl_program_get_uniform_block_by_name(_po_scalar_field_renderer,
                                           system_hashed_ansi_string_create("dataUB"),
@@ -1106,19 +1101,15 @@ PRIVATE void _init_scalar_field_renderer(const ogl_context_gl_entrypoints* entry
                                     system_hashed_ansi_string_create("isolevel"),
                                    &uniform_isolevel_ptr);
     ogl_program_get_uniform_by_name(_po_scalar_field_renderer,
-                                    system_hashed_ansi_string_create("model"),
-                                   &uniform_model_ptr);
+                                    system_hashed_ansi_string_create("mvp"),
+                                   &uniform_mvp_ptr);
     ogl_program_get_uniform_by_name(_po_scalar_field_renderer,
                                     system_hashed_ansi_string_create("normal_matrix"),
                                    &uniform_normal_matrix_ptr);
-    ogl_program_get_uniform_by_name(_po_scalar_field_renderer,
-                                    system_hashed_ansi_string_create("vp"),
-                                   &uniform_vp_ptr);
 
     _po_scalar_field_renderer_data_ub_isolevel_offset      = uniform_isolevel_ptr->block_offset;
-    _po_scalar_field_renderer_data_ub_model_offset         = uniform_model_ptr->block_offset;
+    _po_scalar_field_renderer_data_ub_mvp_offset           = uniform_mvp_ptr->block_offset;
     _po_scalar_field_renderer_data_ub_normal_matrix_offset = uniform_normal_matrix_ptr->block_offset;
-    _po_scalar_field_renderer_data_ub_vp_offset            = uniform_vp_ptr->block_offset;
 
     /* Set up edge array UB contents */
     ogl_program_get_uniform_block_by_name(_po_scalar_field_renderer,
@@ -1240,24 +1231,23 @@ PRIVATE void _render_blob(ogl_context             context,
 
     float isolevel = sin(float(counter++) / 100.0f) * 0.5f + 0.5f;
 
+    /* Compute MVP matrix */
+    system_matrix4x4 mvp = system_matrix4x4_create_by_mul(vp_matrix,
+                                                          model_matrix);
+
     /* Set up the unifrom block contents */
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
                             &entrypoints_ptr);
 
     ogl_program_ub_set_nonarrayed_uniform_value(_po_scalar_field_renderer_data_ub,
-                                                _po_scalar_field_renderer_data_ub_model_offset,
-                                                system_matrix4x4_get_column_major_data(model_matrix),
+                                                _po_scalar_field_renderer_data_ub_mvp_offset,
+                                                system_matrix4x4_get_column_major_data(mvp),
                                                 0, /* src_data_flags */
                                                 sizeof(float) * 16);
     ogl_program_ub_set_nonarrayed_uniform_value(_po_scalar_field_renderer_data_ub,
                                                 _po_scalar_field_renderer_data_ub_normal_matrix_offset,
                                                 system_matrix4x4_get_column_major_data(normal_matrix),
-                                                0, /* src_data_flags */
-                                                sizeof(float) * 16);
-    ogl_program_ub_set_nonarrayed_uniform_value(_po_scalar_field_renderer_data_ub,
-                                                _po_scalar_field_renderer_data_ub_vp_offset,
-                                                system_matrix4x4_get_column_major_data(vp_matrix),
                                                 0, /* src_data_flags */
                                                 sizeof(float) * 16);
     ogl_program_ub_set_nonarrayed_uniform_value(_po_scalar_field_renderer_data_ub,
@@ -1284,6 +1274,9 @@ PRIVATE void _render_blob(ogl_context             context,
     ogl_program_ub_sync(_po_scalar_field_renderer_data_ub);
     ogl_program_ub_sync(_po_scalar_field_renderer_edge_table_ub);
     ogl_program_ub_sync(_po_scalar_field_renderer_triangle_table_ub);
+
+    system_matrix4x4_release(mvp);
+    mvp = NULL;
 
     /* Set up the SSBO & UBO bindings */
     entrypoints_ptr->pGLBindBufferRange(GL_SHADER_STORAGE_BUFFER,
