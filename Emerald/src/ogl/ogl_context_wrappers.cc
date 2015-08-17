@@ -12,6 +12,7 @@
 #include "ogl/ogl_context_wrappers.h"
 #include "ogl/ogl_context_vaos.h"
 #include "ogl/ogl_program.h"
+#include "ogl/ogl_program_ssb.h"
 #include "ogl/ogl_program_ub.h"
 #include "ogl/ogl_programs.h"
 #include "ogl/ogl_texture.h"
@@ -2424,6 +2425,55 @@ PUBLIC void APIENTRY ogl_context_wrappers_glDrawArrays(GLenum  mode,
 }
 
 /** Please see header for spec */
+PUBLIC void APIENTRY ogl_context_wrappers_glDrawArraysIndirect(GLenum      mode,
+                                                               const void* indirect)
+{
+    ogl_context                  context          = ogl_context_get_current_context ();
+    ogl_context_bo_bindings      bo_bindings      = NULL;
+    ogl_context_sampler_bindings sampler_bindings = NULL;
+    ogl_context_state_cache      state_cache      = NULL;
+    ogl_context_to_bindings      to_bindings      = NULL;
+
+    ogl_context_get_property(context,
+                             OGL_CONTEXT_PROPERTY_BO_BINDINGS,
+                            &bo_bindings);
+    ogl_context_get_property(context,
+                             OGL_CONTEXT_PROPERTY_SAMPLER_BINDINGS,
+                            &sampler_bindings);
+    ogl_context_get_property(context,
+                             OGL_CONTEXT_PROPERTY_STATE_CACHE,
+                            &state_cache);
+    ogl_context_get_property(context,
+                             OGL_CONTEXT_PROPERTY_TO_BINDINGS,
+                            &to_bindings);
+
+    ogl_context_state_cache_sync     (state_cache,
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_COLOR_DEPTH_MASK    |
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_CULL_FACE           |
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_DEPTH_FUNC          |
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_DRAW_FRAMEBUFFER    |
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_FRONT_FACE          |
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_PROGRAM_OBJECT      |
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_RENDERING_MODES     |
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_SCISSOR_BOX         |
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_VERTEX_ARRAY_OBJECT |
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_VIEWPORT            |
+                                      STATE_CACHE_SYNC_BIT_BLENDING);
+    ogl_context_bo_bindings_sync     (bo_bindings,
+                                      BO_BINDINGS_SYNC_BIT_ATOMIC_COUNTER_BUFFER     |
+                                      BO_BINDINGS_SYNC_BIT_DRAW_INDIRECT_BUFFER      |
+                                      BO_BINDINGS_SYNC_BIT_SHADER_STORAGE_BUFFER     |
+                                      BO_BINDINGS_SYNC_BIT_TRANSFORM_FEEDBACK_BUFFER |
+                                      BO_BINDINGS_SYNC_BIT_UNIFORM_BUFFER);
+    ogl_context_sampler_bindings_sync(sampler_bindings);
+    ogl_context_to_bindings_sync     (to_bindings,
+                                      OGL_CONTEXT_TO_BINDINGS_SYNC_BIT_ALL);
+
+    _private_entrypoints_ptr->pGLDrawArraysIndirect(mode,
+                                                    indirect);
+}
+
+/** Please see header for spec */
 PUBLIC void APIENTRY ogl_context_wrappers_glDrawArraysInstanced(GLenum  mode,
                                                                 GLint   first,
                                                                 GLsizei count,
@@ -4645,6 +4695,23 @@ PUBLIC GLvoid* APIENTRY ogl_context_wrappers_glMapBufferRange(GLenum     target,
 }
 
 /** Please see header for spec */
+PUBLIC void APIENTRY ogl_context_wrappers_glMemoryBarrier(GLbitfield barriers)
+{
+    /* TODO: This is a simplified impl. Sync only when needed */
+    ogl_context             context     = ogl_context_get_current_context();
+    ogl_context_state_cache state_cache = NULL;
+
+    ogl_context_get_property(context,
+                             OGL_CONTEXT_PROPERTY_STATE_CACHE,
+                            &state_cache);
+
+    ogl_context_state_cache_sync(state_cache,
+                                 STATE_CACHE_SYNC_BIT_ACTIVE_VERTEX_ARRAY_OBJECT);
+
+    _private_entrypoints_ptr->pGLMemoryBarrier(barriers);
+}
+
+/** Please see header for spec */
 PUBLIC void* APIENTRY ogl_context_wrappers_glMapNamedBufferEXT(GLuint buffer,
                                                                GLenum access)
 {
@@ -5304,6 +5371,66 @@ PUBLIC void APIENTRY ogl_context_wrappers_glScissor(GLint   x,
     ogl_context_state_cache_set_property(state_cache,
                                          OGL_CONTEXT_STATE_CACHE_PROPERTY_SCISSOR_BOX,
                                          scissor_box);
+}
+
+/** Please see header for spec */
+PUBLIC void APIENTRY ogl_context_wrappers_glShaderStorageBlockBinding(GLuint program,
+                                                                      GLuint shaderStorageBlockIndex,
+                                                                      GLuint shaderStorageBlockBinding)
+{
+    ogl_context             context     = ogl_context_get_current_context();
+    ogl_programs            programs    = NULL;
+    ogl_context_state_cache state_cache = NULL;
+
+    ogl_context_get_property(context,
+                             OGL_CONTEXT_PROPERTY_PROGRAMS,
+                            &programs);
+    ogl_context_get_property(context,
+                             OGL_CONTEXT_PROPERTY_STATE_CACHE,
+                            &state_cache);
+
+    ogl_context_state_cache_sync(state_cache,
+                                 STATE_CACHE_SYNC_BIT_ACTIVE_PROGRAM_OBJECT);
+
+    /* Does it make sense to try to make the call? */
+    ogl_program program_instance = ogl_programs_get_program_by_id(programs,
+                                                                  program);
+
+    ASSERT_DEBUG_SYNC(program_instance != NULL,
+                      "The ogl_program for requested PO was not found.");
+
+    if (program_instance != NULL)
+    {
+        ogl_program_ssb requested_ssb = NULL;
+
+        ogl_program_get_shader_storage_block_by_sb_index(program_instance,
+                                                         shaderStorageBlockIndex,
+                                                        &requested_ssb);
+
+        ASSERT_DEBUG_SYNC(requested_ssb != NULL,
+                          "ogl_program_ssb instance for requested shader storage block index was not found.");
+
+        if (requested_ssb != NULL)
+        {
+            GLuint current_indexed_ssb_bp = -1;
+
+            ogl_program_ssb_get_property(requested_ssb,
+                                         OGL_PROGRAM_SSB_PROPERTY_INDEXED_BP,
+                                        &current_indexed_ssb_bp);
+
+            if (current_indexed_ssb_bp != shaderStorageBlockBinding)
+            {
+                /* Update the internal cache */
+                _private_entrypoints_ptr->pGLShaderStorageBlockBinding(program,
+                                                                       shaderStorageBlockIndex,
+                                                                       shaderStorageBlockBinding);
+
+                ogl_program_ssb_set_property(requested_ssb,
+                                             OGL_PROGRAM_SSB_PROPERTY_INDEXED_BP,
+                                            &shaderStorageBlockBinding);
+            } /* if (current_indexed_ssb_bp != shaderStorageBlockBinding) */
+        } /* if (requested_ssb != NULL) */
+    } /* if (program_instance != NULL) */
 }
 
 /* Please see header for specification */

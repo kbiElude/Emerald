@@ -453,9 +453,14 @@ PUBLIC void APIENTRY ogl_context_wrappers_glDispatchComputeIndirect(GLintptr ind
 PUBLIC void APIENTRY ogl_context_wrappers_glDeleteBuffers(GLsizei       n,
                                                           const GLuint* buffers);
 
+/** TODO */
 PUBLIC void APIENTRY ogl_context_wrappers_glDrawArrays(GLenum  mode,
                                                        GLint   first,
                                                        GLsizei count);
+
+/** TODO */
+PUBLIC void APIENTRY ogl_context_wrappers_glDrawArraysIndirect(GLenum      mode,
+                                                               const void* indirect);
 
 /** TODO */
 PUBLIC void APIENTRY ogl_context_wrappers_glDrawArraysInstanced(GLenum  mode,
@@ -854,6 +859,9 @@ PUBLIC GLvoid* APIENTRY ogl_context_wrappers_glMapBufferRange(GLenum     target,
                                                               GLbitfield access);
 
 /** TODO */
+PUBLIC void APIENTRY ogl_context_wrappers_glMemoryBarrier(GLbitfield barriers);
+
+/** TODO */
 PUBLIC void* APIENTRY ogl_context_wrappers_glMapNamedBufferEXT(GLuint buffer,
                                                                GLenum access);
 
@@ -1014,6 +1022,11 @@ PUBLIC void APIENTRY ogl_context_wrappers_glScissor(GLint   x,
                                                     GLint   y,
                                                     GLsizei width,
                                                     GLsizei height);
+
+/** TODO */
+PUBLIC void APIENTRY ogl_context_wrappers_glShaderStorageBlockBinding(GLuint program,
+                                                                      GLuint shaderStorageBlockIndex,
+                                                                      GLuint shaderStorageBlockBinding);
 
 /** TODO */
 PUBLIC void APIENTRY ogl_context_wrappers_glTexBuffer(GLenum target,

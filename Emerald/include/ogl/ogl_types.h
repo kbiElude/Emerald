@@ -1016,6 +1016,7 @@ typedef struct
     PFNGLDISPATCHCOMPUTEPROC                             pGLDispatchCompute;
     PFNGLDISPATCHCOMPUTEINDIRECTPROC                     pGLDispatchComputeIndirect;
     PFNGLDRAWARRAYSPROC                                  pGLDrawArrays;
+    PFNGLDRAWARRAYSINDIRECTPROC                          pGLDrawArraysIndirect;
     PFNGLDRAWARRAYSINSTANCEDPROC                         pGLDrawArraysInstanced;
     PFNGLDRAWARRAYSINSTANCEDBASEINSTANCEPROC             pGLDrawArraysInstancedBaseInstance;
     PFNGLDRAWBUFFERPROC                                  pGLDrawBuffer;
@@ -1371,6 +1372,7 @@ typedef struct
     PFNGLDISPATCHCOMPUTEPROC                             pGLDispatchCompute;
     PFNGLDISPATCHCOMPUTEINDIRECTPROC                     pGLDispatchComputeIndirect;
     PFNGLDRAWARRAYSPROC                                  pGLDrawArrays;
+    PFNGLDRAWARRAYSINDIRECTPROC                          pGLDrawArraysIndirect;
     PFNGLDRAWARRAYSINSTANCEDPROC                         pGLDrawArraysInstanced;
     PFNGLDRAWARRAYSINSTANCEDBASEINSTANCEPROC             pGLDrawArraysInstancedBaseInstance;
     PFNGLDRAWBUFFERPROC                                  pGLDrawBuffer;
@@ -1426,6 +1428,7 @@ typedef struct
     PFNGLINVALIDATESUBFRAMEBUFFERPROC                    pGLInvalidateSubFramebuffer;
     PFNGLMAPBUFFERPROC                                   pGLMapBuffer;
     PFNGLMAPBUFFERRANGEPROC                              pGLMapBufferRange;
+    PFNGLMEMORYBARRIERPROC                               pGLMemoryBarrier;
     PFNGLMULTIDRAWARRAYSPROC                             pGLMultiDrawArrays;
     PFNGLMULTIDRAWARRAYSINDIRECTPROC                     pGLMultiDrawArraysIndirect;
     PFNGLMULTIDRAWELEMENTSPROC                           pGLMultiDrawElements;
@@ -1443,6 +1446,7 @@ typedef struct
     PFNGLSAMPLERPARAMETERIPROC                           pGLSamplerParameteri;
     PFNGLSAMPLERPARAMETERIVPROC                          pGLSamplerParameteriv;
     PFNGLSCISSORPROC                                     pGLScissor;
+    PFNGLSHADERSTORAGEBLOCKBINDINGPROC                   pGLShaderStorageBlockBinding;
     PFNGLTEXIMAGE1DPROC                                  pGLTexImage1D;
     PFNGLTEXIMAGE2DPROC                                  pGLTexImage2D;
     PFNGLTEXIMAGE3DPROC                                  pGLTexImage3D;

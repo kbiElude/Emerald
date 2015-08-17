@@ -2195,6 +2195,7 @@ PRIVATE void _ogl_context_retrieve_GL_function_pointers(_ogl_context* context_pt
         {&context_ptr->entry_points_private.pGLDispatchCompute,                             "glDispatchCompute"},
         {&context_ptr->entry_points_private.pGLDispatchComputeIndirect,                     "glDispatchComputeIndirect"},
         {&context_ptr->entry_points_private.pGLDrawArrays,                                  "glDrawArrays"},
+        {&context_ptr->entry_points_private.pGLDrawArraysIndirect,                          "glDrawArraysIndirect"},
         {&context_ptr->entry_points_private.pGLDrawArraysInstanced,                         "glDrawArraysInstanced"},
         {&context_ptr->entry_points_private.pGLDrawArraysInstancedBaseInstance,             "glDrawArraysInstancedBaseInstance"},
         {&context_ptr->entry_points_private.pGLDrawBuffer,                                  "glDrawBuffer"},
@@ -2319,7 +2320,7 @@ PRIVATE void _ogl_context_retrieve_GL_function_pointers(_ogl_context* context_pt
         {&context_ptr->entry_points_gl.pGLLogicOp,                                          "glLogicOp"},
         {&context_ptr->entry_points_private.pGLMapBuffer,                                   "glMapBuffer"},
         {&context_ptr->entry_points_private.pGLMapBufferRange,                              "glMapBufferRange"},
-        {&context_ptr->entry_points_gl.pGLMemoryBarrier,                                    "glMemoryBarrier"},
+        {&context_ptr->entry_points_private.pGLMemoryBarrier,                               "glMemoryBarrier"},
         {&context_ptr->entry_points_private.pGLMultiDrawArrays,                             "glMultiDrawArrays"},
         {&context_ptr->entry_points_private.pGLMultiDrawArraysIndirect,                     "glMultiDrawArraysIndirect"},
         {&context_ptr->entry_points_private.pGLMultiDrawElements,                           "glMultiDrawElements"},
@@ -2396,7 +2397,7 @@ PRIVATE void _ogl_context_retrieve_GL_function_pointers(_ogl_context* context_pt
         {&context_ptr->entry_points_private.pGLSamplerParameteri,                           "glSamplerParameteri"},
         {&context_ptr->entry_points_private.pGLSamplerParameteriv,                          "glSamplerParameteriv"},
         {&context_ptr->entry_points_private.pGLScissor,                                     "glScissor"},
-        {&context_ptr->entry_points_gl.pGLShaderStorageBlockBinding,                        "glShaderStorageBlockBinding"},
+        {&context_ptr->entry_points_private.pGLShaderStorageBlockBinding,                   "glShaderStorageBlockBinding"},
         {&context_ptr->entry_points_gl.pGLShaderSource,                                     "glShaderSource"},
         {&context_ptr->entry_points_gl.pGLStencilFunc,                                      "glStencilFunc"},
         {&context_ptr->entry_points_gl.pGLStencilFuncSeparate,                              "glStencilFuncSeparate"},
@@ -2551,6 +2552,7 @@ PRIVATE void _ogl_context_retrieve_GL_function_pointers(_ogl_context* context_pt
     context_ptr->entry_points_gl.pGLDispatchCompute                             = ogl_context_wrappers_glDispatchCompute;
     context_ptr->entry_points_gl.pGLDispatchComputeIndirect                     = ogl_context_wrappers_glDispatchComputeIndirect;
     context_ptr->entry_points_gl.pGLDrawArrays                                  = ogl_context_wrappers_glDrawArrays;
+    context_ptr->entry_points_gl.pGLDrawArraysIndirect                          = ogl_context_wrappers_glDrawArraysIndirect;
     context_ptr->entry_points_gl.pGLDrawArraysInstanced                         = ogl_context_wrappers_glDrawArraysInstanced;
     context_ptr->entry_points_gl.pGLDrawArraysInstancedBaseInstance             = ogl_context_wrappers_glDrawArraysInstancedBaseInstance;
     context_ptr->entry_points_gl.pGLDrawBuffer                                  = ogl_context_wrappers_glDrawBuffer;
@@ -2610,6 +2612,7 @@ PRIVATE void _ogl_context_retrieve_GL_function_pointers(_ogl_context* context_pt
     context_ptr->entry_points_gl.pGLInvalidateSubFramebuffer                    = ogl_context_wrappers_glInvalidateSubFramebuffer;
     context_ptr->entry_points_gl.pGLMapBuffer                                   = ogl_context_wrappers_glMapBuffer;
     context_ptr->entry_points_gl.pGLMapBufferRange                              = ogl_context_wrappers_glMapBufferRange;
+    context_ptr->entry_points_gl.pGLMemoryBarrier                               = ogl_context_wrappers_glMemoryBarrier;
     context_ptr->entry_points_gl.pGLMultiDrawArrays                             = ogl_context_wrappers_glMultiDrawArrays;
     context_ptr->entry_points_gl.pGLMultiDrawArraysIndirect                     = ogl_context_wrappers_glMultiDrawArraysIndirect;
     context_ptr->entry_points_gl.pGLMultiDrawElements                           = ogl_context_wrappers_glMultiDrawElements;
@@ -2627,6 +2630,7 @@ PRIVATE void _ogl_context_retrieve_GL_function_pointers(_ogl_context* context_pt
     context_ptr->entry_points_gl.pGLSamplerParameteri                           = ogl_context_wrappers_glSamplerParameteri;
     context_ptr->entry_points_gl.pGLSamplerParameteriv                          = ogl_context_wrappers_glSamplerParameteriv;
     context_ptr->entry_points_gl.pGLScissor                                     = ogl_context_wrappers_glScissor;
+    context_ptr->entry_points_gl.pGLShaderStorageBlockBinding                   = ogl_context_wrappers_glShaderStorageBlockBinding;
     context_ptr->entry_points_gl.pGLTexBuffer                                   = ogl_context_wrappers_glTexBuffer;
     context_ptr->entry_points_gl.pGLTexBufferRange                              = ogl_context_wrappers_glTexBufferRange;
     context_ptr->entry_points_gl.pGLTexImage1D                                  = ogl_context_wrappers_glTexImage1D;

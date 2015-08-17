@@ -9,6 +9,7 @@
 #include "ogl/ogl_context.h"
 #include "ogl/ogl_flyby.h"
 #include "ogl/ogl_program.h"
+#include "ogl/ogl_program_ssb.h"
 #include "ogl/ogl_program_ub.h"
 #include "ogl/ogl_rendering_handler.h"
 #include "ogl/ogl_scene_renderer.h"
@@ -29,44 +30,59 @@
 #include <algorithm>
 #include "main.h"
 
-PRIVATE const unsigned int _blob_size[] = {100, 100, 100};
+PRIVATE const unsigned int _blob_size[] = {50, 50, 50};
 
-PRIVATE GLuint              _blob_scalar_field_bo_id                                    = 0;
-PRIVATE unsigned int        _blob_scalar_field_bo_size                                  = 0;
-PRIVATE unsigned int        _blob_scalar_field_bo_start_offset                          = 0;
-PRIVATE mesh                _blob_mesh                                                  = NULL;
-PRIVATE ogl_context         _context                                                    = NULL;
-PRIVATE ogl_flyby           _context_flyby                                              = NULL;
-PRIVATE ogl_program         _po_scalar_field_generator                                  = NULL;
-PRIVATE ogl_program_ub      _po_scalar_field_generator_data_ub                          = NULL;
-PRIVATE ogl_program         _po_scalar_field_renderer                                   = NULL;
-PRIVATE ogl_program_ub      _po_scalar_field_renderer_data_ub                           = NULL;
-PRIVATE GLuint              _po_scalar_field_renderer_data_ub_bo_id                     = 0;
-PRIVATE GLuint              _po_scalar_field_renderer_data_ub_bo_start_offset           = -1;
-PRIVATE GLuint              _po_scalar_field_renderer_data_ub_bp                        = -1;
-PRIVATE GLuint              _po_scalar_field_renderer_data_ub_isolevel_offset           = -1;
-PRIVATE GLuint              _po_scalar_field_renderer_data_ub_mvp_offset                = -1;
-PRIVATE GLuint              _po_scalar_field_renderer_data_ub_normal_matrix_offset      = -1;
-PRIVATE ogl_program_ub      _po_scalar_field_renderer_edge_table_ub                     = NULL;
-PRIVATE GLuint              _po_scalar_field_renderer_edge_table_ub_bo_id               = 0;
-PRIVATE GLuint              _po_scalar_field_renderer_edge_table_ub_bo_size             = 0;
-PRIVATE GLuint              _po_scalar_field_renderer_edge_table_ub_bo_start_offset     = -1;
-PRIVATE GLuint              _po_scalar_field_renderer_edge_table_ub_bp                  = -1;
-PRIVATE ogl_program_ub      _po_scalar_field_renderer_triangle_table_ub                 = NULL;
-PRIVATE GLuint              _po_scalar_field_renderer_triangle_table_ub_bo_id           = 0;
-PRIVATE GLuint              _po_scalar_field_renderer_triangle_table_ub_bo_size         = 0;
-PRIVATE GLuint              _po_scalar_field_renderer_triangle_table_ub_bo_start_offset = -1;
-PRIVATE GLuint              _po_scalar_field_renderer_triangle_table_ub_bp              = -1;
-PRIVATE system_matrix4x4    _projection_matrix                                          = NULL;
-PRIVATE scene               _scene                                                      = NULL;
-PRIVATE scene_graph_node    _scene_blob_node                                            = NULL;
-PRIVATE scene_camera        _scene_camera                                               = NULL;
-PRIVATE scene_graph_node    _scene_camera_node                                          = NULL;
-PRIVATE scene_graph         _scene_graph                                                = NULL; /* do not release */
-PRIVATE ogl_scene_renderer  _scene_renderer                                             = NULL;
-PRIVATE system_event        _window_closed_event                                        = system_event_create(true); /* manual_reset */
-PRIVATE int                 _window_size[2]                                             = {1280, 720};
-PRIVATE system_matrix4x4    _view_matrix                                                = NULL;
+PRIVATE GLuint              _blob_scalar_field_bo_id                                                    = 0;
+PRIVATE unsigned int        _blob_scalar_field_bo_size                                                  = 0;
+PRIVATE unsigned int        _blob_scalar_field_bo_start_offset                                          = 0;
+PRIVATE mesh                _blob_mesh                                                                  = NULL;
+PRIVATE ogl_context         _context                                                                    = NULL;
+PRIVATE ogl_flyby           _context_flyby                                                              = NULL;
+PRIVATE unsigned int        _indirect_draw_call_args_bo_count_arg_offset                                = 0;
+PRIVATE GLuint              _indirect_draw_call_args_bo_id                                              = 0;
+PRIVATE unsigned int        _indirect_draw_call_args_bo_size                                            = 0;
+PRIVATE unsigned int        _indirect_draw_call_args_bo_start_offset                                    = 0;
+PRIVATE ogl_program         _po_scalar_field_generator                                                  = NULL;
+PRIVATE ogl_program_ub      _po_scalar_field_generator_data_ub                                          = NULL;
+PRIVATE ogl_program         _po_scalar_field_polygonizer                                                = NULL;
+PRIVATE ogl_program_ub      _po_scalar_field_polygonizer_data_ub                                        = NULL;
+PRIVATE GLuint              _po_scalar_field_polygonizer_data_ub_bo_id                                  = 0;
+PRIVATE GLuint              _po_scalar_field_polygonizer_data_ub_bo_size                                = 0;
+PRIVATE GLuint              _po_scalar_field_polygonizer_data_ub_bo_start_offset                        = -1;
+PRIVATE GLuint              _po_scalar_field_polygonizer_data_ub_bp                                     = -1;
+PRIVATE GLuint              _po_scalar_field_polygonizer_data_ub_isolevel_offset                        = -1;
+PRIVATE GLuint              _po_scalar_field_polygonizer_data_ub_mvp_offset                             = -1;
+PRIVATE GLuint              _po_scalar_field_polygonizer_data_ub_normal_matrix_offset                   = -1;
+PRIVATE unsigned int        _po_scalar_field_polygonizer_global_wg_size[3];
+PRIVATE ogl_program_ssb     _po_scalar_field_polygonizer_indirect_draw_call_count_ssb                   = NULL;
+PRIVATE GLuint              _po_scalar_field_polygonizer_indirect_draw_call_count_ssb_bp                = -1;
+PRIVATE ogl_program_ub      _po_scalar_field_polygonizer_precomputed_tables_ub                          = NULL;
+PRIVATE GLuint              _po_scalar_field_polygonizer_precomputed_tables_ub_bo_edge_table_offset     = -1;
+PRIVATE GLuint              _po_scalar_field_polygonizer_precomputed_tables_ub_bo_id                    = 0;
+PRIVATE GLuint              _po_scalar_field_polygonizer_precomputed_tables_ub_bo_size                  = 0;
+PRIVATE GLuint              _po_scalar_field_polygonizer_precomputed_tables_ub_bo_start_offset          = 0;
+PRIVATE GLuint              _po_scalar_field_polygonizer_precomputed_tables_ub_bo_triangle_table_offset = -1;
+PRIVATE GLuint              _po_scalar_field_polygonizer_precomputed_tables_ub_bp                       = -1;
+PRIVATE ogl_program_ssb     _po_scalar_field_polygonizer_result_data_ssb                                = NULL;
+PRIVATE GLuint              _po_scalar_field_polygonizer_result_data_ssb_bp                             = NULL;
+PRIVATE ogl_program_ssb     _po_scalar_field_polygonizer_scalar_field_data_ssb                          = NULL;
+PRIVATE GLuint              _po_scalar_field_polygonizer_scalar_field_data_ssb_bp                       = NULL;
+PRIVATE ogl_program         _po_scalar_field_renderer                                                   = NULL;
+PRIVATE GLuint              _polygonized_data_bo_id                                                     = 0;
+PRIVATE unsigned int        _polygonized_data_bo_size                                                   = 0;
+PRIVATE unsigned int        _polygonized_data_bo_start_offset                                           = 0;
+PRIVATE system_matrix4x4    _projection_matrix                                                          = NULL;
+PRIVATE bool                _scalar_field_data_updated                                                  = false;
+PRIVATE scene               _scene                                                                      = NULL;
+PRIVATE scene_graph_node    _scene_blob_node                                                            = NULL;
+PRIVATE scene_camera        _scene_camera                                                               = NULL;
+PRIVATE scene_graph_node    _scene_camera_node                                                          = NULL;
+PRIVATE scene_graph         _scene_graph                                                                = NULL; /* do not release */
+PRIVATE ogl_scene_renderer  _scene_renderer                                                             = NULL;
+PRIVATE system_event        _window_closed_event                                                        = system_event_create(true); /* manual_reset */
+PRIVATE int                 _window_size[2]                                                             = {1280, 720};
+PRIVATE GLuint              _vao_id                                                                     = 0;
+PRIVATE system_matrix4x4    _view_matrix                                                                = NULL;
 
 /* Edge array for the marching cubes algorithm. */
 const int _edge_table[256]={0x0  , 0x109, 0x203, 0x30a, 0x406, 0x50f, 0x605, 0x70c,
@@ -364,9 +380,16 @@ const int _triangle_table[256 * 15] = {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -
 PRIVATE void _get_blob_bounding_box_aabb     (void*                             user_arg,
                                               float**                           out_aabb_model_vec4_min,
                                               float**                           out_aabb_model_vec4_max);
+PRIVATE void _get_token_key_value_arrays     (const ogl_context_gl_limits*      limits_ptr,
+                                              system_hashed_ansi_string**       out_token_key_array_ptr,
+                                              system_hashed_ansi_string**       out_token_value_array_ptr,
+                                              unsigned int*                     out_n_token_key_value_pairs_ptr,
+                                              unsigned int*                     out_global_wg_size_uvec3_ptr);
 PRIVATE void _init_scalar_field              (const ogl_context_gl_entrypoints* entry_points,
                                               const ogl_context_gl_limits*      limits);
-PRIVATE void _init_scalar_field_renderer     (const ogl_context_gl_entrypoints *entry_points);
+PRIVATE void _init_scalar_field_polygonizer  (const ogl_context_gl_entrypoints* entry_points,
+                                              const ogl_context_gl_limits*      limits_ptr);
+PRIVATE void _init_scalar_field_renderer     (const ogl_context_gl_entrypoints* entry_points);
 PRIVATE void _init_scene                     ();
 PRIVATE void _render_blob                    (ogl_context                       context,
                                               const void*                       user_arg,
@@ -403,6 +426,107 @@ PRIVATE void _get_blob_bounding_box_aabb(const void* user_arg,
 }
 
 /** TODO */
+PRIVATE void _get_token_key_value_arrays(const ogl_context_gl_limits* limits_ptr,
+                                         system_hashed_ansi_string**  out_token_key_array_ptr,
+                                         system_hashed_ansi_string**  out_token_value_array_ptr,
+                                         unsigned int*                out_n_token_key_value_pairs_ptr,
+                                         unsigned int*                out_global_wg_size_uvec3_ptr)
+{
+    *out_token_key_array_ptr   = new system_hashed_ansi_string[9];
+    *out_token_value_array_ptr = new system_hashed_ansi_string[9];
+
+    ASSERT_ALWAYS_SYNC(*out_token_key_array_ptr   != NULL &&
+                       *out_token_value_array_ptr != NULL,
+                       "Out of memory");
+
+    (*out_token_key_array_ptr)[0] = system_hashed_ansi_string_create("LOCAL_WG_SIZE_X"),
+    (*out_token_key_array_ptr)[1] = system_hashed_ansi_string_create("LOCAL_WG_SIZE_Y"),
+    (*out_token_key_array_ptr)[2] = system_hashed_ansi_string_create("LOCAL_WG_SIZE_Z"),
+    (*out_token_key_array_ptr)[3] = system_hashed_ansi_string_create("BLOB_SIZE_X"),
+    (*out_token_key_array_ptr)[4] = system_hashed_ansi_string_create("BLOB_SIZE_Y"),
+    (*out_token_key_array_ptr)[5] = system_hashed_ansi_string_create("BLOB_SIZE_Z"),
+    (*out_token_key_array_ptr)[6] = system_hashed_ansi_string_create("GLOBAL_WG_SIZE_X"),
+    (*out_token_key_array_ptr)[7] = system_hashed_ansi_string_create("GLOBAL_WG_SIZE_Y"),
+    (*out_token_key_array_ptr)[8] = system_hashed_ansi_string_create("GLOBAL_WG_SIZE_Z"),
+
+    *out_n_token_key_value_pairs_ptr = 9;
+
+    /* Compute global work-group size */
+    const uint32_t n_total_scalars  = _blob_size[0] * _blob_size[1] * _blob_size[2];
+    const uint32_t wg_local_size_x  = limits_ptr->max_compute_work_group_size[0]; /* TODO: smarterize me */
+    const uint32_t wg_local_size_y  = 1;
+    const uint32_t wg_local_size_z  = 1;
+
+    out_global_wg_size_uvec3_ptr[0] = 1 + n_total_scalars / wg_local_size_x;
+    out_global_wg_size_uvec3_ptr[1] = 1;
+    out_global_wg_size_uvec3_ptr[2] = 1;
+
+    ASSERT_DEBUG_SYNC(wg_local_size_x * wg_local_size_y * wg_local_size_z <= limits_ptr->max_compute_work_group_invocations,
+                      "Invalid local work-group size requested");
+    ASSERT_DEBUG_SYNC(out_global_wg_size_uvec3_ptr[0] < limits_ptr->max_compute_work_group_count[0] &&
+                      out_global_wg_size_uvec3_ptr[1] < limits_ptr->max_compute_work_group_count[1] &&
+                      out_global_wg_size_uvec3_ptr[2] < limits_ptr->max_compute_work_group_count[2],
+                      "Invalid global work-group size requested");
+
+    /* Fill the token value array */
+    char temp_buffer[64];
+
+    snprintf(temp_buffer,
+             sizeof(temp_buffer),
+             "%d",
+             wg_local_size_x);
+    (*out_token_value_array_ptr)[0] = system_hashed_ansi_string_create(temp_buffer);
+
+    snprintf(temp_buffer,
+             sizeof(temp_buffer),
+             "%d",
+             wg_local_size_y);
+    (*out_token_value_array_ptr)[1] = system_hashed_ansi_string_create(temp_buffer);
+
+    snprintf(temp_buffer,
+             sizeof(temp_buffer),
+             "%d",
+             wg_local_size_z);
+    (*out_token_value_array_ptr)[2] = system_hashed_ansi_string_create(temp_buffer);
+
+    snprintf(temp_buffer,
+             sizeof(temp_buffer),
+             "%d",
+             _blob_size[0]);
+    (*out_token_value_array_ptr)[3] = system_hashed_ansi_string_create(temp_buffer);
+
+    snprintf(temp_buffer,
+             sizeof(temp_buffer),
+             "%d",
+             _blob_size[1]);
+    (*out_token_value_array_ptr)[4] = system_hashed_ansi_string_create(temp_buffer);
+
+    snprintf(temp_buffer,
+             sizeof(temp_buffer),
+             "%d",
+             _blob_size[2]);
+    (*out_token_value_array_ptr)[5] = system_hashed_ansi_string_create(temp_buffer);
+
+    snprintf(temp_buffer,
+             sizeof(temp_buffer),
+             "%d",
+             out_global_wg_size_uvec3_ptr[0]);
+    (*out_token_value_array_ptr)[6] = system_hashed_ansi_string_create(temp_buffer);
+
+    snprintf(temp_buffer,
+             sizeof(temp_buffer),
+             "%d",
+             out_global_wg_size_uvec3_ptr[1]);
+    (*out_token_value_array_ptr)[7] = system_hashed_ansi_string_create(temp_buffer);
+
+    snprintf(temp_buffer,
+             sizeof(temp_buffer),
+             "%d",
+             out_global_wg_size_uvec3_ptr[2]);
+    (*out_token_value_array_ptr)[8] = system_hashed_ansi_string_create(temp_buffer);
+}
+
+/** TODO */
 PRIVATE void _init_scalar_field(const ogl_context_gl_entrypoints* entrypoints_ptr,
                                 const ogl_context_gl_limits*      limits_ptr)
 {
@@ -412,7 +536,7 @@ PRIVATE void _init_scalar_field(const ogl_context_gl_entrypoints* entrypoints_pt
                                    "\n"
                                    "layout(local_size_x = LOCAL_WG_SIZE_X, local_size_y = LOCAL_WG_SIZE_Y, local_size_z = LOCAL_WG_SIZE_Z) in;\n"
                                    "\n"
-                                   "layout(shared) writeonly buffer data\n"
+                                   "layout(std430) writeonly buffer data\n"
                                    "{\n"
                                    /* TODO: SIMDify me */
                                    "    restrict float result[];\n"
@@ -466,104 +590,16 @@ PRIVATE void _init_scalar_field(const ogl_context_gl_entrypoints* entrypoints_pt
                                    "    result[global_invocation_id_flat] = max_power;\n"
                                    "}";
 
-    system_hashed_ansi_string token_key_array[] =
-    {
-        system_hashed_ansi_string_create("LOCAL_WG_SIZE_X"),
-        system_hashed_ansi_string_create("LOCAL_WG_SIZE_Y"),
-        system_hashed_ansi_string_create("LOCAL_WG_SIZE_Z"),
-        system_hashed_ansi_string_create("BLOB_SIZE_X"),
-        system_hashed_ansi_string_create("BLOB_SIZE_Y"),
-        system_hashed_ansi_string_create("BLOB_SIZE_Z"),
-        system_hashed_ansi_string_create("GLOBAL_WG_SIZE_X"),
-        system_hashed_ansi_string_create("GLOBAL_WG_SIZE_Y"),
-        system_hashed_ansi_string_create("GLOBAL_WG_SIZE_Z"),
-    };
-    system_hashed_ansi_string token_value_array[] =
-    {
-        NULL,
-        NULL,
-        NULL,
-        NULL,
-        NULL,
-        NULL,
-        NULL,
-        NULL,
-        NULL
-    };
-    const uint32_t n_token_key_values = 9;
+    unsigned int               global_wg_size[3]       = {0};
+    unsigned int               n_token_key_value_pairs = 0;
+    system_hashed_ansi_string* token_key_array_ptr     = NULL;
+    system_hashed_ansi_string* token_value_array_ptr   = NULL;
 
-    /* Compute global work-group size */
-    const uint32_t n_total_scalars  = _blob_size[0] * _blob_size[1] * _blob_size[2];
-    const uint32_t wg_local_size_x  = limits_ptr->max_compute_work_group_size[0]; /* TODO: smarterize me */
-    const uint32_t wg_local_size_y  = 1;
-    const uint32_t wg_local_size_z  = 1;
-    const uint32_t wg_global_size_x = 1 + n_total_scalars / wg_local_size_x;
-    const uint32_t wg_global_size_y = 1;
-    const uint32_t wg_global_size_z = 1;
-
-    ASSERT_DEBUG_SYNC(wg_local_size_x * wg_local_size_y * wg_local_size_z <= limits_ptr->max_compute_work_group_invocations,
-                      "Invalid local work-group size requested");
-    ASSERT_DEBUG_SYNC(wg_global_size_x < limits_ptr->max_compute_work_group_count[0] &&
-                      wg_global_size_y < limits_ptr->max_compute_work_group_count[1] &&
-                      wg_global_size_z < limits_ptr->max_compute_work_group_count[2],
-                      "Invalid global work-group size requested");
-
-    /* Fill the token value array */
-    char temp_buffer[64];
-
-    snprintf(temp_buffer,
-             sizeof(temp_buffer),
-             "%d",
-             wg_local_size_x);
-    token_value_array[0] = system_hashed_ansi_string_create(temp_buffer);
-
-    snprintf(temp_buffer,
-             sizeof(temp_buffer),
-             "%d",
-             wg_local_size_y);
-    token_value_array[1] = system_hashed_ansi_string_create(temp_buffer);
-
-    snprintf(temp_buffer,
-             sizeof(temp_buffer),
-             "%d",
-             wg_local_size_z);
-    token_value_array[2] = system_hashed_ansi_string_create(temp_buffer);
-
-    snprintf(temp_buffer,
-             sizeof(temp_buffer),
-             "%d",
-             _blob_size[0]);
-    token_value_array[3] = system_hashed_ansi_string_create(temp_buffer);
-
-    snprintf(temp_buffer,
-             sizeof(temp_buffer),
-             "%d",
-             _blob_size[1]);
-    token_value_array[4] = system_hashed_ansi_string_create(temp_buffer);
-
-    snprintf(temp_buffer,
-             sizeof(temp_buffer),
-             "%d",
-             _blob_size[2]);
-    token_value_array[5] = system_hashed_ansi_string_create(temp_buffer);
-
-    snprintf(temp_buffer,
-             sizeof(temp_buffer),
-             "%d",
-             wg_global_size_x);
-    token_value_array[6] = system_hashed_ansi_string_create(temp_buffer);
-
-    snprintf(temp_buffer,
-             sizeof(temp_buffer),
-             "%d",
-             wg_global_size_y);
-    token_value_array[7] = system_hashed_ansi_string_create(temp_buffer);
-
-    snprintf(temp_buffer,
-             sizeof(temp_buffer),
-             "%d",
-             wg_global_size_z);
-    token_value_array[8] = system_hashed_ansi_string_create(temp_buffer);
+    _get_token_key_value_arrays(limits_ptr,
+                               &token_key_array_ptr,
+                               &token_value_array_ptr,
+                               &n_token_key_value_pairs,
+                                global_wg_size);
 
     /* Create program & shader objects */
     cs = ogl_shader_create(_context,
@@ -577,9 +613,15 @@ PRIVATE void _init_scalar_field(const ogl_context_gl_entrypoints* entrypoints_pt
     /* Configure the shader object */
     ogl_shader_set_body_with_token_replacement(cs,
                                                cs_body_template,
-                                               n_token_key_values,
-                                               token_key_array,
-                                               token_value_array);
+                                               n_token_key_value_pairs,
+                                               token_key_array_ptr,
+                                               token_value_array_ptr);
+
+    delete [] token_key_array_ptr;
+    token_key_array_ptr = NULL;
+
+    delete [] token_value_array_ptr;
+    token_value_array_ptr = NULL;
 
     /* Configure & link the program object */
     ogl_program_attach_shader(_po_scalar_field_generator,
@@ -611,50 +653,26 @@ PRIVATE void _init_scalar_field(const ogl_context_gl_entrypoints* entrypoints_pt
                                         _blob_scalar_field_bo_start_offset,
                                         _blob_scalar_field_bo_size);
 
-    entrypoints_ptr->pGLDispatchCompute(wg_global_size_x,
-                                        wg_global_size_y,
-                                        wg_global_size_z);
+    entrypoints_ptr->pGLDispatchCompute(global_wg_size[0],
+                                        global_wg_size[1],
+                                        global_wg_size[2]);
+
+    _scalar_field_data_updated = true;
 
     /* All done! */
     ogl_shader_release(cs);
 }
 
 /** TODO */
-PRIVATE void _init_scalar_field_renderer(const ogl_context_gl_entrypoints* entry_points)
+PRIVATE void _init_scalar_field_polygonizer(const ogl_context_gl_entrypoints* entry_points,
+                                            const ogl_context_gl_limits*      limits_ptr)
 {
-    const char* fs_body = "#version 430 core\n"
+    const char* cs_body = "#version 430 core\n"
                           "\n"
-                          "in  vec3 normal;\n"
-                          "out vec4 result;\n"
+                          "layout(local_size_x = LOCAL_WG_SIZE_X, local_size_y = LOCAL_WG_SIZE_Y, local_size_z = LOCAL_WG_SIZE_Z) in;\n"
                           "\n"
-                          "void main()\n"
-                          "{\n"
-                          "    result = vec4(normal, 1.0);\n"
-                          "}\n";
-    const char* gs_body = "#version 430 core\n"
-                          "\n"
-                          "layout(points)                            in;\n"
-                          "layout(triangle_strip, max_vertices = 15) out;\n"
-                          "\n"
-                          "layout(shared) readonly buffer data\n"
-                          "{\n"
-                          "    restrict vec4 scalar_field[];\n"
-                          "};\n"
-                          "\n"
-                          "layout(packed) uniform edge_tableUB\n"
-                          "{\n"
-                          "    int edge_table[256];\n"
-                          "};\n"
-                          "\n"
-                          "layout(packed) uniform triangle_tableUB\n"
-                          "{\n"
-                          "    int triangle_table[256 * 15];\n"
-                          "};\n"
-                          "\n"
-                          "in VSData\n"
-                          "{\n"
-                          "    uint vertex_id;\n"
-                          "} vs_data[];\n"
+                          "const uint n_ids_per_row    = BLOB_SIZE_X;\n"
+                          "const uint n_ids_per_slice  = BLOB_SIZE_X * BLOB_SIZE_Y;\n"
                           "\n"
                           "layout(packed) uniform dataUB\n"
                           "{\n"
@@ -663,12 +681,28 @@ PRIVATE void _init_scalar_field_renderer(const ogl_context_gl_entrypoints* entry
                           "    mat4  normal_matrix;\n"
                           "};\n"
                           "\n"
-#if 1
-                          "out vec3 normal;\n"
-#endif
+                          "layout(std430) buffer indirect_draw_callSSB\n"
+                          "{\n"
+                          "    restrict coherent uint indirect_draw_call_count;\n"
+                          "};\n"
                           "\n"
-                          "const uint n_ids_per_row    = BLOB_SIZE_X;\n"
-                          "const uint n_ids_per_slice  = BLOB_SIZE_X * BLOB_SIZE_Y;\n"
+                          "layout(packed) uniform precomputed_tablesUB\n"
+                          "{\n"
+                          "    int edge_table    [256];\n"
+                          "    int triangle_table[256 * 15];\n"
+                          "};\n"
+                          "\n"
+                          "layout(std430) writeonly buffer result_dataSSB\n"
+                          "{\n"
+                          /* 4 floats: vertex data (clip space)
+                           * 3 floats: normal data */
+                          "    restrict float result_data[];\n"
+                          "};\n"
+                          "\n"
+                          "layout(std430) readonly buffer scalar_field_dataSSB\n"
+                          "{\n"
+                          "    restrict vec4 scalar_field[];\n"
+                          "};\n"
                           "\n"
                           "void get_interpolated_data(in  vec3  vertex1,\n"
                           "                           in  vec3  vertex2,\n"
@@ -680,7 +714,6 @@ PRIVATE void _init_scalar_field_renderer(const ogl_context_gl_entrypoints* entry
                           "                           out vec4  result_vertex)\n"
                           "{\n"
                           /* TODO: Use the improved version? */
-                          /* NOTE: Normalization is performed at vertex emission time */
                           "    vec3 vertex1_scalar_preceeding = vec3(scalar_field[(base_index1 - 1)               / 4][(base_index1 - 1)               % 4],\n"
                           "                                          scalar_field[(base_index1 - n_ids_per_row)   / 4][(base_index1 - n_ids_per_row)   % 4],\n"
                           "                                          scalar_field[(base_index1 - n_ids_per_slice) / 4][(base_index1 - n_ids_per_slice) % 4]);\n"
@@ -700,30 +733,39 @@ PRIVATE void _init_scalar_field_renderer(const ogl_context_gl_entrypoints* entry
                           "    if (abs(isolevel      - vertex1_value) < 1e-5 ||\n"
                           "        abs(vertex1_value - vertex2_value) < 1e-5)\n"
                           "    {\n"
-                          "        result_normal = vertex1_normal;\n"
-                          "        result_vertex = vec4(vertex1, 1.0);\n"
+                          "        result_normal = normalize( (normal_matrix * vec4(vertex1_normal, 1.0) ).xyz);\n"
+                          "        result_vertex = mvp * vec4(vertex1, 1.0);\n"
                           "    }\n"
                           "    else\n"
                           "    if (abs(isolevel - vertex2_value) < 1e-5)\n"
                           "    {\n"
-                          "        result_normal = vertex2_normal;\n"
-                          "        result_vertex = vec4(vertex2, 1.0);\n"
+                          "        result_normal = normalize( (normal_matrix * vec4(vertex2_normal, 1.0) ).xyz);\n"
+                          "        result_vertex = mvp * vec4(vertex2, 1.0);\n"
                           "    }\n"
                           "    else\n"
                           "    {\n"
                           "        float coeff = (isolevel - vertex1_value) / (vertex2_value - vertex1_value);\n"
                           "\n"
-                          "        result_vertex = vec4(vertex1        + vec3(coeff) * (vertex2        - vertex1),        1.0);\n"
-                          "        result_normal = vec3(vertex1_normal + vec3(coeff) * (vertex2_normal - vertex1_normal));\n"
+                          "        result_normal = normalize((normal_matrix * vec4(vertex1_normal + vec3(coeff) * (vertex2_normal - vertex1_normal), 1.0)).xyz);\n"
+                          "        result_vertex =            mvp           * vec4(vertex1        + vec3(coeff) * (vertex2        - vertex1),        1.0);\n"
                           "    }\n"
                           "}\n"
                           "\n"
                           "void main()\n"
                           "{\n"
+                          "    const uint global_invocation_id_flat = (gl_GlobalInvocationID.z * (LOCAL_WG_SIZE_X * LOCAL_WG_SIZE_Y) +\n"
+                          "                                            gl_GlobalInvocationID.y * (LOCAL_WG_SIZE_X)                   +\n"
+                          "                                            gl_GlobalInvocationID.x);\n"
+                          "\n"
                           /* Extract scalar field values */
-                          "    const uvec3 cube_xyz = uvec3( vs_data[0].vertex_id                                % BLOB_SIZE_X,\n"
-                          "                                 (vs_data[0].vertex_id /  BLOB_SIZE_X)                % BLOB_SIZE_Y,\n"
-                          "                                  vs_data[0].vertex_id / (BLOB_SIZE_X * BLOB_SIZE_Y));\n"
+                          "    const uvec3 cube_xyz = uvec3( global_invocation_id_flat                                % BLOB_SIZE_X,\n"
+                          "                                 (global_invocation_id_flat /  BLOB_SIZE_X)                % BLOB_SIZE_Y,\n"
+                          "                                  global_invocation_id_flat / (BLOB_SIZE_X * BLOB_SIZE_Y));\n"
+                          "\n"
+                          "    if (cube_xyz.z >= BLOB_SIZE_Z)\n"
+                          "    {\n"
+                          "        return;\n"
+                          "    }\n"
                           "\n"
                           "    const vec3 cube_x1y1z1         = vec3(cube_xyz) / vec3(BLOB_SIZE_X, BLOB_SIZE_Y, BLOB_SIZE_Z);\n"
                           "    const vec3 cube_size           = vec3(1.0)      / vec3(BLOB_SIZE_X, BLOB_SIZE_Y, BLOB_SIZE_Z);\n"
@@ -732,10 +774,10 @@ PRIVATE void _init_scalar_field_renderer(const ogl_context_gl_entrypoints* entry
                           "\n"
                           "    const uint top_plane_ids[4] =\n"
                           "    {\n"
-                          "        vs_data[0].vertex_id,\n"
-                          "        vs_data[0].vertex_id                   + 1,\n"
-                          "        vs_data[0].vertex_id + n_ids_per_slice + 1,\n"
-                          "        vs_data[0].vertex_id + n_ids_per_slice\n"
+                          "        global_invocation_id_flat,\n"
+                          "        global_invocation_id_flat                   + 1,\n"
+                          "        global_invocation_id_flat + n_ids_per_slice + 1,\n"
+                          "        global_invocation_id_flat + n_ids_per_slice\n"
                           "    };\n"
                           "\n"
                           /* The scalar_values vector array holds scalar field values for vertices in the following order: (XZ plane is assumed)
@@ -770,7 +812,7 @@ PRIVATE void _init_scalar_field_renderer(const ogl_context_gl_entrypoints* entry
                           "    }\n"
                           "\n"
                           /* Determine edge index */
-                          "    uint edge_index = 0;\n"
+                          "    int edge_index = 0;\n"
                           "\n"
                           "    if (scalar_values[0].x < isolevel) edge_index |= 1;\n"
                           "    if (scalar_values[0].y < isolevel) edge_index |= 2;\n"
@@ -798,7 +840,7 @@ PRIVATE void _init_scalar_field_renderer(const ogl_context_gl_entrypoints* entry
                            */
                           "    vec3 lerped_normal_list[12];\n"
                           "    vec4 lerped_vertex_list[12];\n"
-                          "    vec3 vertex_model      [8] =\n"
+                          "    const vec3 vertex_model      [8] =\n"
                           "    {\n"
                           /* 0: */
                           "        vec3(cube_aabb_min_model.x,  cube_aabb_max_model.y,  cube_aabb_min_model.z),\n"
@@ -962,195 +1004,314 @@ PRIVATE void _init_scalar_field_renderer(const ogl_context_gl_entrypoints* entry
                           "                              lerped_vertex_list[11]);\n"
                           "    }\n"
                           "\n"
-                          /* Emit triangles */
+                          /* Emit triangles. Note that we need to generate more triangles than we actually need in
+                           * order to make sure the flow remains uniform.
+                           */
+                          "    uint n_result_triangle_base_vertex = atomicAdd(indirect_draw_call_count, 3 * 5);\n"
+                          "\n"
                           "    for (uint n_triangle = 0;\n"
                           "              n_triangle < 5;\n"
                           "              n_triangle++)\n"
                           "    {\n"
-                          "              uint list_index;\n"
-                          "        const uint n_triangle_base_vertex = n_triangle * 3;\n"
-                          "        vec4       current_vertex;\n"
+                          "        const uint n_triangle_base_vertex = edge_index * 15 + n_triangle * 3;\n"
                           "\n"
-                          "        if (triangle_table[edge_index * 15 + n_triangle_base_vertex] == -1)\n"
+                          "        if (triangle_table[n_triangle_base_vertex] == -1)\n"
                           "        {\n"
-                          "            return;"
+                          "            for (uint n_vertex = 0;\n"
+                          "                      n_vertex < 3;\n"
+                          "                      n_vertex++)\n"
+                          "            {\n"
+                          /* Just discard the vertex..*/
+                          "                result_data[(n_triangle * 3 + n_result_triangle_base_vertex + n_vertex) * 7 + 3] = 0.0;\n"
+                          "            }\n"
                           "        }\n"
+                          "        else\n"
+                          "        for (uint n_vertex = 0;\n"
+                          "                  n_vertex < 3;\n"
+                          "                  n_vertex++)\n"
+                          "        {\n"
+                          "            vec3 current_normal;\n"
+                          "            vec4 current_vertex;\n"
+                          "            int  list_index;\n"
                           "\n"
-                          "        list_index     = triangle_table[edge_index * 15 + n_triangle_base_vertex];\n"
-                          "        current_vertex =                                 lerped_vertex_list[ list_index ];\n"
-                          "        normal         = mat3(normal_matrix) * normalize(lerped_normal_list[ list_index ]);\n"
-                          "        gl_Position    = mvp                 * current_vertex;\n"
-                          "        EmitVertex();\n"
+                          "            list_index     = triangle_table    [ n_triangle_base_vertex + n_vertex ];\n"
+                          "            current_vertex = lerped_vertex_list[ list_index ];\n"
+                          "            current_normal = lerped_normal_list[ list_index ];\n"
                           "\n"
-                          "        list_index     = triangle_table[edge_index * 15 + n_triangle_base_vertex + 1];\n"
-                          "        current_vertex =                                 lerped_vertex_list[ list_index ];\n"
-                          "        normal         = mat3(normal_matrix) * normalize(lerped_normal_list[ list_index ]);\n"
-                          "        gl_Position    = mvp                 * current_vertex;\n"
-                          "        EmitVertex();\n"
-                          "\n"
-                          "        list_index     = triangle_table[edge_index * 15 + n_triangle_base_vertex + 2];\n"
-                          "        current_vertex =                                 lerped_vertex_list[ list_index ];\n"
-                          "        normal         = mat3(normal_matrix) * normalize(lerped_normal_list[ list_index ]);\n"
-                          "        gl_Position    = mvp                 * current_vertex;\n"
-                          "        EmitVertex();\n"
-                          "        EndPrimitive();\n"
+                          "            result_data[(n_triangle * 3 + n_result_triangle_base_vertex + n_vertex) * 7 + 0] = current_vertex.x;\n"
+                          "            result_data[(n_triangle * 3 + n_result_triangle_base_vertex + n_vertex) * 7 + 1] = current_vertex.y;\n"
+                          "            result_data[(n_triangle * 3 + n_result_triangle_base_vertex + n_vertex) * 7 + 2] = current_vertex.z;\n"
+                          "            result_data[(n_triangle * 3 + n_result_triangle_base_vertex + n_vertex) * 7 + 3] = current_vertex.w;\n"
+                          "            result_data[(n_triangle * 3 + n_result_triangle_base_vertex + n_vertex) * 7 + 4] = current_normal.x;\n"
+                          "            result_data[(n_triangle * 3 + n_result_triangle_base_vertex + n_vertex) * 7 + 5] = current_normal.y;\n"
+                          "            result_data[(n_triangle * 3 + n_result_triangle_base_vertex + n_vertex) * 7 + 6] = current_normal.z;\n"
+                          "        }\n"
                           "    }\n"
                           "}\n";
-    const char* vs_body = "#version 430 core\n"
-                          "\n"
-                          "out VSData\n"
-                          "{\n"
-                          "    uint vertex_id;\n"
-                          "} vs_data;\n"
-                          "\n"
-                          "void main()\n"
-                          "{\n"
-                          "    vs_data.vertex_id = gl_VertexID;\n"
-                          "\n"
-                          "}\n";
 
-    /* Set up vertex body token key/value arrays */
-    const system_hashed_ansi_string gs_body_token_keys[] =
-    {
-        system_hashed_ansi_string_create("BLOB_SIZE_X"),
-        system_hashed_ansi_string_create("BLOB_SIZE_Y"),
-        system_hashed_ansi_string_create("BLOB_SIZE_Z")
-    };
-    system_hashed_ansi_string       gs_body_token_values[] =
-    {
-        NULL,
-        NULL,
-        NULL
-    };
-    const uint32_t n_gs_body_tokens = sizeof(gs_body_token_keys) / sizeof(gs_body_token_keys[0]);
-    char           temp_buffer[256];
+    /* Set up token key/value arrays */
+    unsigned int               n_token_key_value_pairs = 0;
+    system_hashed_ansi_string* token_key_array_ptr     = NULL;
+    system_hashed_ansi_string* token_value_array_ptr   = NULL;
 
-    snprintf(temp_buffer,
-             sizeof(temp_buffer),
-             "%d",
-             _blob_size[0]);
-    gs_body_token_values[0] = system_hashed_ansi_string_create(temp_buffer);
+    _get_token_key_value_arrays(limits_ptr,
+                               &token_key_array_ptr,
+                               &token_value_array_ptr,
+                               &n_token_key_value_pairs,
+                                _po_scalar_field_polygonizer_global_wg_size);
 
-    snprintf(temp_buffer,
-             sizeof(temp_buffer),
-             "%d",
-             _blob_size[1]);
-    gs_body_token_values[1] = system_hashed_ansi_string_create(temp_buffer);
+    /* Initialize the shader */
+    ogl_shader cs = ogl_shader_create(_context,
+                                      SHADER_TYPE_COMPUTE,
+                                      system_hashed_ansi_string_create("Scalar field polygonizer CS"));
 
-    snprintf(temp_buffer,
-             sizeof(temp_buffer),
-             "%d",
-             _blob_size[2]);
-    gs_body_token_values[2] = system_hashed_ansi_string_create(temp_buffer);
+    ogl_shader_set_body_with_token_replacement(cs,
+                                               cs_body,
+                                               n_token_key_value_pairs,
+                                               token_key_array_ptr,
+                                               token_value_array_ptr);
 
-    /* Initialize the shaders */
-    ogl_shader fs = ogl_shader_create(_context,
-                                      SHADER_TYPE_FRAGMENT,
-                                      system_hashed_ansi_string_create("Scalar field renderer FS"));
-    ogl_shader gs = ogl_shader_create(_context,
-                                      SHADER_TYPE_GEOMETRY,
-                                      system_hashed_ansi_string_create("Scalar field renderer GS"));
-    ogl_shader vs = ogl_shader_create(_context,
-                                      SHADER_TYPE_VERTEX,
-                                      system_hashed_ansi_string_create("Scalar field renderer VS"));
+    delete [] token_key_array_ptr;
+    token_key_array_ptr = NULL;
 
-    ogl_shader_set_body                       (fs,
-                                               system_hashed_ansi_string_create(fs_body) );
-    ogl_shader_set_body_with_token_replacement(gs,
-                                               gs_body,
-                                               n_gs_body_tokens,
-                                               gs_body_token_keys,
-                                               gs_body_token_values);
-    ogl_shader_set_body                       (vs,
-                                               system_hashed_ansi_string_create(vs_body) );
+    delete [] token_value_array_ptr;
+    token_value_array_ptr = NULL;
 
     /* Prepare & link the program object */
-    _po_scalar_field_renderer = ogl_program_create(_context,
-                                                   system_hashed_ansi_string_create("Scalar field renderer"),
-                                                   OGL_PROGRAM_SYNCABLE_UBS_MODE_ENABLE_GLOBAL);
+    _po_scalar_field_polygonizer = ogl_program_create(_context,
+                                                      system_hashed_ansi_string_create("Scalar field renderer"),
+                                                      OGL_PROGRAM_SYNCABLE_UBS_MODE_ENABLE_GLOBAL);
 
-    ogl_program_attach_shader(_po_scalar_field_renderer,
-                              fs);
-    ogl_program_attach_shader(_po_scalar_field_renderer,
-                              gs);
-    ogl_program_attach_shader(_po_scalar_field_renderer,
-                              vs);
+    ogl_program_attach_shader(_po_scalar_field_polygonizer,
+                              cs);
+    ogl_program_link         (_po_scalar_field_polygonizer);
 
-    ogl_program_link(_po_scalar_field_renderer);
+    /* Set up a BO which is going to be used for the indirect draw call in the rendering stage */
+    ogl_buffers        buffers                   = NULL;
+    const unsigned int indirect_draw_call_args[] =
+    {
+        0, /* count - will be filled later */
+        1, /* primcount                    */
+        0, /* first                        */
+        0  /* baseInstance                 */
+    };
+    ASSERT_DEBUG_SYNC(sizeof(indirect_draw_call_args) == sizeof(unsigned int) * 4,
+                      "Invalid invalid draw call arg structure instance size");
+
+    ogl_context_get_property(_context,
+                             OGL_CONTEXT_PROPERTY_BUFFERS,
+                            &buffers);
+
+    ogl_buffers_allocate_buffer_memory(buffers,
+                                       sizeof(unsigned int) * 4,
+                                       limits_ptr->shader_storage_buffer_offset_alignment, /* SSBO alignment is needed, since the compute shader modifies some of the args */
+                                       OGL_BUFFERS_MAPPABILITY_NONE,
+                                       OGL_BUFFERS_USAGE_MISCELLANEOUS,
+                                       0, /* flags */
+                                      &_indirect_draw_call_args_bo_id,
+                                      &_indirect_draw_call_args_bo_start_offset);
+
+    _indirect_draw_call_args_bo_count_arg_offset = _indirect_draw_call_args_bo_start_offset; /* count is the first argument */
+    _indirect_draw_call_args_bo_size             = sizeof(unsigned int) * 4;
+
+    entry_points->pGLBindBuffer   (GL_DRAW_INDIRECT_BUFFER,
+                                  _indirect_draw_call_args_bo_id);
+    entry_points->pGLBufferSubData(GL_DRAW_INDIRECT_BUFFER,
+                                   _indirect_draw_call_args_bo_start_offset,
+                                   _indirect_draw_call_args_bo_size,
+                                   indirect_draw_call_args);
+
+    /* Set up a BO which is going to hold the polygonized data. At max, each cube is going to hold
+     * five triangles. */
+    _polygonized_data_bo_size = _blob_size[0] * _blob_size[1] * _blob_size[2] * 5 /* triangles */ * 3 /* vertices */ * 7 /* vertex + normal data components */ * sizeof(float);
+
+    ogl_buffers_allocate_buffer_memory(buffers,
+                                       _polygonized_data_bo_size,
+                                       limits_ptr->shader_storage_buffer_offset_alignment,
+                                       OGL_BUFFERS_MAPPABILITY_NONE,
+                                       OGL_BUFFERS_USAGE_MISCELLANEOUS,
+                                       0, /* flags */
+                                      &_polygonized_data_bo_id,
+                                      &_polygonized_data_bo_start_offset);
 
     /* Retrieve data UB properties */
     const ogl_program_variable* uniform_isolevel_ptr      = NULL;
     const ogl_program_variable* uniform_mvp_ptr           = NULL;
     const ogl_program_variable* uniform_normal_matrix_ptr = NULL;
 
-    ogl_program_get_uniform_block_by_name(_po_scalar_field_renderer,
+    ogl_program_get_uniform_block_by_name(_po_scalar_field_polygonizer,
                                           system_hashed_ansi_string_create("dataUB"),
-                                         &_po_scalar_field_renderer_data_ub);
+                                         &_po_scalar_field_polygonizer_data_ub);
 
-    ogl_program_ub_get_property(_po_scalar_field_renderer_data_ub,
+    ogl_program_ub_get_property(_po_scalar_field_polygonizer_data_ub,
                                 OGL_PROGRAM_UB_PROPERTY_BO_ID,
-                               &_po_scalar_field_renderer_data_ub_bo_id);
-    ogl_program_ub_get_property(_po_scalar_field_renderer_data_ub,
+                               &_po_scalar_field_polygonizer_data_ub_bo_id);
+    ogl_program_ub_get_property(_po_scalar_field_polygonizer_data_ub,
+                                OGL_PROGRAM_UB_PROPERTY_BLOCK_DATA_SIZE,
+                               &_po_scalar_field_polygonizer_data_ub_bo_size);
+    ogl_program_ub_get_property(_po_scalar_field_polygonizer_data_ub,
                                 OGL_PROGRAM_UB_PROPERTY_BO_START_OFFSET,
-                               &_po_scalar_field_renderer_data_ub_bo_start_offset);
-    ogl_program_ub_get_property(_po_scalar_field_renderer_data_ub,
+                               &_po_scalar_field_polygonizer_data_ub_bo_start_offset);
+    ogl_program_ub_get_property(_po_scalar_field_polygonizer_data_ub,
                                 OGL_PROGRAM_UB_PROPERTY_INDEXED_BP,
-                               &_po_scalar_field_renderer_data_ub_bp);
+                               &_po_scalar_field_polygonizer_data_ub_bp);
 
-    ogl_program_get_uniform_by_name(_po_scalar_field_renderer,
+    ogl_program_get_uniform_by_name(_po_scalar_field_polygonizer,
                                     system_hashed_ansi_string_create("isolevel"),
                                    &uniform_isolevel_ptr);
-    ogl_program_get_uniform_by_name(_po_scalar_field_renderer,
+    ogl_program_get_uniform_by_name(_po_scalar_field_polygonizer,
                                     system_hashed_ansi_string_create("mvp"),
                                    &uniform_mvp_ptr);
-    ogl_program_get_uniform_by_name(_po_scalar_field_renderer,
+    ogl_program_get_uniform_by_name(_po_scalar_field_polygonizer,
                                     system_hashed_ansi_string_create("normal_matrix"),
                                    &uniform_normal_matrix_ptr);
 
-    _po_scalar_field_renderer_data_ub_isolevel_offset      = uniform_isolevel_ptr->block_offset;
-    _po_scalar_field_renderer_data_ub_mvp_offset           = uniform_mvp_ptr->block_offset;
-    _po_scalar_field_renderer_data_ub_normal_matrix_offset = uniform_normal_matrix_ptr->block_offset;
+    _po_scalar_field_polygonizer_data_ub_isolevel_offset      = uniform_isolevel_ptr->block_offset;
+    _po_scalar_field_polygonizer_data_ub_mvp_offset           = uniform_mvp_ptr->block_offset;
+    _po_scalar_field_polygonizer_data_ub_normal_matrix_offset = uniform_normal_matrix_ptr->block_offset;
 
-    /* Set up edge array UB contents */
-    ogl_program_get_uniform_block_by_name(_po_scalar_field_renderer,
-                                          system_hashed_ansi_string_create("edge_tableUB"),
-                                         &_po_scalar_field_renderer_edge_table_ub);
+    /* Set up precomputed tables UB contents */
+    const ogl_program_variable* uniform_edge_table_ptr     = NULL;
+    const ogl_program_variable* uniform_triangle_table_ptr = NULL;
 
-    ogl_program_ub_get_property(_po_scalar_field_renderer_edge_table_ub,
+    ogl_program_get_uniform_by_name(_po_scalar_field_polygonizer,
+                                    system_hashed_ansi_string_create("edge_table[0]"),
+                                   &uniform_edge_table_ptr);
+    ogl_program_get_uniform_by_name(_po_scalar_field_polygonizer,
+                                    system_hashed_ansi_string_create("triangle_table[0]"),
+                                   &uniform_triangle_table_ptr);
+
+    _po_scalar_field_polygonizer_precomputed_tables_ub_bo_edge_table_offset     = uniform_edge_table_ptr->block_offset;
+    _po_scalar_field_polygonizer_precomputed_tables_ub_bo_triangle_table_offset = uniform_triangle_table_ptr->block_offset;
+
+    ogl_program_get_uniform_block_by_name(_po_scalar_field_polygonizer,
+                                          system_hashed_ansi_string_create("precomputed_tablesUB"),
+                                         &_po_scalar_field_polygonizer_precomputed_tables_ub);
+
+    ogl_program_ub_get_property(_po_scalar_field_polygonizer_precomputed_tables_ub,
                                 OGL_PROGRAM_UB_PROPERTY_BO_ID,
-                               &_po_scalar_field_renderer_edge_table_ub_bo_id);
-    ogl_program_ub_get_property(_po_scalar_field_renderer_edge_table_ub,
+                               &_po_scalar_field_polygonizer_precomputed_tables_ub_bo_id);
+    ogl_program_ub_get_property(_po_scalar_field_polygonizer_precomputed_tables_ub,
                                 OGL_PROGRAM_UB_PROPERTY_BLOCK_DATA_SIZE,
-                               &_po_scalar_field_renderer_edge_table_ub_bo_size);
-    ogl_program_ub_get_property(_po_scalar_field_renderer_edge_table_ub,
+                               &_po_scalar_field_polygonizer_precomputed_tables_ub_bo_size);
+    ogl_program_ub_get_property(_po_scalar_field_polygonizer_precomputed_tables_ub,
                                 OGL_PROGRAM_UB_PROPERTY_BO_START_OFFSET,
-                               &_po_scalar_field_renderer_edge_table_ub_bo_start_offset);
-    ogl_program_ub_get_property(_po_scalar_field_renderer_edge_table_ub,
+                               &_po_scalar_field_polygonizer_precomputed_tables_ub_bo_start_offset);
+    ogl_program_ub_get_property(_po_scalar_field_polygonizer_precomputed_tables_ub,
                                 OGL_PROGRAM_UB_PROPERTY_INDEXED_BP,
-                               &_po_scalar_field_renderer_edge_table_ub_bp);
+                               &_po_scalar_field_polygonizer_precomputed_tables_ub_bp);
 
-    /* Set up triangle table UB contents */
-    ogl_program_get_uniform_block_by_name(_po_scalar_field_renderer,
-                                          system_hashed_ansi_string_create("triangle_tableUB"),
-                                         &_po_scalar_field_renderer_triangle_table_ub);
+    /* Set up indirect draw call <count> arg SSB */
+    ogl_program_get_shader_storage_block_by_name(_po_scalar_field_polygonizer,
+                                                 system_hashed_ansi_string_create("indirect_draw_callSSB"),
+                                                &_po_scalar_field_polygonizer_indirect_draw_call_count_ssb);
 
-    ogl_program_ub_get_property(_po_scalar_field_renderer_triangle_table_ub,
-                                OGL_PROGRAM_UB_PROPERTY_BO_ID,
-                               &_po_scalar_field_renderer_triangle_table_ub_bo_id);
-    ogl_program_ub_get_property(_po_scalar_field_renderer_triangle_table_ub,
-                                OGL_PROGRAM_UB_PROPERTY_BLOCK_DATA_SIZE,
-                               &_po_scalar_field_renderer_triangle_table_ub_bo_size);
-    ogl_program_ub_get_property(_po_scalar_field_renderer_triangle_table_ub,
-                                OGL_PROGRAM_UB_PROPERTY_BO_START_OFFSET,
-                               &_po_scalar_field_renderer_triangle_table_ub_bo_start_offset);
-    ogl_program_ub_get_property(_po_scalar_field_renderer_triangle_table_ub,
-                                OGL_PROGRAM_UB_PROPERTY_INDEXED_BP,
-                               &_po_scalar_field_renderer_triangle_table_ub_bp);
+    ogl_program_ssb_get_property(_po_scalar_field_polygonizer_indirect_draw_call_count_ssb,
+                                 OGL_PROGRAM_SSB_PROPERTY_INDEXED_BP,
+                                &_po_scalar_field_polygonizer_indirect_draw_call_count_ssb_bp);
+
+    /* Set up result data SSB */
+    ogl_program_get_shader_storage_block_by_name(_po_scalar_field_polygonizer,
+                                                 system_hashed_ansi_string_create("result_dataSSB"),
+                                                &_po_scalar_field_polygonizer_result_data_ssb);
+
+    ogl_program_ssb_get_property(_po_scalar_field_polygonizer_result_data_ssb,
+                                 OGL_PROGRAM_SSB_PROPERTY_INDEXED_BP,
+                                &_po_scalar_field_polygonizer_result_data_ssb_bp);
+
+    /* Set up scalar field data SSB */
+    ogl_program_get_shader_storage_block_by_name(_po_scalar_field_polygonizer,
+                                                 system_hashed_ansi_string_create("scalar_field_dataSSB"),
+                                                &_po_scalar_field_polygonizer_scalar_field_data_ssb);
+
+    ogl_program_ssb_get_property(_po_scalar_field_polygonizer_scalar_field_data_ssb,
+                                 OGL_PROGRAM_SSB_PROPERTY_INDEXED_BP,
+                                &_po_scalar_field_polygonizer_scalar_field_data_ssb_bp);
+
+    /* Set up a VAO which is going to be used to render the metaballs */
+    ASSERT_DEBUG_SYNC(_polygonized_data_bo_id != 0,
+                      "Polygonized data BO id is 0");
+
+    entry_points->pGLGenVertexArrays(1,
+                                    &_vao_id);
+
+    entry_points->pGLBindBuffer         (GL_ARRAY_BUFFER,
+                                         _polygonized_data_bo_id);
+    entry_points->pGLBindVertexArray    (_vao_id);
+    entry_points->pGLVertexAttribPointer(0,                 /* index      */
+                                         4,                 /* size       */
+                                         GL_FLOAT,          /* type       */
+                                         GL_FALSE,          /* normalized */
+                                         sizeof(float) * 7, /* stride     */
+                                         (const GLvoid*) _polygonized_data_bo_start_offset);
+    entry_points->pGLVertexAttribPointer(1,                 /* index      */
+                                         3,                 /* size       */
+                                         GL_FLOAT,          /* type       */
+                                         GL_FALSE,          /* normalized */
+                                         sizeof(float) * 7, /* stride     */
+                                         (const GLvoid*) (_polygonized_data_bo_start_offset + sizeof(float) * 4) );
+
+    entry_points->pGLEnableVertexAttribArray(0); /* index */
+    entry_points->pGLEnableVertexAttribArray(1); /* index */
 
     /* Release stuff */
+    ogl_shader_release(cs);
+}
+
+/** TODO */
+PRIVATE void _init_scalar_field_renderer(const ogl_context_gl_entrypoints* entry_points)
+{
+    const char* fs_code = "#version 430 core\n"
+                          "\n"
+                          "in  vec3 lerped_normal;\n"
+                          "out vec3 out_result;\n"
+                          "\n"
+                          "void main()\n"
+                          "{\n"
+                          "    out_result = lerped_normal;\n"
+                          "}\n";
+    const char* vs_code = "#version 430 core\n"
+                          "\n"
+                          "layout(location = 1) in vec3 normal;\n"
+                          "layout(location = 0) in vec4 vertex;\n"
+                          "\n"
+                          "out vec3 lerped_normal;\n"
+                          "\n"
+                          "void main()\n"
+                          "{\n"
+                          "    gl_Position   = vertex;\n"
+                          "    lerped_normal = normal;\n"
+                          "}\n";
+
+    /* Set up shader objects */
+    ogl_shader fs = ogl_shader_create(_context,
+                                      SHADER_TYPE_FRAGMENT,
+                                      system_hashed_ansi_string_create("Scalar field renderer FS") );
+    ogl_shader vs = ogl_shader_create(_context,
+                                      SHADER_TYPE_VERTEX,
+                                      system_hashed_ansi_string_create("Scalar field renderer VS") );
+
+    ogl_shader_set_body(fs,
+                        system_hashed_ansi_string_create(fs_code) );
+    ogl_shader_set_body(vs,
+                        system_hashed_ansi_string_create(vs_code) );
+
+    /* Set up the program object */
+    _po_scalar_field_renderer = ogl_program_create(_context,
+                                                   system_hashed_ansi_string_create("Scalar field renderer PO") );
+
+    ogl_program_attach_shader(_po_scalar_field_renderer,
+                              fs);
+    ogl_program_attach_shader(_po_scalar_field_renderer,
+                              vs);
+
+    ogl_program_link(_po_scalar_field_renderer);
+
+    /* Clean up */
     ogl_shader_release(fs);
-    ogl_shader_release(gs);
     ogl_shader_release(vs);
+
+    /**/
 }
 
 /** TODO */
@@ -1229,8 +1390,8 @@ PRIVATE void _render_blob(ogl_context             context,
     static int                        counter         = 0;
     const ogl_context_gl_entrypoints* entrypoints_ptr = NULL;
 
-    float isolevel = sin(float(counter++) / 100.0f) * 0.5f + 0.5f;
-
+    //float isolevel = sin(float((counter++) % 500) / 100.0f) * 0.5f + 0.5f;
+    float isolevel = 0.2f;
     /* Compute MVP matrix */
     system_matrix4x4 mvp = system_matrix4x4_create_by_mul(vp_matrix,
                                                           model_matrix);
@@ -1240,86 +1401,116 @@ PRIVATE void _render_blob(ogl_context             context,
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
                             &entrypoints_ptr);
 
-    ogl_program_ub_set_nonarrayed_uniform_value(_po_scalar_field_renderer_data_ub,
-                                                _po_scalar_field_renderer_data_ub_mvp_offset,
+    ogl_program_ub_set_nonarrayed_uniform_value(_po_scalar_field_polygonizer_data_ub,
+                                                _po_scalar_field_polygonizer_data_ub_mvp_offset,
                                                 system_matrix4x4_get_column_major_data(mvp),
                                                 0, /* src_data_flags */
                                                 sizeof(float) * 16);
-    ogl_program_ub_set_nonarrayed_uniform_value(_po_scalar_field_renderer_data_ub,
-                                                _po_scalar_field_renderer_data_ub_normal_matrix_offset,
+    ogl_program_ub_set_nonarrayed_uniform_value(_po_scalar_field_polygonizer_data_ub,
+                                                _po_scalar_field_polygonizer_data_ub_normal_matrix_offset,
                                                 system_matrix4x4_get_column_major_data(normal_matrix),
                                                 0, /* src_data_flags */
                                                 sizeof(float) * 16);
-    ogl_program_ub_set_nonarrayed_uniform_value(_po_scalar_field_renderer_data_ub,
-                                                _po_scalar_field_renderer_data_ub_isolevel_offset,
+    ogl_program_ub_set_nonarrayed_uniform_value(_po_scalar_field_polygonizer_data_ub,
+                                                _po_scalar_field_polygonizer_data_ub_isolevel_offset,
                                                &isolevel,
                                                 0, /* src_data_flags */
                                                 sizeof(float) );
 
-    ogl_program_ub_set_arrayed_uniform_value(_po_scalar_field_renderer_edge_table_ub,
-                                             0, /* ub_uniform_offset */
+    ogl_program_ub_set_arrayed_uniform_value(_po_scalar_field_polygonizer_precomputed_tables_ub,
+                                             _po_scalar_field_polygonizer_precomputed_tables_ub_bo_edge_table_offset,
                                              _edge_table,
                                              0, /* src_data_flags */
                                              sizeof(_edge_table),
                                              0, /* dst_array_start_index */
                                              sizeof(_edge_table) / sizeof(_edge_table[0]) );
-    ogl_program_ub_set_arrayed_uniform_value(_po_scalar_field_renderer_triangle_table_ub,
-                                             0, /* ub_uniform_offset */
+    ogl_program_ub_set_arrayed_uniform_value(_po_scalar_field_polygonizer_precomputed_tables_ub,
+                                             _po_scalar_field_polygonizer_precomputed_tables_ub_bo_triangle_table_offset,
                                              _triangle_table,
                                              0, /* src_data_flags */
                                              sizeof(_triangle_table),
                                              0, /* dst_array_start_index */
                                              sizeof(_triangle_table) / sizeof(_triangle_table[0]) );
 
-    ogl_program_ub_sync(_po_scalar_field_renderer_data_ub);
-    ogl_program_ub_sync(_po_scalar_field_renderer_edge_table_ub);
-    ogl_program_ub_sync(_po_scalar_field_renderer_triangle_table_ub);
+    ogl_program_ub_sync(_po_scalar_field_polygonizer_data_ub);
+    ogl_program_ub_sync(_po_scalar_field_polygonizer_precomputed_tables_ub);
 
     system_matrix4x4_release(mvp);
     mvp = NULL;
 
     /* Set up the SSBO & UBO bindings */
     entrypoints_ptr->pGLBindBufferRange(GL_SHADER_STORAGE_BUFFER,
-                                        0, /* index */
+                                        _po_scalar_field_polygonizer_indirect_draw_call_count_ssb_bp,
+                                        _indirect_draw_call_args_bo_id,
+                                        _indirect_draw_call_args_bo_count_arg_offset,
+                                        sizeof(int) );
+    entrypoints_ptr->pGLBindBufferRange(GL_SHADER_STORAGE_BUFFER,
+                                        _po_scalar_field_polygonizer_scalar_field_data_ssb_bp,
                                         _blob_scalar_field_bo_id,
                                         _blob_scalar_field_bo_start_offset,
                                         _blob_scalar_field_bo_size);
-    entrypoints_ptr->pGLBindBufferRange(GL_UNIFORM_BUFFER,
-                                        _po_scalar_field_renderer_data_ub_bp,
-                                        _po_scalar_field_renderer_data_ub_bo_id,
-                                        _po_scalar_field_renderer_data_ub_bo_start_offset,
-                                        sizeof(float) * 32);
-    entrypoints_ptr->pGLBindBufferRange(GL_UNIFORM_BUFFER,
-                                        _po_scalar_field_renderer_triangle_table_ub_bp,
-                                        _po_scalar_field_renderer_triangle_table_ub_bo_id,
-                                        _po_scalar_field_renderer_triangle_table_ub_bo_start_offset,
-                                        _po_scalar_field_renderer_triangle_table_ub_bo_size);
-    entrypoints_ptr->pGLBindBufferRange(GL_UNIFORM_BUFFER,
-                                        _po_scalar_field_renderer_edge_table_ub_bp,
-                                        _po_scalar_field_renderer_edge_table_ub_bo_id,
-                                        _po_scalar_field_renderer_edge_table_ub_bo_start_offset,
-                                        _po_scalar_field_renderer_edge_table_ub_bo_size);
+    entrypoints_ptr->pGLBindBufferRange(GL_SHADER_STORAGE_BUFFER,
+                                        _po_scalar_field_polygonizer_result_data_ssb_bp,
+                                        _polygonized_data_bo_id,
+                                        _polygonized_data_bo_start_offset,
+                                        _polygonized_data_bo_size);
 
-    /* Sync SSBO data.
-     *
-     * NOTE: Currently, this is an overkill and is only needed once (after the field generation pass
-     *       is ran). However, in the near future, we will re-generate the scalars every frame and
-     *       that's where the per-frame barrier will be required.
-     */
-    entrypoints_ptr->pGLMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
+    entrypoints_ptr->pGLBindBufferRange(GL_UNIFORM_BUFFER,
+                                        _po_scalar_field_polygonizer_data_ub_bp,
+                                        _po_scalar_field_polygonizer_data_ub_bo_id,
+                                        _po_scalar_field_polygonizer_data_ub_bo_start_offset,
+                                        _po_scalar_field_polygonizer_data_ub_bo_size);
+    entrypoints_ptr->pGLBindBufferRange(GL_UNIFORM_BUFFER,
+                                        _po_scalar_field_polygonizer_precomputed_tables_ub_bp,
+                                        _po_scalar_field_polygonizer_precomputed_tables_ub_bo_id,
+                                        _po_scalar_field_polygonizer_precomputed_tables_ub_bo_start_offset,
+                                        _po_scalar_field_polygonizer_precomputed_tables_ub_bo_size);
+
+    /* Set up the indirect draw call's <count> SSB. Zero out the value before we run the polygonizer */
+    static const int int_zero = 0;
+
+    entrypoints_ptr->pGLBindBuffer        (GL_DRAW_INDIRECT_BUFFER,
+                                           _indirect_draw_call_args_bo_id);
+    entrypoints_ptr->pGLClearBufferSubData(GL_DRAW_INDIRECT_BUFFER,
+                                           GL_R32UI,
+                                           _indirect_draw_call_args_bo_count_arg_offset,
+                                           sizeof(int),
+                                           GL_RED_INTEGER,
+                                           GL_UNSIGNED_INT,
+                                          &int_zero);
+
+    /* Sync SSBO-based scalar field data, if needed. */
+    if (_scalar_field_data_updated)
+    {
+        entrypoints_ptr->pGLMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
+
+        _scalar_field_data_updated = false;
+    }
+
+    /* Polygonize the scalar field */
+    entrypoints_ptr->pGLUseProgram     (ogl_program_get_id(_po_scalar_field_polygonizer) );
+    entrypoints_ptr->pGLDispatchCompute(_po_scalar_field_polygonizer_global_wg_size[0],
+                                        _po_scalar_field_polygonizer_global_wg_size[1],
+                                        _po_scalar_field_polygonizer_global_wg_size[2]);
 
     /* Draw stuff */
-    GLuint zero_vaas_vao_id = 0;
+    entrypoints_ptr->pGLUseProgram(ogl_program_get_id(_po_scalar_field_renderer) );
 
-    ogl_context_get_property(_context,
-                             OGL_CONTEXT_PROPERTY_VAO_NO_VAAS,
-                            &zero_vaas_vao_id);
+    entrypoints_ptr->pGLBindBuffer     (GL_DRAW_INDIRECT_BUFFER,
+                                        _indirect_draw_call_args_bo_id);
+    entrypoints_ptr->pGLBindVertexArray(_vao_id);
 
-    entrypoints_ptr->pGLUseProgram     (ogl_program_get_id(_po_scalar_field_renderer) );
-    entrypoints_ptr->pGLBindVertexArray(zero_vaas_vao_id);
-    entrypoints_ptr->pGLDrawArrays     (GL_POINTS,
-                                        0, /* first */
-                                       (_blob_size[0] - 1) * (_blob_size[1] - 1) * (_blob_size[2] - 1)); /* skip the last column/row/slice - insufficient data available to draw it! */
+    entrypoints_ptr->pGLMemoryBarrier(GL_COMMAND_BARRIER_BIT              |
+                                      GL_VERTEX_ATTRIB_ARRAY_BARRIER_BIT);
+
+#if 1
+    entrypoints_ptr->pGLDrawArraysIndirect(GL_TRIANGLES,
+                                           (const GLvoid*) _indirect_draw_call_args_bo_start_offset);
+#else
+    entrypoints_ptr->pGLDrawArrays(GL_TRIANGLES,
+                                   0,
+                                   32);
+#endif
 }
 
 /** TODO */
@@ -1344,10 +1535,12 @@ PRIVATE void _rendering_handler(ogl_context context,
     if (!is_initialized)
     {
         /* Initialize scene stuff */
-        _init_scalar_field         (entrypoints_ptr,
-                                    limits_ptr);
-        _init_scalar_field_renderer(entrypoints_ptr);
-        _init_scene                ();
+        _init_scalar_field            (entrypoints_ptr,
+                                       limits_ptr);
+        _init_scalar_field_polygonizer(entrypoints_ptr,
+                                       limits_ptr);
+        _init_scalar_field_renderer   (entrypoints_ptr);
+        _init_scene                   ();
 
         /* Initialize projection & view matrices */
         _projection_matrix = system_matrix4x4_create_perspective_projection_matrix(45.0f,  /* fov_y */
@@ -1421,6 +1614,13 @@ PRIVATE void _window_closing_callback_handler(system_window window)
         ogl_program_release(_po_scalar_field_generator);
 
         _po_scalar_field_generator = NULL;
+    }
+
+    if (_po_scalar_field_polygonizer != NULL)
+    {
+        ogl_program_release(_po_scalar_field_polygonizer);
+
+        _po_scalar_field_polygonizer = NULL;
     }
 
     if (_po_scalar_field_renderer != NULL)
@@ -1519,7 +1719,7 @@ PRIVATE void _window_closing_callback_handler(system_window window)
                                                  window_x1y1x2y2,
                                                  system_hashed_ansi_string_create("Test window"),
                                                  false, /* scalable */
-                                                 false,  /* vsync_enabled */
+                                                 false, /* vsync_enabled */
                                                  true,  /* visible */
                                                  window_pf);
 #endif
