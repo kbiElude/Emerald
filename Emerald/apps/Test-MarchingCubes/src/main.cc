@@ -683,10 +683,10 @@ PRIVATE void _init_scalar_field_polygonizer(const ogl_context_gl_entrypoints* en
                           "\n"
                           "layout(std430) buffer indirect_draw_callSSB\n"
                           "{\n"
-                          "    restrict coherent uint indirect_draw_call_count;\n"
+                          "    restrict uint indirect_draw_call_count;\n"
                           "};\n"
                           "\n"
-                          "layout(packed) uniform precomputed_tablesUB\n"
+                          "layout(std140) uniform precomputed_tablesUB\n"
                           "{\n"
                           "    int edge_table    [256];\n"
                           "    int triangle_table[256 * 15];\n"
@@ -772,13 +772,10 @@ PRIVATE void _init_scalar_field_polygonizer(const ogl_context_gl_entrypoints* en
                           "    const vec3 cube_aabb_min_model = cube_x1y1z1;\n"
                           "    const vec3 cube_aabb_max_model = cube_x1y1z1 + cube_size;\n"
                           "\n"
-                          "    const uint top_plane_ids[4] =\n"
-                          "    {\n"
-                          "        global_invocation_id_flat,\n"
-                          "        global_invocation_id_flat                   + 1,\n"
-                          "        global_invocation_id_flat + n_ids_per_slice + 1,\n"
-                          "        global_invocation_id_flat + n_ids_per_slice\n"
-                          "    };\n"
+                          "    const uvec4 top_plane_ids = uvec4(global_invocation_id_flat,\n"
+                          "                                      global_invocation_id_flat                   + 1,\n"
+                          "                                      global_invocation_id_flat + n_ids_per_slice + 1,\n"
+                          "                                      global_invocation_id_flat + n_ids_per_slice);\n"
                           "\n"
                           /* The scalar_values vector array holds scalar field values for vertices in the following order: (XZ plane is assumed)
                            *
@@ -838,8 +835,8 @@ PRIVATE void _init_scalar_field_polygonizer(const ogl_context_gl_entrypoints* en
                            *                  |
                            *               7<-6
                            */
-                          "    vec3 lerped_normal_list[12];\n"
-                          "    vec4 lerped_vertex_list[12];\n"
+                          "          vec3 lerped_normal_list[12];\n"
+                          "          vec4 lerped_vertex_list[12];\n"
                           "    const vec3 vertex_model      [8] =\n"
                           "    {\n"
                           /* 0: */
@@ -1006,14 +1003,21 @@ PRIVATE void _init_scalar_field_polygonizer(const ogl_context_gl_entrypoints* en
                           "\n"
                           /* Emit triangles. Note that we need to generate more triangles than we actually need in
                            * order to make sure the flow remains uniform.
+                           *
+                           * NOTE: This atomic add op is required, since the number of triangles emitted by all
+                           *       workgroups depends on the scalar field configuration, as well as the isolevel,
+                           *       both of which may be changed between consecutive frames. If we replaced it with
+                           *       a constant number of triangles, derived from the blob size dimensions, some of
+                           *       the triangles, generated in previous passes, would pollute the renderbuffer.
                            */
-                          "    uint n_result_triangle_base_vertex = atomicAdd(indirect_draw_call_count, 3 * 5);\n"
+                          "    const uint n_result_triangle_base_vertex = atomicAdd(indirect_draw_call_count, 3 * 5);\n"
                           "\n"
                           "    for (uint n_triangle = 0;\n"
                           "              n_triangle < 5;\n"
                           "              n_triangle++)\n"
                           "    {\n"
-                          "        const uint n_triangle_base_vertex = edge_index * 15 + n_triangle * 3;\n"
+                          "        const uint n_result_triangle_start_vertex = n_result_triangle_base_vertex + n_triangle * 3;\n"
+                          "        const uint n_triangle_base_vertex         = edge_index * 15               + n_triangle * 3;\n"
                           "\n"
                           "        if (triangle_table[n_triangle_base_vertex] == -1)\n"
                           "        {\n"
@@ -1022,7 +1026,7 @@ PRIVATE void _init_scalar_field_polygonizer(const ogl_context_gl_entrypoints* en
                           "                      n_vertex++)\n"
                           "            {\n"
                           /* Just discard the vertex..*/
-                          "                result_data[(n_triangle * 3 + n_result_triangle_base_vertex + n_vertex) * 7 + 3] = 0.0;\n"
+                          "                result_data[(n_result_triangle_start_vertex + n_vertex) * 7 + 3] = 0.0;\n"
                           "            }\n"
                           "        }\n"
                           "        else\n"
@@ -1030,21 +1034,17 @@ PRIVATE void _init_scalar_field_polygonizer(const ogl_context_gl_entrypoints* en
                           "                  n_vertex < 3;\n"
                           "                  n_vertex++)\n"
                           "        {\n"
-                          "            vec3 current_normal;\n"
-                          "            vec4 current_vertex;\n"
-                          "            int  list_index;\n"
+                          "            const int  list_index     = triangle_table    [ n_triangle_base_vertex + n_vertex ];\n"
+                          "            const vec3 current_normal = lerped_normal_list[ list_index ];\n"
+                          "            const vec4 current_vertex = lerped_vertex_list[ list_index ];\n"
                           "\n"
-                          "            list_index     = triangle_table    [ n_triangle_base_vertex + n_vertex ];\n"
-                          "            current_vertex = lerped_vertex_list[ list_index ];\n"
-                          "            current_normal = lerped_normal_list[ list_index ];\n"
-                          "\n"
-                          "            result_data[(n_triangle * 3 + n_result_triangle_base_vertex + n_vertex) * 7 + 0] = current_vertex.x;\n"
-                          "            result_data[(n_triangle * 3 + n_result_triangle_base_vertex + n_vertex) * 7 + 1] = current_vertex.y;\n"
-                          "            result_data[(n_triangle * 3 + n_result_triangle_base_vertex + n_vertex) * 7 + 2] = current_vertex.z;\n"
-                          "            result_data[(n_triangle * 3 + n_result_triangle_base_vertex + n_vertex) * 7 + 3] = current_vertex.w;\n"
-                          "            result_data[(n_triangle * 3 + n_result_triangle_base_vertex + n_vertex) * 7 + 4] = current_normal.x;\n"
-                          "            result_data[(n_triangle * 3 + n_result_triangle_base_vertex + n_vertex) * 7 + 5] = current_normal.y;\n"
-                          "            result_data[(n_triangle * 3 + n_result_triangle_base_vertex + n_vertex) * 7 + 6] = current_normal.z;\n"
+                          "            result_data[(n_result_triangle_start_vertex + n_vertex) * 7 + 0] = current_vertex.x;\n"
+                          "            result_data[(n_result_triangle_start_vertex + n_vertex) * 7 + 1] = current_vertex.y;\n"
+                          "            result_data[(n_result_triangle_start_vertex + n_vertex) * 7 + 2] = current_vertex.z;\n"
+                          "            result_data[(n_result_triangle_start_vertex + n_vertex) * 7 + 3] = current_vertex.w;\n"
+                          "            result_data[(n_result_triangle_start_vertex + n_vertex) * 7 + 4] = current_normal.x;\n"
+                          "            result_data[(n_result_triangle_start_vertex + n_vertex) * 7 + 5] = current_normal.y;\n"
+                          "            result_data[(n_result_triangle_start_vertex + n_vertex) * 7 + 6] = current_normal.z;\n"
                           "        }\n"
                           "    }\n"
                           "}\n";
@@ -1502,6 +1502,8 @@ PRIVATE void _render_blob(ogl_context             context,
 
     entrypoints_ptr->pGLMemoryBarrier(GL_COMMAND_BARRIER_BIT              |
                                       GL_VERTEX_ATTRIB_ARRAY_BARRIER_BIT);
+
+    entrypoints_ptr->pGLDisable(GL_CULL_FACE);
 
 #if 1
     entrypoints_ptr->pGLDrawArraysIndirect(GL_TRIANGLES,
