@@ -32,10 +32,13 @@
 
 PRIVATE const unsigned int _blob_size[] = {50, 50, 50};
 
+PRIVATE GLuint              _blob_cube_properties_bo_id                                                 = 0;
+PRIVATE unsigned int        _blob_cube_properties_bo_size                                               = 0;
+PRIVATE unsigned int        _blob_cube_properties_bo_start_offset                                       = 0;
+PRIVATE mesh                _blob_mesh                                                                  = NULL;
 PRIVATE GLuint              _blob_scalar_field_bo_id                                                    = 0;
 PRIVATE unsigned int        _blob_scalar_field_bo_size                                                  = 0;
 PRIVATE unsigned int        _blob_scalar_field_bo_start_offset                                          = 0;
-PRIVATE mesh                _blob_mesh                                                                  = NULL;
 PRIVATE ogl_context         _context                                                                    = NULL;
 PRIVATE ogl_flyby           _context_flyby                                                              = NULL;
 PRIVATE unsigned int        _indirect_draw_call_args_bo_count_arg_offset                                = 0;
@@ -45,6 +48,8 @@ PRIVATE unsigned int        _indirect_draw_call_args_bo_start_offset            
 PRIVATE ogl_program         _po_scalar_field_generator                                                  = NULL;
 PRIVATE ogl_program_ub      _po_scalar_field_generator_data_ub                                          = NULL;
 PRIVATE ogl_program         _po_scalar_field_polygonizer                                                = NULL;
+PRIVATE ogl_program_ssb     _po_scalar_field_polygonizer_cube_properties_ssb                            = NULL;
+PRIVATE GLuint              _po_scalar_field_polygonizer_cube_properties_ssb_bp                         = -1;
 PRIVATE ogl_program_ub      _po_scalar_field_polygonizer_data_ub                                        = NULL;
 PRIVATE GLuint              _po_scalar_field_polygonizer_data_ub_bo_id                                  = 0;
 PRIVATE GLuint              _po_scalar_field_polygonizer_data_ub_bo_size                                = 0;
@@ -674,6 +679,11 @@ PRIVATE void _init_scalar_field_polygonizer(const ogl_context_gl_entrypoints* en
                           "const uint n_ids_per_row    = BLOB_SIZE_X;\n"
                           "const uint n_ids_per_slice  = BLOB_SIZE_X * BLOB_SIZE_Y;\n"
                           "\n"
+                          "layout(std430) buffer cube_propertiesSSB\n"
+                          "{\n"
+                          "    int data_start_index[];\n"
+                          "};\n"
+                          "\n"
                           "layout(packed) uniform dataUB\n"
                           "{\n"
                           "    float isolevel;\n"
@@ -714,18 +724,31 @@ PRIVATE void _init_scalar_field_polygonizer(const ogl_context_gl_entrypoints* en
                           "                           out vec4  result_vertex)\n"
                           "{\n"
                           /* TODO: Use the improved version? */
-                          "    vec3 vertex1_scalar_preceeding = vec3(scalar_field[(base_index1 - 1)               / 4][(base_index1 - 1)               % 4],\n"
-                          "                                          scalar_field[(base_index1 - n_ids_per_row)   / 4][(base_index1 - n_ids_per_row)   % 4],\n"
-                          "                                          scalar_field[(base_index1 - n_ids_per_slice) / 4][(base_index1 - n_ids_per_slice) % 4]);\n"
-                          "    vec3 vertex1_scalar_proceeding = vec3(scalar_field[(base_index1 + 1)               / 4][(base_index1 + 1)               % 4],\n"
-                          "                                          scalar_field[(base_index1 + n_ids_per_row)   / 4][(base_index1 + n_ids_per_row)   % 4],\n"
-                          "                                          scalar_field[(base_index1 + n_ids_per_slice) / 4][(base_index1 + n_ids_per_slice) % 4]);\n"
-                          "    vec3 vertex2_scalar_preceeding = vec3(scalar_field[(base_index2 - 1)               / 4][(base_index2 - 1)               % 4],\n"
-                          "                                          scalar_field[(base_index2 - n_ids_per_row)   / 4][(base_index2 - n_ids_per_row)   % 4],\n"
-                          "                                          scalar_field[(base_index2 - n_ids_per_slice) / 4][(base_index2 - n_ids_per_slice) % 4]);\n"
-                          "    vec3 vertex2_scalar_proceeding = vec3(scalar_field[(base_index2 + 1)               / 4][(base_index2 + 1)               % 4],\n"
-                          "                                          scalar_field[(base_index2 + n_ids_per_row)   / 4][(base_index2 + n_ids_per_row)   % 4],\n"
-                          "                                          scalar_field[(base_index2 + n_ids_per_slice) / 4][(base_index2 + n_ids_per_slice) % 4]);\n"
+                          "    uvec3 vertex1_preceding_step_size  = uvec3(clamp(base_index1 - BLOB_SIZE_X / 10 * 1,               0, BLOB_SIZE_X * BLOB_SIZE_Y * BLOB_SIZE_Z - 1),\n"
+                          "                                               clamp(base_index1 - BLOB_SIZE_Y / 10 * n_ids_per_row,   0, BLOB_SIZE_X * BLOB_SIZE_Y * BLOB_SIZE_Z - 1),\n"
+                          "                                               clamp(base_index1 - BLOB_SIZE_Z / 10 * n_ids_per_slice, 0, BLOB_SIZE_X * BLOB_SIZE_Y * BLOB_SIZE_Z - 1) );\n"
+                          "    uvec3 vertex1_proceeding_step_size = uvec3(clamp(base_index1 + BLOB_SIZE_X / 10 * 1,               0, BLOB_SIZE_X * BLOB_SIZE_Y * BLOB_SIZE_Z - 1),\n"
+                          "                                               clamp(base_index1 + BLOB_SIZE_Y / 10 * n_ids_per_row,   0, BLOB_SIZE_X * BLOB_SIZE_Y * BLOB_SIZE_Z - 1),\n"
+                          "                                               clamp(base_index1 + BLOB_SIZE_Z / 10 * n_ids_per_slice, 0, BLOB_SIZE_X * BLOB_SIZE_Y * BLOB_SIZE_Z - 1) );\n"
+                          "    uvec3 vertex2_preceding_step_size  = uvec3(clamp(base_index2 - BLOB_SIZE_X / 10 * 1,               0, BLOB_SIZE_X * BLOB_SIZE_Y * BLOB_SIZE_Z - 1),\n"
+                          "                                               clamp(base_index2 - BLOB_SIZE_Y / 10 * n_ids_per_row,   0, BLOB_SIZE_X * BLOB_SIZE_Y * BLOB_SIZE_Z - 1),\n"
+                          "                                               clamp(base_index2 - BLOB_SIZE_Z / 10 * n_ids_per_slice, 0, BLOB_SIZE_X * BLOB_SIZE_Y * BLOB_SIZE_Z - 1) );\n"
+                          "    uvec3 vertex2_proceeding_step_size = uvec3(clamp(base_index2 + BLOB_SIZE_X / 10 * 1,               0, BLOB_SIZE_X * BLOB_SIZE_Y * BLOB_SIZE_Z - 1),\n"
+                          "                                               clamp(base_index2 + BLOB_SIZE_Y / 10 * n_ids_per_row,   0, BLOB_SIZE_X * BLOB_SIZE_Y * BLOB_SIZE_Z - 1),\n"
+                          "                                               clamp(base_index2 + BLOB_SIZE_Z / 10 * n_ids_per_slice, 0, BLOB_SIZE_X * BLOB_SIZE_Y * BLOB_SIZE_Z - 1) );\n"
+                          "\n"
+                          "    vec3 vertex1_scalar_preceeding = vec3(scalar_field[vertex1_preceding_step_size.x  / 4][vertex1_preceding_step_size.x  % 4],\n"
+                          "                                          scalar_field[vertex1_preceding_step_size.y  / 4][vertex1_preceding_step_size.y  % 4],\n"
+                          "                                          scalar_field[vertex1_preceding_step_size.z  / 4][vertex1_preceding_step_size.z  % 4]);\n"
+                          "    vec3 vertex1_scalar_proceeding = vec3(scalar_field[vertex1_proceeding_step_size.x / 4][vertex1_proceeding_step_size.x % 4],\n"
+                          "                                          scalar_field[vertex1_proceeding_step_size.y / 4][vertex1_proceeding_step_size.y % 4],\n"
+                          "                                          scalar_field[vertex1_proceeding_step_size.z / 4][vertex1_proceeding_step_size.z % 4]);\n"
+                          "    vec3 vertex2_scalar_preceeding = vec3(scalar_field[vertex2_preceding_step_size.x  / 4][vertex2_preceding_step_size.x  % 4],\n"
+                          "                                          scalar_field[vertex2_preceding_step_size.y  / 4][vertex2_preceding_step_size.y  % 4],\n"
+                          "                                          scalar_field[vertex2_preceding_step_size.z  / 4][vertex2_preceding_step_size.z  % 4]);\n"
+                          "    vec3 vertex2_scalar_proceeding = vec3(scalar_field[vertex2_proceeding_step_size.x / 4][vertex2_proceeding_step_size.x % 4],\n"
+                          "                                          scalar_field[vertex2_proceeding_step_size.y / 4][vertex2_proceeding_step_size.y % 4],\n"
+                          "                                          scalar_field[vertex2_proceeding_step_size.z / 4][vertex2_proceeding_step_size.z % 4]);\n"
                           "\n"
                           "    vec3 vertex1_normal = (vertex1_scalar_proceeding - vertex1_scalar_preceeding);\n"
                           "    vec3 vertex2_normal = (vertex2_scalar_proceeding - vertex2_scalar_preceeding);\n"
@@ -805,6 +828,8 @@ PRIVATE void _init_scalar_field_polygonizer(const ogl_context_gl_entrypoints* en
                           "    }\n"
                           "    else\n"
                           "    {\n"
+                          "        data_start_index[global_invocation_id_flat] = -1;\n"
+                          "\n"
                           "        return;\n"
                           "    }\n"
                           "\n"
@@ -822,6 +847,8 @@ PRIVATE void _init_scalar_field_polygonizer(const ogl_context_gl_entrypoints* en
                           "\n"
                           "    if (edge_table[edge_index] == 0)\n"
                           "    {\n"
+                          "        data_start_index[global_invocation_id_flat] = -1;\n"
+                          "\n"
                           "        return;\n"
                           "    }\n"
                           "\n"
@@ -1012,6 +1039,8 @@ PRIVATE void _init_scalar_field_polygonizer(const ogl_context_gl_entrypoints* en
                            */
                           "    const uint n_result_triangle_base_vertex = atomicAdd(indirect_draw_call_count, 3 * 5);\n"
                           "\n"
+                          "    data_start_index[global_invocation_id_flat] = int(n_result_triangle_base_vertex);\n"
+                          "\n"
                           "    for (uint n_triangle = 0;\n"
                           "              n_triangle < 5;\n"
                           "              n_triangle++)\n"
@@ -1026,7 +1055,7 @@ PRIVATE void _init_scalar_field_polygonizer(const ogl_context_gl_entrypoints* en
                           "                      n_vertex++)\n"
                           "            {\n"
                           /* Just discard the vertex..*/
-                          "                result_data[(n_result_triangle_start_vertex + n_vertex) * 7 + 3] = 0.0;\n"
+                          "                result_data[(n_result_triangle_start_vertex + n_vertex) * 6 + 3] = 0.0;\n"
                           "            }\n"
                           "        }\n"
                           "        else\n"
@@ -1038,13 +1067,12 @@ PRIVATE void _init_scalar_field_polygonizer(const ogl_context_gl_entrypoints* en
                           "            const vec3 current_normal = lerped_normal_list[ list_index ];\n"
                           "            const vec4 current_vertex = lerped_vertex_list[ list_index ];\n"
                           "\n"
-                          "            result_data[(n_result_triangle_start_vertex + n_vertex) * 7 + 0] = current_vertex.x;\n"
-                          "            result_data[(n_result_triangle_start_vertex + n_vertex) * 7 + 1] = current_vertex.y;\n"
-                          "            result_data[(n_result_triangle_start_vertex + n_vertex) * 7 + 2] = current_vertex.z;\n"
-                          "            result_data[(n_result_triangle_start_vertex + n_vertex) * 7 + 3] = current_vertex.w;\n"
-                          "            result_data[(n_result_triangle_start_vertex + n_vertex) * 7 + 4] = current_normal.x;\n"
-                          "            result_data[(n_result_triangle_start_vertex + n_vertex) * 7 + 5] = current_normal.y;\n"
-                          "            result_data[(n_result_triangle_start_vertex + n_vertex) * 7 + 6] = current_normal.z;\n"
+                          "            result_data[(n_result_triangle_start_vertex + n_vertex) * 6 + 0] = current_vertex.x;\n"
+                          "            result_data[(n_result_triangle_start_vertex + n_vertex) * 6 + 1] = current_vertex.y;\n"
+                          "            result_data[(n_result_triangle_start_vertex + n_vertex) * 6 + 2] = current_vertex.z;\n"
+                          "            result_data[(n_result_triangle_start_vertex + n_vertex) * 6 + 3] = current_vertex.w;\n"
+                          "            result_data[(n_result_triangle_start_vertex + n_vertex) * 6 + 4] = current_normal.x;\n"
+                          "            result_data[(n_result_triangle_start_vertex + n_vertex) * 6 + 5] = current_normal.y;\n"
                           "        }\n"
                           "    }\n"
                           "}\n";
@@ -1123,7 +1151,11 @@ PRIVATE void _init_scalar_field_polygonizer(const ogl_context_gl_entrypoints* en
 
     /* Set up a BO which is going to hold the polygonized data. At max, each cube is going to hold
      * five triangles. */
-    _polygonized_data_bo_size = _blob_size[0] * _blob_size[1] * _blob_size[2] * 5 /* triangles */ * 3 /* vertices */ * 7 /* vertex + normal data components */ * sizeof(float);
+    _polygonized_data_bo_size = _blob_size[0] * _blob_size[1] * _blob_size[2]         *
+                                5 /* triangles */                                     *
+                                3 /* vertices */                                      *
+                                6 /* vertex + nonnormalized normal data components */ *
+                                sizeof(float);
 
     ogl_buffers_allocate_buffer_memory(buffers,
                                        _polygonized_data_bo_size,
@@ -1133,6 +1165,18 @@ PRIVATE void _init_scalar_field_polygonizer(const ogl_context_gl_entrypoints* en
                                        0, /* flags */
                                       &_polygonized_data_bo_id,
                                       &_polygonized_data_bo_start_offset);
+
+    /* Set up a BO which is going to hold voxel properties. We need 32 bits for each cube. */
+    _blob_cube_properties_bo_size = _blob_size[0] * _blob_size[1] * _blob_size[2] * sizeof(int);
+
+    ogl_buffers_allocate_buffer_memory(buffers,
+                                       _blob_cube_properties_bo_size,
+                                       limits_ptr->shader_storage_buffer_offset_alignment,
+                                       OGL_BUFFERS_MAPPABILITY_NONE,
+                                       OGL_BUFFERS_USAGE_MISCELLANEOUS,
+                                       0, /* flags */
+                                      &_blob_cube_properties_bo_id,
+                                      &_blob_cube_properties_bo_start_offset);
 
     /* Retrieve data UB properties */
     const ogl_program_variable* uniform_isolevel_ptr      = NULL;
@@ -1201,6 +1245,15 @@ PRIVATE void _init_scalar_field_polygonizer(const ogl_context_gl_entrypoints* en
                                 OGL_PROGRAM_UB_PROPERTY_INDEXED_BP,
                                &_po_scalar_field_polygonizer_precomputed_tables_ub_bp);
 
+    /* Set up cube properties SSB */
+    ogl_program_get_shader_storage_block_by_name(_po_scalar_field_polygonizer,
+                                                 system_hashed_ansi_string_create("cube_propertiesSSB"),
+                                                &_po_scalar_field_polygonizer_cube_properties_ssb);
+
+    ogl_program_ssb_get_property(_po_scalar_field_polygonizer_cube_properties_ssb,
+                                 OGL_PROGRAM_SSB_PROPERTY_INDEXED_BP,
+                                &_po_scalar_field_polygonizer_cube_properties_ssb_bp);
+
     /* Set up indirect draw call <count> arg SSB */
     ogl_program_get_shader_storage_block_by_name(_po_scalar_field_polygonizer,
                                                  system_hashed_ansi_string_create("indirect_draw_callSSB"),
@@ -1235,20 +1288,22 @@ PRIVATE void _init_scalar_field_polygonizer(const ogl_context_gl_entrypoints* en
     entry_points->pGLGenVertexArrays(1,
                                     &_vao_id);
 
-    entry_points->pGLBindBuffer         (GL_ARRAY_BUFFER,
-                                         _polygonized_data_bo_id);
-    entry_points->pGLBindVertexArray    (_vao_id);
+    entry_points->pGLBindVertexArray(_vao_id);
+
+    entry_points->pGLBindBuffer(GL_ARRAY_BUFFER,
+                                _polygonized_data_bo_id);
+
     entry_points->pGLVertexAttribPointer(0,                 /* index      */
                                          4,                 /* size       */
                                          GL_FLOAT,          /* type       */
                                          GL_FALSE,          /* normalized */
-                                         sizeof(float) * 7, /* stride     */
+                                         sizeof(float) * 6, /* stride     */
                                          (const GLvoid*) _polygonized_data_bo_start_offset);
     entry_points->pGLVertexAttribPointer(1,                 /* index      */
-                                         3,                 /* size       */
+                                         2,                 /* size       */
                                          GL_FLOAT,          /* type       */
                                          GL_FALSE,          /* normalized */
-                                         sizeof(float) * 7, /* stride     */
+                                         sizeof(float) * 6, /* stride     */
                                          (const GLvoid*) (_polygonized_data_bo_start_offset + sizeof(float) * 4) );
 
     entry_points->pGLEnableVertexAttribArray(0); /* index */
@@ -1268,11 +1323,11 @@ PRIVATE void _init_scalar_field_renderer(const ogl_context_gl_entrypoints* entry
                           "\n"
                           "void main()\n"
                           "{\n"
-                          "    out_result = lerped_normal;\n"
+                          "    out_result = abs(lerped_normal);\n"
                           "}\n";
     const char* vs_code = "#version 430 core\n"
                           "\n"
-                          "layout(location = 1) in vec3 normal;\n"
+                          "layout(location = 1) in vec2 normal;\n"
                           "layout(location = 0) in vec4 vertex;\n"
                           "\n"
                           "out vec3 lerped_normal;\n"
@@ -1280,7 +1335,7 @@ PRIVATE void _init_scalar_field_renderer(const ogl_context_gl_entrypoints* entry
                           "void main()\n"
                           "{\n"
                           "    gl_Position   = vertex;\n"
-                          "    lerped_normal = normal;\n"
+                          "    lerped_normal = vec3(normal.xy, sqrt(1 - length(normal.xy)) );\n"
                           "}\n";
 
     /* Set up shader objects */
@@ -1390,8 +1445,9 @@ PRIVATE void _render_blob(ogl_context             context,
     static int                        counter         = 0;
     const ogl_context_gl_entrypoints* entrypoints_ptr = NULL;
 
-    //float isolevel = sin(float((counter++) % 500) / 100.0f) * 0.5f + 0.5f;
-    float isolevel = 0.2f;
+    float isolevel = sin(float((counter++) % 2500) / 10000.0f) * 0.5f + 0.1f;
+    //float isolevel = 0.2f;
+
     /* Compute MVP matrix */
     system_matrix4x4 mvp = system_matrix4x4_create_by_mul(vp_matrix,
                                                           model_matrix);
@@ -1439,6 +1495,11 @@ PRIVATE void _render_blob(ogl_context             context,
     mvp = NULL;
 
     /* Set up the SSBO & UBO bindings */
+    entrypoints_ptr->pGLBindBufferRange(GL_SHADER_STORAGE_BUFFER,
+                                        _po_scalar_field_polygonizer_cube_properties_ssb_bp,
+                                        _blob_cube_properties_bo_id,
+                                        _blob_cube_properties_bo_start_offset,
+                                        _blob_cube_properties_bo_size);
     entrypoints_ptr->pGLBindBufferRange(GL_SHADER_STORAGE_BUFFER,
                                         _po_scalar_field_polygonizer_indirect_draw_call_count_ssb_bp,
                                         _indirect_draw_call_args_bo_id,
@@ -1503,16 +1564,9 @@ PRIVATE void _render_blob(ogl_context             context,
     entrypoints_ptr->pGLMemoryBarrier(GL_COMMAND_BARRIER_BIT              |
                                       GL_VERTEX_ATTRIB_ARRAY_BARRIER_BIT);
 
-    entrypoints_ptr->pGLDisable(GL_CULL_FACE);
-
-#if 1
+    entrypoints_ptr->pGLDisable           (GL_CULL_FACE);
     entrypoints_ptr->pGLDrawArraysIndirect(GL_TRIANGLES,
                                            (const GLvoid*) _indirect_draw_call_args_bo_start_offset);
-#else
-    entrypoints_ptr->pGLDrawArrays(GL_TRIANGLES,
-                                   0,
-                                   32);
-#endif
 }
 
 /** TODO */
@@ -1537,12 +1591,13 @@ PRIVATE void _rendering_handler(ogl_context context,
     if (!is_initialized)
     {
         /* Initialize scene stuff */
-        _init_scalar_field            (entrypoints_ptr,
-                                       limits_ptr);
+        _init_scalar_field(entrypoints_ptr,
+                           limits_ptr);
+
         _init_scalar_field_polygonizer(entrypoints_ptr,
                                        limits_ptr);
         _init_scalar_field_renderer   (entrypoints_ptr);
-        _init_scene                   ();
+        _init_scene();
 
         /* Initialize projection & view matrices */
         _projection_matrix = system_matrix4x4_create_perspective_projection_matrix(45.0f,  /* fov_y */
