@@ -30,7 +30,7 @@
 #include <algorithm>
 #include "main.h"
 
-PRIVATE const unsigned int _blob_size[] = {50, 50, 50};
+PRIVATE const unsigned int _blob_size[] = {100, 100, 100};
 
 PRIVATE GLuint              _blob_cube_properties_bo_id                                                 = 0;
 PRIVATE unsigned int        _blob_cube_properties_bo_size                                               = 0;
@@ -705,7 +705,7 @@ PRIVATE void _init_scalar_field_polygonizer(const ogl_context_gl_entrypoints* en
                           "layout(std430) writeonly buffer result_dataSSB\n"
                           "{\n"
                           /* 4 floats: vertex data (clip space)
-                           * 3 floats: normal data */
+                           * 2 floats: normal data */
                           "    restrict float result_data[];\n"
                           "};\n"
                           "\n"
@@ -1155,7 +1155,8 @@ PRIVATE void _init_scalar_field_polygonizer(const ogl_context_gl_entrypoints* en
                                 5 /* triangles */                                     *
                                 3 /* vertices */                                      *
                                 6 /* vertex + nonnormalized normal data components */ *
-                                sizeof(float);
+                                sizeof(float)                                         /
+                                20; /* NOTE: This reduces the allocated memory but may cause parts of the blob not to be polygonized! */
 
     ogl_buffers_allocate_buffer_memory(buffers,
                                        _polygonized_data_bo_size,

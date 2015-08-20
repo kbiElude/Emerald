@@ -23,6 +23,7 @@ static system_hashed_ansi_string _object_type_demo_timeline_hashed_ansi_string  
 static system_hashed_ansi_string _object_type_gfx_bfg_font_table_hashed_ansi_string                    = NULL;
 static system_hashed_ansi_string _object_type_gfx_image_hashed_ansi_string                             = NULL;
 static system_hashed_ansi_string _object_type_mesh_hashed_ansi_string                                  = NULL;
+static system_hashed_ansi_string _object_type_mesh_marchingcubes_hashed_ansi_string                    = NULL;
 static system_hashed_ansi_string _object_type_mesh_material_hashed_ansi_string                         = NULL;
 static system_hashed_ansi_string _object_type_ocl_context_hashed_ansi_string                           = NULL;
 static system_hashed_ansi_string _object_type_ocl_kdtree_hashed_ansi_string                            = NULL;
@@ -100,6 +101,7 @@ PUBLIC system_hashed_ansi_string object_manager_convert_object_manager_object_ty
         case OBJECT_TYPE_GFX_BFG_FONT_TABLE:                              return _object_type_gfx_bfg_font_table_hashed_ansi_string;
         case OBJECT_TYPE_GFX_IMAGE:                                       return _object_type_gfx_image_hashed_ansi_string;
         case OBJECT_TYPE_MESH:                                            return _object_type_mesh_hashed_ansi_string;
+        case OBJECT_TYPE_MESH_MARCHINGCUBES:                              return _object_type_mesh_marchingcubes_hashed_ansi_string;
         case OBJECT_TYPE_MESH_MATERIAL:                                   return _object_type_mesh_material_hashed_ansi_string;
         case OBJECT_TYPE_OCL_CONTEXT:                                     return _object_type_ocl_context_hashed_ansi_string;
         case OBJECT_TYPE_OCL_KDTREE:                                      return _object_type_ocl_kdtree_hashed_ansi_string;
@@ -349,6 +351,7 @@ PUBLIC void _object_manager_init()
     _object_type_gfx_bfg_font_table_hashed_ansi_string                    = system_hashed_ansi_string_create("GFX BFG Font Tables");
     _object_type_gfx_image_hashed_ansi_string                             = system_hashed_ansi_string_create("GFX Images");
     _object_type_mesh_hashed_ansi_string                                  = system_hashed_ansi_string_create("Meshes");
+    _object_type_mesh_marchingcubes_hashed_ansi_string                    = system_hashed_ansi_string_create("Mesh (Marching-Cubes)");
     _object_type_mesh_material_hashed_ansi_string                         = system_hashed_ansi_string_create("Mesh Materials");
     _object_type_ocl_context_hashed_ansi_string                           = system_hashed_ansi_string_create("OpenCL Contexts");
     _object_type_ocl_kdtree_hashed_ansi_string                            = system_hashed_ansi_string_create("OpenCL Kd Trees");

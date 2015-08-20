@@ -63,6 +63,7 @@ typedef struct _ogl_scene_renderer_mesh_uber_item
     mesh             mesh_instance;
     system_matrix4x4 model_matrix;
     system_matrix4x4 normal_matrix;
+    mesh_type        type;
 
     _ogl_scene_renderer_mesh_uber_item()
     {
@@ -71,6 +72,7 @@ typedef struct _ogl_scene_renderer_mesh_uber_item
         mesh_instance = NULL;
         model_matrix  = NULL;
         normal_matrix = NULL;
+        type          = MESH_TYPE_UNKNOWN;
     }
 
     ~_ogl_scene_renderer_mesh_uber_item()
@@ -100,7 +102,11 @@ typedef struct _ogl_scene_renderer_mesh_uber_item
  */
 typedef struct _ogl_scene_renderer_uber
 {
-    system_resizable_vector regular_mesh_items; /* holds _ogl_scene_renderer_mesh_uber_item* items */
+    /* holds _ogl_scene_renderer_mesh_uber_item* items.
+     *
+     * Note that the described meshes may be of either GPU stream or regular type.
+     */
+    system_resizable_vector regular_mesh_items;
 
     _ogl_scene_renderer_uber()
     {
@@ -621,7 +627,8 @@ PRIVATE void _ogl_scene_renderer_process_mesh_for_forward_rendering(scene_mesh s
     }
 
     /* Cache the mesh for rendering */
-    if (mesh_instance_type == MESH_TYPE_REGULAR)
+    if (mesh_instance_type == MESH_TYPE_GPU_STREAM ||
+        mesh_instance_type == MESH_TYPE_REGULAR)
     {
         for (unsigned int n_mesh_material = 0;
                           n_mesh_material < n_mesh_materials;
@@ -680,6 +687,7 @@ PRIVATE void _ogl_scene_renderer_process_mesh_for_forward_rendering(scene_mesh s
             new_mesh_item_ptr->material      = material;
             new_mesh_item_ptr->mesh_id       = mesh_id;
             new_mesh_item_ptr->mesh_instance = mesh_gpu;
+            new_mesh_item_ptr->type          = mesh_instance_type;
 
             _ogl_scene_renderer_create_model_normal_matrices(renderer_ptr,
                                                             &new_mesh_item_ptr->model_matrix,

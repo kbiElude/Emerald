@@ -1057,11 +1057,11 @@ PUBLIC mesh collada_mesh_generator_create(ogl_context  context,
                                                                   &component_size,
                                                                   &n_components);
 
-                mesh_add_layer_data_stream(result,
-                                           current_layer_id,
-                                           stream_type,
-                                           input_data[n_input_type]->array_data_size / component_size / n_components,
-                                           input_data[n_input_type]->array_data);
+                mesh_add_layer_data_stream_from_client_memory(result,
+                                                              current_layer_id,
+                                                              stream_type,
+                                                              input_data[n_input_type]->array_data_size / component_size / n_components,
+                                                              input_data[n_input_type]->array_data);
 
                 if (input_type == COLLADA_DATA_INPUT_TYPE_VERTEX)
                 {
@@ -1074,10 +1074,10 @@ PUBLIC mesh collada_mesh_generator_create(ogl_context  context,
         ASSERT_DEBUG_SYNC(n_vertex_indices != 0,
                           "No vertex indices found");
 
-        mesh_layer_pass_id pass_id = mesh_add_layer_pass(result,
-                                                         current_layer_id,
-                                                         polylist_material,
-                                                         n_vertex_indices);
+        mesh_layer_pass_id pass_id = mesh_add_layer_pass_for_regular_mesh(result,
+                                                                          current_layer_id,
+                                                                          polylist_material,
+                                                                          n_vertex_indices);
 
         for (unsigned int n_input_type = 0;
                           n_input_type < n_input_types;
@@ -1103,14 +1103,14 @@ PUBLIC mesh collada_mesh_generator_create(ogl_context  context,
                                                                n_set,
                                                               &stream_ptr) )
                     {
-                        mesh_add_layer_pass_index_data(result,
-                                                       current_layer_id,
-                                                       pass_id,
-                                                       stream_type,
-                                                       n_set,
-                                                       stream_ptr->index_data,
-                                                       stream_ptr->min_index,
-                                                       stream_ptr->max_index);
+                        mesh_add_layer_pass_index_data_for_regular_mesh(result,
+                                                                        current_layer_id,
+                                                                        pass_id,
+                                                                        stream_type,
+                                                                        n_set,
+                                                                        stream_ptr->index_data,
+                                                                        stream_ptr->min_index,
+                                                                        stream_ptr->max_index);
                     }
                     else
                     {
@@ -1224,11 +1224,11 @@ PUBLIC mesh collada_mesh_generator_create(ogl_context  context,
                         serialized_normals = (const unsigned char*) serializer_data + serializer_current_offset;
 
                         /* Carry on and add the layer data */
-                        mesh_add_layer_data_stream(result,
-                                                   n_layer,
-                                                   MESH_LAYER_DATA_STREAM_TYPE_NORMALS,
-                                                   n_serialized_normals,
-                                                   serialized_normals);
+                        mesh_add_layer_data_stream_from_client_memory(result,
+                                                                      n_layer,
+                                                                      MESH_LAYER_DATA_STREAM_TYPE_NORMALS,
+                                                                      n_serialized_normals,
+                                                                      serialized_normals);
 
                         system_file_serializer_read(serializer,
                                                     n_serialized_normals * sizeof(float) * 3,

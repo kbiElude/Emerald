@@ -1793,7 +1793,7 @@ PUBLIC EMERALD_API mesh collada_data_get_emerald_mesh(collada_data data,
                             float aabb_max_data[3] = {0};
                             float aabb_min_data[3] = {0};
 
-                            n_result_layer_passes = mesh_get_amount_of_layer_passes(result,
+                            n_result_layer_passes = mesh_get_number_of_layer_passes(result,
                                                                                     n_layer);
 
                             system_file_serializer_read(serializer,
@@ -1923,6 +1923,7 @@ PUBLIC EMERALD_API mesh collada_data_get_emerald_mesh(collada_data data,
                         unsigned int stream_offset = 0;
 
                         mesh_get_layer_data_stream_property(result,
+                                                            0, /* layer_id - irrelevant for regular meshes */
                                                             stream_type,
                                                             MESH_LAYER_DATA_STREAM_PROPERTY_START_OFFSET,
                                                            &stream_offset);
@@ -1959,7 +1960,7 @@ PUBLIC EMERALD_API mesh collada_data_get_emerald_mesh(collada_data data,
                         const float* aabb_max_data = NULL;
                         const float* aabb_min_data = NULL;
 
-                        n_layer_passes = mesh_get_amount_of_layer_passes(result,
+                        n_layer_passes = mesh_get_number_of_layer_passes(result,
                                                                          n_layer);
 
                         mesh_get_layer_pass_property(result,
