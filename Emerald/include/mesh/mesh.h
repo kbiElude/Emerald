@@ -77,6 +77,7 @@ PUBLIC EMERALD_API mesh_layer_id mesh_add_layer(mesh);
 PUBLIC EMERALD_API void mesh_add_layer_data_stream_from_buffer_memory(mesh                        mesh,
                                                                       mesh_layer_id               layer_id,
                                                                       mesh_layer_data_stream_type type,
+                                                                      unsigned int                n_components,
                                                                       GLuint                      bo_id,
                                                                       unsigned int                bo_start_offset,
                                                                       unsigned int                bo_stride);
@@ -88,6 +89,7 @@ PUBLIC EMERALD_API void mesh_add_layer_data_stream_from_buffer_memory(mesh      
 PUBLIC EMERALD_API void mesh_add_layer_data_stream_from_client_memory(mesh                        mesh,
                                                                       mesh_layer_id               layer_id,
                                                                       mesh_layer_data_stream_type type,
+                                                                      unsigned int                n_components,
                                                                       unsigned int                n_items,
                                                                       const void*                 data);
 
@@ -210,7 +212,7 @@ PUBLIC EMERALD_API void mesh_get_layer_data_stream_data(mesh                    
  *
  *  NOTE: Can only be called against GPU stream & regular meshes.
  */
-PUBLIC EMERALD_API void mesh_get_layer_data_stream_property(mesh                            mesh,
+PUBLIC EMERALD_API bool mesh_get_layer_data_stream_property(mesh                            mesh,
                                                             mesh_layer_id                   layer_id,
                                                             mesh_layer_data_stream_type     type,
                                                             mesh_layer_data_stream_property property,

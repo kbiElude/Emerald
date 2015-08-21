@@ -314,21 +314,28 @@ PRIVATE void _ogl_uber_add_item_shaders_fragment_callback_handler(_shaders_fragm
 PRIVATE void _ogl_uber_bake_mesh_vao(_ogl_uber* uber_ptr,
                                      mesh       mesh)
 {
-    const ogl_context_gl_entrypoints_ext_direct_state_access* dsa_entrypoints          = NULL;
-    const ogl_context_gl_entrypoints*                         entrypoints              = NULL;
-    const ogl_context_gl_limits*                              limits                   = NULL;
+    /* NOTE: The default n_components values are needed for meshes loaded from serialized blobs.
+     *       For efficiency, the data streams are not stored in the files, but they always use
+     *       predefined number of components per stream type
+     */
+    const ogl_context_gl_entrypoints_ext_direct_state_access* dsa_entrypoints                = NULL;
+    const ogl_context_gl_entrypoints*                         entrypoints                    = NULL;
+    const ogl_context_gl_limits*                              limits                         = NULL;
     mesh_type                                                 mesh_instance_type;
-    GLint                                                     mesh_normals_bo_id       = 0;
-    unsigned int                                              mesh_normals_bo_offset   = 0;
-    unsigned int                                              mesh_normals_bo_stride   = 0;
-    GLint                                                     mesh_texcoords_bo_id     = 0;
-    unsigned int                                              mesh_texcoords_bo_offset = 0;
-    unsigned int                                              mesh_texcoords_bo_stride = 0;
-    GLint                                                     mesh_vertex_bo_id        = 0;
-    unsigned int                                              mesh_vertex_bo_offset    = 0;
-    unsigned int                                              mesh_vertex_bo_stride    = 0;
-    uint32_t                                                  n_layers                 = 0;
-    _ogl_uber_vao*                                            vao_ptr                  = NULL;
+    GLint                                                     mesh_normals_bo_id             = 0;
+    unsigned int                                              mesh_normals_bo_n_components   = 3;
+    unsigned int                                              mesh_normals_bo_offset         = 0;
+    unsigned int                                              mesh_normals_bo_stride         = 0;
+    GLint                                                     mesh_texcoords_bo_id           = 0;
+    unsigned int                                              mesh_texcoords_bo_n_components = 2;
+    unsigned int                                              mesh_texcoords_bo_offset       = 0;
+    unsigned int                                              mesh_texcoords_bo_stride       = 0;
+    GLint                                                     mesh_vertex_bo_id              = 0;
+    unsigned int                                              mesh_vertex_bo_n_components    = 3;
+    unsigned int                                              mesh_vertex_bo_offset          = 0;
+    unsigned int                                              mesh_vertex_bo_stride          = 0;
+    uint32_t                                                  n_layers                       = 0;
+    _ogl_uber_vao*                                            vao_ptr                        = NULL;
 
     ogl_context_get_property(uber_ptr->context,
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL_EXT_DIRECT_STATE_ACCESS,
@@ -399,29 +406,6 @@ PRIVATE void _ogl_uber_bake_mesh_vao(_ogl_uber* uber_ptr,
         mesh_vertex_bo_stride  = mesh_texcoords_bo_stride;
     }
 
-    if (uber_ptr->object_uv_attribute_location != -1)
-    {
-        mesh_get_layer_data_stream_property(mesh,
-                                            0, /* layer_id - please see "sanity check" comment above for explanation */
-                                            MESH_LAYER_DATA_STREAM_TYPE_TEXCOORDS,
-                                            MESH_LAYER_DATA_STREAM_PROPERTY_START_OFFSET,
-                                           &mesh_texcoords_bo_offset);
-
-        if (mesh_instance_type == MESH_TYPE_GPU_STREAM)
-        {
-            mesh_get_layer_data_stream_property(mesh,
-                                                0, /* layer_id - please see "sanity check" comment above for explanation */
-                                                MESH_LAYER_DATA_STREAM_TYPE_TEXCOORDS,
-                                                MESH_LAYER_DATA_STREAM_PROPERTY_GL_BO_ID,
-                                               &mesh_texcoords_bo_id);
-            mesh_get_layer_data_stream_property(mesh,
-                                                0, /* layer_id - please see "sanity check" comment above for explanation */
-                                                MESH_LAYER_DATA_STREAM_TYPE_TEXCOORDS,
-                                                MESH_LAYER_DATA_STREAM_PROPERTY_GL_BO_STRIDE,
-                                               &mesh_texcoords_bo_stride);
-        }
-    } /* if (uber_ptr->object_uv_attribute_location != -1) */
-
     if (uber_ptr->object_normal_attribute_location != -1)
     {
         mesh_get_layer_data_stream_property(mesh,
@@ -429,6 +413,11 @@ PRIVATE void _ogl_uber_bake_mesh_vao(_ogl_uber* uber_ptr,
                                             MESH_LAYER_DATA_STREAM_TYPE_NORMALS,
                                             MESH_LAYER_DATA_STREAM_PROPERTY_START_OFFSET,
                                            &mesh_normals_bo_offset);
+        mesh_get_layer_data_stream_property(mesh,
+                                            0, /* layer_id - please see "sanity check" comment above for explanation */
+                                            MESH_LAYER_DATA_STREAM_TYPE_NORMALS,
+                                            MESH_LAYER_DATA_STREAM_PROPERTY_N_COMPONENTS,
+                                           &mesh_normals_bo_n_components);
 
         if (mesh_instance_type == MESH_TYPE_GPU_STREAM)
         {
@@ -447,7 +436,7 @@ PRIVATE void _ogl_uber_bake_mesh_vao(_ogl_uber* uber_ptr,
         dsa_entrypoints->pGLVertexArrayVertexAttribOffsetEXT(vao_ptr->vao_id,
                                                              mesh_normals_bo_id,
                                                              uber_ptr->object_normal_attribute_location,
-                                                             3,
+                                                             mesh_normals_bo_n_components,
                                                              GL_FLOAT,
                                                              GL_FALSE,
                                                              mesh_normals_bo_stride,
@@ -457,6 +446,34 @@ PRIVATE void _ogl_uber_bake_mesh_vao(_ogl_uber* uber_ptr,
                                                        uber_ptr->object_normal_attribute_location);
     } /* if (uber_ptr->object_normal_attribute_location != -1) */
 
+    if (uber_ptr->object_uv_attribute_location != -1)
+    {
+        mesh_get_layer_data_stream_property(mesh,
+                                            0, /* layer_id - please see "sanity check" comment above for explanation */
+                                            MESH_LAYER_DATA_STREAM_TYPE_TEXCOORDS,
+                                            MESH_LAYER_DATA_STREAM_PROPERTY_START_OFFSET,
+                                           &mesh_texcoords_bo_offset);
+        mesh_get_layer_data_stream_property(mesh,
+                                            0, /* layer_id - please see "sanity check" comment above for explanation */
+                                            MESH_LAYER_DATA_STREAM_TYPE_TEXCOORDS,
+                                            MESH_LAYER_DATA_STREAM_PROPERTY_N_COMPONENTS,
+                                           &mesh_texcoords_bo_n_components);
+
+        if (mesh_instance_type == MESH_TYPE_GPU_STREAM)
+        {
+            mesh_get_layer_data_stream_property(mesh,
+                                                0, /* layer_id - please see "sanity check" comment above for explanation */
+                                                MESH_LAYER_DATA_STREAM_TYPE_TEXCOORDS,
+                                                MESH_LAYER_DATA_STREAM_PROPERTY_GL_BO_ID,
+                                               &mesh_texcoords_bo_id);
+            mesh_get_layer_data_stream_property(mesh,
+                                                0, /* layer_id - please see "sanity check" comment above for explanation */
+                                                MESH_LAYER_DATA_STREAM_TYPE_TEXCOORDS,
+                                                MESH_LAYER_DATA_STREAM_PROPERTY_GL_BO_STRIDE,
+                                               &mesh_texcoords_bo_stride);
+        }
+    } /* if (uber_ptr->object_uv_attribute_location != -1) */
+
     if (uber_ptr->object_vertex_attribute_location != -1)
     {
         mesh_get_layer_data_stream_property(mesh,
@@ -464,6 +481,11 @@ PRIVATE void _ogl_uber_bake_mesh_vao(_ogl_uber* uber_ptr,
                                             MESH_LAYER_DATA_STREAM_TYPE_VERTICES,
                                             MESH_LAYER_DATA_STREAM_PROPERTY_START_OFFSET,
                                            &mesh_vertex_bo_offset);
+        mesh_get_layer_data_stream_property(mesh,
+                                            0, /* layer_id - please see "sanity check" comment above for explanation */
+                                            MESH_LAYER_DATA_STREAM_TYPE_VERTICES,
+                                            MESH_LAYER_DATA_STREAM_PROPERTY_N_COMPONENTS,
+                                           &mesh_vertex_bo_n_components);
 
         if (mesh_instance_type == MESH_TYPE_GPU_STREAM)
         {
@@ -482,7 +504,7 @@ PRIVATE void _ogl_uber_bake_mesh_vao(_ogl_uber* uber_ptr,
         dsa_entrypoints->pGLVertexArrayVertexAttribOffsetEXT(vao_ptr->vao_id,
                                                              mesh_vertex_bo_id,
                                                              uber_ptr->object_vertex_attribute_location,
-                                                             3,
+                                                             mesh_vertex_bo_n_components,
                                                              GL_FLOAT,
                                                              GL_FALSE,
                                                              mesh_vertex_bo_stride,
@@ -639,7 +661,7 @@ PRIVATE void _ogl_uber_bake_mesh_vao(_ogl_uber* uber_ptr,
                             dsa_entrypoints->pGLVertexArrayVertexAttribOffsetEXT(vao_ptr->vao_id,
                                                                                  mesh_texcoords_bo_id,
                                                                                  attachment.shader_uv_attribute_location,
-                                                                                 2, /* size */
+                                                                                 mesh_texcoords_bo_n_components,
                                                                                  GL_FLOAT,
                                                                                  GL_FALSE,
                                                                                  mesh_texcoords_bo_stride,
@@ -2458,13 +2480,6 @@ PUBLIC void ogl_uber_rendering_render_mesh(mesh             mesh_gpu,
                     if (draw_call_arguments.pre_draw_call_barriers != 0)
                     {
                         entry_points->pGLMemoryBarrier(draw_call_arguments.pre_draw_call_barriers);
-                    }
-
-                    if (draw_call_arguments.pfn_pre_draw_call_callback != NULL)
-                    {
-                        draw_call_arguments.pfn_pre_draw_call_callback(uber_ptr->context,
-                                                                       mesh_instantiation_parent_gpu,
-                                                                       draw_call_arguments.pre_draw_call_callback_user_arg);
                     }
 
                     switch (draw_call_type)

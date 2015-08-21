@@ -1054,12 +1054,13 @@ PUBLIC mesh collada_mesh_generator_create(ogl_context  context,
                 mesh_layer_data_stream_type    stream_type    = _collada_mesh_generator_get_mesh_layer_data_stream_type_for_collada_data_input_type(input_type);
 
                 _collada_mesh_generator_get_input_type_properties(input_type,
-                                                                  &component_size,
-                                                                  &n_components);
+                                                                 &component_size,
+                                                                 &n_components);
 
                 mesh_add_layer_data_stream_from_client_memory(result,
                                                               current_layer_id,
                                                               stream_type,
+                                                              n_components,
                                                               input_data[n_input_type]->array_data_size / component_size / n_components,
                                                               input_data[n_input_type]->array_data);
 
@@ -1227,6 +1228,7 @@ PUBLIC mesh collada_mesh_generator_create(ogl_context  context,
                         mesh_add_layer_data_stream_from_client_memory(result,
                                                                       n_layer,
                                                                       MESH_LAYER_DATA_STREAM_TYPE_NORMALS,
+                                                                      3, /* n_components */
                                                                       n_serialized_normals,
                                                                       serialized_normals);
 

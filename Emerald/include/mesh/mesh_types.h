@@ -12,10 +12,6 @@
 DECLARE_HANDLE(mesh);
 DECLARE_HANDLE(mesh_material);
 
-typedef void (*PFNPREDRAWCALLCALLBACKPROC)(ogl_context context,
-                                           mesh        mesh_instance,
-                                           void*       user_arg);
-
 typedef struct mesh_draw_call_arguments
 {
     /* Must be filled for the MESH_DRAW_CALL_TYPE_ARRAYS draw call type. */
@@ -36,25 +32,17 @@ typedef struct mesh_draw_call_arguments
     /* Must be filled for the MESH_DRAW_CALL_TYPE_ARRAYS and MESH_DRAW_CALL_TYPE_ARRAYS_INDIRECT draw call types. */
     GLenum mode;
 
-    /* Optional. Will be called back from the rendering thread, right before the draw call is made. */
-    PFNPREDRAWCALLCALLBACKPROC pfn_pre_draw_call_callback;
-
     /* Optional. Should be set to bits accepted by glMemoryBarrier(), or 0 if no synchronization is needed. */
     GLenum pre_draw_call_barriers;
 
-    /* Optional. Argument passed to the pre-draw call callback. */
-    void* pre_draw_call_callback_user_arg;
-
     mesh_draw_call_arguments()
     {
-        count                           = 0;
-        draw_indirect_bo_binding        = 0;
-        first                           = 0;
-        indirect                        = NULL;
-        mode                            = 0xFFFFFFFF;
-        pfn_pre_draw_call_callback      = NULL;
-        pre_draw_call_barriers          = 0;
-        pre_draw_call_callback_user_arg = NULL;
+        count                    = 0;
+        draw_indirect_bo_binding = 0;
+        first                    = 0;
+        indirect                 = NULL;
+        mode                     = 0xFFFFFFFF;
+        pre_draw_call_barriers   = 0;
     }
 } mesh_draw_call_arguments;
 
@@ -176,6 +164,9 @@ typedef enum
     MESH_LAYER_DATA_STREAM_PROPERTY_GL_BO_STRIDE,
 
     /* not settable, uint32_t */
+    MESH_LAYER_DATA_STREAM_PROPERTY_N_COMPONENTS,
+
+    /* not settable, uint32_t */
     MESH_LAYER_DATA_STREAM_PROPERTY_START_OFFSET,
 } mesh_layer_data_stream_property;
 
@@ -248,13 +239,13 @@ typedef enum
      */
     MESH_LAYER_DATA_STREAM_TYPE_FIRST,
 
-    /* Vertex data. N-component floats per vertex, no padding in-between. */
+    /* Vertex data. User-specified number of floats per vertex, no padding in-between. */
     MESH_LAYER_DATA_STREAM_TYPE_VERTICES = MESH_LAYER_DATA_STREAM_TYPE_FIRST,
 
-    /* Normal data. 3-component floats per vertex, no padding in-between */
+    /* Normal data. User-specified number of floats per vertex, no padding in-between */
     MESH_LAYER_DATA_STREAM_TYPE_NORMALS,
 
-    /* Texture coordinate data. 2-component floats per vertex, no padding in-between */
+    /* Texture coordinate data. User-specified number of floats per vertex, no padding in-between */
     MESH_LAYER_DATA_STREAM_TYPE_TEXCOORDS,
 
     /* note: recommended to keep sh at the end */

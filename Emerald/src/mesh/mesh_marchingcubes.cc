@@ -133,9 +133,6 @@ PRIVATE void                      _mesh_marchingcubes_init_mesh_instance        
 PRIVATE void                      _mesh_marchingcubes_init_polygonizer_po              (_mesh_marchingcubes*         mesh_ptr);
 PRIVATE void                      _mesh_marchingcubes_init_rendering_thread_callback   (ogl_context                  context,
                                                                                         void*                        user_arg);
-PRIVATE void                      _mesh_marchingcubes_pre_draw_call_callback_entrypoint(ogl_context                  context,
-                                                                                        mesh                         mesh_instance,
-                                                                                        void*                        user_arg);
 PRIVATE void                      _mesh_marchingcubes_release                          (void*                        arg);
 
 
@@ -662,8 +659,6 @@ PRIVATE void _mesh_marchingcubes_init_mesh_instance(_mesh_marchingcubes* mesh_pt
     draw_call_arguments.indirect                        = (const GLvoid*) mesh_ptr->indirect_draw_call_args_bo_start_offset;
     draw_call_arguments.mode                            = GL_TRIANGLES;
     draw_call_arguments.pre_draw_call_barriers          = GL_COMMAND_BARRIER_BIT | GL_VERTEX_ATTRIB_ARRAY_BARRIER_BIT;
-    draw_call_arguments.pfn_pre_draw_call_callback      = _mesh_marchingcubes_pre_draw_call_callback_entrypoint;
-    draw_call_arguments.pre_draw_call_callback_user_arg = mesh_ptr;
 
     new_layer_pass_id = mesh_add_layer_pass_for_gpu_stream_mesh(mesh_ptr->mesh_instance,
                                                                 new_layer_id,
@@ -674,12 +669,14 @@ PRIVATE void _mesh_marchingcubes_init_mesh_instance(_mesh_marchingcubes* mesh_pt
     mesh_add_layer_data_stream_from_buffer_memory(mesh_ptr->mesh_instance,
                                                   new_layer_id,
                                                   MESH_LAYER_DATA_STREAM_TYPE_NORMALS,
+                                                  3, /* n_components */
                                                   mesh_ptr->polygonized_data_bo_id,
                                                   mesh_ptr->polygonized_data_bo_start_offset + sizeof(float) * 4,
                                                   sizeof(float) * 7); /* bo_stride */
     mesh_add_layer_data_stream_from_buffer_memory(mesh_ptr->mesh_instance,
                                                   new_layer_id,
                                                   MESH_LAYER_DATA_STREAM_TYPE_VERTICES,
+                                                  4, /* n_components */
                                                   mesh_ptr->polygonized_data_bo_id,
                                                   mesh_ptr->polygonized_data_bo_start_offset,
                                                   sizeof(float) * 7); /* bo_stride */
@@ -1458,12 +1455,17 @@ PUBLIC EMERALD_API void mesh_marchingcubes_get_property(mesh_marchingcubes      
 /** Please see header for specification */
 PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void mesh_marchingcubes_polygonize(mesh_marchingcubes in_mesh)
 {
+    GLint                             current_po_id   = 0;
     const ogl_context_gl_entrypoints* entrypoints_ptr = NULL;
     _mesh_marchingcubes*              mesh_ptr        = (_mesh_marchingcubes*) in_mesh;
 
     ogl_context_get_property(mesh_ptr->context,
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
                             &entrypoints_ptr);
+
+    /* Fear not: the call below will be handled by the state cache :-) */
+    entrypoints_ptr->pGLGetIntegerv(GL_CURRENT_PROGRAM,
+                                   &current_po_id);
 
     ogl_program_ub_set_nonarrayed_uniform_value(mesh_ptr->po_scalar_field_polygonizer_data_ub,
                                                 mesh_ptr->po_scalar_field_polygonizer_data_ub_isolevel_offset,
@@ -1517,6 +1519,11 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void mesh_marchingcubes_polygonize(mes
                                         mesh_ptr->po_scalar_field_polygonizer_precomputed_tables_ub_bo_start_offset,
                                         mesh_ptr->po_scalar_field_polygonizer_precomputed_tables_ub_bo_size);
 
+    /* Sync SSBO-based scalar field data.
+     *
+     * TODO: This should really only be called when the scalar field data is modified by a compute shader */
+    entrypoints_ptr->pGLMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
+
     /* Set up the indirect draw call's <count> SSB. Zero out the value before we run the polygonizer */
     static const int int_zero = 0;
 
@@ -1530,16 +1537,14 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void mesh_marchingcubes_polygonize(mes
                                            GL_UNSIGNED_INT,
                                           &int_zero);
 
-    /* Sync SSBO-based scalar field data.
-     *
-     * TODO: This should really only be called when the scalar field data is modified by a compute shader */
-    entrypoints_ptr->pGLMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
-
     /* Polygonize the scalar field */
     entrypoints_ptr->pGLUseProgram     (ogl_program_get_id(mesh_ptr->po_scalar_field_polygonizer) );
     entrypoints_ptr->pGLDispatchCompute(mesh_ptr->po_scalar_field_polygonizer_global_wg_size[0],
                                         mesh_ptr->po_scalar_field_polygonizer_global_wg_size[1],
                                         mesh_ptr->po_scalar_field_polygonizer_global_wg_size[2]);
+
+    /* Restore the bound program object */
+    entrypoints_ptr->pGLUseProgram(current_po_id);
 
     /* All done */
     mesh_ptr->needs_polygonization = false;

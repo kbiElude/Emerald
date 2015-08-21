@@ -42,7 +42,12 @@ PUBLIC EMERALD_API void scalar_field_metaballs_set_property(scalar_field_metabal
                                                             scalar_field_metaballs_property property,
                                                             const void*                     data);
 
-/** TODO */
-PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void scalar_field_metaballs_update(scalar_field_metaballs metaballs);
+/** Updates the scalar field data in the internally managed buffer memory, if necessary.
+ *
+ *  @param metaballs Metaballs instance to use for the request.
+ *
+ *  @return true if the internal buffer memory was updated, false otherwise.
+ **/
+PUBLIC RENDERING_CONTEXT_CALL EMERALD_API bool scalar_field_metaballs_update(scalar_field_metaballs metaballs);
 
 #endif /* SCALAR_FIELD_METABALLS_H */

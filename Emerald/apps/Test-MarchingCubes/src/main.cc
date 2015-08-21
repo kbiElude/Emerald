@@ -209,14 +209,20 @@ PRIVATE void _rendering_handler(ogl_context context,
     ogl_flyby_update(_context_flyby);
 
     /* Update the metaballs */
-    float new_isolevel = sin( float(frame_time % 500) / float(1250.0f) * 0.5f);
+    bool  has_scalar_field_changed = false;
+    float new_isolevel             = sin( float(frame_time % 500) / float(1250.0f) * 0.6f + 0.01f);
 
     mesh_marchingcubes_set_property(_marching_cubes,
                                     MESH_MARCHINGCUBES_PROPERTY_ISOLEVEL,
                                    &new_isolevel);
 
-    scalar_field_metaballs_update(_metaballs);
-    mesh_marchingcubes_polygonize(_marching_cubes);
+    has_scalar_field_changed = scalar_field_metaballs_update(_metaballs);
+
+    if (has_scalar_field_changed ||
+        true) /* new isolevel => polygonization is required! */
+    {
+        mesh_marchingcubes_polygonize(_marching_cubes);
+    }
 
     /* Render the scene */
     ogl_flyby_get_property(_context_flyby,

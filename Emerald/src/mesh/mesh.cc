@@ -232,7 +232,6 @@ PRIVATE uint32_t           _mesh_get_source_index_from_index_key         (const 
 PRIVATE void               _mesh_get_stream_data_properties              (      _mesh*                            mesh_ptr,
                                                                                 mesh_layer_data_stream_type       stream_type,
                                                                                 mesh_layer_data_stream_data_type* out_data_type_ptr,
-                                                                                uint32_t*                         out_n_components_ptr,
                                                                                 uint32_t*                         out_required_bit_alignment_ptr);
 PRIVATE uint32_t           _mesh_get_total_number_of_sets                (      _mesh_layer*                      layer_ptr);
 PRIVATE void               _mesh_get_total_number_of_stream_sets_for_mesh(      _mesh*                            mesh_ptr,
@@ -799,11 +798,9 @@ end:
 PRIVATE void _mesh_get_stream_data_properties(_mesh*                            mesh_ptr,
                                               mesh_layer_data_stream_type       stream_type,
                                               mesh_layer_data_stream_data_type* out_data_type_ptr,
-                                              uint32_t*                         out_n_components_ptr,
                                               uint32_t*                         out_required_bit_alignment_ptr)
 {
     mesh_layer_data_stream_data_type result_data_type              = MESH_LAYER_DATA_STREAM_DATA_TYPE_UNKNOWN;
-    uint32_t                         result_n_components           = 0;
     uint32_t                         result_required_bit_alignment = 0;
 
     switch (stream_type)
@@ -812,7 +809,6 @@ PRIVATE void _mesh_get_stream_data_properties(_mesh*                            
         case MESH_LAYER_DATA_STREAM_TYPE_VERTICES:
         {
             result_data_type              = MESH_LAYER_DATA_STREAM_DATA_TYPE_FLOAT;
-            result_n_components           = 3;
             result_required_bit_alignment = 0;
 
             break;
@@ -821,7 +817,6 @@ PRIVATE void _mesh_get_stream_data_properties(_mesh*                            
         case MESH_LAYER_DATA_STREAM_TYPE_TEXCOORDS:
         {
             result_data_type              = MESH_LAYER_DATA_STREAM_DATA_TYPE_FLOAT;
-            result_n_components           = 2;
             result_required_bit_alignment = 0;
 
             break;
@@ -831,7 +826,7 @@ PRIVATE void _mesh_get_stream_data_properties(_mesh*                            
         case MESH_LAYER_DATA_STREAM_TYPE_SPHERICAL_HARMONIC_4BANDS:
         {
             result_data_type              = MESH_LAYER_DATA_STREAM_DATA_TYPE_FLOAT;
-            result_n_components           = mesh_ptr->n_sh_bands * mesh_ptr->n_sh_bands * mesh_ptr->n_sh_components;
+            // result_n_components           = mesh_ptr->n_sh_bands * mesh_ptr->n_sh_bands * mesh_ptr->n_sh_components;
             result_required_bit_alignment = (stream_type == MESH_LAYER_DATA_STREAM_TYPE_SPHERICAL_HARMONIC_3BANDS) ? 96 : 128;
 
             break;
@@ -847,11 +842,6 @@ PRIVATE void _mesh_get_stream_data_properties(_mesh*                            
     if (out_data_type_ptr != NULL)
     {
         *out_data_type_ptr = result_data_type;
-    }
-
-    if (out_n_components_ptr != NULL)
-    {
-        *out_n_components_ptr = result_n_components;
     }
 
     if (out_required_bit_alignment_ptr != NULL)
@@ -1691,6 +1681,7 @@ PUBLIC EMERALD_API mesh_layer_id mesh_add_layer(mesh instance)
 PUBLIC EMERALD_API void mesh_add_layer_data_stream_from_buffer_memory(mesh                        mesh,
                                                                       mesh_layer_id               layer_id,
                                                                       mesh_layer_data_stream_type type,
+                                                                      unsigned int                n_components,
                                                                       GLuint                      bo_id,
                                                                       unsigned int                bo_start_offset,
                                                                       unsigned int                bo_stride)
@@ -1698,8 +1689,11 @@ PUBLIC EMERALD_API void mesh_add_layer_data_stream_from_buffer_memory(mesh      
     _mesh_layer* layer_ptr         = NULL;
     _mesh*       mesh_instance_ptr = (_mesh*) mesh;
 
-    ASSERT_DEBUG_SYNC (mesh_instance_ptr->type == MESH_TYPE_GPU_STREAM,
-                       "Entry-point is only compatible with GPU stream meshes only.");
+    ASSERT_DEBUG_SYNC(mesh_instance_ptr->type == MESH_TYPE_GPU_STREAM,
+                      "Entry-point is only compatible with GPU stream meshes only.");
+    ASSERT_DEBUG_SYNC(n_components >= 1 &&
+                      n_components <= 4,
+                      "Invalid number of components requested.");
 
     if (system_resizable_vector_get_element_at(mesh_instance_ptr->layers,
                                                layer_id,
@@ -1722,6 +1716,7 @@ PUBLIC EMERALD_API void mesh_add_layer_data_stream_from_buffer_memory(mesh      
                 data_stream_ptr->bo_id           = bo_id;
                 data_stream_ptr->bo_start_offset = bo_start_offset;
                 data_stream_ptr->bo_stride       = bo_stride;
+                data_stream_ptr->n_components    = n_components;
 
                 /* Store the stream */
                 ASSERT_DEBUG_SYNC(!system_hash64map_contains(layer_ptr->data_streams,
@@ -1758,6 +1753,7 @@ PUBLIC EMERALD_API void mesh_add_layer_data_stream_from_buffer_memory(mesh      
 PUBLIC EMERALD_API void mesh_add_layer_data_stream_from_client_memory(mesh                        mesh,
                                                                       mesh_layer_id               layer_id,
                                                                       mesh_layer_data_stream_type type,
+                                                                      unsigned int                n_components,
                                                                       unsigned int                n_items,
                                                                       const void*                 data)
 {
@@ -1766,6 +1762,9 @@ PUBLIC EMERALD_API void mesh_add_layer_data_stream_from_client_memory(mesh      
 
     ASSERT_DEBUG_SYNC (mesh_instance_ptr->type == MESH_TYPE_REGULAR,
                        "Entry-point is only compatible with regular meshes only.");
+    ASSERT_DEBUG_SYNC(n_components >= 1 &&
+                      n_components <= 4,
+                      "Invalid number of components requested.");
 
     /* Store amount of SH bands if this is a SH data stream. */
     if (type == MESH_LAYER_DATA_STREAM_TYPE_SPHERICAL_HARMONIC_3BANDS ||
@@ -1818,7 +1817,6 @@ PUBLIC EMERALD_API void mesh_add_layer_data_stream_from_client_memory(mesh      
                 _mesh_get_stream_data_properties (mesh_instance_ptr,
                                                   type,
                                                  &data_stream_ptr->data_type,
-                                                 &data_stream_ptr->n_components,
                                                  &data_stream_ptr->required_bit_alignment);
 
                 ASSERT_DEBUG_SYNC(data_stream_ptr->data_type == MESH_LAYER_DATA_STREAM_DATA_TYPE_FLOAT,
@@ -1827,8 +1825,9 @@ PUBLIC EMERALD_API void mesh_add_layer_data_stream_from_client_memory(mesh      
                 unsigned int component_size = (data_stream_ptr->data_type == MESH_LAYER_DATA_STREAM_DATA_TYPE_FLOAT) ? sizeof(float)
                                                                                                                      : 1;
 
-                data_stream_ptr->data    = new (std::nothrow) unsigned char[data_stream_ptr->n_components * component_size * n_items];
-                data_stream_ptr->n_items = n_items;
+                data_stream_ptr->data         = new (std::nothrow) unsigned char[data_stream_ptr->n_components * component_size * n_items];
+                data_stream_ptr->n_components = n_components;
+                data_stream_ptr->n_items      = n_items;
 
                 if (data_stream_ptr->data == NULL)
                 {
@@ -2406,13 +2405,16 @@ PUBLIC EMERALD_API void mesh_create_single_indexed_representation(mesh instance)
             {
                 uint32_t                         n_sets                        = 0;
                 mesh_layer_data_stream_data_type stream_data_type              = MESH_LAYER_DATA_STREAM_DATA_TYPE_UNKNOWN;
-                unsigned int                     stream_n_components           = 0;
+                unsigned int                     stream_n_components           = (n_data_stream_type == MESH_LAYER_DATA_STREAM_TYPE_TEXCOORDS)                ? 2
+                                                                               : (n_data_stream_type == MESH_LAYER_DATA_STREAM_TYPE_NORMALS                   ||
+                                                                                  n_data_stream_type == MESH_LAYER_DATA_STREAM_TYPE_SPHERICAL_HARMONIC_3BANDS ||
+                                                                                  n_data_stream_type == MESH_LAYER_DATA_STREAM_TYPE_VERTICES)                 ? 3
+                                                                               :                                                                                4;
                 unsigned int                     stream_required_bit_alignment = 0;
 
                 _mesh_get_stream_data_properties(mesh_ptr,
                                                  (mesh_layer_data_stream_type) n_data_stream_type,
                                                 &stream_data_type,
-                                                &stream_n_components,
                                                 &stream_required_bit_alignment);
 
                 _mesh_get_total_number_of_stream_sets_for_mesh(mesh_ptr,
@@ -2617,14 +2619,12 @@ PUBLIC EMERALD_API void mesh_create_single_indexed_representation(mesh instance)
                                                               "TODO");
 
                                             mesh_layer_data_stream_type actual_stream_type  = (mesh_layer_data_stream_type) n_data_stream_type;
-                                            uint32_t                    stream_n_components = 0;
+                                            unsigned int                stream_n_components = (n_data_stream_type == MESH_LAYER_DATA_STREAM_TYPE_TEXCOORDS)                ? 2
+                                                                                            : (n_data_stream_type == MESH_LAYER_DATA_STREAM_TYPE_NORMALS                   ||
+                                                                                               n_data_stream_type == MESH_LAYER_DATA_STREAM_TYPE_SPHERICAL_HARMONIC_3BANDS ||
+                                                                                               n_data_stream_type == MESH_LAYER_DATA_STREAM_TYPE_VERTICES)                 ? 3
+                                                                                            :                                                                                4;
                                             uint32_t                    stream_n_sets       = 0;
-
-                                            _mesh_get_stream_data_properties(mesh_ptr,
-                                                                             (mesh_layer_data_stream_type) n_data_stream_type,
-                                                                             NULL,  /* out_data_type */
-                                                                            &stream_n_components,
-                                                                             NULL); /* out_required_bit_alignment */
 
                                             _mesh_get_amount_of_stream_data_sets(mesh_ptr,
                                                                                  (mesh_layer_data_stream_type) n_data_stream_type,
@@ -3482,6 +3482,7 @@ PUBLIC EMERALD_API void mesh_generate_normal_data(mesh mesh)
             mesh_add_layer_data_stream_from_client_memory(mesh,
                                                           n_layer,
                                                           MESH_LAYER_DATA_STREAM_TYPE_NORMALS,
+                                                          3, /* n_components */
                                                           layer_pass_ptr->n_elements,
                                                           layer_pass_normal_data);
 
@@ -3592,13 +3593,14 @@ PUBLIC EMERALD_API void mesh_get_layer_data_stream_data(mesh                    
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API void mesh_get_layer_data_stream_property(mesh                            mesh,
+PUBLIC EMERALD_API bool mesh_get_layer_data_stream_property(mesh                            mesh,
                                                             mesh_layer_id                   layer_id,
                                                             mesh_layer_data_stream_type     type,
                                                             mesh_layer_data_stream_property property,
                                                             void*                           out_result_ptr)
 {
     _mesh* mesh_ptr = (_mesh*) mesh;
+    bool   result   = false;
 
     ASSERT_DEBUG_SYNC(mesh_ptr->type == MESH_TYPE_GPU_STREAM ||
                       mesh_ptr->type == MESH_TYPE_REGULAR,
@@ -3608,32 +3610,20 @@ PUBLIC EMERALD_API void mesh_get_layer_data_stream_property(mesh                
 
     if (mesh_ptr->instantiation_parent != NULL)
     {
-        mesh_get_layer_data_stream_property(mesh_ptr->instantiation_parent,
-                                            layer_id,
-                                            type,
-                                            property,
-                                            out_result_ptr);
+        result = mesh_get_layer_data_stream_property(mesh_ptr->instantiation_parent,
+                                                     layer_id,
+                                                     type,
+                                                     property,
+                                                     out_result_ptr);
     } /* if (mesh_ptr->instantiation_parent != NULL) */
     else
     {
-        if  (mesh_ptr->type == MESH_TYPE_REGULAR)
+        if  (mesh_ptr->type == MESH_TYPE_REGULAR                            &&
+             property       == MESH_LAYER_DATA_STREAM_PROPERTY_START_OFFSET)
         {
-            switch (property)
-            {
-                case MESH_LAYER_DATA_STREAM_PROPERTY_START_OFFSET:
-                {
-                    *((uint32_t*) out_result_ptr) = mesh_ptr->gl_bo_start_offset + mesh_ptr->gl_processed_data_stream_start_offset[type];
-
-                    break;
-                }
-
-                default:
-                {
-                    ASSERT_DEBUG_SYNC(false,
-                                      "Unrecognized mesh layer data stream property");
-                }
-            } /* switch (property) */
-        } /* if  (mesh_ptr->type == MESH_TYPE_REGULAR) */
+            *((uint32_t*) out_result_ptr) = mesh_ptr->gl_bo_start_offset + mesh_ptr->gl_processed_data_stream_start_offset[type];
+            result                        = true;
+        }
         else
         {
             _mesh_layer* layer_ptr = NULL;
@@ -3653,6 +3643,7 @@ PUBLIC EMERALD_API void mesh_get_layer_data_stream_property(mesh                
                         case MESH_LAYER_DATA_STREAM_PROPERTY_GL_BO_ID:
                         {
                             *(GLuint*) out_result_ptr = stream_ptr->bo_id;
+                            result                    = true;
 
                             break;
                         }
@@ -3660,6 +3651,15 @@ PUBLIC EMERALD_API void mesh_get_layer_data_stream_property(mesh                
                         case MESH_LAYER_DATA_STREAM_PROPERTY_GL_BO_STRIDE:
                         {
                             *(unsigned int*) out_result_ptr = stream_ptr->bo_stride;
+                            result                          = true;
+
+                            break;
+                        }
+
+                        case MESH_LAYER_DATA_STREAM_PROPERTY_N_COMPONENTS:
+                        {
+                            *(unsigned int*) out_result_ptr = stream_ptr->n_components;
+                            result                          = true;
 
                             break;
                         }
@@ -3667,6 +3667,7 @@ PUBLIC EMERALD_API void mesh_get_layer_data_stream_property(mesh                
                         case MESH_LAYER_DATA_STREAM_PROPERTY_START_OFFSET:
                         {
                             *(unsigned int*) out_result_ptr = stream_ptr->bo_start_offset;
+                            result                          = true;
 
                             break;
                         }
@@ -3680,8 +3681,8 @@ PUBLIC EMERALD_API void mesh_get_layer_data_stream_property(mesh                
                 } /* if (layer data stream descriptor was retrieved) */
                 else
                 {
-                    ASSERT_DEBUG_SYNC(false,
-                                      "Could not retrieve layer data stream descriptor");
+                    /* This location may be hit for meshes loaded from a serialized data source !
+                     * Do NOT throw an assertion failure, but instead report a failure */
                 }
             } /* if (layer descriptor was retrieved) */
             else
@@ -3691,6 +3692,8 @@ PUBLIC EMERALD_API void mesh_get_layer_data_stream_property(mesh                
             }
         }
     }
+
+    return result;
 }
 
 /* Please see header for specification */

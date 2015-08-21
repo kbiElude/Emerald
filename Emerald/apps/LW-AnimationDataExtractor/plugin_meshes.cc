@@ -273,6 +273,7 @@ volatile void BakeMeshGLBlobWorkerThreadEntryPoint(void* arg)
         mesh_add_layer_data_stream_from_client_memory(arg_ptr->new_mesh,
                                                       new_mesh_layer,
                                                       MESH_LAYER_DATA_STREAM_TYPE_VERTICES,
+                                                      3,                       /* n_components */
                                                       3 * n_polygon_instances, /* vertices per triangle */
                                                       raw_vertex_data);
 
@@ -288,6 +289,7 @@ volatile void BakeMeshGLBlobWorkerThreadEntryPoint(void* arg)
             mesh_add_layer_data_stream_from_client_memory(arg_ptr->new_mesh,
                                                           new_mesh_layer,
                                                           MESH_LAYER_DATA_STREAM_TYPE_TEXCOORDS,
+                                                          2,                        /* n_components */
                                                           3 * n_polygon_instances, /* vertices per triangle */
                                                           raw_uv_data);
 

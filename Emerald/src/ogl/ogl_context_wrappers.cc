@@ -4005,6 +4005,23 @@ PUBLIC void APIENTRY ogl_context_wrappers_glGetIntegerv(GLenum pname,
                              OGL_CONTEXT_PROPERTY_TO_BINDINGS,
                             &to_bindings);
 
+    switch (pname)
+    {
+        case GL_CURRENT_PROGRAM:
+        {
+            ogl_context_state_cache_get_property(state_cache,
+                                                 OGL_CONTEXT_STATE_CACHE_PROPERTY_PROGRAM_OBJECT,
+                                                 params);
+
+            goto end;
+        }
+
+        default:
+        {
+            /* Fall-through */
+        }
+    }
+
     /* TODO: Pick target-specific bit for improved efficiency */
     ogl_context_bo_bindings_sync     (bo_bindings,
                                       BO_BINDINGS_SYNC_BIT_ALL);
@@ -4016,6 +4033,9 @@ PUBLIC void APIENTRY ogl_context_wrappers_glGetIntegerv(GLenum pname,
 
     _private_entrypoints_ptr->pGLGetIntegerv(pname,
                                              params);
+
+end:
+    ;
 }
 
 /** Please see header for spec */

@@ -460,7 +460,7 @@ PUBLIC EMERALD_API shaders_vertex_uber shaders_vertex_uber_create(ogl_context   
     ogl_shader_constructor_add_general_variable_to_ub(shader_constructor,
                                                       VARIABLE_TYPE_INPUT_ATTRIBUTE,
                                                       LAYOUT_QUALIFIER_NONE,
-                                                      TYPE_VEC3,
+                                                      TYPE_VEC4,
                                                       0, /* array_size */
                                                       0, /* uniform_block */
                                                       system_hashed_ansi_string_create("object_vertex"),
@@ -499,7 +499,7 @@ PUBLIC EMERALD_API shaders_vertex_uber shaders_vertex_uber_create(ogl_context   
     /* Set the body */
     ogl_shader_constructor_set_function_body(shader_constructor,
                                              0, /* main() */
-                                             system_hashed_ansi_string_create("vec4 world_vertex_temp = model * vec4(object_vertex, 1.0);\n"
+                                             system_hashed_ansi_string_create("vec4 world_vertex_temp = model * object_vertex;\n"
                                                                               "\n"
                                                                               "gl_Position   = vp * world_vertex_temp;\n"
                                                                               "world_vertex  = world_vertex_temp.xyz;\n"

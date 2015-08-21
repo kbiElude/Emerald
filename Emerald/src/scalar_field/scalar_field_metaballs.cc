@@ -17,6 +17,7 @@ typedef struct _scalar_field_metaballs
     ogl_context               context; /* DO NOT release */
     GLint                     global_wg_size[3];
     unsigned int              grid_size_xyz[3];
+    bool                      is_update_needed;
     system_hashed_ansi_string name;
     ogl_program               po;
     GLuint                    scalar_field_bo_id;
@@ -38,6 +39,7 @@ typedef struct _scalar_field_metaballs
                sizeof(grid_size_xyz) );
 
         context                      = in_context;
+        is_update_needed             = true;
         name                         = in_name;
         po                           = NULL;
         scalar_field_bo_id           = 0;
@@ -383,24 +385,33 @@ PUBLIC EMERALD_API void scalar_field_metaballs_get_property(scalar_field_metabal
 }
 
 /** Please see header for specification */
-PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void scalar_field_metaballs_update(scalar_field_metaballs metaballs)
+PUBLIC RENDERING_CONTEXT_CALL EMERALD_API bool scalar_field_metaballs_update(scalar_field_metaballs metaballs)
 {
     const ogl_context_gl_entrypoints* entrypoints_ptr = NULL;
     _scalar_field_metaballs*          metaballs_ptr   = (_scalar_field_metaballs*) metaballs;
+    bool                              result          = false;
 
-    ogl_context_get_property(metaballs_ptr->context,
-                             OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
-                            &entrypoints_ptr);
+    if (metaballs_ptr->is_update_needed)
+    {
+        ogl_context_get_property(metaballs_ptr->context,
+                                 OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
+                                &entrypoints_ptr);
 
-    /* Run the CS and generate the scalar field data */
-    entrypoints_ptr->pGLUseProgram     (ogl_program_get_id(metaballs_ptr->po) );
-    entrypoints_ptr->pGLBindBufferRange(GL_SHADER_STORAGE_BUFFER,
-                                        0, /* index */
-                                        metaballs_ptr->scalar_field_bo_id,
-                                        metaballs_ptr->scalar_field_bo_start_offset,
-                                        metaballs_ptr->scalar_field_bo_size);
+        /* Run the CS and generate the scalar field data */
+        entrypoints_ptr->pGLUseProgram     (ogl_program_get_id(metaballs_ptr->po) );
+        entrypoints_ptr->pGLBindBufferRange(GL_SHADER_STORAGE_BUFFER,
+                                            0, /* index */
+                                            metaballs_ptr->scalar_field_bo_id,
+                                            metaballs_ptr->scalar_field_bo_start_offset,
+                                            metaballs_ptr->scalar_field_bo_size);
 
-    entrypoints_ptr->pGLDispatchCompute(metaballs_ptr->global_wg_size[0],
-                                        metaballs_ptr->global_wg_size[1],
-                                        metaballs_ptr->global_wg_size[2]);
+        entrypoints_ptr->pGLDispatchCompute(metaballs_ptr->global_wg_size[0],
+                                            metaballs_ptr->global_wg_size[1],
+                                            metaballs_ptr->global_wg_size[2]);
+
+        metaballs_ptr->is_update_needed = false;
+        result                          = true;
+    } /* if (metaballs_ptr->is_update_needed) */
+
+    return result;
 }
