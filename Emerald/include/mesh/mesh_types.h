@@ -248,7 +248,7 @@ typedef enum
      */
     MESH_LAYER_DATA_STREAM_TYPE_FIRST,
 
-    /* Vertex data. 3-component floats per vertex, no padding in-between */
+    /* Vertex data. N-component floats per vertex, no padding in-between. */
     MESH_LAYER_DATA_STREAM_TYPE_VERTICES = MESH_LAYER_DATA_STREAM_TYPE_FIRST,
 
     /* Normal data. 3-component floats per vertex, no padding in-between */

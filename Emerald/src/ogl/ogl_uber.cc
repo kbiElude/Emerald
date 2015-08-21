@@ -383,12 +383,6 @@ PRIVATE void _ogl_uber_bake_mesh_vao(_ogl_uber* uber_ptr,
     }
 
     /* Retrieve buffer object storage properties. */
-    mesh_get_layer_data_stream_property(mesh,
-                                        0, /* layer_id - please see "sanity check" comment above for explanation */
-                                        MESH_LAYER_DATA_STREAM_TYPE_TEXCOORDS,
-                                        MESH_LAYER_DATA_STREAM_PROPERTY_START_OFFSET,
-                                       &mesh_texcoords_bo_offset);
-
     if (mesh_instance_type == MESH_TYPE_REGULAR)
     {
         /* Regular meshes use the same stride and BO ID for all streams */
@@ -404,19 +398,29 @@ PRIVATE void _ogl_uber_bake_mesh_vao(_ogl_uber* uber_ptr,
         mesh_vertex_bo_id      = mesh_texcoords_bo_id;
         mesh_vertex_bo_stride  = mesh_texcoords_bo_stride;
     }
-    else
+
+    if (uber_ptr->object_uv_attribute_location != -1)
     {
         mesh_get_layer_data_stream_property(mesh,
                                             0, /* layer_id - please see "sanity check" comment above for explanation */
                                             MESH_LAYER_DATA_STREAM_TYPE_TEXCOORDS,
-                                            MESH_LAYER_DATA_STREAM_PROPERTY_GL_BO_ID,
-                                           &mesh_texcoords_bo_id);
-        mesh_get_layer_data_stream_property(mesh,
-                                            0, /* layer_id - please see "sanity check" comment above for explanation */
-                                            MESH_LAYER_DATA_STREAM_TYPE_TEXCOORDS,
-                                            MESH_LAYER_DATA_STREAM_PROPERTY_GL_BO_STRIDE,
-                                           &mesh_texcoords_bo_stride);
-    }
+                                            MESH_LAYER_DATA_STREAM_PROPERTY_START_OFFSET,
+                                           &mesh_texcoords_bo_offset);
+
+        if (mesh_instance_type == MESH_TYPE_GPU_STREAM)
+        {
+            mesh_get_layer_data_stream_property(mesh,
+                                                0, /* layer_id - please see "sanity check" comment above for explanation */
+                                                MESH_LAYER_DATA_STREAM_TYPE_TEXCOORDS,
+                                                MESH_LAYER_DATA_STREAM_PROPERTY_GL_BO_ID,
+                                               &mesh_texcoords_bo_id);
+            mesh_get_layer_data_stream_property(mesh,
+                                                0, /* layer_id - please see "sanity check" comment above for explanation */
+                                                MESH_LAYER_DATA_STREAM_TYPE_TEXCOORDS,
+                                                MESH_LAYER_DATA_STREAM_PROPERTY_GL_BO_STRIDE,
+                                               &mesh_texcoords_bo_stride);
+        }
+    } /* if (uber_ptr->object_uv_attribute_location != -1) */
 
     if (uber_ptr->object_normal_attribute_location != -1)
     {
@@ -435,7 +439,7 @@ PRIVATE void _ogl_uber_bake_mesh_vao(_ogl_uber* uber_ptr,
                                                &mesh_normals_bo_id);
             mesh_get_layer_data_stream_property(mesh,
                                                 0, /* layer_id - please see "sanity check" comment above for explanation */
-                                                MESH_LAYER_DATA_STREAM_TYPE_TEXCOORDS,
+                                                MESH_LAYER_DATA_STREAM_TYPE_NORMALS,
                                                 MESH_LAYER_DATA_STREAM_PROPERTY_GL_BO_STRIDE,
                                                &mesh_normals_bo_stride);
         }
@@ -451,7 +455,7 @@ PRIVATE void _ogl_uber_bake_mesh_vao(_ogl_uber* uber_ptr,
 
         dsa_entrypoints->pGLEnableVertexArrayAttribEXT(vao_ptr->vao_id,
                                                        uber_ptr->object_normal_attribute_location);
-    }
+    } /* if (uber_ptr->object_normal_attribute_location != -1) */
 
     if (uber_ptr->object_vertex_attribute_location != -1)
     {
@@ -486,7 +490,7 @@ PRIVATE void _ogl_uber_bake_mesh_vao(_ogl_uber* uber_ptr,
 
         dsa_entrypoints->pGLEnableVertexArrayAttribEXT(vao_ptr->vao_id,
                                                        uber_ptr->object_vertex_attribute_location);
-    }
+    } /* if (uber_ptr->object_vertex_attribute_location != -1) */
 
     /* A few sanity checks never hurt anyone.. */
     ASSERT_ALWAYS_SYNC(vao_ptr->vao_id != 0,
@@ -2090,27 +2094,6 @@ PUBLIC void ogl_uber_rendering_render_mesh(mesh             mesh_gpu,
                                                         sizeof(float) * 16);
         }
 
-        /* Retrieve mesh index type and convert it to GL equivalent */
-        GLenum           gl_index_type = GL_NONE;
-        _mesh_index_type index_type    = MESH_INDEX_TYPE_UNKNOWN;
-
-        mesh_get_property(mesh_instantiation_parent_gpu,
-                          MESH_PROPERTY_GL_INDEX_TYPE,
-                         &index_type);
-
-        switch (index_type)
-        {
-            case MESH_INDEX_TYPE_UNSIGNED_CHAR:  gl_index_type = GL_UNSIGNED_BYTE;  break;
-            case MESH_INDEX_TYPE_UNSIGNED_SHORT: gl_index_type = GL_UNSIGNED_SHORT; break;
-            case MESH_INDEX_TYPE_UNSIGNED_INT:   gl_index_type = GL_UNSIGNED_INT;   break;
-
-            default:
-            {
-                ASSERT_DEBUG_SYNC(false,
-                                  "Unrecognized mesh index type");
-            }
-        } /* switch (index_type) */
-
         /* Make sure the uniform buffer bindings are fine */
         if (uber_ptr->ub_fs != NULL)
         {
@@ -2398,6 +2381,28 @@ PUBLIC void ogl_uber_rendering_render_mesh(mesh             mesh_gpu,
                  */
                 if (instance_type == MESH_TYPE_REGULAR)
                 {
+                    /* Retrieve mesh index type and convert it to GL equivalent */
+                    GLenum           gl_index_type = GL_NONE;
+                    _mesh_index_type index_type    = MESH_INDEX_TYPE_UNKNOWN;
+
+                    mesh_get_property(mesh_instantiation_parent_gpu,
+                                      MESH_PROPERTY_GL_INDEX_TYPE,
+                                     &index_type);
+
+                    switch (index_type)
+                    {
+                        case MESH_INDEX_TYPE_UNSIGNED_CHAR:  gl_index_type = GL_UNSIGNED_BYTE;  break;
+                        case MESH_INDEX_TYPE_UNSIGNED_SHORT: gl_index_type = GL_UNSIGNED_SHORT; break;
+                        case MESH_INDEX_TYPE_UNSIGNED_INT:   gl_index_type = GL_UNSIGNED_INT;   break;
+
+                        default:
+                        {
+                            ASSERT_DEBUG_SYNC(false,
+                                              "Unrecognized mesh index type");
+                        }
+                    } /* switch (index_type) */
+
+                    /* Proceed with the actual draw call */
                     uint32_t layer_pass_elements_offset = 0;
                     uint32_t layer_pass_index_max_value = 0;
                     uint32_t layer_pass_index_min_value = 0;

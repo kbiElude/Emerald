@@ -575,7 +575,15 @@ PRIVATE void _ogl_scene_renderer_process_mesh_for_forward_rendering(scene_mesh s
         {
             mesh_instantiation_parent_gpu = mesh_gpu;
         }
+    }
+    else
+    {
+        mesh_instantiation_parent_gpu = mesh_gpu;
+    }
 
+    if (mesh_instance_type == MESH_TYPE_GPU_STREAM ||
+        mesh_instance_type == MESH_TYPE_REGULAR)
+    {
         mesh_get_property(mesh_instantiation_parent_gpu,
                           MESH_PROPERTY_MATERIALS,
                          &mesh_materials);
@@ -583,10 +591,6 @@ PRIVATE void _ogl_scene_renderer_process_mesh_for_forward_rendering(scene_mesh s
         system_resizable_vector_get_property(mesh_materials,
                                              SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
                                             &n_mesh_materials);
-    }
-    else
-    {
-        mesh_instantiation_parent_gpu = mesh_gpu;
     }
 
     /* Perform frustum culling to make sure it actually makes sense to render
@@ -1073,6 +1077,14 @@ PRIVATE void _ogl_scene_renderer_render_traversed_scene_graph(_ogl_scene_rendere
 
             /* Depending on the pass, we may either need to use render mode-specific ogl_uber instance,
              * or one that corresponds to the current material. */
+            system_hash64map_get_element_at(renderer_ptr->regular_mesh_ubers_map,   /* TEMP TEMP TEMP TEMP ???*/
+                                            n_iteration,
+                                           &uber_details_ptr,
+                                           &material_hash);
+
+            ASSERT_DEBUG_SYNC(material_hash != 0,
+                              "No ogl_uber instance available!");
+
             if (use_material_uber)
             {
                 /* Retrieve ogl_uber instance */
@@ -1084,12 +1096,7 @@ PRIVATE void _ogl_scene_renderer_render_traversed_scene_graph(_ogl_scene_rendere
                 ASSERT_DEBUG_SYNC(material_hash != 0,
                                   "No ogl_uber instance available!");
 
-                material_uber     = (ogl_uber) material_hash;
-                n_iteration_items = 0;
-
-                system_resizable_vector_get_property(uber_details_ptr->regular_mesh_items,
-                                                     SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
-                                                    &n_iteration_items);
+                material_uber = (ogl_uber) material_hash;
 
                 /* Make sure its configuration takes the frame-specific light configuration into account. */
                 _ogl_scene_renderer_update_ogl_uber_light_properties(material_uber,
@@ -1120,6 +1127,13 @@ PRIVATE void _ogl_scene_renderer_render_traversed_scene_graph(_ogl_scene_rendere
                 ASSERT_DEBUG_SYNC(material_uber != NULL,
                                   "No ogl_uber instance available!");
             }
+
+            /* TEMP TEMP TEMP ?? CHECK WITH SM ON */
+            n_iteration_items = 0;
+
+            system_resizable_vector_get_property(uber_details_ptr->regular_mesh_items,
+                                                 SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                                &n_iteration_items);
 
             /* Update global properties of ogl_uber's vertex shader  */
             ogl_uber_set_shader_general_property(material_uber,
@@ -1213,30 +1227,27 @@ PRIVATE void _ogl_scene_renderer_render_traversed_scene_graph(_ogl_scene_rendere
             ogl_uber_rendering_stop(material_uber);
 
             /* Clean up */
-            if (use_material_uber)
+            _ogl_scene_renderer_mesh_uber_item* mesh_ptr = NULL;
+
+            while (system_resizable_vector_pop(uber_details_ptr->regular_mesh_items,
+                                              &mesh_ptr) )
             {
-                _ogl_scene_renderer_mesh_uber_item* mesh_ptr = NULL;
-
-                while (system_resizable_vector_pop(uber_details_ptr->regular_mesh_items,
-                                                  &mesh_ptr) )
+                if (mesh_ptr->model_matrix != NULL)
                 {
-                    if (mesh_ptr->model_matrix != NULL)
-                    {
-                        system_matrix4x4_release(mesh_ptr->model_matrix);
+                    system_matrix4x4_release(mesh_ptr->model_matrix);
 
-                        mesh_ptr->model_matrix = NULL;
-                    }
-
-                    if (mesh_ptr->normal_matrix != NULL)
-                    {
-                        system_matrix4x4_release(mesh_ptr->normal_matrix);
-
-                        mesh_ptr->normal_matrix = NULL;
-                    }
-
-                    system_resource_pool_return_to_pool(renderer_ptr->mesh_uber_items_pool,
-                                                        (system_resource_pool_block) mesh_ptr);
+                    mesh_ptr->model_matrix = NULL;
                 }
+
+                if (mesh_ptr->normal_matrix != NULL)
+                {
+                    system_matrix4x4_release(mesh_ptr->normal_matrix);
+
+                    mesh_ptr->normal_matrix = NULL;
+                }
+
+                system_resource_pool_return_to_pool(renderer_ptr->mesh_uber_items_pool,
+                                                    (system_resource_pool_block) mesh_ptr);
             }
         } /* for (all required rendering passes <depth pre-pass, rendering pass>) */
     } /* for (all uber instances) */

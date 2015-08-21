@@ -676,13 +676,13 @@ PRIVATE void _mesh_marchingcubes_init_mesh_instance(_mesh_marchingcubes* mesh_pt
                                                   MESH_LAYER_DATA_STREAM_TYPE_NORMALS,
                                                   mesh_ptr->polygonized_data_bo_id,
                                                   mesh_ptr->polygonized_data_bo_start_offset + sizeof(float) * 4,
-                                                  sizeof(float) * 6); /* bo_stride */
+                                                  sizeof(float) * 7); /* bo_stride */
     mesh_add_layer_data_stream_from_buffer_memory(mesh_ptr->mesh_instance,
                                                   new_layer_id,
                                                   MESH_LAYER_DATA_STREAM_TYPE_VERTICES,
                                                   mesh_ptr->polygonized_data_bo_id,
                                                   mesh_ptr->polygonized_data_bo_start_offset,
-                                                  sizeof(float) * 6); /* bo_stride */
+                                                  sizeof(float) * 7); /* bo_stride */
 }
 
 /** TODO */
@@ -698,8 +698,6 @@ PRIVATE void _mesh_marchingcubes_init_polygonizer_po(_mesh_marchingcubes* mesh_p
                           "layout(packed) uniform dataUB\n"
                           "{\n"
                           "    float isolevel;\n"
-                          "    mat4  mvp;\n"
-                          "    mat4  normal_matrix;\n"
                           "};\n"
                           "\n"
                           "layout(std430) buffer indirect_draw_callSSB\n"
@@ -715,8 +713,8 @@ PRIVATE void _mesh_marchingcubes_init_polygonizer_po(_mesh_marchingcubes* mesh_p
                           "\n"
                           "layout(std430) writeonly buffer result_dataSSB\n"
                           "{\n"
-                          /* 4 floats: vertex data (clip space)
-                           * 2 floats: normal data */
+                          /* 4 floats: vertex data (model space). We need to include W since some of the vertices need to be discarded.
+                           * 3 floats: normal data (model space) */
                           "    restrict float result_data[];\n"
                           "};\n"
                           "\n"
@@ -732,7 +730,7 @@ PRIVATE void _mesh_marchingcubes_init_polygonizer_po(_mesh_marchingcubes* mesh_p
                           "                           in  uint  base_index1,\n"
                           "                           in  uint  base_index2,"
                           "                           out vec3  result_normal,\n"
-                          "                           out vec4  result_vertex)\n"
+                          "                           out vec3  result_vertex)\n"
                           "{\n"
                           /* TODO: Use the improved version? */
                           "    uvec3 vertex1_preceding_step_size  = uvec3(clamp(base_index1 - BLOB_SIZE_X / 10 * 1,               0, BLOB_SIZE_X * BLOB_SIZE_Y * BLOB_SIZE_Z - 1),\n"
@@ -767,21 +765,21 @@ PRIVATE void _mesh_marchingcubes_init_polygonizer_po(_mesh_marchingcubes* mesh_p
                           "    if (abs(isolevel      - vertex1_value) < 1e-5 ||\n"
                           "        abs(vertex1_value - vertex2_value) < 1e-5)\n"
                           "    {\n"
-                          "        result_normal = normalize( (normal_matrix * vec4(vertex1_normal, 1.0) ).xyz);\n"
-                          "        result_vertex = mvp * vec4(vertex1, 1.0);\n"
+                          "        result_normal = normalize(vertex1_normal);\n"
+                          "        result_vertex = vertex1;\n"
                           "    }\n"
                           "    else\n"
                           "    if (abs(isolevel - vertex2_value) < 1e-5)\n"
                           "    {\n"
-                          "        result_normal = normalize( (normal_matrix * vec4(vertex2_normal, 1.0) ).xyz);\n"
-                          "        result_vertex = mvp * vec4(vertex2, 1.0);\n"
+                          "        result_normal = normalize(vertex2_normal);\n"
+                          "        result_vertex = vertex2;\n"
                           "    }\n"
                           "    else\n"
                           "    {\n"
                           "        float coeff = (isolevel - vertex1_value) / (vertex2_value - vertex1_value);\n"
                           "\n"
-                          "        result_normal = normalize((normal_matrix * vec4(vertex1_normal + vec3(coeff) * (vertex2_normal - vertex1_normal), 1.0)).xyz);\n"
-                          "        result_vertex =            mvp           * vec4(vertex1        + vec3(coeff) * (vertex2        - vertex1),        1.0);\n"
+                          "        result_normal = vertex1_normal + vec3(coeff) * (vertex2_normal - vertex1_normal);\n"
+                          "        result_vertex = vertex1        + vec3(coeff) * (vertex2        - vertex1);\n"
                           "    }\n"
                           "}\n"
                           "\n"
@@ -870,7 +868,7 @@ PRIVATE void _mesh_marchingcubes_init_polygonizer_po(_mesh_marchingcubes* mesh_p
                            *               7<-6
                            */
                           "          vec3 lerped_normal_list[12];\n"
-                          "          vec4 lerped_vertex_list[12];\n"
+                          "          vec3 lerped_vertex_list[12];\n"
                           "    const vec3 vertex_model      [8] =\n"
                           "    {\n"
                           /* 0: */
@@ -1060,7 +1058,7 @@ PRIVATE void _mesh_marchingcubes_init_polygonizer_po(_mesh_marchingcubes* mesh_p
                           "                      n_vertex++)\n"
                           "            {\n"
                           /* Just discard the vertex..*/
-                          "                result_data[(n_result_triangle_start_vertex + n_vertex) * 6 + 3] = 0.0;\n"
+                          "                result_data[(n_result_triangle_start_vertex + n_vertex) * 7 + 3] = 0.0;\n"
                           "            }\n"
                           "        }\n"
                           "        else\n"
@@ -1070,14 +1068,15 @@ PRIVATE void _mesh_marchingcubes_init_polygonizer_po(_mesh_marchingcubes* mesh_p
                           "        {\n"
                           "            const int  list_index     = triangle_table    [ n_triangle_base_vertex + n_vertex ];\n"
                           "            const vec3 current_normal = lerped_normal_list[ list_index ];\n"
-                          "            const vec4 current_vertex = lerped_vertex_list[ list_index ];\n"
+                          "            const vec3 current_vertex = lerped_vertex_list[ list_index ];\n"
                           "\n"
-                          "            result_data[(n_result_triangle_start_vertex + n_vertex) * 6 + 0] = current_vertex.x;\n"
-                          "            result_data[(n_result_triangle_start_vertex + n_vertex) * 6 + 1] = current_vertex.y;\n"
-                          "            result_data[(n_result_triangle_start_vertex + n_vertex) * 6 + 2] = current_vertex.z;\n"
-                          "            result_data[(n_result_triangle_start_vertex + n_vertex) * 6 + 3] = current_vertex.w;\n"
-                          "            result_data[(n_result_triangle_start_vertex + n_vertex) * 6 + 4] = current_normal.x;\n"
-                          "            result_data[(n_result_triangle_start_vertex + n_vertex) * 6 + 5] = current_normal.y;\n"
+                          "            result_data[(n_result_triangle_start_vertex + n_vertex) * 7 + 0] = current_vertex.x;\n"
+                          "            result_data[(n_result_triangle_start_vertex + n_vertex) * 7 + 1] = current_vertex.y;\n"
+                          "            result_data[(n_result_triangle_start_vertex + n_vertex) * 7 + 2] = current_vertex.z;\n"
+                          "            result_data[(n_result_triangle_start_vertex + n_vertex) * 7 + 3] = 1.0;\n"
+                          "            result_data[(n_result_triangle_start_vertex + n_vertex) * 7 + 4] = current_normal.x;\n"
+                          "            result_data[(n_result_triangle_start_vertex + n_vertex) * 7 + 5] = current_normal.y;\n"
+                          "            result_data[(n_result_triangle_start_vertex + n_vertex) * 7 + 6] = current_normal.z;\n"
                           "        }\n"
                           "    }\n"
                           "}\n";
@@ -1172,7 +1171,7 @@ PRIVATE void _mesh_marchingcubes_init_polygonizer_po(_mesh_marchingcubes* mesh_p
     mesh_ptr->polygonized_data_bo_size = mesh_ptr->grid_size[0] * mesh_ptr->grid_size[1] * mesh_ptr->grid_size[2] *
                                          5 /* triangles */                                                        *
                                          3 /* vertices */                                                         *
-                                         6 /* vertex + nonnormalized normal data components */                    *
+                                         7 /* vertex + model space normal data components */                      *
                                          sizeof(float)                                                            /
                                          mesh_ptr->polygonized_data_size_reduction;
 
@@ -1559,7 +1558,7 @@ PUBLIC EMERALD_API void mesh_marchingcubes_set_property(mesh_marchingcubes      
         {
             float new_isolevel = *(float*) data;
 
-            if (abs(mesh_ptr->isolevel - new_isolevel) < 1e-5f)
+            if (abs(mesh_ptr->isolevel - new_isolevel) > 1e-5f)
             {
                 mesh_ptr->isolevel             = new_isolevel;
                 mesh_ptr->needs_polygonization = true;

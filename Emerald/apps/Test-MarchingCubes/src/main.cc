@@ -209,6 +209,12 @@ PRIVATE void _rendering_handler(ogl_context context,
     ogl_flyby_update(_context_flyby);
 
     /* Update the metaballs */
+    float new_isolevel = sin( float(frame_time % 500) / float(1250.0f) * 0.5f);
+
+    mesh_marchingcubes_set_property(_marching_cubes,
+                                    MESH_MARCHINGCUBES_PROPERTY_ISOLEVEL,
+                                   &new_isolevel);
+
     scalar_field_metaballs_update(_metaballs);
     mesh_marchingcubes_polygonize(_marching_cubes);
 
@@ -217,14 +223,11 @@ PRIVATE void _rendering_handler(ogl_context context,
                            OGL_FLYBY_PROPERTY_VIEW_MATRIX,
                           &_view_matrix);
 
-    entrypoints_ptr->pGLClearColor(1.0f, 0.0f, 0.0f, 0.0f);
-    entrypoints_ptr->pGLClear(GL_COLOR_BUFFER_BIT);
-
     ogl_scene_renderer_render_scene_graph(_scene_renderer,
                                           _view_matrix,
                                           _projection_matrix,
                                           _scene_camera,
-                                          RENDER_MODE_FORWARD_WITHOUT_DEPTH_PREPASS,
+                                          RENDER_MODE_NORMALS_ONLY,
                                           false, /* apply_shadow_mapping */
                                           HELPER_VISUALIZATION_BOUNDING_BOXES,
                                           frame_time);

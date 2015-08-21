@@ -134,6 +134,7 @@ typedef struct _mesh_material
         object_manager_path    = NULL;
         owner_scene            = NULL;
         program                = NULL;
+        shading                = MESH_MATERIAL_SHADING_PHONG;
         source_scene_material  = NULL;
         temp_variant_float     = system_variant_create(SYSTEM_VARIANT_FLOAT);
         type                   = MESH_MATERIAL_TYPE_UNDEFINED;
@@ -1599,6 +1600,26 @@ PUBLIC bool mesh_material_is_a_match_to_mesh_material(mesh_material material_a,
                 break;
             }
 
+            case MESH_MATERIAL_PROPERTY_ATTACHMENT_INPUT_FRAGMENT_ATTRIBUTE:
+            {
+                mesh_material_input_fragment_attribute material_a_props;
+                mesh_material_input_fragment_attribute material_b_props;
+
+                mesh_material_get_shading_property_value_input_fragment_attribute(material_a,
+                                                                                  property,
+                                                                                 &material_a_props);
+                mesh_material_get_shading_property_value_input_fragment_attribute(material_b,
+                                                                                  property,
+                                                                                 &material_b_props);
+
+                if (material_a_props != material_b_props)
+                {
+                    goto end;
+                }
+
+                break;
+            }
+
             case MESH_MATERIAL_PROPERTY_ATTACHMENT_TEXTURE:
             {
                 ogl_texture_dimensionality material_a_dimensionality;
@@ -1641,7 +1662,9 @@ PUBLIC bool mesh_material_is_a_match_to_mesh_material(mesh_material material_a,
 
             default:
             {
-                ASSERT_ALWAYS_SYNC(false, "Unrecognized material property attachment [%d]", material_a_attachment);
+                ASSERT_ALWAYS_SYNC(false,
+                                   "Unrecognized material property attachment [%d]",
+                                   material_a_attachment);
             }
         } /* switch (material_a_attachment) */
     } /* for (all material properties) */
