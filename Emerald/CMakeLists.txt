@@ -103,6 +103,8 @@ FILE(GLOB PostProcessingIncludes "${EMERALD_SOURCE_DIR}/include/postprocessing/*
 FILE(GLOB PostProcessingSources  "${EMERALD_SOURCE_DIR}/src/postprocessing/*.cc")
 FILE(GLOB ProceduralIncludes     "${EMERALD_SOURCE_DIR}/include/procedural/*.h")
 FILE(GLOB ProceduralSources      "${EMERALD_SOURCE_DIR}/src/procedural/*.cc")
+FILE(GLOB ScalarFieldIncludes    "${EMERALD_SOURCE_DIR}/include/scalar_field/*.h")
+FILE(GLOB ScalarFieldSources     "${EMERALD_SOURCE_DIR}/src/scalar_field/*.cc")
 FILE(GLOB SceneIncludes          "${EMERALD_SOURCE_DIR}/include/scene/*.h")
 FILE(GLOB SceneSources           "${EMERALD_SOURCE_DIR}/src/scene/*.cc")
 FILE(GLOB ShadersIncludes        "${EMERALD_SOURCE_DIR}/include/shaders/*.h")
@@ -167,7 +169,8 @@ SET(AllSources
                ${MeshSources}
                ${OpenCLSources}
                ${TextureSources}
-               ${DemoSources})
+               ${DemoSources}
+               ${ScalarFieldSources})
 
 ADD_MSVC_PRECOMPILED_HEADER("shared.h" "src/shared.cc" AllSources)
 
@@ -206,6 +209,7 @@ ADD_LIBRARY(EMERALD SHARED ${AllSources}
                            ${OpenCLIncludes}
                            ${TextureIncludes}
                            ${DemoIncludes}
+                           ${ScalarFieldIncludes}
                             Emerald.rc)
 
 GENERATE_EXPORT_HEADER(EMERALD
@@ -242,6 +246,8 @@ SOURCE_GROUP ("Post-processing includes" FILES ${PostProcessingIncludes})
 SOURCE_GROUP ("Post-processing sources"  FILES ${PostProcessingSources})
 SOURCE_GROUP ("Procedural includes"      FILES ${ProceduralIncludes})
 SOURCE_GROUP ("Procedural sources"       FILES ${ProceduralSources})
+SOURCE_GROUP ("Scalar field includes"    FILES ${ScalarFieldIncludes})
+SOURCE_GROUP ("Scalar field sources"     FILES ${ScalarFieldSources})
 SOURCE_GROUP ("Scene includes"           FILES ${SceneIncludes})
 SOURCE_GROUP ("Scene sources"            FILES ${SceneSources})
 SOURCE_GROUP ("Shaders includes"         FILES ${ShadersIncludes})

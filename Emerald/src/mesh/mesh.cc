@@ -3739,8 +3739,9 @@ PUBLIC EMERALD_API bool mesh_get_property(mesh          instance,
                                               property == MESH_PROPERTY_MODEL_AABB_MIN                   ||
                                               property == MESH_PROPERTY_TYPE);
 
-        ASSERT_DEBUG_SYNC(mesh_ptr->type == MESH_TYPE_CUSTOM  && ( is_custom_mesh_property || is_shared_mesh_property) ||
-                          mesh_ptr->type == MESH_TYPE_REGULAR && (!is_custom_mesh_property || is_shared_mesh_property),
+        ASSERT_DEBUG_SYNC(mesh_ptr->type == MESH_TYPE_CUSTOM     && ( is_custom_mesh_property || is_shared_mesh_property) ||
+                          mesh_ptr->type == MESH_TYPE_GPU_STREAM && (!is_custom_mesh_property || is_shared_mesh_property) ||
+                          mesh_ptr->type == MESH_TYPE_REGULAR    && (!is_custom_mesh_property || is_shared_mesh_property),
                           "An invalid query was used for a mesh_get_property() call");
     }
     #endif /* _DEBUG */

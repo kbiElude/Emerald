@@ -1,10 +1,13 @@
 /**
  *
- * Emerald (kbi/elude @2012-2014)
+ * Emerald (kbi/elude @2012-2015)
  *
  */
 #ifndef MESH_TYPES_H
 #define MESH_TYPES_H
+
+#include "ogl/ogl_types.h"
+
 
 DECLARE_HANDLE(mesh);
 DECLARE_HANDLE(mesh_material);

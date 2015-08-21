@@ -56,6 +56,7 @@ static system_hashed_ansi_string _object_type_programs_curve_editor_lerp_hashed_
 static system_hashed_ansi_string _object_type_programs_curve_editor_quadselector_hashed_ansi_string    = NULL;
 static system_hashed_ansi_string _object_type_programs_curve_editor_static_hashed_ansi_string          = NULL;
 static system_hashed_ansi_string _object_type_programs_curve_editor_tcb_hashed_ansi_string             = NULL;
+static system_hashed_ansi_string _object_type_scalar_field_metaballs_hashed_ansi_string                = NULL;
 static system_hashed_ansi_string _object_type_scene_hashed_ansi_string                                 = NULL;
 static system_hashed_ansi_string _object_type_scene_camera_hashed_ansi_string                          = NULL;
 static system_hashed_ansi_string _object_type_scene_curve_hashed_ansi_string                           = NULL;
@@ -134,6 +135,7 @@ PUBLIC system_hashed_ansi_string object_manager_convert_object_manager_object_ty
         case OBJECT_TYPE_PROGRAMS_CURVE_EDITOR_QUADSELECTOR:              return _object_type_programs_curve_editor_quadselector_hashed_ansi_string;
         case OBJECT_TYPE_PROGRAMS_CURVE_EDITOR_STATIC:                    return _object_type_programs_curve_editor_static_hashed_ansi_string;
         case OBJECT_TYPE_PROGRAMS_CURVE_EDITOR_TCB:                       return _object_type_programs_curve_editor_tcb_hashed_ansi_string;
+        case OBJECT_TYPE_SCALAR_FIELD_METABALLS:                          return _object_type_scalar_field_metaballs_hashed_ansi_string;
         case OBJECT_TYPE_SCENE:                                           return _object_type_scene_hashed_ansi_string;
         case OBJECT_TYPE_SCENE_CAMERA:                                    return _object_type_scene_camera_hashed_ansi_string;
         case OBJECT_TYPE_SCENE_CURVE:                                     return _object_type_scene_curve_hashed_ansi_string;
@@ -384,6 +386,7 @@ PUBLIC void _object_manager_init()
     _object_type_programs_curve_editor_quadselector_hashed_ansi_string    = system_hashed_ansi_string_create("Curve Editor Programs (Quad Selector)");
     _object_type_programs_curve_editor_static_hashed_ansi_string          = system_hashed_ansi_string_create("Curve Editor Programs (Static)");
     _object_type_programs_curve_editor_tcb_hashed_ansi_string             = system_hashed_ansi_string_create("Curve Editor Programs (TCB)");
+    _object_type_scalar_field_metaballs_hashed_ansi_string                = system_hashed_ansi_string_create("Scalar Field (Metaballs)");
     _object_type_scene_hashed_ansi_string                                 = system_hashed_ansi_string_create("Scenes");
     _object_type_scene_camera_hashed_ansi_string                          = system_hashed_ansi_string_create("Scene Cameras");
     _object_type_scene_curve_hashed_ansi_string                           = system_hashed_ansi_string_create("Scene Curves");
