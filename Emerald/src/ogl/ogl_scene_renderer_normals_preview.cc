@@ -379,6 +379,7 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_scene_renderer_normals_preview_render(ogl
     unsigned int                         mesh_bo_size             = 0;
     unsigned int                         mesh_bo_start_offset     = -1;
     mesh                                 mesh_instance            = NULL;
+    mesh_type                            mesh_instance_type;
     uint32_t                             mesh_start_offset_normal = -1;
     uint32_t                             mesh_start_offset_vertex = -1;
     uint32_t                             mesh_stride              = -1;
@@ -400,6 +401,15 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_scene_renderer_normals_preview_render(ogl
                                             mesh_id,
                                            &normal_matrix);
 
+    /* Only regular meshes are supported at the moment. Throw an assertion failure for other
+     * mesh types. */
+    mesh_get_property(mesh_instance,
+                      MESH_PROPERTY_TYPE,
+                     &mesh_instance_type);
+
+    ASSERT_DEBUG_SYNC(mesh_instance_type == MESH_TYPE_REGULAR,
+                      "Only regular meshes are supported for the normals preview.");
+
     /* Retrieve start offsets & stride information */
     mesh_get_property(mesh_instance,
                       MESH_PROPERTY_GL_BO_ID,
@@ -418,10 +428,12 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_scene_renderer_normals_preview_render(ogl
                      &mesh_total_elements);
 
     mesh_get_layer_data_stream_property(mesh_instance,
+                                        0, /* layer_id - irrelevant for regular meshes */
                                         MESH_LAYER_DATA_STREAM_TYPE_NORMALS,
                                         MESH_LAYER_DATA_STREAM_PROPERTY_START_OFFSET,
                                        &mesh_start_offset_normal);
     mesh_get_layer_data_stream_property(mesh_instance,
+                                        0, /* layer_id - irrelevant for regular meshes */
                                         MESH_LAYER_DATA_STREAM_TYPE_VERTICES,
                                         MESH_LAYER_DATA_STREAM_PROPERTY_START_OFFSET,
                                        &mesh_start_offset_vertex);

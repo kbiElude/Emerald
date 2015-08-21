@@ -20,8 +20,17 @@
  *
  * A special type of a mesh. It does not support any of the logic described above. However, at creation time, a func ptr
  * must be provided, which will be used at draw call time to render the object.
- * In a bigger picture, this lets you build a scene graph with meshes, who are rendered in a customized manner.
+ * In a bigger picture, this lets you build a scene graph with meshes, which are then rendered in a customized manner.
  *
+ * [GPU stream meshes]
+ *
+ * A special type of a mesh. Follows the layer & the layer pass patterns described above. However, the data stream contents
+ * needs to be provided via buffer memory regions, which the user is obliged to fill with data.
+ * Furthermore, the user must specify Graphics API draw call type and relevant draw call argument values which should
+ * be used in order to render each mesh layer pass.
+ *
+ * TODO: Due to how VAO management is implemented, only ONE layer may be created for the GPU stream meshes. This should not
+ *       be an extremely painful limitation and can be fixed when necessary.
  */
 #ifndef MESH_H
 #define MESH_H
@@ -42,41 +51,75 @@ typedef enum
     MESH_INDEX_TYPE_UNKNOWN
 } _mesh_index_type;
 
-typedef void (*PFNGETCUSTOMMESHAABBPROC)(const void*            user_arg,
-                                         float*                 out_aabb_model_vec3_min,
-                                         float*                 out_aabb_model_vec3_max);
-typedef void (*PFNRENDERCUSTOMMESHPROC) (ogl_context            context,
-                                         const void*            user_arg,
-                                         const system_matrix4x4 model_matrix,
-                                         const system_matrix4x4 vp_matrix,
-                                         const system_matrix4x4 normal_matrix,
-                                         bool                   is_depth_prepass);
+typedef void (*PFNGETMESHAABBPROC)     (const void*            user_arg,
+                                        float*                 out_aabb_model_vec3_min,
+                                        float*                 out_aabb_model_vec3_max);
+typedef void (*PFNRENDERCUSTOMMESHPROC)(ogl_context            context,
+                                        const void*            user_arg,
+                                        const system_matrix4x4 model_matrix,
+                                        const system_matrix4x4 vp_matrix,
+                                        const system_matrix4x4 normal_matrix,
+                                        bool                   is_depth_prepass);
 
 
 /** TODO
  *
- *  NOTE: Can only be called against regular meshes.
+ *  NOTE: Only one layer can be added for GPU stream meshes. Please see documentation
+ *        at the top of this file for more details.
+ *  NOTE: Can only be called against regular and GPU stream meshes.
  */
 PUBLIC EMERALD_API mesh_layer_id mesh_add_layer(mesh);
+
+/** TODO.
+ *
+ *  NOTE: Can only be called against GPU stream meshes.
+ */
+PUBLIC EMERALD_API void mesh_add_layer_data_stream_from_buffer_memory(mesh                        mesh,
+                                                                      mesh_layer_id               layer_id,
+                                                                      mesh_layer_data_stream_type type,
+                                                                      unsigned int                n_components,
+                                                                      GLuint                      bo_id,
+                                                                      unsigned int                bo_start_offset,
+                                                                      unsigned int                bo_stride);
 
 /** TODO. Data is copied to internal storage, so all pointers can be freed after this func is called.
  *
  *  NOTE: Can only be called against regular meshes.
  */
-PUBLIC EMERALD_API void mesh_add_layer_data_stream(mesh                        mesh,
-                                                   mesh_layer_id               layer_id,
-                                                   mesh_layer_data_stream_type type,
-                                                   unsigned int                n_items,
-                                                   const void*                 data);
+PUBLIC EMERALD_API void mesh_add_layer_data_stream_from_client_memory(mesh                        mesh,
+                                                                      mesh_layer_id               layer_id,
+                                                                      mesh_layer_data_stream_type type,
+                                                                      unsigned int                n_components,
+                                                                      unsigned int                n_items,
+                                                                      const void*                 data);
+
+/** TODO
+ *
+ *  NOTE: Can only be called against GPU stream meshes.
+ *
+ *  @param mesh_instance                 TODO
+ *  @param layer_id                      TODO
+ *  @param material                      TODO
+ *  @param draw_call_type                Type of the draw call which should be used to render the layer pass.
+ *  @param draw_call_argument_values_ptr Pointer to a structure specifying draw call argument values. These
+ *                                       values can be changed later by calling mesh_set_layer_pass_property().
+ *
+ *  @return TODO
+ */
+PUBLIC EMERALD_API mesh_layer_pass_id mesh_add_layer_pass_for_gpu_stream_mesh(mesh                            mesh_instance,
+                                                                              mesh_layer_id                   layer_id,
+                                                                              mesh_material                   material,
+                                                                              mesh_draw_call_type             draw_call_type,
+                                                                              const mesh_draw_call_arguments* draw_call_argument_values_ptr);
 
 /** TODO
  *
  *  NOTE: Can only be called against regular meshes.
  */
-PUBLIC EMERALD_API mesh_layer_pass_id mesh_add_layer_pass(mesh          mesh_instance,
-                                                          mesh_layer_id layer_id,
-                                                          mesh_material material,
-                                                          uint32_t      n_elements);
+PUBLIC EMERALD_API mesh_layer_pass_id mesh_add_layer_pass_for_regular_mesh(mesh          mesh_instance,
+                                                                           mesh_layer_id layer_id,
+                                                                           mesh_material material,
+                                                                           uint32_t      n_elements);
 
 /** TODO.
  *
@@ -87,21 +130,26 @@ PUBLIC EMERALD_API mesh_layer_pass_id mesh_add_layer_pass(mesh          mesh_ins
   *
   *  NOTE: Can only be called against regular meshes.
   */
-PUBLIC EMERALD_API bool mesh_add_layer_pass_index_data(mesh                        mesh_instance,
-                                                       mesh_layer_id               layer_id,
-                                                       mesh_layer_pass_id          layer_pass_id,
-                                                       mesh_layer_data_stream_type stream_type,
-                                                       unsigned int                set_id,
-                                                       const void*                 index_data,
-                                                       unsigned int                min_index,
-                                                       unsigned int                max_index);
+PUBLIC EMERALD_API bool mesh_add_layer_pass_index_data_for_regular_mesh(mesh                        mesh_instance,
+                                                                        mesh_layer_id               layer_id,
+                                                                        mesh_layer_pass_id          layer_pass_id,
+                                                                        mesh_layer_data_stream_type stream_type,
+                                                                        unsigned int                set_id,
+                                                                        const void*                 index_data,
+                                                                        unsigned int                min_index,
+                                                                        unsigned int                max_index);
 
 /** TODO */
 PUBLIC EMERALD_API mesh mesh_create_custom_mesh(PFNRENDERCUSTOMMESHPROC   pfn_render_custom_mesh_proc,
                                                 void*                     render_custom_mesh_proc_user_arg,
-                                                PFNGETCUSTOMMESHAABBPROC  pfn_get_custom_mesh_aabb_proc,
+                                                PFNGETMESHAABBPROC        pfn_get_custom_mesh_aabb_proc,
                                                 void*                     get_custom_mesh_aabb_proc_user_arg,
                                                 system_hashed_ansi_string name);
+
+/** TODO */
+PUBLIC EMERALD_API mesh mesh_create_gpu_stream_mesh(PFNGETMESHAABBPROC        pfn_get_gpu_stream_mesh_aabb_proc,
+                                                    void*                     get_gpu_stream_mesh_aabb_user_arg,
+                                                    system_hashed_ansi_string name);
 
 /** TODO */
 PUBLIC EMERALD_API mesh mesh_create_regular_mesh(mesh_creation_flags       flags,
@@ -154,13 +202,6 @@ PUBLIC EMERALD_API void mesh_generate_normal_data(mesh mesh);
  *
  *  NOTE: Can only be called against regular meshes.
  */
-PUBLIC EMERALD_API uint32_t mesh_get_amount_of_layer_passes(mesh          instance,
-                                                            mesh_layer_id layer_id);
-
-/** TODO
- *
- *  NOTE: Can only be called against regular meshes.
- */
 PUBLIC EMERALD_API void mesh_get_layer_data_stream_data(mesh                        mesh,
                                                         mesh_layer_id               layer_id,
                                                         mesh_layer_data_stream_type type,
@@ -169,16 +210,17 @@ PUBLIC EMERALD_API void mesh_get_layer_data_stream_data(mesh                    
 
 /** TODO
  *
- *  NOTE: Can only be called against regular meshes.
+ *  NOTE: Can only be called against GPU stream & regular meshes.
  */
-PUBLIC EMERALD_API void mesh_get_layer_data_stream_property(mesh                            mesh,
+PUBLIC EMERALD_API bool mesh_get_layer_data_stream_property(mesh                            mesh,
+                                                            mesh_layer_id                   layer_id,
                                                             mesh_layer_data_stream_type     type,
                                                             mesh_layer_data_stream_property property,
                                                             void*                           out_result_ptr);
 
 /** TODO
  *
- *  NOTE: Can only be called against regular meshes.
+ *  NOTE: Can only be called against GPU stream & regular meshes.
  */
 PUBLIC EMERALD_API bool mesh_get_layer_pass_property(mesh                instance,
                                                      uint32_t            n_layer,
@@ -188,7 +230,14 @@ PUBLIC EMERALD_API bool mesh_get_layer_pass_property(mesh                instanc
 
 /** TODO
  *
- *  NOTE: Most of the properties only be queried for regular meshes.
+ *  NOTE: Can only be called against GPU stream & regular meshes.
+ */
+PUBLIC EMERALD_API uint32_t mesh_get_number_of_layer_passes(mesh          instance,
+                                                            mesh_layer_id layer_id);
+
+/** TODO
+ *
+ *  NOTE: Most of the properties are only queriable for regular meshes.
  */
 PUBLIC EMERALD_API bool mesh_get_property(mesh          instance,
                                           mesh_property property,

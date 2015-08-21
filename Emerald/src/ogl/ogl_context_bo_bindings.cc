@@ -813,7 +813,7 @@ PUBLIC void ogl_context_bo_bindings_set_binding_range(ogl_context_bo_bindings bi
 
     #ifdef _DEBUG
     {
-        /* Perform alignment sanity checks.
+        /* Perform the binding's alignment & size sanity checks.
          *
          * TODO: These checks should actually be executed upon a draw call as a part of the validation.
          *       However, that would be too costly. Since we're doing this specifically for early-debugging
@@ -825,6 +825,8 @@ PUBLIC void ogl_context_bo_bindings_set_binding_range(ogl_context_bo_bindings bi
             {
                 ASSERT_DEBUG_SYNC( (offset % bindings_ptr->limits_ptr->shader_storage_buffer_offset_alignment) == 0,
                                   "A misaligned SSBO ranged binding was detected.");
+                ASSERT_DEBUG_SYNC( size <= bindings_ptr->limits_ptr->max_shader_storage_block_size,
+                                   "An attempt to bind an excessively large shader storage block was detected.");
 
                 break;
             }
@@ -833,6 +835,8 @@ PUBLIC void ogl_context_bo_bindings_set_binding_range(ogl_context_bo_bindings bi
             {
                 ASSERT_DEBUG_SYNC( (offset % bindings_ptr->limits_ptr->texture_buffer_offset_alignment) == 0,
                                   "A misaligned TBO ranged binding was detected.");
+                ASSERT_DEBUG_SYNC( size <= bindings_ptr->limits_ptr->max_texture_buffer_size,
+                                   "An attempt to bind an excessively large texture buffer was detected.");
 
                 break;
             }
@@ -841,6 +845,8 @@ PUBLIC void ogl_context_bo_bindings_set_binding_range(ogl_context_bo_bindings bi
             {
                 ASSERT_DEBUG_SYNC( (offset % bindings_ptr->limits_ptr->uniform_buffer_offset_alignment) == 0,
                                   "A misaligned UBO ranged binding was detected.");
+                ASSERT_DEBUG_SYNC( size <= bindings_ptr->limits_ptr->max_uniform_block_size,
+                                   "An attempt to bind an excessively large uniform block was detected.");
 
                 break;
             }

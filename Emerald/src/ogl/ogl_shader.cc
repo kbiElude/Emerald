@@ -326,8 +326,9 @@ PUBLIC EMERALD_API bool ogl_shader_set_body(ogl_shader                shader,
 {
     bool         result     = false;
     _ogl_shader* shader_ptr = (_ogl_shader*) shader;
-    
-    if (body != NULL && system_hashed_ansi_string_get_length(body) > 0)
+
+    if (body                                       != NULL &&
+        system_hashed_ansi_string_get_length(body) >  0)
     {
         if (shader_ptr->id != 0)
         {
@@ -348,5 +349,48 @@ PUBLIC EMERALD_API bool ogl_shader_set_body(ogl_shader                shader,
         LOG_ERROR("Empty body cannot be assigned to a shader!");
     }
 
-    return true;
+    return result;
+}
+
+/** TODO */
+PUBLIC EMERALD_API bool ogl_shader_set_body_with_token_replacement(ogl_shader                       shader,
+                                                                   const char*                      body,
+                                                                   uint32_t                         n_tokens,
+                                                                   const system_hashed_ansi_string* token_keys,
+                                                                   const system_hashed_ansi_string* token_values)
+{
+    std::string  body_string(body);
+    _ogl_shader* shader_ptr    = (_ogl_shader*) shader;
+
+    ASSERT_DEBUG_SYNC(body != NULL,
+                      "Input shader body is NULL");
+    ASSERT_DEBUG_SYNC(token_keys != NULL,
+                      "Input token key array is NULL");
+    ASSERT_DEBUG_SYNC(token_values != NULL,
+                      "Input token value array is NULL");
+
+    for (unsigned int n_token = 0;
+                      n_token < n_tokens;
+                    ++n_token)
+    {
+        size_t offset = 0;
+
+        ASSERT_DEBUG_SYNC(token_keys[n_token] != NULL,
+                          "Input token key at index [%d] is NULL",
+                          n_token);
+        ASSERT_DEBUG_SYNC(token_values[n_token] != NULL,
+                          "Input token value at index [%d] is NULL",
+                          n_token);
+
+        while ( (offset = body_string.find(system_hashed_ansi_string_get_buffer(token_keys[n_token]),
+                                           offset)) != std::string::npos)
+        {
+            body_string.replace(offset,
+                                system_hashed_ansi_string_get_length(token_keys[n_token]),
+                                system_hashed_ansi_string_get_buffer(token_values[n_token]) );
+        }
+    } /* for (all defined tokens) */
+
+    return ogl_shader_set_body(shader,
+                               system_hashed_ansi_string_create(body_string.c_str() ));
 }

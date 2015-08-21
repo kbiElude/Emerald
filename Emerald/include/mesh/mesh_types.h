@@ -1,13 +1,60 @@
 /**
  *
- * Emerald (kbi/elude @2012-2014)
+ * Emerald (kbi/elude @2012-2015)
  *
  */
 #ifndef MESH_TYPES_H
 #define MESH_TYPES_H
 
+#include "ogl/ogl_types.h"
+
+
 DECLARE_HANDLE(mesh);
 DECLARE_HANDLE(mesh_material);
+
+typedef struct mesh_draw_call_arguments
+{
+    /* Must be filled for the MESH_DRAW_CALL_TYPE_ARRAYS draw call type. */
+    GLint count;
+
+    /* ID of the BO which should be bound to the GL_DRAW_INDIRECT_BUFFER binding point before
+     * the indirect draw call is dispatched.
+     *
+     * Must be filled for the MESH_DRAW_CALL_TYPE_ARRAYS_INDIRECT draw call type. */
+    GLuint draw_indirect_bo_binding;
+
+    /* Must be filled for the MESH_DRAW_CALL_TYPE_ARRAYS draw call type. */
+    GLint first;
+
+    /* Must be filled for the MESH_DRAW_CALL_TYPE_ARRAYS_INDIRECT draw call type. */
+    const void* indirect;
+
+    /* Must be filled for the MESH_DRAW_CALL_TYPE_ARRAYS and MESH_DRAW_CALL_TYPE_ARRAYS_INDIRECT draw call types. */
+    GLenum mode;
+
+    /* Optional. Should be set to bits accepted by glMemoryBarrier(), or 0 if no synchronization is needed. */
+    GLenum pre_draw_call_barriers;
+
+    mesh_draw_call_arguments()
+    {
+        count                    = 0;
+        draw_indirect_bo_binding = 0;
+        first                    = 0;
+        indirect                 = NULL;
+        mode                     = 0xFFFFFFFF;
+        pre_draw_call_barriers   = 0;
+    }
+} mesh_draw_call_arguments;
+
+typedef enum
+{
+    /* TODO: Add the other draw call types when needed. */
+    MESH_DRAW_CALL_TYPE_ARRAYS,
+    MESH_DRAW_CALL_TYPE_ARRAYS_INDIRECT,
+
+    /* Always last */
+    MESH_DRAW_CALL_TYPE_UNKNOWN
+} mesh_draw_call_type;
 
 typedef enum
 {
@@ -20,10 +67,16 @@ typedef enum
     /* not settable, mesh_creation_flags */
     MESH_PROPERTY_CREATION_FLAGS,
 
-    /* not settable, GLuint */
+    /* not settable, GLuint .
+     *
+     * Only used for regular meshes
+     */
     MESH_PROPERTY_GL_BO_ID,
 
-    /* not settable, unsigned int */
+    /* not settable, unsigned int
+     *
+     * Only used for regular meshes.
+     */
     MESH_PROPERTY_GL_BO_START_OFFSET,
 
     /* not settable, _mesh_index_type */
@@ -98,16 +151,44 @@ typedef enum
 
 typedef enum
 {
-    MESH_LAYER_DATA_STREAM_PROPERTY_START_OFFSET, /* not settable, uint32_t */
+    /* not settable, unsigned int.
+     *
+     * Only used by GPU stream meshes.
+     */
+    MESH_LAYER_DATA_STREAM_PROPERTY_GL_BO_ID,
+
+    /* not settable, unsigned int.
+     *
+     * Only used by GPU stream meshes.
+     */
+    MESH_LAYER_DATA_STREAM_PROPERTY_GL_BO_STRIDE,
+
+    /* not settable, uint32_t */
+    MESH_LAYER_DATA_STREAM_PROPERTY_N_COMPONENTS,
+
+    /* not settable, uint32_t */
+    MESH_LAYER_DATA_STREAM_PROPERTY_START_OFFSET,
 } mesh_layer_data_stream_property;
 
 typedef enum
 {
-    /* settable, float* (this property has the same value for all passes) */
-    MESH_LAYER_PROPERTY_MODEL_AABB_MAX,
+    MESH_LAYER_DATA_STREAM_SOURCE_BUFFER_MEMORY,
+    MESH_LAYER_DATA_STREAM_SOURCE_CLIENT_MEMORY,
+} mesh_layer_data_stream_source;
 
-    /* settable, float* (this property has the same value for all passes) */
-    MESH_LAYER_PROPERTY_MODEL_AABB_MIN,
+typedef enum
+{
+    /* settable, mesh_draw_call_arguments
+     *
+     * Only meaningful for GPU stream meshes.
+     */
+    MESH_LAYER_PROPERTY_DRAW_CALL_ARGUMENTS,
+
+    /* settable, mesh_draw_call_type
+     *
+     * Only meaningful for GPU stream meshes.
+     */
+    MESH_LAYER_PROPERTY_DRAW_CALL_TYPE,
 
     /* settable, uint32_t */
     MESH_LAYER_PROPERTY_GL_BO_ELEMENTS_OFFSET,
@@ -126,6 +207,12 @@ typedef enum
 
     /* not settable, mesh_material */
     MESH_LAYER_PROPERTY_MATERIAL,
+
+    /* settable, float* (this property has the same value for all passes) */
+    MESH_LAYER_PROPERTY_MODEL_AABB_MAX,
+
+    /* settable, float* (this property has the same value for all passes) */
+    MESH_LAYER_PROPERTY_MODEL_AABB_MIN,
 
     /* not settable, uint32_t */
     MESH_LAYER_PROPERTY_N_ELEMENTS,
@@ -146,11 +233,19 @@ typedef enum
 
 typedef enum
 {
-    /** NOTE: Re-arranging the order oir adding new stream types invalidates COLLADA mesh blobs. */
+    /** NOTE: Re-arranging the order oir adding new stream types invalidates COLLADA mesh blobs.
+     *
+     * _VERTICES must be the first defined enum.
+     */
     MESH_LAYER_DATA_STREAM_TYPE_FIRST,
 
-    MESH_LAYER_DATA_STREAM_TYPE_VERTICES = MESH_LAYER_DATA_STREAM_TYPE_FIRST, /* note: always keep vertices first */
+    /* Vertex data. User-specified number of floats per vertex, no padding in-between. */
+    MESH_LAYER_DATA_STREAM_TYPE_VERTICES = MESH_LAYER_DATA_STREAM_TYPE_FIRST,
+
+    /* Normal data. User-specified number of floats per vertex, no padding in-between */
     MESH_LAYER_DATA_STREAM_TYPE_NORMALS,
+
+    /* Texture coordinate data. User-specified number of floats per vertex, no padding in-between */
     MESH_LAYER_DATA_STREAM_TYPE_TEXCOORDS,
 
     /* note: recommended to keep sh at the end */
@@ -165,7 +260,11 @@ typedef enum
 typedef enum
 {
     MESH_TYPE_CUSTOM,
+    MESH_TYPE_GPU_STREAM,
     MESH_TYPE_REGULAR,
+
+    /* Always last */
+    MESH_TYPE_UNKNOWN
 } mesh_type;
 
 /* Mesh creation flags */
@@ -181,5 +280,8 @@ const int MESH_CREATION_FLAGS_KDTREE_GENERATION_SUPPORT = 0x2;
 
 typedef uint32_t mesh_layer_id;
 typedef uint32_t mesh_layer_pass_id;
+
+DECLARE_HANDLE(mesh_marchingcubes);
+
 
 #endif /* MESH_TYPES_H */
