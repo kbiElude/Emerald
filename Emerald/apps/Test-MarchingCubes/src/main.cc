@@ -8,8 +8,11 @@
 #include "mesh/mesh_marchingcubes.h"
 #include "ogl/ogl_context.h"
 #include "ogl/ogl_flyby.h"
+#include "ogl/ogl_pipeline.h"
 #include "ogl/ogl_rendering_handler.h"
 #include "ogl/ogl_scene_renderer.h"
+#include "ogl/ogl_ui.h"
+#include "ogl/ogl_ui_scrollbar.h"
 #include "scalar_field/scalar_field_metaballs.h"
 #include "scene/scene.h"
 #include "scene/scene_camera.h"
@@ -23,17 +26,20 @@
 #include "system/system_matrix4x4.h"
 #include "system/system_pixel_format.h"
 #include "system/system_screen_mode.h"
+#include "system/system_variant.h"
 #include "system/system_window.h"
 #include <algorithm>
 #include "main.h"
 
-PRIVATE const unsigned int _blob_size[] = {100, 100, 100};
+PRIVATE const unsigned int _blob_size[] = {50, 50, 50};
 
 PRIVATE ogl_context            _context             = NULL;
 PRIVATE ogl_flyby              _context_flyby       = NULL;
 PRIVATE mesh_marchingcubes     _marching_cubes      = NULL;
 PRIVATE scene_material         _material            = NULL;
 PRIVATE scalar_field_metaballs _metaballs           = NULL;
+PRIVATE ogl_pipeline           _pipeline            = NULL;
+PRIVATE uint32_t               _pipeline_stage_id   = 0;
 PRIVATE system_matrix4x4       _projection_matrix   = NULL;
 PRIVATE scene                  _scene               = NULL;
 PRIVATE scene_graph_node       _scene_blob_node     = NULL;
@@ -45,9 +51,27 @@ PRIVATE system_event           _window_closed_event = system_event_create(true);
 PRIVATE int                    _window_size[2]      = {1280, 720};
 PRIVATE system_matrix4x4       _view_matrix         = NULL;
 
+const float _start_metaball_configs[] =
+{
+ /* size     X      Y      Z    */
+    0.15f,  0.25f, 0.25f, 0.25f,
+    0.25f,  0.5f,  0.3f,  0.7f,
+    0.1f,   0.7f,  0.3f,  0.2f,
+    0.12f,  0.8f,  0.5f,  0.5f
+};
+const unsigned int _n_start_metaball_configs = 4;
+
+PRIVATE float _isolevel = float(_n_start_metaball_configs) - 0.5f;
 
 /* Forward declarations */
+PRIVATE void _get_isolevel_value             (void*                   user_arg,
+                                              system_variant          result);
+PRIVATE void _init_pipeline                  ();
 PRIVATE void _init_scene                     ();
+PRIVATE void _render                         (ogl_context             context,
+                                              system_time             frame_time,
+                                              const int*              rendering_area_px_topdown,
+                                              void*                   callback_user_arg);
 PRIVATE void _rendering_handler              (ogl_context             context,
                                               uint32_t                n_frames_rendered,
                                               system_time             frame_time,
@@ -58,9 +82,52 @@ PRIVATE bool _rendering_rbm_callback_handler (system_window           window,
                                               unsigned short          y,
                                               system_window_vk_status new_status,
                                               void*);
+PRIVATE void _set_isolevel_value             (void*                   user_arg,
+                                              system_variant          new_value);
 PRIVATE void _window_closed_callback_handler (system_window           window);
 PRIVATE void _window_closing_callback_handler(system_window           window);
 
+
+/** TODO */
+PRIVATE void _get_isolevel_value(void*          user_arg,
+                                 system_variant result)
+{
+    system_variant_set_float(result,
+                             _isolevel);
+}
+
+/** TODO */
+PRIVATE void _init_pipeline()
+{
+    ogl_ui pipeline_ui = NULL;
+
+    /* Set up pipeline */
+    _pipeline          = ogl_pipeline_create   (_context,
+                                                true,  /* should_overlay_performance_info */
+                                                system_hashed_ansi_string_create("Rendering pipeline") );
+    _pipeline_stage_id = ogl_pipeline_add_stage(_pipeline);
+    pipeline_ui        = ogl_pipeline_get_ui   (_pipeline);
+
+    ogl_pipeline_add_stage_step(_pipeline,
+                                _pipeline_stage_id,
+                                system_hashed_ansi_string_create("Rendering"),
+                                _render,
+                                NULL); /* step_callback_user_arg */
+
+    /* Set up UI */
+    const float isolevel_scrollbar_x1y1[] = {0.8f, 0.0f};
+
+    ogl_ui_add_scrollbar(pipeline_ui,
+                         system_hashed_ansi_string_create("Isolevel"),
+                         OGL_UI_SCROLLBAR_TEXT_LOCATION_ABOVE_SLIDER,
+                         system_variant_create_float(_n_start_metaball_configs - 1),
+                         system_variant_create_float(_n_start_metaball_configs),
+                         isolevel_scrollbar_x1y1,
+                         _get_isolevel_value,
+                         NULL,         /* get_current_value_user_arg */
+                         _set_isolevel_value,
+                         NULL);        /* set_current_value_user_arg */
+}
 
 /** TODO */
 PRIVATE void _init_scene()
@@ -88,14 +155,6 @@ PRIVATE void _init_scene()
     unsigned int scalar_field_bo_size         = 0;
     unsigned int scalar_field_bo_start_offset = 0;
 
-    const float metaballs[] =
-    {
-     /* size     X      Y      Z    */
-        0.15f,  0.25f, 0.25f, 0.25f,
-        0.35f,  0.6f,  0.6f,  0.6f,
-    };
-    const unsigned int n_metaballs = 2;
-
     _metaballs = scalar_field_metaballs_create(_context,
                                                _blob_size,
                                                system_hashed_ansi_string_create("Metaballs"));
@@ -112,20 +171,20 @@ PRIVATE void _init_scene()
 
     scalar_field_metaballs_set_property(_metaballs,
                                         SCALAR_FIELD_METABALLS_PROPERTY_N_METABALLS,
-                                       &n_metaballs);
+                                       &_n_start_metaball_configs);
 
     for (unsigned int n_metaball = 0;
-                      n_metaball < n_metaballs;
+                      n_metaball < _n_start_metaball_configs;
                     ++n_metaball)
     {
         scalar_field_metaballs_set_metaball_property(_metaballs,
                                                      SCALAR_FIELD_METABALLS_METABALL_PROPERTY_SIZE,
                                                      n_metaball,
-                                                     metaballs + 4 * n_metaball + 0);
+                                                     _start_metaball_configs + 4 * n_metaball + 0);
         scalar_field_metaballs_set_metaball_property(_metaballs,
                                                      SCALAR_FIELD_METABALLS_METABALL_PROPERTY_XYZ,
                                                      n_metaball,
-                                                     metaballs + 4 * n_metaball + 1);
+                                                     _start_metaball_configs + 4 * n_metaball + 1);
     } /* for (all metaballs) */
 
     _marching_cubes = mesh_marchingcubes_create(_context,
@@ -185,6 +244,69 @@ PRIVATE void _init_scene()
 }
 
 /** TODO */
+PRIVATE void _render(ogl_context context,
+                     system_time frame_time,
+                     const int*  rendering_area_px_topdown,
+                     void*       callback_user_arg)
+{
+    /* Update the metaball configuration */
+    /* 1. Isolevel */
+    bool has_scalar_field_changed = false;
+
+    mesh_marchingcubes_set_property(_marching_cubes,
+                                    MESH_MARCHINGCUBES_PROPERTY_ISOLEVEL,
+                                   &_isolevel);
+
+    /* 2. Metaball locations */
+    for (unsigned int n_metaball = 0;
+                      n_metaball < _n_start_metaball_configs;
+                    ++n_metaball)
+    {
+        float t = float((frame_time) % 2000) / 2000.0f * 10.0f * 3.14152965f;
+
+        float new_size = _start_metaball_configs[n_metaball * 4 + 0] + sin((t * n_metaball) * 3.14152965f) * 0.0125f;
+
+        float new_xyz[] =
+        {
+            _start_metaball_configs[n_metaball * 4 + 1] + t                       / float(250 * (n_metaball + 1)),
+            _start_metaball_configs[n_metaball * 4 + 2] + t * cos(t * n_metaball) / float(75 * (n_metaball + 1)),
+            _start_metaball_configs[n_metaball * 4 + 3] + t * sin(t * n_metaball) / float(120 * (n_metaball + 1))
+
+        };
+
+        scalar_field_metaballs_set_metaball_property(_metaballs,
+                                                     SCALAR_FIELD_METABALLS_METABALL_PROPERTY_SIZE,
+                                                     n_metaball,
+                                                    &new_size);
+        scalar_field_metaballs_set_metaball_property(_metaballs,
+                                                     SCALAR_FIELD_METABALLS_METABALL_PROPERTY_XYZ,
+                                                     n_metaball,
+                                                     new_xyz);
+    }
+
+    /* Update the scalar field */
+    has_scalar_field_changed = scalar_field_metaballs_update(_metaballs);
+
+    /* Polygonize it */
+    mesh_marchingcubes_polygonize(_marching_cubes,
+                                  has_scalar_field_changed);
+
+    /* Render the scene */
+    ogl_flyby_get_property(_context_flyby,
+                           OGL_FLYBY_PROPERTY_VIEW_MATRIX,
+                          &_view_matrix);
+
+    ogl_scene_renderer_render_scene_graph(_scene_renderer,
+                                          _view_matrix,
+                                          _projection_matrix,
+                                          _scene_camera,
+                                          RENDER_MODE_NORMALS_ONLY,
+                                          false, /* apply_shadow_mapping */
+                                          HELPER_VISUALIZATION_BOUNDING_BOXES,
+                                          frame_time);
+}
+
+/** TODO */
 PRIVATE void _rendering_handler(ogl_context context,
                                 uint32_t    n_frames_rendered,
                                 system_time frame_time,
@@ -207,6 +329,9 @@ PRIVATE void _rendering_handler(ogl_context context,
     {
         /* Initialize scene stuff */
         _init_scene();
+
+        /* Initialize the rendering pipeline */
+        _init_pipeline();
 
         /* Initialize projection & view matrices */
         _projection_matrix = system_matrix4x4_create_perspective_projection_matrix(45.0f,  /* fov_y */
@@ -234,35 +359,10 @@ PRIVATE void _rendering_handler(ogl_context context,
     /* Update the flyby */
     ogl_flyby_update(_context_flyby);
 
-    /* Update the metaballs */
-    bool  has_scalar_field_changed = false;
-    float new_isolevel             = sin( float(frame_time % 500) / float(500.0f) * 3.14152965f * 2.0f) * 0.5f + 1.5f;
-
-    mesh_marchingcubes_set_property(_marching_cubes,
-                                    MESH_MARCHINGCUBES_PROPERTY_ISOLEVEL,
-                                   &new_isolevel);
-
-    has_scalar_field_changed = scalar_field_metaballs_update(_metaballs);
-
-    if (has_scalar_field_changed ||
-        true) /* new isolevel => polygonization is required! */
-    {
-        mesh_marchingcubes_polygonize(_marching_cubes);
-    }
-
-    /* Render the scene */
-    ogl_flyby_get_property(_context_flyby,
-                           OGL_FLYBY_PROPERTY_VIEW_MATRIX,
-                          &_view_matrix);
-
-    ogl_scene_renderer_render_scene_graph(_scene_renderer,
-                                          _view_matrix,
-                                          _projection_matrix,
-                                          _scene_camera,
-                                          RENDER_MODE_NORMALS_ONLY,
-                                          false, /* apply_shadow_mapping */
-                                          HELPER_VISUALIZATION_BOUNDING_BOXES,
-                                          frame_time);
+    ogl_pipeline_draw_stage(_pipeline,
+                            _pipeline_stage_id,
+                            frame_time,
+                            rendering_area_px_topdown);
 }
 
 /** Event callback handlers */
@@ -275,6 +375,14 @@ PRIVATE bool _rendering_rbm_callback_handler(system_window           window,
     system_event_set(_window_closed_event);
 
     return true;
+}
+
+/** TODO */
+PRIVATE void _set_isolevel_value(void*          user_arg,
+                                 system_variant new_value)
+{
+    system_variant_get_float(new_value,
+                            &_isolevel);
 }
 
 PRIVATE void _window_closed_callback_handler(system_window window)
@@ -387,7 +495,7 @@ PRIVATE void _window_closing_callback_handler(system_window window)
                                                  window_x1y1x2y2,
                                                  system_hashed_ansi_string_create("Test window"),
                                                  false, /* scalable */
-                                                 false, /* vsync_enabled */
+                                                 true,  /* vsync_enabled */
                                                  true,  /* visible */
                                                  window_pf);
 #endif

@@ -92,10 +92,12 @@ PUBLIC EMERALD_API void mesh_marchingcubes_get_property(mesh_marchingcubes      
  *        However, polygonization is best scheduled at early frame time so it is recommended to call this function
  *        manually.
  *
- *  @param in_mesh mesh_marchingcubes instance to use. Must not be NULL.
+ *  @param in_mesh                  mesh_marchingcubes instance to use. Must not be NULL.
+ *  @param has_scalar_field_changed true to force the polygonization, false otherwise.
  *
  **/
-PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void mesh_marchingcubes_polygonize(mesh_marchingcubes in_mesh);
+PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void mesh_marchingcubes_polygonize(mesh_marchingcubes in_mesh,
+                                                                             bool               has_scalar_field_changed);
 
 /** TODO */
 PUBLIC EMERALD_API void mesh_marchingcubes_set_property(mesh_marchingcubes          in_mesh,

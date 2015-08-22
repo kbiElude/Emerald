@@ -1305,22 +1305,6 @@ PRIVATE void _mesh_marchingcubes_init_rendering_thread_callback(ogl_context cont
 }
 
 /** TODO */
-PRIVATE void _mesh_marchingcubes_pre_draw_call_callback_entrypoint(ogl_context context,
-                                                                   mesh        mesh_instance,
-                                                                   void*       user_arg)
-{
-    _mesh_marchingcubes* mesh_ptr = (_mesh_marchingcubes*) user_arg;
-
-    if (mesh_ptr->needs_polygonization)
-    {
-        mesh_marchingcubes_polygonize( (mesh_marchingcubes) mesh_ptr);
-
-        ASSERT_DEBUG_SYNC(!mesh_ptr->needs_polygonization,
-                          "mesh_marchingcubes_polygonize() failed.");
-    }
-}
-
-/** TODO */
 PRIVATE void _mesh_marchingcubes_release(void* arg)
 {
     _mesh_marchingcubes* mesh_ptr = (_mesh_marchingcubes*) arg;
@@ -1460,101 +1444,103 @@ PUBLIC EMERALD_API void mesh_marchingcubes_get_property(mesh_marchingcubes      
 }
 
 /** Please see header for specification */
-PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void mesh_marchingcubes_polygonize(mesh_marchingcubes in_mesh)
+PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void mesh_marchingcubes_polygonize(mesh_marchingcubes in_mesh,
+                                                                             bool               has_scalar_field_changed)
 {
     GLint                             current_po_id   = 0;
     const ogl_context_gl_entrypoints* entrypoints_ptr = NULL;
     _mesh_marchingcubes*              mesh_ptr        = (_mesh_marchingcubes*) in_mesh;
 
-    ogl_context_get_property(mesh_ptr->context,
-                             OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
-                            &entrypoints_ptr);
+    if (mesh_ptr->needs_polygonization ||
+        has_scalar_field_changed)
+    {
+        ogl_context_get_property(mesh_ptr->context,
+                                 OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
+                                &entrypoints_ptr);
 
-    /* Fear not: the call below will be handled by the state cache :-) */
-    entrypoints_ptr->pGLGetIntegerv(GL_CURRENT_PROGRAM,
-                                   &current_po_id);
+        ogl_program_ub_set_nonarrayed_uniform_value(mesh_ptr->po_scalar_field_polygonizer_data_ub,
+                                                    mesh_ptr->po_scalar_field_polygonizer_data_ub_isolevel_offset,
+                                                   &mesh_ptr->isolevel,
+                                                    0, /* src_data_flags */
+                                                    sizeof(float) );
 
-    ogl_program_ub_set_nonarrayed_uniform_value(mesh_ptr->po_scalar_field_polygonizer_data_ub,
-                                                mesh_ptr->po_scalar_field_polygonizer_data_ub_isolevel_offset,
-                                               &mesh_ptr->isolevel,
-                                                0, /* src_data_flags */
-                                                sizeof(float) );
+        ogl_program_ub_set_arrayed_uniform_value(mesh_ptr->po_scalar_field_polygonizer_precomputed_tables_ub,
+                                                 mesh_ptr->po_scalar_field_polygonizer_precomputed_tables_ub_bo_edge_table_offset,
+                                                 _edge_table,
+                                                 0, /* src_data_flags */
+                                                 sizeof(_edge_table),
+                                                 0, /* dst_array_start_index */
+                                                 sizeof(_edge_table) / sizeof(_edge_table[0]) );
+        ogl_program_ub_set_arrayed_uniform_value(mesh_ptr->po_scalar_field_polygonizer_precomputed_tables_ub,
+                                                 mesh_ptr->po_scalar_field_polygonizer_precomputed_tables_ub_bo_triangle_table_offset,
+                                                 _triangle_table,
+                                                 0, /* src_data_flags */
+                                                 sizeof(_triangle_table),
+                                                 0, /* dst_array_start_index */
+                                                 sizeof(_triangle_table) / sizeof(_triangle_table[0]) );
 
-    ogl_program_ub_set_arrayed_uniform_value(mesh_ptr->po_scalar_field_polygonizer_precomputed_tables_ub,
-                                             mesh_ptr->po_scalar_field_polygonizer_precomputed_tables_ub_bo_edge_table_offset,
-                                             _edge_table,
-                                             0, /* src_data_flags */
-                                             sizeof(_edge_table),
-                                             0, /* dst_array_start_index */
-                                             sizeof(_edge_table) / sizeof(_edge_table[0]) );
-    ogl_program_ub_set_arrayed_uniform_value(mesh_ptr->po_scalar_field_polygonizer_precomputed_tables_ub,
-                                             mesh_ptr->po_scalar_field_polygonizer_precomputed_tables_ub_bo_triangle_table_offset,
-                                             _triangle_table,
-                                             0, /* src_data_flags */
-                                             sizeof(_triangle_table),
-                                             0, /* dst_array_start_index */
-                                             sizeof(_triangle_table) / sizeof(_triangle_table[0]) );
+        ogl_program_ub_sync(mesh_ptr->po_scalar_field_polygonizer_data_ub);
+        ogl_program_ub_sync(mesh_ptr->po_scalar_field_polygonizer_precomputed_tables_ub);
 
-    ogl_program_ub_sync(mesh_ptr->po_scalar_field_polygonizer_data_ub);
-    ogl_program_ub_sync(mesh_ptr->po_scalar_field_polygonizer_precomputed_tables_ub);
+        /* Set up the SSBO & UBO bindings */
+        entrypoints_ptr->pGLBindBufferRange(GL_SHADER_STORAGE_BUFFER,
+                                            mesh_ptr->po_scalar_field_polygonizer_indirect_draw_call_count_ssb_bp,
+                                            mesh_ptr->indirect_draw_call_args_bo_id,
+                                            mesh_ptr->indirect_draw_call_args_bo_count_arg_offset,
+                                            sizeof(int) );
+        entrypoints_ptr->pGLBindBufferRange(GL_SHADER_STORAGE_BUFFER,
+                                            mesh_ptr->po_scalar_field_polygonizer_scalar_field_data_ssb_bp,
+                                            mesh_ptr->scalar_data_bo_id,
+                                            mesh_ptr->scalar_data_bo_start_offset,
+                                            mesh_ptr->scalar_data_bo_size);
+        entrypoints_ptr->pGLBindBufferRange(GL_SHADER_STORAGE_BUFFER,
+                                            mesh_ptr->po_scalar_field_polygonizer_result_data_ssb_bp,
+                                            mesh_ptr->polygonized_data_bo_id,
+                                            mesh_ptr->polygonized_data_bo_start_offset,
+                                            mesh_ptr->polygonized_data_bo_size);
 
-    /* Set up the SSBO & UBO bindings */
-    entrypoints_ptr->pGLBindBufferRange(GL_SHADER_STORAGE_BUFFER,
-                                        mesh_ptr->po_scalar_field_polygonizer_indirect_draw_call_count_ssb_bp,
-                                        mesh_ptr->indirect_draw_call_args_bo_id,
-                                        mesh_ptr->indirect_draw_call_args_bo_count_arg_offset,
-                                        sizeof(int) );
-    entrypoints_ptr->pGLBindBufferRange(GL_SHADER_STORAGE_BUFFER,
-                                        mesh_ptr->po_scalar_field_polygonizer_scalar_field_data_ssb_bp,
-                                        mesh_ptr->scalar_data_bo_id,
-                                        mesh_ptr->scalar_data_bo_start_offset,
-                                        mesh_ptr->scalar_data_bo_size);
-    entrypoints_ptr->pGLBindBufferRange(GL_SHADER_STORAGE_BUFFER,
-                                        mesh_ptr->po_scalar_field_polygonizer_result_data_ssb_bp,
-                                        mesh_ptr->polygonized_data_bo_id,
-                                        mesh_ptr->polygonized_data_bo_start_offset,
-                                        mesh_ptr->polygonized_data_bo_size);
+        entrypoints_ptr->pGLBindBufferRange(GL_UNIFORM_BUFFER,
+                                            mesh_ptr->po_scalar_field_polygonizer_data_ub_bp,
+                                            mesh_ptr->po_scalar_field_polygonizer_data_ub_bo_id,
+                                            mesh_ptr->po_scalar_field_polygonizer_data_ub_bo_start_offset,
+                                            mesh_ptr->po_scalar_field_polygonizer_data_ub_bo_size);
+        entrypoints_ptr->pGLBindBufferRange(GL_UNIFORM_BUFFER,
+                                            mesh_ptr->po_scalar_field_polygonizer_precomputed_tables_ub_bp,
+                                            mesh_ptr->po_scalar_field_polygonizer_precomputed_tables_ub_bo_id,
+                                            mesh_ptr->po_scalar_field_polygonizer_precomputed_tables_ub_bo_start_offset,
+                                            mesh_ptr->po_scalar_field_polygonizer_precomputed_tables_ub_bo_size);
 
-    entrypoints_ptr->pGLBindBufferRange(GL_UNIFORM_BUFFER,
-                                        mesh_ptr->po_scalar_field_polygonizer_data_ub_bp,
-                                        mesh_ptr->po_scalar_field_polygonizer_data_ub_bo_id,
-                                        mesh_ptr->po_scalar_field_polygonizer_data_ub_bo_start_offset,
-                                        mesh_ptr->po_scalar_field_polygonizer_data_ub_bo_size);
-    entrypoints_ptr->pGLBindBufferRange(GL_UNIFORM_BUFFER,
-                                        mesh_ptr->po_scalar_field_polygonizer_precomputed_tables_ub_bp,
-                                        mesh_ptr->po_scalar_field_polygonizer_precomputed_tables_ub_bo_id,
-                                        mesh_ptr->po_scalar_field_polygonizer_precomputed_tables_ub_bo_start_offset,
-                                        mesh_ptr->po_scalar_field_polygonizer_precomputed_tables_ub_bo_size);
+        /* Sync SSBO-based scalar field data. */
+        if (has_scalar_field_changed)
+        {
+            entrypoints_ptr->pGLMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
+        }
 
-    /* Sync SSBO-based scalar field data.
-     *
-     * TODO: This should really only be called when the scalar field data is modified by a compute shader */
-    entrypoints_ptr->pGLMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
+        /* Set up the indirect draw call's <count> SSB. Zero out the value before we run the polygonizer */
+        static const int int_zero = 0;
 
-    /* Set up the indirect draw call's <count> SSB. Zero out the value before we run the polygonizer */
-    static const int int_zero = 0;
+        entrypoints_ptr->pGLBindBuffer        (GL_DRAW_INDIRECT_BUFFER,
+                                               mesh_ptr->indirect_draw_call_args_bo_id);
+        entrypoints_ptr->pGLClearBufferSubData(GL_DRAW_INDIRECT_BUFFER,
+                                               GL_R32UI,
+                                               mesh_ptr->indirect_draw_call_args_bo_count_arg_offset,
+                                               sizeof(int),
+                                               GL_RED_INTEGER,
+                                               GL_UNSIGNED_INT,
+                                              &int_zero);
 
-    entrypoints_ptr->pGLBindBuffer        (GL_DRAW_INDIRECT_BUFFER,
-                                           mesh_ptr->indirect_draw_call_args_bo_id);
-    entrypoints_ptr->pGLClearBufferSubData(GL_DRAW_INDIRECT_BUFFER,
-                                           GL_R32UI,
-                                           mesh_ptr->indirect_draw_call_args_bo_count_arg_offset,
-                                           sizeof(int),
-                                           GL_RED_INTEGER,
-                                           GL_UNSIGNED_INT,
-                                          &int_zero);
+        /* Polygonize the scalar field */
+        entrypoints_ptr->pGLUseProgram     (ogl_program_get_id(mesh_ptr->po_scalar_field_polygonizer) );
+        entrypoints_ptr->pGLDispatchCompute(mesh_ptr->po_scalar_field_polygonizer_global_wg_size[0],
+                                            mesh_ptr->po_scalar_field_polygonizer_global_wg_size[1],
+                                            mesh_ptr->po_scalar_field_polygonizer_global_wg_size[2]);
 
-    /* Polygonize the scalar field */
-    entrypoints_ptr->pGLUseProgram     (ogl_program_get_id(mesh_ptr->po_scalar_field_polygonizer) );
-    entrypoints_ptr->pGLDispatchCompute(mesh_ptr->po_scalar_field_polygonizer_global_wg_size[0],
-                                        mesh_ptr->po_scalar_field_polygonizer_global_wg_size[1],
-                                        mesh_ptr->po_scalar_field_polygonizer_global_wg_size[2]);
+        /* Restore the bound program object */
+        entrypoints_ptr->pGLUseProgram(current_po_id);
 
-    /* Restore the bound program object */
-    entrypoints_ptr->pGLUseProgram(current_po_id);
-
-    /* All done */
-    mesh_ptr->needs_polygonization = false;
+        /* All done */
+        mesh_ptr->needs_polygonization = false;
+    } /* if (mesh_ptr->needs_polygonization) */
 }
 
 /** Please see header for specification */

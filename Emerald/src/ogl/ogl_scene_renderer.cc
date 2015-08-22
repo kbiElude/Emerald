@@ -2471,7 +2471,9 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_scene_renderer_render_scene_graph(ogl_sce
     entry_points->pGLEnable   (GL_DEPTH_TEST);
 
     if (render_mode == RENDER_MODE_FORWARD_WITHOUT_DEPTH_PREPASS ||
-        render_mode == RENDER_MODE_FORWARD_WITH_DEPTH_PREPASS)
+        render_mode == RENDER_MODE_FORWARD_WITH_DEPTH_PREPASS    ||
+        render_mode == RENDER_MODE_NORMALS_ONLY                  ||
+        render_mode == RENDER_MODE_TEXCOORDS_ONLY)
     {
         entry_points->pGLEnable(GL_TEXTURE_CUBE_MAP_SEAMLESS);
         entry_points->pGLEnable(GL_FRAMEBUFFER_SRGB);
