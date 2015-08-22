@@ -2934,6 +2934,9 @@ PRIVATE void _ogl_context_retrieve_GL_limits(_ogl_context* context_ptr)
                                                            context_ptr->limits.max_compute_work_group_size + index);
     }
 
+    /* Store min max GL constant values, as per OpenGL 4.3 spec */
+    context_ptr->limits.min_max_uniform_block_size = 16384;
+
     /* Retrieve "program binary" limits */
     context_ptr->limits.num_program_binary_formats = 0;
     context_ptr->limits.program_binary_formats     = NULL;

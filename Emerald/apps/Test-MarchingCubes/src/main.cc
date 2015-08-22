@@ -88,6 +88,14 @@ PRIVATE void _init_scene()
     unsigned int scalar_field_bo_size         = 0;
     unsigned int scalar_field_bo_start_offset = 0;
 
+    const float metaballs[] =
+    {
+     /* size     X      Y      Z    */
+        0.15f,  0.25f, 0.25f, 0.25f,
+        0.35f,  0.6f,  0.6f,  0.6f,
+    };
+    const unsigned int n_metaballs = 2;
+
     _metaballs = scalar_field_metaballs_create(_context,
                                                _blob_size,
                                                system_hashed_ansi_string_create("Metaballs"));
@@ -101,6 +109,24 @@ PRIVATE void _init_scene()
     scalar_field_metaballs_get_property(_metaballs,
                                         SCALAR_FIELD_METABALLS_PROPERTY_DATA_BO_START_OFFSET,
                                        &scalar_field_bo_start_offset);
+
+    scalar_field_metaballs_set_property(_metaballs,
+                                        SCALAR_FIELD_METABALLS_PROPERTY_N_METABALLS,
+                                       &n_metaballs);
+
+    for (unsigned int n_metaball = 0;
+                      n_metaball < n_metaballs;
+                    ++n_metaball)
+    {
+        scalar_field_metaballs_set_metaball_property(_metaballs,
+                                                     SCALAR_FIELD_METABALLS_METABALL_PROPERTY_SIZE,
+                                                     n_metaball,
+                                                     metaballs + 4 * n_metaball + 0);
+        scalar_field_metaballs_set_metaball_property(_metaballs,
+                                                     SCALAR_FIELD_METABALLS_METABALL_PROPERTY_XYZ,
+                                                     n_metaball,
+                                                     metaballs + 4 * n_metaball + 1);
+    } /* for (all metaballs) */
 
     _marching_cubes = mesh_marchingcubes_create(_context,
                                                 _blob_size,
@@ -210,7 +236,9 @@ PRIVATE void _rendering_handler(ogl_context context,
 
     /* Update the metaballs */
     bool  has_scalar_field_changed = false;
-    float new_isolevel             = sin( float(frame_time % 500) / float(1250.0f) * 0.6f + 0.01f);
+    float new_isolevel             = sin( float(frame_time % 500) / float(500.0f) * 3.14152965f * 2.0f) * 0.5f + 1.5f;
+
+    LOG_FATAL("%.4f", new_isolevel);
 
     mesh_marchingcubes_set_property(_marching_cubes,
                                     MESH_MARCHINGCUBES_PROPERTY_ISOLEVEL,

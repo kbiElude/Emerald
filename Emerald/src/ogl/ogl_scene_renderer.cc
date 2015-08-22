@@ -2468,7 +2468,7 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_scene_renderer_render_scene_graph(ogl_sce
     /* Set up GL before we continue */
     entry_points->pGLFrontFace(GL_CCW);
     entry_points->pGLDepthFunc(GL_LESS);
-    entry_points->pGLEnable   (GL_CULL_FACE);
+    entry_points->pGLDisable   (GL_CULL_FACE); // TODO TEMP TEMP TEMP 
     entry_points->pGLEnable   (GL_DEPTH_TEST);
 
     if (render_mode == RENDER_MODE_FORWARD_WITHOUT_DEPTH_PREPASS ||

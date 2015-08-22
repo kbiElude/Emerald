@@ -915,6 +915,7 @@ typedef struct
     GLint   max_vertex_texture_image_units;
     GLint   max_vertex_uniform_blocks;
     GLint   max_vertex_uniform_components;
+    GLint   min_max_uniform_block_size;
     GLint   min_program_texel_offset;
     GLint   minor_version;
     GLint   num_compressed_texture_formats;

@@ -777,7 +777,9 @@ PRIVATE void _ogl_program_block_set_uniform_value(ogl_program_block block,
             const unsigned int src_single_item_size = _ogl_program_block_get_expected_src_data_size(uniform_ptr,
                                                                                                     1);         /* n_array_items */
 
-            /* Not good, need to take the padding into account.. */
+            /* Not good, need to take the padding into account..
+             *
+             * TODO: Optimize the case where uniform_ptr->array_stride == src_single_item_size */
             for (unsigned int n_item = 0;
                               n_item < dst_array_item_count;
                             ++n_item)
