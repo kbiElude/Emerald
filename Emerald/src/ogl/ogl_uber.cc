@@ -2093,6 +2093,16 @@ PUBLIC void ogl_uber_rendering_render_mesh(mesh             mesh_gpu,
 
         entry_points->pGLBindVertexArray(vao_ptr->vao_id);
 
+        /* Ensure vertex ordering is correct */
+        mesh_vertex_ordering vertex_ordering;
+
+        mesh_get_property(mesh_gpu,
+                          MESH_PROPERTY_VERTEX_ORDERING,
+                         &vertex_ordering);
+
+        entry_points->pGLFrontFace( (vertex_ordering == MESH_VERTEX_ORDERING_CCW) ? GL_CCW
+                                                                                  : GL_CW);
+
         /* Update model matrix */
         ASSERT_DEBUG_SYNC(uber_ptr->model_ub_offset != -1,
                           "No model matrix uniform found");

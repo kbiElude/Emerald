@@ -130,6 +130,11 @@ typedef enum
     /* not settable, mesh_type */
     MESH_PROPERTY_TYPE,
 
+    /* settable, mesh_vertex_ordering.
+     *
+     * Default value: MESH_VERTEX_ORDERING_CCW */
+    MESH_PROPERTY_VERTEX_ORDERING,
+
     /* not settable, bool.
      *
      * This property tells that a rendering thread should call mesh_fill_gl_buffers() ASAP
@@ -266,6 +271,14 @@ typedef enum
     /* Always last */
     MESH_TYPE_UNKNOWN
 } mesh_type;
+
+typedef enum
+{
+    MESH_VERTEX_ORDERING_CW,
+    MESH_VERTEX_ORDERING_CCW,
+
+} mesh_vertex_ordering;
+
 
 /* Mesh creation flags */
 typedef int mesh_creation_flags;

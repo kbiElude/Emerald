@@ -650,6 +650,13 @@ PRIVATE void _mesh_marchingcubes_init_mesh_instance(_mesh_marchingcubes* mesh_pt
                                                           mesh_ptr,
                                                           system_hashed_ansi_string_create(name_buffer) );
 
+    /* Marching cubes generates CW-ordered vertices. */
+    static const mesh_vertex_ordering vertex_ordering = MESH_VERTEX_ORDERING_CW;
+
+    mesh_set_property(mesh_ptr->mesh_instance,
+                      MESH_PROPERTY_VERTEX_ORDERING,
+                     &vertex_ordering);
+
     /* Configure it, so that it uses normal & vertex data taken from the buffer memory we manage in mesh_marchingcubes */
     mesh_draw_call_arguments draw_call_arguments;
     mesh_layer_id            new_layer_id        = mesh_add_layer(mesh_ptr->mesh_instance);

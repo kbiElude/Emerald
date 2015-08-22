@@ -71,12 +71,13 @@ typedef struct
     mesh             instantiation_parent; /* If not NULL, instantiation parent's GL data should be used instead */
 
     /* Properties */
-    float               aabb_max   [4]; /* model-space */
-    float               aabb_min   [4]; /* model-space */
-    mesh_creation_flags creation_flags;
-    uint32_t            n_sh_bands;      /* can be 0 ! */
-    sh_components       n_sh_components; /* can be 0 ! */
-    system_time         timestamp_last_modified;
+    float                aabb_max   [4]; /* model-space */
+    float                aabb_min   [4]; /* model-space */
+    mesh_creation_flags  creation_flags;
+    uint32_t             n_sh_bands;      /* can be 0 ! */
+    sh_components        n_sh_components; /* can be 0 ! */
+    system_time          timestamp_last_modified;
+    mesh_vertex_ordering vertex_ordering;
 
     /* Other */
     system_resizable_vector layers;    /* contains _mesh_layer instances */
@@ -1002,6 +1003,7 @@ PRIVATE void _mesh_init_mesh(_mesh*                    new_mesh_ptr,
     new_mesh_ptr->render_custom_mesh_proc_user_arg       = NULL;
     new_mesh_ptr->set_id_counter                         = 0;
     new_mesh_ptr->timestamp_last_modified                = system_time_now();
+    new_mesh_ptr->vertex_ordering                        = MESH_VERTEX_ORDERING_CCW;
 
     for (unsigned int n_stream_type = 0;
                       n_stream_type < MESH_LAYER_DATA_STREAM_TYPE_COUNT;
@@ -4048,6 +4050,13 @@ PUBLIC EMERALD_API bool mesh_get_property(mesh          instance,
             break;
         }
 
+        case MESH_PROPERTY_VERTEX_ORDERING:
+        {
+            *(mesh_vertex_ordering*) out_result_ptr = mesh_ptr->vertex_ordering;
+
+            break;
+        }
+
         default:
         {
             ASSERT_ALWAYS_SYNC(false, "Unrecognized mesh property [%d]", property);
@@ -5095,8 +5104,9 @@ PUBLIC EMERALD_API void mesh_set_property(mesh          instance,
     {
         _mesh* mesh_ptr = (_mesh*) instance;
 
-        ASSERT_DEBUG_SYNC(mesh_ptr->type == MESH_TYPE_REGULAR,
-                          "Entry-point is only compatible with regular meshes only.");
+        ASSERT_DEBUG_SYNC(property       == MESH_PROPERTY_VERTEX_ORDERING ||
+                          mesh_ptr->type == MESH_TYPE_REGULAR,
+                          "Entry-point is incompatible with the requested mesh type.");
 
         switch(property)
         {
@@ -5143,6 +5153,13 @@ PUBLIC EMERALD_API void mesh_set_property(mesh          instance,
                 {
                     mesh_ptr->n_sh_bands = *(uint32_t*)value;
                 }
+
+                break;
+            }
+
+            case MESH_PROPERTY_VERTEX_ORDERING:
+            {
+                mesh_ptr->vertex_ordering = *(mesh_vertex_ordering*) value;
 
                 break;
             }

@@ -316,7 +316,8 @@ PUBLIC EMERALD_API void mesh_set_processed_data_stream_start_offset(mesh        
 
 /** TODO
  *
- *  NOTE: Can only be called against regular meshes.
+ *  NOTE: Can be called for any type of mesh for the MESH_PROPERTY_VERTEX_ORDERING property.
+ *        For all others, this entry-point can only be called against regular meshes.
  */
 PUBLIC EMERALD_API void mesh_set_property(mesh          instance,
                                           mesh_property property,

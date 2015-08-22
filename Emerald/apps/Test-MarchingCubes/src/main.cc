@@ -238,8 +238,6 @@ PRIVATE void _rendering_handler(ogl_context context,
     bool  has_scalar_field_changed = false;
     float new_isolevel             = sin( float(frame_time % 500) / float(500.0f) * 3.14152965f * 2.0f) * 0.5f + 1.5f;
 
-    LOG_FATAL("%.4f", new_isolevel);
-
     mesh_marchingcubes_set_property(_marching_cubes,
                                     MESH_MARCHINGCUBES_PROPERTY_ISOLEVEL,
                                    &new_isolevel);
