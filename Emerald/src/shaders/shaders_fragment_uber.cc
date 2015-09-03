@@ -102,6 +102,7 @@ PRIVATE void _shaders_fragment_uber_add_lambert_ambient_diffuse_factor(scene_lig
     std::stringstream light_attenuation_var_name_sstream;
     std::stringstream light_attenuations_var_name_sstream;
     std::stringstream light_cone_angle_var_name_sstream;
+    std::stringstream light_diffuse_var_name_sstream;
     std::stringstream light_direction_var_name_sstream;
     std::stringstream light_distance_var_name_sstream;
     std::stringstream light_edge_angle_var_name_sstream;
@@ -121,6 +122,9 @@ PRIVATE void _shaders_fragment_uber_add_lambert_ambient_diffuse_factor(scene_lig
     light_cone_angle_var_name_sstream       << "light"
                                             << n_item
                                             << "_cone_angle";
+    light_diffuse_var_name_sstream          << "light"
+                                            << n_item
+                                            << "_diffuse";
     light_direction_var_name_sstream        << "light"
                                             << n_item
                                             << "_direction";
@@ -384,6 +388,11 @@ PRIVATE void _shaders_fragment_uber_add_lambert_ambient_diffuse_factor(scene_lig
         {
             line << "vec4(vec3(texture(luminosity_material_sampler, in_fs_uv).x), 1.0) ";
         }
+        else
+        {
+            /* No luminosity defined for the material */
+            line << "vec4(0.0)";
+        }
 
         /* Compute the light contribution: diffuse */
         if (properties[SHADERS_FRAGMENT_UBER_PROPERTY_DIFFUSE_DATA_SOURCE] != SHADERS_FRAGMENT_UBER_PROPERTY_VALUE_NONE)
@@ -431,7 +440,7 @@ PRIVATE void _shaders_fragment_uber_add_lambert_ambient_diffuse_factor(scene_lig
             case SHADERS_FRAGMENT_UBER_PROPERTY_VALUE_CURVE_CONTAINER_VEC3:
             {
                 line << " * vec4(diffuse_material, 1.0)";
-
+                 
                 break;
             }
 
@@ -448,6 +457,10 @@ PRIVATE void _shaders_fragment_uber_add_lambert_ambient_diffuse_factor(scene_lig
                                   "Unrecognized emission data source property value");
             }
         } /* switch (properties[SHADERS_FRAGMENT_UBER_PROPERTY_DIFFUSE_DATA_SOURCE]) */
+
+        /* Finally, multiply the result color with the diffuse color defined for the light */
+        line << " * "
+             << light_diffuse_var_name_sstream.str();
     }
 
     line << ";\n";
@@ -499,9 +512,9 @@ PRIVATE void _shaders_fragment_uber_add_phong_specular_factor(ogl_shader_constru
                                                  phong_specular_func_id,
                                                  system_hashed_ansi_string_create("    if (light_LdotN > 0.0 && shininess_material > 0.0)\n"
                                                                                   "    {\n"
-                                                                                  "        float reflection_view_vector_dot = max(0.0, dot(reflect(-light_vector, normal), view_vector));\n"
+                                                                                  "        float reflection_view_vector_dot = max(0.0, dot(-reflect(light_vector, normal), normalize(view_vector) ));\n"
                                                                                   "\n"
-                                                                                  "        return specular_material * pow(reflection_view_vector_dot, 32.0 * shininess_material);\n"
+                                                                                  "        return clamp(specular_material * pow(reflection_view_vector_dot, 32.0 * shininess_material), 0.0, 1.0);\n"
                                                                                   "    }\n"
                                                                                   "\n"
                                                                                   "    return 0.0;\n") );
@@ -519,8 +532,12 @@ PRIVATE void _shaders_fragment_uber_add_phong_specular_factor(ogl_shader_constru
              << system_hashed_ansi_string_get_buffer(light_visibility_var_name)
              << ") * ";
     }
-    
-    line << "vec4(vec3(phong_specular(normal, light" << n_light << "_vector_norm, light" << n_light << "_LdotN)), 0.0);\n";
+
+    line << "vec4(vec3(phong_specular(normal, light"
+         << n_light
+         << "_vector_norm, light"
+         << n_light
+         << "_LdotN)), 0.0);\n";
 
     ogl_shader_constructor_append_to_function_body(shader_constructor,
                                                    0, /* main() */

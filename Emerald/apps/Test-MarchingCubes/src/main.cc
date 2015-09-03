@@ -4,6 +4,7 @@
  *
  */
 #include "shared.h"
+#include "curve/curve_container.h"
 #include "mesh/mesh.h"
 #include "mesh/mesh_marchingcubes.h"
 #include "ogl/ogl_context.h"
@@ -17,12 +18,14 @@
 #include "scene/scene.h"
 #include "scene/scene_camera.h"
 #include "scene/scene_graph.h"
+#include "scene/scene_light.h"
 #include "scene/scene_material.h"
 #include "scene/scene_mesh.h"
 #include "system/system_assertions.h"
 #include "system/system_event.h"
 #include "system/system_hashed_ansi_string.h"
 #include "system/system_log.h"
+#include "system/system_math_vector.h"
 #include "system/system_matrix4x4.h"
 #include "system/system_pixel_format.h"
 #include "system/system_screen_mode.h"
@@ -45,6 +48,8 @@ PRIVATE scene                  _scene               = NULL;
 PRIVATE scene_graph_node       _scene_blob_node     = NULL;
 PRIVATE scene_camera           _scene_camera        = NULL;
 PRIVATE scene_graph_node       _scene_camera_node   = NULL;
+PRIVATE scene_light            _scene_light         = NULL;
+PRIVATE scene_graph_node       _scene_light_node    = NULL;
 PRIVATE scene_graph            _scene_graph         = NULL; /* do not release */
 PRIVATE ogl_scene_renderer     _scene_renderer      = NULL;
 PRIVATE system_event           _window_closed_event = system_event_create(true); /* manual_reset */
@@ -55,7 +60,7 @@ const float _start_metaball_configs[] =
 {
  /* size     X      Y      Z    */
     0.15f,  0.25f, 0.25f, 0.25f,
-    0.25f,  0.5f,  0.3f,  0.7f,
+    0.2f,   0.5f,  0.3f,  0.7f,
     0.1f,   0.7f,  0.3f,  0.2f,
     0.12f,  0.8f,  0.5f,  0.5f
 };
@@ -120,8 +125,8 @@ PRIVATE void _init_pipeline()
     ogl_ui_add_scrollbar(pipeline_ui,
                          system_hashed_ansi_string_create("Isolevel"),
                          OGL_UI_SCROLLBAR_TEXT_LOCATION_ABOVE_SLIDER,
-                         system_variant_create_float(_n_start_metaball_configs - 1),
-                         system_variant_create_float(_n_start_metaball_configs),
+                         system_variant_create_float(float(_n_start_metaball_configs - 1)),
+                         system_variant_create_float(float(_n_start_metaball_configs)    ),
                          isolevel_scrollbar_x1y1,
                          _get_isolevel_value,
                          NULL,         /* get_current_value_user_arg */
@@ -137,17 +142,32 @@ PRIVATE void _init_scene()
     /* Set up the scene */
     system_hashed_ansi_string blob_has       = system_hashed_ansi_string_create("Test blob");
     system_hashed_ansi_string camera_has     = system_hashed_ansi_string_create("Test camera");
+    system_hashed_ansi_string light_has      = system_hashed_ansi_string_create("Test light");
     system_hashed_ansi_string test_scene_has = system_hashed_ansi_string_create("Test scene");
 
-    _scene        = scene_create       (_context,
-                                        test_scene_has);
-    _scene_camera = scene_camera_create(camera_has,
-                                        test_scene_has);
+    _scene        = scene_create                  (_context,
+                                                   test_scene_has);
+    _scene_camera = scene_camera_create           (camera_has,
+                                                   test_scene_has);
+    _scene_light  = scene_light_create_directional(light_has,
+                                                   NULL); /* object_manager_path */
 
     /* Set up the metaballs mesh material */
-    scene_material material = scene_material_create(system_hashed_ansi_string_create("Metaballs material"),
-                                                    NULL, /* object_manager_path */
-                                                    _scene);
+    curve_container* color_curves = NULL;
+    scene_material   material     = scene_material_create      (system_hashed_ansi_string_create("Metaballs material"),
+                                                                NULL, /* object_manager_path */
+                                                                _scene);
+    system_variant   variant_one  = system_variant_create_float(1.0f);
+
+    scene_material_get_property(material,
+                                SCENE_MATERIAL_PROPERTY_COLOR,
+                               &color_curves);
+
+    curve_container_set_default_value(color_curves[1],
+                                      variant_one);
+
+    system_variant_release(variant_one);
+    variant_one = NULL;
 
     /* Set up the metaballs mesh instance */
     mesh         marching_cubes_mesh_gpu      = NULL;
@@ -192,7 +212,7 @@ PRIVATE void _init_scene()
                                                 scalar_field_bo_id,
                                                 scalar_field_bo_start_offset,
                                                 scalar_field_bo_size,
-                                                0.2f,
+                                                _isolevel,
                                                 material,
                                                 system_hashed_ansi_string_create("Marching cubes") );
 
@@ -200,6 +220,8 @@ PRIVATE void _init_scene()
                                     MESH_MARCHINGCUBES_PROPERTY_MESH,
                                    &marching_cubes_mesh_gpu);
 
+    scene_add_light        (_scene,
+                            _scene_light);
     scene_add_mesh_instance(_scene,
                             marching_cubes_mesh_gpu,
                             blob_has,
@@ -218,6 +240,9 @@ PRIVATE void _init_scene()
     _scene_camera_node = scene_graph_create_static_matrix4x4_transformation_node(_scene_graph,
                                                                                  identity_matrix,
                                                                                  SCENE_GRAPH_NODE_TAG_UNDEFINED);
+    _scene_light_node  = scene_graph_create_static_matrix4x4_transformation_node(_scene_graph,
+                                                                                 identity_matrix,
+                                                                                 SCENE_GRAPH_NODE_TAG_UNDEFINED);
 
     system_matrix4x4_release(identity_matrix);
     identity_matrix = NULL;
@@ -230,10 +255,17 @@ PRIVATE void _init_scene()
                                       _scene_camera_node,
                                       SCENE_OBJECT_TYPE_CAMERA,
                                       _scene_camera);
+    scene_graph_attach_object_to_node(_scene_graph,
+                                      _scene_light_node,
+                                      SCENE_OBJECT_TYPE_LIGHT,
+                                      _scene_light);
 
     scene_graph_add_node(_scene_graph,
                          scene_graph_get_root_node(_scene_graph),
                          _scene_camera_node);
+    scene_graph_add_node(_scene_graph,
+                         scene_graph_get_root_node(_scene_graph),
+                         _scene_light_node);
     scene_graph_add_node(_scene_graph,
                          scene_graph_get_root_node(_scene_graph),
                          _scene_blob_node);
@@ -262,7 +294,8 @@ PRIVATE void _render(ogl_context context,
                       n_metaball < _n_start_metaball_configs;
                     ++n_metaball)
     {
-        float t = float((frame_time) % 2000) / 2000.0f * 10.0f * 3.14152965f;
+        //float t = float((frame_time) % 2000) / 2000.0f * 10.0f * 3.14152965f;
+        float t = 0;
 
         float new_size = _start_metaball_configs[n_metaball * 4 + 0] + sin((t * n_metaball) * 3.14152965f) * 0.0125f;
 
@@ -291,16 +324,27 @@ PRIVATE void _render(ogl_context context,
     mesh_marchingcubes_polygonize(_marching_cubes,
                                   has_scalar_field_changed);
 
-    /* Render the scene */
-    ogl_flyby_get_property(_context_flyby,
-                           OGL_FLYBY_PROPERTY_VIEW_MATRIX,
-                          &_view_matrix);
+    /* Update the light node's transformation matrix to reflect the camera position */
+    system_matrix4x4 light_node_transformation_matrix = NULL;
 
+    ogl_flyby_get_property          (_context_flyby,
+                                     OGL_FLYBY_PROPERTY_VIEW_MATRIX,
+                                    &_view_matrix);
+    scene_graph_node_get_property   (_scene_light_node,
+                                     SCENE_GRAPH_NODE_PROPERTY_TRANSFORMATION_MATRIX,
+                                    &light_node_transformation_matrix);
+    system_matrix4x4_set_to_identity(light_node_transformation_matrix);
+
+    system_matrix4x4_set_from_matrix4x4(light_node_transformation_matrix,
+                                        _view_matrix);
+    system_matrix4x4_invert            (light_node_transformation_matrix);
+
+    /* Render the scene */
     ogl_scene_renderer_render_scene_graph(_scene_renderer,
                                           _view_matrix,
                                           _projection_matrix,
                                           _scene_camera,
-                                          RENDER_MODE_NORMALS_ONLY,
+                                          RENDER_MODE_FORWARD_WITHOUT_DEPTH_PREPASS,
                                           false, /* apply_shadow_mapping */
                                           HELPER_VISUALIZATION_BOUNDING_BOXES,
                                           frame_time);
@@ -334,9 +378,9 @@ PRIVATE void _rendering_handler(ogl_context context,
         _init_pipeline();
 
         /* Initialize projection & view matrices */
-        _projection_matrix = system_matrix4x4_create_perspective_projection_matrix(45.0f,  /* fov_y */
+        _projection_matrix = system_matrix4x4_create_perspective_projection_matrix(DEG_TO_RAD(34),  /* fov_y */
                                                                                    float(_window_size[0]) / float(_window_size[1]),
-                                                                                   0.01f,  /* z_near */
+                                                                                   0.1f,  /* z_near */
                                                                                    10.0f); /* z_far  */
         _view_matrix       = system_matrix4x4_create                              ();
 

@@ -162,7 +162,7 @@ PRIVATE void _scene_light_init_default_color_curves(_scene_light* light_ptr)
 {
     /* Color: common for all light types.
      *
-     * Default color: (1, 0, 0)
+     * Default color: (1, 1, 1)
      */
     ASSERT_DEBUG_SYNC(light_ptr->color[0] == NULL &&
                       light_ptr->color[1] == NULL &&
@@ -170,6 +170,9 @@ PRIVATE void _scene_light_init_default_color_curves(_scene_light* light_ptr)
                       "Light color curve(s) already instantiated");
 
     system_variant temp_variant = system_variant_create(SYSTEM_VARIANT_FLOAT);
+
+    system_variant_set_float(temp_variant,
+                             1.0f);
 
     for (unsigned int n_component = 0;
                       n_component < sizeof(light_ptr->color) / sizeof(light_ptr->color[0]);
@@ -185,8 +188,6 @@ PRIVATE void _scene_light_init_default_color_curves(_scene_light* light_ptr)
                                                                light_ptr->object_manager_path,
                                                                SYSTEM_VARIANT_FLOAT);
 
-        system_variant_set_float         (temp_variant,
-                                          (n_component == 0) ? 1.0f : 0.0f);
         curve_container_set_default_value(light_ptr->color[n_component],
                                           temp_variant);
     }

@@ -52,7 +52,8 @@ typedef enum
 
     /* Settable, float[3].
      *
-     * Set in run-time
+     * Set in run-time by Emerald, deduced from the transformation matrix of the node,
+     * to which the light is bound.
      */
     SCENE_LIGHT_PROPERTY_DIRECTION,
 

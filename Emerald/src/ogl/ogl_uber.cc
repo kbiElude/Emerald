@@ -3037,6 +3037,8 @@ PUBLIC EMERALD_API void ogl_uber_set_shader_item_property(ogl_uber              
 
                     case OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_DIRECTION:
                     {
+                        float* temp = (float*) data;
+
                         if (item_ptr->fragment_shader_item.current_light_direction_ub_offset != -1)
                         {
                             ogl_program_ub_set_nonarrayed_uniform_value(uber_ptr->ub_fs,

@@ -141,6 +141,7 @@ typedef struct _ogl_scene_renderer
     float                                    current_camera_visible_world_aabb_min[3];
     scene_camera                             current_camera;
     _ogl_scene_renderer_helper_visualization current_helper_visualization;
+    bool                                     current_is_shadow_mapping_enabled;
     system_matrix4x4                         current_model_matrix;
     system_matrix4x4                         current_projection;
     system_matrix4x4                         current_view;
@@ -655,7 +656,7 @@ PRIVATE void _ogl_scene_renderer_process_mesh_for_forward_rendering(scene_mesh s
              */
             mesh_uber = mesh_material_get_ogl_uber(material,
                                                    renderer_ptr->owned_scene,
-                                                   is_shadow_receiver);
+                                                   is_shadow_receiver & renderer_ptr->current_is_shadow_mapping_enabled);
 
             if (!system_hash64map_get(renderer_ptr->regular_mesh_ubers_map,
                                       (system_hash64) mesh_uber,
@@ -1077,7 +1078,7 @@ PRIVATE void _ogl_scene_renderer_render_traversed_scene_graph(_ogl_scene_rendere
 
             /* Depending on the pass, we may either need to use render mode-specific ogl_uber instance,
              * or one that corresponds to the current material. */
-            system_hash64map_get_element_at(renderer_ptr->regular_mesh_ubers_map,   /* TEMP TEMP TEMP TEMP ???*/
+            system_hash64map_get_element_at(renderer_ptr->regular_mesh_ubers_map,
                                             n_iteration,
                                            &uber_details_ptr,
                                            &material_hash);
@@ -1128,7 +1129,6 @@ PRIVATE void _ogl_scene_renderer_render_traversed_scene_graph(_ogl_scene_rendere
                                   "No ogl_uber instance available!");
             }
 
-            /* TEMP TEMP TEMP ?? CHECK WITH SM ON */
             n_iteration_items = 0;
 
             system_resizable_vector_get_property(uber_details_ptr->regular_mesh_items,
@@ -2409,11 +2409,12 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_scene_renderer_render_scene_graph(ogl_sce
     system_matrix4x4 vp = system_matrix4x4_create_by_mul(projection,
                                                          view);
 
-    renderer_ptr->current_camera               = camera;
-    renderer_ptr->current_helper_visualization = helper_visualization;
-    renderer_ptr->current_projection           = projection;
-    renderer_ptr->current_view                 = view;
-    renderer_ptr->current_vp                   = vp;
+    renderer_ptr->current_camera                    = camera;
+    renderer_ptr->current_helper_visualization      = helper_visualization;
+    renderer_ptr->current_is_shadow_mapping_enabled = apply_shadow_mapping;
+    renderer_ptr->current_projection                = projection;
+    renderer_ptr->current_view                      = view;
+    renderer_ptr->current_vp                        = vp;
 
     /* If the caller has requested shadow mapping support, we need to render shadow maps before actual
      * rendering proceeds.
@@ -2442,10 +2443,11 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_scene_renderer_render_scene_graph(ogl_sce
          * projection, view & vp matrices we set up.
          *
          * Revert the original settings */
-        renderer_ptr->current_helper_visualization = helper_visualization;
-        renderer_ptr->current_projection           = projection;
-        renderer_ptr->current_view                 = view;
-        renderer_ptr->current_vp                   = vp;
+        renderer_ptr->current_helper_visualization      = helper_visualization;
+        renderer_ptr->current_is_shadow_mapping_enabled = apply_shadow_mapping;
+        renderer_ptr->current_projection                = projection;
+        renderer_ptr->current_view                      = view;
+        renderer_ptr->current_vp                        = vp;
     } /* if (shadow_mapping != SHADOW_MAPPING_DISABLED) */
 
     /* 1. Traverse the scene graph and:

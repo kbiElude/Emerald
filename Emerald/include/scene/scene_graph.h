@@ -45,7 +45,7 @@ typedef enum
     SCENE_GRAPH_NODE_TYPE_GENERAL,
     SCENE_GRAPH_NODE_TYPE_ROTATION_DYNAMIC,
     SCENE_GRAPH_NODE_TYPE_SCALE_DYNAMIC,
-    SCENE_GRAPH_NODE_TYPE_STATIC_MATRIX4X4,
+    SCENE_GRAPH_NODE_TYPE_MATRIX4X4_STATIC,
     SCENE_GRAPH_NODE_TYPE_TRANSLATION_DYNAMIC,
     SCENE_GRAPH_NODE_TYPE_TRANSLATION_STATIC,
 
@@ -122,6 +122,11 @@ PUBLIC EMERALD_API void scene_graph_compute_node(scene_graph      graph,
 /** TODO. */
 PUBLIC EMERALD_API scene_graph scene_graph_create(scene                     owner_scene,
                                                   system_hashed_ansi_string object_manager_path);
+
+/** TODO */
+PUBLIC EMERALD_API scene_graph_node scene_graph_create_dynamic_matrix4x4_transformation_node(scene_graph          graph,
+                                                                                             system_matrix4x4     matrix,
+                                                                                             scene_graph_node_tag tag);
 
 /** TODO */
 PUBLIC EMERALD_API scene_graph_node scene_graph_create_general_node(scene_graph graph);

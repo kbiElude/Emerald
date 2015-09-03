@@ -505,6 +505,12 @@ PRIVATE void _scene_graph_compute_node_transformation_matrix(scene_graph        
                                                              _scene_graph_node* node_ptr,
                                                              system_time        time)
 {
+    if (node_ptr->type == SCENE_GRAPH_NODE_TYPE_MATRIX4X4_STATIC)
+    {
+        /* Do NOT recompute static 4x4 matrix data. */
+        goto end;
+    }
+
     if (node_ptr->transformation_matrix.data != NULL)
     {
         system_matrix4x4_release(node_ptr->transformation_matrix.data);
@@ -553,6 +559,7 @@ PRIVATE void _scene_graph_compute_node_transformation_matrix(scene_graph        
                                                                        lerp_factor);
     }
 
+end:
     node_ptr->last_update_time = time;
 }
 
@@ -1019,7 +1026,7 @@ PRIVATE bool _scene_graph_load_node(system_file_serializer  serializer,
             break;
         }
 
-        case SCENE_GRAPH_NODE_TYPE_STATIC_MATRIX4X4:
+        case SCENE_GRAPH_NODE_TYPE_MATRIX4X4_STATIC:
         {
             new_node = _scene_graph_load_scene_graph_node_matrix4x4_static(serializer,
                                                                            result_graph,
@@ -1664,7 +1671,7 @@ PRIVATE void _scene_graph_node_release_data(void*                 data,
                 break;
             }
 
-            case SCENE_GRAPH_NODE_TYPE_STATIC_MATRIX4X4:
+            case SCENE_GRAPH_NODE_TYPE_MATRIX4X4_STATIC:
             {
                 delete (_scene_graph_node_matrix4x4_static*) data;
 
@@ -1793,7 +1800,7 @@ PRIVATE bool _scene_graph_save_node(system_file_serializer   serializer,
             break;
         }
 
-        case SCENE_GRAPH_NODE_TYPE_STATIC_MATRIX4X4:
+        case SCENE_GRAPH_NODE_TYPE_MATRIX4X4_STATIC:
         {
             /* Save matrix data */
             result &= _scene_graph_save_scene_graph_node_matrix4x4_static(serializer,
@@ -2516,7 +2523,7 @@ PUBLIC EMERALD_API scene_graph_node scene_graph_create_static_matrix4x4_transfor
     new_node_ptr->data          = new (std::nothrow) _scene_graph_node_matrix4x4_static(matrix,
                                                                                         tag);
     new_node_ptr->tag           = tag;
-    new_node_ptr->type          = SCENE_GRAPH_NODE_TYPE_STATIC_MATRIX4X4;
+    new_node_ptr->type          = SCENE_GRAPH_NODE_TYPE_MATRIX4X4_STATIC;
     new_node_ptr->pUpdateMatrix = _scene_graph_compute_static_matrix4x4;
 
     /* NOTE: There's one use case (ogl_flyby wrapped in a scene_graph_node) where we need
@@ -2794,7 +2801,7 @@ PUBLIC EMERALD_API void scene_graph_lock(scene_graph graph)
                 break;
             }
 
-            case SCENE_GRAPH_NODE_TYPE_STATIC_MATRIX4X4:
+            case SCENE_GRAPH_NODE_TYPE_MATRIX4X4_STATIC:
             {
                 result = "Matrix4x4 [static]";
 
@@ -3405,8 +3412,8 @@ PUBLIC EMERALD_API void scene_graph_traverse(scene_graph                    grap
                                                                                  node_ptr->attached_lights;
 
                         for (unsigned int n_object = 0;
-                                           n_object < n_objects;
-                                         ++n_object)
+                                          n_object < n_objects;
+                                        ++n_object)
                         {
                             void* object = NULL;
 

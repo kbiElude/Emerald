@@ -737,18 +737,18 @@ PRIVATE void _mesh_marchingcubes_init_polygonizer_po(_mesh_marchingcubes* mesh_p
                           "                           out vec3  result_vertex)\n"
                           "{\n"
                           /* TODO: Use the improved version? */
-                          "    uvec3 vertex1_preceding_step_size  = uvec3(clamp(base_index1 - BLOB_SIZE_X / 10 * 1,               0, BLOB_SIZE_X * BLOB_SIZE_Y * BLOB_SIZE_Z - 1),\n"
-                          "                                               clamp(base_index1 - BLOB_SIZE_Y / 10 * n_ids_per_row,   0, BLOB_SIZE_X * BLOB_SIZE_Y * BLOB_SIZE_Z - 1),\n"
-                          "                                               clamp(base_index1 - BLOB_SIZE_Z / 10 * n_ids_per_slice, 0, BLOB_SIZE_X * BLOB_SIZE_Y * BLOB_SIZE_Z - 1) );\n"
-                          "    uvec3 vertex1_proceeding_step_size = uvec3(clamp(base_index1 + BLOB_SIZE_X / 10 * 1,               0, BLOB_SIZE_X * BLOB_SIZE_Y * BLOB_SIZE_Z - 1),\n"
-                          "                                               clamp(base_index1 + BLOB_SIZE_Y / 10 * n_ids_per_row,   0, BLOB_SIZE_X * BLOB_SIZE_Y * BLOB_SIZE_Z - 1),\n"
-                          "                                               clamp(base_index1 + BLOB_SIZE_Z / 10 * n_ids_per_slice, 0, BLOB_SIZE_X * BLOB_SIZE_Y * BLOB_SIZE_Z - 1) );\n"
-                          "    uvec3 vertex2_preceding_step_size  = uvec3(clamp(base_index2 - BLOB_SIZE_X / 10 * 1,               0, BLOB_SIZE_X * BLOB_SIZE_Y * BLOB_SIZE_Z - 1),\n"
-                          "                                               clamp(base_index2 - BLOB_SIZE_Y / 10 * n_ids_per_row,   0, BLOB_SIZE_X * BLOB_SIZE_Y * BLOB_SIZE_Z - 1),\n"
-                          "                                               clamp(base_index2 - BLOB_SIZE_Z / 10 * n_ids_per_slice, 0, BLOB_SIZE_X * BLOB_SIZE_Y * BLOB_SIZE_Z - 1) );\n"
-                          "    uvec3 vertex2_proceeding_step_size = uvec3(clamp(base_index2 + BLOB_SIZE_X / 10 * 1,               0, BLOB_SIZE_X * BLOB_SIZE_Y * BLOB_SIZE_Z - 1),\n"
-                          "                                               clamp(base_index2 + BLOB_SIZE_Y / 10 * n_ids_per_row,   0, BLOB_SIZE_X * BLOB_SIZE_Y * BLOB_SIZE_Z - 1),\n"
-                          "                                               clamp(base_index2 + BLOB_SIZE_Z / 10 * n_ids_per_slice, 0, BLOB_SIZE_X * BLOB_SIZE_Y * BLOB_SIZE_Z - 1) );\n"
+                          "    uvec3 vertex1_preceding_step_size  = uvec3(clamp(base_index1 - BLOB_SIZE_X / 25 * 1,               0, BLOB_SIZE_X * BLOB_SIZE_Y * BLOB_SIZE_Z - 1),\n"
+                          "                                               clamp(base_index1 - BLOB_SIZE_Y / 25 * n_ids_per_row,   0, BLOB_SIZE_X * BLOB_SIZE_Y * BLOB_SIZE_Z - 1),\n"
+                          "                                               clamp(base_index1 - BLOB_SIZE_Z / 25 * n_ids_per_slice, 0, BLOB_SIZE_X * BLOB_SIZE_Y * BLOB_SIZE_Z - 1) );\n"
+                          "    uvec3 vertex1_proceeding_step_size = uvec3(clamp(base_index1 + BLOB_SIZE_X / 25 * 1,               0, BLOB_SIZE_X * BLOB_SIZE_Y * BLOB_SIZE_Z - 1),\n"
+                          "                                               clamp(base_index1 + BLOB_SIZE_Y / 25 * n_ids_per_row,   0, BLOB_SIZE_X * BLOB_SIZE_Y * BLOB_SIZE_Z - 1),\n"
+                          "                                               clamp(base_index1 + BLOB_SIZE_Z / 25 * n_ids_per_slice, 0, BLOB_SIZE_X * BLOB_SIZE_Y * BLOB_SIZE_Z - 1) );\n"
+                          "    uvec3 vertex2_preceding_step_size  = uvec3(clamp(base_index2 - BLOB_SIZE_X / 25 * 1,               0, BLOB_SIZE_X * BLOB_SIZE_Y * BLOB_SIZE_Z - 1),\n"
+                          "                                               clamp(base_index2 - BLOB_SIZE_Y / 25 * n_ids_per_row,   0, BLOB_SIZE_X * BLOB_SIZE_Y * BLOB_SIZE_Z - 1),\n"
+                          "                                               clamp(base_index2 - BLOB_SIZE_Z / 25 * n_ids_per_slice, 0, BLOB_SIZE_X * BLOB_SIZE_Y * BLOB_SIZE_Z - 1) );\n"
+                          "    uvec3 vertex2_proceeding_step_size = uvec3(clamp(base_index2 + BLOB_SIZE_X / 25 * 1,               0, BLOB_SIZE_X * BLOB_SIZE_Y * BLOB_SIZE_Z - 1),\n"
+                          "                                               clamp(base_index2 + BLOB_SIZE_Y / 25 * n_ids_per_row,   0, BLOB_SIZE_X * BLOB_SIZE_Y * BLOB_SIZE_Z - 1),\n"
+                          "                                               clamp(base_index2 + BLOB_SIZE_Z / 25 * n_ids_per_slice, 0, BLOB_SIZE_X * BLOB_SIZE_Y * BLOB_SIZE_Z - 1) );\n"
                           "\n"
                           "    vec3 vertex1_scalar_preceeding = vec3(scalar_field[vertex1_preceding_step_size.x  / 4][vertex1_preceding_step_size.x  % 4],\n"
                           "                                          scalar_field[vertex1_preceding_step_size.y  / 4][vertex1_preceding_step_size.y  % 4],\n"
@@ -1371,6 +1371,23 @@ PUBLIC EMERALD_API mesh_marchingcubes mesh_marchingcubes_create(ogl_context     
         new_mesh_ptr->scalar_data_bo_start_offset     = scalar_data_bo_start_offset;
 
         scene_material_retain(material);
+
+        /* Set up the GPU material instance */
+        const float color_ambient[] = {0.1f, 0.1f,  0.1f, 0.0f};
+        const float color_diffuse[] = {0.0f, 0.75f, 0.2f, 1.0f};
+
+        mesh_material_set_shading_property_to_vec4 (new_mesh_ptr->material_gpu,
+                                                    MESH_MATERIAL_SHADING_PROPERTY_AMBIENT,
+                                                    color_ambient);
+        mesh_material_set_shading_property_to_vec4 (new_mesh_ptr->material_gpu,
+                                                    MESH_MATERIAL_SHADING_PROPERTY_DIFFUSE,
+                                                    color_diffuse);
+        mesh_material_set_shading_property_to_float(new_mesh_ptr->material_gpu,
+                                                    MESH_MATERIAL_SHADING_PROPERTY_SPECULAR,
+                                                    1.0f);
+        mesh_material_set_shading_property_to_float(new_mesh_ptr->material_gpu,
+                                                    MESH_MATERIAL_SHADING_PROPERTY_SHININESS,
+                                                    1.0f);
 
         /* Request a rendering context call-back to set up more interesting stuff */
         ogl_context_request_callback_from_context_thread(new_mesh_ptr->context,
