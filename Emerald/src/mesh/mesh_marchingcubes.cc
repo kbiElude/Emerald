@@ -1387,7 +1387,7 @@ PUBLIC EMERALD_API mesh_marchingcubes mesh_marchingcubes_create(ogl_context     
                                                     1.0f);
         mesh_material_set_shading_property_to_float(new_mesh_ptr->material_gpu,
                                                     MESH_MATERIAL_SHADING_PROPERTY_SHININESS,
-                                                    1.0f);
+                                                    2.0f);
 
         /* Request a rendering context call-back to set up more interesting stuff */
         ogl_context_request_callback_from_context_thread(new_mesh_ptr->context,

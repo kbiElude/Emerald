@@ -997,21 +997,25 @@ PRIVATE void _ogl_scene_renderer_render_traversed_scene_graph(_ogl_scene_rendere
 
     /* Calculate camera location */
     {
-        /* Matrix inverse = transposal for view matrices (which never use scaling) */
-        system_matrix4x4 view_transposed      = system_matrix4x4_create();
-        const float*     view_transposed_data = NULL;
+        /* Matrix inverse = transposal for view matrices (which never use scaling).
+         *
+         * However, it seems like flyby matrix does incorporate some scaling. For simplicity,
+         * let's just go with the inversed matrix for now. (TODO?)
+         */
+        system_matrix4x4 view_inverted      = system_matrix4x4_create();
+        const float*     view_inverted_data = NULL;
 
-        system_matrix4x4_set_from_matrix4x4(view_transposed,
+        system_matrix4x4_set_from_matrix4x4(view_inverted,
                                             renderer_ptr->current_view);
-        system_matrix4x4_transpose         (view_transposed);
+        system_matrix4x4_invert            (view_inverted);
 
-        view_transposed_data = system_matrix4x4_get_row_major_data(view_transposed);
-        camera_location[0]   = view_transposed_data[3];
-        camera_location[1]   = view_transposed_data[7];
-        camera_location[2]   = view_transposed_data[11];
-        camera_location[3]   = 1.0f;
+        view_inverted_data = system_matrix4x4_get_row_major_data(view_inverted);
+        camera_location[0] = view_inverted_data[3];
+        camera_location[1] = view_inverted_data[7];
+        camera_location[2] = view_inverted_data[11];
+        camera_location[3] = 1.0f;
 
-        system_matrix4x4_release(view_transposed);
+        system_matrix4x4_release(view_inverted);
     }
 
     /* Forward renderer can work in two modes:

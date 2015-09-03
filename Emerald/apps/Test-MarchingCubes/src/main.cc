@@ -294,8 +294,7 @@ PRIVATE void _render(ogl_context context,
                       n_metaball < _n_start_metaball_configs;
                     ++n_metaball)
     {
-        //float t = float((frame_time) % 2000) / 2000.0f * 10.0f * 3.14152965f;
-        float t = 0;
+        float t = float((frame_time) % 2000) / 2000.0f * 10.0f * 3.14152965f;
 
         float new_size = _start_metaball_configs[n_metaball * 4 + 0] + sin((t * n_metaball) * 3.14152965f) * 0.0125f;
 
