@@ -10,6 +10,7 @@
 
 DECLARE_HANDLE(procedural_mesh_box);
 DECLARE_HANDLE(procedural_mesh_sphere);
+DECLARE_HANDLE(procedural_uv_generator);
 
 typedef enum
 {

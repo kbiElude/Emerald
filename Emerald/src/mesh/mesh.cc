@@ -3545,7 +3545,7 @@ PUBLIC EMERALD_API void mesh_generate_normal_data(mesh mesh)
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API void mesh_get_layer_data_stream_data(mesh                        mesh,
+PUBLIC EMERALD_API bool mesh_get_layer_data_stream_data(mesh                        mesh,
                                                         mesh_layer_id               layer_id,
                                                         mesh_layer_data_stream_type type,
                                                         unsigned int*               out_n_items_ptr,
@@ -3553,6 +3553,7 @@ PUBLIC EMERALD_API void mesh_get_layer_data_stream_data(mesh                    
 {
     _mesh_layer* layer_ptr = NULL;
     _mesh*       mesh_ptr  = (_mesh*) mesh;
+    bool         result    = false;
 
     ASSERT_DEBUG_SYNC(mesh_ptr->type == MESH_TYPE_REGULAR,
                       "Entry-point is only compatible with regular meshes only.");
@@ -3576,22 +3577,12 @@ PUBLIC EMERALD_API void mesh_get_layer_data_stream_data(mesh                    
             {
                 *out_data_ptr = stream_ptr->data;
             }
-        } /* if (system_hash64map_get(layer_ptr->data_streams, type, &stream_ptr) ) */
-        else
-        {
-            ASSERT_DEBUG_SYNC(false,
-                              "Could not retrieve data stream [%d] for mesh [%s]",
-                              type,
-                              system_hashed_ansi_string_get_buffer(mesh_ptr->name) );
-        }
-    } /* if (system_resizable_vector_get_element_at(mesh_ptr->layers, layer_id, &layer_ptr) ) */
-    else
-    {
-        ASSERT_DEBUG_SYNC(false,
-                          "Could not retrieve layer [%d]",
-                          layer_id);
-    }
 
+            result = true;
+        } /* if (system_hash64map_get(layer_ptr->data_streams, type, &stream_ptr) ) */
+    } /* if (system_resizable_vector_get_element_at(mesh_ptr->layers, layer_id, &layer_ptr) ) */
+
+    return result;
 }
 
 /* Please see header for specification */

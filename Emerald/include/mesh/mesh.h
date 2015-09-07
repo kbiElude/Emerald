@@ -202,7 +202,7 @@ PUBLIC EMERALD_API void mesh_generate_normal_data(mesh mesh);
  *
  *  NOTE: Can only be called against regular meshes.
  */
-PUBLIC EMERALD_API void mesh_get_layer_data_stream_data(mesh                        mesh,
+PUBLIC EMERALD_API bool mesh_get_layer_data_stream_data(mesh                        mesh,
                                                         mesh_layer_id               layer_id,
                                                         mesh_layer_data_stream_type type,
                                                         unsigned int*               out_n_items_ptr,
