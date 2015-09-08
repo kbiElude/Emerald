@@ -77,7 +77,11 @@ typedef struct _demo_timeline
         duration                        = 0;
         last_used_video_segment_ptr     = NULL;
         rendering_pipeline              = ogl_pipeline_create(in_context,
+#ifdef _DEBUG
+                                                              true, /* should_overlay_performance_info */
+#else
                                                               false, /* should_overlay_performance_info */
+#endif
                                                               system_hashed_ansi_string_create("Demo timeline rendering pipeline") );
         segment_id_to_video_segment_map = system_hash64map_create(sizeof(_demo_timeline_segment*) );
         video_segment_id_counter        = 0;
@@ -450,12 +454,14 @@ end:
 
 
 /** Please see header for spec */
-PUBLIC EMERALD_API bool demo_timeline_add_video_segment(demo_timeline              timeline,
-                                                        system_hashed_ansi_string  name,
-                                                        system_time                start_time,
-                                                        system_time                end_time,
-                                                        demo_timeline_segment_id*  out_segment_id_ptr,
-                                                        uint32_t*                  opt_out_stage_id_ptr)
+PUBLIC EMERALD_API bool demo_timeline_add_video_segment(demo_timeline                     timeline,
+                                                        system_hashed_ansi_string         name,
+                                                        system_time                       start_time,
+                                                        system_time                       end_time,
+                                                        float                             aspect_ratio,
+                                                        unsigned int                      n_passes,
+                                                        const demo_timeline_segment_pass* passes,              /* must hold n_passes instances */
+                                                        demo_timeline_segment_id*         out_segment_id_ptr)
 {
     bool                     is_region_free         = false;
     demo_timeline_segment_id new_segment_id         = -1;
@@ -557,13 +563,22 @@ PUBLIC EMERALD_API bool demo_timeline_add_video_segment(demo_timeline           
             timeline_ptr->duration = end_time;
         }
 
+        /* Set up the pipeline stage steps using the pass info structures */
+        for (unsigned int n_pass = 0;
+                          n_pass < n_passes;
+                        ++n_pass)
+        {
+            uint32_t step_id = ogl_pipeline_add_stage_step(timeline_ptr->rendering_pipeline,
+                                                           new_segment_stage_id,
+                                                           passes[n_pass].name,
+                                                           passes[n_pass].pfn_callback_proc,
+                                                           passes[n_pass].user_arg);
+
+            new_segment_ptr->aspect_ratio = aspect_ratio;
+        } /* for (all rendering passes) */
+
         /* All done */
         *out_segment_id_ptr = new_segment_id;
-
-        if (opt_out_stage_id_ptr != NULL)
-        {
-            *opt_out_stage_id_ptr = new_segment_stage_id;
-        }
 
         result = true;
     }
@@ -781,7 +796,7 @@ PUBLIC EMERALD_API bool demo_timeline_get_property(demo_timeline          timeli
             break;
         }
 
-        case DEMO_TIMELINE_SEGMENT_PROPERTY_PIPELINE:
+        case DEMO_TIMELINE_PROPERTY_PIPELINE:
         {
             *(ogl_pipeline*) out_result_ptr = timeline_ptr->rendering_pipeline;
 
