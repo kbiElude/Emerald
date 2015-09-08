@@ -13,33 +13,33 @@
 
 TEST(TimelineTest, FunctionalTest)
 {
-    ogl_context           context           = NULL;
-    system_time           duration          = 0;
-    ogl_rendering_handler rendering_handler = NULL;
-    uint32_t              segment_a_id      = -1;
-    uint32_t              segment_b_id      = -1;
-    uint32_t              segment_c_id      = -1;
-    const system_time     time_1s           = system_time_get_time_for_s(1);
-    const system_time     time_4s           = system_time_get_time_for_s(4);
-    const system_time     time_7s           = system_time_get_time_for_s(7);
-    const system_time     time_10s          = system_time_get_time_for_s(10);
-    const system_time     time_14s          = system_time_get_time_for_s(14);
-    demo_timeline         timeline          = NULL;
-    const int             xywh[]            = {0, 0, 1, 1};
-    system_pixel_format   window_pf         = system_pixel_format_create         (8,  /* color_buffer_red_bits   */
-                                                                                  8,  /* color_buffer_green_bits */
-                                                                                  8,  /* color_buffer_blue_bits  */
-                                                                                  0,  /* color_buffer_alpha_bits */
-                                                                                  16, /* depth_buffer_bits       */
-                                                                                  1,  /* n_samples               */
-                                                                                  0); /* stencil_buffer_bits     */
-    system_window         window_handle     = system_window_create_not_fullscreen(OGL_CONTEXT_TYPE_GL,
-                                                                                  xywh,
-                                                                                  system_hashed_ansi_string_create("Test window"),
-                                                                                  false,
-                                                                                  false, /* vsync_enabled */
-                                                                                  true,  /* visible */
-                                                                                  window_pf);
+    ogl_context              context           = NULL;
+    system_time              duration          = 0;
+    ogl_rendering_handler    rendering_handler = NULL;
+    demo_timeline_segment_id segment_a_id      = -1;
+    demo_timeline_segment_id segment_b_id      = -1;
+    demo_timeline_segment_id segment_c_id      = -1;
+    const system_time        time_1s           = system_time_get_time_for_s(1);
+    const system_time        time_4s           = system_time_get_time_for_s(4);
+    const system_time        time_7s           = system_time_get_time_for_s(7);
+    const system_time        time_10s          = system_time_get_time_for_s(10);
+    const system_time        time_14s          = system_time_get_time_for_s(14);
+    demo_timeline            timeline          = NULL;
+    const int                xywh[]            = {0, 0, 1, 1};
+    system_pixel_format      window_pf         = system_pixel_format_create         (8,  /* color_buffer_red_bits   */
+                                                                                     8,  /* color_buffer_green_bits */
+                                                                                     8,  /* color_buffer_blue_bits  */
+                                                                                     0,  /* color_buffer_alpha_bits */
+                                                                                     16, /* depth_buffer_bits       */
+                                                                                     1,  /* n_samples               */
+                                                                                     0); /* stencil_buffer_bits     */
+    system_window            window_handle     = system_window_create_not_fullscreen(OGL_CONTEXT_TYPE_GL,
+                                                                                     xywh,
+                                                                                     system_hashed_ansi_string_create("Test window"),
+                                                                                     false,
+                                                                                     false, /* vsync_enabled */
+                                                                                     true,  /* visible */
+                                                                                     window_pf);
 
     rendering_handler = ogl_rendering_handler_create_with_max_performance_policy(system_hashed_ansi_string_create("rendering handler"),
                                                                                  NULL,
@@ -69,8 +69,10 @@ TEST(TimelineTest, FunctionalTest)
                                                 system_hashed_ansi_string_create("Segment A"),
                                                 0, /* start_time */
                                                 time_10s,
-                                               &segment_a_id,
-                                                NULL) ); /* out_stage_id_ptr */
+                                                1.0f,    /* aspect_ratio */
+                                                0,       /* n_passes */
+                                                NULL,    /* passes */
+                                               &segment_a_id) );
 
     /* Make sure the duration is reported correctly at this point */
     ASSERT_TRUE(demo_timeline_get_property(timeline,
@@ -85,8 +87,10 @@ TEST(TimelineTest, FunctionalTest)
                                                  system_hashed_ansi_string_create("Segment B"),
                                                  time_1s,
                                                  time_4s,
-                                                &segment_b_id,
-                                                 NULL) ); /* out_stage_id_ptr */
+                                                 1.0f,    /* aspect_ratio */
+                                                 0,       /* n_passes */
+                                                 NULL,    /* passes */
+                                                &segment_b_id) );
 
     ASSERT_TRUE(demo_timeline_get_property(timeline,
                                            DEMO_TIMELINE_PROPERTY_DURATION,
@@ -111,8 +115,10 @@ TEST(TimelineTest, FunctionalTest)
                                                 system_hashed_ansi_string_create("Segment B"),
                                                 time_1s,
                                                 time_4s,
-                                               &segment_b_id,
-                                                NULL) ); /* out_stage_id_ptr */
+                                                1.0f,    /* aspect_ratio */
+                                                0,       /* n_passes */
+                                                NULL,    /* passes */
+                                               &segment_b_id) );
 
     ASSERT_TRUE(demo_timeline_get_property(timeline,
                                            DEMO_TIMELINE_PROPERTY_DURATION,
@@ -182,8 +188,10 @@ TEST(TimelineTest, FunctionalTest)
                                                 system_hashed_ansi_string_create("Segment C"),
                                                 0,
                                                 time_4s,
-                                               &segment_c_id,
-                                                NULL) ); /* opt_out_stage_id_ptr */
+                                                1.0f,    /* aspect_ratio */
+                                                0,       /* n_passes */
+                                                NULL,    /* passes */
+                                               &segment_c_id) );
 
     ASSERT_TRUE(demo_timeline_get_property(timeline,
                                            DEMO_TIMELINE_PROPERTY_DURATION,

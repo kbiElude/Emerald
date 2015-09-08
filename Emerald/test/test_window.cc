@@ -234,19 +234,16 @@ TEST(WindowTest, TimelineTest_ShouldRenderFourDifferentlyColoredScreensWithDiffe
     const float              frame_1_color[]    = {0.0f, 1.0f, 0.0f, 1.0f};
     system_time              frame_1_end_time   =  0;
     demo_timeline_segment_id frame_1_segment_id = -1;
-    uint32_t                 frame_1_stage_id   = -1;
     system_time              frame_1_start_time =  0;
     const float              frame_2_ar         = 1.5f;
     const float              frame_2_color[]    = {0.0f, 1.0f, 1.0f, 1.0f};
     system_time              frame_2_end_time   =  0;
     demo_timeline_segment_id frame_2_segment_id = -1;
-    uint32_t                 frame_2_stage_id   = -1;
     system_time              frame_2_start_time =  0;
     const float              frame_3_ar         =  1.75f;
     const float              frame_3_color[]    = {0.0f, 0.0f, 1.0f, 1.0f};
     system_time              frame_3_end_time   =  0;
     demo_timeline_segment_id frame_3_segment_id = -1;
-    uint32_t                 frame_3_stage_id   = -1;
     system_time              frame_3_start_time =  0;
     bool                     result             =  false;
     demo_timeline            timeline           =  NULL;
@@ -290,7 +287,7 @@ TEST(WindowTest, TimelineTest_ShouldRenderFourDifferentlyColoredScreensWithDiffe
               (demo_timeline) NULL);
 
     demo_timeline_get_property(timeline,
-                               DEMO_TIMELINE_SEGMENT_PROPERTY_PIPELINE,
+                               DEMO_TIMELINE_PROPERTY_PIPELINE,
                               &timeline_pipeline);
 
     ASSERT_NE(timeline_pipeline,
@@ -303,56 +300,55 @@ TEST(WindowTest, TimelineTest_ShouldRenderFourDifferentlyColoredScreensWithDiffe
     frame_3_start_time = frame_2_end_time;
     frame_3_end_time   = frame_3_start_time + frame_1_end_time;
 
+    demo_timeline_segment_pass frame_1_segment_passes[] =
+    {
+        {
+            system_hashed_ansi_string_create("Color 1 pipeline stage step"),
+                                             _clear_color_buffer_with_color,
+                                             (void*) frame_1_color
+        }
+    };
+    demo_timeline_segment_pass frame_2_segment_passes[] =
+    {
+        {
+            system_hashed_ansi_string_create("Color 2 pipeline stage step"),
+                                             _clear_color_buffer_with_color,
+                                             (void*) frame_2_color
+        }
+    };
+    demo_timeline_segment_pass frame_3_segment_passes[] =
+    {
+        {
+            system_hashed_ansi_string_create("Color 3 pipeline stage step"),
+                                             _clear_color_buffer_with_color,
+                                             (void*) frame_3_color
+        }
+    };
+
     ASSERT_TRUE(demo_timeline_add_video_segment(timeline,
                                                 system_hashed_ansi_string_create("Color 1 video segment"),
                                                 frame_1_start_time,
                                                 frame_1_end_time,
-                                               &frame_1_segment_id,
-                                               &frame_1_stage_id) );
+                                                frame_1_ar,
+                                                1, /* n_passes */
+                                                frame_1_segment_passes,
+                                               &frame_1_segment_id) );
     ASSERT_TRUE(demo_timeline_add_video_segment(timeline,
                                                 system_hashed_ansi_string_create("Color 2 video segment"),
                                                 frame_2_start_time,
                                                 frame_2_end_time,
-                                               &frame_2_segment_id,
-                                               &frame_2_stage_id) );
+                                                frame_2_ar,
+                                                1, /* n_passes */
+                                                frame_2_segment_passes,
+                                               &frame_2_segment_id) );
     ASSERT_TRUE(demo_timeline_add_video_segment(timeline,
                                                 system_hashed_ansi_string_create("Color 3 video segment"),
                                                 frame_3_start_time,
                                                 frame_3_end_time,
-                                               &frame_3_segment_id,
-                                               &frame_3_stage_id) );
-
-    ASSERT_TRUE(demo_timeline_set_segment_property(timeline,
-                                                   DEMO_TIMELINE_SEGMENT_TYPE_VIDEO,
-                                                   frame_1_segment_id,
-                                                   DEMO_TIMELINE_SEGMENT_PROPERTY_ASPECT_RATIO,
-                                                  &frame_1_ar) );
-    ASSERT_TRUE(demo_timeline_set_segment_property(timeline,
-                                                   DEMO_TIMELINE_SEGMENT_TYPE_VIDEO,
-                                                   frame_2_segment_id,
-                                                   DEMO_TIMELINE_SEGMENT_PROPERTY_ASPECT_RATIO,
-                                                  &frame_2_ar) );
-    ASSERT_TRUE(demo_timeline_set_segment_property(timeline,
-                                                   DEMO_TIMELINE_SEGMENT_TYPE_VIDEO,
-                                                   frame_3_segment_id,
-                                                   DEMO_TIMELINE_SEGMENT_PROPERTY_ASPECT_RATIO,
-                                                  &frame_3_ar) );
-
-    ogl_pipeline_add_stage_step(timeline_pipeline,
-                                frame_1_stage_id,
-                                system_hashed_ansi_string_create("Color 1 pipeline stage step"),
-                                _clear_color_buffer_with_color,
-                                (void*) frame_1_color);
-    ogl_pipeline_add_stage_step(timeline_pipeline,
-                                frame_2_stage_id,
-                                system_hashed_ansi_string_create("Color 2 pipeline stage step"),
-                                _clear_color_buffer_with_color,
-                                (void*) frame_2_color);
-    ogl_pipeline_add_stage_step(timeline_pipeline,
-                                frame_3_stage_id,
-                                system_hashed_ansi_string_create("Color 3 pipeline stage step"),
-                                _clear_color_buffer_with_color,
-                                (void*) frame_3_color);
+                                                frame_3_ar,
+                                                1, /* n_passes */
+                                                frame_3_segment_passes,
+                                               &frame_3_segment_id) );
 
     /* Assign the timeline to the window. Note that this setter automatically takes ownership of the object,
      * so we need not release it at the end of the test */

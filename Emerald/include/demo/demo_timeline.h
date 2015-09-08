@@ -9,6 +9,7 @@
 #define DEMO_TIMELINE_H
 
 #include "system/system_types.h"
+#include "ogl/ogl_pipeline.h"
 #include "ogl/ogl_types.h"
 
 DECLARE_HANDLE(demo_timeline);
@@ -53,7 +54,7 @@ typedef enum
     DEMO_TIMELINE_PROPERTY_N_VIDEO_SEGMENTS,
 
     /* ogl_pipeline; not settable. */
-    DEMO_TIMELINE_SEGMENT_PROPERTY_PIPELINE,
+    DEMO_TIMELINE_PROPERTY_PIPELINE,
 } demo_timeline_property;
 
 typedef enum
@@ -74,7 +75,7 @@ typedef enum
 {
     /* float; settable.
      *
-     * Used by ogl_rendering_handler to configure the viewport. */
+     * Used by ogl_rendering_handler to specify the rendering area to the rendering call-back handlers. */
     DEMO_TIMELINE_SEGMENT_PROPERTY_ASPECT_RATIO,
 
     /* system_time; not settable. */
@@ -100,14 +101,31 @@ typedef enum
     DEMO_TIMELINE_SEGMENT_PROPERTY_START_TIME,
 } demo_timeline_segment_property;
 
+/* Helper structure used to declare a single pass of a video segment.
+ *
+ * Only used by demo_timeline_add_video_segment()
+ */
+typedef struct
+{
+    /* Name of the pass. Used when presenting performance statistics */
+    system_hashed_ansi_string name;
+
+    /* Function to call back to render stage contents. */
+    PFNOGLPIPELINECALLBACKPROC pfn_callback_proc;
+
+    /* User data to pass with the call-back */
+    void* user_arg;
+} demo_timeline_segment_pass;
 
 /** TODO */
-PUBLIC EMERALD_API bool demo_timeline_add_video_segment(demo_timeline              timeline,
-                                                        system_hashed_ansi_string  name,
-                                                        system_time                start_time,
-                                                        system_time                end_time,
-                                                        demo_timeline_segment_id*  out_segment_id_ptr,
-                                                        uint32_t*                  opt_out_stage_id_ptr);
+PUBLIC EMERALD_API bool demo_timeline_add_video_segment(demo_timeline                     timeline,
+                                                        system_hashed_ansi_string         name,
+                                                        system_time                       start_time,
+                                                        system_time                       end_time,
+                                                        float                             aspect_ratio,
+                                                        unsigned int                      n_passes,
+                                                        const demo_timeline_segment_pass* passes,              /* must hold n_passes instances */
+                                                        demo_timeline_segment_id*         out_segment_id_ptr);
 
 /** TODO. */
 PUBLIC EMERALD_API demo_timeline demo_timeline_create(system_hashed_ansi_string name,
