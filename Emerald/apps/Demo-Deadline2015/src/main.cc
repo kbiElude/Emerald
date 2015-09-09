@@ -24,6 +24,14 @@
 #include "system/system_window.h"
 #include "main.h"
 
+#include "include/stage_intro.h"
+#include "include/stage_part1.h"
+#include "include/stage_part2.h"
+#include "include/stage_part3.h"
+#include "include/stage_part4.h"
+#include "include/stage_outro.h"
+
+
 PRIVATE ogl_context   _context           = NULL;
 PRIVATE ogl_pipeline  _pipeline          = NULL;
 PRIVATE uint32_t      _pipeline_stage_id = 0;
@@ -33,51 +41,174 @@ PRIVATE demo_timeline _timeline          = NULL;
  * call-back occurs. */
 PRIVATE system_event _please_die_event = system_event_create(true /* manual_reset */);
 
+/* Aspect ratio which should be used by all demo parts */
+PRIVATE const float _demo_aspect_ratio = 1280.0f / 720.0f;
+
 /* Let's use a predefined window size during development. Final build will always
  * use a full-screen 1080p resolution. */
-PRIVATE const int _window_size[2] = {1280, 720};
+PRIVATE const int   _window_size[2] = {1280, 720};
 
 
 /* Forward declarations */
-PRIVATE bool _rendering_rbm_callback_handler (system_window           window,
-                                              unsigned short          x,
-                                              unsigned short          y,
-                                              system_window_vk_status new_status,
-                                              void*);
-PRIVATE void _window_closed_callback_handler (system_window           window);
-PRIVATE void _window_closing_callback_handler(system_window           window);
+PRIVATE void _deinit_demo_stages_rendering_callback(ogl_context context,
+                                                    void*       unused);
+PRIVATE void _init_demo_stages_rendering_callback  (ogl_context context,
+                                                    void*       unused);
+PRIVATE bool _rendering_rbm_callback_handler       (system_window           window,
+                                                    unsigned short          x,
+                                                    unsigned short          y,
+                                                    system_window_vk_status new_status,
+                                                    void*);
+PRIVATE void _window_closed_callback_handler       (system_window           window);
+PRIVATE void _window_closing_callback_handler      (system_window           window);
 
 
-/** TODO */
-static void _effect_1_stage_rendering_callback(ogl_context context,
-                                               system_time frame_time,
-                                               const int*  rendering_area_px_topdown,
-                                               void*       unused)
+/** Calls deinit() for all demo stages we use in the demo.
+ *
+ *  @param context Rendering context handle.
+ *  @param unused  Always NULL.
+ **/
+PRIVATE void _deinit_demo_stages_rendering_callback(ogl_context context,
+                                                    void*       unused)
 {
-    ogl_context_gl_entrypoints* entrypoints_ptr = NULL;
-
-    ogl_context_get_property(context,
-                             OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
-                            &entrypoints_ptr);
-
-    entrypoints_ptr->pGLClearColor(1.0f, 1.0f, 1.0f, 1.0f);
-    entrypoints_ptr->pGLClear     (GL_COLOR_BUFFER_BIT);
+    stage_intro_deinit(context);
+    stage_part1_deinit(context);
+    stage_part2_deinit(context);
+    stage_part3_deinit(context);
+    stage_part4_deinit(context);
+    stage_outro_deinit(context);
 }
 
-/** TODO */
-static void _intro_stage_rendering_callback(ogl_context context,
-                                            system_time frame_time,
-                                            const int*  rendering_area_px_topdown,
-                                            void*       unused)
+/** Calls init() for all demo stages we use in the demo.
+ *
+ *  @param context Rendering context handle.
+ *  @param unused  Always NULL.
+ **/
+PRIVATE void _init_demo_stages_rendering_callback(ogl_context context,
+                                                  void*       unused)
 {
-    ogl_context_gl_entrypoints* entrypoints_ptr = NULL;
+    stage_intro_init(context);
+    stage_part1_init(context);
+    stage_part2_init(context);
+    stage_part3_init(context);
+    stage_part4_init(context);
+    stage_outro_init(context);
+}
 
-    ogl_context_get_property(context,
-                             OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
-                            &entrypoints_ptr);
+/* Sets up contents of the timeline */
+PRIVATE void _init_timeline_contents()
+{
+    /* Now, create video segments for each logical part of the demo.
+     *
+     * For each video segment, we need to define a set of passes, which will be used to render
+     * the frame contents. The passes will be executed one after another, in a serialized manner,
+     * with the assumption the contents rendered by the last pass should be considered final frame
+     * contents.
+     *
+     * For simplicity, the template defines only one pass for each part. Feel free to modify this.
+     */
+    demo_timeline_segment_pass intro_segment_passes[] =
+    {
+        {
+            system_hashed_ansi_string_create("Intro video segment (main pass)"),
+            stage_intro_render,
+            NULL /* user_arg */
+        }
+    };
+    demo_timeline_segment_pass outro_segment_passes[] =
+    {
+        {
+            system_hashed_ansi_string_create("Outro video segment (main pass)"),
+            stage_outro_render,
+            NULL /* user_arg */
+        }
+    };
+    demo_timeline_segment_pass part_1_segment_passes[] =
+    {
+        {
+            system_hashed_ansi_string_create("Part 1 (main pass)"),
+            stage_part1_render,
+            NULL /* user_arg */
+        }
+    };
+    demo_timeline_segment_pass part_2_segment_passes[] =
+    {
+        {
+            system_hashed_ansi_string_create("Part 2 (main pass)"),
+            stage_part2_render,
+            NULL /* user_arg */
+        }
+    };
+    demo_timeline_segment_pass part_3_segment_passes[] =
+    {
+        {
+            system_hashed_ansi_string_create("Part 3 (main pass)"),
+            stage_part3_render,
+            NULL /* user_arg */
+        }
+    };
+    demo_timeline_segment_pass part_4_segment_passes[] =
+    {
+        {
+            system_hashed_ansi_string_create("Part 4 (main pass)"),
+            stage_part4_render,
+            NULL /* user_arg */
+        }
+    };
+    demo_timeline_segment_id segment_id;
 
-    entrypoints_ptr->pGLClearColor(1.0f, 0.0f, 1.0f, 1.0f);
-    entrypoints_ptr->pGLClear     (GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    _timeline = demo_timeline_create(system_hashed_ansi_string_create("Demo timeline"),
+                                     _context);
+
+    /* TODO: Tweak start/end times! */
+    demo_timeline_add_video_segment(_timeline,
+                                    system_hashed_ansi_string_create("Intro video segment"),
+                                    system_time_get_time_for_s   (0),    /* start_time */
+                                    system_time_get_time_for_msec(5650), /* end_time */
+                                    1280.0f / 720.0f,                    /* aspect_ratio */
+                                    1,                                   /* n_passes */
+                                    intro_segment_passes,
+                                   &segment_id);
+    demo_timeline_add_video_segment(_timeline,
+                                    system_hashed_ansi_string_create("Part 1 video segment"),
+                                    system_time_get_time_for_msec(5650), /* start_time */
+                                    system_time_get_time_for_msec(25850),/* end_time */
+                                    1280.0f / 720.0f, /* aspect_ratio */
+                                    1, /* n_passes */
+                                    part_1_segment_passes,
+                                   &segment_id);
+    demo_timeline_add_video_segment(_timeline,
+                                    system_hashed_ansi_string_create("Part 2 video segment"),
+                                    system_time_get_time_for_msec(25850), /* start_time */
+                                    system_time_get_time_for_msec(51300), /* end_time */
+                                    1280.0f / 720.0f, /* aspect_ratio */
+                                    1, /* n_passes */
+                                    part_2_segment_passes,
+                                   &segment_id);
+    demo_timeline_add_video_segment(_timeline,
+                                    system_hashed_ansi_string_create("Part 3 video segment"),
+                                    system_time_get_time_for_msec(51300), /* start_time */
+                                    system_time_get_time_for_msec(71400), /* end_time */
+                                    1280.0f / 720.0f, /* aspect_ratio */
+                                    1, /* n_passes */
+                                    part_3_segment_passes,
+                                   &segment_id);
+    demo_timeline_add_video_segment(_timeline,
+                                    system_hashed_ansi_string_create("Part 4 video segment"),
+                                    system_time_get_time_for_msec(71400), /* start_time */
+                                    system_time_get_time_for_msec(89000), /* end_time */
+                                    1280.0f / 720.0f, /* aspect_ratio */
+                                    1, /* n_passes */
+                                    part_4_segment_passes,
+                                   &segment_id);
+    demo_timeline_add_video_segment(_timeline,
+                                    system_hashed_ansi_string_create("Outro video segment"),
+                                    system_time_get_time_for_msec(89000), /* start_time */
+                                    system_time_get_time_for_msec(98000), /* end_time */
+                                    1280.0f / 720.0f, /* aspect_ratio */
+                                    1, /* n_passes */
+                                    outro_segment_passes,
+                                   &segment_id);
 }
 
 /** Right mouse button click call-back handler.
@@ -114,7 +245,7 @@ PRIVATE void _window_closed_callback_handler(system_window window)
  */
 PRIVATE void _window_closing_callback_handler(system_window window)
 {
-    /* TODO: Release GL objects in here */
+    _deinit_demo_stages_rendering_callback();
 
     /* All done */
     system_event_set(_please_die_event);
@@ -207,63 +338,13 @@ PRIVATE void _window_closing_callback_handler(system_window window)
                                SYSTEM_WINDOW_PROPERTY_RENDERING_HANDLER,
                               &window_rendering_handler);
 
-    /* Now, create video segments for each logical part of the demo.
-     *
-     * For each video segment, we need to define a set of passes, which will be used to render
-     * the frame contents. The passes will be executed one after another, in a serialized manner,
-     * with the assumption the contents rendered by the last pass should be considered final frame
-     * contents.
-     *
-     * For simplicity, the examples below only use one pass.
-     */
-    ogl_pipeline             timeline_pipeline    = NULL;
-    demo_timeline_segment_id video_segment_ids[4] = {0};
+    /* Request a rendering context call-back for the first time, so all demo stages can initialize themselves */
+    ogl_context_request_callback_from_context_thread(_context,
+                                                     _init_demo_stages_rendering_callback,
+                                                     NULL); /* user_arg */
 
-    demo_timeline_segment_pass intro_video_segment_passes[] =
-    {
-        {
-            system_hashed_ansi_string_create("Intro video segment main pass"),
-            _intro_stage_rendering_callback,
-            NULL /* user_arg */
-        }
-    };
-    demo_timeline_segment_pass intro_effect_1_segment_passes[] =
-    {
-        {
-            system_hashed_ansi_string_create("Intro effect 1 main pass"),
-            _effect_1_stage_rendering_callback,
-            NULL /* user_arg */
-        }
-    };
-
-    _timeline = demo_timeline_create(system_hashed_ansi_string_create("Demo timeline"),
-                                     _context);
-
-    demo_timeline_get_property(_timeline,
-                               DEMO_TIMELINE_PROPERTY_PIPELINE,
-                              &timeline_pipeline);
-
-    demo_timeline_add_video_segment(_timeline,
-                                    system_hashed_ansi_string_create("Intro"),
-                                    system_time_get_time_for_s   (0),    /* start_time */
-                                    system_time_get_time_for_msec(5650), /* end_time */
-                                    1280.0f / 720.0f, /* aspect_ratio */
-                                    1, /* n_passes */
-                                    intro_video_segment_passes,
-                                    video_segment_ids + 0);
-    demo_timeline_add_video_segment(_timeline,
-                                    system_hashed_ansi_string_create("Effect 1"),
-                                    system_time_get_time_for_msec(5650), /* start_time */
-                                    system_time_get_time_for_msec(26000),/* end_time */
-                                    1280.0f / 720.0f, /* aspect_ratio */
-                                    1, /* n_passes */
-                                    intro_effect_1_segment_passes,
-                                    video_segment_ids + 1);
-
-    // 26-51s
-    // 51-75s
-    // 75-94s
-    // 94-103s
+    /* Add video segments for each demo part to the timeline.*/
+    _init_timeline_contents();
 
     /* Finally, bind the timeline to the rendering handler. This will cause the rendering process
      * to work, as defined by the demo_timeline instance. */
