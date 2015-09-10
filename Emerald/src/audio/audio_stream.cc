@@ -273,6 +273,16 @@ PUBLIC EMERALD_API bool audio_stream_play(audio_stream stream,
             result = false;
             goto end;
         }
+
+        if (BASS_ChannelUpdate(stream_ptr->stream,
+                               0) /* length */ == FALSE)
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Could not update stream channel contents");
+
+            result = false;
+            goto end;
+        }
     } /* if (start_time_stream_pos != -1) */
 
     if (result)
@@ -280,6 +290,59 @@ PUBLIC EMERALD_API bool audio_stream_play(audio_stream stream,
         stream_ptr->is_playing = true;
     }
 
+end:
+    return result;
+}
+
+/** Please see header for spec */
+PUBLIC EMERALD_API bool audio_stream_rewind(audio_stream stream,
+                                            system_time  new_time)
+{
+    double         new_time_bass       = 0.0;
+    uint32_t       new_time_msec       = 0;
+    QWORD          new_time_stream_pos = 0;
+    bool           result              = false;
+    _audio_stream* stream_ptr          = (_audio_stream*) stream;
+
+    /* Sanity checks */
+    ASSERT_DEBUG_SYNC(stream != NULL,
+                      "Input audio_stream instance is NULL");
+    ASSERT_DEBUG_SYNC(stream_ptr->is_playing,
+                      "Invalid audio_stream_play() call: Stream is already playing");
+
+    /* Convert the input time to BASS stream position */
+    system_time_get_msec_for_time(new_time,
+                                 &new_time_msec);
+
+    new_time_bass       = double(new_time_msec) / 1000.0;
+    new_time_stream_pos = BASS_ChannelSeconds2Bytes(stream_ptr->stream,
+                                                    new_time_bass);
+
+    ASSERT_DEBUG_SYNC(new_time_stream_pos != -1,
+                      "Could not determine stream position for the requested playback time");
+
+    result = audio_device_bind_to_thread(stream_ptr->device);
+
+    if (!result)
+    {
+        ASSERT_DEBUG_SYNC(false,
+                          "Could not bind the audio device to the running thread.");
+
+        goto end;
+    } /* if (!result) */
+
+    /* Change the playback position */
+    if (BASS_ChannelSetPosition(stream_ptr->stream,
+                                new_time_stream_pos,
+                                BASS_POS_BYTE) == FALSE)
+    {
+        ASSERT_DEBUG_SYNC(false,
+                          "Could not update stream playback time");
+
+        goto end;
+    }
+
+    result = true;
 end:
     return result;
 }

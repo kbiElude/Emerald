@@ -86,6 +86,97 @@ REFCOUNT_INSERT_IMPLEMENTATION(ogl_rendering_handler,
 /** Internal variables */
 
 /** TODO */
+PRIVATE void _ogl_rendering_handler_get_frame_properties(_ogl_rendering_handler* handler_ptr,
+                                                         bool                    should_update_frame_counter,
+                                                         int32_t*                out_frame_index_ptr,
+                                                         system_time*            out_frame_time_ptr)
+{
+    system_time curr_time = system_time_now();
+
+    switch (handler_ptr->policy)
+    {
+        case RENDERING_HANDLER_POLICY_MAX_PERFORMANCE:
+        {
+            if (should_update_frame_counter)
+            {
+                handler_ptr->n_frames_rendered++;
+            }
+
+            *out_frame_index_ptr = (handler_ptr->n_frames_rendered);
+            *out_frame_time_ptr  = curr_time                            +
+                                   handler_ptr->runtime_time_adjustment -
+                                   handler_ptr->playback_start_time;
+
+            break;
+        }
+
+        case RENDERING_HANDLER_POLICY_FPS:
+        {
+            /* Calculate new frame's index */
+            int32_t     frame_index;
+            system_time frame_time = (curr_time                            +
+                                      handler_ptr->runtime_time_adjustment -
+                                      handler_ptr->playback_start_time);
+            int32_t     frame_time_msec;
+            int32_t     new_frame_time_msec;
+
+            system_time_get_msec_for_time(frame_time,
+                                          (uint32_t*) &frame_time_msec);
+
+            frame_index = frame_time_msec * handler_ptr->fps / 1000 /* ms in s */;
+
+            /* Now, this part is tricky. Occasionally, we may run into a situation where the newly
+             * calculated frame index is exactly the same as was used for the previous frame.
+             * This is unintended and causes irritating stuttering effect.
+             *
+             * To work around this, ensure we always move forward. This is not going to address the
+             * problem, if the animation is ever played in reverse - you'll need to come up with
+             * something more fancy, if you ever need to change the playback direction.
+             */
+            if (frame_index == handler_ptr->last_frame_index)
+            {
+                frame_index++;
+            }
+
+            /* Convert the frame index to global frame time. */
+            new_frame_time_msec = frame_index * 1000 /* ms in s */ / handler_ptr->fps;
+            *out_frame_time_ptr = system_time_get_time_for_msec(new_frame_time_msec);
+
+            *out_frame_index_ptr = frame_index;
+
+            if (should_update_frame_counter)
+            {
+                handler_ptr->last_frame_index = frame_index;
+
+                /* Count the frame and move on. */
+                handler_ptr->n_frames_rendered++;
+            }
+
+            break;
+        }
+
+        case RENDERING_HANDLER_POLICY_RENDER_PER_REQUEST:
+        {
+            *out_frame_time_ptr  = 0;
+            *out_frame_index_ptr = 0;
+
+            if (should_update_frame_counter)
+            {
+                handler_ptr->n_frames_rendered++;
+            }
+
+            break;
+        }
+
+        default:
+        {
+            LOG_FATAL("Unrecognized rendering handler policy [%d]",
+                      handler_ptr->policy);
+        }
+    } /* switch (rendering_handler->policy) */
+}
+
+/** TODO */
 PRIVATE bool _ogl_rendering_handler_key_down_callback(system_window window,
                                                       unsigned int  keycode,
                                                       void*         user_arg)
@@ -101,6 +192,8 @@ PRIVATE bool _ogl_rendering_handler_key_down_callback(system_window window,
      */
     if (rendering_handler_ptr->runtime_time_adjustment_mode)
     {
+        system_critical_section_enter(rendering_handler_ptr->rendering_cs);
+
         switch (keycode)
         {
             case SYSTEM_WINDOW_KEY_LEFT:
@@ -128,6 +221,22 @@ PRIVATE bool _ogl_rendering_handler_key_down_callback(system_window window,
                     rendering_handler_ptr->left_arrow_key_press_start_time = system_time_now();
                 }
 
+                /* Update the audio stream playback position */
+                if (rendering_handler_ptr->active_audio_stream != NULL)
+                {
+                    int32_t     frame_index;
+                    system_time frame_time;
+
+                    _ogl_rendering_handler_get_frame_properties(rendering_handler_ptr,
+                                                                false, /* should_update_frame_counter */
+                                                               &frame_index,
+                                                               &frame_time);
+
+                    audio_stream_stop(rendering_handler_ptr->active_audio_stream);
+                    audio_stream_play(rendering_handler_ptr->active_audio_stream,
+                                        frame_time);
+                }
+
                 break;
             }
 
@@ -146,6 +255,22 @@ PRIVATE bool _ogl_rendering_handler_key_down_callback(system_window window,
                 {
                     /* Right arrow key press notification: one-shot, potentially continuous. */
                     rendering_handler_ptr->right_arrow_key_press_start_time = system_time_now();
+                }
+
+                /* Update the audio stream playback position */
+                if (rendering_handler_ptr->active_audio_stream != NULL)
+                {
+                    int32_t     frame_index;
+                    system_time frame_time;
+
+                    _ogl_rendering_handler_get_frame_properties(rendering_handler_ptr,
+                                                                false, /* should_update_frame_counter */
+                                                               &frame_index,
+                                                               &frame_time);
+
+                    audio_stream_stop(rendering_handler_ptr->active_audio_stream);
+                    audio_stream_play(rendering_handler_ptr->active_audio_stream,
+                                        frame_time);
                 }
 
                 break;
@@ -192,6 +317,9 @@ PRIVATE bool _ogl_rendering_handler_key_down_callback(system_window window,
                 result = false;
             }
         } /* switch (keycode) */
+
+        system_critical_section_leave(rendering_handler_ptr->rendering_cs);
+
     } /* if (rendering_handler_ptr->runtime_time_adjustment_mode) */
 
     return result;
@@ -234,6 +362,22 @@ PRIVATE bool _ogl_rendering_handler_key_up_callback(system_window window,
 
                 rendering_handler_ptr->left_arrow_key_press_start_time = 0;
 
+                /* Update the audio stream playback position */
+                if (rendering_handler_ptr->active_audio_stream != NULL)
+                {
+                    int32_t     frame_index;
+                    system_time frame_time;
+
+                    _ogl_rendering_handler_get_frame_properties(rendering_handler_ptr,
+                                                                false, /* should_update_frame_counter */
+                                                               &frame_index,
+                                                               &frame_time);
+
+                    audio_stream_stop(rendering_handler_ptr->active_audio_stream);
+                    audio_stream_play(rendering_handler_ptr->active_audio_stream,
+                                        frame_time);
+                }
+
                 break;
             }
 
@@ -246,6 +390,22 @@ PRIVATE bool _ogl_rendering_handler_key_up_callback(system_window window,
                 system_critical_section_leave(rendering_handler_ptr->rendering_cs);
 
                 rendering_handler_ptr->right_arrow_key_press_start_time = 0;
+
+                /* Update the audio stream playback position */
+                if (rendering_handler_ptr->active_audio_stream != NULL)
+                {
+                    int32_t     frame_index;
+                    system_time frame_time;
+
+                    _ogl_rendering_handler_get_frame_properties(rendering_handler_ptr,
+                                                                false, /* should_update_frame_counter */
+                                                               &frame_index,
+                                                               &frame_time);
+
+                    audio_stream_stop(rendering_handler_ptr->active_audio_stream);
+                    audio_stream_play(rendering_handler_ptr->active_audio_stream,
+                                        frame_time);
+                }
 
                 break;
             }
@@ -502,73 +662,10 @@ PRIVATE void _ogl_rendering_handler_thread_entrypoint(void* in_arg)
                     system_critical_section_enter(rendering_handler->rendering_cs);
                     {
                         /* Determine current frame index & time */
-                        switch (rendering_handler->policy)
-                        {
-                            case RENDERING_HANDLER_POLICY_MAX_PERFORMANCE:
-                            {
-                                frame_index    = (rendering_handler->n_frames_rendered++);
-                                new_frame_time = curr_time                                  +
-                                                 rendering_handler->runtime_time_adjustment -
-                                                 rendering_handler->playback_start_time;
-
-                                break;
-                            }
-
-                            case RENDERING_HANDLER_POLICY_FPS:
-                            {
-                                /* Calculate new frame's index */
-                                system_time frame_time = (curr_time                                  +
-                                                          rendering_handler->runtime_time_adjustment -
-                                                          rendering_handler->playback_start_time);
-                                int32_t     frame_time_msec;
-                                int32_t     new_frame_time_msec;
-
-                                system_time_get_msec_for_time(frame_time,
-                                                              (uint32_t*) &frame_time_msec);
-
-                                frame_index = frame_time_msec * rendering_handler->fps / 1000 /* ms in s */;
-
-                                /* Now, this part is tricky. Occasionally, we may run into a situation where the newly
-                                 * calculated frame index is exactly the same as was used for the previous frame.
-                                 * This is unintended and causes irritating stuttering effect.
-                                 *
-                                 * To work around this, ensure we always move forward. This is not going to address the
-                                 * problem, if the animation is ever played in reverse - you'll need to come up with
-                                 * something more fancy, if you ever need to change the playback direction.
-                                 */
-                                if (frame_index == last_frame_index)
-                                {
-                                    frame_index++;
-                                }
-
-                                last_frame_index = frame_index;
-
-                                /* Convert the frame index to global frame time. */
-                                new_frame_time_msec = frame_index * 1000 /* ms in s */ / rendering_handler->fps;
-                                new_frame_time      = system_time_get_time_for_msec(new_frame_time_msec);
-
-                                /* Count the frame and move on. */
-                                rendering_handler->n_frames_rendered++;
-
-                                break;
-                            }
-
-                            case RENDERING_HANDLER_POLICY_RENDER_PER_REQUEST:
-                            {
-                                new_frame_time = 0;
-                                frame_index    = 0;
-
-                                rendering_handler->n_frames_rendered++;
-
-                                break;
-                            }
-
-                            default:
-                            {
-                                LOG_FATAL("Unrecognized rendering handler policy [%d]",
-                                          rendering_handler->policy);
-                            }
-                        } /* switch (rendering_handler->policy) */
+                        _ogl_rendering_handler_get_frame_properties(rendering_handler,
+                                                                    true, /* should_update_frame_counter */
+                                                                   &frame_index,
+                                                                   &new_frame_time);
 
                         /* Update the frame indicator, if the runtime time adjustment mode is on */
                         if (rendering_handler->runtime_time_adjustment_mode)

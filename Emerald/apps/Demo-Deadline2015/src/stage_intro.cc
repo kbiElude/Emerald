@@ -2,7 +2,7 @@
 #include "ogl/ogl_context.h"
 
 /** Please see header for specification */
-PUBLIC RENDERING_CONTEXT_CALL void stage_intro_deinit()
+PUBLIC RENDERING_CONTEXT_CALL void stage_intro_deinit(ogl_context context)
 {
     /* Nothing to deinit at the moment */
 }
