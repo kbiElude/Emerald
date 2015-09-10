@@ -35,8 +35,6 @@ FILE(GLOB GeneralSources "${Demo-Deadline2015_SOURCE_DIR}/src/*.cc")
 
 SET(AllDemo-Deadline2015Sources ${GeneralSources} )
 
-ADD_MSVC_PRECOMPILED_HEADER("shared.h" "src/shared.cc" AllDemo-Deadline2015Sources)
-
 ADD_EXECUTABLE(Demo-Deadline2015 WIN32 ${AllDemo-Deadline2015Sources} ${GeneralIncludes})
 
 IF (MSVC)

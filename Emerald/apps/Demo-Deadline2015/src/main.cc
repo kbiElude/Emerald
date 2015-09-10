@@ -15,6 +15,7 @@
 #include "ogl/ogl_rendering_handler.h"
 #include "ogl/ogl_scene_renderer.h"
 #include "system/system_assertions.h"
+#include "system/system_callback_manager.h"
 #include "system/system_event.h"
 #include "system/system_file_serializer.h"
 #include "system/system_hashed_ansi_string.h"
@@ -211,6 +212,20 @@ PRIVATE void _init_timeline_contents()
                                    &segment_id);
 }
 
+/* Entry-point called back by Emerald the moment the audio track finishes playing.
+ *
+ * For the demo, we want the window to be closed at this point.
+ *
+ * @param callback_data Unused (but points to the audio_stream instance which
+ *                      generated the event).
+ * @param user_arg      Unused.
+ */
+PRIVATE void _on_audio_stream_finished_playing(const void* callback_data,
+                                                     void* user_arg)
+{
+    system_event_set(_please_die_event);
+}
+
 /** Right mouse button click call-back handler.
  *
  *  NOTE: This call-back is *not* made from the rendering thread.
@@ -359,8 +374,9 @@ PRIVATE void _window_closing_callback_handler(system_window window)
      * TODO: Yeah, it would make more sense to link the audio stream with demo_timeline object. :)
      */
     {
-        system_file_serializer audio_serializer  = NULL;
-        audio_stream           audio_stream      = NULL;
+        system_file_serializer  audio_serializer  = NULL;
+        audio_stream            audio_stream      = NULL;
+        system_callback_manager audio_stream_cm   = NULL;
 
         audio_serializer = system_file_serializer_create_for_reading(system_hashed_ansi_string_create("demo.mp3") );
         ASSERT_ALWAYS_SYNC(audio_serializer != NULL,
@@ -376,6 +392,19 @@ PRIVATE void _window_closing_callback_handler(system_window window)
                                    SYSTEM_WINDOW_PROPERTY_AUDIO_STREAM,
                                   &audio_stream);
 
+        /* Sign up for 'finished playing' call-back so we know when to kill the window */
+        audio_stream_get_property(audio_stream,
+                                  AUDIO_STREAM_PROPERTY_CALLBACK_MANAGER,
+                                 &audio_stream_cm);
+
+        system_callback_manager_subscribe_for_callbacks(audio_stream_cm,
+                                                        AUDIO_STREAM_CALLBACK_ID_FINISHED_PLAYING,
+                                                        CALLBACK_SYNCHRONICITY_SYNCHRONOUS,
+                                                        _on_audio_stream_finished_playing,
+                                                        NULL); /* callback_user_arg */
+
+        /* Release stuff we no longer need. Note that these objects are ref-counted, so the serializer will be freed
+         * but the stream will continue to beat */
         audio_stream_release          (audio_stream);
         system_file_serializer_release(audio_serializer);
     }
