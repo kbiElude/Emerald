@@ -245,7 +245,8 @@ PRIVATE void _window_closed_callback_handler(system_window window)
  */
 PRIVATE void _window_closing_callback_handler(system_window window)
 {
-    _deinit_demo_stages_rendering_callback();
+    _deinit_demo_stages_rendering_callback(_context,
+                                           NULL);
 
     /* All done */
     system_event_set(_please_die_event);

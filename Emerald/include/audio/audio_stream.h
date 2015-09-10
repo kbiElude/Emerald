@@ -44,6 +44,10 @@ PUBLIC EMERALD_API bool audio_stream_pause(audio_stream stream);
 PUBLIC EMERALD_API bool audio_stream_resume(audio_stream stream);
 
 /** TODO */
+PUBLIC EMERALD_API bool audio_stream_rewind(audio_stream stream,
+                                            system_time  new_time);
+
+/** TODO */
 PUBLIC EMERALD_API bool audio_stream_play(audio_stream stream,
                                           system_time  start_time);
 
