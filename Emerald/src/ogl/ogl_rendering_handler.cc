@@ -232,8 +232,7 @@ PRIVATE bool _ogl_rendering_handler_key_down_callback(system_window window,
                                                                &frame_index,
                                                                &frame_time);
 
-                    audio_stream_stop(rendering_handler_ptr->active_audio_stream);
-                    audio_stream_play(rendering_handler_ptr->active_audio_stream,
+                    audio_stream_rewind(rendering_handler_ptr->active_audio_stream,
                                         frame_time);
                 }
 
@@ -268,8 +267,7 @@ PRIVATE bool _ogl_rendering_handler_key_down_callback(system_window window,
                                                                &frame_index,
                                                                &frame_time);
 
-                    audio_stream_stop(rendering_handler_ptr->active_audio_stream);
-                    audio_stream_play(rendering_handler_ptr->active_audio_stream,
+                    audio_stream_rewind(rendering_handler_ptr->active_audio_stream,
                                         frame_time);
                 }
 
@@ -373,8 +371,7 @@ PRIVATE bool _ogl_rendering_handler_key_up_callback(system_window window,
                                                                &frame_index,
                                                                &frame_time);
 
-                    audio_stream_stop(rendering_handler_ptr->active_audio_stream);
-                    audio_stream_play(rendering_handler_ptr->active_audio_stream,
+                    audio_stream_rewind(rendering_handler_ptr->active_audio_stream,
                                         frame_time);
                 }
 
@@ -402,8 +399,7 @@ PRIVATE bool _ogl_rendering_handler_key_up_callback(system_window window,
                                                                &frame_index,
                                                                &frame_time);
 
-                    audio_stream_stop(rendering_handler_ptr->active_audio_stream);
-                    audio_stream_play(rendering_handler_ptr->active_audio_stream,
+                    audio_stream_rewind(rendering_handler_ptr->active_audio_stream,
                                         frame_time);
                 }
 

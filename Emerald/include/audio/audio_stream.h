@@ -22,8 +22,24 @@ REFCOUNT_INSERT_DECLARATIONS(audio_stream,
 
 typedef enum
 {
+    /* The audio stream finished playing.
+     *
+     * callback_proc_data: originating audio_stream instance.
+     */
+    AUDIO_STREAM_CALLBACK_ID_FINISHED_PLAYING, 
+
+    /* Always last */
+    AUDIO_STREAM_CALLBACK_ID_COUNT
+} audio_stream_callback_id;
+
+
+typedef enum
+{
     /* not settable, audio_device. */
-    AUDIO_STREAM_PROPERTY_AUDIO_DEVICE
+    AUDIO_STREAM_PROPERTY_AUDIO_DEVICE,
+
+    /* not settable, system_callback_manager */
+    AUDIO_STREAM_PROPERTY_CALLBACK_MANAGER
 } audio_stream_property;
 
 
