@@ -543,6 +543,7 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API bool ogl_pipeline_draw_stage(ogl_pipel
 {
     ogl_flyby                                                 flyby              = NULL;
     bool                                                      is_stage_dirty     = false;
+    uint32_t                                                  n_stages           = 0;
     _ogl_pipeline*                                            pipeline_ptr       = (_ogl_pipeline*) instance;
     _ogl_pipeline_stage*                                      pipeline_stage_ptr = NULL;
     bool                                                      result             = false;
@@ -559,7 +560,61 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API bool ogl_pipeline_draw_stage(ogl_pipel
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL_EXT_DIRECT_STATE_ACCESS,
                             &dsa_entry_points);
 
-    /* Retrieve the stage descriptor first */
+    /* For all stages != n_stage, we need to disable text rendering. */
+    if (pipeline_ptr->should_overlay_performance_info)
+    {
+        system_resizable_vector_get_property(pipeline_ptr->stages,
+                                             SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                            &n_stages);
+
+        for (uint32_t n_current_stage = 0;
+                      n_current_stage < n_stages;
+                    ++n_current_stage)
+        {
+            _ogl_pipeline_stage* current_stage_ptr     = NULL;
+            uint32_t             n_current_stage_steps = 0;
+            bool                 should_be_visible     = (n_current_stage == n_stage);
+
+            system_resizable_vector_get_element_at(pipeline_ptr->stages,
+                                                   n_current_stage,
+                                                  &current_stage_ptr);
+
+            ASSERT_DEBUG_SYNC(current_stage_ptr != NULL,
+                              "Could not retrieve pipeline stage descriptor at index [%d]",
+                              n_current_stage);
+
+            system_resizable_vector_get_property(current_stage_ptr->steps,
+                                                 SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                                &n_current_stage_steps);
+
+            for (uint32_t n_current_stage_step = 0;
+                          n_current_stage_step < n_current_stage_steps;
+                        ++n_current_stage_step)
+            {
+                _ogl_pipeline_stage_step* current_stage_step_ptr = NULL;
+
+                system_resizable_vector_get_element_at(current_stage_ptr->steps,
+                                                       n_current_stage_step,
+                                                      &current_stage_step_ptr);
+
+                ASSERT_DEBUG_SYNC(current_stage_step_ptr != NULL,
+                                  "Could not retrieve pipeline stage step descriptor at index [%d] for stage [%d]",
+                                  n_current_stage_step,
+                                  n_current_stage);
+
+                ogl_text_set_text_string_property(pipeline_ptr->text_renderer,
+                                                  current_stage_step_ptr->text_time_index,
+                                                  OGL_TEXT_STRING_PROPERTY_VISIBILITY,
+                                                 &should_be_visible);
+                ogl_text_set_text_string_property(pipeline_ptr->text_renderer,
+                                                  current_stage_step_ptr->text_string_index,
+                                                  OGL_TEXT_STRING_PROPERTY_VISIBILITY,
+                                                 &should_be_visible);
+            } /* for (all stage steps for the current pipeline stage) */
+        } /* for (all pipeline stages) */
+    } /* if (pipeline_ptr->should_overlay_performance_info) */
+
+    /* Let's render the pipeline stage. Retrieve the stage descriptor first */
     if (system_resizable_vector_get_element_at(pipeline_ptr->stages,
                                                n_stage,
                                               &pipeline_stage_ptr))
