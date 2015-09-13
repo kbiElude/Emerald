@@ -49,6 +49,12 @@ PUBLIC EMERALD_API audio_stream audio_stream_create(audio_device           devic
                                                     system_window          window);
 
 /** TODO */
+PUBLIC EMERALD_API bool audio_stream_get_fft_averages(audio_stream stream,
+                                                      uint32_t     n_result_frequency_bands,
+                                                      float*       out_band_fft_data_ptr);
+
+
+/** TODO */
 PUBLIC EMERALD_API void audio_stream_get_property(audio_stream          stream,
                                                   audio_stream_property property,
                                                   void*                 out_result);

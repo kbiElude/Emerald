@@ -207,6 +207,60 @@ end_error:
 }
 
 /** Please see header for spec */
+PUBLIC EMERALD_API bool audio_stream_get_fft_averages(audio_stream stream,
+                                                      uint32_t     n_result_frequency_bands,
+                                                      float*       out_band_fft_data_ptr)
+{
+    float          fft_data[1024];
+    float*         fft_data_traveller_ptr = NULL;
+    bool           result                 = false;
+    _audio_stream* stream_ptr             = (_audio_stream*) stream;
+
+    ASSERT_DEBUG_SYNC( n_result_frequency_bands      <= 64 &&
+                      (n_result_frequency_bands % 2) == 0,
+                      "Invalid number of frequency bands was requested.");
+    ASSERT_DEBUG_SYNC(stream_ptr != NULL,
+                      "Input audio_stream instance is NULL");
+
+    /* Retrieve FFT data */
+    if ( (BASS_ChannelGetData(stream_ptr->stream,
+                              fft_data,
+                              BASS_DATA_FFT2048)) <= 0)
+    {
+        ASSERT_DEBUG_SYNC(false,
+                          "Could not retrieve FFT data");
+
+        goto end;
+    }
+
+    /* Group frequency bands into averages */
+    memset(out_band_fft_data_ptr,
+           0,
+           sizeof(float) * n_result_frequency_bands);
+
+    fft_data_traveller_ptr = fft_data;
+
+    for (uint32_t n_band = 0;
+                  n_band < n_result_frequency_bands;
+                ++n_band)
+    {
+        for (uint32_t n_fraction = 0;
+                      n_fraction < 128 /* number of float vals return by BASS */ / n_result_frequency_bands;
+                    ++n_fraction)
+        {
+            out_band_fft_data_ptr[n_band] += *(fft_data_traveller_ptr++);
+        }
+
+        out_band_fft_data_ptr[n_band] /= float(n_result_frequency_bands);
+    }
+
+    result = true;
+
+end:
+    return result;
+}
+
+/** Please see header for spec */
 PUBLIC EMERALD_API void audio_stream_get_property(audio_stream          stream,
                                                   audio_stream_property property,
                                                   void*                 out_result)
