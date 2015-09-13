@@ -48,7 +48,27 @@ PUBLIC EMERALD_API audio_stream audio_stream_create(audio_device           devic
                                                     system_file_serializer serializer,
                                                     system_window          window);
 
-/** TODO */
+/** Returns an averaged frequency band data. Number of bands is specified by the user at call-time.
+ *  Internally, the function will ask BASS to use 2048 samples for calculations.
+ *
+ *  The result data is NOT cached. Since FFT calculations can be compute-intensive, it's a good idea
+ *  to cache the returned data if you use it.
+ *
+ *  TODO: Automatically calculate & expose the FFT data for video segments that request it in advance.
+ *
+ *  @param stream                   Audio stream to retrieve the FFT data from.
+ *  @param n_result_frequency_bands FFT data is calculated for 2048 samples. The number specifies how
+ *                                  many samples should be grouped together, and then averaged into
+ *                                  a single value coresponding to consecutive bands.
+ *                                  As a result, this number directly affects the required size of
+ *                                  @parma out_band_fft_data_ptr.
+ *  @param out_band_fft_data_ptr    Target buffer to hold the calculated averaged band strength values.
+ *                                  Must not be NULL. Will be filled with sizeof(float)*@paramn_result_frequency_bands
+ *                                  values.
+ *
+ *  @return true if the function succeeded and @param out_band_fft_data_ptr was filled with data,
+ *          false otherwise.
+ */
 PUBLIC EMERALD_API bool audio_stream_get_fft_averages(audio_stream stream,
                                                       uint32_t     n_result_frequency_bands,
                                                       float*       out_band_fft_data_ptr);
