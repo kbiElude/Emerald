@@ -72,7 +72,23 @@ PUBLIC EMERALD_API mesh_layer_id mesh_add_layer(mesh);
 
 /** TODO.
  *
+ *  NOTE: The number of data stream items (eg. vertices, normals) is not defined at creation time.
+ *        By default, it is assumed you will set it to either a specific value with a subsequent
+ *        mesh_set_layer_data_stream_property() call, or point the property to a buffer memory
+ *        location with a mesh_set_layer_data_stream_property_with_buffer_memory() call.
+ *        Mind that not all Emerald modules may support both sources!
+ *
  *  NOTE: Can only be called against GPU stream meshes.
+ *
+ *  @param mesh            Mesh instance to configure. Must not be NULL.
+ *  @param layer_id        Mesh layer ID.
+ *  @param type            Type of the data stream to configure.
+ *  @param n_components    Number of components per single item. (eg. you'd usually go with 2 for UV coords)
+ *  @param bo_id           ID of the buffer object to source the data from.
+ *  @param bo_start_offset Start offset, from which the data begins.
+ *  @param bo_stride       Stride between consecutive items in bytes. Must not be 0.
+ *                         For floating-point UV coords, you'd want to pass sizeof(float) * 2.
+ *  @param bo_size         Total size of the buffer memory region, from which the data is to be sourced.
  */
 PUBLIC EMERALD_API void mesh_add_layer_data_stream_from_buffer_memory(mesh                        mesh,
                                                                       mesh_layer_id               layer_id,
@@ -80,7 +96,8 @@ PUBLIC EMERALD_API void mesh_add_layer_data_stream_from_buffer_memory(mesh      
                                                                       unsigned int                n_components,
                                                                       GLuint                      bo_id,
                                                                       unsigned int                bo_start_offset,
-                                                                      unsigned int                bo_stride);
+                                                                      unsigned int                bo_stride,
+                                                                      unsigned int                bo_size);
 
 /** TODO. Data is copied to internal storage, so all pointers can be freed after this func is called.
  *
@@ -198,9 +215,30 @@ PUBLIC EMERALD_API void mesh_free_single_indexed_representation(mesh instance);
  */
 PUBLIC EMERALD_API void mesh_generate_normal_data(mesh mesh);
 
-/** TODO
+/** Retrieves properties of an already added layer data stream, defined for specified mesh layer.
  *
- *  NOTE: Can only be called against regular meshes.
+ *  NOTE: Can only be called against GPU stream & regular meshes.
+ *  NOTE: Invalid calls will throw assertion failures.
+ *
+ *        For Regular Meshes, both @param out_n_items_ptr and @param out_data_ptr will be filled.
+ *        NULL arguments will be skipped.
+ *
+ *        For GPU Stream Meshes, only @param out_n_items_ptr will be updated.
+ *        Note that if the data stream uses buffer memory to store the number of items, the function
+ *        will report 0. To retrieve ID of the BO or the start offset, use mesh_get_layer_data_stream_property().
+ *
+ *
+ *  @param mesh            Mesh instance to issue the query against.
+ *  @param layer_id        Mesh layer ID.
+ *  @param type            Data stream type the query is to be ussed for.
+ *  @param out_n_items_ptr Deref will be set to the number of items configured for the specified
+ *                         data stream for both GPU Stream & Regular meshes . Also see NOTE above.
+ *  @param out_data_ptr    Deref will be set to the raw stream data, assuming it has not yet been
+ *                         released with eg. mesh_release_layer_datum() call. Will only be updated
+ *                         for Regular Meshes. Also see NOTE above for further comments.
+ *
+ *  @return true if the mesh layer was identified and the non-NULL out_ parameters were updated.
+ *          false otherwise.
  */
 PUBLIC EMERALD_API bool mesh_get_layer_data_stream_data(mesh                        mesh,
                                                         mesh_layer_id               layer_id,
@@ -295,6 +333,56 @@ PUBLIC EMERALD_API bool mesh_save_with_serializer(mesh                   instanc
  */
 PUBLIC EMERALD_API void mesh_set_as_instantiated(mesh mesh_to_modify,
                                                  mesh source_mesh);
+
+/** Updates a mesh layer data stream property with a value coming from client memory.
+ *
+ *  @param instance Mesh instance to update the property for.
+ *  @param n_layer  Mesh layer index.
+ *  @param type     Data stream type.
+ *  @param property Property to update.
+ *  @param data     Deref will be used to read the data to be assigned to the property.
+ *
+ *  @return true if the operation was successful, false otherwise.
+ *  */
+PUBLIC EMERALD_API bool mesh_set_layer_data_stream_property(mesh                            instance,
+                                                            uint32_t                        n_layer,
+                                                            mesh_layer_data_stream_type     type,
+                                                            mesh_layer_data_stream_property property,
+                                                            const void*                     data);
+
+/** Updates a mesh layer data stream property by assigning it a value in buffer memory
+ *
+ *  This function does NOT copy the value, as stored in the pointed buffer memory location, at the time
+ *  of the call. Instead, it stores the BO id and BO start offset, in order to let dependent modules to
+ *  read it from that location whenever necessary.
+ *  Dependent modules are expected to leverage rendering API capabilities to perform this in optimal
+ *  manner (eg. indirect dispatch/draw calls).
+ *
+ *  Currently, the only property supported by the function are:
+ *
+ *  - MESH_LAYER_DATA_STREAM_PROPERTY_N_ITEMS.
+ *
+ *  @param instance                         Mesh instance to update the property for.
+ *  @param n_layer                          Mesh layer index.
+ *  @param type                             Data stream type.
+ *  @param property                         Property to update.
+ *  @param bo_id                            ID of the buffer object which stores the value.
+ *  @param bo_size                          Size of the memory region.
+ *  @param bo_start_offset                  Start offset, relative to the beginning of the buffer object @param bo_id,
+ *                                          at which the value is stored.
+ *  @param does_read_require_memory_barrier true if a memory barrier should be issued before the data is read from
+ *                                          the buffer memory; false if not.
+ *
+ *  @return true if the operation was successful, false otherwise.
+ */
+PUBLIC EMERALD_API bool mesh_set_layer_data_stream_property_with_buffer_memory(mesh                            instance,
+                                                                               uint32_t                        n_layer,
+                                                                               mesh_layer_data_stream_type     type,
+                                                                               mesh_layer_data_stream_property property,
+                                                                               unsigned int                    bo_id,
+                                                                               unsigned int                    bo_size,
+                                                                               unsigned int                    bo_start_offset,
+                                                                               bool                            does_read_require_memory_barrier);
 
 /** TODO
  *

@@ -11,7 +11,9 @@
 
 /* Shared macros */
 #define PUBLIC
-#define PRIVATE                static
+#define PRIVATE static
+
+/* Indicates the call must be made from a rendering thread */
 #define RENDERING_CONTEXT_CALL
 
 
