@@ -366,7 +366,8 @@ PRIVATE void _render(ogl_context context,
                                           _view_matrix,
                                           _projection_matrix,
                                           _scene_camera,
-                                          RENDER_MODE_FORWARD_WITHOUT_DEPTH_PREPASS,
+                                          //RENDER_MODE_FORWARD_WITHOUT_DEPTH_PREPASS,
+                                          RENDER_MODE_TEXCOORDS_ONLY,
                                           false, /* apply_shadow_mapping */
                                           HELPER_VISUALIZATION_BOUNDING_BOXES,
                                           frame_time);

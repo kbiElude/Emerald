@@ -659,8 +659,8 @@ PRIVATE void _mesh_marchingcubes_init_mesh_instance(_mesh_marchingcubes* mesh_pt
 
     /* Configure it, so that it uses normal & vertex data taken from the buffer memory we manage in mesh_marchingcubes */
     mesh_draw_call_arguments draw_call_arguments;
-    const unsigned int       max_normals_data_stream_size  = sizeof(float) * 3 * mesh_ptr->grid_size[0] * mesh_ptr->grid_size[1] * mesh_ptr->grid_size[2];
-    const unsigned int       max_vertices_data_stream_size = sizeof(float) * 3 * mesh_ptr->grid_size[0] * mesh_ptr->grid_size[1] * mesh_ptr->grid_size[2];
+    const unsigned int       max_normals_data_stream_size  = sizeof(float) * 3 /* vertices */ * 5 /* triangles per voxel */ * mesh_ptr->grid_size[0] * mesh_ptr->grid_size[1] * mesh_ptr->grid_size[2];
+    const unsigned int       max_vertices_data_stream_size = sizeof(float) * 3 /* vertices */ * 5 /* triangles per voxel */ * mesh_ptr->grid_size[0] * mesh_ptr->grid_size[1] * mesh_ptr->grid_size[2];
     mesh_layer_id            new_layer_id                  = mesh_add_layer(mesh_ptr->mesh_instance);
     mesh_layer_pass_id       new_layer_pass_id;
 

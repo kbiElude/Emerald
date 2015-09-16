@@ -4717,16 +4717,47 @@ PUBLIC GLvoid* APIENTRY ogl_context_wrappers_glMapBufferRange(GLenum     target,
 /** Please see header for spec */
 PUBLIC void APIENTRY ogl_context_wrappers_glMemoryBarrier(GLbitfield barriers)
 {
-    /* TODO: This is a simplified impl. Sync only when needed */
-    ogl_context             context     = ogl_context_get_current_context();
-    ogl_context_state_cache state_cache = NULL;
+    uint32_t                bo_bindings_sync_bits = 0;
+    uint32_t                cache_sync_bits       = 0;
+    ogl_context             context               = ogl_context_get_current_context();
+    ogl_context_bo_bindings context_bo_bindings   = NULL;
+    ogl_context_state_cache state_cache           = NULL;
 
+    ogl_context_get_property(context,
+                             OGL_CONTEXT_PROPERTY_BO_BINDINGS,
+                            &context_bo_bindings);
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_STATE_CACHE,
                             &state_cache);
 
-    ogl_context_state_cache_sync(state_cache,
-                                 STATE_CACHE_SYNC_BIT_ACTIVE_VERTEX_ARRAY_OBJECT);
+    if ((barriers & GL_COMMAND_BARRIER_BIT) != 0)
+    {
+        bo_bindings_sync_bits |= BO_BINDINGS_SYNC_BIT_DRAW_INDIRECT_BUFFER;
+    }
+
+    if ((barriers & GL_ELEMENT_ARRAY_BARRIER_BIT)       != 0 ||
+        (barriers & GL_VERTEX_ATTRIB_ARRAY_BARRIER_BIT) != 0)
+    {
+        cache_sync_bits |= STATE_CACHE_SYNC_BIT_ACTIVE_VERTEX_ARRAY_OBJECT;
+    }
+
+    if ((barriers & GL_PIXEL_BUFFER_BARRIER_BIT) != 0)
+    {
+        bo_bindings_sync_bits |= BO_BINDINGS_SYNC_BIT_PIXEL_PACK_BUFFER    |
+                                 BO_BINDINGS_SYNC_BIT_PIXEL_UNPACK_BUFFER;
+    }
+
+    if (bo_bindings_sync_bits != 0)
+    {
+        ogl_context_bo_bindings_sync(context_bo_bindings,
+                                     bo_bindings_sync_bits);
+    }
+
+    if (cache_sync_bits != 0)
+    {
+        ogl_context_state_cache_sync(state_cache,
+                                     cache_sync_bits);
+    }
 
     _private_entrypoints_ptr->pGLMemoryBarrier(barriers);
 }

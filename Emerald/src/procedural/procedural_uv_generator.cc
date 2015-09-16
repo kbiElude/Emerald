@@ -33,11 +33,13 @@ typedef struct _procedural_uv_generator
     GLuint          input_params_ub_bo_id;
     unsigned int    input_params_ub_bo_size;
     unsigned int    input_params_ub_bo_start_offset;
+    GLuint          input_params_ub_indexed_bp;
     GLint           input_params_ub_normal_data_stride_block_offset;
     GLint           input_params_ub_start_offset_block_offset;
     ogl_program_ub  n_normals_ub;
     GLuint          n_normals_ub_bo_id;
     unsigned int    n_normals_ub_bo_start_offset;
+    GLuint          n_normals_ub_indexed_bp;
     ogl_program_ssb output_data_ssb;
     GLuint          output_data_ssb_indexed_bp;
     unsigned int    wg_local_size[3];
@@ -94,19 +96,26 @@ _procedural_uv_generator::_procedural_uv_generator(ogl_context                  
     unsigned int texcoords_data_size = 0;
 
     /* Perform actual initialization. */
-    context                      = in_context;
-    generator_cs                 = NULL;
-    generator_po                 = NULL;
-    input_data_ssb               = NULL;
-    input_data_ssb_indexed_bp    = -1;
-    input_params_ub              = NULL;
-    n_normals_ub                 = NULL;
-    n_normals_ub_bo_id           = 0;
-    n_normals_ub_bo_start_offset = -1;
-    objects                      = system_resizable_vector_create(4 /* capacity */);
-    output_data_ssb              = NULL;
-    output_data_ssb_indexed_bp   = -1;
-    type                         = in_type;
+    context                                         = in_context;
+    generator_cs                                    = NULL;
+    generator_po                                    = NULL;
+    input_data_ssb                                  = NULL;
+    input_data_ssb_indexed_bp                       = -1;
+    input_params_ub                                 = NULL;
+    input_params_ub_bo_id                           = 0;
+    input_params_ub_bo_size                         = 0;
+    input_params_ub_bo_start_offset                 = -1;
+    input_params_ub_indexed_bp                      = -1;
+    input_params_ub_normal_data_stride_block_offset = -1;
+    input_params_ub_start_offset_block_offset       = -1;
+    n_normals_ub                                    = NULL;
+    n_normals_ub_bo_id                              = 0;
+    n_normals_ub_bo_start_offset                    = -1;
+    n_normals_ub_indexed_bp                         = 0;
+    objects                                         = system_resizable_vector_create(4 /* capacity */);
+    output_data_ssb                                 = NULL;
+    output_data_ssb_indexed_bp                      = -1;
+    type                                            = in_type;
 
     memset(wg_local_size,
            0,
@@ -297,12 +306,12 @@ PRIVATE ogl_program _procedural_uv_generator_init_generator_po(_procedural_uv_ge
                       /* NOTE: In order to handle buffer-memory backed storage of the number of normals defined for the object,
                        *       we need to use a separate UB. If the value is stored in buffer memory, we'll just bind it to the UB.
                        *       Otherwise we'll update & sync the ogl_program_ub at each _execute() call.*/
-                      "layout(packed, binding = 0) uniform nNormalsBlock\n"
+                      "layout(packed) uniform nNormalsBlock\n"
                       "{\n"
                       "    uint n_normals_defined;\n"
                       "};\n"
                       "\n"
-                      "layout(packed, binding = 1) uniform inputParams\n"
+                      "layout(packed) uniform inputParams\n"
                       "{\n"
                       "    uint normal_data_stride_in_floats;\n"
                       "    uint start_offset_in_floats;\n"
@@ -418,6 +427,9 @@ PRIVATE ogl_program _procedural_uv_generator_init_generator_po(_procedural_uv_ge
     ogl_program_ub_get_property(generator_ptr->input_params_ub,
                                 OGL_PROGRAM_UB_PROPERTY_BLOCK_DATA_SIZE,
                                &generator_ptr->input_params_ub_bo_size);
+    ogl_program_ub_get_property(generator_ptr->input_params_ub,
+                                OGL_PROGRAM_UB_PROPERTY_INDEXED_BP,
+                               &generator_ptr->input_params_ub_indexed_bp);
 
     /* Retrieve the nNormals uniform block instance */
     ogl_program_get_uniform_block_by_name(generator_ptr->generator_po,
@@ -433,6 +445,9 @@ PRIVATE ogl_program _procedural_uv_generator_init_generator_po(_procedural_uv_ge
     ogl_program_ub_get_property(generator_ptr->n_normals_ub,
                                 OGL_PROGRAM_UB_PROPERTY_BO_START_OFFSET,
                                &generator_ptr->n_normals_ub_bo_start_offset);
+    ogl_program_ub_get_property(generator_ptr->n_normals_ub,
+                                OGL_PROGRAM_UB_PROPERTY_INDEXED_BP,
+                               &generator_ptr->n_normals_ub_indexed_bp);
 
     ogl_program_get_uniform_by_name(generator_ptr->generator_po,
                                     system_hashed_ansi_string_create("n_normals_defined"),
@@ -513,7 +528,9 @@ PRIVATE void _procedural_uv_generator_run_spherical_mapping_with_normals_po(_pro
     unsigned int                      normal_data_bo_size                      = 0;
     unsigned int                      normal_data_bo_start_offset              = 0;
     unsigned int                      normal_data_bo_stride                    = 0;
+    unsigned int                      normal_data_bo_stride_div_4              = 0;
     int                               normal_data_offset_adjustment            = 0;
+    int                               normal_data_offset_adjustment_div_4      = 0;
     unsigned int                      normal_data_bo_start_offset_ssbo_aligned = 0;
 
     ogl_context_get_property(generator_ptr->context,
@@ -554,10 +571,10 @@ PRIVATE void _procedural_uv_generator_run_spherical_mapping_with_normals_po(_pro
                                                &n_normals_bo_requires_memory_barrier);
 
             entrypoints_ptr->pGLBindBufferRange(GL_UNIFORM_BUFFER,
-                                    0, /* index */
-                                    n_normals_bo_id,
-                                    n_normals_bo_start_offset,
-                                    sizeof(unsigned int) );
+                                                generator_ptr->n_normals_ub_indexed_bp,
+                                                n_normals_bo_id,
+                                                n_normals_bo_start_offset,
+                                                sizeof(unsigned int) );
 
             break;
         } /* case MESH_LAYER_DATA_STREAM_SOURCE_BUFFER_MEMORY: */
@@ -609,22 +626,29 @@ PRIVATE void _procedural_uv_generator_run_spherical_mapping_with_normals_po(_pro
 
     normal_data_offset_adjustment = normal_data_offset_adjustment;
 
+    ASSERT_DEBUG_SYNC(normal_data_offset_adjustment % sizeof(float) == 0 &&
+                      normal_data_bo_stride         % sizeof(float) == 0,
+                      "Data alignment error");
+
+    normal_data_offset_adjustment_div_4 = normal_data_offset_adjustment / sizeof(float);
+    normal_data_bo_stride_div_4         = normal_data_bo_stride         / sizeof(float);
+
     /* Set up UB bindings & contents. The bindings are hard-coded in the shader. */
     ogl_program_ub_set_nonarrayed_uniform_value(generator_ptr->input_params_ub,
                                                 generator_ptr->input_params_ub_normal_data_stride_block_offset,
-                                               &normal_data_bo_stride,
+                                               &normal_data_bo_stride_div_4,
                                                 0, /* src_data_flags */
                                                 sizeof(normal_data_bo_stride) );
     ogl_program_ub_set_nonarrayed_uniform_value(generator_ptr->input_params_ub,
                                                 generator_ptr->input_params_ub_start_offset_block_offset,
-                                               &normal_data_offset_adjustment,
+                                               &normal_data_offset_adjustment_div_4,
                                                 0, /* src_data_flags */
                                                 sizeof(unsigned int) );
 
     ogl_program_ub_sync(generator_ptr->input_params_ub);
 
     entrypoints_ptr->pGLBindBufferRange(GL_UNIFORM_BUFFER,
-                                        1, /* index */
+                                        generator_ptr->input_params_ub_indexed_bp,
                                         generator_ptr->input_params_ub_bo_id,
                                         generator_ptr->input_params_ub_bo_start_offset,
                                         generator_ptr->input_params_ub_bo_size);
@@ -634,14 +658,14 @@ PRIVATE void _procedural_uv_generator_run_spherical_mapping_with_normals_po(_pro
         entrypoints_ptr->pGLMemoryBarrier(GL_UNIFORM_BARRIER_BIT);
     }
 
-    /* Set up SSB bindings. Specific indices are defined in the shader. */
+    /* Set up SSB bindings. */
     entrypoints_ptr->pGLBindBufferRange(GL_SHADER_STORAGE_BUFFER,
-                                        0, /* index */
+                                        generator_ptr->input_data_ssb_indexed_bp,
                                         normal_data_bo_id,
                                         normal_data_bo_start_offset_ssbo_aligned,
                                         normal_data_bo_size + normal_data_offset_adjustment); /* size */
     entrypoints_ptr->pGLBindBufferRange(GL_SHADER_STORAGE_BUFFER,
-                                        1, /* index */
+                                        generator_ptr->output_data_ssb_indexed_bp,
                                         object_ptr->uv_bo_id,
                                         object_ptr->uv_bo_start_offset,
                                         object_ptr->uv_bo_size);
