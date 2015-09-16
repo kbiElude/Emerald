@@ -14,6 +14,7 @@
 #include "ogl/ogl_scene_renderer.h"
 #include "ogl/ogl_ui.h"
 #include "ogl/ogl_ui_scrollbar.h"
+#include "procedural/procedural_uv_generator.h"
 #include "scalar_field/scalar_field_metaballs.h"
 #include "scene/scene.h"
 #include "scene/scene_camera.h"
@@ -36,25 +37,27 @@
 
 PRIVATE const unsigned int _blob_size[] = {50, 50, 50};
 
-PRIVATE ogl_context            _context             = NULL;
-PRIVATE ogl_flyby              _context_flyby       = NULL;
-PRIVATE mesh_marchingcubes     _marching_cubes      = NULL;
-PRIVATE scene_material         _material            = NULL;
-PRIVATE scalar_field_metaballs _metaballs           = NULL;
-PRIVATE ogl_pipeline           _pipeline            = NULL;
-PRIVATE uint32_t               _pipeline_stage_id   = 0;
-PRIVATE system_matrix4x4       _projection_matrix   = NULL;
-PRIVATE scene                  _scene               = NULL;
-PRIVATE scene_graph_node       _scene_blob_node     = NULL;
-PRIVATE scene_camera           _scene_camera        = NULL;
-PRIVATE scene_graph_node       _scene_camera_node   = NULL;
-PRIVATE scene_light            _scene_light         = NULL;
-PRIVATE scene_graph_node       _scene_light_node    = NULL;
-PRIVATE scene_graph            _scene_graph         = NULL; /* do not release */
-PRIVATE ogl_scene_renderer     _scene_renderer      = NULL;
-PRIVATE system_event           _window_closed_event = system_event_create(true); /* manual_reset */
-PRIVATE int                    _window_size[2]      = {1280, 720};
-PRIVATE system_matrix4x4       _view_matrix         = NULL;
+PRIVATE ogl_context                       _context                = NULL;
+PRIVATE ogl_flyby                         _context_flyby          = NULL;
+PRIVATE mesh_marchingcubes                _marching_cubes         = NULL;
+PRIVATE scene_material                    _material               = NULL;
+PRIVATE scalar_field_metaballs            _metaballs              = NULL;
+PRIVATE ogl_pipeline                      _pipeline               = NULL;
+PRIVATE uint32_t                          _pipeline_stage_id      = 0;
+PRIVATE system_matrix4x4                  _projection_matrix      = NULL;
+PRIVATE scene                             _scene                  = NULL;
+PRIVATE scene_graph_node                  _scene_blob_node        = NULL;
+PRIVATE scene_camera                      _scene_camera           = NULL;
+PRIVATE scene_graph_node                  _scene_camera_node      = NULL;
+PRIVATE scene_light                       _scene_light            = NULL;
+PRIVATE scene_graph_node                  _scene_light_node       = NULL;
+PRIVATE scene_graph                       _scene_graph            = NULL; /* do not release */
+PRIVATE ogl_scene_renderer                _scene_renderer         = NULL;
+PRIVATE procedural_uv_generator           _uv_generator           = NULL;
+PRIVATE procedural_uv_generator_object_id _uv_generator_object_id = -1;
+PRIVATE system_event                      _window_closed_event    = system_event_create(true); /* manual_reset */
+PRIVATE int                               _window_size[2]         = {1280, 720};
+PRIVATE system_matrix4x4                  _view_matrix            = NULL;
 
 const float _start_metaball_configs[] =
 {
@@ -227,6 +230,19 @@ PRIVATE void _init_scene()
                             blob_has,
                            &blob_scene_mesh);
 
+    /* Set up the procedural UV generator */
+    _uv_generator = procedural_uv_generator_create(_context,
+                                                   PROCEDURAL_UV_GENERATOR_TYPE_SPHERICAL_MAPPING_WITH_NORMALS,
+                                                   system_hashed_ansi_string_create("Procedural UV generator") );
+
+    _uv_generator_object_id = procedural_uv_generator_add_mesh(_uv_generator,
+                                                               marching_cubes_mesh_gpu,
+                                                               0);      /* in_mesh_layer_id */
+
+    procedural_uv_generator_alloc_result_buffer_memory(_uv_generator,
+                                                       _uv_generator_object_id,
+                                                       sizeof(float) * 2 /* uv */ * _blob_size[0] * _blob_size[1] * _blob_size[2] * 5 /* max number of triangles per voxel */);
+
     /* Set up the scene graph */
     system_matrix4x4 identity_matrix = system_matrix4x4_create();
 
@@ -323,6 +339,13 @@ PRIVATE void _render(ogl_context context,
     mesh_marchingcubes_polygonize(_marching_cubes,
                                   has_scalar_field_changed);
 
+    /* Update the UV data */
+    if (has_scalar_field_changed)
+    {
+        procedural_uv_generator_update(_uv_generator,
+                                       _uv_generator_object_id);
+    }
+
     /* Update the light node's transformation matrix to reflect the camera position */
     system_matrix4x4 light_node_transformation_matrix = NULL;
 
@@ -343,7 +366,8 @@ PRIVATE void _render(ogl_context context,
                                           _view_matrix,
                                           _projection_matrix,
                                           _scene_camera,
-                                          RENDER_MODE_FORWARD_WITHOUT_DEPTH_PREPASS,
+                                          //RENDER_MODE_FORWARD_WITHOUT_DEPTH_PREPASS,
+                                          RENDER_MODE_TEXCOORDS_ONLY,
                                           false, /* apply_shadow_mapping */
                                           HELPER_VISUALIZATION_BOUNDING_BOXES,
                                           frame_time);
@@ -475,6 +499,13 @@ PRIVATE void _window_closing_callback_handler(system_window window)
         ogl_scene_renderer_release(_scene_renderer);
 
         _scene_renderer = NULL;
+    }
+
+    if (_uv_generator != NULL)
+    {
+        procedural_uv_generator_release(_uv_generator);
+
+        _uv_generator = NULL;
     }
 
     if (_view_matrix != NULL)

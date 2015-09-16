@@ -156,13 +156,19 @@ typedef enum
 
 typedef enum
 {
-    /* not settable, unsigned int.
+    /* settable, unsigned int.
      *
      * Only used by GPU stream meshes.
      */
     MESH_LAYER_DATA_STREAM_PROPERTY_GL_BO_ID,
 
-    /* not settable, unsigned int.
+    /* settable, unsigned int.
+     *
+     * Only used by GPU stream meshes.
+     */
+    MESH_LAYER_DATA_STREAM_PROPERTY_GL_BO_SIZE,
+
+    /* settable, unsigned int.
      *
      * Only used by GPU stream meshes.
      */
@@ -170,6 +176,42 @@ typedef enum
 
     /* not settable, uint32_t */
     MESH_LAYER_DATA_STREAM_PROPERTY_N_COMPONENTS,
+
+    /* settable with mesh_set_layer_data_stream_property() or mesh_set_layer_data_stream_property_with_buffer_memory(), uint32_t.
+     *
+     * NOTE: This property is only assigned a value if MESH_LAYER_DATA_STREAM_PROPERTY_N_ITEMS_SOURCE is
+     *       set to MESH_LAYER_DATA_STREAM_SOURCE_CLIENT_MEMORY. If not, querying this property WILL result
+     *       in an assertion failure.
+     *       The described situation can only occur for GPU Stream meshes. Regular meshes never store the
+     *       number of vertices/normals in buffer memory, as they are baked in advance.
+     */
+    MESH_LAYER_DATA_STREAM_PROPERTY_N_ITEMS,
+
+    /* indirectly settable, GLuint.
+     *
+     * To change the value, use mesh_set_layer_data_stream_property_with_buffer_memory() with
+     * MESH_LAYER_DATA_STREAM_PROPERTY_N_ITEMS pname.
+     */
+    MESH_LAYER_DATA_STREAM_PROPERTY_N_ITEMS_BO_ID,
+
+    /* indirectly settable, bool.
+     *
+     * To change the value, use mesh_set_layer_data_stream_property_with_buffer_memory() with
+     * MESH_LAYER_DATA_STREAM_PROPERTY_N_ITEMS pname.
+     */
+     MESH_LAYER_DATA_STREAM_PROPERTY_N_ITEMS_BO_READ_REQUIRES_MEMORY_BARRIER,
+
+    /* indirectly settable, unsigned int.
+     *
+     * To change the value, use mesh_set_layer_data_stream_property_with_buffer_memory() with
+     * MESH_LAYER_DATA_STREAM_PROPERTY_N_ITEMS pname.
+     */
+    MESH_LAYER_DATA_STREAM_PROPERTY_N_ITEMS_BO_START_OFFSET,
+
+    /* not settable, mesh_layer_data_stream_source.
+     *
+     * Please read MESH_LAYER_DATA_STREAM_PROPERTY_N_ITEMS documentation for more details. */
+    MESH_LAYER_DATA_STREAM_PROPERTY_N_ITEMS_SOURCE,
 
     /* not settable, uint32_t */
     MESH_LAYER_DATA_STREAM_PROPERTY_START_OFFSET,
@@ -179,6 +221,8 @@ typedef enum
 {
     MESH_LAYER_DATA_STREAM_SOURCE_BUFFER_MEMORY,
     MESH_LAYER_DATA_STREAM_SOURCE_CLIENT_MEMORY,
+
+    MESH_LAYER_DATA_STREAM_SOURCE_UNDEFINED
 } mesh_layer_data_stream_source;
 
 typedef enum

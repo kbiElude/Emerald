@@ -659,7 +659,9 @@ PRIVATE void _mesh_marchingcubes_init_mesh_instance(_mesh_marchingcubes* mesh_pt
 
     /* Configure it, so that it uses normal & vertex data taken from the buffer memory we manage in mesh_marchingcubes */
     mesh_draw_call_arguments draw_call_arguments;
-    mesh_layer_id            new_layer_id        = mesh_add_layer(mesh_ptr->mesh_instance);
+    const unsigned int       max_normals_data_stream_size  = sizeof(float) * 3 /* vertices */ * 5 /* triangles per voxel */ * mesh_ptr->grid_size[0] * mesh_ptr->grid_size[1] * mesh_ptr->grid_size[2];
+    const unsigned int       max_vertices_data_stream_size = sizeof(float) * 3 /* vertices */ * 5 /* triangles per voxel */ * mesh_ptr->grid_size[0] * mesh_ptr->grid_size[1] * mesh_ptr->grid_size[2];
+    mesh_layer_id            new_layer_id                  = mesh_add_layer(mesh_ptr->mesh_instance);
     mesh_layer_pass_id       new_layer_pass_id;
 
     draw_call_arguments.draw_indirect_bo_binding        = mesh_ptr->indirect_draw_call_args_bo_id;
@@ -679,14 +681,45 @@ PRIVATE void _mesh_marchingcubes_init_mesh_instance(_mesh_marchingcubes* mesh_pt
                                                   3, /* n_components */
                                                   mesh_ptr->polygonized_data_bo_id,
                                                   mesh_ptr->polygonized_data_bo_start_offset + sizeof(float) * 4,
-                                                  sizeof(float) * 7); /* bo_stride */
+                                                  sizeof(float) * 7, /* bo_stride */
+                                                  0);                /* bo_size - unknown */
     mesh_add_layer_data_stream_from_buffer_memory(mesh_ptr->mesh_instance,
                                                   new_layer_id,
                                                   MESH_LAYER_DATA_STREAM_TYPE_VERTICES,
                                                   4, /* n_components */
                                                   mesh_ptr->polygonized_data_bo_id,
                                                   mesh_ptr->polygonized_data_bo_start_offset,
-                                                  sizeof(float) * 7); /* bo_stride */
+                                                  sizeof(float) * 7, /* bo_stride */
+                                                  0);                /* bo_size - unknown */
+
+    mesh_set_layer_data_stream_property(mesh_ptr->mesh_instance,
+                                        new_layer_id,
+                                        MESH_LAYER_DATA_STREAM_TYPE_NORMALS,
+                                        MESH_LAYER_DATA_STREAM_PROPERTY_GL_BO_SIZE,
+                                       &max_normals_data_stream_size);
+    mesh_set_layer_data_stream_property(mesh_ptr->mesh_instance,
+                                        new_layer_id,
+                                        MESH_LAYER_DATA_STREAM_TYPE_VERTICES,
+                                        MESH_LAYER_DATA_STREAM_PROPERTY_GL_BO_SIZE,
+                                       &max_vertices_data_stream_size);
+
+    mesh_set_layer_data_stream_property_with_buffer_memory(mesh_ptr->mesh_instance,
+                                                           new_layer_id,
+                                                           MESH_LAYER_DATA_STREAM_TYPE_NORMALS,
+                                                           MESH_LAYER_DATA_STREAM_PROPERTY_N_ITEMS,
+                                                           mesh_ptr->indirect_draw_call_args_bo_id,
+                                                           sizeof(unsigned int),
+                                                           mesh_ptr->indirect_draw_call_args_bo_start_offset,
+                                                           true); /* does_read_require_memory_barrier */
+
+    mesh_set_layer_data_stream_property_with_buffer_memory(mesh_ptr->mesh_instance,
+                                                           new_layer_id,
+                                                           MESH_LAYER_DATA_STREAM_TYPE_VERTICES,
+                                                           MESH_LAYER_DATA_STREAM_PROPERTY_N_ITEMS,
+                                                           mesh_ptr->indirect_draw_call_args_bo_id,
+                                                           sizeof(unsigned int),
+                                                           mesh_ptr->indirect_draw_call_args_bo_start_offset,
+                                                           true); /* does_read_require_memory_barrier */
 }
 
 /** TODO */
@@ -1114,7 +1147,7 @@ PRIVATE void _mesh_marchingcubes_init_polygonizer_po(_mesh_marchingcubes* mesh_p
                                                                                                                                                  " CS") );
 
     ogl_shader_set_body_with_token_replacement(cs,
-                                               cs_body,
+                                               system_hashed_ansi_string_create(cs_body),
                                                n_token_key_value_pairs,
                                                token_key_array_ptr,
                                                token_value_array_ptr);

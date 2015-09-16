@@ -107,20 +107,41 @@ typedef struct _mesh_layer_data_stream
 
     /* GPU stream meshes: */
     GLuint       bo_id;
+    unsigned int bo_size;
     unsigned int bo_start_offset;
     unsigned int bo_stride;
 
     /* Regular meshes: */
     unsigned char* data;
     unsigned int   n_components;          /* number of components stored in data per each entry */
-    unsigned int   n_items;               /* number of (potentially multi-component!) entries in data */
     unsigned int   required_bit_alignment;
+
+    /* number of (potentially multi-component!) entries in data. The value can be stored in:
+     *
+     * - client memory (use *n_items_ptr).
+     * - buffer memory (use n_items_bo_id and n_items_bo_start_offset. size is always equal to sizeof(int)
+     */
+    GLuint                        n_items_bo_id;
+    bool                          n_items_bo_requires_memory_barrier;
+    unsigned int                  n_items_bo_start_offset;
+    unsigned int*                 n_items_ptr;
+    mesh_layer_data_stream_source n_items_source;
 
     ~_mesh_layer_data_stream()
     {
-        delete [] data;
+        if (data != NULL)
+        {
+            delete [] data;
 
-        data = NULL;
+            data = NULL;
+        }
+
+        if (n_items_ptr != NULL)
+        {
+            delete n_items_ptr;
+
+            n_items_ptr = NULL;
+        }
     }
 } _mesh_layer_data_stream;
 
@@ -1036,12 +1057,20 @@ PRIVATE void _mesh_init_mesh_layer(_mesh_layer* new_mesh_layer_ptr)
 PRIVATE void _mesh_init_mesh_layer_data_stream(_mesh_layer_data_stream*      new_mesh_layer_data_stream_ptr,
                                                mesh_layer_data_stream_source source)
 {
-    new_mesh_layer_data_stream_ptr->data                   = NULL;
-    new_mesh_layer_data_stream_ptr->data_type              = MESH_LAYER_DATA_STREAM_DATA_TYPE_UNKNOWN;
-    new_mesh_layer_data_stream_ptr->n_components           = 0;
-    new_mesh_layer_data_stream_ptr->n_items                = 0;
-    new_mesh_layer_data_stream_ptr->required_bit_alignment = 0;
-    new_mesh_layer_data_stream_ptr->source                 = source;
+    new_mesh_layer_data_stream_ptr->bo_id                              = 0;
+    new_mesh_layer_data_stream_ptr->bo_size                            = 0;
+    new_mesh_layer_data_stream_ptr->bo_start_offset                    = -1;
+    new_mesh_layer_data_stream_ptr->bo_stride                          = 0;
+    new_mesh_layer_data_stream_ptr->data                               = NULL;
+    new_mesh_layer_data_stream_ptr->data_type                          = MESH_LAYER_DATA_STREAM_DATA_TYPE_UNKNOWN;
+    new_mesh_layer_data_stream_ptr->n_components                       = 0;
+    new_mesh_layer_data_stream_ptr->n_items_bo_id                      = 0;
+    new_mesh_layer_data_stream_ptr->n_items_bo_requires_memory_barrier = false;
+    new_mesh_layer_data_stream_ptr->n_items_bo_start_offset            = -1;
+    new_mesh_layer_data_stream_ptr->n_items_ptr                        = NULL;
+    new_mesh_layer_data_stream_ptr->n_items_source                     = MESH_LAYER_DATA_STREAM_SOURCE_UNDEFINED;
+    new_mesh_layer_data_stream_ptr->required_bit_alignment             = 0;
+    new_mesh_layer_data_stream_ptr->source                             = source;
 }
 
 /** TODO */
@@ -1686,7 +1715,8 @@ PUBLIC EMERALD_API void mesh_add_layer_data_stream_from_buffer_memory(mesh      
                                                                       unsigned int                n_components,
                                                                       GLuint                      bo_id,
                                                                       unsigned int                bo_start_offset,
-                                                                      unsigned int                bo_stride)
+                                                                      unsigned int                bo_stride,
+                                                                      unsigned int                bo_size)
 {
     _mesh_layer* layer_ptr         = NULL;
     _mesh*       mesh_instance_ptr = (_mesh*) mesh;
@@ -1716,6 +1746,7 @@ PUBLIC EMERALD_API void mesh_add_layer_data_stream_from_buffer_memory(mesh      
                                                   MESH_LAYER_DATA_STREAM_SOURCE_BUFFER_MEMORY);
 
                 data_stream_ptr->bo_id           = bo_id;
+                data_stream_ptr->bo_size         = bo_size;
                 data_stream_ptr->bo_start_offset = bo_start_offset;
                 data_stream_ptr->bo_stride       = bo_stride;
                 data_stream_ptr->n_components    = n_components;
@@ -1827,9 +1858,13 @@ PUBLIC EMERALD_API void mesh_add_layer_data_stream_from_client_memory(mesh      
                 unsigned int component_size = (data_stream_ptr->data_type == MESH_LAYER_DATA_STREAM_DATA_TYPE_FLOAT) ? sizeof(float)
                                                                                                                      : 1;
 
-                data_stream_ptr->data         = new (std::nothrow) unsigned char[data_stream_ptr->n_components * component_size * n_items];
-                data_stream_ptr->n_components = n_components;
-                data_stream_ptr->n_items      = n_items;
+                data_stream_ptr->data           = new (std::nothrow) unsigned char[data_stream_ptr->n_components * component_size * n_items];
+                data_stream_ptr->n_components   = n_components;
+                data_stream_ptr->n_items_ptr    = new unsigned int(n_items);
+                data_stream_ptr->n_items_source = MESH_LAYER_DATA_STREAM_SOURCE_CLIENT_MEMORY;
+
+                ASSERT_ALWAYS_SYNC(data_stream_ptr->n_items_ptr != NULL,
+                                   "Out of memory");
 
                 if (data_stream_ptr->data == NULL)
                 {
@@ -2180,8 +2215,14 @@ PUBLIC EMERALD_API void mesh_create_single_indexed_representation(mesh instance)
                                      MESH_LAYER_DATA_STREAM_TYPE_VERTICES,
                                     &stream_data_ptr) )
             {
+                ASSERT_DEBUG_SYNC(stream_data_ptr->n_items_source == MESH_LAYER_DATA_STREAM_SOURCE_CLIENT_MEMORY &&
+                                  stream_data_ptr->n_items_ptr   != NULL,
+                                  "Invalid source used for storage of number of vertex data stream items.");
+
+                const uint32_t n_items = *stream_data_ptr->n_items_ptr;
+
                 for (unsigned int n_item = 0;
-                                  n_item < stream_data_ptr->n_items;
+                                  n_item < n_items;
                                 ++n_item)
                 {
                     const float* vertex_data = (const float*) stream_data_ptr->data +
@@ -2678,7 +2719,9 @@ PUBLIC EMERALD_API void mesh_create_single_indexed_representation(mesh instance)
                                                 const uint32_t src_offset_div_4         = data_stream_ptr->n_components                                       *
                                                                                           pass_index_data;
 
-                                                ASSERT_DEBUG_SYNC(pass_index_data < data_stream_ptr->n_items,
+                                                ASSERT_DEBUG_SYNC(data_stream_ptr->n_items_ptr != NULL,
+                                                                  "Number of data stream items could not be determined.");
+                                                ASSERT_DEBUG_SYNC(pass_index_data < *data_stream_ptr->n_items_ptr,
                                                                   "Invalid index about to be used");
 
                                                 memcpy((char*) mesh_ptr->gl_processed_data + dst_offset,
@@ -3545,7 +3588,7 @@ PUBLIC EMERALD_API void mesh_generate_normal_data(mesh mesh)
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API void mesh_get_layer_data_stream_data(mesh                        mesh,
+PUBLIC EMERALD_API bool mesh_get_layer_data_stream_data(mesh                        mesh,
                                                         mesh_layer_id               layer_id,
                                                         mesh_layer_data_stream_type type,
                                                         unsigned int*               out_n_items_ptr,
@@ -3553,9 +3596,13 @@ PUBLIC EMERALD_API void mesh_get_layer_data_stream_data(mesh                    
 {
     _mesh_layer* layer_ptr = NULL;
     _mesh*       mesh_ptr  = (_mesh*) mesh;
+    bool         result    = false;
 
-    ASSERT_DEBUG_SYNC(mesh_ptr->type == MESH_TYPE_REGULAR,
-                      "Entry-point is only compatible with regular meshes only.");
+    /* Sanity checks */
+    ASSERT_DEBUG_SYNC(mesh_ptr->type == MESH_TYPE_GPU_STREAM ||
+                      mesh_ptr->type == MESH_TYPE_REGULAR,
+                      "Entry-point is only compatible with GPU stream & regular meshes only.");
+
 
     if (system_resizable_vector_get_element_at(mesh_ptr->layers,
                                                layer_id,
@@ -3567,31 +3614,26 @@ PUBLIC EMERALD_API void mesh_get_layer_data_stream_data(mesh                    
                                  type,
                                 &stream_ptr) )
         {
-            if (out_n_items_ptr != NULL)
+            if (out_n_items_ptr         != NULL &&
+                stream_ptr->n_items_ptr != NULL)
             {
-                *out_n_items_ptr = stream_ptr->n_items;
+                ASSERT_DEBUG_SYNC(stream_ptr->n_items_ptr != NULL,
+                                  "Number of data stream items is unavailable.");
+
+                *out_n_items_ptr = *stream_ptr->n_items_ptr;
             }
 
-            if (out_data_ptr != NULL)
+            if (out_data_ptr   != NULL              &&
+                mesh_ptr->type == MESH_TYPE_REGULAR)
             {
                 *out_data_ptr = stream_ptr->data;
             }
-        } /* if (system_hash64map_get(layer_ptr->data_streams, type, &stream_ptr) ) */
-        else
-        {
-            ASSERT_DEBUG_SYNC(false,
-                              "Could not retrieve data stream [%d] for mesh [%s]",
-                              type,
-                              system_hashed_ansi_string_get_buffer(mesh_ptr->name) );
-        }
-    } /* if (system_resizable_vector_get_element_at(mesh_ptr->layers, layer_id, &layer_ptr) ) */
-    else
-    {
-        ASSERT_DEBUG_SYNC(false,
-                          "Could not retrieve layer [%d]",
-                          layer_id);
-    }
 
+            result = true;
+        } /* if (system_hash64map_get(layer_ptr->data_streams, type, &stream_ptr) ) */
+    } /* if (system_resizable_vector_get_element_at(mesh_ptr->layers, layer_id, &layer_ptr) ) */
+
+    return result;
 }
 
 /* Please see header for specification */
@@ -3650,6 +3692,14 @@ PUBLIC EMERALD_API bool mesh_get_layer_data_stream_property(mesh                
                             break;
                         }
 
+                        case MESH_LAYER_DATA_STREAM_PROPERTY_GL_BO_SIZE:
+                        {
+                            *(unsigned int*) out_result_ptr = stream_ptr->bo_size;
+                            result                          = true;
+
+                            break;
+                        }
+
                         case MESH_LAYER_DATA_STREAM_PROPERTY_GL_BO_STRIDE:
                         {
                             *(unsigned int*) out_result_ptr = stream_ptr->bo_stride;
@@ -3662,6 +3712,56 @@ PUBLIC EMERALD_API bool mesh_get_layer_data_stream_property(mesh                
                         {
                             *(unsigned int*) out_result_ptr = stream_ptr->n_components;
                             result                          = true;
+
+                            break;
+                        }
+
+                        case MESH_LAYER_DATA_STREAM_PROPERTY_N_ITEMS:
+                        {
+                            ASSERT_DEBUG_SYNC(stream_ptr->n_items_ptr != NULL,
+                                              "Number of data stream items is unavailable");
+
+                            if (stream_ptr->n_items_ptr != NULL)
+                            {
+                                *(unsigned int*) out_result_ptr = *stream_ptr->n_items_ptr;
+                            }
+
+                            break;
+                        }
+
+                        case MESH_LAYER_DATA_STREAM_PROPERTY_N_ITEMS_BO_ID:
+                        {
+                            ASSERT_DEBUG_SYNC(mesh_ptr->type == MESH_TYPE_GPU_STREAM,
+                                              "Invalid mesh type for the MESH_LAYER_DATA_STREAM_PROPERTY_N_ITEMS_BO_ID query.");
+
+                            *(unsigned int*) out_result_ptr = stream_ptr->n_items_bo_id;
+
+                            break;
+                        }
+
+                        case MESH_LAYER_DATA_STREAM_PROPERTY_N_ITEMS_BO_READ_REQUIRES_MEMORY_BARRIER:
+                        {
+                            ASSERT_DEBUG_SYNC(mesh_ptr->type == MESH_TYPE_GPU_STREAM,
+                                              "Invalid mesh type for the MESH_LAYER_DATA_STREAM_PROPERTY_N_ITEMS_BO_READ_REQUIRES_MEMORY_BARRIER query.");
+
+                            *(bool*) out_result_ptr = stream_ptr->n_items_bo_requires_memory_barrier;
+
+                            break;
+                        }
+
+                        case MESH_LAYER_DATA_STREAM_PROPERTY_N_ITEMS_BO_START_OFFSET:
+                        {
+                            ASSERT_DEBUG_SYNC(mesh_ptr->type == MESH_TYPE_GPU_STREAM,
+                                              "Invalid mesh type for the MESH_LAYER_DATA_STREAM_PROPERTY_N_ITEMS_BO_START_OFFSET query.");
+
+                            *(unsigned int*) out_result_ptr = stream_ptr->n_items_bo_start_offset;
+
+                            break;
+                        }
+
+                        case MESH_LAYER_DATA_STREAM_PROPERTY_N_ITEMS_SOURCE:
+                        {
+                            *(mesh_layer_data_stream_source*) out_result_ptr = stream_ptr->n_items_source;
 
                             break;
                         }
@@ -4975,6 +5075,176 @@ PUBLIC EMERALD_API void mesh_set_as_instantiated(mesh mesh_to_modify,
     mesh_to_modify_ptr->timestamp_last_modified = true;
 
     mesh_retain(source_mesh);
+}
+
+/* Please see header for specification */
+PUBLIC EMERALD_API bool mesh_set_layer_data_stream_property(mesh                            instance,
+                                                            uint32_t                        n_layer,
+                                                            mesh_layer_data_stream_type     type,
+                                                            mesh_layer_data_stream_property property,
+                                                            const void*                     data)
+{
+    _mesh_layer_data_stream* data_stream_ptr = NULL;
+    _mesh*                   instance_ptr    = (_mesh*) instance;
+    _mesh_layer*             layer_ptr       = NULL;
+    bool                     result          = true;
+
+    ASSERT_DEBUG_SYNC(instance_ptr != NULL,
+                      "Input mesh instance is NULL");
+
+    /* Retrieve the data stream descriptor. */
+    if (!system_resizable_vector_get_element_at(instance_ptr->layers,
+                                                n_layer,
+                                               &layer_ptr) )
+    {
+        ASSERT_DEBUG_SYNC(false,
+                          "Could not retrieve layer descriptor");
+
+        result = false;
+        goto end;
+    }
+
+    if (!system_hash64map_get(layer_ptr->data_streams,
+                              type,
+                             &data_stream_ptr) )
+    {
+        ASSERT_DEBUG_SYNC(false,
+                          "Could not retrieve data stream descriptor");
+
+        result = false;
+        goto end;
+    }
+
+    /* Update the property */
+    switch (property)
+    {
+        case MESH_LAYER_DATA_STREAM_PROPERTY_GL_BO_SIZE:
+        {
+            data_stream_ptr->bo_size = *(unsigned int*) data;
+
+            result = true;
+            break;
+        }
+
+        case MESH_LAYER_DATA_STREAM_PROPERTY_N_ITEMS:
+        {
+            if (data_stream_ptr->n_items_bo_id != 0)
+            {
+                /* External entity owns the buffer memory region, so do not deallocate it. */
+                data_stream_ptr->n_items_bo_id           = 0;
+                data_stream_ptr->n_items_bo_start_offset = -1;
+            } /* if (data_stream_ptr->n_items_bo_id != 0) */
+
+            if (data_stream_ptr->n_items_ptr == NULL)
+            {
+                data_stream_ptr->n_items_ptr = new (std::nothrow) unsigned int;
+
+                ASSERT_ALWAYS_SYNC(data_stream_ptr->n_items_ptr != NULL,
+                                   "Out of memory");
+            } /* if (data_stream_ptr->n_items_ptr != NULL) */
+
+            *data_stream_ptr->n_items_ptr   = *(unsigned int*) data;
+            data_stream_ptr->n_items_source = MESH_LAYER_DATA_STREAM_SOURCE_CLIENT_MEMORY;
+
+            result = true;
+            break;
+        }
+
+        default:
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Unsupported mesh layer data stream property");
+        }
+    } /* switch (property) */
+
+end:
+    return result;
+}
+
+/* Please see header for specification */
+PUBLIC EMERALD_API bool mesh_set_layer_data_stream_property_with_buffer_memory(mesh                            instance,
+                                                                               uint32_t                        n_layer,
+                                                                               mesh_layer_data_stream_type     type,
+                                                                               mesh_layer_data_stream_property property,
+                                                                               unsigned int                    bo_id,
+                                                                               unsigned int                    bo_size,
+                                                                               unsigned int                    bo_start_offset,
+                                                                               bool                            does_read_require_memory_barrier)
+{
+    _mesh_layer_data_stream* data_stream_ptr = NULL;
+    _mesh*                   instance_ptr    = (_mesh*) instance;
+    _mesh_layer*             layer_ptr       = NULL;
+    bool                     result          = true;
+
+    ASSERT_DEBUG_SYNC(instance_ptr != NULL,
+                      "Input mesh instance is NULL");
+
+    /* Retrieve the data stream descriptor. */
+    if (!system_resizable_vector_get_element_at(instance_ptr->layers,
+                                                n_layer,
+                                               &layer_ptr) )
+    {
+        ASSERT_DEBUG_SYNC(false,
+                          "Could not retrieve layer descriptor");
+
+        result = false;
+        goto end;
+    }
+
+    if (!system_hash64map_get(layer_ptr->data_streams,
+                              type,
+                             &data_stream_ptr) )
+    {
+        ASSERT_DEBUG_SYNC(false,
+                          "Could not retrieve data stream descriptor");
+
+        result = false;
+        goto end;
+    }
+
+    /* Update the property */
+    switch (property)
+    {
+        case MESH_LAYER_DATA_STREAM_PROPERTY_GL_BO_ID:
+        {
+            data_stream_ptr->bo_id           = bo_id;
+            data_stream_ptr->bo_size         = bo_size;
+            data_stream_ptr->bo_start_offset = bo_start_offset;
+
+            result = true;
+            break;
+        }
+
+        case MESH_LAYER_DATA_STREAM_PROPERTY_N_ITEMS:
+        {
+            if (data_stream_ptr->n_items_ptr != NULL)
+            {
+                delete data_stream_ptr->n_items_ptr;
+
+                data_stream_ptr->n_items_ptr = NULL;
+            } /* if (data_stream_ptr->n_items_ptr != NULL) */
+
+            ASSERT_DEBUG_SYNC(bo_size == sizeof(unsigned int),
+                              "Invalid buffer memory region size requested.");
+
+            data_stream_ptr->n_items_bo_id                      = bo_id;
+            data_stream_ptr->n_items_bo_requires_memory_barrier = does_read_require_memory_barrier;
+            data_stream_ptr->n_items_bo_start_offset            = bo_start_offset;
+            data_stream_ptr->n_items_source                     = MESH_LAYER_DATA_STREAM_SOURCE_BUFFER_MEMORY;
+
+            result = true;
+            break;
+        }
+
+        default:
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Unsupported mesh layer data stream property");
+        }
+    } /* switch (property) */
+
+end:
+    return result;
 }
 
 /* Please see header for specification */

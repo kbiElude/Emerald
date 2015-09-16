@@ -295,7 +295,7 @@ PRIVATE void _scalar_field_metaballs_init_rendering_thread_callback(ogl_context 
 
     /* Configure the shader object */
     ogl_shader_set_body_with_token_replacement(cs,
-                                               cs_body_template,
+                                               system_hashed_ansi_string_create(cs_body_template),
                                                n_token_key_value_pairs,
                                                token_key_array_ptr,
                                                token_value_array_ptr);

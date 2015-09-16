@@ -51,6 +51,7 @@ static system_hashed_ansi_string _object_type_postprocessing_blur_poisson_hashed
 static system_hashed_ansi_string _object_type_postprocessing_reinhard_tonemap_hashed_ansi_string       = NULL;
 static system_hashed_ansi_string _object_type_procedural_mesh_box_hashed_ansi_string                   = NULL;
 static system_hashed_ansi_string _object_type_procedural_mesh_sphere_hashed_ansi_string                = NULL;
+static system_hashed_ansi_string _object_type_procedural_uv_generator_hashed_ansi_string               = NULL;
 static system_hashed_ansi_string _object_type_programs_curve_editor_curvebackground_hashed_ansi_string = NULL;
 static system_hashed_ansi_string _object_type_programs_curve_editor_lerp_hashed_ansi_string            = NULL;
 static system_hashed_ansi_string _object_type_programs_curve_editor_quadselector_hashed_ansi_string    = NULL;
@@ -130,6 +131,7 @@ PUBLIC system_hashed_ansi_string object_manager_convert_object_manager_object_ty
         case OBJECT_TYPE_POSTPROCESSING_REINHARD_TONEMAP:                 return _object_type_postprocessing_reinhard_tonemap_hashed_ansi_string;
         case OBJECT_TYPE_PROCEDURAL_MESH_BOX:                             return _object_type_procedural_mesh_box_hashed_ansi_string;
         case OBJECT_TYPE_PROCEDURAL_MESH_SPHERE:                          return _object_type_procedural_mesh_sphere_hashed_ansi_string;
+        case OBJECT_TYPE_PROCEDURAL_UV_GENERATOR:                         return _object_type_procedural_uv_generator_hashed_ansi_string;
         case OBJECT_TYPE_PROGRAMS_CURVE_EDITOR_CURVEBACKGROUND:           return _object_type_programs_curve_editor_curvebackground_hashed_ansi_string;
         case OBJECT_TYPE_PROGRAMS_CURVE_EDITOR_LERP:                      return _object_type_programs_curve_editor_lerp_hashed_ansi_string;
         case OBJECT_TYPE_PROGRAMS_CURVE_EDITOR_QUADSELECTOR:              return _object_type_programs_curve_editor_quadselector_hashed_ansi_string;
@@ -381,6 +383,7 @@ PUBLIC void _object_manager_init()
     _object_type_postprocessing_reinhard_tonemap_hashed_ansi_string       = system_hashed_ansi_string_create("Post-processing Reinhard tonemap");
     _object_type_procedural_mesh_box_hashed_ansi_string                   = system_hashed_ansi_string_create("Procedural meshes (box)");
     _object_type_procedural_mesh_sphere_hashed_ansi_string                = system_hashed_ansi_string_create("Procedural meshes (sphere)");
+    _object_type_procedural_uv_generator_hashed_ansi_string               = system_hashed_ansi_string_create("Procedural UV Generators");
     _object_type_programs_curve_editor_curvebackground_hashed_ansi_string = system_hashed_ansi_string_create("Curve Editor Programs (Curve Background)");
     _object_type_programs_curve_editor_lerp_hashed_ansi_string            = system_hashed_ansi_string_create("Curve Editor Programs (LERP)");
     _object_type_programs_curve_editor_quadselector_hashed_ansi_string    = system_hashed_ansi_string_create("Curve Editor Programs (Quad Selector)");

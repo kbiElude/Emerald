@@ -11,7 +11,9 @@
 
 /* Shared macros */
 #define PUBLIC
-#define PRIVATE                static
+#define PRIVATE static
+
+/* Indicates the call must be made from a rendering thread */
 #define RENDERING_CONTEXT_CALL
 
 
@@ -78,6 +80,7 @@ typedef enum
         OBJECT_TYPE_POSTPROCESSING_REINHARD_TONEMAP,
         OBJECT_TYPE_PROCEDURAL_MESH_BOX,
         OBJECT_TYPE_PROCEDURAL_MESH_SPHERE,
+        OBJECT_TYPE_PROCEDURAL_UV_GENERATOR,
         OBJECT_TYPE_PROGRAMS_CURVE_EDITOR_CURVEBACKGROUND,
         OBJECT_TYPE_PROGRAMS_CURVE_EDITOR_LERP,
         OBJECT_TYPE_PROGRAMS_CURVE_EDITOR_QUADSELECTOR,

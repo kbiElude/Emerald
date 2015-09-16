@@ -83,7 +83,7 @@ PUBLIC EMERALD_API bool ogl_shader_set_body(ogl_shader                shader,
 
 /** TODO */
 PUBLIC EMERALD_API bool ogl_shader_set_body_with_token_replacement(ogl_shader                       shader,
-                                                                   const char*                      body,
+                                                                   system_hashed_ansi_string        body,
                                                                    uint32_t                         n_tokens,
                                                                    const system_hashed_ansi_string* token_keys,
                                                                    const system_hashed_ansi_string* token_values);
