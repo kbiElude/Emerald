@@ -34,12 +34,12 @@ typedef struct _procedural_uv_generator
     unsigned int    input_params_ub_bo_size;
     unsigned int    input_params_ub_bo_start_offset;
     GLuint          input_params_ub_indexed_bp;
-    GLint           input_params_ub_normal_data_stride_block_offset;
+    GLint           input_params_ub_item_data_stride_block_offset;
     GLint           input_params_ub_start_offset_block_offset;
-    ogl_program_ub  n_normals_ub;
-    GLuint          n_normals_ub_bo_id;
-    unsigned int    n_normals_ub_bo_start_offset;
-    GLuint          n_normals_ub_indexed_bp;
+    ogl_program_ub  n_items_ub;
+    GLuint          n_items_ub_bo_id;
+    unsigned int    n_items_ub_bo_start_offset;
+    GLuint          n_items_ub_indexed_bp;
     ogl_program_ssb output_data_ssb;
     GLuint          output_data_ssb_indexed_bp;
     unsigned int    wg_local_size[3];
@@ -76,11 +76,18 @@ typedef struct _procedural_uv_generator_object
 
 
 /** Forward declarations */
-PRIVATE system_hashed_ansi_string _procedural_uv_generator_get_generator_name           (procedural_uv_generator_type     type);
-PRIVATE ogl_program               _procedural_uv_generator_init_generator_po            (_procedural_uv_generator*        generator_ptr);
-PRIVATE void                      _procedural_uv_generator_release                      (void*                            ptr);
-PRIVATE void                      _procedural_uv_generator_verify_result_buffer_capacity(_procedural_uv_generator*        generator_ptr,
-                                                                                         _procedural_uv_generator_object* object_ptr);
+PRIVATE bool                      _procedural_uv_generator_build_generator_po             (_procedural_uv_generator*              generator_ptr);
+PRIVATE system_hashed_ansi_string _procedural_uv_generator_get_generator_name             (procedural_uv_generator_type           type);
+PRIVATE void                      _procedural_uv_generator_get_item_data_stream_properties(const _procedural_uv_generator*        generator_ptr,
+                                                                                           const _procedural_uv_generator_object* object_ptr,
+                                                                                           mesh_layer_data_stream_type*           out_opt_item_data_stream_type_ptr,
+                                                                                           unsigned int*                          out_opt_n_bytes_per_item_ptr);
+PRIVATE void                      _procedural_uv_generator_init_generator_po              (_procedural_uv_generator*              generator_ptr);
+PRIVATE void                      _procedural_uv_generator_release                        (void*                                  ptr);
+PRIVATE void                      _procedural_uv_generator_run_po                         (_procedural_uv_generator*              generator_ptr,
+                                                                                           _procedural_uv_generator_object*       object_ptr);
+PRIVATE void                      _procedural_uv_generator_verify_result_buffer_capacity  (_procedural_uv_generator*              generator_ptr,
+                                                                                           _procedural_uv_generator_object*       object_ptr);
 
 /** Reference counter impl */
 REFCOUNT_INSERT_IMPLEMENTATION(procedural_uv_generator,
@@ -96,26 +103,26 @@ _procedural_uv_generator::_procedural_uv_generator(ogl_context                  
     unsigned int texcoords_data_size = 0;
 
     /* Perform actual initialization. */
-    context                                         = in_context;
-    generator_cs                                    = NULL;
-    generator_po                                    = NULL;
-    input_data_ssb                                  = NULL;
-    input_data_ssb_indexed_bp                       = -1;
-    input_params_ub                                 = NULL;
-    input_params_ub_bo_id                           = 0;
-    input_params_ub_bo_size                         = 0;
-    input_params_ub_bo_start_offset                 = -1;
-    input_params_ub_indexed_bp                      = -1;
-    input_params_ub_normal_data_stride_block_offset = -1;
-    input_params_ub_start_offset_block_offset       = -1;
-    n_normals_ub                                    = NULL;
-    n_normals_ub_bo_id                              = 0;
-    n_normals_ub_bo_start_offset                    = -1;
-    n_normals_ub_indexed_bp                         = 0;
-    objects                                         = system_resizable_vector_create(4 /* capacity */);
-    output_data_ssb                                 = NULL;
-    output_data_ssb_indexed_bp                      = -1;
-    type                                            = in_type;
+    context                                       = in_context;
+    generator_cs                                  = NULL;
+    generator_po                                  = NULL;
+    input_data_ssb                                = NULL;
+    input_data_ssb_indexed_bp                     = -1;
+    input_params_ub                               = NULL;
+    input_params_ub_bo_id                         = 0;
+    input_params_ub_bo_size                       = 0;
+    input_params_ub_bo_start_offset               = -1;
+    input_params_ub_indexed_bp                    = -1;
+    input_params_ub_item_data_stride_block_offset = -1;
+    input_params_ub_start_offset_block_offset     = -1;
+    n_items_ub                                    = NULL;
+    n_items_ub_bo_id                              = 0;
+    n_items_ub_bo_start_offset                    = -1;
+    n_items_ub_indexed_bp                         = 0;
+    objects                                       = system_resizable_vector_create(4 /* capacity */);
+    output_data_ssb                               = NULL;
+    output_data_ssb_indexed_bp                    = -1;
+    type                                          = in_type;
 
     memset(wg_local_size,
            0,
@@ -231,112 +238,89 @@ _procedural_uv_generator_object::~_procedural_uv_generator_object()
 
 
 /** TODO */
-PRIVATE system_hashed_ansi_string _procedural_uv_generator_get_generator_name(procedural_uv_generator_type type)
+PRIVATE bool _procedural_uv_generator_build_generator_po(_procedural_uv_generator* generator_ptr)
 {
-    system_hashed_ansi_string result = NULL;
-
-    switch (type)
-    {
-        case PROCEDURAL_UV_GENERATOR_TYPE_SPHERICAL_MAPPING_WITH_NORMALS:
-        {
-            result = system_hashed_ansi_string_create("Spherical mapping with normals");
-
-            break;
-        }
-
-        default:
-        {
-            ASSERT_DEBUG_SYNC(false,
-                              "Unrecognized procedural UV generator type");
-        }
-    } /* switch (type) */
-
-    return result;
-}
-
-/** TODO */
-PRIVATE ogl_program _procedural_uv_generator_init_generator_po(_procedural_uv_generator* generator_ptr)
-{
-    const char*                 cs_body                             = NULL;
-    ogl_context_gl_limits*      limits_ptr                          = NULL;
-    ogl_programs                programs                            = NULL;
-    ogl_program                 result                              = NULL;
-    char                        temp[128];
-    const ogl_program_variable* variable_n_normals_defined_ptr      = NULL;
-    const ogl_program_variable* variable_normal_data_stride_ptr     = NULL;
-    const ogl_program_variable* variable_start_offset_in_floats_ptr = NULL;
-
     const unsigned int        n_token_key_values               = 3;
+    bool                      result                           = false;
+    char                      temp[128];
     system_hashed_ansi_string token_keys  [n_token_key_values] = {NULL};
     system_hashed_ansi_string token_values[n_token_key_values] = {NULL};
 
-    /* Check if the program object is not already cached for the rendering context. */
-    ogl_context_get_property(generator_ptr->context,
-                             OGL_CONTEXT_PROPERTY_PROGRAMS,
-                            &programs);
-
-    result = ogl_programs_get_program_by_name(programs,
-                                              _procedural_uv_generator_get_generator_name(generator_ptr->type) );
-
-    if (result != NULL)
+    static const char* cs_body_preamble   = "#version 430 core\n"
+                                            "\n"
+                                            "layout(local_size_x = LOCAL_WG_SIZE_X, local_size_y = 1, local_size_z = 1) in;\n"
+                                            "\n"
+                                            "layout(binding = 0) readonly buffer inputData\n"
+                                            "{\n"
+                                            "    restrict float meshData[];\n"
+                                            "};\n"
+                                            "layout(binding = 1) writeonly buffer outputData\n"
+                                            "{\n"
+                                            "    restrict float resultData[];\n"
+                                            "};\n"
+                                            "\n"
+                                            /* NOTE: In order to handle buffer-memory backed storage of the number of items (normals, vertices, etc.) defined for the object,
+                                             *       we need to use a separate UB. If the value is stored in buffer memory, we'll just bind it to the UB.
+                                             *       Otherwise we'll update & sync the ogl_program_ub at each _execute() call.*/
+                                            "layout(packed) uniform nItemsBlock\n"
+                                            "{\n"
+                                            "    uint n_items_defined;\n"
+                                            "};\n"
+                                            "\n"
+                                            "layout(packed) uniform inputParams\n"
+                                            "{\n"
+                                            "    uint item_data_stride_in_floats;\n"
+                                            "    uint start_offset_in_floats;\n"
+                                            "};\n"
+                                            "\n"
+                                            "void main()\n"
+                                            "{\n"
+                                            "    const uint global_invocation_id_flat = (gl_GlobalInvocationID.z * (LOCAL_WG_SIZE_X * LOCAL_WG_SIZE_Y) +\n"
+                                            "                                            gl_GlobalInvocationID.y * (LOCAL_WG_SIZE_X)                   +\n"
+                                            "                                            gl_GlobalInvocationID.x);\n"
+                                            "\n"
+                                            "    if (global_invocation_id_flat > n_items_defined)\n"
+                                            "    {\n"
+                                            "        return;"
+                                            "    }\n"
+                                            "\n";
+    static const char* cs_body_terminator = "}\n";
+    const char*        cs_body_parts[3]   =
     {
-        ogl_program_retain(result);
+        cs_body_preamble,
+        NULL, /* filled later */
+        cs_body_terminator
+    };
+    const unsigned int n_cs_body_parts    = sizeof(cs_body_parts) / sizeof(cs_body_parts[0]);
 
-        goto end;
-    }
 
-    /* Pick the right compute shader template */
+    /* Pick the right compute shader template first. */
     switch (generator_ptr->type)
     {
-        case PROCEDURAL_UV_GENERATOR_TYPE_SPHERICAL_MAPPING_WITH_NORMALS:
+        case PROCEDURAL_UV_GENERATOR_TYPE_POSITIONAL_SPHERICAL_MAPPING:
         {
-            cs_body = "#version 430 core\n"
-                      "\n"
-                      "layout(local_size_x = LOCAL_WG_SIZE_X, local_size_y = 1, local_size_z = 1) in;\n"
-                      "\n"
-                      "layout(binding = 0) readonly buffer inputData\n"
-                      "{\n"
-                      "    restrict float meshData[];\n"
-                      "};\n"
-                      "layout(binding = 1) writeonly buffer outputData\n"
-                      "{\n"
-                      "    restrict float resultData[];\n"
-                      "};\n"
-                      "\n"
-                      /* NOTE: In order to handle buffer-memory backed storage of the number of normals defined for the object,
-                       *       we need to use a separate UB. If the value is stored in buffer memory, we'll just bind it to the UB.
-                       *       Otherwise we'll update & sync the ogl_program_ub at each _execute() call.*/
-                      "layout(packed) uniform nNormalsBlock\n"
-                      "{\n"
-                      "    uint n_normals_defined;\n"
-                      "};\n"
-                      "\n"
-                      "layout(packed) uniform inputParams\n"
-                      "{\n"
-                      "    uint normal_data_stride_in_floats;\n"
-                      "    uint start_offset_in_floats;\n"
-                      "};\n"
-                      "\n"
-                      "void main()\n"
-                      "{\n"
-                      "    const uint global_invocation_id_flat = (gl_GlobalInvocationID.z * (LOCAL_WG_SIZE_X * LOCAL_WG_SIZE_Y) +\n"
-                      "                                            gl_GlobalInvocationID.y * (LOCAL_WG_SIZE_X)                   +\n"
-                      "                                            gl_GlobalInvocationID.x);\n"
-                      "\n"
-                      "    if (global_invocation_id_flat > n_normals_defined)\n"
-                      "    {\n"
-                      "        return;"
-                      "    }\n"
-                      "\n"
-                      "    const vec2 normal_data = vec2(meshData[start_offset_in_floats + global_invocation_id_flat * normal_data_stride_in_floats],\n"
-                      "                                  meshData[start_offset_in_floats + global_invocation_id_flat * normal_data_stride_in_floats + 1]);\n"
-                      "\n"
-                      "    resultData[global_invocation_id_flat * 2 + 0] = asin(normal_data.x) * 3.14152965 + 0.5;\n"
-                      "    resultData[global_invocation_id_flat * 2 + 1] = asin(normal_data.y) * 3.14152965 + 0.5;\n"
-                      "}\n";
+            cs_body_parts[1] = "    vec3 item_data = vec3(meshData[start_offset_in_floats + global_invocation_id_flat * item_data_stride_in_floats],\n"
+                               "                          meshData[start_offset_in_floats + global_invocation_id_flat * item_data_stride_in_floats + 1],\n"
+                               "                          meshData[start_offset_in_floats + global_invocation_id_flat * item_data_stride_in_floats + 2]);\n"
+                               "\n"
+                               "    item_data = normalize(item_data);\n"
+                               "\n"
+                               "    resultData[global_invocation_id_flat * 2 + 0] = asin(item_data.x) / 3.14152965 + 0.5;\n"
+                               "    resultData[global_invocation_id_flat * 2 + 1] = asin(item_data.y) / 3.14152965 + 0.5;\n";
 
             break;
-        }
+        } /* case PROCEDURAL_UV_GENERATOR_TYPE_POSITIONAL_SPHERICAL_MAPPING: */
+
+        case PROCEDURAL_UV_GENERATOR_TYPE_SPHERICAL_MAPPING_WITH_NORMALS:
+        {
+            cs_body_parts[1] = "    const vec2 item_data = vec2(meshData[start_offset_in_floats + global_invocation_id_flat * item_data_stride_in_floats],\n"
+                               "                                meshData[start_offset_in_floats + global_invocation_id_flat * item_data_stride_in_floats + 1]);\n"
+                               "\n"
+                               "    resultData[global_invocation_id_flat * 2 + 0] = asin(item_data.x) / 3.14152965 + 0.5;\n"
+                               "    resultData[global_invocation_id_flat * 2 + 1] = asin(item_data.y) / 3.14152965 + 0.5;\n";
+
+            break;
+        } /* case PROCEDURAL_UV_GENERATOR_TYPE_SPHERICAL_MAPPING_WITH_NORMALS: */
 
         default:
         {
@@ -344,15 +328,6 @@ PRIVATE ogl_program _procedural_uv_generator_init_generator_po(_procedural_uv_ge
                               "Unrecognized procedural UV generator type");
         }
     } /* switch (generator_ptr->type) */
-
-    /* Determine the local work-group size. */
-    ogl_context_get_property(generator_ptr->context,
-                             OGL_CONTEXT_PROPERTY_LIMITS,
-                            &limits_ptr);
-
-    generator_ptr->wg_local_size[0] = limits_ptr->max_compute_work_group_size[0]; /* TODO: smarterize me */
-    generator_ptr->wg_local_size[1] = 1;
-    generator_ptr->wg_local_size[2] = 1;
 
     /* Prepare token key/value pairs */
     token_keys[0] = system_hashed_ansi_string_create("LOCAL_WG_SIZE_X");
@@ -386,7 +361,8 @@ PRIVATE ogl_program _procedural_uv_generator_init_generator_po(_procedural_uv_ge
                                                      OGL_PROGRAM_SYNCABLE_UBS_MODE_ENABLE_GLOBAL);
 
     ogl_shader_set_body_with_token_replacement(generator_ptr->generator_cs,
-                                               cs_body,
+                                               system_hashed_ansi_string_create_by_merging_strings(n_cs_body_parts,
+                                                                                                   cs_body_parts),
                                                n_token_key_values,
                                                token_keys,
                                                token_values);
@@ -410,6 +386,147 @@ PRIVATE ogl_program _procedural_uv_generator_init_generator_po(_procedural_uv_ge
         goto end;
     }
 
+    result = true;
+
+end:
+    return result;
+}
+
+/** TODO */
+PRIVATE system_hashed_ansi_string _procedural_uv_generator_get_generator_name(procedural_uv_generator_type type)
+{
+    system_hashed_ansi_string result = NULL;
+
+    switch (type)
+    {
+        case PROCEDURAL_UV_GENERATOR_TYPE_POSITIONAL_SPHERICAL_MAPPING:
+        {
+            result = system_hashed_ansi_string_create("Positional spherical mapping");
+
+            break;
+        }
+
+        case PROCEDURAL_UV_GENERATOR_TYPE_SPHERICAL_MAPPING_WITH_NORMALS:
+        {
+            result = system_hashed_ansi_string_create("Spherical mapping with normals");
+
+            break;
+        }
+
+        default:
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Unrecognized procedural UV generator type");
+        }
+    } /* switch (type) */
+
+    return result;
+}
+
+/** TODO */
+PRIVATE void _procedural_uv_generator_get_item_data_stream_properties(const _procedural_uv_generator*        generator_ptr,
+                                                                      const _procedural_uv_generator_object* opt_object_ptr,
+                                                                      mesh_layer_data_stream_type*           out_opt_item_data_stream_type_ptr,
+                                                                      unsigned int*                          out_opt_n_bytes_per_item_ptr)
+{
+    unsigned int                n_item_components       = 0;
+    mesh_layer_data_stream_type result_data_stream_type = MESH_LAYER_DATA_STREAM_TYPE_UNKNOWN;
+
+    switch (generator_ptr->type)
+    {
+        case PROCEDURAL_UV_GENERATOR_TYPE_POSITIONAL_SPHERICAL_MAPPING:
+        {
+            /* The generator uses vertex data */
+            result_data_stream_type = MESH_LAYER_DATA_STREAM_TYPE_VERTICES;
+
+            break;
+        } /* case PROCEDURAL_UV_GENERATOR_TYPE_POSITIONAL_SPHERICAL_MAPPING: */
+
+        case PROCEDURAL_UV_GENERATOR_TYPE_SPHERICAL_MAPPING_WITH_NORMALS:
+        {
+            /* The generator uses normal data */
+            result_data_stream_type = MESH_LAYER_DATA_STREAM_TYPE_NORMALS;
+
+            break;
+        } /* case PROCEDURAL_UV_GENERATOR_TYPE_SPHERICAL_MAPPING_WITH_NORMALS: */
+
+        default:
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Unrecognized UV generator type");
+        }
+    } /* switch (generator_ptr->type) */
+
+    if (result_data_stream_type != MESH_LAYER_DATA_STREAM_TYPE_UNKNOWN)
+    {
+        if (out_opt_item_data_stream_type_ptr != NULL)
+        {
+            *out_opt_item_data_stream_type_ptr = result_data_stream_type;
+        } /* if (out_opt_item_data_stream_type_ptr != NULL) */
+
+        if (out_opt_n_bytes_per_item_ptr != NULL)
+        {
+            ASSERT_DEBUG_SYNC(opt_object_ptr != NULL,
+                              "Object descriptor pointer is NULL");
+
+            mesh_get_layer_data_stream_property(opt_object_ptr->owned_mesh,
+                                                opt_object_ptr->owned_mesh_layer_id,
+                                                result_data_stream_type,
+                                                MESH_LAYER_DATA_STREAM_PROPERTY_N_COMPONENTS,
+                                               &n_item_components);
+
+            ASSERT_DEBUG_SYNC(n_item_components != 0,
+                              "No vertex data item components defined!");
+
+            *out_opt_n_bytes_per_item_ptr = sizeof(float) * n_item_components;
+        } /* if (out_opt_n_bytes_per_item_ptr != NULL) */
+    }
+}
+
+/** TODO */
+PRIVATE void _procedural_uv_generator_init_generator_po(_procedural_uv_generator* generator_ptr)
+{
+    ogl_context_gl_limits*      limits_ptr                          = NULL;
+    ogl_programs                programs                            = NULL;
+    const ogl_program_variable* variable_n_items_defined_ptr        = NULL;
+    const ogl_program_variable* variable_item_data_stride_ptr       = NULL;
+    const ogl_program_variable* variable_start_offset_in_floats_ptr = NULL;
+
+    /* Determine the local work-group size. */
+    ogl_context_get_property(generator_ptr->context,
+                             OGL_CONTEXT_PROPERTY_LIMITS,
+                            &limits_ptr);
+
+    generator_ptr->wg_local_size[0] = limits_ptr->max_compute_work_group_size[0]; /* TODO: smarterize me */
+    generator_ptr->wg_local_size[1] = 1;
+    generator_ptr->wg_local_size[2] = 1;
+
+    /* Check if the program object is not already cached for the rendering context. */
+    ogl_context_get_property(generator_ptr->context,
+                             OGL_CONTEXT_PROPERTY_PROGRAMS,
+                            &programs);
+
+    generator_ptr->generator_po = ogl_programs_get_program_by_name(programs,
+                                                                   _procedural_uv_generator_get_generator_name(generator_ptr->type) );
+
+    if (generator_ptr->generator_po == NULL)
+    {
+        /* Need to create the program from scratch. */
+        bool result = _procedural_uv_generator_build_generator_po(generator_ptr);
+
+        if (!result)
+        {
+            ASSERT_ALWAYS_SYNC(false,
+                              "Failed to build UV generator program object");
+
+            goto end;
+        }
+    } /* if (generator_ptr->generator_po == NULL) */
+    else
+    {
+        ogl_program_retain(generator_ptr->generator_po);
+    }
+
     /* Retrieve the inputParams uniform block instance */
     ogl_program_get_uniform_block_by_name(generator_ptr->generator_po,
                                           system_hashed_ansi_string_create("inputParams"),
@@ -431,32 +548,32 @@ PRIVATE ogl_program _procedural_uv_generator_init_generator_po(_procedural_uv_ge
                                 OGL_PROGRAM_UB_PROPERTY_INDEXED_BP,
                                &generator_ptr->input_params_ub_indexed_bp);
 
-    /* Retrieve the nNormals uniform block instance */
+    /* Retrieve the nItems uniform block instance */
     ogl_program_get_uniform_block_by_name(generator_ptr->generator_po,
-                                          system_hashed_ansi_string_create("nNormalsBlock"),
-                                         &generator_ptr->n_normals_ub);
+                                          system_hashed_ansi_string_create("nItemsBlock"),
+                                         &generator_ptr->n_items_ub);
 
-    ASSERT_DEBUG_SYNC(generator_ptr->n_normals_ub != NULL,
-                      "Could not retrieve nNormalsBlock uniform block instance");
+    ASSERT_DEBUG_SYNC(generator_ptr->n_items_ub != NULL,
+                      "Could not retrieve nItemsBlock uniform block instance");
 
-    ogl_program_ub_get_property(generator_ptr->n_normals_ub,
+    ogl_program_ub_get_property(generator_ptr->n_items_ub,
                                 OGL_PROGRAM_UB_PROPERTY_BO_ID,
-                               &generator_ptr->n_normals_ub_bo_id);
-    ogl_program_ub_get_property(generator_ptr->n_normals_ub,
+                               &generator_ptr->n_items_ub_bo_id);
+    ogl_program_ub_get_property(generator_ptr->n_items_ub,
                                 OGL_PROGRAM_UB_PROPERTY_BO_START_OFFSET,
-                               &generator_ptr->n_normals_ub_bo_start_offset);
-    ogl_program_ub_get_property(generator_ptr->n_normals_ub,
+                               &generator_ptr->n_items_ub_bo_start_offset);
+    ogl_program_ub_get_property(generator_ptr->n_items_ub,
                                 OGL_PROGRAM_UB_PROPERTY_INDEXED_BP,
-                               &generator_ptr->n_normals_ub_indexed_bp);
+                               &generator_ptr->n_items_ub_indexed_bp);
 
     ogl_program_get_uniform_by_name(generator_ptr->generator_po,
-                                    system_hashed_ansi_string_create("n_normals_defined"),
-                                   &variable_n_normals_defined_ptr);
+                                    system_hashed_ansi_string_create("n_items_defined"),
+                                   &variable_n_items_defined_ptr);
 
-    ASSERT_DEBUG_SYNC(variable_n_normals_defined_ptr != NULL,
-                      "Could not retrieve nNormalsBlock uniform block member descriptors");
-    ASSERT_DEBUG_SYNC(variable_n_normals_defined_ptr->block_offset == 0,
-                      "Invalid n_normals_defined offset reported by GL");
+    ASSERT_DEBUG_SYNC(variable_n_items_defined_ptr != NULL,
+                      "Could not retrieve nItemsBlock uniform block member descriptors");
+    ASSERT_DEBUG_SYNC(variable_n_items_defined_ptr->block_offset == 0,
+                      "Invalid n_items_defined offset reported by GL");
 
     /* Retrieve the shader storage block instances */
     ogl_program_get_shader_storage_block_by_name(generator_ptr->generator_po,
@@ -480,28 +597,27 @@ PRIVATE ogl_program _procedural_uv_generator_init_generator_po(_procedural_uv_ge
 
     /* Retrieve the uniform block member descriptors */
     ogl_program_get_uniform_by_name(generator_ptr->generator_po,
-                                    system_hashed_ansi_string_create("normal_data_stride_in_floats"),
-                                   &variable_normal_data_stride_ptr);
+                                    system_hashed_ansi_string_create("item_data_stride_in_floats"),
+                                   &variable_item_data_stride_ptr);
     ogl_program_get_uniform_by_name(generator_ptr->generator_po,
                                     system_hashed_ansi_string_create("start_offset_in_floats"),
                                    &variable_start_offset_in_floats_ptr);
 
-    ASSERT_DEBUG_SYNC(variable_normal_data_stride_ptr     != NULL &&
+    ASSERT_DEBUG_SYNC(variable_item_data_stride_ptr       != NULL &&
                       variable_start_offset_in_floats_ptr != NULL,
                       "Could not retrieve inputParams uniform block member descriptors");
 
-    generator_ptr->input_params_ub_normal_data_stride_block_offset = variable_normal_data_stride_ptr->block_offset;
-    generator_ptr->input_params_ub_start_offset_block_offset       = variable_start_offset_in_floats_ptr->block_offset;
+    generator_ptr->input_params_ub_item_data_stride_block_offset = variable_item_data_stride_ptr->block_offset;
+    generator_ptr->input_params_ub_start_offset_block_offset     = variable_start_offset_in_floats_ptr->block_offset;
 
 end:
+    /* Clean up */
     if (generator_ptr->generator_cs != NULL)
     {
         ogl_shader_release(generator_ptr->generator_cs);
 
         generator_ptr->generator_cs = NULL;
     }
-
-    return result;
 }
 
 
@@ -514,24 +630,25 @@ PRIVATE void _procedural_uv_generator_release(void* ptr)
 }
 
 /** TODO */
-PRIVATE void _procedural_uv_generator_run_spherical_mapping_with_normals_po(_procedural_uv_generator*        generator_ptr,
-                                                                            _procedural_uv_generator_object* object_ptr)
+PRIVATE void _procedural_uv_generator_run_po(_procedural_uv_generator*        generator_ptr,
+                                             _procedural_uv_generator_object* object_ptr)
 {
-    const ogl_context_gl_entrypoints* entrypoints_ptr                          = NULL;
+    const ogl_context_gl_entrypoints* entrypoints_ptr                        = NULL;
     unsigned int                      global_wg_size[3];
-    const ogl_context_gl_limits*      limits_ptr                               = NULL;
-    GLuint                            n_normals_bo_id                          = 0;
-    bool                              n_normals_bo_requires_memory_barrier     = false;
-    unsigned int                      n_normals_bo_start_offset                = 0;
-    mesh_layer_data_stream_source     n_normals_source                         = MESH_LAYER_DATA_STREAM_SOURCE_UNDEFINED;
-    GLuint                            normal_data_bo_id                        = 0;
-    unsigned int                      normal_data_bo_size                      = 0;
-    unsigned int                      normal_data_bo_start_offset              = 0;
-    unsigned int                      normal_data_bo_stride                    = 0;
-    unsigned int                      normal_data_bo_stride_div_4              = 0;
-    int                               normal_data_offset_adjustment            = 0;
-    int                               normal_data_offset_adjustment_div_4      = 0;
-    unsigned int                      normal_data_bo_start_offset_ssbo_aligned = 0;
+    GLuint                            item_data_bo_id                        = 0;
+    unsigned int                      item_data_bo_size                      = 0;
+    unsigned int                      item_data_bo_start_offset              = 0;
+    unsigned int                      item_data_bo_stride                    = 0;
+    unsigned int                      item_data_bo_stride_div_4              = 0;
+    int                               item_data_offset_adjustment            = 0;
+    int                               item_data_offset_adjustment_div_4      = 0;
+    unsigned int                      item_data_bo_start_offset_ssbo_aligned = 0;
+    const ogl_context_gl_limits*      limits_ptr                             = NULL;
+    GLuint                            n_items_bo_id                          = 0;
+    bool                              n_items_bo_requires_memory_barrier     = false;
+    unsigned int                      n_items_bo_start_offset                = 0;
+    mesh_layer_data_stream_source     n_items_source                         = MESH_LAYER_DATA_STREAM_SOURCE_UNDEFINED;
+    mesh_layer_data_stream_type       source_item_data_stream_type           = MESH_LAYER_DATA_STREAM_TYPE_UNKNOWN;
 
     ogl_context_get_property(generator_ptr->context,
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
@@ -540,40 +657,64 @@ PRIVATE void _procedural_uv_generator_run_spherical_mapping_with_normals_po(_pro
                              OGL_CONTEXT_PROPERTY_LIMITS,
                             &limits_ptr);
 
+    /* Determine the source data stream type. */
+    switch (generator_ptr->type)
+    {
+        case PROCEDURAL_UV_GENERATOR_TYPE_POSITIONAL_SPHERICAL_MAPPING:
+        {
+            source_item_data_stream_type = MESH_LAYER_DATA_STREAM_TYPE_VERTICES;
+
+            break;
+        }
+
+        case PROCEDURAL_UV_GENERATOR_TYPE_SPHERICAL_MAPPING_WITH_NORMALS:
+        {
+            source_item_data_stream_type = MESH_LAYER_DATA_STREAM_TYPE_NORMALS;
+
+            break;
+        }
+
+        default:
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Unrecognized procedural UV generator type");
+        }
+    } /* switch (generator_ptr->type) */
+
     /* Retrieve normal data BO properties.
      *
      * The number of normals can be stored in either buffer or client memory. Make sure to correctly
      * detect and handle both cases. */
     mesh_get_layer_data_stream_property(object_ptr->owned_mesh,
                                         object_ptr->owned_mesh_layer_id,
-                                        MESH_LAYER_DATA_STREAM_TYPE_NORMALS,
+                                        source_item_data_stream_type,
                                         MESH_LAYER_DATA_STREAM_PROPERTY_N_ITEMS_SOURCE,
-                                       &n_normals_source);
+                                       &n_items_source);
 
-    switch (n_normals_source)
+    switch (n_items_source)
     {
         case MESH_LAYER_DATA_STREAM_SOURCE_BUFFER_MEMORY:
         {
             mesh_get_layer_data_stream_property(object_ptr->owned_mesh,
                                                 object_ptr->owned_mesh_layer_id,
-                                                MESH_LAYER_DATA_STREAM_TYPE_NORMALS,
+                                                source_item_data_stream_type,
                                                 MESH_LAYER_DATA_STREAM_PROPERTY_N_ITEMS_BO_ID,
-                                               &n_normals_bo_id);
+                                               &n_items_bo_id);
             mesh_get_layer_data_stream_property(object_ptr->owned_mesh,
                                                 object_ptr->owned_mesh_layer_id,
-                                                MESH_LAYER_DATA_STREAM_TYPE_NORMALS,
+                                                source_item_data_stream_type,
                                                 MESH_LAYER_DATA_STREAM_PROPERTY_N_ITEMS_BO_START_OFFSET,
-                                               &n_normals_bo_start_offset);
+                                               &n_items_bo_start_offset);
             mesh_get_layer_data_stream_property(object_ptr->owned_mesh,
                                                 object_ptr->owned_mesh_layer_id,
-                                                MESH_LAYER_DATA_STREAM_TYPE_NORMALS,
+                                                source_item_data_stream_type,
                                                 MESH_LAYER_DATA_STREAM_PROPERTY_N_ITEMS_BO_READ_REQUIRES_MEMORY_BARRIER,
-                                               &n_normals_bo_requires_memory_barrier);
+                                               &n_items_bo_requires_memory_barrier);
 
             entrypoints_ptr->pGLBindBufferRange(GL_UNIFORM_BUFFER,
-                                                generator_ptr->n_normals_ub_indexed_bp,
-                                                n_normals_bo_id,
-                                                n_normals_bo_start_offset,
+                                                generator_ptr->n_items_ub_indexed_bp,
+                                                n_items_bo_id,
+                                                n_items_bo_start_offset,
                                                 sizeof(unsigned int) );
 
             break;
@@ -592,56 +733,56 @@ PRIVATE void _procedural_uv_generator_run_spherical_mapping_with_normals_po(_pro
             ASSERT_DEBUG_SYNC(false,
                               "Unrecognized source for n_items property of the normal data stream.");
         }
-    } /* switch (n_normals_source) */
+    } /* switch (n_items_source) */
 
     mesh_get_layer_data_stream_property(object_ptr->owned_mesh,
                                         object_ptr->owned_mesh_layer_id,
-                                        MESH_LAYER_DATA_STREAM_TYPE_NORMALS,
+                                        source_item_data_stream_type,
                                         MESH_LAYER_DATA_STREAM_PROPERTY_GL_BO_ID,
-                                       &normal_data_bo_id);
+                                       &item_data_bo_id);
     mesh_get_layer_data_stream_property(object_ptr->owned_mesh,
                                         object_ptr->owned_mesh_layer_id,
-                                        MESH_LAYER_DATA_STREAM_TYPE_NORMALS,
+                                        source_item_data_stream_type,
                                         MESH_LAYER_DATA_STREAM_PROPERTY_GL_BO_SIZE,
-                                       &normal_data_bo_size);
+                                       &item_data_bo_size);
     mesh_get_layer_data_stream_property(object_ptr->owned_mesh,
                                         object_ptr->owned_mesh_layer_id,
-                                        MESH_LAYER_DATA_STREAM_TYPE_NORMALS,
+                                        source_item_data_stream_type,
                                         MESH_LAYER_DATA_STREAM_PROPERTY_GL_BO_STRIDE,
-                                       &normal_data_bo_stride);
+                                       &item_data_bo_stride);
     mesh_get_layer_data_stream_property(object_ptr->owned_mesh,
                                         object_ptr->owned_mesh_layer_id,
-                                        MESH_LAYER_DATA_STREAM_TYPE_NORMALS,
+                                        source_item_data_stream_type,
                                         MESH_LAYER_DATA_STREAM_PROPERTY_START_OFFSET,
-                                       &normal_data_bo_start_offset);
+                                       &item_data_bo_start_offset);
 
-    ASSERT_DEBUG_SYNC(normal_data_bo_id != 0,
-                      "Invalid normal data BO ID defined for the object.");
+    ASSERT_DEBUG_SYNC(item_data_bo_id != 0,
+                      "Invalid item data BO ID defined for the object.");
 
-    /* NOTE: Normal data may not start at the alignment boundary needed for SSBOs. Adjust the offset
+    /* NOTE: Item data may not start at the alignment boundary needed for SSBOs. Adjust the offset
      *       we pass to the UB, so that the requirement is met.
      */
-    normal_data_offset_adjustment            = normal_data_bo_start_offset % limits_ptr->shader_storage_buffer_offset_alignment;
-    normal_data_bo_start_offset_ssbo_aligned = normal_data_bo_start_offset - normal_data_offset_adjustment;
+    item_data_offset_adjustment            = item_data_bo_start_offset % limits_ptr->shader_storage_buffer_offset_alignment;
+    item_data_bo_start_offset_ssbo_aligned = item_data_bo_start_offset - item_data_offset_adjustment;
 
-    normal_data_offset_adjustment = normal_data_offset_adjustment;
+    item_data_offset_adjustment = item_data_offset_adjustment;
 
-    ASSERT_DEBUG_SYNC(normal_data_offset_adjustment % sizeof(float) == 0 &&
-                      normal_data_bo_stride         % sizeof(float) == 0,
+    ASSERT_DEBUG_SYNC(item_data_offset_adjustment % sizeof(float) == 0 &&
+                      item_data_bo_stride         % sizeof(float) == 0,
                       "Data alignment error");
 
-    normal_data_offset_adjustment_div_4 = normal_data_offset_adjustment / sizeof(float);
-    normal_data_bo_stride_div_4         = normal_data_bo_stride         / sizeof(float);
+    item_data_offset_adjustment_div_4 = item_data_offset_adjustment / sizeof(float);
+    item_data_bo_stride_div_4         = item_data_bo_stride         / sizeof(float);
 
     /* Set up UB bindings & contents. The bindings are hard-coded in the shader. */
     ogl_program_ub_set_nonarrayed_uniform_value(generator_ptr->input_params_ub,
-                                                generator_ptr->input_params_ub_normal_data_stride_block_offset,
-                                               &normal_data_bo_stride_div_4,
+                                                generator_ptr->input_params_ub_item_data_stride_block_offset,
+                                               &item_data_bo_stride_div_4,
                                                 0, /* src_data_flags */
-                                                sizeof(normal_data_bo_stride) );
+                                                sizeof(item_data_bo_stride) );
     ogl_program_ub_set_nonarrayed_uniform_value(generator_ptr->input_params_ub,
                                                 generator_ptr->input_params_ub_start_offset_block_offset,
-                                               &normal_data_offset_adjustment_div_4,
+                                               &item_data_offset_adjustment_div_4,
                                                 0, /* src_data_flags */
                                                 sizeof(unsigned int) );
 
@@ -653,7 +794,7 @@ PRIVATE void _procedural_uv_generator_run_spherical_mapping_with_normals_po(_pro
                                         generator_ptr->input_params_ub_bo_start_offset,
                                         generator_ptr->input_params_ub_bo_size);
 
-    if (n_normals_bo_requires_memory_barrier)
+    if (n_items_bo_requires_memory_barrier)
     {
         entrypoints_ptr->pGLMemoryBarrier(GL_UNIFORM_BARRIER_BIT);
     }
@@ -661,9 +802,9 @@ PRIVATE void _procedural_uv_generator_run_spherical_mapping_with_normals_po(_pro
     /* Set up SSB bindings. */
     entrypoints_ptr->pGLBindBufferRange(GL_SHADER_STORAGE_BUFFER,
                                         generator_ptr->input_data_ssb_indexed_bp,
-                                        normal_data_bo_id,
-                                        normal_data_bo_start_offset_ssbo_aligned,
-                                        normal_data_bo_size + normal_data_offset_adjustment); /* size */
+                                        item_data_bo_id,
+                                        item_data_bo_start_offset_ssbo_aligned,
+                                        item_data_bo_size + item_data_offset_adjustment); /* size */
     entrypoints_ptr->pGLBindBufferRange(GL_SHADER_STORAGE_BUFFER,
                                         generator_ptr->output_data_ssb_indexed_bp,
                                         object_ptr->uv_bo_id,
@@ -671,7 +812,7 @@ PRIVATE void _procedural_uv_generator_run_spherical_mapping_with_normals_po(_pro
                                         object_ptr->uv_bo_size);
 
     /* Issue the dispatch call */
-    global_wg_size[0] = 1 + (normal_data_bo_size / sizeof(float) / 2 /* uv */) / generator_ptr->wg_local_size[0];
+    global_wg_size[0] = 1 + (item_data_bo_size / sizeof(float) / 2 /* uv */) / generator_ptr->wg_local_size[0];
     global_wg_size[1] = 1;
     global_wg_size[2] = 1;
 
@@ -685,22 +826,30 @@ PRIVATE void _procedural_uv_generator_run_spherical_mapping_with_normals_po(_pro
 PRIVATE void _procedural_uv_generator_verify_result_buffer_capacity(_procedural_uv_generator*        generator_ptr,
                                                                     _procedural_uv_generator_object* object_ptr)
 {
-    mesh_layer_data_stream_source n_normals_source = MESH_LAYER_DATA_STREAM_SOURCE_UNDEFINED;
+    mesh_layer_data_stream_type   item_data_stream_type = MESH_LAYER_DATA_STREAM_TYPE_UNKNOWN;
+    unsigned int                  n_bytes_per_item      = 0;
+    mesh_layer_data_stream_source n_items_source        = MESH_LAYER_DATA_STREAM_SOURCE_UNDEFINED;
+
+    _procedural_uv_generator_get_item_data_stream_properties(generator_ptr,
+                                                             object_ptr,
+                                                            &item_data_stream_type,
+                                                            &n_bytes_per_item);
 
     mesh_get_layer_data_stream_property(object_ptr->owned_mesh,
                                         object_ptr->owned_mesh_layer_id,
-                                        MESH_LAYER_DATA_STREAM_TYPE_NORMALS,
+                                        item_data_stream_type,
                                         MESH_LAYER_DATA_STREAM_PROPERTY_N_ITEMS_SOURCE,
-                                       &n_normals_source);
+                                       &n_items_source);
 
-    switch (n_normals_source)
+    switch (n_items_source)
     {
         case MESH_LAYER_DATA_STREAM_SOURCE_BUFFER_MEMORY:
         {
             if (object_ptr->uv_bo_size == 0)
             {
                 ASSERT_ALWAYS_SYNC(false,
-                                   "Invalid request - number of normals must be either stored in client memory, or the UV generator result data buffer must be preallocated in advance.");
+                                   "Invalid request - number of data stream items must be either stored in client memory, "
+                                   "or the UV generator result data buffer must be preallocated in advance.");
 
                 goto end;
             }
@@ -711,7 +860,7 @@ PRIVATE void _procedural_uv_generator_verify_result_buffer_capacity(_procedural_
 
         case MESH_LAYER_DATA_STREAM_SOURCE_CLIENT_MEMORY:
         {
-            uint32_t n_normals              = 0;
+            uint32_t n_items                = 0;
             uint32_t n_storage_bytes_needed = 0;
 
             /* TODO - the existing implementation requires verification */
@@ -720,19 +869,19 @@ PRIVATE void _procedural_uv_generator_verify_result_buffer_capacity(_procedural_
 
             if (!mesh_get_layer_data_stream_data(object_ptr->owned_mesh,
                                                  object_ptr->owned_mesh_layer_id,
-                                                 MESH_LAYER_DATA_STREAM_TYPE_NORMALS,
-                                                &n_normals,
+                                                 item_data_stream_type,
+                                                &n_items,
                                                  NULL /* out_data_ptr */) ||
-                n_normals == 0)
+                n_items == 0)
             {
                 ASSERT_DEBUG_SYNC(false,
-                                  "No normal data defined for the object.");
+                                  "No source data items, required to generate UV data, defined for the object.");
 
                 goto end;
             }
 
             /* Do we need to update the storage? */
-            n_storage_bytes_needed = n_normals * sizeof(float) * 2;
+            n_storage_bytes_needed = n_items * n_bytes_per_item;
 
             if (object_ptr->uv_bo_size == 0                       ||
                 object_ptr->uv_bo_size != 0                       &&
@@ -756,9 +905,9 @@ PRIVATE void _procedural_uv_generator_verify_result_buffer_capacity(_procedural_
         default:
         {
             ASSERT_DEBUG_SYNC(false,
-                              "Unrecognized number of normals storage source type.");
+                              "Unrecognized number of data stream item storage source type.");
         }
-    } /* switch (n_normals_source) */
+    } /* switch (n_items_source) */
 
 end:
     ;
@@ -770,42 +919,35 @@ PUBLIC EMERALD_API procedural_uv_generator_object_id procedural_uv_generator_add
                                                                                       mesh                    in_mesh,
                                                                                       mesh_layer_id           in_mesh_layer_id)
 {
-    ogl_buffers                       buffers        = NULL;
-    _procedural_uv_generator*         generator_ptr  = (_procedural_uv_generator*) in_generator;
-    _procedural_uv_generator_object*  new_object_ptr = NULL;
-    procedural_uv_generator_object_id result_id      = 0xFFFFFFFF;
+    ogl_buffers                       buffers               = NULL;
+    _procedural_uv_generator*         generator_ptr         = (_procedural_uv_generator*) in_generator;
+    mesh_layer_data_stream_type       item_data_stream_type = MESH_LAYER_DATA_STREAM_TYPE_UNKNOWN;
+    _procedural_uv_generator_object*  new_object_ptr       = NULL;
+    bool                              result               = false;
+    procedural_uv_generator_object_id result_id            = 0xFFFFFFFF;
+
+    _procedural_uv_generator_get_item_data_stream_properties(generator_ptr,
+                                                             NULL, /* object_ptr */
+                                                            &item_data_stream_type,
+                                                             NULL); /* out_opt_n_bytes_item_ptr */
 
     /* Sanity checks */
     ASSERT_DEBUG_SYNC(in_generator != NULL,
                       "Input UV generator instance is NULL");
     ASSERT_DEBUG_SYNC(in_mesh != NULL,
                       "Input mesh is NULL");
+    ASSERT_DEBUG_SYNC(item_data_stream_type != MESH_LAYER_DATA_STREAM_TYPE_UNKNOWN,
+                      "Item data stream type could not be determined.");
 
-    switch (generator_ptr->type)
-    {
-        case PROCEDURAL_UV_GENERATOR_TYPE_SPHERICAL_MAPPING_WITH_NORMALS:
-        {
-            bool result;
+    /* Make sure the source item data is already defined */
+    result = mesh_get_layer_data_stream_data(in_mesh,
+                                             in_mesh_layer_id,
+                                             item_data_stream_type,
+                                             NULL,  /* out_n_items_ptr */
+                                             NULL); /* out_data_ptr    */
 
-            /* Normal data must be defined at the creation time. */
-            result = mesh_get_layer_data_stream_data(in_mesh,
-                                                     in_mesh_layer_id,
-                                                     MESH_LAYER_DATA_STREAM_TYPE_NORMALS,
-                                                     NULL,  /* out_n_items_ptr */
-                                                     NULL); /* out_data_ptr    */
-
-            ASSERT_DEBUG_SYNC(result,
-                              "Normal data is undefined for the specified input mesh");
-
-            break;
-        }
-
-        default:
-        {
-            ASSERT_DEBUG_SYNC(false,
-                              "Unrecognized procedural UV generator type requested.");
-        }
-    } /* switch (in_type) */
+    ASSERT_DEBUG_SYNC(result,
+                      "Required item data stream is undefined for the specified input mesh");
 
     /* Texture coordinates must be undefined */
     ASSERT_ALWAYS_SYNC(!mesh_get_layer_data_stream_data(in_mesh,
@@ -815,7 +957,7 @@ PUBLIC EMERALD_API procedural_uv_generator_object_id procedural_uv_generator_add
                                                         NULL), /* out_data_ptr    */
                        "Texture coordinates data is already defined for the specified input mesh.");
 
-    /* Define it now! We will update the BO id, its size and start offset later on .. */
+    /* Spawn a new texcoord data stream. We will update the BO id, its size and start offset later though .. */
     mesh_add_layer_data_stream_from_buffer_memory(in_mesh,
                                                   in_mesh_layer_id,
                                                   MESH_LAYER_DATA_STREAM_TYPE_TEXCOORDS,
@@ -856,15 +998,16 @@ PUBLIC EMERALD_API bool procedural_uv_generator_alloc_result_buffer_memory(proce
                                                                            procedural_uv_generator_object_id in_object_id,
                                                                            uint32_t                          n_bytes_to_preallocate)
 {
-    ogl_buffers                      buffers                            = NULL;
-    _procedural_uv_generator*        generator_ptr                      = (_procedural_uv_generator*) in_generator;
-    const ogl_context_gl_limits*     limits_ptr                         = NULL;
-    GLuint                           n_normals_bo_id                    = 0;
-    bool                             n_normals_bo_read_reqs_mem_barrier = false;
-    unsigned int                     n_normals_bo_start_offset          = -1;
-    mesh_layer_data_stream_source    n_normals_source                   = MESH_LAYER_DATA_STREAM_SOURCE_UNDEFINED;
-    _procedural_uv_generator_object* object_ptr                         = NULL;
-    bool                             result                             = false;
+    ogl_buffers                      buffers                          = NULL;
+    _procedural_uv_generator*        generator_ptr                    = (_procedural_uv_generator*) in_generator;
+    const ogl_context_gl_limits*     limits_ptr                       = NULL;
+    GLuint                           n_items_bo_id                    = 0;
+    bool                             n_items_bo_read_reqs_mem_barrier = false;
+    unsigned int                     n_items_bo_start_offset          = -1;
+    mesh_layer_data_stream_source    n_items_source                   = MESH_LAYER_DATA_STREAM_SOURCE_UNDEFINED;
+    _procedural_uv_generator_object* object_ptr                       = NULL;
+    bool                             result                           = false;
+    mesh_layer_data_stream_type      source_item_data_stream_type     = MESH_LAYER_DATA_STREAM_TYPE_UNKNOWN;
 
     LOG_ERROR("Performance warning: preallocating buffer memory for UV generator result data storage.");
 
@@ -922,39 +1065,44 @@ PUBLIC EMERALD_API bool procedural_uv_generator_alloc_result_buffer_memory(proce
     object_ptr->uv_bo_size = n_bytes_to_preallocate;
 
     /* Update mesh configuration */
+    _procedural_uv_generator_get_item_data_stream_properties(generator_ptr,
+                                                             object_ptr,
+                                                            &source_item_data_stream_type,
+                                                             NULL); /* out_opt_n_bytes_item_ptr */
+
     mesh_get_layer_data_stream_property(object_ptr->owned_mesh,
                                         object_ptr->owned_mesh_layer_id,
-                                        MESH_LAYER_DATA_STREAM_TYPE_NORMALS,
+                                        source_item_data_stream_type,
                                         MESH_LAYER_DATA_STREAM_PROPERTY_N_ITEMS_SOURCE,
-                                       &n_normals_source);
+                                       &n_items_source);
 
-    ASSERT_DEBUG_SYNC(n_normals_source == MESH_LAYER_DATA_STREAM_SOURCE_BUFFER_MEMORY,
+    ASSERT_DEBUG_SYNC(n_items_source == MESH_LAYER_DATA_STREAM_SOURCE_BUFFER_MEMORY,
                       "TODO: Support for client memory");
 
     mesh_get_layer_data_stream_property(object_ptr->owned_mesh,
                                         object_ptr->owned_mesh_layer_id,
-                                        MESH_LAYER_DATA_STREAM_TYPE_NORMALS,
+                                        source_item_data_stream_type,
                                         MESH_LAYER_DATA_STREAM_PROPERTY_N_ITEMS_BO_ID,
-                                       &n_normals_bo_id);
+                                       &n_items_bo_id);
     mesh_get_layer_data_stream_property(object_ptr->owned_mesh,
                                         object_ptr->owned_mesh_layer_id,
-                                        MESH_LAYER_DATA_STREAM_TYPE_NORMALS,
+                                        source_item_data_stream_type,
                                         MESH_LAYER_DATA_STREAM_PROPERTY_N_ITEMS_BO_READ_REQUIRES_MEMORY_BARRIER,
-                                       &n_normals_bo_read_reqs_mem_barrier);
+                                       &n_items_bo_read_reqs_mem_barrier);
     mesh_get_layer_data_stream_property(object_ptr->owned_mesh,
                                         object_ptr->owned_mesh_layer_id,
-                                        MESH_LAYER_DATA_STREAM_TYPE_NORMALS,
+                                        source_item_data_stream_type,
                                         MESH_LAYER_DATA_STREAM_PROPERTY_N_ITEMS_BO_START_OFFSET,
-                                       &n_normals_bo_start_offset);
+                                       &n_items_bo_start_offset);
 
     if (!mesh_set_layer_data_stream_property_with_buffer_memory(object_ptr->owned_mesh,
                                                                 object_ptr->owned_mesh_layer_id,
                                                                 MESH_LAYER_DATA_STREAM_TYPE_TEXCOORDS,
                                                                 MESH_LAYER_DATA_STREAM_PROPERTY_N_ITEMS,
-                                                                n_normals_bo_id,
+                                                                n_items_bo_id,
                                                                 sizeof(unsigned int),
-                                                                n_normals_bo_start_offset,
-                                                                n_normals_bo_read_reqs_mem_barrier) ||
+                                                                n_items_bo_start_offset,
+                                                                n_items_bo_read_reqs_mem_barrier) ||
         !mesh_set_layer_data_stream_property_with_buffer_memory(object_ptr->owned_mesh,
                                                                 object_ptr->owned_mesh_layer_id,
                                                                 MESH_LAYER_DATA_STREAM_TYPE_TEXCOORDS,
@@ -1010,10 +1158,9 @@ end:
 PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void procedural_uv_generator_update(procedural_uv_generator           in_generator,
                                                                               procedural_uv_generator_object_id in_object_id)
 {
-    _procedural_uv_generator*         generator_ptr    = (_procedural_uv_generator*) in_generator;
-    uint32_t                          n_normals        = 0;
-    _procedural_uv_generator_object*  object_ptr       = NULL;
-    uint32_t                          uv_data_size     = 0;
+    _procedural_uv_generator*         generator_ptr = (_procedural_uv_generator*) in_generator;
+    _procedural_uv_generator_object*  object_ptr    = NULL;
+    uint32_t                          uv_data_size  = 0;
 
     /* Sanity checks */
     ASSERT_DEBUG_SYNC(generator_ptr != NULL,
@@ -1037,22 +1184,8 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void procedural_uv_generator_update(pr
                                                            object_ptr);
 
     /* Execute the generator program */
-    switch (generator_ptr->type)
-    {
-        case PROCEDURAL_UV_GENERATOR_TYPE_SPHERICAL_MAPPING_WITH_NORMALS:
-        {
-            _procedural_uv_generator_run_spherical_mapping_with_normals_po(generator_ptr,
-                                                                           object_ptr);
-
-            break;
-        }
-
-        default:
-        {
-            ASSERT_DEBUG_SYNC(false,
-                              "Unrecognized generator type");
-        }
-    } /* switch (generator_ptr->type) */
+    _procedural_uv_generator_run_po(generator_ptr,
+                                    object_ptr);
 
     /* All done */
 end:

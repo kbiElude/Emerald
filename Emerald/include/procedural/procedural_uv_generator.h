@@ -20,6 +20,15 @@ REFCOUNT_INSERT_DECLARATIONS(procedural_uv_generator,
 
 typedef enum
 {
+    /* Texture coordinates created by projecting a vector from the center of the object outward through each vertex,
+     * and reusing XY components of that vector, after it is normalized.
+     *
+     * Requires vertex data to be stored in buffer memory for the specified layer ID
+     * at _update() time. If the number of vertices defined for the mesh layer increases,
+     * a buffer memory alloc may be needed.
+     */
+    PROCEDURAL_UV_GENERATOR_TYPE_POSITIONAL_SPHERICAL_MAPPING,
+
     /* Texture coordinates based on the angle of surface at each vertex.
      *
      * Requires normal data to be stored in buffer memory for the specified layer ID

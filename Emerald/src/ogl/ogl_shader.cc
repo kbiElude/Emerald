@@ -354,13 +354,13 @@ PUBLIC EMERALD_API bool ogl_shader_set_body(ogl_shader                shader,
 
 /** TODO */
 PUBLIC EMERALD_API bool ogl_shader_set_body_with_token_replacement(ogl_shader                       shader,
-                                                                   const char*                      body,
+                                                                   system_hashed_ansi_string        body,
                                                                    uint32_t                         n_tokens,
                                                                    const system_hashed_ansi_string* token_keys,
                                                                    const system_hashed_ansi_string* token_values)
 {
-    std::string  body_string(body);
-    _ogl_shader* shader_ptr    = (_ogl_shader*) shader;
+    std::string  body_string(system_hashed_ansi_string_get_buffer(body) );
+    _ogl_shader* shader_ptr  = (_ogl_shader*) shader;
 
     ASSERT_DEBUG_SYNC(body != NULL,
                       "Input shader body is NULL");

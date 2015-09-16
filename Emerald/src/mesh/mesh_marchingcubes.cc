@@ -1147,7 +1147,7 @@ PRIVATE void _mesh_marchingcubes_init_polygonizer_po(_mesh_marchingcubes* mesh_p
                                                                                                                                                  " CS") );
 
     ogl_shader_set_body_with_token_replacement(cs,
-                                               cs_body,
+                                               system_hashed_ansi_string_create(cs_body),
                                                n_token_key_value_pairs,
                                                token_key_array_ptr,
                                                token_value_array_ptr);
