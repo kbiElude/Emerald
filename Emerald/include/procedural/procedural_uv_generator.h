@@ -18,8 +18,20 @@
 REFCOUNT_INSERT_DECLARATIONS(procedural_uv_generator,
                              procedural_uv_generator)
 
+
 typedef enum
 {
+    /* Texture coordinates are created by calculating distance from each vertex to a plane, whose normal is defined
+     * via a procedural_uv_generator parameter, separately for U and V components.
+     *
+     * This is nonaccidentally similar to the good ol' GL_OBJECT_LINEAR known from OpenGL Compatibility Profile.
+     *
+     * Requires vertex data to be stored in buffer memory for the specified layer ID
+     * at _update() time. If the number of vertices defined for the mesh layer increases,
+     * a buffer memory alloc may be needed.
+     */
+    PROCEDURAL_UV_GENERATOR_TYPE_OBJECT_LINEAR,
+
     /* Texture coordinates created by projecting a vector from the center of the object outward through each vertex,
      * and reusing XY components of that vector, after it is normalized.
      *
@@ -39,6 +51,34 @@ typedef enum
 } procedural_uv_generator_type;
 
 typedef uint32_t procedural_uv_generator_object_id;
+
+typedef enum
+{
+    /* settable, float[4].
+     *
+     * Default value: vec4(1.0, 0.0, 0.0, 0.0)
+     *
+     * Defines the four coefficients of the plane used for U coordinate computations for
+     * generators of PROCEDURAL_UV_GENERATOR_TYPE_OBJECT_LINEAR.
+     *
+     * For all other generator types, this property is considered invalid. Any attempt to
+     * set it will result in an assertion failure.
+     */
+    PROCEDURAL_UV_GENERATOR_OBJECT_PROPERTY_U_PLANE_COEFFS,
+
+    /* settable, float[4].
+     *
+     * Default value: vec4(0.0, 1.0, 0.0, 0.0)
+     *
+     * Defines the four coefficients of the plane used for V coordinate computations for
+     * generators of PROCEDURAL_UV_GENERATOR_TYPE_OBJECT_LINEAR.
+     *
+     * For all other generator types, this property is considered invalid. Any attempt to
+     * set it will result in an assertion failure.
+     */
+    PROCEDURAL_UV_GENERATOR_OBJECT_PROPERTY_V_PLANE_COEFFS,
+
+} procedural_uv_generator_object_property;
 
 
 /** Registers a new mesh for usage with the procedural UV generator.
@@ -78,6 +118,12 @@ PUBLIC EMERALD_API bool procedural_uv_generator_alloc_result_buffer_memory(proce
 PUBLIC EMERALD_API procedural_uv_generator procedural_uv_generator_create(ogl_context                  in_context,
                                                                           procedural_uv_generator_type in_type,
                                                                           system_hashed_ansi_string    in_name);
+
+/** TODO */
+PUBLIC EMERALD_API void procedural_uv_generator_set_object_property(procedural_uv_generator                 in_generator,
+                                                                    procedural_uv_generator_object_id       in_object_id,
+                                                                    procedural_uv_generator_object_property in_property,
+                                                                    const void*                             in_data);
 
 /** Fills the UV data stream with data.
  *

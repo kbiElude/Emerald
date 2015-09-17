@@ -232,7 +232,7 @@ PRIVATE void _init_scene()
 
     /* Set up the procedural UV generator */
     _uv_generator = procedural_uv_generator_create(_context,
-                                                   PROCEDURAL_UV_GENERATOR_TYPE_SPHERICAL_MAPPING_WITH_NORMALS,
+                                                   PROCEDURAL_UV_GENERATOR_TYPE_OBJECT_LINEAR,
                                                    system_hashed_ansi_string_create("Procedural UV generator") );
 
     _uv_generator_object_id = procedural_uv_generator_add_mesh(_uv_generator,
