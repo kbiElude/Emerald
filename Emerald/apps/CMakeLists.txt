@@ -26,6 +26,7 @@ ADD_SUBDIRECTORY(Test-DOF)
 ADD_SUBDIRECTORY(Test-Julia4D)
 ADD_SUBDIRECTORY(Test-MarchingCubes)
 ADD_SUBDIRECTORY(Test-Pipeline)
+ADD_SUBDIRECTORY(Test-Spinner)
 
 
 # Following are obsolete examples which no longer build or whose asset became
