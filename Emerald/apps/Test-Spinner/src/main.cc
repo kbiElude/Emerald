@@ -26,7 +26,7 @@
 #include "main.h"
 
 #define SPINNER_N_SEGMENTS_PER_SPLINE (64)
-#define SPINNER_N_SPLINES             (16)
+#define SPINNER_N_SPLINES             (4)
 
 
 PRIVATE ogl_context      _context             = NULL;
@@ -149,11 +149,11 @@ PRIVATE void _init_spinner()
                           "    const float PI                  = 3.14152965;\n"
                           "    const bool  is_top_half_segment = ((global_invocation_id_flat % 2) == 0);\n"
                           "    const float domain_offset       = ((is_top_half_segment) ? 0.0 : PI);\n"
-                          "    const uint  n_spline_segment    = global_invocation_id_flat % (N_SEGMENTS_PER_SPLINE * 2);\n"
-                          "    const uint  n_spline            = global_invocation_id_flat / (N_SEGMENTS_PER_SPLINE * 2);\n"
+                          "    const uint  n_spline_segment    = global_invocation_id_flat % (N_SEGMENTS_PER_SPLINE);\n"
+                          "    const uint  n_spline            = global_invocation_id_flat / (N_SEGMENTS_PER_SPLINE);\n"
                           "    const float spline_radius       = mix(innerRingRadius, outerRingRadius, float(n_spline) / float(N_SPLINES - 1) );\n"
-                          "    const vec2  segment_s1s2        = vec2( float(n_spline_segment)     / float(N_SEGMENTS_PER_SPLINE - 1),\n"
-                          "                                            float(n_spline_segment + 1) / float(N_SEGMENTS_PER_SPLINE - 1) );\n"
+                          "    const vec2  segment_s1s2        = vec2( float(n_spline_segment)     / float(N_SEGMENTS_PER_SPLINE),\n"
+                          "                                            float(n_spline_segment + 1) / float(N_SEGMENTS_PER_SPLINE) );\n"
                           "\n"
                           /*   v1--v2
                            *   |    |
@@ -288,7 +288,7 @@ PRIVATE void _init_spinner()
     }
 
 
-    _spinner_polygonizer_po_global_wg_size[0] = 1 + (SPINNER_N_SEGMENTS_PER_SPLINE * SPINNER_N_SPLINES / limits_ptr->max_compute_work_group_size[0]);
+    _spinner_polygonizer_po_global_wg_size[0] = 1 + (2 /* top half, bottom half */ * SPINNER_N_SEGMENTS_PER_SPLINE * SPINNER_N_SPLINES / limits_ptr->max_compute_work_group_size[0]);
     _spinner_polygonizer_po_global_wg_size[1] = 1;
     _spinner_polygonizer_po_global_wg_size[2] = 1;
 
@@ -440,7 +440,7 @@ PRIVATE void _render_spinner()
 
     /* Generate spinner mesh data */
     const float inner_ring_radius = 0.1f;
-    const float outer_ring_radius = 2.0f;
+    const float outer_ring_radius = 1.0f;
 
     entrypoints_ptr->pGLUseProgram(ogl_program_get_id(_spinner_polygonizer_po) );
 
@@ -483,7 +483,7 @@ PRIVATE void _render_spinner()
     entrypoints_ptr->pGLMemoryBarrier(GL_VERTEX_ATTRIB_ARRAY_BARRIER_BIT);
     entrypoints_ptr->pGLDrawArrays   (GL_TRIANGLES,
                                       0, /* first */
-                                      SPINNER_N_SEGMENTS_PER_SPLINE * SPINNER_N_SPLINES * 2 /* triangles */);
+                                      SPINNER_N_SEGMENTS_PER_SPLINE * SPINNER_N_SPLINES * 2 /* triangles */ * 2 /* top half, bottom half */ * 3 /* vertices per triangle */ );
 }
 
 
