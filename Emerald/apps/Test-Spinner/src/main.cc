@@ -21,6 +21,7 @@
 #include "system/system_matrix4x4.h"
 #include "system/system_pixel_format.h"
 #include "system/system_screen_mode.h"
+#include "system/system_time.h"
 #include "system/system_variant.h"
 #include "system/system_window.h"
 #include "main.h"
@@ -40,6 +41,7 @@ PRIVATE system_matrix4x4 _view_matrix         = NULL;
 PRIVATE GLuint         _spinner_bo_id                                                = 0;
 PRIVATE unsigned int   _spinner_bo_size                                              = 0;
 PRIVATE unsigned int   _spinner_bo_start_offset                                      = -1;
+PRIVATE system_time    _spinner_first_frame_time                                     = 0;
 PRIVATE ogl_program    _spinner_polygonizer_po                                       = NULL;
 PRIVATE unsigned int   _spinner_polygonizer_po_global_wg_size[3]                     = {0};
 PRIVATE ogl_program_ub _spinner_polygonizer_po_propsBuffer_ub                        = NULL;
@@ -49,6 +51,7 @@ PRIVATE unsigned int   _spinner_polygonizer_po_propsBuffer_ub_bo_start_offset   
 PRIVATE GLuint         _spinner_polygonizer_po_propsBuffer_innerRingRadius_ub_offset = -1;
 PRIVATE GLuint         _spinner_polygonizer_po_propsBuffer_nRingsToSkip_ub_offset    = -1;
 PRIVATE GLuint         _spinner_polygonizer_po_propsBuffer_outerRingRadius_ub_offset = -1;
+PRIVATE GLuint         _spinner_polygonizer_po_propsBuffer_splineOffsets_ub_offset   = -1;
 PRIVATE ogl_program    _spinner_renderer_po                                          = NULL;
 PRIVATE GLuint         _spinner_vao_id                                               = 0;
 
@@ -138,6 +141,7 @@ PRIVATE void _init_spinner()
                           "    int   nRingsToSkip;\n"
                           "    float innerRingRadius;\n"
                           "    float outerRingRadius;\n"
+                          "    float splineOffsets[N_SPLINES * 2];\n"
                           "};\n"
                           "\n"
                           "void main()\n"
@@ -156,7 +160,7 @@ PRIVATE void _init_spinner()
                           "    const uint  n_spline_segment    = (global_invocation_id_flat)     % (N_SEGMENTS_PER_SPLINE);\n"
                           "    const uint  n_spline            = (global_invocation_id_flat / 2) / (N_SEGMENTS_PER_SPLINE);\n"
                           "    const bool  is_top_half_segment = (((global_invocation_id_flat / N_SEGMENTS_PER_SPLINE) % 2) == 0);\n"
-                          "    const float domain_offset       = PI / 4 + ((is_top_half_segment) ? 0.0 : PI);\n"
+                          "    const float domain_offset       = splineOffsets[n_spline] + PI / 4 + ((is_top_half_segment) ? 0.0 : PI);\n"
                           "    const float spline_radius       = mix(innerRingRadius, outerRingRadius, float(n_spline) / float(N_SPLINES - 1) );\n"
                           "    const vec2  segment_s1s2        = vec2( float(n_spline_segment)     / float(N_SEGMENTS_PER_SPLINE),\n"
                           "                                            float(n_spline_segment + 1) / float(N_SEGMENTS_PER_SPLINE) );\n"
@@ -248,6 +252,7 @@ PRIVATE void _init_spinner()
     const ogl_program_variable*     cs_innerRingRadius_var_ptr = NULL;
     const ogl_program_variable*     cs_nRingsToSkip_var_ptr    = NULL;
     const ogl_program_variable*     cs_outerRingRadius_var_ptr = NULL;
+    const ogl_program_variable*     cs_splineOffsets_var_ptr   = NULL;
     const unsigned int              n_cs_body_token_values     = sizeof(cs_body_tokens) / sizeof(cs_body_tokens[0]);
     const unsigned int              n_vs_body_token_values     = sizeof(vs_body_tokens) / sizeof(vs_body_tokens[0]);
     char                            temp[1024];
@@ -372,15 +377,20 @@ PRIVATE void _init_spinner()
     ogl_program_get_uniform_by_name(_spinner_polygonizer_po,
                                     system_hashed_ansi_string_create("outerRingRadius"),
                                    &cs_outerRingRadius_var_ptr);
+    ogl_program_get_uniform_by_name(_spinner_polygonizer_po,
+                                    system_hashed_ansi_string_create("splineOffsets[0]"),
+                                   &cs_splineOffsets_var_ptr);
 
     ASSERT_DEBUG_SYNC(cs_innerRingRadius_var_ptr != NULL &&
                       cs_nRingsToSkip_var_ptr    != NULL &&
-                      cs_outerRingRadius_var_ptr != NULL,
-                      "innerRingRadius / outerRingRadius variables are not recognized by GL");
+                      cs_outerRingRadius_var_ptr != NULL &&
+                      cs_splineOffsets_var_ptr     != NULL,
+                      "Spinner props UB variables are not recognized by GL");
 
     _spinner_polygonizer_po_propsBuffer_innerRingRadius_ub_offset = cs_innerRingRadius_var_ptr->block_offset;
     _spinner_polygonizer_po_propsBuffer_nRingsToSkip_ub_offset    = cs_nRingsToSkip_var_ptr->block_offset;
     _spinner_polygonizer_po_propsBuffer_outerRingRadius_ub_offset = cs_outerRingRadius_var_ptr->block_offset;
+    _spinner_polygonizer_po_propsBuffer_splineOffsets_ub_offset   = cs_splineOffsets_var_ptr->block_offset;
 
     /* Prepare renderer vertex shader key+token values */
     snprintf(temp,
@@ -489,6 +499,11 @@ PRIVATE void _render_spinner()
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
                             &entrypoints_ptr);
 
+    if (_spinner_first_frame_time == -1)
+    {
+        _spinner_first_frame_time = system_time_now();
+    }
+
     /* Configure viewport to use square proportions. Make sure the spinner is centered */
     GLint       new_viewport    [4];
     GLint       precall_viewport[4];
@@ -522,6 +537,35 @@ PRIVATE void _render_spinner()
                                  new_viewport[1],
                                  new_viewport[2] - new_viewport[0],
                                  new_viewport[3] - new_viewport[1]);
+
+    /* Update the spline offsets.
+     *
+     * NOTE: The same offset should be used for top & bottom half. Otherwise the segments
+     *       will start overlapping at some point.
+     */
+    uint32_t    animation_time_msec = 0;
+    system_time current_time        = system_time_now();
+
+    for (uint32_t n_spline = 0;
+                  n_spline < SPINNER_N_SPLINES;
+                ++n_spline)
+    {
+        float    spline_offset;
+        uint32_t spline_speed = (n_spline * 1637) % 15;
+
+        system_time_get_msec_for_time(current_time - _spinner_first_frame_time,
+                                     &animation_time_msec);
+
+        spline_offset = (float(spline_speed) / 15.0f) * (float(animation_time_msec) / 1000.0f) * 3.14152965f;
+
+        ogl_program_ub_set_arrayed_uniform_value(_spinner_polygonizer_po_propsBuffer_ub,
+                                                 _spinner_polygonizer_po_propsBuffer_splineOffsets_ub_offset,
+                                                &spline_offset,
+                                                 0,            /* src_data_flags */
+                                                 sizeof(float),
+                                                 n_spline,
+                                                 1);           /* dst_array_item_count */
+    }
 
     /* Generate spinner mesh data */
     const float        inner_ring_radius = 0.1f;
