@@ -25,8 +25,8 @@
 #include "system/system_window.h"
 #include "main.h"
 
-#define SPINNER_N_SEGMENTS_PER_SPLINE (64)
-#define SPINNER_N_SPLINES             (4)
+#define SPINNER_N_SEGMENTS_PER_SPLINE (16)
+#define SPINNER_N_SPLINES             (9)
 
 
 PRIVATE ogl_context      _context             = NULL;
@@ -47,6 +47,7 @@ PRIVATE GLuint         _spinner_polygonizer_po_propsBuffer_ub_bo_id             
 PRIVATE unsigned int   _spinner_polygonizer_po_propsBuffer_ub_bo_size                = 0;
 PRIVATE unsigned int   _spinner_polygonizer_po_propsBuffer_ub_bo_start_offset        = -1;
 PRIVATE GLuint         _spinner_polygonizer_po_propsBuffer_innerRingRadius_ub_offset = -1;
+PRIVATE GLuint         _spinner_polygonizer_po_propsBuffer_nRingsToSkip_ub_offset    = -1;
 PRIVATE GLuint         _spinner_polygonizer_po_propsBuffer_outerRingRadius_ub_offset = -1;
 PRIVATE ogl_program    _spinner_renderer_po                                          = NULL;
 PRIVATE GLuint         _spinner_vao_id                                               = 0;
@@ -126,11 +127,15 @@ PRIVATE void _init_spinner()
                           "\n"
                           "writeonly buffer dataBuffer\n"
                           "{\n"
-                          "    restrict vec2 data[];\n"
+                          /* vertex: x, y
+                           * uv:     s, t
+                           */
+                          "    restrict vec4 data[];\n"
                           "};\n"
                           "\n"
                           "uniform propsBuffer\n"
                           "{\n"
+                          "    int   nRingsToSkip;\n"
                           "    float innerRingRadius;\n"
                           "    float outerRingRadius;\n"
                           "};\n"
@@ -141,16 +146,17 @@ PRIVATE void _init_spinner()
                           "                                            gl_GlobalInvocationID.y * (LOCAL_WG_SIZE_X)     +\n"
                           "                                            gl_GlobalInvocationID.x);\n"
                           "\n"
-                          "    if (global_invocation_id_flat >= N_SEGMENTS_PER_SPLINE * N_SPLINES * 2)\n"
+                          "    if (global_invocation_id_flat <  N_SEGMENTS_PER_SPLINE * nRingsToSkip * 2 ||\n"
+                          "        global_invocation_id_flat >= N_SEGMENTS_PER_SPLINE * N_SPLINES    * 2)\n"
                           "    {\n"
                           "        return;\n"
                           "    }\n"
                           "\n"
                           "    const float PI                  = 3.14152965;\n"
-                          "    const bool  is_top_half_segment = ((global_invocation_id_flat % 2) == 0);\n"
-                          "    const float domain_offset       = ((is_top_half_segment) ? 0.0 : PI);\n"
-                          "    const uint  n_spline_segment    = global_invocation_id_flat % (N_SEGMENTS_PER_SPLINE);\n"
-                          "    const uint  n_spline            = global_invocation_id_flat / (N_SEGMENTS_PER_SPLINE);\n"
+                          "    const uint  n_spline_segment    = (global_invocation_id_flat)     % (N_SEGMENTS_PER_SPLINE);\n"
+                          "    const uint  n_spline            = (global_invocation_id_flat / 2) / (N_SEGMENTS_PER_SPLINE);\n"
+                          "    const bool  is_top_half_segment = (((global_invocation_id_flat / N_SEGMENTS_PER_SPLINE) % 2) == 0);\n"
+                          "    const float domain_offset       = PI / 4 + ((is_top_half_segment) ? 0.0 : PI);\n"
                           "    const float spline_radius       = mix(innerRingRadius, outerRingRadius, float(n_spline) / float(N_SPLINES - 1) );\n"
                           "    const vec2  segment_s1s2        = vec2( float(n_spline_segment)     / float(N_SEGMENTS_PER_SPLINE),\n"
                           "                                            float(n_spline_segment + 1) / float(N_SEGMENTS_PER_SPLINE) );\n"
@@ -159,50 +165,62 @@ PRIVATE void _init_spinner()
                            *   |    |
                            *   v3--v4
                            */
-                          "    vec4 segment_v1v2;\n"
-                          "    vec4 segment_v3v4;\n"
+                          "    vec4 uv_v1v2;\n"
+                          "    vec4 uv_v3v4;\n"
+                          "    vec4 vertex_v1v2;\n"
+                          "    vec4 vertex_v3v4;\n"
                           "\n"
-                          "    segment_v1v2 = vec4(spline_radius) * vec4(cos(domain_offset + segment_s1s2.x * PI / 2.0),\n"
-                          "                                              sin(domain_offset + segment_s1s2.x * PI / 2.0),\n"
-                          "                                              cos(domain_offset + segment_s1s2.y * PI / 2.0),\n"
-                          "                                              sin(domain_offset + segment_s1s2.y * PI / 2.0) );\n"
-                          "    segment_v3v4 = vec4(-segment_v1v2.y,\n"
-                          "                         segment_v1v2.x,\n"
-                          "                        -segment_v1v2.w,\n"
-                          "                         segment_v1v2.z);\n"
+                          "    vec4 base_location = vec4(cos(domain_offset + segment_s1s2.x * PI / 2.0),\n"
+                          "                              sin(domain_offset + segment_s1s2.x * PI / 2.0),\n"
+                          "                              cos(domain_offset + segment_s1s2.y * PI / 2.0),\n"
+                          "                              sin(domain_offset + segment_s1s2.y * PI / 2.0) );\n"
+                          "\n"
+                          "    uv_v1v2     = vec4(0.0, 0.0, 1.0, 0.0);\n"
+                          "    uv_v3v4     = vec4(0.0, 1.0, 1.0, 1.0);\n"
+                          "    vertex_v1v2 = vec4(spline_radius)       * base_location;\n"
+                          "    vertex_v3v4 = vec4(spline_radius - 0.1) * base_location;\n"
                           "\n"
                           /* Store segment vertex data.
                            *
-                           * NOTE: Since output "data" variable is 2-component, we need not multiply the start vertex index by 2. */
+                           * NOTE: Since output "data" variable is 4-component, we need not multiply the start vertex index by 4. */
                           "\n"
                           "    const uint n_start_vertex_index = global_invocation_id_flat * 2 /* triangles */ * 3 /* vertices per triangle */;\n"
                           "\n"
                           /*   v1-v2-v3 triangle */
-                          "    data[n_start_vertex_index    ] = segment_v1v2.xy;\n"
-                          "    data[n_start_vertex_index + 1] = segment_v1v2.zw;\n"
-                          "    data[n_start_vertex_index + 2] = segment_v3v4.xy;\n"
+                          "    data[n_start_vertex_index    ] = vec4(vertex_v1v2.xy, uv_v1v2.xy);\n"
+                          "    data[n_start_vertex_index + 1] = vec4(vertex_v1v2.zw, uv_v1v2.zw);\n"
+                          "    data[n_start_vertex_index + 2] = vec4(vertex_v3v4.xy, uv_v3v4.xy);\n"
 
                           /*   v2-v4-v3 triangle */
-                          "    data[n_start_vertex_index + 3] = segment_v1v2.zw;\n"
-                          "    data[n_start_vertex_index + 4] = segment_v3v4.zw;\n"
-                          "    data[n_start_vertex_index + 5] = segment_v3v4.xy;\n"
+                          "    data[n_start_vertex_index + 3] = vec4(vertex_v1v2.zw, uv_v1v2.zw);\n"
+                          "    data[n_start_vertex_index + 4] = vec4(vertex_v3v4.zw, uv_v3v4.zw);\n"
+                          "    data[n_start_vertex_index + 5] = vec4(vertex_v3v4.xy, uv_v3v4.xy);\n"
                           "}\n";
     const char* fs_body = "#version 430 core\n"
                           "\n"
-                          "out vec4 result;\n"
+                          "flat in  int  is_top_half;\n"
+                          "     in  vec2 uv;\n"
+                          "     out vec4 result;\n"
                           "\n"
                           "void main()\n"
                           "{\n"
-                          /* todo: temp */
-                          "    result = vec4(gl_FragCoord.xy / vec2(1280.0, 720.0), 0.0, 1.0);\n"
+                          "    float shade = (is_top_half == 0) ? 1.0 : 0.1;\n"
+                          "\n"
+                          "    if (uv.y >= 0.8) shade = mix(1.0, 0.2, (uv.y - 0.8) / 0.2);\n"
+                          "\n"
+                          "    result = vec4(vec3(shade), 1.0);\n"
                           "}\n";
     const char* vs_body = "#version 430 core\n"
                           "\n"
-                          "in vec2 data;\n"
+                          "     in  vec4 data;\n"
+                          "flat out int  is_top_half;\n"
+                          "     out vec2 uv;\n"
                           "\n"
                           "void main()\n"
                           "{\n"
                           "    gl_Position = vec4(data.xy, 0.0, 1.0);\n"
+                          "    is_top_half = (gl_VertexID / 6 / N_SEGMENTS_PER_SPLINE) % 2;\n"
+                          "    uv          = data.zw;\n"
                           "}\n";
 
     const system_hashed_ansi_string cs_body_tokens[] =
@@ -217,9 +235,21 @@ PRIVATE void _init_spinner()
         NULL,
         NULL
     };
+    const system_hashed_ansi_string vs_body_tokens[] =
+    {
+        system_hashed_ansi_string_create("N_SEGMENTS_PER_SPLINE"),
+        system_hashed_ansi_string_create("N_SPLINES")
+    };
+    system_hashed_ansi_string       vs_body_values[] =
+    {
+        NULL,
+        NULL
+    };
     const ogl_program_variable*     cs_innerRingRadius_var_ptr = NULL;
+    const ogl_program_variable*     cs_nRingsToSkip_var_ptr    = NULL;
     const ogl_program_variable*     cs_outerRingRadius_var_ptr = NULL;
     const unsigned int              n_cs_body_token_values     = sizeof(cs_body_tokens) / sizeof(cs_body_tokens[0]);
+    const unsigned int              n_vs_body_token_values     = sizeof(vs_body_tokens) / sizeof(vs_body_tokens[0]);
     char                            temp[1024];
 
     ogl_buffers                       buffers         = NULL;
@@ -256,23 +286,23 @@ PRIVATE void _init_spinner()
     }
 
     /* Prepare final polygonizer shader body */
-   snprintf(temp,
-            sizeof(temp),
-            "%d",
-            limits_ptr->max_compute_work_group_size[0]);
-   cs_body_values[0] = system_hashed_ansi_string_create(temp);
+    snprintf(temp,
+             sizeof(temp),
+             "%d",
+             limits_ptr->max_compute_work_group_size[0]);
+    cs_body_values[0] = system_hashed_ansi_string_create(temp);
 
-   snprintf(temp,
-            sizeof(temp),
-            "%d",
-            SPINNER_N_SEGMENTS_PER_SPLINE);
-   cs_body_values[1] = system_hashed_ansi_string_create(temp);
+    snprintf(temp,
+             sizeof(temp),
+             "%d",
+             SPINNER_N_SEGMENTS_PER_SPLINE);
+    cs_body_values[1] = system_hashed_ansi_string_create(temp);
 
-   snprintf(temp,
-            sizeof(temp),
-            "%d",
-            SPINNER_N_SPLINES);
-   cs_body_values[2] = system_hashed_ansi_string_create(temp);
+    snprintf(temp,
+             sizeof(temp),
+             "%d",
+             SPINNER_N_SPLINES);
+    cs_body_values[2] = system_hashed_ansi_string_create(temp);
 
     /* Set up the polygonizer program object */
     polygonizer_cs = ogl_shader_create(_context,
@@ -337,15 +367,33 @@ PRIVATE void _init_spinner()
                                     system_hashed_ansi_string_create("innerRingRadius"),
                                    &cs_innerRingRadius_var_ptr);
     ogl_program_get_uniform_by_name(_spinner_polygonizer_po,
+                                    system_hashed_ansi_string_create("nRingsToSkip"),
+                                   &cs_nRingsToSkip_var_ptr);
+    ogl_program_get_uniform_by_name(_spinner_polygonizer_po,
                                     system_hashed_ansi_string_create("outerRingRadius"),
                                    &cs_outerRingRadius_var_ptr);
 
     ASSERT_DEBUG_SYNC(cs_innerRingRadius_var_ptr != NULL &&
+                      cs_nRingsToSkip_var_ptr    != NULL &&
                       cs_outerRingRadius_var_ptr != NULL,
                       "innerRingRadius / outerRingRadius variables are not recognized by GL");
 
     _spinner_polygonizer_po_propsBuffer_innerRingRadius_ub_offset = cs_innerRingRadius_var_ptr->block_offset;
+    _spinner_polygonizer_po_propsBuffer_nRingsToSkip_ub_offset    = cs_nRingsToSkip_var_ptr->block_offset;
     _spinner_polygonizer_po_propsBuffer_outerRingRadius_ub_offset = cs_outerRingRadius_var_ptr->block_offset;
+
+    /* Prepare renderer vertex shader key+token values */
+    snprintf(temp,
+             sizeof(temp),
+             "%d",
+             SPINNER_N_SEGMENTS_PER_SPLINE);
+    vs_body_values[0] = system_hashed_ansi_string_create(temp);
+
+    snprintf(temp,
+             sizeof(temp),
+             "%d",
+             SPINNER_N_SPLINES);
+    vs_body_values[1] = system_hashed_ansi_string_create(temp);
 
     /* Set up renderer PO */
     renderer_fs = ogl_shader_create(_context,
@@ -359,10 +407,13 @@ PRIVATE void _init_spinner()
                       renderer_vs != NULL,
                       "Could not create spinner renderer FS and/or VS");
 
-    ogl_shader_set_body(renderer_fs,
-                        system_hashed_ansi_string_create(fs_body) );
-    ogl_shader_set_body(renderer_vs,
-                        system_hashed_ansi_string_create(vs_body) );
+    ogl_shader_set_body                       (renderer_fs,
+                                               system_hashed_ansi_string_create(fs_body) );
+    ogl_shader_set_body_with_token_replacement(renderer_vs,
+                                               system_hashed_ansi_string_create(vs_body),
+                                               n_vs_body_token_values,
+                                               vs_body_tokens,
+                                               vs_body_values);
 
     ogl_program_attach_shader(_spinner_renderer_po,
                               renderer_fs);
@@ -378,7 +429,7 @@ PRIVATE void _init_spinner()
     }
 
     /* Set up BO to hold polygonized spinner data */
-    _spinner_bo_size = SPINNER_N_SEGMENTS_PER_SPLINE * SPINNER_N_SPLINES * 2 /* triangles */ * 3 /* vertices per triangle */ * 2 /* comp's per vertex */ * sizeof(float);
+    _spinner_bo_size = SPINNER_N_SEGMENTS_PER_SPLINE * SPINNER_N_SPLINES * 2 /* triangles */ * 3 /* vertices per triangle */ * 4 /* comp's per vertex */ * sizeof(float) * 2 /* top half, bottom half */;
 
     ogl_buffers_allocate_buffer_memory(buffers,
                                        _spinner_bo_size,
@@ -397,10 +448,10 @@ PRIVATE void _init_spinner()
     entrypoints_ptr->pGLBindBuffer             (GL_ARRAY_BUFFER,
                                                 _spinner_bo_id);
     entrypoints_ptr->pGLVertexAttribPointer    (0,                                         /* index */
-                                                2,                                         /* size */
+                                                4,                                         /* size */
                                                 GL_FLOAT,
                                                 GL_FALSE,                                  /* normalized */
-                                                sizeof(float) * 2,                         /* stride */
+                                                sizeof(float) * 4,                         /* stride */
                                                 (const GLvoid*) _spinner_bo_start_offset); /* pointer */
     entrypoints_ptr->pGLEnableVertexAttribArray(0);                                        /* index */
 
@@ -438,9 +489,44 @@ PRIVATE void _render_spinner()
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
                             &entrypoints_ptr);
 
+    /* Configure viewport to use square proportions. Make sure the spinner is centered */
+    GLint       new_viewport    [4];
+    GLint       precall_viewport[4];
+    GLint       precall_viewport_height;
+    GLint       precall_viewport_width;
+    GLint       spinner_size_px = 0;
+    const float spinner_size_ss = 0.8f;
+
+    /* Don't panic. This call will retrieve the info from Emerald's state cache. */
+    entrypoints_ptr->pGLGetIntegerv(GL_VIEWPORT,
+                                    precall_viewport);
+
+    precall_viewport_width  = precall_viewport[2] - precall_viewport[0];
+    precall_viewport_height = precall_viewport[3] - precall_viewport[1];
+
+    if (precall_viewport_width > precall_viewport_height)
+    {
+        spinner_size_px = spinner_size_ss * precall_viewport_height;
+    }
+    else
+    {
+        spinner_size_px = spinner_size_ss * precall_viewport_width;
+    }
+
+    new_viewport[0] = (precall_viewport_width  - spinner_size_px) / 2;
+    new_viewport[1] = (precall_viewport_height - spinner_size_px) / 2;
+    new_viewport[2] = (precall_viewport_width  + spinner_size_px) / 2;
+    new_viewport[3] = (precall_viewport_height + spinner_size_px) / 2;
+
+    entrypoints_ptr->pGLViewport(new_viewport[0],
+                                 new_viewport[1],
+                                 new_viewport[2] - new_viewport[0],
+                                 new_viewport[3] - new_viewport[1]);
+
     /* Generate spinner mesh data */
-    const float inner_ring_radius = 0.1f;
-    const float outer_ring_radius = 1.0f;
+    const float        inner_ring_radius = 0.1f;
+    const unsigned int n_rings_to_skip   = 1;
+    const float        outer_ring_radius = 1.0f;
 
     entrypoints_ptr->pGLUseProgram(ogl_program_get_id(_spinner_polygonizer_po) );
 
@@ -449,6 +535,11 @@ PRIVATE void _render_spinner()
                                                &inner_ring_radius,
                                                 0, /* src_data_flags */
                                                 sizeof(float) );
+    ogl_program_ub_set_nonarrayed_uniform_value(_spinner_polygonizer_po_propsBuffer_ub,
+                                                _spinner_polygonizer_po_propsBuffer_nRingsToSkip_ub_offset,
+                                               &n_rings_to_skip,
+                                                0, /* src_data_flags */
+                                                sizeof(int) );
     ogl_program_ub_set_nonarrayed_uniform_value(_spinner_polygonizer_po_propsBuffer_ub,
                                                 _spinner_polygonizer_po_propsBuffer_outerRingRadius_ub_offset,
                                                &outer_ring_radius,
@@ -484,6 +575,12 @@ PRIVATE void _render_spinner()
     entrypoints_ptr->pGLDrawArrays   (GL_TRIANGLES,
                                       0, /* first */
                                       SPINNER_N_SEGMENTS_PER_SPLINE * SPINNER_N_SPLINES * 2 /* triangles */ * 2 /* top half, bottom half */ * 3 /* vertices per triangle */ );
+
+    /* Restore the viewport */
+    entrypoints_ptr->pGLViewport(precall_viewport[0],
+                                 precall_viewport[1],
+                                 precall_viewport[2],
+                                 precall_viewport[3]);
 }
 
 

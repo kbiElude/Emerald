@@ -4016,6 +4016,15 @@ PUBLIC void APIENTRY ogl_context_wrappers_glGetIntegerv(GLenum pname,
             goto end;
         }
 
+        case GL_VIEWPORT:
+        {
+            ogl_context_state_cache_get_property(state_cache,
+                                                 OGL_CONTEXT_STATE_CACHE_PROPERTY_VIEWPORT,
+                                                 params);
+
+            goto end;
+        }
+
         default:
         {
             /* Fall-through */
