@@ -37,6 +37,12 @@ typedef enum ogl_context_property
     /* not settable, GLuint */
     OGL_CONTEXT_PROPERTY_DEFAULT_FBO_ID,
 
+    /* not settable, unsigned int
+     *
+     * Tells the number of samples used by default framebuffer object's attachments
+     */
+    OGL_CONTEXT_PROPERTY_DEFAULT_FBO_N_SAMPLES,
+
     /* not settable, ogl_context_es_entrypoints*.
      *
      * Only accessible for ES contexts

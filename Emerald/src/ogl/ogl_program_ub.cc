@@ -101,6 +101,16 @@ PUBLIC EMERALD_API void ogl_program_ub_get_property(const ogl_program_ub    ub,
 }
 
 /** Please see header for spec */
+PUBLIC EMERALD_API void ogl_program_ub_get_variable_by_name(ogl_program_ub               ub,
+                                                            system_hashed_ansi_string    name,
+                                                            const ogl_program_variable** out_variable_ptr)
+{
+    ogl_program_block_get_block_variable_by_name((ogl_program_block) ub,
+                                                 name,
+                                                 out_variable_ptr);
+}
+
+/** Please see header for spec */
 PUBLIC void ogl_program_ub_release(ogl_program_ub ub)
 {
     ogl_program_block_release( (ogl_program_block) ub);

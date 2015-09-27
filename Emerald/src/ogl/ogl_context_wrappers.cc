@@ -3792,6 +3792,26 @@ PUBLIC void APIENTRY ogl_context_wrappers_glGetCompressedTextureImageEXT(ogl_tex
 }
 
 /** Please see header for spec */
+PUBLIC void APIENTRY ogl_context_wrappers_glGetRenderbufferParameteriv(GLenum target,
+                                                                       GLenum pname,
+                                                                       GLint* params)
+{
+    ogl_context             context     = ogl_context_get_current_context();
+    ogl_context_state_cache state_cache = NULL;
+
+    ogl_context_get_property(context,
+                             OGL_CONTEXT_PROPERTY_STATE_CACHE,
+                            &state_cache);
+
+    ogl_context_state_cache_sync(state_cache,
+                                 STATE_CACHE_SYNC_BIT_ACTIVE_RENDERBUFFER);
+
+    _private_entrypoints_ptr->pGLGetRenderbufferParameteriv(target,
+                                                            pname,
+                                                            params);
+}
+
+/** Please see header for spec */
 PUBLIC void APIENTRY ogl_context_wrappers_glGetDoublev(GLenum    pname,
                                                        GLdouble* params)
 {

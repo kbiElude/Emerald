@@ -39,7 +39,8 @@ typedef struct _ogl_program_block
 
     bool                      is_intel_driver;
     system_hashed_ansi_string name;
-    system_resizable_vector   members;                          /* pointers to const ogl_program_variable*. These are owned by owner - DO NOT release. */
+    system_resizable_vector   members;                          /* pointers to const ogl_program_variable*. These are owned by ogl_program - DO NOT release. */
+    system_hash64map          members_by_name;                  /* HAS hash -> const ogl_program_variable*. DO NOT release the items. */
     system_hash64map          offset_to_uniform_descriptor_map; /* uniform offset -> const ogl_program_variable*. Rules as above apply. Only used for UBs */
     bool                      syncable;
 
@@ -93,6 +94,7 @@ typedef struct _ogl_program_block
         indexed_bp                       = 0; /* default GL state value */
         is_intel_driver                  = false; /* updated later */
         name                             = in_name;
+        members_by_name                  = system_hash64map_create       (sizeof(const ogl_program_variable*) );
         members                          = system_resizable_vector_create(4 /* capacity */);
         offset_to_uniform_descriptor_map = NULL;
         owner                            = in_owner;
@@ -141,6 +143,14 @@ typedef struct _ogl_program_block
             system_resizable_vector_release(members);
 
             members = NULL;
+        }
+
+        if (members_by_name != NULL)
+        {
+            /* No need to release items - these are owned by ogl_program! */
+            system_hash64map_release(members_by_name);
+
+            members_by_name = NULL;
         }
 
         if (offset_to_uniform_descriptor_map != NULL)
@@ -523,8 +533,16 @@ PRIVATE bool _ogl_program_block_init(_ogl_program_block* block_ptr)
                                                           GL_BUFFER_VARIABLE,
                                                           active_variable_indices[n_active_variable]);
 
+                    ASSERT_DEBUG_SYNC(system_hashed_ansi_string_get_length(variable_ptr->name) > 0,
+                                      "SSBO variable name length is 0");
+
                     system_resizable_vector_push(block_ptr->members,
                                                  (void*) variable_ptr);
+                    system_hash64map_insert     (block_ptr->members_by_name,
+                                                 system_hashed_ansi_string_get_hash(variable_ptr->name),
+                                                 (void*) variable_ptr,
+                                                 NULL,  /* on_remove_callback_proc */
+                                                 NULL); /* callback_argument */
                 }
                 else
                 {
@@ -551,6 +569,22 @@ PRIVATE bool _ogl_program_block_init(_ogl_program_block* block_ptr)
                                           "Uniform block offset [%d] is already occupied!",
                                           variable_ptr->block_offset);
 
+                        /* If the member name is prefixed with the UBO name, skip that prefix. This is needed for
+                         * proper behavior of ogl_program_block_get_block_variable_by_name().
+                         */
+                        if (system_hashed_ansi_string_contains(variable_ptr->name,
+                                                               system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(block_ptr->name),
+                                                                                                                       ".")) )
+                        {
+                            const char* variable_name_with_block_name_prefix = system_hashed_ansi_string_get_buffer(variable_ptr->name);
+
+                            variable_ptr->name = system_hashed_ansi_string_create(variable_name_with_block_name_prefix + system_hashed_ansi_string_get_length(block_ptr->name) + 1 /* . */);
+
+                            ASSERT_DEBUG_SYNC(system_hashed_ansi_string_get_length(variable_ptr->name) > 0,
+                                              "UBO variable name length is 0");
+                        }
+
+                        /* Store the descriptor */
                         system_hash64map_insert     (block_ptr->offset_to_uniform_descriptor_map,
                                                      (system_hash64) variable_ptr->block_offset,
                                                      (void*) variable_ptr,
@@ -558,6 +592,11 @@ PRIVATE bool _ogl_program_block_init(_ogl_program_block* block_ptr)
                                                      NULL); /* on_remove_callback_user_arg */
                         system_resizable_vector_push(block_ptr->members,
                                                      (void*) variable_ptr);
+                        system_hash64map_insert     (block_ptr->members_by_name,
+                                                     system_hashed_ansi_string_get_hash(variable_ptr->name),
+                                                     (void*) variable_ptr,
+                                                     NULL,  /* on_remove_callback_proc */
+                                                     NULL); /* callback_argument */
                     }
                 }
             } /* for (all active variables) */
@@ -892,6 +931,31 @@ PUBLIC bool ogl_program_block_get_block_variable(ogl_program_block            bl
     result = system_resizable_vector_get_element_at(block_ptr->members,
                                                     index,
                                                     out_variable_ptr);
+
+    return result;
+}
+
+/** Please see header for spec */
+PUBLIC bool ogl_program_block_get_block_variable_by_name(ogl_program_block            block,
+                                                         system_hashed_ansi_string    name,
+                                                         const ogl_program_variable** out_variable_ptr)
+{
+    const _ogl_program_block* block_ptr = (const _ogl_program_block*) block;
+    bool                      result    = true;
+
+    ASSERT_DEBUG_SYNC(block_ptr != NULL,
+                      "Input ogl_program_block instance is NULL");
+
+    if (!system_hash64map_get(block_ptr->members_by_name,
+                              system_hashed_ansi_string_get_hash(name),
+                              out_variable_ptr) )
+    {
+        ASSERT_DEBUG_SYNC(false,
+                          "Input variable [%s] is not recognized by ogl_program_block",
+                          system_hashed_ansi_string_get_buffer(name) );
+
+        result = false;
+    }
 
     return result;
 }

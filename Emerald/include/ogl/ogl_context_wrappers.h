@@ -732,6 +732,11 @@ PUBLIC void APIENTRY ogl_context_wrappers_glGetCompressedTextureImageEXT(ogl_tex
                                                                          GLvoid*     img);
 
 /** TODO */
+PUBLIC void APIENTRY ogl_context_wrappers_glGetRenderbufferParameteriv(GLenum target,
+                                                                       GLenum pname,
+                                                                       GLint* params);
+
+/** TODO */
 PUBLIC void APIENTRY ogl_context_wrappers_glGetTexImage(GLenum  target,
                                                         GLint   level,
                                                         GLenum  format,

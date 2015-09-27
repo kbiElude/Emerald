@@ -86,9 +86,10 @@ typedef struct
     GLuint               vao_no_vaas_id;
 
     /* Used for off-screen rendering. */
-    GLuint fbo_color_rbo_id;
-    GLuint fbo_depth_stencil_rbo_id;
-    GLuint fbo_id;
+    GLuint       fbo_color_rbo_id;
+    GLuint       fbo_depth_stencil_rbo_id;
+    GLuint       fbo_id;
+    unsigned int fbo_n_samples_effective;
 
     /* Used by the root window for MSAA enumeration only */
     GLenum msaa_enumeration_color_internalformat;
@@ -947,6 +948,7 @@ PRIVATE void _ogl_context_init_context_after_creation(ogl_context context)
     context_ptr->fbo_color_rbo_id                           = 0;
     context_ptr->fbo_depth_stencil_rbo_id                   = 0;
     context_ptr->fbo_id                                     = 0;
+    context_ptr->fbo_n_samples_effective                    = 0;
     context_ptr->flyby                                      = NULL;
     context_ptr->gl_arb_buffer_storage_support              = false;
     context_ptr->gl_arb_multi_bind_support                  = false;
@@ -1203,6 +1205,7 @@ PRIVATE void _ogl_context_initialize_fbo(_ogl_context* context_ptr)
     GLenum                                  internalformat_depth_stencil                  = GL_NONE;
     bool                                    internalformat_depth_stencil_includes_stencil = false;
     unsigned int                            n_samples                                     = 0;
+    unsigned int                            n_samples_effective                           = 0;
     system_pixel_format                     pixel_format                                  = NULL;
     PFNGLBINDFRAMEBUFFERPROC                pGLBindFramebuffer                            = NULL;
     PFNGLBINDRENDERBUFFERPROC               pGLBindRenderbuffer                           = NULL;
@@ -1210,6 +1213,7 @@ PRIVATE void _ogl_context_initialize_fbo(_ogl_context* context_ptr)
     PFNGLFRAMEBUFFERRENDERBUFFERPROC        pGLFramebufferRenderbuffer                    = NULL;
     PFNGLGENFRAMEBUFFERSPROC                pGLGenFramebuffers                            = NULL;
     PFNGLGENRENDERBUFFERSPROC               pGLGenRenderbuffers                           = NULL;
+    PFNGLGETRENDERBUFFERPARAMETERIVPROC     pGLGetRenderbufferParameteriv                 = NULL;
     PFNGLRENDERBUFFERSTORAGEPROC            pGLRenderbufferStorage                        = NULL;
     PFNGLRENDERBUFFERSTORAGEMULTISAMPLEPROC pGLRenderbufferStorageMultisample             = NULL;
     int                                     window_dimensions[2]                          = {0};
@@ -1231,6 +1235,7 @@ PRIVATE void _ogl_context_initialize_fbo(_ogl_context* context_ptr)
         pGLFramebufferRenderbuffer        = context_ptr->entry_points_es.pGLFramebufferRenderbuffer;
         pGLGenFramebuffers                = context_ptr->entry_points_es.pGLGenFramebuffers;
         pGLGenRenderbuffers               = context_ptr->entry_points_es.pGLGenRenderbuffers;
+        pGLGetRenderbufferParameteriv     = context_ptr->entry_points_es.pGLGetRenderbufferParameteriv;
         pGLRenderbufferStorage            = context_ptr->entry_points_es.pGLRenderbufferStorage;
         pGLRenderbufferStorageMultisample = context_ptr->entry_points_es.pGLRenderbufferStorageMultisample;
     }
@@ -1245,6 +1250,7 @@ PRIVATE void _ogl_context_initialize_fbo(_ogl_context* context_ptr)
         pGLFramebufferRenderbuffer        = context_ptr->entry_points_gl.pGLFramebufferRenderbuffer;
         pGLGenFramebuffers                = context_ptr->entry_points_gl.pGLGenFramebuffers;
         pGLGenRenderbuffers               = context_ptr->entry_points_gl.pGLGenRenderbuffers;
+        pGLGetRenderbufferParameteriv     = context_ptr->entry_points_gl.pGLGetRenderbufferParameteriv;
         pGLRenderbufferStorage            = context_ptr->entry_points_gl.pGLRenderbufferStorage;
         pGLRenderbufferStorageMultisample = context_ptr->entry_points_gl.pGLRenderbufferStorageMultisample;
     }
@@ -1360,7 +1366,8 @@ PRIVATE void _ogl_context_initialize_fbo(_ogl_context* context_ptr)
                           n_rbo < sizeof(rbos) / sizeof(rbos[0]);
                         ++n_rbo)
         {
-            const _rbo& current_rbo = rbos[n_rbo];
+            const _rbo& current_rbo           = rbos[n_rbo];
+            GLint       current_rbo_n_samples = 0;
 
             if (current_rbo.rbo_id != 0)
             {
@@ -1386,6 +1393,26 @@ PRIVATE void _ogl_context_initialize_fbo(_ogl_context* context_ptr)
                                                       window_dimensions[1]);
                 }
 
+                /* Make sure the effective number of samples used for the renderbuffer
+                 * matches the other attachments we're using.
+                 *
+                 * TODO: The whole process should be more intelligent and query impl's caps
+                 *       with glGetInternalformativ() or something before firing glRenderbufferStorage*()
+                 *       calls. Might backfire one day but until then!
+                 */
+                pGLGetRenderbufferParameteriv(GL_RENDERBUFFER,
+                                              GL_RENDERBUFFER_SAMPLES,
+                                             &current_rbo_n_samples);
+
+                if (n_samples_effective != 0)
+                {
+                    ASSERT_ALWAYS_SYNC(n_samples_effective == current_rbo_n_samples,
+                                      "Default FBO attachment's n_samples mismatch detected!");
+                }
+                else
+                {
+                    n_samples_effective = current_rbo_n_samples;
+                }
                 /* Bind the RBO to relevant FBO attachments */
                 if (current_rbo.is_color_attachment)
                 {
@@ -1414,6 +1441,8 @@ PRIVATE void _ogl_context_initialize_fbo(_ogl_context* context_ptr)
             } /* if (current_rbo.rbo_id != 0) */
         } /* for (all RBOs) */
 
+        context_ptr->fbo_n_samples_effective = n_samples_effective;
+
         /* Make sure the FBO is complete. Since this is a platform-specific property,
         * we need to terminate if the driver reports it cannot support the requested
         * configuration.
@@ -1433,10 +1462,11 @@ PRIVATE void _ogl_context_initialize_fbo(_ogl_context* context_ptr)
     LOG_INFO("Using the following FBO configuration for the rendering context:\n"
              "* Color RBO:         [%s]\n"
              "* Depth RBO:         [%s]\n"
-             "* Number of samples: [%d]\n",
+             "* Number of samples: [%d] (effective:[%d])\n",
              _ogl_context_get_internalformat_string(internalformat_color),
              _ogl_context_get_internalformat_string(internalformat_depth_stencil),
-             n_samples);
+             n_samples,
+             n_samples_effective);
 end:
     ;
 }
@@ -2268,6 +2298,7 @@ PRIVATE void _ogl_context_retrieve_GL_function_pointers(_ogl_context* context_pt
         {&context_ptr->entry_points_gl.pGLGetProgramResourceiv,                             "glGetProgramResourceiv"},
         {&context_ptr->entry_points_gl.pGLGetProgramResourceLocation,                       "glGetProgramResourceLocation"},
         {&context_ptr->entry_points_gl.pGLGetProgramResourceLocationIndex,                  "glGetProgramResourceLocationIndex"},
+        {&context_ptr->entry_points_private.pGLGetRenderbufferParameteriv,                  "glGetRenderbufferParameteriv"},
         {&context_ptr->entry_points_gl.pGLGetShaderiv,                                      "glGetShaderiv"},
         {&context_ptr->entry_points_gl.pGLGetShaderInfoLog,                                 "glGetShaderInfoLog"},
         {&context_ptr->entry_points_gl.pGLGetShaderSource,                                  "glGetShaderSource"},
@@ -2591,6 +2622,7 @@ PRIVATE void _ogl_context_retrieve_GL_function_pointers(_ogl_context* context_pt
     context_ptr->entry_points_gl.pGLGetInteger64i_v                             = ogl_context_wrappers_glGetInteger64i_v;
     context_ptr->entry_points_gl.pGLGetIntegeri_v                               = ogl_context_wrappers_glGetIntegeri_v;
     context_ptr->entry_points_gl.pGLGetIntegerv                                 = ogl_context_wrappers_glGetIntegerv;
+    context_ptr->entry_points_gl.pGLGetRenderbufferParameteriv                  = ogl_context_wrappers_glGetRenderbufferParameteriv;
     context_ptr->entry_points_gl.pGLGetSamplerParameterfv                       = ogl_context_wrappers_glGetSamplerParameterfv;
     context_ptr->entry_points_gl.pGLGetSamplerParameteriv                       = ogl_context_wrappers_glGetSamplerParameteriv;
     context_ptr->entry_points_gl.pGLGetSamplerParameterIiv                      = ogl_context_wrappers_glGetSamplerParameterIiv;
@@ -3290,6 +3322,13 @@ PUBLIC EMERALD_API void ogl_context_get_property(ogl_context          context,
         case OGL_CONTEXT_PROPERTY_DEFAULT_FBO_ID:
         {
             *((GLuint*) out_result) = context_ptr->fbo_id;
+
+            break;
+        }
+
+        case OGL_CONTEXT_PROPERTY_DEFAULT_FBO_N_SAMPLES:
+        {
+            *(unsigned int*) out_result = context_ptr->fbo_n_samples_effective;
 
             break;
         }

@@ -1092,6 +1092,7 @@ typedef struct
     PFNGLGETPROGRAMRESOURCELOCATIONPROC                  pGLGetProgramResourceLocation;
     PFNGLGETPROGRAMRESOURCELOCATIONINDEXPROC             pGLGetProgramResourceLocationIndex;
     PFNGLGETPROGRAMRESOURCENAMEPROC                      pGLGetProgramResourceName;
+    PFNGLGETRENDERBUFFERPARAMETERIVPROC                  pGLGetRenderbufferParameteriv;
     PFNGLGETSAMPLERPARAMETERFVPROC                       pGLGetSamplerParameterfv;
     PFNGLGETSAMPLERPARAMETERIVPROC                       pGLGetSamplerParameteriv;
     PFNGLGETSAMPLERPARAMETERIIVPROC                      pGLGetSamplerParameterIiv;
@@ -1413,6 +1414,7 @@ typedef struct
     PFNGLGETINTEGERI_VPROC                               pGLGetIntegeri_v;
     PFNGLGETINTEGERVPROC                                 pGLGetIntegerv;
     PFNGLGETINTERNALFORMATIVPROC                         pGLGetInternalformativ;
+    PFNGLGETRENDERBUFFERPARAMETERIVPROC                  pGLGetRenderbufferParameteriv;
     PFNGLGETSAMPLERPARAMETERFVPROC                       pGLGetSamplerParameterfv;
     PFNGLGETSAMPLERPARAMETERIVPROC                       pGLGetSamplerParameteriv;
     PFNGLGETSAMPLERPARAMETERIIVPROC                      pGLGetSamplerParameterIiv;
