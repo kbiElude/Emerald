@@ -18,6 +18,7 @@ typedef enum
 DECLARE_HANDLE(postprocessing_bloom);
 DECLARE_HANDLE(postprocessing_blur_gaussian);
 DECLARE_HANDLE(postprocessing_blur_poisson);
+DECLARE_HANDLE(postprocessing_motion_blur);
 DECLARE_HANDLE(postprocessing_reinhard_tonemap);
 
 

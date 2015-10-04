@@ -1146,11 +1146,11 @@ PRIVATE void _mesh_marchingcubes_init_polygonizer_po(_mesh_marchingcubes* mesh_p
                                                                                          system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(polygonizer_has),
                                                                                                                                                  " CS") );
 
-    ogl_shader_set_body_with_token_replacement(cs,
-                                               system_hashed_ansi_string_create(cs_body),
-                                               n_token_key_value_pairs,
-                                               token_key_array_ptr,
-                                               token_value_array_ptr);
+    ogl_shader_set_body(cs,
+                        system_hashed_ansi_string_create_by_token_replacement(cs_body,
+                                                                              n_token_key_value_pairs,
+                                                                              token_key_array_ptr,
+                                                                              token_value_array_ptr) );
 
     delete [] token_key_array_ptr;
     token_key_array_ptr = NULL;

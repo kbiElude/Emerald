@@ -2255,7 +2255,7 @@ PRIVATE void _ogl_context_retrieve_GL_function_pointers(_ogl_context* context_pt
         {&context_ptr->entry_points_private.pGLFramebufferTextureLayer,                     "glFramebufferTextureLayer"},
         {&context_ptr->entry_points_private.pGLFrontFace,                                   "glFrontFace"},
         {&context_ptr->entry_points_gl.pGLGenBuffers,                                       "glGenBuffers"},
-        {&context_ptr->entry_points_gl.pGLGenerateMipmap,                                   "glGenerateMipmap"},
+        {&context_ptr->entry_points_private.pGLGenerateMipmap,                              "glGenerateMipmap"},
         {&context_ptr->entry_points_gl.pGLGenFramebuffers,                                  "glGenFramebuffers"},
         {&context_ptr->entry_points_gl.pGLGenProgramPipelines,                              "glGenProgramPipelines"},
         {&context_ptr->entry_points_gl.pGLGenRenderbuffers,                                 "glGenRenderbuffers"},
@@ -2607,6 +2607,7 @@ PRIVATE void _ogl_context_retrieve_GL_function_pointers(_ogl_context* context_pt
     context_ptr->entry_points_gl.pGLFramebufferTexture3D                        = ogl_context_wrappers_glFramebufferTexture3D;
     context_ptr->entry_points_gl.pGLFramebufferTextureLayer                     = ogl_context_wrappers_glFramebufferTextureLayer;
     context_ptr->entry_points_gl.pGLFrontFace                                   = ogl_context_wrappers_glFrontFace;
+    context_ptr->entry_points_gl.pGLGenerateMipmap                              = ogl_context_wrappers_glGenerateMipmap;
     context_ptr->entry_points_gl.pGLGenVertexArrays                             = ogl_context_wrappers_glGenVertexArrays;
     context_ptr->entry_points_gl.pGLGetActiveAtomicCounterBufferiv              = ogl_context_wrappers_glGetActiveAtomicCounterBufferiv;
     context_ptr->entry_points_gl.pGLGetBooleani_v                               = ogl_context_wrappers_glGetBooleani_v;

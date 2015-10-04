@@ -294,11 +294,11 @@ PRIVATE void _scalar_field_metaballs_init_rendering_thread_callback(ogl_context 
                                            OGL_PROGRAM_SYNCABLE_UBS_MODE_ENABLE_GLOBAL);
 
     /* Configure the shader object */
-    ogl_shader_set_body_with_token_replacement(cs,
-                                               system_hashed_ansi_string_create(cs_body_template),
-                                               n_token_key_value_pairs,
-                                               token_key_array_ptr,
-                                               token_value_array_ptr);
+    ogl_shader_set_body(cs,
+                        system_hashed_ansi_string_create_by_token_replacement(cs_body_template,
+                                                                              n_token_key_value_pairs,
+                                                                              token_key_array_ptr,
+                                                                              token_value_array_ptr) );
 
     delete [] token_key_array_ptr;
     token_key_array_ptr = NULL;

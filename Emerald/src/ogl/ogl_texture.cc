@@ -1105,7 +1105,7 @@ PUBLIC EMERALD_API void ogl_texture_set_mipmap_property(ogl_texture             
 /** Please see header for spec */
 PUBLIC EMERALD_API void ogl_texture_set_property(ogl_texture          texture,
                                                  ogl_texture_property property,
-                                                 void*                data)
+                                                 const void*          data)
 {
     _ogl_texture* texture_ptr = (_ogl_texture*) texture;
 
@@ -1128,6 +1128,16 @@ PUBLIC EMERALD_API void ogl_texture_set_property(ogl_texture          texture,
                               "Invalid setter call!");
 
             texture_ptr->internalformat = *(ogl_texture_internalformat*) data;
+
+            break;
+        }
+
+        case OGL_TEXTURE_PROPERTY_N_SAMPLES:
+        {
+            ASSERT_DEBUG_SYNC(texture_ptr->n_samples == 0,
+                              "OGL_TEXTURE_PROPERTY_N_SAMPLES property has already been assigned a value");
+
+            texture_ptr->n_samples = *(unsigned int*) data;
 
             break;
         }

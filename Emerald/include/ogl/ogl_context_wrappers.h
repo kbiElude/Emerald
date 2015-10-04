@@ -612,6 +612,9 @@ PUBLIC void APIENTRY ogl_context_wrappers_glFramebufferTextureLayer(GLenum      
 PUBLIC void APIENTRY ogl_context_wrappers_glFrontFace(GLenum mode);
 
 /** TODO */
+PUBLIC void APIENTRY ogl_context_wrappers_glGenerateMipmap(GLenum target);
+
+/** TODO */
 PUBLIC void APIENTRY ogl_context_wrappers_glGenVertexArrays(GLsizei n,
                                                             GLuint* arrays);
 

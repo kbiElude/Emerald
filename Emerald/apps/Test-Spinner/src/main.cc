@@ -14,6 +14,7 @@
 #include "ogl/ogl_rendering_handler.h"
 #include "ogl/ogl_texture.h"
 #include "ogl/ogl_vao.h"
+#include "postprocessing/postprocessing_motion_blur.h"
 #include "system/system_assertions.h"
 #include "system/system_event.h"
 #include "system/system_hashed_ansi_string.h"
@@ -48,23 +49,26 @@ PRIVATE unsigned int   _spinner_odd_frame_bo_start_offset                       
 PRIVATE GLuint         _spinner_even_frame_vao_id                                    = 0;
 PRIVATE GLuint         _spinner_odd_frame_vao_id                                     = 0;
 
-PRIVATE system_time    _spinner_first_frame_time                                     = 0;
-PRIVATE unsigned int   _spinner_n_frames_rendered                                    = 0;
-PRIVATE ogl_program    _spinner_polygonizer_po                                       = NULL;
-PRIVATE unsigned int   _spinner_polygonizer_po_global_wg_size[3]                     = {0};
-PRIVATE ogl_program_ub _spinner_polygonizer_po_propsBuffer_ub                        = NULL;
-PRIVATE GLuint         _spinner_polygonizer_po_propsBuffer_ub_bo_id                  = 0;
-PRIVATE unsigned int   _spinner_polygonizer_po_propsBuffer_ub_bo_size                = 0;
-PRIVATE unsigned int   _spinner_polygonizer_po_propsBuffer_ub_bo_start_offset        = -1;
-PRIVATE GLuint         _spinner_polygonizer_po_propsBuffer_innerRingRadius_ub_offset = -1;
-PRIVATE GLuint         _spinner_polygonizer_po_propsBuffer_nRingsToSkip_ub_offset    = -1;
-PRIVATE GLuint         _spinner_polygonizer_po_propsBuffer_outerRingRadius_ub_offset = -1;
-PRIVATE GLuint         _spinner_polygonizer_po_propsBuffer_splineOffsets_ub_offset   = -1;
-PRIVATE ogl_program    _spinner_renderer_po                                          = NULL;
+PRIVATE system_time                _spinner_first_frame_time                                     = 0;
+PRIVATE postprocessing_motion_blur _spinner_motion_blur                                          = NULL;
+PRIVATE unsigned int               _spinner_n_frames_rendered                                    = 0;
+PRIVATE ogl_program                _spinner_polygonizer_po                                       = NULL;
+PRIVATE unsigned int               _spinner_polygonizer_po_global_wg_size[3]                     = {0};
+PRIVATE ogl_program_ub             _spinner_polygonizer_po_propsBuffer_ub                        = NULL;
+PRIVATE GLuint                     _spinner_polygonizer_po_propsBuffer_ub_bo_id                  = 0;
+PRIVATE unsigned int               _spinner_polygonizer_po_propsBuffer_ub_bo_size                = 0;
+PRIVATE unsigned int               _spinner_polygonizer_po_propsBuffer_ub_bo_start_offset        = -1;
+PRIVATE GLuint                     _spinner_polygonizer_po_propsBuffer_innerRingRadius_ub_offset = -1;
+PRIVATE GLuint                     _spinner_polygonizer_po_propsBuffer_nRingsToSkip_ub_offset    = -1;
+PRIVATE GLuint                     _spinner_polygonizer_po_propsBuffer_outerRingRadius_ub_offset = -1;
+PRIVATE GLuint                     _spinner_polygonizer_po_propsBuffer_splineOffsets_ub_offset   = -1;
+PRIVATE ogl_program                _spinner_renderer_po                                          = NULL;
 
-PRIVATE ogl_texture    _spinner_color_to                                             = NULL;
-PRIVATE GLuint         _spinner_render_fbo_id                                        = 0;
-PRIVATE ogl_texture    _spinner_velocity_to                                          = NULL;
+PRIVATE GLuint         _spinner_blit_fbo_id      = 0;
+PRIVATE ogl_texture    _spinner_color_to         = NULL;
+PRIVATE ogl_texture    _spinner_color_to_blurred = NULL;
+PRIVATE GLuint         _spinner_render_fbo_id    = 0;
+PRIVATE ogl_texture    _spinner_velocity_to      = NULL;
 
 
 /* Forward declarations */
@@ -161,6 +165,13 @@ PRIVATE void _deinit_spinner()
         _spinner_color_to = NULL;
     }
 
+    if (_spinner_color_to_blurred != NULL)
+    {
+        ogl_texture_release(_spinner_color_to_blurred);
+
+        _spinner_color_to_blurred = NULL;
+    }
+
     if (_spinner_velocity_to != NULL)
     {
         ogl_texture_release(_spinner_velocity_to);
@@ -169,12 +180,28 @@ PRIVATE void _deinit_spinner()
     }
 
     /* FBOs */
+    if (_spinner_blit_fbo_id != 0)
+    {
+        entrypoints_ptr->pGLDeleteFramebuffers(1,
+                                              &_spinner_blit_fbo_id);
+
+        _spinner_blit_fbo_id = 0;
+    }
+
     if (_spinner_render_fbo_id != 0)
     {
         entrypoints_ptr->pGLDeleteFramebuffers(1,
                                               &_spinner_render_fbo_id);
 
         _spinner_render_fbo_id = 0;
+    }
+
+    /* Post-processors */
+    if (_spinner_motion_blur != NULL)
+    {
+        postprocessing_motion_blur_release(_spinner_motion_blur);
+
+        _spinner_motion_blur = NULL;
     }
 }
 
@@ -259,9 +286,11 @@ PRIVATE void _init_spinner()
                           "}\n";
     const char* fs_body = "#version 430 core\n"
                           "\n"
+                          "flat in int vertex_id;\n"
                           "flat in  int  is_top_half;\n"
                           "     in  vec2 velocity;\n"
                           "     in  vec2 uv;\n"
+                          "     in  vec4 prevThisPosition;\n"
                           "\n"
                           "layout(location = 0) out vec4 resultColor;\n"
                           "layout(location = 1) out vec2 resultSpeed;\n"
@@ -272,25 +301,28 @@ PRIVATE void _init_spinner()
                           "\n"
                           "    if (uv.y >= 0.8) shade = mix(1.0, 0.2, (uv.y - 0.8) / 0.2);\n"
                           "\n"
-                          "    resultColor = vec4(vec3(shade), 1.0);\n"
-                          "    resultSpeed = velocity;\n"
+                          //"    resultColor = vec4(vec3(shade), 1.0);\n"
+                          "    resultColor = vec4( float((vertex_id * 36 / 16 / 9 / 4) % 255) / 255.0, float((vertex_id * 153 / 16 / 9 / 4) % 255) / 255.0, 0.0, 1.0);\n"
+                          "    resultSpeed = (prevThisPosition.zw - prevThisPosition.xy) * vec2(0.5) * vec2(16.0);\n"
                           "}\n";
     const char* vs_body = "#version 430 core\n"
                           "\n"
                           "layout(location = 0) in vec4 data;\n"
                           "layout(location = 1) in vec4 prevFrameData;\n"
                           "\n"
+                          "flat out int  vertex_id;\n"
                           "flat out int  is_top_half;\n"
-                          "     out vec2 velocity;\n"
+                          "     out vec4 prevThisPosition;\n"
                           "     out vec2 uv;\n"
                           "\n"
                           "void main()\n"
                           "{\n"
                           "    is_top_half = (gl_VertexID / 6 / N_SEGMENTS_PER_SPLINE) % 2;\n"
                           "\n"
-                          "    gl_Position = vec4(data.xy, 0.0, 1.0);\n"
-                          "    velocity    = data.xy - prevFrameData.xy;\n" /* Note: normalization needed in FS */
-                          "    uv          = data.zw;\n"
+                          "    gl_Position      = vec4(data.xy, 0.0, 1.0);\n"
+                          "    prevThisPosition = vec4(prevFrameData.xy, data.xy);\n"
+                          "    uv               = data.zw;\n"
+                          "vertex_id = gl_VertexID;\n"
                           "}\n";
 
     const system_hashed_ansi_string cs_body_tokens[] =
@@ -404,13 +436,13 @@ PRIVATE void _init_spinner()
                       _spinner_polygonizer_po_global_wg_size[2] < (unsigned int) limits_ptr->max_compute_work_group_count[2],
                       "Invalid global work-group size requested");
 
-    ogl_shader_set_body_with_token_replacement(polygonizer_cs,
-                                               system_hashed_ansi_string_create(cs_body),
-                                               n_cs_body_token_values,
-                                               cs_body_tokens,
-                                               cs_body_values);
-    ogl_program_attach_shader                 (_spinner_polygonizer_po,
-                                               polygonizer_cs);
+    ogl_shader_set_body      (polygonizer_cs,
+                              system_hashed_ansi_string_create_by_token_replacement(cs_body,
+                                                                                    n_cs_body_token_values,
+                                                                                    cs_body_tokens,
+                                                                                    cs_body_values) );
+    ogl_program_attach_shader(_spinner_polygonizer_po,
+                              polygonizer_cs);
 
     if (!ogl_program_link(_spinner_polygonizer_po) )
     {
@@ -487,13 +519,13 @@ PRIVATE void _init_spinner()
                       renderer_vs != NULL,
                       "Could not create spinner renderer FS and/or VS");
 
-    ogl_shader_set_body                       (renderer_fs,
-                                               system_hashed_ansi_string_create(fs_body) );
-    ogl_shader_set_body_with_token_replacement(renderer_vs,
-                                               system_hashed_ansi_string_create(vs_body),
-                                               n_vs_body_token_values,
-                                               vs_body_tokens,
-                                               vs_body_values);
+    ogl_shader_set_body(renderer_fs,
+                        system_hashed_ansi_string_create(fs_body) );
+    ogl_shader_set_body(renderer_vs,
+                        system_hashed_ansi_string_create_by_token_replacement(vs_body,
+                                                                              n_vs_body_token_values,
+                                                                              vs_body_tokens,
+                                                                              vs_body_values) );
 
     ogl_program_attach_shader(_spinner_renderer_po,
                               renderer_fs);
@@ -566,7 +598,7 @@ PRIVATE void _init_spinner()
 
         entrypoints_ptr->pGLBindBuffer             (GL_ARRAY_BUFFER,
                                                     current_vao.prev_frame_bo_id);
-        entrypoints_ptr->pGLVertexAttribPointer    (0,                                            /* index */
+        entrypoints_ptr->pGLVertexAttribPointer    (1,                                            /* index */
                                                     4,                                            /* size */
                                                     GL_FLOAT,
                                                     GL_FALSE,                                                /* normalized */
@@ -574,10 +606,10 @@ PRIVATE void _init_spinner()
                                                     (const GLvoid*) current_vao.prev_frame_bo_start_offset); /* pointer */
 
         entrypoints_ptr->pGLEnableVertexAttribArray(0);                                           /* index */
+        entrypoints_ptr->pGLEnableVertexAttribArray(1);                                           /* index */
     } /* for (all VAOs to set up) */
 
     /* Set up the TO to hold pre-processed color & velocity data */
-    unsigned int default_fbo_n_samples     = 0;
     const GLenum render_fbo_draw_buffers[] =
     {
         GL_COLOR_ATTACHMENT0,
@@ -585,32 +617,36 @@ PRIVATE void _init_spinner()
     };
     const GLint  n_render_fbo_draw_buffers = sizeof(render_fbo_draw_buffers) / sizeof(render_fbo_draw_buffers[0]);
 
-    ogl_context_get_property(_context,
-                             OGL_CONTEXT_PROPERTY_DEFAULT_FBO_N_SAMPLES,
-                            &default_fbo_n_samples);
+    _spinner_color_to         = ogl_texture_create_empty(_context,
+                                                         system_hashed_ansi_string_create("Color TO"));
+    _spinner_color_to_blurred = ogl_texture_create_empty(_context,
+                                                         system_hashed_ansi_string_create("Post-processed color TO"));
+    _spinner_velocity_to      = ogl_texture_create_empty(_context,
+                                                         system_hashed_ansi_string_create("Velocity TO"));
 
-    _spinner_color_to    = ogl_texture_create_empty(_context,
-                                                    system_hashed_ansi_string_create("Preprocessed color TO"));
-    _spinner_velocity_to = ogl_texture_create_empty(_context,
-                                                    system_hashed_ansi_string_create("Velocity TO"));
+    entrypoints_ptr->pGLBindTexture (GL_TEXTURE_2D,
+                                     _spinner_color_to);
+    entrypoints_ptr->pGLTexStorage2D(GL_TEXTURE_2D,
+                                     1, /* levels */
+                                     GL_RGBA8,
+                                     _window_size[0],
+                                     _window_size[1]);
 
-    entrypoints_ptr->pGLBindTexture            (GL_TEXTURE_2D_MULTISAMPLE,
-                                                _spinner_color_to);
-    entrypoints_ptr->pGLTexStorage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE,
-                                                default_fbo_n_samples,
-                                                GL_RGBA8,
-                                                _window_size[0],
-                                                _window_size[1], 
-                                                GL_FALSE); /* fixedsamplelocations */
+    entrypoints_ptr->pGLBindTexture (GL_TEXTURE_2D,
+                                     _spinner_color_to_blurred);
+    entrypoints_ptr->pGLTexStorage2D(GL_TEXTURE_2D,
+                                     1, /* levels */
+                                     GL_RGBA8,
+                                     _window_size[0],
+                                     _window_size[1]);
 
-    entrypoints_ptr->pGLBindTexture            (GL_TEXTURE_2D_MULTISAMPLE,
-                                                _spinner_velocity_to);
-    entrypoints_ptr->pGLTexStorage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE,
-                                                default_fbo_n_samples,
-                                                GL_RG16F,
-                                                _window_size[0],
-                                                _window_size[1],
-                                                GL_FALSE); /* fixedsamplelocations */
+    entrypoints_ptr->pGLBindTexture (GL_TEXTURE_2D,
+                                     _spinner_velocity_to);
+    entrypoints_ptr->pGLTexStorage2D(GL_TEXTURE_2D,
+                                     1, /* levels */
+                                     GL_RG32F,
+                                     _window_size[0],
+                                     _window_size[1]);
 
     entrypoints_ptr->pGLGenFramebuffers     (1,
                                             &_spinner_render_fbo_id);
@@ -618,12 +654,12 @@ PRIVATE void _init_spinner()
                                              _spinner_render_fbo_id);
     entrypoints_ptr->pGLFramebufferTexture2D(GL_DRAW_FRAMEBUFFER,
                                              GL_COLOR_ATTACHMENT0,
-                                             GL_TEXTURE_2D_MULTISAMPLE,
+                                             GL_TEXTURE_2D,
                                              _spinner_color_to,
                                              0); /* level */
     entrypoints_ptr->pGLFramebufferTexture2D(GL_DRAW_FRAMEBUFFER,
                                              GL_COLOR_ATTACHMENT1,
-                                             GL_TEXTURE_2D_MULTISAMPLE,
+                                             GL_TEXTURE_2D,
                                              _spinner_velocity_to,
                                              0); /* level */
     entrypoints_ptr->pGLDrawBuffers         (n_render_fbo_draw_buffers,
@@ -631,6 +667,26 @@ PRIVATE void _init_spinner()
 
     ASSERT_DEBUG_SYNC(entrypoints_ptr->pGLCheckFramebufferStatus(GL_DRAW_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE,
                       "Spinner render FBO is incomplete");
+
+    entrypoints_ptr->pGLGenFramebuffers     (1,
+                                            &_spinner_blit_fbo_id);
+    entrypoints_ptr->pGLBindFramebuffer     (GL_READ_FRAMEBUFFER,
+                                             _spinner_blit_fbo_id);
+    entrypoints_ptr->pGLFramebufferTexture2D(GL_READ_FRAMEBUFFER,
+                                             GL_COLOR_ATTACHMENT0,
+                                             GL_TEXTURE_2D,
+                                             _spinner_velocity_to,
+                                             0); /* level */
+
+    ASSERT_DEBUG_SYNC(entrypoints_ptr->pGLCheckFramebufferStatus(GL_READ_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE,
+                      "Spinner read FBO is incomplete");
+
+    /* Init motion blur post-processor */
+    _spinner_motion_blur = postprocessing_motion_blur_create(_context,
+                                                             POSTPROCESSING_MOTION_BLUR_IMAGE_FORMAT_RGBA8,
+                                                             POSTPROCESSING_MOTION_BLUR_IMAGE_FORMAT_RG32F,
+                                                             POSTPROCESSING_MOTION_BLUR_IMAGE_DIMENSIONALITY_2D,
+                                                             system_hashed_ansi_string_create("Spinner motion blur") );
 
     /* All done */
 end:
@@ -738,8 +794,6 @@ PRIVATE void _render_spinner()
     const float        inner_ring_radius                  = 0.1f;
     const unsigned int n_rings_to_skip                    = 1;
     const float        outer_ring_radius                  = 1.0f;
-    const GLint        spinner_prev_frame_bo_id           = ((_spinner_n_frames_rendered % 2) == 0) ? _spinner_odd_frame_bo_id            : _spinner_even_frame_bo_id;
-    const unsigned int spinner_prev_frame_bo_start_offset = ((_spinner_n_frames_rendered % 2) == 0) ? _spinner_odd_frame_bo_start_offset  : _spinner_even_frame_bo_start_offset;
     const GLint        spinner_this_frame_bo_id           = ((_spinner_n_frames_rendered % 2) == 0) ? _spinner_even_frame_bo_id           : _spinner_odd_frame_bo_id;
     const unsigned int spinner_this_frame_bo_start_offset = ((_spinner_n_frames_rendered % 2) == 0) ? _spinner_even_frame_bo_start_offset : _spinner_odd_frame_bo_start_offset;
     const GLint        spinner_this_frame_vao_id          = ((_spinner_n_frames_rendered % 2) == 0) ? _spinner_even_frame_vao_id          : _spinner_odd_frame_vao_id;
@@ -795,6 +849,13 @@ PRIVATE void _render_spinner()
                                       0, /* first */
                                       SPINNER_N_SEGMENTS_PER_SPLINE * SPINNER_N_SPLINES * 2 /* triangles */ * 2 /* top half, bottom half */ * 3 /* vertices per triangle */ );
 
+    /* Apply motion blur to the rendered contents */
+    /*
+    postprocessing_motion_blur_execute(_spinner_motion_blur,
+                                       _spinner_color_to,
+                                       _spinner_velocity_to,
+                                       _spinner_color_to_blurred);
+                                       */
     /* Blit the contents to the default FBO */
     unsigned int default_fbo_id = 0;
 
@@ -805,9 +866,9 @@ PRIVATE void _render_spinner()
     entrypoints_ptr->pGLBindFramebuffer(GL_DRAW_FRAMEBUFFER,
                                         default_fbo_id);
     entrypoints_ptr->pGLBindFramebuffer(GL_READ_FRAMEBUFFER,
-                                        _spinner_render_fbo_id);
-    entrypoints_ptr->pGLReadBuffer     (GL_COLOR_ATTACHMENT1);
+                                        _spinner_blit_fbo_id);
 
+    entrypoints_ptr->pGLMemoryBarrier  (GL_FRAMEBUFFER_BARRIER_BIT);
     entrypoints_ptr->pGLBlitFramebuffer(0,               /* srcX0 */
                                         0,               /* srcY0 */
                                         _window_size[0], /* srcX1 */
@@ -936,7 +997,7 @@ PRIVATE void _window_closing_callback_handler(system_window window)
                                            8,  /* color_buffer_blue_bits  */
                                            0,  /* color_buffer_alpha_bits */
                                            16, /* depth_buffer_bits       */
-                                           SYSTEM_PIXEL_FORMAT_USE_MAXIMUM_NUMBER_OF_SAMPLES,
+                                           1, //SYSTEM_PIXEL_FORMAT_USE_MAXIMUM_NUMBER_OF_SAMPLES,
                                            0); /* stencil_buffer_bits     */
 
 #if 0
@@ -955,7 +1016,7 @@ PRIVATE void _window_closing_callback_handler(system_window window)
                                                  window_x1y1x2y2,
                                                  system_hashed_ansi_string_create("Spinner test window"),
                                                  false, /* scalable */
-                                                 true,  /* vsync_enabled */
+                                                 false,  /* vsync_enabled */
                                                  true,  /* visible */
                                                  window_pf);
 #endif

@@ -378,6 +378,9 @@ PRIVATE bool _procedural_uv_generator_build_generator_po(_procedural_uv_generato
     token_values[2] = system_hashed_ansi_string_create(temp);
 
     /* Set up the compute shader program */
+    system_hashed_ansi_string merged_cs_body = system_hashed_ansi_string_create_by_merging_strings(n_cs_body_parts,
+                                                                                                   cs_body_parts);
+
     generator_ptr->generator_cs = ogl_shader_create (generator_ptr->context,
                                                      SHADER_TYPE_COMPUTE,
                                                      _procedural_uv_generator_get_generator_name(generator_ptr->type) );
@@ -385,12 +388,11 @@ PRIVATE bool _procedural_uv_generator_build_generator_po(_procedural_uv_generato
                                                      _procedural_uv_generator_get_generator_name(generator_ptr->type),
                                                      OGL_PROGRAM_SYNCABLE_UBS_MODE_ENABLE_GLOBAL);
 
-    ogl_shader_set_body_with_token_replacement(generator_ptr->generator_cs,
-                                               system_hashed_ansi_string_create_by_merging_strings(n_cs_body_parts,
-                                                                                                   cs_body_parts),
-                                               n_token_key_values,
-                                               token_keys,
-                                               token_values);
+    ogl_shader_set_body(generator_ptr->generator_cs,
+                        system_hashed_ansi_string_create_by_token_replacement(system_hashed_ansi_string_get_buffer(merged_cs_body),
+                                                                              n_token_key_values,
+                                                                              token_keys,
+                                                                              token_values) );
 
     if (!ogl_shader_compile(generator_ptr->generator_cs) )
     {

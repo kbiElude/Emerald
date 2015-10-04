@@ -39,6 +39,12 @@ PUBLIC EMERALD_API system_hashed_ansi_string system_hashed_ansi_string_create_by
                                                                                                      const char* src2);
 
 /** TODO */
+PUBLIC EMERALD_API system_hashed_ansi_string system_hashed_ansi_string_create_by_token_replacement(const char*                      body,
+                                                                                                   uint32_t                         n_tokens,
+                                                                                                   const system_hashed_ansi_string* token_keys,
+                                                                                                   const system_hashed_ansi_string* token_values);
+
+/** TODO */
 PUBLIC EMERALD_API system_hashed_ansi_string system_hashed_ansi_string_create_substring(const char* string,
                                                                                         uint32_t    start_offset,
                                                                                         uint32_t    length);

@@ -31,10 +31,10 @@ typedef enum _ogl_texture_property
                                                      *                     necessary for the state caching layer to work correctly. */
     OGL_TEXTURE_PROPERTY_HAS_HAD_MIPMAPS_GENERATED, /* not settable, bool; toggled on by ogl_texture_generate_mipmaps() call. */
     OGL_TEXTURE_PROPERTY_ID,                        /* not settable, GLuint */
-    OGL_TEXTURE_PROPERTY_INTERNALFORMAT,            /* not settable, GLint */
+    OGL_TEXTURE_PROPERTY_INTERNALFORMAT,            /* settable (only once), GLint */
     OGL_TEXTURE_PROPERTY_NAME,                      /* not settable, system_hashed_ansi_string */
     OGL_TEXTURE_PROPERTY_N_MIPMAPS,                 /* not settable, unsigned int */
-    OGL_TEXTURE_PROPERTY_N_SAMPLES,                 /* not settable, unsigned int */
+    OGL_TEXTURE_PROPERTY_N_SAMPLES,                 /* settable (only once), unsigned int */
     OGL_TEXTURE_PROPERTY_SRC_FILENAME,              /* not settable, system_hashed_ansi_string */
     OGL_TEXTURE_PROPERTY_TARGET,                    /* not settable, GLenum */
 
@@ -91,6 +91,6 @@ PUBLIC EMERALD_API void ogl_texture_set_mipmap_property(ogl_texture             
 /** TODO */
 PUBLIC EMERALD_API void ogl_texture_set_property(ogl_texture          texture,
                                                  ogl_texture_property property,
-                                                 void*                data);
+                                                 const void*          data);
 
 #endif /* OGL_TEXTURE_H */

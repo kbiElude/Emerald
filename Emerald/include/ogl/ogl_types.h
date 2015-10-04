@@ -1398,6 +1398,7 @@ typedef struct
     PFNGLFRAMEBUFFERTEXTURE3DPROC                        pGLFramebufferTexture3D;
     PFNGLFRAMEBUFFERTEXTURELAYERPROC                     pGLFramebufferTextureLayer;
     PFNGLFRONTFACEPROC                                   pGLFrontFace;
+    PFNGLGENERATEMIPMAPPROC                              pGLGenerateMipmap;
     PFNGLGENVERTEXARRAYSPROC                             pGLGenVertexArrays;
     PFNGLGETACTIVEATOMICCOUNTERBUFFERIVPROC              pGLGetActiveAtomicCounterBufferiv;
     PFNGLGETBOOLEANI_VPROC                               pGLGetBooleani_v;

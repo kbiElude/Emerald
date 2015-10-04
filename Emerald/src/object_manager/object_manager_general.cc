@@ -48,6 +48,7 @@ static system_hashed_ansi_string _object_type_ogl_uber_hashed_ansi_string       
 static system_hashed_ansi_string _object_type_ogl_ui_hashed_ansi_string                                = NULL;
 static system_hashed_ansi_string _object_type_postprocessing_bloom_hashed_ansi_string                  = NULL;
 static system_hashed_ansi_string _object_type_postprocessing_blur_poisson_hashed_ansi_string           = NULL;
+static system_hashed_ansi_string _object_type_postprocessing_motion_blur_hashed_ansi_string            = NULL;
 static system_hashed_ansi_string _object_type_postprocessing_reinhard_tonemap_hashed_ansi_string       = NULL;
 static system_hashed_ansi_string _object_type_procedural_mesh_box_hashed_ansi_string                   = NULL;
 static system_hashed_ansi_string _object_type_procedural_mesh_sphere_hashed_ansi_string                = NULL;
@@ -128,6 +129,7 @@ PUBLIC system_hashed_ansi_string object_manager_convert_object_manager_object_ty
         case OBJECT_TYPE_OGL_UI:                                          return _object_type_ogl_ui_hashed_ansi_string;
         case OBJECT_TYPE_POSTPROCESSING_BLOOM:                            return _object_type_postprocessing_bloom_hashed_ansi_string;
         case OBJECT_TYPE_POSTPROCESSING_BLUR_POISSON:                     return _object_type_postprocessing_blur_poisson_hashed_ansi_string;
+        case OBJECT_TYPE_POSTPROCESSING_MOTION_BLUR:                      return _object_type_postprocessing_motion_blur_hashed_ansi_string;
         case OBJECT_TYPE_POSTPROCESSING_REINHARD_TONEMAP:                 return _object_type_postprocessing_reinhard_tonemap_hashed_ansi_string;
         case OBJECT_TYPE_PROCEDURAL_MESH_BOX:                             return _object_type_procedural_mesh_box_hashed_ansi_string;
         case OBJECT_TYPE_PROCEDURAL_MESH_SPHERE:                          return _object_type_procedural_mesh_sphere_hashed_ansi_string;
@@ -380,6 +382,7 @@ PUBLIC void _object_manager_init()
     _object_type_ogl_ui_hashed_ansi_string                                = system_hashed_ansi_string_create("OpenGL UIs");
     _object_type_postprocessing_bloom_hashed_ansi_string                  = system_hashed_ansi_string_create("Post-processing Bloom");
     _object_type_postprocessing_blur_poisson_hashed_ansi_string           = system_hashed_ansi_string_create("Post-processing Blur Poisson");
+    _object_type_postprocessing_motion_blur_hashed_ansi_string            = system_hashed_ansi_string_create("Post-processing Motion Blur");
     _object_type_postprocessing_reinhard_tonemap_hashed_ansi_string       = system_hashed_ansi_string_create("Post-processing Reinhard tonemap");
     _object_type_procedural_mesh_box_hashed_ansi_string                   = system_hashed_ansi_string_create("Procedural meshes (box)");
     _object_type_procedural_mesh_sphere_hashed_ansi_string                = system_hashed_ansi_string_create("Procedural meshes (sphere)");
