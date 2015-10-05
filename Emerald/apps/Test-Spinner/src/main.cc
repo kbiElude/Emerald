@@ -71,7 +71,7 @@ PRIVATE ogl_texture    _spinner_velocity_to      = NULL;
 /* Forward declarations */
 PRIVATE void _deinit_spinner                 ();
 PRIVATE void _init_spinner                   ();
-PRIVATE void _render_spinner                 ();
+PRIVATE void _render_spinner                 (unsigned int            n_frames_rendered);
 PRIVATE void _rendering_handler              (ogl_context             context,
                                               uint32_t                n_frames_rendered,
                                               system_time             frame_time,
@@ -703,7 +703,7 @@ end:
 }
 
 /** TODO */
-PRIVATE void _render_spinner()
+PRIVATE void _render_spinner(unsigned int n_frames_rendered)
 {
     const ogl_context_gl_entrypoints* entrypoints_ptr = NULL;
 
@@ -761,18 +761,58 @@ PRIVATE void _render_spinner()
     system_time_get_msec_for_time(current_time - _spinner_first_frame_time,
                                  &animation_time_msec);
 
+    static bool  spinned = false;
+    static float spline_accelerations[SPINNER_N_SPLINES];
+    static float spline_offsets      [SPINNER_N_SPLINES];
+    static float spline_speeds       [SPINNER_N_SPLINES];
+
+    if (n_frames_rendered >= 60 && n_frames_rendered <= 65)
+    {
+        memset(spline_offsets,
+               0,
+               sizeof(spline_offsets) );
+        memset(spline_speeds,
+               0,
+               sizeof(spline_speeds) );
+
+        float t = float(n_frames_rendered - 60) / 6.0f;
+
+        for (uint32_t n_spline = 0;
+                      n_spline < SPINNER_N_SPLINES;
+                    ++n_spline)
+        {
+            float    coeff        = t * t * (3.0f - 2.0f * t);
+            uint32_t spline_speed = ( (n_spline + 1) * 1537) % 7;
+
+            spline_accelerations[n_spline] += coeff * (float(spline_speed) / 90.0f /* 80 is also ok */) * 3.14152965f;
+        }
+
+        spinned = true;
+    }
+
     for (uint32_t n_spline = 0;
                   n_spline < SPINNER_N_SPLINES;
                 ++n_spline)
     {
-        float    spline_offset;
-        uint32_t spline_speed = ( (n_spline + 1) * 1537) % 32;
+        spline_offsets[n_spline] += spline_accelerations[n_spline];
 
-        spline_offset = (float(spline_speed) / 15.0f) * (float(animation_time_msec) / 1000.0f) * 3.14152965f;
+        if (spline_accelerations[n_spline] > 0.5f)
+        {
+            spline_accelerations[n_spline] -= 0.001f;
+        }
+        else
+        {
+            spline_accelerations[n_spline] *= 0.95f;
+        }
+
+        if (spline_accelerations[n_spline] < 0.0f)
+        {
+            spline_accelerations[n_spline] = 0.0f;
+        }
 
         ogl_program_ub_set_arrayed_uniform_value(_spinner_polygonizer_po_propsBuffer_ub,
                                                  _spinner_polygonizer_po_propsBuffer_splineOffsets_ub_offset,
-                                                &spline_offset,
+                                                 spline_offsets + n_spline,
                                                  0,            /* src_data_flags */
                                                  sizeof(float),
                                                  n_spline,
@@ -951,7 +991,7 @@ PRIVATE void _rendering_handler(ogl_context context,
         is_initialized = true;
     } /* if (!is_initialized) */
 
-    _render_spinner();
+    _render_spinner(n_frames_rendered);
 }
 
 /** Event callback handlers */

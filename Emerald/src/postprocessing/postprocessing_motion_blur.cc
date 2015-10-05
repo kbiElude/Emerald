@@ -272,7 +272,6 @@ PRIVATE system_hashed_ansi_string _postprocessing_motion_blur_get_cs_body(_postp
     static const char* cs_image2d_fetch_and_add_sample   = "data += textureLod(src_color_image, offset,                 0);\n";
     static const char* cs_image2dms_fetch_and_add_sample = "data += textureLod(src_color_image, offset, image_n_sample, 0);\n";
 
-    //static const char* cs_image2d_store_data   = "imageStore(dst_color_image, image_xy,                 data * vec4(0.000001) + vec4(velocity * vec2(16.0), 0.0, 1.0));\n";
     static const char* cs_image2d_store_data   = "imageStore(dst_color_image, image_xy,                 data);\n";
     static const char* cs_image2dms_store_data = "imageStore(dst_color_image, image_xy, image_n_sample, data);\n";
 
