@@ -125,19 +125,6 @@ PRIVATE void _ogl_rendering_handler_get_frame_properties(_ogl_rendering_handler*
 
             frame_index = frame_time_msec * handler_ptr->fps / 1000 /* ms in s */;
 
-            /* Now, this part is tricky. Occasionally, we may run into a situation where the newly
-             * calculated frame index is exactly the same as was used for the previous frame.
-             * This is unintended and causes irritating stuttering effect.
-             *
-             * To work around this, ensure we always move forward. This is not going to address the
-             * problem, if the animation is ever played in reverse - you'll need to come up with
-             * something more fancy, if you ever need to change the playback direction.
-             */
-            if (frame_index == handler_ptr->last_frame_index)
-            {
-                frame_index++;
-            }
-
             /* Convert the frame index to global frame time. */
             new_frame_time_msec = frame_index * 1000 /* ms in s */ / handler_ptr->fps;
             *out_frame_time_ptr = system_time_get_time_for_msec(new_frame_time_msec);
@@ -597,6 +584,18 @@ PRIVATE void _ogl_rendering_handler_thread_entrypoint(void* in_arg)
 
             system_event_set(rendering_handler->playback_waiting_event);
             {
+                /* TODO: For FPS policy, we could theoretically wait until we actually reach the time
+                 *       when frame rendering process should kick off. Right now, we spin until frame
+                 *       index increments which is extremely dumb and puts a lot of CPU time down the
+                 *       drain.
+                 *       One way to tackle this would be to wait with a timeout based on desired_fps
+                 *       property. If none of the three first events were set throughout that period,
+                 *       we could spend the next 1/desired_fps msec rendering the frame. This has a
+                 *       drawback though: if the frame takes too much time to render, we'll introduce
+                 *       frame skipping.
+                 *       Sticking to the "waste all resources" approach for now, but there's definitely
+                 *       room for improvement.
+                 */
                 event_set = system_event_wait_multiple(wait_events,
                                                        4,     /* n_elements */
                                                        false, /* wait_on_all_objects */
@@ -659,9 +658,17 @@ PRIVATE void _ogl_rendering_handler_thread_entrypoint(void* in_arg)
                     {
                         /* Determine current frame index & time */
                         _ogl_rendering_handler_get_frame_properties(rendering_handler,
-                                                                    true, /* should_update_frame_counter */
+                                                                    false, /* should_update_frame_counter */
                                                                    &frame_index,
                                                                    &new_frame_time);
+
+                        if (new_frame_time == rendering_handler->last_frame_time)
+                        {
+                            /* This frame should NOT be rendered! It's exactly the same one as we're showing right now */
+                            system_critical_section_leave(rendering_handler->rendering_cs);
+
+                            continue;
+                        }
 
                         /* Update the frame indicator, if the runtime time adjustment mode is on */
                         if (rendering_handler->runtime_time_adjustment_mode)

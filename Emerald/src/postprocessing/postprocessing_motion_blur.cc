@@ -62,7 +62,7 @@ typedef struct _postprocessing_motion_blur
         dst_color_image_n_layer                            = 0;
         dst_color_image_n_mipmap                           = 0;
         image_dimensionality                               = in_image_dimensionality;
-        n_velocity_samples_max                             = 8; /* as per documentation */
+        n_velocity_samples_max                             = 32; /* as per documentation */
         po                                                 = NULL;
         po_props_ub                                        = NULL;
         po_props_ub_bo_id                                  = 0;
@@ -241,7 +241,11 @@ PRIVATE system_hashed_ansi_string _postprocessing_motion_blur_get_cs_body(_postp
                                             "    const int  n_velocity_samples = int(clamp(length(velocity / texel_size), 1.0, float(n_velocity_samples_max) ) );\n"
                                             "          vec4 data               = vec4(0.0);\n"
                                             "\n"
-                                            "    for (uint n_velocity_sample = 0;\n"
+                                            "    vec2 offset = texture_xy - texel_size * vec2(0.5);\n"
+                                            "\n"
+                                            "FETCH_AND_ADD_SAMPLE"
+                                            "\n"
+                                            "    for (uint n_velocity_sample = 1;\n"
                                             "              n_velocity_sample < n_velocity_samples;\n"
                                             "            ++n_velocity_sample)\n"
                                             "    {\n"
@@ -268,7 +272,8 @@ PRIVATE system_hashed_ansi_string _postprocessing_motion_blur_get_cs_body(_postp
     static const char* cs_image2d_fetch_and_add_sample   = "data += textureLod(src_color_image, offset,                 0);\n";
     static const char* cs_image2dms_fetch_and_add_sample = "data += textureLod(src_color_image, offset, image_n_sample, 0);\n";
 
-    static const char* cs_image2d_store_data   = "imageStore(dst_color_image, image_xy,                 data * vec4(0.000001) + vec4(velocity * vec2(16.0), 0.0, 1.0));\n";
+    //static const char* cs_image2d_store_data   = "imageStore(dst_color_image, image_xy,                 data * vec4(0.000001) + vec4(velocity * vec2(16.0), 0.0, 1.0));\n";
+    static const char* cs_image2d_store_data   = "imageStore(dst_color_image, image_xy,                 data);\n";
     static const char* cs_image2dms_store_data = "imageStore(dst_color_image, image_xy, image_n_sample, data);\n";
 
     /* Determine the local work-group size */
