@@ -60,6 +60,7 @@ typedef struct
     system_critical_section                    callback_request_cs;
     system_event                               callback_request_ack_event;
     system_event                               callback_request_event;
+    bool                                       callback_request_needs_buffer_swap;
     void*                                      callback_request_user_arg;
     PFNOGLCONTEXTCALLBACKFROMCONTEXTTHREADPROC pfn_callback_proc;
 
@@ -616,9 +617,15 @@ PRIVATE void _ogl_rendering_handler_thread_entrypoint(void* in_arg)
                 rendering_handler->pfn_callback_proc(rendering_handler->context,
                                                      rendering_handler->callback_request_user_arg);
 
+                if (rendering_handler->callback_request_needs_buffer_swap)
+                {
+                    ogl_context_swap_buffers(rendering_handler->context);
+                }
+
                 /* Reset callback data */
-                rendering_handler->callback_request_user_arg = NULL;
-                rendering_handler->pfn_callback_proc         = NULL;
+                rendering_handler->callback_request_needs_buffer_swap = false;
+                rendering_handler->callback_request_user_arg          = NULL;
+                rendering_handler->pfn_callback_proc                  = NULL;
 
                 /* Set ack event */
                 system_event_set(rendering_handler->callback_request_ack_event);
@@ -668,6 +675,11 @@ PRIVATE void _ogl_rendering_handler_thread_entrypoint(void* in_arg)
                             system_critical_section_leave(rendering_handler->rendering_cs);
 
                             continue;
+                        }
+                        else
+                        {
+                            /* Update the frame counter */
+                            rendering_handler->n_frames_rendered++;
                         }
 
                         /* Update the frame indicator, if the runtime time adjustment mode is on */
@@ -812,6 +824,10 @@ PRIVATE void _ogl_rendering_handler_thread_entrypoint(void* in_arg)
                             {
                                 pGLDisable(GL_MULTISAMPLE);
                             }
+
+                            /* Draw the text strings right before we blit the render-target to the system's FBO. */
+                            ogl_text_draw(rendering_handler->context,
+                                          text_renderer);
 
                             /* Blit the context FBO's contents to the back buffer */
                             pGLBindFramebuffer(GL_DRAW_FRAMEBUFFER,
@@ -1105,6 +1121,13 @@ PUBLIC EMERALD_API void ogl_rendering_handler_get_property(ogl_rendering_handler
             break;
         }
 
+        case OGL_RENDERING_HANDLER_PROPERTY_PLAYBACK_IN_PROGRESS_EVENT:
+        {
+            *(system_event*) out_result = rendering_handler_ptr->playback_in_progress_event;
+
+            break;
+        }
+
         case OGL_RENDERING_HANDLER_PROPERTY_PLAYBACK_STATUS:
         {
             *(ogl_rendering_handler_playback_status*) out_result = rendering_handler_ptr->playback_status;
@@ -1280,6 +1303,7 @@ PUBLIC EMERALD_API bool ogl_rendering_handler_play(ogl_rendering_handler renderi
 PUBLIC EMERALD_API bool ogl_rendering_handler_request_callback_from_context_thread(ogl_rendering_handler                      rendering_handler,
                                                                                    PFNOGLCONTEXTCALLBACKFROMCONTEXTTHREADPROC pfn_callback_proc,
                                                                                    void*                                      user_arg,
+                                                                                   bool                                       swap_buffers_afterward,
                                                                                    bool                                       block_until_available)
 {
     _ogl_rendering_handler* rendering_handler_ptr = (_ogl_rendering_handler*) rendering_handler;
@@ -1309,8 +1333,9 @@ PUBLIC EMERALD_API bool ogl_rendering_handler_request_callback_from_context_thre
 
         if (should_continue)
         {
-            rendering_handler_ptr->callback_request_user_arg = user_arg;
-            rendering_handler_ptr->pfn_callback_proc         = pfn_callback_proc;
+            rendering_handler_ptr->callback_request_needs_buffer_swap = swap_buffers_afterward;
+            rendering_handler_ptr->callback_request_user_arg          = user_arg;
+            rendering_handler_ptr->pfn_callback_proc                  = pfn_callback_proc;
 
             system_event_set        (rendering_handler_ptr->callback_request_event);
             system_event_wait_single(rendering_handler_ptr->callback_request_ack_event);
@@ -1340,6 +1365,26 @@ PUBLIC EMERALD_API void ogl_rendering_handler_set_property(ogl_rendering_handler
             ASSERT_DEBUG_SYNC(rendering_handler_ptr->aspect_ratio > 0.0f,
                               "Invalid aspect ratio value (%.4f) assigned.",
                               rendering_handler_ptr->aspect_ratio);
+
+            break;
+        }
+
+        case OGL_RENDERING_HANDLER_PROPERTY_RENDERING_CALLBACK:
+        {
+            ASSERT_DEBUG_SYNC(rendering_handler_ptr->playback_status != RENDERING_HANDLER_PLAYBACK_STATUS_STARTED,
+                              "OGL_RENDERING_HANDLER_PROPERTY_RENDERING_CALLBACK property set attempt while rendering play-back in progress");
+
+            rendering_handler_ptr->pfn_rendering_callback = *(PFNOGLRENDERINGHANDLERRENDERINGCALLBACK*) value;
+
+            break;
+        }
+
+        case OGL_RENDERING_HANDLER_PROPERTY_RENDERING_CALLBACK_USER_ARGUMENT:
+        {
+            ASSERT_DEBUG_SYNC(rendering_handler_ptr->playback_status != RENDERING_HANDLER_PLAYBACK_STATUS_STARTED,
+                              "OGL_RENDERING_HANDLER_PROPERTY_RENDERING_CALLBACK_USER_ARGUMENT property set attempt while rendering play-back in progress");
+
+            rendering_handler_ptr->rendering_callback_user_arg = *(void**) value;
 
             break;
         }

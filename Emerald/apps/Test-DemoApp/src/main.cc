@@ -191,14 +191,16 @@ void _rendering_rbm_callback_handler(system_window           window,
     system_event_set(_window_closed_event);
 }
 
-bool _rendering_window_closed_callback_handler(system_window window)
+bool _rendering_window_closed_callback_handler(system_window window,
+                                               void*         unused)
 {
     system_event_set(_window_closed_event);
 
     return true;
 }
 
-void _rendering_window_closing_callback_handler(system_window window)
+void _rendering_window_closing_callback_handler(system_window window,
+                                                void*         unused)
 {
     ui_deinit   ();
     state_deinit();

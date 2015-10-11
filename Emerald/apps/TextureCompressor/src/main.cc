@@ -374,12 +374,14 @@ void _callback_renderer_deinit(ogl_context context)
     }
 }
 
-PRIVATE void _callback_window_closed(system_window window)
+PRIVATE void _callback_window_closed(system_window window,
+                                     void*         unused)
 {
     system_event_set(_window_closed_event);
 }
 
-PRIVATE void _callback_window_closing(system_window window)
+PRIVATE void _callback_window_closing(system_window window,
+                                      void*         unused)
 {
     ogl_context context = NULL;
 

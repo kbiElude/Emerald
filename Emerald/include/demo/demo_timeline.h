@@ -125,7 +125,7 @@ PUBLIC EMERALD_API bool demo_timeline_add_video_segment(demo_timeline           
                                                         float                             aspect_ratio,
                                                         unsigned int                      n_passes,
                                                         const demo_timeline_segment_pass* passes,              /* must hold n_passes instances */
-                                                        demo_timeline_segment_id*         out_segment_id_ptr);
+                                                        demo_timeline_segment_id*         out_opt_segment_id_ptr);
 
 /** TODO. */
 PUBLIC EMERALD_API demo_timeline demo_timeline_create(system_hashed_ansi_string name,

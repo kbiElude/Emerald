@@ -242,12 +242,14 @@ void _setup_ui()
 
 }
 
-PRIVATE void _window_closed_callback_handler(system_window window)
+PRIVATE void _window_closed_callback_handler(system_window window,
+                                             void*         unused)
 {
     system_event_set(_window_closed_event);
 }
 
-PRIVATE void _window_closing_callback_handler(system_window window)
+PRIVATE void _window_closing_callback_handler(system_window window,
+                                              void*         unused)
 {
     if (_pipeline != NULL)
     {

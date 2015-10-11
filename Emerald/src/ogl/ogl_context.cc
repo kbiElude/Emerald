@@ -3827,6 +3827,7 @@ PUBLIC bool ogl_context_release_managers(ogl_context context)
 PUBLIC EMERALD_API bool ogl_context_request_callback_from_context_thread(ogl_context                                context,
                                                                          PFNOGLCONTEXTCALLBACKFROMCONTEXTTHREADPROC pfn_callback,
                                                                          void*                                      user_arg,
+                                                                         bool                                       swap_buffers_afterward,
                                                                          bool                                       block_until_available)
 {
     bool                  result            = false;
@@ -3842,6 +3843,7 @@ PUBLIC EMERALD_API bool ogl_context_request_callback_from_context_thread(ogl_con
         result = ogl_rendering_handler_request_callback_from_context_thread(rendering_handler,
                                                                             pfn_callback,
                                                                             user_arg,
+                                                                            swap_buffers_afterward,
                                                                             block_until_available);
     }
     else

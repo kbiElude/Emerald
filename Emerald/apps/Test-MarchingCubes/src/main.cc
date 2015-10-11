@@ -92,8 +92,10 @@ PRIVATE bool _rendering_rbm_callback_handler (system_window           window,
                                               void*);
 PRIVATE void _set_isolevel_value             (void*                   user_arg,
                                               system_variant          new_value);
-PRIVATE void _window_closed_callback_handler (system_window           window);
-PRIVATE void _window_closing_callback_handler(system_window           window);
+PRIVATE void _window_closed_callback_handler (system_window           window,
+                                              void*                   unused);
+PRIVATE void _window_closing_callback_handler(system_window           window,
+                                              void*                   unused);
 
 
 /** TODO */
@@ -452,12 +454,14 @@ PRIVATE void _set_isolevel_value(void*          user_arg,
                             &_isolevel);
 }
 
-PRIVATE void _window_closed_callback_handler(system_window window)
+PRIVATE void _window_closed_callback_handler(system_window window,
+                                             void*         unused)
 {
     system_event_set(_window_closed_event);
 }
 
-PRIVATE void _window_closing_callback_handler(system_window window)
+PRIVATE void _window_closing_callback_handler(system_window window,
+                                              void*         unused)
 {
     if (_marching_cubes != NULL)
     {

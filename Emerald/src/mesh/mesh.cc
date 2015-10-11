@@ -2852,6 +2852,7 @@ PUBLIC EMERALD_API bool mesh_fill_gl_buffers(mesh        instance,
     if (!ogl_context_request_callback_from_context_thread(context,
                                                           _mesh_fill_gl_buffers_renderer_callback,
                                                           mesh_ptr,
+                                                          false,   /* swap_buffers_afterward */
                                                           false) ) /* block_until_available */
     {
         /* Rendering thread unavailable - postpone the upload process until the draw call time. */

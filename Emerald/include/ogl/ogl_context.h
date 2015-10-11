@@ -276,7 +276,8 @@ PUBLIC bool ogl_context_release_managers(ogl_context);
 PUBLIC EMERALD_API bool ogl_context_request_callback_from_context_thread(ogl_context,
                                                                          PFNOGLCONTEXTCALLBACKFROMCONTEXTTHREADPROC,
                                                                          void*,
-                                                                         bool block_until_available = true);
+                                                                         bool swap_buffers_afterward = false,
+                                                                         bool block_until_available  = true);
 
 /** TODO.
  *

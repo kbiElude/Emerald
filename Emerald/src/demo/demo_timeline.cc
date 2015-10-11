@@ -461,7 +461,7 @@ PUBLIC EMERALD_API bool demo_timeline_add_video_segment(demo_timeline           
                                                         float                             aspect_ratio,
                                                         unsigned int                      n_passes,
                                                         const demo_timeline_segment_pass* passes,              /* must hold n_passes instances */
-                                                        demo_timeline_segment_id*         out_segment_id_ptr)
+                                                        demo_timeline_segment_id*         out_opt_segment_id_ptr)
 {
     bool                     is_region_free         = false;
     demo_timeline_segment_id new_segment_id         = -1;
@@ -473,15 +473,12 @@ PUBLIC EMERALD_API bool demo_timeline_add_video_segment(demo_timeline           
     unsigned int*            segment_id_counter_ptr = NULL;
     _demo_timeline*          timeline_ptr           = (_demo_timeline*) timeline;
 
-    ASSERT_DEBUG_SYNC(out_segment_id_ptr != NULL,
-                      "Result segment ID destination is NULL");
     ASSERT_DEBUG_SYNC(start_time < end_time,
                       "Segment's start time must be smaller than its end time");
     ASSERT_DEBUG_SYNC(timeline_ptr != NULL,
                       "Timeline instance is NULL");
 
-    if (out_segment_id_ptr == NULL     ||
-        start_time         >= end_time ||
+    if (start_time         >= end_time ||
         timeline_ptr       == NULL)
     {
         goto end;
@@ -578,7 +575,10 @@ PUBLIC EMERALD_API bool demo_timeline_add_video_segment(demo_timeline           
         } /* for (all rendering passes) */
 
         /* All done */
-        *out_segment_id_ptr = new_segment_id;
+        if (out_opt_segment_id_ptr != NULL)
+        {
+            *out_opt_segment_id_ptr = new_segment_id;
+        }
 
         result = true;
     }

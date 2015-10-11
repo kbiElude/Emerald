@@ -82,8 +82,10 @@ PRIVATE bool _rendering_rbm_callback_handler (system_window           window,
                                               unsigned short          y,
                                               system_window_vk_status new_status,
                                               void*);
-PRIVATE void _window_closed_callback_handler (system_window           window);
-PRIVATE void _window_closing_callback_handler(system_window           window);
+PRIVATE void _window_closed_callback_handler (system_window           window,
+                                              void*                   unused);
+PRIVATE void _window_closing_callback_handler(system_window           window,
+                                              void*                   unused);
 
 
 /** TODO */
@@ -1006,12 +1008,14 @@ PRIVATE bool _rendering_rbm_callback_handler(system_window           window,
     return true;
 }
 
-PRIVATE void _window_closed_callback_handler(system_window window)
+PRIVATE void _window_closed_callback_handler(system_window window,
+                                             void*         unused)
 {
     system_event_set(_window_closed_event);
 }
 
-PRIVATE void _window_closing_callback_handler(system_window window)
+PRIVATE void _window_closing_callback_handler(system_window window,
+                                              void*         unused)
 {
     _deinit_spinner();
 
