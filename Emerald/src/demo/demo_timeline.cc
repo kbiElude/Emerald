@@ -1119,6 +1119,7 @@ end:
 
 /** Please see header for spec */
 PUBLIC EMERALD_API RENDERING_CONTEXT_CALL bool demo_timeline_render(demo_timeline timeline,
+                                                                    uint32_t      frame_index,
                                                                     system_time   frame_time,
                                                                     const int*    rendering_area_px_topdown)
 {
@@ -1179,6 +1180,7 @@ PUBLIC EMERALD_API RENDERING_CONTEXT_CALL bool demo_timeline_render(demo_timelin
         /* OK, render the stage corresponding to the video segment */
         result = ogl_pipeline_draw_stage(timeline_ptr->rendering_pipeline,
                                          video_segment_ptr->pipeline_stage_id,
+                                         frame_index,
                                          rendering_pipeline_time,
                                          rendering_area_px_topdown);
     }

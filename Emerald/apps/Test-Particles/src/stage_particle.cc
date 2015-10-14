@@ -247,6 +247,7 @@ GLuint           _vao_id                                                = -1;
 
 /** TODO */
 static void _stage_particle_step_draw(ogl_context context,
+                                      uint32_t    frame_index,
                                       system_time time,
                                       const int*  rendering_area_px_topdown,
                                       void*       not_used)
@@ -314,6 +315,7 @@ static void _stage_particle_step_draw(ogl_context context,
 
 /** TODO */
 static void _stage_particle_step_init(ogl_context context,
+                                      uint32_t    frame_index,
                                       system_time time,
                                       const int*  rendering_area_px_topdown,
                                       void*       not_used)
@@ -423,6 +425,7 @@ static void _stage_particle_step_init(ogl_context context,
 
 /** TODO */
 static void _stage_particle_step_update(ogl_context context,
+                                        uint32_t    frame_index,
                                         system_time time,
                                         const int*  rendering_area_px_topdown,
                                         void*       not_used)

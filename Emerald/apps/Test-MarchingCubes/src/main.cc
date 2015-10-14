@@ -77,6 +77,7 @@ PRIVATE void _get_isolevel_value             (void*                   user_arg,
 PRIVATE void _init_pipeline                  ();
 PRIVATE void _init_scene                     ();
 PRIVATE void _render                         (ogl_context             context,
+                                              uint32_t                frame_index,
                                               system_time             frame_time,
                                               const int*              rendering_area_px_topdown,
                                               void*                   callback_user_arg);
@@ -295,6 +296,7 @@ PRIVATE void _init_scene()
 
 /** TODO */
 PRIVATE void _render(ogl_context context,
+                     uint32_t    frame_index,
                      system_time frame_time,
                      const int*  rendering_area_px_topdown,
                      void*       callback_user_arg)
@@ -430,6 +432,7 @@ PRIVATE void _rendering_handler(ogl_context context,
 
     ogl_pipeline_draw_stage(_pipeline,
                             _pipeline_stage_id,
+                            n_frames_rendered,
                             frame_time,
                             rendering_area_px_topdown);
 }

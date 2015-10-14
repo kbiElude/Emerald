@@ -24,9 +24,18 @@ typedef enum
      * System event which remains set while rendering playback is in progress.
      *
      * DO NOT reset or set! This event is exposed only as a mean to efficiently
-     * block a thread until the playback stops.
+     * block a thread until the playback starts.
      */
     OGL_RENDERING_HANDLER_PROPERTY_PLAYBACK_IN_PROGRESS_EVENT,
+
+    /* not settable, system_event.
+     *
+     * System event which is signaled whenever rendering playback is NOT in progress.
+     *
+     * DO NOT reset or set! This event is exposed only as a mean to efficiently
+     * block a thread until the playback stops.
+     */
+    OGL_RENDERING_HANDLER_PROPERTY_PLAYBACK_STOPPED_EVENT,
 
     /* not settable, ogl_rendering_handler_playback_status */
     OGL_RENDERING_HANDLER_PROPERTY_PLAYBACK_STATUS,

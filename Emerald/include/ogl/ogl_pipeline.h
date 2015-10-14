@@ -20,6 +20,7 @@
  *  @param callback_user_arg TODO
  */
 typedef void (*PFNOGLPIPELINECALLBACKPROC)(ogl_context context,
+                                           uint32_t    n_frame,
                                            system_time frame_time,
                                            const int*  rendering_area_px_topdown,
                                            void*       callback_user_arg);
@@ -56,6 +57,7 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API ogl_pipeline ogl_pipeline_create(ogl_c
  */
 PUBLIC RENDERING_CONTEXT_CALL EMERALD_API bool ogl_pipeline_draw_stage(ogl_pipeline instance,
                                                                        uint32_t     n_stage,
+                                                                       uint32_t     frame_index,
                                                                        system_time  time,
                                                                        const int*   rendering_area_px_topdown);
 

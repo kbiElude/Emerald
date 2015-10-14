@@ -37,6 +37,9 @@ typedef enum
      *
      * Refresh rate to use for the full-screen mode.
      *
+     * NOTE: This value is separate from target frame rate used to control the frequency, at which frame contents
+     *       is going to be updated! The two values are recommended to, but not necessarily have to match.
+     *
      * Default value: 60
      **/
      DEMO_APP_PROPERTY_REFRESH_RATE,
@@ -48,6 +51,17 @@ typedef enum
      * Default value: 1280x720.
      **/
     DEMO_APP_PROPERTY_RESOLUTION,
+
+    /* uint32_t, settable (before calling run() ).
+     *
+     * Target FPS to use for rendering.
+     *
+     * NOTE: This value is separate from the refresh rate used for setting up the full-screen mode! The two values
+     *       are recommended to, but not necessarily have to match.
+     *
+     * Default value: 60
+     **/
+    DEMO_APP_PROPERTY_TARGET_FRAME_RATE,
 
     /* bool, settable (before calling run() ).
      *

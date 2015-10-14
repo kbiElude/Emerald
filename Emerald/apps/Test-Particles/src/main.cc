@@ -210,6 +210,7 @@ PRIVATE void _rendering_handler(ogl_context context,
 {
     ogl_pipeline_draw_stage(_pipeline,
                             stage_particle_get_stage_id(),
+                            n_frames_rendered,
                             frame_time,
                             rendering_area_px_topdown);
 }

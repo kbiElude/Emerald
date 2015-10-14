@@ -235,6 +235,7 @@ void _init_gl(ogl_context context,
 
 /* Stage step 1: sample data generation */
 static void _stage_step_generate_data(ogl_context context,
+                                      uint32_t    frame_index,
                                       system_time time,
                                       const int*  rendering_area_px_topdown,
                                       void*       not_used)
@@ -280,6 +281,7 @@ static void _stage_step_generate_data(ogl_context context,
 
 /* Stage step 2: sample data modification */
 static void _stage_step_modify_data(ogl_context context,
+                                    uint32_t    frame_index,
                                     system_time time,
                                     const int*  rendering_area_px_topdown,
                                     void*       not_used)
@@ -325,6 +327,7 @@ void _rendering_handler(ogl_context context,
 {
     ogl_pipeline_draw_stage(_pipeline,
                             _pipeline_stage_id,
+                            n_frames_rendered,
                             frame_time,
                             rendering_area_px_topdown);
 }

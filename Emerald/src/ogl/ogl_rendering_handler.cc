@@ -69,7 +69,8 @@ typedef struct
     system_event unbind_context_request_event;
     system_event unbind_context_request_ack_event;
 
-    system_event            playback_in_progress_event;
+    system_event            playback_in_progress_event; /* if modified, also update playback_stopped event. Only modify when rendering_cs is locked! */
+    system_event            playback_stopped_event;     /* if modified, also update playback_in_progress event. Only modify when rendering_cs is locked! */
     system_critical_section rendering_cs;
     system_event            shutdown_request_event;
     system_event            shutdown_request_ack_event;
@@ -619,6 +620,30 @@ PRIVATE void _ogl_rendering_handler_thread_entrypoint(void* in_arg)
 
                 if (rendering_handler->callback_request_needs_buffer_swap)
                 {
+                    if (default_fbo_id == -1)
+                    {
+                        ogl_context_get_property(rendering_handler->context,
+                                                 OGL_CONTEXT_PROPERTY_DEFAULT_FBO_ID,
+                                                &default_fbo_id);
+                    }
+
+                    /* Blit the context FBO's contents to the back buffer */
+                    pGLBindFramebuffer(GL_DRAW_FRAMEBUFFER,
+                                       0);
+                    pGLBindFramebuffer(GL_READ_FRAMEBUFFER,
+                                       default_fbo_id);
+
+                    pGLBlitFramebuffer(0,              /* srcX0 */
+                                       0,              /* srcY0 */
+                                       window_size[0], /* srcX1 */
+                                       window_size[1], /* srcY1 */
+                                       0,              /* dstX0 */
+                                       0,              /* dstY0 */
+                                       window_size[0], /* dstX1 */
+                                       window_size[1], /* dstY1 */
+                                       GL_COLOR_BUFFER_BIT,
+                                       GL_NEAREST);
+
                     ogl_context_swap_buffers(rendering_handler->context);
                 }
 
@@ -792,6 +817,7 @@ PRIVATE void _ogl_rendering_handler_thread_entrypoint(void* in_arg)
                             if (rendering_handler->timeline != NULL)
                             {
                                 has_rendered_frame = demo_timeline_render(rendering_handler->timeline,
+                                                                          frame_index,
                                                                           new_frame_time,
                                                                           rendering_area);
                             } /* if (rendering_handler->timeline != NULL) */
@@ -873,6 +899,7 @@ PRIVATE void _ogl_rendering_handler_thread_entrypoint(void* in_arg)
                             rendering_handler->playback_status = RENDERING_HANDLER_PLAYBACK_STATUS_STOPPED;
 
                             system_event_reset(rendering_handler->playback_in_progress_event);
+                            system_event_set  (rendering_handler->playback_stopped_event);
                         }
                     }
                     system_critical_section_leave(rendering_handler->rendering_cs);
@@ -922,6 +949,7 @@ PRIVATE void _ogl_rendering_handler_release(void* in_arg)
     system_event_release(rendering_handler->callback_request_event);
     system_event_release(rendering_handler->context_set_event);
     system_event_release(rendering_handler->playback_in_progress_event);
+    system_event_release(rendering_handler->playback_stopped_event);
     system_event_release(rendering_handler->playback_waiting_event);
     system_event_release(rendering_handler->shutdown_request_event);
     system_event_release(rendering_handler->shutdown_request_ack_event);
@@ -1006,6 +1034,7 @@ PRIVATE ogl_rendering_handler ogl_rendering_handler_create_shared(system_hashed_
         new_handler->playback_in_progress_event                = system_event_create(true); /* manual_reset */
         new_handler->playback_start_time                       = 0;
         new_handler->playback_status                           = RENDERING_HANDLER_PLAYBACK_STATUS_STOPPED;
+        new_handler->playback_stopped_event                    = system_event_create(true); /* manual_reset */
         new_handler->playback_waiting_event                    = system_event_create(false); /* manual_reset */
         new_handler->pfn_callback_proc                         = NULL;
         new_handler->pfn_rendering_callback                    = pfn_rendering_callback;
@@ -1048,6 +1077,8 @@ PRIVATE ogl_rendering_handler ogl_rendering_handler_create_shared(system_hashed_
                            "Could not create 'context set' event");
         ASSERT_ALWAYS_SYNC(new_handler->playback_in_progress_event != NULL,
                            "Could not create 'playback in progress' event");
+        ASSERT_ALWAYS_SYNC(new_handler->playback_stopped_event != NULL,
+                           "Could not create 'playback stopped' event");
         ASSERT_ALWAYS_SYNC(new_handler->playback_waiting_event != NULL,
                            "Could not create 'playback waiting' event");
         ASSERT_ALWAYS_SYNC(new_handler->shutdown_request_event != NULL,
@@ -1058,6 +1089,8 @@ PRIVATE ogl_rendering_handler ogl_rendering_handler_create_shared(system_hashed_
                            "Could not create 'unbind context request' event");
         ASSERT_ALWAYS_SYNC(new_handler->unbind_context_request_ack_event != NULL,
                            "Could not create 'unbind context request ack' event");
+
+        system_event_set(new_handler->playback_stopped_event);
 
         system_threads_spawn(_ogl_rendering_handler_thread_entrypoint,
                              new_handler,
@@ -1124,6 +1157,13 @@ PUBLIC EMERALD_API void ogl_rendering_handler_get_property(ogl_rendering_handler
         case OGL_RENDERING_HANDLER_PROPERTY_PLAYBACK_IN_PROGRESS_EVENT:
         {
             *(system_event*) out_result = rendering_handler_ptr->playback_in_progress_event;
+
+            break;
+        }
+
+        case OGL_RENDERING_HANDLER_PROPERTY_PLAYBACK_STOPPED_EVENT:
+        {
+            *(system_event*) out_result = rendering_handler_ptr->playback_stopped_event;
 
             break;
         }
@@ -1250,7 +1290,8 @@ PUBLIC EMERALD_API bool ogl_rendering_handler_play(ogl_rendering_handler renderi
                     rendering_handler_ptr->playback_start_time = system_time_now() - start_time - audio_latency;
 
                     /* All done! */
-                    system_event_set(rendering_handler_ptr->playback_in_progress_event);
+                    system_event_set  (rendering_handler_ptr->playback_in_progress_event);
+                    system_event_reset(rendering_handler_ptr->playback_stopped_event);
                 }
                 else
                 {
@@ -1273,7 +1314,8 @@ PUBLIC EMERALD_API bool ogl_rendering_handler_play(ogl_rendering_handler renderi
                         rendering_handler_ptr->playback_start_time += audio_latency;
                     }
 
-                    system_event_set(rendering_handler_ptr->playback_in_progress_event);
+                    system_event_set  (rendering_handler_ptr->playback_in_progress_event);
+                    system_event_reset(rendering_handler_ptr->playback_stopped_event);
                 }
 
                 pre_n_frames_rendered                  = rendering_handler_ptr->n_frames_rendered;
@@ -1434,7 +1476,9 @@ PUBLIC EMERALD_API bool ogl_rendering_handler_stop(ogl_rendering_handler renderi
         {
             system_critical_section_enter(rendering_handler_ptr->rendering_cs);
             {
+                /* NOTE: no racing condition here since the pair is always updated inside rendering_cs */
                 system_event_reset(rendering_handler_ptr->playback_in_progress_event);
+                system_event_set  (rendering_handler_ptr->playback_stopped_event);
 
                 rendering_handler_ptr->playback_status = RENDERING_HANDLER_PLAYBACK_STATUS_STOPPED;
             }
@@ -1449,7 +1493,10 @@ PUBLIC EMERALD_API bool ogl_rendering_handler_stop(ogl_rendering_handler renderi
             } /* if (rendering_handler_ptr->active_audio_stream != NULL) */
 
             /* Wait until the rendering process stops */
-            system_event_wait_single(rendering_handler_ptr->playback_waiting_event);
+            if (!ogl_rendering_handler_is_current_thread_rendering_thread(rendering_handler))
+            {
+                system_event_wait_single(rendering_handler_ptr->playback_waiting_event);
+            }
 
             result = true;
         } /* if (rendering_handler_ptr->playback_status == RENDERING_HANDLER_PLAYBACK_STATUS_STARTED) */

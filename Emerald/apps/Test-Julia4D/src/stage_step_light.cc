@@ -38,6 +38,7 @@ system_matrix4x4 _light_view_matrix                       = NULL;
 
 /** TODO */
 static void _stage_step_light_execute(ogl_context context,
+                                      uint32_t    frame_index,
                                       system_time time,
                                       const int*  rendering_area_px_topdown,
                                       void*       not_used)

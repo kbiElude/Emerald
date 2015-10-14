@@ -94,6 +94,7 @@ static const char* _dof_scheuermann_combination_fragment_shader_main = "void mai
 
 /** TODO */
 static void _stage_step_dof_scheuermann_combine_execute(ogl_context context,
+                                                        uint32_t    frame_index,
                                                         system_time time,
                                                         const int*  rendering_area_px_topdown,
                                                         void*       not_used)
@@ -153,6 +154,7 @@ static void _stage_step_dof_scheuermann_combine_execute(ogl_context context,
 
 /** TODO */
 static void _stage_step_dof_scheuermann_downsample_execute(ogl_context context,
+                                                           uint32_t    frame_index,
                                                            system_time time,
                                                            const int*  rendering_area_px_topdown,
                                                            void*       not_used)
@@ -188,6 +190,7 @@ static void _stage_step_dof_scheuermann_downsample_execute(ogl_context context,
 
 /** TODO */
 static void _stage_step_dof_scheuermann_preblur_execute(ogl_context context,
+                                                        uint32_t    frame_index,
                                                         system_time time,
                                                         const int*  rendering_area_px_topdown,
                                                         void*       not_used)

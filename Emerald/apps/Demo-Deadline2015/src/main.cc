@@ -10,6 +10,7 @@
 #include "system/system_hashed_ansi_string.h"
 #include "main.h"
 
+#include "include/spinner.h"
 #include "include/stage_intro.h"
 #include "include/stage_part1.h"
 #include "include/stage_part2.h"
@@ -39,16 +40,28 @@
     demo_loader_op_load_audio_stream load_audio_stream_op;
 
     load_audio_stream_op.audio_file_name               = system_hashed_ansi_string_create("demo.mp3");
+    load_audio_stream_op.pfn_teardown_func_ptr         = NULL;
     load_audio_stream_op.result_audio_stream_index_ptr = NULL;
+    load_audio_stream_op.teardown_callback_user_arg    = NULL;
+
+    spinner_init   (demo,
+                    loader);
+    spinner_enqueue(loader,
+                    SPINNER_STAGE_START);
 
     demo_loader_enqueue_operation(loader,
                                   DEMO_LOADER_OP_LOAD_AUDIO_STREAM,
                                  &load_audio_stream_op);
+    stage_intro_init             (loader);
+    stage_part1_init             (loader);
+    spinner_enqueue              (loader,
+                                  SPINNER_STAGE_FIRST_SPIN);
 
-    stage_intro_init(loader);
-    stage_part1_init(loader);
     stage_part2_init(loader);
     stage_part3_init(loader);
+    spinner_enqueue (loader,
+                     SPINNER_STAGE_SECOND_SPIN);
+
     stage_part4_init(loader);
     stage_outro_init(loader);
 

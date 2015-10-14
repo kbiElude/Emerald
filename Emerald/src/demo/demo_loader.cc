@@ -24,12 +24,13 @@ typedef struct _demo_loader_op
 {
     union
     {
-        demo_loader_op_build_program      build_program;
-        demo_loader_op_configure_timeline configure_timeline;
-        demo_loader_op_load_audio_stream  load_audio_stream;
-        demo_loader_op_load_scenes        load_scenes;
-        demo_loader_op_render_animation   render_animation;
-        demo_loader_op_render_frame       render_frame;
+        demo_loader_op_build_program                     build_program;
+        demo_loader_op_configure_timeline                configure_timeline;
+        demo_loader_op_load_audio_stream                 load_audio_stream;
+        demo_loader_op_load_scenes                       load_scenes;
+        demo_loader_op_render_animation                  render_animation;
+        demo_loader_op_render_frame                      render_frame;
+        demo_loader_op_request_rendering_thread_callback request_rendering_thread_callback;
     } data;
 
     demo_loader_op type;
@@ -107,6 +108,15 @@ typedef struct _demo_loader_op
 
         type = DEMO_LOADER_OP_RENDER_FRAME;
     }
+
+    _demo_loader_op(demo_loader_op_request_rendering_thread_callback* op_ptr)
+    {
+        memcpy(&data,
+               op_ptr,
+               sizeof(*op_ptr) );
+
+        type = DEMO_LOADER_OP_REQUEST_RENDERING_THREAD_CALLBACK;
+    }
 } _demo_loader_op;
 
 typedef struct _demo_loader
@@ -136,9 +146,59 @@ typedef struct _demo_loader
         {
             _demo_loader_op* enqueued_op_ptr = NULL;
 
+            /* Release the operations in reversed order. Each operation can have a teardown func ptr associated.
+             * If one is present, we need to call it now so that related assets, objects, etc. can be released.
+             */
             while (system_resizable_vector_pop(enqueued_ops,
                                               &enqueued_op_ptr) )
             {
+                switch (enqueued_op_ptr->type)
+                {
+                    case DEMO_LOADER_OP_BUILD_PROGRAM:
+                    {
+                        if (enqueued_op_ptr->data.build_program.pfn_teardown_func_ptr != NULL)
+                        {
+                            enqueued_op_ptr->data.build_program.pfn_teardown_func_ptr(enqueued_op_ptr->data.build_program.teardown_callback_user_arg);
+                        }
+
+                        break;
+                    }
+
+                    case DEMO_LOADER_OP_LOAD_AUDIO_STREAM:
+                    {
+                        if (enqueued_op_ptr->data.load_audio_stream.pfn_teardown_func_ptr != NULL)
+                        {
+                            enqueued_op_ptr->data.load_audio_stream.pfn_teardown_func_ptr(enqueued_op_ptr->data.load_audio_stream.teardown_callback_user_arg);
+                        }
+
+                        break;
+                    }
+
+                    case DEMO_LOADER_OP_CONFIGURE_TIMELINE:
+                    case DEMO_LOADER_OP_RENDER_ANIMATION:
+                    case DEMO_LOADER_OP_RENDER_FRAME:
+                    {
+                        /* No tear-down func ptr stored for the ops. */
+                        break;
+                    }
+
+                    case DEMO_LOADER_OP_REQUEST_RENDERING_THREAD_CALLBACK:
+                    {
+                        if (enqueued_op_ptr->data.request_rendering_thread_callback.pfn_teardown_func_ptr != NULL)
+                        {
+                            enqueued_op_ptr->data.request_rendering_thread_callback.pfn_teardown_func_ptr(enqueued_op_ptr->data.request_rendering_thread_callback.teardown_callback_user_arg);
+                        }
+
+                        break;
+                    }
+
+                    default:
+                    {
+                        ASSERT_DEBUG_SYNC(false,
+                                          "Unrecognized loader op type");
+                    }
+                } /* switch (enqueued_op_ptr->type) */
+
                 delete enqueued_op_ptr;
                 enqueued_op_ptr = NULL;
             }
@@ -238,6 +298,13 @@ PUBLIC EMERALD_API void demo_loader_enqueue_operation(demo_loader    loader,
         case DEMO_LOADER_OP_RENDER_FRAME:
         {
             new_op_ptr = new (std::nothrow) _demo_loader_op( (demo_loader_op_render_frame*) operation_arg);
+
+            break;
+        }
+
+        case DEMO_LOADER_OP_REQUEST_RENDERING_THREAD_CALLBACK:
+        {
+            new_op_ptr = new (std::nothrow) _demo_loader_op( (demo_loader_op_request_rendering_thread_callback*) operation_arg);
 
             break;
         }
@@ -587,6 +654,7 @@ PUBLIC void demo_loader_run(demo_loader   loader,
             case DEMO_LOADER_OP_RENDER_ANIMATION:
             {
                 system_event          playback_in_progress_event = NULL;
+                system_event          playback_stopped_event     = NULL;
                 ogl_rendering_handler rendering_handler          = NULL;
 
                 system_window_get_property(renderer_window,
@@ -595,6 +663,9 @@ PUBLIC void demo_loader_run(demo_loader   loader,
                 ogl_rendering_handler_get_property(rendering_handler,
                                                    OGL_RENDERING_HANDLER_PROPERTY_PLAYBACK_IN_PROGRESS_EVENT,
                                                   &playback_in_progress_event);
+                ogl_rendering_handler_get_property(rendering_handler,
+                                                   OGL_RENDERING_HANDLER_PROPERTY_PLAYBACK_STOPPED_EVENT,
+                                                  &playback_stopped_event);
 
                 ogl_rendering_handler_set_property(rendering_handler,
                                                    OGL_RENDERING_HANDLER_PROPERTY_RENDERING_CALLBACK,
@@ -608,6 +679,8 @@ PUBLIC void demo_loader_run(demo_loader   loader,
                                            0); /* start_time */
 
                 system_event_wait_single(playback_in_progress_event);
+                system_event_wait_single(playback_stopped_event);
+
                 break;
             }
 
@@ -623,6 +696,22 @@ PUBLIC void demo_loader_run(demo_loader   loader,
                                                                            op_ptr->data.render_frame.pfn_rendering_callback_proc,
                                                                            op_ptr->data.render_frame.user_arg,
                                                                            true); /* swap_buffers_afterward */
+
+                break;
+            }
+
+            case DEMO_LOADER_OP_REQUEST_RENDERING_THREAD_CALLBACK:
+            {
+                ogl_rendering_handler rendering_handler = NULL;
+
+                system_window_get_property(renderer_window,
+                                           SYSTEM_WINDOW_PROPERTY_RENDERING_HANDLER,
+                                          &rendering_handler);
+
+                ogl_rendering_handler_request_callback_from_context_thread(rendering_handler,
+                                                                           op_ptr->data.request_rendering_thread_callback.pfn_rendering_callback_proc,
+                                                                           op_ptr->data.request_rendering_thread_callback.user_arg,
+                                                                           op_ptr->data.request_rendering_thread_callback.should_swap_buffers);
 
                 break;
             }

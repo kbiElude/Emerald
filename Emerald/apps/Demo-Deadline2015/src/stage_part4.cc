@@ -8,6 +8,7 @@
 
 /* Forward declarations */
 PUBLIC RENDERING_CONTEXT_CALL void stage_part4_render(ogl_context context,
+                                                      uint32_t    frame_index,
                                                       system_time frame_time,
                                                       const int*  rendering_area_px_topdown,
                                                       void*       unused);
@@ -48,6 +49,7 @@ PRIVATE void _stage_part4_configure_timeline(demo_timeline timeline,
  *                                   the argument is always NULL.
  **/
 PUBLIC RENDERING_CONTEXT_CALL void stage_part4_render(ogl_context context,
+                                                      uint32_t    frame_index,
                                                       system_time frame_time,
                                                       const int*  rendering_area_px_topdown,
                                                       void*       unused)

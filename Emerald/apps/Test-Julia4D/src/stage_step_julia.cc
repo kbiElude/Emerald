@@ -247,6 +247,7 @@ const char* julia_vertex_shader_code = "#version 430 core\n"
 
 /** TODO */
 static void _stage_step_julia_execute(ogl_context context,
+                                      uint32_t    frame_index,
                                       system_time time,
                                       const int*  rendering_area_px_topdown,
                                       void*       not_used)

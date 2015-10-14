@@ -182,6 +182,7 @@ PUBLIC EMERALD_API bool demo_timeline_move_segment(demo_timeline              ti
  *  @return TODO 
  */
 PUBLIC EMERALD_API RENDERING_CONTEXT_CALL bool demo_timeline_render(demo_timeline timeline,
+                                                                    uint32_t      frame_index,
                                                                     system_time   frame_time,
                                                                     const int*    rendering_area_px_topdown);
 

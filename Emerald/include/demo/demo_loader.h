@@ -13,6 +13,7 @@ typedef void (*PFNBUILDPROGRAMCALLBACKPROC)     (ogl_program   result_program,
                                                  void*         user_arg);
 typedef void (*PFNCONFIGURETIMELINECALLBACKPROC)(demo_timeline timeline,
                                                  void*         user_arg);
+typedef void (*PFNLOADERTEARDOWNCALLBACKPROC)   (void*         user_arg);
 
 typedef enum
 {
@@ -68,6 +69,12 @@ typedef enum
      */
     DEMO_LOADER_OP_RENDER_FRAME,
 
+    /* Calls back the specified func ptr from a rendering thread. No buffer swap will occur
+     * after the call is returned from.
+     *
+     * operation_arg = ptr to demo_loader_op_request_rendering_thread_callback structure instance.
+     */
+    DEMO_LOADER_OP_REQUEST_RENDERING_THREAD_CALLBACK
 } demo_loader_op;
 
 typedef struct
@@ -105,6 +112,13 @@ typedef struct
     PFNBUILDPROGRAMCALLBACKPROC pfn_on_link_finished_callback_proc;
     void*                       on_link_finished_callback_user_arg;
 
+    /* Optional func pointer which will be called right before the demo application quits. The call-back
+     * is not going to be coming from the rendering thread but the rendering context is still going to be
+     * available, in case you need it.
+     */
+    PFNLOADERTEARDOWNCALLBACKPROC pfn_teardown_func_ptr;
+    void*                         teardown_callback_user_arg;
+
     system_hashed_ansi_string name;
     uint32_t*                 result_program_index_ptr; /* will hold index of the created ogl_program instance */
 } demo_loader_op_build_program;
@@ -113,6 +127,13 @@ typedef struct
 {
     /* Function pointer to call with the demo_timeline instance passed as an argument */
     PFNCONFIGURETIMELINECALLBACKPROC pfn_configure_timeline_proc;
+
+    /* Optional func pointer which will be called right before the demo application quits. The call-back
+     * is not going to be coming from the rendering thread but the rendering context is still going to be
+     * available, in case you need it.
+     */
+    PFNLOADERTEARDOWNCALLBACKPROC pfn_teardown_func_ptr;
+    void*                         teardown_callback_user_arg;
 
     /* User argument to pass along the call-back */
     void*                            user_arg;
@@ -123,6 +144,13 @@ typedef struct
     /* TODO: packed file support */
     system_hashed_ansi_string audio_file_name;
     uint32_t*                 result_audio_stream_index_ptr; /* will hold index of the loaded audio stream instance. can be NULL. */
+
+    /* Optional func pointer which will be called right before the demo application quits. The call-back
+     * is not going to be coming from the rendering thread but the rendering context is still going to be
+     * available, in case you need it.
+     */
+    PFNLOADERTEARDOWNCALLBACKPROC pfn_teardown_func_ptr;
+    void*                         teardown_callback_user_arg;
 } demo_loader_op_load_audio_stream;
 
 typedef struct
@@ -145,6 +173,19 @@ typedef struct
     void*                                      user_arg;
 } demo_loader_op_render_frame;
 
+typedef struct
+{
+    PFNOGLCONTEXTCALLBACKFROMCONTEXTTHREADPROC pfn_rendering_callback_proc;
+    bool                                       should_swap_buffers;
+    void*                                      user_arg;
+
+    /* Optional func pointer which will be called right before the demo application quits. The call-back
+     * is not going to be coming from the rendering thread but the rendering context is still going to be
+     * available, in case you need it.
+     */
+    PFNLOADERTEARDOWNCALLBACKPROC pfn_teardown_func_ptr;
+    void*                         teardown_callback_user_arg;
+} demo_loader_op_request_rendering_thread_callback;
 
 typedef enum
 {

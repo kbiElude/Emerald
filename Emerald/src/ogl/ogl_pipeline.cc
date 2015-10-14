@@ -538,6 +538,7 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API ogl_pipeline ogl_pipeline_create(ogl_c
 /** Please see header for specification */
 PUBLIC RENDERING_CONTEXT_CALL EMERALD_API bool ogl_pipeline_draw_stage(ogl_pipeline instance,
                                                                        uint32_t     n_stage,
+                                                                       uint32_t     frame_index,
                                                                        system_time  time,
                                                                        const int*   rendering_area_px_topdown)
 {
@@ -657,6 +658,7 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API bool ogl_pipeline_draw_stage(ogl_pipel
                 }
                 {
                     step_ptr->pfn_step_callback(step_ptr->context,
+                                                frame_index,
                                                 time,
                                                 rendering_area_px_topdown,
                                                 step_ptr->step_callback_user_arg);

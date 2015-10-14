@@ -30,6 +30,7 @@ typedef struct _demo_app
     uint32_t                  resolution[2];
     bool                      should_run_fullscreen;
     system_event              shut_down_event;
+    uint32_t                  target_frame_rate;
     demo_timeline             timeline;
     bool                      use_vsync;
     system_window             window;
@@ -45,6 +46,7 @@ typedef struct _demo_app
         resolution[1]         = 720;
         should_run_fullscreen = false;
         shut_down_event       = system_event_create(true); /* manual_reset */
+        target_frame_rate     = 60;
         timeline              = NULL;
         use_vsync             = true;
         window                = NULL;
@@ -184,6 +186,13 @@ PUBLIC EMERALD_API void demo_app_get_property(const demo_app    app,
             break;
         }
 
+        case DEMO_APP_PROPERTY_TARGET_FRAME_RATE:
+        {
+            *(uint32_t*) out_result_ptr = app_ptr->target_frame_rate;
+
+            break;
+        }
+
         default:
         {
             ASSERT_DEBUG_SYNC(false,
@@ -214,19 +223,16 @@ PUBLIC EMERALD_API void demo_app_run(demo_app app)
      * Emerald maintains its own "default framebuffer", to which rendering handlers should render.
      * Its attachments will be initialized, according to the descriptor we're just about to configure.
      *
-     * Two reasons for this:
-     *
-     * 1) Cross-compatibility. MSAA set-up is significantly different under Linux
-     *    and Windows, and it's simpler to reconcile both platforms this way.
-     *
-     * 2) Compatibility with non-ES/-GL rendering APIs.
+     * Reason for this is cross-compatibility. MSAA set-up is significantly different under Linux
+     * and Windows, and it's simpler to reconcile both platforms this way. For multisampling, simply
+     * render to multisample framebuffers and then do a resolve right before the buffer swap op.
      */
     window_pf = system_pixel_format_create(8,  /* color_buffer_red_bits   */
                                            8,  /* color_buffer_green_bits */
                                            8,  /* color_buffer_blue_bits  */
                                            0,  /* color_buffer_alpha_bits */
                                            16, /* depth_buffer_bits       */
-                                           1,
+                                           1,  /* n_samples               */
                                            0); /* stencil_buffer_bits     */
 
     if (app_ptr->should_run_fullscreen)
@@ -286,7 +292,7 @@ PUBLIC EMERALD_API void demo_app_run(demo_app app)
      *    if curious.
      */
     app_ptr->rendering_handler = ogl_rendering_handler_create_with_fps_policy(system_hashed_ansi_string_create("Default rendering handler"),
-                                                                              app_ptr->refresh_rate,
+                                                                              app_ptr->target_frame_rate,
                                                                               NULL,
                                                                               NULL); /* user_arg */
 
@@ -404,6 +410,13 @@ PUBLIC EMERALD_API void demo_app_set_property(demo_app          app,
             memcpy(app_ptr->resolution,
                    data_ptr,
                    sizeof(app_ptr->resolution) );
+
+            break;
+        }
+
+        case DEMO_APP_PROPERTY_TARGET_FRAME_RATE:
+        {
+            app_ptr->target_frame_rate = *(uint32_t*) data_ptr;
 
             break;
         }

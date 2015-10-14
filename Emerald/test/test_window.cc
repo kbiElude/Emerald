@@ -15,6 +15,7 @@
 #include "system/system_window.h"
 
 static void _clear_color_buffer_with_color(ogl_context context,
+                                           uint32_t    frame_index,
                                            system_time unused,
                                            const int*  rendering_area_px_topdown,
                                            void*       clear_color_arg)

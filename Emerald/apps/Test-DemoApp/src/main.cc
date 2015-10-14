@@ -78,11 +78,13 @@ void _rendering_handler_entrypoint(ogl_context context,
     /* Render the scene */
     ogl_pipeline_draw_stage(state_get_pipeline(),
                             state_get_pipeline_stage_id(),
+                            n_frames_rendered,
                             frame_time,
                             rendering_area_px_topdown);
 }
 
 PUBLIC void _render_scene(ogl_context context,
+                          uint32_t    frame_index,
                           system_time time,
                           const int*  rendering_area_px_topdown,
                           void*       not_used)

@@ -2,9 +2,11 @@
 #include "demo/demo_loader.h"
 #include "demo/demo_timeline.h"
 #include "ogl/ogl_context.h"
+#include "spinner.h"
 
 /* Forward declarations */
 PUBLIC RENDERING_CONTEXT_CALL void stage_intro_render(ogl_context context,
+                                                      uint32_t    frame_index,
                                                       system_time frame_time,
                                                       const int*  rendering_area_px_topdown,
                                                       void*       unused);
@@ -45,19 +47,12 @@ PRIVATE void _stage_intro_configure_timeline(demo_timeline timeline,
  *                                   the argument is always NULL.
  **/
 PUBLIC RENDERING_CONTEXT_CALL void stage_intro_render(ogl_context context,
+                                                      uint32_t    frame_index,
                                                       system_time frame_time,
                                                       const int*  rendering_area_px_topdown,
                                                       void*       unused)
 {
-    ogl_context_gl_entrypoints* entrypoints_ptr = NULL;
-
-    ogl_context_get_property(context,
-                             OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
-                            &entrypoints_ptr);
-
-    /* Dummy content for now! */
-    entrypoints_ptr->pGLClearColor(.2f, .1f, .3f, 1.0f);
-    entrypoints_ptr->pGLClear     (GL_COLOR_BUFFER_BIT);
+    spinner_render_to_default_fbo(frame_index);
 }
 
 

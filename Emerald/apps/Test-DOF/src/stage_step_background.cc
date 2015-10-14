@@ -27,6 +27,7 @@ ogl_texture      _skybox_texture = NULL;
 
 /** TODO */
 static void _stage_step_background_execute(ogl_context context,
+                                           uint32_t    frame_index,
                                            system_time time,
                                            const int*  rendering_area_px_topdown,
                                            void*       not_used)
