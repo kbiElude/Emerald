@@ -395,8 +395,10 @@ PRIVATE void APIENTRY _ogl_context_debug_message_gl_callback(GLenum        sourc
         LOG_INFO("%s",
                  local_message);
 
+#if 0
         ASSERT_DEBUG_SYNC(type != GL_DEBUG_TYPE_ERROR_ARB,
                           "GL error detected");
+#endif
     }
 }
 

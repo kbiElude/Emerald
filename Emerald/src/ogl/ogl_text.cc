@@ -725,7 +725,7 @@ PRIVATE void _ogl_text_create_font_table_to_callback_from_renderer(ogl_context c
         }
 
         text_ptr->pGLTexStorage2D  (GL_TEXTURE_2D,
-                                    1 + log2_uint32( (font_table_width > font_table_height) ? font_table_width : font_table_height),
+                                    1 + system_math_other_log2_uint32( (font_table_width > font_table_height) ? font_table_width : font_table_height),
                                     GL_RGB8,
                                     font_table_width,
                                     font_table_height);

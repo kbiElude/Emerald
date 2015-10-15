@@ -3342,7 +3342,7 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_shadow_mapping_toggle(ogl_shadow_mapping 
 
                 handler_ptr->current_sm_color0_texture = ogl_context_textures_get_texture_from_pool(handler_ptr->context,
                                                                                                     light_shadow_map_dimensionality,
-                                                                                                    log2_uint32(light_shadow_map_size[0]),
+                                                                                                    system_math_other_log2_uint32(light_shadow_map_size[0]),
                                                                                                     light_shadow_map_internalformat_color,
                                                                                                     light_shadow_map_size[0],
                                                                                                     light_shadow_map_size[1],

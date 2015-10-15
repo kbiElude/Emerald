@@ -12,6 +12,8 @@
 #include "ogl/ogl_texture.h"
 #include "postprocessing/postprocessing_motion_blur.h"
 #include "system/system_log.h"
+#include "system/system_math_other.h"
+#include "system/system_math_vector.h"
 #include "system/system_time.h"
 #include "system/system_window.h"
 
@@ -30,6 +32,7 @@ typedef struct _spinner_stage
      */
     system_time  duration;
     int          last_frame_index;
+    system_time  start_time;
 
     float        maximum_spline_speed;
     unsigned int n_acceleration_frames;
@@ -41,6 +44,9 @@ typedef struct _spinner_stage
     float        spline_accelerations[SPINNER_N_SPLINES];
     float        spline_offsets      [SPINNER_N_SPLINES];
 
+    float        size_modifier_end;
+    float        size_modifier_start;
+
     PFNFIRSTFRAMECALLBACKPROC pfn_first_frame_callback_proc;
     void*                     first_frame_callback_user_arg;
 
@@ -50,10 +56,13 @@ typedef struct _spinner_stage
         maximum_spline_speed                = 0.0f;
         n_acceleration_frames               = 0;
         last_frame_index                    = -1;
+        size_modifier_end                   = 1.0f;
+        size_modifier_start                 = 1.0f;
         should_clone_data_bo_on_first_frame = false;
         spin_acceleration_decay_rate        = 0.0f;
         spin_traction_constant_rate         = 0.0f;
         spin_traction_decay_rate            = 0.0f;
+        start_time                          = -1;
 
         memset(spline_accelerations,
                0,
@@ -403,6 +412,11 @@ PRIVATE void _spinner_draw_frame_rendering_callback(ogl_context context,
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
                             &entrypoints_ptr);
 
+    if (stage_ptr->start_time == -1)
+    {
+        stage_ptr->start_time = current_time;
+    }
+
     /* Configure viewport to use square proportions. Make sure the spinner is centered */
     GLint       new_viewport    [4];
     GLint       precall_viewport[4];
@@ -432,11 +446,6 @@ PRIVATE void _spinner_draw_frame_rendering_callback(ogl_context context,
     new_viewport[2] = (precall_viewport_width  + spinner_size_px) / 2;
     new_viewport[3] = (precall_viewport_height + spinner_size_px) / 2;
 
-    entrypoints_ptr->pGLViewport(new_viewport[0],
-                                 new_viewport[1],
-                                 new_viewport[2] - new_viewport[0],
-                                 new_viewport[3] - new_viewport[1]);
-
     /* Update the spline offsets.
      *
      * NOTE: The same offset should be used for top & bottom half. Otherwise the segments
@@ -450,11 +459,50 @@ PRIVATE void _spinner_draw_frame_rendering_callback(ogl_context context,
                                              0,                  /* dst_array_start_index */
                                              SPINNER_N_SPLINES); /* dst_array_item_count  */
 
-    /* Generate spinner mesh data */
-    const float        inner_ring_radius = 0.1f;
-    const unsigned int n_rings_to_skip   = 1;
-    const float        outer_ring_radius = 1.0f;
+    /* Resize the viewport if necessary. The approach below is:
+     *
+     * 1. Calculate the original viewport's diagonal
+     * 2. Rescale it, according to the resize factor.
+     * 3. Compute new viewport coordinates.
+     * */
+    const system_time  t_duration           = (stage_ptr->duration == 0) ? 1 : stage_ptr->duration;
+    float              t                    = system_math_smoothstep(float(current_time - stage_ptr->start_time) / float(t_duration), 0.0f, 1.0f);
+    const float        size_modifier        = (stage_ptr->size_modifier_start + t * (stage_ptr->size_modifier_end - stage_ptr->size_modifier_start) );
+    const float        inner_ring_radius    = 0.1f;
+    const unsigned int n_rings_to_skip      = 1;
+    const float        outer_ring_radius    = 1.0f;
 
+    GLint viewport_center[] =
+    {
+        new_viewport[0] + (new_viewport[2] - new_viewport[0]) / 2,
+        new_viewport[1] + (new_viewport[3] - new_viewport[1]) / 2
+    };
+    float half_diagonal[] =
+    {
+        viewport_center[0] - new_viewport[0],
+        viewport_center[1] - new_viewport[1]
+    };
+    float half_diagonal_length        = system_math_vector_length2(half_diagonal);
+    float half_diagonal_normalized[2];
+    float new_half_diagonal_length    = half_diagonal_length * size_modifier;
+
+    system_math_vector_normalize2(half_diagonal,
+                                  half_diagonal_normalized);
+
+    GLint resized_viewport[]       =
+    {
+        viewport_center[0] - new_half_diagonal_length * half_diagonal_normalized[0],
+        viewport_center[1] - new_half_diagonal_length * half_diagonal_normalized[1],
+        viewport_center[0] + new_half_diagonal_length * half_diagonal_normalized[0],
+        viewport_center[1] + new_half_diagonal_length * half_diagonal_normalized[1]
+    };
+
+    entrypoints_ptr->pGLViewport(resized_viewport[0],
+                                 resized_viewport[1],
+                                 resized_viewport[2] - resized_viewport[0],
+                                 resized_viewport[3] - resized_viewport[1]);
+
+    /* Generate mesh data */
     entrypoints_ptr->pGLUseProgram(ogl_program_get_id(spinner.polygonizer_po) );
 
     ogl_program_ub_set_nonarrayed_uniform_value(spinner.polygonizer_po_propsBuffer_ub,
@@ -1189,11 +1237,13 @@ PUBLIC void spinner_init(demo_app    app,
     spinner.stages[SPINNER_STAGE_SECOND_SPIN].spin_traction_constant_rate   = 0.006f;
     spinner.stages[SPINNER_STAGE_SECOND_SPIN].spin_traction_decay_rate      = 0.9f;
 
-    spinner.stages[SPINNER_STAGE_ANIMATION].duration                      = system_time_get_time_for_msec(5650);
+    spinner.stages[SPINNER_STAGE_ANIMATION].duration                      = system_time_get_time_for_msec(10000 /* 5650 */);
     spinner.stages[SPINNER_STAGE_ANIMATION].first_frame_callback_user_arg = spinner.stages + SPINNER_STAGE_SECOND_SPIN;
     spinner.stages[SPINNER_STAGE_ANIMATION].pfn_first_frame_callback_proc = _spinner_copy_spline_offsets;
     spinner.stages[SPINNER_STAGE_ANIMATION].maximum_spline_speed          = 100.0f;
     spinner.stages[SPINNER_STAGE_ANIMATION].n_acceleration_frames         = 3000;
+    spinner.stages[SPINNER_STAGE_ANIMATION].size_modifier_end             = 6.0f;
+    spinner.stages[SPINNER_STAGE_ANIMATION].size_modifier_start           = 1.0f;
     spinner.stages[SPINNER_STAGE_ANIMATION].spin_acceleration_decay_rate  = 1.0f/180.0f;
     spinner.stages[SPINNER_STAGE_ANIMATION].spin_traction_constant_rate   = 0.006f;
     spinner.stages[SPINNER_STAGE_ANIMATION].spin_traction_decay_rate      = 0.9f;

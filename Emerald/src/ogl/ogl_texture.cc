@@ -225,8 +225,8 @@ PRIVATE void _ogl_texture_create_from_gfx_image_renderer_callback(ogl_context co
                    base_image_row_alignment);
 
     /* Use immutable storage to avoid texture completeness checks during draw calls */
-    const unsigned int levels = 1 + log2_uint32( (base_image_width > base_image_height) ? base_image_width :
-                                                                                          base_image_height);
+    const unsigned int levels = 1 + system_math_other_log2_uint32( (base_image_width > base_image_height) ? base_image_width :
+                                                                                                            base_image_height);
 
     texture_ptr->n_max_mipmaps = levels;
 
