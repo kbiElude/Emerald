@@ -51,6 +51,7 @@ static system_hashed_ansi_string _object_type_postprocessing_blur_poisson_hashed
 static system_hashed_ansi_string _object_type_postprocessing_motion_blur_hashed_ansi_string            = NULL;
 static system_hashed_ansi_string _object_type_postprocessing_reinhard_tonemap_hashed_ansi_string       = NULL;
 static system_hashed_ansi_string _object_type_procedural_mesh_box_hashed_ansi_string                   = NULL;
+static system_hashed_ansi_string _object_type_procedural_mesh_circle_hashed_ansi_string                = NULL;
 static system_hashed_ansi_string _object_type_procedural_mesh_sphere_hashed_ansi_string                = NULL;
 static system_hashed_ansi_string _object_type_procedural_uv_generator_hashed_ansi_string               = NULL;
 static system_hashed_ansi_string _object_type_programs_curve_editor_curvebackground_hashed_ansi_string = NULL;
@@ -132,6 +133,7 @@ PUBLIC system_hashed_ansi_string object_manager_convert_object_manager_object_ty
         case OBJECT_TYPE_POSTPROCESSING_MOTION_BLUR:                      return _object_type_postprocessing_motion_blur_hashed_ansi_string;
         case OBJECT_TYPE_POSTPROCESSING_REINHARD_TONEMAP:                 return _object_type_postprocessing_reinhard_tonemap_hashed_ansi_string;
         case OBJECT_TYPE_PROCEDURAL_MESH_BOX:                             return _object_type_procedural_mesh_box_hashed_ansi_string;
+        case OBJECT_TYPE_PROCEDURAL_MESH_CIRCLE:                          return _object_type_procedural_mesh_circle_hashed_ansi_string;
         case OBJECT_TYPE_PROCEDURAL_MESH_SPHERE:                          return _object_type_procedural_mesh_sphere_hashed_ansi_string;
         case OBJECT_TYPE_PROCEDURAL_UV_GENERATOR:                         return _object_type_procedural_uv_generator_hashed_ansi_string;
         case OBJECT_TYPE_PROGRAMS_CURVE_EDITOR_CURVEBACKGROUND:           return _object_type_programs_curve_editor_curvebackground_hashed_ansi_string;
@@ -385,6 +387,7 @@ PUBLIC void _object_manager_init()
     _object_type_postprocessing_motion_blur_hashed_ansi_string            = system_hashed_ansi_string_create("Post-processing Motion Blur");
     _object_type_postprocessing_reinhard_tonemap_hashed_ansi_string       = system_hashed_ansi_string_create("Post-processing Reinhard tonemap");
     _object_type_procedural_mesh_box_hashed_ansi_string                   = system_hashed_ansi_string_create("Procedural meshes (box)");
+    _object_type_procedural_mesh_circle_hashed_ansi_string                = system_hashed_ansi_string_create("Procedural meshes (circle)");
     _object_type_procedural_mesh_sphere_hashed_ansi_string                = system_hashed_ansi_string_create("Procedural meshes (sphere)");
     _object_type_procedural_uv_generator_hashed_ansi_string               = system_hashed_ansi_string_create("Procedural UV Generators");
     _object_type_programs_curve_editor_curvebackground_hashed_ansi_string = system_hashed_ansi_string_create("Curve Editor Programs (Curve Background)");
