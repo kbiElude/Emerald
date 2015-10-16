@@ -244,7 +244,7 @@ PUBLIC EMERALD_API void ogl_context_enumerate_msaa_samples(system_pixel_format p
                                                            unsigned int**      out_supported_samples);
 
 /** TODO */
-PUBLIC ogl_context ogl_context_get_current_context();
+PUBLIC EMERALD_API ogl_context ogl_context_get_current_context();
 
 /** TODO */
 PUBLIC EMERALD_API void ogl_context_get_property(ogl_context          context,

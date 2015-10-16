@@ -51,7 +51,8 @@ PRIVATE void _procedural_mesh_circle_create_renderer_callback(ogl_context contex
      * the very last vertex covers the first one we generated right after the one in the centre,
      * so that there's no visible crack in the generated mesh.
      */
-    const unsigned int data_size          = sizeof(float) * (1 /* centre */ + mesh_circle_ptr->n_segments) * 2 /* x, y*/;
+    const unsigned int n_vertices         = (1 /* centre */ + mesh_circle_ptr->n_segments);
+    const unsigned int data_size          = sizeof(float) * n_vertices * 2 /* x, y*/;
     float*             data_ptr           = new float[data_size / sizeof(float) ];
     float*             data_traveller_ptr = data_ptr;
     float              step               = 2.0f * 3.14152965f / float(mesh_circle_ptr->n_segments - 1);
@@ -74,6 +75,7 @@ PRIVATE void _procedural_mesh_circle_create_renderer_callback(ogl_context contex
                       "Buffer underflow/overflow detected");
 
     mesh_circle_ptr->arrays_bo_size = data_size;
+    mesh_circle_ptr->n_vertices     = n_vertices;
 
     /* Store the data in buffer memory */
     ogl_buffers_allocate_buffer_memory(mesh_circle_ptr->buffers,

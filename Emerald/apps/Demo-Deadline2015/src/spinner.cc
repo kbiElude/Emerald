@@ -86,6 +86,8 @@ typedef struct _spinner
     unsigned int   current_frame_bo_start_offset;
     GLuint         previous_frame_bo_id;
     unsigned int   previous_frame_bo_start_offset;
+    GLint          recent_viewport[4];
+    bool           should_blit_to_default_fbo;
     GLuint         vao_id;
 
     postprocessing_motion_blur motion_blur;
@@ -119,6 +121,7 @@ typedef struct _spinner
         current_frame_bo_start_offset  = -1;
         previous_frame_bo_id           = 0;
         previous_frame_bo_start_offset = -1;
+        should_blit_to_default_fbo     = true;
         vao_id                         = 0;
 
         motion_blur                                          = NULL;
@@ -140,6 +143,9 @@ typedef struct _spinner
         render_fbo_id    = 0;
         velocity_to      = NULL;
 
+        memset(recent_viewport,
+               0,
+               sizeof(recent_viewport) );
         memset(resolution,
                0,
                sizeof(resolution) );
@@ -472,35 +478,27 @@ PRIVATE void _spinner_draw_frame_rendering_callback(ogl_context context,
     const unsigned int n_rings_to_skip      = 1;
     const float        outer_ring_radius    = 1.0f;
 
-    GLint viewport_center[] =
+    float new_viewport_x1y1_size[] =
     {
-        new_viewport[0] + (new_viewport[2] - new_viewport[0]) / 2,
-        new_viewport[1] + (new_viewport[3] - new_viewport[1]) / 2
+        float(new_viewport[0]),
+        float(new_viewport[1]),
+        float(new_viewport[2] - new_viewport[0])
     };
-    float half_diagonal[] =
-    {
-        viewport_center[0] - new_viewport[0],
-        viewport_center[1] - new_viewport[1]
-    };
-    float half_diagonal_length        = system_math_vector_length2(half_diagonal);
-    float half_diagonal_normalized[2];
-    float new_half_diagonal_length    = half_diagonal_length * size_modifier;
+    float resized_viewport_x1y1_size[3];
 
-    system_math_vector_normalize2(half_diagonal,
-                                  half_diagonal_normalized);
+    system_math_other_resize_quad2d_by_diagonal(new_viewport_x1y1_size,
+                                                size_modifier,
+                                                resized_viewport_x1y1_size);
 
-    GLint resized_viewport[]       =
-    {
-        viewport_center[0] - new_half_diagonal_length * half_diagonal_normalized[0],
-        viewport_center[1] - new_half_diagonal_length * half_diagonal_normalized[1],
-        viewport_center[0] + new_half_diagonal_length * half_diagonal_normalized[0],
-        viewport_center[1] + new_half_diagonal_length * half_diagonal_normalized[1]
-    };
+    spinner.recent_viewport[0] = GLint(resized_viewport_x1y1_size[0]);
+    spinner.recent_viewport[1] = GLint(resized_viewport_x1y1_size[1]);
+    spinner.recent_viewport[2] = GLint(resized_viewport_x1y1_size[0] + resized_viewport_x1y1_size[2]);
+    spinner.recent_viewport[3] = GLint(resized_viewport_x1y1_size[1] + resized_viewport_x1y1_size[2]);
 
-    entrypoints_ptr->pGLViewport(resized_viewport[0],
-                                 resized_viewport[1],
-                                 resized_viewport[2] - resized_viewport[0],
-                                 resized_viewport[3] - resized_viewport[1]);
+    entrypoints_ptr->pGLViewport(GLint(resized_viewport_x1y1_size[0]),
+                                 GLint(resized_viewport_x1y1_size[1]),
+                                 GLint(resized_viewport_x1y1_size[2]),
+                                 GLint(resized_viewport_x1y1_size[2]));
 
     /* Generate mesh data */
     entrypoints_ptr->pGLUseProgram(ogl_program_get_id(spinner.polygonizer_po) );
@@ -618,29 +616,32 @@ PRIVATE void _spinner_draw_frame_rendering_callback(ogl_context context,
                                        spinner.velocity_to,
                                        spinner.color_to_blurred);
 
-    /* Blit the contents to the default FBO */
-    unsigned int default_fbo_id = 0;
+    /* Blit the contents to the default FBO, if requested */
+    if (spinner.should_blit_to_default_fbo)
+    {
+        unsigned int default_fbo_id = 0;
 
-    ogl_context_get_property(context,
-                             OGL_CONTEXT_PROPERTY_DEFAULT_FBO_ID,
-                            &default_fbo_id);
+        ogl_context_get_property(context,
+                                 OGL_CONTEXT_PROPERTY_DEFAULT_FBO_ID,
+                                &default_fbo_id);
 
-    entrypoints_ptr->pGLBindFramebuffer(GL_DRAW_FRAMEBUFFER,
-                                        default_fbo_id);
-    entrypoints_ptr->pGLBindFramebuffer(GL_READ_FRAMEBUFFER,
-                                        spinner.blit_fbo_id);
+        entrypoints_ptr->pGLBindFramebuffer(GL_DRAW_FRAMEBUFFER,
+                                            default_fbo_id);
+        entrypoints_ptr->pGLBindFramebuffer(GL_READ_FRAMEBUFFER,
+                                            spinner.blit_fbo_id);
 
-    entrypoints_ptr->pGLMemoryBarrier  (GL_FRAMEBUFFER_BARRIER_BIT);
-    entrypoints_ptr->pGLBlitFramebuffer(0,                     /* srcX0 */
-                                        0,                     /* srcY0 */
-                                        spinner.resolution[0], /* srcX1 */
-                                        spinner.resolution[1], /* srcY1 */
-                                        0,                     /* dstX0 */
-                                        0,                     /* dstY0 */
-                                        spinner.resolution[0], /* dstX1 */
-                                        spinner.resolution[1], /* dstY1 */
-                                        GL_COLOR_BUFFER_BIT,
-                                        GL_NEAREST);
+        entrypoints_ptr->pGLMemoryBarrier  (GL_FRAMEBUFFER_BARRIER_BIT);
+        entrypoints_ptr->pGLBlitFramebuffer(0,                     /* srcX0 */
+                                            0,                     /* srcY0 */
+                                            spinner.resolution[0], /* srcX1 */
+                                            spinner.resolution[1], /* srcY1 */
+                                            0,                     /* dstX0 */
+                                            0,                     /* dstY0 */
+                                            spinner.resolution[0], /* dstX1 */
+                                            spinner.resolution[1], /* dstY1 */
+                                            GL_COLOR_BUFFER_BIT,
+                                            GL_NEAREST);
+    }
 
     /* Restore the viewport */
     entrypoints_ptr->pGLViewport(precall_viewport[0],
@@ -1208,6 +1209,36 @@ PUBLIC void spinner_enqueue(demo_loader   loader,
 }
 
 /** Please see header for specification */
+PUBLIC void spinner_get_property(spinner_property property,
+                                 void*            out_result_ptr)
+{
+    switch (property)
+    {
+        case SPINNER_PROPERTY_RESULT_BLURRED_COLOR_TO:
+        {
+            *(ogl_texture*) out_result_ptr = spinner.color_to_blurred;
+
+            break;
+        }
+
+        case SPINNER_PROPERTY_VIEWPORT:
+        {
+            memcpy(out_result_ptr,
+                   spinner.recent_viewport,
+                   sizeof(spinner.recent_viewport) );
+
+            break;
+        }
+
+        default:
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Unrecognized spinner_property value.");
+        }
+    } /* switch (property) */
+}
+
+/** Please see header for specification */
 PUBLIC void spinner_init(demo_app    app,
                          demo_loader loader)
 {
@@ -1265,11 +1296,18 @@ PUBLIC void spinner_init(demo_app    app,
 }
 
 /** Please see header for specification */
-PUBLIC void spinner_render_to_default_fbo(uint32_t n_frame)
+PUBLIC void spinner_render(uint32_t n_frame,
+                           bool     should_blit_to_default_fbo)
 {
-    _spinner_draw_animation_rendering_callback(spinner.context,
-                                               n_frame,
-                                               0,    /* frame_time                - unused */
-                                               NULL, /* rendering_area_px_topdown - unused */
-                                               spinner.stages + SPINNER_STAGE_ANIMATION);
+    bool cached_blit_to_default_fbo_value = spinner.should_blit_to_default_fbo;
+
+    spinner.should_blit_to_default_fbo = should_blit_to_default_fbo;
+    {
+        _spinner_draw_animation_rendering_callback(spinner.context,
+                                                   n_frame,
+                                                   0,    /* frame_time                - unused */
+                                                   NULL, /* rendering_area_px_topdown - unused */
+                                                   spinner.stages + SPINNER_STAGE_ANIMATION);
+    }
+    spinner.should_blit_to_default_fbo = cached_blit_to_default_fbo_value;
 }

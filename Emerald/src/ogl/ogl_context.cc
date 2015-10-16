@@ -3282,7 +3282,7 @@ end:
 }
 
 /* Please see header for spec */
-PUBLIC ogl_context ogl_context_get_current_context()
+PUBLIC EMERALD_API ogl_context ogl_context_get_current_context()
 {
     return  _current_context;
 }
