@@ -37,10 +37,12 @@ typedef struct _spinner_stage
     float        maximum_spline_speed;
     unsigned int n_acceleration_frames;
     bool         should_clone_data_bo_on_first_frame;
+    bool         should_shake;
     float        spin_acceleration_decay_rate;
     float        spin_traction_constant_rate;  /* acceleration[] -= constant_rate: used for acceleration faster than 0.5 */
     float        spin_traction_decay_rate;     /* acceleration[] *= decay_rate:    used for acceleration      <=     0.5 */
 
+    float        shake_offset_vec2[2];
     float        spline_accelerations[SPINNER_N_SPLINES];
     float        spline_offsets      [SPINNER_N_SPLINES];
 
@@ -59,11 +61,15 @@ typedef struct _spinner_stage
         size_modifier_end                   = 1.0f;
         size_modifier_start                 = 1.0f;
         should_clone_data_bo_on_first_frame = false;
+        should_shake                        = false;
         spin_acceleration_decay_rate        = 0.0f;
         spin_traction_constant_rate         = 0.0f;
         spin_traction_decay_rate            = 0.0f;
         start_time                          = -1;
 
+        memset(shake_offset_vec2,
+               0,
+               sizeof(shake_offset_vec2) );
         memset(spline_accelerations,
                0,
                sizeof(spline_accelerations) );
@@ -100,6 +106,7 @@ typedef struct _spinner
     GLuint                     polygonizer_po_propsBuffer_innerRingRadius_ub_offset;
     GLuint                     polygonizer_po_propsBuffer_nRingsToSkip_ub_offset;
     GLuint                     polygonizer_po_propsBuffer_outerRingRadius_ub_offset;
+    GLuint                     polygonizer_po_propsBuffer_shakeOffset_ub_offset;
     GLuint                     polygonizer_po_propsBuffer_splineOffsets_ub_offset;
     ogl_program                renderer_po;
 
@@ -134,6 +141,7 @@ typedef struct _spinner
         polygonizer_po_propsBuffer_innerRingRadius_ub_offset = -1;
         polygonizer_po_propsBuffer_nRingsToSkip_ub_offset    = -1;
         polygonizer_po_propsBuffer_outerRingRadius_ub_offset = -1;
+        polygonizer_po_propsBuffer_shakeOffset_ub_offset     = -1;
         polygonizer_po_propsBuffer_splineOffsets_ub_offset   = -1;
         renderer_po                                          = NULL;
 
@@ -307,6 +315,7 @@ PRIVATE void _spinner_draw_animation_rendering_callback(ogl_context context,
 {
     GLuint                            default_fbo_id    = -1;
     const ogl_context_gl_entrypoints* entrypoints_ptr   = NULL;
+    unsigned int                      resolution[2];
     _spinner_stage*                   stage_ptr         = (_spinner_stage*) user_arg;
     uint32_t                          target_frame_rate = 0;
 
@@ -316,6 +325,9 @@ PRIVATE void _spinner_draw_animation_rendering_callback(ogl_context context,
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
                             &entrypoints_ptr);
+    demo_app_get_property   (spinner.app,
+                             DEMO_APP_PROPERTY_RESOLUTION,
+                             resolution);
     demo_app_get_property   (spinner.app,
                              DEMO_APP_PROPERTY_TARGET_FRAME_RATE,
                             &target_frame_rate);
@@ -327,6 +339,36 @@ PRIVATE void _spinner_draw_animation_rendering_callback(ogl_context context,
 
         stage_ptr->pfn_first_frame_callback_proc = NULL;
     } /* if (stage_ptr->pfn_first_frame_callback_proc != NULL) */
+
+    /* Update shake factor. */
+    if (stage_ptr->should_shake)
+    {
+        const float texel_size_ss[] = 
+        {
+            2.0f / float(resolution[0]),
+            2.0f / float(resolution[1])
+        };
+        float t = float(n_frame + 100) / 1500.0f;
+
+        stage_ptr->shake_offset_vec2[0] = texel_size_ss[0] * sin(float(n_frame * 1255)) * (t * (10.0f + n_frame / 20) );
+        stage_ptr->shake_offset_vec2[1] = texel_size_ss[1] * cos(float(n_frame * 3711)) * (t * (10.0f + n_frame / 20) );
+
+        if (stage_ptr->shake_offset_vec2[0] < 1.0f * texel_size_ss[0])
+        {
+            stage_ptr->shake_offset_vec2[0] = 0.0f;
+        }
+
+        if (stage_ptr->shake_offset_vec2[1] < 1.0f * texel_size_ss[1])
+        {
+            stage_ptr->shake_offset_vec2[1] = 0.0f;
+        }
+    }
+    else
+    {
+        memset(stage_ptr->shake_offset_vec2,
+               0,
+               sizeof(stage_ptr->shake_offset_vec2) );
+    }
 
     /* Update spline offsets. */
     for (int32_t n_current_frame = stage_ptr->last_frame_index;
@@ -403,7 +445,8 @@ PRIVATE void _spinner_draw_animation_rendering_callback(ogl_context context,
 PRIVATE void _spinner_draw_frame_rendering_callback(ogl_context context,
                                                     void*       user_arg)
 {
-    /* NOTE: This call-back does not update the spline offsets for two reasons:
+    /* NOTE: This call-back does not compute the shake factor and the spline
+     * offsets for two reasons:
      *
      * - we can't reliably tell which frame index we're dealing with.
      * - the entrypoint is also used to draw single frames (start stage).
@@ -452,11 +495,7 @@ PRIVATE void _spinner_draw_frame_rendering_callback(ogl_context context,
     new_viewport[2] = (precall_viewport_width  + spinner_size_px) / 2;
     new_viewport[3] = (precall_viewport_height + spinner_size_px) / 2;
 
-    /* Update the spline offsets.
-     *
-     * NOTE: The same offset should be used for top & bottom half. Otherwise the segments
-     *       will start overlapping at some point.
-     */
+    /* Update the spline offsets. */
     ogl_program_ub_set_arrayed_uniform_value(spinner.polygonizer_po_propsBuffer_ub,
                                              spinner.polygonizer_po_propsBuffer_splineOffsets_ub_offset,
                                              stage_ptr->spline_offsets,
@@ -465,12 +504,7 @@ PRIVATE void _spinner_draw_frame_rendering_callback(ogl_context context,
                                              0,                  /* dst_array_start_index */
                                              SPINNER_N_SPLINES); /* dst_array_item_count  */
 
-    /* Resize the viewport if necessary. The approach below is:
-     *
-     * 1. Calculate the original viewport's diagonal
-     * 2. Rescale it, according to the resize factor.
-     * 3. Compute new viewport coordinates.
-     * */
+    /* Resize the viewport if necessary. */
     const system_time  t_duration           = (stage_ptr->duration == 0) ? 1 : stage_ptr->duration;
     float              t                    = system_math_smoothstep(float(current_time - stage_ptr->start_time) / float(t_duration), 0.0f, 1.0f);
     const float        size_modifier        = (stage_ptr->size_modifier_start + t * (stage_ptr->size_modifier_end - stage_ptr->size_modifier_start) );
@@ -513,6 +547,11 @@ PRIVATE void _spinner_draw_frame_rendering_callback(ogl_context context,
                                                &n_rings_to_skip,
                                                 0, /* src_data_flags */
                                                 sizeof(int) );
+    ogl_program_ub_set_nonarrayed_uniform_value(spinner.polygonizer_po_propsBuffer_ub,
+                                                spinner.polygonizer_po_propsBuffer_shakeOffset_ub_offset,
+                                                stage_ptr->shake_offset_vec2,
+                                                0, /* src_data_flags */
+                                                sizeof(stage_ptr->shake_offset_vec2) );
     ogl_program_ub_set_nonarrayed_uniform_value(spinner.polygonizer_po_propsBuffer_ub,
                                                 spinner.polygonizer_po_propsBuffer_outerRingRadius_ub_offset,
                                                &outer_ring_radius,
@@ -671,6 +710,7 @@ PRIVATE void _spinner_init_stuff_rendering_callback(ogl_context context,
                           "    int   nRingsToSkip;\n"
                           "    float innerRingRadius;\n"
                           "    float outerRingRadius;\n"
+                          "    vec2  shakeOffset;\n"
                           "    float splineOffsets[N_SPLINES * 2];\n"
                           "} thisFrameProps;\n"
                           "\n"
@@ -711,8 +751,8 @@ PRIVATE void _spinner_init_stuff_rendering_callback(ogl_context context,
                           "\n"
                           "    uv_v1v2     = vec4(0.0, 0.0, 1.0, 0.0);\n"
                           "    uv_v3v4     = vec4(0.0, 1.0, 1.0, 1.0);\n"
-                          "    vertex_v1v2 = vec4(spline_radius)       * base_location;\n"
-                          "    vertex_v3v4 = vec4(spline_radius - 0.1) * base_location;\n"
+                          "    vertex_v1v2 = vec4(spline_radius)       * base_location + thisFrameProps.shakeOffset.xyxy;\n"
+                          "    vertex_v3v4 = vec4(spline_radius - 0.1) * base_location + thisFrameProps.shakeOffset.xyxy;\n"
                           "\n"
                           /* Store segment vertex data.
                            *
@@ -796,6 +836,7 @@ PRIVATE void _spinner_init_stuff_rendering_callback(ogl_context context,
     const ogl_program_variable*     cs_innerRingRadius_var_ptr = NULL;
     const ogl_program_variable*     cs_nRingsToSkip_var_ptr    = NULL;
     const ogl_program_variable*     cs_outerRingRadius_var_ptr = NULL;
+    const ogl_program_variable*     cs_shakeOffset_var_ptr     = NULL;
     const ogl_program_variable*     cs_splineOffsets_var_ptr   = NULL;
     const unsigned int              n_cs_body_token_values     = sizeof(cs_body_tokens) / sizeof(cs_body_tokens[0]);
     const unsigned int              n_vs_body_token_values     = sizeof(vs_body_tokens) / sizeof(vs_body_tokens[0]);
@@ -926,18 +967,23 @@ PRIVATE void _spinner_init_stuff_rendering_callback(ogl_context context,
                                         system_hashed_ansi_string_create("outerRingRadius"),
                                        &cs_outerRingRadius_var_ptr);
     ogl_program_ub_get_variable_by_name(spinner.polygonizer_po_propsBuffer_ub,
+                                        system_hashed_ansi_string_create("shakeOffset"),
+                                       &cs_shakeOffset_var_ptr);
+    ogl_program_ub_get_variable_by_name(spinner.polygonizer_po_propsBuffer_ub,
                                         system_hashed_ansi_string_create("splineOffsets[0]"),
                                        &cs_splineOffsets_var_ptr);
 
     ASSERT_DEBUG_SYNC(cs_innerRingRadius_var_ptr != NULL &&
                       cs_nRingsToSkip_var_ptr    != NULL &&
                       cs_outerRingRadius_var_ptr != NULL &&
-                      cs_splineOffsets_var_ptr     != NULL,
+                      cs_shakeOffset_var_ptr     != NULL &&
+                      cs_splineOffsets_var_ptr   != NULL,
                       "Spinner props UB variables are not recognized by GL");
 
     spinner.polygonizer_po_propsBuffer_innerRingRadius_ub_offset = cs_innerRingRadius_var_ptr->block_offset;
     spinner.polygonizer_po_propsBuffer_nRingsToSkip_ub_offset    = cs_nRingsToSkip_var_ptr->block_offset;
     spinner.polygonizer_po_propsBuffer_outerRingRadius_ub_offset = cs_outerRingRadius_var_ptr->block_offset;
+    spinner.polygonizer_po_propsBuffer_shakeOffset_ub_offset     = cs_shakeOffset_var_ptr->block_offset;
     spinner.polygonizer_po_propsBuffer_splineOffsets_ub_offset   = cs_splineOffsets_var_ptr->block_offset;
 
     /* Prepare renderer vertex shader key+token values */
@@ -1275,6 +1321,7 @@ PUBLIC void spinner_init(demo_app    app,
     spinner.stages[SPINNER_STAGE_ANIMATION].n_acceleration_frames         = 3000;
     spinner.stages[SPINNER_STAGE_ANIMATION].size_modifier_end             = 6.0f;
     spinner.stages[SPINNER_STAGE_ANIMATION].size_modifier_start           = 1.0f;
+    spinner.stages[SPINNER_STAGE_ANIMATION].should_shake                  = true;
     spinner.stages[SPINNER_STAGE_ANIMATION].spin_acceleration_decay_rate  = 1.0f/180.0f;
     spinner.stages[SPINNER_STAGE_ANIMATION].spin_traction_constant_rate   = 0.006f;
     spinner.stages[SPINNER_STAGE_ANIMATION].spin_traction_decay_rate      = 0.9f;

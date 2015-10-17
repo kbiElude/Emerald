@@ -238,19 +238,9 @@ PUBLIC RENDERING_CONTEXT_CALL void stage_intro_render(ogl_context context,
 
     if (frame_time_msec >= 3500)
     {
-#if 0
-        current_size = 0.1f + system_math_smoothstep(float(frame_time_msec),
-                                                     3500.0f,
-                                                     6000.0f) * 0.65f;
-#else
-        current_size = 0.1f + system_math_smoothstep(float(frame_time_msec),
-                                                     3400.0f,
-                                                     7500.0f);
-#endif
-    }
-    else
-    {
-        current_size = float(frame_time_msec) / 3500.0f * 0.1f;
+        current_size = system_math_smoothstep(float(frame_time_msec),
+                                              3500.0f,
+                                              7500.0f) * 1.6f;
     }
 
     if (current_size > 1.0f)
