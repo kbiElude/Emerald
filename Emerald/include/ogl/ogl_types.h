@@ -19,6 +19,10 @@ DECLARE_HANDLE(ogl_primitive_renderer);
 
 typedef unsigned int ogl_primitive_renderer_dataset_id;
 
+/* Enumerator describing native GL primitive types.
+ *
+ * NOTE: Client application should always use RAL enums!
+ */
 typedef enum
 {
     OGL_PRIMITIVE_TYPE_LINE_LOOP                = GL_LINE_LOOP,
@@ -461,30 +465,6 @@ typedef enum
 
     OGL_TEXTURE_INTERNALFORMAT_UNKNOWN = 0xFFFF
 } ogl_texture_internalformat;
-
-/* Enumerator that desribes OpenGL types */
-typedef enum
-{
-    OGL_TEXTURE_TYPE_GL_BYTE                        = GL_BYTE,
-    OGL_TEXTURE_TYPE_GL_FLOAT                       = GL_FLOAT,
-    OGL_TEXTURE_TYPE_GL_INT                         = GL_INT,
-    OGL_TEXTURE_TYPE_GL_SHORT                       = GL_SHORT,
-    OGL_TEXTURE_TYPE_GL_UNSIGNED_INT                = GL_UNSIGNED_INT,
-    OGL_TEXTURE_TYPE_GL_UNSIGNED_BYTE               = GL_UNSIGNED_BYTE,
-    OGL_TEXTURE_TYPE_GL_UNSIGNED_BYTE_3_3_2         = GL_UNSIGNED_BYTE_3_3_2,
-    OGL_TEXTURE_TYPE_GL_UNSIGNED_BYTE_2_3_3_REV     = GL_UNSIGNED_BYTE_2_3_3_REV,
-    OGL_TEXTURE_TYPE_GL_UNSIGNED_SHORT              = GL_UNSIGNED_SHORT,
-    OGL_TEXTURE_TYPE_GL_UNSIGNED_SHORT_5_6_5        = GL_UNSIGNED_SHORT_5_6_5,
-    OGL_TEXTURE_TYPE_GL_UNSIGNED_SHORT_5_6_5_REV    = GL_UNSIGNED_SHORT_5_6_5_REV,
-    OGL_TEXTURE_TYPE_GL_UNSIGNED_SHORT_4_4_4_4      = GL_UNSIGNED_SHORT_4_4_4_4,
-    OGL_TEXTURE_TYPE_GL_UNSIGNED_SHORT_4_4_4_4_REV  = GL_UNSIGNED_SHORT_4_4_4_4_REV,
-    OGL_TEXTURE_TYPE_GL_UNSIGNED_SHORT_5_5_5_1      = GL_UNSIGNED_SHORT_5_5_5_1,
-    OGL_TEXTURE_TYPE_GL_UNSIGNED_SHORT_1_5_5_5_REV  = GL_UNSIGNED_SHORT_1_5_5_5_REV,
-    OGL_TEXTURE_TYPE_GL_UNSIGNED_INT_8_8_8_8        = GL_UNSIGNED_INT_8_8_8_8,
-    OGL_TEXTURE_TYPE_GL_UNSIGNED_INT_8_8_8_8_REV    = GL_UNSIGNED_INT_8_8_8_8_REV,
-    OGL_TEXTURE_TYPE_GL_UNSIGNED_INT_10_10_10_2     = GL_UNSIGNED_INT_10_10_10_2,
-    OGL_TEXTURE_TYPE_GL_UNSIGNED_INT_2_10_10_10_REV = GL_UNSIGNED_INT_2_10_10_10_REV
-} ogl_texture_type;
 
 /* ES entry-points. */
 typedef struct

@@ -5,6 +5,35 @@
 #include "raGL/raGL_ral.h"
 
 /** Please see header for specification */
+PUBLIC ogl_primitive_type raGL_get_ogl_primive_type_for_ral_primitive_type(ral_primitive_type in_primitive_type)
+{
+    ogl_primitive_type result = OGL_PRIMITIVE_TYPE_UNDEFINED;
+
+    switch (in_primitive_type)
+    {
+        case RAL_PRIMITIVE_TYPE_LINE_LOOP:                result = OGL_PRIMITIVE_TYPE_LINE_LOOP;                 break;
+        case RAL_PRIMITIVE_TYPE_LINE_STRIP:               result = OGL_PRIMITIVE_TYPE_LINE_STRIP;                break;
+        case RAL_PRIMITIVE_TYPE_LINE_STRIP_ADJACENCY:     result = OGL_PRIMITIVE_TYPE_LINE_STRIP_ADJACENCY;      break;
+        case RAL_PRIMITIVE_TYPE_LINES:                    result = OGL_PRIMITIVE_TYPE_LINES;                     break;
+        case RAL_PRIMITIVE_TYPE_LINES_ADJACENCY:          result = OGL_PRIMITIVE_TYPE_LINES_ADJACENCY;           break;
+        case RAL_PRIMITIVE_TYPE_POINTS:                   result = OGL_PRIMITIVE_TYPE_POINTS;                    break;
+        case RAL_PRIMITIVE_TYPE_TRIANGLE_FAN:             result = OGL_PRIMITIVE_TYPE_TRIANGLE_FAN;              break;
+        case RAL_PRIMITIVE_TYPE_TRIANGLE_STRIP:           result = OGL_PRIMITIVE_TYPE_TRIANGLE_STRIP;            break;
+        case RAL_PRIMITIVE_TYPE_TRIANGLE_STRIP_ADJACENCY: result = OGL_PRIMITIVE_TYPE_TRIANGLE_STRIP_ADJACENCY;  break;
+        case RAL_PRIMITIVE_TYPE_TRIANGLES:                result = OGL_PRIMITIVE_TYPE_TRIANGLES;                 break;
+        case RAL_PRIMITIVE_TYPE_TRIANGLES_ADJACENCY:      result = OGL_PRIMITIVE_TYPE_TRIANGLES_ADJACENCY;       break;
+
+        default:
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "RAL primitive type not supported for OpenGL");
+        }
+    } /* switch (in_primitive_type) */
+
+    return result;
+}
+
+/** Please see header for specification */
 PUBLIC ogl_texture_internalformat raGL_get_ogl_texture_internalformat_for_ral_texture_format(ral_texture_format in_texture_format)
 {
     ogl_texture_internalformat result = OGL_TEXTURE_INTERNALFORMAT_UNKNOWN;

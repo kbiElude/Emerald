@@ -12,13 +12,15 @@
 #define OGL_PRIMITIVE_RENDERER_H
 
 #include "ogl/ogl_types.h"
+#include "ral/ral_types.h"
+
 
 REFCOUNT_INSERT_DECLARATIONS(ogl_primitive_renderer,
                              ogl_primitive_renderer);
 
 /** TODO */
 PUBLIC EMERALD_API ogl_primitive_renderer_dataset_id ogl_primitive_renderer_add_dataset(ogl_primitive_renderer renderer,
-                                                                                        ogl_primitive_type     primitive_type,
+                                                                                        ral_primitive_type     primitive_type,
                                                                                         unsigned int           n_vertices,
                                                                                         const float*           vertex_data,
                                                                                         const float*           rgb);

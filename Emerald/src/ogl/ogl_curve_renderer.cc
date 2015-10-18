@@ -373,7 +373,7 @@ PUBLIC EMERALD_API ogl_curve_item_id ogl_curve_renderer_add_scene_graph_node_cur
 
     /* Fill it */
     item_ptr->path_dataset_id = ogl_primitive_renderer_add_dataset(renderer_ptr->primitive_renderer,
-                                                                   OGL_PRIMITIVE_TYPE_LINE_STRIP,
+                                                                   RAL_PRIMITIVE_TYPE_LINE_STRIP,
                                                                    n_vertices,
                                                                    vertex_data,
                                                                    curve_color);
@@ -383,7 +383,7 @@ PUBLIC EMERALD_API ogl_curve_item_id ogl_curve_renderer_add_scene_graph_node_cur
         const float view_vector_color[] = {1.0f, 0.0f, 0.0f, 1.0f};
 
         item_ptr->view_vector_dataset_id = ogl_primitive_renderer_add_dataset(renderer_ptr->primitive_renderer,
-                                                                              OGL_PRIMITIVE_TYPE_LINES,
+                                                                              RAL_PRIMITIVE_TYPE_LINES,
                                                                               n_vertices * 2,
                                                                               view_vector_lines_data,
                                                                               view_vector_color);
