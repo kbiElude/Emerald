@@ -10,7 +10,6 @@
 #include "ogl/ogl_rendering_handler.h"
 #include "ogl/ogl_shader.h"
 #include "ogl/ogl_texture.h"
-#include "postprocessing/postprocessing_motion_blur.h"
 #include "system/system_log.h"
 #include "system/system_math_other.h"
 #include "system/system_math_vector.h"
@@ -20,7 +19,6 @@
 
 #define SPINNER_N_SEGMENTS_PER_SPLINE (16)
 #define SPINNER_N_SPLINES             (9)
-#define SPINNER_STAGE_ANIMATION       (SPINNER_STAGE_COUNT)
 
 typedef void (*PFNFIRSTFRAMECALLBACKPROC)(struct _spinner_stage* stage_ptr);
 
@@ -36,6 +34,7 @@ typedef struct _spinner_stage
 
     float        maximum_spline_speed;
     unsigned int n_acceleration_frames;
+    bool         should_blit_data_to_default_fbo;
     bool         should_clone_data_bo_on_first_frame;
     bool         should_shake;
     float        spin_acceleration_decay_rate;
@@ -60,6 +59,7 @@ typedef struct _spinner_stage
         last_frame_index                    = -1;
         size_modifier_end                   = 1.0f;
         size_modifier_start                 = 1.0f;
+        should_blit_data_to_default_fbo     = false;
         should_clone_data_bo_on_first_frame = false;
         should_shake                        = false;
         spin_acceleration_decay_rate        = 0.0f;
@@ -86,6 +86,7 @@ typedef struct _spinner
 {
     demo_app       app;
     ogl_context    context;
+    spinner_stage  current_stage;
 
     unsigned int   bo_size;
     GLuint         current_frame_bo_id;
@@ -96,7 +97,6 @@ typedef struct _spinner
     bool           should_blit_to_default_fbo;
     GLuint         vao_id;
 
-    postprocessing_motion_blur motion_blur;
     ogl_program                polygonizer_po;
     unsigned int               polygonizer_po_global_wg_size[3];
     ogl_program_ub             polygonizer_po_propsBuffer_ub;
@@ -110,18 +110,17 @@ typedef struct _spinner
     GLuint                     polygonizer_po_propsBuffer_splineOffsets_ub_offset;
     ogl_program                renderer_po;
 
-    GLuint         blit_fbo_id;
     ogl_texture    color_to;
-    ogl_texture    color_to_blurred;
     GLuint         render_fbo_id;
     ogl_texture    velocity_to;
 
     unsigned int    resolution[2];
-    _spinner_stage  stages[SPINNER_STAGE_COUNT + 1 /* animation */];
+    _spinner_stage  stages[SPINNER_STAGE_COUNT];
 
     _spinner()
     {
-        context = NULL;
+        context       = NULL;
+        current_stage = SPINNER_STAGE_START;
 
         bo_size                        = 0;
         current_frame_bo_id            = 0;
@@ -131,7 +130,6 @@ typedef struct _spinner
         should_blit_to_default_fbo     = true;
         vao_id                         = 0;
 
-        motion_blur                                          = NULL;
         polygonizer_po                                       = NULL;
         polygonizer_po_global_wg_size[3]                     = {0};
         polygonizer_po_propsBuffer_ub                        = NULL;
@@ -145,11 +143,9 @@ typedef struct _spinner
         polygonizer_po_propsBuffer_splineOffsets_ub_offset   = -1;
         renderer_po                                          = NULL;
 
-        blit_fbo_id      = 0;
-        color_to         = NULL;
-        color_to_blurred = NULL;
-        render_fbo_id    = 0;
-        velocity_to      = NULL;
+        color_to      = NULL;
+        render_fbo_id = 0;
+        velocity_to   = NULL;
 
         memset(recent_viewport,
                0,
@@ -214,26 +210,11 @@ PRIVATE void _spinner_deinit_stuff_callback(void* unused)
         spinner.color_to = NULL;
     }
 
-    if (spinner.color_to_blurred != NULL)
-    {
-        ogl_texture_release(spinner.color_to_blurred);
-
-        spinner.color_to_blurred = NULL;
-    }
-
     if (spinner.velocity_to != NULL)
     {
         ogl_texture_release(spinner.velocity_to);
 
         spinner.velocity_to = NULL;
-    }
-
-    /* Post-processors */
-    if (spinner.motion_blur != NULL)
-    {
-        postprocessing_motion_blur_release(spinner.motion_blur);
-
-        spinner.motion_blur = NULL;
     }
 
     /* Request rendering context call-back to deinit GL stuff */
@@ -280,14 +261,6 @@ PRIVATE void _spinner_deinit_stuff_rendering_callback(ogl_context context,
     spinner.bo_size = 0;
 
     /* FBOs */
-    if (spinner.blit_fbo_id != 0)
-    {
-        entrypoints_ptr->pGLDeleteFramebuffers(1,
-                                              &spinner.blit_fbo_id);
-
-        spinner.blit_fbo_id = 0;
-    }
-
     if (spinner.render_fbo_id != 0)
     {
         entrypoints_ptr->pGLDeleteFramebuffers(1,
@@ -316,7 +289,7 @@ PRIVATE void _spinner_draw_animation_rendering_callback(ogl_context context,
     GLuint                            default_fbo_id    = -1;
     const ogl_context_gl_entrypoints* entrypoints_ptr   = NULL;
     unsigned int                      resolution[2];
-    _spinner_stage*                   stage_ptr         = (_spinner_stage*) user_arg;
+    _spinner_stage*                   stage_ptr         = spinner.stages + spinner.current_stage;
     uint32_t                          target_frame_rate = 0;
 
     ogl_context_get_property(context,
@@ -383,7 +356,7 @@ PRIVATE void _spinner_draw_animation_rendering_callback(ogl_context context,
                  n_current_frame < (int32_t) n_frame;
                ++n_current_frame)
     {
-        if (n_current_frame < stage_ptr->n_acceleration_frames)
+        if (n_current_frame < (int32_t) stage_ptr->n_acceleration_frames)
         {
             float t = float(n_current_frame) / float(stage_ptr->n_acceleration_frames - 1);
 
@@ -463,7 +436,7 @@ PRIVATE void _spinner_draw_frame_rendering_callback(ogl_context context,
      */
     system_time                       current_time    = system_time_now();
     const ogl_context_gl_entrypoints* entrypoints_ptr = NULL;
-    _spinner_stage*                   stage_ptr       = (_spinner_stage*) user_arg;
+    _spinner_stage*                   stage_ptr       = spinner.stages + spinner.current_stage;
 
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
@@ -656,39 +629,6 @@ PRIVATE void _spinner_draw_frame_rendering_callback(ogl_context context,
                                           spinner.current_frame_bo_start_offset,  /* readOffset  */
                                           spinner.previous_frame_bo_start_offset, /* writeOffset */
                                           spinner.bo_size);
-
-    /* Apply motion blur to the rendered contents */
-    postprocessing_motion_blur_execute(spinner.motion_blur,
-                                       spinner.color_to,
-                                       spinner.velocity_to,
-                                       spinner.color_to_blurred);
-
-    /* Blit the contents to the default FBO, if requested */
-    if (spinner.should_blit_to_default_fbo)
-    {
-        unsigned int default_fbo_id = 0;
-
-        ogl_context_get_property(context,
-                                 OGL_CONTEXT_PROPERTY_DEFAULT_FBO_ID,
-                                &default_fbo_id);
-
-        entrypoints_ptr->pGLBindFramebuffer(GL_DRAW_FRAMEBUFFER,
-                                            default_fbo_id);
-        entrypoints_ptr->pGLBindFramebuffer(GL_READ_FRAMEBUFFER,
-                                            spinner.blit_fbo_id);
-
-        entrypoints_ptr->pGLMemoryBarrier  (GL_FRAMEBUFFER_BARRIER_BIT);
-        entrypoints_ptr->pGLBlitFramebuffer(0,                     /* srcX0 */
-                                            0,                     /* srcY0 */
-                                            spinner.resolution[0], /* srcX1 */
-                                            spinner.resolution[1], /* srcY1 */
-                                            0,                     /* dstX0 */
-                                            0,                     /* dstY0 */
-                                            spinner.resolution[0], /* dstX1 */
-                                            spinner.resolution[1], /* dstY1 */
-                                            GL_COLOR_BUFFER_BIT,
-                                            GL_NEAREST);
-    }
 
     /* Restore the viewport */
     entrypoints_ptr->pGLViewport(precall_viewport[0],
@@ -1122,23 +1062,13 @@ PRIVATE void _spinner_init_stuff_rendering_callback(ogl_context context,
     const GLint  n_render_fbo_draw_buffers = sizeof(render_fbo_draw_buffers) / sizeof(render_fbo_draw_buffers[0]);
     const float  zero_vec4[4]              = { 0.0f, 0.0f, 0.0f, 0.0f };
 
-    spinner.color_to         = ogl_texture_create_empty(context,
-                                                        system_hashed_ansi_string_create("Color TO"));
-    spinner.color_to_blurred = ogl_texture_create_empty(context,
-                                                        system_hashed_ansi_string_create("Post-processed color TO"));
-    spinner.velocity_to      = ogl_texture_create_empty(context,
-                                                        system_hashed_ansi_string_create("Velocity TO"));
+    spinner.color_to    = ogl_texture_create_empty(context,
+                                                   system_hashed_ansi_string_create("Color TO"));
+    spinner.velocity_to = ogl_texture_create_empty(context,
+                                                   system_hashed_ansi_string_create("Velocity TO"));
 
     entrypoints_ptr->pGLBindTexture (GL_TEXTURE_2D,
                                      spinner.color_to);
-    entrypoints_ptr->pGLTexStorage2D(GL_TEXTURE_2D,
-                                     1, /* levels */
-                                     GL_RGBA8,
-                                     spinner.resolution[0],
-                                     spinner.resolution[1]);
-
-    entrypoints_ptr->pGLBindTexture (GL_TEXTURE_2D,
-                                     spinner.color_to_blurred);
     entrypoints_ptr->pGLTexStorage2D(GL_TEXTURE_2D,
                                      1, /* levels */
                                      GL_RGBA8,
@@ -1173,26 +1103,6 @@ PRIVATE void _spinner_init_stuff_rendering_callback(ogl_context context,
     ASSERT_DEBUG_SYNC(entrypoints_ptr->pGLCheckFramebufferStatus(GL_DRAW_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE,
                       "Spinner render FBO is incomplete");
 
-    entrypoints_ptr->pGLGenFramebuffers     (1,
-                                            &spinner.blit_fbo_id);
-    entrypoints_ptr->pGLBindFramebuffer     (GL_READ_FRAMEBUFFER,
-                                             spinner.blit_fbo_id);
-    entrypoints_ptr->pGLFramebufferTexture2D(GL_READ_FRAMEBUFFER,
-                                             GL_COLOR_ATTACHMENT0,
-                                             GL_TEXTURE_2D,
-                                             spinner.color_to_blurred,
-                                             0); /* level */
-
-    ASSERT_DEBUG_SYNC(entrypoints_ptr->pGLCheckFramebufferStatus(GL_READ_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE,
-                      "Spinner read FBO is incomplete");
-
-    /* Init motion blur post-processor */
-    spinner.motion_blur = postprocessing_motion_blur_create(context,
-                                                            POSTPROCESSING_MOTION_BLUR_IMAGE_FORMAT_RGBA8,
-                                                            POSTPROCESSING_MOTION_BLUR_IMAGE_FORMAT_RG32F,
-                                                            POSTPROCESSING_MOTION_BLUR_IMAGE_DIMENSIONALITY_2D,
-                                                            system_hashed_ansi_string_create("Spinner motion blur") );
-
     /* All done */
 end:
     if (polygonizer_cs != NULL)
@@ -1219,58 +1129,21 @@ end:
 
 
 /** Please see header for specification */
-PUBLIC void spinner_enqueue(demo_loader   loader,
-                            spinner_stage loader_stage)
-{
-    switch (loader_stage)
-    {
-        case SPINNER_STAGE_FIRST_SPIN:
-        case SPINNER_STAGE_SECOND_SPIN:
-        {
-            demo_loader_op_render_animation render_animation_arg;
-
-            render_animation_arg.pfn_rendering_callback_proc = _spinner_draw_animation_rendering_callback;
-            render_animation_arg.user_arg                    = spinner.stages + loader_stage;
-
-            demo_loader_enqueue_operation(loader,
-                                          DEMO_LOADER_OP_RENDER_ANIMATION,
-                                         &render_animation_arg);
-
-            break;
-        }
-
-        case SPINNER_STAGE_START:
-        {
-            demo_loader_op_render_frame render_frame_arg;
-
-            render_frame_arg.pfn_rendering_callback_proc = _spinner_draw_frame_rendering_callback;
-            render_frame_arg.user_arg                    = &spinner.stages + SPINNER_STAGE_START;
-
-            demo_loader_enqueue_operation(loader,
-                                          DEMO_LOADER_OP_RENDER_FRAME,
-                                         &render_frame_arg);
-
-            break;
-        }
-
-        default:
-        {
-            ASSERT_DEBUG_SYNC(false,
-                              "Unrecognized spinner stage requested");
-        }
-    } /* switch (loader_stage) */
-
-}
-
-/** Please see header for specification */
 PUBLIC void spinner_get_property(spinner_property property,
                                  void*            out_result_ptr)
 {
     switch (property)
     {
-        case SPINNER_PROPERTY_RESULT_BLURRED_COLOR_TO:
+        case SPINNER_PROPERTY_RESULT_COLOR_TO:
         {
-            *(ogl_texture*) out_result_ptr = spinner.color_to_blurred;
+            *(ogl_texture*) out_result_ptr = spinner.color_to;
+
+            break;
+        }
+
+        case SPINNER_PROPERTY_RESULT_VELOCITY_TO:
+        {
+            *(ogl_texture*) out_result_ptr = spinner.velocity_to;
 
             break;
         }
@@ -1351,18 +1224,33 @@ PUBLIC void spinner_init(demo_app    app,
 }
 
 /** Please see header for specification */
-PUBLIC void spinner_render(uint32_t n_frame,
-                           bool     should_blit_to_default_fbo)
+PUBLIC RENDERING_CONTEXT_CALL void spinner_render(uint32_t    n_frame,
+                                                  system_time frame_time)
 {
-    bool cached_blit_to_default_fbo_value = spinner.should_blit_to_default_fbo;
+    _spinner_draw_animation_rendering_callback(spinner.context,
+                                               n_frame,
+                                               frame_time,
+                                               NULL,  /* rendering_area_px_topdown - unused */
+                                               NULL); /* user_arg                  - unused */
+}
 
-    spinner.should_blit_to_default_fbo = should_blit_to_default_fbo;
+/** Please see header for specification */
+PUBLIC void spinner_set_property(spinner_property property,
+                                 const void*      data)
+{
+    switch (property)
     {
-        _spinner_draw_animation_rendering_callback(spinner.context,
-                                                   n_frame,
-                                                   0,    /* frame_time                - unused */
-                                                   NULL, /* rendering_area_px_topdown - unused */
-                                                   spinner.stages + SPINNER_STAGE_ANIMATION);
-    }
-    spinner.should_blit_to_default_fbo = cached_blit_to_default_fbo_value;
+        case SPINNER_PROPERTY_CURRENT_STAGE:
+        {
+            spinner.current_stage = *(spinner_stage*) data;
+
+            break;
+        }
+
+        default:
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Unrecognized spinner_property value.");
+        }
+    } /* switch (property) */
 }

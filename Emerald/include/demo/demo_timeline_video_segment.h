@@ -109,10 +109,10 @@ PUBLIC void demo_timeline_video_segment_get_property(demo_timeline_video_segment
                                                      void*                                out_result_ptr);
 
 /** TODO */
-PUBLIC RENDERING_CONTEXT_CALL bool demo_timeline_video_segment_render(demo_timeline_video_segment segment,
-                                                                      uint32_t                    frame_index,
-                                                                      system_time                 rendering_pipeline_time,
-                                                                      const int*                  rendering_area_px_topdown);
+PUBLIC EMERALD_API RENDERING_CONTEXT_CALL bool demo_timeline_video_segment_render(demo_timeline_video_segment segment,
+                                                                                  uint32_t                    frame_index,
+                                                                                  system_time                 rendering_pipeline_time,
+                                                                                  const int*                  rendering_area_px_topdown);
 
 /** TODO */
 PUBLIC void demo_timeline_video_segment_set_property(demo_timeline_video_segment          segment,

@@ -158,10 +158,10 @@ PUBLIC void demo_timeline_video_segment_get_property(demo_timeline_video_segment
 }
 
 /** Please see header for specification */
-PUBLIC RENDERING_CONTEXT_CALL bool demo_timeline_video_segment_render(demo_timeline_video_segment segment,
-                                                                      uint32_t                    frame_index,
-                                                                      system_time                 rendering_pipeline_time,
-                                                                      const int*                  rendering_area_px_topdown)
+PUBLIC EMERALD_API RENDERING_CONTEXT_CALL bool demo_timeline_video_segment_render(demo_timeline_video_segment segment,
+                                                                                  uint32_t                    frame_index,
+                                                                                  system_time                 rendering_pipeline_time,
+                                                                                  const int*                  rendering_area_px_topdown)
 {
     bool                          result;
     _demo_timeline_video_segment* segment_ptr = (_demo_timeline_video_segment*) segment;
