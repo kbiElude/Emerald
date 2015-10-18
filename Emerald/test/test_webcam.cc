@@ -292,7 +292,7 @@ TEST(WebcamTest, CreationTest)
 
         ASSERT_TRUE(system_window_get_context(window_handle, &gl_context) );
 
-        vertex_shader = ogl_shader_create(gl_context, SHADER_TYPE_VERTEX);
+        vertex_shader = ogl_shader_create(gl_context, RAL_SHADER_TYPE_VERTEX);
         ASSERT_TRUE(vertex_shader != NULL);
 
         ogl_shader_set_body(vertex_shader,
@@ -315,7 +315,7 @@ TEST(WebcamTest, CreationTest)
         ASSERT_TRUE(ogl_shader_compile(vertex_shader) );
 
         /* Create the fragment shader */
-        ogl_shader fragment_shader = ogl_shader_create(gl_context, SHADER_TYPE_FRAGMENT);
+        ogl_shader fragment_shader = ogl_shader_create(gl_context, RAL_SHADER_TYPE_FRAGMENT);
         ASSERT_TRUE(fragment_shader != NULL);
 
         ogl_shader_set_body(fragment_shader,

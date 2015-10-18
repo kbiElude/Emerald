@@ -1873,7 +1873,7 @@ PRIVATE void _curve_editor_curve_window_renderer_init_globals(ogl_context contex
                           "Could not create background program for curve window renderer.");
 
         _globals->bg_fragment_shader = ogl_shader_create               (context,
-                                                                        SHADER_TYPE_FRAGMENT,
+                                                                        RAL_SHADER_TYPE_FRAGMENT,
                                                                         system_hashed_ansi_string_create("Curve window renderer: background fragment shader") );
         _globals->bg_vertex_shader   = shaders_vertex_fullscreen_create(context,
                                                                         true,
@@ -1916,7 +1916,7 @@ PRIVATE void _curve_editor_curve_window_renderer_init_globals(ogl_context contex
                           "Could not craete static color program for curve window renderer.");
 
         _globals->static_color_fragment_shader = ogl_shader_create                                    (context,
-                                                                                                       SHADER_TYPE_FRAGMENT,
+                                                                                                       RAL_SHADER_TYPE_FRAGMENT,
                                                                                                        system_hashed_ansi_string_create("Curve window renderer: static color fragment shader") );
         _globals->static_color_vertex_shader   = shaders_vertex_combinedmvp_simplified_twopoint_create(context,
                                                                                                        system_hashed_ansi_string_create("Curve window renderer: static color vertex shader") );

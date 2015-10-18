@@ -667,7 +667,7 @@ PRIVATE void _postprocessing_blur_gaussian_init_rendering_thread_callback(ogl_co
 
             /* Create the fragment shader */
             fs = ogl_shader_create(context,
-                                   SHADER_TYPE_FRAGMENT,
+                                   RAL_SHADER_TYPE_FRAGMENT,
                                    fs_name);
 
             ogl_shader_set_body(fs,
@@ -685,7 +685,7 @@ PRIVATE void _postprocessing_blur_gaussian_init_rendering_thread_callback(ogl_co
         {
             /* Create the vertex shader */
             vs = ogl_shader_create(context,
-                                   SHADER_TYPE_VERTEX,
+                                   RAL_SHADER_TYPE_VERTEX,
                                    vs_name);
 
             ogl_shader_set_body(vs,

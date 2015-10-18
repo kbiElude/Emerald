@@ -4,25 +4,44 @@
 /* Primitive types supported by RAL */
 typedef enum
 {
-    RAL_PRIMITIVE_TYPE_LINE_LOOP                = GL_LINE_LOOP,
-    RAL_PRIMITIVE_TYPE_LINE_STRIP               = GL_LINE_STRIP,
-    RAL_PRIMITIVE_TYPE_LINE_STRIP_ADJACENCY     = GL_LINE_STRIP_ADJACENCY,
-    RAL_PRIMITIVE_TYPE_LINES                    = GL_LINES,
-    RAL_PRIMITIVE_TYPE_LINES_ADJACENCY          = GL_LINES_ADJACENCY,
-    RAL_PRIMITIVE_TYPE_POINTS                   = GL_POINTS,
-    RAL_PRIMITIVE_TYPE_TRIANGLE_FAN             = GL_TRIANGLE_FAN,
-    RAL_PRIMITIVE_TYPE_TRIANGLE_STRIP           = GL_TRIANGLE_STRIP,
-    RAL_PRIMITIVE_TYPE_TRIANGLE_STRIP_ADJACENCY = GL_TRIANGLE_STRIP_ADJACENCY,
-    RAL_PRIMITIVE_TYPE_TRIANGLES                = GL_TRIANGLES,
-    RAL_PRIMITIVE_TYPE_TRIANGLES_ADJACENCY      = GL_TRIANGLES_ADJACENCY,
+    /* NOTE: Make sure to update *_get_*_primitive_type_for_ral_primitive_type() functions whenever modifying
+     *       this enum definition!
+     */
+    RAL_PRIMITIVE_TYPE_LINE_LOOP,
+    RAL_PRIMITIVE_TYPE_LINE_STRIP,
+    RAL_PRIMITIVE_TYPE_LINE_STRIP_ADJACENCY,
+    RAL_PRIMITIVE_TYPE_LINES,
+    RAL_PRIMITIVE_TYPE_LINES_ADJACENCY,
+    RAL_PRIMITIVE_TYPE_POINTS,
+    RAL_PRIMITIVE_TYPE_TRIANGLE_FAN,
+    RAL_PRIMITIVE_TYPE_TRIANGLE_STRIP,
+    RAL_PRIMITIVE_TYPE_TRIANGLE_STRIP_ADJACENCY,
+    RAL_PRIMITIVE_TYPE_TRIANGLES,
+    RAL_PRIMITIVE_TYPE_TRIANGLES_ADJACENCY,
 
-    RAL_PRIMITIVE_TYPE_UNDEFINED
+    RAL_PRIMITIVE_TYPE_UNKNOWN,
+    RAL_PRIMITIVE_TYPE_COUNT = RAL_PRIMITIVE_TYPE_UNKNOWN
 } ral_primitive_type;
+
+/* RAL shader stages */
+typedef enum
+{
+    RAL_SHADER_TYPE_COMPUTE,
+    RAL_SHADER_TYPE_FRAGMENT,
+    RAL_SHADER_TYPE_GEOMETRY,
+    RAL_SHADER_TYPE_TESSELLATION_CONTROL,
+    RAL_SHADER_TYPE_TESSELLATION_EVALUATION,
+    RAL_SHADER_TYPE_VERTEX,
+
+    /* Always last */
+    RAL_SHADER_TYPE_UNKNOWN,
+    RAL_SHADER_TYPE_COUNT = RAL_SHADER_TYPE_UNKNOWN
+} ral_shader_type;
 
 /* RAL texture formats */
 typedef enum
 {
-    /* NOTE: Make sure to update *_get_ogl_texture_internalformat_for_ral_texture_format() functions whenever modifying
+    /* NOTE: Make sure to update *_get_*_texture_internalformat_for_ral_texture_format() functions whenever modifying
      *       this enum definition!
      */
     RAL_TEXTURE_FORMAT_COMPRESSED_RGTC1_SNORM,
@@ -127,11 +146,15 @@ typedef enum
 
     RAL_TEXTURE_FORMAT_SRGBA8_UNORM,
 
-    RAL_TEXTURE_FORMAT_UNKNOWN
+    RAL_TEXTURE_FORMAT_UNKNOWN,
+    RAL_TEXTURE_FORMAT_COUNT = RAL_TEXTURE_FORMAT_UNKNOWN
 } ral_texture_format;
 
 typedef enum
 {
+    /* NOTE: Make sure to update *_get_*_texture_type_for_ral_texture_type() functions whenever modifying
+     *       this enum definition!
+     */
     RAL_TEXTURE_TYPE_1D,
     RAL_TEXTURE_TYPE_1D_ARRAY,
     RAL_TEXTURE_TYPE_2D,

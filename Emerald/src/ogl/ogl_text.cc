@@ -470,13 +470,13 @@ PRIVATE void _ogl_text_construction_callback_from_renderer(ogl_context context,
         if (_n_global_owners == 0)
         {
             _global.draw_text_fragment_shader = ogl_shader_create (context,
-                                                                   SHADER_TYPE_FRAGMENT,
+                                                                   RAL_SHADER_TYPE_FRAGMENT,
                                                                    system_hashed_ansi_string_create("ogl_text fragment shader"));
             _global.draw_text_program         = ogl_program_create(context,
                                                                    system_hashed_ansi_string_create("ogl_text program"),
                                                                    OGL_PROGRAM_SYNCABLE_UBS_MODE_ENABLE_PER_CONTEXT);
             _global.draw_text_vertex_shader   = ogl_shader_create (context,
-                                                                   SHADER_TYPE_VERTEX,
+                                                                   RAL_SHADER_TYPE_VERTEX,
                                                                    system_hashed_ansi_string_create("ogl_text vertex shader") );
 
             /* Prepare the bodies */

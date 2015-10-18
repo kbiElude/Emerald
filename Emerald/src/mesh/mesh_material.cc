@@ -821,14 +821,14 @@ PUBLIC EMERALD_API mesh_material mesh_material_create_from_shader_bodies(system_
     {
         system_hashed_ansi_string body;
         const char*               suffix;
-        ogl_shader_type           type;
+        ral_shader_type           type;
     } bodies[] =
     {
-        {fs_body, " FS", SHADER_TYPE_FRAGMENT},
-        {gs_body, " GS", SHADER_TYPE_GEOMETRY},
-        {tc_body, " TC", SHADER_TYPE_TESSELLATION_CONTROL},
-        {te_body, " TE", SHADER_TYPE_TESSELLATION_EVALUATION},
-        {vs_body, " VS", SHADER_TYPE_VERTEX}
+        {fs_body, " FS", RAL_SHADER_TYPE_FRAGMENT},
+        {gs_body, " GS", RAL_SHADER_TYPE_GEOMETRY},
+        {tc_body, " TC", RAL_SHADER_TYPE_TESSELLATION_CONTROL},
+        {te_body, " TE", RAL_SHADER_TYPE_TESSELLATION_EVALUATION},
+        {vs_body, " VS", RAL_SHADER_TYPE_VERTEX}
     };
     const unsigned int n_bodies = sizeof(bodies) / sizeof(bodies[0]);
 

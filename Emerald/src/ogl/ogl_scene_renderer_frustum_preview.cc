@@ -396,10 +396,10 @@ PRIVATE void _ogl_scene_renderer_frustum_preview_init_rendering_thread_callback(
         ogl_shader vs = NULL;
 
         fs = ogl_shader_create(context,
-                               SHADER_TYPE_FRAGMENT,
+                               RAL_SHADER_TYPE_FRAGMENT,
                                system_hashed_ansi_string_create("Frustum preview renderer FS") );
         vs = ogl_shader_create(context,
-                               SHADER_TYPE_VERTEX,
+                               RAL_SHADER_TYPE_VERTEX,
                                system_hashed_ansi_string_create("Frustum preview renderer VS") );
 
         preview_ptr->po = ogl_program_create(context,

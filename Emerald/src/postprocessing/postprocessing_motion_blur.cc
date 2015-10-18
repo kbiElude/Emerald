@@ -401,7 +401,7 @@ PRIVATE void _postprocessing_motion_blur_init_po(_postprocessing_motion_blur* mo
         /* Form the compute shader */
         system_hashed_ansi_string cs_body = _postprocessing_motion_blur_get_cs_body(motion_blur_ptr);
         ogl_shader                cs      = ogl_shader_create                      (motion_blur_ptr->context,
-                                                                                    SHADER_TYPE_COMPUTE,
+                                                                                    RAL_SHADER_TYPE_COMPUTE,
                                                                                     system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(po_name),
                                                                                                                                             " CS"));
 

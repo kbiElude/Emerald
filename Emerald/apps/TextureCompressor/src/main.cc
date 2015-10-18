@@ -751,12 +751,12 @@ void _rendering_handler(ogl_context context,
     {
         /***** White line progarm */
         _whiteline_fs = ogl_shader_create (_context,
-                                           SHADER_TYPE_FRAGMENT,
+                                           RAL_SHADER_TYPE_FRAGMENT,
                                            system_hashed_ansi_string_create("Whiteline FS") );
         _whiteline_po = ogl_program_create(_context,
                                            system_hashed_ansi_string_create("Wniteline PO") );
         _whiteline_vs = ogl_shader_create (_context,
-                                           SHADER_TYPE_VERTEX,
+                                           RAL_SHADER_TYPE_VERTEX,
                                            system_hashed_ansi_string_create("Whiteline VS") );
 
         ogl_shader_set_body(_whiteline_fs,
@@ -776,13 +776,13 @@ void _rendering_handler(ogl_context context,
 
         /***** Preview program */
         _preview_fs = ogl_shader_create (_context,
-                                         SHADER_TYPE_FRAGMENT,
+                                         RAL_SHADER_TYPE_FRAGMENT,
                                          system_hashed_ansi_string_create("Preview FS") );
         _preview_po = ogl_program_create(_context,
                                          system_hashed_ansi_string_create("Preview PO"),
                                          OGL_PROGRAM_SYNCABLE_UBS_MODE_ENABLE_GLOBAL);
         _preview_vs = ogl_shader_create (_context,
-                                         SHADER_TYPE_VERTEX,
+                                         RAL_SHADER_TYPE_VERTEX,
                                          system_hashed_ansi_string_create("Preview VS") );
 
         ogl_shader_set_body(_preview_fs,

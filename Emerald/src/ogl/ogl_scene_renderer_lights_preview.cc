@@ -99,11 +99,11 @@ PRIVATE void _ogl_context_scene_renderer_lights_preview_init_preview_program(_og
                       &scene_name);
 
     ogl_shader fs_shader = ogl_shader_create(preview_ptr->context,
-                                             SHADER_TYPE_FRAGMENT,
+                                             RAL_SHADER_TYPE_FRAGMENT,
                                              system_hashed_ansi_string_create_by_merging_two_strings("Scene Renderer lights preview FS shader ",
                                                                                                      system_hashed_ansi_string_get_buffer(scene_name)) );
     ogl_shader vs_shader = ogl_shader_create(preview_ptr->context,
-                                             SHADER_TYPE_VERTEX,
+                                             RAL_SHADER_TYPE_VERTEX,
                                              system_hashed_ansi_string_create_by_merging_two_strings("Scene Renderer lights preview VS shader ",
                                                                                                      system_hashed_ansi_string_get_buffer(scene_name)) );
 

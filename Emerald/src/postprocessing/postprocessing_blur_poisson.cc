@@ -126,7 +126,7 @@ PUBLIC void _postprocessing_blur_poisson_init_renderer_callback(ogl_context cont
 
 
     fragment_shader      = ogl_shader_create               (context,
-                                                            SHADER_TYPE_FRAGMENT,
+                                                            RAL_SHADER_TYPE_FRAGMENT,
                                                             system_hashed_ansi_string_create_by_merging_two_strings("Postprocessing blur poisson fragment shader ", 
                                                                                                                     system_hashed_ansi_string_get_buffer(poisson_ptr->name) ));
     vertex_shader        = shaders_vertex_fullscreen_create(poisson_ptr->context,

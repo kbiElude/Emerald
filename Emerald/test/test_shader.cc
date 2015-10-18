@@ -184,7 +184,7 @@ TEST(ShaderTest, CreationTest)
                               &gl_context);
 
     test_shader = ogl_shader_create(gl_context,
-                                    SHADER_TYPE_FRAGMENT,
+                                    RAL_SHADER_TYPE_FRAGMENT,
                                     system_hashed_ansi_string_create("test shader") );
 
     ASSERT_TRUE(test_shader != NULL);
@@ -260,7 +260,7 @@ TEST(ShaderTest, FullViewportTriangleTest)
                               &gl_context);
 
     test_vertex_shader = ogl_shader_create(gl_context,
-                                           SHADER_TYPE_VERTEX,
+                                           RAL_SHADER_TYPE_VERTEX,
                                            system_hashed_ansi_string_create("test vertex shader") );
 
     ASSERT_TRUE(test_vertex_shader != NULL);
@@ -284,7 +284,7 @@ TEST(ShaderTest, FullViewportTriangleTest)
 
     /* Create the test fragment shader */
     ogl_shader test_fragment_shader = ogl_shader_create(gl_context,
-                                                        SHADER_TYPE_FRAGMENT,
+                                                        RAL_SHADER_TYPE_FRAGMENT,
                                                         system_hashed_ansi_string_create("test fragment shader") );
 
     ASSERT_TRUE(test_fragment_shader != NULL);

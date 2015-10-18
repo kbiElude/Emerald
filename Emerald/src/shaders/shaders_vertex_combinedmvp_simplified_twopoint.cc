@@ -78,7 +78,7 @@ PUBLIC EMERALD_API shaders_vertex_combinedmvp_simplified_twopoint shaders_vertex
 
     /* Create the shader */
     vertex_shader = ogl_shader_create(context,
-                                      SHADER_TYPE_VERTEX,
+                                      RAL_SHADER_TYPE_VERTEX,
                                       name);
 
     ASSERT_DEBUG_SYNC(vertex_shader != NULL,

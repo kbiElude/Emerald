@@ -382,7 +382,7 @@ PRIVATE bool _procedural_uv_generator_build_generator_po(_procedural_uv_generato
                                                                                                    cs_body_parts);
 
     generator_ptr->generator_cs = ogl_shader_create (generator_ptr->context,
-                                                     SHADER_TYPE_COMPUTE,
+                                                     RAL_SHADER_TYPE_COMPUTE,
                                                      _procedural_uv_generator_get_generator_name(generator_ptr->type) );
     generator_ptr->generator_po = ogl_program_create(generator_ptr->context,
                                                      _procedural_uv_generator_get_generator_name(generator_ptr->type),

@@ -141,10 +141,10 @@ PRIVATE void _ogl_ui_scrollbar_init_program(ogl_ui             ui,
     /* Create all objects */
     ogl_context context         = ogl_ui_get_context(ui);
     ogl_shader  fragment_shader = ogl_shader_create (context,
-                                                     SHADER_TYPE_FRAGMENT,
+                                                     RAL_SHADER_TYPE_FRAGMENT,
                                                      system_hashed_ansi_string_create("UI scrollbar slider fragment shader") );
     ogl_shader  vertex_shader   = ogl_shader_create (context,
-                                                     SHADER_TYPE_VERTEX,
+                                                     RAL_SHADER_TYPE_VERTEX,
                                                      system_hashed_ansi_string_create("UI scrollbar slider vertex shader") );
 
     scrollbar_ptr->program_slider = ogl_program_create(context,

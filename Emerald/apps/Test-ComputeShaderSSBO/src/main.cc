@@ -137,7 +137,7 @@ void _rendering_handler(ogl_context context,
 
         /* Set up the compute shader object */
         ogl_shader cs = ogl_shader_create(context,
-                                          SHADER_TYPE_COMPUTE,
+                                          RAL_SHADER_TYPE_COMPUTE,
                                           system_hashed_ansi_string_create("Compute shader object") );
 
         ogl_shader_set_body(cs,

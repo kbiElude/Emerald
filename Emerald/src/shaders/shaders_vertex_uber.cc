@@ -390,7 +390,7 @@ PUBLIC EMERALD_API shaders_vertex_uber shaders_vertex_uber_create(ogl_context   
     /* Spawn the shader constructor */
     ogl_shader_constructor shader_constructor = NULL;
 
-    shader_constructor = ogl_shader_constructor_create(SHADER_TYPE_VERTEX,
+    shader_constructor = ogl_shader_constructor_create(RAL_SHADER_TYPE_VERTEX,
                                                        system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(name),
                                                                                                                " vertex uber"));
 
@@ -509,7 +509,7 @@ PUBLIC EMERALD_API shaders_vertex_uber shaders_vertex_uber_create(ogl_context   
 
     /* Create the shader */
     vertex_shader = ogl_shader_create(context,
-                                      SHADER_TYPE_VERTEX,
+                                      RAL_SHADER_TYPE_VERTEX,
                                       system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(name),
                                                                                               " vertex uber"));
 

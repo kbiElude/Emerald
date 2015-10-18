@@ -80,7 +80,7 @@ PUBLIC EMERALD_API shaders_vertex_fullscreen shaders_vertex_fullscreen_create(og
 
     /* Create the shader */
     vertex_shader = ogl_shader_create(context,
-                                      SHADER_TYPE_VERTEX,
+                                      RAL_SHADER_TYPE_VERTEX,
                                       name);
 
     ASSERT_DEBUG_SYNC(vertex_shader != NULL,

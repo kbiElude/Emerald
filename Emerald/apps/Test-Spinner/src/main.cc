@@ -404,7 +404,7 @@ PRIVATE void _init_spinner()
 
     /* Set up the polygonizer program object */
     polygonizer_cs = ogl_shader_create(_context,
-                                       SHADER_TYPE_COMPUTE,
+                                       RAL_SHADER_TYPE_COMPUTE,
                                        system_hashed_ansi_string_create("Spinner polygonizer CS") );
 
     if (polygonizer_cs == NULL)
@@ -500,10 +500,10 @@ PRIVATE void _init_spinner()
 
     /* Set up renderer PO */
     renderer_fs = ogl_shader_create(_context,
-                                    SHADER_TYPE_FRAGMENT,
+                                    RAL_SHADER_TYPE_FRAGMENT,
                                     system_hashed_ansi_string_create("Spinner renderer FS") );
     renderer_vs = ogl_shader_create(_context,
-                                    SHADER_TYPE_VERTEX,
+                                    RAL_SHADER_TYPE_VERTEX,
                                     system_hashed_ansi_string_create("Spinner renderer VS") );
 
     ASSERT_DEBUG_SYNC(renderer_fs != NULL &&

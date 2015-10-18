@@ -97,7 +97,7 @@ PUBLIC EMERALD_API shaders_fragment_convolution3x3 shaders_fragment_convolution3
 
     /* Create the shader */
     convolution_shader = ogl_shader_create(context,
-                                           SHADER_TYPE_FRAGMENT,
+                                           RAL_SHADER_TYPE_FRAGMENT,
                                            name);
 
     ASSERT_DEBUG_SYNC(convolution_shader != NULL,

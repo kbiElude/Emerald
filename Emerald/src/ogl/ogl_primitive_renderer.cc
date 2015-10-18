@@ -67,7 +67,7 @@ typedef struct _ogl_primitive_renderer_dataset
         instance_id          = -1;
         n_vertices           = 0;
         n_vertices_allocated = 0;
-        primitive_type       = RAL_PRIMITIVE_TYPE_UNDEFINED;
+        primitive_type       = RAL_PRIMITIVE_TYPE_UNKNOWN;
         vertex_data          = NULL;
 
         memset(color_data,
@@ -256,11 +256,11 @@ PRIVATE void _ogl_primitive_renderer_init_program(_ogl_primitive_renderer* rende
 
     /* Prepare the objects */
     ogl_shader fs = ogl_shader_create(renderer_ptr->context,
-                                      SHADER_TYPE_FRAGMENT,
+                                      RAL_SHADER_TYPE_FRAGMENT,
                                       system_hashed_ansi_string_create_by_merging_two_strings("Line strip renderer FS ",
                                                                                               system_hashed_ansi_string_get_buffer(renderer_ptr->name) ));
     ogl_shader vs = ogl_shader_create(renderer_ptr->context,
-                                      SHADER_TYPE_VERTEX,
+                                      RAL_SHADER_TYPE_VERTEX,
                                       system_hashed_ansi_string_create_by_merging_two_strings("Line strip renderer VS ",
                                                                                               system_hashed_ansi_string_get_buffer(renderer_ptr->name) ));
 

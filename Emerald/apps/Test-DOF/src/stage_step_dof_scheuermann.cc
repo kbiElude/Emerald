@@ -355,7 +355,7 @@ PUBLIC void stage_step_dof_scheuermann_init(ogl_context  context,
 
     /* Set up combination program */
     ogl_shader                combination_fs = ogl_shader_create               (context,
-                                                                                SHADER_TYPE_FRAGMENT,
+                                                                                RAL_SHADER_TYPE_FRAGMENT,
                                                                                 system_hashed_ansi_string_create("DOF Scheuermann combination FS") );
     shaders_vertex_fullscreen combination_vs = shaders_vertex_fullscreen_create(context,
                                                                                 true, /* export_uv */

@@ -487,15 +487,15 @@ PUBLIC void demo_loader_run(demo_loader   loader,
                 struct _shader
                 {
                     demo_loader_op_build_program_shader* data_ptr;
-                    ogl_shader_type                      type;
+                    ral_shader_type                      type;
                 } shaders[] =
                 {
-                    {&op_ptr->data.build_program.cs, SHADER_TYPE_COMPUTE},
-                    {&op_ptr->data.build_program.fs, SHADER_TYPE_FRAGMENT},
-                    {&op_ptr->data.build_program.gs, SHADER_TYPE_GEOMETRY},
-                    {&op_ptr->data.build_program.tc, SHADER_TYPE_TESSELLATION_CONTROL},
-                    {&op_ptr->data.build_program.te, SHADER_TYPE_TESSELLATION_EVALUATION},
-                    {&op_ptr->data.build_program.vs, SHADER_TYPE_VERTEX}
+                    {&op_ptr->data.build_program.cs, RAL_SHADER_TYPE_COMPUTE},
+                    {&op_ptr->data.build_program.fs, RAL_SHADER_TYPE_FRAGMENT},
+                    {&op_ptr->data.build_program.gs, RAL_SHADER_TYPE_GEOMETRY},
+                    {&op_ptr->data.build_program.tc, RAL_SHADER_TYPE_TESSELLATION_CONTROL},
+                    {&op_ptr->data.build_program.te, RAL_SHADER_TYPE_TESSELLATION_EVALUATION},
+                    {&op_ptr->data.build_program.vs, RAL_SHADER_TYPE_VERTEX}
                 };
                 const uint32_t n_shaders = sizeof(shaders) / sizeof(shaders[0]);
 

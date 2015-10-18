@@ -169,10 +169,10 @@ void _init_gl(ogl_context context,
                                                                                  true, /* export_uv */
                                                                                  system_hashed_ansi_string_create("general") );
     ogl_shader                generation_fs   = ogl_shader_create               (_context,
-                                                                                 SHADER_TYPE_FRAGMENT,
+                                                                                 RAL_SHADER_TYPE_FRAGMENT,
                                                                                  system_hashed_ansi_string_create("creation") );
     ogl_shader                modification_fs = ogl_shader_create               (_context,
-                                                                                 SHADER_TYPE_FRAGMENT,
+                                                                                 RAL_SHADER_TYPE_FRAGMENT,
                                                                                  system_hashed_ansi_string_create("modification") );
 
     _generation_po   = ogl_program_create(_context,

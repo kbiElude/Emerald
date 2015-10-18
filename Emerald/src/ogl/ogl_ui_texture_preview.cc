@@ -143,11 +143,11 @@ PRIVATE void _ogl_ui_texture_preview_init_program(ogl_ui                   ui,
     /* Create all objects */
     ogl_context context         = ogl_ui_get_context(ui);
     ogl_shader  fragment_shader = ogl_shader_create(context,
-                                                    SHADER_TYPE_FRAGMENT,
+                                                    RAL_SHADER_TYPE_FRAGMENT,
                                                     system_hashed_ansi_string_create_by_merging_two_strings(_ogl_ui_texture_preview_get_program_name(texture_preview_ptr->preview_type),
                                                                                                             " fragment shader") );
     ogl_shader  vertex_shader   = ogl_shader_create(context,
-                                                    SHADER_TYPE_VERTEX,
+                                                    RAL_SHADER_TYPE_VERTEX,
                                                     system_hashed_ansi_string_create_by_merging_two_strings(_ogl_ui_texture_preview_get_program_name(texture_preview_ptr->preview_type),
                                                                                                             " vertex shader") );
 

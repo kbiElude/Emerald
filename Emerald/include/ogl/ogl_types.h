@@ -304,18 +304,20 @@ typedef struct
     GLint                      location;
 } ogl_program_variable;
 
-/** Enumerator that describes type of a given shader */
+/** Enumerator that describes type of a given shader.
+ *
+ *  NOTE: Client apps should always use RAL shader stage enums! */
 typedef enum
 {
-    SHADER_TYPE_COMPUTE                 = GL_COMPUTE_SHADER,
-    SHADER_TYPE_FRAGMENT                = GL_FRAGMENT_SHADER,
-    SHADER_TYPE_GEOMETRY                = GL_GEOMETRY_SHADER,
-    SHADER_TYPE_TESSELLATION_CONTROL    = GL_TESS_CONTROL_SHADER,
-    SHADER_TYPE_TESSELLATION_EVALUATION = GL_TESS_EVALUATION_SHADER,
-    SHADER_TYPE_VERTEX                  = GL_VERTEX_SHADER,
+    OGL_SHADER_TYPE_COMPUTE                 = GL_COMPUTE_SHADER,
+    OGL_SHADER_TYPE_FRAGMENT                = GL_FRAGMENT_SHADER,
+    OGL_SHADER_TYPE_GEOMETRY                = GL_GEOMETRY_SHADER,
+    OGL_SHADER_TYPE_TESSELLATION_CONTROL    = GL_TESS_CONTROL_SHADER,
+    OGL_SHADER_TYPE_TESSELLATION_EVALUATION = GL_TESS_EVALUATION_SHADER,
+    OGL_SHADER_TYPE_VERTEX                  = GL_VERTEX_SHADER,
 
     /* Always last */
-    SHADER_TYPE_UNKNOWN
+    OGL_SHADER_TYPE_UNKNOWN
 } ogl_shader_type;
 
 /** Enumerator that describes current rendering handler's playback status */

@@ -1142,7 +1142,7 @@ PRIVATE void _mesh_marchingcubes_init_polygonizer_po(_mesh_marchingcubes* mesh_p
     /* Initialize the shader */
     system_hashed_ansi_string polygonizer_has = _mesh_marchingcubes_get_polygonizer_name(mesh_ptr);
     ogl_shader                cs              = ogl_shader_create                       (mesh_ptr->context,
-                                                                                         SHADER_TYPE_COMPUTE,
+                                                                                         RAL_SHADER_TYPE_COMPUTE,
                                                                                          system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(polygonizer_has),
                                                                                                                                                  " CS") );
 

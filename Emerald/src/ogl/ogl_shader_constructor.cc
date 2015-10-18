@@ -5,6 +5,7 @@
  */
 #include "shared.h"
 #include "ogl/ogl_shader_constructor.h"
+#include "ral/ral_types.h"
 #include "system/system_assertions.h"
 #include "system/system_hashed_ansi_string.h"
 #include "system/system_log.h"
@@ -162,7 +163,7 @@ typedef struct _ogl_shader_constructor
     system_hashed_ansi_string body;
     bool                      dirty;
     system_hashed_ansi_string name;
-    ogl_shader_type           shader_type;
+    ral_shader_type           shader_type;
 
     /* Stores _ogl_shader_constructor_function* items. 0th item corresponds to main(). */
     system_resizable_vector functions;
@@ -180,7 +181,7 @@ typedef struct _ogl_shader_constructor
         dirty          = true;
         functions      = system_resizable_vector_create(4 /* capacity */);
         name           = NULL;
-        shader_type    = SHADER_TYPE_UNKNOWN;
+        shader_type    = RAL_SHADER_TYPE_UNKNOWN;
         structures     = system_resizable_vector_create(4 /* capacity */);
         uniform_blocks = system_resizable_vector_create(4 /* capacity */);
     }
@@ -1381,7 +1382,7 @@ end:
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API ogl_shader_constructor ogl_shader_constructor_create(ogl_shader_type           shader_type,
+PUBLIC EMERALD_API ogl_shader_constructor ogl_shader_constructor_create(ral_shader_type           shader_type,
                                                                         system_hashed_ansi_string name)
 {
     _ogl_shader_constructor* result = new (std::nothrow) _ogl_shader_constructor;

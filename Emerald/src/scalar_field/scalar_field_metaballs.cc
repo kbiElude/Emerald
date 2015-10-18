@@ -284,7 +284,7 @@ PRIVATE void _scalar_field_metaballs_init_rendering_thread_callback(ogl_context 
 
     /* Create program & shader objects */
     cs = ogl_shader_create(metaballs_ptr->context,
-                           SHADER_TYPE_COMPUTE,
+                           RAL_SHADER_TYPE_COMPUTE,
                            system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(metaballs_ptr->name),
                                                                                    " CS") );
 

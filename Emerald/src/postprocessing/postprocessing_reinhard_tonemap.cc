@@ -230,7 +230,7 @@ PRIVATE void _create_callback(ogl_context context,
 
     /* Create operator fragment shader */
     data->data_ptr->operator_fragment_shader = ogl_shader_create(context,
-                                                                 SHADER_TYPE_FRAGMENT,
+                                                                 RAL_SHADER_TYPE_FRAGMENT,
                                                                  system_hashed_ansi_string_create_by_merging_two_strings("Reinhard Tonemap operator ",
                                                                                                                          system_hashed_ansi_string_get_buffer(data->name) ));
 

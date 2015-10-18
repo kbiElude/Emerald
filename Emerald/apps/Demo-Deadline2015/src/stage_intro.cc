@@ -245,10 +245,10 @@ PRIVATE void _stage_intro_init_rendering_callback(ogl_context context,
                                      OGL_PROGRAM_SYNCABLE_UBS_MODE_ENABLE_GLOBAL);
 
     fs = ogl_shader_create(context,
-                           SHADER_TYPE_FRAGMENT,
+                           RAL_SHADER_TYPE_FRAGMENT,
                            system_hashed_ansi_string_create("Overlay FS (intro)") );
     vs = ogl_shader_create(context,
-                           SHADER_TYPE_VERTEX,
+                           RAL_SHADER_TYPE_VERTEX,
                            system_hashed_ansi_string_create("Overlay VS (intro)") );
 
     ogl_shader_set_body(fs,

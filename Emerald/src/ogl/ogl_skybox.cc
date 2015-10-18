@@ -177,7 +177,7 @@ PRIVATE void        _ogl_skybox_init_ub                 (_ogl_skybox*           
     {
         /* Initialize the vertex shader. */
         ogl_shader vertex_shader = ogl_shader_create(skybox_ptr->context,
-                                                     SHADER_TYPE_VERTEX,
+                                                     RAL_SHADER_TYPE_VERTEX,
                                                      system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(skybox_ptr->name),
                                                                                                              " vertex shader") );
         ASSERT_DEBUG_SYNC(vertex_shader != NULL,
@@ -188,7 +188,7 @@ PRIVATE void        _ogl_skybox_init_ub                 (_ogl_skybox*           
 
         /* Initialize the fragment shader */
         ogl_shader fragment_shader = ogl_shader_create(skybox_ptr->context,
-                                                       SHADER_TYPE_FRAGMENT,
+                                                       RAL_SHADER_TYPE_FRAGMENT,
                                                        system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(skybox_ptr->name),
                                                                                                                " fragment shader") );
         ASSERT_DEBUG_SYNC(fragment_shader != NULL,
@@ -252,7 +252,7 @@ PRIVATE void _ogl_skybox_init_ogl_skybox_spherical_projection_texture(_ogl_skybo
 {
     /* Initialize the vertex shader. */
     ogl_shader vertex_shader = ogl_shader_create(skybox_ptr->context,
-                                                 SHADER_TYPE_VERTEX,
+                                                 RAL_SHADER_TYPE_VERTEX,
                                                  system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(skybox_ptr->name),
                                                                                                          " vertex shader") );
     ASSERT_DEBUG_SYNC(vertex_shader != NULL,
@@ -263,7 +263,7 @@ PRIVATE void _ogl_skybox_init_ogl_skybox_spherical_projection_texture(_ogl_skybo
 
     /* Initialize the fragment shader */
     ogl_shader fragment_shader = ogl_shader_create(skybox_ptr->context,
-                                                   SHADER_TYPE_FRAGMENT,
+                                                   RAL_SHADER_TYPE_FRAGMENT,
                                                    system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(skybox_ptr->name),
                                                                                                            " fragment shader") );
     ASSERT_DEBUG_SYNC(fragment_shader != NULL,

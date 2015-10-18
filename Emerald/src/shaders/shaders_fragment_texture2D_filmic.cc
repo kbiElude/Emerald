@@ -94,7 +94,7 @@ PUBLIC EMERALD_API shaders_fragment_texture2D_filmic shaders_fragment_texture2D_
 
     /* Create the shader */
     ogl_shader shader = ogl_shader_create(context,
-                                          SHADER_TYPE_FRAGMENT,
+                                          RAL_SHADER_TYPE_FRAGMENT,
                                           name);
 
     ASSERT_DEBUG_SYNC(shader != NULL,
