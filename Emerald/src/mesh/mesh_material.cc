@@ -1622,10 +1622,10 @@ PUBLIC bool mesh_material_is_a_match_to_mesh_material(mesh_material material_a,
 
             case MESH_MATERIAL_PROPERTY_ATTACHMENT_TEXTURE:
             {
-                ogl_texture_dimensionality material_a_dimensionality;
-                ogl_texture                material_a_texture = NULL;
-                ogl_texture_dimensionality material_b_dimensionality;
-                ogl_texture                material_b_texture = NULL;
+                ogl_texture      material_a_texture = NULL;
+                ogl_texture_type material_a_type;
+                ogl_texture      material_b_texture = NULL;
+                ogl_texture_type material_b_type;
 
                 mesh_material_get_shading_property_value_texture(material_a,
                                                                  property,
@@ -1640,13 +1640,13 @@ PUBLIC bool mesh_material_is_a_match_to_mesh_material(mesh_material material_a,
                                                                  NULL);/* out_sampler - irrelevant */
 
                 ogl_texture_get_property(material_a_texture,
-                                         OGL_TEXTURE_PROPERTY_DIMENSIONALITY,
-                                        &material_a_dimensionality);
+                                         OGL_TEXTURE_PROPERTY_TYPE,
+                                        &material_a_type);
                 ogl_texture_get_property(material_b_texture,
-                                         OGL_TEXTURE_PROPERTY_DIMENSIONALITY,
-                                        &material_b_dimensionality);
+                                         OGL_TEXTURE_PROPERTY_TYPE,
+                                        &material_b_type);
 
-                if (material_a_dimensionality != material_b_dimensionality)
+                if (material_a_type != material_b_type)
                 {
                     goto end;
                 }

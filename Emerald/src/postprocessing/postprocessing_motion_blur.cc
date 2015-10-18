@@ -17,7 +17,7 @@
 #include "system/system_hashed_ansi_string.h"
 #include "system/system_log.h"
 
-static const char* _postprocessing_motion_blur_po_template_name = "Motion Blur post-processor (src color:[%s] src velocity:[%s] dst color:[%s] dimensionality:[%s])";
+static const char* _postprocessing_motion_blur_po_template_name = "Motion Blur post-processor (src color:[%s] src velocity:[%s] dst color:[%s] texture type:[%s])";
 
 
 /** Internal type definition */
@@ -25,35 +25,35 @@ typedef struct _postprocessing_motion_blur
 {
     ogl_context context;
 
-    unsigned int                                    dst_color_image_n_layer;
-    unsigned int                                    dst_color_image_n_mipmap;
-    postprocessing_motion_blur_image_dimensionality image_dimensionality;
-    unsigned int                                    n_velocity_samples_max;
-    ogl_program                                     po;
-    ogl_program_ub                                  po_props_ub;
-    GLuint                                          po_props_ub_bo_id;
-    unsigned int                                    po_props_ub_bo_size;
-    unsigned int                                    po_props_ub_bo_start_offset;
-    unsigned int                                    po_props_ub_bo_image_n_samples_start_offset;
-    unsigned int                                    po_props_ub_bo_n_velocity_samples_max_start_offset;
-    const GLuint                                    po_binding_src_color_image;
-    const GLuint                                    po_binding_src_velocity_image;
-    const GLuint                                    po_binding_dst_color_image;
-    ogl_sampler                                     sampler; /* owned by context - do not release */
-    postprocessing_motion_blur_image_format         src_dst_color_image_format;
-    unsigned int                                    src_color_image_n_layer;
-    unsigned int                                    src_color_image_n_mipmap;
-    postprocessing_motion_blur_image_format         src_velocity_image_format;
-    unsigned int                                    src_velocity_image_n_layer;
-    unsigned int                                    src_velocity_image_n_mipmap;
+    unsigned int                            dst_color_image_n_layer;
+    unsigned int                            dst_color_image_n_mipmap;
+    postprocessing_motion_blur_image_type   image_type;
+    unsigned int                            n_velocity_samples_max;
+    ogl_program                             po;
+    ogl_program_ub                          po_props_ub;
+    GLuint                                  po_props_ub_bo_id;
+    unsigned int                            po_props_ub_bo_size;
+    unsigned int                            po_props_ub_bo_start_offset;
+    unsigned int                            po_props_ub_bo_image_n_samples_start_offset;
+    unsigned int                            po_props_ub_bo_n_velocity_samples_max_start_offset;
+    const GLuint                            po_binding_src_color_image;
+    const GLuint                            po_binding_src_velocity_image;
+    const GLuint                            po_binding_dst_color_image;
+    ogl_sampler                             sampler; /* owned by context - do not release */
+    postprocessing_motion_blur_image_format src_dst_color_image_format;
+    unsigned int                            src_color_image_n_layer;
+    unsigned int                            src_color_image_n_mipmap;
+    postprocessing_motion_blur_image_format src_velocity_image_format;
+    unsigned int                            src_velocity_image_n_layer;
+    unsigned int                            src_velocity_image_n_mipmap;
 
 
     unsigned int wg_local_size_x; /* y, z = 1 */
 
-    explicit _postprocessing_motion_blur(ogl_context                                     in_context,
-                                         postprocessing_motion_blur_image_format         in_src_dst_color_image_format,
-                                         postprocessing_motion_blur_image_format         in_src_velocity_image_format,
-                                         postprocessing_motion_blur_image_dimensionality in_image_dimensionality)
+    explicit _postprocessing_motion_blur(ogl_context                             in_context,
+                                         postprocessing_motion_blur_image_format in_src_dst_color_image_format,
+                                         postprocessing_motion_blur_image_format in_src_velocity_image_format,
+                                         postprocessing_motion_blur_image_type   in_image_type)
         :po_binding_src_color_image   (0), /* hard-coded in the CS */
          po_binding_src_velocity_image(1), /* hard-coded in the CS */
          po_binding_dst_color_image   (2)  /* hard-coded in the CS */
@@ -61,7 +61,7 @@ typedef struct _postprocessing_motion_blur
         context                                            = in_context;
         dst_color_image_n_layer                            = 0;
         dst_color_image_n_mipmap                           = 0;
-        image_dimensionality                               = in_image_dimensionality;
+        image_type                                         = in_image_type;
         n_velocity_samples_max                             = 32; /* as per documentation */
         po                                                 = NULL;
         po_props_ub                                        = NULL;
@@ -84,17 +84,17 @@ typedef struct _postprocessing_motion_blur
 
 
 /** Forward declarations */
-PRIVATE GLenum                    _postprocessing_motion_blur_get_blur_image_dimensionality_texture_target_glenum(postprocessing_motion_blur_image_dimensionality image_dimensionality);
-PRIVATE system_hashed_ansi_string _postprocessing_motion_blur_get_blur_image_dimensionality_has                  (postprocessing_motion_blur_image_dimensionality image_dimensionality);
-PRIVATE system_hashed_ansi_string _postprocessing_motion_blur_get_blur_image_dimensionality_layout_qualifier_has (postprocessing_motion_blur_image_dimensionality image_dimensionality);
-PRIVATE GLenum                    _postprocessing_motion_blur_get_blur_image_format_glenum                       (postprocessing_motion_blur_image_format         image_format);
-PRIVATE system_hashed_ansi_string _postprocessing_motion_blur_get_blur_image_format_has                          (postprocessing_motion_blur_image_format         image_format);
-PRIVATE system_hashed_ansi_string _postprocessing_motion_blur_get_blur_sampler_for_image_dimensionality_has      (postprocessing_motion_blur_image_dimensionality image_dimensionality);
-PRIVATE system_hashed_ansi_string _postprocessing_motion_blur_get_cs_body                                        (_postprocessing_motion_blur*                    motion_blur_ptr);
-PRIVATE system_hashed_ansi_string _postprocessing_motion_blur_get_po_name                                        (_postprocessing_motion_blur*                    motion_blur_ptr);
-PRIVATE void                      _postprocessing_motion_blur_init_po                                            (_postprocessing_motion_blur*                    motion_blur_ptr);
-PRIVATE void                      _postprocessing_motion_blur_init_po_rendering_callback                         (ogl_context                                     context,
-                                                                                                                  void*                                           motion_blur);
+PRIVATE GLenum                    _postprocessing_motion_blur_get_blur_image_type_texture_target_glenum(postprocessing_motion_blur_image_type   image_type);
+PRIVATE system_hashed_ansi_string _postprocessing_motion_blur_get_blur_image_type_has                  (postprocessing_motion_blur_image_type   image_type);
+PRIVATE system_hashed_ansi_string _postprocessing_motion_blur_get_blur_image_type_layout_qualifier_has (postprocessing_motion_blur_image_type   image_type);
+PRIVATE GLenum                    _postprocessing_motion_blur_get_blur_image_format_glenum             (postprocessing_motion_blur_image_format image_format);
+PRIVATE system_hashed_ansi_string _postprocessing_motion_blur_get_blur_image_format_has                (postprocessing_motion_blur_image_format image_format);
+PRIVATE system_hashed_ansi_string _postprocessing_motion_blur_get_blur_sampler_for_image_type_has      (postprocessing_motion_blur_image_type   image_type);
+PRIVATE system_hashed_ansi_string _postprocessing_motion_blur_get_cs_body                              (_postprocessing_motion_blur*            motion_blur_ptr);
+PRIVATE system_hashed_ansi_string _postprocessing_motion_blur_get_po_name                              (_postprocessing_motion_blur*            motion_blur_ptr);
+PRIVATE void                      _postprocessing_motion_blur_init_po                                  (_postprocessing_motion_blur*            motion_blur_ptr);
+PRIVATE void                      _postprocessing_motion_blur_init_po_rendering_callback               (ogl_context                             context,
+                                                                                                        void*                                   motion_blur);
 
 /** Reference counter impl */
 REFCOUNT_INSERT_IMPLEMENTATION(postprocessing_motion_blur,
@@ -103,61 +103,61 @@ REFCOUNT_INSERT_IMPLEMENTATION(postprocessing_motion_blur,
 
 
 /** TODO */
-PRIVATE GLenum _postprocessing_motion_blur_get_blur_image_dimensionality_texture_target_glenum(postprocessing_motion_blur_image_dimensionality image_dimensionality)
+PRIVATE GLenum _postprocessing_motion_blur_get_blur_image_type_texture_target_glenum(postprocessing_motion_blur_image_type image_type)
 {
     GLenum result = GL_NONE;
 
-    switch (image_dimensionality)
+    switch (image_type)
     {
-        case POSTPROCESSING_MOTION_BLUR_IMAGE_DIMENSIONALITY_2D:             result = GL_TEXTURE_2D;             break;
-        case POSTPROCESSING_MOTION_BLUR_IMAGE_DIMENSIONALITY_2D_MULTISAMPLE: result = GL_TEXTURE_2D_MULTISAMPLE; break;
+        case POSTPROCESSING_MOTION_BLUR_IMAGE_TYPE_2D:             result = GL_TEXTURE_2D;             break;
+        case POSTPROCESSING_MOTION_BLUR_IMAGE_TYPE_2D_MULTISAMPLE: result = GL_TEXTURE_2D_MULTISAMPLE; break;
 
         default:
         {
             ASSERT_DEBUG_SYNC(false,
-                              "Unrecognized postprocessing_motion_blur_image_dimensionality value");
+                              "Unrecognized postprocessing_motion_blur_image_type value");
         }
-    } /* switch (image_dimensionality) */
+    } /* switch (image_type) */
 
     return result;
 }
 
 /** TODO */
-PRIVATE system_hashed_ansi_string _postprocessing_motion_blur_get_blur_image_dimensionality_has(postprocessing_motion_blur_image_dimensionality image_dimensionality)
+PRIVATE system_hashed_ansi_string _postprocessing_motion_blur_get_blur_image_type_has(postprocessing_motion_blur_image_type image_type)
 {
     system_hashed_ansi_string result = system_hashed_ansi_string_get_default_empty_string();
 
-    switch (image_dimensionality)
+    switch (image_type)
     {
-        case POSTPROCESSING_MOTION_BLUR_IMAGE_DIMENSIONALITY_2D:             result = system_hashed_ansi_string_create("2D");             break;
-        case POSTPROCESSING_MOTION_BLUR_IMAGE_DIMENSIONALITY_2D_MULTISAMPLE: result = system_hashed_ansi_string_create("2D Multisample"); break;
+        case POSTPROCESSING_MOTION_BLUR_IMAGE_TYPE_2D:             result = system_hashed_ansi_string_create("2D");             break;
+        case POSTPROCESSING_MOTION_BLUR_IMAGE_TYPE_2D_MULTISAMPLE: result = system_hashed_ansi_string_create("2D Multisample"); break;
 
         default:
         {
             ASSERT_DEBUG_SYNC(false,
-                              "Unrecognized postprocessing_motion_blur_image_dimensionality value");
+                              "Unrecognized postprocessing_motion_blur_image_type value");
         }
-    } /* switch (image_dimensionality) */
+    } /* switch (image_type) */
 
     return result;
 }
 
 /** TODO */
-PRIVATE system_hashed_ansi_string _postprocessing_motion_blur_get_blur_image_dimensionality_layout_qualifier_has(postprocessing_motion_blur_image_dimensionality image_dimensionality)
+PRIVATE system_hashed_ansi_string _postprocessing_motion_blur_get_blur_image_type_layout_qualifier_has(postprocessing_motion_blur_image_type image_type)
 {
     system_hashed_ansi_string result = system_hashed_ansi_string_get_default_empty_string();
 
-    switch (image_dimensionality)
+    switch (image_type)
     {
-        case POSTPROCESSING_MOTION_BLUR_IMAGE_DIMENSIONALITY_2D:             result = system_hashed_ansi_string_create("image2D");   break;
-        case POSTPROCESSING_MOTION_BLUR_IMAGE_DIMENSIONALITY_2D_MULTISAMPLE: result = system_hashed_ansi_string_create("image2DMS"); break;
+        case POSTPROCESSING_MOTION_BLUR_IMAGE_TYPE_2D:             result = system_hashed_ansi_string_create("image2D");   break;
+        case POSTPROCESSING_MOTION_BLUR_IMAGE_TYPE_2D_MULTISAMPLE: result = system_hashed_ansi_string_create("image2DMS"); break;
 
         default:
         {
             ASSERT_DEBUG_SYNC(false,
-                              "Unrecognized postprocessing_motion_blur_image_dimensionality value");
+                              "Unrecognized postprocessing_motion_blur_image_type value");
         }
-    } /* switch (image_dimensionality) */
+    } /* switch (image_type) */
 
     return result;
 }
@@ -307,14 +307,14 @@ PRIVATE system_hashed_ansi_string _postprocessing_motion_blur_get_cs_body(_postp
              motion_blur_ptr->wg_local_size_x);
     token_values[0] = system_hashed_ansi_string_create(temp);
 
-    token_values[1] = _postprocessing_motion_blur_get_blur_image_format_has                         (motion_blur_ptr->src_dst_color_image_format);
-    token_values[2] = _postprocessing_motion_blur_get_blur_image_format_has                         (motion_blur_ptr->src_velocity_image_format);
-    token_values[6] = _postprocessing_motion_blur_get_blur_image_dimensionality_layout_qualifier_has(motion_blur_ptr->image_dimensionality);
-    token_values[8] = _postprocessing_motion_blur_get_blur_sampler_for_image_dimensionality_has     (motion_blur_ptr->image_dimensionality);
+    token_values[1] = _postprocessing_motion_blur_get_blur_image_format_has               (motion_blur_ptr->src_dst_color_image_format);
+    token_values[2] = _postprocessing_motion_blur_get_blur_image_format_has               (motion_blur_ptr->src_velocity_image_format);
+    token_values[6] = _postprocessing_motion_blur_get_blur_image_type_layout_qualifier_has(motion_blur_ptr->image_type);
+    token_values[8] = _postprocessing_motion_blur_get_blur_sampler_for_image_type_has     (motion_blur_ptr->image_type);
 
-    switch (motion_blur_ptr->image_dimensionality)
+    switch (motion_blur_ptr->image_type)
     {
-        case POSTPROCESSING_MOTION_BLUR_IMAGE_DIMENSIONALITY_2D:
+        case POSTPROCESSING_MOTION_BLUR_IMAGE_TYPE_2D:
         {
             token_values[3] = system_hashed_ansi_string_create(cs_image2d_uniforms);
             token_values[4] = system_hashed_ansi_string_create(cs_image2d_xy_declarations);
@@ -324,7 +324,7 @@ PRIVATE system_hashed_ansi_string _postprocessing_motion_blur_get_cs_body(_postp
             break;
         }
 
-        case POSTPROCESSING_MOTION_BLUR_IMAGE_DIMENSIONALITY_2D_MULTISAMPLE:
+        case POSTPROCESSING_MOTION_BLUR_IMAGE_TYPE_2D_MULTISAMPLE:
         {
             token_values[3] = system_hashed_ansi_string_create(cs_image2dms_uniforms);
             token_values[4] = system_hashed_ansi_string_create(cs_image2dms_xy_declarations);
@@ -337,9 +337,9 @@ PRIVATE system_hashed_ansi_string _postprocessing_motion_blur_get_cs_body(_postp
         default:
         {
             ASSERT_DEBUG_SYNC(false,
-                              "Unrecognized image dimensionality type");
+                              "Unrecognized image type");
         }
-    } /* switch (motion_blur_ptr->image_dimensionality) */
+    } /* switch (motion_blur_ptr->image_type) */
 
     return system_hashed_ansi_string_create_by_token_replacement(cs_body_template,
                                                                  n_token_key_values,
@@ -355,30 +355,30 @@ PRIVATE system_hashed_ansi_string _postprocessing_motion_blur_get_po_name(_postp
     snprintf(temp,
              sizeof(temp),
              _postprocessing_motion_blur_po_template_name,
-             system_hashed_ansi_string_get_buffer(_postprocessing_motion_blur_get_blur_image_format_has        (motion_blur_ptr->src_dst_color_image_format)),
-             system_hashed_ansi_string_get_buffer(_postprocessing_motion_blur_get_blur_image_format_has        (motion_blur_ptr->src_velocity_image_format)),
-             system_hashed_ansi_string_get_buffer(_postprocessing_motion_blur_get_blur_image_format_has        (motion_blur_ptr->src_dst_color_image_format)),
-             system_hashed_ansi_string_get_buffer(_postprocessing_motion_blur_get_blur_image_dimensionality_has(motion_blur_ptr->image_dimensionality)) );
+             system_hashed_ansi_string_get_buffer(_postprocessing_motion_blur_get_blur_image_format_has(motion_blur_ptr->src_dst_color_image_format)),
+             system_hashed_ansi_string_get_buffer(_postprocessing_motion_blur_get_blur_image_format_has(motion_blur_ptr->src_velocity_image_format)),
+             system_hashed_ansi_string_get_buffer(_postprocessing_motion_blur_get_blur_image_format_has(motion_blur_ptr->src_dst_color_image_format)),
+             system_hashed_ansi_string_get_buffer(_postprocessing_motion_blur_get_blur_image_type_has  (motion_blur_ptr->image_type)) );
 
     return system_hashed_ansi_string_create(temp);
 }
 
 /** TODO */
-PRIVATE system_hashed_ansi_string _postprocessing_motion_blur_get_blur_sampler_for_image_dimensionality_has(postprocessing_motion_blur_image_dimensionality image_dimensionality)
+PRIVATE system_hashed_ansi_string _postprocessing_motion_blur_get_blur_sampler_for_image_type_has(postprocessing_motion_blur_image_type image_type)
 {
     system_hashed_ansi_string result = system_hashed_ansi_string_get_default_empty_string();
 
-    switch (image_dimensionality)
+    switch (image_type)
     {
-        case POSTPROCESSING_MOTION_BLUR_IMAGE_DIMENSIONALITY_2D:             result = system_hashed_ansi_string_create("sampler2D");   break;
-        case POSTPROCESSING_MOTION_BLUR_IMAGE_DIMENSIONALITY_2D_MULTISAMPLE: result = system_hashed_ansi_string_create("sampler2DMS"); break;
+        case POSTPROCESSING_MOTION_BLUR_IMAGE_TYPE_2D:             result = system_hashed_ansi_string_create("sampler2D");   break;
+        case POSTPROCESSING_MOTION_BLUR_IMAGE_TYPE_2D_MULTISAMPLE: result = system_hashed_ansi_string_create("sampler2DMS"); break;
 
         default:
         {
             ASSERT_DEBUG_SYNC(false,
-                              "Unrecognized postprocessing_motion_blur_image_dimensionality value");
+                              "Unrecognized postprocessing_motion_blur_image_type value");
         }
-    } /* switch (image_dimensionality) */
+    } /* switch (image_type) */
 
     return result;
 }
@@ -470,15 +470,15 @@ PRIVATE void _postprocessing_motion_blur_init_po(_postprocessing_motion_blur* mo
         motion_blur_ptr->po_props_ub_bo_n_velocity_samples_max_start_offset = n_velocity_samples_max_variable_ptr->block_offset;
 
         /* Some variables in the props UB are optional */
-        switch (motion_blur_ptr->image_dimensionality)
+        switch (motion_blur_ptr->image_type)
         {
-            case POSTPROCESSING_MOTION_BLUR_IMAGE_DIMENSIONALITY_2D:
+            case POSTPROCESSING_MOTION_BLUR_IMAGE_TYPE_2D:
             {
                 /* No special properties */
                 break;
             }
 
-            case POSTPROCESSING_MOTION_BLUR_IMAGE_DIMENSIONALITY_2D_MULTISAMPLE:
+            case POSTPROCESSING_MOTION_BLUR_IMAGE_TYPE_2D_MULTISAMPLE:
             {
                 const ogl_program_variable* image_n_samples_variable_ptr = NULL;
 
@@ -496,9 +496,9 @@ PRIVATE void _postprocessing_motion_blur_init_po(_postprocessing_motion_blur* mo
             default:
             {
                 ASSERT_DEBUG_SYNC(false,
-                                  "Unrecognized image dimensionality");
+                                  "Unrecognized image type");
             }
-        } /* switch (motion_blur_ptr->image_dimensionality) */
+        } /* switch (motion_blur_ptr->image_type) */
 
         /* Request a rendering context call-back to set up texture unit bindings and stuff */
         ogl_context_request_callback_from_context_thread(motion_blur_ptr->context,
@@ -549,17 +549,17 @@ PRIVATE void _postprocessing_motion_blur_release(void* ptr)
 
 
 /** Please see header for specification */
-PUBLIC EMERALD_API postprocessing_motion_blur postprocessing_motion_blur_create(ogl_context                                     context,
-                                                                                postprocessing_motion_blur_image_format         src_dst_color_image_format,
-                                                                                postprocessing_motion_blur_image_format         src_velocity_image_format,
-                                                                                postprocessing_motion_blur_image_dimensionality image_dimensionality,
-                                                                                system_hashed_ansi_string                       name)
+PUBLIC EMERALD_API postprocessing_motion_blur postprocessing_motion_blur_create(ogl_context                             context,
+                                                                                postprocessing_motion_blur_image_format src_dst_color_image_format,
+                                                                                postprocessing_motion_blur_image_format src_velocity_image_format,
+                                                                                postprocessing_motion_blur_image_type   image_type,
+                                                                                system_hashed_ansi_string               name)
 {
     /* Instantiate the object */
     _postprocessing_motion_blur* motion_blur_ptr = new (std::nothrow) _postprocessing_motion_blur(context,
                                                                                                   src_dst_color_image_format,
                                                                                                   src_velocity_image_format,
-                                                                                                  image_dimensionality);
+                                                                                                  image_type);
 
     ASSERT_DEBUG_SYNC(motion_blur_ptr != NULL,
                       "Out of memory");
@@ -629,18 +629,18 @@ PUBLIC EMERALD_API RENDERING_CONTEXT_CALL void postprocessing_motion_blur_execut
     /* Retrieve values of those properties of the input color texture that affect
      * the global work-group size.
      */
-    ogl_texture_dimensionality input_color_texture_dimensionality;
-    unsigned int               input_color_texture_mipmap_height = 0;
-    unsigned int               input_color_texture_mipmap_width  = 0;
-    unsigned int               input_color_texture_n_samples     = 0;
-    ogl_texture_dimensionality input_velocity_texture_dimensionality;
+    ogl_texture_type input_color_texture_type;
+    unsigned int     input_color_texture_mipmap_height = 0;
+    unsigned int     input_color_texture_mipmap_width  = 0;
+    unsigned int     input_color_texture_n_samples     = 0;
+    ogl_texture_type input_velocity_texture_type;
 
     ogl_texture_get_property       (input_color_texture,
-                                    OGL_TEXTURE_PROPERTY_DIMENSIONALITY,
-                                   &input_color_texture_dimensionality);
+                                    OGL_TEXTURE_PROPERTY_TYPE,
+                                   &input_color_texture_type);
     ogl_texture_get_property       (input_velocity_texture,
-                                    OGL_TEXTURE_PROPERTY_DIMENSIONALITY,
-                                   &input_velocity_texture_dimensionality);
+                                    OGL_TEXTURE_PROPERTY_TYPE,
+                                   &input_velocity_texture_type);
     ogl_texture_get_property       (input_color_texture,
                                     OGL_TEXTURE_PROPERTY_N_SAMPLES,
                                    &input_color_texture_n_samples);
@@ -656,16 +656,16 @@ PUBLIC EMERALD_API RENDERING_CONTEXT_CALL void postprocessing_motion_blur_execut
     /* Sanity checks */
     #ifdef _DEBUG
     {
-        unsigned int               input_color_texture_n_mipmaps = 0;
-        unsigned int               input_velocity_texture_mipmap_height = 0;
-        unsigned int               input_velocity_texture_mipmap_width  = 0;
-        unsigned int               input_velocity_texture_n_mipmaps = 0;
-        unsigned int               input_velocity_texture_n_samples = 0;
-        ogl_texture_dimensionality output_texture_dimensionality;
-        unsigned int               output_texture_mipmap_height = 0;
-        unsigned int               output_texture_mipmap_width  = 0;
-        unsigned int               output_texture_n_mipmaps = 0;
-        unsigned int               output_texture_n_samples = 0;
+        unsigned int     input_color_texture_n_mipmaps = 0;
+        unsigned int     input_velocity_texture_mipmap_height = 0;
+        unsigned int     input_velocity_texture_mipmap_width  = 0;
+        unsigned int     input_velocity_texture_n_mipmaps = 0;
+        unsigned int     input_velocity_texture_n_samples = 0;
+        unsigned int     output_texture_mipmap_height = 0;
+        unsigned int     output_texture_mipmap_width  = 0;
+        unsigned int     output_texture_n_mipmaps = 0;
+        unsigned int     output_texture_n_samples = 0;
+        ogl_texture_type output_texture_type;
 
         ogl_texture_get_property(input_color_texture,
                                  OGL_TEXTURE_PROPERTY_N_MIPMAPS,
@@ -677,8 +677,8 @@ PUBLIC EMERALD_API RENDERING_CONTEXT_CALL void postprocessing_motion_blur_execut
                                  OGL_TEXTURE_PROPERTY_N_SAMPLES,
                                 &input_velocity_texture_n_samples);
         ogl_texture_get_property(output_texture,
-                                 OGL_TEXTURE_PROPERTY_DIMENSIONALITY,
-                                &output_texture_dimensionality);
+                                 OGL_TEXTURE_PROPERTY_TYPE,
+                                &output_texture_type);
         ogl_texture_get_property(output_texture,
                                  OGL_TEXTURE_PROPERTY_N_MIPMAPS,
                                 &output_texture_n_mipmaps);
@@ -686,10 +686,10 @@ PUBLIC EMERALD_API RENDERING_CONTEXT_CALL void postprocessing_motion_blur_execut
                                  OGL_TEXTURE_PROPERTY_N_SAMPLES,
                                 &output_texture_n_samples);
 
-        ASSERT_DEBUG_SYNC(input_color_texture_dimensionality    == input_velocity_texture_dimensionality &&
-                          input_velocity_texture_dimensionality == output_texture_dimensionality         &&
-                          output_texture_dimensionality         == motion_blur_ptr->image_dimensionality,
-                          "Image dimensionality mismatch");
+        ASSERT_DEBUG_SYNC(input_color_texture_type    == input_velocity_texture_type &&
+                          input_velocity_texture_type == output_texture_type         &&
+                          output_texture_type         == motion_blur_ptr->image_type,
+                          "Image type mismatch");
         ASSERT_DEBUG_SYNC(input_color_texture_n_samples    == input_velocity_texture_n_samples &&
                           input_velocity_texture_n_samples == output_texture_n_samples,
                           "No of samples mismatch");
@@ -724,7 +724,7 @@ PUBLIC EMERALD_API RENDERING_CONTEXT_CALL void postprocessing_motion_blur_execut
     #endif
 
     /* Bind the images */
-    const GLenum color_texture_target    = _postprocessing_motion_blur_get_blur_image_dimensionality_texture_target_glenum(motion_blur_ptr->image_dimensionality);
+    const GLenum color_texture_target    = _postprocessing_motion_blur_get_blur_image_type_texture_target_glenum(motion_blur_ptr->image_type);
     const GLenum velocity_texture_target = GL_TEXTURE_2D;
 
     entrypoints_ptr->pGLActiveTexture(GL_TEXTURE0);
@@ -754,7 +754,7 @@ PUBLIC EMERALD_API RENDERING_CONTEXT_CALL void postprocessing_motion_blur_execut
                                                 0, /* src_data_flags */
                                                 sizeof(unsigned int) );
 
-    if (motion_blur_ptr->image_dimensionality == POSTPROCESSING_MOTION_BLUR_IMAGE_DIMENSIONALITY_2D_MULTISAMPLE)
+    if (motion_blur_ptr->image_type == POSTPROCESSING_MOTION_BLUR_IMAGE_TYPE_2D_MULTISAMPLE)
     {
         unsigned int n_samples = 0;
 
@@ -770,7 +770,7 @@ PUBLIC EMERALD_API RENDERING_CONTEXT_CALL void postprocessing_motion_blur_execut
                                                    &n_samples,
                                                     0, /* src_data_flags */
                                                     sizeof(unsigned int) );
-    } /* if (motion_blur_ptr->image_dimensionality == POSTPROCESSING_MOTION_BLUR_IMAGE_DIMENSIONALITY_2D_MULTISAMPLE) */
+    } /* if (motion_blur_ptr->image_dimensionality == POSTPROCESSING_MOTION_BLUR_IMAGE_TYPE_2D_MULTISAMPLE) */
 
     ogl_program_ub_sync(motion_blur_ptr->po_props_ub);
 

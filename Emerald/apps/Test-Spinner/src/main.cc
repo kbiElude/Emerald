@@ -676,7 +676,7 @@ PRIVATE void _init_spinner()
     _spinner_motion_blur = postprocessing_motion_blur_create(_context,
                                                              POSTPROCESSING_MOTION_BLUR_IMAGE_FORMAT_RGBA8,
                                                              POSTPROCESSING_MOTION_BLUR_IMAGE_FORMAT_RG32F,
-                                                             POSTPROCESSING_MOTION_BLUR_IMAGE_DIMENSIONALITY_2D,
+                                                             POSTPROCESSING_MOTION_BLUR_IMAGE_TYPE_2D,
                                                              system_hashed_ansi_string_create("Spinner motion blur") );
 
     /* All done */

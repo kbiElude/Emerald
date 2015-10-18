@@ -69,7 +69,7 @@ PUBLIC EMERALD_API ogl_texture ogl_context_textures_get_texture_by_name(ogl_cont
  *                            For optimal performance, make sure to call ogl_textures_get_texture_from_pool()
  *                            directly from a thread, to which the context has already been bound!
  *                            Must not be NULL.
- *  @param dimensionality     Enum describing the texture target of the texture object to return.
+ *  @param type               Enum describing the texture target of the texture object to return.
  *  @param n_mipmaps          Number of mip-maps to prepare. The usual glTexStorage*D() requirements
  *                            apply.
  *  @param base_mipmap_width  Base mip-map width.
@@ -79,15 +79,15 @@ PUBLIC EMERALD_API ogl_texture ogl_context_textures_get_texture_by_name(ogl_cont
  *  @return An ogl_texture instance wrapping the texture object or NULL, if the request
  *          failed for whatever reason.
  **/
-PUBLIC RENDERING_CONTEXT_CALL EMERALD_API ogl_texture ogl_context_textures_get_texture_from_pool(ogl_context                context,
-                                                                                                 ogl_texture_dimensionality dimensionality,
-                                                                                                 unsigned int               n_mipmaps,
-                                                                                                 GLenum                     internalformat,
-                                                                                                 unsigned int               base_mipmap_width,
-                                                                                                 unsigned int               base_mipmap_height,
-                                                                                                 unsigned int               base_mipmap_depth,
-                                                                                                 unsigned int               n_samples,
-                                                                                                 bool                       fixed_sample_locations);
+PUBLIC RENDERING_CONTEXT_CALL EMERALD_API ogl_texture ogl_context_textures_get_texture_from_pool(ogl_context      context,
+                                                                                                 ogl_texture_type type,
+                                                                                                 unsigned int     n_mipmaps,
+                                                                                                 GLenum           internalformat,
+                                                                                                 unsigned int     base_mipmap_width,
+                                                                                                 unsigned int     base_mipmap_height,
+                                                                                                 unsigned int     base_mipmap_depth,
+                                                                                                 unsigned int     n_samples,
+                                                                                                 bool             fixed_sample_locations);
 
 /** TODO */
 PUBLIC EMERALD_API void ogl_context_textures_return_reusable(ogl_context context,

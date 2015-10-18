@@ -3248,13 +3248,13 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_shadow_mapping_toggle(ogl_shadow_mapping 
         {
             scene_light_shadow_map_algorithm light_shadow_map_algorithm            = SCENE_LIGHT_SHADOW_MAP_ALGORITHM_UNKNOWN;
             bool                             light_shadow_map_cull_front_faces     = false;
-            ogl_texture_dimensionality       light_shadow_map_dimensionality       = OGL_TEXTURE_DIMENSIONALITY_UNKNOWN;
             scene_light_shadow_map_filtering light_shadow_map_filtering            = SCENE_LIGHT_SHADOW_MAP_FILTERING_UNKNOWN;
             ral_texture_format               light_shadow_map_format_color         = RAL_TEXTURE_FORMAT_UNKNOWN;
             ral_texture_format               light_shadow_map_format_depth         = RAL_TEXTURE_FORMAT_UNKNOWN;
             uint32_t                         light_shadow_map_size[3]              = {0, 0, 1};
+            ogl_texture_type                 light_shadow_map_type                 = OGL_TEXTURE_TYPE_UNKNOWN;
 
-            /* Determine shadow map texture dimensionality */
+            /* Determine shadow map texture type */
             switch (light_type)
             {
                 case SCENE_LIGHT_TYPE_POINT:
@@ -3262,12 +3262,12 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_shadow_mapping_toggle(ogl_shadow_mapping 
                     if (target_face == OGL_SHADOW_MAPPING_TARGET_FACE_2D_PARABOLOID_FRONT ||
                         target_face == OGL_SHADOW_MAPPING_TARGET_FACE_2D_PARABOLOID_REAR)
                     {
-                        light_shadow_map_dimensionality = OGL_TEXTURE_DIMENSIONALITY_GL_TEXTURE_2D_ARRAY;
-                        light_shadow_map_size[2]        = 2; /* front + rear */
+                        light_shadow_map_type    = OGL_TEXTURE_TYPE_GL_TEXTURE_2D_ARRAY;
+                        light_shadow_map_size[2] = 2; /* front + rear */
                     }
                     else
                     {
-                        light_shadow_map_dimensionality = OGL_TEXTURE_DIMENSIONALITY_GL_TEXTURE_CUBE_MAP;
+                        light_shadow_map_type = OGL_TEXTURE_TYPE_GL_TEXTURE_CUBE_MAP;
                     }
 
                     break;
@@ -3276,7 +3276,7 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_shadow_mapping_toggle(ogl_shadow_mapping 
                 case SCENE_LIGHT_TYPE_DIRECTIONAL:
                 case SCENE_LIGHT_TYPE_SPOT:
                 {
-                    light_shadow_map_dimensionality = OGL_TEXTURE_DIMENSIONALITY_GL_TEXTURE_2D;
+                    light_shadow_map_type = OGL_TEXTURE_TYPE_GL_TEXTURE_2D;
 
                     break;
                 }
@@ -3324,7 +3324,7 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_shadow_mapping_toggle(ogl_shadow_mapping 
                               "SM texture(s) are already active");
 
             handler_ptr->current_sm_depth_texture = ogl_context_textures_get_texture_from_pool(handler_ptr->context,
-                                                                                               light_shadow_map_dimensionality,
+                                                                                               light_shadow_map_type,
                                                                                                1, /* n_mipmaps */
                                                                                                raGL_get_ogl_texture_internalformat_for_ral_texture_format(light_shadow_map_format_depth),
                                                                                                light_shadow_map_size[0],
@@ -3337,13 +3337,13 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_shadow_mapping_toggle(ogl_shadow_mapping 
             {
                 ASSERT_DEBUG_SYNC(light_shadow_map_size[0] == light_shadow_map_size[1],
                                   "For VSM, shadow map textures must be square.");
-                ASSERT_DEBUG_SYNC(light_shadow_map_dimensionality == OGL_TEXTURE_DIMENSIONALITY_GL_TEXTURE_2D       && light_shadow_map_size[2] == 1 ||
-                                  light_shadow_map_dimensionality == OGL_TEXTURE_DIMENSIONALITY_GL_TEXTURE_2D_ARRAY && light_shadow_map_size[2] >  1 ||
-                                  light_shadow_map_dimensionality == OGL_TEXTURE_DIMENSIONALITY_GL_TEXTURE_CUBE_MAP && light_shadow_map_size[2] == 1,
+                ASSERT_DEBUG_SYNC(light_shadow_map_type == OGL_TEXTURE_TYPE_GL_TEXTURE_2D       && light_shadow_map_size[2] == 1 ||
+                                  light_shadow_map_type == OGL_TEXTURE_TYPE_GL_TEXTURE_2D_ARRAY && light_shadow_map_size[2] >  1 ||
+                                  light_shadow_map_type == OGL_TEXTURE_TYPE_GL_TEXTURE_CUBE_MAP && light_shadow_map_size[2] == 1,
                                   "Sanity check failed");
 
                 handler_ptr->current_sm_color0_texture = ogl_context_textures_get_texture_from_pool(handler_ptr->context,
-                                                                                                    light_shadow_map_dimensionality,
+                                                                                                    light_shadow_map_type,
                                                                                                     system_math_other_log2_uint32(light_shadow_map_size[0]),
                                                                                                     raGL_get_ogl_texture_internalformat_for_ral_texture_format(light_shadow_map_format_color),
                                                                                                     light_shadow_map_size[0],
@@ -3526,7 +3526,7 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_shadow_mapping_toggle(ogl_shadow_mapping 
                                          handler_ptr->fbo_id);
         entry_points->pGLDrawBuffer     ((handler_ptr->current_sm_color0_texture != NULL) ? GL_COLOR_ATTACHMENT0 : GL_NONE);
 
-        if (light_shadow_map_texture_target_detailed != OGL_TEXTURE_DIMENSIONALITY_GL_TEXTURE_2D_ARRAY)
+        if (light_shadow_map_texture_target_detailed != OGL_TEXTURE_TYPE_GL_TEXTURE_2D_ARRAY)
         {
             entry_points->pGLFramebufferTexture2D(GL_DRAW_FRAMEBUFFER,
                                                   GL_COLOR_ATTACHMENT0,

@@ -17,11 +17,11 @@ REFCOUNT_INSERT_DECLARATIONS(postprocessing_motion_blur,
 
 typedef enum
 {
-    POSTPROCESSING_MOTION_BLUR_IMAGE_DIMENSIONALITY_2D,
-    POSTPROCESSING_MOTION_BLUR_IMAGE_DIMENSIONALITY_2D_MULTISAMPLE,
+    POSTPROCESSING_MOTION_BLUR_IMAGE_TYPE_2D,
+    POSTPROCESSING_MOTION_BLUR_IMAGE_TYPE_2D_MULTISAMPLE,
 
-    /* TODO: Support for other image dimensionalities */
-} postprocessing_motion_blur_image_dimensionality;
+    /* TODO: Support for other image types */
+} postprocessing_motion_blur_image_type;
 
 typedef enum
 {
@@ -81,11 +81,11 @@ typedef enum
 } postprocessing_motion_blur_property;
 
 /** TODO */
-PUBLIC EMERALD_API postprocessing_motion_blur postprocessing_motion_blur_create(ogl_context                                     context,
-                                                                                postprocessing_motion_blur_image_format         src_dst_color_image_format,
-                                                                                postprocessing_motion_blur_image_format         src_velocity_image_format,
-                                                                                postprocessing_motion_blur_image_dimensionality image_dimensionality,
-                                                                                system_hashed_ansi_string                       name);
+PUBLIC EMERALD_API postprocessing_motion_blur postprocessing_motion_blur_create(ogl_context                             context,
+                                                                                postprocessing_motion_blur_image_format src_dst_color_image_format,
+                                                                                postprocessing_motion_blur_image_format src_velocity_image_format,
+                                                                                postprocessing_motion_blur_image_type   image_type,
+                                                                                system_hashed_ansi_string               name);
 
 /** Dispatches a compute job to generate the motion blurred version of @param input_color_texture.
  *

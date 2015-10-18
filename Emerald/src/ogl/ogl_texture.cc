@@ -23,19 +23,18 @@
 /* Private declarations */
 typedef struct
 {
-    unsigned int               data_size;
-    ogl_texture_dimensionality dimensionality;
-    unsigned int               depth;
-    unsigned int               height;
-    bool                       was_configured;
-    unsigned int               width;
+    unsigned int     data_size;
+    unsigned int     depth;
+    unsigned int     height;
+    ogl_texture_type type;
+    bool             was_configured;
+    unsigned int     width;
 } _ogl_texture_mipmap;
 
 typedef struct _ogl_texture
 {
     ogl_context context;
 
-    ogl_texture_dimensionality dimensionality;
     bool                       fixed_sample_locations;
     GLuint                     gl_id;
     bool                       has_been_bound;
@@ -46,6 +45,7 @@ typedef struct _ogl_texture
     unsigned int               n_max_mipmaps;
     unsigned int               n_samples;
     system_hashed_ansi_string  src_filename;
+    ogl_texture_type           type;
 
     gfx_image src_image;
 
@@ -53,7 +53,6 @@ typedef struct _ogl_texture
                           system_hashed_ansi_string in_name)
     {
         context                   = in_context;
-        dimensionality            = OGL_TEXTURE_DIMENSIONALITY_UNKNOWN;
         fixed_sample_locations    = false;
         gl_id                     = 0;
         has_been_bound            = false;
@@ -64,6 +63,7 @@ typedef struct _ogl_texture
         n_samples                 = 0;
         n_max_mipmaps             = 0;
         src_filename              = NULL;
+        type                      = OGL_TEXTURE_TYPE_UNKNOWN;
     }
     REFCOUNT_INSERT_VARIABLES
 } _ogl_texture;
@@ -569,7 +569,7 @@ PRIVATE void _ogl_texture_release(void* arg)
 /* Please see header for specification */
 PUBLIC EMERALD_API RENDERING_CONTEXT_CALL ogl_texture ogl_texture_create_and_initialize(ogl_context                context,
                                                                                         system_hashed_ansi_string  name,
-                                                                                        ogl_texture_dimensionality dimensionality,
+                                                                                        ogl_texture_type           type,
                                                                                         unsigned int               n_mipmaps,
                                                                                         GLenum                     internalformat,
                                                                                         unsigned int               base_mipmap_width,
@@ -610,12 +610,12 @@ PUBLIC EMERALD_API RENDERING_CONTEXT_CALL ogl_texture ogl_texture_create_and_ini
         goto end;
     }
 
-    switch (dimensionality)
+    switch (type)
     {
-        case OGL_TEXTURE_DIMENSIONALITY_GL_TEXTURE_1D:
+        case OGL_TEXTURE_TYPE_GL_TEXTURE_1D:
         {
             dsa_entry_points->pGLTextureStorage1DEXT(result,
-                                                     dimensionality,
+                                                     type,
                                                      n_mipmaps,
                                                      internalformat,
                                                      base_mipmap_width);
@@ -623,13 +623,13 @@ PUBLIC EMERALD_API RENDERING_CONTEXT_CALL ogl_texture ogl_texture_create_and_ini
             break;
         }
 
-        case OGL_TEXTURE_DIMENSIONALITY_GL_TEXTURE_1D_ARRAY:
-        case OGL_TEXTURE_DIMENSIONALITY_GL_TEXTURE_2D:
-        case OGL_TEXTURE_DIMENSIONALITY_GL_TEXTURE_CUBE_MAP:
-        case OGL_TEXTURE_DIMENSIONALITY_GL_TEXTURE_RECTANGLE:
+        case OGL_TEXTURE_TYPE_GL_TEXTURE_1D_ARRAY:
+        case OGL_TEXTURE_TYPE_GL_TEXTURE_2D:
+        case OGL_TEXTURE_TYPE_GL_TEXTURE_CUBE_MAP:
+        case OGL_TEXTURE_TYPE_GL_TEXTURE_RECTANGLE:
         {
             dsa_entry_points->pGLTextureStorage2DEXT(result,
-                                                     dimensionality,
+                                                     type,
                                                      n_mipmaps,
                                                      internalformat,
                                                      base_mipmap_width,
@@ -638,10 +638,10 @@ PUBLIC EMERALD_API RENDERING_CONTEXT_CALL ogl_texture ogl_texture_create_and_ini
             break;
         }
 
-        case OGL_TEXTURE_DIMENSIONALITY_GL_TEXTURE_2D_MULTISAMPLE:
+        case OGL_TEXTURE_TYPE_GL_TEXTURE_2D_MULTISAMPLE:
         {
             dsa_entry_points->pGLTextureStorage2DMultisampleEXT(result,
-                                                                dimensionality,
+                                                                type,
                                                                 n_samples,
                                                                 internalformat,
                                                                 base_mipmap_width,
@@ -651,12 +651,12 @@ PUBLIC EMERALD_API RENDERING_CONTEXT_CALL ogl_texture ogl_texture_create_and_ini
             break;
         }
 
-        case OGL_TEXTURE_DIMENSIONALITY_GL_TEXTURE_2D_ARRAY:
-        case OGL_TEXTURE_DIMENSIONALITY_GL_TEXTURE_3D:
-        case OGL_TEXTURE_DIMENSIONALITY_GL_TEXTURE_CUBE_MAP_ARRAY:
+        case OGL_TEXTURE_TYPE_GL_TEXTURE_2D_ARRAY:
+        case OGL_TEXTURE_TYPE_GL_TEXTURE_3D:
+        case OGL_TEXTURE_TYPE_GL_TEXTURE_CUBE_MAP_ARRAY:
         {
             dsa_entry_points->pGLTextureStorage3DEXT(result,
-                                                     dimensionality,
+                                                     type,
                                                      n_mipmaps,
                                                      internalformat,
                                                      base_mipmap_width,
@@ -666,10 +666,10 @@ PUBLIC EMERALD_API RENDERING_CONTEXT_CALL ogl_texture ogl_texture_create_and_ini
             break;
         }
 
-        case OGL_TEXTURE_DIMENSIONALITY_GL_TEXTURE_2D_MULTISAMPLE_ARRAY:
+        case OGL_TEXTURE_TYPE_GL_TEXTURE_2D_MULTISAMPLE_ARRAY:
         {
             dsa_entry_points->pGLTextureStorage3DMultisampleEXT(result,
-                                                                dimensionality,
+                                                                type,
                                                                 n_samples,
                                                                 internalformat,
                                                                 base_mipmap_width,
@@ -683,17 +683,17 @@ PUBLIC EMERALD_API RENDERING_CONTEXT_CALL ogl_texture ogl_texture_create_and_ini
         default:
         {
             ASSERT_DEBUG_SYNC(false,
-                              "Unrecognized texture dimensionality");
+                              "Unrecognized texture type");
         }
-    } /* switch (dimensionality) */
+    } /* switch (type) */
 
     /* Store the properties */
     result_ptr = (_ogl_texture*) result;
 
-    result_ptr->dimensionality         = dimensionality;
     result_ptr->fixed_sample_locations = fixed_sample_locations;
     result_ptr->internalformat         = (ogl_texture_internalformat) internalformat;
     result_ptr->n_samples              = n_samples;
+    result_ptr->type                   = type;
 
 end:
     return result;
@@ -890,9 +890,9 @@ PUBLIC EMERALD_API void ogl_texture_get_property(const ogl_texture    texture,
 
     switch (property)
     {
-        case OGL_TEXTURE_PROPERTY_DIMENSIONALITY:
+        case OGL_TEXTURE_PROPERTY_TYPE:
         {
-            *(ogl_texture_dimensionality*) out_result = texture_ptr->dimensionality;
+            *(ogl_texture_type*) out_result = texture_ptr->type;
 
             break;
         }
@@ -986,7 +986,7 @@ PUBLIC EMERALD_API void ogl_texture_get_property(const ogl_texture    texture,
 
         case OGL_TEXTURE_PROPERTY_TARGET:
         {
-            *((ogl_texture_dimensionality*) out_result) = texture_ptr->dimensionality;
+            *((ogl_texture_type*) out_result) = texture_ptr->type;
 
             break;
         }

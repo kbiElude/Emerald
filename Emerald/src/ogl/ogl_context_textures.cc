@@ -151,18 +151,18 @@ typedef struct _ogl_context_textures
 
 typedef enum
 {
-    OGL_CONTEXT_TEXTURES_KEY_DIMENSIONALITY_1D,
-    OGL_CONTEXT_TEXTURES_KEY_DIMENSIONALITY_1D_ARRAY,
-    OGL_CONTEXT_TEXTURES_KEY_DIMENSIONALITY_2D,
-    OGL_CONTEXT_TEXTURES_KEY_DIMENSIONALITY_2D_ARRAY,
-    OGL_CONTEXT_TEXTURES_KEY_DIMENSIONALITY_2D_MULTISAMPLE,
-    OGL_CONTEXT_TEXTURES_KEY_DIMENSIONALITY_2D_MULTISAMPLE_ARRAY,
-    OGL_CONTEXT_TEXTURES_KEY_DIMENSIONALITY_3D,
-    OGL_CONTEXT_TEXTURES_KEY_DIMENSIONALITY_BUFFER,
-    OGL_CONTEXT_TEXTURES_KEY_DIMENSIONALITY_CUBE_MAP,
-    OGL_CONTEXT_TEXTURES_KEY_DIMENSIONALITY_CUBE_MAP_ARRAY,
-    OGL_CONTEXT_TEXTURES_KEY_DIMENSIONALITY_RECTANGLE
-} _ogl_context_textures_key_dimensionality;
+    OGL_CONTEXT_TEXTURES_KEY_TYPE_1D,
+    OGL_CONTEXT_TEXTURES_KEY_TYPE_1D_ARRAY,
+    OGL_CONTEXT_TEXTURES_KEY_TYPE_2D,
+    OGL_CONTEXT_TEXTURES_KEY_TYPE_2D_ARRAY,
+    OGL_CONTEXT_TEXTURES_KEY_TYPE_2D_MULTISAMPLE,
+    OGL_CONTEXT_TEXTURES_KEY_TYPE_2D_MULTISAMPLE_ARRAY,
+    OGL_CONTEXT_TEXTURES_KEY_TYPE_3D,
+    OGL_CONTEXT_TEXTURES_KEY_TYPE_BUFFER,
+    OGL_CONTEXT_TEXTURES_KEY_TYPE_CUBE_MAP,
+    OGL_CONTEXT_TEXTURES_KEY_TYPE_CUBE_MAP_ARRAY,
+    OGL_CONTEXT_TEXTURES_KEY_TYPE_RECTANGLE
+} _ogl_context_textures_key_type;
 
 typedef enum
 {
@@ -235,37 +235,37 @@ typedef enum
 
 /* Forward declarations */
 PRIVATE GLenum                                   _ogl_context_textures_get_glenum_internalformat_for_key_internalformat(_ogl_context_textures_key_internalformat internalformat);
-PRIVATE ogl_texture_dimensionality               _ogl_context_textures_get_glenum_dimensionality_for_key_dimensionality(_ogl_context_textures_key_dimensionality dimensionality);
-PRIVATE _ogl_context_textures_key_dimensionality _ogl_context_textures_get_key_dimensionality_for_glenum_dimensionality(ogl_texture_dimensionality               dimensionality);
+PRIVATE ogl_texture_type                         _ogl_context_textures_get_glenum_type_for_key_type                    (_ogl_context_textures_key_type           type);
+PRIVATE _ogl_context_textures_key_type           _ogl_context_textures_get_key_type_for_glenum_type                    (ogl_texture_type                         type);
 PRIVATE _ogl_context_textures_key_internalformat _ogl_context_textures_get_key_internalformat_for_glenum_internalformat(GLenum                                   internalformat);
 
 /** Private functions */
 
 /** TODO */
-PRIVATE ogl_texture_dimensionality _ogl_context_textures_get_glenum_dimensionality_for_key_dimensionality(_ogl_context_textures_key_dimensionality dimensionality)
+PRIVATE ogl_texture_type _ogl_context_textures_get_glenum_type_for_key_type(_ogl_context_textures_key_type type)
 {
-    ogl_texture_dimensionality result;
+    ogl_texture_type result;
 
-    switch (dimensionality)
+    switch (type)
     {
-        case OGL_CONTEXT_TEXTURES_KEY_DIMENSIONALITY_1D:                   result = OGL_TEXTURE_DIMENSIONALITY_GL_TEXTURE_1D;                   break;
-        case OGL_CONTEXT_TEXTURES_KEY_DIMENSIONALITY_1D_ARRAY:             result = OGL_TEXTURE_DIMENSIONALITY_GL_TEXTURE_1D_ARRAY;             break;
-        case OGL_CONTEXT_TEXTURES_KEY_DIMENSIONALITY_2D:                   result = OGL_TEXTURE_DIMENSIONALITY_GL_TEXTURE_2D;                   break;
-        case OGL_CONTEXT_TEXTURES_KEY_DIMENSIONALITY_2D_ARRAY:             result = OGL_TEXTURE_DIMENSIONALITY_GL_TEXTURE_2D_ARRAY;             break;
-        case OGL_CONTEXT_TEXTURES_KEY_DIMENSIONALITY_2D_MULTISAMPLE:       result = OGL_TEXTURE_DIMENSIONALITY_GL_TEXTURE_2D_MULTISAMPLE;       break;
-        case OGL_CONTEXT_TEXTURES_KEY_DIMENSIONALITY_2D_MULTISAMPLE_ARRAY: result = OGL_TEXTURE_DIMENSIONALITY_GL_TEXTURE_2D_MULTISAMPLE_ARRAY; break;
-        case OGL_CONTEXT_TEXTURES_KEY_DIMENSIONALITY_3D:                   result = OGL_TEXTURE_DIMENSIONALITY_GL_TEXTURE_3D;                   break;
-        case OGL_CONTEXT_TEXTURES_KEY_DIMENSIONALITY_BUFFER:               result = OGL_TEXTURE_DIMENSIONALITY_GL_TEXTURE_BUFFER;               break;
-        case OGL_CONTEXT_TEXTURES_KEY_DIMENSIONALITY_CUBE_MAP:             result = OGL_TEXTURE_DIMENSIONALITY_GL_TEXTURE_CUBE_MAP;             break;
-        case OGL_CONTEXT_TEXTURES_KEY_DIMENSIONALITY_CUBE_MAP_ARRAY:       result = OGL_TEXTURE_DIMENSIONALITY_GL_TEXTURE_CUBE_MAP_ARRAY;       break;
-        case OGL_CONTEXT_TEXTURES_KEY_DIMENSIONALITY_RECTANGLE:            result = OGL_TEXTURE_DIMENSIONALITY_GL_TEXTURE_RECTANGLE;            break;
+        case OGL_CONTEXT_TEXTURES_KEY_TYPE_1D:                   result = OGL_TEXTURE_TYPE_GL_TEXTURE_1D;                   break;
+        case OGL_CONTEXT_TEXTURES_KEY_TYPE_1D_ARRAY:             result = OGL_TEXTURE_TYPE_GL_TEXTURE_1D_ARRAY;             break;
+        case OGL_CONTEXT_TEXTURES_KEY_TYPE_2D:                   result = OGL_TEXTURE_TYPE_GL_TEXTURE_2D;                   break;
+        case OGL_CONTEXT_TEXTURES_KEY_TYPE_2D_ARRAY:             result = OGL_TEXTURE_TYPE_GL_TEXTURE_2D_ARRAY;             break;
+        case OGL_CONTEXT_TEXTURES_KEY_TYPE_2D_MULTISAMPLE:       result = OGL_TEXTURE_TYPE_GL_TEXTURE_2D_MULTISAMPLE;       break;
+        case OGL_CONTEXT_TEXTURES_KEY_TYPE_2D_MULTISAMPLE_ARRAY: result = OGL_TEXTURE_TYPE_GL_TEXTURE_2D_MULTISAMPLE_ARRAY; break;
+        case OGL_CONTEXT_TEXTURES_KEY_TYPE_3D:                   result = OGL_TEXTURE_TYPE_GL_TEXTURE_3D;                   break;
+        case OGL_CONTEXT_TEXTURES_KEY_TYPE_BUFFER:               result = OGL_TEXTURE_TYPE_GL_TEXTURE_BUFFER;               break;
+        case OGL_CONTEXT_TEXTURES_KEY_TYPE_CUBE_MAP:             result = OGL_TEXTURE_TYPE_GL_TEXTURE_CUBE_MAP;             break;
+        case OGL_CONTEXT_TEXTURES_KEY_TYPE_CUBE_MAP_ARRAY:       result = OGL_TEXTURE_TYPE_GL_TEXTURE_CUBE_MAP_ARRAY;       break;
+        case OGL_CONTEXT_TEXTURES_KEY_TYPE_RECTANGLE:            result = OGL_TEXTURE_TYPE_GL_TEXTURE_RECTANGLE;            break;
 
         default:
         {
             ASSERT_DEBUG_SYNC(false,
-                              "Unrecognized _ogl_textures_key_dimensionality value");
+                              "Unrecognized _ogl_textures_key_type value");
         }
-    } /* switch (dimensionality) */
+    } /* switch (type) */
 
     return result;
 }
@@ -353,30 +353,30 @@ PRIVATE GLenum _ogl_context_textures_get_glenum_internalformat_for_key_internalf
 }
 
 /** TODO */
-PRIVATE _ogl_context_textures_key_dimensionality _ogl_context_textures_get_key_dimensionality_for_glenum_dimensionality(ogl_texture_dimensionality dimensionality)
+PRIVATE _ogl_context_textures_key_type _ogl_context_textures_get_key_type_for_glenum_type(ogl_texture_type type)
 {
-    _ogl_context_textures_key_dimensionality result;
+    _ogl_context_textures_key_type result;
 
-    switch (dimensionality)
+    switch (type)
     {
-        case OGL_TEXTURE_DIMENSIONALITY_GL_TEXTURE_1D:                   result = OGL_CONTEXT_TEXTURES_KEY_DIMENSIONALITY_1D;                   break;
-        case OGL_TEXTURE_DIMENSIONALITY_GL_TEXTURE_1D_ARRAY:             result = OGL_CONTEXT_TEXTURES_KEY_DIMENSIONALITY_1D_ARRAY;             break;
-        case OGL_TEXTURE_DIMENSIONALITY_GL_TEXTURE_2D:                   result = OGL_CONTEXT_TEXTURES_KEY_DIMENSIONALITY_2D;                   break;
-        case OGL_TEXTURE_DIMENSIONALITY_GL_TEXTURE_2D_ARRAY:             result = OGL_CONTEXT_TEXTURES_KEY_DIMENSIONALITY_2D_ARRAY;             break;
-        case OGL_TEXTURE_DIMENSIONALITY_GL_TEXTURE_2D_MULTISAMPLE:       result = OGL_CONTEXT_TEXTURES_KEY_DIMENSIONALITY_2D_MULTISAMPLE;       break;
-        case OGL_TEXTURE_DIMENSIONALITY_GL_TEXTURE_2D_MULTISAMPLE_ARRAY: result = OGL_CONTEXT_TEXTURES_KEY_DIMENSIONALITY_2D_MULTISAMPLE_ARRAY; break;
-        case OGL_TEXTURE_DIMENSIONALITY_GL_TEXTURE_3D:                   result = OGL_CONTEXT_TEXTURES_KEY_DIMENSIONALITY_3D;                   break;
-        case OGL_TEXTURE_DIMENSIONALITY_GL_TEXTURE_BUFFER:               result = OGL_CONTEXT_TEXTURES_KEY_DIMENSIONALITY_BUFFER;               break;
-        case OGL_TEXTURE_DIMENSIONALITY_GL_TEXTURE_CUBE_MAP:             result = OGL_CONTEXT_TEXTURES_KEY_DIMENSIONALITY_CUBE_MAP;             break;
-        case OGL_TEXTURE_DIMENSIONALITY_GL_TEXTURE_CUBE_MAP_ARRAY:       result = OGL_CONTEXT_TEXTURES_KEY_DIMENSIONALITY_CUBE_MAP_ARRAY;       break;
-        case OGL_TEXTURE_DIMENSIONALITY_GL_TEXTURE_RECTANGLE:            result = OGL_CONTEXT_TEXTURES_KEY_DIMENSIONALITY_RECTANGLE;            break;
+        case OGL_TEXTURE_TYPE_GL_TEXTURE_1D:                   result = OGL_CONTEXT_TEXTURES_KEY_TYPE_1D;                   break;
+        case OGL_TEXTURE_TYPE_GL_TEXTURE_1D_ARRAY:             result = OGL_CONTEXT_TEXTURES_KEY_TYPE_1D_ARRAY;             break;
+        case OGL_TEXTURE_TYPE_GL_TEXTURE_2D:                   result = OGL_CONTEXT_TEXTURES_KEY_TYPE_2D;                   break;
+        case OGL_TEXTURE_TYPE_GL_TEXTURE_2D_ARRAY:             result = OGL_CONTEXT_TEXTURES_KEY_TYPE_2D_ARRAY;             break;
+        case OGL_TEXTURE_TYPE_GL_TEXTURE_2D_MULTISAMPLE:       result = OGL_CONTEXT_TEXTURES_KEY_TYPE_2D_MULTISAMPLE;       break;
+        case OGL_TEXTURE_TYPE_GL_TEXTURE_2D_MULTISAMPLE_ARRAY: result = OGL_CONTEXT_TEXTURES_KEY_TYPE_2D_MULTISAMPLE_ARRAY; break;
+        case OGL_TEXTURE_TYPE_GL_TEXTURE_3D:                   result = OGL_CONTEXT_TEXTURES_KEY_TYPE_3D;                   break;
+        case OGL_TEXTURE_TYPE_GL_TEXTURE_BUFFER:               result = OGL_CONTEXT_TEXTURES_KEY_TYPE_BUFFER;               break;
+        case OGL_TEXTURE_TYPE_GL_TEXTURE_CUBE_MAP:             result = OGL_CONTEXT_TEXTURES_KEY_TYPE_CUBE_MAP;             break;
+        case OGL_TEXTURE_TYPE_GL_TEXTURE_CUBE_MAP_ARRAY:       result = OGL_CONTEXT_TEXTURES_KEY_TYPE_CUBE_MAP_ARRAY;       break;
+        case OGL_TEXTURE_TYPE_GL_TEXTURE_RECTANGLE:            result = OGL_CONTEXT_TEXTURES_KEY_TYPE_RECTANGLE;            break;
 
         default:
         {
             ASSERT_DEBUG_SYNC(false,
-                              "Unrecognized ogl_texture_dimensionality value");
+                              "Unrecognized ogl_texture_type value");
         }
-    } /* switch (dimensionality) */
+    } /* switch (type) */
 
     return result;
 }
@@ -465,21 +465,21 @@ PRIVATE _ogl_context_textures_key_internalformat _ogl_context_textures_get_key_i
 }
 
 /** TODO */
-PRIVATE system_hash64 _ogl_context_textures_get_reusable_texture_key(ogl_texture_dimensionality dimensionality,
-                                                                     unsigned int               base_mipmap_depth,
-                                                                     unsigned int               base_mipmap_height,
-                                                                     unsigned int               base_mipmap_width,
-                                                                     unsigned int               n_mipmaps,
-                                                                     unsigned int               n_samples,
-                                                                     GLenum                     internalformat,
-                                                                     bool                       fixed_sample_locations)
+PRIVATE system_hash64 _ogl_context_textures_get_reusable_texture_key(ogl_texture_type type,
+                                                                     unsigned int     base_mipmap_depth,
+                                                                     unsigned int     base_mipmap_height,
+                                                                     unsigned int     base_mipmap_width,
+                                                                     unsigned int     n_mipmaps,
+                                                                     unsigned int     n_samples,
+                                                                     GLenum           internalformat,
+                                                                     bool             fixed_sample_locations)
 {
     /* Key structure:
      *
      * 00-04bit: n mipmaps              (0-15)
      * 05-10bit: n samples              (0-31)
      * 11-19bit: internalformat         (0-63, internal enum that maps to a specific GLenum)
-     * 20-24bit: texture dimensionality (0-15, internal enum that maps to a specific dimensionality)
+     * 20-24bit: texture type           (0-15, internal enum that maps to a specific type)
      * 25-38bit: base mipmap width      (0-16383)
      * 39-52bit: base mipmap height     (0-16383)
      * 53-60bit: base mipmap depth      (0-255).
@@ -487,13 +487,13 @@ PRIVATE system_hash64 _ogl_context_textures_get_reusable_texture_key(ogl_texture
      */
 
     /* Some checks to make sure the crucial properties fit within the key.. */
-    _ogl_context_textures_key_dimensionality key_dimensionality = _ogl_context_textures_get_key_dimensionality_for_glenum_dimensionality(dimensionality);
+    _ogl_context_textures_key_type           key_type           = _ogl_context_textures_get_key_type_for_glenum_type                    (type);
     _ogl_context_textures_key_internalformat key_internalformat = _ogl_context_textures_get_key_internalformat_for_glenum_internalformat(internalformat);
 
     ASSERT_DEBUG_SYNC((n_mipmaps          < (1 << 5)   &&
                        n_samples          < (1 << 6)   &&
                        key_internalformat < (1 << 10)  &&
-                       key_dimensionality < (1 << 5)   &&
+                       key_type           < (1 << 5)   &&
                        base_mipmap_depth  < (1 << 8)   &&
                        base_mipmap_height < (1 << 16)  &&
                        base_mipmap_width  < (1 << 16)),
@@ -502,7 +502,7 @@ PRIVATE system_hash64 _ogl_context_textures_get_reusable_texture_key(ogl_texture
     return (( ((system_hash64) n_mipmaps)                      & ((1 << 5)  - 1)) << 0)  |
            (( ((system_hash64) n_samples)                      & ((1 << 6)  - 1)) << 5)  |
            (( ((system_hash64) key_internalformat)             & ((1 << 9)  - 1)) << 11) |
-           (( ((system_hash64) key_dimensionality)             & ((1 << 5)  - 1)) << 20) |
+           (( ((system_hash64) key_type)                       & ((1 << 5)  - 1)) << 20) |
            (( ((system_hash64) base_mipmap_width)              & ((1 << 14) - 1)) << 25) |
            (( ((system_hash64) base_mipmap_height)             & ((1 << 14) - 1)) << 39) |
            (( ((system_hash64) base_mipmap_depth)              & ((1 << 8)  - 1)) << 53) |
@@ -581,18 +581,18 @@ PUBLIC ogl_context_textures ogl_context_textures_create(ogl_context context)
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API ogl_texture ogl_context_textures_get_texture_from_pool(ogl_context                context,
-                                                                          ogl_texture_dimensionality dimensionality,
-                                                                          unsigned int               n_mipmaps,
-                                                                          GLenum                     internalformat,
-                                                                          unsigned int               base_mipmap_width,
-                                                                          unsigned int               base_mipmap_height,
-                                                                          unsigned int               base_mipmap_depth,
-                                                                          unsigned int               n_samples,
-                                                                          bool                       fixed_sample_locations)
+PUBLIC EMERALD_API ogl_texture ogl_context_textures_get_texture_from_pool(ogl_context      context,
+                                                                          ogl_texture_type type,
+                                                                          unsigned int     n_mipmaps,
+                                                                          GLenum           internalformat,
+                                                                          unsigned int     base_mipmap_width,
+                                                                          unsigned int     base_mipmap_height,
+                                                                          unsigned int     base_mipmap_depth,
+                                                                          unsigned int     n_samples,
+                                                                          bool             fixed_sample_locations)
 {
     ogl_texture            result           = NULL;
-    const system_hash64    texture_key      = _ogl_context_textures_get_reusable_texture_key(dimensionality,
+    const system_hash64    texture_key      = _ogl_context_textures_get_reusable_texture_key(type,
                                                                                              base_mipmap_depth,
                                                                                              base_mipmap_height,
                                                                                              base_mipmap_width,
@@ -644,7 +644,7 @@ PUBLIC EMERALD_API ogl_texture ogl_context_textures_get_texture_from_pool(ogl_co
         result = ogl_texture_create_and_initialize(context,
                                                    system_hashed_ansi_string_create_by_merging_two_strings("Re-usable texture ",
                                                                                                            spawned_texture_id_text),
-                                                   dimensionality,
+                                                   type,
                                                    n_mipmaps,
                                                    internalformat,
                                                    base_mipmap_width,
@@ -737,13 +737,13 @@ PUBLIC EMERALD_API void ogl_context_textures_return_reusable(ogl_context context
     unsigned int                      texture_base_mipmap_depth      = 0;
     unsigned int                      texture_base_mipmap_height     = 0;
     unsigned int                      texture_base_mipmap_width      = 0;
-    ogl_texture_dimensionality        texture_dimensionality         = OGL_TEXTURE_DIMENSIONALITY_UNKNOWN;
     bool                              texture_fixed_sample_locations;
     GLuint                            texture_id                     = 0;
     ogl_texture_internalformat        texture_internalformat;
     unsigned int                      texture_n_mipmaps              = 0;
     unsigned int                      texture_n_samples              = 0;
     _ogl_context_textures*            textures_ptr                   = NULL;
+    ogl_texture_type                  texture_type                   = OGL_TEXTURE_TYPE_UNKNOWN;
 
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_TEXTURES,
@@ -768,8 +768,8 @@ PUBLIC EMERALD_API void ogl_context_textures_return_reusable(ogl_context context
                                     OGL_TEXTURE_MIPMAP_PROPERTY_WIDTH,
                                    &texture_base_mipmap_width);
     ogl_texture_get_property      (released_texture,
-                                   OGL_TEXTURE_PROPERTY_DIMENSIONALITY,
-                                  &texture_dimensionality);
+                                   OGL_TEXTURE_PROPERTY_TYPE,
+                                  &texture_type);
     ogl_texture_get_property      (released_texture,
                                    OGL_TEXTURE_PROPERTY_FIXED_SAMPLE_LOCATIONS,
                                   &texture_fixed_sample_locations);
@@ -783,7 +783,7 @@ PUBLIC EMERALD_API void ogl_context_textures_return_reusable(ogl_context context
                                    OGL_TEXTURE_PROPERTY_N_SAMPLES,
                                   &texture_n_samples);
 
-    reusable_texture_key = _ogl_context_textures_get_reusable_texture_key(texture_dimensionality,
+    reusable_texture_key = _ogl_context_textures_get_reusable_texture_key(texture_type,
                                                                           texture_base_mipmap_depth,
                                                                           texture_base_mipmap_height,
                                                                           texture_base_mipmap_width,
