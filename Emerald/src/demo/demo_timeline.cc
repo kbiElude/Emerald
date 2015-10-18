@@ -2,14 +2,6 @@
  *
  * Emerald (kbi/elude @2015)
  *
- * TODO: The existing implementation uses the most crude brute-force method on
- *       the planet to determine which video segment should be played at a given
- *       time. There's definitely a lot of space to be won in this area - especially
- *       once we start supporting many video segments defined for a given frame time.
- *       However, in the general case where the timeline is played from the beginning
- *       till the end, and there's only one video segment available for a given time quant,
- *       I'm not expecting huge benefits from optimizing this code.
- *       Things might change in the future when the latter restriction is lifted.
  */
 #include "shared.h"
 #include "demo/demo_timeline.h"

@@ -60,9 +60,9 @@ const unsigned int _n_scene_filenames = sizeof(_scene_filenames) /
 
 /* Other stuff */
 postprocessing_blur_gaussian_resolution     _color_shadow_map_blur_resolution           = POSTPROCESSING_BLUR_GAUSSIAN_RESOLUTION_ORIGINAL;
-ogl_texture_internalformat                  _color_shadow_map_internalformat            = OGL_TEXTURE_INTERNALFORMAT_GL_RG32F;
+ral_texture_format                          _color_shadow_map_format                    = RAL_TEXTURE_FORMAT_RG32_FLOAT;
 system_time                                 _current_frame_time                         = 0;
-ogl_texture_internalformat                  _depth_shadow_map_internalformat            = OGL_TEXTURE_INTERNALFORMAT_GL_DEPTH_COMPONENT16;
+ral_texture_format                          _depth_shadow_map_format                    = RAL_TEXTURE_FORMAT_DEPTH16_SNORM;
 ogl_pipeline                                _pipeline                                   = NULL;
 uint32_t                                    _pipeline_stage_id                          = -1;
 system_time                                 _playback_start_time                        = 0;
@@ -191,15 +191,15 @@ PUBLIC postprocessing_blur_gaussian_resolution state_get_color_shadow_map_blur_r
 }
 
 /** Please see header for spec */
-PUBLIC ogl_texture_internalformat state_get_color_shadow_map_internalformat()
+PUBLIC ral_texture_format state_get_color_shadow_map_format()
 {
-    return _color_shadow_map_internalformat;
+    return _color_shadow_map_format;
 }
 
 /** Please see header for spec */
-PUBLIC ogl_texture_internalformat state_get_depth_shadow_map_internalformat()
+PUBLIC ral_texture_format state_get_depth_shadow_map_format()
 {
-    return _depth_shadow_map_internalformat;
+    return _depth_shadow_map_format;
 }
 
 /** Please see header for spec */
@@ -434,8 +434,8 @@ PUBLIC void state_init()
             if (!has_updated_color_sm_internalformat && current_light_type != SCENE_LIGHT_TYPE_AMBIENT)
             {
                 scene_light_get_property(current_light,
-                                         SCENE_LIGHT_PROPERTY_SHADOW_MAP_INTERNALFORMAT_COLOR,
-                                        &_color_shadow_map_internalformat);
+                                         SCENE_LIGHT_PROPERTY_SHADOW_MAP_FORMAT_COLOR,
+                                        &_color_shadow_map_format);
 
                 has_updated_color_sm_internalformat = true;
             }
@@ -444,8 +444,8 @@ PUBLIC void state_init()
             if (!has_updated_depth_sm_internalformat && current_light_type != SCENE_LIGHT_TYPE_AMBIENT)
             {
                 scene_light_get_property(current_light,
-                                         SCENE_LIGHT_PROPERTY_SHADOW_MAP_INTERNALFORMAT_DEPTH,
-                                        &_depth_shadow_map_internalformat);
+                                         SCENE_LIGHT_PROPERTY_SHADOW_MAP_FORMAT_DEPTH,
+                                        &_depth_shadow_map_format);
 
                 has_updated_depth_sm_internalformat = true;
             }
@@ -580,7 +580,7 @@ PUBLIC void state_set_current_frame_time(system_time frame_time)
 }
 
 /** Please see header for spec */
-PUBLIC void state_set_color_shadow_map_internalformat(ogl_texture_internalformat new_internalformat)
+PUBLIC void state_set_color_shadow_map_format(ral_texture_format new_format)
 {
     /* Wait for the current frame to render and lock the rendering pipeline, while
      * we adjust the shadow map size..
@@ -614,20 +614,20 @@ PUBLIC void state_set_color_shadow_map_internalformat(ogl_texture_internalformat
             if (current_light_type != SCENE_LIGHT_TYPE_AMBIENT)
             {
                 scene_light_set_property(current_light,
-                                         SCENE_LIGHT_PROPERTY_SHADOW_MAP_INTERNALFORMAT_COLOR,
-                                        &new_internalformat);
+                                         SCENE_LIGHT_PROPERTY_SHADOW_MAP_FORMAT_COLOR,
+                                        &new_format);
             } /* if (current light is not an ambient light) */
         } /* for (all scene lights) */
     } /* for (all loaded scenes) */
 
-    _depth_shadow_map_internalformat = new_internalformat;
+    _depth_shadow_map_format = new_format;
 
     /* Unlock the rendering process */
     ogl_rendering_handler_unlock_bound_context(_rendering_handler);
 }
 
 /** Please see header for spec */
-PUBLIC void state_set_depth_shadow_map_internalformat(ogl_texture_internalformat new_internalformat)
+PUBLIC void state_set_depth_shadow_map_format(ral_texture_format new_format)
 {
     /* Wait for the current frame to render and lock the rendering pipeline, while
      * we adjust the shadow map size..
@@ -661,13 +661,13 @@ PUBLIC void state_set_depth_shadow_map_internalformat(ogl_texture_internalformat
             if (current_light_type != SCENE_LIGHT_TYPE_AMBIENT)
             {
                 scene_light_set_property(current_light,
-                                         SCENE_LIGHT_PROPERTY_SHADOW_MAP_INTERNALFORMAT_DEPTH,
-                                        &new_internalformat);
+                                         SCENE_LIGHT_PROPERTY_SHADOW_MAP_FORMAT_DEPTH,
+                                        &new_format);
             } /* if (current light is not an ambient light) */
         } /* for (all scene lights) */
     } /* for (all loaded scenes) */
 
-    _depth_shadow_map_internalformat = new_internalformat;
+    _depth_shadow_map_format = new_format;
 
     /* Unlock the rendering process */
     ogl_rendering_handler_unlock_bound_context(_rendering_handler);

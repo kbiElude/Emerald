@@ -28,8 +28,8 @@ PRIVATE ogl_ui_bag     _ui_bag                                       = NULL;
 PRIVATE ogl_ui_control _ui_color_shadow_map_blur_n_passes_scrollbar  = NULL;
 PRIVATE ogl_ui_control _ui_color_shadow_map_blur_n_taps_scrollbar    = NULL;
 PRIVATE ogl_ui_control _ui_color_shadow_map_blur_resolution_dropdown = NULL;
-PRIVATE ogl_ui_control _ui_color_shadow_map_internalformat_dropdown  = NULL;
-PRIVATE ogl_ui_control _ui_depth_shadow_map_internalformat_dropdown  = NULL;
+PRIVATE ogl_ui_control _ui_color_shadow_map_format_dropdown          = NULL;
+PRIVATE ogl_ui_control _ui_depth_shadow_map_format_dropdown          = NULL;
 PRIVATE ogl_ui_control _ui_shadow_map_algorithm_dropdown             = NULL;
 PRIVATE ogl_ui_control _ui_shadow_map_pl_algorithm_dropdown          = NULL;
 PRIVATE ogl_ui_control _ui_shadow_map_size_dropdown                  = NULL;
@@ -82,36 +82,36 @@ const uint32_t n_color_shadow_map_blur_resolution_strings = sizeof(color_shadow_
                                                             sizeof(color_shadow_map_blur_resolution_strings[0]);
 
 
-const ogl_texture_internalformat color_shadow_map_internalformat_enums[] =
+const ral_texture_format color_shadow_map_format_enums[] =
 {
-    OGL_TEXTURE_INTERNALFORMAT_GL_RG16F,
-    OGL_TEXTURE_INTERNALFORMAT_GL_RG32F
+    RAL_TEXTURE_FORMAT_RG16_FLOAT,
+    RAL_TEXTURE_FORMAT_RG32_FLOAT
 };
-system_hashed_ansi_string color_shadow_map_internalformat_strings[] =
+system_hashed_ansi_string color_shadow_map_format_strings[] =
 {
-    system_hashed_ansi_string_create("GL_RG16F"),
-    system_hashed_ansi_string_create("GL_RG32F"),
+    system_hashed_ansi_string_create("RG16F"),
+    system_hashed_ansi_string_create("RG32F"),
 };
-const uint32_t n_color_shadow_map_internalformat_strings = sizeof(color_shadow_map_internalformat_strings) /
-                                                           sizeof(color_shadow_map_internalformat_strings[0]);
+const uint32_t n_color_shadow_map_format_strings = sizeof(color_shadow_map_format_strings) /
+                                                   sizeof(color_shadow_map_format_strings[0]);
 
 
-const ogl_texture_internalformat depth_shadow_map_internalformat_enums[] =
+const ral_texture_format depth_shadow_map_format_enums[] =
 {
-    OGL_TEXTURE_INTERNALFORMAT_GL_DEPTH_COMPONENT16,
-    OGL_TEXTURE_INTERNALFORMAT_GL_DEPTH_COMPONENT24,
-    OGL_TEXTURE_INTERNALFORMAT_GL_DEPTH_COMPONENT32,
-    OGL_TEXTURE_INTERNALFORMAT_GL_DEPTH_COMPONENT32F
+    RAL_TEXTURE_FORMAT_DEPTH16_SNORM,
+    RAL_TEXTURE_FORMAT_DEPTH24_SNORM,
+    RAL_TEXTURE_FORMAT_DEPTH32_FLOAT,
+    RAL_TEXTURE_FORMAT_DEPTH32_SNORM,
 };
-system_hashed_ansi_string depth_shadow_map_internalformat_strings[] =
+system_hashed_ansi_string depth_shadow_map_format_strings[] =
 {
-    system_hashed_ansi_string_create("GL_DEPTH_COMPONENT16"),
-    system_hashed_ansi_string_create("GL_DEPTH_COMPONENT24"),
-    system_hashed_ansi_string_create("GL_DEPTH_COMPONENT32"),
-    system_hashed_ansi_string_create("GL_DEPTH_COMPONENT32F")
+    system_hashed_ansi_string_create("DEPTH16_SNORM"),
+    system_hashed_ansi_string_create("DEPTH24_SNORM"),
+    system_hashed_ansi_string_create("DEPTH32_FLOAT"),
+    system_hashed_ansi_string_create("DEPTH32_SNORM"),
 };
-const uint32_t n_depth_shadow_map_internalformat_strings = sizeof(depth_shadow_map_internalformat_strings) /
-                                                           sizeof(depth_shadow_map_internalformat_strings[0]);
+const uint32_t n_depth_shadow_map_format_strings = sizeof(depth_shadow_map_format_strings) /
+                                                   sizeof(depth_shadow_map_format_strings[0]);
 
 
 const unsigned int shadow_map_size_ints[] =
@@ -163,49 +163,49 @@ PRIVATE unsigned int _ui_get_current_color_shadow_map_blur_resolution_index()
 }
 
 /** TODO */
-PRIVATE unsigned int _ui_get_current_color_shadow_map_internalformat_index()
+PRIVATE unsigned int _ui_get_current_color_shadow_map_format_index()
 {
-    ogl_texture_internalformat current_color_shadow_map_internalformat = state_get_color_shadow_map_internalformat();
-    unsigned int               result                                  = -1;
+    ral_texture_format current_color_shadow_map_format = state_get_color_shadow_map_format();
+    unsigned int       result                          = -1;
 
-    for (unsigned int n_color_shadow_map_internalformat = 0;
-                      n_color_shadow_map_internalformat < n_color_shadow_map_internalformat_strings;
-                    ++n_color_shadow_map_internalformat)
+    for (unsigned int n_color_shadow_map_format = 0;
+                      n_color_shadow_map_format < n_color_shadow_map_format_strings;
+                    ++n_color_shadow_map_format)
     {
-        if (color_shadow_map_internalformat_enums[n_color_shadow_map_internalformat] == current_color_shadow_map_internalformat)
+        if (color_shadow_map_format_enums[n_color_shadow_map_format] == current_color_shadow_map_format)
         {
-            result = n_color_shadow_map_internalformat;
+            result = n_color_shadow_map_format;
 
             break;
         }
-    } /* for (all supported color shadow map internalformats) */
+    } /* for (all supported color shadow map formats) */
 
     ASSERT_DEBUG_SYNC(result != -1,
-                      "No corresponding color shadow map internalformat UI entry found");
+                      "No corresponding color shadow map format UI entry found");
 
     return result;
 }
 
 /** TODO */
-PRIVATE unsigned int _ui_get_current_depth_shadow_map_internalformat_index()
+PRIVATE unsigned int _ui_get_current_depth_shadow_map_format_index()
 {
-    ogl_texture_internalformat current_depth_shadow_map_internalformat = state_get_depth_shadow_map_internalformat();
-    unsigned int               result                                  = -1;
+    ral_texture_format current_depth_shadow_map_format = state_get_depth_shadow_map_format();
+    unsigned int       result                          = -1;
 
-    for (unsigned int n_depth_shadow_map_internalformat = 0;
-                      n_depth_shadow_map_internalformat < n_depth_shadow_map_internalformat_strings;
-                    ++n_depth_shadow_map_internalformat)
+    for (unsigned int n_depth_shadow_map_format = 0;
+                      n_depth_shadow_map_format < n_depth_shadow_map_format_strings;
+                    ++n_depth_shadow_map_format)
     {
-        if (depth_shadow_map_internalformat_enums[n_depth_shadow_map_internalformat] == current_depth_shadow_map_internalformat)
+        if (depth_shadow_map_format_enums[n_depth_shadow_map_format] == current_depth_shadow_map_format)
         {
-            result = n_depth_shadow_map_internalformat;
+            result = n_depth_shadow_map_format;
 
             break;
         }
-    } /* for (all supported depth shadow map internalformats) */
+    } /* for (all supported depth shadow map formats) */
 
     ASSERT_DEBUG_SYNC(result != -1,
-                      "No corresponding depth shadow map internalformat UI entry found");
+                      "No corresponding depth shadow map format UI entry found");
 
     return result;
 }
@@ -343,23 +343,23 @@ PRIVATE void _ui_on_color_shadow_map_blur_resolution_changed(void* unused,
 }
 
 /** TODO */
-PRIVATE void _ui_on_color_shadow_map_internalformat_changed(void* unused,
-                                                            void* event_user_arg)
+PRIVATE void _ui_on_color_shadow_map_format_changed(void* unused,
+                                                    void* event_user_arg)
 {
-    ogl_texture_internalformat new_color_sm_internalformat = (ogl_texture_internalformat) (intptr_t) event_user_arg;
+    ral_texture_format new_color_sm_format = (ral_texture_format) (intptr_t) event_user_arg;
 
     /* Update Emerald state */
-    state_set_color_shadow_map_internalformat(new_color_sm_internalformat);
+    state_set_color_shadow_map_format(new_color_sm_format);
 }
 
 /** TODO */
-PRIVATE void _ui_on_depth_shadow_map_internalformat_changed(void* unused,
-                                                            void* event_user_arg)
+PRIVATE void _ui_on_depth_shadow_map_format_changed(void* unused,
+                                                    void* event_user_arg)
 {
-    ogl_texture_internalformat new_depth_sm_internalformat = (ogl_texture_internalformat) (intptr_t) event_user_arg;
+    ral_texture_format new_depth_sm_format = (ral_texture_format) (intptr_t) event_user_arg;
 
     /* Update Emerald state */
-    state_set_depth_shadow_map_internalformat(new_depth_sm_internalformat);
+    state_set_depth_shadow_map_format(new_depth_sm_format);
 }
 
 /** TODO */
@@ -387,10 +387,10 @@ PRIVATE void _ui_on_shadow_map_algorithm_changed(void* unused,
         ogl_ui_set_control_property(_ui_color_shadow_map_blur_resolution_dropdown,
                                     OGL_UI_CONTROL_PROPERTY_GENERAL_VISIBLE,
                                    &not_visible);
-        ogl_ui_set_control_property(_ui_color_shadow_map_internalformat_dropdown,
+        ogl_ui_set_control_property(_ui_color_shadow_map_format_dropdown,
                                     OGL_UI_CONTROL_PROPERTY_GENERAL_VISIBLE,
                                    &not_visible);
-        ogl_ui_set_control_property(_ui_depth_shadow_map_internalformat_dropdown,
+        ogl_ui_set_control_property(_ui_depth_shadow_map_format_dropdown,
                                     OGL_UI_CONTROL_PROPERTY_GENERAL_VISIBLE,
                                    &visible);
         ogl_ui_set_control_property(_ui_vsm_cutoff_scrollbar,
@@ -414,10 +414,10 @@ PRIVATE void _ui_on_shadow_map_algorithm_changed(void* unused,
         ogl_ui_set_control_property(_ui_color_shadow_map_blur_resolution_dropdown,
                                     OGL_UI_CONTROL_PROPERTY_GENERAL_VISIBLE,
                                    &visible);
-        ogl_ui_set_control_property(_ui_color_shadow_map_internalformat_dropdown,
+        ogl_ui_set_control_property(_ui_color_shadow_map_format_dropdown,
                                     OGL_UI_CONTROL_PROPERTY_GENERAL_VISIBLE,
                                    &visible);
-        ogl_ui_set_control_property(_ui_depth_shadow_map_internalformat_dropdown,
+        ogl_ui_set_control_property(_ui_depth_shadow_map_format_dropdown,
                                     OGL_UI_CONTROL_PROPERTY_GENERAL_VISIBLE,
                                    &visible);
         ogl_ui_set_control_property(_ui_vsm_cutoff_scrollbar,
@@ -632,26 +632,26 @@ PUBLIC void ui_init()
                                                                         NULL); /* fire_user_arg */
 
     /* Add color shadow map internalformat dropdown */
-    _ui_color_shadow_map_internalformat_dropdown = ogl_ui_add_dropdown(_ui,
-                                                                       n_color_shadow_map_internalformat_strings,
-                                                                       color_shadow_map_internalformat_strings,
-                                                                       (void**) color_shadow_map_internalformat_enums,
-                                                                       _ui_get_current_color_shadow_map_internalformat_index(),
-                                                                       system_hashed_ansi_string_create("Color shadow map internalformat"),
-                                                                       temp_x1y1,
-                                                                       _ui_on_color_shadow_map_internalformat_changed,
-                                                                       NULL); /* fire_user_arg */
+    _ui_color_shadow_map_format_dropdown = ogl_ui_add_dropdown(_ui,
+                                                               n_color_shadow_map_format_strings,
+                                                               color_shadow_map_format_strings,
+                                                               (void**) color_shadow_map_format_enums,
+                                                               _ui_get_current_color_shadow_map_format_index(),
+                                                               system_hashed_ansi_string_create("Color shadow map format"),
+                                                               temp_x1y1,
+                                                               _ui_on_color_shadow_map_format_changed,
+                                                               NULL); /* fire_user_arg */
 
     /* Add depth shadow map internalformat dropdown */
-    _ui_depth_shadow_map_internalformat_dropdown = ogl_ui_add_dropdown(_ui,
-                                                                       n_depth_shadow_map_internalformat_strings,
-                                                                       depth_shadow_map_internalformat_strings,
-                                                                       (void**) depth_shadow_map_internalformat_enums,
-                                                                       _ui_get_current_depth_shadow_map_internalformat_index(),
-                                                                       system_hashed_ansi_string_create("Depth shadow map internalformat"),
-                                                                       temp_x1y1,
-                                                                       _ui_on_depth_shadow_map_internalformat_changed,
-                                                                       NULL); /* fire_user_arg */
+    _ui_depth_shadow_map_format_dropdown = ogl_ui_add_dropdown(_ui,
+                                                               n_depth_shadow_map_format_strings,
+                                                               depth_shadow_map_format_strings,
+                                                               (void**) depth_shadow_map_format_enums,
+                                                               _ui_get_current_depth_shadow_map_format_index(),
+                                                               system_hashed_ansi_string_create("Depth shadow map format"),
+                                                               temp_x1y1,
+                                                               _ui_on_depth_shadow_map_format_changed,
+                                                               NULL); /* fire_user_arg */
 
     /* Add shadow map size dropdown */
     _ui_shadow_map_size_dropdown = ogl_ui_add_dropdown(_ui,
@@ -738,8 +738,8 @@ PUBLIC void ui_init()
         _ui_color_shadow_map_blur_n_passes_scrollbar,
         _ui_color_shadow_map_blur_n_taps_scrollbar,
         _ui_color_shadow_map_blur_resolution_dropdown,
-        _ui_color_shadow_map_internalformat_dropdown,
-        _ui_depth_shadow_map_internalformat_dropdown,
+        _ui_color_shadow_map_format_dropdown,
+        _ui_depth_shadow_map_format_dropdown,
         _ui_shadow_map_size_dropdown,
         _ui_shadow_map_pl_algorithm_dropdown,
         _ui_vsm_cutoff_scrollbar,

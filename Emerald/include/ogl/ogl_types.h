@@ -380,7 +380,9 @@ typedef enum
     OGL_TEXTURE_FORMAT_RGBA            = GL_RGBA
 } ogl_texture_format;
 
-/* Enumerator that describes OpenGL internalformats */
+/* Enumerator that describes OpenGL internalformats.
+ *
+ * NOTE: Only use in GL-specific paths! For API inter-compatibility, use RAL enums instead. */
 typedef enum
 {
     OGL_TEXTURE_INTERNALFORMAT_GL_COMPRESSED_RED_RGTC1        = GL_COMPRESSED_RED_RGTC1,

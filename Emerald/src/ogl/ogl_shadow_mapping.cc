@@ -17,6 +17,8 @@
 #include "ogl/ogl_texture.h"
 #include "ogl/ogl_uber.h"
 #include "postprocessing/postprocessing_blur_gaussian.h"
+#include "raGL/raGL_ral.h"
+#include "ral/ral_types.h"
 #include "scene/scene.h"
 #include "scene/scene_camera.h"
 #include "scene/scene_graph.h"
@@ -3248,8 +3250,8 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_shadow_mapping_toggle(ogl_shadow_mapping 
             bool                             light_shadow_map_cull_front_faces     = false;
             ogl_texture_dimensionality       light_shadow_map_dimensionality       = OGL_TEXTURE_DIMENSIONALITY_UNKNOWN;
             scene_light_shadow_map_filtering light_shadow_map_filtering            = SCENE_LIGHT_SHADOW_MAP_FILTERING_UNKNOWN;
-            GLenum                           light_shadow_map_internalformat_color = GL_NONE;
-            GLenum                           light_shadow_map_internalformat_depth = GL_NONE;
+            ral_texture_format               light_shadow_map_format_color         = RAL_TEXTURE_FORMAT_UNKNOWN;
+            ral_texture_format               light_shadow_map_format_depth         = RAL_TEXTURE_FORMAT_UNKNOWN;
             uint32_t                         light_shadow_map_size[3]              = {0, 0, 1};
 
             /* Determine shadow map texture dimensionality */
@@ -3305,11 +3307,11 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_shadow_mapping_toggle(ogl_shadow_mapping 
                                      SCENE_LIGHT_PROPERTY_SHADOW_MAP_FILTERING,
                                     &light_shadow_map_filtering);
             scene_light_get_property(light,
-                                     SCENE_LIGHT_PROPERTY_SHADOW_MAP_INTERNALFORMAT_COLOR,
-                                    &light_shadow_map_internalformat_color);
+                                     SCENE_LIGHT_PROPERTY_SHADOW_MAP_FORMAT_COLOR,
+                                    &light_shadow_map_format_color);
             scene_light_get_property(light,
-                                     SCENE_LIGHT_PROPERTY_SHADOW_MAP_INTERNALFORMAT_DEPTH,
-                                    &light_shadow_map_internalformat_depth);
+                                     SCENE_LIGHT_PROPERTY_SHADOW_MAP_FORMAT_DEPTH,
+                                    &light_shadow_map_format_depth);
             scene_light_get_property(light,
                                      SCENE_LIGHT_PROPERTY_SHADOW_MAP_SIZE,
                                      light_shadow_map_size);
@@ -3324,7 +3326,7 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_shadow_mapping_toggle(ogl_shadow_mapping 
             handler_ptr->current_sm_depth_texture = ogl_context_textures_get_texture_from_pool(handler_ptr->context,
                                                                                                light_shadow_map_dimensionality,
                                                                                                1, /* n_mipmaps */
-                                                                                               light_shadow_map_internalformat_depth,
+                                                                                               raGL_get_ogl_texture_internalformat_for_ral_texture_format(light_shadow_map_format_depth),
                                                                                                light_shadow_map_size[0],
                                                                                                light_shadow_map_size[1],
                                                                                                light_shadow_map_size[2],
@@ -3343,7 +3345,7 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_shadow_mapping_toggle(ogl_shadow_mapping 
                 handler_ptr->current_sm_color0_texture = ogl_context_textures_get_texture_from_pool(handler_ptr->context,
                                                                                                     light_shadow_map_dimensionality,
                                                                                                     system_math_other_log2_uint32(light_shadow_map_size[0]),
-                                                                                                    light_shadow_map_internalformat_color,
+                                                                                                    raGL_get_ogl_texture_internalformat_for_ral_texture_format(light_shadow_map_format_color),
                                                                                                     light_shadow_map_size[0],
                                                                                                     light_shadow_map_size[1],
                                                                                                     light_shadow_map_size[2],
