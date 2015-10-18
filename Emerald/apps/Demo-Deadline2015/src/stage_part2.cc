@@ -2,6 +2,7 @@
 #include "audio/audio_stream.h"
 #include "demo/demo_loader.h"
 #include "demo/demo_timeline.h"
+#include "demo/demo_timeline_video_segment.h"
 #include "ogl/ogl_context.h"
 #include "system/system_window.h"
 
@@ -18,7 +19,7 @@ PUBLIC RENDERING_CONTEXT_CALL void stage_part2_render(ogl_context context,
 PRIVATE void _stage_part2_configure_timeline(demo_timeline timeline,
                                              void*         unused)
 {
-    demo_timeline_segment_pass part_2_segment_passes[] =
+    const demo_timeline_video_segment_pass part_2_video_segment_passes[] =
     {
         {
             system_hashed_ansi_string_create("Part 2 (main pass)"),
@@ -26,15 +27,19 @@ PRIVATE void _stage_part2_configure_timeline(demo_timeline timeline,
             NULL /* user_arg */
         }
     };
+    demo_timeline_video_segment part_2_video_segment = NULL;
 
     demo_timeline_add_video_segment(timeline,
                                     system_hashed_ansi_string_create("Part 2 video segment"),
                                     system_time_get_time_for_msec(25850), /* start_time   */
                                     system_time_get_time_for_msec(51300), /* end_time     */
                                     1280.0f / 720.0f,                     /* aspect_ratio */
-                                    1,                                    /* n_passes     */
-                                    part_2_segment_passes,
-                                    NULL);                                /* out_opt_segment_id_ptr */
+                                    NULL,                                /* out_opt_segment_id_ptr */
+                                    &part_2_video_segment);
+
+    demo_timeline_video_segment_add_passes(part_2_video_segment,
+                                           1, /* n_passes */
+                                           part_2_video_segment_passes);
 }
 
 /** Renders frame contents.

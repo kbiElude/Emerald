@@ -348,18 +348,26 @@ PRIVATE void _spinner_draw_animation_rendering_callback(ogl_context context,
             2.0f / float(resolution[0]),
             2.0f / float(resolution[1])
         };
-        float t = float(n_frame + 100) / 1500.0f;
+        float t = float((int32_t) n_frame - 50) / 1000.0f;
 
-        stage_ptr->shake_offset_vec2[0] = texel_size_ss[0] * sin(float(n_frame * 1255)) * (t * (10.0f + n_frame / 20) );
-        stage_ptr->shake_offset_vec2[1] = texel_size_ss[1] * cos(float(n_frame * 3711)) * (t * (10.0f + n_frame / 20) );
+        if (t > 0.0f)
+        {
+            stage_ptr->shake_offset_vec2[0] = texel_size_ss[0] * sin(float(n_frame * 1255)) * (t * (10.0f + n_frame / 20));
+            stage_ptr->shake_offset_vec2[1] = texel_size_ss[1] * cos(float(n_frame * 3711)) * (t * (10.0f + n_frame / 20));
 
-        if (stage_ptr->shake_offset_vec2[0] < 1.0f * texel_size_ss[0])
+            if (stage_ptr->shake_offset_vec2[0] < 1.0f * texel_size_ss[0])
+            {
+                stage_ptr->shake_offset_vec2[0] = 0.0f;
+            }
+
+            if (stage_ptr->shake_offset_vec2[1] < 1.0f * texel_size_ss[1])
+            {
+                stage_ptr->shake_offset_vec2[1] = 0.0f;
+            }
+        } /* if (t > 0.0f) */
+        else
         {
             stage_ptr->shake_offset_vec2[0] = 0.0f;
-        }
-
-        if (stage_ptr->shake_offset_vec2[1] < 1.0f * texel_size_ss[1])
-        {
             stage_ptr->shake_offset_vec2[1] = 0.0f;
         }
     }

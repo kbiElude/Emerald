@@ -1,6 +1,7 @@
 #include "stage_intro.h"
 #include "demo/demo_loader.h"
 #include "demo/demo_timeline.h"
+#include "demo/demo_timeline_video_segment.h"
 #include "ogl/ogl_context.h"
 #include "ogl/ogl_program.h"
 #include "ogl/ogl_program_ub.h"
@@ -32,7 +33,7 @@ PRIVATE GLuint                 _overlay_vao_id            = 0;
 PRIVATE void _stage_intro_configure_timeline(demo_timeline timeline,
                                              void*         unused)
 {
-    demo_timeline_segment_pass intro_segment_passes[] =
+    const demo_timeline_video_segment_pass intro_segment_passes[] =
     {
         {
             system_hashed_ansi_string_create("Intro video segment (main pass)"),
@@ -40,15 +41,19 @@ PRIVATE void _stage_intro_configure_timeline(demo_timeline timeline,
             NULL /* user_arg */
         }
     };
+    demo_timeline_video_segment            intro_segment = NULL;
 
     demo_timeline_add_video_segment(timeline,
                                     system_hashed_ansi_string_create("Intro video segment"),
                                     system_time_get_time_for_s   (0),    /* start_time */
                                     system_time_get_time_for_msec(5650), /* end_time */
                                     1280.0f / 720.0f,                    /* aspect_ratio */
-                                    1,                                   /* n_passes */
-                                    intro_segment_passes,
-                                    NULL);                               /* out_op_segment_id_ptr */
+                                    NULL,                                /* out_op_segment_id_ptr */
+                                    &intro_segment);
+
+    demo_timeline_video_segment_add_passes(intro_segment,
+                                           1, /* n_passes */
+                                           intro_segment_passes);
 }
 
 /** TODO */
@@ -254,9 +259,9 @@ PUBLIC RENDERING_CONTEXT_CALL void stage_intro_render(ogl_context context,
     float spinner_viewport_x1_y1_size_resized[3];
     float spinner_viewport_x1_y1_size[] =
     {
-        spinner_viewport[0],
-        spinner_viewport[1],
-        spinner_viewport[2] - spinner_viewport[0]
+        float(spinner_viewport[0]),
+        float(spinner_viewport[1]),
+        float(spinner_viewport[2] - spinner_viewport[0])
     };
 
     system_math_other_resize_quad2d_by_diagonal(spinner_viewport_x1_y1_size,

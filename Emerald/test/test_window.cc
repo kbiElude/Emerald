@@ -7,6 +7,8 @@
 #include "gtest/gtest.h"
 #include "shared.h"
 #include "demo/demo_timeline.h"
+#include "demo/demo_timeline_video_segment.h"
+#include "demo/demo_types.h"
 #include "ogl/ogl_context.h"
 #include "ogl/ogl_pipeline.h"
 #include "ogl/ogl_rendering_handler.h"
@@ -230,40 +232,43 @@ TEST(WindowTest, RenderingHandlerTest)
 TEST(WindowTest, TimelineTest_ShouldRenderFourDifferentlyColoredScreensWithDifferentARs)
 {
     /* Create the window */
-    ogl_context              context            =  NULL;
-    const float              frame_1_ar         = 1.0f;
-    const float              frame_1_color[]    = {0.0f, 1.0f, 0.0f, 1.0f};
-    system_time              frame_1_end_time   =  0;
-    demo_timeline_segment_id frame_1_segment_id = -1;
-    system_time              frame_1_start_time =  0;
-    const float              frame_2_ar         = 1.5f;
-    const float              frame_2_color[]    = {0.0f, 1.0f, 1.0f, 1.0f};
-    system_time              frame_2_end_time   =  0;
-    demo_timeline_segment_id frame_2_segment_id = -1;
-    system_time              frame_2_start_time =  0;
-    const float              frame_3_ar         =  1.75f;
-    const float              frame_3_color[]    = {0.0f, 0.0f, 1.0f, 1.0f};
-    system_time              frame_3_end_time   =  0;
-    demo_timeline_segment_id frame_3_segment_id = -1;
-    system_time              frame_3_start_time =  0;
-    bool                     result             =  false;
-    demo_timeline            timeline           =  NULL;
-    ogl_pipeline             timeline_pipeline  =  NULL;
-    const int                xywh[]             = {0, 0, 320, 240};
-    system_pixel_format      window_pf          = system_pixel_format_create         (8,  /* color_buffer_red_bits   */
-                                                                                      8,  /* color_buffer_green_bits */
-                                                                                      8,  /* color_buffer_blue_bits  */
-                                                                                      0,  /* color_buffer_alpha_bits */
-                                                                                      0,  /* depth_buffer_bits       */
-                                                                                      1,  /* n_samples               */
-                                                                                      0); /* stencil_buffer_bits     */
-    system_window            window_handle      = system_window_create_not_fullscreen(OGL_CONTEXT_TYPE_GL,
-                                                                                      xywh,
-                                                                                      system_hashed_ansi_string_create("Test window"),
-                                                                                      false,
-                                                                                      true,  /* vsync_enabled */
-                                                                                      true,  /* visible */
-                                                                                      window_pf);
+    ogl_context                 context            =  NULL;
+    const float                 frame_1_ar         = 1.0f;
+    const float                 frame_1_color[]    = {0.0f, 1.0f, 0.0f, 1.0f};
+    system_time                 frame_1_end_time   =  0;
+    demo_timeline_video_segment frame_1_segment    = NULL;
+    demo_timeline_segment_id    frame_1_segment_id = -1;
+    system_time                 frame_1_start_time =  0;
+    const float                 frame_2_ar         = 1.5f;
+    const float                 frame_2_color[]    = {0.0f, 1.0f, 1.0f, 1.0f};
+    system_time                 frame_2_end_time   =  0;
+    demo_timeline_video_segment frame_2_segment    = NULL;
+    demo_timeline_segment_id    frame_2_segment_id = -1;
+    system_time                 frame_2_start_time =  0;
+    const float                 frame_3_ar         =  1.75f;
+    const float                 frame_3_color[]    = {0.0f, 0.0f, 1.0f, 1.0f};
+    system_time                 frame_3_end_time   =  0;
+    demo_timeline_video_segment frame_3_segment    = NULL;
+    demo_timeline_segment_id    frame_3_segment_id = -1;
+    system_time                 frame_3_start_time =  0;
+    bool                        result             =  false;
+    demo_timeline               timeline           =  NULL;
+    ogl_pipeline                timeline_pipeline  =  NULL;
+    const int                   xywh[]             = {0, 0, 320, 240};
+    system_pixel_format         window_pf          = system_pixel_format_create         (8,  /* color_buffer_red_bits   */
+                                                                                         8,  /* color_buffer_green_bits */
+                                                                                         8,  /* color_buffer_blue_bits  */
+                                                                                         0,  /* color_buffer_alpha_bits */
+                                                                                         0,  /* depth_buffer_bits       */
+                                                                                         1,  /* n_samples               */
+                                                                                         0); /* stencil_buffer_bits     */
+    system_window               window_handle      = system_window_create_not_fullscreen(OGL_CONTEXT_TYPE_GL,
+                                                                                         xywh,
+                                                                                         system_hashed_ansi_string_create("Test window"),
+                                                                                         false,
+                                                                                         true,  /* vsync_enabled */
+                                                                                         true,  /* visible */
+                                                                                         window_pf);
 
     /* Create a rendering handler */
     ogl_rendering_handler rendering_handler = ogl_rendering_handler_create_with_max_performance_policy(system_hashed_ansi_string_create("rendering handler"),
@@ -301,7 +306,7 @@ TEST(WindowTest, TimelineTest_ShouldRenderFourDifferentlyColoredScreensWithDiffe
     frame_3_start_time = frame_2_end_time;
     frame_3_end_time   = frame_3_start_time + frame_1_end_time;
 
-    demo_timeline_segment_pass frame_1_segment_passes[] =
+    const demo_timeline_video_segment_pass frame_1_segment_passes[] =
     {
         {
             system_hashed_ansi_string_create("Color 1 pipeline stage step"),
@@ -309,7 +314,7 @@ TEST(WindowTest, TimelineTest_ShouldRenderFourDifferentlyColoredScreensWithDiffe
                                              (void*) frame_1_color
         }
     };
-    demo_timeline_segment_pass frame_2_segment_passes[] =
+    const demo_timeline_video_segment_pass frame_2_segment_passes[] =
     {
         {
             system_hashed_ansi_string_create("Color 2 pipeline stage step"),
@@ -317,7 +322,7 @@ TEST(WindowTest, TimelineTest_ShouldRenderFourDifferentlyColoredScreensWithDiffe
                                              (void*) frame_2_color
         }
     };
-    demo_timeline_segment_pass frame_3_segment_passes[] =
+    const demo_timeline_video_segment_pass frame_3_segment_passes[] =
     {
         {
             system_hashed_ansi_string_create("Color 3 pipeline stage step"),
@@ -331,25 +336,32 @@ TEST(WindowTest, TimelineTest_ShouldRenderFourDifferentlyColoredScreensWithDiffe
                                                 frame_1_start_time,
                                                 frame_1_end_time,
                                                 frame_1_ar,
-                                                1, /* n_passes */
-                                                frame_1_segment_passes,
-                                               &frame_1_segment_id) );
+                                               &frame_1_segment_id,
+                                               &frame_1_segment) );
     ASSERT_TRUE(demo_timeline_add_video_segment(timeline,
                                                 system_hashed_ansi_string_create("Color 2 video segment"),
                                                 frame_2_start_time,
                                                 frame_2_end_time,
                                                 frame_2_ar,
-                                                1, /* n_passes */
-                                                frame_2_segment_passes,
-                                               &frame_2_segment_id) );
+                                               &frame_2_segment_id,
+                                               &frame_2_segment) );
     ASSERT_TRUE(demo_timeline_add_video_segment(timeline,
                                                 system_hashed_ansi_string_create("Color 3 video segment"),
                                                 frame_3_start_time,
                                                 frame_3_end_time,
                                                 frame_3_ar,
-                                                1, /* n_passes */
-                                                frame_3_segment_passes,
-                                               &frame_3_segment_id) );
+                                               &frame_3_segment_id,
+                                               &frame_3_segment) );
+
+    ASSERT_TRUE(demo_timeline_video_segment_add_passes(frame_1_segment,
+                                                       1, /* n_passes */
+                                                       frame_1_segment_passes) );
+    ASSERT_TRUE(demo_timeline_video_segment_add_passes(frame_2_segment,
+                                                       1, /* n_passes */
+                                                       frame_2_segment_passes) );
+    ASSERT_TRUE(demo_timeline_video_segment_add_passes(frame_3_segment,
+                                                       1, /* n_passes */
+                                                       frame_3_segment_passes) );
 
     /* Assign the timeline to the window. Note that this setter automatically takes ownership of the object,
      * so we need not release it at the end of the test */

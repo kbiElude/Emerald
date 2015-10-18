@@ -1812,6 +1812,22 @@ DECLARE_HANDLE(ogl_materials);
 /** Pipeline handle */
 DECLARE_HANDLE(ogl_pipeline);
 
+/** TODO.
+ *
+ *  @param context           TODO
+ *  @param frame_time        TODO
+ *  @param rendering_area_px_topdown [0]: x1 of the rendering area (in pixels)
+ *                                   [1]: y1 of the rendering area (in pixels)
+ *                                   [2]: x2 of the rendering area (in pixels)
+ *                                   [3]: y2 of the rendering area (in pixels)
+ *  @param callback_user_arg TODO
+ */
+typedef void (*PFNOGLPIPELINECALLBACKPROC)(ogl_context context,
+                                           uint32_t    n_frame,
+                                           system_time frame_time,
+                                           const int*  rendering_area_px_topdown,
+                                           void*       callback_user_arg);
+
 /** Skybox handle */
 DECLARE_HANDLE(ogl_skybox);
 

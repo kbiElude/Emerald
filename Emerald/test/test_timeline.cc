@@ -7,6 +7,7 @@
 #include "gtest/gtest.h"
 #include "shared.h"
 #include "demo/demo_timeline.h"
+#include "demo/demo_timeline_video_segment.h"
 #include "ogl/ogl_rendering_handler.h"
 #include "system/system_pixel_format.h"
 #include "system/system_window.h"
@@ -70,9 +71,8 @@ TEST(TimelineTest, FunctionalTest)
                                                 0, /* start_time */
                                                 time_10s,
                                                 1.0f,    /* aspect_ratio */
-                                                0,       /* n_passes */
-                                                NULL,    /* passes */
-                                               &segment_a_id) );
+                                               &segment_a_id,
+                                                NULL) ); /* out_opt_video_segment_ptr */
 
     /* Make sure the duration is reported correctly at this point */
     ASSERT_TRUE(demo_timeline_get_property(timeline,
@@ -88,9 +88,8 @@ TEST(TimelineTest, FunctionalTest)
                                                  time_1s,
                                                  time_4s,
                                                  1.0f,    /* aspect_ratio */
-                                                 0,       /* n_passes */
-                                                 NULL,    /* passes */
-                                                &segment_b_id) );
+                                                &segment_b_id,
+                                                 NULL) ); /* out_opt_video_segment_ptr */
 
     ASSERT_TRUE(demo_timeline_get_property(timeline,
                                            DEMO_TIMELINE_PROPERTY_DURATION,
@@ -116,9 +115,8 @@ TEST(TimelineTest, FunctionalTest)
                                                 time_1s,
                                                 time_4s,
                                                 1.0f,    /* aspect_ratio */
-                                                0,       /* n_passes */
-                                                NULL,    /* passes */
-                                               &segment_b_id) );
+                                               &segment_b_id,
+                                                NULL) ); /* out_opt_video_segment_ptr */
 
     ASSERT_TRUE(demo_timeline_get_property(timeline,
                                            DEMO_TIMELINE_PROPERTY_DURATION,
@@ -189,9 +187,8 @@ TEST(TimelineTest, FunctionalTest)
                                                 0,
                                                 time_4s,
                                                 1.0f,    /* aspect_ratio */
-                                                0,       /* n_passes */
-                                                NULL,    /* passes */
-                                               &segment_c_id) );
+                                               &segment_c_id,
+                                                NULL) ); /* out_opt_video_segment_ptr */
 
     ASSERT_TRUE(demo_timeline_get_property(timeline,
                                            DEMO_TIMELINE_PROPERTY_DURATION,

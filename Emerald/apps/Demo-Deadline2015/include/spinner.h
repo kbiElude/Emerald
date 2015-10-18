@@ -3,6 +3,7 @@
 #define SPINNER_H
 
 #include "shared.h"
+#include "demo/demo_types.h"
 
 typedef enum
 {

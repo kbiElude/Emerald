@@ -2,7 +2,7 @@
 #define STAGE_PART2_H
 
 #include "shared.h"
-#include "ogl/ogl_types.h"
+#include "demo/demo_types.h"
 
 /** TODO */
 PUBLIC void stage_part2_init(demo_loader loader);

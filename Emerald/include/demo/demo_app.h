@@ -6,7 +6,7 @@
 #ifndef DEMO_APP_H
 #define DEMO_APP_H
 
-#include "system/system_types.h"
+#include "demo/demo_types.h"
 
 typedef enum
 {

@@ -1,6 +1,7 @@
 #include "stage_outro.h"
 #include "demo/demo_loader.h"
 #include "demo/demo_timeline.h"
+#include "demo/demo_timeline_video_segment.h"
 #include "ogl/ogl_context.h"
 
 /* Forward declarations */
@@ -15,7 +16,7 @@ PUBLIC RENDERING_CONTEXT_CALL void stage_outro_render(ogl_context context,
 PRIVATE void _stage_outro_configure_timeline(demo_timeline timeline,
                                              void*         unused)
 {
-    demo_timeline_segment_pass outro_segment_passes[] =
+    const demo_timeline_video_segment_pass outro_segment_passes[] =
     {
         {
             system_hashed_ansi_string_create("Outro video segment (main pass)"),
@@ -23,15 +24,19 @@ PRIVATE void _stage_outro_configure_timeline(demo_timeline timeline,
             NULL /* user_arg */
         }
     };
+    demo_timeline_video_segment            outro_segment = NULL;
 
     demo_timeline_add_video_segment(timeline,
                                     system_hashed_ansi_string_create("Outro video segment"),
                                     system_time_get_time_for_msec(89000), /* start_time */
                                     system_time_get_time_for_msec(98000), /* end_time */
                                     1280.0f / 720.0f,                     /* aspect_ratio */
-                                    1,                                    /* n_passes */
-                                    outro_segment_passes,
-                                    NULL);                                /* out_opt_segment_id_ptr */
+                                    NULL,                                 /* out_opt_segment_id_ptr */
+                                    &outro_segment);
+
+    demo_timeline_video_segment_add_passes(outro_segment,
+                                           1, /* n_passes */
+                                           outro_segment_passes);
 }
 
 /** Renders frame contents.

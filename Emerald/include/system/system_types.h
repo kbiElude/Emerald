@@ -48,6 +48,7 @@ typedef enum
         OBJECT_TYPE_SYSTEM_CRITICAL_SECTION,
         OBJECT_TYPE_CURVE_CONTAINER,
         OBJECT_TYPE_DEMO_TIMELINE,
+        OBJECT_TYPE_DEMO_TIMELINE_VIDEO_SEGMENT,
         OBJECT_TYPE_GFX_BFG_FONT_TABLE,
         OBJECT_TYPE_GFX_IMAGE,
         OBJECT_TYPE_MESH,
@@ -130,10 +131,6 @@ DECLARE_HANDLE(audio_device);
 
 /********************* AUDIO STREAM ***************************************/
 DECLARE_HANDLE(audio_stream);
-
-/************************ DEMO MODULES*************************************/
-DECLARE_HANDLE(demo_app);
-DECLARE_HANDLE(demo_loader);
 
 /************************ WINDOW ******************************************/
 DECLARE_HANDLE(system_window);
