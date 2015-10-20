@@ -1,5 +1,5 @@
-#ifndef RAL_TYPES
-#define RAL_TYPES
+#ifndef RAL_TYPES_H
+#define RAL_TYPES_H
 
 /* Primitive types supported by RAL */
 typedef enum
@@ -165,6 +165,9 @@ typedef enum
 
     RAL_TEXTURE_TYPE_MULTISAMPLE_2D,
     RAL_TEXTURE_TYPE_MULTISAMPLE_2D_ARRAY,
+
+    RAL_TEXTURE_TYPE_UNKNOWN,
+    RAL_TEXTURE_TYPE_COUNT = RAL_TEXTURE_TYPE_UNKNOWN
 } ral_texture_type;
 
-#endif /* RAL_TYPES */
+#endif /* RAL_TYPES_H */

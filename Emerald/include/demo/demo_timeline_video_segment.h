@@ -12,6 +12,8 @@
 #include "system/system_types.h"
 
 typedef PFNOGLPIPELINECALLBACKPROC PFNDEMOTIMELINEVIDEOSEGMENTPASSCALLBACKPROC;
+typedef unsigned int               demo_timeline_video_segment_input_id;
+typedef unsigned int               demo_timeline_video_segment_output_id;
 
 /* Helper structure used to declare a single pass of a video segment.
  *
@@ -64,44 +66,6 @@ REFCOUNT_INSERT_DECLARATIONS(demo_timeline_video_segment,
                              demo_timeline_video_segment)
 
 
-/** Adds a new texture output to the video segment.
- *
- *  It is expected that, as the frame graph is executed, the video segments will bind actual texture instances
- *  to the output. The bound textures' properties must match (or supersede for cases where this makes sense)
- *  the properties provided at add_output() time.
- *
- *  @param segment                   Video segment to add a texture output to.
- *  @param output_name               Name of the output.
- *  @param texture_type              Type of the texture that will be bound to the output.
- *  @param texture_internalformat    Internalformat of the texture that will be bound to the output. The specified
- *                                   internalformat must either match or be compatible with the internalformat of
-*                                    the bound texture.
- *  @param texture_n_layer_start     Video segment can update one or more layers, starting from @param texture_n_layer_start
- *                                   up to (@param texture_n_layer_start + @param texture_n_layers_updated)
- *  @param texture_n_layers_updated  Video segment can update one or more layers, starting from @param texture_n_layer_start
- *                                   up to (@param texture_n_layer_start + @param texture_n_layers_updated).
- *  @param texture_n_mipmap_start    Video segment can update one or more mipmap for each layer, starting from
- *                                   @param texture_n_mipmap_start up to (@param texture_n_mipmap_start + @param texture_n_mipmaps_updated)
- *  @param texture_n_mipmaps_updated Video segment can update one or more mipmap for each layer, starting from
- *                                   @param texture_n_mipmap_start up to (@param texture_n_mipmap_start + @param texture_n_mipmaps_updated)
- *  @param texture_n_samples         Number of samples used by textures that will be bound to the output.
- *  @param shader_writes_based       True if the texture data is going to be provided via image store ops; false otherwise.
- *                                   Implicitly, this tells the segment users whether barriers are necessary before reading
- *                                   the texture data.
- *
- *  @return true if the output was added successfully, false otherwise.
- */
-PUBLIC EMERALD_API bool demo_timeline_video_segment_add_output(demo_timeline_video_segment segment,
-                                                               system_hashed_ansi_string   output_name,
-                                                               ral_texture_type            texture_type,
-                                                               ral_texture_format          texture_format,
-                                                               unsigned int                texture_n_layer_start,
-                                                               unsigned int                texture_n_layers_updated,
-                                                               unsigned int                texture_n_mipmap_start,
-                                                               unsigned int                texture_n_mipmaps_updated,
-                                                               unsigned int                texture_n_samples,
-                                                               bool                        shader_writes_based);
-
 /** Appends a set of passes to the specified video segment.
  *
  *  NOTE: This function may only be called for a pass-based video segment. Assertion failure will
@@ -116,6 +80,79 @@ PUBLIC EMERALD_API bool demo_timeline_video_segment_add_output(demo_timeline_vid
 PUBLIC EMERALD_API bool demo_timeline_video_segment_add_passes(demo_timeline_video_segment             segment,
                                                                unsigned int                            n_passes,
                                                                const demo_timeline_video_segment_pass* passes);
+
+/** Adds a new texture input to the video segment.
+ *
+ *  @param segment           Video segment to add a texture input to.
+ *  @param input_name        Name of the output.
+ *  @param texture_type      Type of the texture that will be accepted on input.
+ *  @param texture_format    Format of the texture accepted by the new input.
+ *  @param texture_n_layers  Number of layers expected at the input.
+ *  @param texture_n_mipmaps Number of mipmaps expected at the input per each layer.
+ *  @param texture_n_samples Number of samples the input texture must contain.
+ *  @param out_input_id_ptr  Deref will be stored to the ID of the newly created input. Must not be NULL.
+ *
+ *  @return true if the request was handled successfully, false otherwise.
+ */
+PUBLIC EMERALD_API bool demo_timeline_video_segment_add_texture_input(demo_timeline_video_segment           segment,
+                                                                      system_hashed_ansi_string             input_name,
+                                                                      ral_texture_type                      texture_type,
+                                                                      ral_texture_format                    texture_format,
+                                                                      unsigned int                          texture_n_layers,
+                                                                      unsigned int                          texture_n_mipmaps,
+                                                                      unsigned int                          texture_n_samples,
+                                                                      demo_timeline_video_segment_input_id* out_input_id_ptr);
+
+/** Adds a new texture output to the video segment.
+ *
+ *  It is expected that, as the frame graph is executed, the video segments will bind actual texture instances
+ *  to the output during execution. The bound textures' properties must match (or supersede for cases where
+ *  this makes sense) the properties provided at add_output() time.
+ *
+ *  @param segment                      Video segment to add a texture output to.
+ *  @param output_name                  Name of the output.
+ *  @param texture_type                 Type of the texture that will be bound to the output.
+ *  @param texture_internalformat       Internalformat of the texture that will be bound to the output. The specified
+ *                                      internalformat must either match or be compatible with the internalformat of
+*                                       the bound texture.
+ *  @param texture_n_start_layer_index  Video segment is allowed to update many layers in one go. The first layer
+ *                                      which may be updated is at index @param texture_n_start_layer_index, up to
+ *                                      (@param texture_n_start_layer_index + @param texture_n_end_layer_index) exclusive.
+ *  @param texture_n_end_layer_index    Video segment is allowed to update many layers in one go. The first layer
+ *                                      which may be updated is at index @param texture_n_start_layer_index, up to
+ *                                      (@param texture_n_start_layer_index + @param texture_n_end_layer_index) exclusive.
+ *  @param texture_n_start_mipmap_index Video segment can update one or more mipmaps for each layer. Mipmaps from
+ *                                      @param texture_n_start_mipmap_index up to @param texture_n_end_mipmap_index may
+ *                                      be touched during rendering.
+ *  @param texture_n_end_mipmap_index   Video segment can update one or more mipmaps for each layer. Mipmaps from
+ *                                      @param texture_n_start_mipmap_index up to @param texture_n_end_mipmap_index may
+ *                                      be touched during rendering.
+ *  @param texture_n_samples            Number of samples used by textures that will be bound to the output.
+ *  @param out_output_id_ptr            Deref will be stored to the ID of the new output, if the request is successful.
+ *                                      Must not be NULL.
+ *
+ *  @return true if the output was added successfully, false otherwise.
+ */
+PUBLIC EMERALD_API bool demo_timeline_video_segment_add_texture_output(demo_timeline_video_segment            segment,
+                                                                       system_hashed_ansi_string              output_name,
+                                                                       ral_texture_type                       texture_type,
+                                                                       ral_texture_format                     texture_format,
+                                                                       unsigned int                           texture_n_start_layer_index,
+                                                                       unsigned int                           texture_n_end_layer_index,
+                                                                       unsigned int                           texture_n_start_mipmap_index,
+                                                                       unsigned int                           texture_n_end_mipmap_index,
+                                                                       unsigned int                           texture_n_samples,
+                                                                       demo_timeline_video_segment_output_id* out_output_id_ptr);
+
+/** TODO */
+PUBLIC bool demo_timeline_video_segment_attach_texture_to_texture_input(demo_timeline_video_segment          segment,
+                                                                        demo_timeline_video_segment_input_id input_id,
+                                                                        ogl_texture                          texture,
+                                                                        unsigned int                         n_start_layer,
+                                                                        unsigned int                         n_start_mipmap);
+
+/** TODO */
+PUBLIC void demo_timeline_video_segment_clear_texture_attachments(demo_timeline_video_segment segment);
 
 /** Creates a new video segment of type @param type.
  *
