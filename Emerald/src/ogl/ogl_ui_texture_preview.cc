@@ -293,7 +293,7 @@ PRIVATE void _ogl_ui_texture_preview_init_texture_renderer_callback(ogl_context 
     float  texture_v_ratio   = 0.0f;
 
     ogl_texture_get_property(texture_preview_ptr->texture,
-                             OGL_TEXTURE_PROPERTY_TARGET,
+                             OGL_TEXTURE_PROPERTY_TARGET_GL,
                             &texture_target);
 
     if (texture_preview_ptr->context_type == OGL_CONTEXT_TYPE_GL)
@@ -537,7 +537,7 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_ui_texture_preview_draw(void* internal_in
     /* For depth textures, make sure the "depth texture comparison mode" is toggled off before
      * we proceed with sampling the mip-map */
     ogl_texture_get_property(texture_preview_ptr->texture,
-                             OGL_TEXTURE_PROPERTY_TARGET,
+                             OGL_TEXTURE_PROPERTY_TARGET_GL,
                             &texture_target);
 
     if (texture_preview_ptr->context_type == OGL_CONTEXT_TYPE_GL)

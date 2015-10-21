@@ -149,330 +149,16 @@ typedef struct _ogl_context_textures
     }
 } _ogl_context_textures;
 
-typedef enum
-{
-    OGL_CONTEXT_TEXTURES_KEY_TYPE_1D,
-    OGL_CONTEXT_TEXTURES_KEY_TYPE_1D_ARRAY,
-    OGL_CONTEXT_TEXTURES_KEY_TYPE_2D,
-    OGL_CONTEXT_TEXTURES_KEY_TYPE_2D_ARRAY,
-    OGL_CONTEXT_TEXTURES_KEY_TYPE_2D_MULTISAMPLE,
-    OGL_CONTEXT_TEXTURES_KEY_TYPE_2D_MULTISAMPLE_ARRAY,
-    OGL_CONTEXT_TEXTURES_KEY_TYPE_3D,
-    OGL_CONTEXT_TEXTURES_KEY_TYPE_BUFFER,
-    OGL_CONTEXT_TEXTURES_KEY_TYPE_CUBE_MAP,
-    OGL_CONTEXT_TEXTURES_KEY_TYPE_CUBE_MAP_ARRAY,
-    OGL_CONTEXT_TEXTURES_KEY_TYPE_RECTANGLE
-} _ogl_context_textures_key_type;
-
-typedef enum
-{
-    OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_DEPTH_COMPONENT16,
-    OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_DEPTH_COMPONENT24,
-    OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_DEPTH_COMPONENT32,
-    OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_DEPTH_COMPONENT32F,
-    OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_R11F_G11F_B10F,
-    OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_R16,
-    OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_R16_SNORM,
-    OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_R16F,
-    OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_R16I,
-    OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_R16UI,
-    OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_R3_G3_B2,
-    OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_R32F,
-    OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_R32I,
-    OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_R32UI,
-    OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_R8,
-    OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_R8_SNORM,
-    OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_R8I,
-    OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_R8UI,
-    OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_RG16,
-    OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_RG16_SNORM,
-    OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_RG16F,
-    OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_RG16I,
-    OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_RG16UI,
-    OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_RG32F,
-    OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_RG32I,
-    OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_RG32UI,
-    OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_RG8,
-    OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_RG8_SNORM,
-    OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_RG8I,
-    OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_RG8UI,
-    OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_RGB10,
-    OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_RGB10_A2,
-    OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_RGB10_A2UI,
-    OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_RGB12,
-    OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_RGB16_SNORM,
-    OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_RGB16F,
-    OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_RGB16I,
-    OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_RGB16UI,
-    OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_RGB32F,
-    OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_RGB32I,
-    OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_RGB32UI,
-    OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_RGB4,
-    OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_RGB5,
-    OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_RGB5_A1,
-    OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_RGB8,
-    OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_RGB8_SNORM,
-    OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_RGB8I,
-    OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_RGB8UI,
-    OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_RGB9_E5,
-    OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_RGBA12,
-    OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_RGBA16,
-    OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_RGBA16F,
-    OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_RGBA16I,
-    OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_RGBA16UI,
-    OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_RGBA2,
-    OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_RGBA32F,
-    OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_RGBA32I,
-    OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_RGBA32UI,
-    OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_RGBA4,
-    OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_RGBA8,
-    OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_RGBA8_SNORM,
-    OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_RGBA8I,
-    OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_RGBA8UI,
-    OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_SRGB8,
-    OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_SRGB8_ALPHA8
-} _ogl_context_textures_key_internalformat;
-
-/* Forward declarations */
-PRIVATE GLenum                                   _ogl_context_textures_get_glenum_internalformat_for_key_internalformat(_ogl_context_textures_key_internalformat internalformat);
-PRIVATE ogl_texture_type                         _ogl_context_textures_get_glenum_type_for_key_type                    (_ogl_context_textures_key_type           type);
-PRIVATE _ogl_context_textures_key_type           _ogl_context_textures_get_key_type_for_glenum_type                    (ogl_texture_type                         type);
-PRIVATE _ogl_context_textures_key_internalformat _ogl_context_textures_get_key_internalformat_for_glenum_internalformat(GLenum                                   internalformat);
-
-/** Private functions */
 
 /** TODO */
-PRIVATE ogl_texture_type _ogl_context_textures_get_glenum_type_for_key_type(_ogl_context_textures_key_type type)
-{
-    ogl_texture_type result;
-
-    switch (type)
-    {
-        case OGL_CONTEXT_TEXTURES_KEY_TYPE_1D:                   result = OGL_TEXTURE_TYPE_GL_TEXTURE_1D;                   break;
-        case OGL_CONTEXT_TEXTURES_KEY_TYPE_1D_ARRAY:             result = OGL_TEXTURE_TYPE_GL_TEXTURE_1D_ARRAY;             break;
-        case OGL_CONTEXT_TEXTURES_KEY_TYPE_2D:                   result = OGL_TEXTURE_TYPE_GL_TEXTURE_2D;                   break;
-        case OGL_CONTEXT_TEXTURES_KEY_TYPE_2D_ARRAY:             result = OGL_TEXTURE_TYPE_GL_TEXTURE_2D_ARRAY;             break;
-        case OGL_CONTEXT_TEXTURES_KEY_TYPE_2D_MULTISAMPLE:       result = OGL_TEXTURE_TYPE_GL_TEXTURE_2D_MULTISAMPLE;       break;
-        case OGL_CONTEXT_TEXTURES_KEY_TYPE_2D_MULTISAMPLE_ARRAY: result = OGL_TEXTURE_TYPE_GL_TEXTURE_2D_MULTISAMPLE_ARRAY; break;
-        case OGL_CONTEXT_TEXTURES_KEY_TYPE_3D:                   result = OGL_TEXTURE_TYPE_GL_TEXTURE_3D;                   break;
-        case OGL_CONTEXT_TEXTURES_KEY_TYPE_BUFFER:               result = OGL_TEXTURE_TYPE_GL_TEXTURE_BUFFER;               break;
-        case OGL_CONTEXT_TEXTURES_KEY_TYPE_CUBE_MAP:             result = OGL_TEXTURE_TYPE_GL_TEXTURE_CUBE_MAP;             break;
-        case OGL_CONTEXT_TEXTURES_KEY_TYPE_CUBE_MAP_ARRAY:       result = OGL_TEXTURE_TYPE_GL_TEXTURE_CUBE_MAP_ARRAY;       break;
-        case OGL_CONTEXT_TEXTURES_KEY_TYPE_RECTANGLE:            result = OGL_TEXTURE_TYPE_GL_TEXTURE_RECTANGLE;            break;
-
-        default:
-        {
-            ASSERT_DEBUG_SYNC(false,
-                              "Unrecognized _ogl_textures_key_type value");
-        }
-    } /* switch (type) */
-
-    return result;
-}
-
-/** TODO */
-PRIVATE GLenum _ogl_context_textures_get_glenum_internalformat_for_key_internalformat(_ogl_context_textures_key_internalformat internalformat)
-{
-    GLenum result;
-
-    switch (internalformat)
-    {
-        case OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_DEPTH_COMPONENT16:  result = GL_DEPTH_COMPONENT16;  break;
-        case OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_DEPTH_COMPONENT24:  result = GL_DEPTH_COMPONENT24;  break;
-        case OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_DEPTH_COMPONENT32F: result = GL_DEPTH_COMPONENT32F; break;
-        case OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_R11F_G11F_B10F:     result = GL_R11F_G11F_B10F;     break;
-        case OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_R16:                result = GL_R16;                break;
-        case OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_R16_SNORM:          result = GL_R16_SNORM;          break;
-        case OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_R16F:               result = GL_R16F;               break;
-        case OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_R16I:               result = GL_R16I;               break;
-        case OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_R16UI:              result = GL_R16UI;              break;
-        case OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_R3_G3_B2:           result = GL_R3_G3_B2;           break;
-        case OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_R32F:               result = GL_R32F;               break;
-        case OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_R32I:               result = GL_R32I;               break;
-        case OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_R32UI:              result = GL_R32UI;              break;
-        case OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_R8:                 result = GL_R8;                 break;
-        case OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_R8_SNORM:           result = GL_R8_SNORM;           break;
-        case OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_R8I:                result = GL_R8I;                break;
-        case OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_R8UI:               result = GL_R8UI;               break;
-        case OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_RG16:               result = GL_RG16;               break;
-        case OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_RG16_SNORM:         result = GL_RG16_SNORM;         break;
-        case OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_RG16F:              result = GL_RG16F;              break;
-        case OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_RG16I:              result = GL_RG16I;              break;
-        case OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_RG16UI:             result = GL_RG16UI;             break;
-        case OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_RG32F:              result = GL_RG32F;              break;
-        case OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_RG32I:              result = GL_RG32I;              break;
-        case OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_RG32UI:             result = GL_RG32UI;             break;
-        case OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_RG8:                result = GL_RG8;                break;
-        case OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_RG8_SNORM:          result = GL_RG8_SNORM;          break;
-        case OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_RG8I:               result = GL_RG8I;               break;
-        case OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_RG8UI:              result = GL_RG8UI;              break;
-        case OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_RGB10:              result = GL_RGB10;              break;
-        case OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_RGB10_A2:           result = GL_RGB10_A2;           break;
-        case OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_RGB10_A2UI:         result = GL_RGB10_A2UI;         break;
-        case OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_RGB12:              result = GL_RGB12;              break;
-        case OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_RGB16_SNORM:        result = GL_RGB16_SNORM;        break;
-        case OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_RGB16F:             result = GL_RGB16F;             break;
-        case OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_RGB16I:             result = GL_RGB16I;             break;
-        case OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_RGB16UI:            result = GL_RGB16UI;            break;
-        case OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_RGB32F:             result = GL_RGB32F;             break;
-        case OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_RGB32I:             result = GL_RGB32I;             break;
-        case OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_RGB32UI:            result = GL_RGB32UI;            break;
-        case OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_RGB4:               result = GL_RGB4;               break;
-        case OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_RGB5:               result = GL_RGB5;               break;
-        case OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_RGB5_A1:            result = GL_RGB5_A1;            break;
-        case OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_RGB8:               result = GL_RGB8;               break;
-        case OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_RGB8_SNORM:         result = GL_RGB8_SNORM;         break;
-        case OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_RGB8I:              result = GL_RGB8I;              break;
-        case OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_RGB8UI:             result = GL_RGB8UI;             break;
-        case OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_RGB9_E5:            result = GL_RGB9_E5;            break;
-        case OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_RGBA12:             result = GL_RGBA12;             break;
-        case OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_RGBA16:             result = GL_RGBA16;             break;
-        case OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_RGBA16F:            result = GL_RGBA16F;            break;
-        case OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_RGBA16I:            result = GL_RGBA16I;            break;
-        case OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_RGBA16UI:           result = GL_RGBA16UI;           break;
-        case OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_RGBA2:              result = GL_RGBA2;              break;
-        case OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_RGBA32F:            result = GL_RGBA32F;            break;
-        case OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_RGBA32I:            result = GL_RGBA32I;            break;
-        case OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_RGBA32UI:           result = GL_RGBA32UI;           break;
-        case OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_RGBA4:              result = GL_RGBA4;              break;
-        case OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_RGBA8:              result = GL_RGBA8;              break;
-        case OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_RGBA8_SNORM:        result = GL_RGBA8_SNORM;        break;
-        case OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_RGBA8I:             result = GL_RGBA8I;             break;
-        case OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_RGBA8UI:            result = GL_RGBA8UI;            break;
-        case OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_SRGB8:              result = GL_SRGB8;              break;
-        case OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_SRGB8_ALPHA8:       result = GL_SRGB8_ALPHA8;       break;
-
-        default:
-        {
-            ASSERT_DEBUG_SYNC(false,
-                              "Unrecognized _ogl_textures_key_internalformat value");
-        }
-    } /* switch (internalformat) */
-
-    return result;
-}
-
-/** TODO */
-PRIVATE _ogl_context_textures_key_type _ogl_context_textures_get_key_type_for_glenum_type(ogl_texture_type type)
-{
-    _ogl_context_textures_key_type result;
-
-    switch (type)
-    {
-        case OGL_TEXTURE_TYPE_GL_TEXTURE_1D:                   result = OGL_CONTEXT_TEXTURES_KEY_TYPE_1D;                   break;
-        case OGL_TEXTURE_TYPE_GL_TEXTURE_1D_ARRAY:             result = OGL_CONTEXT_TEXTURES_KEY_TYPE_1D_ARRAY;             break;
-        case OGL_TEXTURE_TYPE_GL_TEXTURE_2D:                   result = OGL_CONTEXT_TEXTURES_KEY_TYPE_2D;                   break;
-        case OGL_TEXTURE_TYPE_GL_TEXTURE_2D_ARRAY:             result = OGL_CONTEXT_TEXTURES_KEY_TYPE_2D_ARRAY;             break;
-        case OGL_TEXTURE_TYPE_GL_TEXTURE_2D_MULTISAMPLE:       result = OGL_CONTEXT_TEXTURES_KEY_TYPE_2D_MULTISAMPLE;       break;
-        case OGL_TEXTURE_TYPE_GL_TEXTURE_2D_MULTISAMPLE_ARRAY: result = OGL_CONTEXT_TEXTURES_KEY_TYPE_2D_MULTISAMPLE_ARRAY; break;
-        case OGL_TEXTURE_TYPE_GL_TEXTURE_3D:                   result = OGL_CONTEXT_TEXTURES_KEY_TYPE_3D;                   break;
-        case OGL_TEXTURE_TYPE_GL_TEXTURE_BUFFER:               result = OGL_CONTEXT_TEXTURES_KEY_TYPE_BUFFER;               break;
-        case OGL_TEXTURE_TYPE_GL_TEXTURE_CUBE_MAP:             result = OGL_CONTEXT_TEXTURES_KEY_TYPE_CUBE_MAP;             break;
-        case OGL_TEXTURE_TYPE_GL_TEXTURE_CUBE_MAP_ARRAY:       result = OGL_CONTEXT_TEXTURES_KEY_TYPE_CUBE_MAP_ARRAY;       break;
-        case OGL_TEXTURE_TYPE_GL_TEXTURE_RECTANGLE:            result = OGL_CONTEXT_TEXTURES_KEY_TYPE_RECTANGLE;            break;
-
-        default:
-        {
-            ASSERT_DEBUG_SYNC(false,
-                              "Unrecognized ogl_texture_type value");
-        }
-    } /* switch (type) */
-
-    return result;
-}
-
-/** TODO */
-PRIVATE _ogl_context_textures_key_internalformat _ogl_context_textures_get_key_internalformat_for_glenum_internalformat(GLenum internalformat)
-{
-    _ogl_context_textures_key_internalformat result;
-
-    switch (internalformat)
-    {
-        case GL_DEPTH_COMPONENT16:  result = OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_DEPTH_COMPONENT16;  break;
-        case GL_DEPTH_COMPONENT24:  result = OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_DEPTH_COMPONENT24;  break;
-        case GL_DEPTH_COMPONENT32:  result = OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_DEPTH_COMPONENT32;  break;
-        case GL_DEPTH_COMPONENT32F: result = OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_DEPTH_COMPONENT32F; break;
-        case GL_R11F_G11F_B10F:     result = OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_R11F_G11F_B10F;     break;
-        case GL_R16:                result = OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_R16;                break;
-        case GL_R16_SNORM:          result = OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_R16_SNORM;          break;
-        case GL_R16F:               result = OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_R16F;               break;
-        case GL_R16I:               result = OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_R16I;               break;
-        case GL_R16UI:              result = OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_R16UI;              break;
-        case GL_R3_G3_B2:           result = OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_R3_G3_B2;           break;
-        case GL_R32F:               result = OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_R32F;               break;
-        case GL_R32I:               result = OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_R32I;               break;
-        case GL_R32UI:              result = OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_R32UI;              break;
-        case GL_R8:                 result = OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_R8;                 break;
-        case GL_R8_SNORM:           result = OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_R8_SNORM;           break;
-        case GL_R8I:                result = OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_R8I;                break;
-        case GL_R8UI:               result = OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_R8UI;               break;
-        case GL_RG16:               result = OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_RG16;               break;
-        case GL_RG16_SNORM:         result = OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_RG16_SNORM;         break;
-        case GL_RG16F:              result = OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_RG16F;              break;
-        case GL_RG16I:              result = OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_RG16I;              break;
-        case GL_RG16UI:             result = OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_RG16UI;             break;
-        case GL_RG32F:              result = OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_RG32F;              break;
-        case GL_RG32I:              result = OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_RG32I;              break;
-        case GL_RG32UI:             result = OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_RG32UI;             break;
-        case GL_RG8:                result = OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_RG8;                break;
-        case GL_RG8_SNORM:          result = OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_RG8_SNORM;          break;
-        case GL_RG8I:               result = OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_RG8I;               break;
-        case GL_RG8UI:              result = OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_RG8UI;              break;
-        case GL_RGB10:              result = OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_RGB10;              break;
-        case GL_RGB10_A2:           result = OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_RGB10_A2;           break;
-        case GL_RGB10_A2UI:         result = OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_RGB10_A2UI;         break;
-        case GL_RGB12:              result = OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_RGB12;              break;
-        case GL_RGB16_SNORM:        result = OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_RGB16_SNORM;        break;
-        case GL_RGB16F:             result = OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_RGB16F;             break;
-        case GL_RGB16I:             result = OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_RGB16I;             break;
-        case GL_RGB16UI:            result = OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_RGB16UI;            break;
-        case GL_RGB32F:             result = OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_RGB32F;             break;
-        case GL_RGB32I:             result = OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_RGB32I;             break;
-        case GL_RGB32UI:            result = OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_RGB32UI;            break;
-        case GL_RGB4:               result = OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_RGB4;               break;
-        case GL_RGB5:               result = OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_RGB5;               break;
-        case GL_RGB5_A1:            result = OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_RGB5_A1;            break;
-        case GL_RGB8:               result = OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_RGB8;               break;
-        case GL_RGB8_SNORM:         result = OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_RGB8_SNORM;         break;
-        case GL_RGB8I:              result = OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_RGB8I;              break;
-        case GL_RGB8UI:             result = OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_RGB8UI;             break;
-        case GL_RGB9_E5:            result = OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_RGB9_E5;            break;
-        case GL_RGBA12:             result = OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_RGBA12;             break;
-        case GL_RGBA16:             result = OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_RGBA16;             break;
-        case GL_RGBA16F:            result = OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_RGBA16F;            break;
-        case GL_RGBA16I:            result = OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_RGBA16I;            break;
-        case GL_RGBA16UI:           result = OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_RGBA16UI;           break;
-        case GL_RGBA2:              result = OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_RGBA2;              break;
-        case GL_RGBA32F:            result = OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_RGBA32F;            break;
-        case GL_RGBA32I:            result = OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_RGBA32I;            break;
-        case GL_RGBA32UI:           result = OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_RGBA32UI;           break;
-        case GL_RGBA4:              result = OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_RGBA4;              break;
-        case GL_RGBA8:              result = OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_RGBA8;              break;
-        case GL_RGBA8_SNORM:        result = OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_RGBA8_SNORM;        break;
-        case GL_RGBA8I:             result = OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_RGBA8I;             break;
-        case GL_RGBA8UI:            result = OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_RGBA8UI;            break;
-        case GL_SRGB8:              result = OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_SRGB8;              break;
-        case GL_SRGB8_ALPHA8:       result = OGL_CONTEXT_TEXTURES_KEY_INTERNALFORMAT_SRGB8_ALPHA8;       break;
-
-        default:
-        {
-            ASSERT_DEBUG_SYNC(false,
-                              "Unrecognized internalformat GLenum value");
-        }
-    } /* switch (internalformat) */
-
-    return result;
-}
-
-/** TODO */
-PRIVATE system_hash64 _ogl_context_textures_get_reusable_texture_key(ogl_texture_type type,
-                                                                     unsigned int     base_mipmap_depth,
-                                                                     unsigned int     base_mipmap_height,
-                                                                     unsigned int     base_mipmap_width,
-                                                                     unsigned int     n_mipmaps,
-                                                                     unsigned int     n_samples,
-                                                                     GLenum           internalformat,
-                                                                     bool             fixed_sample_locations)
+PRIVATE system_hash64 _ogl_context_textures_get_reusable_texture_key(ral_texture_type   type,
+                                                                     unsigned int       base_mipmap_depth,
+                                                                     unsigned int       base_mipmap_height,
+                                                                     unsigned int       base_mipmap_width,
+                                                                     unsigned int       n_mipmaps,
+                                                                     unsigned int       n_samples,
+                                                                     ral_texture_format format,
+                                                                     bool               fixed_sample_locations)
 {
     /* Key structure:
      *
@@ -487,13 +173,11 @@ PRIVATE system_hash64 _ogl_context_textures_get_reusable_texture_key(ogl_texture
      */
 
     /* Some checks to make sure the crucial properties fit within the key.. */
-    _ogl_context_textures_key_type           key_type           = _ogl_context_textures_get_key_type_for_glenum_type                    (type);
-    _ogl_context_textures_key_internalformat key_internalformat = _ogl_context_textures_get_key_internalformat_for_glenum_internalformat(internalformat);
 
     ASSERT_DEBUG_SYNC((n_mipmaps          < (1 << 5)   &&
                        n_samples          < (1 << 6)   &&
-                       key_internalformat < (1 << 10)  &&
-                       key_type           < (1 << 5)   &&
+                       format             < (1 << 10)  &&
+                       type               < (1 << 5)   &&
                        base_mipmap_depth  < (1 << 8)   &&
                        base_mipmap_height < (1 << 16)  &&
                        base_mipmap_width  < (1 << 16)),
@@ -501,8 +185,8 @@ PRIVATE system_hash64 _ogl_context_textures_get_reusable_texture_key(ogl_texture
 
     return (( ((system_hash64) n_mipmaps)                      & ((1 << 5)  - 1)) << 0)  |
            (( ((system_hash64) n_samples)                      & ((1 << 6)  - 1)) << 5)  |
-           (( ((system_hash64) key_internalformat)             & ((1 << 9)  - 1)) << 11) |
-           (( ((system_hash64) key_type)                       & ((1 << 5)  - 1)) << 20) |
+           (( ((system_hash64) format)                         & ((1 << 9)  - 1)) << 11) |
+           (( ((system_hash64) type)                           & ((1 << 5)  - 1)) << 20) |
            (( ((system_hash64) base_mipmap_width)              & ((1 << 14) - 1)) << 25) |
            (( ((system_hash64) base_mipmap_height)             & ((1 << 14) - 1)) << 39) |
            (( ((system_hash64) base_mipmap_depth)              & ((1 << 8)  - 1)) << 53) |
@@ -581,15 +265,15 @@ PUBLIC ogl_context_textures ogl_context_textures_create(ogl_context context)
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API ogl_texture ogl_context_textures_get_texture_from_pool(ogl_context      context,
-                                                                          ogl_texture_type type,
-                                                                          unsigned int     n_mipmaps,
-                                                                          GLenum           internalformat,
-                                                                          unsigned int     base_mipmap_width,
-                                                                          unsigned int     base_mipmap_height,
-                                                                          unsigned int     base_mipmap_depth,
-                                                                          unsigned int     n_samples,
-                                                                          bool             fixed_sample_locations)
+PUBLIC EMERALD_API ogl_texture ogl_context_textures_get_texture_from_pool(ogl_context        context,
+                                                                          ral_texture_type   type,
+                                                                          unsigned int       n_mipmaps,
+                                                                          ral_texture_format format,
+                                                                          unsigned int       base_mipmap_width,
+                                                                          unsigned int       base_mipmap_height,
+                                                                          unsigned int       base_mipmap_depth,
+                                                                          unsigned int       n_samples,
+                                                                          bool               fixed_sample_locations)
 {
     ogl_texture            result           = NULL;
     const system_hash64    texture_key      = _ogl_context_textures_get_reusable_texture_key(type,
@@ -598,7 +282,7 @@ PUBLIC EMERALD_API ogl_texture ogl_context_textures_get_texture_from_pool(ogl_co
                                                                                              base_mipmap_width,
                                                                                              n_mipmaps,
                                                                                              n_samples,
-                                                                                             internalformat,
+                                                                                             format,
                                                                                              fixed_sample_locations);
     _ogl_context_textures* textures_ptr     = NULL;
 
@@ -646,7 +330,7 @@ PUBLIC EMERALD_API ogl_texture ogl_context_textures_get_texture_from_pool(ogl_co
                                                                                                            spawned_texture_id_text),
                                                    type,
                                                    n_mipmaps,
-                                                   internalformat,
+                                                   format,
                                                    base_mipmap_width,
                                                    base_mipmap_height,
                                                    base_mipmap_depth,
@@ -739,11 +423,11 @@ PUBLIC EMERALD_API void ogl_context_textures_return_reusable(ogl_context context
     unsigned int                      texture_base_mipmap_width      = 0;
     bool                              texture_fixed_sample_locations;
     GLuint                            texture_id                     = 0;
-    ogl_texture_internalformat        texture_internalformat;
+    ral_texture_format                texture_format;
     unsigned int                      texture_n_mipmaps              = 0;
     unsigned int                      texture_n_samples              = 0;
     _ogl_context_textures*            textures_ptr                   = NULL;
-    ogl_texture_type                  texture_type                   = OGL_TEXTURE_TYPE_UNKNOWN;
+    ral_texture_type                  texture_type                   = RAL_TEXTURE_TYPE_UNKNOWN;
 
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_TEXTURES,
@@ -774,8 +458,8 @@ PUBLIC EMERALD_API void ogl_context_textures_return_reusable(ogl_context context
                                    OGL_TEXTURE_PROPERTY_FIXED_SAMPLE_LOCATIONS,
                                   &texture_fixed_sample_locations);
     ogl_texture_get_property      (released_texture,
-                                   OGL_TEXTURE_PROPERTY_INTERNALFORMAT,
-                                  &texture_internalformat);
+                                   OGL_TEXTURE_PROPERTY_FORMAT_RAL,
+                                  &texture_format);
     ogl_texture_get_property      (released_texture,
                                    OGL_TEXTURE_PROPERTY_N_MIPMAPS,
                                   &texture_n_mipmaps);
@@ -789,7 +473,7 @@ PUBLIC EMERALD_API void ogl_context_textures_return_reusable(ogl_context context
                                                                           texture_base_mipmap_width,
                                                                           texture_n_mipmaps,
                                                                           texture_n_samples,
-                                                                          texture_internalformat,
+                                                                          texture_format,
                                                                           texture_fixed_sample_locations);
 
     /* Look for the owner vector */

@@ -9,7 +9,7 @@
 #include "ogl/ogl_primitive_renderer.h"
 #include "ogl/ogl_program.h"
 #include "ogl/ogl_shader.h"
-#include "raGL/raGL_ral.h"
+#include "raGL/raGL_utils.h"
 #include "system/system_assertions.h"
 #include "system/system_critical_section.h"
 #include "system/system_hashed_ansi_string.h"
@@ -226,7 +226,7 @@ PRIVATE void _ogl_primitive_renderer_draw_rendering_thread_callback(ogl_context 
                                                    renderer_ptr->draw_dataset_ids[n],
                                                   &dataset_ptr) )
         {
-            entry_points->pGLDrawArraysInstancedBaseInstance(raGL_get_ogl_primive_type_for_ral_primitive_type(dataset_ptr->primitive_type),
+            entry_points->pGLDrawArraysInstancedBaseInstance(raGL_utils_get_ogl_primive_type_for_ral_primitive_type(dataset_ptr->primitive_type),
                                                              dataset_ptr->draw_first,
                                                              dataset_ptr->n_vertices,
                                                              1, /* primcount */

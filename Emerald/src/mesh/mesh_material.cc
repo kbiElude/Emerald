@@ -1623,9 +1623,9 @@ PUBLIC bool mesh_material_is_a_match_to_mesh_material(mesh_material material_a,
             case MESH_MATERIAL_PROPERTY_ATTACHMENT_TEXTURE:
             {
                 ogl_texture      material_a_texture = NULL;
-                ogl_texture_type material_a_type;
+                ral_texture_type material_a_type;
                 ogl_texture      material_b_texture = NULL;
-                ogl_texture_type material_b_type;
+                ral_texture_type material_b_type;
 
                 mesh_material_get_shading_property_value_texture(material_a,
                                                                  property,

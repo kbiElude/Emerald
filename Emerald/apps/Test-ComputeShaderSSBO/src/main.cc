@@ -164,9 +164,9 @@ void _rendering_handler(ogl_context context,
          */
         _texture = ogl_texture_create_and_initialize(_context,
                                                      system_hashed_ansi_string_create("Test texture"),
-                                                     OGL_TEXTURE_TYPE_GL_TEXTURE_2D,
+                                                     RAL_TEXTURE_TYPE_2D,
                                                      1, /* n_mipmaps */
-                                                     GL_RGBA8,
+                                                     RAL_TEXTURE_FORMAT_RGBA8_UNORM,
                                                      _window_size[0],
                                                      _window_size[1],
                                                      1,      /* base_mipmap_depth */

@@ -629,11 +629,11 @@ PUBLIC EMERALD_API RENDERING_CONTEXT_CALL void postprocessing_motion_blur_execut
     /* Retrieve values of those properties of the input color texture that affect
      * the global work-group size.
      */
-    ogl_texture_type input_color_texture_type;
+    ral_texture_type input_color_texture_type;
     unsigned int     input_color_texture_mipmap_height = 0;
     unsigned int     input_color_texture_mipmap_width  = 0;
     unsigned int     input_color_texture_n_samples     = 0;
-    ogl_texture_type input_velocity_texture_type;
+    ral_texture_type input_velocity_texture_type;
 
     ogl_texture_get_property       (input_color_texture,
                                     OGL_TEXTURE_PROPERTY_TYPE,
@@ -665,7 +665,7 @@ PUBLIC EMERALD_API RENDERING_CONTEXT_CALL void postprocessing_motion_blur_execut
         unsigned int     output_texture_mipmap_width  = 0;
         unsigned int     output_texture_n_mipmaps = 0;
         unsigned int     output_texture_n_samples = 0;
-        ogl_texture_type output_texture_type;
+        ral_texture_type output_texture_type;
 
         ogl_texture_get_property(input_color_texture,
                                  OGL_TEXTURE_PROPERTY_N_MIPMAPS,

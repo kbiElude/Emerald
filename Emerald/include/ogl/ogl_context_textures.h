@@ -15,11 +15,17 @@
  *          re-usable textures if not used for a longer period of time (5-10 s?)
  *
  * NOTE: Current implementation is NOT thread-safe.
+ *
+ * NOTE: We are in the process of porting existing OGL_ code to an OpenGL back-end. During the process, this header
+ *       will be moved to raGL/ directory and a new RAL object will be introduced to provide an abstracted way of
+ *       accessing the functionality. Once that happens, you should only use this module if you don't want your content
+ *       to work with the demo/ modules.
  */
 #ifndef OGL_CONTEXT_TEXTURES_H
 #define OGL_CONTEXT_TEXTURES_H
 
 #include "ogl/ogl_types.h"
+#include "ral/ral_types.h"
 
 /** TODO.
  *
@@ -69,7 +75,7 @@ PUBLIC EMERALD_API ogl_texture ogl_context_textures_get_texture_by_name(ogl_cont
  *                            For optimal performance, make sure to call ogl_textures_get_texture_from_pool()
  *                            directly from a thread, to which the context has already been bound!
  *                            Must not be NULL.
- *  @param type               Enum describing the texture target of the texture object to return.
+ *  @param type               RAL texture type of the texture object to return.
  *  @param n_mipmaps          Number of mip-maps to prepare. The usual glTexStorage*D() requirements
  *                            apply.
  *  @param base_mipmap_width  Base mip-map width.
@@ -79,15 +85,15 @@ PUBLIC EMERALD_API ogl_texture ogl_context_textures_get_texture_by_name(ogl_cont
  *  @return An ogl_texture instance wrapping the texture object or NULL, if the request
  *          failed for whatever reason.
  **/
-PUBLIC RENDERING_CONTEXT_CALL EMERALD_API ogl_texture ogl_context_textures_get_texture_from_pool(ogl_context      context,
-                                                                                                 ogl_texture_type type,
-                                                                                                 unsigned int     n_mipmaps,
-                                                                                                 GLenum           internalformat,
-                                                                                                 unsigned int     base_mipmap_width,
-                                                                                                 unsigned int     base_mipmap_height,
-                                                                                                 unsigned int     base_mipmap_depth,
-                                                                                                 unsigned int     n_samples,
-                                                                                                 bool             fixed_sample_locations);
+PUBLIC RENDERING_CONTEXT_CALL EMERALD_API ogl_texture ogl_context_textures_get_texture_from_pool(ogl_context        context,
+                                                                                                 ral_texture_type   type,
+                                                                                                 unsigned int       n_mipmaps,
+                                                                                                 ral_texture_format format,
+                                                                                                 unsigned int       base_mipmap_width,
+                                                                                                 unsigned int       base_mipmap_height,
+                                                                                                 unsigned int       base_mipmap_depth,
+                                                                                                 unsigned int       n_samples,
+                                                                                                 bool               fixed_sample_locations);
 
 /** TODO */
 PUBLIC EMERALD_API void ogl_context_textures_return_reusable(ogl_context context,

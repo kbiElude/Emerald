@@ -2592,7 +2592,7 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void ogl_uber_rendering_start(ogl_uber
                                           "No color shadow map assigned to a light which casts shadows");
 
                         ogl_texture_get_property(item_ptr->fragment_shader_item.current_light_shadow_map_texture_color,
-                                                 OGL_TEXTURE_PROPERTY_TARGET,
+                                                 OGL_TEXTURE_PROPERTY_TARGET_GL,
                                                  &shadow_map_texture_target);
 
                         entry_points->pGLBindSampler            (n_texture_unit,
@@ -2615,7 +2615,7 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void ogl_uber_rendering_start(ogl_uber
                                           "No depth shadow map assigned to a light which casts shadows");
 
                         ogl_texture_get_property(item_ptr->fragment_shader_item.current_light_shadow_map_texture_depth,
-                                                 OGL_TEXTURE_PROPERTY_TARGET,
+                                                 OGL_TEXTURE_PROPERTY_TARGET_GL,
                                                  &shadow_map_texture_target);
 
                         entry_points->pGLBindSampler            (n_texture_unit,

@@ -890,9 +890,9 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void postprocessing_blur_gaussian_exec
     GLuint                                                    context_default_fbo_id        = -1;
     const ogl_context_gl_entrypoints_ext_direct_state_access* dsa_entrypoints_ptr           = NULL;
     const ogl_context_gl_entrypoints*                         entrypoints_ptr               = NULL;
-    ogl_texture_type                                          src_texture_type              = OGL_TEXTURE_TYPE_UNKNOWN;
+    ral_texture_type                                          src_texture_type              = RAL_TEXTURE_TYPE_UNKNOWN;
     unsigned int                                              src_texture_height            = 0;
-    GLenum                                                    src_texture_internalformat    = GL_NONE;
+    ral_texture_format                                        src_texture_format            = RAL_TEXTURE_FORMAT_UNKNOWN;
     unsigned int                                              src_texture_width             = 0;
     ogl_context_state_cache                                   state_cache                   = NULL;
     ogl_sampler                                               temp_2d_array_texture_sampler = NULL;
@@ -930,8 +930,8 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void postprocessing_blur_gaussian_exec
                                          OGL_TEXTURE_PROPERTY_TYPE,
                                         &src_texture_type);
     ogl_texture_get_property            (src_texture,
-                                         OGL_TEXTURE_PROPERTY_INTERNALFORMAT,
-                                         &src_texture_internalformat);
+                                         OGL_TEXTURE_PROPERTY_FORMAT_RAL,
+                                         &src_texture_format);
     ogl_texture_get_mipmap_property     (src_texture,
                                          0, /* mipmap_level */
                                          OGL_TEXTURE_MIPMAP_PROPERTY_WIDTH,
@@ -1043,9 +1043,9 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void postprocessing_blur_gaussian_exec
 
     /* Retrieve a 2D Array texture we will use for execution of the iterations */
     temp_2d_array_texture = ogl_context_textures_get_texture_from_pool(blur_ptr->context,
-                                                                       OGL_TEXTURE_TYPE_GL_TEXTURE_2D_ARRAY,
+                                                                       RAL_TEXTURE_TYPE_2D_ARRAY,
                                                                        1, /* n_mipmaps */
-                                                                       src_texture_internalformat,
+                                                                       src_texture_format,
                                                                        target_width,
                                                                        target_height,
                                                                        3,      /* base_mipmap_depth */
@@ -1097,23 +1097,23 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void postprocessing_blur_gaussian_exec
     }
 
     /* Iterate over all layers we need blurred */
-    ASSERT_DEBUG_SYNC(src_texture_type == OGL_TEXTURE_TYPE_GL_TEXTURE_2D       ||
-                      src_texture_type == OGL_TEXTURE_TYPE_GL_TEXTURE_2D_ARRAY ||
-                      src_texture_type == OGL_TEXTURE_TYPE_GL_TEXTURE_CUBE_MAP,
+    ASSERT_DEBUG_SYNC(src_texture_type == RAL_TEXTURE_TYPE_2D       ||
+                      src_texture_type == RAL_TEXTURE_TYPE_2D_ARRAY ||
+                      src_texture_type == RAL_TEXTURE_TYPE_CUBE_MAP,
                       "Unsupported source texture type");
 
     unsigned int n_layers = 0;
 
     switch (src_texture_type)
     {
-        case OGL_TEXTURE_TYPE_GL_TEXTURE_2D:
+        case RAL_TEXTURE_TYPE_2D:
         {
             n_layers = 1;
 
             break;
         }
 
-        case OGL_TEXTURE_TYPE_GL_TEXTURE_2D_ARRAY:
+        case RAL_TEXTURE_TYPE_2D_ARRAY:
         {
             ogl_texture_get_mipmap_property(src_texture,
                                             0, /* mipmap_level */
@@ -1126,7 +1126,7 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void postprocessing_blur_gaussian_exec
             break;
         }
 
-        case OGL_TEXTURE_TYPE_GL_TEXTURE_CUBE_MAP:
+        case RAL_TEXTURE_TYPE_CUBE_MAP:
         {
             n_layers = 6;
 
@@ -1175,7 +1175,7 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void postprocessing_blur_gaussian_exec
                                                                 0,  /* level */
                                                                 0); /* layer */
 
-        if (src_texture_type == OGL_TEXTURE_TYPE_GL_TEXTURE_2D)
+        if (src_texture_type == RAL_TEXTURE_TYPE_2D)
         {
             dsa_entrypoints_ptr->pGLNamedFramebufferTexture2DEXT(pong_fbo_id,
                                                                  GL_COLOR_ATTACHMENT0,
@@ -1310,7 +1310,7 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void postprocessing_blur_gaussian_exec
         entrypoints_ptr->pGLBindFramebuffer(GL_READ_FRAMEBUFFER,
                                             ping_fbo_id);
 
-        if (src_texture_type == OGL_TEXTURE_TYPE_GL_TEXTURE_2D)
+        if (src_texture_type == RAL_TEXTURE_TYPE_2D)
         {
             dsa_entrypoints_ptr->pGLNamedFramebufferTexture2DEXT(pong_fbo_id,
                                                                  GL_COLOR_ATTACHMENT0,

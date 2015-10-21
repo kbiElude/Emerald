@@ -7,7 +7,7 @@
 #include "ogl/ogl_context.h"
 #include "ogl/ogl_shader.h"
 #include "ogl/ogl_shaders.h"
-#include "raGL/raGL_ral.h"
+#include "raGL/raGL_utils.h"
 #include "system/system_assertions.h"
 #include "system/system_hashed_ansi_string.h"
 #include "system/system_log.h"
@@ -99,7 +99,7 @@ PRIVATE void _ogl_shader_create_callback(ogl_context context,
 {
     _ogl_shader* shader_ptr = (_ogl_shader*) in_arg;
 
-    shader_ptr->id = shader_ptr->pGLCreateShader( raGL_get_ogl_shader_type_for_ral_shader_type(shader_ptr->type) );
+    shader_ptr->id = shader_ptr->pGLCreateShader( raGL_utils_get_ogl_shader_type_for_ral_shader_type(shader_ptr->type) );
 }
 
 /** TODO */

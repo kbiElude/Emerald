@@ -21,6 +21,7 @@
 #include "ogl/ogl_ui_dropdown.h"
 #include "ogl/ogl_ui_frame.h"
 #include "ogl/ogl_ui_label.h"
+#include "raGL/raGL_utils.h"
 #include "system/system_assertions.h"
 #include "system/system_event.h"
 #include "system/system_file_enumerator.h"
@@ -1268,15 +1269,26 @@ void _setup_compression_algorithms(ogl_context context)
                                                                OGL_CONTEXT_TEXTURE_COMPRESSION_ALGORITHM_PROPERTY_NAME,
                                                                &new_algorithm->name);
 
-        new_algorithm->n_compression_algorithm_engine = n_internalformat;
+        /* Is this algorithm supported by RAL? If not, throw it away */
+        if (raGL_utils_get_ral_texture_format_for_ogl_enum(new_algorithm->gl_enum) != RAL_TEXTURE_FORMAT_UNKNOWN)
+        {
+            new_algorithm->n_compression_algorithm_engine = n_internalformat;
 
-        /* Store the entry */
-        system_resizable_vector_push(_compression_algorithms, new_algorithm);
+            /* Store the entry */
+            system_resizable_vector_push(_compression_algorithms,
+                                         new_algorithm);
+        }
+        else
+        {
+            delete new_algorithm;
+        }
     } /* for (all compressed internalformats) */
 
     /* Sort the compression formats by name */
+#if 0
     system_resizable_vector_sort(_compression_algorithms,
                                  _compression_algorithm_comparator);
+#endif
 
     /* Assign vector indices */
     for (unsigned int n_internalformat = 0;
@@ -1614,7 +1626,7 @@ void _update_ui_controls_strings()
     unsigned int              decompressed_file_size = 0;
     system_hashed_ansi_string decompressed_file_size_has;
     std::stringstream         decompressed_file_size_sstream;
-    GLint                     texture_internalformat = GL_NONE;
+    ral_texture_format        texture_format         = RAL_TEXTURE_FORMAT_UNKNOWN;
     unsigned int              texture_size[3]        = {0};
 
     ogl_texture_get_mipmap_property(_texture_nc,
@@ -1631,20 +1643,20 @@ void _update_ui_controls_strings()
                                     texture_size + 2);
 
     ogl_texture_get_property(_texture_nc,
-                             OGL_TEXTURE_PROPERTY_INTERNALFORMAT,
-                            &texture_internalformat);
+                             OGL_TEXTURE_PROPERTY_FORMAT_RAL,
+                            &texture_format);
 
-    switch(texture_internalformat)
+    switch (texture_format)
     {
-        case GL_RGB8:
-        case GL_SRGB8:
+        case RAL_TEXTURE_FORMAT_RGB8_UNORM:
+        case RAL_TEXTURE_FORMAT_SRGB8_UNORM:
         {
             decompressed_file_size = 3 * texture_size[0] * texture_size[1] * texture_size[2];
 
             break;
         }
 
-        case GL_RGBA8:
+        case RAL_TEXTURE_FORMAT_RGBA8_UNORM:
         {
             decompressed_file_size = 4 * texture_size[0] * texture_size[1] * texture_size[2];
 
@@ -1656,7 +1668,7 @@ void _update_ui_controls_strings()
             ASSERT_DEBUG_SYNC(false,
                               "Unrecognized decompressed texture internalformat");
         }
-    } /* switch(texture_internalformat) */
+    } /* switch (texture_format) */
 
     decompressed_file_size_sstream << "Decompressed file size: "
                                    << decompressed_file_size

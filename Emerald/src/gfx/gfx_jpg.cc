@@ -7,6 +7,7 @@
 
 #include "gfx/gfx_jpg.h"
 #include "gfx/gfx_image.h"
+#include "ral/ral_types.h"
 #include "system/system_assertions.h"
 #include "system/system_file_enumerator.h"
 #include "system/system_file_serializer.h"
@@ -233,7 +234,7 @@ PRIVATE gfx_image gfx_jpg_shared_load_handler(bool                      should_l
                          cinfo.output_width,
                          cinfo.output_height,
                          1, /* row_alignment */
-                         GL_SRGB8,
+                         RAL_TEXTURE_FORMAT_SRGB8_UNORM,
                          false,
                          temp_buffer,
                          row_stride * cinfo.output_height,
