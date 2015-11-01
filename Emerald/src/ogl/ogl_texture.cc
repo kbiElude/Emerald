@@ -42,6 +42,7 @@ typedef struct _ogl_texture
     bool                       has_had_mipmaps_generated;
     system_resizable_vector    mipmaps; /* stores _ogl_texture_mipmap instances, indexed by mipmap level */
     system_hashed_ansi_string  name;
+    unsigned int               n_layers;
     unsigned int               n_max_mipmaps;
     unsigned int               n_samples;
     system_hashed_ansi_string  src_filename;
@@ -61,6 +62,7 @@ typedef struct _ogl_texture
         has_had_mipmaps_generated = false;
         mipmaps                   = system_resizable_vector_create(1);
         name                      = in_name;
+        n_layers                  = 0;
         n_samples                 = 0;
         n_max_mipmaps             = 0;
         src_filename              = NULL;
@@ -935,6 +937,13 @@ PUBLIC EMERALD_API void ogl_texture_get_property(const ogl_texture    texture,
             break;
         }
 
+        case OGL_TEXTURE_PROPERTY_N_LAYERS:
+        {
+            *(unsigned int*) out_result = texture_ptr->n_layers;
+
+            break;
+        }
+
         case OGL_TEXTURE_PROPERTY_N_MIPMAPS:
         {
             unsigned int n_defined_mipmaps = 0;
@@ -1134,6 +1143,16 @@ PUBLIC EMERALD_API void ogl_texture_set_property(ogl_texture          texture,
                                "Invalid RAL texture format");
 
             texture_ptr->format = *(ral_texture_format*) data;
+
+            break;
+        }
+
+        case OGL_TEXTURE_PROPERTY_N_LAYERS:
+        {
+            ASSERT_DEBUG_SYNC(texture_ptr->n_layers == 0,
+                              "OGL_TEXTURE_PROPERTY_N_LAYERS property has already been assigned a value");
+
+            texture_ptr->n_layers = *(unsigned int*) data;
 
             break;
         }

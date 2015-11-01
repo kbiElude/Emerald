@@ -2,6 +2,7 @@
  *
  * Emerald (kbi/elude @2014-2015)
  *
+ * TODO: Optimize me!
  */
 #include "shared.h"
 #include "system/system_dag.h"
@@ -214,6 +215,125 @@ end:
 }
 
 /** TODO */
+PUBLIC EMERALD_API void system_dag_delete_connection(system_dag            dag,
+                                                     system_dag_connection connection)
+{
+    size_t       connection_index = -1;
+    _system_dag* dag_ptr          = (_system_dag*) dag;
+
+    /* Sanity checks */
+    if (connection == NULL)
+    {
+        ASSERT_DEBUG_SYNC(false,
+                          "Input connection is NULL");
+
+        goto end;
+    } /* if (connection == NULL) */
+
+    if (dag == NULL)
+    {
+        ASSERT_DEBUG_SYNC(false,
+                          "Input DAG is NULL");
+
+        goto end;
+    } /* if (dag == NULL) */
+
+    /* Find the requested connection */
+    if ( (connection_index = system_resizable_vector_find(dag_ptr->connections,
+                                                          connection) ) == ITEM_NOT_FOUND)
+    {
+        ASSERT_DEBUG_SYNC(false,
+                          "Could not find the specified DAG connection instance");
+
+        goto end;
+    }
+
+    /* Delete the connection and mark the DAG as dirty */
+    system_resizable_vector_delete_element_at(dag_ptr->connections,
+                                              connection_index);
+
+    delete (_system_dag_connection*) connection;
+    connection = NULL;
+
+    dag_ptr->dirty = true;
+
+end:
+    ;
+}
+
+/** TODO */
+PUBLIC EMERALD_API bool system_dag_get_connections(system_dag             dag,
+                                                   system_dag_node        src,
+                                                   system_dag_node        dst,
+                                                   uint32_t*              out_opt_n_connections_ptr,
+                                                   system_dag_connection* out_opt_connections_ptr)
+{
+    _system_dag* dag_ptr             = (_system_dag*) dag;
+    uint32_t     n_connections       = 0;
+    uint32_t     n_found_connections = 0;
+    bool         result              = false;
+
+    /* Sanity checks */
+    if (dag == NULL)
+    {
+        ASSERT_DEBUG_SYNC(false,
+                          "Input DAG is NULL");
+
+        goto end;
+    } /* if (dag == NULL) */
+
+    if (src == NULL && dst == NULL)
+    {
+        ASSERT_DEBUG_SYNC(false,
+                          "Both src and dst arguments are NULL");
+
+        goto end;
+    } /* if (src == NULL && dst == NULL) */
+
+    system_resizable_vector_get_property(dag_ptr->connections,
+                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                        &n_connections);
+
+    for (uint32_t n_connection = 0;
+                  n_connection < n_connections;
+                ++n_connection)
+    {
+        _system_dag_connection* connection_ptr = NULL;
+
+        if (!system_resizable_vector_get_element_at(dag_ptr->connections,
+                                                    n_connection,
+                                                   &connection_ptr) )
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Could not retrieve connection descriptor at index [%d]",
+                              n_connection);
+
+            continue;
+        } /* if (connection descriptor was retrieved) */
+
+        if ((dst != NULL && connection_ptr->dst == dst || dst == NULL) &&
+            (src != NULL && connection_ptr->src == src || src == NULL) )
+        {
+            if (out_opt_connections_ptr != NULL)
+            {
+                out_opt_connections_ptr[n_found_connections] = connection_ptr;
+            } /* if (out_opt_connections_ptr != NULL) */
+
+            n_found_connections++;
+        } /* if (a match was found) */
+    } /* for (all defined connections) */
+
+    if (out_opt_n_connections_ptr != NULL)
+    {
+        *out_opt_n_connections_ptr = n_found_connections;
+    } /* if (out_opt_n_connections_ptr != NULL) */
+
+    result = true;
+end:
+    return result;
+}
+
+/** TODO */
 PUBLIC EMERALD_API bool system_dag_get_topologically_sorted_node_values(system_dag              dag,
                                                                         system_resizable_vector result)
 {
@@ -268,6 +388,42 @@ PUBLIC EMERALD_API bool system_dag_get_topologically_sorted_node_values(system_d
 
 end:
     return result_bool;
+}
+
+/** TODO */
+PUBLIC EMERALD_API bool system_dag_is_connection_defined(system_dag      dag,
+                                                         system_dag_node src,
+                                                         system_dag_node dst)
+{
+    _system_dag* dag_ptr       = (_system_dag*) dag;
+    uint32_t     n_connections = 0;
+    bool         result        = false;
+
+    /* Sanity checks */
+    if (dag_ptr == NULL)
+    {
+        ASSERT_DEBUG_SYNC(false,
+                          "Input DAG is NULL");
+
+        goto end;
+    } /* if (dag_ptr == NULL) */
+
+    result = system_dag_get_connections(dag,
+                                        src,
+                                        dst,
+                                        &n_connections,
+                                        NULL); /* out_opt_connections_ptr   */
+
+    if (result)
+    {
+        result = (n_connections > 0);
+    }
+
+    
+
+    /* All done */
+end:
+    return result;
 }
 
 /** TODO */
@@ -346,6 +502,8 @@ PUBLIC EMERALD_API bool system_dag_solve(system_dag dag)
     unsigned int      n_nodes          = 0;
     bool              result           = false;
     unsigned int      time             = 0;
+
+    LOG_INFO("Performance warning: system_dag_solve() call.");
 
     system_resizable_vector_get_property(dag_ptr->connections,
                                          SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,

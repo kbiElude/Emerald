@@ -293,7 +293,7 @@ TEST(WindowTest, TimelineTest_ShouldRenderFourDifferentlyColoredScreensWithDiffe
               (demo_timeline) NULL);
 
     demo_timeline_get_property(timeline,
-                               DEMO_TIMELINE_PROPERTY_PIPELINE,
+                               DEMO_TIMELINE_PROPERTY_RENDERING_PIPELINE,
                               &timeline_pipeline);
 
     ASSERT_NE(timeline_pipeline,

@@ -64,9 +64,6 @@ DECLARE_HANDLE(ogl_context_vaos);
 DECLARE_HANDLE(ogl_vao);
 
 typedef                 PFNGLACTIVETEXTUREPROC                          PFNWRAPPEDGLACTIVETEXTUREPROC;
-typedef                 PFNGLCOMPRESSEDTEXIMAGE1DPROC                   PFNWRAPPEDGLCOMPRESSEDTEXIMAGE1DPROC;
-typedef                 PFNGLCOMPRESSEDTEXIMAGE2DPROC                   PFNWRAPPEDGLCOMPRESSEDTEXIMAGE2DPROC;
-typedef                 PFNGLCOMPRESSEDTEXIMAGE3DPROC                   PFNWRAPPEDGLCOMPRESSEDTEXIMAGE3DPROC;
 typedef                 PFNGLCOMPRESSEDTEXSUBIMAGE1DPROC                PFNWRAPPEDGLCOMPRESSEDTEXSUBIMAGE1DPROC;
 typedef                 PFNGLCOMPRESSEDTEXSUBIMAGE2DPROC                PFNWRAPPEDGLCOMPRESSEDTEXSUBIMAGE2DPROC;
 typedef                 PFNGLCOMPRESSEDTEXSUBIMAGE3DPROC                PFNWRAPPEDGLCOMPRESSEDTEXSUBIMAGE3DPROC;
@@ -526,8 +523,6 @@ typedef struct
     PFNGLCLIENTWAITSYNCPROC                      pGLClientWaitSync;
     PFNGLCOLORMASKPROC                           pGLColorMask;
     PFNGLCOMPILESHADERPROC                       pGLCompileShader;
-    PFNGLCOMPRESSEDTEXIMAGE2DPROC                pGLCompressedTexImage2D;
-    PFNGLCOMPRESSEDTEXIMAGE3DPROC                pGLCompressedTexImage3D;
     PFNGLCOMPRESSEDTEXSUBIMAGE2DPROC             pGLCompressedTexSubImage2D;
     PFNGLCOMPRESSEDTEXSUBIMAGE3DPROC             pGLCompressedTexSubImage3D;
     PFNGLCOPYBUFFERSUBDATAPROC                   pGLCopyBufferSubData;
@@ -733,8 +728,6 @@ typedef struct
     PFNGLSTENCILMASKSEPARATEPROC                 pGLStencilMaskSeparate;
     PFNGLSTENCILOPPROC                           pGLStencilOp;
     PFNGLSTENCILOPSEPARATEPROC                   pGLStencilOpSeparate;
-    PFNGLTEXIMAGE2DPROC                          pGLTexImage2D;
-    PFNGLTEXIMAGE3DPROC                          pGLTexImage3D;
     PFNGLTEXPARAMETERFPROC                       pGLTexParameterf;
     PFNGLTEXPARAMETERFVPROC                      pGLTexParameterfv;
     PFNGLTEXPARAMETERIPROC                       pGLTexParameteri;
@@ -977,9 +970,6 @@ typedef struct
     PFNGLCOLORMASKPROC                                   pGLColorMask;
     PFNGLCOLORMASKIPROC                                  pGLColorMaski;
     PFNGLCOMPILESHADERPROC                               pGLCompileShader;
-    PFNWRAPPEDGLCOMPRESSEDTEXIMAGE1DPROC                 pGLCompressedTexImage1D;
-    PFNWRAPPEDGLCOMPRESSEDTEXIMAGE2DPROC                 pGLCompressedTexImage2D;
-    PFNWRAPPEDGLCOMPRESSEDTEXIMAGE3DPROC                 pGLCompressedTexImage3D;
     PFNWRAPPEDGLCOMPRESSEDTEXSUBIMAGE1DPROC              pGLCompressedTexSubImage1D;
     PFNWRAPPEDGLCOMPRESSEDTEXSUBIMAGE2DPROC              pGLCompressedTexSubImage2D;
     PFNWRAPPEDGLCOMPRESSEDTEXSUBIMAGE3DPROC              pGLCompressedTexSubImage3D;
@@ -1351,9 +1341,6 @@ typedef struct
     PFNGLCLEARCOLORPROC                                  pGLClearColor;
     PFNGLCLEARDEPTHPROC                                  pGLClearDepth;
     PFNGLCOLORMASKPROC                                   pGLColorMask;
-    PFNGLCOMPRESSEDTEXIMAGE3DPROC                        pGLCompressedTexImage3D;
-    PFNGLCOMPRESSEDTEXIMAGE2DPROC                        pGLCompressedTexImage2D;
-    PFNGLCOMPRESSEDTEXIMAGE1DPROC                        pGLCompressedTexImage1D;
     PFNGLCOMPRESSEDTEXSUBIMAGE3DPROC                     pGLCompressedTexSubImage3D;
     PFNGLCOMPRESSEDTEXSUBIMAGE2DPROC                     pGLCompressedTexSubImage2D;
     PFNGLCOMPRESSEDTEXSUBIMAGE1DPROC                     pGLCompressedTexSubImage1D;
@@ -1605,9 +1592,6 @@ typedef struct
      *       feature-set and carry no vendor-specific dependencies.
      */
     PFNWRAPPEDGLBINDMULTITEXTUREEXTPROC                     pGLBindMultiTextureEXT;
-    PFNWRAPPEDGLCOMPRESSEDTEXTUREIMAGE1DEXTPROC             pGLCompressedTextureImage1DEXT;
-    PFNWRAPPEDGLCOMPRESSEDTEXTUREIMAGE2DEXTPROC             pGLCompressedTextureImage2DEXT;
-    PFNWRAPPEDGLCOMPRESSEDTEXTUREIMAGE3DEXTPROC             pGLCompressedTextureImage3DEXT;
     PFNWRAPPEDGLCOMPRESSEDTEXTURESUBIMAGE1DEXTPROC          pGLCompressedTextureSubImage1DEXT;
     PFNWRAPPEDGLCOMPRESSEDTEXTURESUBIMAGE2DEXTPROC          pGLCompressedTextureSubImage2DEXT;
     PFNWRAPPEDGLCOMPRESSEDTEXTURESUBIMAGE3DEXTPROC          pGLCompressedTextureSubImage3DEXT;
@@ -1648,9 +1632,6 @@ typedef struct
     PFNGLNAMEDRENDERBUFFERSTORAGEMULTISAMPLEEXTPROC         pGLNamedRenderbufferStorageMultisampleEXT;
     PFNWRAPPEDGLTEXTUREBUFFEREXTPROC                        pGLTextureBufferEXT;
     PFNWRAPPEDGLTEXTUREBUFFERRANGEEXTPROC                   pGLTextureBufferRangeEXT;
-    PFNWRAPPEDGLTEXTUREIMAGE1DEXTPROC                       pGLTextureImage1DEXT;
-    PFNWRAPPEDGLTEXTUREIMAGE2DEXTPROC                       pGLTextureImage2DEXT;
-    PFNWRAPPEDGLTEXTUREIMAGE3DEXTPROC                       pGLTextureImage3DEXT;
     PFNWRAPPEDGLTEXTUREPARAMETERIEXTPROC                    pGLTextureParameteriEXT;
     PFNWRAPPEDGLTEXTUREPARAMETERIVEXTPROC                   pGLTextureParameterivEXT;
     PFNWRAPPEDGLTEXTUREPARAMETERFEXTPROC                    pGLTextureParameterfEXT;

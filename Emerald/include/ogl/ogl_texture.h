@@ -64,6 +64,9 @@ typedef enum _ogl_texture_property
     /* not settable, system_hashed_ansi_string */
     OGL_TEXTURE_PROPERTY_NAME,
 
+    /* settabe (only once), unsigned int */
+    OGL_TEXTURE_PROPERTY_N_LAYERS,
+
     /* not settable, unsigned int */
     OGL_TEXTURE_PROPERTY_N_MIPMAPS,
 
@@ -76,7 +79,7 @@ typedef enum _ogl_texture_property
     /* not settable, GLenum */
     OGL_TEXTURE_PROPERTY_TARGET_GL,
 
-    /* not settable, ral_texture_type */
+    /* settable (only once), ral_texture_type */
     OGL_TEXTURE_PROPERTY_TYPE,
 
     /* Always last */

@@ -12,15 +12,33 @@
 REFCOUNT_INSERT_DECLARATIONS(ogl_pipeline,
                              ogl_pipeline)
 
+
+/* Used to define a stage with all its steps with a single ogl_pipeline_add_stage_with_steps() call. */
+typedef struct
+{
+    /* Name of the pass. Used when presenting performance statistics */
+    system_hashed_ansi_string name;
+
+    /* Function to call back to render stage contents. */
+    PFNOGLPIPELINECALLBACKPROC pfn_callback_proc;
+
+    /* User data to pass with the call-back */
+    void* user_arg;
+} ogl_pipeline_stage_step_declaration;
+
+
 /** TODO */
 PUBLIC EMERALD_API uint32_t ogl_pipeline_add_stage(ogl_pipeline instance);
 
 /** TODO */
-PUBLIC EMERALD_API uint32_t ogl_pipeline_add_stage_step(ogl_pipeline               instance,
-                                                        uint32_t                   n_stage,
-                                                        system_hashed_ansi_string  step_name,
-                                                        PFNOGLPIPELINECALLBACKPROC pfn_step_callback,
-                                                        void*                      step_callback_user_arg);
+PUBLIC EMERALD_API uint32_t ogl_pipeline_add_stage_step(ogl_pipeline                               instance,
+                                                        uint32_t                                   n_stage,
+                                                        const ogl_pipeline_stage_step_declaration* step_ptr);
+
+/** TODO */
+PUBLIC EMERALD_API uint32_t ogl_pipeline_add_stage_with_steps(ogl_pipeline                               pipeline,
+                                                              unsigned int                               n_steps,
+                                                              const ogl_pipeline_stage_step_declaration* steps);
 
 /** TODO */
 PUBLIC RENDERING_CONTEXT_CALL EMERALD_API ogl_pipeline ogl_pipeline_create(ogl_context               context,

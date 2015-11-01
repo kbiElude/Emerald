@@ -111,16 +111,12 @@ PUBLIC void stage_step_background_init(ogl_context  context,
     _result_texture = ogl_texture_create_empty(context,
                                                system_hashed_ansi_string_create("BG result texture") );
 
-    dsa_entrypoints->pGLTextureImage2DEXT   (_result_texture,
+    dsa_entrypoints->pGLTextureStorage2DEXT (_result_texture,
                                              GL_TEXTURE_2D,
-                                             0,  /* level */
+                                             1,  /* levels */
                                              GL_RGBA32F,
                                              main_get_output_resolution()[0],
-                                             main_get_output_resolution()[1],
-                                             0, /* border */
-                                             GL_RGBA,
-                                             GL_FLOAT,
-                                             NULL); /* pixels */
+                                             main_get_output_resolution()[1]);
     dsa_entrypoints->pGLTextureParameteriEXT(_result_texture,
                                              GL_TEXTURE_2D,
                                              GL_TEXTURE_MIN_FILTER,

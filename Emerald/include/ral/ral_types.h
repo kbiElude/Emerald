@@ -38,11 +38,32 @@ typedef enum
     RAL_SHADER_TYPE_COUNT = RAL_SHADER_TYPE_UNKNOWN
 } ral_shader_type;
 
+/* RAL texture component. This is used eg. for texture swizzling. */
+typedef enum
+{
+    /* The value accessible under the component should be set to the value of the texture's alpha component */
+    RAL_TEXTURE_COMPONENT_ALPHA,
+    /* The value accessible under the component should be set to the value of the texture's blue component */
+    RAL_TEXTURE_COMPONENT_BLUE,
+    /* The value accessible under the component should be set to the value of the texture's green component */
+    RAL_TEXTURE_COMPONENT_GREEN,
+    /* The value accessible under the component should be set to one. */
+    RAL_TEXTURE_COMPONENT_ONE,
+    /* The value accessible under the component should be set to the value of the texture's red component */
+    RAL_TEXTURE_COMPONENT_RED,
+    /* The value accessible under the comp-onent should be set to zero. */
+    RAL_TEXTURE_COMPONENT_ZERO,
+
+    /* Always last */
+    RAL_TEXTURE_COMPONENT_COUNT,
+    RAL_TEXTURE_COMPONENT_UNKNOWN = RAL_TEXTURE_COMPONENT_COUNT,
+} ral_texture_component;
+
 /* RAL texture formats */
 typedef enum
 {
-    /* NOTE: Make sure to update *_get_*_texture_internalformat_for_ral_texture_format() functions whenever modifying
-     *       this enum definition!
+    /* NOTE: Make sure to update *_get_*_texture_internalformat_for_ral_texture_format() AND ral_utils_get_texture_format_property()
+    *        functions whenever modifying this enum definition!
      */
     RAL_TEXTURE_FORMAT_COMPRESSED_R11_EAC_UNORM, // GL_COMPRESSED_R11_EAC,
     RAL_TEXTURE_FORMAT_COMPRESSED_RED_RGTC1_UNORM,   // GL_COMPRESSED_RED_RGTC1,

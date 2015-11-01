@@ -23,6 +23,7 @@
 #include "ogl/ogl_shaders.h"
 #include "ogl/ogl_shadow_mapping.h"
 #include "ogl/ogl_text.h"
+#include "raGL/raGL_utils.h"
 #include "system/system_assertions.h"
 #include "system/system_critical_section.h"
 #include "system/system_event.h"
@@ -86,10 +87,13 @@ typedef struct
     GLuint               vao_no_vaas_id;
 
     /* Used for off-screen rendering. */
-    GLuint       fbo_color_rbo_id;
-    GLuint       fbo_depth_stencil_rbo_id;
-    GLuint       fbo_id;
-    unsigned int fbo_n_samples_effective;
+    ral_texture_format fbo_color_texture_format;
+    GLuint             fbo_color_rbo_id;
+    ral_texture_format fbo_depth_stencil_texture_format;
+    GLuint             fbo_depth_stencil_rbo_id;
+    GLuint             fbo_id;
+    unsigned int       fbo_n_samples_effective;
+    unsigned int       fbo_size[2];
 
     /* Used by the root window for MSAA enumeration only */
     GLenum msaa_enumeration_color_internalformat;
@@ -253,6 +257,8 @@ PRIVATE ogl_context _ogl_context_create_from_system_window_shared(system_hashed_
 
     new_context_ptr->context_platform                       = NULL;
     new_context_ptr->context_type                           = type;
+    new_context_ptr->fbo_color_texture_format               = RAL_TEXTURE_FORMAT_UNKNOWN;
+    new_context_ptr->fbo_depth_stencil_texture_format       = RAL_TEXTURE_FORMAT_UNKNOWN;
     new_context_ptr->msaa_enumeration_color_samples         = NULL;
     new_context_ptr->msaa_enumeration_depth_stencil_samples = NULL;
     new_context_ptr->parent_context                         = parent_context;
@@ -1460,6 +1466,14 @@ PRIVATE void _ogl_context_initialize_fbo(_ogl_context* context_ptr)
         }
     } /* if (any of the attachments need to have a physical backing) */
 
+    /* Store the framebuffer size */
+    context_ptr->fbo_size[0] = window_dimensions[0];
+    context_ptr->fbo_size[1] = window_dimensions[1];
+
+    /* Store the attachment texture formats. */
+    context_ptr->fbo_color_texture_format         = raGL_utils_get_ral_texture_format_for_ogl_enum(internalformat_color);
+    context_ptr->fbo_depth_stencil_texture_format = raGL_utils_get_ral_texture_format_for_ogl_enum(internalformat_depth_stencil);
+
     /* Log the context's FBO configuration. Could be useful for debugging in the future. */
     LOG_INFO("Using the following FBO configuration for the rendering context:\n"
              "* Color RBO:         [%s]\n"
@@ -1593,8 +1607,6 @@ PRIVATE void _ogl_context_retrieve_ES_function_pointers(_ogl_context* context_pt
         {&context_ptr->entry_points_es.pGLClientWaitSync,                      "glClientWaitSync"},
         {&context_ptr->entry_points_es.pGLColorMask,                           "glColorMask"},
         {&context_ptr->entry_points_es.pGLCompileShader,                       "glCompileShader"},
-        {&context_ptr->entry_points_es.pGLCompressedTexImage2D,                "glCompressedTexImage2D"},
-        {&context_ptr->entry_points_es.pGLCompressedTexImage3D,                "glCompressedTexImage3D"},
         {&context_ptr->entry_points_es.pGLCompressedTexSubImage2D,             "glCompressedTexSubImage2D"},
         {&context_ptr->entry_points_es.pGLCompressedTexSubImage3D,             "glCompressedTexSubImage3D"},
         {&context_ptr->entry_points_es.pGLCopyBufferSubData,                   "glCopyBufferSubData"},
@@ -1799,8 +1811,6 @@ PRIVATE void _ogl_context_retrieve_ES_function_pointers(_ogl_context* context_pt
         {&context_ptr->entry_points_es.pGLStencilMaskSeparate,                 "glStencilMaskSeparate"},
         {&context_ptr->entry_points_es.pGLStencilOp,                           "glStencilOp"},
         {&context_ptr->entry_points_es.pGLStencilOpSeparate,                   "glStencilOpSeparate"},
-        {&context_ptr->entry_points_es.pGLTexImage2D,                          "glTexImage2D"},
-        {&context_ptr->entry_points_es.pGLTexImage3D,                          "glTexImage3D"},
         {&context_ptr->entry_points_es.pGLTexParameterf,                       "glTexParameterf"},
         {&context_ptr->entry_points_es.pGLTexParameterfv,                      "glTexParameterfv"},
         {&context_ptr->entry_points_es.pGLTexParameteri,                       "glTexParameteri"},
@@ -2079,9 +2089,6 @@ PRIVATE void _ogl_context_retrieve_GL_EXT_direct_state_access_function_pointers(
     }
 
     context_ptr->entry_points_gl_ext_direct_state_access.pGLBindMultiTextureEXT               = ogl_context_wrappers_glBindMultiTextureEXT;
-    context_ptr->entry_points_gl_ext_direct_state_access.pGLCompressedTextureImage1DEXT       = ogl_context_wrappers_glCompressedTextureImage1DEXT;
-    context_ptr->entry_points_gl_ext_direct_state_access.pGLCompressedTextureImage2DEXT       = ogl_context_wrappers_glCompressedTextureImage2DEXT;
-    context_ptr->entry_points_gl_ext_direct_state_access.pGLCompressedTextureImage3DEXT       = ogl_context_wrappers_glCompressedTextureImage3DEXT;
     context_ptr->entry_points_gl_ext_direct_state_access.pGLCompressedTextureSubImage1DEXT    = ogl_context_wrappers_glCompressedTextureSubImage1DEXT;
     context_ptr->entry_points_gl_ext_direct_state_access.pGLCompressedTextureSubImage2DEXT    = ogl_context_wrappers_glCompressedTextureSubImage2DEXT;
     context_ptr->entry_points_gl_ext_direct_state_access.pGLCompressedTextureSubImage3DEXT    = ogl_context_wrappers_glCompressedTextureSubImage3DEXT;
@@ -2112,9 +2119,6 @@ PRIVATE void _ogl_context_retrieve_GL_EXT_direct_state_access_function_pointers(
     context_ptr->entry_points_gl_ext_direct_state_access.pGLNamedFramebufferTextureLayerEXT   = ogl_context_wrappers_glNamedFramebufferTextureLayerEXT;
     context_ptr->entry_points_gl_ext_direct_state_access.pGLTextureBufferEXT                  = ogl_context_wrappers_glTextureBufferEXT;
     context_ptr->entry_points_gl_ext_direct_state_access.pGLTextureBufferRangeEXT             = ogl_context_wrappers_glTextureBufferRangeEXT;
-    context_ptr->entry_points_gl_ext_direct_state_access.pGLTextureImage1DEXT                 = ogl_context_wrappers_glTextureImage1DEXT;
-    context_ptr->entry_points_gl_ext_direct_state_access.pGLTextureImage2DEXT                 = ogl_context_wrappers_glTextureImage2DEXT;
-    context_ptr->entry_points_gl_ext_direct_state_access.pGLTextureImage3DEXT                 = ogl_context_wrappers_glTextureImage3DEXT;
     context_ptr->entry_points_gl_ext_direct_state_access.pGLTextureParameteriEXT              = ogl_context_wrappers_glTextureParameteriEXT;
     context_ptr->entry_points_gl_ext_direct_state_access.pGLTextureParameterivEXT             = ogl_context_wrappers_glTextureParameterivEXT;
     context_ptr->entry_points_gl_ext_direct_state_access.pGLTextureParameterfEXT              = ogl_context_wrappers_glTextureParameterfEXT;
@@ -2186,9 +2190,6 @@ PRIVATE void _ogl_context_retrieve_GL_function_pointers(_ogl_context* context_pt
         {&context_ptr->entry_points_private.pGLColorMask,                                   "glColorMask"},
         {&context_ptr->entry_points_gl.pGLColorMaski,                                       "glColorMaski"},
         {&context_ptr->entry_points_gl.pGLCompileShader,                                    "glCompileShader"},
-        {&context_ptr->entry_points_private.pGLCompressedTexImage1D,                        "glCompressedTexImage1D"},
-        {&context_ptr->entry_points_private.pGLCompressedTexImage2D,                        "glCompressedTexImage2D"},
-        {&context_ptr->entry_points_private.pGLCompressedTexImage3D,                        "glCompressedTexImage3D"},
         {&context_ptr->entry_points_private.pGLCompressedTexSubImage1D,                     "glCompressedTexSubImage1D"},
         {&context_ptr->entry_points_private.pGLCompressedTexSubImage2D,                     "glCompressedTexSubImage2D"},
         {&context_ptr->entry_points_private.pGLCompressedTexSubImage3D,                     "glCompressedTexSubImage3D"},
@@ -2561,9 +2562,6 @@ PRIVATE void _ogl_context_retrieve_GL_function_pointers(_ogl_context* context_pt
     context_ptr->entry_points_gl.pGLClearColor                                  = ogl_context_wrappers_glClearColor;
     context_ptr->entry_points_gl.pGLClearDepth                                  = ogl_context_wrappers_glClearDepth;
     context_ptr->entry_points_gl.pGLColorMask                                   = ogl_context_wrappers_glColorMask;
-    context_ptr->entry_points_gl.pGLCompressedTexImage1D                        = ogl_context_wrappers_glCompressedTexImage1D;
-    context_ptr->entry_points_gl.pGLCompressedTexImage2D                        = ogl_context_wrappers_glCompressedTexImage2D;
-    context_ptr->entry_points_gl.pGLCompressedTexImage3D                        = ogl_context_wrappers_glCompressedTexImage3D;
     context_ptr->entry_points_gl.pGLCompressedTexSubImage1D                     = ogl_context_wrappers_glCompressedTexSubImage1D;
     context_ptr->entry_points_gl.pGLCompressedTexSubImage2D                     = ogl_context_wrappers_glCompressedTexSubImage2D;
     context_ptr->entry_points_gl.pGLCompressedTexSubImage3D                     = ogl_context_wrappers_glCompressedTexSubImage3D;
@@ -2668,9 +2666,6 @@ PRIVATE void _ogl_context_retrieve_GL_function_pointers(_ogl_context* context_pt
     context_ptr->entry_points_gl.pGLShaderStorageBlockBinding                   = ogl_context_wrappers_glShaderStorageBlockBinding;
     context_ptr->entry_points_gl.pGLTexBuffer                                   = ogl_context_wrappers_glTexBuffer;
     context_ptr->entry_points_gl.pGLTexBufferRange                              = ogl_context_wrappers_glTexBufferRange;
-    context_ptr->entry_points_gl.pGLTexImage1D                                  = ogl_context_wrappers_glTexImage1D;
-    context_ptr->entry_points_gl.pGLTexImage2D                                  = ogl_context_wrappers_glTexImage2D;
-    context_ptr->entry_points_gl.pGLTexImage3D                                  = ogl_context_wrappers_glTexImage3D;
     context_ptr->entry_points_gl.pGLTexParameterf                               = ogl_context_wrappers_glTexParameterf;
     context_ptr->entry_points_gl.pGLTexParameterfv                              = ogl_context_wrappers_glTexParameterfv;
     context_ptr->entry_points_gl.pGLTexParameterIiv                             = ogl_context_wrappers_glTexParameterIiv;
@@ -3322,6 +3317,20 @@ PUBLIC EMERALD_API void ogl_context_get_property(ogl_context          context,
             break;
         }
 
+        case OGL_CONTEXT_PROPERTY_DEFAULT_FBO_COLOR_TEXTURE_FORMAT:
+        {
+            *(ral_texture_format*) out_result = context_ptr->fbo_color_texture_format;
+
+            break;
+        }
+
+        case OGL_CONTEXT_PROPERTY_DEFAULT_FBO_DEPTH_STENCIL_TEXTURE_FORMAT:
+        {
+            *(ral_texture_format*) out_result = context_ptr->fbo_depth_stencil_texture_format;
+
+            break;
+        }
+
         case OGL_CONTEXT_PROPERTY_DEFAULT_FBO_ID:
         {
             *((GLuint*) out_result) = context_ptr->fbo_id;
@@ -3334,6 +3343,20 @@ PUBLIC EMERALD_API void ogl_context_get_property(ogl_context          context,
             *(unsigned int*) out_result = context_ptr->fbo_n_samples_effective;
 
             break;
+        }
+
+        case OGL_CONTEXT_PROPERTY_DEFAULT_FBO_SIZE:
+        {
+            ASSERT_DEBUG_SYNC(context_ptr->fbo_size[0] > 0 &&
+                              context_ptr->fbo_size[1] > 0,
+                              "Invalid default FB's size detected.");
+
+            memcpy(out_result,
+                   context_ptr->fbo_size,
+                   sizeof(context_ptr->fbo_size) );
+
+            break;
+
         }
 
         case OGL_CONTEXT_PROPERTY_ENTRYPOINTS_ES:
