@@ -37,6 +37,24 @@ typedef enum ogl_context_property
     /* not settable, GLuint */
     OGL_CONTEXT_PROPERTY_DEFAULT_FBO_ID,
 
+    /* not settable, ral_texture_format */
+    OGL_CONTEXT_PROPERTY_DEFAULT_FBO_COLOR_TEXTURE_FORMAT,
+
+    /* not settable, ral_texture_format */
+    OGL_CONTEXT_PROPERTY_DEFAULT_FBO_DEPTH_STENCIL_TEXTURE_FORMAT,
+
+    /* not settable, unsigned int
+     *
+     * Tells the number of samples used by default framebuffer object's attachments
+     */
+    OGL_CONTEXT_PROPERTY_DEFAULT_FBO_N_SAMPLES,
+
+    /* not settable, uint32_t[2]
+     *
+     * Size of the default framebuffer object's attachments.
+     */
+    OGL_CONTEXT_PROPERTY_DEFAULT_FBO_SIZE,
+
     /* not settable, ogl_context_es_entrypoints*.
      *
      * Only accessible for ES contexts
@@ -238,7 +256,7 @@ PUBLIC EMERALD_API void ogl_context_enumerate_msaa_samples(system_pixel_format p
                                                            unsigned int**      out_supported_samples);
 
 /** TODO */
-PUBLIC ogl_context ogl_context_get_current_context();
+PUBLIC EMERALD_API ogl_context ogl_context_get_current_context();
 
 /** TODO */
 PUBLIC EMERALD_API void ogl_context_get_property(ogl_context          context,
@@ -270,7 +288,8 @@ PUBLIC bool ogl_context_release_managers(ogl_context);
 PUBLIC EMERALD_API bool ogl_context_request_callback_from_context_thread(ogl_context,
                                                                          PFNOGLCONTEXTCALLBACKFROMCONTEXTTHREADPROC,
                                                                          void*,
-                                                                         bool block_until_available = true);
+                                                                         bool swap_buffers_afterward = false,
+                                                                         bool block_until_available  = true);
 
 /** TODO.
  *

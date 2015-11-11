@@ -94,6 +94,7 @@ static const char* _dof_scheuermann_combination_fragment_shader_main = "void mai
 
 /** TODO */
 static void _stage_step_dof_scheuermann_combine_execute(ogl_context context,
+                                                        uint32_t    frame_index,
                                                         system_time time,
                                                         const int*  rendering_area_px_topdown,
                                                         void*       not_used)
@@ -153,6 +154,7 @@ static void _stage_step_dof_scheuermann_combine_execute(ogl_context context,
 
 /** TODO */
 static void _stage_step_dof_scheuermann_downsample_execute(ogl_context context,
+                                                           uint32_t    frame_index,
                                                            system_time time,
                                                            const int*  rendering_area_px_topdown,
                                                            void*       not_used)
@@ -188,6 +190,7 @@ static void _stage_step_dof_scheuermann_downsample_execute(ogl_context context,
 
 /** TODO */
 static void _stage_step_dof_scheuermann_preblur_execute(ogl_context context,
+                                                        uint32_t    frame_index,
                                                         system_time time,
                                                         const int*  rendering_area_px_topdown,
                                                         void*       not_used)
@@ -352,7 +355,7 @@ PUBLIC void stage_step_dof_scheuermann_init(ogl_context  context,
 
     /* Set up combination program */
     ogl_shader                combination_fs = ogl_shader_create               (context,
-                                                                                SHADER_TYPE_FRAGMENT,
+                                                                                RAL_SHADER_TYPE_FRAGMENT,
                                                                                 system_hashed_ansi_string_create("DOF Scheuermann combination FS") );
     shaders_vertex_fullscreen combination_vs = shaders_vertex_fullscreen_create(context,
                                                                                 true, /* export_uv */

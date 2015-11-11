@@ -23,6 +23,9 @@ PUBLIC EMERALD_API float system_math_vector_dot3(const float* a,
                                                  const float* b);
 
 /** TODO */
+PUBLIC EMERALD_API float system_math_vector_length2(const float* a);
+
+/** TODO */
 PUBLIC EMERALD_API float system_math_vector_length3(const float* a);
 
 /** TODO.
@@ -41,6 +44,10 @@ PUBLIC EMERALD_API void system_math_vector_mul3(const float* a,
 /** TODO */
 PUBLIC EMERALD_API void system_math_vector_mul3_float(const float* a,
                                                       const float  b,
+                                                            float* result);
+
+/** TODO */
+PUBLIC EMERALD_API void system_math_vector_normalize2(const float* a,
                                                             float* result);
 
 /** TODO */

@@ -130,11 +130,11 @@ PUBLIC curve_editor_program_quadselector curve_editor_program_quadselector_creat
 
         /* Create the shaders */
         result->fragment_shader = ogl_shader_create(context,
-                                                    SHADER_TYPE_FRAGMENT,
+                                                    RAL_SHADER_TYPE_FRAGMENT,
                                                     system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(name),
                                                                                                             " FP"));
         result->vertex_shader   = ogl_shader_create(context,
-                                                    SHADER_TYPE_VERTEX,
+                                                    RAL_SHADER_TYPE_VERTEX,
                                                     system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(name),
                                                                                                             " VP"));
 

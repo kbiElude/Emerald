@@ -30,6 +30,8 @@ typedef struct _procedural_uv_generator
     ogl_program_ssb input_data_ssb;
     GLuint          input_data_ssb_indexed_bp;
     ogl_program_ub  input_params_ub;
+    GLint           input_params_ub_arg1_block_offset;
+    GLint           input_params_ub_arg2_block_offset;
     GLuint          input_params_ub_bo_id;
     unsigned int    input_params_ub_bo_size;
     unsigned int    input_params_ub_bo_start_offset;
@@ -45,6 +47,10 @@ typedef struct _procedural_uv_generator
     unsigned int    wg_local_size[3];
 
     system_resizable_vector objects;
+
+    /* U/V plane coeffs are only used by object linear generators */
+    float u_plane_coeffs[4];
+    float v_plane_coeffs[4];
 
             ~_procedural_uv_generator();
     explicit _procedural_uv_generator(ogl_context                  in_context,
@@ -109,6 +115,8 @@ _procedural_uv_generator::_procedural_uv_generator(ogl_context                  
     input_data_ssb                                = NULL;
     input_data_ssb_indexed_bp                     = -1;
     input_params_ub                               = NULL;
+    input_params_ub_arg1_block_offset             = -1;
+    input_params_ub_arg2_block_offset             = -1;
     input_params_ub_bo_id                         = 0;
     input_params_ub_bo_size                       = 0;
     input_params_ub_bo_start_offset               = -1;
@@ -123,6 +131,9 @@ _procedural_uv_generator::_procedural_uv_generator(ogl_context                  
     output_data_ssb                               = NULL;
     output_data_ssb_indexed_bp                    = -1;
     type                                          = in_type;
+
+    u_plane_coeffs[0] = 1.0f; u_plane_coeffs[1] = 0.0f; u_plane_coeffs[2] = 0.0f; u_plane_coeffs[3] = 0.0f;
+    v_plane_coeffs[0] = 0.0f; v_plane_coeffs[1] = 1.0f; v_plane_coeffs[2] = 0.0f; v_plane_coeffs[3] = 0.0f;
 
     memset(wg_local_size,
            0,
@@ -271,6 +282,8 @@ PRIVATE bool _procedural_uv_generator_build_generator_po(_procedural_uv_generato
                                             "{\n"
                                             "    uint item_data_stride_in_floats;\n"
                                             "    uint start_offset_in_floats;\n"
+                                            "    vec4 arg1;\n"
+                                            "    vec4 arg2;\n"
                                             "};\n"
                                             "\n"
                                             "void main()\n"
@@ -297,6 +310,18 @@ PRIVATE bool _procedural_uv_generator_build_generator_po(_procedural_uv_generato
     /* Pick the right compute shader template first. */
     switch (generator_ptr->type)
     {
+        case PROCEDURAL_UV_GENERATOR_TYPE_OBJECT_LINEAR:
+        {
+            cs_body_parts[1] = "    vec3 item_data = vec3(meshData[start_offset_in_floats + global_invocation_id_flat * item_data_stride_in_floats],\n"
+                               "                          meshData[start_offset_in_floats + global_invocation_id_flat * item_data_stride_in_floats + 1],\n"
+                               "                          meshData[start_offset_in_floats + global_invocation_id_flat * item_data_stride_in_floats + 2]);\n"
+                               "\n"
+                               "    resultData[global_invocation_id_flat * 2 + 0] = dot(arg1, vec4(item_data, 1.0) );\n"
+                               "    resultData[global_invocation_id_flat * 2 + 1] = dot(arg2, vec4(item_data, 1.0) );\n";
+
+            break;
+        }
+
         case PROCEDURAL_UV_GENERATOR_TYPE_POSITIONAL_SPHERICAL_MAPPING:
         {
             cs_body_parts[1] = "    vec3 item_data = vec3(meshData[start_offset_in_floats + global_invocation_id_flat * item_data_stride_in_floats],\n"
@@ -353,19 +378,21 @@ PRIVATE bool _procedural_uv_generator_build_generator_po(_procedural_uv_generato
     token_values[2] = system_hashed_ansi_string_create(temp);
 
     /* Set up the compute shader program */
+    system_hashed_ansi_string merged_cs_body = system_hashed_ansi_string_create_by_merging_strings(n_cs_body_parts,
+                                                                                                   cs_body_parts);
+
     generator_ptr->generator_cs = ogl_shader_create (generator_ptr->context,
-                                                     SHADER_TYPE_COMPUTE,
+                                                     RAL_SHADER_TYPE_COMPUTE,
                                                      _procedural_uv_generator_get_generator_name(generator_ptr->type) );
     generator_ptr->generator_po = ogl_program_create(generator_ptr->context,
                                                      _procedural_uv_generator_get_generator_name(generator_ptr->type),
                                                      OGL_PROGRAM_SYNCABLE_UBS_MODE_ENABLE_GLOBAL);
 
-    ogl_shader_set_body_with_token_replacement(generator_ptr->generator_cs,
-                                               system_hashed_ansi_string_create_by_merging_strings(n_cs_body_parts,
-                                                                                                   cs_body_parts),
-                                               n_token_key_values,
-                                               token_keys,
-                                               token_values);
+    ogl_shader_set_body(generator_ptr->generator_cs,
+                        system_hashed_ansi_string_create_by_token_replacement(system_hashed_ansi_string_get_buffer(merged_cs_body),
+                                                                              n_token_key_values,
+                                                                              token_keys,
+                                                                              token_values) );
 
     if (!ogl_shader_compile(generator_ptr->generator_cs) )
     {
@@ -399,6 +426,13 @@ PRIVATE system_hashed_ansi_string _procedural_uv_generator_get_generator_name(pr
 
     switch (type)
     {
+        case PROCEDURAL_UV_GENERATOR_TYPE_OBJECT_LINEAR:
+        {
+            result = system_hashed_ansi_string_create("Object<->plane linear mapping");
+
+            break;
+        }
+
         case PROCEDURAL_UV_GENERATOR_TYPE_POSITIONAL_SPHERICAL_MAPPING:
         {
             result = system_hashed_ansi_string_create("Positional spherical mapping");
@@ -434,6 +468,7 @@ PRIVATE void _procedural_uv_generator_get_item_data_stream_properties(const _pro
 
     switch (generator_ptr->type)
     {
+        case PROCEDURAL_UV_GENERATOR_TYPE_OBJECT_LINEAR:
         case PROCEDURAL_UV_GENERATOR_TYPE_POSITIONAL_SPHERICAL_MAPPING:
         {
             /* The generator uses vertex data */
@@ -488,6 +523,8 @@ PRIVATE void _procedural_uv_generator_init_generator_po(_procedural_uv_generator
 {
     ogl_context_gl_limits*      limits_ptr                          = NULL;
     ogl_programs                programs                            = NULL;
+    const ogl_program_variable* variable_arg1_ptr                   = NULL;
+    const ogl_program_variable* variable_arg2_ptr                   = NULL;
     const ogl_program_variable* variable_n_items_defined_ptr        = NULL;
     const ogl_program_variable* variable_item_data_stride_ptr       = NULL;
     const ogl_program_variable* variable_start_offset_in_floats_ptr = NULL;
@@ -595,13 +632,32 @@ PRIVATE void _procedural_uv_generator_init_generator_po(_procedural_uv_generator
                                  OGL_PROGRAM_SSB_PROPERTY_INDEXED_BP,
                                 &generator_ptr->output_data_ssb_indexed_bp);
 
-    /* Retrieve the uniform block member descriptors */
+    /* Retrieve the uniform block member descriptors
+     *
+     * NOTE: arg1 & arg2 may be removed by the compiler for all but the "object linear" program.
+     **/
+    ogl_program_get_uniform_by_name(generator_ptr->generator_po,
+                                    system_hashed_ansi_string_create("arg1"),
+                                   &variable_arg1_ptr);
+    ogl_program_get_uniform_by_name(generator_ptr->generator_po,
+                                    system_hashed_ansi_string_create("arg2"),
+                                   &variable_arg2_ptr);
     ogl_program_get_uniform_by_name(generator_ptr->generator_po,
                                     system_hashed_ansi_string_create("item_data_stride_in_floats"),
                                    &variable_item_data_stride_ptr);
     ogl_program_get_uniform_by_name(generator_ptr->generator_po,
                                     system_hashed_ansi_string_create("start_offset_in_floats"),
                                    &variable_start_offset_in_floats_ptr);
+
+    if (generator_ptr->type == PROCEDURAL_UV_GENERATOR_TYPE_OBJECT_LINEAR)
+    {
+        ASSERT_DEBUG_SYNC(variable_arg1_ptr != NULL &&
+                          variable_arg2_ptr != NULL,
+                          "Could not retrieve arg1 and/or arg2 uniform block member descriptors");
+
+        generator_ptr->input_params_ub_arg1_block_offset = variable_arg1_ptr->block_offset;
+        generator_ptr->input_params_ub_arg2_block_offset = variable_arg2_ptr->block_offset;
+    }
 
     ASSERT_DEBUG_SYNC(variable_item_data_stride_ptr       != NULL &&
                       variable_start_offset_in_floats_ptr != NULL,
@@ -660,6 +716,7 @@ PRIVATE void _procedural_uv_generator_run_po(_procedural_uv_generator*        ge
     /* Determine the source data stream type. */
     switch (generator_ptr->type)
     {
+        case PROCEDURAL_UV_GENERATOR_TYPE_OBJECT_LINEAR:
         case PROCEDURAL_UV_GENERATOR_TYPE_POSITIONAL_SPHERICAL_MAPPING:
         {
             source_item_data_stream_type = MESH_LAYER_DATA_STREAM_TYPE_VERTICES;
@@ -785,6 +842,22 @@ PRIVATE void _procedural_uv_generator_run_po(_procedural_uv_generator*        ge
                                                &item_data_offset_adjustment_div_4,
                                                 0, /* src_data_flags */
                                                 sizeof(unsigned int) );
+
+    if (generator_ptr->type == PROCEDURAL_UV_GENERATOR_TYPE_OBJECT_LINEAR)
+    {
+        /* U/V plane coefficients */
+        ogl_program_ub_set_nonarrayed_uniform_value(generator_ptr->input_params_ub,
+                                                    generator_ptr->input_params_ub_arg1_block_offset,
+                                                    generator_ptr->u_plane_coeffs,
+                                                    0, /* src_data_flags */
+                                                    sizeof(generator_ptr->u_plane_coeffs) );
+
+        ogl_program_ub_set_nonarrayed_uniform_value(generator_ptr->input_params_ub,
+                                                    generator_ptr->input_params_ub_arg2_block_offset,
+                                                    generator_ptr->v_plane_coeffs,
+                                                    0, /* src_data_flags */
+                                                    sizeof(generator_ptr->v_plane_coeffs) );
+    }
 
     ogl_program_ub_sync(generator_ptr->input_params_ub);
 
@@ -1152,6 +1225,63 @@ PUBLIC EMERALD_API procedural_uv_generator procedural_uv_generator_create(ogl_co
     /* Return the object */
 end:
     return (procedural_uv_generator) generator_ptr;
+}
+
+/** Please see header for specification */
+PUBLIC EMERALD_API void procedural_uv_generator_set_object_property(procedural_uv_generator                 in_generator,
+                                                                    procedural_uv_generator_object_id       in_object_id,
+                                                                    procedural_uv_generator_object_property in_property,
+                                                                    const void*                             in_data)
+{
+    _procedural_uv_generator*        generator_ptr = (_procedural_uv_generator*) in_generator;
+    _procedural_uv_generator_object* object_ptr    = NULL;
+
+    /* Sanity checks */
+    ASSERT_DEBUG_SYNC(generator_ptr != NULL,
+                      "Input UV generator instance is NULL");
+
+    if (!system_resizable_vector_get_element_at(generator_ptr->objects,
+                                                in_object_id,
+                                               &object_ptr) )
+    {
+        ASSERT_DEBUG_SYNC(false,
+                          "Could not retrieve object descriptor");
+
+        goto end;
+    }
+
+    ASSERT_DEBUG_SYNC(object_ptr != NULL,
+                      "Object descriptor at specified index is NULL");
+
+    switch (in_property)
+    {
+        case PROCEDURAL_UV_GENERATOR_OBJECT_PROPERTY_U_PLANE_COEFFS:
+        {
+            memcpy(generator_ptr->u_plane_coeffs,
+                   in_data,
+                   sizeof(generator_ptr->u_plane_coeffs) );
+
+            break;
+        }
+
+        case PROCEDURAL_UV_GENERATOR_OBJECT_PROPERTY_V_PLANE_COEFFS:
+        {
+            memcpy(generator_ptr->v_plane_coeffs,
+                   in_data,
+                   sizeof(generator_ptr->v_plane_coeffs) );
+
+            break;
+        }
+
+        default:
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Unrecognized object property requested");
+        }
+    } /* switch (in_property) */
+    /* All done */
+end:
+    ;
 }
 
 /** Please see header for specification */

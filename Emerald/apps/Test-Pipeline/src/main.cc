@@ -169,10 +169,10 @@ void _init_gl(ogl_context context,
                                                                                  true, /* export_uv */
                                                                                  system_hashed_ansi_string_create("general") );
     ogl_shader                generation_fs   = ogl_shader_create               (_context,
-                                                                                 SHADER_TYPE_FRAGMENT,
+                                                                                 RAL_SHADER_TYPE_FRAGMENT,
                                                                                  system_hashed_ansi_string_create("creation") );
     ogl_shader                modification_fs = ogl_shader_create               (_context,
-                                                                                 SHADER_TYPE_FRAGMENT,
+                                                                                 RAL_SHADER_TYPE_FRAGMENT,
                                                                                  system_hashed_ansi_string_create("modification") );
 
     _generation_po   = ogl_program_create(_context,
@@ -235,6 +235,7 @@ void _init_gl(ogl_context context,
 
 /* Stage step 1: sample data generation */
 static void _stage_step_generate_data(ogl_context context,
+                                      uint32_t    frame_index,
                                       system_time time,
                                       const int*  rendering_area_px_topdown,
                                       void*       not_used)
@@ -280,6 +281,7 @@ static void _stage_step_generate_data(ogl_context context,
 
 /* Stage step 2: sample data modification */
 static void _stage_step_modify_data(ogl_context context,
+                                    uint32_t    frame_index,
                                     system_time time,
                                     const int*  rendering_area_px_topdown,
                                     void*       not_used)
@@ -325,6 +327,7 @@ void _rendering_handler(ogl_context context,
 {
     ogl_pipeline_draw_stage(_pipeline,
                             _pipeline_stage_id,
+                            n_frames_rendered,
                             frame_time,
                             rendering_area_px_topdown);
 }
@@ -338,12 +341,14 @@ void _rendering_lbm_callback_handler(system_window           window,
     system_event_set(_window_closed_event);
 }
 
-PRIVATE void _window_closed_callback_handler(system_window window)
+PRIVATE void _window_closed_callback_handler(system_window window,
+                                             void*         unused)
 {
     system_event_set(_window_closed_event);
 }
 
-PRIVATE void _window_closing_callback_handler(system_window window)
+PRIVATE void _window_closing_callback_handler(system_window window,
+                                              void*         unused)
 {
     ogl_context context = NULL;
 

@@ -7,6 +7,7 @@
 #define OGL_SHADER_H
 
 #include "ogl/ogl_types.h"
+#include "ral/ral_types.h"
 #include "system/system_types.h"
 
 REFCOUNT_INSERT_DECLARATIONS(ogl_shader,
@@ -37,7 +38,7 @@ PUBLIC EMERALD_API bool ogl_shader_compile(ogl_shader shader);
  *  @return GL shader instance.
  **/
 PUBLIC EMERALD_API ogl_shader ogl_shader_create(ogl_context               context,
-                                                ogl_shader_type           shader_type,
+                                                ral_shader_type           shader_type,
                                                 system_hashed_ansi_string name);
 
 /** TODO */
@@ -64,9 +65,9 @@ PUBLIC EMERALD_API const char* ogl_shader_get_shader_info_log(ogl_shader shader)
  *
  *  @param ogl_shader GL shader to query for type.
  *
- *  @return Shader type.
+ *  @return RAL shader type.
  **/
-PUBLIC EMERALD_API ogl_shader_type ogl_shader_get_type(ogl_shader shader);
+PUBLIC EMERALD_API ral_shader_type ogl_shader_get_type(ogl_shader shader);
 
 /** Sets new shader's body.
  *
@@ -80,12 +81,5 @@ PUBLIC EMERALD_API ogl_shader_type ogl_shader_get_type(ogl_shader shader);
  **/
 PUBLIC EMERALD_API bool ogl_shader_set_body(ogl_shader                shader,
                                             system_hashed_ansi_string body);
-
-/** TODO */
-PUBLIC EMERALD_API bool ogl_shader_set_body_with_token_replacement(ogl_shader                       shader,
-                                                                   system_hashed_ansi_string        body,
-                                                                   uint32_t                         n_tokens,
-                                                                   const system_hashed_ansi_string* token_keys,
-                                                                   const system_hashed_ansi_string* token_values);
 
 #endif /* OGL_SHADER_H */

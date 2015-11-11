@@ -329,6 +329,44 @@ PRIVATE void _ogl_pipeline_release(void* pipeline)
 
 
 /** Please see header for specification */
+PUBLIC EMERALD_API uint32_t ogl_pipeline_add_stage(ogl_pipeline instance)
+{
+    _ogl_pipeline*       pipeline_ptr       = (_ogl_pipeline*) instance;
+    _ogl_pipeline_stage* pipeline_stage_ptr = NULL;
+    uint32_t             result_stage_id    = -1;
+
+    /* Instantiate new stage descriptor */
+    pipeline_stage_ptr = new (std::nothrow) _ogl_pipeline_stage;
+
+    ASSERT_DEBUG_SYNC(pipeline_stage_ptr != NULL,
+                      "Out of memory");
+
+    if (pipeline_stage_ptr != NULL)
+    {
+        /* Initialize */
+        _ogl_pipeline_init_pipeline_stage(pipeline_stage_ptr);
+
+        /* First stage ever? Add a zeroth text string we'll use to draw sum-up */
+        if (ogl_text_get_added_strings_counter(pipeline_ptr->text_renderer) == 0)
+        {
+            ogl_text_add_string(pipeline_ptr->text_renderer);
+        }
+
+        /* Retrieve new stage id */
+        system_resizable_vector_get_property(pipeline_ptr->stages,
+                                             SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                            &result_stage_id);
+
+        /* Insert new descriptor */
+        system_resizable_vector_insert_element_at(pipeline_ptr->stages,
+                                                  result_stage_id,
+                                                  pipeline_stage_ptr);
+    } /* if (pipeline_stage_ptr != NULL) */
+
+    return result_stage_id;
+}
+
+/** Please see header for specification */
 PUBLIC EMERALD_API uint32_t ogl_pipeline_add_stage_step(ogl_pipeline               instance,
                                                         uint32_t                   n_stage,
                                                         system_hashed_ansi_string  step_name,
@@ -469,39 +507,33 @@ PUBLIC EMERALD_API uint32_t ogl_pipeline_add_stage_step(ogl_pipeline            
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API uint32_t ogl_pipeline_add_stage(ogl_pipeline instance)
+PUBLIC EMERALD_API uint32_t ogl_pipeline_add_stage_with_steps(ogl_pipeline                               pipeline,
+                                                              unsigned int                               n_steps,
+                                                              const ogl_pipeline_stage_step_declaration* steps)
 {
-    _ogl_pipeline*       pipeline_ptr       = (_ogl_pipeline*) instance;
-    _ogl_pipeline_stage* pipeline_stage_ptr = NULL;
-    uint32_t             result_stage_id    = -1;
+    uint32_t result_stage_id = -1;
 
-    /* Instantiate new stage descriptor */
-    pipeline_stage_ptr = new (std::nothrow) _ogl_pipeline_stage;
+    /* Sanity checks */
+    ASSERT_DEBUG_SYNC(pipeline != NULL,
+                      "Input rendering pipeline is NULL");
+    ASSERT_DEBUG_SYNC(n_steps > 0,
+                      "No steps to add");
 
-    ASSERT_DEBUG_SYNC(pipeline_stage_ptr != NULL,
-                      "Out of memory");
+    /* Create a new pipeline stage.. */
+    result_stage_id = ogl_pipeline_add_stage(pipeline);
 
-    if (pipeline_stage_ptr != NULL)
+    /* Set up the pipeline stage steps using the pass info structures */
+    for (unsigned int n_step = 0;
+                      n_step < n_steps;
+                    ++n_step)
     {
-        /* Initialize */
-        _ogl_pipeline_init_pipeline_stage(pipeline_stage_ptr);
-
-        /* First stage ever? Add a zeroth text string we'll use to draw sum-up */
-        if (ogl_text_get_added_strings_counter(pipeline_ptr->text_renderer) == 0)
-        {
-            ogl_text_add_string(pipeline_ptr->text_renderer);
-        }
-
-        /* Retrieve new stage id */
-        system_resizable_vector_get_property(pipeline_ptr->stages,
-                                             SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
-                                            &result_stage_id);
-
-        /* Insert new descriptor */
-        system_resizable_vector_insert_element_at(pipeline_ptr->stages,
-                                                  result_stage_id,
-                                                  pipeline_stage_ptr);
-    } /* if (pipeline_stage_ptr != NULL) */
+        /* Note: we don't need to store the step id so we ignore the return value */
+        ogl_pipeline_add_stage_step(pipeline,
+                                    result_stage_id,
+                                    steps[n_step].name,
+                                    steps[n_step].pfn_callback_proc,
+                                    steps[n_step].user_arg);
+    } /* for (all rendering passes) */
 
     return result_stage_id;
 }
@@ -538,11 +570,13 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API ogl_pipeline ogl_pipeline_create(ogl_c
 /** Please see header for specification */
 PUBLIC RENDERING_CONTEXT_CALL EMERALD_API bool ogl_pipeline_draw_stage(ogl_pipeline instance,
                                                                        uint32_t     n_stage,
+                                                                       uint32_t     frame_index,
                                                                        system_time  time,
                                                                        const int*   rendering_area_px_topdown)
 {
     ogl_flyby                                                 flyby              = NULL;
     bool                                                      is_stage_dirty     = false;
+    uint32_t                                                  n_stages           = 0;
     _ogl_pipeline*                                            pipeline_ptr       = (_ogl_pipeline*) instance;
     _ogl_pipeline_stage*                                      pipeline_stage_ptr = NULL;
     bool                                                      result             = false;
@@ -559,7 +593,61 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API bool ogl_pipeline_draw_stage(ogl_pipel
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL_EXT_DIRECT_STATE_ACCESS,
                             &dsa_entry_points);
 
-    /* Retrieve the stage descriptor first */
+    /* For all stages != n_stage, we need to disable text rendering. */
+    if (pipeline_ptr->should_overlay_performance_info)
+    {
+        system_resizable_vector_get_property(pipeline_ptr->stages,
+                                             SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                            &n_stages);
+
+        for (uint32_t n_current_stage = 0;
+                      n_current_stage < n_stages;
+                    ++n_current_stage)
+        {
+            _ogl_pipeline_stage* current_stage_ptr     = NULL;
+            uint32_t             n_current_stage_steps = 0;
+            bool                 should_be_visible     = (n_current_stage == n_stage);
+
+            system_resizable_vector_get_element_at(pipeline_ptr->stages,
+                                                   n_current_stage,
+                                                  &current_stage_ptr);
+
+            ASSERT_DEBUG_SYNC(current_stage_ptr != NULL,
+                              "Could not retrieve pipeline stage descriptor at index [%d]",
+                              n_current_stage);
+
+            system_resizable_vector_get_property(current_stage_ptr->steps,
+                                                 SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                                &n_current_stage_steps);
+
+            for (uint32_t n_current_stage_step = 0;
+                          n_current_stage_step < n_current_stage_steps;
+                        ++n_current_stage_step)
+            {
+                _ogl_pipeline_stage_step* current_stage_step_ptr = NULL;
+
+                system_resizable_vector_get_element_at(current_stage_ptr->steps,
+                                                       n_current_stage_step,
+                                                      &current_stage_step_ptr);
+
+                ASSERT_DEBUG_SYNC(current_stage_step_ptr != NULL,
+                                  "Could not retrieve pipeline stage step descriptor at index [%d] for stage [%d]",
+                                  n_current_stage_step,
+                                  n_current_stage);
+
+                ogl_text_set_text_string_property(pipeline_ptr->text_renderer,
+                                                  current_stage_step_ptr->text_time_index,
+                                                  OGL_TEXT_STRING_PROPERTY_VISIBILITY,
+                                                 &should_be_visible);
+                ogl_text_set_text_string_property(pipeline_ptr->text_renderer,
+                                                  current_stage_step_ptr->text_string_index,
+                                                  OGL_TEXT_STRING_PROPERTY_VISIBILITY,
+                                                 &should_be_visible);
+            } /* for (all stage steps for the current pipeline stage) */
+        } /* for (all pipeline stages) */
+    } /* if (pipeline_ptr->should_overlay_performance_info) */
+
+    /* Let's render the pipeline stage. Retrieve the stage descriptor first */
     if (system_resizable_vector_get_element_at(pipeline_ptr->stages,
                                                n_stage,
                                               &pipeline_stage_ptr))
@@ -602,6 +690,7 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API bool ogl_pipeline_draw_stage(ogl_pipel
                 }
                 {
                     step_ptr->pfn_step_callback(step_ptr->context,
+                                                frame_index,
                                                 time,
                                                 rendering_area_px_topdown,
                                                 step_ptr->step_callback_user_arg);

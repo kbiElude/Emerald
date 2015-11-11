@@ -60,6 +60,7 @@ typedef struct
     system_critical_section                    callback_request_cs;
     system_event                               callback_request_ack_event;
     system_event                               callback_request_event;
+    bool                                       callback_request_needs_buffer_swap;
     void*                                      callback_request_user_arg;
     PFNOGLCONTEXTCALLBACKFROMCONTEXTTHREADPROC pfn_callback_proc;
 
@@ -68,7 +69,8 @@ typedef struct
     system_event unbind_context_request_event;
     system_event unbind_context_request_ack_event;
 
-    system_event            playback_in_progress_event;
+    system_event            playback_in_progress_event; /* if modified, also update playback_stopped event. Only modify when rendering_cs is locked! */
+    system_event            playback_stopped_event;     /* if modified, also update playback_in_progress event. Only modify when rendering_cs is locked! */
     system_critical_section rendering_cs;
     system_event            shutdown_request_event;
     system_event            shutdown_request_ack_event;
@@ -86,6 +88,84 @@ REFCOUNT_INSERT_IMPLEMENTATION(ogl_rendering_handler,
 /** Internal variables */
 
 /** TODO */
+PRIVATE void _ogl_rendering_handler_get_frame_properties(_ogl_rendering_handler* handler_ptr,
+                                                         bool                    should_update_frame_counter,
+                                                         int32_t*                out_frame_index_ptr,
+                                                         system_time*            out_frame_time_ptr)
+{
+    system_time curr_time = system_time_now();
+
+    switch (handler_ptr->policy)
+    {
+        case RENDERING_HANDLER_POLICY_MAX_PERFORMANCE:
+        {
+            if (should_update_frame_counter)
+            {
+                handler_ptr->n_frames_rendered++;
+            }
+
+            *out_frame_index_ptr = (handler_ptr->n_frames_rendered);
+            *out_frame_time_ptr  = curr_time                            +
+                                   handler_ptr->runtime_time_adjustment -
+                                   handler_ptr->playback_start_time;
+
+            break;
+        }
+
+        case RENDERING_HANDLER_POLICY_FPS:
+        {
+            /* Calculate new frame's index */
+            int32_t     frame_index;
+            system_time frame_time = (curr_time                            +
+                                      handler_ptr->runtime_time_adjustment -
+                                      handler_ptr->playback_start_time);
+            int32_t     frame_time_msec;
+            int32_t     new_frame_time_msec;
+
+            system_time_get_msec_for_time(frame_time,
+                                          (uint32_t*) &frame_time_msec);
+
+            frame_index = frame_time_msec * handler_ptr->fps / 1000 /* ms in s */;
+
+            /* Convert the frame index to global frame time. */
+            new_frame_time_msec = frame_index * 1000 /* ms in s */ / handler_ptr->fps;
+            *out_frame_time_ptr = system_time_get_time_for_msec(new_frame_time_msec);
+
+            *out_frame_index_ptr = frame_index;
+
+            if (should_update_frame_counter)
+            {
+                handler_ptr->last_frame_index = frame_index;
+
+                /* Count the frame and move on. */
+                handler_ptr->n_frames_rendered++;
+            }
+
+            break;
+        }
+
+        case RENDERING_HANDLER_POLICY_RENDER_PER_REQUEST:
+        {
+            *out_frame_time_ptr  = 0;
+            *out_frame_index_ptr = 0;
+
+            if (should_update_frame_counter)
+            {
+                handler_ptr->n_frames_rendered++;
+            }
+
+            break;
+        }
+
+        default:
+        {
+            LOG_FATAL("Unrecognized rendering handler policy [%d]",
+                      handler_ptr->policy);
+        }
+    } /* switch (rendering_handler->policy) */
+}
+
+/** TODO */
 PRIVATE bool _ogl_rendering_handler_key_down_callback(system_window window,
                                                       unsigned int  keycode,
                                                       void*         user_arg)
@@ -101,6 +181,8 @@ PRIVATE bool _ogl_rendering_handler_key_down_callback(system_window window,
      */
     if (rendering_handler_ptr->runtime_time_adjustment_mode)
     {
+        system_critical_section_enter(rendering_handler_ptr->rendering_cs);
+
         switch (keycode)
         {
             case SYSTEM_WINDOW_KEY_LEFT:
@@ -128,6 +210,21 @@ PRIVATE bool _ogl_rendering_handler_key_down_callback(system_window window,
                     rendering_handler_ptr->left_arrow_key_press_start_time = system_time_now();
                 }
 
+                /* Update the audio stream playback position */
+                if (rendering_handler_ptr->active_audio_stream != NULL)
+                {
+                    int32_t     frame_index;
+                    system_time frame_time;
+
+                    _ogl_rendering_handler_get_frame_properties(rendering_handler_ptr,
+                                                                false, /* should_update_frame_counter */
+                                                               &frame_index,
+                                                               &frame_time);
+
+                    audio_stream_rewind(rendering_handler_ptr->active_audio_stream,
+                                        frame_time);
+                }
+
                 break;
             }
 
@@ -146,6 +243,21 @@ PRIVATE bool _ogl_rendering_handler_key_down_callback(system_window window,
                 {
                     /* Right arrow key press notification: one-shot, potentially continuous. */
                     rendering_handler_ptr->right_arrow_key_press_start_time = system_time_now();
+                }
+
+                /* Update the audio stream playback position */
+                if (rendering_handler_ptr->active_audio_stream != NULL)
+                {
+                    int32_t     frame_index;
+                    system_time frame_time;
+
+                    _ogl_rendering_handler_get_frame_properties(rendering_handler_ptr,
+                                                                false, /* should_update_frame_counter */
+                                                               &frame_index,
+                                                               &frame_time);
+
+                    audio_stream_rewind(rendering_handler_ptr->active_audio_stream,
+                                        frame_time);
                 }
 
                 break;
@@ -192,6 +304,9 @@ PRIVATE bool _ogl_rendering_handler_key_down_callback(system_window window,
                 result = false;
             }
         } /* switch (keycode) */
+
+        system_critical_section_leave(rendering_handler_ptr->rendering_cs);
+
     } /* if (rendering_handler_ptr->runtime_time_adjustment_mode) */
 
     return result;
@@ -234,6 +349,21 @@ PRIVATE bool _ogl_rendering_handler_key_up_callback(system_window window,
 
                 rendering_handler_ptr->left_arrow_key_press_start_time = 0;
 
+                /* Update the audio stream playback position */
+                if (rendering_handler_ptr->active_audio_stream != NULL)
+                {
+                    int32_t     frame_index;
+                    system_time frame_time;
+
+                    _ogl_rendering_handler_get_frame_properties(rendering_handler_ptr,
+                                                                false, /* should_update_frame_counter */
+                                                               &frame_index,
+                                                               &frame_time);
+
+                    audio_stream_rewind(rendering_handler_ptr->active_audio_stream,
+                                        frame_time);
+                }
+
                 break;
             }
 
@@ -246,6 +376,21 @@ PRIVATE bool _ogl_rendering_handler_key_up_callback(system_window window,
                 system_critical_section_leave(rendering_handler_ptr->rendering_cs);
 
                 rendering_handler_ptr->right_arrow_key_press_start_time = 0;
+
+                /* Update the audio stream playback position */
+                if (rendering_handler_ptr->active_audio_stream != NULL)
+                {
+                    int32_t     frame_index;
+                    system_time frame_time;
+
+                    _ogl_rendering_handler_get_frame_properties(rendering_handler_ptr,
+                                                                false, /* should_update_frame_counter */
+                                                               &frame_index,
+                                                               &frame_time);
+
+                    audio_stream_rewind(rendering_handler_ptr->active_audio_stream,
+                                        frame_time);
+                }
 
                 break;
             }
@@ -441,6 +586,18 @@ PRIVATE void _ogl_rendering_handler_thread_entrypoint(void* in_arg)
 
             system_event_set(rendering_handler->playback_waiting_event);
             {
+                /* TODO: For FPS policy, we could theoretically wait until we actually reach the time
+                 *       when frame rendering process should kick off. Right now, we spin until frame
+                 *       index increments which is extremely dumb and puts a lot of CPU time down the
+                 *       drain.
+                 *       One way to tackle this would be to wait with a timeout based on desired_fps
+                 *       property. If none of the three first events were set throughout that period,
+                 *       we could spend the next 1/desired_fps msec rendering the frame. This has a
+                 *       drawback though: if the frame takes too much time to render, we'll introduce
+                 *       frame skipping.
+                 *       Sticking to the "waste all resources" approach for now, but there's definitely
+                 *       room for improvement.
+                 */
                 event_set = system_event_wait_multiple(wait_events,
                                                        4,     /* n_elements */
                                                        false, /* wait_on_all_objects */
@@ -461,9 +618,39 @@ PRIVATE void _ogl_rendering_handler_thread_entrypoint(void* in_arg)
                 rendering_handler->pfn_callback_proc(rendering_handler->context,
                                                      rendering_handler->callback_request_user_arg);
 
+                if (rendering_handler->callback_request_needs_buffer_swap)
+                {
+                    if (default_fbo_id == -1)
+                    {
+                        ogl_context_get_property(rendering_handler->context,
+                                                 OGL_CONTEXT_PROPERTY_DEFAULT_FBO_ID,
+                                                &default_fbo_id);
+                    }
+
+                    /* Blit the context FBO's contents to the back buffer */
+                    pGLBindFramebuffer(GL_DRAW_FRAMEBUFFER,
+                                       0);
+                    pGLBindFramebuffer(GL_READ_FRAMEBUFFER,
+                                       default_fbo_id);
+
+                    pGLBlitFramebuffer(0,              /* srcX0 */
+                                       0,              /* srcY0 */
+                                       window_size[0], /* srcX1 */
+                                       window_size[1], /* srcY1 */
+                                       0,              /* dstX0 */
+                                       0,              /* dstY0 */
+                                       window_size[0], /* dstX1 */
+                                       window_size[1], /* dstY1 */
+                                       GL_COLOR_BUFFER_BIT,
+                                       GL_NEAREST);
+
+                    ogl_context_swap_buffers(rendering_handler->context);
+                }
+
                 /* Reset callback data */
-                rendering_handler->callback_request_user_arg = NULL;
-                rendering_handler->pfn_callback_proc         = NULL;
+                rendering_handler->callback_request_needs_buffer_swap = false;
+                rendering_handler->callback_request_user_arg          = NULL;
+                rendering_handler->pfn_callback_proc                  = NULL;
 
                 /* Set ack event */
                 system_event_set(rendering_handler->callback_request_ack_event);
@@ -502,73 +689,23 @@ PRIVATE void _ogl_rendering_handler_thread_entrypoint(void* in_arg)
                     system_critical_section_enter(rendering_handler->rendering_cs);
                     {
                         /* Determine current frame index & time */
-                        switch (rendering_handler->policy)
+                        _ogl_rendering_handler_get_frame_properties(rendering_handler,
+                                                                    false, /* should_update_frame_counter */
+                                                                   &frame_index,
+                                                                   &new_frame_time);
+
+                        if (new_frame_time == rendering_handler->last_frame_time)
                         {
-                            case RENDERING_HANDLER_POLICY_MAX_PERFORMANCE:
-                            {
-                                frame_index    = (rendering_handler->n_frames_rendered++);
-                                new_frame_time = curr_time                                  +
-                                                 rendering_handler->runtime_time_adjustment -
-                                                 rendering_handler->playback_start_time;
+                            /* This frame should NOT be rendered! It's exactly the same one as we're showing right now */
+                            system_critical_section_leave(rendering_handler->rendering_cs);
 
-                                break;
-                            }
-
-                            case RENDERING_HANDLER_POLICY_FPS:
-                            {
-                                /* Calculate new frame's index */
-                                system_time frame_time = (curr_time                                  +
-                                                          rendering_handler->runtime_time_adjustment -
-                                                          rendering_handler->playback_start_time);
-                                int32_t     frame_time_msec;
-                                int32_t     new_frame_time_msec;
-
-                                system_time_get_msec_for_time(frame_time,
-                                                              (uint32_t*) &frame_time_msec);
-
-                                frame_index = frame_time_msec * rendering_handler->fps / 1000 /* ms in s */;
-
-                                /* Now, this part is tricky. Occasionally, we may run into a situation where the newly
-                                 * calculated frame index is exactly the same as was used for the previous frame.
-                                 * This is unintended and causes irritating stuttering effect.
-                                 *
-                                 * To work around this, ensure we always move forward. This is not going to address the
-                                 * problem, if the animation is ever played in reverse - you'll need to come up with
-                                 * something more fancy, if you ever need to change the playback direction.
-                                 */
-                                if (frame_index == last_frame_index)
-                                {
-                                    frame_index++;
-                                }
-
-                                last_frame_index = frame_index;
-
-                                /* Convert the frame index to global frame time. */
-                                new_frame_time_msec = frame_index * 1000 /* ms in s */ / rendering_handler->fps;
-                                new_frame_time      = system_time_get_time_for_msec(new_frame_time_msec);
-
-                                /* Count the frame and move on. */
-                                rendering_handler->n_frames_rendered++;
-
-                                break;
-                            }
-
-                            case RENDERING_HANDLER_POLICY_RENDER_PER_REQUEST:
-                            {
-                                new_frame_time = 0;
-                                frame_index    = 0;
-
-                                rendering_handler->n_frames_rendered++;
-
-                                break;
-                            }
-
-                            default:
-                            {
-                                LOG_FATAL("Unrecognized rendering handler policy [%d]",
-                                          rendering_handler->policy);
-                            }
-                        } /* switch (rendering_handler->policy) */
+                            continue;
+                        }
+                        else
+                        {
+                            /* Update the frame counter */
+                            rendering_handler->n_frames_rendered++;
+                        }
 
                         /* Update the frame indicator, if the runtime time adjustment mode is on */
                         if (rendering_handler->runtime_time_adjustment_mode)
@@ -680,6 +817,7 @@ PRIVATE void _ogl_rendering_handler_thread_entrypoint(void* in_arg)
                             if (rendering_handler->timeline != NULL)
                             {
                                 has_rendered_frame = demo_timeline_render(rendering_handler->timeline,
+                                                                          frame_index,
                                                                           new_frame_time,
                                                                           rendering_area);
                             } /* if (rendering_handler->timeline != NULL) */
@@ -712,6 +850,10 @@ PRIVATE void _ogl_rendering_handler_thread_entrypoint(void* in_arg)
                             {
                                 pGLDisable(GL_MULTISAMPLE);
                             }
+
+                            /* Draw the text strings right before we blit the render-target to the system's FBO. */
+                            ogl_text_draw(rendering_handler->context,
+                                          text_renderer);
 
                             /* Blit the context FBO's contents to the back buffer */
                             pGLBindFramebuffer(GL_DRAW_FRAMEBUFFER,
@@ -757,6 +899,7 @@ PRIVATE void _ogl_rendering_handler_thread_entrypoint(void* in_arg)
                             rendering_handler->playback_status = RENDERING_HANDLER_PLAYBACK_STATUS_STOPPED;
 
                             system_event_reset(rendering_handler->playback_in_progress_event);
+                            system_event_set  (rendering_handler->playback_stopped_event);
                         }
                     }
                     system_critical_section_leave(rendering_handler->rendering_cs);
@@ -806,6 +949,7 @@ PRIVATE void _ogl_rendering_handler_release(void* in_arg)
     system_event_release(rendering_handler->callback_request_event);
     system_event_release(rendering_handler->context_set_event);
     system_event_release(rendering_handler->playback_in_progress_event);
+    system_event_release(rendering_handler->playback_stopped_event);
     system_event_release(rendering_handler->playback_waiting_event);
     system_event_release(rendering_handler->shutdown_request_event);
     system_event_release(rendering_handler->shutdown_request_ack_event);
@@ -890,6 +1034,7 @@ PRIVATE ogl_rendering_handler ogl_rendering_handler_create_shared(system_hashed_
         new_handler->playback_in_progress_event                = system_event_create(true); /* manual_reset */
         new_handler->playback_start_time                       = 0;
         new_handler->playback_status                           = RENDERING_HANDLER_PLAYBACK_STATUS_STOPPED;
+        new_handler->playback_stopped_event                    = system_event_create(true); /* manual_reset */
         new_handler->playback_waiting_event                    = system_event_create(false); /* manual_reset */
         new_handler->pfn_callback_proc                         = NULL;
         new_handler->pfn_rendering_callback                    = pfn_rendering_callback;
@@ -932,6 +1077,8 @@ PRIVATE ogl_rendering_handler ogl_rendering_handler_create_shared(system_hashed_
                            "Could not create 'context set' event");
         ASSERT_ALWAYS_SYNC(new_handler->playback_in_progress_event != NULL,
                            "Could not create 'playback in progress' event");
+        ASSERT_ALWAYS_SYNC(new_handler->playback_stopped_event != NULL,
+                           "Could not create 'playback stopped' event");
         ASSERT_ALWAYS_SYNC(new_handler->playback_waiting_event != NULL,
                            "Could not create 'playback waiting' event");
         ASSERT_ALWAYS_SYNC(new_handler->shutdown_request_event != NULL,
@@ -942,6 +1089,8 @@ PRIVATE ogl_rendering_handler ogl_rendering_handler_create_shared(system_hashed_
                            "Could not create 'unbind context request' event");
         ASSERT_ALWAYS_SYNC(new_handler->unbind_context_request_ack_event != NULL,
                            "Could not create 'unbind context request ack' event");
+
+        system_event_set(new_handler->playback_stopped_event);
 
         system_threads_spawn(_ogl_rendering_handler_thread_entrypoint,
                              new_handler,
@@ -1001,6 +1150,20 @@ PUBLIC EMERALD_API void ogl_rendering_handler_get_property(ogl_rendering_handler
         case OGL_RENDERING_HANDLER_PROPERTY_ASPECT_RATIO:
         {
             *(float*) out_result = rendering_handler_ptr->aspect_ratio;
+
+            break;
+        }
+
+        case OGL_RENDERING_HANDLER_PROPERTY_PLAYBACK_IN_PROGRESS_EVENT:
+        {
+            *(system_event*) out_result = rendering_handler_ptr->playback_in_progress_event;
+
+            break;
+        }
+
+        case OGL_RENDERING_HANDLER_PROPERTY_PLAYBACK_STOPPED_EVENT:
+        {
+            *(system_event*) out_result = rendering_handler_ptr->playback_stopped_event;
 
             break;
         }
@@ -1127,7 +1290,8 @@ PUBLIC EMERALD_API bool ogl_rendering_handler_play(ogl_rendering_handler renderi
                     rendering_handler_ptr->playback_start_time = system_time_now() - start_time - audio_latency;
 
                     /* All done! */
-                    system_event_set(rendering_handler_ptr->playback_in_progress_event);
+                    system_event_set  (rendering_handler_ptr->playback_in_progress_event);
+                    system_event_reset(rendering_handler_ptr->playback_stopped_event);
                 }
                 else
                 {
@@ -1150,7 +1314,8 @@ PUBLIC EMERALD_API bool ogl_rendering_handler_play(ogl_rendering_handler renderi
                         rendering_handler_ptr->playback_start_time += audio_latency;
                     }
 
-                    system_event_set(rendering_handler_ptr->playback_in_progress_event);
+                    system_event_set  (rendering_handler_ptr->playback_in_progress_event);
+                    system_event_reset(rendering_handler_ptr->playback_stopped_event);
                 }
 
                 pre_n_frames_rendered                  = rendering_handler_ptr->n_frames_rendered;
@@ -1180,6 +1345,7 @@ PUBLIC EMERALD_API bool ogl_rendering_handler_play(ogl_rendering_handler renderi
 PUBLIC EMERALD_API bool ogl_rendering_handler_request_callback_from_context_thread(ogl_rendering_handler                      rendering_handler,
                                                                                    PFNOGLCONTEXTCALLBACKFROMCONTEXTTHREADPROC pfn_callback_proc,
                                                                                    void*                                      user_arg,
+                                                                                   bool                                       swap_buffers_afterward,
                                                                                    bool                                       block_until_available)
 {
     _ogl_rendering_handler* rendering_handler_ptr = (_ogl_rendering_handler*) rendering_handler;
@@ -1209,8 +1375,9 @@ PUBLIC EMERALD_API bool ogl_rendering_handler_request_callback_from_context_thre
 
         if (should_continue)
         {
-            rendering_handler_ptr->callback_request_user_arg = user_arg;
-            rendering_handler_ptr->pfn_callback_proc         = pfn_callback_proc;
+            rendering_handler_ptr->callback_request_needs_buffer_swap = swap_buffers_afterward;
+            rendering_handler_ptr->callback_request_user_arg          = user_arg;
+            rendering_handler_ptr->pfn_callback_proc                  = pfn_callback_proc;
 
             system_event_set        (rendering_handler_ptr->callback_request_event);
             system_event_wait_single(rendering_handler_ptr->callback_request_ack_event);
@@ -1240,6 +1407,26 @@ PUBLIC EMERALD_API void ogl_rendering_handler_set_property(ogl_rendering_handler
             ASSERT_DEBUG_SYNC(rendering_handler_ptr->aspect_ratio > 0.0f,
                               "Invalid aspect ratio value (%.4f) assigned.",
                               rendering_handler_ptr->aspect_ratio);
+
+            break;
+        }
+
+        case OGL_RENDERING_HANDLER_PROPERTY_RENDERING_CALLBACK:
+        {
+            ASSERT_DEBUG_SYNC(rendering_handler_ptr->playback_status != RENDERING_HANDLER_PLAYBACK_STATUS_STARTED,
+                              "OGL_RENDERING_HANDLER_PROPERTY_RENDERING_CALLBACK property set attempt while rendering play-back in progress");
+
+            rendering_handler_ptr->pfn_rendering_callback = *(PFNOGLRENDERINGHANDLERRENDERINGCALLBACK*) value;
+
+            break;
+        }
+
+        case OGL_RENDERING_HANDLER_PROPERTY_RENDERING_CALLBACK_USER_ARGUMENT:
+        {
+            ASSERT_DEBUG_SYNC(rendering_handler_ptr->playback_status != RENDERING_HANDLER_PLAYBACK_STATUS_STARTED,
+                              "OGL_RENDERING_HANDLER_PROPERTY_RENDERING_CALLBACK_USER_ARGUMENT property set attempt while rendering play-back in progress");
+
+            rendering_handler_ptr->rendering_callback_user_arg = *(void**) value;
 
             break;
         }
@@ -1289,7 +1476,9 @@ PUBLIC EMERALD_API bool ogl_rendering_handler_stop(ogl_rendering_handler renderi
         {
             system_critical_section_enter(rendering_handler_ptr->rendering_cs);
             {
+                /* NOTE: no racing condition here since the pair is always updated inside rendering_cs */
                 system_event_reset(rendering_handler_ptr->playback_in_progress_event);
+                system_event_set  (rendering_handler_ptr->playback_stopped_event);
 
                 rendering_handler_ptr->playback_status = RENDERING_HANDLER_PLAYBACK_STATUS_STOPPED;
             }
@@ -1304,7 +1493,10 @@ PUBLIC EMERALD_API bool ogl_rendering_handler_stop(ogl_rendering_handler renderi
             } /* if (rendering_handler_ptr->active_audio_stream != NULL) */
 
             /* Wait until the rendering process stops */
-            system_event_wait_single(rendering_handler_ptr->playback_waiting_event);
+            if (!ogl_rendering_handler_is_current_thread_rendering_thread(rendering_handler))
+            {
+                system_event_wait_single(rendering_handler_ptr->playback_waiting_event);
+            }
 
             result = true;
         } /* if (rendering_handler_ptr->playback_status == RENDERING_HANDLER_PLAYBACK_STATUS_STARTED) */

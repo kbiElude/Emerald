@@ -210,6 +210,7 @@ PRIVATE void _rendering_handler(ogl_context context,
 {
     ogl_pipeline_draw_stage(_pipeline,
                             stage_particle_get_stage_id(),
+                            n_frames_rendered,
                             frame_time,
                             rendering_area_px_topdown);
 }
@@ -288,13 +289,15 @@ PRIVATE void _set_spread_value(void*          user_arg,
 }
 
 /** "Window closed" call-back handler */
-PRIVATE void _window_closed_callback_handler(system_window window)
+PRIVATE void _window_closed_callback_handler(system_window window,
+                                             void*         unused)
 {
     system_event_set(_window_closed_event);
 }
 
 /** "Window closing" call-back handler */
-PRIVATE void _window_closing_callback_handler(system_window window)
+PRIVATE void _window_closing_callback_handler(system_window window,
+                                              void*         unused)
 {
     ogl_context context = NULL;
 

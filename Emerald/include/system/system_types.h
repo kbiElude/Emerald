@@ -48,6 +48,7 @@ typedef enum
         OBJECT_TYPE_SYSTEM_CRITICAL_SECTION,
         OBJECT_TYPE_CURVE_CONTAINER,
         OBJECT_TYPE_DEMO_TIMELINE,
+        OBJECT_TYPE_DEMO_TIMELINE_SEGMENT,
         OBJECT_TYPE_GFX_BFG_FONT_TABLE,
         OBJECT_TYPE_GFX_IMAGE,
         OBJECT_TYPE_MESH,
@@ -77,8 +78,10 @@ typedef enum
         OBJECT_TYPE_POSTPROCESSING_BLOOM,
         OBJECT_TYPE_POSTPROCESSING_BLUR_GAUSSIAN,
         OBJECT_TYPE_POSTPROCESSING_BLUR_POISSON,
+        OBJECT_TYPE_POSTPROCESSING_MOTION_BLUR,
         OBJECT_TYPE_POSTPROCESSING_REINHARD_TONEMAP,
         OBJECT_TYPE_PROCEDURAL_MESH_BOX,
+        OBJECT_TYPE_PROCEDURAL_MESH_CIRCLE,
         OBJECT_TYPE_PROCEDURAL_MESH_SPHERE,
         OBJECT_TYPE_PROCEDURAL_UV_GENERATOR,
         OBJECT_TYPE_PROGRAMS_CURVE_EDITOR_CURVEBACKGROUND,
@@ -86,6 +89,8 @@ typedef enum
         OBJECT_TYPE_PROGRAMS_CURVE_EDITOR_QUADSELECTOR,
         OBJECT_TYPE_PROGRAMS_CURVE_EDITOR_STATIC,
         OBJECT_TYPE_PROGRAMS_CURVE_EDITOR_TCB,
+        OBJECT_TYPE_RAL_CONTEXT,
+        OBJECT_TYPE_RAL_FRAMEBUFFER,
         OBJECT_TYPE_SCALAR_FIELD_METABALLS,
         OBJECT_TYPE_SCENE,
         OBJECT_TYPE_SCENE_CAMERA,
@@ -240,8 +245,6 @@ typedef enum
  *  If needs be, only post window messages. Never send messages to the window, as this
  *  will result in a lock-up.
  *
- *  arg1: ascii key code. (unsigned char)
- *  arg2: not used.
  */
 typedef bool (*PFNWINDOWCHARCALLBACKPROC)(system_window,
                                           unsigned char keycode,
@@ -253,8 +256,6 @@ typedef bool (*PFNWINDOWCHARCALLBACKPROC)(system_window,
  *  If needs be, only post window messages. Never send messages to the window, as this
  *  will result in a lock-up.
  *
- *  arg1: not used.
- *  arg2: not used.
  */
 typedef bool (*PFNWINDOWEXITSIZEMOVECALLBACKPROC)(system_window window);
 
@@ -263,9 +264,6 @@ typedef bool (*PFNWINDOWEXITSIZEMOVECALLBACKPROC)(system_window window);
  *  Under Windows, the call-back is made directly from the window message loop thread.
  *  If needs be, only post window messages. Never send messages to the window, as this
  *  will result in a lock-up.
- *
- *  arg1: ascii key code or SYSTEM_WINDOW_KEY_*
- *  arg2: not used.
  *
  */
 typedef bool (*PFNWINDOWKEYDOWNCALLBACKPROC)(system_window window,
@@ -278,8 +276,7 @@ typedef bool (*PFNWINDOWKEYDOWNCALLBACKPROC)(system_window window,
  *  If needs be, only post window messages. Never send messages to the window, as this
  *  will result in a lock-up.
  *
- *  arg1: ascii key code or SYSTEM_WINDOW_KEY_*
- *  arg2: not used.
+ *  @param keycode ascii key code or SYSTEM_WINDOW_KEY_*
  *
  */
 typedef bool (*PFNWINDOWKEYUPCALLBACKPROC)(system_window window,
@@ -291,9 +288,6 @@ typedef bool (*PFNWINDOWKEYUPCALLBACKPROC)(system_window window,
  *  Under Windows, the call-back is made directly from the window message loop thread.
  *  If needs be, only post window messages. Never send messages to the window, as this
  *  will result in a lock-up.
- *
- *  arg1: system_window_vk_status
- *  arg2: not used.
  *
  */
 typedef bool (*PFNWINDOWLEFTBUTTONDBLCLKCALLBACKPROC)(system_window           window,
@@ -308,9 +302,6 @@ typedef bool (*PFNWINDOWLEFTBUTTONDBLCLKCALLBACKPROC)(system_window           wi
  *  If needs be, only post window messages. Never send messages to the window, as this
  *  will result in a lock-up.
  *
- *  arg1: system_window_vk_status
- *  arg2: not used.
- *
  */
 typedef bool (*PFNWINDOWLEFTBUTTONDOWNCALLBACKPROC)(system_window           window,
                                                     int                     x,
@@ -323,9 +314,6 @@ typedef bool (*PFNWINDOWLEFTBUTTONDOWNCALLBACKPROC)(system_window           wind
  *  Under Windows, the call-back is made directly from the window message loop thread.
  *  If needs be, only post window messages. Never send messages to the window, as this
  *  will result in a lock-up.
- *
- *  arg1: system_window_vk_status
- *  arg2: not used.
  *
  */
 typedef bool (*PFNWINDOWLEFTBUTTONUPCALLBACKPROC)(system_window           window,
@@ -340,9 +328,6 @@ typedef bool (*PFNWINDOWLEFTBUTTONUPCALLBACKPROC)(system_window           window
  *  If needs be, only post window messages. Never send messages to the window, as this
  *  will result in a lock-up.
  *
- *  arg1: system_window_vk_status
- *  arg2: not used.
- *
  */
 typedef bool (*PFNWINDOWMIDDLEBUTTONDBLCLKCALLBACKPROC)(system_window           window,
                                                         int                     x,
@@ -355,9 +340,6 @@ typedef bool (*PFNWINDOWMIDDLEBUTTONDBLCLKCALLBACKPROC)(system_window           
  *  Under Windows, the call-back is made directly from the window message loop thread.
  *  If needs be, only post window messages. Never send messages to the window, as this
  *  will result in a lock-up.
- *
- *  arg1: system_window_vk_status
- *  arg2: not used.
  *
  */
 typedef bool (*PFNWINDOWMIDDLEBUTTONDOWNCALLBACKPROC)(system_window           window,
@@ -372,9 +354,6 @@ typedef bool (*PFNWINDOWMIDDLEBUTTONDOWNCALLBACKPROC)(system_window           wi
  *  If needs be, only post window messages. Never send messages to the window, as this
  *  will result in a lock-up.
  *
- *  arg1: system_window_vk_status
- *  arg2: not used.
- *
  */
 typedef bool (*PFNWINDOWMIDDLEBUTTONUPCALLBACKPROC)(system_window           window,
                                                     int                     x,
@@ -387,9 +366,6 @@ typedef bool (*PFNWINDOWMIDDLEBUTTONUPCALLBACKPROC)(system_window           wind
  *  Under Windows, the call-back is made directly from the window message loop thread.
  *  If needs be, only post window messages. Never send messages to the window, as this
  *  will result in a lock-up.
- *
- *  arg1: system_window_vk_status
- *  arg2: not used.
  *
  */
 typedef bool (*PFNWINDOWMOUSEMOVECALLBACKPROC)(system_window           window,
@@ -404,9 +380,8 @@ typedef bool (*PFNWINDOWMOUSEMOVECALLBACKPROC)(system_window           window,
  *  If needs be, only post window messages. Never send messages to the window, as this
  *  will result in a lock-up.
  *
- *  arg1: short representing the magnitude of the rotation. Under Windows, this value
- *        is a multiple of WHEEL_DELTA.
- *  arg2: system_window_vk_status
+ *  @param scroll_delta short representing the magnitude of the rotation. Under Windows, this value
+ *                      is a multiple of WHEEL_DELTA.
  *
  */
 typedef bool (*PFNWINDOWMOUSEWHEELCALLBACKPROC)(system_window           window,
@@ -422,9 +397,6 @@ typedef bool (*PFNWINDOWMOUSEWHEELCALLBACKPROC)(system_window           window,
  *  If needs be, only post window messages. Never send messages to the window, as this
  *  will result in a lock-up.
  *
- *  arg1: system_window_vk_status
- *  arg2: not used.
- *
  */
 typedef bool (*PFNWINDOWRIGHTBUTTONDBLCLKCALLBACKPROC)(system_window           window,
                                                        int                     x,
@@ -437,9 +409,6 @@ typedef bool (*PFNWINDOWRIGHTBUTTONDBLCLKCALLBACKPROC)(system_window           w
  *  Under Windows, the call-back is made directly from the window message loop thread.
  *  If needs be, only post window messages. Never send messages to the window, as this
  *  will result in a lock-up.
- *
- *  arg1: system_window_vk_status
- *  arg2: not used.
  *
  */
 typedef bool (*PFNWINDOWRIGHTBUTTONDOWNCALLBACKPROC)(system_window           window,
@@ -454,9 +423,6 @@ typedef bool (*PFNWINDOWRIGHTBUTTONDOWNCALLBACKPROC)(system_window           win
  *  If needs be, only post window messages. Never send messages to the window, as this
  *  will result in a lock-up.
  *
- *  arg1: system_window_vk_status
- *  arg2: not used.
- *
  */
 typedef bool (*PFNWINDOWRIGHTBUTTONUPCALLBACKPROC)(system_window           window,
                                                    int                     x,
@@ -470,11 +436,9 @@ typedef bool (*PFNWINDOWRIGHTBUTTONUPCALLBACKPROC)(system_window           windo
  *  If needs be, only post window messages. Never send messages to the window, as this
  *  will result in a lock-up.
  *
- *  arg1: not used.
- *  arg2: not used.
- *
  */
-typedef bool (*PFNWINDOWWINDOWCLOSEDCALLBACKPROC)(system_window window);
+typedef bool (*PFNWINDOWWINDOWCLOSEDCALLBACKPROC)(system_window window,
+                                                  void*         user_arg);
 
 /** Call-back made FROM A RENDERING CONTEXT. Use it to release any GL objects before the
  *  window can be safely destroyed and the rendering handler released.
@@ -482,11 +446,9 @@ typedef bool (*PFNWINDOWWINDOWCLOSEDCALLBACKPROC)(system_window window);
  *  Under Windows, DO NOT send window messages from within these call-back handlers.
  *  Doing so will result in a lock-up.
  *
- *  arg1: not used.
- *  arg2: not used.
- *
  */
-typedef bool (*PFNWINDOWWINDOWCLOSINGCALLBACKPROC)(system_window window);
+typedef bool (*PFNWINDOWWINDOWCLOSINGCALLBACKPROC)(system_window window,
+                                                   void*         user_arg);
 
 
 /********************** CONTEXT MENU *************************************/

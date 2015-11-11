@@ -9,6 +9,7 @@
 #include "ogl/ogl_context.h"
 #include "ogl/ogl_context_textures.h"
 #include "ogl/ogl_texture.h"
+#include "raGL/raGL_utils.h"
 #include "system/system_log.h"
 #include "system/system_math_other.h"
 #include "system/system_resizable_vector.h"
@@ -23,29 +24,30 @@
 /* Private declarations */
 typedef struct
 {
-    unsigned int               data_size;
-    ogl_texture_dimensionality dimensionality;
-    unsigned int               depth;
-    unsigned int               height;
-    bool                       was_configured;
-    unsigned int               width;
+    unsigned int     data_size;
+    unsigned int     depth;
+    unsigned int     height;
+    bool             was_configured;
+    unsigned int     width;
 } _ogl_texture_mipmap;
 
 typedef struct _ogl_texture
 {
     ogl_context context;
 
-    ogl_texture_dimensionality dimensionality;
     bool                       fixed_sample_locations;
+    ral_texture_format         format;
     GLuint                     gl_id;
     bool                       has_been_bound;
     bool                       has_had_mipmaps_generated;
-    ogl_texture_internalformat internalformat;
     system_resizable_vector    mipmaps; /* stores _ogl_texture_mipmap instances, indexed by mipmap level */
     system_hashed_ansi_string  name;
+    unsigned int               n_layers;
     unsigned int               n_max_mipmaps;
     unsigned int               n_samples;
     system_hashed_ansi_string  src_filename;
+    ogl_texture_target         target_gl;
+    ral_texture_type           type;
 
     gfx_image src_image;
 
@@ -53,17 +55,19 @@ typedef struct _ogl_texture
                           system_hashed_ansi_string in_name)
     {
         context                   = in_context;
-        dimensionality            = OGL_TEXTURE_DIMENSIONALITY_UNKNOWN;
         fixed_sample_locations    = false;
+        format                    = RAL_TEXTURE_FORMAT_UNKNOWN;
         gl_id                     = 0;
         has_been_bound            = false;
         has_had_mipmaps_generated = false;
-        internalformat            = OGL_TEXTURE_INTERNALFORMAT_UNKNOWN;
         mipmaps                   = system_resizable_vector_create(1);
         name                      = in_name;
+        n_layers                  = 0;
         n_samples                 = 0;
         n_max_mipmaps             = 0;
         src_filename              = NULL;
+        target_gl                 = OGL_TEXTURE_TARGET_UNKNOWN;
+        type                      = RAL_TEXTURE_TYPE_UNKNOWN;
     }
     REFCOUNT_INSERT_VARIABLES
 } _ogl_texture;
@@ -75,22 +79,22 @@ REFCOUNT_INSERT_IMPLEMENTATION(ogl_texture,
                               _ogl_texture);
 
 /* Forward declarations */
-PRIVATE ogl_texture _ogl_texture_create_base                                (ogl_context               context,
-                                                                             system_hashed_ansi_string name,
-                                                                             system_hashed_ansi_string file_name);
-PRIVATE void        _ogl_texture_create_from_gfx_image_renderer_callback    (ogl_context               context,
-                                                                             void*                     texture);
-PRIVATE void        _ogl_texture_deinit_renderer_callback                   (ogl_context               context,
-                                                                             void*                     texture);
-PRIVATE void        _ogl_texture_generate_mipmaps                           (ogl_context               context,
-                                                                             void*                     texture);
-PRIVATE void        _ogl_texture_get_texture_format_type_from_internalformat(GLenum                    internalformat,
-                                                                             GLenum*                   out_format,
-                                                                             GLenum*                   out_type);
-PRIVATE void        _ogl_texture_init_renderer_callback                     (ogl_context               context,
-                                                                             void*                     texture);
-PRIVATE void        _ogl_texture_mipmap_deinit                              (_ogl_texture_mipmap*      mipmap_ptr);
-PRIVATE void        _ogl_texture_release                                    (void*                     arg);
+PRIVATE ogl_texture _ogl_texture_create_base                                       (ogl_context               context,
+                                                                                    system_hashed_ansi_string name,
+                                                                                    system_hashed_ansi_string file_name);
+PRIVATE void        _ogl_texture_create_from_gfx_image_renderer_callback           (ogl_context               context,
+                                                                                    void*                     texture);
+PRIVATE void        _ogl_texture_deinit_renderer_callback                          (ogl_context               context,
+                                                                                    void*                     texture);
+PRIVATE void        _ogl_texture_generate_mipmaps                                  (ogl_context               context,
+                                                                                    void*                     texture);
+PRIVATE void        _ogl_texture_get_gl_texture_format_type_from_ral_texture_format(ral_texture_format        format,
+                                                                                    GLenum*                   out_format_gl,
+                                                                                    GLenum*                   out_datatype_gl);
+PRIVATE void        _ogl_texture_init_renderer_callback                            (ogl_context               context,
+                                                                                    void*                     texture);
+PRIVATE void        _ogl_texture_mipmap_deinit                                     (_ogl_texture_mipmap*      mipmap_ptr);
+PRIVATE void        _ogl_texture_release                                           (void*                     arg);
 
 
 /** TODO */
@@ -201,8 +205,8 @@ PRIVATE void _ogl_texture_create_from_gfx_image_renderer_callback(ogl_context co
                                  &base_image_height);
     gfx_image_get_mipmap_property(texture_ptr->src_image,
                                   0, /* n_mipmap */
-                                  GFX_IMAGE_MIPMAP_PROPERTY_INTERNALFORMAT,
-                                 &texture_ptr->internalformat);
+                                  GFX_IMAGE_MIPMAP_PROPERTY_FORMAT_RAL,
+                                 &texture_ptr->format);
     gfx_image_get_mipmap_property(texture_ptr->src_image,
                                   0, /* n_mipmap */
                                   GFX_IMAGE_MIPMAP_PROPERTY_IS_COMPRESSED,
@@ -225,8 +229,8 @@ PRIVATE void _ogl_texture_create_from_gfx_image_renderer_callback(ogl_context co
                    base_image_row_alignment);
 
     /* Use immutable storage to avoid texture completeness checks during draw calls */
-    const unsigned int levels = 1 + log2_uint32( (base_image_width > base_image_height) ? base_image_width :
-                                                                                          base_image_height);
+    const unsigned int levels = 1 + system_math_other_log2_uint32( (base_image_width > base_image_height) ? base_image_width :
+                                                                                                            base_image_height);
 
     texture_ptr->n_max_mipmaps = levels;
 
@@ -235,7 +239,7 @@ PRIVATE void _ogl_texture_create_from_gfx_image_renderer_callback(ogl_context co
         gl_pGLTextureStorage2DEXT((ogl_texture) texture,
                                   GL_TEXTURE_2D,
                                   levels,
-                                  texture_ptr->internalformat,
+                                  raGL_utils_get_ogl_texture_internalformat_for_ral_texture_format(texture_ptr->format),
                                   base_image_width,
                                   base_image_height);
     }
@@ -245,7 +249,7 @@ PRIVATE void _ogl_texture_create_from_gfx_image_renderer_callback(ogl_context co
                         texture_ptr->gl_id);
         pGLTexStorage2D(GL_TEXTURE_2D,
                         levels,
-                        texture_ptr->internalformat,
+                        raGL_utils_get_ogl_texture_internalformat_for_ral_texture_format(texture_ptr->format),
                         base_image_width,
                         base_image_height);
     }
@@ -253,14 +257,14 @@ PRIVATE void _ogl_texture_create_from_gfx_image_renderer_callback(ogl_context co
     /* Set the mip-maps */
     unsigned int expected_mipmap_height = base_image_height;
     unsigned int expected_mipmap_width  = base_image_width;
-    GLenum       texture_format         = GL_NONE;
-    GLenum       texture_type           = GL_NONE;
+    GLenum       texture_format_gl      = GL_NONE;
+    GLenum       texture_type_gl        = GL_NONE;
 
     if (!base_image_is_compressed)
     {
-        _ogl_texture_get_texture_format_type_from_internalformat(texture_ptr->internalformat,
-                                                                &texture_format,
-                                                                &texture_type);
+        _ogl_texture_get_gl_texture_format_type_from_ral_texture_format(texture_ptr->format,
+                                                                       &texture_format_gl,
+                                                                       &texture_type_gl);
     }
 
     for (unsigned int n_mipmap = 0;
@@ -269,8 +273,8 @@ PRIVATE void _ogl_texture_create_from_gfx_image_renderer_callback(ogl_context co
     {
         const unsigned char* image_data_ptr       = NULL;
         unsigned int         image_data_size      = 0;
+        ral_texture_format   image_format         = RAL_TEXTURE_FORMAT_UNKNOWN;
         unsigned int         image_height         = 0;
-        GLenum               image_internalformat = GL_NONE;
         bool                 image_is_compressed  = false;
         unsigned int         image_row_alignment  = 0;
         unsigned int         image_width          = 0;
@@ -289,8 +293,8 @@ PRIVATE void _ogl_texture_create_from_gfx_image_renderer_callback(ogl_context co
                                      &image_height);
         gfx_image_get_mipmap_property(texture_ptr->src_image,
                                       n_mipmap,
-                                      GFX_IMAGE_MIPMAP_PROPERTY_INTERNALFORMAT,
-                                     &image_internalformat);
+                                      GFX_IMAGE_MIPMAP_PROPERTY_FORMAT_RAL,
+                                     &image_format);
         gfx_image_get_mipmap_property(texture_ptr->src_image,
                                       n_mipmap,
                                       GFX_IMAGE_MIPMAP_PROPERTY_IS_COMPRESSED,
@@ -305,8 +309,8 @@ PRIVATE void _ogl_texture_create_from_gfx_image_renderer_callback(ogl_context co
                                      &image_width);
 
         /* Sanity checks */
-        ASSERT_DEBUG_SYNC(texture_ptr->internalformat == image_internalformat,
-                          "Non-base mipmap does not use the same internalformat as the base mipmap");
+        ASSERT_DEBUG_SYNC(texture_ptr->format == image_format,
+                          "Non-base mipmap does not use the same RAL format as the base mipmap");
         ASSERT_DEBUG_SYNC(base_image_row_alignment  == image_row_alignment,
                           "Non-base mipmap does not use the same row alignment as the base mipmap");
 
@@ -326,7 +330,7 @@ PRIVATE void _ogl_texture_create_from_gfx_image_renderer_callback(ogl_context co
                                            0, /* yoffset */
                                            image_width,
                                            image_height,
-                                           image_internalformat,
+                                           raGL_utils_get_ogl_texture_internalformat_for_ral_texture_format(image_format),
                                            image_data_size,
                                            image_data_ptr);
             }
@@ -339,7 +343,7 @@ PRIVATE void _ogl_texture_create_from_gfx_image_renderer_callback(ogl_context co
                                                      0, /* yoffset */
                                                      image_width,
                                                      image_height,
-                                                     image_internalformat,
+                                                     raGL_utils_get_ogl_texture_internalformat_for_ral_texture_format(image_format),
                                                      image_data_size,
                                                      image_data_ptr);
             }
@@ -354,8 +358,8 @@ PRIVATE void _ogl_texture_create_from_gfx_image_renderer_callback(ogl_context co
                                  0, /* yoffset */
                                  image_width,
                                  image_height,
-                                 texture_format,
-                                 texture_type,
+                                 texture_format_gl,
+                                 texture_type_gl,
                                  image_data_ptr);
             }
             else
@@ -367,8 +371,8 @@ PRIVATE void _ogl_texture_create_from_gfx_image_renderer_callback(ogl_context co
                                            0, /* yoffset */
                                            image_width,
                                            image_height,
-                                           texture_format,
-                                           texture_type,
+                                           texture_format_gl,
+                                           texture_type_gl,
                                            image_data_ptr);
             }
         }
@@ -447,41 +451,41 @@ PRIVATE void _ogl_texture_generate_mipmaps(ogl_context context,
 }
 
 /** TODO */
-PRIVATE void _ogl_texture_get_texture_format_type_from_internalformat(GLenum  internalformat,
-                                                                      GLenum* out_format,
-                                                                      GLenum* out_type)
+PRIVATE void _ogl_texture_get_gl_texture_format_type_from_ral_texture_format(ral_texture_format format,
+                                                                             GLenum*            out_format_gl,
+                                                                             GLenum*            out_datatype_gl)
 {
-    switch (internalformat)
+    switch (format)
     {
-        case GL_RGB32F:
+        case RAL_TEXTURE_FORMAT_RGB32_FLOAT:
         {
-            *out_format = GL_RGB;
-            *out_type   = GL_FLOAT;
+            *out_datatype_gl = GL_FLOAT;
+            *out_format_gl   = GL_RGB;
 
             break;
         }
 
-        case GL_RGB8:
-        case GL_SRGB8:
+        case RAL_TEXTURE_FORMAT_RGB8_UNORM:
+        case RAL_TEXTURE_FORMAT_SRGB8_UNORM:
         {
-            *out_format = GL_RGB;
-            *out_type   = GL_UNSIGNED_BYTE;
+            *out_datatype_gl = GL_UNSIGNED_BYTE;
+            *out_format_gl   = GL_RGB;
 
             break;
         }
 
-        case GL_RGBA32F:
+        case RAL_TEXTURE_FORMAT_RGBA32_FLOAT:
         {
-            *out_format = GL_RGBA;
-            *out_type   = GL_FLOAT;
+            *out_datatype_gl = GL_FLOAT;
+            *out_format_gl   = GL_RGBA;
 
             break;
         }
 
-        case GL_RGBA8:
+        case RAL_TEXTURE_FORMAT_RGBA8_UNORM:
         {
-            *out_format = GL_RGBA;
-            *out_type   = GL_UNSIGNED_BYTE;
+            *out_datatype_gl = GL_UNSIGNED_BYTE;
+            *out_format_gl   = GL_RGBA;
 
             break;
         }
@@ -569,9 +573,9 @@ PRIVATE void _ogl_texture_release(void* arg)
 /* Please see header for specification */
 PUBLIC EMERALD_API RENDERING_CONTEXT_CALL ogl_texture ogl_texture_create_and_initialize(ogl_context                context,
                                                                                         system_hashed_ansi_string  name,
-                                                                                        ogl_texture_dimensionality dimensionality,
+                                                                                        ral_texture_type           type,
                                                                                         unsigned int               n_mipmaps,
-                                                                                        GLenum                     internalformat,
+                                                                                        ral_texture_format         format,
                                                                                         unsigned int               base_mipmap_width,
                                                                                         unsigned int               base_mipmap_height,
                                                                                         unsigned int               base_mipmap_depth,
@@ -610,40 +614,40 @@ PUBLIC EMERALD_API RENDERING_CONTEXT_CALL ogl_texture ogl_texture_create_and_ini
         goto end;
     }
 
-    switch (dimensionality)
+    switch (type)
     {
-        case OGL_TEXTURE_DIMENSIONALITY_GL_TEXTURE_1D:
+        case RAL_TEXTURE_TYPE_1D:
         {
             dsa_entry_points->pGLTextureStorage1DEXT(result,
-                                                     dimensionality,
+                                                     GL_TEXTURE_1D,
                                                      n_mipmaps,
-                                                     internalformat,
+                                                     raGL_utils_get_ogl_texture_internalformat_for_ral_texture_format(format),
                                                      base_mipmap_width);
 
             break;
         }
 
-        case OGL_TEXTURE_DIMENSIONALITY_GL_TEXTURE_1D_ARRAY:
-        case OGL_TEXTURE_DIMENSIONALITY_GL_TEXTURE_2D:
-        case OGL_TEXTURE_DIMENSIONALITY_GL_TEXTURE_CUBE_MAP:
-        case OGL_TEXTURE_DIMENSIONALITY_GL_TEXTURE_RECTANGLE:
+        case RAL_TEXTURE_TYPE_1D_ARRAY:
+        case RAL_TEXTURE_TYPE_2D:
+        case RAL_TEXTURE_TYPE_CUBE_MAP:
+        case RAL_TEXTURE_TYPE_RECTANGLE:
         {
             dsa_entry_points->pGLTextureStorage2DEXT(result,
-                                                     dimensionality,
+                                                     raGL_utils_get_ogl_texture_target_for_ral_texture_type(type),
                                                      n_mipmaps,
-                                                     internalformat,
+                                                     raGL_utils_get_ogl_texture_internalformat_for_ral_texture_format(format),
                                                      base_mipmap_width,
                                                      base_mipmap_height);
 
             break;
         }
 
-        case OGL_TEXTURE_DIMENSIONALITY_GL_TEXTURE_2D_MULTISAMPLE:
+        case RAL_TEXTURE_TYPE_MULTISAMPLE_2D:
         {
             dsa_entry_points->pGLTextureStorage2DMultisampleEXT(result,
-                                                                dimensionality,
+                                                                GL_TEXTURE_2D_MULTISAMPLE,
                                                                 n_samples,
-                                                                internalformat,
+                                                                raGL_utils_get_ogl_texture_internalformat_for_ral_texture_format(format),
                                                                 base_mipmap_width,
                                                                 base_mipmap_height,
                                                                 fixed_sample_locations);
@@ -651,27 +655,27 @@ PUBLIC EMERALD_API RENDERING_CONTEXT_CALL ogl_texture ogl_texture_create_and_ini
             break;
         }
 
-        case OGL_TEXTURE_DIMENSIONALITY_GL_TEXTURE_2D_ARRAY:
-        case OGL_TEXTURE_DIMENSIONALITY_GL_TEXTURE_3D:
-        case OGL_TEXTURE_DIMENSIONALITY_GL_TEXTURE_CUBE_MAP_ARRAY:
+        case RAL_TEXTURE_TYPE_2D_ARRAY:
+        case RAL_TEXTURE_TYPE_3D:
+        case RAL_TEXTURE_TYPE_CUBE_MAP_ARRAY:
         {
             dsa_entry_points->pGLTextureStorage3DEXT(result,
-                                                     dimensionality,
+                                                     raGL_utils_get_ogl_texture_target_for_ral_texture_type(type),
                                                      n_mipmaps,
-                                                     internalformat,
+                                                     raGL_utils_get_ogl_texture_internalformat_for_ral_texture_format(format),
                                                      base_mipmap_width,
                                                      base_mipmap_height,
                                                      base_mipmap_depth);
 
             break;
         }
-
-        case OGL_TEXTURE_DIMENSIONALITY_GL_TEXTURE_2D_MULTISAMPLE_ARRAY:
+        
+        case RAL_TEXTURE_TYPE_MULTISAMPLE_2D_ARRAY:
         {
             dsa_entry_points->pGLTextureStorage3DMultisampleEXT(result,
-                                                                dimensionality,
+                                                                GL_TEXTURE_2D_MULTISAMPLE_ARRAY,
                                                                 n_samples,
-                                                                internalformat,
+                                                                raGL_utils_get_ogl_texture_internalformat_for_ral_texture_format(format),
                                                                 base_mipmap_width,
                                                                 base_mipmap_height,
                                                                 base_mipmap_depth,
@@ -683,17 +687,23 @@ PUBLIC EMERALD_API RENDERING_CONTEXT_CALL ogl_texture ogl_texture_create_and_ini
         default:
         {
             ASSERT_DEBUG_SYNC(false,
-                              "Unrecognized texture dimensionality");
+                              "Unrecognized texture type");
         }
-    } /* switch (dimensionality) */
+    } /* switch (type) */
 
     /* Store the properties */
     result_ptr = (_ogl_texture*) result;
 
-    result_ptr->dimensionality         = dimensionality;
+    if (n_samples == 0)
+    {
+        n_samples = 1;
+    }
+
     result_ptr->fixed_sample_locations = fixed_sample_locations;
-    result_ptr->internalformat         = (ogl_texture_internalformat) internalformat;
+    result_ptr->format                 = format;
     result_ptr->n_samples              = n_samples;
+    result_ptr->target_gl              = raGL_utils_get_ogl_texture_target_for_ral_texture_type(type);
+    result_ptr->type                   = type;
 
 end:
     return result;
@@ -890,16 +900,16 @@ PUBLIC EMERALD_API void ogl_texture_get_property(const ogl_texture    texture,
 
     switch (property)
     {
-        case OGL_TEXTURE_PROPERTY_DIMENSIONALITY:
+        case OGL_TEXTURE_PROPERTY_FIXED_SAMPLE_LOCATIONS:
         {
-            *(ogl_texture_dimensionality*) out_result = texture_ptr->dimensionality;
+            *(bool*) out_result = texture_ptr->fixed_sample_locations;
 
             break;
         }
 
-        case OGL_TEXTURE_PROPERTY_FIXED_SAMPLE_LOCATIONS:
+        case OGL_TEXTURE_PROPERTY_FORMAT_RAL:
         {
-            *(bool*) out_result = texture_ptr->fixed_sample_locations;
+            *(ral_texture_format*) out_result = texture_ptr->format;
 
             break;
         }
@@ -918,13 +928,6 @@ PUBLIC EMERALD_API void ogl_texture_get_property(const ogl_texture    texture,
             break;
         }
 
-        case OGL_TEXTURE_PROPERTY_INTERNALFORMAT:
-        {
-            *(GLint*) out_result = texture_ptr->internalformat;
-
-            break;
-        }
-
         case OGL_TEXTURE_PROPERTY_ID:
         {
             *((GLuint*) out_result) = texture_ptr->gl_id;
@@ -935,6 +938,13 @@ PUBLIC EMERALD_API void ogl_texture_get_property(const ogl_texture    texture,
         case OGL_TEXTURE_PROPERTY_NAME:
         {
             *((system_hashed_ansi_string*) out_result) = texture_ptr->name;
+
+            break;
+        }
+
+        case OGL_TEXTURE_PROPERTY_N_LAYERS:
+        {
+            *(unsigned int*) out_result = texture_ptr->n_layers;
 
             break;
         }
@@ -984,9 +994,16 @@ PUBLIC EMERALD_API void ogl_texture_get_property(const ogl_texture    texture,
             break;
         }
 
-        case OGL_TEXTURE_PROPERTY_TARGET:
+        case OGL_TEXTURE_PROPERTY_TARGET_GL:
         {
-            *((ogl_texture_dimensionality*) out_result) = texture_ptr->dimensionality;
+            *((ogl_texture_target*) out_result) = texture_ptr->target_gl;
+
+            break;
+        }
+
+        case OGL_TEXTURE_PROPERTY_TYPE:
+        {
+            *(ral_texture_type*) out_result = texture_ptr->type;
 
             break;
         }
@@ -1105,7 +1122,7 @@ PUBLIC EMERALD_API void ogl_texture_set_mipmap_property(ogl_texture             
 /** Please see header for spec */
 PUBLIC EMERALD_API void ogl_texture_set_property(ogl_texture          texture,
                                                  ogl_texture_property property,
-                                                 void*                data)
+                                                 const void*          data)
 {
     _ogl_texture* texture_ptr = (_ogl_texture*) texture;
 
@@ -1120,14 +1137,50 @@ PUBLIC EMERALD_API void ogl_texture_set_property(ogl_texture          texture,
             break;
         }
 
-        case OGL_TEXTURE_PROPERTY_INTERNALFORMAT:
+        case OGL_TEXTURE_PROPERTY_FORMAT_RAL:
         {
             /* Emerald only supports immutable textures. */
-            ASSERT_DEBUG_SYNC(texture_ptr->internalformat == OGL_TEXTURE_INTERNALFORMAT_UNKNOWN ||
-                              texture_ptr->internalformat == *(GLint*) data,
+            ASSERT_DEBUG_SYNC(texture_ptr->format == RAL_TEXTURE_FORMAT_UNKNOWN ||
+                              texture_ptr->format == *(ral_texture_format*) data,
                               "Invalid setter call!");
 
-            texture_ptr->internalformat = *(ogl_texture_internalformat*) data;
+            ASSERT_DEBUG_SYNC( *(ral_texture_format*) data < RAL_TEXTURE_FORMAT_COUNT,
+                               "Invalid RAL texture format");
+
+            texture_ptr->format = *(ral_texture_format*) data;
+
+            break;
+        }
+
+        case OGL_TEXTURE_PROPERTY_N_LAYERS:
+        {
+            ASSERT_DEBUG_SYNC(texture_ptr->n_layers == 0,
+                              "OGL_TEXTURE_PROPERTY_N_LAYERS property has already been assigned a value");
+
+            texture_ptr->n_layers = *(unsigned int*) data;
+
+            break;
+        }
+
+        case OGL_TEXTURE_PROPERTY_N_SAMPLES:
+        {
+            ASSERT_DEBUG_SYNC(texture_ptr->n_samples == 0,
+                              "OGL_TEXTURE_PROPERTY_N_SAMPLES property has already been assigned a value");
+
+            texture_ptr->n_samples = *(unsigned int*) data;
+
+            break;
+        }
+
+        case OGL_TEXTURE_PROPERTY_TYPE:
+        {
+            ASSERT_DEBUG_SYNC( *(ral_texture_type*) data < RAL_TEXTURE_TYPE_COUNT,
+                              "Invalid RAL texture type");
+            ASSERT_DEBUG_SYNC( texture_ptr->type == RAL_TEXTURE_TYPE_UNKNOWN ||
+                               texture_ptr->type == *(ral_texture_type*) data,
+                               "Invalid setter call");
+
+            texture_ptr->type = *(ral_texture_type*) data;
 
             break;
         }

@@ -6,6 +6,7 @@
 #include "shared.h"
 #include "gfx/gfx_bmp.h"
 #include "gfx/gfx_image.h"
+#include "ral/ral_types.h"
 #include "system/system_assertions.h"
 #include "system/system_file_enumerator.h"
 #include "system/system_file_serializer.h"
@@ -179,10 +180,10 @@ PRIVATE gfx_image gfx_bmp_shared_load_handler(bool                      should_l
                          header_ptr->width,
                          header_ptr->height,
                          4, /* row_alignment */
-                         GL_SRGB8,
+                         RAL_TEXTURE_FORMAT_SRGB8_UNORM,
                          false,
                          in_data_ptr + 14 /* sizeof(BITMAPFILEHEADER) */ + sizeof(bitmap_info_header),
-                         gfx_image_get_data_size(GL_RGB8,
+                         gfx_image_get_data_size(RAL_TEXTURE_FORMAT_RGB8_UNORM,
                                                  header_ptr->width,
                                                  header_ptr->height,
                                                  4),

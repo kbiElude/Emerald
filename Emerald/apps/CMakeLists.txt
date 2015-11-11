@@ -19,12 +19,14 @@ IF(MSVC)
     ADD_SUBDIRECTORY(TextureCompressor)
 ENDIF(MSVC)
 
+ADD_SUBDIRECTORY(Demo-Deadline2015)
 ADD_SUBDIRECTORY(Test-ComputeShaderSSBO)
 ADD_SUBDIRECTORY(Test-DemoApp)
 ADD_SUBDIRECTORY(Test-DOF)
 ADD_SUBDIRECTORY(Test-Julia4D)
 ADD_SUBDIRECTORY(Test-MarchingCubes)
 ADD_SUBDIRECTORY(Test-Pipeline)
+ADD_SUBDIRECTORY(Test-Spinner)
 
 
 # Following are obsolete examples which no longer build or whose asset became

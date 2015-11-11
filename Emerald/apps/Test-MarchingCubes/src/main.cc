@@ -77,6 +77,7 @@ PRIVATE void _get_isolevel_value             (void*                   user_arg,
 PRIVATE void _init_pipeline                  ();
 PRIVATE void _init_scene                     ();
 PRIVATE void _render                         (ogl_context             context,
+                                              uint32_t                frame_index,
                                               system_time             frame_time,
                                               const int*              rendering_area_px_topdown,
                                               void*                   callback_user_arg);
@@ -92,8 +93,10 @@ PRIVATE bool _rendering_rbm_callback_handler (system_window           window,
                                               void*);
 PRIVATE void _set_isolevel_value             (void*                   user_arg,
                                               system_variant          new_value);
-PRIVATE void _window_closed_callback_handler (system_window           window);
-PRIVATE void _window_closing_callback_handler(system_window           window);
+PRIVATE void _window_closed_callback_handler (system_window           window,
+                                              void*                   unused);
+PRIVATE void _window_closing_callback_handler(system_window           window,
+                                              void*                   unused);
 
 
 /** TODO */
@@ -232,7 +235,7 @@ PRIVATE void _init_scene()
 
     /* Set up the procedural UV generator */
     _uv_generator = procedural_uv_generator_create(_context,
-                                                   PROCEDURAL_UV_GENERATOR_TYPE_SPHERICAL_MAPPING_WITH_NORMALS,
+                                                   PROCEDURAL_UV_GENERATOR_TYPE_OBJECT_LINEAR,
                                                    system_hashed_ansi_string_create("Procedural UV generator") );
 
     _uv_generator_object_id = procedural_uv_generator_add_mesh(_uv_generator,
@@ -293,6 +296,7 @@ PRIVATE void _init_scene()
 
 /** TODO */
 PRIVATE void _render(ogl_context context,
+                     uint32_t    frame_index,
                      system_time frame_time,
                      const int*  rendering_area_px_topdown,
                      void*       callback_user_arg)
@@ -428,6 +432,7 @@ PRIVATE void _rendering_handler(ogl_context context,
 
     ogl_pipeline_draw_stage(_pipeline,
                             _pipeline_stage_id,
+                            n_frames_rendered,
                             frame_time,
                             rendering_area_px_topdown);
 }
@@ -452,12 +457,14 @@ PRIVATE void _set_isolevel_value(void*          user_arg,
                             &_isolevel);
 }
 
-PRIVATE void _window_closed_callback_handler(system_window window)
+PRIVATE void _window_closed_callback_handler(system_window window,
+                                             void*         unused)
 {
     system_event_set(_window_closed_event);
 }
 
-PRIVATE void _window_closing_callback_handler(system_window window)
+PRIVATE void _window_closing_callback_handler(system_window window,
+                                              void*         unused)
 {
     if (_marching_cubes != NULL)
     {

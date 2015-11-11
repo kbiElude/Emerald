@@ -7,6 +7,7 @@
 #define OGL_SHADER_CONSTRUCTOR_H
 
 #include "ogl/ogl_types.h"
+#include "ral/ral_types.h"
 #include "system/system_types.h"
 
 REFCOUNT_INSERT_DECLARATIONS(ogl_shader_constructor,
@@ -103,7 +104,7 @@ PUBLIC EMERALD_API void ogl_shader_constructor_append_to_function_body(ogl_shade
                                                                        system_hashed_ansi_string body_to_append);
 
 /** TODO */
-PUBLIC EMERALD_API ogl_shader_constructor ogl_shader_constructor_create(ogl_shader_type,
+PUBLIC EMERALD_API ogl_shader_constructor ogl_shader_constructor_create(ral_shader_type,
                                                                         system_hashed_ansi_string);
 
 /** TODO */

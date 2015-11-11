@@ -11,6 +11,7 @@
 #include "gfx/gfx_rgbe.h"
 #include "gfx/gfx_types.h"
 #include "ogl/ogl_context_texture_compression.h"
+#include "raGL/raGL_utils.h"
 #include "system/system_assertions.h"
 #include "system/system_file_enumerator.h"
 #include "system/system_file_serializer.h"
@@ -33,8 +34,8 @@ typedef struct _gfx_image_mipmap
     bool                 data_ptr_releaseable;
     unsigned int         data_size;
     const unsigned char* data_ptr;
+    ral_texture_format   format;
     unsigned int         height;
-    GLenum               internalformat;
     bool                 is_compressed;
     unsigned int         row_alignment;
     unsigned int         width;
@@ -44,8 +45,8 @@ typedef struct _gfx_image_mipmap
         data_ptr             = NULL;
         data_ptr_releaseable = false;
         data_size            = 0;
+        format               = RAL_TEXTURE_FORMAT_UNKNOWN;
         height               = 0;
-        internalformat       = GL_NONE;
         is_compressed        = false;
         row_alignment        = 0;
         width                = 0;
@@ -108,7 +109,7 @@ REFCOUNT_INSERT_IMPLEMENTATION(gfx_image,
 /** TODO */
 PRIVATE gfx_image _gfx_image_create_from_alternative_file(system_hashed_ansi_string name,
                                                           system_hashed_ansi_string alternative_filename,
-                                                          GLenum                    alternative_filename_glenum,
+                                                          ral_texture_format        alternative_filename_texture_format,
                                                           system_file_unpacker      file_unpacker)
 {
 
@@ -205,7 +206,7 @@ PRIVATE gfx_image _gfx_image_create_from_alternative_file(system_hashed_ansi_str
                              mipmap_header_ptr->width,
                              mipmap_header_ptr->height,
                              1,      /* row_alignment */
-                             alternative_filename_glenum,
+                             alternative_filename_texture_format,
                              true,   /* is_compressed */
                              data,
                              mipmap_header_ptr->data_size,
@@ -272,7 +273,7 @@ PUBLIC unsigned int gfx_image_add_mipmap(gfx_image            image,
                                          unsigned int         width,
                                          unsigned int         height,
                                          unsigned int         row_alignment,
-                                         GLenum               internalformat,
+                                         ral_texture_format   format,
                                          bool                 is_compressed,
                                          const unsigned char* data_ptr,
                                          unsigned int         data_size,
@@ -293,8 +294,8 @@ PUBLIC unsigned int gfx_image_add_mipmap(gfx_image            image,
     }
 
     mipmap_ptr->data_size      = data_size;
+    mipmap_ptr->format         = format;
     mipmap_ptr->height         = height;
-    mipmap_ptr->internalformat = internalformat;
     mipmap_ptr->is_compressed  = is_compressed;
     mipmap_ptr->row_alignment  = row_alignment;
     mipmap_ptr->width          = width;
@@ -369,11 +370,11 @@ PUBLIC EMERALD_API gfx_image gfx_image_create_from_file(system_hashed_ansi_strin
                                                         system_hashed_ansi_string file_name,
                                                         bool                      use_alternative_filename_getter)
 {
-    const char*               file_name_raw_ptr            = system_hashed_ansi_string_get_buffer(file_name);
-    GLenum                    alternative_file_name_glenum = GL_NONE;
-    system_file_unpacker      alternative_file_unpacker    = NULL;
-    system_hashed_ansi_string in_file_name                 = file_name;
-    gfx_image                 result                       = NULL;
+    const char*               file_name_raw_ptr               = system_hashed_ansi_string_get_buffer(file_name);
+    ral_texture_format        alternative_file_texture_format = RAL_TEXTURE_FORMAT_UNKNOWN;
+    system_file_unpacker      alternative_file_unpacker       = NULL;
+    system_hashed_ansi_string in_file_name                    = file_name;
+    gfx_image                 result                          = NULL;
 
     /* If an alternative filename getter was configured, use it against input filename */
     if (_alternative_filename_getter_proc_ptr != NULL &&
@@ -381,7 +382,7 @@ PUBLIC EMERALD_API gfx_image gfx_image_create_from_file(system_hashed_ansi_strin
     {
         system_hashed_ansi_string proposed_file_name = _alternative_filename_getter_proc_ptr(_alternative_filename_getter_user_arg,
                                                                                              file_name,
-                                                                                            &alternative_file_name_glenum,
+                                                                                            &alternative_file_texture_format,
                                                                                             &alternative_file_unpacker);
 
         if (proposed_file_name != NULL)
@@ -403,6 +404,18 @@ PUBLIC EMERALD_API gfx_image gfx_image_create_from_file(system_hashed_ansi_strin
             file_name         = proposed_file_name;
             file_name_raw_ptr = system_hashed_ansi_string_get_buffer(proposed_file_name);
         }
+
+        /* TODO: The legacy code used to use GLenums instead of RAL texture types to represent the texture format.
+         *       When we no longer need the backward compatibility, we really should switch to RAL enums.
+         */
+        if (alternative_file_texture_format == GL_NONE)
+        {
+            alternative_file_texture_format = RAL_TEXTURE_FORMAT_UNKNOWN;
+        }
+        else
+        {
+            alternative_file_texture_format = raGL_utils_get_ral_texture_format_for_ogl_enum( (GLenum) alternative_file_texture_format);
+        }
     }
 
     /* Look for extension in the file name */
@@ -413,7 +426,7 @@ PUBLIC EMERALD_API gfx_image gfx_image_create_from_file(system_hashed_ansi_strin
     {
         bool has_found_handler = false;
 
-        if (alternative_file_name_glenum == GL_NONE)
+        if (alternative_file_texture_format == RAL_TEXTURE_FORMAT_UNKNOWN)
         {
             /* Browse available file handlers and see if we can load the original file */
             for (uint32_t n_extension = 0;
@@ -430,13 +443,13 @@ PUBLIC EMERALD_API gfx_image gfx_image_create_from_file(system_hashed_ansi_strin
                     break;
                 }
             }
-        } /* if (compressed_file_name_glenum == GL_NONE) */
+        } /* if (alternative_file_texture_format == RAL_TEXTURE_FORMAT_UNKNOWN) */
         else
         {
             /* This is a compressed file, so need to use a special internal handler */
             result            = _gfx_image_create_from_alternative_file(name,
                                                                         file_name,
-                                                                        alternative_file_name_glenum,
+                                                                        alternative_file_texture_format,
                                                                         alternative_file_unpacker);
             has_found_handler = (result != NULL);
         }
@@ -471,23 +484,23 @@ PUBLIC EMERALD_API gfx_image gfx_image_create_from_file(system_hashed_ansi_strin
 }
 
 /** Please see header for specification */
-PUBLIC unsigned int gfx_image_get_data_size(GLenum       internalformat,
-                                            unsigned int width,
-                                            unsigned int height,
-                                            unsigned int row_alignment)
+PUBLIC unsigned int gfx_image_get_data_size(ral_texture_format format,
+                                            unsigned int       width,
+                                            unsigned int       height,
+                                            unsigned int       row_alignment)
 {
     unsigned int pixel_size = 0;
 
-    switch (internalformat)
+    switch (format)
     {
-        case GL_RGB8:
+        case RAL_TEXTURE_FORMAT_RGB8_UNORM:
         {
             pixel_size = 24;
 
             break;
         }
 
-        case GL_RGBA8:
+        case RAL_TEXTURE_FORMAT_RGBA8_UNORM:
         {
             pixel_size = 32;
 
@@ -497,10 +510,10 @@ PUBLIC unsigned int gfx_image_get_data_size(GLenum       internalformat,
         default:
         {
             ASSERT_ALWAYS_SYNC(false,
-                               "Unrecognized internal format [%x]",
-                               internalformat);
+                               "Unrecognized texture format format [%x]",
+                               format);
         }
-    }
+    } /* switch (format) */
 
     /* Align width before we return the result */
     if (width % row_alignment != 0)
@@ -544,16 +557,16 @@ PUBLIC EMERALD_API bool gfx_image_get_mipmap_property(gfx_image                 
                     break;
                 }
 
-                case GFX_IMAGE_MIPMAP_PROPERTY_HEIGHT:
+                case GFX_IMAGE_MIPMAP_PROPERTY_FORMAT_RAL:
                 {
-                    *((unsigned int*) out_result) = mipmap_ptr->height;
+                    *((ral_texture_format*) out_result) = mipmap_ptr->format;
 
                     break;
                 }
 
-                case GFX_IMAGE_MIPMAP_PROPERTY_INTERNALFORMAT:
+                case GFX_IMAGE_MIPMAP_PROPERTY_HEIGHT:
                 {
-                    *((GLenum*) out_result) = mipmap_ptr->internalformat;
+                    *((unsigned int*) out_result) = mipmap_ptr->height;
 
                     break;
                 }

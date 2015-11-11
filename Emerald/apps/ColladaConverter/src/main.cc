@@ -138,11 +138,13 @@ void _rendering_handler(ogl_context context,
     /* Render the scene */
     ogl_pipeline_draw_stage(_pipeline,
                             _pipeline_stage_id,
+                            n_frames_rendered,
                             frame_time,
                             rendering_area_px_topdown);
 }
 
 void _render_scene(ogl_context context,
+                   uint32_t    frame_index,
                    system_time time,
                    const int*  rendering_area_px_topdown,
                    void*       not_used)
@@ -242,12 +244,14 @@ void _setup_ui()
 
 }
 
-PRIVATE void _window_closed_callback_handler(system_window window)
+PRIVATE void _window_closed_callback_handler(system_window window,
+                                             void*         unused)
 {
     system_event_set(_window_closed_event);
 }
 
-PRIVATE void _window_closing_callback_handler(system_window window)
+PRIVATE void _window_closing_callback_handler(system_window window,
+                                              void*         unused)
 {
     if (_pipeline != NULL)
     {

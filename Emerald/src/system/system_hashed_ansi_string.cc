@@ -223,6 +223,46 @@ PUBLIC EMERALD_API system_hashed_ansi_string system_hashed_ansi_string_create_by
 }
 
 /** Please see header for specification */
+PUBLIC EMERALD_API system_hashed_ansi_string system_hashed_ansi_string_create_by_token_replacement(const char*                      body,
+                                                                                                   uint32_t                         n_tokens,
+                                                                                                   const system_hashed_ansi_string* token_keys,
+                                                                                                   const system_hashed_ansi_string* token_values)
+{
+    std::string body_string(body);
+
+    ASSERT_DEBUG_SYNC(body != NULL,
+                      "Input shader body is NULL");
+    ASSERT_DEBUG_SYNC(token_keys != NULL,
+                      "Input token key array is NULL");
+    ASSERT_DEBUG_SYNC(token_values != NULL,
+                      "Input token value array is NULL");
+
+    for (unsigned int n_token = 0;
+                      n_token < n_tokens;
+                    ++n_token)
+    {
+        size_t offset = 0;
+
+        ASSERT_DEBUG_SYNC(token_keys[n_token] != NULL,
+                          "Input token key at index [%d] is NULL",
+                          n_token);
+        ASSERT_DEBUG_SYNC(token_values[n_token] != NULL,
+                          "Input token value at index [%d] is NULL",
+                          n_token);
+
+        while ( (offset = body_string.find(system_hashed_ansi_string_get_buffer(token_keys[n_token]),
+                                           offset)) != std::string::npos)
+        {
+            body_string.replace(offset,
+                                system_hashed_ansi_string_get_length(token_keys[n_token]),
+                                system_hashed_ansi_string_get_buffer(token_values[n_token]) );
+        }
+    } /* for (all defined tokens) */
+
+    return system_hashed_ansi_string_create(body_string.c_str() );
+}
+
+/** Please see header for specification */
 PUBLIC EMERALD_API system_hashed_ansi_string system_hashed_ansi_string_create_substring(const char* string,
                                                                                         uint32_t    start_offset,
                                                                                         uint32_t    length)

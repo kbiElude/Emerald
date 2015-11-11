@@ -66,6 +66,11 @@ PUBLIC EMERALD_API void ogl_program_ub_get_property(const ogl_program_ub    ub,
                                                     ogl_program_ub_property property,
                                                     void*                   out_result);
 
+/** TODO */
+PUBLIC EMERALD_API void ogl_program_ub_get_variable_by_name(ogl_program_ub               ub,
+                                                            system_hashed_ansi_string    name,
+                                                            const ogl_program_variable** out_variable_ptr);
+
 /** TODO
  *
  *  Internal use only.

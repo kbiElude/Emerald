@@ -247,6 +247,7 @@ GLuint           _vao_id                                                = -1;
 
 /** TODO */
 static void _stage_particle_step_draw(ogl_context context,
+                                      uint32_t    frame_index,
                                       system_time time,
                                       const int*  rendering_area_px_topdown,
                                       void*       not_used)
@@ -314,6 +315,7 @@ static void _stage_particle_step_draw(ogl_context context,
 
 /** TODO */
 static void _stage_particle_step_init(ogl_context context,
+                                      uint32_t    frame_index,
                                       system_time time,
                                       const int*  rendering_area_px_topdown,
                                       void*       not_used)
@@ -423,6 +425,7 @@ static void _stage_particle_step_init(ogl_context context,
 
 /** TODO */
 static void _stage_particle_step_update(ogl_context context,
+                                        uint32_t    frame_index,
                                         system_time time,
                                         const int*  rendering_area_px_topdown,
                                         void*       not_used)
@@ -567,12 +570,12 @@ PUBLIC RENDERING_CONTEXT_CALL void stage_particle_init(ogl_context  context,
     GLuint                      draw_program_gl_id         = 0;
 
     _particle_draw_fshader = ogl_shader_create (context,
-                                                SHADER_TYPE_FRAGMENT,
+                                                RAL_SHADER_TYPE_FRAGMENT,
                                                 system_hashed_ansi_string_create("particle draw fragment") );
     _particle_draw_program = ogl_program_create(context,
                                                 system_hashed_ansi_string_create("particle draw") );
     _particle_draw_vshader = ogl_shader_create (context,
-                                                SHADER_TYPE_VERTEX,
+                                                RAL_SHADER_TYPE_VERTEX,
                                                 system_hashed_ansi_string_create("particle draw vertex") );
 
     ogl_shader_set_body(_particle_draw_fshader,
@@ -657,7 +660,7 @@ PUBLIC RENDERING_CONTEXT_CALL void stage_particle_init(ogl_context  context,
     _particle_generate1_program = ogl_program_create(context,
                                                      system_hashed_ansi_string_create("particle generate") );
     _particle_generate1_vshader = ogl_shader_create (context,
-                                                     SHADER_TYPE_VERTEX,
+                                                     RAL_SHADER_TYPE_VERTEX,
                                                      system_hashed_ansi_string_create("particle generate") );
     generate1_program_gl_id     = ogl_program_get_id(_particle_generate1_program);
 
@@ -731,7 +734,7 @@ PUBLIC RENDERING_CONTEXT_CALL void stage_particle_init(ogl_context  context,
     _particle_generate2_program = ogl_program_create(context,
                                                      system_hashed_ansi_string_create("particle generate 2") );
     _particle_generate2_vshader = ogl_shader_create (context,
-                                                     SHADER_TYPE_VERTEX,
+                                                     RAL_SHADER_TYPE_VERTEX,
                                                      system_hashed_ansi_string_create("particle generate 2") );
     generate2_program_gl_id     = ogl_program_get_id(_particle_generate2_program);
 
@@ -767,7 +770,7 @@ PUBLIC RENDERING_CONTEXT_CALL void stage_particle_init(ogl_context  context,
     _particle_update_program = ogl_program_create(context,
                                                   system_hashed_ansi_string_create("particle update") );
     _particle_update_vshader = ogl_shader_create (context,
-                                                  SHADER_TYPE_VERTEX,
+                                                  RAL_SHADER_TYPE_VERTEX,
                                                   system_hashed_ansi_string_create("particle update") );
 
     /* Set up particle update vshader object */

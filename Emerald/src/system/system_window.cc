@@ -1599,14 +1599,16 @@ PUBLIC void system_window_execute_callback_funcs(system_window               win
 
                         case SYSTEM_WINDOW_CALLBACK_FUNC_WINDOW_CLOSED:
                         {
-                            result = ((PFNWINDOWWINDOWCLOSEDCALLBACKPROC) callback_ptr->pfn_callback)(window);
+                            result = ((PFNWINDOWWINDOWCLOSEDCALLBACKPROC) callback_ptr->pfn_callback)(window,
+                                                                                                      callback_ptr->user_arg);
 
                             break;
                         }
 
                         case SYSTEM_WINDOW_CALLBACK_FUNC_WINDOW_CLOSING:
                         {
-                            ((PFNWINDOWWINDOWCLOSINGCALLBACKPROC) callback_ptr->pfn_callback)(window);
+                            ((PFNWINDOWWINDOWCLOSINGCALLBACKPROC) callback_ptr->pfn_callback)(window,
+                                                                                              callback_ptr->user_arg);
 
                             break;
                         }

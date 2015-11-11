@@ -1313,7 +1313,7 @@ PUBLIC EMERALD_API shaders_fragment_uber shaders_fragment_uber_create(ogl_contex
     {
         /* Not a recognized shader name. Create one */
         embedded_shader = ogl_shader_create(context,
-                                            SHADER_TYPE_FRAGMENT,
+                                            RAL_SHADER_TYPE_FRAGMENT,
                                             ogl_shader_instance_name);
 
         ASSERT_DEBUG_SYNC(embedded_shader != NULL,
@@ -1328,7 +1328,7 @@ PUBLIC EMERALD_API shaders_fragment_uber shaders_fragment_uber_create(ogl_contex
     }
 
     /* Initialize the shader constructor */
-    shader_constructor = ogl_shader_constructor_create(SHADER_TYPE_FRAGMENT,
+    shader_constructor = ogl_shader_constructor_create(RAL_SHADER_TYPE_FRAGMENT,
                                                        system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(name),
                                                                                                                " fragment uber"));
 

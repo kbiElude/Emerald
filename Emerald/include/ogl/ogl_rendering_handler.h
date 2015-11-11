@@ -19,11 +19,41 @@ typedef enum
      * assigned to the renering handler instance. */
     OGL_RENDERING_HANDLER_PROPERTY_ASPECT_RATIO,
 
+    /* not settable, system_event.
+     *
+     * System event which remains set while rendering playback is in progress.
+     *
+     * DO NOT reset or set! This event is exposed only as a mean to efficiently
+     * block a thread until the playback starts.
+     */
+    OGL_RENDERING_HANDLER_PROPERTY_PLAYBACK_IN_PROGRESS_EVENT,
+
+    /* not settable, system_event.
+     *
+     * System event which is signaled whenever rendering playback is NOT in progress.
+     *
+     * DO NOT reset or set! This event is exposed only as a mean to efficiently
+     * block a thread until the playback stops.
+     */
+    OGL_RENDERING_HANDLER_PROPERTY_PLAYBACK_STOPPED_EVENT,
+
     /* not settable, ogl_rendering_handler_playback_status */
     OGL_RENDERING_HANDLER_PROPERTY_PLAYBACK_STATUS,
 
     /* not settable, ogl_rendering_handler_policy */
     OGL_RENDERING_HANDLER_PROPERTY_POLICY,
+
+    /* settable, PFNOGLRENDERINGHANDLERRENDERINGCALLBACK.
+     *
+     * Rendering call-back to use when play-back is in progress.
+     */
+    OGL_RENDERING_HANDLER_PROPERTY_RENDERING_CALLBACK,
+
+    /* settable, void*.
+     *
+     * Rendering call-back user argument.
+     */
+    OGL_RENDERING_HANDLER_PROPERTY_RENDERING_CALLBACK_USER_ARGUMENT,
 
     /* settable, bool.
      *
@@ -92,7 +122,8 @@ PUBLIC EMERALD_API bool ogl_rendering_handler_play(ogl_rendering_handler renderi
 PUBLIC EMERALD_API bool ogl_rendering_handler_request_callback_from_context_thread(ogl_rendering_handler                      rendering_handler,
                                                                                    PFNOGLCONTEXTCALLBACKFROMCONTEXTTHREADPROC pfn_callback_proc,
                                                                                    void*                                      user_arg,
-                                                                                   bool                                       block_until_available = true);
+                                                                                   bool                                       swap_buffers_afterward = false,
+                                                                                   bool                                       block_until_available  = true);
 
 /** TODO */
 PUBLIC EMERALD_API void ogl_rendering_handler_set_property(ogl_rendering_handler          rendering_handler,

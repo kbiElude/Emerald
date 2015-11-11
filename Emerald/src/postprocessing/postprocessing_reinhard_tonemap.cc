@@ -139,7 +139,7 @@ PRIVATE void _create_callback(ogl_context context,
     entry_points->pGLBindTexture  (GL_TEXTURE_2D,
                                    data->data_ptr->yxy_texture);
     entry_points->pGLTexStorage2D (GL_TEXTURE_2D,
-                                   log2_uint32(std::max(data->data_ptr->texture_width, data->data_ptr->texture_height) ),
+                                   system_math_other_log2_uint32(std::max(data->data_ptr->texture_width, data->data_ptr->texture_height) ),
                                    GL_RGB32F,
                                    data->data_ptr->texture_width,
                                    data->data_ptr->texture_height);
@@ -230,7 +230,7 @@ PRIVATE void _create_callback(ogl_context context,
 
     /* Create operator fragment shader */
     data->data_ptr->operator_fragment_shader = ogl_shader_create(context,
-                                                                 SHADER_TYPE_FRAGMENT,
+                                                                 RAL_SHADER_TYPE_FRAGMENT,
                                                                  system_hashed_ansi_string_create_by_merging_two_strings("Reinhard Tonemap operator ",
                                                                                                                          system_hashed_ansi_string_get_buffer(data->name) ));
 

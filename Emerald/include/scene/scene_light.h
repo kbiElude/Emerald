@@ -115,18 +115,18 @@ typedef enum
     /* Settable, scene_light_shadow_map_filtering. */
     SCENE_LIGHT_PROPERTY_SHADOW_MAP_FILTERING,
 
-    /* Settable, ogl_texture_internalformat.
+    /* Settable, ral_texture_format.
      *
      * Stores internalformat of draw buffers used during SM generation pass.
      * Such texture is currently only generated for VSM SM algorithm.
      */
-    SCENE_LIGHT_PROPERTY_SHADOW_MAP_INTERNALFORMAT_COLOR,
+    SCENE_LIGHT_PROPERTY_SHADOW_MAP_FORMAT_COLOR,
 
-    /* Settable, ogl_texture_internalformat.
+    /* Settable, ral_texture_format.
      *
      * Stores internalformat of the depth texture used during SM generation pass.
      */
-     SCENE_LIGHT_PROPERTY_SHADOW_MAP_INTERNALFORMAT_DEPTH,
+     SCENE_LIGHT_PROPERTY_SHADOW_MAP_FORMAT_DEPTH,
 
     /* Not settable, system_matrix4x4.
      *

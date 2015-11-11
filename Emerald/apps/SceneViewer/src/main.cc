@@ -79,11 +79,13 @@ void _rendering_handler_callback(ogl_context context,
     /* Render the scene */
     ogl_pipeline_draw_stage(state_get_pipeline(),
                             state_get_pipeline_stage_id(),
+                            n_frames_rendered,
                             frame_time,
                             rendering_area_px_topdown);
 }
 
 PUBLIC void _render_scene(ogl_context context,
+                          uint32_t    frame_index,
                           system_time time,
                           const int*  rendering_area_px_topdown,
                           void*       not_used)
@@ -334,14 +336,16 @@ void _rendering_rbm_callback_handler(system_window           window,
     system_event_set(_window_closed_event);
 }
 
-bool _rendering_window_closed_callback_handler(system_window window)
+bool _rendering_window_closed_callback_handler(system_window window,
+                                               void*         unused)
 {
     system_event_set(_window_closed_event);
 
     return true;
 }
 
-void _rendering_window_closing_callback_handler(system_window window)
+void _rendering_window_closing_callback_handler(system_window window,
+                                                void*         unused)
 {
     ui_deinit   ();
     state_deinit();

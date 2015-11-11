@@ -8,6 +8,7 @@
 #include "audio/audio_device.h"
 #include "audio/audio_stream.h"
 #include "system/system_assertions.h"
+#include "system/system_callback_manager.h"
 #include "system/system_file_serializer.h"
 #include "system/system_log.h"
 #include "system/system_time.h"
@@ -21,7 +22,9 @@ typedef enum
 
 typedef struct _audio_stream
 {
+    system_callback_manager       callback_manager;
     audio_device                  device;
+    HSYNC                         finished_playing_sync_event;
     bool                          is_playing;
     _audio_stream_playback_status playback_status;
     system_file_serializer        serializer;
@@ -33,17 +36,25 @@ typedef struct _audio_stream
     explicit _audio_stream(audio_device           in_device,
                            system_file_serializer in_serializer)
     {
-        device          = in_device;
-        is_playing      = false;
-        playback_status = AUDIO_STREAM_PLAYBACK_STATUS_STOPPED;
-        serializer      = in_serializer;
-        stream          = (HSTREAM) NULL;
+        callback_manager = system_callback_manager_create( (_callback_id) AUDIO_STREAM_CALLBACK_ID_COUNT);
+        device           = in_device;
+        is_playing       = false;
+        playback_status  = AUDIO_STREAM_PLAYBACK_STATUS_STOPPED;
+        serializer       = in_serializer;
+        stream           = (HSTREAM) NULL;
 
         system_file_serializer_retain(in_serializer);
     }
 
     ~_audio_stream()
     {
+        if (callback_manager != NULL)
+        {
+            system_callback_manager_release(callback_manager);
+
+            callback_manager = NULL;
+        }
+
         if (serializer != NULL)
         {
             system_file_serializer_release(serializer);
@@ -66,6 +77,24 @@ REFCOUNT_INSERT_IMPLEMENTATION(audio_stream,
                                audio_stream,
                               _audio_stream);
 
+
+/** TODO */
+PRIVATE void CALLBACK _audio_stream_on_stream_finished_playing(HSYNC stream,
+                                                               DWORD channel,
+                                                               DWORD data,
+                                                               void* user_arg)
+{
+    _audio_stream* stream_ptr = (_audio_stream*) user_arg;
+
+    /* When we reach this entry-point, it means the audio stream has finished playing.
+     * Call back any subscribers which have registered for this event. */
+    ASSERT_DEBUG_SYNC(stream_ptr != NULL,
+                      "NULL audio_stream instance reported for the \"on stream finished playing\" BASS sync event");
+
+    system_callback_manager_call_back(stream_ptr->callback_manager,
+                                      AUDIO_STREAM_CALLBACK_ID_FINISHED_PLAYING,
+                                      stream_ptr);
+}
 
 /** TODO */
 PRIVATE void _audio_stream_release(void* stream)
@@ -137,6 +166,20 @@ PUBLIC EMERALD_API audio_stream audio_stream_create(audio_device           devic
         goto end_error;
     }
 
+    /* Register for "stopped playing" call-backs. We need to expose this event to the users, so that
+     * demo applications can quit when the sound-track finishes. */
+    if ( (new_audio_stream_ptr->finished_playing_sync_event = BASS_ChannelSetSync(new_audio_stream_ptr->stream,
+                                                                                  BASS_SYNC_END | BASS_SYNC_MIXTIME,
+                                                                                  NULL, /* param - not used */
+                                                                                  _audio_stream_on_stream_finished_playing,
+                                                                                  new_audio_stream_ptr)) == NULL)
+    {
+        ASSERT_ALWAYS_SYNC(false,
+                          "Failed to set up a BASS_SYNC_MIXTIME synchronizer");
+
+        goto end_error;
+    }
+
     /* Register the instance in the object manager registry */
     snprintf(temp_buffer,
              sizeof(temp_buffer),
@@ -164,6 +207,60 @@ end_error:
 }
 
 /** Please see header for spec */
+PUBLIC EMERALD_API bool audio_stream_get_fft_averages(audio_stream stream,
+                                                      uint32_t     n_result_frequency_bands,
+                                                      float*       out_band_fft_data_ptr)
+{
+    float          fft_data[1024];
+    float*         fft_data_traveller_ptr = NULL;
+    bool           result                 = false;
+    _audio_stream* stream_ptr             = (_audio_stream*) stream;
+
+    ASSERT_DEBUG_SYNC( n_result_frequency_bands      <= 64 &&
+                      (n_result_frequency_bands % 2) == 0,
+                      "Invalid number of frequency bands was requested.");
+    ASSERT_DEBUG_SYNC(stream_ptr != NULL,
+                      "Input audio_stream instance is NULL");
+
+    /* Retrieve FFT data */
+    if ( (BASS_ChannelGetData(stream_ptr->stream,
+                              fft_data,
+                              BASS_DATA_FFT2048)) <= 0)
+    {
+        ASSERT_DEBUG_SYNC(false,
+                          "Could not retrieve FFT data");
+
+        goto end;
+    }
+
+    /* Group frequency bands into averages */
+    memset(out_band_fft_data_ptr,
+           0,
+           sizeof(float) * n_result_frequency_bands);
+
+    fft_data_traveller_ptr = fft_data;
+
+    for (uint32_t n_band = 0;
+                  n_band < n_result_frequency_bands;
+                ++n_band)
+    {
+        for (uint32_t n_fraction = 0;
+                      n_fraction < 128 /* number of float vals return by BASS */ / n_result_frequency_bands;
+                    ++n_fraction)
+        {
+            out_band_fft_data_ptr[n_band] += *(fft_data_traveller_ptr++);
+        }
+
+        out_band_fft_data_ptr[n_band] /= float(n_result_frequency_bands);
+    }
+
+    result = true;
+
+end:
+    return result;
+}
+
+/** Please see header for spec */
 PUBLIC EMERALD_API void audio_stream_get_property(audio_stream          stream,
                                                   audio_stream_property property,
                                                   void*                 out_result)
@@ -178,6 +275,13 @@ PUBLIC EMERALD_API void audio_stream_get_property(audio_stream          stream,
         case AUDIO_STREAM_PROPERTY_AUDIO_DEVICE:
         {
             *(audio_device*) out_result = stream_ptr->device;
+
+            break;
+        }
+
+        case AUDIO_STREAM_PROPERTY_CALLBACK_MANAGER:
+        {
+            *(system_callback_manager*) out_result = stream_ptr->callback_manager;
 
             break;
         }
@@ -273,6 +377,16 @@ PUBLIC EMERALD_API bool audio_stream_play(audio_stream stream,
             result = false;
             goto end;
         }
+
+        if (BASS_ChannelUpdate(stream_ptr->stream,
+                               0) /* length */ == FALSE)
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Could not update stream channel contents");
+
+            result = false;
+            goto end;
+        }
     } /* if (start_time_stream_pos != -1) */
 
     if (result)
@@ -280,6 +394,60 @@ PUBLIC EMERALD_API bool audio_stream_play(audio_stream stream,
         stream_ptr->is_playing = true;
     }
 
+end:
+    return result;
+}
+
+/** Please see header for spec */
+PUBLIC EMERALD_API bool audio_stream_rewind(audio_stream stream,
+                                            system_time  new_time)
+{
+    double         new_time_bass       = 0.0;
+    uint32_t       new_time_msec       = 0;
+    QWORD          new_time_stream_pos = 0;
+    bool           result              = false;
+    _audio_stream* stream_ptr          = (_audio_stream*) stream;
+
+    /* Sanity checks */
+    ASSERT_DEBUG_SYNC(stream != NULL,
+                      "Input audio_stream instance is NULL");
+    ASSERT_DEBUG_SYNC(stream_ptr->is_playing,
+                      "Invalid audio_stream_play() call: Stream is already playing");
+
+    /* Convert the input time to BASS stream position */
+    system_time_get_msec_for_time(new_time,
+                                 &new_time_msec);
+
+    new_time_bass       = double(new_time_msec) / 1000.0;
+    new_time_stream_pos = BASS_ChannelSeconds2Bytes(stream_ptr->stream,
+                                                    new_time_bass);
+
+    ASSERT_DEBUG_SYNC(new_time_stream_pos != -1,
+                      "Could not determine stream position for the requested playback time");
+
+    result = audio_device_bind_to_thread(stream_ptr->device);
+
+    if (!result)
+    {
+        ASSERT_DEBUG_SYNC(false,
+                          "Could not bind the audio device to the running thread.");
+
+        goto end;
+    } /* if (!result) */
+
+    /* Change the playback position */
+    if (BASS_ChannelSetPosition(stream_ptr->stream,
+                                new_time_stream_pos,
+                                BASS_POS_BYTE) == FALSE)
+    {
+        /* We can hit this location if user tries to rewind "past" the available raw data buffer.
+         * Log a fatal error but do not throw an assertion failure. */
+        LOG_FATAL("Could not update audio stream playback time (invalid rewind request?)");
+
+        goto end;
+    }
+
+    result = true;
 end:
     return result;
 }

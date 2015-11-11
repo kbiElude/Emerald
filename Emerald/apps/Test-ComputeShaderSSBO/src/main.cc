@@ -137,7 +137,7 @@ void _rendering_handler(ogl_context context,
 
         /* Set up the compute shader object */
         ogl_shader cs = ogl_shader_create(context,
-                                          SHADER_TYPE_COMPUTE,
+                                          RAL_SHADER_TYPE_COMPUTE,
                                           system_hashed_ansi_string_create("Compute shader object") );
 
         ogl_shader_set_body(cs,
@@ -164,9 +164,9 @@ void _rendering_handler(ogl_context context,
          */
         _texture = ogl_texture_create_and_initialize(_context,
                                                      system_hashed_ansi_string_create("Test texture"),
-                                                     OGL_TEXTURE_DIMENSIONALITY_GL_TEXTURE_2D,
+                                                     RAL_TEXTURE_TYPE_2D,
                                                      1, /* n_mipmaps */
-                                                     GL_RGBA8,
+                                                     RAL_TEXTURE_FORMAT_RGBA8_UNORM,
                                                      _window_size[0],
                                                      _window_size[1],
                                                      1,      /* base_mipmap_depth */
@@ -249,12 +249,14 @@ bool _rendering_lbm_callback_handler(system_window           window,
     return true;
 }
 
-PRIVATE void _window_closed_callback_handler(system_window window)
+PRIVATE void _window_closed_callback_handler(system_window window,
+                                             void*         unused)
 {
     system_event_set(_window_closed_event);
 }
 
-PRIVATE void _window_closing_callback_handler(system_window window)
+PRIVATE void _window_closing_callback_handler(system_window window,
+                                              void*         unused)
 {
     const ogl_context_gl_entrypoints* entry_points = NULL;
 

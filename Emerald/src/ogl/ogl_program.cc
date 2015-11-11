@@ -1370,7 +1370,7 @@ PRIVATE void _ogl_program_save_shader_sources(_ogl_program* program_ptr)
     {
         ogl_shader                current_shader = NULL;
         system_hashed_ansi_string shader_body    = NULL;
-        ogl_shader_type           shader_type    = SHADER_TYPE_UNKNOWN;
+        ral_shader_type           shader_type    = RAL_SHADER_TYPE_UNKNOWN;
 
         if (!system_resizable_vector_get_element_at(program_ptr->attached_shaders,
                                                     n_shader,
@@ -1393,28 +1393,28 @@ PRIVATE void _ogl_program_save_shader_sources(_ogl_program* program_ptr)
 
         switch (shader_type)
         {
-            case SHADER_TYPE_COMPUTE:
+            case RAL_SHADER_TYPE_COMPUTE:
             {
                 shader_type_string = "Compute Shader";
 
                 break;
             }
 
-            case SHADER_TYPE_FRAGMENT:
+            case RAL_SHADER_TYPE_FRAGMENT:
             {
                 shader_type_string = "Fragment Shader";
 
                 break;
             }
 
-            case SHADER_TYPE_GEOMETRY:
+            case RAL_SHADER_TYPE_GEOMETRY:
             {
                 shader_type_string = "Geometry Shader";
 
                 break;
             }
 
-            case SHADER_TYPE_VERTEX:
+            case RAL_SHADER_TYPE_VERTEX:
             {
                 shader_type_string = "Vertex Shader";
 

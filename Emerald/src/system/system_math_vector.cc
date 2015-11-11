@@ -43,6 +43,12 @@ PUBLIC EMERALD_API float system_math_vector_dot3(const float* a,
 }
 
 /* Please see header for description */
+PUBLIC EMERALD_API float system_math_vector_length2(const float* a)
+{
+    return sqrt(a[0] * a[0] + a[1] * a[1]);
+}
+
+/* Please see header for description */
 PUBLIC EMERALD_API float system_math_vector_length3(const float* a)
 {
     return sqrt(a[0] * a[0] + a[1] * a[1] + a[2] * a[2]);
@@ -76,6 +82,23 @@ PUBLIC EMERALD_API void system_math_vector_mul3_float(const float* a,
     result[0] = a[0] * b;
     result[1] = a[1] * b;
     result[2] = a[2] * b;
+}
+
+/** Please see header for description */
+PUBLIC EMERALD_API void system_math_vector_normalize2(const float* a,
+                                                            float* result)
+{
+    float len = system_math_vector_length2(a);
+
+    if (len >= epsilon)
+    {
+        result[0] = a[0] / len;
+        result[1] = a[1] / len;
+    }
+    else
+    {
+        LOG_ERROR("system_math_vector_normalize2() called for a vector of length 0.");
+    }
 }
 
 /** Please see header for description */

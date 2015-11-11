@@ -9,6 +9,7 @@
 #include "ogl/ogl_primitive_renderer.h"
 #include "ogl/ogl_program.h"
 #include "ogl/ogl_shader.h"
+#include "raGL/raGL_utils.h"
 #include "system/system_assertions.h"
 #include "system/system_critical_section.h"
 #include "system/system_hashed_ansi_string.h"
@@ -55,7 +56,7 @@ typedef struct _ogl_primitive_renderer_dataset
     GLfloat            color_data[4];
     unsigned int       draw_first;
     unsigned int       instance_id;
-    ogl_primitive_type primitive_type;
+    ral_primitive_type primitive_type;
     unsigned int       n_vertices;
     unsigned int       n_vertices_allocated;
     GLfloat*           vertex_data;
@@ -66,7 +67,7 @@ typedef struct _ogl_primitive_renderer_dataset
         instance_id          = -1;
         n_vertices           = 0;
         n_vertices_allocated = 0;
-        primitive_type       = OGL_PRIMITIVE_TYPE_UNDEFINED;
+        primitive_type       = RAL_PRIMITIVE_TYPE_UNKNOWN;
         vertex_data          = NULL;
 
         memset(color_data,
@@ -225,7 +226,7 @@ PRIVATE void _ogl_primitive_renderer_draw_rendering_thread_callback(ogl_context 
                                                    renderer_ptr->draw_dataset_ids[n],
                                                   &dataset_ptr) )
         {
-            entry_points->pGLDrawArraysInstancedBaseInstance(dataset_ptr->primitive_type,
+            entry_points->pGLDrawArraysInstancedBaseInstance(raGL_utils_get_ogl_primive_type_for_ral_primitive_type(dataset_ptr->primitive_type),
                                                              dataset_ptr->draw_first,
                                                              dataset_ptr->n_vertices,
                                                              1, /* primcount */
@@ -255,11 +256,11 @@ PRIVATE void _ogl_primitive_renderer_init_program(_ogl_primitive_renderer* rende
 
     /* Prepare the objects */
     ogl_shader fs = ogl_shader_create(renderer_ptr->context,
-                                      SHADER_TYPE_FRAGMENT,
+                                      RAL_SHADER_TYPE_FRAGMENT,
                                       system_hashed_ansi_string_create_by_merging_two_strings("Line strip renderer FS ",
                                                                                               system_hashed_ansi_string_get_buffer(renderer_ptr->name) ));
     ogl_shader vs = ogl_shader_create(renderer_ptr->context,
-                                      SHADER_TYPE_VERTEX,
+                                      RAL_SHADER_TYPE_VERTEX,
                                       system_hashed_ansi_string_create_by_merging_two_strings("Line strip renderer VS ",
                                                                                               system_hashed_ansi_string_get_buffer(renderer_ptr->name) ));
 
@@ -592,7 +593,7 @@ PRIVATE void _ogl_primitive_renderer_update_vao(ogl_context               contex
 
 /** Please see header for specification */
 PUBLIC EMERALD_API ogl_primitive_renderer_dataset_id ogl_primitive_renderer_add_dataset(ogl_primitive_renderer renderer,
-                                                                                        ogl_primitive_type     primitive_type,
+                                                                                        ral_primitive_type     primitive_type,
                                                                                         unsigned int           n_vertices,
                                                                                         const float*           vertex_data,
                                                                                         const float*           rgb)

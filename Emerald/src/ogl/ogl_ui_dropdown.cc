@@ -431,25 +431,25 @@ PRIVATE void _ogl_ui_dropdown_init_program(ogl_ui            ui,
     /* Create all objects */
     ogl_context context                   = ogl_ui_get_context(ui);
     ogl_shader  fragment_shader_bg        = ogl_shader_create(context,
-                                                              SHADER_TYPE_FRAGMENT,
+                                                              RAL_SHADER_TYPE_FRAGMENT,
                                                               system_hashed_ansi_string_create("UI dropdown fragment shader (bg)") );
     ogl_shader  fragment_shader_label_bg  = ogl_shader_create(context,
-                                                              SHADER_TYPE_FRAGMENT,
+                                                              RAL_SHADER_TYPE_FRAGMENT,
                                                               system_hashed_ansi_string_create("UI dropdown fragment shader (label bg)") );
     ogl_shader  fragment_shader_separator = ogl_shader_create(context,
-                                                              SHADER_TYPE_FRAGMENT,
+                                                              RAL_SHADER_TYPE_FRAGMENT,
                                                               system_hashed_ansi_string_create("UI dropdown framgent shader (separator)") );
     ogl_shader  fragment_shader_slider    = ogl_shader_create(context,
-                                                              SHADER_TYPE_FRAGMENT,
+                                                              RAL_SHADER_TYPE_FRAGMENT,
                                                               system_hashed_ansi_string_create("UI dropdown framgent shader (slider)") );
     ogl_shader  fragment_shader           = ogl_shader_create(context,
-                                                              SHADER_TYPE_FRAGMENT,
+                                                              RAL_SHADER_TYPE_FRAGMENT,
                                                               system_hashed_ansi_string_create("UI dropdown fragment shader") );
     ogl_shader  vertex_shader             = ogl_shader_create(context,
-                                                              SHADER_TYPE_VERTEX,
+                                                              RAL_SHADER_TYPE_VERTEX,
                                                               system_hashed_ansi_string_create("UI dropdown vertex shader") );
     ogl_shader  vertex_shader_separator   = ogl_shader_create(context,
-                                                              SHADER_TYPE_VERTEX,
+                                                              RAL_SHADER_TYPE_VERTEX,
                                                               system_hashed_ansi_string_create("UI dropdown vertex shader (separator)") );
 
     dropdown_ptr->program_bg        = ogl_program_create(context,

@@ -6,6 +6,7 @@
 #include "shared.h"
 #include "gfx/gfx_rgbe.h"
 #include "gfx/gfx_image.h"
+#include "ral/ral_types.h"
 #include "system/system_assertions.h"
 #include "system/system_file_enumerator.h"
 #include "system/system_file_serializer.h"
@@ -366,11 +367,12 @@ PRIVATE gfx_image _gfx_rgbe_shared_load_handler(system_hashed_ansi_string name,
         goto end_with_dealloc;
     }
 
+    /** TODO: Wait, under some back-ends we could actually pass this natively.. Right? */
     gfx_image_add_mipmap(result,
                          width,
                          height,
                          1,
-                         GL_RGB32F,
+                         RAL_TEXTURE_FORMAT_RGB32_FLOAT,
                          false,
                          (unsigned char*) data_buffer,
                          data_buffer_size,

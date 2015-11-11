@@ -247,6 +247,7 @@ const char* julia_vertex_shader_code = "#version 430 core\n"
 
 /** TODO */
 static void _stage_step_julia_execute(ogl_context context,
+                                      uint32_t    frame_index,
                                       system_time time,
                                       const int*  rendering_area_px_topdown,
                                       void*       not_used)
@@ -419,10 +420,10 @@ PUBLIC void stage_step_julia_init(ogl_context  context,
                                          system_hashed_ansi_string_create("julia program"),
                                          OGL_PROGRAM_SYNCABLE_UBS_MODE_ENABLE_GLOBAL);
     fragment_shader = ogl_shader_create (context,
-                                         SHADER_TYPE_FRAGMENT,
+                                         RAL_SHADER_TYPE_FRAGMENT,
                                          system_hashed_ansi_string_create("julia fragment") );
     vertex_shader   = ogl_shader_create (context,
-                                         SHADER_TYPE_VERTEX,
+                                         RAL_SHADER_TYPE_VERTEX,
                                          system_hashed_ansi_string_create("julia vertex") );
 
     ogl_shader_set_body(fragment_shader,

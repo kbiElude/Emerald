@@ -9,6 +9,7 @@
 #define PROCEDURAL_TYPES_H
 
 DECLARE_HANDLE(procedural_mesh_box);
+DECLARE_HANDLE(procedural_mesh_circle);
 DECLARE_HANDLE(procedural_mesh_sphere);
 DECLARE_HANDLE(procedural_uv_generator);
 

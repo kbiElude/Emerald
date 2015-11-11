@@ -19,6 +19,10 @@ DECLARE_HANDLE(ogl_primitive_renderer);
 
 typedef unsigned int ogl_primitive_renderer_dataset_id;
 
+/* Enumerator describing native GL primitive types.
+ *
+ * NOTE: Client application should always use RAL enums!
+ */
 typedef enum
 {
     OGL_PRIMITIVE_TYPE_LINE_LOOP                = GL_LINE_LOOP,
@@ -60,9 +64,6 @@ DECLARE_HANDLE(ogl_context_vaos);
 DECLARE_HANDLE(ogl_vao);
 
 typedef                 PFNGLACTIVETEXTUREPROC                          PFNWRAPPEDGLACTIVETEXTUREPROC;
-typedef                 PFNGLCOMPRESSEDTEXIMAGE1DPROC                   PFNWRAPPEDGLCOMPRESSEDTEXIMAGE1DPROC;
-typedef                 PFNGLCOMPRESSEDTEXIMAGE2DPROC                   PFNWRAPPEDGLCOMPRESSEDTEXIMAGE2DPROC;
-typedef                 PFNGLCOMPRESSEDTEXIMAGE3DPROC                   PFNWRAPPEDGLCOMPRESSEDTEXIMAGE3DPROC;
 typedef                 PFNGLCOMPRESSEDTEXSUBIMAGE1DPROC                PFNWRAPPEDGLCOMPRESSEDTEXSUBIMAGE1DPROC;
 typedef                 PFNGLCOMPRESSEDTEXSUBIMAGE2DPROC                PFNWRAPPEDGLCOMPRESSEDTEXSUBIMAGE2DPROC;
 typedef                 PFNGLCOMPRESSEDTEXSUBIMAGE3DPROC                PFNWRAPPEDGLCOMPRESSEDTEXSUBIMAGE3DPROC;
@@ -300,18 +301,20 @@ typedef struct
     GLint                      location;
 } ogl_program_variable;
 
-/** Enumerator that describes type of a given shader */
+/** Enumerator that describes type of a given shader.
+ *
+ *  NOTE: Client apps should always use RAL shader stage enums! */
 typedef enum
 {
-    SHADER_TYPE_COMPUTE                 = GL_COMPUTE_SHADER,
-    SHADER_TYPE_FRAGMENT                = GL_FRAGMENT_SHADER,
-    SHADER_TYPE_GEOMETRY                = GL_GEOMETRY_SHADER,
-    SHADER_TYPE_TESSELLATION_CONTROL    = GL_TESS_CONTROL_SHADER,
-    SHADER_TYPE_TESSELLATION_EVALUATION = GL_TESS_EVALUATION_SHADER,
-    SHADER_TYPE_VERTEX                  = GL_VERTEX_SHADER,
+    OGL_SHADER_TYPE_COMPUTE                 = GL_COMPUTE_SHADER,
+    OGL_SHADER_TYPE_FRAGMENT                = GL_FRAGMENT_SHADER,
+    OGL_SHADER_TYPE_GEOMETRY                = GL_GEOMETRY_SHADER,
+    OGL_SHADER_TYPE_TESSELLATION_CONTROL    = GL_TESS_CONTROL_SHADER,
+    OGL_SHADER_TYPE_TESSELLATION_EVALUATION = GL_TESS_EVALUATION_SHADER,
+    OGL_SHADER_TYPE_VERTEX                  = GL_VERTEX_SHADER,
 
     /* Always last */
-    SHADER_TYPE_UNKNOWN
+    OGL_SHADER_TYPE_UNKNOWN
 } ogl_shader_type;
 
 /** Enumerator that describes current rendering handler's playback status */
@@ -350,22 +353,24 @@ typedef enum
     OGL_TEXTURE_BINDING_POINT_COUNT
 } ogl_texture_binding_point;
 
-/* Enumerator that describes OpenGL texture dimensionality */
+/* Enumerator that describes general OpenGL texture target.
+ *
+ * NOTE: Clients should always use RAL texture type instead! */
 typedef enum
 {
-    OGL_TEXTURE_DIMENSIONALITY_GL_TEXTURE_1D                   = GL_TEXTURE_1D,
-    OGL_TEXTURE_DIMENSIONALITY_GL_TEXTURE_1D_ARRAY             = GL_TEXTURE_1D_ARRAY,
-    OGL_TEXTURE_DIMENSIONALITY_GL_TEXTURE_2D                   = GL_TEXTURE_2D,
-    OGL_TEXTURE_DIMENSIONALITY_GL_TEXTURE_2D_ARRAY             = GL_TEXTURE_2D_ARRAY,
-    OGL_TEXTURE_DIMENSIONALITY_GL_TEXTURE_2D_MULTISAMPLE       = GL_TEXTURE_2D_MULTISAMPLE,
-    OGL_TEXTURE_DIMENSIONALITY_GL_TEXTURE_2D_MULTISAMPLE_ARRAY = GL_TEXTURE_2D_MULTISAMPLE_ARRAY,
-    OGL_TEXTURE_DIMENSIONALITY_GL_TEXTURE_3D                   = GL_TEXTURE_3D,
-    OGL_TEXTURE_DIMENSIONALITY_GL_TEXTURE_BUFFER               = GL_TEXTURE_BUFFER,
-    OGL_TEXTURE_DIMENSIONALITY_GL_TEXTURE_CUBE_MAP             = GL_TEXTURE_CUBE_MAP,
-    OGL_TEXTURE_DIMENSIONALITY_GL_TEXTURE_CUBE_MAP_ARRAY       = GL_TEXTURE_CUBE_MAP_ARRAY,
-    OGL_TEXTURE_DIMENSIONALITY_GL_TEXTURE_RECTANGLE            = GL_TEXTURE_RECTANGLE,
-    OGL_TEXTURE_DIMENSIONALITY_UNKNOWN                         = GL_NONE
-} ogl_texture_dimensionality;
+    OGL_TEXTURE_TARGET_GL_TEXTURE_1D                   = GL_TEXTURE_1D,
+    OGL_TEXTURE_TARGET_GL_TEXTURE_1D_ARRAY             = GL_TEXTURE_1D_ARRAY,
+    OGL_TEXTURE_TARGET_GL_TEXTURE_2D                   = GL_TEXTURE_2D,
+    OGL_TEXTURE_TARGET_GL_TEXTURE_2D_ARRAY             = GL_TEXTURE_2D_ARRAY,
+    OGL_TEXTURE_TARGET_GL_TEXTURE_2D_MULTISAMPLE       = GL_TEXTURE_2D_MULTISAMPLE,
+    OGL_TEXTURE_TARGET_GL_TEXTURE_2D_MULTISAMPLE_ARRAY = GL_TEXTURE_2D_MULTISAMPLE_ARRAY,
+    OGL_TEXTURE_TARGET_GL_TEXTURE_3D                   = GL_TEXTURE_3D,
+    OGL_TEXTURE_TARGET_GL_TEXTURE_BUFFER               = GL_TEXTURE_BUFFER,
+    OGL_TEXTURE_TARGET_GL_TEXTURE_CUBE_MAP             = GL_TEXTURE_CUBE_MAP,
+    OGL_TEXTURE_TARGET_GL_TEXTURE_CUBE_MAP_ARRAY       = GL_TEXTURE_CUBE_MAP_ARRAY,
+    OGL_TEXTURE_TARGET_GL_TEXTURE_RECTANGLE            = GL_TEXTURE_RECTANGLE,
+    OGL_TEXTURE_TARGET_UNKNOWN                         = GL_NONE
+} ogl_texture_target;
 
 /* Enumerator that describes OpenGL formats. */
 typedef enum
@@ -380,13 +385,30 @@ typedef enum
     OGL_TEXTURE_FORMAT_RGBA            = GL_RGBA
 } ogl_texture_format;
 
-/* Enumerator that describes OpenGL internalformats */
+/* Enumerator that describes OpenGL internalformats.
+ *
+ * NOTE: Only use in GL-specific paths! For API inter-compatibility, use RAL enums instead. */
 typedef enum
 {
-    OGL_TEXTURE_INTERNALFORMAT_GL_COMPRESSED_RED_RGTC1        = GL_COMPRESSED_RED_RGTC1,
-    OGL_TEXTURE_INTERNALFORMAT_GL_COMPRESSED_RG_RGTC2         = GL_COMPRESSED_RG_RGTC2,
-    OGL_TEXTURE_INTERNALFORMAT_GL_COMPRESSED_SIGNED_RED_RGTC1 = GL_COMPRESSED_SIGNED_RED_RGTC1,
-    OGL_TEXTURE_INTERNALFORMAT_GL_COMPRESSED_SIGNED_RG_RGTC2  = GL_COMPRESSED_SIGNED_RG_RGTC2,
+    OGL_TEXTURE_INTERNALFORMAT_GL_COMPRESSED_R11_EAC                        = GL_COMPRESSED_R11_EAC,
+    OGL_TEXTURE_INTERNALFORMAT_GL_COMPRESSED_RED_RGTC1                      = GL_COMPRESSED_RED_RGTC1,
+    OGL_TEXTURE_INTERNALFORMAT_GL_COMPRESSED_RG11_EAC                       = GL_COMPRESSED_RG11_EAC,
+    OGL_TEXTURE_INTERNALFORMAT_GL_COMPRESSED_RG_RGTC2                       = GL_COMPRESSED_RG_RGTC2,
+    OGL_TEXTURE_INTERNALFORMAT_GL_COMPRESSED_RGB_BPTC_SIGNED_FLOAT          = GL_COMPRESSED_RGB_BPTC_SIGNED_FLOAT_ARB,
+    OGL_TEXTURE_INTERNALFORMAT_GL_COMPRESSED_RGB_BPTC_UNSIGNED_FLOAT        = GL_COMPRESSED_RGB_BPTC_UNSIGNED_FLOAT_ARB,
+    OGL_TEXTURE_INTERNALFORMAT_GL_COMPRESSED_RGB8_ETC2                      = GL_COMPRESSED_RGB8_ETC2,
+    OGL_TEXTURE_INTERNALFORMAT_GL_COMPRESSED_RGB8_PUNCHTHROUGH_ALPHA1_ETC2  = GL_COMPRESSED_RGB8_PUNCHTHROUGH_ALPHA1_ETC2,
+    OGL_TEXTURE_INTERNALFORMAT_GL_COMPRESSED_RGBA8_ETC2_EAC                 = GL_COMPRESSED_RGBA8_ETC2_EAC,
+    OGL_TEXTURE_INTERNALFORMAT_GL_COMPRESSED_RGBA_BPTC_UNORM                = GL_COMPRESSED_RGBA_BPTC_UNORM_ARB,
+    OGL_TEXTURE_INTERNALFORMAT_GL_COMPRESSED_SIGNED_R11_EAC                 = GL_COMPRESSED_SIGNED_R11_EAC,
+    OGL_TEXTURE_INTERNALFORMAT_GL_COMPRESSED_SIGNED_RED_RGTC1               = GL_COMPRESSED_SIGNED_RED_RGTC1,
+    OGL_TEXTURE_INTERNALFORMAT_GL_COMPRESSED_SIGNED_RG11_EAC                = GL_COMPRESSED_SIGNED_RG11_EAC,
+    OGL_TEXTURE_INTERNALFORMAT_GL_COMPRESSED_SIGNED_RG_RGTC2                = GL_COMPRESSED_SIGNED_RG_RGTC2,
+    OGL_TEXTURE_INTERNALFORMAT_GL_COMPRESSED_SRGB8_ALPHA8_ETC2_EAC          = GL_COMPRESSED_SRGB8_ALPHA8_ETC2_EAC,
+    OGL_TEXTURE_INTERNALFORMAT_GL_COMPRESSED_SRGB8_ETC2                     = GL_COMPRESSED_SRGB8_ETC2,
+    OGL_TEXTURE_INTERNALFORMAT_GL_COMPRESSED_SRGB8_PUNCHTHROUGH_ALPHA1_ETC2 = GL_COMPRESSED_SRGB8_PUNCHTHROUGH_ALPHA1_ETC2,
+    OGL_TEXTURE_INTERNALFORMAT_GL_COMPRESSED_SRGB_ALPHA_BPTC_UNORM          = GL_COMPRESSED_SRGB_ALPHA_BPTC_UNORM_ARB,
+
     OGL_TEXTURE_INTERNALFORMAT_GL_DEPTH_COMPONENT16           = GL_DEPTH_COMPONENT16,
     OGL_TEXTURE_INTERNALFORMAT_GL_DEPTH_COMPONENT24           = GL_DEPTH_COMPONENT24,
     OGL_TEXTURE_INTERNALFORMAT_GL_DEPTH_COMPONENT32           = GL_DEPTH_COMPONENT32,
@@ -460,30 +482,6 @@ typedef enum
     OGL_TEXTURE_INTERNALFORMAT_UNKNOWN = 0xFFFF
 } ogl_texture_internalformat;
 
-/* Enumerator that desribes OpenGL types */
-typedef enum
-{
-    OGL_TEXTURE_TYPE_GL_BYTE                        = GL_BYTE,
-    OGL_TEXTURE_TYPE_GL_FLOAT                       = GL_FLOAT,
-    OGL_TEXTURE_TYPE_GL_INT                         = GL_INT,
-    OGL_TEXTURE_TYPE_GL_SHORT                       = GL_SHORT,
-    OGL_TEXTURE_TYPE_GL_UNSIGNED_INT                = GL_UNSIGNED_INT,
-    OGL_TEXTURE_TYPE_GL_UNSIGNED_BYTE               = GL_UNSIGNED_BYTE,
-    OGL_TEXTURE_TYPE_GL_UNSIGNED_BYTE_3_3_2         = GL_UNSIGNED_BYTE_3_3_2,
-    OGL_TEXTURE_TYPE_GL_UNSIGNED_BYTE_2_3_3_REV     = GL_UNSIGNED_BYTE_2_3_3_REV,
-    OGL_TEXTURE_TYPE_GL_UNSIGNED_SHORT              = GL_UNSIGNED_SHORT,
-    OGL_TEXTURE_TYPE_GL_UNSIGNED_SHORT_5_6_5        = GL_UNSIGNED_SHORT_5_6_5,
-    OGL_TEXTURE_TYPE_GL_UNSIGNED_SHORT_5_6_5_REV    = GL_UNSIGNED_SHORT_5_6_5_REV,
-    OGL_TEXTURE_TYPE_GL_UNSIGNED_SHORT_4_4_4_4      = GL_UNSIGNED_SHORT_4_4_4_4,
-    OGL_TEXTURE_TYPE_GL_UNSIGNED_SHORT_4_4_4_4_REV  = GL_UNSIGNED_SHORT_4_4_4_4_REV,
-    OGL_TEXTURE_TYPE_GL_UNSIGNED_SHORT_5_5_5_1      = GL_UNSIGNED_SHORT_5_5_5_1,
-    OGL_TEXTURE_TYPE_GL_UNSIGNED_SHORT_1_5_5_5_REV  = GL_UNSIGNED_SHORT_1_5_5_5_REV,
-    OGL_TEXTURE_TYPE_GL_UNSIGNED_INT_8_8_8_8        = GL_UNSIGNED_INT_8_8_8_8,
-    OGL_TEXTURE_TYPE_GL_UNSIGNED_INT_8_8_8_8_REV    = GL_UNSIGNED_INT_8_8_8_8_REV,
-    OGL_TEXTURE_TYPE_GL_UNSIGNED_INT_10_10_10_2     = GL_UNSIGNED_INT_10_10_10_2,
-    OGL_TEXTURE_TYPE_GL_UNSIGNED_INT_2_10_10_10_REV = GL_UNSIGNED_INT_2_10_10_10_REV
-} ogl_texture_type;
-
 /* ES entry-points. */
 typedef struct
 {
@@ -525,8 +523,6 @@ typedef struct
     PFNGLCLIENTWAITSYNCPROC                      pGLClientWaitSync;
     PFNGLCOLORMASKPROC                           pGLColorMask;
     PFNGLCOMPILESHADERPROC                       pGLCompileShader;
-    PFNGLCOMPRESSEDTEXIMAGE2DPROC                pGLCompressedTexImage2D;
-    PFNGLCOMPRESSEDTEXIMAGE3DPROC                pGLCompressedTexImage3D;
     PFNGLCOMPRESSEDTEXSUBIMAGE2DPROC             pGLCompressedTexSubImage2D;
     PFNGLCOMPRESSEDTEXSUBIMAGE3DPROC             pGLCompressedTexSubImage3D;
     PFNGLCOPYBUFFERSUBDATAPROC                   pGLCopyBufferSubData;
@@ -732,8 +728,6 @@ typedef struct
     PFNGLSTENCILMASKSEPARATEPROC                 pGLStencilMaskSeparate;
     PFNGLSTENCILOPPROC                           pGLStencilOp;
     PFNGLSTENCILOPSEPARATEPROC                   pGLStencilOpSeparate;
-    PFNGLTEXIMAGE2DPROC                          pGLTexImage2D;
-    PFNGLTEXIMAGE3DPROC                          pGLTexImage3D;
     PFNGLTEXPARAMETERFPROC                       pGLTexParameterf;
     PFNGLTEXPARAMETERFVPROC                      pGLTexParameterfv;
     PFNGLTEXPARAMETERIPROC                       pGLTexParameteri;
@@ -837,6 +831,7 @@ typedef struct
     GLint   max_array_texture_layers;
     GLint   max_atomic_counter_buffer_bindings;
     GLint   max_atomic_counter_buffer_size;
+    GLint   max_color_attachments;
     GLint   max_color_texture_samples;
     GLint   max_combined_atomic_counter_buffers;
     GLint   max_combined_atomic_counters;
@@ -976,9 +971,6 @@ typedef struct
     PFNGLCOLORMASKPROC                                   pGLColorMask;
     PFNGLCOLORMASKIPROC                                  pGLColorMaski;
     PFNGLCOMPILESHADERPROC                               pGLCompileShader;
-    PFNWRAPPEDGLCOMPRESSEDTEXIMAGE1DPROC                 pGLCompressedTexImage1D;
-    PFNWRAPPEDGLCOMPRESSEDTEXIMAGE2DPROC                 pGLCompressedTexImage2D;
-    PFNWRAPPEDGLCOMPRESSEDTEXIMAGE3DPROC                 pGLCompressedTexImage3D;
     PFNWRAPPEDGLCOMPRESSEDTEXSUBIMAGE1DPROC              pGLCompressedTexSubImage1D;
     PFNWRAPPEDGLCOMPRESSEDTEXSUBIMAGE2DPROC              pGLCompressedTexSubImage2D;
     PFNWRAPPEDGLCOMPRESSEDTEXSUBIMAGE3DPROC              pGLCompressedTexSubImage3D;
@@ -1092,6 +1084,7 @@ typedef struct
     PFNGLGETPROGRAMRESOURCELOCATIONPROC                  pGLGetProgramResourceLocation;
     PFNGLGETPROGRAMRESOURCELOCATIONINDEXPROC             pGLGetProgramResourceLocationIndex;
     PFNGLGETPROGRAMRESOURCENAMEPROC                      pGLGetProgramResourceName;
+    PFNGLGETRENDERBUFFERPARAMETERIVPROC                  pGLGetRenderbufferParameteriv;
     PFNGLGETSAMPLERPARAMETERFVPROC                       pGLGetSamplerParameterfv;
     PFNGLGETSAMPLERPARAMETERIVPROC                       pGLGetSamplerParameteriv;
     PFNGLGETSAMPLERPARAMETERIIVPROC                      pGLGetSamplerParameterIiv;
@@ -1349,9 +1342,6 @@ typedef struct
     PFNGLCLEARCOLORPROC                                  pGLClearColor;
     PFNGLCLEARDEPTHPROC                                  pGLClearDepth;
     PFNGLCOLORMASKPROC                                   pGLColorMask;
-    PFNGLCOMPRESSEDTEXIMAGE3DPROC                        pGLCompressedTexImage3D;
-    PFNGLCOMPRESSEDTEXIMAGE2DPROC                        pGLCompressedTexImage2D;
-    PFNGLCOMPRESSEDTEXIMAGE1DPROC                        pGLCompressedTexImage1D;
     PFNGLCOMPRESSEDTEXSUBIMAGE3DPROC                     pGLCompressedTexSubImage3D;
     PFNGLCOMPRESSEDTEXSUBIMAGE2DPROC                     pGLCompressedTexSubImage2D;
     PFNGLCOMPRESSEDTEXSUBIMAGE1DPROC                     pGLCompressedTexSubImage1D;
@@ -1397,6 +1387,7 @@ typedef struct
     PFNGLFRAMEBUFFERTEXTURE3DPROC                        pGLFramebufferTexture3D;
     PFNGLFRAMEBUFFERTEXTURELAYERPROC                     pGLFramebufferTextureLayer;
     PFNGLFRONTFACEPROC                                   pGLFrontFace;
+    PFNGLGENERATEMIPMAPPROC                              pGLGenerateMipmap;
     PFNGLGENVERTEXARRAYSPROC                             pGLGenVertexArrays;
     PFNGLGETACTIVEATOMICCOUNTERBUFFERIVPROC              pGLGetActiveAtomicCounterBufferiv;
     PFNGLGETBOOLEANI_VPROC                               pGLGetBooleani_v;
@@ -1413,6 +1404,7 @@ typedef struct
     PFNGLGETINTEGERI_VPROC                               pGLGetIntegeri_v;
     PFNGLGETINTEGERVPROC                                 pGLGetIntegerv;
     PFNGLGETINTERNALFORMATIVPROC                         pGLGetInternalformativ;
+    PFNGLGETRENDERBUFFERPARAMETERIVPROC                  pGLGetRenderbufferParameteriv;
     PFNGLGETSAMPLERPARAMETERFVPROC                       pGLGetSamplerParameterfv;
     PFNGLGETSAMPLERPARAMETERIVPROC                       pGLGetSamplerParameteriv;
     PFNGLGETSAMPLERPARAMETERIIVPROC                      pGLGetSamplerParameterIiv;
@@ -1601,9 +1593,6 @@ typedef struct
      *       feature-set and carry no vendor-specific dependencies.
      */
     PFNWRAPPEDGLBINDMULTITEXTUREEXTPROC                     pGLBindMultiTextureEXT;
-    PFNWRAPPEDGLCOMPRESSEDTEXTUREIMAGE1DEXTPROC             pGLCompressedTextureImage1DEXT;
-    PFNWRAPPEDGLCOMPRESSEDTEXTUREIMAGE2DEXTPROC             pGLCompressedTextureImage2DEXT;
-    PFNWRAPPEDGLCOMPRESSEDTEXTUREIMAGE3DEXTPROC             pGLCompressedTextureImage3DEXT;
     PFNWRAPPEDGLCOMPRESSEDTEXTURESUBIMAGE1DEXTPROC          pGLCompressedTextureSubImage1DEXT;
     PFNWRAPPEDGLCOMPRESSEDTEXTURESUBIMAGE2DEXTPROC          pGLCompressedTextureSubImage2DEXT;
     PFNWRAPPEDGLCOMPRESSEDTEXTURESUBIMAGE3DEXTPROC          pGLCompressedTextureSubImage3DEXT;
@@ -1644,9 +1633,6 @@ typedef struct
     PFNGLNAMEDRENDERBUFFERSTORAGEMULTISAMPLEEXTPROC         pGLNamedRenderbufferStorageMultisampleEXT;
     PFNWRAPPEDGLTEXTUREBUFFEREXTPROC                        pGLTextureBufferEXT;
     PFNWRAPPEDGLTEXTUREBUFFERRANGEEXTPROC                   pGLTextureBufferRangeEXT;
-    PFNWRAPPEDGLTEXTUREIMAGE1DEXTPROC                       pGLTextureImage1DEXT;
-    PFNWRAPPEDGLTEXTUREIMAGE2DEXTPROC                       pGLTextureImage2DEXT;
-    PFNWRAPPEDGLTEXTUREIMAGE3DEXTPROC                       pGLTextureImage3DEXT;
     PFNWRAPPEDGLTEXTUREPARAMETERIEXTPROC                    pGLTextureParameteriEXT;
     PFNWRAPPEDGLTEXTUREPARAMETERIVEXTPROC                   pGLTextureParameterivEXT;
     PFNWRAPPEDGLTEXTUREPARAMETERFEXTPROC                    pGLTextureParameterfEXT;
@@ -1808,6 +1794,22 @@ DECLARE_HANDLE(ogl_materials);
 
 /** Pipeline handle */
 DECLARE_HANDLE(ogl_pipeline);
+
+/** TODO.
+ *
+ *  @param context           TODO
+ *  @param frame_time        TODO
+ *  @param rendering_area_px_topdown [0]: x1 of the rendering area (in pixels)
+ *                                   [1]: y1 of the rendering area (in pixels)
+ *                                   [2]: x2 of the rendering area (in pixels)
+ *                                   [3]: y2 of the rendering area (in pixels)
+ *  @param callback_user_arg TODO
+ */
+typedef void (*PFNOGLPIPELINECALLBACKPROC)(ogl_context context,
+                                           uint32_t    n_frame,
+                                           system_time frame_time,
+                                           const int*  rendering_area_px_topdown,
+                                           void*       callback_user_arg);
 
 /** Skybox handle */
 DECLARE_HANDLE(ogl_skybox);

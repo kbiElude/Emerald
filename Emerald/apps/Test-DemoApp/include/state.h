@@ -7,6 +7,7 @@
 #define STATE_H
 
 #include "postprocessing/postprocessing_blur_gaussian.h"
+#include "ral/ral_types.h"
 #include "scene/scene_light.h"
 
 
@@ -23,10 +24,10 @@ PUBLIC void state_get_current_frame_properties(scene*              out_current_s
 PUBLIC postprocessing_blur_gaussian_resolution state_get_color_shadow_map_blur_resolution();
 
 /** TODO */
-PUBLIC ogl_texture_internalformat state_get_color_shadow_map_internalformat();
+PUBLIC ral_texture_format state_get_color_shadow_map_format();
 
 /** TODO */
-PUBLIC ogl_texture_internalformat state_get_depth_shadow_map_internalformat();
+PUBLIC ral_texture_format state_get_depth_shadow_map_format();
 
 /** TODO */
 PUBLIC scene_light_shadow_map_algorithm state_get_shadow_map_algorithm();
@@ -65,13 +66,13 @@ PUBLIC void state_init();
 PUBLIC void state_set_color_shadow_map_blur_resolution(postprocessing_blur_gaussian_resolution blur_resolution);
 
 /** TODO */
-PUBLIC void state_set_color_shadow_map_internalformat(ogl_texture_internalformat new_internalformat);
+PUBLIC void state_set_color_shadow_map_format(ral_texture_format new_format);
 
 /** TODO */
 PUBLIC void state_set_current_frame_time(system_time frame_time);
 
 /** TODO */
-PUBLIC void state_set_depth_shadow_map_internalformat(ogl_texture_internalformat new_internalformat);
+PUBLIC void state_set_depth_shadow_map_format(ral_texture_format new_format);
 
 /** TODO */
 PUBLIC void state_set_shadow_map_algorithm(scene_light_shadow_map_algorithm sm_algo);

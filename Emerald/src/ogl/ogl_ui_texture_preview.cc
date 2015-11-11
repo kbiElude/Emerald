@@ -143,11 +143,11 @@ PRIVATE void _ogl_ui_texture_preview_init_program(ogl_ui                   ui,
     /* Create all objects */
     ogl_context context         = ogl_ui_get_context(ui);
     ogl_shader  fragment_shader = ogl_shader_create(context,
-                                                    SHADER_TYPE_FRAGMENT,
+                                                    RAL_SHADER_TYPE_FRAGMENT,
                                                     system_hashed_ansi_string_create_by_merging_two_strings(_ogl_ui_texture_preview_get_program_name(texture_preview_ptr->preview_type),
                                                                                                             " fragment shader") );
     ogl_shader  vertex_shader   = ogl_shader_create(context,
-                                                    SHADER_TYPE_VERTEX,
+                                                    RAL_SHADER_TYPE_VERTEX,
                                                     system_hashed_ansi_string_create_by_merging_two_strings(_ogl_ui_texture_preview_get_program_name(texture_preview_ptr->preview_type),
                                                                                                             " vertex shader") );
 
@@ -293,7 +293,7 @@ PRIVATE void _ogl_ui_texture_preview_init_texture_renderer_callback(ogl_context 
     float  texture_v_ratio   = 0.0f;
 
     ogl_texture_get_property(texture_preview_ptr->texture,
-                             OGL_TEXTURE_PROPERTY_TARGET,
+                             OGL_TEXTURE_PROPERTY_TARGET_GL,
                             &texture_target);
 
     if (texture_preview_ptr->context_type == OGL_CONTEXT_TYPE_GL)
@@ -537,7 +537,7 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_ui_texture_preview_draw(void* internal_in
     /* For depth textures, make sure the "depth texture comparison mode" is toggled off before
      * we proceed with sampling the mip-map */
     ogl_texture_get_property(texture_preview_ptr->texture,
-                             OGL_TEXTURE_PROPERTY_TARGET,
+                             OGL_TEXTURE_PROPERTY_TARGET_GL,
                             &texture_target);
 
     if (texture_preview_ptr->context_type == OGL_CONTEXT_TYPE_GL)

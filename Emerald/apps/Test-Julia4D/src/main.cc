@@ -474,6 +474,7 @@ PRIVATE void _rendering_handler(ogl_context context,
 {
     ogl_pipeline_draw_stage(_pipeline,
                             _pipeline_stage_id,
+                            n_frames_rendered,
                             frame_time,
                             rendering_area_px_topdown);
 }
@@ -612,13 +613,15 @@ PRIVATE void _set_specularity_value(void*          user_arg,
 }
 
 /** TODO */
-PRIVATE void _window_closed_callback_handler(system_window window)
+PRIVATE void _window_closed_callback_handler(system_window window,
+                                             void*         unused)
 {
     system_event_set(_window_closed_event);
 }
 
 /** TODO */
-PRIVATE void _window_closing_callback_handler(system_window window)
+PRIVATE void _window_closing_callback_handler(system_window window,
+                                              void*         unused)
 {
     ogl_context context = NULL;
 

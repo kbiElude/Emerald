@@ -138,15 +138,15 @@ PRIVATE void _ogl_context_scene_renderer_normals_preview_init_preview_program(_o
                       &scene_name);
 
     ogl_shader fs_shader = ogl_shader_create(preview_ptr->context,
-                                             SHADER_TYPE_FRAGMENT,
+                                             RAL_SHADER_TYPE_FRAGMENT,
                                              system_hashed_ansi_string_create_by_merging_two_strings("Scene Renderer normals preview FS shader ",
                                                                                                      system_hashed_ansi_string_get_buffer(scene_name)) );
     ogl_shader gs_shader = ogl_shader_create(preview_ptr->context,
-                                             SHADER_TYPE_GEOMETRY,
+                                             RAL_SHADER_TYPE_GEOMETRY,
                                              system_hashed_ansi_string_create_by_merging_two_strings("Scene Renderer normals preview GS shader ",
                                                                                                      system_hashed_ansi_string_get_buffer(scene_name)) );
     ogl_shader vs_shader = ogl_shader_create(preview_ptr->context,
-                                             SHADER_TYPE_VERTEX,
+                                             RAL_SHADER_TYPE_VERTEX,
                                              system_hashed_ansi_string_create_by_merging_two_strings("Scene Renderer normals preview VS shader ",
                                                                                                      system_hashed_ansi_string_get_buffer(scene_name)) );
 

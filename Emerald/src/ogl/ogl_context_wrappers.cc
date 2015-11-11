@@ -17,6 +17,7 @@
 #include "ogl/ogl_programs.h"
 #include "ogl/ogl_texture.h"
 #include "ogl/ogl_vao.h"
+#include "raGL/raGL_utils.h"
 #include "system/system_log.h"
 #include <math.h>
 
@@ -213,23 +214,25 @@ PRIVATE ogl_context_state_cache_property _ogl_context_wrappers_get_ogl_context_s
 }
 
 /** TODO */
-PRIVATE void _ogl_context_wrappers_update_mipmap_level_info(ogl_context context,
+PRIVATE bool _ogl_context_wrappers_update_mipmap_level_info(ogl_context context,
                                                             GLenum      texture_target,
                                                             ogl_texture texture,
                                                             GLuint      level)
 {
     const ogl_context_gl_entrypoints_ext_direct_state_access* dsa_entrypoints       = NULL;
+    const bool                                                is_cm_target          = (texture_target == GL_TEXTURE_CUBE_MAP);
     GLuint                                                    texture_gl_id         = 0;
     GLint                                                     mipmap_depth          = 0;
     GLint                                                     mipmap_height         = 0;
     GLint                                                     mipmap_internalformat = GL_NONE;
     GLint                                                     mipmap_width          = 0;
+    bool                                                      result                = false;
 
     /* NOTE: Map general cube-map texture target to one of the detailed cube-map
      *       texture targets. This is safe since all CM faces must be of the same
      *       resolution for the CM texture to be complete.
      */
-    if (texture_target == GL_TEXTURE_CUBE_MAP)
+    if (is_cm_target)
     {
         texture_target = GL_TEXTURE_CUBE_MAP_NEGATIVE_X;
     }
@@ -266,6 +269,10 @@ PRIVATE void _ogl_context_wrappers_update_mipmap_level_info(ogl_context context,
          mipmap_height != 0                       ||
          mipmap_width  != 0)
     {
+        ral_texture_format mipmap_format_ral = raGL_utils_get_ral_texture_format_for_ogl_enum(mipmap_internalformat);
+        ral_texture_type   type_ral          = is_cm_target ? RAL_TEXTURE_TYPE_CUBE_MAP
+                                                            : raGL_utils_get_ral_texture_type_for_ogl_enum(texture_target);
+
         ogl_texture_set_mipmap_property(texture,
                                         level,
                                         OGL_TEXTURE_MIPMAP_PROPERTY_WIDTH,
@@ -279,9 +286,16 @@ PRIVATE void _ogl_context_wrappers_update_mipmap_level_info(ogl_context context,
                                         OGL_TEXTURE_MIPMAP_PROPERTY_DEPTH,
                                         &mipmap_depth);
         ogl_texture_set_property       (texture,
-                                        OGL_TEXTURE_PROPERTY_INTERNALFORMAT,
-                                        &mipmap_internalformat);
+                                        OGL_TEXTURE_PROPERTY_FORMAT_RAL,
+                                        &mipmap_format_ral);
+        ogl_texture_set_property       (texture,
+                                        OGL_TEXTURE_PROPERTY_TYPE,
+                                       &type_ral);
+
+        result = true;
     }
+
+    return result;
 }
 
 /** TODO */
@@ -307,10 +321,13 @@ PRIVATE void _ogl_context_wrappers_update_mipmap_info(ogl_context context,
                 level < max_levels;
               ++level)
     {
-        _ogl_context_wrappers_update_mipmap_level_info(context,
-                                                       texture_target,
-                                                       texture,
-                                                       level);
+        if (!_ogl_context_wrappers_update_mipmap_level_info(context,
+                                                            texture_target,
+                                                            texture,
+                                                            level) )
+        {
+            break;
+        }
     }
 }
 
@@ -683,7 +700,7 @@ PUBLIC void APIENTRY ogl_context_wrappers_glBindTextures(GLuint       first,
             GLenum texture_target;
 
             ogl_texture_get_property(textures[n_texture],
-                                     OGL_TEXTURE_PROPERTY_TARGET,
+                                     OGL_TEXTURE_PROPERTY_TARGET_GL,
                                     &texture_target);
 
             ogl_context_to_bindings_set_binding(to_bindings,
@@ -1059,195 +1076,6 @@ PUBLIC void APIENTRY ogl_context_wrappers_glColorMask(GLboolean red,
 }
 
 /* Please see header for specification */
-PUBLIC void APIENTRY ogl_context_wrappers_glCompressedTexImage1D(GLenum        target,
-                                                                 GLint         level,
-                                                                 GLenum        internalformat,
-                                                                 GLsizei       width,
-                                                                 GLint         border,
-                                                                 GLsizei       imageSize,
-                                                                 const GLvoid* data)
-{
-    ogl_context             context      = ogl_context_get_current_context();
-    ogl_context_bo_bindings bo_bindings  = NULL;
-    ogl_context_state_cache state_cache  = NULL;
-    uint32_t                texture_unit = -1;
-    ogl_context_to_bindings to_bindings  = NULL;
-
-    ogl_context_get_property(context,
-                             OGL_CONTEXT_PROPERTY_BO_BINDINGS,
-                            &bo_bindings);
-    ogl_context_get_property(context,
-                             OGL_CONTEXT_PROPERTY_STATE_CACHE,
-                            &state_cache);
-    ogl_context_get_property(context,
-                             OGL_CONTEXT_PROPERTY_TO_BINDINGS,
-                            &to_bindings);
-
-    ogl_context_state_cache_get_property(state_cache,
-                                         OGL_CONTEXT_STATE_CACHE_PROPERTY_TEXTURE_UNIT,
-                                        &texture_unit);
-
-    ogl_context_bo_bindings_sync(bo_bindings,
-                                 BO_BINDINGS_SYNC_BIT_PIXEL_UNPACK_BUFFER);
-    ogl_context_state_cache_sync(state_cache,
-                                 STATE_CACHE_SYNC_BIT_ACTIVE_TEXTURE_UNIT);
-    ogl_context_to_bindings_sync(to_bindings,
-                                 ogl_context_to_bindings_get_ogl_context_to_bindings_sync_bit_from_gl_target(target) );
-
-    _private_entrypoints_ptr->pGLCompressedTexImage1D(target,
-                                                      level,
-                                                      internalformat,
-                                                      width,
-                                                      border,
-                                                      imageSize,
-                                                      data);
-
-    ogl_texture bound_texture = ogl_context_to_bindings_get_bound_texture(to_bindings,
-                                                                          texture_unit,
-                                                                          target);
-
-    ogl_texture_set_mipmap_property(bound_texture,
-                                    level,
-                                    OGL_TEXTURE_MIPMAP_PROPERTY_WIDTH,
-                                    &width);
-    ogl_texture_set_property       (bound_texture,
-                                    OGL_TEXTURE_PROPERTY_INTERNALFORMAT,
-                                   &internalformat);
-}
-
-/* Please see header for specification */
-PUBLIC void APIENTRY ogl_context_wrappers_glCompressedTexImage2D(GLenum        target,
-                                                                 GLint         level,
-                                                                 GLenum        internalformat,
-                                                                 GLsizei       width,
-                                                                 GLsizei       height,
-                                                                 GLint         border,
-                                                                 GLsizei       imageSize,
-                                                                 const GLvoid* data)
-{
-    ogl_context             context      = ogl_context_get_current_context();
-    ogl_context_bo_bindings bo_bindings  = NULL;
-    ogl_context_state_cache state_cache  = NULL;
-    uint32_t                texture_unit = -1;
-    ogl_context_to_bindings to_bindings  = NULL;
-
-    ogl_context_get_property(context,
-                             OGL_CONTEXT_PROPERTY_BO_BINDINGS,
-                            &bo_bindings);
-    ogl_context_get_property(context,
-                             OGL_CONTEXT_PROPERTY_STATE_CACHE,
-                            &state_cache);
-    ogl_context_get_property(context,
-                             OGL_CONTEXT_PROPERTY_TO_BINDINGS,
-                            &to_bindings);
-
-    ogl_context_state_cache_get_property(state_cache,
-                                         OGL_CONTEXT_STATE_CACHE_PROPERTY_TEXTURE_UNIT,
-                                        &texture_unit);
-
-    ogl_context_bo_bindings_sync(bo_bindings,
-                                 BO_BINDINGS_SYNC_BIT_PIXEL_UNPACK_BUFFER);
-    ogl_context_state_cache_sync(state_cache,
-                                 STATE_CACHE_SYNC_BIT_ACTIVE_TEXTURE_UNIT);
-    ogl_context_to_bindings_sync(to_bindings,
-                                 ogl_context_to_bindings_get_ogl_context_to_bindings_sync_bit_from_gl_target(target) );
-
-    _private_entrypoints_ptr->pGLCompressedTexImage2D(target,
-                                                      level,
-                                                      internalformat,
-                                                      width,
-                                                      height,
-                                                      border,
-                                                      imageSize,
-                                                      data);
-
-    ogl_texture bound_texture = ogl_context_to_bindings_get_bound_texture(to_bindings,
-                                                                          texture_unit,
-                                                                          target);
-
-    ogl_texture_set_mipmap_property(bound_texture,
-                                    level,
-                                    OGL_TEXTURE_MIPMAP_PROPERTY_WIDTH,
-                                    &width);
-    ogl_texture_set_mipmap_property(bound_texture,
-                                    level,
-                                    OGL_TEXTURE_MIPMAP_PROPERTY_HEIGHT,
-                                    &height);
-    ogl_texture_set_property       (bound_texture,
-                                    OGL_TEXTURE_PROPERTY_INTERNALFORMAT,
-                                   &internalformat);
-}
-
-/* Please see header for specification */
-PUBLIC void APIENTRY ogl_context_wrappers_glCompressedTexImage3D(GLenum        target,
-                                                                 GLint         level,
-                                                                 GLenum        internalformat,
-                                                                 GLsizei       width,
-                                                                 GLsizei       height,
-                                                                 GLsizei       depth,
-                                                                 GLint         border,
-                                                                 GLsizei       imageSize,
-                                                                 const GLvoid* data)
-{
-    ogl_context             context      = ogl_context_get_current_context();
-    ogl_context_bo_bindings bo_bindings  = NULL;
-    ogl_context_state_cache state_cache  = NULL;
-    uint32_t                texture_unit = -1;
-    ogl_context_to_bindings to_bindings  = NULL;
-
-    ogl_context_get_property(context,
-                             OGL_CONTEXT_PROPERTY_BO_BINDINGS,
-                            &bo_bindings);
-    ogl_context_get_property(context,
-                             OGL_CONTEXT_PROPERTY_STATE_CACHE,
-                            &state_cache);
-    ogl_context_get_property(context,
-                             OGL_CONTEXT_PROPERTY_TO_BINDINGS,
-                            &to_bindings);
-
-    ogl_context_state_cache_get_property(state_cache,
-                                         OGL_CONTEXT_STATE_CACHE_PROPERTY_TEXTURE_UNIT,
-                                        &texture_unit);
-
-    ogl_context_bo_bindings_sync(bo_bindings,
-                                 BO_BINDINGS_SYNC_BIT_PIXEL_UNPACK_BUFFER);
-    ogl_context_state_cache_sync(state_cache,
-                                 STATE_CACHE_SYNC_BIT_ACTIVE_TEXTURE_UNIT);
-    ogl_context_to_bindings_sync(to_bindings,
-                                 ogl_context_to_bindings_get_ogl_context_to_bindings_sync_bit_from_gl_target(target) );
-
-    _private_entrypoints_ptr->pGLCompressedTexImage3D(target,
-                                                      level,
-                                                      internalformat,
-                                                      width,
-                                                      height,
-                                                      depth,
-                                                      border,
-                                                      imageSize,
-                                                      data);
-
-    ogl_texture bound_texture = ogl_context_to_bindings_get_bound_texture(to_bindings,
-                                                                          texture_unit,
-                                                                          target);
-
-    ogl_texture_set_mipmap_property(bound_texture,
-                                    level,
-                                    OGL_TEXTURE_MIPMAP_PROPERTY_WIDTH,
-                                    &width);
-    ogl_texture_set_mipmap_property(bound_texture,
-                                    level,
-                                    OGL_TEXTURE_MIPMAP_PROPERTY_HEIGHT,
-                                    &height);
-    ogl_texture_set_mipmap_property(bound_texture,
-                                    level,
-                                    OGL_TEXTURE_MIPMAP_PROPERTY_DEPTH,
-                                    &depth);
-    ogl_texture_set_property       (bound_texture,
-                                    OGL_TEXTURE_PROPERTY_INTERNALFORMAT,
-                                   &internalformat);
-}
-
-/* Please see header for specification */
 PUBLIC void APIENTRY ogl_context_wrappers_glCompressedTexSubImage1D(GLenum        target,
                                                                     GLint         level,
                                                                     GLint         xoffset,
@@ -1514,171 +1342,6 @@ PUBLIC void APIENTRY ogl_context_wrappers_glCompressedTextureSubImage3DEXT(ogl_t
                                                                 bits);
 }
 
-/* Please see header for specification */
-PUBLIC void APIENTRY ogl_context_wrappers_glCompressedTextureImage1DEXT(ogl_texture   texture,
-                                                                        GLenum        target,
-                                                                        GLint         level,
-                                                                        GLenum        internalformat,
-                                                                        GLsizei       width,
-                                                                        GLint         border,
-                                                                        GLsizei       imageSize,
-                                                                        const GLvoid* bits)
-{
-    GLuint                  texture_id  = 0;
-    ogl_context             context     = ogl_context_get_current_context();
-    ogl_context_bo_bindings bo_bindings = NULL;
-    ogl_context_to_bindings to_bindings = NULL;
-
-    ogl_context_get_property(context,
-                             OGL_CONTEXT_PROPERTY_BO_BINDINGS,
-                            &bo_bindings);
-    ogl_context_get_property(context,
-                             OGL_CONTEXT_PROPERTY_TO_BINDINGS,
-                            &to_bindings);
-
-    ogl_context_bo_bindings_sync(bo_bindings,
-                                 BO_BINDINGS_SYNC_BIT_PIXEL_UNPACK_BUFFER);
-    ogl_context_to_bindings_sync(to_bindings,
-                                 ogl_context_to_bindings_get_ogl_context_to_bindings_sync_bit_from_gl_target(target) );
-
-    ogl_texture_get_property(texture,
-                             OGL_TEXTURE_PROPERTY_ID,
-                            &texture_id);
-
-    _private_entrypoints_ptr->pGLCompressedTextureImage1DEXT(texture_id,
-                                                             target,
-                                                             level,
-                                                             internalformat,
-                                                             width,
-                                                             border,
-                                                             imageSize,
-                                                             bits);
-
-    ogl_texture_set_mipmap_property(texture,
-                                    level,
-                                    OGL_TEXTURE_MIPMAP_PROPERTY_WIDTH,
-                                    &width);
-    ogl_texture_set_property       (texture,
-                                    OGL_TEXTURE_PROPERTY_INTERNALFORMAT,
-                                   &internalformat);
-}
-
-/* Please see header for specification */
-PUBLIC void APIENTRY ogl_context_wrappers_glCompressedTextureImage2DEXT(ogl_texture   texture,
-                                                                        GLenum        target,
-                                                                        GLint         level,
-                                                                        GLenum        internalformat,
-                                                                        GLsizei       width,
-                                                                        GLsizei       height,
-                                                                        GLint         border,
-                                                                        GLsizei       imageSize,
-                                                                        const GLvoid* bits)
-{
-    GLuint                  texture_id  = 0;
-    ogl_context             context     = ogl_context_get_current_context();
-    ogl_context_bo_bindings bo_bindings = NULL;
-    ogl_context_to_bindings to_bindings = NULL;
-
-    ogl_context_get_property(context,
-                             OGL_CONTEXT_PROPERTY_BO_BINDINGS,
-                            &bo_bindings);
-    ogl_context_get_property(context,
-                             OGL_CONTEXT_PROPERTY_TO_BINDINGS,
-                            &to_bindings);
-
-    ogl_context_bo_bindings_sync(bo_bindings,
-                                 BO_BINDINGS_SYNC_BIT_PIXEL_UNPACK_BUFFER);
-    ogl_context_to_bindings_sync(to_bindings,
-                                 ogl_context_to_bindings_get_ogl_context_to_bindings_sync_bit_from_gl_target(target) );
-
-    ogl_texture_get_property(texture,
-                             OGL_TEXTURE_PROPERTY_ID,
-                            &texture_id);
-
-    _private_entrypoints_ptr->pGLCompressedTextureImage2DEXT(texture_id,
-                                                             target,
-                                                             level,
-                                                             internalformat,
-                                                             width,
-                                                             height,
-                                                             border,
-                                                             imageSize,
-                                                             bits);
-
-    ogl_texture_set_mipmap_property(texture,
-                                    level,
-                                    OGL_TEXTURE_MIPMAP_PROPERTY_WIDTH,
-                                    &width);
-    ogl_texture_set_mipmap_property(texture,
-                                    level,
-                                    OGL_TEXTURE_MIPMAP_PROPERTY_HEIGHT,
-                                    &height);
-    ogl_texture_set_property       (texture,
-                                    OGL_TEXTURE_PROPERTY_INTERNALFORMAT,
-                                   &internalformat);
-}
-
-/* Please see header for specification */
-PUBLIC void APIENTRY ogl_context_wrappers_glCompressedTextureImage3DEXT(ogl_texture   texture,
-                                                                        GLenum        target,
-                                                                        GLint         level,
-                                                                        GLenum        internalformat,
-                                                                        GLsizei       width,
-                                                                        GLsizei       height,
-                                                                        GLsizei       depth,
-                                                                        GLint         border,
-                                                                        GLsizei       imageSize,
-                                                                        const GLvoid* bits)
-{
-    GLuint                  texture_id  = 0;
-    ogl_context             context     = ogl_context_get_current_context();
-    ogl_context_bo_bindings bo_bindings = NULL;
-    ogl_context_to_bindings to_bindings = NULL;
-
-    ogl_context_get_property(context,
-                             OGL_CONTEXT_PROPERTY_BO_BINDINGS,
-                            &bo_bindings);
-    ogl_context_get_property(context,
-                             OGL_CONTEXT_PROPERTY_TO_BINDINGS,
-                            &to_bindings);
-
-    ogl_context_bo_bindings_sync(bo_bindings,
-                                 BO_BINDINGS_SYNC_BIT_PIXEL_UNPACK_BUFFER);
-    ogl_context_to_bindings_sync(to_bindings,
-                                 ogl_context_to_bindings_get_ogl_context_to_bindings_sync_bit_from_gl_target(target) );
-
-    ogl_texture_get_property(texture,
-                             OGL_TEXTURE_PROPERTY_ID,
-                            &texture_id);
-
-    _private_entrypoints_ptr->pGLCompressedTextureImage3DEXT(texture_id,
-                                                             target,
-                                                             level,
-                                                             internalformat,
-                                                             width,
-                                                             height,
-                                                             depth,
-                                                             border,
-                                                             imageSize,
-                                                             bits);
-
-    ogl_texture_set_mipmap_property(texture,
-                                    level,
-                                    OGL_TEXTURE_MIPMAP_PROPERTY_WIDTH,
-                                    &width);
-    ogl_texture_set_mipmap_property(texture,
-                                    level,
-                                    OGL_TEXTURE_MIPMAP_PROPERTY_HEIGHT,
-                                    &height);
-    ogl_texture_set_mipmap_property(texture,
-                                    level,
-                                    OGL_TEXTURE_MIPMAP_PROPERTY_DEPTH,
-                                    &depth);
-    ogl_texture_set_property       (texture,
-                                    OGL_TEXTURE_PROPERTY_INTERNALFORMAT,
-                                   &internalformat);
-}
-
 /** Please see header for spec */
 PUBLIC void APIENTRY ogl_context_wrappers_glCopyBufferSubData(GLenum     readTarget,
                                                               GLenum     writeTarget,
@@ -1713,10 +1376,12 @@ PUBLIC void APIENTRY ogl_context_wrappers_glCopyTexImage1D(GLenum  target,
                                                            GLsizei width,
                                                            GLint   border)
 {
-    ogl_context             context      = ogl_context_get_current_context();
+    ogl_context             context      = ogl_context_get_current_context               ();
+    ral_texture_format      format_ral   = raGL_utils_get_ral_texture_format_for_ogl_enum(internalformat);
     ogl_context_state_cache state_cache  = NULL;
     uint32_t                texture_unit = -1;
     ogl_context_to_bindings to_bindings  = NULL;
+    ral_texture_type        type_ral     = raGL_utils_get_ral_texture_type_for_ogl_enum(target);
 
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_STATE_CACHE,
@@ -1753,8 +1418,11 @@ PUBLIC void APIENTRY ogl_context_wrappers_glCopyTexImage1D(GLenum  target,
                                     OGL_TEXTURE_MIPMAP_PROPERTY_WIDTH,
                                     &width);
     ogl_texture_set_property       (bound_texture,
-                                    OGL_TEXTURE_PROPERTY_INTERNALFORMAT,
-                                   &internalformat);
+                                    OGL_TEXTURE_PROPERTY_FORMAT_RAL,
+                                   &format_ral);
+    ogl_texture_set_property       (bound_texture,
+                                    OGL_TEXTURE_PROPERTY_TYPE,
+                                   &type_ral);
 }
 
 /* Please see header for specification */
@@ -1767,10 +1435,12 @@ PUBLIC void APIENTRY ogl_context_wrappers_glCopyTexImage2D(GLenum  target,
                                                            GLsizei height,
                                                            GLint   border)
 {
-    ogl_context             context      = ogl_context_get_current_context();
+    ogl_context             context      = ogl_context_get_current_context               ();
+    ral_texture_format      format_ral   = raGL_utils_get_ral_texture_format_for_ogl_enum(internalformat);
     ogl_context_state_cache state_cache  = NULL;
     uint32_t                texture_unit = -1;
     ogl_context_to_bindings to_bindings  = NULL;
+    ral_texture_type        type_ral     = raGL_utils_get_ral_texture_type_for_ogl_enum(target);
 
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_STATE_CACHE,
@@ -1812,8 +1482,11 @@ PUBLIC void APIENTRY ogl_context_wrappers_glCopyTexImage2D(GLenum  target,
                                     OGL_TEXTURE_MIPMAP_PROPERTY_HEIGHT,
                                     &height);
     ogl_texture_set_property       (bound_texture,
-                                    OGL_TEXTURE_PROPERTY_INTERNALFORMAT,
-                                   &internalformat);
+                                    OGL_TEXTURE_PROPERTY_FORMAT_RAL,
+                                   &format_ral);
+    ogl_texture_set_property       (bound_texture,
+                                    OGL_TEXTURE_PROPERTY_TYPE,
+                                   &type_ral);
 }
 
 /* Please see header for specification */
@@ -1938,9 +1611,11 @@ PUBLIC void APIENTRY ogl_context_wrappers_glCopyTextureImage1DEXT(ogl_texture te
                                                                   GLsizei     width,
                                                                   GLint       border)
 {
-    ogl_context             context     = ogl_context_get_current_context();
+    ogl_context             context     = ogl_context_get_current_context               ();
+    ral_texture_format      format_ral  = raGL_utils_get_ral_texture_format_for_ogl_enum(internalformat);
     ogl_context_state_cache state_cache = NULL;
     GLuint                  texture_id  = 0;
+    ral_texture_type        type_ral    = raGL_utils_get_ral_texture_type_for_ogl_enum(target);
 
     ogl_context_get_property    (context,
                                  OGL_CONTEXT_PROPERTY_STATE_CACHE,
@@ -1965,8 +1640,11 @@ PUBLIC void APIENTRY ogl_context_wrappers_glCopyTextureImage1DEXT(ogl_texture te
                                     OGL_TEXTURE_MIPMAP_PROPERTY_WIDTH,
                                     &width);
     ogl_texture_set_property       (texture,
-                                    OGL_TEXTURE_PROPERTY_INTERNALFORMAT,
-                                   &internalformat);
+                                    OGL_TEXTURE_PROPERTY_FORMAT_RAL,
+                                   &format_ral);
+    ogl_texture_set_property       (texture,
+                                    OGL_TEXTURE_PROPERTY_TYPE,
+                                   &type_ral);
 }
 
 /* Please see header for specification */
@@ -1980,9 +1658,11 @@ PUBLIC void APIENTRY ogl_context_wrappers_glCopyTextureImage2DEXT(ogl_texture te
                                                                   GLsizei     height,
                                                                   GLint       border)
 {
-    ogl_context             context     = ogl_context_get_current_context();
+    ogl_context             context     = ogl_context_get_current_context               ();
+    ral_texture_format      format_ral  = raGL_utils_get_ral_texture_format_for_ogl_enum(internalformat);
     ogl_context_state_cache state_cache = NULL;
     GLuint                  texture_id  = 0;
+    ral_texture_type        type_ral    = raGL_utils_get_ral_texture_type_for_ogl_enum(target);
 
     ogl_context_get_property    (context,
                                  OGL_CONTEXT_PROPERTY_STATE_CACHE,
@@ -2012,8 +1692,11 @@ PUBLIC void APIENTRY ogl_context_wrappers_glCopyTextureImage2DEXT(ogl_texture te
                                     OGL_TEXTURE_MIPMAP_PROPERTY_HEIGHT,
                                     &height);
     ogl_texture_set_property       (texture,
-                                    OGL_TEXTURE_PROPERTY_INTERNALFORMAT,
-                                   &internalformat);
+                                    OGL_TEXTURE_PROPERTY_FORMAT_RAL,
+                                   &format_ral);
+    ogl_texture_set_property       (texture,
+                                    OGL_TEXTURE_PROPERTY_TYPE,
+                                   &type_ral);
 }
 
 /* Please see header for specification */
@@ -2325,9 +2008,11 @@ PUBLIC void APIENTRY ogl_context_wrappers_glDispatchCompute(GLuint num_groups_x,
                                                             GLuint num_groups_y,
                                                             GLuint num_groups_z)
 {
-    ogl_context_bo_bindings bo_bindings = NULL;
-    ogl_context             context     = ogl_context_get_current_context();
-    ogl_context_state_cache state_cache = NULL;
+    ogl_context_bo_bindings      bo_bindings      = NULL;
+    ogl_context                  context          = ogl_context_get_current_context();
+    ogl_context_sampler_bindings sampler_bindings = NULL;
+    ogl_context_state_cache      state_cache      = NULL;
+    ogl_context_to_bindings      to_bindings      = NULL;
 
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_BO_BINDINGS,
@@ -2335,14 +2020,23 @@ PUBLIC void APIENTRY ogl_context_wrappers_glDispatchCompute(GLuint num_groups_x,
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_STATE_CACHE,
                             &state_cache);
+    ogl_context_get_property(context,
+                             OGL_CONTEXT_PROPERTY_SAMPLER_BINDINGS,
+                            &sampler_bindings);
+    ogl_context_get_property(context,
+                             OGL_CONTEXT_PROPERTY_TO_BINDINGS,
+                            &to_bindings);
 
-    ogl_context_state_cache_sync(state_cache,
-                                 STATE_CACHE_SYNC_BIT_ACTIVE_PROGRAM_OBJECT);
-    ogl_context_bo_bindings_sync(bo_bindings,
-                                 BO_BINDINGS_SYNC_BIT_ATOMIC_COUNTER_BUFFER     |
-                                 BO_BINDINGS_SYNC_BIT_SHADER_STORAGE_BUFFER     |
-                                 BO_BINDINGS_SYNC_BIT_TRANSFORM_FEEDBACK_BUFFER |
-                                 BO_BINDINGS_SYNC_BIT_UNIFORM_BUFFER);
+    ogl_context_state_cache_sync     (state_cache,
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_PROGRAM_OBJECT);
+    ogl_context_bo_bindings_sync     (bo_bindings,
+                                      BO_BINDINGS_SYNC_BIT_ATOMIC_COUNTER_BUFFER     |
+                                      BO_BINDINGS_SYNC_BIT_SHADER_STORAGE_BUFFER     |
+                                      BO_BINDINGS_SYNC_BIT_TRANSFORM_FEEDBACK_BUFFER |
+                                      BO_BINDINGS_SYNC_BIT_UNIFORM_BUFFER);
+    ogl_context_sampler_bindings_sync(sampler_bindings);
+    ogl_context_to_bindings_sync     (to_bindings,
+                                      OGL_CONTEXT_TO_BINDINGS_SYNC_BIT_ALL);
 
     _private_entrypoints_ptr->pGLDispatchCompute(num_groups_x,
                                                  num_groups_y,
@@ -2352,9 +2046,11 @@ PUBLIC void APIENTRY ogl_context_wrappers_glDispatchCompute(GLuint num_groups_x,
 /** Please see header for spec */
 PUBLIC void APIENTRY ogl_context_wrappers_glDispatchComputeIndirect(GLintptr indirect)
 {
-    ogl_context_bo_bindings bo_bindings = NULL;
-    ogl_context             context     = ogl_context_get_current_context();
-    ogl_context_state_cache state_cache = NULL;
+    ogl_context_bo_bindings      bo_bindings      = NULL;
+    ogl_context                  context          = ogl_context_get_current_context();
+    ogl_context_sampler_bindings sampler_bindings = NULL;
+    ogl_context_state_cache      state_cache      = NULL;
+    ogl_context_to_bindings      to_bindings      = NULL;
 
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_BO_BINDINGS,
@@ -2362,14 +2058,23 @@ PUBLIC void APIENTRY ogl_context_wrappers_glDispatchComputeIndirect(GLintptr ind
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_STATE_CACHE,
                             &state_cache);
+    ogl_context_get_property(context,
+                             OGL_CONTEXT_PROPERTY_SAMPLER_BINDINGS,
+                            &sampler_bindings);
+    ogl_context_get_property(context,
+                             OGL_CONTEXT_PROPERTY_TO_BINDINGS,
+                            &to_bindings);
 
-    ogl_context_state_cache_sync(state_cache,
-                                 STATE_CACHE_SYNC_BIT_ACTIVE_PROGRAM_OBJECT);
-    ogl_context_bo_bindings_sync(bo_bindings,
-                                 BO_BINDINGS_SYNC_BIT_ATOMIC_COUNTER_BUFFER     |
-                                 BO_BINDINGS_SYNC_BIT_SHADER_STORAGE_BUFFER     |
-                                 BO_BINDINGS_SYNC_BIT_TRANSFORM_FEEDBACK_BUFFER |
-                                 BO_BINDINGS_SYNC_BIT_UNIFORM_BUFFER);
+    ogl_context_state_cache_sync     (state_cache,
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_PROGRAM_OBJECT);
+    ogl_context_bo_bindings_sync     (bo_bindings,
+                                      BO_BINDINGS_SYNC_BIT_ATOMIC_COUNTER_BUFFER     |
+                                      BO_BINDINGS_SYNC_BIT_SHADER_STORAGE_BUFFER     |
+                                      BO_BINDINGS_SYNC_BIT_TRANSFORM_FEEDBACK_BUFFER |
+                                      BO_BINDINGS_SYNC_BIT_UNIFORM_BUFFER);
+    ogl_context_sampler_bindings_sync(sampler_bindings);
+    ogl_context_to_bindings_sync     (to_bindings,
+                                      OGL_CONTEXT_TO_BINDINGS_SYNC_BIT_ALL);
 
     _private_entrypoints_ptr->pGLDispatchComputeIndirect(indirect);
 }
@@ -3464,7 +3169,7 @@ PUBLIC void APIENTRY ogl_context_wrappers_glFramebufferTextureLayer(GLenum      
                              OGL_TEXTURE_PROPERTY_ID,
                             &texture_id);
     ogl_texture_get_property(texture,
-                             OGL_TEXTURE_PROPERTY_TARGET,
+                             OGL_TEXTURE_PROPERTY_TARGET_GL,
                             &texture_target);
 
     switch (fb_target)
@@ -3515,6 +3220,36 @@ PUBLIC void APIENTRY ogl_context_wrappers_glFrontFace(GLenum mode)
     ogl_context_state_cache_set_property(state_cache,
                                          OGL_CONTEXT_STATE_CACHE_PROPERTY_FRONT_FACE,
                                         &mode);
+}
+
+/** Please see header for spec */
+PUBLIC void APIENTRY ogl_context_wrappers_glGenerateMipmap(GLenum target)
+{
+    ogl_context             context               = ogl_context_get_current_context();
+    GLuint                  current_texture_unit = 0;
+    ogl_context_state_cache state_cache          = NULL;
+    ogl_context_to_bindings to_bindings          = NULL;
+
+    ogl_context_get_property            (context,
+                                         OGL_CONTEXT_PROPERTY_STATE_CACHE,
+                                        &state_cache);
+    ogl_context_get_property            (context,
+                                         OGL_CONTEXT_PROPERTY_TO_BINDINGS,
+                                        &to_bindings);
+    ogl_context_state_cache_get_property(state_cache,
+                                         OGL_CONTEXT_STATE_CACHE_PROPERTY_TEXTURE_UNIT,
+                                        &current_texture_unit);
+
+    ogl_context_to_bindings_sync(to_bindings,
+                                 ogl_context_to_bindings_get_ogl_context_to_bindings_sync_bit_from_gl_target(target) );
+
+    _private_entrypoints_ptr->pGLGenerateMipmap(target);
+
+    _ogl_context_wrappers_update_mipmap_info(ogl_context_get_current_context(),
+                                             target,
+                                             ogl_context_to_bindings_get_bound_texture(to_bindings,
+                                                                                       current_texture_unit,
+                                                                                       target) );
 }
 
 /** Please see header for spec */
@@ -3792,6 +3527,26 @@ PUBLIC void APIENTRY ogl_context_wrappers_glGetCompressedTextureImageEXT(ogl_tex
 }
 
 /** Please see header for spec */
+PUBLIC void APIENTRY ogl_context_wrappers_glGetRenderbufferParameteriv(GLenum target,
+                                                                       GLenum pname,
+                                                                       GLint* params)
+{
+    ogl_context             context     = ogl_context_get_current_context();
+    ogl_context_state_cache state_cache = NULL;
+
+    ogl_context_get_property(context,
+                             OGL_CONTEXT_PROPERTY_STATE_CACHE,
+                            &state_cache);
+
+    ogl_context_state_cache_sync(state_cache,
+                                 STATE_CACHE_SYNC_BIT_ACTIVE_RENDERBUFFER);
+
+    _private_entrypoints_ptr->pGLGetRenderbufferParameteriv(target,
+                                                            pname,
+                                                            params);
+}
+
+/** Please see header for spec */
 PUBLIC void APIENTRY ogl_context_wrappers_glGetDoublev(GLenum    pname,
                                                        GLdouble* params)
 {
@@ -4011,6 +3766,15 @@ PUBLIC void APIENTRY ogl_context_wrappers_glGetIntegerv(GLenum pname,
         {
             ogl_context_state_cache_get_property(state_cache,
                                                  OGL_CONTEXT_STATE_CACHE_PROPERTY_PROGRAM_OBJECT,
+                                                 params);
+
+            goto end;
+        }
+
+        case GL_VIEWPORT:
+        {
+            ogl_context_state_cache_get_property(state_cache,
+                                                 OGL_CONTEXT_STATE_CACHE_PROPERTY_VIEWPORT,
                                                  params);
 
             goto end;
@@ -5491,9 +5255,11 @@ PUBLIC void APIENTRY ogl_context_wrappers_glTexBuffer(GLenum target,
 {
     ogl_context             context      = ogl_context_get_current_context();
     ogl_context_bo_bindings bo_bindings  = NULL;
+    ral_texture_format      format_ral   = raGL_utils_get_ral_texture_format_for_ogl_enum(internalformat);
     ogl_context_state_cache state_cache  = NULL;
     uint32_t                texture_unit = -1;
     ogl_context_to_bindings to_bindings  = NULL;
+    ral_texture_type        type_ral     = raGL_utils_get_ral_texture_type_for_ogl_enum(target);
 
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_BO_BINDINGS,
@@ -5525,8 +5291,11 @@ PUBLIC void APIENTRY ogl_context_wrappers_glTexBuffer(GLenum target,
                                                                           target);
 
     ogl_texture_set_property(bound_texture,
-                             OGL_TEXTURE_PROPERTY_INTERNALFORMAT,
-                            &internalformat);
+                             OGL_TEXTURE_PROPERTY_FORMAT_RAL,
+                            &format_ral);
+    ogl_texture_set_property(bound_texture,
+                             OGL_TEXTURE_PROPERTY_TYPE,
+                            &type_ral);
 }
 
 /* Please see header for specification */
@@ -5538,9 +5307,11 @@ PUBLIC void APIENTRY ogl_context_wrappers_glTexBufferRange(GLenum     target,
 {
     ogl_context             context      = ogl_context_get_current_context();
     ogl_context_bo_bindings bo_bindings  = NULL;
+    ral_texture_format      format_ral   = raGL_utils_get_ral_texture_format_for_ogl_enum(internalformat);
     ogl_context_state_cache state_cache  = NULL;
     uint32_t                texture_unit = -1;
     ogl_context_to_bindings to_bindings  = NULL;
+    ral_texture_type        type_ral     = raGL_utils_get_ral_texture_type_for_ogl_enum(target);
 
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_BO_BINDINGS,
@@ -5574,203 +5345,11 @@ PUBLIC void APIENTRY ogl_context_wrappers_glTexBufferRange(GLenum     target,
                                                                           target);
 
     ogl_texture_set_property(bound_texture,
-                             OGL_TEXTURE_PROPERTY_INTERNALFORMAT,
-                            &internalformat);
-}
-
-/* Please see header for specification */
-PUBLIC void APIENTRY ogl_context_wrappers_glTexImage1D(GLenum        target,
-                                                       GLint         level,
-                                                       GLint         internalformat,
-                                                       GLsizei       width,
-                                                       GLint         border,
-                                                       GLenum        format,
-                                                       GLenum        type,
-                                                       const GLvoid* pixels)
-{
-    ogl_context             context      = ogl_context_get_current_context();
-    ogl_context_bo_bindings bo_bindings  = NULL;
-    ogl_context_state_cache state_cache  = NULL;
-    uint32_t                texture_unit = -1;
-    ogl_context_to_bindings to_bindings  = NULL;
-
-    ogl_context_get_property(context,
-                             OGL_CONTEXT_PROPERTY_BO_BINDINGS,
-                            &bo_bindings);
-    ogl_context_get_property(context,
-                             OGL_CONTEXT_PROPERTY_STATE_CACHE,
-                            &state_cache);
-    ogl_context_get_property(context,
-                             OGL_CONTEXT_PROPERTY_TO_BINDINGS,
-                            &to_bindings);
-
-    ogl_context_state_cache_get_property(state_cache,
-                                         OGL_CONTEXT_STATE_CACHE_PROPERTY_TEXTURE_UNIT,
-                                        &texture_unit);
-
-    ogl_context_bo_bindings_sync(bo_bindings,
-                                 BO_BINDINGS_SYNC_BIT_PIXEL_UNPACK_BUFFER);
-    ogl_context_state_cache_sync(state_cache,
-                                 STATE_CACHE_SYNC_BIT_ACTIVE_TEXTURE_UNIT);
-    ogl_context_to_bindings_sync(to_bindings,
-                                 ogl_context_to_bindings_get_ogl_context_to_bindings_sync_bit_from_gl_target(target) );
-
-    _private_entrypoints_ptr->pGLTexImage1D(target,
-                                            level,
-                                            internalformat,
-                                            width,
-                                            border,
-                                            format,
-                                            type,
-                                            pixels);
-
-    ogl_texture bound_texture = ogl_context_to_bindings_get_bound_texture(to_bindings,
-                                                                          texture_unit,
-                                                                          target);
-
-    ogl_texture_set_mipmap_property(bound_texture,
-                                    level,
-                                    OGL_TEXTURE_MIPMAP_PROPERTY_WIDTH,
-                                    &width);
-    ogl_texture_set_property       (bound_texture,
-                                    OGL_TEXTURE_PROPERTY_INTERNALFORMAT,
-                                   &internalformat);
-}
-
-/* Please see header for specification */
-PUBLIC void APIENTRY ogl_context_wrappers_glTexImage2D(GLenum        target,
-                                                       GLint         level,
-                                                       GLint         internalformat,
-                                                       GLsizei       width,
-                                                       GLsizei       height,
-                                                       GLint         border,
-                                                       GLenum        format,
-                                                       GLenum        type,
-                                                       const GLvoid* pixels)
-{
-    ogl_context             context      = ogl_context_get_current_context();
-    ogl_context_bo_bindings bo_bindings  = NULL;
-    ogl_context_state_cache state_cache  = NULL;
-    uint32_t                texture_unit = -1;
-    ogl_context_to_bindings to_bindings  = NULL;
-
-    ogl_context_get_property(context,
-                             OGL_CONTEXT_PROPERTY_BO_BINDINGS,
-                            &bo_bindings);
-    ogl_context_get_property(context,
-                             OGL_CONTEXT_PROPERTY_STATE_CACHE,
-                            &state_cache);
-    ogl_context_get_property(context,
-                             OGL_CONTEXT_PROPERTY_TO_BINDINGS,
-                            &to_bindings);
-
-    ogl_context_state_cache_get_property(state_cache,
-                                         OGL_CONTEXT_STATE_CACHE_PROPERTY_TEXTURE_UNIT,
-                                        &texture_unit);
-
-    ogl_context_bo_bindings_sync(bo_bindings,
-                                 BO_BINDINGS_SYNC_BIT_PIXEL_UNPACK_BUFFER);
-    ogl_context_state_cache_sync(state_cache,
-                                 STATE_CACHE_SYNC_BIT_ACTIVE_TEXTURE_UNIT);
-    ogl_context_to_bindings_sync(to_bindings,
-                                 ogl_context_to_bindings_get_ogl_context_to_bindings_sync_bit_from_gl_target(target) );
-
-    _private_entrypoints_ptr->pGLTexImage2D(target,
-                                            level,
-                                            internalformat,
-                                            width,
-                                            height,
-                                            border,
-                                            format,
-                                            type,
-                                            pixels);
-
-    ogl_texture bound_texture = ogl_context_to_bindings_get_bound_texture(to_bindings,
-                                                                          texture_unit,
-                                                                          target);
-
-    ogl_texture_set_mipmap_property(bound_texture,
-                                    level,
-                                    OGL_TEXTURE_MIPMAP_PROPERTY_WIDTH,
-                                    &width);
-    ogl_texture_set_mipmap_property(bound_texture,
-                                    level,
-                                    OGL_TEXTURE_MIPMAP_PROPERTY_HEIGHT,
-                                    &height);
-    ogl_texture_set_property       (bound_texture,
-                                    OGL_TEXTURE_PROPERTY_INTERNALFORMAT,
-                                   &internalformat);
-}
-
-/* Please see header for specification */
-PUBLIC void APIENTRY ogl_context_wrappers_glTexImage3D(GLenum        target,
-                                                       GLint         level,
-                                                       GLint         internalformat,
-                                                       GLsizei       width,
-                                                       GLsizei       height,
-                                                       GLsizei       depth,
-                                                       GLint         border,
-                                                       GLenum        format,
-                                                       GLenum        type,
-                                                       const GLvoid* pixels)
-{
-    ogl_context             context      = ogl_context_get_current_context();
-    ogl_context_bo_bindings bo_bindings  = NULL;
-    ogl_context_state_cache state_cache  = NULL;
-    uint32_t                texture_unit = -1;
-    ogl_context_to_bindings to_bindings  = NULL;
-
-    ogl_context_get_property(context,
-                             OGL_CONTEXT_PROPERTY_BO_BINDINGS,
-                            &bo_bindings);
-    ogl_context_get_property(context,
-                             OGL_CONTEXT_PROPERTY_STATE_CACHE,
-                            &state_cache);
-    ogl_context_get_property(context,
-                             OGL_CONTEXT_PROPERTY_TO_BINDINGS,
-                            &to_bindings);
-
-    ogl_context_state_cache_get_property(state_cache,
-                                         OGL_CONTEXT_STATE_CACHE_PROPERTY_TEXTURE_UNIT,
-                                        &texture_unit);
-
-    ogl_context_bo_bindings_sync(bo_bindings,
-                                 BO_BINDINGS_SYNC_BIT_PIXEL_UNPACK_BUFFER);
-    ogl_context_state_cache_sync(state_cache,
-                                 STATE_CACHE_SYNC_BIT_ACTIVE_TEXTURE_UNIT);
-    ogl_context_to_bindings_sync(to_bindings,
-                                 ogl_context_to_bindings_get_ogl_context_to_bindings_sync_bit_from_gl_target(target) );
-
-    _private_entrypoints_ptr->pGLTexImage3D(target,
-                                            level,
-                                            internalformat,
-                                            width,
-                                            height,
-                                            depth,
-                                            border,
-                                            format,
-                                            type,
-                                            pixels);
-
-    ogl_texture bound_texture = ogl_context_to_bindings_get_bound_texture(to_bindings,
-                                                                          texture_unit,
-                                                                          target);
-
-    ogl_texture_set_mipmap_property(bound_texture,
-                                    level,
-                                    OGL_TEXTURE_MIPMAP_PROPERTY_WIDTH,
-                                    &width);
-    ogl_texture_set_mipmap_property(bound_texture,
-                                    level,
-                                    OGL_TEXTURE_MIPMAP_PROPERTY_HEIGHT,
-                                    &height);
-    ogl_texture_set_mipmap_property(bound_texture,
-                                    level,
-                                    OGL_TEXTURE_MIPMAP_PROPERTY_DEPTH,
-                                    &depth);
-    ogl_texture_set_property       (bound_texture,
-                                    OGL_TEXTURE_PROPERTY_INTERNALFORMAT,
-                                   &internalformat);
+                             OGL_TEXTURE_PROPERTY_FORMAT_RAL,
+                            &format_ral);
+    ogl_texture_set_property(bound_texture,
+                             OGL_TEXTURE_PROPERTY_TYPE,
+                            &type_ral);
 }
 
 /* Please see header for specification */
@@ -6017,7 +5596,7 @@ PUBLIC void APIENTRY ogl_context_wrappers_glTexStorage2D(GLenum  target,
 
 /* Please see header for specification */
 PUBLIC void APIENTRY ogl_context_wrappers_glTexStorage2DMultisample(GLenum    target,
-                                                                    GLsizei   levels,
+                                                                    GLsizei   samples,
                                                                     GLenum    internalformat,
                                                                     GLsizei   width,
                                                                     GLsizei   height,
@@ -6046,7 +5625,7 @@ PUBLIC void APIENTRY ogl_context_wrappers_glTexStorage2DMultisample(GLenum    ta
                                  ogl_context_to_bindings_get_ogl_context_to_bindings_sync_bit_from_gl_target(target) );
 
     _private_entrypoints_ptr->pGLTexStorage2DMultisample(target,
-                                                         levels,
+                                                         samples,
                                                          internalformat,
                                                          width,
                                                          height,
@@ -6059,6 +5638,9 @@ PUBLIC void APIENTRY ogl_context_wrappers_glTexStorage2DMultisample(GLenum    ta
     _ogl_context_wrappers_update_mipmap_info(context,
                                              target,
                                              texture);
+    ogl_texture_set_property                (texture,
+                                             OGL_TEXTURE_PROPERTY_N_SAMPLES,
+                                            &samples);
 }
 
 /* Please see header for specification */
@@ -6102,12 +5684,18 @@ PUBLIC void APIENTRY ogl_context_wrappers_glTexStorage3D(GLenum  target,
                                               height,
                                               depth);
 
-    _ogl_context_wrappers_update_mipmap_info(context, target, texture);
+    _ogl_context_wrappers_update_mipmap_info(context,
+                                             target,
+                                             texture);
+
+    ogl_texture_set_property(texture,
+                             OGL_TEXTURE_PROPERTY_N_LAYERS,
+                            &depth);
 }
 
 /* Please see header for specification */
 PUBLIC void APIENTRY ogl_context_wrappers_glTexStorage3DMultisample(GLenum    target,
-                                                                    GLsizei   levels,
+                                                                    GLsizei   samples,
                                                                     GLenum    internalformat,
                                                                     GLsizei   width,
                                                                     GLsizei   height,
@@ -6141,7 +5729,7 @@ PUBLIC void APIENTRY ogl_context_wrappers_glTexStorage3DMultisample(GLenum    ta
                                  ogl_context_to_bindings_get_ogl_context_to_bindings_sync_bit_from_gl_target(target) );
 
     _private_entrypoints_ptr->pGLTexStorage3DMultisample(target,
-                                                         levels,
+                                                         samples,
                                                          internalformat,
                                                          width,
                                                          height,
@@ -6151,6 +5739,13 @@ PUBLIC void APIENTRY ogl_context_wrappers_glTexStorage3DMultisample(GLenum    ta
     _ogl_context_wrappers_update_mipmap_info(context,
                                              target,
                                              texture);
+
+    ogl_texture_set_property                (texture,
+                                             OGL_TEXTURE_PROPERTY_N_SAMPLES,
+                                            &samples);
+    ogl_texture_set_property                (texture,
+                                             OGL_TEXTURE_PROPERTY_N_LAYERS,
+                                            &depth);
 }
 
 /* Please see header for specification */
@@ -6294,6 +5889,8 @@ PUBLIC void APIENTRY ogl_context_wrappers_glTextureBufferEXT(ogl_texture texture
     GLuint                  texture_id  = 0;
     ogl_context             context     = ogl_context_get_current_context();
     ogl_context_bo_bindings bo_bindings = NULL;
+    ral_texture_format      format_ral   = raGL_utils_get_ral_texture_format_for_ogl_enum(internalformat);
+    ral_texture_type        type_ral     = raGL_utils_get_ral_texture_type_for_ogl_enum  (target);
 
     ogl_context_get_property    (context,
                                  OGL_CONTEXT_PROPERTY_BO_BINDINGS,
@@ -6311,8 +5908,11 @@ PUBLIC void APIENTRY ogl_context_wrappers_glTextureBufferEXT(ogl_texture texture
                                                   buffer);
 
     ogl_texture_set_property(texture,
-                             OGL_TEXTURE_PROPERTY_INTERNALFORMAT,
-                            &internalformat);
+                             OGL_TEXTURE_PROPERTY_FORMAT_RAL,
+                            &format_ral);
+    ogl_texture_set_property(texture,
+                             OGL_TEXTURE_PROPERTY_TYPE,
+                            &type_ral);
 }
 
 /* Please see header for specification */
@@ -6326,6 +5926,8 @@ PUBLIC void APIENTRY ogl_context_wrappers_glTextureBufferRangeEXT(ogl_texture te
     GLuint                  texture_id  = 0;
     ogl_context             context     = ogl_context_get_current_context();
     ogl_context_bo_bindings bo_bindings = NULL;
+    ral_texture_format      format_ral   = raGL_utils_get_ral_texture_format_for_ogl_enum(internalformat);
+    ral_texture_type        type_ral     = raGL_utils_get_ral_texture_type_for_ogl_enum  (target);
 
     ogl_context_get_property    (context,
                                  OGL_CONTEXT_PROPERTY_BO_BINDINGS,
@@ -6345,158 +5947,11 @@ PUBLIC void APIENTRY ogl_context_wrappers_glTextureBufferRangeEXT(ogl_texture te
                                                        size);
 
     ogl_texture_set_property(texture,
-                             OGL_TEXTURE_PROPERTY_INTERNALFORMAT,
-                            &internalformat);
-}
-
-/* Please see header for specification */
-PUBLIC void APIENTRY ogl_context_wrappers_glTextureImage1DEXT(ogl_texture   texture,
-                                                              GLenum        target,
-                                                              GLint         level,
-                                                              GLenum        internalformat,
-                                                              GLsizei       width,
-                                                              GLint         border,
-                                                              GLenum        format,
-                                                              GLenum        type,
-                                                              const GLvoid* pixels)
-{
-    GLuint                  texture_id  = 0;
-    ogl_context             context     = ogl_context_get_current_context();
-    ogl_context_bo_bindings bo_bindings = NULL;
-
-    ogl_context_get_property    (context,
-                                 OGL_CONTEXT_PROPERTY_BO_BINDINGS,
-                                &bo_bindings);
-    ogl_context_bo_bindings_sync(bo_bindings,
-                                 BO_BINDINGS_SYNC_BIT_PIXEL_UNPACK_BUFFER);
-
-    ogl_texture_get_property(texture,
-                             OGL_TEXTURE_PROPERTY_ID,
-                            &texture_id);
-
-    _private_entrypoints_ptr->pGLTextureImage1DEXT(texture_id,
-                                                   target,
-                                                   level,
-                                                   internalformat,
-                                                   width,
-                                                   border,
-                                                   format,
-                                                   type,
-                                                   pixels);
-
-    ogl_texture_set_mipmap_property(texture,
-                                    level,
-                                    OGL_TEXTURE_MIPMAP_PROPERTY_WIDTH,
-                                    &width);
-    ogl_texture_set_property       (texture,
-                                    OGL_TEXTURE_PROPERTY_INTERNALFORMAT,
-                                   &internalformat);
-}
-
-/* Please see header for specification */
-PUBLIC void APIENTRY ogl_context_wrappers_glTextureImage2DEXT(ogl_texture   texture,
-                                                              GLenum        target,
-                                                              GLint         level,
-                                                              GLenum        internalformat,
-                                                              GLsizei       width,
-                                                              GLsizei       height,
-                                                              GLint         border,
-                                                              GLenum        format,
-                                                              GLenum        type,
-                                                              const GLvoid* pixels)
-{
-    GLuint                  texture_id  = 0;
-    ogl_context             context     = ogl_context_get_current_context();
-    ogl_context_bo_bindings bo_bindings = NULL;
-
-    ogl_context_get_property    (context,
-                                 OGL_CONTEXT_PROPERTY_BO_BINDINGS,
-                                &bo_bindings);
-    ogl_context_bo_bindings_sync(bo_bindings,
-                                 BO_BINDINGS_SYNC_BIT_PIXEL_UNPACK_BUFFER);
-
-    ogl_texture_get_property(texture,
-                             OGL_TEXTURE_PROPERTY_ID,
-                            &texture_id);
-
-    _private_entrypoints_ptr->pGLTextureImage2DEXT(texture_id,
-                                                   target,
-                                                   level,
-                                                   internalformat,
-                                                   width,
-                                                   height,
-                                                   border,
-                                                   format,
-                                                   type,
-                                                   pixels);
-
-    ogl_texture_set_mipmap_property(texture,
-                                    level,
-                                    OGL_TEXTURE_MIPMAP_PROPERTY_WIDTH,
-                                    &width);
-    ogl_texture_set_mipmap_property(texture,
-                                    level,
-                                    OGL_TEXTURE_MIPMAP_PROPERTY_HEIGHT,
-                                    &height);
-    ogl_texture_set_property       (texture,
-                                    OGL_TEXTURE_PROPERTY_INTERNALFORMAT,
-                                   &internalformat);
-}
-
-/* Please see header for specification */
-PUBLIC void APIENTRY ogl_context_wrappers_glTextureImage3DEXT(ogl_texture  texture,
-                                                              GLenum        target,
-                                                              GLint         level,
-                                                              GLenum        internalformat,
-                                                              GLsizei       width,
-                                                              GLsizei       height,
-                                                              GLsizei       depth,
-                                                              GLint         border,
-                                                              GLenum        format,
-                                                              GLenum        type,
-                                                              const GLvoid* pixels)
-{
-    GLuint                  texture_id  = 0;
-    ogl_context             context     = ogl_context_get_current_context();
-    ogl_context_bo_bindings bo_bindings = NULL;
-
-    ogl_context_get_property    (context,
-                                 OGL_CONTEXT_PROPERTY_BO_BINDINGS,
-                                &bo_bindings);
-    ogl_context_bo_bindings_sync(bo_bindings,
-                                 BO_BINDINGS_SYNC_BIT_PIXEL_UNPACK_BUFFER);
-
-    ogl_texture_get_property(texture,
-                             OGL_TEXTURE_PROPERTY_ID,
-                            &texture_id);
-
-    _private_entrypoints_ptr->pGLTextureImage3DEXT(texture_id,
-                                                   target,
-                                                   level,
-                                                   internalformat,
-                                                   width,
-                                                   height,
-                                                   depth,
-                                                   border,
-                                                   format,
-                                                   type,
-                                                   pixels);
-
-    ogl_texture_set_mipmap_property(texture,
-                                    level,
-                                    OGL_TEXTURE_MIPMAP_PROPERTY_WIDTH,
-                                    &width);
-    ogl_texture_set_mipmap_property(texture,
-                                    level,
-                                    OGL_TEXTURE_MIPMAP_PROPERTY_HEIGHT,
-                                    &height);
-    ogl_texture_set_mipmap_property(texture,
-                                    level,
-                                    OGL_TEXTURE_MIPMAP_PROPERTY_DEPTH,
-                                    &depth);
-    ogl_texture_set_property       (texture,
-                                    OGL_TEXTURE_PROPERTY_INTERNALFORMAT,
-                                   &internalformat);
+                             OGL_TEXTURE_PROPERTY_FORMAT_RAL,
+                            &format_ral);
+    ogl_texture_set_property(texture,
+                             OGL_TEXTURE_PROPERTY_TYPE,
+                            &type_ral);
 }
 
 /* Please see header for specification */
@@ -6614,7 +6069,9 @@ PUBLIC void APIENTRY ogl_context_wrappers_glTextureStorage1DEXT(ogl_texture text
                                                                 GLenum      internalformat,
                                                                 GLsizei     width)
 {
-    GLuint texture_id = 0;
+    static const uint32_t n_layers   = 1;
+    static const uint32_t n_samples  = 1;
+    GLuint                texture_id = 0;
 
     ogl_texture_get_property(texture,
                              OGL_TEXTURE_PROPERTY_ID,
@@ -6629,6 +6086,16 @@ PUBLIC void APIENTRY ogl_context_wrappers_glTextureStorage1DEXT(ogl_texture text
     _ogl_context_wrappers_update_mipmap_info(ogl_context_get_current_context(),
                                              target,
                                              texture);
+
+    ogl_texture_set_property(texture,
+                             OGL_TEXTURE_PROPERTY_N_LAYERS,
+                            &n_layers);
+/*  ogl_texture_set_property(texture,
+                             OGL_TEXTURE_PROPERTY_N_MIPMAPS,
+                            &levels); */
+    ogl_texture_set_property(texture,
+                             OGL_TEXTURE_PROPERTY_N_SAMPLES,
+                            &n_samples);
 }
 
 /* Please see header for specification */
@@ -6639,7 +6106,9 @@ PUBLIC void APIENTRY ogl_context_wrappers_glTextureStorage2DEXT(ogl_texture text
                                                                 GLsizei     width,
                                                                 GLsizei     height)
 {
-    GLuint texture_id = 0;
+    static const uint32_t n_layers   = 1;
+    static const uint32_t n_samples  = 1;
+    GLuint                texture_id = 0;
 
     ogl_texture_get_property(texture,
                              OGL_TEXTURE_PROPERTY_ID,
@@ -6652,19 +6121,33 @@ PUBLIC void APIENTRY ogl_context_wrappers_glTextureStorage2DEXT(ogl_texture text
                                                      width,
                                                      height);
 
-    _ogl_context_wrappers_update_mipmap_info(ogl_context_get_current_context(), target, texture);
+    _ogl_context_wrappers_update_mipmap_info(ogl_context_get_current_context(),
+                                             target,
+                                             texture);
+
+    ogl_texture_set_property(texture,
+                             OGL_TEXTURE_PROPERTY_N_LAYERS,
+                            &n_layers);
+/*  ogl_texture_set_property(texture,
+                             OGL_TEXTURE_PROPERTY_N_MIPMAPS,
+                            &levels);*/
+    ogl_texture_set_property(texture,
+                             OGL_TEXTURE_PROPERTY_N_SAMPLES,
+                            &n_samples);
 }
 
 /* Please see header for specification */
 PUBLIC void APIENTRY ogl_context_wrappers_glTextureStorage2DMultisampleEXT(ogl_texture texture,
                                                                            GLenum      target,
-                                                                           GLsizei     levels,
+                                                                           GLsizei     samples,
                                                                            GLenum      internalformat,
                                                                            GLsizei     width,
                                                                            GLsizei     height,
                                                                            GLboolean   fixedsamplelocations)
 {
-    GLuint texture_id = 0;
+    const uint32_t n_layers   = 1;
+    const uint32_t n_mipmaps  = 1;
+    GLuint         texture_id = 0;
 
     ogl_texture_get_property(texture,
                              OGL_TEXTURE_PROPERTY_ID,
@@ -6672,13 +6155,25 @@ PUBLIC void APIENTRY ogl_context_wrappers_glTextureStorage2DMultisampleEXT(ogl_t
 
     _private_entrypoints_ptr->pGLTextureStorage2DMultisampleEXT(texture_id,
                                                                 target,
-                                                                levels,
+                                                                samples,
                                                                 internalformat,
                                                                 width,
                                                                 height,
                                                                 fixedsamplelocations);
 
-    _ogl_context_wrappers_update_mipmap_info(ogl_context_get_current_context(), target, texture);
+    _ogl_context_wrappers_update_mipmap_info(ogl_context_get_current_context(),
+                                             target,
+                                             texture);
+
+    ogl_texture_set_property(texture,
+                             OGL_TEXTURE_PROPERTY_N_LAYERS,
+                           &n_layers);
+/*  ogl_texture_set_property(texture,
+                             OGL_TEXTURE_PROPERTY_N_MIPMAPS,
+                            &n_mipmaps);*/
+    ogl_texture_set_property(texture,
+                             OGL_TEXTURE_PROPERTY_N_SAMPLES,
+                            &samples);
 }
 
 /* Please see header for specification */
@@ -6690,7 +6185,9 @@ PUBLIC void APIENTRY ogl_context_wrappers_glTextureStorage3DEXT(ogl_texture text
                                                                 GLsizei     height,
                                                                 GLsizei     depth)
 {
-    GLuint texture_id = 0;
+    const uint32_t        n_layers   = (target == GL_TEXTURE_2D_ARRAY) ? depth : 1;
+    static const uint32_t n_samples  = 1;
+    GLuint                texture_id = 0;
 
     ogl_texture_get_property(texture,
                              OGL_TEXTURE_PROPERTY_ID,
@@ -6704,34 +6201,65 @@ PUBLIC void APIENTRY ogl_context_wrappers_glTextureStorage3DEXT(ogl_texture text
                                                      height,
                                                      depth);
 
-    _ogl_context_wrappers_update_mipmap_info(ogl_context_get_current_context(), target, texture);
+    _ogl_context_wrappers_update_mipmap_info(ogl_context_get_current_context(),
+                                             target,
+                                             texture);
+
+    ogl_texture_set_property(texture,
+                             OGL_TEXTURE_PROPERTY_N_LAYERS,
+                           &n_layers);
+/*  ogl_texture_set_property(texture,
+                             OGL_TEXTURE_PROPERTY_N_MIPMAPS,
+                            &levels); */
+    ogl_texture_set_property(texture,
+                             OGL_TEXTURE_PROPERTY_N_SAMPLES,
+                            &n_samples);
 }
 
 /* Please see header for specification */
 PUBLIC void APIENTRY ogl_context_wrappers_glTextureStorage3DMultisampleEXT(ogl_texture texture,
                                                                            GLenum      target,
-                                                                           GLsizei     levels,
+                                                                           GLsizei     samples,
                                                                            GLenum      internalformat,
                                                                            GLsizei     width,
                                                                            GLsizei     height,
                                                                            GLsizei     depth,
                                                                            GLboolean   fixedsamplelocations)
 {
-    GLuint texture_id = 0;
+    const uint32_t        n_layers   = (target == GL_TEXTURE_2D_ARRAY) ? depth : 1;
+    static const uint32_t n_mipmaps  = 1;
+    GLuint                texture_id = 0;
 
     ogl_texture_get_property(texture,
                              OGL_TEXTURE_PROPERTY_ID,
                             &texture_id);
 
-    _private_entrypoints_ptr->pGLTextureStorage2DMultisampleEXT(texture_id,
+    _private_entrypoints_ptr->pGLTextureStorage3DMultisampleEXT(texture_id,
                                                                 target,
-                                                                levels,
+                                                                samples,
                                                                 internalformat,
                                                                 width,
                                                                 height,
+                                                                depth,
                                                                 fixedsamplelocations);
 
-    _ogl_context_wrappers_update_mipmap_info(ogl_context_get_current_context(), target, texture);
+    _ogl_context_wrappers_update_mipmap_info(ogl_context_get_current_context(),
+                                             target,
+                                             texture);
+
+    ogl_texture_set_property(texture,
+                             OGL_TEXTURE_PROPERTY_N_LAYERS,
+                            &depth);
+
+    ogl_texture_set_property(texture,
+                             OGL_TEXTURE_PROPERTY_N_LAYERS,
+                           &n_layers);
+/*  ogl_texture_set_property(texture,
+                             OGL_TEXTURE_PROPERTY_N_MIPMAPS,
+                            &n_mipmaps);*/
+    ogl_texture_set_property(texture,
+                             OGL_TEXTURE_PROPERTY_N_SAMPLES,
+                            &samples);
 }
 
 /* Please see header for specification */

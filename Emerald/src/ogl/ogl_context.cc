@@ -23,6 +23,7 @@
 #include "ogl/ogl_shaders.h"
 #include "ogl/ogl_shadow_mapping.h"
 #include "ogl/ogl_text.h"
+#include "raGL/raGL_utils.h"
 #include "system/system_assertions.h"
 #include "system/system_critical_section.h"
 #include "system/system_event.h"
@@ -86,9 +87,13 @@ typedef struct
     GLuint               vao_no_vaas_id;
 
     /* Used for off-screen rendering. */
-    GLuint fbo_color_rbo_id;
-    GLuint fbo_depth_stencil_rbo_id;
-    GLuint fbo_id;
+    ral_texture_format fbo_color_texture_format;
+    GLuint             fbo_color_rbo_id;
+    ral_texture_format fbo_depth_stencil_texture_format;
+    GLuint             fbo_depth_stencil_rbo_id;
+    GLuint             fbo_id;
+    unsigned int       fbo_n_samples_effective;
+    unsigned int       fbo_size[2];
 
     /* Used by the root window for MSAA enumeration only */
     GLenum msaa_enumeration_color_internalformat;
@@ -252,6 +257,8 @@ PRIVATE ogl_context _ogl_context_create_from_system_window_shared(system_hashed_
 
     new_context_ptr->context_platform                       = NULL;
     new_context_ptr->context_type                           = type;
+    new_context_ptr->fbo_color_texture_format               = RAL_TEXTURE_FORMAT_UNKNOWN;
+    new_context_ptr->fbo_depth_stencil_texture_format       = RAL_TEXTURE_FORMAT_UNKNOWN;
     new_context_ptr->msaa_enumeration_color_samples         = NULL;
     new_context_ptr->msaa_enumeration_depth_stencil_samples = NULL;
     new_context_ptr->parent_context                         = parent_context;
@@ -394,8 +401,10 @@ PRIVATE void APIENTRY _ogl_context_debug_message_gl_callback(GLenum        sourc
         LOG_INFO("%s",
                  local_message);
 
+#if 0
         ASSERT_DEBUG_SYNC(type != GL_DEBUG_TYPE_ERROR_ARB,
                           "GL error detected");
+#endif
     }
 }
 
@@ -947,6 +956,7 @@ PRIVATE void _ogl_context_init_context_after_creation(ogl_context context)
     context_ptr->fbo_color_rbo_id                           = 0;
     context_ptr->fbo_depth_stencil_rbo_id                   = 0;
     context_ptr->fbo_id                                     = 0;
+    context_ptr->fbo_n_samples_effective                    = 0;
     context_ptr->flyby                                      = NULL;
     context_ptr->gl_arb_buffer_storage_support              = false;
     context_ptr->gl_arb_multi_bind_support                  = false;
@@ -1203,6 +1213,7 @@ PRIVATE void _ogl_context_initialize_fbo(_ogl_context* context_ptr)
     GLenum                                  internalformat_depth_stencil                  = GL_NONE;
     bool                                    internalformat_depth_stencil_includes_stencil = false;
     unsigned int                            n_samples                                     = 0;
+    unsigned int                            n_samples_effective                           = 0;
     system_pixel_format                     pixel_format                                  = NULL;
     PFNGLBINDFRAMEBUFFERPROC                pGLBindFramebuffer                            = NULL;
     PFNGLBINDRENDERBUFFERPROC               pGLBindRenderbuffer                           = NULL;
@@ -1210,6 +1221,7 @@ PRIVATE void _ogl_context_initialize_fbo(_ogl_context* context_ptr)
     PFNGLFRAMEBUFFERRENDERBUFFERPROC        pGLFramebufferRenderbuffer                    = NULL;
     PFNGLGENFRAMEBUFFERSPROC                pGLGenFramebuffers                            = NULL;
     PFNGLGENRENDERBUFFERSPROC               pGLGenRenderbuffers                           = NULL;
+    PFNGLGETRENDERBUFFERPARAMETERIVPROC     pGLGetRenderbufferParameteriv                 = NULL;
     PFNGLRENDERBUFFERSTORAGEPROC            pGLRenderbufferStorage                        = NULL;
     PFNGLRENDERBUFFERSTORAGEMULTISAMPLEPROC pGLRenderbufferStorageMultisample             = NULL;
     int                                     window_dimensions[2]                          = {0};
@@ -1231,6 +1243,7 @@ PRIVATE void _ogl_context_initialize_fbo(_ogl_context* context_ptr)
         pGLFramebufferRenderbuffer        = context_ptr->entry_points_es.pGLFramebufferRenderbuffer;
         pGLGenFramebuffers                = context_ptr->entry_points_es.pGLGenFramebuffers;
         pGLGenRenderbuffers               = context_ptr->entry_points_es.pGLGenRenderbuffers;
+        pGLGetRenderbufferParameteriv     = context_ptr->entry_points_es.pGLGetRenderbufferParameteriv;
         pGLRenderbufferStorage            = context_ptr->entry_points_es.pGLRenderbufferStorage;
         pGLRenderbufferStorageMultisample = context_ptr->entry_points_es.pGLRenderbufferStorageMultisample;
     }
@@ -1245,6 +1258,7 @@ PRIVATE void _ogl_context_initialize_fbo(_ogl_context* context_ptr)
         pGLFramebufferRenderbuffer        = context_ptr->entry_points_gl.pGLFramebufferRenderbuffer;
         pGLGenFramebuffers                = context_ptr->entry_points_gl.pGLGenFramebuffers;
         pGLGenRenderbuffers               = context_ptr->entry_points_gl.pGLGenRenderbuffers;
+        pGLGetRenderbufferParameteriv     = context_ptr->entry_points_gl.pGLGetRenderbufferParameteriv;
         pGLRenderbufferStorage            = context_ptr->entry_points_gl.pGLRenderbufferStorage;
         pGLRenderbufferStorageMultisample = context_ptr->entry_points_gl.pGLRenderbufferStorageMultisample;
     }
@@ -1360,7 +1374,8 @@ PRIVATE void _ogl_context_initialize_fbo(_ogl_context* context_ptr)
                           n_rbo < sizeof(rbos) / sizeof(rbos[0]);
                         ++n_rbo)
         {
-            const _rbo& current_rbo = rbos[n_rbo];
+            const _rbo& current_rbo           = rbos[n_rbo];
+            GLint       current_rbo_n_samples = 0;
 
             if (current_rbo.rbo_id != 0)
             {
@@ -1386,6 +1401,26 @@ PRIVATE void _ogl_context_initialize_fbo(_ogl_context* context_ptr)
                                                       window_dimensions[1]);
                 }
 
+                /* Make sure the effective number of samples used for the renderbuffer
+                 * matches the other attachments we're using.
+                 *
+                 * TODO: The whole process should be more intelligent and query impl's caps
+                 *       with glGetInternalformativ() or something before firing glRenderbufferStorage*()
+                 *       calls. Might backfire one day but until then!
+                 */
+                pGLGetRenderbufferParameteriv(GL_RENDERBUFFER,
+                                              GL_RENDERBUFFER_SAMPLES,
+                                             &current_rbo_n_samples);
+
+                if (n_samples_effective != 0)
+                {
+                    ASSERT_ALWAYS_SYNC(n_samples_effective == current_rbo_n_samples,
+                                      "Default FBO attachment's n_samples mismatch detected!");
+                }
+                else
+                {
+                    n_samples_effective = current_rbo_n_samples;
+                }
                 /* Bind the RBO to relevant FBO attachments */
                 if (current_rbo.is_color_attachment)
                 {
@@ -1414,6 +1449,8 @@ PRIVATE void _ogl_context_initialize_fbo(_ogl_context* context_ptr)
             } /* if (current_rbo.rbo_id != 0) */
         } /* for (all RBOs) */
 
+        context_ptr->fbo_n_samples_effective = n_samples_effective;
+
         /* Make sure the FBO is complete. Since this is a platform-specific property,
         * we need to terminate if the driver reports it cannot support the requested
         * configuration.
@@ -1429,14 +1466,23 @@ PRIVATE void _ogl_context_initialize_fbo(_ogl_context* context_ptr)
         }
     } /* if (any of the attachments need to have a physical backing) */
 
+    /* Store the framebuffer size */
+    context_ptr->fbo_size[0] = window_dimensions[0];
+    context_ptr->fbo_size[1] = window_dimensions[1];
+
+    /* Store the attachment texture formats. */
+    context_ptr->fbo_color_texture_format         = raGL_utils_get_ral_texture_format_for_ogl_enum(internalformat_color);
+    context_ptr->fbo_depth_stencil_texture_format = raGL_utils_get_ral_texture_format_for_ogl_enum(internalformat_depth_stencil);
+
     /* Log the context's FBO configuration. Could be useful for debugging in the future. */
     LOG_INFO("Using the following FBO configuration for the rendering context:\n"
              "* Color RBO:         [%s]\n"
              "* Depth RBO:         [%s]\n"
-             "* Number of samples: [%d]\n",
+             "* Number of samples: [%d] (effective:[%d])\n",
              _ogl_context_get_internalformat_string(internalformat_color),
              _ogl_context_get_internalformat_string(internalformat_depth_stencil),
-             n_samples);
+             n_samples,
+             n_samples_effective);
 end:
     ;
 }
@@ -1561,8 +1607,6 @@ PRIVATE void _ogl_context_retrieve_ES_function_pointers(_ogl_context* context_pt
         {&context_ptr->entry_points_es.pGLClientWaitSync,                      "glClientWaitSync"},
         {&context_ptr->entry_points_es.pGLColorMask,                           "glColorMask"},
         {&context_ptr->entry_points_es.pGLCompileShader,                       "glCompileShader"},
-        {&context_ptr->entry_points_es.pGLCompressedTexImage2D,                "glCompressedTexImage2D"},
-        {&context_ptr->entry_points_es.pGLCompressedTexImage3D,                "glCompressedTexImage3D"},
         {&context_ptr->entry_points_es.pGLCompressedTexSubImage2D,             "glCompressedTexSubImage2D"},
         {&context_ptr->entry_points_es.pGLCompressedTexSubImage3D,             "glCompressedTexSubImage3D"},
         {&context_ptr->entry_points_es.pGLCopyBufferSubData,                   "glCopyBufferSubData"},
@@ -1767,8 +1811,6 @@ PRIVATE void _ogl_context_retrieve_ES_function_pointers(_ogl_context* context_pt
         {&context_ptr->entry_points_es.pGLStencilMaskSeparate,                 "glStencilMaskSeparate"},
         {&context_ptr->entry_points_es.pGLStencilOp,                           "glStencilOp"},
         {&context_ptr->entry_points_es.pGLStencilOpSeparate,                   "glStencilOpSeparate"},
-        {&context_ptr->entry_points_es.pGLTexImage2D,                          "glTexImage2D"},
-        {&context_ptr->entry_points_es.pGLTexImage3D,                          "glTexImage3D"},
         {&context_ptr->entry_points_es.pGLTexParameterf,                       "glTexParameterf"},
         {&context_ptr->entry_points_es.pGLTexParameterfv,                      "glTexParameterfv"},
         {&context_ptr->entry_points_es.pGLTexParameteri,                       "glTexParameteri"},
@@ -2047,9 +2089,6 @@ PRIVATE void _ogl_context_retrieve_GL_EXT_direct_state_access_function_pointers(
     }
 
     context_ptr->entry_points_gl_ext_direct_state_access.pGLBindMultiTextureEXT               = ogl_context_wrappers_glBindMultiTextureEXT;
-    context_ptr->entry_points_gl_ext_direct_state_access.pGLCompressedTextureImage1DEXT       = ogl_context_wrappers_glCompressedTextureImage1DEXT;
-    context_ptr->entry_points_gl_ext_direct_state_access.pGLCompressedTextureImage2DEXT       = ogl_context_wrappers_glCompressedTextureImage2DEXT;
-    context_ptr->entry_points_gl_ext_direct_state_access.pGLCompressedTextureImage3DEXT       = ogl_context_wrappers_glCompressedTextureImage3DEXT;
     context_ptr->entry_points_gl_ext_direct_state_access.pGLCompressedTextureSubImage1DEXT    = ogl_context_wrappers_glCompressedTextureSubImage1DEXT;
     context_ptr->entry_points_gl_ext_direct_state_access.pGLCompressedTextureSubImage2DEXT    = ogl_context_wrappers_glCompressedTextureSubImage2DEXT;
     context_ptr->entry_points_gl_ext_direct_state_access.pGLCompressedTextureSubImage3DEXT    = ogl_context_wrappers_glCompressedTextureSubImage3DEXT;
@@ -2080,9 +2119,6 @@ PRIVATE void _ogl_context_retrieve_GL_EXT_direct_state_access_function_pointers(
     context_ptr->entry_points_gl_ext_direct_state_access.pGLNamedFramebufferTextureLayerEXT   = ogl_context_wrappers_glNamedFramebufferTextureLayerEXT;
     context_ptr->entry_points_gl_ext_direct_state_access.pGLTextureBufferEXT                  = ogl_context_wrappers_glTextureBufferEXT;
     context_ptr->entry_points_gl_ext_direct_state_access.pGLTextureBufferRangeEXT             = ogl_context_wrappers_glTextureBufferRangeEXT;
-    context_ptr->entry_points_gl_ext_direct_state_access.pGLTextureImage1DEXT                 = ogl_context_wrappers_glTextureImage1DEXT;
-    context_ptr->entry_points_gl_ext_direct_state_access.pGLTextureImage2DEXT                 = ogl_context_wrappers_glTextureImage2DEXT;
-    context_ptr->entry_points_gl_ext_direct_state_access.pGLTextureImage3DEXT                 = ogl_context_wrappers_glTextureImage3DEXT;
     context_ptr->entry_points_gl_ext_direct_state_access.pGLTextureParameteriEXT              = ogl_context_wrappers_glTextureParameteriEXT;
     context_ptr->entry_points_gl_ext_direct_state_access.pGLTextureParameterivEXT             = ogl_context_wrappers_glTextureParameterivEXT;
     context_ptr->entry_points_gl_ext_direct_state_access.pGLTextureParameterfEXT              = ogl_context_wrappers_glTextureParameterfEXT;
@@ -2154,9 +2190,6 @@ PRIVATE void _ogl_context_retrieve_GL_function_pointers(_ogl_context* context_pt
         {&context_ptr->entry_points_private.pGLColorMask,                                   "glColorMask"},
         {&context_ptr->entry_points_gl.pGLColorMaski,                                       "glColorMaski"},
         {&context_ptr->entry_points_gl.pGLCompileShader,                                    "glCompileShader"},
-        {&context_ptr->entry_points_private.pGLCompressedTexImage1D,                        "glCompressedTexImage1D"},
-        {&context_ptr->entry_points_private.pGLCompressedTexImage2D,                        "glCompressedTexImage2D"},
-        {&context_ptr->entry_points_private.pGLCompressedTexImage3D,                        "glCompressedTexImage3D"},
         {&context_ptr->entry_points_private.pGLCompressedTexSubImage1D,                     "glCompressedTexSubImage1D"},
         {&context_ptr->entry_points_private.pGLCompressedTexSubImage2D,                     "glCompressedTexSubImage2D"},
         {&context_ptr->entry_points_private.pGLCompressedTexSubImage3D,                     "glCompressedTexSubImage3D"},
@@ -2225,7 +2258,7 @@ PRIVATE void _ogl_context_retrieve_GL_function_pointers(_ogl_context* context_pt
         {&context_ptr->entry_points_private.pGLFramebufferTextureLayer,                     "glFramebufferTextureLayer"},
         {&context_ptr->entry_points_private.pGLFrontFace,                                   "glFrontFace"},
         {&context_ptr->entry_points_gl.pGLGenBuffers,                                       "glGenBuffers"},
-        {&context_ptr->entry_points_gl.pGLGenerateMipmap,                                   "glGenerateMipmap"},
+        {&context_ptr->entry_points_private.pGLGenerateMipmap,                              "glGenerateMipmap"},
         {&context_ptr->entry_points_gl.pGLGenFramebuffers,                                  "glGenFramebuffers"},
         {&context_ptr->entry_points_gl.pGLGenProgramPipelines,                              "glGenProgramPipelines"},
         {&context_ptr->entry_points_gl.pGLGenRenderbuffers,                                 "glGenRenderbuffers"},
@@ -2268,6 +2301,7 @@ PRIVATE void _ogl_context_retrieve_GL_function_pointers(_ogl_context* context_pt
         {&context_ptr->entry_points_gl.pGLGetProgramResourceiv,                             "glGetProgramResourceiv"},
         {&context_ptr->entry_points_gl.pGLGetProgramResourceLocation,                       "glGetProgramResourceLocation"},
         {&context_ptr->entry_points_gl.pGLGetProgramResourceLocationIndex,                  "glGetProgramResourceLocationIndex"},
+        {&context_ptr->entry_points_private.pGLGetRenderbufferParameteriv,                  "glGetRenderbufferParameteriv"},
         {&context_ptr->entry_points_gl.pGLGetShaderiv,                                      "glGetShaderiv"},
         {&context_ptr->entry_points_gl.pGLGetShaderInfoLog,                                 "glGetShaderInfoLog"},
         {&context_ptr->entry_points_gl.pGLGetShaderSource,                                  "glGetShaderSource"},
@@ -2528,9 +2562,6 @@ PRIVATE void _ogl_context_retrieve_GL_function_pointers(_ogl_context* context_pt
     context_ptr->entry_points_gl.pGLClearColor                                  = ogl_context_wrappers_glClearColor;
     context_ptr->entry_points_gl.pGLClearDepth                                  = ogl_context_wrappers_glClearDepth;
     context_ptr->entry_points_gl.pGLColorMask                                   = ogl_context_wrappers_glColorMask;
-    context_ptr->entry_points_gl.pGLCompressedTexImage1D                        = ogl_context_wrappers_glCompressedTexImage1D;
-    context_ptr->entry_points_gl.pGLCompressedTexImage2D                        = ogl_context_wrappers_glCompressedTexImage2D;
-    context_ptr->entry_points_gl.pGLCompressedTexImage3D                        = ogl_context_wrappers_glCompressedTexImage3D;
     context_ptr->entry_points_gl.pGLCompressedTexSubImage1D                     = ogl_context_wrappers_glCompressedTexSubImage1D;
     context_ptr->entry_points_gl.pGLCompressedTexSubImage2D                     = ogl_context_wrappers_glCompressedTexSubImage2D;
     context_ptr->entry_points_gl.pGLCompressedTexSubImage3D                     = ogl_context_wrappers_glCompressedTexSubImage3D;
@@ -2576,6 +2607,7 @@ PRIVATE void _ogl_context_retrieve_GL_function_pointers(_ogl_context* context_pt
     context_ptr->entry_points_gl.pGLFramebufferTexture3D                        = ogl_context_wrappers_glFramebufferTexture3D;
     context_ptr->entry_points_gl.pGLFramebufferTextureLayer                     = ogl_context_wrappers_glFramebufferTextureLayer;
     context_ptr->entry_points_gl.pGLFrontFace                                   = ogl_context_wrappers_glFrontFace;
+    context_ptr->entry_points_gl.pGLGenerateMipmap                              = ogl_context_wrappers_glGenerateMipmap;
     context_ptr->entry_points_gl.pGLGenVertexArrays                             = ogl_context_wrappers_glGenVertexArrays;
     context_ptr->entry_points_gl.pGLGetActiveAtomicCounterBufferiv              = ogl_context_wrappers_glGetActiveAtomicCounterBufferiv;
     context_ptr->entry_points_gl.pGLGetBooleani_v                               = ogl_context_wrappers_glGetBooleani_v;
@@ -2591,6 +2623,7 @@ PRIVATE void _ogl_context_retrieve_GL_function_pointers(_ogl_context* context_pt
     context_ptr->entry_points_gl.pGLGetInteger64i_v                             = ogl_context_wrappers_glGetInteger64i_v;
     context_ptr->entry_points_gl.pGLGetIntegeri_v                               = ogl_context_wrappers_glGetIntegeri_v;
     context_ptr->entry_points_gl.pGLGetIntegerv                                 = ogl_context_wrappers_glGetIntegerv;
+    context_ptr->entry_points_gl.pGLGetRenderbufferParameteriv                  = ogl_context_wrappers_glGetRenderbufferParameteriv;
     context_ptr->entry_points_gl.pGLGetSamplerParameterfv                       = ogl_context_wrappers_glGetSamplerParameterfv;
     context_ptr->entry_points_gl.pGLGetSamplerParameteriv                       = ogl_context_wrappers_glGetSamplerParameteriv;
     context_ptr->entry_points_gl.pGLGetSamplerParameterIiv                      = ogl_context_wrappers_glGetSamplerParameterIiv;
@@ -2633,9 +2666,6 @@ PRIVATE void _ogl_context_retrieve_GL_function_pointers(_ogl_context* context_pt
     context_ptr->entry_points_gl.pGLShaderStorageBlockBinding                   = ogl_context_wrappers_glShaderStorageBlockBinding;
     context_ptr->entry_points_gl.pGLTexBuffer                                   = ogl_context_wrappers_glTexBuffer;
     context_ptr->entry_points_gl.pGLTexBufferRange                              = ogl_context_wrappers_glTexBufferRange;
-    context_ptr->entry_points_gl.pGLTexImage1D                                  = ogl_context_wrappers_glTexImage1D;
-    context_ptr->entry_points_gl.pGLTexImage2D                                  = ogl_context_wrappers_glTexImage2D;
-    context_ptr->entry_points_gl.pGLTexImage3D                                  = ogl_context_wrappers_glTexImage3D;
     context_ptr->entry_points_gl.pGLTexParameterf                               = ogl_context_wrappers_glTexParameterf;
     context_ptr->entry_points_gl.pGLTexParameterfv                              = ogl_context_wrappers_glTexParameterfv;
     context_ptr->entry_points_gl.pGLTexParameterIiv                             = ogl_context_wrappers_glTexParameterIiv;
@@ -2747,6 +2777,8 @@ PRIVATE void _ogl_context_retrieve_GL_limits(_ogl_context* context_ptr)
                                                     &context_ptr->limits.max_atomic_counter_buffer_bindings);
     context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_ATOMIC_COUNTER_BUFFER_SIZE,
                                                     &context_ptr->limits.max_atomic_counter_buffer_size);
+    context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_COLOR_ATTACHMENTS,
+                                                    &context_ptr->limits.max_color_attachments);
     context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_COLOR_TEXTURE_SAMPLES,
                                                     &context_ptr->limits.max_color_texture_samples);
     context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_COMBINED_ATOMIC_COUNTER_BUFFERS,
@@ -3247,7 +3279,7 @@ end:
 }
 
 /* Please see header for spec */
-PUBLIC ogl_context ogl_context_get_current_context()
+PUBLIC EMERALD_API ogl_context ogl_context_get_current_context()
 {
     return  _current_context;
 }
@@ -3287,11 +3319,46 @@ PUBLIC EMERALD_API void ogl_context_get_property(ogl_context          context,
             break;
         }
 
+        case OGL_CONTEXT_PROPERTY_DEFAULT_FBO_COLOR_TEXTURE_FORMAT:
+        {
+            *(ral_texture_format*) out_result = context_ptr->fbo_color_texture_format;
+
+            break;
+        }
+
+        case OGL_CONTEXT_PROPERTY_DEFAULT_FBO_DEPTH_STENCIL_TEXTURE_FORMAT:
+        {
+            *(ral_texture_format*) out_result = context_ptr->fbo_depth_stencil_texture_format;
+
+            break;
+        }
+
         case OGL_CONTEXT_PROPERTY_DEFAULT_FBO_ID:
         {
             *((GLuint*) out_result) = context_ptr->fbo_id;
 
             break;
+        }
+
+        case OGL_CONTEXT_PROPERTY_DEFAULT_FBO_N_SAMPLES:
+        {
+            *(unsigned int*) out_result = context_ptr->fbo_n_samples_effective;
+
+            break;
+        }
+
+        case OGL_CONTEXT_PROPERTY_DEFAULT_FBO_SIZE:
+        {
+            ASSERT_DEBUG_SYNC(context_ptr->fbo_size[0] > 0 &&
+                              context_ptr->fbo_size[1] > 0,
+                              "Invalid default FB's size detected.");
+
+            memcpy(out_result,
+                   context_ptr->fbo_size,
+                   sizeof(context_ptr->fbo_size) );
+
+            break;
+
         }
 
         case OGL_CONTEXT_PROPERTY_ENTRYPOINTS_ES:
@@ -3787,6 +3854,7 @@ PUBLIC bool ogl_context_release_managers(ogl_context context)
 PUBLIC EMERALD_API bool ogl_context_request_callback_from_context_thread(ogl_context                                context,
                                                                          PFNOGLCONTEXTCALLBACKFROMCONTEXTTHREADPROC pfn_callback,
                                                                          void*                                      user_arg,
+                                                                         bool                                       swap_buffers_afterward,
                                                                          bool                                       block_until_available)
 {
     bool                  result            = false;
@@ -3802,6 +3870,7 @@ PUBLIC EMERALD_API bool ogl_context_request_callback_from_context_thread(ogl_con
         result = ogl_rendering_handler_request_callback_from_context_thread(rendering_handler,
                                                                             pfn_callback,
                                                                             user_arg,
+                                                                            swap_buffers_afterward,
                                                                             block_until_available);
     }
     else

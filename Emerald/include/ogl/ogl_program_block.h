@@ -102,6 +102,11 @@ PUBLIC bool ogl_program_block_get_block_variable(ogl_program_block            bl
                                                  const ogl_program_variable** out_variable_ptr);
 
 /** TODO */
+PUBLIC bool ogl_program_block_get_block_variable_by_name(ogl_program_block            block,
+                                                         system_hashed_ansi_string    name,
+                                                         const ogl_program_variable** out_variable_ptr);
+
+/** TODO */
 PUBLIC void ogl_program_block_get_property(const ogl_program_block    block,
                                            ogl_program_block_property property,
                                            void*                      out_result);
