@@ -6,30 +6,42 @@
 #include "shared.h"
 #include "demo/nodes/nodes_video_pass_renderer.h"
 #include "demo/demo_timeline.h"
+#include "demo/demo_timeline_segment.h"
 #include "demo/demo_timeline_segment_node.h"
-#include "demo/demo_timeline_video_segment.h"
-#include "ogl/ogl_context.h"  /* TODO: Remove OGL dep */
 #include "ogl/ogl_pipeline.h" /* TODO: Remove OGL dep */
+#include "ogl/ogl_texture.h"  /* TODO: Remove OGL dep */
+#include "ral/ral_context.h"
+#include "ral/ral_framebuffer.h"
 #include "ral/ral_utils.h"
 #include "system/system_critical_section.h"
 
+
+enum
+{
+    NODES_VIDEO_PASS_RENDERER_TEXTURE_OUTPUT,
+
+    /* Always last */
+    NODES_VIDEO_PASS_RENDERER_COUNT
+};
 
 typedef struct _nodes_video_pass_renderer
 {
     /* CS used to serialize deinit/get/render/set calls */
     system_critical_section cs;
 
-    ogl_context                 context;
+    ral_context                 context;
     demo_timeline_segment_node  node;           /* DO NOT release */
-    demo_timeline_video_segment parent_segment; /* DO NOT release */
+    demo_timeline_segment       parent_segment; /* DO NOT release */
     ogl_pipeline                pipeline;
     demo_timeline               timeline;       /* DO NOT release */
 
     demo_timeline_segment_node_output_id output_id;
+    ogl_texture                          output_texture;
+    ral_framebuffer                      rendering_framebuffer;
     uint32_t                             rendering_pipeline_stage_id;
 
 
-    _nodes_video_pass_renderer(ogl_context                in_context,
+    _nodes_video_pass_renderer(ral_context                in_context,
                                demo_timeline_segment      in_segment,
                                demo_timeline_segment_node in_node)
     {
@@ -40,15 +52,17 @@ typedef struct _nodes_video_pass_renderer
         cs                          = system_critical_section_create();
         node                        = in_node;
         output_id                   = -1;
-        parent_segment              = (demo_timeline_video_segment) in_segment;
+        output_texture              = NULL;
+        parent_segment              = (demo_timeline_segment) in_segment;
+        rendering_framebuffer       = NULL;
         rendering_pipeline_stage_id = -1;
 
-        demo_timeline_video_segment_get_property(parent_segment,
-                                                 DEMO_TIMELINE_VIDEO_SEGMENT_PROPERTY_TIMELINE,
-                                                &timeline);
-        demo_timeline_get_property              (timeline,
-                                                 DEMO_TIMELINE_PROPERTY_RENDERING_PIPELINE,
-                                                &pipeline);
+        demo_timeline_segment_get_property(parent_segment,
+                                           DEMO_TIMELINE_SEGMENT_PROPERTY_TIMELINE,
+                                          &timeline);
+        demo_timeline_get_property        (timeline,
+                                           DEMO_TIMELINE_PROPERTY_RENDERING_PIPELINE,
+                                          &pipeline);
     }
 
     ~_nodes_video_pass_renderer()
@@ -126,13 +140,66 @@ end:
 }
 
 /** Please see header for spec */
+PUBLIC bool nodes_video_pass_renderer_get_texture_memory_allocation_details(demo_timeline_segment_node_private node,
+                                                                            uint32_t                           n_allocation,
+                                                                            demo_texture_memory_allocation*    out_memory_allocation_data_ptr)
+{
+    _nodes_video_pass_renderer* node_data_ptr = (_nodes_video_pass_renderer*) node;
+    bool                        result        = true;
+
+    if (node == NULL)
+    {
+        ASSERT_DEBUG_SYNC(false,
+                          "Input node instance is NULL");
+
+        result = false;
+        goto end;
+    } /* if (node == NULL) */
+
+    switch (n_allocation)
+    {
+        case NODES_VIDEO_PASS_RENDERER_TEXTURE_OUTPUT:
+        {
+            ral_texture_format fb_color_format = RAL_TEXTURE_FORMAT_UNKNOWN;
+
+            ral_context_get_property(node_data_ptr->context,
+                                     RAL_CONTEXT_PROPERTY_SYSTEM_FRAMEBUFFER_COLOR_TEXTURE_FORMAT,
+                                    &fb_color_format);
+
+            out_memory_allocation_data_ptr->bound_texture             = node_data_ptr->output_texture;
+            out_memory_allocation_data_ptr->components[0]             = RAL_TEXTURE_COMPONENT_RED;
+            out_memory_allocation_data_ptr->components[1]             = RAL_TEXTURE_COMPONENT_GREEN;
+            out_memory_allocation_data_ptr->components[2]             = RAL_TEXTURE_COMPONENT_BLUE;
+            out_memory_allocation_data_ptr->components[3]             = RAL_TEXTURE_COMPONENT_ALPHA;
+            out_memory_allocation_data_ptr->format                    = fb_color_format;
+            out_memory_allocation_data_ptr->name                      = system_hashed_ansi_string_create("Video pass renderer output texture");
+            out_memory_allocation_data_ptr->needs_full_mipmap_chain   = false;
+            out_memory_allocation_data_ptr->n_layers                  = 1;
+            out_memory_allocation_data_ptr->n_samples                 = 1;
+            out_memory_allocation_data_ptr->size.mode                 = DEMO_TEXTURE_SIZE_MODE_PROPORTIONAL;
+            out_memory_allocation_data_ptr->size.proportional_size[0] = 1.0f;
+            out_memory_allocation_data_ptr->size.proportional_size[1] = 1.0f;
+            out_memory_allocation_data_ptr->type                      = RAL_TEXTURE_TYPE_2D;
+
+            break;
+        }
+
+        default:
+        {
+            result = false;
+        }
+    } /* switch (n_allocation) */
+
+end:
+    return result;
+}
+
+/** Please see header for spec */
 PUBLIC RENDERING_CONTEXT_CALL demo_timeline_segment_node_private nodes_video_pass_renderer_init(demo_timeline_segment      segment,
                                                                                                 demo_timeline_segment_node node,
-                                                                                                void*                      unused1,
-                                                                                                void*                      unused2,
-                                                                                                void*                      unused3)
+                                                                                                ral_context                context)
 {
-    _nodes_video_pass_renderer* new_node_ptr = new (std::nothrow) _nodes_video_pass_renderer(ogl_context_get_current_context(),
+    _nodes_video_pass_renderer* new_node_ptr = new (std::nothrow) _nodes_video_pass_renderer(context,
                                                                                              segment,
                                                                                              node);
 
@@ -141,30 +208,32 @@ PUBLIC RENDERING_CONTEXT_CALL demo_timeline_segment_node_private nodes_video_pas
 
     if (new_node_ptr != NULL)
     {
-        /* Add an output which uses the same color texture format as the rendering context. */
-        ral_texture_format              fb_color_format = RAL_TEXTURE_FORMAT_UNKNOWN;
-        ral_texture_component           texture_components[4];
-        demo_texture_output_declaration texture_output_info;
+        /* Initialize the rendering framebuffer.
+         *
+         * NOTE: We will configure the attachments later, when we are provided the texture to use
+         *       via a nodes_video_pass_renderer_set_texture_memory_allocation() call-back.
+         */
+        if (!ral_context_create_framebuffers(new_node_ptr->context,
+                                             1, /* n_framebuffers */
+                                            &new_node_ptr->rendering_framebuffer) )
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Could not initialize a rendering framebuffer!");
+        }
 
-        ogl_context_get_property(new_node_ptr->context,
-                                 OGL_CONTEXT_PROPERTY_DEFAULT_FBO_COLOR_TEXTURE_FORMAT,
+        /* Add an output which uses the same color texture format as the rendering context. */
+        ral_texture_format          fb_color_format = RAL_TEXTURE_FORMAT_UNKNOWN;
+        demo_texture_io_declaration texture_output_info;
+
+        ral_context_get_property(new_node_ptr->context,
+                                 RAL_CONTEXT_PROPERTY_SYSTEM_FRAMEBUFFER_COLOR_TEXTURE_FORMAT,
                                 &fb_color_format);
 
-        texture_components[0] = RAL_TEXTURE_COMPONENT_RED;
-        texture_components[1] = RAL_TEXTURE_COMPONENT_GREEN;
-        texture_components[2] = RAL_TEXTURE_COMPONENT_BLUE;
-        texture_components[3] = RAL_TEXTURE_COMPONENT_ALPHA;
-
-        texture_output_info.output_name                       = system_hashed_ansi_string_create("Output");
-        texture_output_info.texture_components                = texture_components;
-        texture_output_info.texture_needs_full_mipmap_chain   = false;
-        texture_output_info.texture_n_layers                  = 1;
-        texture_output_info.texture_n_samples                 = 1;
-        texture_output_info.texture_n_start_layer_index       = 0;
-        texture_output_info.texture_size.mode                 = DEMO_TEXTURE_SIZE_MODE_PROPORTIONAL;
-        texture_output_info.texture_size.proportional_size[0] = 1.0f;
-        texture_output_info.texture_size.proportional_size[1] = 1.0f;
-        texture_output_info.texture_type                      = RAL_TEXTURE_TYPE_2D;
+        texture_output_info.name              = system_hashed_ansi_string_create("Output");
+        texture_output_info.texture_format    = fb_color_format;
+        texture_output_info.texture_n_layers  = 1;
+        texture_output_info.texture_n_samples = 1;
+        texture_output_info.texture_type      = RAL_TEXTURE_TYPE_2D;
 
         ral_utils_get_texture_format_property(fb_color_format,
                                               RAL_TEXTURE_FORMAT_PROPERTY_N_COMPONENTS,
@@ -271,4 +340,40 @@ end_with_cs_leave:
 
 end:
     return result;
+}
+
+/** Please see header for specification */
+PUBLIC void nodes_video_pass_renderer_set_texture_memory_allocation(demo_timeline_segment_node_private node,
+                                                                    uint32_t                           n_allocation,
+                                                                    ogl_texture                        texture)
+{
+    _nodes_video_pass_renderer* node_ptr = (_nodes_video_pass_renderer*) node;
+
+    if (node_ptr == NULL)
+    {
+        ASSERT_DEBUG_SYNC(false,
+                          "Input node is NULL");
+
+        goto end;
+    }
+
+    switch (n_allocation)
+    {
+        case NODES_VIDEO_PASS_RENDERER_TEXTURE_OUTPUT:
+        {
+            node_ptr->output_texture = texture;
+
+            ral_framebuffer_set_attachment_2D(node_ptr->rendering_framebuffer,
+                                              RAL_FRAMEBUFFER_ATTACHMENT_TYPE_COLOR,
+                                              0,  /* index */
+                                              node_ptr->output_texture,
+                                              0,     /* n_mipmap */
+                                              true); /* should_enable */
+
+            break;
+        }
+    } /* switch (n_allocation) */
+
+end:
+    ;
 }

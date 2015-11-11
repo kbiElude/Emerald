@@ -39,16 +39,13 @@
 #ifndef DEMO_TIMELINE_H
 #define DEMO_TIMELINE_H
 
-#include "demo/demo_types.h"
+#include "demo/demo_timeline_segment.h"
 #include "system/system_types.h"
 #include "ogl/ogl_types.h"
 #include "ral/ral_types.h"
 
 REFCOUNT_INSERT_DECLARATIONS(demo_timeline,
                              demo_timeline)
-
-/* Segment ID */
-typedef unsigned int demo_timeline_segment_id;
 
 typedef enum
 {
@@ -112,6 +109,9 @@ typedef enum
     /* system_callback_manager; not settable. */
     DEMO_TIMELINE_PROPERTY_CALLBACK_MANAGER,
 
+    /* ral_context; not settable. */
+    DEMO_TIMELINE_PROPERTY_CONTEXT,
+
     /* system_time; not settable.
      *
      * End time of the segment located the furthest from the beginning of the timeline */
@@ -124,53 +124,6 @@ typedef enum
     DEMO_TIMELINE_PROPERTY_RENDERING_PIPELINE,
 
 } demo_timeline_property;
-
-typedef enum
-{
-    /* Rendering pipeline will be fed frame time relative to the beginning
-     * of the segment.
-     */
-    DEMO_TIMELINE_SEGMENT_PIPELINE_TIME_RELATIVE_TO_SEGMENT,
-
-    /* Rendering pipeline will be fed frame time relative to the beginning
-     * of the timeline.
-     */
-    DEMO_TIMELINE_SEGMENT_PIPELINE_TIME_RELATIVE_TO_TIMELINE,
-} demo_timeline_segment_pipeline_time;
-
-/* Timeline segment properties */
-typedef enum
-{
-    /* float; settable.
-     *
-     * Used by ogl_rendering_handler to specify the rendering area to the rendering call-back handlers. */
-    DEMO_TIMELINE_SEGMENT_PROPERTY_ASPECT_RATIO,
-
-    /* system_time; not settable.
-     *
-     * To adjust, eithe use demo_timeline_move_segment() or demo_timeline_resize_segment().
-     **/
-    DEMO_TIMELINE_SEGMENT_PROPERTY_END_TIME,
-
-    /* system_hashed_ansi_string; not settable. */
-    DEMO_TIMELINE_SEGMENT_PROPERTY_NAME,
-
-    /* uint32_t; not settable.
-     *
-     * NOTE: Video segments only. The getter func will throw an assertion failure,
-     *       should this property be queried for other segment types.
-     */
-    DEMO_TIMELINE_SEGMENT_PROPERTY_PIPELINE_STAGE,
-
-    /* demo_timeline_segment_pipeline_time; settable.
-     *
-     * Default value: DEMO_TIMELINE_SEGMENT_PIPELINE_TIME_RELATIVE_TO_TIMELINE
-     */
-    DEMO_TIMELINE_SEGMENT_PROPERTY_PIPELINE_TIME,
-
-    /* system_time; not settable. */
-    DEMO_TIMELINE_SEGMENT_PROPERTY_START_TIME,
-} demo_timeline_segment_property;
 
 /** Adds a new postprocessing segment to the timeline. Only one postprocessing segment is allowed
  *  for the specified time interval.
@@ -214,12 +167,20 @@ PUBLIC EMERALD_API bool demo_timeline_add_video_segment(demo_timeline           
 
 /** TODO. */
 PUBLIC EMERALD_API demo_timeline demo_timeline_create(system_hashed_ansi_string name,
-                                                      ogl_context               context);
+                                                      ogl_context               context,
+                                                      ogl_rendering_handler     rendering_handler,
+                                                      system_window             window);
 
 /** TODO */
 PUBLIC EMERALD_API bool demo_timeline_delete_segment(demo_timeline              timeline,
                                                      demo_timeline_segment_type segment_type,
                                                      demo_timeline_segment_id   segment_id);
+
+/** Releases an array of segment IDs allocated by demo_timeline_get_segment_ids()
+ *
+ *  @param segment_ids The array to release. Must not be NULL.
+ **/
+PUBLIC EMERALD_API void demo_timeline_free_segment_ids(demo_timeline_segment_id* segment_ids);
 
 /** TODO */
 PUBLIC EMERALD_API float demo_timeline_get_aspect_ratio(demo_timeline timeline,
@@ -237,10 +198,34 @@ PUBLIC EMERALD_API bool demo_timeline_get_segment_at_time(demo_timeline         
                                                           demo_timeline_segment_id*   out_segment_id_ptr);
 
 /** TODO */
+PUBLIC EMERALD_API bool demo_timeline_get_segment_by_id(demo_timeline              timeline,
+                                                        demo_timeline_segment_type segment_type,
+                                                        demo_timeline_segment_id   segment_id,
+                                                        demo_timeline_segment*     out_segment_ptr);
+
+/** TODO */
 PUBLIC EMERALD_API bool demo_timeline_get_segment_id(demo_timeline              timeline,
                                                      demo_timeline_segment_type segment_type,
                                                      unsigned int               n_segment,
                                                      demo_timeline_segment_id*  out_segment_id_ptr);
+
+/** TODO
+ *
+ *  Internal use only.
+ *
+ *  @param timeline              TODO
+ *  @param segment_type          TODO
+ *  @param out_n_segment_ids_ptr TODO
+ *  @param out_segment_ids_ptr   Deref will be set to a pointer to a buffer holding IDs of all
+ *                               segments existing at the time of the call. The array holds
+ *                               @param *out_n_segment_ids_ptr items. The array must be released
+ *                               by the caller with demo_timeline_free_segment_ids(), when no longer
+ *                               needed.
+ **/
+PUBLIC EMERALD_API bool demo_timeline_get_segment_ids(demo_timeline              timeline,
+                                                      demo_timeline_segment_type segment_type,
+                                                      unsigned int*              out_n_segment_ids_ptr,
+                                                      demo_timeline_segment_id** out_segment_ids_ptr);
 
 /** TODO */
 PUBLIC EMERALD_API bool demo_timeline_get_segment_property(demo_timeline                  timeline,

@@ -318,7 +318,9 @@ PUBLIC EMERALD_API void demo_app_run(demo_app app)
 
     /* Set up a timeline object instance */
     app_ptr->timeline = demo_timeline_create(app_ptr->name,
-                                             app_ptr->context);
+                                             app_ptr->context,
+                                             app_ptr->rendering_handler,
+                                             app_ptr->window);
 
     ASSERT_DEBUG_SYNC(app_ptr->timeline != NULL,
                       "Could not create a demo_timeline instance");

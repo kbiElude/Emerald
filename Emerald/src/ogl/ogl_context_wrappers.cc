@@ -6069,7 +6069,9 @@ PUBLIC void APIENTRY ogl_context_wrappers_glTextureStorage1DEXT(ogl_texture text
                                                                 GLenum      internalformat,
                                                                 GLsizei     width)
 {
-    GLuint texture_id = 0;
+    static const uint32_t n_layers   = 1;
+    static const uint32_t n_samples  = 1;
+    GLuint                texture_id = 0;
 
     ogl_texture_get_property(texture,
                              OGL_TEXTURE_PROPERTY_ID,
@@ -6084,6 +6086,16 @@ PUBLIC void APIENTRY ogl_context_wrappers_glTextureStorage1DEXT(ogl_texture text
     _ogl_context_wrappers_update_mipmap_info(ogl_context_get_current_context(),
                                              target,
                                              texture);
+
+    ogl_texture_set_property(texture,
+                             OGL_TEXTURE_PROPERTY_N_LAYERS,
+                            &n_layers);
+/*  ogl_texture_set_property(texture,
+                             OGL_TEXTURE_PROPERTY_N_MIPMAPS,
+                            &levels); */
+    ogl_texture_set_property(texture,
+                             OGL_TEXTURE_PROPERTY_N_SAMPLES,
+                            &n_samples);
 }
 
 /* Please see header for specification */
@@ -6094,7 +6106,9 @@ PUBLIC void APIENTRY ogl_context_wrappers_glTextureStorage2DEXT(ogl_texture text
                                                                 GLsizei     width,
                                                                 GLsizei     height)
 {
-    GLuint texture_id = 0;
+    static const uint32_t n_layers   = 1;
+    static const uint32_t n_samples  = 1;
+    GLuint                texture_id = 0;
 
     ogl_texture_get_property(texture,
                              OGL_TEXTURE_PROPERTY_ID,
@@ -6107,19 +6121,33 @@ PUBLIC void APIENTRY ogl_context_wrappers_glTextureStorage2DEXT(ogl_texture text
                                                      width,
                                                      height);
 
-    _ogl_context_wrappers_update_mipmap_info(ogl_context_get_current_context(), target, texture);
+    _ogl_context_wrappers_update_mipmap_info(ogl_context_get_current_context(),
+                                             target,
+                                             texture);
+
+    ogl_texture_set_property(texture,
+                             OGL_TEXTURE_PROPERTY_N_LAYERS,
+                            &n_layers);
+/*  ogl_texture_set_property(texture,
+                             OGL_TEXTURE_PROPERTY_N_MIPMAPS,
+                            &levels);*/
+    ogl_texture_set_property(texture,
+                             OGL_TEXTURE_PROPERTY_N_SAMPLES,
+                            &n_samples);
 }
 
 /* Please see header for specification */
 PUBLIC void APIENTRY ogl_context_wrappers_glTextureStorage2DMultisampleEXT(ogl_texture texture,
                                                                            GLenum      target,
-                                                                           GLsizei     levels,
+                                                                           GLsizei     samples,
                                                                            GLenum      internalformat,
                                                                            GLsizei     width,
                                                                            GLsizei     height,
                                                                            GLboolean   fixedsamplelocations)
 {
-    GLuint texture_id = 0;
+    const uint32_t n_layers   = 1;
+    const uint32_t n_mipmaps  = 1;
+    GLuint         texture_id = 0;
 
     ogl_texture_get_property(texture,
                              OGL_TEXTURE_PROPERTY_ID,
@@ -6127,13 +6155,25 @@ PUBLIC void APIENTRY ogl_context_wrappers_glTextureStorage2DMultisampleEXT(ogl_t
 
     _private_entrypoints_ptr->pGLTextureStorage2DMultisampleEXT(texture_id,
                                                                 target,
-                                                                levels,
+                                                                samples,
                                                                 internalformat,
                                                                 width,
                                                                 height,
                                                                 fixedsamplelocations);
 
-    _ogl_context_wrappers_update_mipmap_info(ogl_context_get_current_context(), target, texture);
+    _ogl_context_wrappers_update_mipmap_info(ogl_context_get_current_context(),
+                                             target,
+                                             texture);
+
+    ogl_texture_set_property(texture,
+                             OGL_TEXTURE_PROPERTY_N_LAYERS,
+                           &n_layers);
+/*  ogl_texture_set_property(texture,
+                             OGL_TEXTURE_PROPERTY_N_MIPMAPS,
+                            &n_mipmaps);*/
+    ogl_texture_set_property(texture,
+                             OGL_TEXTURE_PROPERTY_N_SAMPLES,
+                            &samples);
 }
 
 /* Please see header for specification */
@@ -6145,7 +6185,9 @@ PUBLIC void APIENTRY ogl_context_wrappers_glTextureStorage3DEXT(ogl_texture text
                                                                 GLsizei     height,
                                                                 GLsizei     depth)
 {
-    GLuint texture_id = 0;
+    const uint32_t        n_layers   = (target == GL_TEXTURE_2D_ARRAY) ? depth : 1;
+    static const uint32_t n_samples  = 1;
+    GLuint                texture_id = 0;
 
     ogl_texture_get_property(texture,
                              OGL_TEXTURE_PROPERTY_ID,
@@ -6165,31 +6207,40 @@ PUBLIC void APIENTRY ogl_context_wrappers_glTextureStorage3DEXT(ogl_texture text
 
     ogl_texture_set_property(texture,
                              OGL_TEXTURE_PROPERTY_N_LAYERS,
-                            &depth);
+                           &n_layers);
+/*  ogl_texture_set_property(texture,
+                             OGL_TEXTURE_PROPERTY_N_MIPMAPS,
+                            &levels); */
+    ogl_texture_set_property(texture,
+                             OGL_TEXTURE_PROPERTY_N_SAMPLES,
+                            &n_samples);
 }
 
 /* Please see header for specification */
 PUBLIC void APIENTRY ogl_context_wrappers_glTextureStorage3DMultisampleEXT(ogl_texture texture,
                                                                            GLenum      target,
-                                                                           GLsizei     levels,
+                                                                           GLsizei     samples,
                                                                            GLenum      internalformat,
                                                                            GLsizei     width,
                                                                            GLsizei     height,
                                                                            GLsizei     depth,
                                                                            GLboolean   fixedsamplelocations)
 {
-    GLuint texture_id = 0;
+    const uint32_t        n_layers   = (target == GL_TEXTURE_2D_ARRAY) ? depth : 1;
+    static const uint32_t n_mipmaps  = 1;
+    GLuint                texture_id = 0;
 
     ogl_texture_get_property(texture,
                              OGL_TEXTURE_PROPERTY_ID,
                             &texture_id);
 
-    _private_entrypoints_ptr->pGLTextureStorage2DMultisampleEXT(texture_id,
+    _private_entrypoints_ptr->pGLTextureStorage3DMultisampleEXT(texture_id,
                                                                 target,
-                                                                levels,
+                                                                samples,
                                                                 internalformat,
                                                                 width,
                                                                 height,
+                                                                depth,
                                                                 fixedsamplelocations);
 
     _ogl_context_wrappers_update_mipmap_info(ogl_context_get_current_context(),
@@ -6199,6 +6250,16 @@ PUBLIC void APIENTRY ogl_context_wrappers_glTextureStorage3DMultisampleEXT(ogl_t
     ogl_texture_set_property(texture,
                              OGL_TEXTURE_PROPERTY_N_LAYERS,
                             &depth);
+
+    ogl_texture_set_property(texture,
+                             OGL_TEXTURE_PROPERTY_N_LAYERS,
+                           &n_layers);
+/*  ogl_texture_set_property(texture,
+                             OGL_TEXTURE_PROPERTY_N_MIPMAPS,
+                            &n_mipmaps);*/
+    ogl_texture_set_property(texture,
+                             OGL_TEXTURE_PROPERTY_N_SAMPLES,
+                            &samples);
 }
 
 /* Please see header for specification */

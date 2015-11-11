@@ -13,6 +13,20 @@
 #include "system/system_resizable_vector.h"
 
 /* Private type definitions */
+typedef struct
+ {
+     unsigned int       base_mipmap_depth;
+     unsigned int       base_mipmap_height;
+     unsigned int       base_mipmap_width;
+     bool               fixed_sample_locations;
+     ral_texture_format format;
+     ogl_texture        result;
+     unsigned int       n_mipmaps;
+     unsigned int       n_samples;
+     char*              spawned_texture_id_text;
+     ral_texture_type   type;
+ } _ogl_context_textures_create_and_init_texture_rendering_callback_arg;
+
 typedef struct _ogl_context_textures
 {
     ogl_context      context;
@@ -193,6 +207,27 @@ PRIVATE system_hash64 _ogl_context_textures_get_reusable_texture_key(ral_texture
            (   (system_hash64)(fixed_sample_locations ? 1 : 0)                    << 61);
 }
 
+PRIVATE void _ogl_context_textures_create_and_init_texture_rendering_callback(ogl_context context,
+                                                                              void*       arg)
+ {
+     _ogl_context_textures_create_and_init_texture_rendering_callback_arg* arg_ptr = (_ogl_context_textures_create_and_init_texture_rendering_callback_arg*) arg;
+
+     arg_ptr->result = ogl_texture_create_and_initialize(context,
+                                                         system_hashed_ansi_string_create_by_merging_two_strings("Re-usable texture ",
+                                                                                                                 arg_ptr->spawned_texture_id_text),
+                                                         arg_ptr->type,
+                                                         arg_ptr->n_mipmaps,
+                                                         arg_ptr->format,
+                                                         arg_ptr->base_mipmap_width,
+                                                         arg_ptr->base_mipmap_height,
+                                                         arg_ptr->base_mipmap_depth,
+                                                         arg_ptr->n_samples,
+                                                         arg_ptr->fixed_sample_locations);
+
+     ASSERT_DEBUG_SYNC(arg_ptr->result != NULL,
+                       "ogl_texture_create_and_initialize() failed.");
+ }
+
 /** Please see header for specification */
 PUBLIC void ogl_context_textures_add_texture(ogl_context_textures textures,
                                              ogl_texture          texture)
@@ -321,29 +356,38 @@ PUBLIC EMERALD_API ogl_texture ogl_context_textures_get_texture_from_pool(ogl_co
                  "%d",
                  spawned_texture_id);
 
-        /* No free re-usable texture available. Spawn a new container. */
+        /* No free re-usable texture available. Spawn a new texture object. This needs to be done from
+         * a rendering thread.
+         */
         LOG_INFO("Creating a new re-usable texture object [index:%d]..",
                  spawned_texture_id);
 
-        result = ogl_texture_create_and_initialize(context,
-                                                   system_hashed_ansi_string_create_by_merging_two_strings("Re-usable texture ",
-                                                                                                           spawned_texture_id_text),
-                                                   type,
-                                                   n_mipmaps,
-                                                   format,
-                                                   base_mipmap_width,
-                                                   base_mipmap_height,
-                                                   base_mipmap_depth,
-                                                   n_samples,
-                                                   fixed_sample_locations);
+        _ogl_context_textures_create_and_init_texture_rendering_callback_arg callback_arg;
 
-        ASSERT_DEBUG_SYNC(result != NULL,
-                          "ogl_texture_create_and_initialize() failed.");
+        callback_arg.base_mipmap_depth       = base_mipmap_depth;
+        callback_arg.base_mipmap_height      = base_mipmap_height;
+        callback_arg.base_mipmap_width       = base_mipmap_width;
+        callback_arg.fixed_sample_locations  = fixed_sample_locations;
+        callback_arg.format                  = format;
+        callback_arg.result                  = NULL;
+        callback_arg.n_mipmaps               = n_mipmaps;
+        callback_arg.n_samples               = n_samples;
+        callback_arg.spawned_texture_id_text = spawned_texture_id_text;
+        callback_arg.type                    = type;
 
-        if (result != NULL)
+        ogl_context_request_callback_from_context_thread(context,
+                                                         _ogl_context_textures_create_and_init_texture_rendering_callback,
+                                                        &callback_arg);
+
+        ASSERT_DEBUG_SYNC(callback_arg.result != NULL,
+                          "_ogl_context_textures_create_and_init_texture_rendering_callback() call failed.");
+
+        if (callback_arg.result != NULL)
         {
             system_resizable_vector_push(textures_ptr->reusable_textures,
-                                         result);
+                                         callback_arg.result);
+
+            result = callback_arg.result;
         } /* if (result != NULL) */
     } /* if (no reusable texture available) */
 

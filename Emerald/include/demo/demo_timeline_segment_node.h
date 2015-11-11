@@ -82,17 +82,20 @@ typedef enum
     /* not settable; PFNSEGMENTNODEGETPROPERTYCALLBACKPROC */
     DEMO_TIMELINE_SEGMENT_NODE_PROPERTY_GET_PROPERTY_FUNC_PTR,
 
+    /* not settable; PFNSEGMENTNODEGETTEXTUREMEMORYALLOCATIONPROC */
+    DEMO_TIMELINE_SEGMENT_NODE_PROPERTY_GET_TEXTURE_MEMORY_ALLOCATION_DETAILS_FUNC_PTR,
+
     /* not settable; PFNSEGMENTNODEINITCALLBACKPROC */
     DEMO_TIMELINE_SEGMENT_NODE_PROPERTY_INIT_FUNC_PTR,
-
-    /* not settable; void*[3] (returns a pointer to a linearly organized array, not the three elements) */
-    DEMO_TIMELINE_SEGMENT_NODE_PROPERTY_INIT_USER_ARGS,
 
     /* not settable; PFNSEGMENTNODERENDERCALLBACKPROC */
     DEMO_TIMELINE_SEGMENT_NODE_PROPERTY_RENDER_FUNC_PTR,
 
     /* not settable; PFNSEGMENTNODESETPROPERTYCALLBACKPROC */
     DEMO_TIMELINE_SEGMENT_NODE_PROPERTY_SET_PROPERTY_FUNC_PTR,
+
+    /* not settable; PFNSEGMENTNODESETTEXTUREMEMORYALLOCATIONPROC */
+    DEMO_TIMELINE_SEGMENT_NODE_PROPERTY_SET_TEXTURE_MEMORY_ALLOCATION_FUNC_PTR,
 
     /* not settable; int */
     DEMO_TIMELINE_SEGMENT_NODE_PROPERTY_TYPE,
@@ -101,9 +104,9 @@ typedef enum
 
 
 /** TODO */
-PUBLIC bool demo_timeline_segment_node_add_texture_input(demo_timeline_segment_node            node,
-                                                         const demo_texture_input_declaration* new_input_declaration_ptr,
-                                                         demo_timeline_segment_node_input_id*  out_opt_input_id_ptr);
+PUBLIC bool demo_timeline_segment_node_add_texture_input(demo_timeline_segment_node           node,
+                                                         const demo_texture_io_declaration*   new_input_declaration_ptr,
+                                                         demo_timeline_segment_node_input_id* out_opt_input_id_ptr);
 
 /** Adds a new texture output to the segment node.
  *
@@ -114,9 +117,9 @@ PUBLIC bool demo_timeline_segment_node_add_texture_input(demo_timeline_segment_n
  *
  *  @return true if the output was added successfully, false otherwise.
  */
-PUBLIC bool demo_timeline_segment_node_add_texture_output(demo_timeline_segment_node             node,
-                                                          const demo_texture_output_declaration* new_output_declaration_ptr,
-                                                          demo_timeline_segment_node_output_id*  out_opt_output_id_ptr);
+PUBLIC bool demo_timeline_segment_node_add_texture_output(demo_timeline_segment_node            node,
+                                                          const demo_texture_io_declaration*    new_output_declaration_ptr,
+                                                          demo_timeline_segment_node_output_id* out_opt_output_id_ptr);
 
 /** Replaces existing attachment of a texture input/output with a new texture, or just detaches existing attachment from
  *  the specified segment node input/output.
@@ -136,16 +139,17 @@ PUBLIC bool demo_timeline_segment_node_attach_texture_to_texture_io(demo_timelin
                                                                     const demo_texture_attachment_declaration* texture_attachment_ptr);
 
 /** TODO */
-PUBLIC demo_timeline_segment_node demo_timeline_segment_node_create(demo_timeline_segment_type            segment_type,
-                                                                    int                                   node_type,
-                                                                    demo_timeline_segment_node_id         node_id,
-                                                                    PFNSEGMENTNODEDEINITCALLBACKPROC      pfn_deinit_proc,
-                                                                    PFNSEGMENTNODEGETPROPERTYCALLBACKPROC pfn_get_property_proc,
-                                                                    PFNSEGMENTNODEINITCALLBACKPROC        pfn_init_proc,
-                                                                    const void*                           init_user_args_void3,
-                                                                    PFNSEGMENTNODERENDERCALLBACKPROC      pfn_render_proc,
-                                                                    PFNSEGMENTNODESETPROPERTYCALLBACKPROC pfn_set_property_proc,
-                                                                    system_hashed_ansi_string             node_name);
+PUBLIC demo_timeline_segment_node demo_timeline_segment_node_create(demo_timeline_segment_type                          segment_type,
+                                                                    int                                                 node_type,
+                                                                    demo_timeline_segment_node_id                       node_id,
+                                                                    PFNSEGMENTNODEDEINITCALLBACKPROC                    pfn_deinit_proc,
+                                                                    PFNSEGMENTNODEGETPROPERTYCALLBACKPROC               pfn_get_property_proc,
+                                                                    PFNSEGMENTNODEGETTEXTUREMEMORYALLOCATIONDETAILSPROC pfn_get_texture_memory_allocation_details_proc,
+                                                                    PFNSEGMENTNODEINITCALLBACKPROC                      pfn_init_proc,
+                                                                    PFNSEGMENTNODERENDERCALLBACKPROC                    pfn_render_proc,
+                                                                    PFNSEGMENTNODESETPROPERTYCALLBACKPROC               pfn_set_property_proc,
+                                                                    PFNSEGMENTNODESETTEXTUREMEMORYALLOCATIONPROC        pfn_set_texture_memory_allocation_proc,
+                                                                    system_hashed_ansi_string                           node_name);
 
 /** TODO */
 PUBLIC bool demo_timeline_segment_node_delete_texture_input(demo_timeline_segment_node          node,
@@ -156,10 +160,11 @@ PUBLIC bool demo_timeline_segment_node_delete_texture_output(demo_timeline_segme
                                                              demo_timeline_segment_node_output_id output_id);
 
 /** TODO */
-PUBLIC void demo_timeline_segment_node_get_input_property(demo_timeline_segment_node                node,
-                                                          demo_timeline_segment_node_input_id       input_id,
-                                                          demo_timeline_segment_node_input_property property,
-                                                          void*                                     out_result_ptr);
+PUBLIC void demo_timeline_segment_node_get_io_property(demo_timeline_segment_node             node,
+                                                       bool                                   is_input_io,
+                                                       uint32_t                               io_id,
+                                                       demo_timeline_segment_node_io_property property,
+                                                       void*                                  out_result_ptr);
 
 /** TODO */
 PUBLIC void demo_timeline_segment_node_get_inputs(demo_timeline_segment_node           node,
@@ -167,12 +172,6 @@ PUBLIC void demo_timeline_segment_node_get_inputs(demo_timeline_segment_node    
                                                   uint32_t*                            out_opt_n_input_ids_ptr,
                                                   demo_timeline_segment_node_input_id* out_opt_input_ids_ptr);
 
-
-/** TODO */
-PUBLIC void demo_timeline_segment_node_get_output_property(demo_timeline_segment_node                 node,
-                                                           demo_timeline_segment_node_output_id       output_id,
-                                                           demo_timeline_segment_node_output_property property,
-                                                           void*                                      out_result_ptr);
 
 /** TODO */
 PUBLIC void demo_timeline_segment_node_get_outputs(demo_timeline_segment_node            node,

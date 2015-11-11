@@ -2777,6 +2777,8 @@ PRIVATE void _ogl_context_retrieve_GL_limits(_ogl_context* context_ptr)
                                                     &context_ptr->limits.max_atomic_counter_buffer_bindings);
     context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_ATOMIC_COUNTER_BUFFER_SIZE,
                                                     &context_ptr->limits.max_atomic_counter_buffer_size);
+    context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_COLOR_ATTACHMENTS,
+                                                    &context_ptr->limits.max_color_attachments);
     context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_COLOR_TEXTURE_SAMPLES,
                                                     &context_ptr->limits.max_color_texture_samples);
     context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_COMBINED_ATOMIC_COUNTER_BUFFERS,

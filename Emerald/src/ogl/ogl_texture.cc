@@ -694,6 +694,11 @@ PUBLIC EMERALD_API RENDERING_CONTEXT_CALL ogl_texture ogl_texture_create_and_ini
     /* Store the properties */
     result_ptr = (_ogl_texture*) result;
 
+    if (n_samples == 0)
+    {
+        n_samples = 1;
+    }
+
     result_ptr->fixed_sample_locations = fixed_sample_locations;
     result_ptr->format                 = format;
     result_ptr->n_samples              = n_samples;

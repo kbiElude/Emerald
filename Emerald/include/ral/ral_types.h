@@ -1,6 +1,59 @@
 #ifndef RAL_TYPES_H
 #define RAL_TYPES_H
 
+#include "system/system_types.h"
+
+
+DECLARE_HANDLE(ral_context);
+DECLARE_HANDLE(ral_framebuffer);
+
+
+typedef enum
+{
+    /* not settable; system_callback_manager */
+    RAL_CONTEXT_PROPERTY_CALLBACK_MANAGER,
+
+    /* not settable, uint32_t.
+     *
+     * Maximum number of color attachments that can be configured and used at the same time for a single framebuffer.
+     *
+     * NOTE: This query will be passed to the rendering back-end.
+     **/
+    RAL_CONTEXT_PROPERTY_MAX_FRAMEBUFFER_COLOR_ATTACHMENTS,
+
+    /* not settable, uint32_t.
+     *
+     * A system framebuffer is a framebuffer which should be used to copy/render data into the
+     * back buffer of the rendering surface.
+     *
+     * NOTE: This query will be passed to the rendering back-end.
+     * NOTE: Backends can use one or more system framebuffers. Make no assumptions in this regard.
+     *       It is guaranteed that all framebuffer attachments will use the same properties (n of samples,
+     *       texture format).
+     */
+    RAL_CONTEXT_PROPERTY_N_OF_SYSTEM_FRAMEBUFFERS,
+
+    /* not settable; ogl_rendering_handler */
+    RAL_CONTEXT_PROPERTY_RENDERING_HANDLER,
+
+    /* not settable, ral_texture_format
+     *
+     * NOTE: This query will be passed to the rendering back-end.
+     **/
+    RAL_CONTEXT_PROPERTY_SYSTEM_FRAMEBUFFER_COLOR_TEXTURE_FORMAT,
+
+    /* not settable, ral_framebuffer[RAL_CONTEXT_PROPERTY_N_OF_SYSTEM_FRAMEBUFFERS].
+     *
+     * Please see documentation of RAL_CONTEXT_PROPERTY_N_OF_SYSTEM_FRAMEBUFFERS for more details.
+     *
+     * NOTE: This query will be passed to the rendering back-end.
+     * */
+    RAL_CONTEXT_PROPERTY_SYSTEM_FRAMEBUFFERS,
+
+    /* not settable; system_window */
+    RAL_CONTEXT_PROPERTY_WINDOW
+} ral_context_property;
+
 /* Primitive types supported by RAL */
 typedef enum
 {

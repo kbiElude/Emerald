@@ -831,6 +831,7 @@ typedef struct
     GLint   max_array_texture_layers;
     GLint   max_atomic_counter_buffer_bindings;
     GLint   max_atomic_counter_buffer_size;
+    GLint   max_color_attachments;
     GLint   max_color_texture_samples;
     GLint   max_combined_atomic_counter_buffers;
     GLint   max_combined_atomic_counters;

@@ -7,8 +7,10 @@
 #include "gtest/gtest.h"
 #include "shared.h"
 #include "demo/demo_timeline.h"
-#include "demo/demo_timeline_video_segment.h"
+#include "demo/demo_timeline_segment.h"
 #include "demo/demo_types.h"
+#include "demo/nodes/nodes_postprocessing_video_segment.h"
+#include "demo/nodes/nodes_video_pass_renderer.h"
 #include "ogl/ogl_context.h"
 #include "ogl/ogl_pipeline.h"
 #include "ogl/ogl_rendering_handler.h"
@@ -232,43 +234,71 @@ TEST(WindowTest, RenderingHandlerTest)
 TEST(WindowTest, TimelineTest_ShouldRenderFourDifferentlyColoredScreensWithDifferentARs)
 {
     /* Create the window */
-    ogl_context                 context            =  NULL;
-    const float                 frame_1_ar         = 1.0f;
-    const float                 frame_1_color[]    = {0.0f, 1.0f, 0.0f, 1.0f};
-    system_time                 frame_1_end_time   =  0;
-    demo_timeline_video_segment frame_1_segment    = NULL;
-    demo_timeline_segment_id    frame_1_segment_id = -1;
-    system_time                 frame_1_start_time =  0;
-    const float                 frame_2_ar         = 1.5f;
-    const float                 frame_2_color[]    = {0.0f, 1.0f, 1.0f, 1.0f};
-    system_time                 frame_2_end_time   =  0;
-    demo_timeline_video_segment frame_2_segment    = NULL;
-    demo_timeline_segment_id    frame_2_segment_id = -1;
-    system_time                 frame_2_start_time =  0;
-    const float                 frame_3_ar         =  1.75f;
-    const float                 frame_3_color[]    = {0.0f, 0.0f, 1.0f, 1.0f};
-    system_time                 frame_3_end_time   =  0;
-    demo_timeline_video_segment frame_3_segment    = NULL;
-    demo_timeline_segment_id    frame_3_segment_id = -1;
-    system_time                 frame_3_start_time =  0;
-    bool                        result             =  false;
-    demo_timeline               timeline           =  NULL;
-    ogl_pipeline                timeline_pipeline  =  NULL;
-    const int                   xywh[]             = {0, 0, 320, 240};
-    system_pixel_format         window_pf          = system_pixel_format_create         (8,  /* color_buffer_red_bits   */
-                                                                                         8,  /* color_buffer_green_bits */
-                                                                                         8,  /* color_buffer_blue_bits  */
-                                                                                         0,  /* color_buffer_alpha_bits */
-                                                                                         0,  /* depth_buffer_bits       */
-                                                                                         1,  /* n_samples               */
-                                                                                         0); /* stencil_buffer_bits     */
-    system_window               window_handle      = system_window_create_not_fullscreen(OGL_CONTEXT_TYPE_GL,
-                                                                                         xywh,
-                                                                                         system_hashed_ansi_string_create("Test window"),
-                                                                                         false,
-                                                                                         true,  /* vsync_enabled */
-                                                                                         true,  /* visible */
-                                                                                         window_pf);
+    ogl_context                   context                   = NULL;
+    ral_texture_format            context_texture_format    = RAL_TEXTURE_FORMAT_UNKNOWN;
+    const float                   frame_1_ar                = 1.0f;
+    const float                   frame_1_color[]           = {0.0f, 1.0f, 0.0f, 1.0f};
+    system_time                   frame_1_end_time          =  0;
+    demo_timeline_segment         frame_1_ps                = NULL;
+    demo_timeline_segment_id      frame_1_ps_id             = -1;
+    uint32_t                      frame_1_pipeline_stage_id = -1;
+    demo_timeline_segment         frame_1_vs                = NULL;
+    demo_timeline_segment_id      frame_1_vs_id             = -1;
+    system_time                   frame_1_start_time        =  0;
+    const float                   frame_2_ar                = 1.5f;
+    const float                   frame_2_color[]           = {0.0f, 1.0f, 1.0f, 1.0f};
+    system_time                   frame_2_end_time          =  0;
+    uint32_t                      frame_2_pipeline_stage_id = -1;
+    demo_timeline_segment         frame_2_ps                = NULL;
+    demo_timeline_segment_id      frame_2_ps_id             = -1;
+    demo_timeline_segment         frame_2_vs                = NULL;
+    demo_timeline_segment_id      frame_2_vs_id             = -1;
+    demo_timeline_segment_node_id frame_2_vs_node_id        = -1;
+    system_time                   frame_2_start_time        =  0;
+    const float                   frame_3_ar                =  1.75f;
+    const float                   frame_3_color[]           = {0.0f, 0.0f, 1.0f, 1.0f};
+    system_time                   frame_3_end_time          =  0;
+    uint32_t                      frame_3_pipeline_stage_id = -1;
+    demo_timeline_segment         frame_3_ps                = NULL;
+    demo_timeline_segment_id      frame_3_ps_id             = -1;
+    demo_timeline_segment         frame_3_vs                = NULL;
+    demo_timeline_segment_id      frame_3_vs_id             = -1;
+    demo_timeline_segment_node_id frame_3_vs_node_id        = -1;
+    system_time                   frame_3_start_time        =  0;
+    bool                          result                    =  false;
+    demo_timeline                 timeline                  =  NULL;
+    ogl_pipeline                  timeline_pipeline         =  NULL;
+    const int                     xywh[]                    = {0, 0, 320, 240};
+    system_pixel_format           window_pf                 = NULL;
+    system_window                 window_handle             = NULL;
+
+    demo_timeline_segment_node_id frame_1_ps_output_node_id        = -1;
+    demo_timeline_segment_node_id frame_1_ps_vs_node_id            = -1;
+    demo_timeline_segment_node_id frame_1_vs_output_node_id        = -1;
+    demo_timeline_segment_node_id frame_1_vs_pass_renderer_node_id = -1;
+    demo_timeline_segment_node_id frame_2_ps_output_node_id        = -1;
+    demo_timeline_segment_node_id frame_2_ps_vs_node_id            = -1;
+    demo_timeline_segment_node_id frame_2_vs_output_node_id        = -1;
+    demo_timeline_segment_node_id frame_2_vs_pass_renderer_node_id = -1;
+    demo_timeline_segment_node_id frame_3_ps_output_node_id        = -1;
+    demo_timeline_segment_node_id frame_3_ps_vs_node_id            = -1;
+    demo_timeline_segment_node_id frame_3_vs_output_node_id        = -1;
+    demo_timeline_segment_node_id frame_3_vs_pass_renderer_node_id = -1;
+
+    window_pf     = system_pixel_format_create         (8,  /* color_buffer_red_bits   */
+                                                        8,  /* color_buffer_green_bits */
+                                                        8,  /* color_buffer_blue_bits  */
+                                                        0,  /* color_buffer_alpha_bits */
+                                                        0,  /* depth_buffer_bits       */
+                                                        1,  /* n_samples               */
+                                                        0); /* stencil_buffer_bits     */
+    window_handle = system_window_create_not_fullscreen(OGL_CONTEXT_TYPE_GL,
+                                                        xywh,
+                                                        system_hashed_ansi_string_create("Test window"),
+                                                        false,
+                                                        true,  /* vsync_enabled */
+                                                        true,  /* visible */
+                                                        window_pf);
 
     /* Create a rendering handler */
     ogl_rendering_handler rendering_handler = ogl_rendering_handler_create_with_max_performance_policy(system_hashed_ansi_string_create("rendering handler"),
@@ -287,11 +317,16 @@ TEST(WindowTest, TimelineTest_ShouldRenderFourDifferentlyColoredScreensWithDiffe
                               &context);
 
     timeline = demo_timeline_create(system_hashed_ansi_string_create("Test timeline"),
-                                    context);
+                                    context,
+                                    rendering_handler,
+                                    window_handle);
 
     ASSERT_NE(timeline,
               (demo_timeline) NULL);
 
+    ogl_context_get_property  (context,
+                               OGL_CONTEXT_PROPERTY_DEFAULT_FBO_COLOR_TEXTURE_FORMAT,
+                              &context_texture_format);
     demo_timeline_get_property(timeline,
                                DEMO_TIMELINE_PROPERTY_RENDERING_PIPELINE,
                               &timeline_pipeline);
@@ -306,7 +341,7 @@ TEST(WindowTest, TimelineTest_ShouldRenderFourDifferentlyColoredScreensWithDiffe
     frame_3_start_time = frame_2_end_time;
     frame_3_end_time   = frame_3_start_time + frame_1_end_time;
 
-    const demo_timeline_video_segment_pass frame_1_segment_passes[] =
+    const ogl_pipeline_stage_step_declaration frame_1_segment_passes[] =
     {
         {
             system_hashed_ansi_string_create("Color 1 pipeline stage step"),
@@ -314,7 +349,7 @@ TEST(WindowTest, TimelineTest_ShouldRenderFourDifferentlyColoredScreensWithDiffe
                                              (void*) frame_1_color
         }
     };
-    const demo_timeline_video_segment_pass frame_2_segment_passes[] =
+    const ogl_pipeline_stage_step_declaration frame_2_segment_passes[] =
     {
         {
             system_hashed_ansi_string_create("Color 2 pipeline stage step"),
@@ -322,7 +357,7 @@ TEST(WindowTest, TimelineTest_ShouldRenderFourDifferentlyColoredScreensWithDiffe
                                              (void*) frame_2_color
         }
     };
-    const demo_timeline_video_segment_pass frame_3_segment_passes[] =
+    const ogl_pipeline_stage_step_declaration frame_3_segment_passes[] =
     {
         {
             system_hashed_ansi_string_create("Color 3 pipeline stage step"),
@@ -331,37 +366,162 @@ TEST(WindowTest, TimelineTest_ShouldRenderFourDifferentlyColoredScreensWithDiffe
         }
     };
 
-    ASSERT_TRUE(demo_timeline_add_video_segment(timeline,
-                                                system_hashed_ansi_string_create("Color 1 video segment"),
-                                                frame_1_start_time,
-                                                frame_1_end_time,
-                                                frame_1_ar,
-                                               &frame_1_segment_id,
-                                               &frame_1_segment) );
-    ASSERT_TRUE(demo_timeline_add_video_segment(timeline,
-                                                system_hashed_ansi_string_create("Color 2 video segment"),
-                                                frame_2_start_time,
-                                                frame_2_end_time,
-                                                frame_2_ar,
-                                               &frame_2_segment_id,
-                                               &frame_2_segment) );
-    ASSERT_TRUE(demo_timeline_add_video_segment(timeline,
-                                                system_hashed_ansi_string_create("Color 3 video segment"),
-                                                frame_3_start_time,
-                                                frame_3_end_time,
-                                                frame_3_ar,
-                                               &frame_3_segment_id,
-                                               &frame_3_segment) );
+    /* Create postprocessing & video segments for "frame" time regions */
+    ASSERT_TRUE(demo_timeline_add_postprocessing_segment(timeline,
+                                                         system_hashed_ansi_string_create("Color 1 postprocessing segment"),
+                                                         frame_1_start_time,
+                                                         frame_1_end_time,
+                                                         &frame_1_ps_id,
+                                                         &frame_1_ps) );
+    ASSERT_TRUE(demo_timeline_add_video_segment         (timeline,
+                                                         system_hashed_ansi_string_create("Color 1 video segment"),
+                                                         frame_1_start_time,
+                                                         frame_1_end_time,
+                                                         frame_1_ar,
+                                                         context_texture_format,
+                                                        &frame_1_vs_id,
+                                                        &frame_1_vs) );
 
-    ASSERT_TRUE(demo_timeline_video_segment_add_passes(frame_1_segment,
-                                                       1, /* n_passes */
-                                                       frame_1_segment_passes) );
-    ASSERT_TRUE(demo_timeline_video_segment_add_passes(frame_2_segment,
-                                                       1, /* n_passes */
-                                                       frame_2_segment_passes) );
-    ASSERT_TRUE(demo_timeline_video_segment_add_passes(frame_3_segment,
-                                                       1, /* n_passes */
-                                                       frame_3_segment_passes) );
+    ASSERT_TRUE(demo_timeline_add_video_segment         (timeline,
+                                                         system_hashed_ansi_string_create("Color 2 video segment"),
+                                                         frame_2_start_time,
+                                                         frame_2_end_time,
+                                                         frame_2_ar,
+                                                         context_texture_format,
+                                                        &frame_2_vs_id,
+                                                        &frame_2_vs) );
+    ASSERT_TRUE(demo_timeline_add_postprocessing_segment(timeline,
+                                                         system_hashed_ansi_string_create("Color 2 postprocessing segment"),
+                                                         frame_2_start_time,
+                                                         frame_2_end_time,
+                                                         &frame_2_ps_id,
+                                                         &frame_2_ps) );
+
+    ASSERT_TRUE(demo_timeline_add_postprocessing_segment(timeline,
+                                                         system_hashed_ansi_string_create("Color 3 postprocessing segment"),
+                                                         frame_3_start_time,
+                                                         frame_3_end_time,
+                                                         &frame_3_ps_id,
+                                                         &frame_3_ps) );
+    ASSERT_TRUE(demo_timeline_add_video_segment         (timeline,
+                                                         system_hashed_ansi_string_create("Color 3 video segment"),
+                                                         frame_3_start_time,
+                                                         frame_3_end_time,
+                                                         frame_3_ar,
+                                                         context_texture_format,
+                                                        &frame_3_vs_id,
+                                                        &frame_3_vs) );
+
+    /* Each video segment we created must have been assigned one video segment node in each postprocessing segment.
+     * Retrieve video segment node handles for postprocessing segment from the same time region. We'll need to
+     * connect these nodes to output nodes in the next step . */
+    ASSERT_TRUE(demo_timeline_segment_get_video_segment_node_id_for_ps_and_vs_segments(frame_1_ps,
+                                                                                       frame_1_vs,
+                                                                                      &frame_1_ps_vs_node_id) );
+    ASSERT_TRUE(demo_timeline_segment_get_video_segment_node_id_for_ps_and_vs_segments(frame_2_ps,
+                                                                                       frame_2_vs,
+                                                                                      &frame_2_ps_vs_node_id) );
+    ASSERT_TRUE(demo_timeline_segment_get_video_segment_node_id_for_ps_and_vs_segments(frame_3_ps,
+                                                                                       frame_3_vs,
+                                                                                      &frame_3_ps_vs_node_id) );
+
+    /* Do the same for output nodes */
+    demo_timeline_segment_get_property(frame_1_ps,
+                                       DEMO_TIMELINE_SEGMENT_PROPERTY_OUTPUT_NODE_ID,
+                                      &frame_1_ps_output_node_id);
+    demo_timeline_segment_get_property(frame_1_vs,
+                                       DEMO_TIMELINE_SEGMENT_PROPERTY_OUTPUT_NODE_ID,
+                                      &frame_1_vs_output_node_id);
+
+    demo_timeline_segment_get_property(frame_2_ps,
+                                       DEMO_TIMELINE_SEGMENT_PROPERTY_OUTPUT_NODE_ID,
+                                      &frame_2_ps_output_node_id);
+    demo_timeline_segment_get_property(frame_2_vs,
+                                       DEMO_TIMELINE_SEGMENT_PROPERTY_OUTPUT_NODE_ID,
+                                      &frame_2_vs_output_node_id);
+
+    demo_timeline_segment_get_property(frame_3_ps,
+                                       DEMO_TIMELINE_SEGMENT_PROPERTY_OUTPUT_NODE_ID,
+                                      &frame_3_ps_output_node_id);
+    demo_timeline_segment_get_property(frame_3_vs,
+                                       DEMO_TIMELINE_SEGMENT_PROPERTY_OUTPUT_NODE_ID,
+                                      &frame_3_vs_output_node_id);
+
+    /* Create pass renderer nodes in video segments */
+    ASSERT_TRUE(demo_timeline_segment_add_node(frame_1_vs,
+                                               DEMO_TIMELINE_VIDEO_SEGMENT_NODE_TYPE_PASS_RENDERER,
+                                               system_hashed_ansi_string_create("Pass renderer"),
+                                               &frame_1_vs_pass_renderer_node_id,
+                                               NULL) ); /* out_opt_node_ptr */
+
+    ASSERT_TRUE(demo_timeline_segment_add_node(frame_2_vs,
+                                               DEMO_TIMELINE_VIDEO_SEGMENT_NODE_TYPE_PASS_RENDERER,
+                                               system_hashed_ansi_string_create("Pass renderer"),
+                                               &frame_2_vs_pass_renderer_node_id,
+                                               NULL) ); /* out_opt_node_ptr */
+
+    ASSERT_TRUE(demo_timeline_segment_add_node(frame_3_vs,
+                                               DEMO_TIMELINE_VIDEO_SEGMENT_NODE_TYPE_PASS_RENDERER,
+                                               system_hashed_ansi_string_create("Pass renderer"),
+                                               &frame_3_vs_pass_renderer_node_id,
+                                               NULL) ); /* out_opt_node_ptr */
+
+    /* Connect the nodes */
+    ASSERT_TRUE(demo_timeline_segment_connect_nodes(frame_1_vs,
+                                                    frame_1_vs_pass_renderer_node_id,
+                                                    0, /* output_id */
+                                                    frame_1_vs_output_node_id,
+                                                    0 /* input_id */) );
+    ASSERT_TRUE(demo_timeline_segment_connect_nodes(frame_2_vs,
+                                                    frame_2_vs_pass_renderer_node_id,
+                                                    0, /* output_id */
+                                                    frame_2_vs_output_node_id,
+                                                    0 /* input_id */) );
+    ASSERT_TRUE(demo_timeline_segment_connect_nodes(frame_3_vs,
+                                                    frame_3_vs_pass_renderer_node_id,
+                                                    0, /* output_id */
+                                                    frame_3_vs_output_node_id,
+                                                    0 /* input_id */) );
+
+    ASSERT_TRUE(demo_timeline_segment_connect_nodes(frame_1_ps,
+                                                    frame_1_ps_vs_node_id,
+                                                    0, /* output_id */
+                                                    frame_1_ps_output_node_id,
+                                                    0 /* input_id */) );
+    ASSERT_TRUE(demo_timeline_segment_connect_nodes(frame_2_ps,
+                                                    frame_2_ps_vs_node_id,
+                                                    0, /* output_id */
+                                                    frame_2_ps_output_node_id,
+                                                    0 /* input_id */) );
+    ASSERT_TRUE(demo_timeline_segment_connect_nodes(frame_3_ps,
+                                                    frame_3_ps_vs_node_id,
+                                                    0, /* output_id */
+                                                    frame_3_ps_output_node_id,
+                                                    0 /* input_id */) );
+
+    /* Create three pipeline stages. Each stage will be assigned a different rendering handler. */
+    frame_1_pipeline_stage_id = ogl_pipeline_add_stage_with_steps(timeline_pipeline,
+                                                                  1, /* n_passes */
+                                                                  frame_1_segment_passes);
+    frame_2_pipeline_stage_id = ogl_pipeline_add_stage_with_steps(timeline_pipeline,
+                                                                  1, /* n_passes */
+                                                                  frame_2_segment_passes);
+    frame_3_pipeline_stage_id = ogl_pipeline_add_stage_with_steps(timeline_pipeline,
+                                                                  1, /* n_passes */
+                                                                  frame_3_segment_passes);
+
+    demo_timeline_segment_set_node_property(frame_1_vs,
+                                            frame_1_vs_pass_renderer_node_id,
+                                            NODES_VIDEO_PASS_RENDERER_PROPERTY_RENDERING_PIPELINE_STAGE_ID,
+                                           &frame_1_pipeline_stage_id);
+    demo_timeline_segment_set_node_property(frame_2_vs,
+                                            frame_2_vs_pass_renderer_node_id,
+                                            NODES_VIDEO_PASS_RENDERER_PROPERTY_RENDERING_PIPELINE_STAGE_ID,
+                                           &frame_2_pipeline_stage_id);
+    demo_timeline_segment_set_node_property(frame_3_vs,
+                                            frame_3_vs_pass_renderer_node_id,
+                                            NODES_VIDEO_PASS_RENDERER_PROPERTY_RENDERING_PIPELINE_STAGE_ID,
+                                           &frame_3_pipeline_stage_id);
 
     /* Assign the timeline to the window. Note that this setter automatically takes ownership of the object,
      * so we need not release it at the end of the test */

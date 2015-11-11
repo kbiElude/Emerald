@@ -20,8 +20,7 @@ static system_hashed_ansi_string _object_type_collada_data_hashed_ansi_string   
 static system_hashed_ansi_string _object_type_context_menu_hashed_ansi_string                          = NULL;
 static system_hashed_ansi_string _object_type_curve_container_hashed_ansi_string                       = NULL;
 static system_hashed_ansi_string _object_type_demo_timeline_hashed_ansi_string                         = NULL;
-static system_hashed_ansi_string _object_type_demo_timeline_postprocessing_segment_hashed_ansi_string  = NULL;
-static system_hashed_ansi_string _object_type_demo_timeline_video_segment_hashed_ansi_string           = NULL;
+static system_hashed_ansi_string _object_type_demo_timeline_segment_hashed_ansi_string                 = NULL;
 static system_hashed_ansi_string _object_type_gfx_bfg_font_table_hashed_ansi_string                    = NULL;
 static system_hashed_ansi_string _object_type_gfx_image_hashed_ansi_string                             = NULL;
 static system_hashed_ansi_string _object_type_mesh_hashed_ansi_string                                  = NULL;
@@ -61,6 +60,8 @@ static system_hashed_ansi_string _object_type_programs_curve_editor_lerp_hashed_
 static system_hashed_ansi_string _object_type_programs_curve_editor_quadselector_hashed_ansi_string    = NULL;
 static system_hashed_ansi_string _object_type_programs_curve_editor_static_hashed_ansi_string          = NULL;
 static system_hashed_ansi_string _object_type_programs_curve_editor_tcb_hashed_ansi_string             = NULL;
+static system_hashed_ansi_string _object_type_ral_context_hashed_ansi_string                           = NULL;
+static system_hashed_ansi_string _object_type_ral_framebuffer_hashed_ansi_string                       = NULL;
 static system_hashed_ansi_string _object_type_scalar_field_metaballs_hashed_ansi_string                = NULL;
 static system_hashed_ansi_string _object_type_scene_hashed_ansi_string                                 = NULL;
 static system_hashed_ansi_string _object_type_scene_camera_hashed_ansi_string                          = NULL;
@@ -104,8 +105,7 @@ PUBLIC system_hashed_ansi_string object_manager_convert_object_manager_object_ty
         case OBJECT_TYPE_CONTEXT_MENU:                                    return _object_type_context_menu_hashed_ansi_string;
         case OBJECT_TYPE_CURVE_CONTAINER:                                 return _object_type_curve_container_hashed_ansi_string;
         case OBJECT_TYPE_DEMO_TIMELINE:                                   return _object_type_demo_timeline_hashed_ansi_string;
-        case OBJECT_TYPE_DEMO_TIMELINE_POSTPROCESSING_SEGMENT:            return _object_type_demo_timeline_postprocessing_segment_hashed_ansi_string;
-        case OBJECT_TYPE_DEMO_TIMELINE_VIDEO_SEGMENT:                     return _object_type_demo_timeline_video_segment_hashed_ansi_string;
+        case OBJECT_TYPE_DEMO_TIMELINE_SEGMENT:                           return _object_type_demo_timeline_segment_hashed_ansi_string;
         case OBJECT_TYPE_GFX_BFG_FONT_TABLE:                              return _object_type_gfx_bfg_font_table_hashed_ansi_string;
         case OBJECT_TYPE_GFX_IMAGE:                                       return _object_type_gfx_image_hashed_ansi_string;
         case OBJECT_TYPE_MESH:                                            return _object_type_mesh_hashed_ansi_string;
@@ -145,6 +145,8 @@ PUBLIC system_hashed_ansi_string object_manager_convert_object_manager_object_ty
         case OBJECT_TYPE_PROGRAMS_CURVE_EDITOR_QUADSELECTOR:              return _object_type_programs_curve_editor_quadselector_hashed_ansi_string;
         case OBJECT_TYPE_PROGRAMS_CURVE_EDITOR_STATIC:                    return _object_type_programs_curve_editor_static_hashed_ansi_string;
         case OBJECT_TYPE_PROGRAMS_CURVE_EDITOR_TCB:                       return _object_type_programs_curve_editor_tcb_hashed_ansi_string;
+        case OBJECT_TYPE_RAL_CONTEXT:                                     return _object_type_ral_context_hashed_ansi_string;
+        case OBJECT_TYPE_RAL_FRAMEBUFFER:                                 return _object_type_ral_framebuffer_hashed_ansi_string;
         case OBJECT_TYPE_SCALAR_FIELD_METABALLS:                          return _object_type_scalar_field_metaballs_hashed_ansi_string;
         case OBJECT_TYPE_SCENE:                                           return _object_type_scene_hashed_ansi_string;
         case OBJECT_TYPE_SCENE_CAMERA:                                    return _object_type_scene_camera_hashed_ansi_string;
@@ -360,8 +362,7 @@ PUBLIC void _object_manager_init()
     _object_type_context_menu_hashed_ansi_string                          = system_hashed_ansi_string_create("Context Menus");
     _object_type_curve_container_hashed_ansi_string                       = system_hashed_ansi_string_create("Curves");
     _object_type_demo_timeline_hashed_ansi_string                         = system_hashed_ansi_string_create("Demo Timelines");
-    _object_type_demo_timeline_postprocessing_segment_hashed_ansi_string  = system_hashed_ansi_string_create("Demo Timeline Segment (Post-processing)");
-    _object_type_demo_timeline_video_segment_hashed_ansi_string           = system_hashed_ansi_string_create("Demo Timeline Segment (Video)");
+    _object_type_demo_timeline_segment_hashed_ansi_string                 = system_hashed_ansi_string_create("Demo Timeline Segment");
     _object_type_gfx_bfg_font_table_hashed_ansi_string                    = system_hashed_ansi_string_create("GFX BFG Font Tables");
     _object_type_gfx_image_hashed_ansi_string                             = system_hashed_ansi_string_create("GFX Images");
     _object_type_mesh_hashed_ansi_string                                  = system_hashed_ansi_string_create("Meshes");
@@ -401,6 +402,8 @@ PUBLIC void _object_manager_init()
     _object_type_programs_curve_editor_quadselector_hashed_ansi_string    = system_hashed_ansi_string_create("Curve Editor Programs (Quad Selector)");
     _object_type_programs_curve_editor_static_hashed_ansi_string          = system_hashed_ansi_string_create("Curve Editor Programs (Static)");
     _object_type_programs_curve_editor_tcb_hashed_ansi_string             = system_hashed_ansi_string_create("Curve Editor Programs (TCB)");
+    _object_type_ral_context_hashed_ansi_string                           = system_hashed_ansi_string_create("RAL Contexts");
+    _object_type_ral_framebuffer_hashed_ansi_string                       = system_hashed_ansi_string_create("RAL Framebuffers");
     _object_type_scalar_field_metaballs_hashed_ansi_string                = system_hashed_ansi_string_create("Scalar Field (Metaballs)");
     _object_type_scene_hashed_ansi_string                                 = system_hashed_ansi_string_create("Scenes");
     _object_type_scene_camera_hashed_ansi_string                          = system_hashed_ansi_string_create("Scene Cameras");
