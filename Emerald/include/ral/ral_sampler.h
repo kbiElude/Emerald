@@ -46,6 +46,10 @@ typedef enum
 
 } ral_sampler_property;
 
+REFCOUNT_INSERT_DECLARATIONS(ral_sampler,
+                             ral_sampler);
+
+
 /** TODO
  *
  *  NOTE: This function should only be used by ral_context. Use ral_context_* entry-points() to create
@@ -58,9 +62,6 @@ PUBLIC ral_sampler ral_sampler_create(system_hashed_ansi_string      name,
 PUBLIC void ral_sampler_get_property(ral_sampler          sampler,
                                      ral_sampler_property property,
                                      void*                out_result_ptr);
-
-/** TODO */
-PUBLIC void ral_sampler_release(ral_sampler sampler);
 
 
 #endif /* RAL_SAMPLER_H */

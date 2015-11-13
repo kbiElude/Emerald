@@ -3,11 +3,13 @@
 
 #include "system/system_types.h"
 
-
+DECLARE_HANDLE(ral_buffer);
 DECLARE_HANDLE(ral_command_buffer);
 DECLARE_HANDLE(ral_context);
 DECLARE_HANDLE(ral_framebuffer);
+DECLARE_HANDLE(ral_graphics_state);
 DECLARE_HANDLE(ral_sampler);
+DECLARE_HANDLE(ral_texture);
 
 /* RAL RGBA color */
 typedef struct

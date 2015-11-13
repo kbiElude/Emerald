@@ -282,7 +282,7 @@ PUBLIC ogl_texture_wrap_mode raGL_utils_get_ogl_texture_wrap_mode_for_ral_textur
     ASSERT_DEBUG_SYNC(in_texture_wrap_mode < RAL_TEXTURE_WRAP_MODE_COUNT,
                       "RAL texture wrap mode not supported by the GL back-end");
 
-    return result_array[in_texture_type];
+    return result_array[in_texture_wrap_mode];
 }
 
 /* Please see header for specification */
