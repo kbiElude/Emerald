@@ -153,19 +153,6 @@ typedef struct ral_command_buffer_viewport
 
 typedef enum
 {
-    /* This command buffer issues compute shader invocations */
-    RAL_COMMAND_BUFFER_USAGE_COMPUTE_BIT = 1 << 0,
-
-    /* This command buffer rasterizes geometry */
-    RAL_COMMAND_BUFFER_USAGE_GRAPHICS_BIT = 1 << 1,
-
-    /* This command buffer issues blit/copy/transfer ops */
-    RAL_COMMAND_BUFFER_USAGE_TRANSFER_BIT = 1 << 2
-
-} ral_command_buffer_usage;
-
-typedef enum
-{
 
     RAL_COMMAND_BUFFER_VERTEX_ATTRIBUTE_FORMAT_BYTE_SINT,
     RAL_COMMAND_BUFFER_VERTEX_ATTRIBUTE_FORMAT_BYTE_SNORM,

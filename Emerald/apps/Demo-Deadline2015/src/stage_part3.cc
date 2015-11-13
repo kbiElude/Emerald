@@ -2,7 +2,7 @@
 #include "audio/audio_stream.h"
 #include "demo/demo_loader.h"
 #include "demo/demo_timeline.h"
-#include "demo/demo_timeline_video_segment.h"
+#include "demo/demo_timeline_segment.h"
 #include "ogl/ogl_context.h"
 #include "system/system_window.h"
 

@@ -143,9 +143,13 @@ PUBLIC void stage_step_background_init(ogl_context  context,
                                                                      system_hashed_ansi_string_create("skybox") );
 
     /* Add ourselves to the pipeline */
+    ogl_pipeline_stage_step_declaration stage_step_background;
+
+    stage_step_background.name              = system_hashed_ansi_string_create("Background");
+    stage_step_background.pfn_callback_proc = _stage_step_background_execute;
+    stage_step_background.user_arg          = NULL;
+
     ogl_pipeline_add_stage_step(pipeline,
                                 stage_id,
-                                system_hashed_ansi_string_create("Background"),
-                                _stage_step_background_execute,
-                                NULL); /* step_callback_user_arg */
+                               &stage_step_background);
 }

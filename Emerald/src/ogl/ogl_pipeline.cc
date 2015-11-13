@@ -367,11 +367,9 @@ PUBLIC EMERALD_API uint32_t ogl_pipeline_add_stage(ogl_pipeline instance)
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API uint32_t ogl_pipeline_add_stage_step(ogl_pipeline               instance,
-                                                        uint32_t                   n_stage,
-                                                        system_hashed_ansi_string  step_name,
-                                                        PFNOGLPIPELINECALLBACKPROC pfn_step_callback,
-                                                        void*                      step_callback_user_arg)
+PUBLIC EMERALD_API uint32_t ogl_pipeline_add_stage_step(ogl_pipeline                               instance,
+                                                        uint32_t                                   n_stage,
+                                                        const ogl_pipeline_stage_step_declaration* step_ptr)
 {
     _ogl_pipeline_stage_step* new_step_ptr       = NULL;
     _ogl_pipeline*            pipeline_ptr       = (_ogl_pipeline*) instance;
@@ -393,9 +391,9 @@ PUBLIC EMERALD_API uint32_t ogl_pipeline_add_stage_step(ogl_pipeline            
         {
             /* Initialize new step */
             _ogl_pipeline_init_pipeline_stage_step(new_step_ptr,
-                                                   step_name,
-                                                   pfn_step_callback,
-                                                   step_callback_user_arg,
+                                                   step_ptr->name,
+                                                   step_ptr->pfn_callback_proc,
+                                                   step_ptr->user_arg,
                                                    pipeline_ptr->context);
 
             /* Assign text string ID we will use to print the execution time */
@@ -451,7 +449,7 @@ PUBLIC EMERALD_API uint32_t ogl_pipeline_add_stage_step(ogl_pipeline            
             snprintf(buffer,
                      buffer_length,
                      "%s:",
-                     system_hashed_ansi_string_get_buffer(step_name) );
+                     system_hashed_ansi_string_get_buffer(step_ptr->name) );
 
             /* Update the text string */
             ogl_text_set(pipeline_ptr->text_renderer,
@@ -530,9 +528,7 @@ PUBLIC EMERALD_API uint32_t ogl_pipeline_add_stage_with_steps(ogl_pipeline      
         /* Note: we don't need to store the step id so we ignore the return value */
         ogl_pipeline_add_stage_step(pipeline,
                                     result_stage_id,
-                                    steps[n_step].name,
-                                    steps[n_step].pfn_callback_proc,
-                                    steps[n_step].user_arg);
+                                    steps + n_step);
     } /* for (all rendering passes) */
 
     return result_stage_id;

@@ -774,11 +774,15 @@ PUBLIC void stage_step_julia_init(ogl_context  context,
                                                      0); /* level */
 
     /* Add ourselves to the pipeline */
+    ogl_pipeline_stage_step_declaration raytracing_stage_step;
+
+    raytracing_stage_step.name              = system_hashed_ansi_string_create("Raytracing");
+    raytracing_stage_step.pfn_callback_proc = _stage_step_julia_execute;
+    raytracing_stage_step.user_arg          = NULL;
+
     ogl_pipeline_add_stage_step(pipeline,
                                 stage_id,
-                                system_hashed_ansi_string_create("Raytracing"),
-                                _stage_step_julia_execute,
-                                NULL); /* step_callback_user_arg */
+                               &raytracing_stage_step);
 
     /* Set up matrices */
     _julia_view_matrix = system_matrix4x4_create();

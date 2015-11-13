@@ -6,6 +6,7 @@
 #include "shared.h"
 #include "ogl/ogl_context.h"
 #include "raGL/raGL_backend.h"
+#include "ral/ral_buffer.h"
 #include "ral/ral_context.h"
 #include "ral/ral_framebuffer.h"
 #include "ral/ral_sampler.h"
@@ -39,6 +40,10 @@ typedef struct _ral_context
 
     system_callback_manager callback_manager;
 
+    system_resizable_vector buffers; /* owns ral_buffer instances */
+    system_critical_section buffers_cs;
+    uint32_t                n_buffers_created;
+
     system_resizable_vector framebuffers; /* owns ral_framebuffer instances */
     system_critical_section framebuffers_cs;
     uint32_t                n_framebuffers_created;
@@ -59,9 +64,12 @@ typedef struct _ral_context
                  ogl_rendering_handler     in_rendering_handler)
     {
         backend                = NULL;
+        buffers                = system_resizable_vector_create(sizeof(ral_buffer) );
+        buffers_cs             = system_critical_section_create();
         callback_manager       = system_callback_manager_create((_callback_id) RAL_CONTEXT_CALLBACK_ID_COUNT);
         framebuffers           = system_resizable_vector_create(sizeof(ral_framebuffer) );
         framebuffers_cs        = system_critical_section_create();
+        n_buffers_created      = 0;
         n_framebuffers_created = 0;
         n_samplers_created     = 0;
         name                   = in_name;
@@ -72,6 +80,8 @@ typedef struct _ral_context
 
         pfn_backend_get_property_proc = NULL;
 
+        ASSERT_DEBUG_SYNC(buffers != NULL,
+                          "Could not create the buffers vector.");
         ASSERT_DEBUG_SYNC(callback_manager != NULL,
                           "Could not create a callback manager instance");
         ASSERT_DEBUG_SYNC(framebuffers != NULL,
@@ -82,6 +92,29 @@ typedef struct _ral_context
 
     ~_ral_context()
     {
+        if (buffers != NULL)
+        {
+            /* Buffer instances should have been released by _ral_context_release().. */
+            uint32_t n_buffers = 0;
+
+            system_resizable_vector_get_property(buffers,
+                                                 SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                                &n_buffers);
+
+            ASSERT_DEBUG_SYNC(n_buffers == 0,
+                              "Memory leak detected");
+
+            system_resizable_vector_release(buffers);
+            buffers = NULL;
+        } /* if (buffers != NULL) */
+
+        if (buffers_cs != NULL)
+        {
+            system_critical_section_release(buffers_cs);
+
+            buffers_cs = NULL;
+        } /* if (buffers_cs != NULL) */
+
         if (framebuffers != NULL)
         {
             /* Framebuffer instances should have been released by _ral_context_release().. */
@@ -142,6 +175,7 @@ typedef struct _ral_context
 typedef enum
 {
 
+    RAL_CONTEXT_OBJECT_TYPE_BUFFER,
     RAL_CONTEXT_OBJECT_TYPE_FRAMEBUFFER,
     RAL_CONTEXT_OBJECT_TYPE_SAMPLER
 
@@ -157,6 +191,27 @@ REFCOUNT_INSERT_IMPLEMENTATION(ral_context,
 PRIVATE void _ral_context_release(void* context)
 {
     _ral_context* context_ptr = (_ral_context*) context;
+
+    /* Delete all buffer instances */
+    {
+        system_critical_section_enter(context_ptr->buffers_cs);
+        {
+            ral_buffer* buffers   = NULL;
+            uint32_t    n_buffers = 0;
+
+            system_resizable_vector_get_property(context_ptr->buffers,
+                                                 SYSTEM_RESIZABLE_VECTOR_PROPERTY_ARRAY,
+                                                &buffers);
+            system_resizable_vector_get_property(context_ptr->buffers,
+                                                 SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                                &n_buffers);
+
+            ral_context_delete_buffers((ral_context) context,
+                                       n_buffers,
+                                       buffers);
+        }
+        system_critical_section_leave(context_ptr->buffers_cs);
+    }
 
     /* Delete all framebuffer instances */
     {
@@ -281,6 +336,16 @@ PRIVATE bool _ral_context_create_objects(_ral_context*            context_ptr,
 
     switch (object_type)
     {
+        case RAL_CONTEXT_OBJECT_TYPE_BUFFER:
+        {
+            object_counter_ptr    = &context_ptr->n_buffers_created;
+            object_storage_cs     =  context_ptr->buffers_cs;
+            object_storage_vector =  context_ptr->buffers;
+            object_type_name      = "RAL Buffer";
+
+            break;
+        }
+
         case RAL_CONTEXT_OBJECT_TYPE_FRAMEBUFFER:
         {
             object_counter_ptr    = &context_ptr->n_framebuffers_created;
@@ -343,6 +408,14 @@ PRIVATE bool _ral_context_create_objects(_ral_context*            context_ptr,
 
         switch (object_type)
         {
+            case RAL_CONTEXT_OBJECT_TYPE_BUFFER:
+            {
+                result_objects_ptr[n_object] = ral_buffer_create(system_hashed_ansi_string_create(temp),
+                                                                 (ral_buffer_create_info*) (object_create_info_ptrs + n_object) );
+
+                break;
+            }
+
             case RAL_CONTEXT_OBJECT_TYPE_FRAMEBUFFER:
             {
                 result_objects_ptr[n_object] = ral_framebuffer_create( (ral_context) context_ptr,
@@ -382,6 +455,20 @@ PRIVATE bool _ral_context_create_objects(_ral_context*            context_ptr,
     /* Notify the subscribers */
     switch (object_type)
     {
+        case RAL_CONTEXT_OBJECT_TYPE_BUFFER:
+        {
+            ral_context_callback_buffers_created_callback_arg callback_arg;
+
+            callback_arg.created_buffers = (ral_buffer*) result_objects_ptr;
+            callback_arg.n_buffers       = n_objects;
+
+            system_callback_manager_call_back(context_ptr->callback_manager,
+                                              RAL_CONTEXT_CALLBACK_ID_BUFFERS_CREATED,
+                                             &callback_arg);
+
+            break;
+        }
+
         case RAL_CONTEXT_OBJECT_TYPE_FRAMEBUFFER:
         {
             ral_context_callback_framebuffers_created_callback_arg callback_arg;
@@ -445,6 +532,7 @@ end:
                 {
                     switch (object_type)
                     {
+                        case RAL_CONTEXT_OBJECT_TYPE_BUFFER:      ral_buffer_release     ( (ral_buffer&)      result_objects_ptr[n_object]); break;
                         case RAL_CONTEXT_OBJECT_TYPE_FRAMEBUFFER: ral_framebuffer_release( (ral_framebuffer&) result_objects_ptr[n_object]); break;
                         case RAL_CONTEXT_OBJECT_TYPE_SAMPLER:     ral_sampler_release    ( (ral_sampler&)     result_objects_ptr[n_object]); break;
 
@@ -458,7 +546,7 @@ end:
                     result_objects_ptr[n_object] = NULL;
                 } /* if (result_objects_ptr[n_object] != NULL) */
             } /* for (all potentially created RAL objects) */
-        } /* if (result_framebuffers_ptr != NULL) */
+        } /* if (result_objects_ptr != NULL) */
     } /* if (!result) */
 
     if (result_objects_ptr != NULL)
@@ -482,6 +570,13 @@ PRIVATE bool _ral_context_delete_objects(_ral_context*            context_ptr,
 
     switch (object_type)
     {
+        case RAL_CONTEXT_OBJECT_TYPE_BUFFER:
+        {
+            cs = context_ptr->buffers_cs;
+
+            break;
+        }
+
         case RAL_CONTEXT_OBJECT_TYPE_FRAMEBUFFER:
         {
             cs = context_ptr->framebuffers_cs;
@@ -522,6 +617,7 @@ PRIVATE bool _ral_context_delete_objects(_ral_context*            context_ptr,
 
             switch (object_type)
             {
+                case RAL_CONTEXT_OBJECT_TYPE_BUFFER:      ral_buffer_release     ( (ral_buffer&)      object_ptrs[n_object]); break;
                 case RAL_CONTEXT_OBJECT_TYPE_FRAMEBUFFER: ral_framebuffer_release( (ral_framebuffer&) object_ptrs[n_object]); break;
                 case RAL_CONTEXT_OBJECT_TYPE_SAMPLER:     ral_sampler_release    ( (ral_sampler&)     object_ptrs[n_object]); break;
 
@@ -540,6 +636,20 @@ PRIVATE bool _ral_context_delete_objects(_ral_context*            context_ptr,
     /* Notify the subscribers about the event */
     switch (object_type)
     {
+        case RAL_CONTEXT_OBJECT_TYPE_BUFFER:
+        {
+            ral_context_callback_buffers_deleted_callback_arg callback_arg;
+
+            callback_arg.deleted_buffers = (ral_buffer*) object_ptrs;
+            callback_arg.n_buffers       = n_objects;
+
+            system_callback_manager_call_back(context_ptr->callback_manager,
+                                              RAL_CONTEXT_CALLBACK_ID_BUFFERS_DELETED,
+                                             &callback_arg);
+
+            break;
+        }
+
         case RAL_CONTEXT_OBJECT_TYPE_FRAMEBUFFER:
         {
             ral_context_callback_framebuffers_deleted_callback_arg callback_arg;
@@ -583,6 +693,55 @@ end:
     return result;
 }
 
+
+/** Please see header for specification */
+PUBLIC bool ral_context_create_buffers(ral_context                   context,
+                                       uint32_t                      n_buffers,
+                                       const ral_buffer_create_info* buffer_create_info_ptr,
+                                       ral_buffer*                   out_result_buffers_ptr)
+{
+    _ral_context* context_ptr = (_ral_context*) context;
+    bool          result      = false;
+
+    /* Sanity checks */
+    if (context == NULL)
+    {
+        ASSERT_DEBUG_SYNC(false,
+                          "Input context is NULL");
+
+        goto end;
+    }
+
+    if (n_buffers == 0)
+    {
+        goto end;
+    }
+
+    if (buffer_create_info_ptr == NULL)
+    {
+        ASSERT_DEBUG_SYNC(false,
+                          "Input buffer create info array is NULL");
+
+        goto end;
+    }
+
+    if (out_result_buffers_ptr == NULL)
+    {
+        ASSERT_DEBUG_SYNC(false,
+                          "Output variable is NULL");
+
+        goto end;
+    }
+
+    result = _ral_context_create_objects(context_ptr,
+                                         RAL_CONTEXT_OBJECT_TYPE_BUFFER,
+                                         n_buffers,
+                                         (void**) buffer_create_info_ptr,
+                                         (void**) out_result_buffers_ptr);
+
+end:
+    return result;
+}
 
 /** Please see header for specification */
 PUBLIC bool ral_context_create_framebuffers(ral_context      context,
@@ -668,6 +827,46 @@ PUBLIC bool ral_context_create_samplers(ral_context                    context,
                                          n_samplers,
                                          (void**) sampler_create_info_ptr,
                                          (void**) out_result_samplers_ptr);
+
+end:
+    return result;
+}
+
+/** Please see header for specification */
+PUBLIC bool ral_context_delete_buffers(ral_context context,
+                                       uint32_t    n_buffers,
+                                       ral_buffer* buffers)
+{
+    _ral_context* context_ptr = (_ral_context*) context;
+    bool          result      = false;
+
+    /* Sanity checks */
+    if (context == NULL)
+    {
+        ASSERT_DEBUG_SYNC(false,
+                          "Input context is NULL");
+
+        goto end;
+    } /* if (context == NULL) */
+
+    if (n_buffers == 0)
+    {
+        goto end;
+    }
+
+    if (buffers == NULL)
+    {
+        ASSERT_DEBUG_SYNC(false,
+                          "Input uffers instance is NULL");
+
+        goto end;
+    }
+
+    /* Release the buffers */
+    result = _ral_context_delete_objects(context_ptr,
+                                         RAL_CONTEXT_OBJECT_TYPE_BUFFER,
+                                         n_buffers,
+                                         (void**) buffers);
 
 end:
     return result;

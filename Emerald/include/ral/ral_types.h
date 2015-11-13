@@ -11,6 +11,57 @@ DECLARE_HANDLE(ral_graphics_state);
 DECLARE_HANDLE(ral_sampler);
 DECLARE_HANDLE(ral_texture);
 
+typedef enum
+{
+    RAL_BUFFER_MAPPABILITY_NONE,
+    RAL_BUFFER_MAPPABILITY_READ_OPS_ONLY,
+    RAL_BUFFER_MAPPABILITY_READ_AND_WRITE_OPS,
+    RAL_BUFFER_MAPPABILITY_WRITE_OPS_ONLY,
+
+    RAL_BUFFER_MAPPABILITY_UNDEFINED
+} ral_buffer_mappability;
+
+
+typedef enum
+{
+    RAL_BUFFER_USAGE_COPY_BIT                     = (1 << 0),
+    RAL_BUFFER_USAGE_INDEX_BUFFER_BIT             = (1 << 1),
+    RAL_BUFFER_USAGE_INDIRECT_DISPATCH_BUFFER_BIT = (1 << 2),
+    RAL_BUFFER_USAGE_INDIRECT_DRAW_BUFFER_BIT     = (1 << 3),
+    RAL_BUFFER_USAGE_SHADER_STORAGE_BUFFER_BIT    = (1 << 4),
+    RAL_BUFFER_USAGE_UNIFORM_BUFFER_BIT           = (1 << 5),
+    RAL_BUFFER_USAGE_VERTEX_BUFFER_BIT            = (1 << 6),
+
+    /* Always last */
+    RAL_BUFFER_USAGE_LAST_USED_BIT = 6
+};
+typedef int ral_buffer_usage_bits;
+
+typedef enum
+{
+    /* This queue accepts compute shader invocations */
+    RAL_QUEUE_COMPUTE_BIT = 1 << 0,
+
+    /* This queue accepts rasterization operations */
+    RAL_QUEUE_GRAPHICS_BIT = 1 << 1,
+
+    /* This queue accepts blit/copy/transfer ops */
+    RAL_QUEUE_TRANSFER_BIT = 1 << 2,
+
+    /* Always last */
+    RAL_QUEUE_LAST_USED_BIT = 2
+};
+typedef int ral_queue_bits;
+
+/** All info required to create a single buffer instance */
+typedef struct
+{
+    bool                  is_sparse;
+    uint32_t              size;
+    ral_buffer_usage_bits usage_bits;
+    ral_queue_bits        user_queue_bits;
+} ral_buffer_create_info;
+
 /* RAL RGBA color */
 typedef struct
 {

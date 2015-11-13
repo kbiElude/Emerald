@@ -58,9 +58,13 @@ PUBLIC void stage_step_preview_init(ogl_context  context,
                                     uint32_t     stage_id)
 {
     /* Add ourselves to the pipeline */
+    ogl_pipeline_stage_step_declaration blit_stage_step;
+
+    blit_stage_step.name             = system_hashed_ansi_string_create("Blitting");
+    blit_stage_step.pfn_callback_proc = _stage_step_preview_execute;
+    blit_stage_step.user_arg          = NULL;
+
     ogl_pipeline_add_stage_step(pipeline,
                                 stage_id,
-                                system_hashed_ansi_string_create("Blitting"),
-                                _stage_step_preview_execute,
-                                NULL); /* step_callback_user_arg */
+                               &blit_stage_step);
 }

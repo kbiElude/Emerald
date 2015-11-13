@@ -855,23 +855,33 @@ PUBLIC RENDERING_CONTEXT_CALL void stage_particle_init(ogl_context  context,
                                           N_PARTICLES_ALIGNED_4 * sizeof(float) * 4);/* size */
 
     /* Set up a new pipeline stage */
+    ogl_pipeline_stage_step_declaration data_draw_stage_step;
+    ogl_pipeline_stage_step_declaration data_init_stage_step;
+    ogl_pipeline_stage_step_declaration data_update_stage_step;
+
     _particle_stage_id = ogl_pipeline_add_stage(pipeline);
+
+    data_draw_stage_step.name              = system_hashed_ansi_string_create("data draw");
+    data_draw_stage_step.pfn_callback_proc = _stage_particle_step_draw;
+    data_draw_stage_step.user_arg          = NULL;
+
+    data_init_stage_step.name              = system_hashed_ansi_string_create("data init");
+    data_init_stage_step.pfn_callback_proc = _stage_particle_step_init;
+    data_init_stage_step.user_arg          = NULL;
+
+    data_update_stage_step.name              = system_hashed_ansi_string_create("data update");
+    data_update_stage_step.pfn_callback_proc = _stage_particle_step_update;
+    data_update_stage_step.user_arg          = NULL;
 
     ogl_pipeline_add_stage_step(pipeline,
                                 _particle_stage_id,
-                                system_hashed_ansi_string_create("data init"),
-                                _stage_particle_step_init,
-                                NULL); /* step_callback_user_arg */
+                               &data_init_stage_step);
     ogl_pipeline_add_stage_step(pipeline,
                                 _particle_stage_id,
-                                system_hashed_ansi_string_create("data update"),
-                                _stage_particle_step_update,
-                                NULL); /* step_callback_user_arg */
+                               &data_update_stage_step);
     ogl_pipeline_add_stage_step(pipeline,
                                 _particle_stage_id,
-                                system_hashed_ansi_string_create("data draw"),
-                                _stage_particle_step_draw,
-                                NULL); /* step_callback_user_arg */
+                               &data_draw_stage_step);
 
     /* Matrices */
     _matrix_projection = system_matrix4x4_create_perspective_projection_matrix(45.0f,           /* fov_y */

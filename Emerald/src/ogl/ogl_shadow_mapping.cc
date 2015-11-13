@@ -3330,7 +3330,7 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_shadow_mapping_toggle(ogl_shadow_mapping 
                                                                                                light_shadow_map_size[0],
                                                                                                light_shadow_map_size[1],
                                                                                                light_shadow_map_size[2],
-                                                                                               0,      /* n_samples */
+                                                                                               1,      /* n_samples */
                                                                                                false); /* fixed_samples_location */
 
             if (light_shadow_map_algorithm == SCENE_LIGHT_SHADOW_MAP_ALGORITHM_VSM)
@@ -3349,7 +3349,7 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_shadow_mapping_toggle(ogl_shadow_mapping 
                                                                                                     light_shadow_map_size[0],
                                                                                                     light_shadow_map_size[1],
                                                                                                     light_shadow_map_size[2],
-                                                                                                    0,      /* n_samples */
+                                                                                                    1,      /* n_samples */
                                                                                                     false); /* fixed_samples_location */
 
                 ASSERT_DEBUG_SYNC(handler_ptr->current_sm_color0_texture != NULL,

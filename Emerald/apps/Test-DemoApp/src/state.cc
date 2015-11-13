@@ -513,6 +513,12 @@ PUBLIC void state_init()
     } /* for (all scenes) */
 
     /* Construct the pipeline object */
+    ogl_pipeline_stage_step_declaration scene_rendering_step;
+
+    scene_rendering_step.name              = system_hashed_ansi_string_create("Scene rendering");
+    scene_rendering_step.pfn_callback_proc = _render_scene;
+    scene_rendering_step.user_arg          = NULL;
+
     _pipeline = ogl_pipeline_create(_context,
                                     true, /* should_overlay_performance_info */
                                     system_hashed_ansi_string_create("Pipeline") );
@@ -521,9 +527,7 @@ PUBLIC void state_init()
 
     ogl_pipeline_add_stage_step(_pipeline,
                                 _pipeline_stage_id,
-                                system_hashed_ansi_string_create("Scene rendering"),
-                                _render_scene,
-                                NULL);
+                               &scene_rendering_step);
 }
 
 /** Please see header for spec */

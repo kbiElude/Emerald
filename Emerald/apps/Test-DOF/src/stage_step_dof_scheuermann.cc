@@ -449,19 +449,29 @@ PUBLIC void stage_step_dof_scheuermann_init(ogl_context  context,
     shaders_vertex_fullscreen_release(combination_vs);
 
     /* Add ourselves to the pipeline */
+    ogl_pipeline_stage_step_declaration combine_stage_step;
+    ogl_pipeline_stage_step_declaration downsampling_stage_step;
+    ogl_pipeline_stage_step_declaration preblur_stage_step;
+
+    combine_stage_step.name              = system_hashed_ansi_string_create("DOF: Combine");
+    combine_stage_step.pfn_callback_proc = _stage_step_dof_scheuermann_combine_execute;
+    combine_stage_step.user_arg          = NULL;
+
+    downsampling_stage_step.name              = system_hashed_ansi_string_create("DOF: Downsampling");
+    downsampling_stage_step.pfn_callback_proc = _stage_step_dof_scheuermann_downsample_execute;
+    downsampling_stage_step.user_arg          = NULL;
+
+    preblur_stage_step.name              = system_hashed_ansi_string_create("DOF: Pre-blurring");
+    preblur_stage_step.pfn_callback_proc = _stage_step_dof_scheuermann_preblur_execute;
+    preblur_stage_step.user_arg          = NULL;
+
     ogl_pipeline_add_stage_step(pipeline,
                                 stage_id,
-                                system_hashed_ansi_string_create("DOF: Downsampling"),
-                                _stage_step_dof_scheuermann_downsample_execute,
-                                NULL); /* step_callback_user_arg */
+                                &downsampling_stage_step);
     ogl_pipeline_add_stage_step(pipeline,
                                 stage_id,
-                                system_hashed_ansi_string_create("DOF: Pre-blurring"),
-                                _stage_step_dof_scheuermann_preblur_execute,
-                                NULL); /* step_callback_user_arg */
+                               &preblur_stage_step);
     ogl_pipeline_add_stage_step(pipeline,
                                 stage_id,
-                                system_hashed_ansi_string_create("DOF: Combine"),
-                                _stage_step_dof_scheuermann_combine_execute,
-                                NULL); /* step_callback_user_arg */
+                               &combine_stage_step);
 }

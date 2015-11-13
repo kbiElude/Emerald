@@ -442,6 +442,9 @@ PRIVATE void _window_closing_callback_handler(system_window window,
                                         NULL);
 
     /* Create and configure pipeline object */
+    ogl_pipeline_stage_step_declaration data_generation_stage_step;
+    ogl_pipeline_stage_step_declaration data_update_stage_step;
+
     uint32_t                   pipeline_stage_generate_data_step = -1;
     uint32_t                   pipeline_stage_modify_data_step   = -1;
     PFNOGLPIPELINECALLBACKPROC stage_1_callback                  = _stage_step_generate_data;
@@ -452,16 +455,20 @@ PRIVATE void _window_closing_callback_handler(system_window window,
                                                 system_hashed_ansi_string_create("pipeline") );
     _pipeline_stage_id = ogl_pipeline_add_stage(_pipeline);
 
+    data_generation_stage_step.name              = system_hashed_ansi_string_create("Data generation");
+    data_generation_stage_step.pfn_callback_proc = stage_1_callback;
+    data_generation_stage_step.user_arg          = NULL;
+
+    data_update_stage_step.name              = system_hashed_ansi_string_create("Data update");
+    data_update_stage_step.pfn_callback_proc = stage_2_callback;
+    data_update_stage_step.user_arg          = NULL;
+
     ogl_pipeline_add_stage_step(_pipeline,
                                 _pipeline_stage_id,
-                                system_hashed_ansi_string_create("Data generation"),
-                                stage_1_callback,
-                                NULL); /* step_callback_user_arg */
+                               &data_generation_stage_step);
     ogl_pipeline_add_stage_step(_pipeline,
                                 _pipeline_stage_id,
-                                system_hashed_ansi_string_create("Data update"),
-                                stage_2_callback,
-                                NULL); /* step_callback_user_arg */
+                               &data_update_stage_step);
 
     /* Initialize GL objects */
     ogl_rendering_handler_request_callback_from_context_thread(window_rendering_handler,

@@ -230,11 +230,15 @@ PUBLIC void stage_step_light_init(ogl_context  context,
                                    &_light_vao_id);
 
     /* Add ourselves to the pipeline */
+    ogl_pipeline_stage_step_declaration light_preview_stage_step;
+
+    light_preview_stage_step.name              = system_hashed_ansi_string_create("Light preview");
+    light_preview_stage_step.pfn_callback_proc = _stage_step_light_execute;
+    light_preview_stage_step.user_arg          = NULL;
+
     ogl_pipeline_add_stage_step(pipeline,
                                 stage_id,
-                                system_hashed_ansi_string_create("Light preview"),
-                                _stage_step_light_execute,
-                                NULL); /* step_callback_user_arg */
+                               &light_preview_stage_step);
 
     /* Set up matrices */
     _light_view_matrix = system_matrix4x4_create();

@@ -8,17 +8,33 @@
 #include "ogl/ogl_context_textures.h"
 #include "ral/ral_context.h"
 #include "raGL/raGL_backend.h"
+#include "raGL/raGL_buffer.h"
 #include "raGL/raGL_framebuffer.h"
+#include "raGL/raGL_sampler.h"
 #include "system/system_callback_manager.h"
 #include "system/system_critical_section.h"
 #include "system/system_hash64map.h"
 #include "system/system_window.h"
 
 
+typedef enum
+{
+    RAGL_BACKEND_OBJECT_TYPE_BUFFER,
+    RAGL_BACKEND_OBJECT_TYPE_FRAMEBUFFER,
+    RAGL_BACKEND_OBJECT_TYPE_SAMPLER,
+
+    /* Always last */
+    RAGL_BACKEND_OBJECT_TYPE_COUNT
+} raGL_backend_object_type;
+
 typedef struct _raGL_backend
 {
+    system_hash64map        buffers_map;      /* maps ral_buffer to raGL_buffer instance; owns the mapped raGL_buffer instances */
+    system_critical_section buffers_map_cs;
     system_hash64map        framebuffers_map; /* maps ral_framebuffer to raGL_framebuffer instance; owns the mapped raGL_framebuffer instances */
     system_critical_section framebuffers_map_cs;
+    system_hash64map        samplers_map;     /* maps ral_sampler to raGL_sampler instance; owns the mapped raGL_sampler instances */
+    system_critical_section samplers_map_cs;
 
     ogl_context      gl_context;       /* NOT owned - DO NOT release */
     ral_context      owner_context;
@@ -28,20 +44,28 @@ typedef struct _raGL_backend
 
     _raGL_backend(ral_context in_owner_context)
     {
+        buffers_map                       = system_hash64map_create       (sizeof(raGL_buffer) );
+        buffers_map_cs                    = system_critical_section_create();
         framebuffers_map                  = system_hash64map_create       (sizeof(raGL_framebuffer) );
         framebuffers_map_cs               = system_critical_section_create();
         gl_context                        = NULL;
         max_framebuffer_color_attachments = 0;
         owner_context                     = in_owner_context;
+        samplers_map                      = system_hash64map_create       (sizeof(raGL_sampler) );
+        samplers_map_cs                   = system_critical_section_create();
         system_framebuffer                = NULL;
 
+        ASSERT_DEBUG_SYNC(buffers_map != NULL,
+                          "Could not create the buffers map");
         ASSERT_DEBUG_SYNC(framebuffers_map != NULL,
                           "Could not create the framebuffers map");
+        ASSERT_DEBUG_SYNC(samplers_map != NULL,
+                          "Could not create the samplers map");
     }
 
     ~_raGL_backend()
     {
-        /* Delete the system framebuffer and then proceed with release of other dangling framebuffers. */
+        /* Delete the system framebuffer and then proceed with release of other dangling objects. */
         if (system_framebuffer != NULL)
         {
             ral_context_delete_framebuffers(owner_context,
@@ -51,69 +75,139 @@ typedef struct _raGL_backend
             system_framebuffer = NULL;
         } /* if (system_framebuffer != NULL) */
 
-        system_critical_section_enter(framebuffers_map_cs);
+        for (uint32_t n_object_type = 0;
+                      n_object_type < RAGL_BACKEND_OBJECT_TYPE_COUNT;
+                    ++n_object_type)
         {
-            if (framebuffers_map != NULL)
+            system_critical_section cs              = NULL;
+            system_hash64map*       objects_map_ptr = NULL;
+
+            switch (n_object_type)
             {
-                uint32_t n_framebuffers_map_items = 0;
-
-                system_hash64map_get_property(framebuffers_map,
-                                              SYSTEM_HASH64MAP_PROPERTY_N_ELEMENTS,
-                                             &n_framebuffers_map_items);
-
-                for (uint32_t n_item = 0;
-                              n_item < n_framebuffers_map_items;
-                            ++n_item)
+                case RAGL_BACKEND_OBJECT_TYPE_BUFFER:
                 {
-                    raGL_framebuffer current_fb = NULL;
+                    cs              =  buffers_map_cs;
+                    objects_map_ptr = &buffers_map;
 
-                    if (!system_hash64map_get_element_at(framebuffers_map,
-                                                         n_item,
-                                                        &current_fb,
-                                                         NULL) ) /* result_hash_ptr */
+                    break;
+                }
+
+                case RAGL_BACKEND_OBJECT_TYPE_FRAMEBUFFER:
+                {
+                    cs              =  framebuffers_map_cs;
+                    objects_map_ptr = &framebuffers_map;
+
+                    break;
+                }
+
+                case RAGL_BACKEND_OBJECT_TYPE_SAMPLER:
+                {
+                    cs              =  samplers_map_cs;
+                    objects_map_ptr = &samplers_map;
+
+                    break;
+                }
+
+                default:
+                {
+                    ASSERT_DEBUG_SYNC(false,
+                                      "Unrecognized raGL_backend_object_type value.");
+
+                    continue;
+                }
+            } /* switch (n_object_type) */
+
+            system_critical_section_enter(cs);
+            {
+                if (*objects_map_ptr != NULL)
+                {
+                    uint32_t n_objects = 0;
+
+                    system_hash64map_get_property(*objects_map_ptr,
+                                                  SYSTEM_HASH64MAP_PROPERTY_N_ELEMENTS,
+                                                 &n_objects);
+
+                    for (uint32_t n_object = 0;
+                                  n_object < n_objects;
+                                ++n_object)
                     {
-                        ASSERT_DEBUG_SYNC(false,
-                                          "Could not retrieve raGL_framebuffer instance");
+                        void* current_object = NULL;
 
-                        continue;
-                    }
+                        if (!system_hash64map_get_element_at(*objects_map_ptr,
+                                                             n_object,
+                                                            &current_object,
+                                                             NULL) ) /* result_hash_ptr */
+                        {
+                            ASSERT_DEBUG_SYNC(false,
+                                              "Could not retrieve raGL object instance");
 
-                    raGL_framebuffer_release(current_fb);
-                    current_fb = NULL;
-                } /* for (all FB map items) */
+                            continue;
+                        }
 
-                system_hash64map_release(framebuffers_map);
-                framebuffers_map = NULL;
-            } /* if (framebuffers_map != NULL) */
+                        switch (n_object_type)
+                        {
+                            case RAGL_BACKEND_OBJECT_TYPE_BUFFER:      raGL_buffer_release     ( (raGL_buffer&)      current_object); break;
+                            case RAGL_BACKEND_OBJECT_TYPE_FRAMEBUFFER: raGL_framebuffer_release( (raGL_framebuffer&) current_object); break;
+                            case RAGL_BACKEND_OBJECT_TYPE_SAMPLER:     raGL_sampler_release    ( (raGL_sampler&)     current_object); break;
 
-            system_critical_section_leave(framebuffers_map_cs);
+                            default:
+                            {
+                                ASSERT_DEBUG_SYNC(false,
+                                                  "Unrecognized raGL_backend_object_type value.");
+                            }
+                        } /* switch (n_object_type) */
+
+                        current_object = NULL;
+                    } /* for (all object map items) */
+
+                    system_hash64map_release(*objects_map_ptr);
+                    *objects_map_ptr = NULL;
+                } /* if (objects_map != NULL) */
+
+                system_critical_section_leave(cs);
+            } /* for (all raGL object types) */
         }
+
+        system_critical_section_release(buffers_map_cs);
+        buffers_map_cs = NULL;
 
         system_critical_section_release(framebuffers_map_cs);
         framebuffers_map_cs = NULL;
+
+        system_critical_section_release(samplers_map_cs);
+        samplers_map_cs = NULL;
     }
 } _raGL_backend;
 
 typedef struct
 {
 
-    _raGL_backend*                                          backend_ptr;
-    ral_context_callback_framebuffers_created_callback_arg* ral_callback_arg_ptr;
+    _raGL_backend*           backend_ptr;
+    raGL_backend_object_type object_type;
+    const void*              ral_callback_arg_ptr;
 
-} _raGL_backend_on_framebuffers_created_rendering_callback_arg;
+} _raGL_backend_on_objects_created_rendering_callback_arg;
 
 
 /* Forward declarations */
-PRIVATE void _raGL_backend_cache_limits                              (_raGL_backend* backend_ptr);
-PRIVATE void _raGL_backend_init_system_fbo                           (_raGL_backend* backend_ptr);
-PRIVATE void _raGL_backend_on_framebuffers_created                   (const void*    callback_arg_data,
-                                                                      void*          backend);
-PRIVATE void _raGL_backend_on_framebuffers_created_rendering_callback(ogl_context    context,
-                                                                      void*          callback_arg);
-PRIVATE void _raGL_backend_on_framebuffers_deleted                   (const void*    callback_arg_data,
-                                                                      void*          backend);
-PRIVATE void _raGL_backend_subscribe_for_notifications               (_raGL_backend* backend_ptr,
-                                                                      bool           should_subscribe);
+PRIVATE void _raGL_backend_cache_limits                         (_raGL_backend* backend_ptr);
+PRIVATE void _raGL_backend_init_system_fbo                      (_raGL_backend* backend_ptr);
+PRIVATE void _raGL_backend_on_buffers_created                   (const void*    callback_arg_data,
+                                                                 void*          backend);
+PRIVATE void _raGL_backend_on_buffers_deleted                   (const void*    callback_arg_data,
+                                                                 void*          backend);
+PRIVATE void _raGL_backend_on_framebuffers_created              (const void*    callback_arg_data,
+                                                                 void*          backend);
+PRIVATE void _raGL_backend_on_framebuffers_deleted              (const void*    callback_arg_data,
+                                                                 void*          backend);
+PRIVATE void _raGL_backend_on_objects_created_rendering_callback(ogl_context    context,
+                                                                 void*          callback_arg);
+PRIVATE void _raGL_backend_on_samplers_created                  (const void*    callback_arg_data,
+                                                                 void*          backend);
+PRIVATE void _raGL_backend_on_samplers_deleted                  (const void*    callback_arg_data,
+                                                                 void*          backend);
+PRIVATE void _raGL_backend_subscribe_for_notifications          (_raGL_backend* backend_ptr,
+                                                                 bool           should_subscribe);
 
 
 /** TODO */
@@ -146,126 +240,63 @@ PRIVATE void _raGL_backend_init_system_fbo(_raGL_backend* backend_ptr)
 }
 
 /** TODO */
-PRIVATE void _raGL_backend_on_framebuffers_created(const void* callback_arg_data,
-                                                   void*       backend)
+PRIVATE void _raGL_backend_on_buffers_created(const void* callback_arg_data,
+                                              void*       backend)
 {
-    _raGL_backend*                                          backend_ptr      = (_raGL_backend*)                                          backend;
-    ral_context_callback_framebuffers_created_callback_arg* callback_arg_ptr = (ral_context_callback_framebuffers_created_callback_arg*) callback_arg_data;
+    _raGL_backend* backend_ptr = (_raGL_backend*) backend;
 
     /* Sanity checks */
     ASSERT_DEBUG_SYNC(backend_ptr != NULL,
                       "Backend instance is NULL");
-    ASSERT_DEBUG_SYNC(callback_arg_ptr != NULL,
+    ASSERT_DEBUG_SYNC(callback_arg_data != NULL,
                       "Callback argument is NULL");
 
-    /* Request a rendering call-back to create the framebuffer instances */
-    _raGL_backend_on_framebuffers_created_rendering_callback_arg rendering_callback_arg;
+    /* Request a rendering call-back to create the buffer instances */
+    _raGL_backend_on_objects_created_rendering_callback_arg rendering_callback_arg;
 
     rendering_callback_arg.backend_ptr          = backend_ptr;
-    rendering_callback_arg.ral_callback_arg_ptr = callback_arg_ptr;
+    rendering_callback_arg.object_type          = RAGL_BACKEND_OBJECT_TYPE_BUFFER;
+    rendering_callback_arg.ral_callback_arg_ptr = callback_arg_data;
 
     ogl_context_request_callback_from_context_thread(backend_ptr->gl_context,
-                                                     _raGL_backend_on_framebuffers_created_rendering_callback,
+                                                     _raGL_backend_on_objects_created_rendering_callback,
                                                     &rendering_callback_arg);
 
     /* All done - the rendering callback does all the dirty job needed. */
 }
 
 /** TODO */
-PRIVATE void _raGL_backend_on_framebuffers_created_rendering_callback(ogl_context context,
-                                                                      void*       callback_arg)
+PRIVATE void _raGL_backend_on_buffers_deleted(const void* callback_arg_data,
+                                              void*       backend)
 {
-    _raGL_backend_on_framebuffers_created_rendering_callback_arg* callback_arg_ptr  = (_raGL_backend_on_framebuffers_created_rendering_callback_arg*) callback_arg;
-    const ogl_context_gl_entrypoints*                             entrypoints_ptr   = NULL;
-    bool                                                          result            = false;
-    GLuint*                                                       result_fb_ids_ptr = NULL;
+    ASSERT_DEBUG_SYNC(false,
+                      "TODO");
+}
 
-    ASSERT_DEBUG_SYNC(callback_arg_ptr != NULL,
+/** TODO */
+PRIVATE void _raGL_backend_on_framebuffers_created(const void* callback_arg_data,
+                                                   void*       backend)
+{
+    _raGL_backend* backend_ptr = (_raGL_backend*) backend;
+
+    /* Sanity checks */
+    ASSERT_DEBUG_SYNC(backend_ptr != NULL,
+                      "Backend instance is NULL");
+    ASSERT_DEBUG_SYNC(callback_arg_data != NULL,
                       "Callback argument is NULL");
 
-    ogl_context_get_property(callback_arg_ptr->backend_ptr->gl_context,
-                             OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
-                            &entrypoints_ptr);
+    /* Request a rendering call-back to create the framebuffer instances */
+    _raGL_backend_on_objects_created_rendering_callback_arg rendering_callback_arg;
 
-    /* Generate the IDs */
-    result_fb_ids_ptr = new (std::nothrow) GLuint[callback_arg_ptr->ral_callback_arg_ptr->n_framebuffers];
+    rendering_callback_arg.backend_ptr          = backend_ptr;
+    rendering_callback_arg.object_type          = RAGL_BACKEND_OBJECT_TYPE_FRAMEBUFFER;
+    rendering_callback_arg.ral_callback_arg_ptr = callback_arg_data;
 
-    if (result_fb_ids_ptr == NULL)
-    {
-        ASSERT_ALWAYS_SYNC(false,
-                           "Out of memory");
+    ogl_context_request_callback_from_context_thread(backend_ptr->gl_context,
+                                                     _raGL_backend_on_objects_created_rendering_callback,
+                                                    &rendering_callback_arg);
 
-        goto end;
-    } /* if (result_fb_ids_ptr == NULL) */
-
-    entrypoints_ptr->pGLGenFramebuffers(callback_arg_ptr->ral_callback_arg_ptr->n_framebuffers,
-                                        result_fb_ids_ptr);
-
-    /* Create raGL_framebuffer instances for each ID */
-    for (uint32_t n_fb_id = 0;
-                  n_fb_id < callback_arg_ptr->ral_callback_arg_ptr->n_framebuffers;
-                ++n_fb_id)
-    {
-        GLuint           current_fb_id = result_fb_ids_ptr[n_fb_id];
-        raGL_framebuffer new_fb        = NULL;
-
-        new_fb = raGL_framebuffer_create(context,
-                                         current_fb_id,
-                                         callback_arg_ptr->ral_callback_arg_ptr->created_framebuffers[n_fb_id]);
-
-        if (new_fb == NULL)
-        {
-            ASSERT_DEBUG_SYNC(false,
-                              "raGL_framebuffer_create() failed.");
-
-            goto end;
-        }
-
-        system_critical_section_enter(callback_arg_ptr->backend_ptr->framebuffers_map_cs);
-        {
-            ASSERT_DEBUG_SYNC(!system_hash64map_contains(callback_arg_ptr->backend_ptr->framebuffers_map,
-                                                         (system_hash64) new_fb),
-                              "Created FB instance is already recognized?");
-
-            system_hash64map_insert(callback_arg_ptr->backend_ptr->framebuffers_map,
-                                    (system_hash64) callback_arg_ptr->ral_callback_arg_ptr->created_framebuffers[n_fb_id],
-                                    new_fb,
-                                    NULL,  /* on_remove_callback */
-                                    NULL); /* on_remove_callback_user_arg */
-        }
-        system_critical_section_leave(callback_arg_ptr->backend_ptr->framebuffers_map_cs);
-    } /* for (all generated FB ids) */
-
-    result = true;
-end:
-    if (result_fb_ids_ptr != NULL)
-    {
-        if (!result)
-        {
-            /* Remove those FB instances which have been successfully spawned */
-            for (uint32_t n_fb = 0;
-                          n_fb < callback_arg_ptr->ral_callback_arg_ptr->n_framebuffers;
-                        ++n_fb)
-            {
-                raGL_framebuffer fb_instance = NULL;
-
-                if (!system_hash64map_get(callback_arg_ptr->backend_ptr->framebuffers_map,
-                                          (system_hash64) callback_arg_ptr->ral_callback_arg_ptr->created_framebuffers[n_fb],
-                                         &fb_instance) )
-                {
-                    continue;
-                }
-
-                raGL_framebuffer_release(fb_instance);
-                fb_instance = NULL;
-            } /* for (all requested framebuffers) */
-        } /* if (!result) */
-
-        delete [] result_fb_ids_ptr;
-
-        result_fb_ids_ptr = NULL;
-    } /* if (result_fb_ids_ptr != NULL) */
-
+    /* All done - the rendering callback does all the dirty job needed. */
 }
 
 /** TODO */
@@ -274,6 +305,287 @@ PRIVATE void _raGL_backend_on_framebuffers_deleted(const void* callback_arg_data
 {
     ASSERT_DEBUG_SYNC(false,
                       "TODO");
+}
+
+/** TODO */
+PRIVATE void _raGL_backend_on_samplers_created(const void* callback_arg_data,
+                                               void*       backend)
+{
+    _raGL_backend* backend_ptr = (_raGL_backend*) backend;
+
+    /* Sanity checks */
+    ASSERT_DEBUG_SYNC(backend_ptr != NULL,
+                      "Backend instance is NULL");
+    ASSERT_DEBUG_SYNC(callback_arg_data != NULL,
+                      "Callback argument is NULL");
+
+    /* Request a rendering call-back to create the sampler instances */
+    _raGL_backend_on_objects_created_rendering_callback_arg rendering_callback_arg;
+
+    rendering_callback_arg.backend_ptr          = backend_ptr;
+    rendering_callback_arg.object_type          = RAGL_BACKEND_OBJECT_TYPE_SAMPLER;
+    rendering_callback_arg.ral_callback_arg_ptr = callback_arg_data;
+
+    ogl_context_request_callback_from_context_thread(backend_ptr->gl_context,
+                                                     _raGL_backend_on_objects_created_rendering_callback,
+                                                    &rendering_callback_arg);
+
+    /* All done - the rendering callback does all the dirty job needed. */
+}
+
+/** TODO */
+PRIVATE void _raGL_backend_on_samplers_deleted(const void* callback_arg_data,
+                                               void*       backend)
+{
+    ASSERT_DEBUG_SYNC(false,
+                      "TODO");
+}
+
+/** TODO */
+PRIVATE void _raGL_backend_on_objects_created_rendering_callback(ogl_context context,
+                                                                 void*       callback_arg)
+{
+    _raGL_backend_on_objects_created_rendering_callback_arg* callback_arg_ptr        = (_raGL_backend_on_objects_created_rendering_callback_arg*) callback_arg;
+    const ogl_context_gl_entrypoints*                        entrypoints_ptr         = NULL;
+    uint32_t                                                 n_objects_to_initialize = 0;
+    system_hash64map                                         objects_map             = NULL;
+    system_critical_section                                  objects_map_cs          = NULL;
+    bool                                                     result                  = false;
+    GLuint*                                                  result_object_ids_ptr   = NULL;
+
+    union
+    {
+        ral_buffer*      ral_buffer_ptrs;
+        ral_framebuffer* ral_framebuffer_ptrs;
+        void**           ral_object_ptrs;
+        ral_sampler*     ral_sampler_ptrs;
+    };
+
+    ASSERT_DEBUG_SYNC(callback_arg != NULL,
+                      "Callback argument is NULL");
+
+    ogl_context_get_property(callback_arg_ptr->backend_ptr->gl_context,
+                             OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
+                            &entrypoints_ptr);
+
+    /* Retrieve object type-specific data */
+    ral_buffer_ptrs = NULL;
+
+    switch (callback_arg_ptr->object_type)
+    {
+        case RAGL_BACKEND_OBJECT_TYPE_BUFFER:
+        {
+            n_objects_to_initialize = ((ral_context_callback_buffers_created_callback_arg*) callback_arg_ptr->ral_callback_arg_ptr)->n_buffers;
+            objects_map             = callback_arg_ptr->backend_ptr->buffers_map;
+            objects_map_cs          = callback_arg_ptr->backend_ptr->buffers_map_cs;
+            ral_buffer_ptrs         = ((ral_context_callback_buffers_created_callback_arg*) callback_arg_ptr->ral_callback_arg_ptr)->created_buffers;
+
+            break;
+        }
+
+        case RAGL_BACKEND_OBJECT_TYPE_FRAMEBUFFER:
+        {
+            n_objects_to_initialize = ((ral_context_callback_framebuffers_created_callback_arg*) callback_arg_ptr->ral_callback_arg_ptr)->n_framebuffers;
+            objects_map             = callback_arg_ptr->backend_ptr->framebuffers_map;
+            objects_map_cs          = callback_arg_ptr->backend_ptr->framebuffers_map_cs;
+            ral_framebuffer_ptrs    = ((ral_context_callback_framebuffers_created_callback_arg*) callback_arg_ptr->ral_callback_arg_ptr)->created_framebuffers;
+
+            break;
+        }
+
+        case RAGL_BACKEND_OBJECT_TYPE_SAMPLER:
+        {
+            n_objects_to_initialize = ((ral_context_callback_samplers_created_callback_arg*) callback_arg_ptr->ral_callback_arg_ptr)->n_samplers;
+            objects_map             = callback_arg_ptr->backend_ptr->samplers_map;
+            objects_map_cs          = callback_arg_ptr->backend_ptr->samplers_map_cs;
+            ral_sampler_ptrs        = ((ral_context_callback_samplers_created_callback_arg*) callback_arg_ptr->ral_callback_arg_ptr)->created_samplers;
+
+            break;
+        }
+
+        default:
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Unrecognized raGL_backend_object_type value.");
+
+            goto end;
+        }
+    } /* switch (callback_arg_ptr->object_type) */
+
+    /* Generate the IDs */
+    result_object_ids_ptr = new (std::nothrow) GLuint[n_objects_to_initialize];
+
+    if (result_object_ids_ptr == NULL)
+    {
+        ASSERT_ALWAYS_SYNC(false,
+                           "Out of memory");
+
+        goto end;
+    } /* if (result_fb_ids_ptr == NULL) */
+
+    switch (callback_arg_ptr->object_type)
+    {
+        case RAGL_BACKEND_OBJECT_TYPE_BUFFER:
+        {
+            entrypoints_ptr->pGLGenBuffers(n_objects_to_initialize,
+                                           result_object_ids_ptr);
+
+            break;
+        }
+
+        case RAGL_BACKEND_OBJECT_TYPE_FRAMEBUFFER:
+        {
+            entrypoints_ptr->pGLGenFramebuffers(n_objects_to_initialize,
+                                                result_object_ids_ptr);
+
+            break;
+        }
+
+        case RAGL_BACKEND_OBJECT_TYPE_SAMPLER:
+        {
+            entrypoints_ptr->pGLGenSamplers(n_objects_to_initialize,
+                                            result_object_ids_ptr);
+
+            break;
+        }
+
+        default:
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Unrecognized raGL_backend_object_type value.");
+
+            goto end;
+        }
+    } /* switch (callback_arg_ptr->object_type) */
+
+    /* Create raGL instances for each object ID */
+    for (uint32_t n_object_id = 0;
+                  n_object_id < n_objects_to_initialize;
+                ++n_object_id)
+    {
+        GLuint current_object_id = result_object_ids_ptr[n_object_id];
+        void*  new_object        = NULL;
+
+        switch (callback_arg_ptr->object_type)
+        {
+            case RAGL_BACKEND_OBJECT_TYPE_BUFFER:
+            {
+                new_object = raGL_buffer_create(context,
+                                                current_object_id,
+                                                ral_buffer_ptrs[n_object_id]);
+
+                break;
+            }
+
+            case RAGL_BACKEND_OBJECT_TYPE_FRAMEBUFFER:
+            {
+                new_object = raGL_framebuffer_create(context,
+                                                     current_object_id,
+                                                     ral_framebuffer_ptrs[n_object_id]);
+
+                break;
+            }
+
+            case RAGL_BACKEND_OBJECT_TYPE_SAMPLER:
+            {
+                new_object = raGL_sampler_create(context,
+                                                 current_object_id,
+                                                 ral_sampler_ptrs[n_object_id]);
+
+                break;
+            }
+
+            default:
+            {
+                ASSERT_DEBUG_SYNC(false,
+                                  "Unrecognized raGL_backend_object_type value.");
+
+                goto end;
+            }
+        } /* switch (callback_arg_ptr->object_type) */
+
+        if (new_object == NULL)
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Failed to create a GL back-end object.");
+
+            goto end;
+        }
+
+        system_critical_section_enter(objects_map_cs);
+        {
+            ASSERT_DEBUG_SYNC(!system_hash64map_contains(objects_map,
+                                                         (system_hash64) new_object),
+                              "Created GL backend instance is already recognized?");
+
+            system_hash64map_insert(objects_map,
+                                    (system_hash64) ral_object_ptrs[n_object_id],
+                                    new_object,
+                                    NULL,  /* on_remove_callback */
+                                    NULL); /* on_remove_callback_user_arg */
+        }
+        system_critical_section_leave(objects_map_cs);
+    } /* for (all generated FB ids) */
+
+    result = true;
+end:
+    if (result_object_ids_ptr != NULL)
+    {
+        if (!result)
+        {
+            /* Remove those object instances which have been successfully spawned */
+            for (uint32_t n_object = 0;
+                          n_object < n_objects_to_initialize;
+                        ++n_object)
+            {
+                void* object_instance = NULL;
+
+                if (!system_hash64map_get(objects_map,
+                                          (system_hash64) ral_object_ptrs[n_object],
+                                         &object_instance) )
+                {
+                    continue;
+                }
+
+                switch (callback_arg_ptr->object_type)
+                {
+                    case RAGL_BACKEND_OBJECT_TYPE_BUFFER:
+                    {
+                        raGL_buffer_release( (raGL_buffer) object_instance);
+
+                        break;
+                    }
+
+                    case RAGL_BACKEND_OBJECT_TYPE_FRAMEBUFFER:
+                    {
+                        raGL_framebuffer_release( (raGL_framebuffer) object_instance);
+
+                        break;
+                    }
+
+                    case RAGL_BACKEND_OBJECT_TYPE_SAMPLER:
+                    {
+                        raGL_sampler_release( (raGL_sampler) object_instance);
+
+                        break;
+                    }
+
+                    default:
+                    {
+                        ASSERT_DEBUG_SYNC(false,
+                                          "Unrecognized raGL_backend object type");
+                    }
+                } /* switch (callback_arg_ptr->object_type) */
+
+                object_instance = NULL;
+            } /* for (all requested objects) */
+        } /* if (!result) */
+
+        delete [] result_object_ids_ptr;
+
+        result_object_ids_ptr = NULL;
+    } /* if (result_object_ids_ptr != NULL) */
+
 }
 
 /** TODO */
@@ -288,6 +600,18 @@ PRIVATE void _raGL_backend_subscribe_for_notifications(_raGL_backend* backend_pt
 
     if (should_subscribe)
     {
+        /* Buffer notifications */
+        system_callback_manager_subscribe_for_callbacks(context_callback_manager,
+                                                        RAL_CONTEXT_CALLBACK_ID_BUFFERS_CREATED,
+                                                        CALLBACK_SYNCHRONICITY_SYNCHRONOUS,
+                                                        _raGL_backend_on_buffers_created,
+                                                        backend_ptr);
+        system_callback_manager_subscribe_for_callbacks(context_callback_manager,
+                                                        RAL_CONTEXT_CALLBACK_ID_BUFFERS_DELETED,
+                                                        CALLBACK_SYNCHRONICITY_SYNCHRONOUS,
+                                                        _raGL_backend_on_buffers_deleted,
+                                                        backend_ptr);
+
         /* Framebuffer notifications */
         system_callback_manager_subscribe_for_callbacks(context_callback_manager,
                                                         RAL_CONTEXT_CALLBACK_ID_FRAMEBUFFERS_CREATED,
@@ -299,9 +623,31 @@ PRIVATE void _raGL_backend_subscribe_for_notifications(_raGL_backend* backend_pt
                                                         CALLBACK_SYNCHRONICITY_SYNCHRONOUS,
                                                         _raGL_backend_on_framebuffers_deleted,
                                                         backend_ptr);
+
+        /* Sampler notifications */
+        system_callback_manager_subscribe_for_callbacks(context_callback_manager,
+                                                        RAL_CONTEXT_CALLBACK_ID_SAMPLERS_CREATED,
+                                                        CALLBACK_SYNCHRONICITY_SYNCHRONOUS,
+                                                        _raGL_backend_on_samplers_created,
+                                                        backend_ptr);
+        system_callback_manager_subscribe_for_callbacks(context_callback_manager,
+                                                        RAL_CONTEXT_CALLBACK_ID_SAMPLERS_DELETED,
+                                                        CALLBACK_SYNCHRONICITY_SYNCHRONOUS,
+                                                        _raGL_backend_on_samplers_deleted,
+                                                        backend_ptr);
     } /* if (should_subscribe) */
     else
     {
+        /* Buffer notifications */
+        system_callback_manager_unsubscribe_from_callbacks(context_callback_manager,
+                                                           RAL_CONTEXT_CALLBACK_ID_BUFFERS_CREATED,
+                                                           _raGL_backend_on_buffers_created,
+                                                           backend_ptr);
+        system_callback_manager_unsubscribe_from_callbacks(context_callback_manager,
+                                                           RAL_CONTEXT_CALLBACK_ID_BUFFERS_DELETED,
+                                                           _raGL_backend_on_buffers_deleted,
+                                                           backend_ptr);
+
         /* Framebuffer notifications */
         system_callback_manager_unsubscribe_from_callbacks(context_callback_manager,
                                                            RAL_CONTEXT_CALLBACK_ID_FRAMEBUFFERS_CREATED,
@@ -310,6 +656,16 @@ PRIVATE void _raGL_backend_subscribe_for_notifications(_raGL_backend* backend_pt
         system_callback_manager_unsubscribe_from_callbacks(context_callback_manager,
                                                            RAL_CONTEXT_CALLBACK_ID_FRAMEBUFFERS_DELETED,
                                                            _raGL_backend_on_framebuffers_deleted,
+                                                           backend_ptr);
+
+        /* Sampler notifications */
+        system_callback_manager_unsubscribe_from_callbacks(context_callback_manager,
+                                                           RAL_CONTEXT_CALLBACK_ID_SAMPLERS_CREATED,
+                                                           _raGL_backend_on_samplers_created,
+                                                           backend_ptr);
+        system_callback_manager_unsubscribe_from_callbacks(context_callback_manager,
+                                                           RAL_CONTEXT_CALLBACK_ID_SAMPLERS_DELETED,
+                                                           _raGL_backend_on_samplers_deleted,
                                                            backend_ptr);
     }
 }

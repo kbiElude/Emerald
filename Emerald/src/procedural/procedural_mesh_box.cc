@@ -461,8 +461,8 @@ PRIVATE void _procedural_mesh_box_create_renderer_callback(ogl_context context,
             ogl_buffers_allocate_buffer_memory(mesh_box->buffers,
                                                mesh_box->arrays_bo_normals_offset * 2, /* size */
                                                1,                                      /* alignment_requirement */
-                                               OGL_BUFFERS_MAPPABILITY_NONE,
-                                               OGL_BUFFERS_USAGE_VBO,
+                                               RAL_BUFFER_MAPPABILITY_NONE,
+                                               RAL_BUFFER_USAGE_VERTEX_BUFFER_BIT,
                                                OGL_BUFFERS_FLAGS_NONE,
                                               &mesh_box->arrays_bo_id,
                                               &mesh_box->arrays_bo_start_offset);
@@ -490,8 +490,8 @@ PRIVATE void _procedural_mesh_box_create_renderer_callback(ogl_context context,
         ogl_buffers_allocate_buffer_memory(mesh_box->buffers,
                                            mesh_box->elements_bo_normals_offset + ordered_normals_size, /* size */
                                            1,                                                           /* alignment_requirement */
-                                           OGL_BUFFERS_MAPPABILITY_NONE,
-                                           OGL_BUFFERS_USAGE_VBO,
+                                           RAL_BUFFER_MAPPABILITY_NONE,
+                                           RAL_BUFFER_USAGE_INDEX_BUFFER_BIT,
                                            OGL_BUFFERS_FLAGS_NONE,
                                           &mesh_box->elements_bo_id,
                                           &mesh_box->elements_bo_start_offset);

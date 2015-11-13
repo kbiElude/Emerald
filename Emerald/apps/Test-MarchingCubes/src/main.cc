@@ -110,7 +110,8 @@ PRIVATE void _get_isolevel_value(void*          user_arg,
 /** TODO */
 PRIVATE void _init_pipeline()
 {
-    ogl_ui pipeline_ui = NULL;
+    ogl_ui                              pipeline_ui = NULL;
+    ogl_pipeline_stage_step_declaration rendering_stage_step;
 
     /* Set up pipeline */
     _pipeline          = ogl_pipeline_create   (_context,
@@ -119,11 +120,13 @@ PRIVATE void _init_pipeline()
     _pipeline_stage_id = ogl_pipeline_add_stage(_pipeline);
     pipeline_ui        = ogl_pipeline_get_ui   (_pipeline);
 
+    rendering_stage_step.name              = system_hashed_ansi_string_create("Rendering");
+    rendering_stage_step.pfn_callback_proc = _render;
+    rendering_stage_step.user_arg          = NULL;
+
     ogl_pipeline_add_stage_step(_pipeline,
                                 _pipeline_stage_id,
-                                system_hashed_ansi_string_create("Rendering"),
-                                _render,
-                                NULL); /* step_callback_user_arg */
+                               &rendering_stage_step);
 
     /* Set up UI */
     const float isolevel_scrollbar_x1y1[] = {0.8f, 0.0f};

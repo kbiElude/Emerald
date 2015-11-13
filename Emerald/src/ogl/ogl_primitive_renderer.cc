@@ -440,8 +440,8 @@ PRIVATE void _ogl_primitive_renderer_update_bo_storage(ogl_context              
         ogl_buffers_allocate_buffer_memory(renderer_ptr->buffers,
                                            renderer_ptr->bo_data_size,
                                            limits_ptr->uniform_buffer_offset_alignment,
-                                           OGL_BUFFERS_MAPPABILITY_NONE,
-                                           OGL_BUFFERS_USAGE_UBO,
+                                           RAL_BUFFER_MAPPABILITY_NONE,
+                                           RAL_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
                                            OGL_BUFFERS_FLAGS_NONE,
                                           &renderer_ptr->bo_id,
                                           &renderer_ptr->bo_start_offset);

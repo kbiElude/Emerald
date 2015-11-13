@@ -29,31 +29,12 @@
 #define OGL_BUFFERS_H
 
 #include "ogl/ogl_types.h"
+#include "ral/ral_types.h"
 #include "system/system_types.h"
 
 REFCOUNT_INSERT_DECLARATIONS(ogl_buffers,
                              ogl_buffers)
 
-typedef enum
-{
-    OGL_BUFFERS_MAPPABILITY_NONE,
-    OGL_BUFFERS_MAPPABILITY_READ_OPS_ONLY,
-    OGL_BUFFERS_MAPPABILITY_READ_AND_WRITE_OPS,
-    OGL_BUFFERS_MAPPABILITY_WRITE_OPS_ONLY,
-
-    OGL_BUFFERS_MAPPABILITY_UNDEFINED
-} _ogl_buffers_mappability;
-
-typedef enum
-{
-    OGL_BUFFERS_USAGE_IBO,
-    OGL_BUFFERS_USAGE_MISCELLANEOUS,
-    OGL_BUFFERS_USAGE_UBO,
-    OGL_BUFFERS_USAGE_VBO,
-
-    /* Always last */
-    OGL_BUFFERS_USAGE_COUNT
-} _ogl_buffers_usage;
 
 /* The buffer memory can come from a sparse buffer, or an immutable buffer object */
 const unsigned int OGL_BUFFERS_FLAGS_NONE                        = 0;
@@ -63,14 +44,14 @@ const unsigned int OGL_BUFFERS_FLAGS_IMMUTABLE_BUFFER_MEMORY_BIT = 1 << 0;
 
 
 /** TODO */
-PUBLIC EMERALD_API bool ogl_buffers_allocate_buffer_memory(ogl_buffers              buffers,
-                                                           unsigned int             size,
-                                                           unsigned int             alignment_requirement,
-                                                           _ogl_buffers_mappability mappability,
-                                                           _ogl_buffers_usage       usage,
-                                                           int                      flags, /* bitfield of OGL_BUFFERS_FLAGS_ */
-                                                           unsigned int*            out_bo_id_ptr,
-                                                           unsigned int*            out_bo_offset_ptr);
+PUBLIC EMERALD_API bool ogl_buffers_allocate_buffer_memory(ogl_buffers            buffers,
+                                                           unsigned int           size,
+                                                           unsigned int           alignment_requirement,
+                                                           ral_buffer_mappability mappability,
+                                                           ral_buffer_usage_bits  usage_bits,
+                                                           int                    flags, /* bitfield of OGL_BUFFERS_FLAGS_ */
+                                                           unsigned int*          out_bo_id_ptr,
+                                                           unsigned int*          out_bo_offset_ptr);
 
 /** TODO.
  *

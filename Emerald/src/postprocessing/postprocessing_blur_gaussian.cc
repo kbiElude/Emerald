@@ -612,8 +612,8 @@ PRIVATE void _postprocessing_blur_gaussian_init_rendering_thread_callback(ogl_co
     ogl_buffers_allocate_buffer_memory(instance_ptr->buffers,
                                        final_data_bo_size,
                                        limits_ptr->uniform_buffer_offset_alignment, /* alignment_requirement */
-                                       OGL_BUFFERS_MAPPABILITY_NONE,
-                                       OGL_BUFFERS_USAGE_UBO,
+                                       RAL_BUFFER_MAPPABILITY_NONE,
+                                       RAL_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
                                        OGL_BUFFERS_FLAGS_NONE,
                                       &instance_ptr->coeff_bo_id,
                                       &instance_ptr->coeff_bo_start_offset);
@@ -621,8 +621,8 @@ PRIVATE void _postprocessing_blur_gaussian_init_rendering_thread_callback(ogl_co
     ogl_buffers_allocate_buffer_memory(instance_ptr->buffers,
                                        sizeof(int) * 3,                             /* other data = three integers */
                                        limits_ptr->uniform_buffer_offset_alignment, /* alignment_requirement */
-                                       OGL_BUFFERS_MAPPABILITY_NONE,
-                                       OGL_BUFFERS_USAGE_UBO,
+                                       RAL_BUFFER_MAPPABILITY_NONE,
+                                       RAL_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
                                        (is_nv_driver) ? OGL_BUFFERS_FLAGS_IMMUTABLE_BUFFER_MEMORY_BIT :
                                                         OGL_BUFFERS_FLAGS_NONE,
                                       &instance_ptr->other_data_bo_id,

@@ -325,6 +325,9 @@ PUBLIC EMERALD_API ogl_texture ogl_context_textures_get_texture_from_pool(ogl_co
                              OGL_CONTEXT_PROPERTY_TEXTURES,
                             &textures_ptr);
 
+    ASSERT_DEBUG_SYNC(n_samples >= 1,
+                      "Number of samples must not be 0");
+
     /* Is a re-usable texture already available? */
     system_resizable_vector reusable_textures = NULL;
 

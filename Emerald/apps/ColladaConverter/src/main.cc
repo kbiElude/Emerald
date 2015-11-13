@@ -397,17 +397,21 @@ int main()
 #endif
 
     /* Construct the pipeline object */
+    ogl_pipeline_stage_step_declaration scene_rendering_stage_step;
+
     _pipeline = ogl_pipeline_create(_context,
                                     true, /* should_overlay_performance_info */
                                     system_hashed_ansi_string_create("Pipeline") );
 
     _pipeline_stage_id = ogl_pipeline_add_stage(_pipeline);
 
+    scene_rendering_stage_step.name              = system_hashed_ansi_string_create("Scene rendering");
+    scene_rendering_stage_step.pfn_callback_proc = _render_scene;
+    scene_rendering_stage_step.user_arg          = NULL;
+
     ogl_pipeline_add_stage_step(_pipeline,
                                 _pipeline_stage_id,
-                                system_hashed_ansi_string_create("Scene rendering"),
-                                _render_scene,
-                                NULL);
+                                &scene_rendering_stage_step);
 
     /* Set up UI */
     _setup_ui();

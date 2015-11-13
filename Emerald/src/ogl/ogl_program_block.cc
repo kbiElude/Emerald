@@ -464,8 +464,8 @@ PRIVATE bool _ogl_program_block_init(_ogl_program_block* block_ptr)
         ogl_buffers_allocate_buffer_memory(block_ptr->buffers,
                                            block_ptr->block_data_size,
                                            uniform_buffer_offset_alignment,
-                                           OGL_BUFFERS_MAPPABILITY_NONE,
-                                           OGL_BUFFERS_USAGE_UBO,
+                                           RAL_BUFFER_MAPPABILITY_NONE,
+                                           RAL_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
                                            OGL_BUFFERS_FLAGS_NONE,
                                           &block_ptr->block_bo_id,
                                           &block_ptr->block_bo_start_offset);

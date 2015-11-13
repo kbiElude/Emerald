@@ -2164,7 +2164,7 @@ PRIVATE void _ogl_context_retrieve_GL_EXT_texture_filter_anisotropic_limits(_ogl
     ASSERT_DEBUG_SYNC(context_ptr->context_type == OGL_CONTEXT_TYPE_GL,
                       "GL-specific function called for a non-GL context");
 
-    context_ptr->entry_points_private.pGLGetFloatv(GL_TEXTURE_MAX_ANISOTROPY_EXT,
+    context_ptr->entry_points_private.pGLGetFloatv(GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT,
                                                   &context_ptr->limits_ext_texture_filter_anisotropic.texture_max_anisotropy_ext);
 
     ASSERT_DEBUG_SYNC(context_ptr->entry_points_gl.pGLGetError() == GL_NO_ERROR,
