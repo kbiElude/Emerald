@@ -720,7 +720,6 @@ PRIVATE void _ogl_scene_renderer_frustum_preview_update_data_bo_buffer(_ogl_scen
 
         ogl_buffers_allocate_buffer_memory(preview_ptr->buffers,
                                            preview_ptr->data_bo_buffer_size,
-                                           1, /* alignment_requirement */
                                            RAL_BUFFER_MAPPABILITY_NONE,
                                            RAL_BUFFER_USAGE_VERTEX_BUFFER_BIT,
                                            OGL_BUFFERS_FLAGS_NONE,

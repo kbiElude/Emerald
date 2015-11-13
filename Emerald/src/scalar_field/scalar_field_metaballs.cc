@@ -351,7 +351,6 @@ PRIVATE void _scalar_field_metaballs_init_rendering_thread_callback(ogl_context 
 
     ogl_buffers_allocate_buffer_memory(buffers,
                                        metaballs_ptr->scalar_field_bo_size,
-                                       limits_ptr->shader_storage_buffer_offset_alignment,
                                        RAL_BUFFER_MAPPABILITY_NONE,
                                        RAL_BUFFER_USAGE_SHADER_STORAGE_BUFFER_BIT,
                                        0, /* flags */

@@ -46,7 +46,6 @@ const unsigned int OGL_BUFFERS_FLAGS_IMMUTABLE_BUFFER_MEMORY_BIT = 1 << 0;
 /** TODO */
 PUBLIC EMERALD_API bool ogl_buffers_allocate_buffer_memory(ogl_buffers            buffers,
                                                            unsigned int           size,
-                                                           unsigned int           alignment_requirement,
                                                            ral_buffer_mappability mappability,
                                                            ral_buffer_usage_bits  usage_bits,
                                                            int                    flags, /* bitfield of OGL_BUFFERS_FLAGS_ */

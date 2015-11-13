@@ -359,8 +359,7 @@ PRIVATE bool _ogl_program_block_init(_ogl_program_block* block_ptr)
                       "Input argument is NULL");
 
     /* Retrieve entry-points & platform-specific UB alignment requirement */
-    ogl_context_type context_type                    = OGL_CONTEXT_TYPE_UNDEFINED;
-    GLint            uniform_buffer_offset_alignment = 0;
+    ogl_context_type context_type = OGL_CONTEXT_TYPE_UNDEFINED;
 
     ogl_context_get_property(block_ptr->context,
                              OGL_CONTEXT_PROPERTY_TYPE,
@@ -389,7 +388,6 @@ PRIVATE bool _ogl_program_block_init(_ogl_program_block* block_ptr)
         block_ptr->pGLBufferSubData        = entry_points->pGLBufferSubData;
         block_ptr->pGLFinish               = entry_points->pGLFinish;
         block_ptr->pGLGetProgramResourceiv = entry_points->pGLGetProgramResourceiv;
-        uniform_buffer_offset_alignment    = limits_ptr->uniform_buffer_offset_alignment;
 
         if (entry_points_dsa->pGLNamedBufferSubDataEXT != NULL)
         {
@@ -406,10 +404,6 @@ PRIVATE bool _ogl_program_block_init(_ogl_program_block* block_ptr)
         ogl_context_get_property(block_ptr->context,
                                  OGL_CONTEXT_PROPERTY_ENTRYPOINTS_ES,
                                 &entry_points);
-
-        /* TODO: Create a limits array for ES contexts. */
-        entry_points->pGLGetIntegerv(GL_UNIFORM_BUFFER_OFFSET_ALIGNMENT,
-                                    &uniform_buffer_offset_alignment);
 
         block_ptr->pGLBindBuffer           = entry_points->pGLBindBuffer;
         block_ptr->pGLBufferSubData        = entry_points->pGLBufferSubData;
@@ -463,7 +457,6 @@ PRIVATE bool _ogl_program_block_init(_ogl_program_block* block_ptr)
 
         ogl_buffers_allocate_buffer_memory(block_ptr->buffers,
                                            block_ptr->block_data_size,
-                                           uniform_buffer_offset_alignment,
                                            RAL_BUFFER_MAPPABILITY_NONE,
                                            RAL_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
                                            OGL_BUFFERS_FLAGS_NONE,

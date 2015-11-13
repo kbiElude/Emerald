@@ -29,8 +29,9 @@ typedef enum
     RAL_BUFFER_USAGE_INDIRECT_DISPATCH_BUFFER_BIT = (1 << 2),
     RAL_BUFFER_USAGE_INDIRECT_DRAW_BUFFER_BIT     = (1 << 3),
     RAL_BUFFER_USAGE_SHADER_STORAGE_BUFFER_BIT    = (1 << 4),
-    RAL_BUFFER_USAGE_UNIFORM_BUFFER_BIT           = (1 << 5),
-    RAL_BUFFER_USAGE_VERTEX_BUFFER_BIT            = (1 << 6),
+    RAL_BUFFER_USAGE_RO_TEXTURE_BUFFER_BIT        = (1 << 5), /* read-only texture buffer */
+    RAL_BUFFER_USAGE_UNIFORM_BUFFER_BIT           = (1 << 6),
+    RAL_BUFFER_USAGE_VERTEX_BUFFER_BIT            = (1 << 7),
 
     /* Always last */
     RAL_BUFFER_USAGE_LAST_USED_BIT = 6

@@ -536,7 +536,6 @@ PRIVATE void _init_spinner()
 
     ogl_buffers_allocate_buffer_memory(buffers,
                                        _spinner_bo_size,
-                                       limits_ptr->shader_storage_buffer_offset_alignment,
                                        RAL_BUFFER_MAPPABILITY_NONE,
                                        RAL_BUFFER_USAGE_SHADER_STORAGE_BUFFER_BIT | RAL_BUFFER_USAGE_VERTEX_BUFFER_BIT,
                                        0,
@@ -544,7 +543,6 @@ PRIVATE void _init_spinner()
                                       &_spinner_current_frame_bo_start_offset);
     ogl_buffers_allocate_buffer_memory(buffers,
                                        _spinner_bo_size,
-                                       limits_ptr->shader_storage_buffer_offset_alignment,
                                        RAL_BUFFER_MAPPABILITY_NONE,
                                        RAL_BUFFER_USAGE_SHADER_STORAGE_BUFFER_BIT | RAL_BUFFER_USAGE_VERTEX_BUFFER_BIT,
                                        0,

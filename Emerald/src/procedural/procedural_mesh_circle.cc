@@ -80,7 +80,6 @@ PRIVATE void _procedural_mesh_circle_create_renderer_callback(ogl_context contex
     /* Store the data in buffer memory */
     ogl_buffers_allocate_buffer_memory(mesh_circle_ptr->buffers,
                                        mesh_circle_ptr->arrays_bo_size,
-                                       0, /* no alignment requirement */
                                        RAL_BUFFER_MAPPABILITY_NONE,
                                        RAL_BUFFER_USAGE_VERTEX_BUFFER_BIT,
                                        OGL_BUFFERS_FLAGS_NONE,

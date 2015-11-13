@@ -378,7 +378,6 @@ PRIVATE void _ogl_text_update_vram_data_storage(ogl_context context,
 
         bool alloc_result = ogl_buffers_allocate_buffer_memory(text_ptr->buffers,
                                                                text_ptr->data_buffer_contents_size,
-                                                               text_ptr->shader_storage_buffer_offset_alignment,
                                                                RAL_BUFFER_MAPPABILITY_NONE,
                                                                RAL_BUFFER_USAGE_SHADER_STORAGE_BUFFER_BIT,
                                                                OGL_BUFFERS_FLAGS_NONE,

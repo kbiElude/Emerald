@@ -398,7 +398,6 @@ PRIVATE void _ogl_primitive_renderer_update_bo_storage(ogl_context              
 {
     ogl_context_gl_entrypoints_ext_direct_state_access* dsa_entry_points = NULL;
     ogl_context_gl_entrypoints*                         entry_points     = NULL;
-    ogl_context_gl_limits*                              limits_ptr       = NULL;
 
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
@@ -406,9 +405,6 @@ PRIVATE void _ogl_primitive_renderer_update_bo_storage(ogl_context              
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL_EXT_DIRECT_STATE_ACCESS,
                             &dsa_entry_points);
-    ogl_context_get_property(context,
-                             OGL_CONTEXT_PROPERTY_LIMITS,
-                            &limits_ptr);
 
     /* If the data buffer is dirty, we need to update it at this point */
     if (renderer_ptr->dirty)
@@ -439,7 +435,6 @@ PRIVATE void _ogl_primitive_renderer_update_bo_storage(ogl_context              
 
         ogl_buffers_allocate_buffer_memory(renderer_ptr->buffers,
                                            renderer_ptr->bo_data_size,
-                                           limits_ptr->uniform_buffer_offset_alignment,
                                            RAL_BUFFER_MAPPABILITY_NONE,
                                            RAL_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
                                            OGL_BUFFERS_FLAGS_NONE,

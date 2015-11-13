@@ -1186,7 +1186,6 @@ PRIVATE void _mesh_marchingcubes_init_polygonizer_po(_mesh_marchingcubes* mesh_p
 
     ogl_buffers_allocate_buffer_memory(buffers,
                                        sizeof(unsigned int) * 4,
-                                       limits_ptr->shader_storage_buffer_offset_alignment, /* SSBO alignment is needed, since the compute shader modifies some of the args */
                                        RAL_BUFFER_MAPPABILITY_NONE,
                                        RAL_BUFFER_USAGE_INDIRECT_DRAW_BUFFER_BIT | RAL_BUFFER_USAGE_SHADER_STORAGE_BUFFER_BIT,
                                        0, /* flags */
@@ -1214,7 +1213,6 @@ PRIVATE void _mesh_marchingcubes_init_polygonizer_po(_mesh_marchingcubes* mesh_p
 
     ogl_buffers_allocate_buffer_memory(buffers,
                                        mesh_ptr->polygonized_data_bo_size,
-                                       limits_ptr->shader_storage_buffer_offset_alignment,
                                        RAL_BUFFER_MAPPABILITY_NONE,
                                        RAL_BUFFER_USAGE_SHADER_STORAGE_BUFFER_BIT,
                                        0, /* flags */

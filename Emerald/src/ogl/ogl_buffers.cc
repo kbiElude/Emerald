@@ -10,6 +10,7 @@
 #include "system/system_assertions.h"
 #include "system/system_hash64map.h"
 #include "system/system_log.h"
+#include "system/system_math_other.h"
 #include "system/system_memory_manager.h"
 #include "system/system_resizable_vector.h"
 #include "system/system_resource_pool.h"
@@ -62,6 +63,10 @@ typedef struct _ogl_buffers
     system_resizable_vector                        nonsparse_heaps[OGL_BUFFERS_HEAP_COUNT]; /* owns ogl_buffer instances */
     unsigned int                                   page_size;
     system_resizable_vector                        sparse_buffers; /* sparse BOs are never mappable! */
+
+    uint32_t shader_storage_buffer_alignment;
+    uint32_t texture_buffer_alignment;
+    uint32_t uniform_buffer_alignment;
 
     REFCOUNT_INSERT_VARIABLES
 
@@ -177,6 +182,24 @@ _ogl_buffers::_ogl_buffers(ogl_context               in_context,
     page_size                       = 0;
     sparse_buffers                  = system_resizable_vector_create(16); /* capacity */
 
+    /* Retrieve alignment requirements */
+    ogl_context_type             context_type;
+    const ogl_context_gl_limits* limits_ptr = NULL;
+
+    ogl_context_get_property(context,
+                             OGL_CONTEXT_PROPERTY_LIMITS,
+                            &limits_ptr);
+    ogl_context_get_property(context,
+                             OGL_CONTEXT_PROPERTY_TYPE,
+                            &context_type);
+
+    ASSERT_DEBUG_SYNC(context_type == OGL_CONTEXT_TYPE_GL,
+                      "TODO");
+
+    shader_storage_buffer_alignment = limits_ptr->shader_storage_buffer_offset_alignment;
+    texture_buffer_alignment        = limits_ptr->texture_buffer_offset_alignment;
+    uniform_buffer_alignment        = limits_ptr->uniform_buffer_offset_alignment;
+
     /* Initialize non-sparse heap vectors */
     for (unsigned int n_heap = 0;
                       n_heap < OGL_BUFFERS_HEAP_COUNT;
@@ -186,12 +209,6 @@ _ogl_buffers::_ogl_buffers(ogl_context               in_context,
     } /* for (all buffer usage types) */
 
     /* Cache the entry-points */
-    ogl_context_type context_type = OGL_CONTEXT_TYPE_UNDEFINED;
-
-    ogl_context_get_property(context,
-                             OGL_CONTEXT_PROPERTY_TYPE,
-                            &context_type);
-
     if (context_type == OGL_CONTEXT_TYPE_ES)
     {
         ogl_context_get_property(context,
@@ -275,8 +292,14 @@ PRIVATE _ogl_buffers_buffer* _ogl_buffers_alloc_new_immutable_buffer(_ogl_buffer
         bo_target = GL_SHADER_STORAGE_BUFFER;
     }
     else
+    if ((usage &  RAL_BUFFER_USAGE_RO_TEXTURE_BUFFER_BIT) != 0 &&
+        (usage & ~RAL_BUFFER_USAGE_RO_TEXTURE_BUFFER_BIT) == 0)
+    {
+        bo_target = GL_TEXTURE_BUFFER;
+    }
+    else
     if ((usage &  RAL_BUFFER_USAGE_UNIFORM_BUFFER_BIT) != 0 &&
-        (usage & ~RAL_BUFFER_USAGE_UNIFORM_BUFFER_BIT) != 0)
+        (usage & ~RAL_BUFFER_USAGE_UNIFORM_BUFFER_BIT) == 0)
     {
         bo_target = GL_UNIFORM_BUFFER;
     }
@@ -600,19 +623,37 @@ PRIVATE void _ogl_buffers_release(void* buffers)
 /** Please see header for spec */
 PUBLIC EMERALD_API bool ogl_buffers_allocate_buffer_memory(ogl_buffers            buffers,
                                                            unsigned int           size,
-                                                           unsigned int           alignment_requirement,
                                                            ral_buffer_mappability mappability,
                                                            ral_buffer_usage_bits  usage_bits,
                                                            int                    flags, /* bitfield of OGL_BUFFERS_FLAGS_ */
                                                            unsigned int*          out_bo_id_ptr,
                                                            unsigned int*          out_bo_offset_ptr)
 {
+    uint32_t             alignment_requirement      = 1;
     _ogl_buffers_buffer* buffer_ptr                 = NULL;
     _ogl_buffers*        buffers_ptr                = (_ogl_buffers*) buffers;
     const bool           must_be_immutable_bo_based = (flags & OGL_BUFFERS_FLAGS_IMMUTABLE_BUFFER_MEMORY_BIT) != 0;
     bool                 result                     = false;
     unsigned int         result_id                  = 0;
     unsigned int         result_offset              = -1;
+
+    /* Determine the alignment requirement */
+    if ((usage_bits & RAL_BUFFER_USAGE_SHADER_STORAGE_BUFFER_BIT) != 0)
+    {
+        alignment_requirement = buffers_ptr->shader_storage_buffer_alignment;
+    }
+
+    if ((usage_bits & RAL_BUFFER_USAGE_RO_TEXTURE_BUFFER_BIT) != 0)
+    {
+        alignment_requirement = system_math_other_lcm(alignment_requirement,
+                                                      buffers_ptr->texture_buffer_alignment);
+    }
+
+    if ((usage_bits & RAL_BUFFER_USAGE_UNIFORM_BUFFER_BIT) != 0)
+    {
+        alignment_requirement = system_math_other_lcm(alignment_requirement,
+                                                      buffers_ptr->uniform_buffer_alignment);
+    }
 
     /* Check the sparse buffers first, if these are supported and no mappability
      * was requested. */

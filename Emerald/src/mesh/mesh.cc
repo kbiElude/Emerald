@@ -592,9 +592,8 @@ PRIVATE void _mesh_fill_gl_buffers_renderer_callback(ogl_context context,
 
     ogl_buffers_allocate_buffer_memory(buffers,
                                        mesh_ptr->gl_processed_data_size,
-                                       limits_ptr->shader_storage_buffer_offset_alignment,
                                        RAL_BUFFER_MAPPABILITY_NONE,
-                                       RAL_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+                                       RAL_BUFFER_USAGE_SHADER_STORAGE_BUFFER_BIT | RAL_BUFFER_USAGE_VERTEX_BUFFER_BIT,
                                        OGL_BUFFERS_FLAGS_NONE,
                                       &mesh_ptr->gl_bo_id,
                                       &mesh_ptr->gl_bo_start_offset);

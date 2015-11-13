@@ -11,6 +11,28 @@
 #include "system/system_assertions.h"
 #include "system/system_math_vector.h"
 
+/** Adapted from http://rosettacode.org/wiki/Least_common_multiple */
+PRIVATE inline uint32_t system_math_other_gcd(uint32_t x,
+                                              uint32_t y)
+{
+    uint32_t temp;
+
+    while (x)
+    {
+        temp = x;
+        x    = y % x;
+        y    = temp;
+    }
+
+    return y;
+}
+
+PRIVATE inline uint32_t system_math_other_lcm(uint32_t x,
+                                              uint32_t y)
+{
+    return x / system_math_other_gcd(x, y) * y;
+}
+
 PRIVATE inline uint32_t system_math_other_log2_uint32(const uint32_t x)
 {
 #if defined(_WIN32) && !defined(_WIN64)

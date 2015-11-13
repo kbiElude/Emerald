@@ -1122,7 +1122,6 @@ PUBLIC EMERALD_API bool procedural_uv_generator_alloc_result_buffer_memory(proce
 
     if (!ogl_buffers_allocate_buffer_memory(buffers,
                                             n_bytes_to_preallocate,
-                                            limits_ptr->shader_storage_buffer_offset_alignment,
                                             RAL_BUFFER_MAPPABILITY_NONE,
                                             RAL_BUFFER_USAGE_SHADER_STORAGE_BUFFER_BIT | RAL_BUFFER_USAGE_VERTEX_BUFFER_BIT,
                                             0, /* flags */
