@@ -380,7 +380,7 @@ PRIVATE void _ogl_text_update_vram_data_storage(ogl_context context,
                                                                text_ptr->data_buffer_contents_size,
                                                                RAL_BUFFER_MAPPABILITY_NONE,
                                                                RAL_BUFFER_USAGE_SHADER_STORAGE_BUFFER_BIT,
-                                                               OGL_BUFFERS_FLAGS_NONE,
+                                                               RAL_BUFFER_PROPERTY_SPARSE_IF_AVAILABLE_BIT,
                                                               &text_ptr->data_buffer_id,
                                                               &text_ptr->data_buffer_offset);
 

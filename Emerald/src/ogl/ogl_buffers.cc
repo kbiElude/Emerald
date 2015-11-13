@@ -634,14 +634,14 @@ PUBLIC EMERALD_API bool ogl_buffers_allocate_buffer_memory(ogl_buffers          
                                                            unsigned int                size,
                                                            ral_buffer_mappability_bits mappability_bits,
                                                            ral_buffer_usage_bits       usage_bits,
-                                                           int                         flags, /* bitfield of OGL_BUFFERS_FLAGS_ */
+                                                           ral_buffer_property_bits    property_bits,
                                                            unsigned int*               out_bo_id_ptr,
                                                            unsigned int*               out_bo_offset_ptr)
 {
     uint32_t             alignment_requirement      = 1;
     _ogl_buffers_buffer* buffer_ptr                 = NULL;
     _ogl_buffers*        buffers_ptr                = (_ogl_buffers*) buffers;
-    const bool           must_be_immutable_bo_based = (flags & OGL_BUFFERS_FLAGS_IMMUTABLE_BUFFER_MEMORY_BIT) != 0;
+    const bool           must_be_immutable_bo_based = (property_bits & RAL_BUFFER_PROPERTY_SPARSE_IF_AVAILABLE_BIT) == 0;
     bool                 result                     = false;
     unsigned int         result_id                  = 0;
     unsigned int         result_offset              = -1;

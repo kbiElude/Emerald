@@ -459,7 +459,7 @@ PRIVATE bool _ogl_program_block_init(_ogl_program_block* block_ptr)
                                            block_ptr->block_data_size,
                                            RAL_BUFFER_MAPPABILITY_NONE,
                                            RAL_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-                                           OGL_BUFFERS_FLAGS_NONE,
+                                           RAL_BUFFER_PROPERTY_SPARSE_IF_AVAILABLE_BIT,
                                           &block_ptr->block_bo_id,
                                           &block_ptr->block_bo_start_offset);
 

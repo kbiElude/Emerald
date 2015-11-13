@@ -1187,7 +1187,9 @@ PRIVATE void _mesh_marchingcubes_init_polygonizer_po(_mesh_marchingcubes* mesh_p
     ogl_buffers_allocate_buffer_memory(buffers,
                                        sizeof(unsigned int) * 4,
                                        RAL_BUFFER_MAPPABILITY_NONE,
-                                       RAL_BUFFER_USAGE_INDIRECT_DRAW_BUFFER_BIT | RAL_BUFFER_USAGE_SHADER_STORAGE_BUFFER_BIT,
+                                       RAL_BUFFER_USAGE_INDIRECT_DRAW_BUFFER_BIT  |
+                                       RAL_BUFFER_USAGE_SHADER_STORAGE_BUFFER_BIT |
+                                       RAL_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
                                        0, /* flags */
                                       &mesh_ptr->indirect_draw_call_args_bo_id,
                                       &mesh_ptr->indirect_draw_call_args_bo_start_offset);
@@ -1214,7 +1216,8 @@ PRIVATE void _mesh_marchingcubes_init_polygonizer_po(_mesh_marchingcubes* mesh_p
     ogl_buffers_allocate_buffer_memory(buffers,
                                        mesh_ptr->polygonized_data_bo_size,
                                        RAL_BUFFER_MAPPABILITY_NONE,
-                                       RAL_BUFFER_USAGE_SHADER_STORAGE_BUFFER_BIT,
+                                       RAL_BUFFER_USAGE_SHADER_STORAGE_BUFFER_BIT |
+                                       RAL_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
                                        0, /* flags */
                                       &mesh_ptr->polygonized_data_bo_id,
                                       &mesh_ptr->polygonized_data_bo_start_offset);

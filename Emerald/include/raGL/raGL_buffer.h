@@ -10,7 +10,7 @@ DECLARE_HANDLE(raGL_buffer);
 
 /** TODO */
 PUBLIC raGL_buffer raGL_buffer_create(ogl_context context,
-                                      GLint       bo_id,
+                                      GLint       id,
                                       ral_buffer  buffer);
 
 /** TODO */

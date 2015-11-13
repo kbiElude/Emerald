@@ -82,7 +82,7 @@ PRIVATE void _procedural_mesh_circle_create_renderer_callback(ogl_context contex
                                        mesh_circle_ptr->arrays_bo_size,
                                        RAL_BUFFER_MAPPABILITY_NONE,
                                        RAL_BUFFER_USAGE_VERTEX_BUFFER_BIT,
-                                       OGL_BUFFERS_FLAGS_NONE,
+                                       RAL_BUFFER_PROPERTY_SPARSE_IF_AVAILABLE_BIT,
                                        &mesh_circle_ptr->arrays_bo_id,
                                        &mesh_circle_ptr->arrays_bo_start_offset);
 

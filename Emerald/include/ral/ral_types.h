@@ -22,6 +22,15 @@ typedef enum
 };
 typedef int ral_buffer_mappability_bits;
 
+typedef enum
+{
+    /* Use sparse memory backing */
+    RAL_BUFFER_PROPERTY_SPARSE_IF_AVAILABLE_BIT = (1 << 0),
+
+    /* Always last */
+    RAL_BUFFER_PROPERTY_LAST_USED_BIT = 0
+};
+typedef int ral_buffer_property_bits;
 
 typedef enum
 {

@@ -613,7 +613,7 @@ PRIVATE void _postprocessing_blur_gaussian_init_rendering_thread_callback(ogl_co
                                        final_data_bo_size,
                                        RAL_BUFFER_MAPPABILITY_NONE,
                                        RAL_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-                                       OGL_BUFFERS_FLAGS_NONE,
+                                       RAL_BUFFER_PROPERTY_SPARSE_IF_AVAILABLE_BIT,
                                       &instance_ptr->coeff_bo_id,
                                       &instance_ptr->coeff_bo_start_offset);
 
@@ -621,8 +621,8 @@ PRIVATE void _postprocessing_blur_gaussian_init_rendering_thread_callback(ogl_co
                                        sizeof(int) * 3,                             /* other data = three integers */
                                        RAL_BUFFER_MAPPABILITY_NONE,
                                        RAL_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-                                       (is_nv_driver) ? OGL_BUFFERS_FLAGS_IMMUTABLE_BUFFER_MEMORY_BIT :
-                                                        OGL_BUFFERS_FLAGS_NONE,
+                                       (is_nv_driver) ? 0 :
+                                                        RAL_BUFFER_PROPERTY_SPARSE_IF_AVAILABLE_BIT,
                                       &instance_ptr->other_data_bo_id,
                                       &instance_ptr->other_data_bo_start_offset);
 

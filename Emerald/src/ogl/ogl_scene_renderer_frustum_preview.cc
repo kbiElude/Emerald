@@ -722,7 +722,7 @@ PRIVATE void _ogl_scene_renderer_frustum_preview_update_data_bo_buffer(_ogl_scen
                                            preview_ptr->data_bo_buffer_size,
                                            RAL_BUFFER_MAPPABILITY_NONE,
                                            RAL_BUFFER_USAGE_VERTEX_BUFFER_BIT,
-                                           OGL_BUFFERS_FLAGS_NONE,
+                                           RAL_BUFFER_PROPERTY_SPARSE_IF_AVAILABLE_BIT,
                                           &preview_ptr->data_bo_id,
                                           &preview_ptr->data_bo_start_offset);
 

@@ -437,7 +437,7 @@ PRIVATE void _ogl_primitive_renderer_update_bo_storage(ogl_context              
                                            renderer_ptr->bo_data_size,
                                            RAL_BUFFER_MAPPABILITY_NONE,
                                            RAL_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-                                           OGL_BUFFERS_FLAGS_NONE,
+                                           RAL_BUFFER_PROPERTY_SPARSE_IF_AVAILABLE_BIT,
                                           &renderer_ptr->bo_id,
                                           &renderer_ptr->bo_start_offset);
     }
