@@ -1,6 +1,11 @@
 Emerald
 =======
 
+WARNING: The engine is undergoing rework of the low-level guts,
+in order to introduce support for multiple rendering APIs. It
+may crash, refuse to build, or set fire to the rain. Consider
+yourself warned.
+
 OpenGL 4.3-based rendering engine written by kbi/Elude.
 
 The engine builds under Windows and Linux, although some
