@@ -40,10 +40,10 @@ typedef enum
 
 typedef struct _ogl_buffers_buffer
 {
-    GLuint                 bo_id;
-    struct _ogl_buffers*   buffers_ptr;
-    ral_buffer_mappability mappability;
-    system_memory_manager  manager;
+    GLuint                      bo_id;
+    struct _ogl_buffers*        buffers_ptr;
+    ral_buffer_mappability_bits mappability;
+    system_memory_manager       manager;
 } _ogl_buffers_buffer;
 
 typedef struct _ogl_buffers
@@ -144,23 +144,23 @@ REFCOUNT_INSERT_IMPLEMENTATION(ogl_buffers,
 
 
 /** Forward declarations */
-PRIVATE _ogl_buffers_buffer* _ogl_buffers_alloc_new_immutable_buffer        (_ogl_buffers*              buffers_ptr,
-                                                                             ral_buffer_mappability     mappability,
-                                                                             ral_buffer_usage_bits      usage,
-                                                                             unsigned int               required_size);
-PRIVATE _ogl_buffers_buffer* _ogl_buffers_alloc_new_sparse_buffer           (_ogl_buffers*              buffers_ptr);
-PRIVATE void                 _ogl_buffers_dealloc_sparse_buffer             (system_resource_pool_block buffer_block);
-PRIVATE _ogl_buffers_heap    _ogl_buffers_get_heap_for_ral_buffer_usage_bits(ral_buffer_usage_bits      usage);
-PRIVATE unsigned int         _ogl_buffers_get_nonsparse_buffer_size         (_ogl_buffers_heap          heap);
-PRIVATE void                 _ogl_buffers_on_sparse_memory_block_alloced    (system_memory_manager      manager,
-                                                                             unsigned int               offset_aligned,
-                                                                             unsigned int               size,
-                                                                             void*                      user_arg);
-PRIVATE void                 _ogl_buffers_on_sparse_memory_block_freed      (system_memory_manager      manager,
-                                                                             unsigned int               offset_aligned,
-                                                                             unsigned int               size,
-                                                                             void*                      user_arg);
-PRIVATE void                _ogl_buffers_release                            (void*                      buffers);
+PRIVATE _ogl_buffers_buffer* _ogl_buffers_alloc_new_immutable_buffer        (_ogl_buffers*               buffers_ptr,
+                                                                             ral_buffer_mappability_bits mappability,
+                                                                             ral_buffer_usage_bits       usage,
+                                                                             unsigned int                required_size);
+PRIVATE _ogl_buffers_buffer* _ogl_buffers_alloc_new_sparse_buffer           (_ogl_buffers*               buffers_ptr);
+PRIVATE void                 _ogl_buffers_dealloc_sparse_buffer             (system_resource_pool_block  buffer_block);
+PRIVATE _ogl_buffers_heap    _ogl_buffers_get_heap_for_ral_buffer_usage_bits(ral_buffer_usage_bits       usage);
+PRIVATE unsigned int         _ogl_buffers_get_nonsparse_buffer_size         (_ogl_buffers_heap           heap);
+PRIVATE void                 _ogl_buffers_on_sparse_memory_block_alloced    (system_memory_manager       manager,
+                                                                             unsigned int                offset_aligned,
+                                                                             unsigned int                size,
+                                                                             void*                       user_arg);
+PRIVATE void                 _ogl_buffers_on_sparse_memory_block_freed      (system_memory_manager       manager,
+                                                                             unsigned int                offset_aligned,
+                                                                             unsigned int                size,
+                                                                             void*                       user_arg);
+PRIVATE void                _ogl_buffers_release                            (void*                       buffers);
 
 
 /** TODO */
@@ -248,16 +248,20 @@ _ogl_buffers::_ogl_buffers(ogl_context               in_context,
 }
 
 /** TODO */
-PRIVATE _ogl_buffers_buffer* _ogl_buffers_alloc_new_immutable_buffer(_ogl_buffers*          buffers_ptr,
-                                                                     ral_buffer_mappability mappability,
-                                                                     ral_buffer_usage_bits  usage,
-                                                                     unsigned int           required_size)
+PRIVATE _ogl_buffers_buffer* _ogl_buffers_alloc_new_immutable_buffer(_ogl_buffers*               buffers_ptr,
+                                                                     ral_buffer_mappability_bits mappability_bits,
+                                                                     ral_buffer_usage_bits       usage,
+                                                                     unsigned int                required_size)
 {
     _ogl_buffers_heap    heap_index     = _ogl_buffers_get_heap_for_ral_buffer_usage_bits(usage);
     unsigned int         bo_flags       = GL_DYNAMIC_STORAGE_BIT;
     unsigned int         bo_size        = _ogl_buffers_get_nonsparse_buffer_size(heap_index);
     GLenum               bo_target      = 0;
     _ogl_buffers_buffer* new_buffer_ptr = (_ogl_buffers_buffer*) system_resource_pool_get_from_pool(buffers_ptr->buffer_descriptor_pool);
+
+    /** TODO */
+    ASSERT_DEBUG_SYNC( (mappability_bits & RAL_BUFFER_MAPPABILITY_COHERENT_BIT) == 0,
+                      "TODO");
 
     /** TODO: This is a temporary copy-paste of the code used in raGL_buffer. Ultimately, ogl_buffers and ogl_buffer will be merged */
     bo_target = GL_ARRAY_BUFFER;
@@ -305,17 +309,22 @@ PRIVATE _ogl_buffers_buffer* _ogl_buffers_alloc_new_immutable_buffer(_ogl_buffer
     }
     else
     {
-        bo_flags |= (mappability == RAL_BUFFER_MAPPABILITY_READ_AND_WRITE_OPS) ? (GL_MAP_READ_BIT | GL_MAP_WRITE_BIT) :
-                    (mappability == RAL_BUFFER_MAPPABILITY_READ_OPS_ONLY)      ? (GL_MAP_READ_BIT)                    :
-                    (mappability == RAL_BUFFER_MAPPABILITY_WRITE_OPS_ONLY)     ? (GL_MAP_WRITE_BIT)                   :
-                    0;
+        if ((mappability_bits & RAL_BUFFER_MAPPABILITY_READ_OP_BIT) != 0)
+        {
+            bo_flags |= GL_MAP_READ_BIT;
+        }
+
+        if ((mappability_bits & RAL_BUFFER_MAPPABILITY_WRITE_OP_BIT) != 0)
+        {
+            bo_flags |= GL_MAP_WRITE_BIT;
+        }
 
         bo_target = GL_ARRAY_BUFFER;
     }
 
     if (bo_target != GL_ARRAY_BUFFER)
     {
-        ASSERT_DEBUG_SYNC(mappability == RAL_BUFFER_MAPPABILITY_NONE,
+        ASSERT_DEBUG_SYNC(mappability_bits == RAL_BUFFER_MAPPABILITY_NONE,
                           "Invalid mappability setting.");
     }
 
@@ -372,7 +381,7 @@ PRIVATE _ogl_buffers_buffer* _ogl_buffers_alloc_new_immutable_buffer(_ogl_buffer
         int heap_type = _ogl_buffers_get_heap_for_ral_buffer_usage_bits(usage);
 
         new_buffer_ptr->buffers_ptr = buffers_ptr;
-        new_buffer_ptr->mappability = mappability;
+        new_buffer_ptr->mappability = mappability_bits;
         new_buffer_ptr->manager     = system_memory_manager_create(bo_size,
                                                                    1,             /* page_size - immutable buffers have no special requirements */
                                                                    NULL,          /* pfn_on_memory_block_alloced */
@@ -621,13 +630,13 @@ PRIVATE void _ogl_buffers_release(void* buffers)
 }
 
 /** Please see header for spec */
-PUBLIC EMERALD_API bool ogl_buffers_allocate_buffer_memory(ogl_buffers            buffers,
-                                                           unsigned int           size,
-                                                           ral_buffer_mappability mappability,
-                                                           ral_buffer_usage_bits  usage_bits,
-                                                           int                    flags, /* bitfield of OGL_BUFFERS_FLAGS_ */
-                                                           unsigned int*          out_bo_id_ptr,
-                                                           unsigned int*          out_bo_offset_ptr)
+PUBLIC EMERALD_API bool ogl_buffers_allocate_buffer_memory(ogl_buffers                 buffers,
+                                                           unsigned int                size,
+                                                           ral_buffer_mappability_bits mappability_bits,
+                                                           ral_buffer_usage_bits       usage_bits,
+                                                           int                         flags, /* bitfield of OGL_BUFFERS_FLAGS_ */
+                                                           unsigned int*               out_bo_id_ptr,
+                                                           unsigned int*               out_bo_offset_ptr)
 {
     uint32_t             alignment_requirement      = 1;
     _ogl_buffers_buffer* buffer_ptr                 = NULL;
@@ -659,7 +668,7 @@ PUBLIC EMERALD_API bool ogl_buffers_allocate_buffer_memory(ogl_buffers          
      * was requested. */
     if (buffers_ptr->are_sparse_buffers_in                                &&
        !must_be_immutable_bo_based                                        &&
-        mappability                        == RAL_BUFFER_MAPPABILITY_NONE)
+        mappability_bits                   == RAL_BUFFER_MAPPABILITY_NONE)
     {
         /* Try to find a suitable sparse buffer */
         unsigned int n_sparse_buffers = 0;
@@ -777,7 +786,7 @@ PUBLIC EMERALD_API bool ogl_buffers_allocate_buffer_memory(ogl_buffers          
         if (!result)
         {
             buffer_ptr = _ogl_buffers_alloc_new_immutable_buffer(buffers_ptr,
-                                                                 mappability,
+                                                                 mappability_bits,
                                                                  usage_bits,
                                                                  size);
 
@@ -856,8 +865,8 @@ PUBLIC ogl_buffers ogl_buffers_create(ogl_context               context,
                               n_heap < OGL_BUFFERS_HEAP_COUNT;
                             ++n_heap)
             {
-                ral_buffer_mappability mappability = (n_heap == OGL_BUFFERS_HEAP_MISCELLANEOUS) ? RAL_BUFFER_MAPPABILITY_READ_AND_WRITE_OPS
-                                                                                                : RAL_BUFFER_MAPPABILITY_NONE;
+                ral_buffer_mappability_bits mappability = (n_heap == OGL_BUFFERS_HEAP_MISCELLANEOUS) ? (RAL_BUFFER_MAPPABILITY_READ_OP_BIT | RAL_BUFFER_MAPPABILITY_WRITE_OP_BIT)
+                                                                                                     :  RAL_BUFFER_MAPPABILITY_NONE;
 
                 _ogl_buffers_alloc_new_immutable_buffer(new_buffers,
                                                         mappability,
