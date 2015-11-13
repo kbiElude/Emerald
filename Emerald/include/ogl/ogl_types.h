@@ -19,6 +19,21 @@ DECLARE_HANDLE(ogl_primitive_renderer);
 
 typedef unsigned int ogl_primitive_renderer_dataset_id;
 
+/* Enumerator describing native GL compare function types. */
+typedef enum
+{
+    OGL_COMPARE_FUNCTION_ALWAYS   = GL_ALWAYS,
+    OGL_COMPARE_FUNCTION_EQUAL    = GL_EQUAL,
+    OGL_COMPARE_FUNCTION_GEQUAL   = GL_GEQUAL,
+    OGL_COMPARE_FUNCTION_GREATER  = GL_GREATER,
+    OGL_COMPARE_FUNCTION_LEQUAL   = GL_LEQUAL,
+    OGL_COMPARE_FUNCTION_LESS     = GL_LESS,
+    OGL_COMPARE_FUNCTION_NEVER    = GL_NEVER,
+    OGL_COMPARE_FUNCTION_NOTEQUAL = GL_NOTEQUAL,
+
+    OGL_COMPARE_FUNCTION_UNDEFINED,
+} ogl_compare_function;
+
 /* Enumerator describing native GL primitive types.
  *
  * NOTE: Client application should always use RAL enums!
@@ -316,6 +331,30 @@ typedef enum
     /* Always last */
     OGL_SHADER_TYPE_UNKNOWN
 } ogl_shader_type;
+
+/** Enumerator that describes type of either the magnification or the minification texture filter */
+typedef enum
+{
+    OGL_TEXTURE_FILTER_LINEAR                 = GL_LINEAR,
+    OGL_TEXTURE_FILTER_LINEAR_MIPMAP_LINEAR   = GL_LINEAR_MIPMAP_LINEAR,
+    OGL_TEXTURE_FILTER_LINEAR_MIPMAP_NEAREST  = GL_LINEAR_MIPMAP_NEAREST,
+    OGL_TEXTURE_FILTER_NEAREST                = GL_NEAREST,
+    OGL_TEXTURE_FILTER_NEAREST_MIPMAP_LINEAR  = GL_NEAREST_MIPMAP_LINEAR,
+    OGL_TEXTURE_FILTER_NEAREST_MIPMAP_NEAREST = GL_NEAREST_MIPMAP_NEAREST,
+
+    /* Always last */
+    OGL_TEXTURE_FILTER_UNKNOWN
+} ogl_texture_filter;
+
+/** Enumerator that describes supported texture wrap modes */
+typedef enum
+{
+    OGL_TEXTURE_WRAP_MODE_CLAMP_TO_BORDER      = GL_CLAMP_TO_BORDER,
+    OGL_TEXTURE_WRAP_MODE_CLAMP_TO_EDGE        = GL_CLAMP_TO_EDGE,
+    OGL_TEXTURE_WRAP_MODE_MIRROR_CLAMP_TO_EDGE = GL_MIRROR_CLAMP_TO_EDGE,
+    OGL_TEXTURE_WRAP_MODE_MIRRORED_REPEAT      = GL_MIRRORED_REPEAT,
+    OGL_TEXTURE_WRAP_MODE_REPEAT               = GL_REPEAT
+} ogl_texture_wrap_mode;
 
 /** Enumerator that describes current rendering handler's playback status */
 typedef enum
@@ -1583,6 +1622,11 @@ typedef struct
 {
     GLint sparse_buffer_page_size;
 } ogl_context_gl_limits_arb_sparse_buffer;
+
+typedef struct
+{
+    float texture_max_anisotropy_ext;
+} ogl_context_gl_limits_ext_texture_filter_anisotropic;
 
 typedef struct
 {

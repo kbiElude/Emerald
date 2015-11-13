@@ -4,9 +4,46 @@
 #include "system/system_types.h"
 
 
+DECLARE_HANDLE(ral_command_buffer);
 DECLARE_HANDLE(ral_context);
 DECLARE_HANDLE(ral_framebuffer);
+DECLARE_HANDLE(ral_sampler);
 
+/* RAL RGBA color */
+typedef struct
+{
+    union
+    {
+        float    f32[4];
+        int32_t  i32[4];
+        uint32_t u32[4];
+    };
+
+    enum
+    {
+        RAL_COLOR_DATA_TYPE_FLOAT,
+        RAL_COLOR_DATA_TYPE_SINT,
+        RAL_COLOR_DATA_TYPE_UINT,
+    } data_type;
+
+} ral_color;
+
+/* RAL compare function */
+typedef enum
+{
+
+    RAL_COMPARE_FUNCTION_ALWAYS,
+    RAL_COMPARE_FUNCTION_EQUAL,
+    RAL_COMPARE_FUNCTION_LEQUAL,
+    RAL_COMPARE_FUNCTION_LESS,
+    RAL_COMPARE_FUNCTION_GEQUAL,
+    RAL_COMPARE_FUNCTION_GREATER,
+    RAL_COMPARE_FUNCTION_NEVER,
+    RAL_COMPARE_FUNCTION_NOTEQUAL,
+
+    RAL_COMPARE_FUNCTION_COUNT,
+    RAL_COMPARE_FUNCTION_UNKNOWN = RAL_COMPARE_FUNCTION_COUNT
+} ral_compare_function;
 
 typedef enum
 {
@@ -75,6 +112,57 @@ typedef enum
     RAL_PRIMITIVE_TYPE_UNKNOWN,
     RAL_PRIMITIVE_TYPE_COUNT = RAL_PRIMITIVE_TYPE_UNKNOWN
 } ral_primitive_type;
+
+/* RAL texture filter modes */
+typedef enum
+{
+    RAL_TEXTURE_FILTER_NEAREST,
+    RAL_TEXTURE_FILTER_LINEAR,
+
+    RAL_TEXTURE_FILTER_COUNT,
+    RAL_TEXTURE_FILTER_UNKNOWN = RAL_TEXTURE_FILTER_COUNT
+} ral_texture_filter;
+
+/* RAL texture mipmap modes */
+typedef enum
+{
+    RAL_TEXTURE_MIPMAP_MODE_NEAREST,
+    RAL_TEXTURE_MIPMAP_MODE_LINEAR,
+
+    RAL_TEXTURE_MIPMAP_MODE_UNKNOWN
+} ral_texture_mipmap_mode;
+
+/* RAL texture wrap modes */
+typedef enum
+{
+
+    RAL_TEXTURE_WRAP_MODE_CLAMP_TO_BORDER,
+    RAL_TEXTURE_WRAP_MODE_CLAMP_TO_EDGE,
+    RAL_TEXTURE_WRAP_MODE_MIRRORED_CLAMP_TO_EDGE,
+    RAL_TEXTURE_WRAP_MODE_MIRRORED_REPEAT,
+    RAL_TEXTURE_WRAP_MODE_REPEAT,
+
+    RAL_TEXTURE_WRAP_MODE_COUNT,
+    RAL_TEXTURE_WRAP_MODE_UNKNOWN = RAL_TEXTURE_WRAP_MODE_COUNT,
+} ral_texture_wrap_mode;
+
+/** All info required to create a single sampler instance */
+typedef struct
+{
+    ral_color               border_color;
+    ral_compare_function    compare_function;
+    bool                    compare_mode_enabled;
+    float                   lod_bias;
+    float                   lod_min;
+    float                   lod_max;
+    ral_texture_filter      mag_filter;
+    float                   max_anisotropy;
+    ral_texture_filter      min_filter;
+    ral_texture_mipmap_mode mipmap_mode;
+    ral_texture_wrap_mode   wrap_r;
+    ral_texture_wrap_mode   wrap_s;
+    ral_texture_wrap_mode   wrap_t;
+} ral_sampler_create_info;
 
 /* RAL shader stages */
 typedef enum

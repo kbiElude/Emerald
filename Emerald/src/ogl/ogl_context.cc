@@ -106,15 +106,16 @@ typedef struct
     /* Current multisampling samples setting */
     uint32_t multisampling_samples;
 
-    ogl_context_gl_entrypoints                         entry_points_gl;
-    ogl_context_gl_entrypoints_arb_buffer_storage      entry_points_gl_arb_buffer_storage;
-    ogl_context_gl_entrypoints_arb_multi_bind          entry_points_gl_arb_multi_bind;
-    ogl_context_gl_entrypoints_arb_sparse_buffer       entry_points_gl_arb_sparse_buffer;
-    ogl_context_gl_entrypoints_ext_direct_state_access entry_points_gl_ext_direct_state_access;
-    ogl_context_gl_entrypoints_private                 entry_points_private;
-    ogl_context_gl_info                                info;
-    ogl_context_gl_limits                              limits;
-    ogl_context_gl_limits_arb_sparse_buffer            limits_arb_sparse_buffer;
+    ogl_context_gl_entrypoints                           entry_points_gl;
+    ogl_context_gl_entrypoints_arb_buffer_storage        entry_points_gl_arb_buffer_storage;
+    ogl_context_gl_entrypoints_arb_multi_bind            entry_points_gl_arb_multi_bind;
+    ogl_context_gl_entrypoints_arb_sparse_buffer         entry_points_gl_arb_sparse_buffer;
+    ogl_context_gl_entrypoints_ext_direct_state_access   entry_points_gl_ext_direct_state_access;
+    ogl_context_gl_entrypoints_private                   entry_points_private;
+    ogl_context_gl_info                                  info;
+    ogl_context_gl_limits                                limits;
+    ogl_context_gl_limits_arb_sparse_buffer              limits_arb_sparse_buffer;
+    ogl_context_gl_limits_ext_texture_filter_anisotropic limits_ext_texture_filter_anisotropic;
 
     /* OpenGL ES context support: */
     ogl_context_es_entrypoints                    entry_points_es;
@@ -127,6 +128,7 @@ typedef struct
     bool gl_arb_sparse_buffer_support;
     bool gl_arb_texture_buffer_object_rgb32_support;
     bool gl_ext_direct_state_access_support;
+    bool gl_ext_texture_filter_anisotropic_support;
 
     ogl_context_bo_bindings         bo_bindings;
     ogl_buffers                     buffers;
@@ -215,6 +217,7 @@ PRIVATE void                      _ogl_context_initialize_gl_arb_buffer_storage_
 PRIVATE void                      _ogl_context_initialize_gl_arb_multi_bind_extension                (_ogl_context*                context_ptr);
 PRIVATE void                      _ogl_context_initialize_gl_arb_sparse_buffer_extension             (_ogl_context*                context_ptr);
 PRIVATE void                      _ogl_context_initialize_gl_ext_direct_state_access_extension       (_ogl_context*                context_ptr);
+PRIVATE void                      _ogl_context_initialize_gl_ext_texture_filter_anisotropic_extension(_ogl_context*                context_ptr);
 PRIVATE bool                      _ogl_context_is_stencil_data_included_in_internalformat            (GLenum                       internalformat);
 PRIVATE void                      _ogl_context_release                                               (void*                        ptr);
 PRIVATE void                      _ogl_context_retrieve_ES_function_pointers                         (_ogl_context*                context_ptr);
@@ -223,6 +226,7 @@ PRIVATE void                      _ogl_context_retrieve_GL_ARB_multi_bind_functi
 PRIVATE void                      _ogl_context_retrieve_GL_ARB_sparse_buffer_function_pointers       (_ogl_context*                context_ptr);
 PRIVATE void                      _ogl_context_retrieve_GL_ARB_sparse_buffer_limits                  (_ogl_context*                context_ptr);
 PRIVATE void                      _ogl_context_retrieve_GL_EXT_direct_state_access_function_pointers (_ogl_context*                context_ptr);
+PRIVATE void                      _ogl_context_retrieve_GL_EXT_texture_filter_anisotropic_limits     (_ogl_context*                context_ptr);
 PRIVATE void                      _ogl_context_retrieve_GL_function_pointers                         (_ogl_context*                context_ptr);
 PRIVATE void                      _ogl_context_retrieve_GL_info                                      (_ogl_context*                context_ptr);
 PRIVATE void                      _ogl_context_retrieve_GL_limits                                    (_ogl_context*                context_ptr);
@@ -963,6 +967,7 @@ PRIVATE void _ogl_context_init_context_after_creation(ogl_context context)
     context_ptr->gl_arb_sparse_buffer_support               = false;
     context_ptr->gl_arb_texture_buffer_object_rgb32_support = false;
     context_ptr->gl_ext_direct_state_access_support         = false;
+    context_ptr->gl_ext_texture_filter_anisotropic_support  = false;
     context_ptr->is_intel_driver                            = false; /* determined later */
     context_ptr->is_nv_driver                               = false; /* determined later */
     context_ptr->primitive_renderer                         = NULL;
@@ -1085,6 +1090,15 @@ PRIVATE void _ogl_context_init_context_after_creation(ogl_context context)
         {
             ASSERT_ALWAYS_SYNC(false,
                                "Direct State Access OpenGL extension is unavailable - the demo is very likely to crash");
+        }
+
+        /* If GL_EXT_texture_filter_anisotropic is supported, initialize info variables */
+        if (ogl_context_is_extension_supported( (ogl_context) context_ptr,
+                                                system_hashed_ansi_string_create("GL_EXT_texture_filter_anisotropic") ))
+        {
+            context_ptr->gl_ext_texture_filter_anisotropic_support = true;
+
+            _ogl_context_initialize_gl_ext_texture_filter_anisotropic_extension(context_ptr);
         }
 
         /* Initialize debug output func ptrs */
@@ -1510,6 +1524,12 @@ PRIVATE void _ogl_context_initialize_gl_arb_sparse_buffer_extension(_ogl_context
 PRIVATE void _ogl_context_initialize_gl_ext_direct_state_access_extension(_ogl_context* context_ptr)
 {
     _ogl_context_retrieve_GL_EXT_direct_state_access_function_pointers(context_ptr);
+}
+
+/** TODO */
+PRIVATE void _ogl_context_initialize_gl_ext_texture_filter_anisotropic_extension(_ogl_context* context_ptr)
+{
+    _ogl_context_retrieve_GL_EXT_texture_filter_anisotropic_limits(context_ptr);
 }
 
 /** TODO */
@@ -2136,6 +2156,19 @@ PRIVATE void _ogl_context_retrieve_GL_EXT_direct_state_access_function_pointers(
     context_ptr->entry_points_gl_ext_direct_state_access.pGLUnmapNamedBufferEXT               = ogl_context_wrappers_glUnmapNamedBufferEXT;
     context_ptr->entry_points_gl_ext_direct_state_access.pGLVertexArrayVertexAttribOffsetEXT  = ogl_context_wrappers_glVertexArrayVertexAttribOffsetEXT;
     context_ptr->entry_points_gl_ext_direct_state_access.pGLVertexArrayVertexAttribIOffsetEXT = ogl_context_wrappers_glVertexArrayVertexAttribIOffsetEXT;
+}
+
+/** TODO */
+PRIVATE void _ogl_context_retrieve_GL_EXT_texture_filter_anisotropic_limits(_ogl_context* context_ptr)
+{
+    ASSERT_DEBUG_SYNC(context_ptr->context_type == OGL_CONTEXT_TYPE_GL,
+                      "GL-specific function called for a non-GL context");
+
+    context_ptr->entry_points_private.pGLGetFloatv(GL_TEXTURE_MAX_ANISOTROPY_EXT,
+                                                  &context_ptr->limits_ext_texture_filter_anisotropic.texture_max_anisotropy_ext);
+
+    ASSERT_DEBUG_SYNC(context_ptr->entry_points_gl.pGLGetError() == GL_NO_ERROR,
+                      "Could not retrieve at least one GL_EXT_texture_filter_anisotropic limit");
 }
 
 /** TODO */
@@ -3463,6 +3496,13 @@ PUBLIC EMERALD_API void ogl_context_get_property(ogl_context          context,
             break;
         }
 
+        case OGL_CONTEXT_PROPERTY_LIMITS_EXT_TEXTURE_FILTER_ANISOTROPIC:
+        {
+            *((const ogl_context_gl_limits_ext_texture_filter_anisotropic**) out_result) = &context_ptr->limits_ext_texture_filter_anisotropic;
+
+            break;
+        }
+
         case OGL_CONTEXT_PROPERTY_MAJOR_VERSION:
         {
             *(uint32_t*) out_result = context_ptr->major_version;
@@ -3590,6 +3630,13 @@ PUBLIC EMERALD_API void ogl_context_get_property(ogl_context          context,
         case OGL_CONTEXT_PROPERTY_SUPPORT_GL_EXT_DIRECT_STATE_ACCESS:
         {
             *((bool*) out_result) = context_ptr->gl_ext_direct_state_access_support;
+
+            break;
+        }
+
+        case OGL_CONTEXT_PROPERTY_SUPPORT_GL_EXT_TEXTURE_FILTER_ANISOTROPIC:
+        {
+            *((bool*) out_result) = context_ptr->gl_ext_texture_filter_anisotropic_support;
 
             break;
         }

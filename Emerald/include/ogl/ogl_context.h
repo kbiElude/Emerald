@@ -111,6 +111,9 @@ typedef enum ogl_context_property
     /* not settable, ogl_context_limits_arb_sparse_buffer* */
     OGL_CONTEXT_PROPERTY_LIMITS_ARB_SPARSE_BUFFER,
 
+    /* not settable, ogl_context_limits_ext_texture_filter_anisotropic* */
+    OGL_CONTEXT_PROPERTY_LIMITS_EXT_TEXTURE_FILTER_ANISOTROPIC,
+
     /* not settable, uint32_t */
     OGL_CONTEXT_PROPERTY_MAJOR_VERSION,
 
@@ -164,6 +167,9 @@ typedef enum ogl_context_property
 
     /* not settable, bool */
     OGL_CONTEXT_PROPERTY_SUPPORT_GL_EXT_DIRECT_STATE_ACCESS,
+
+    /* nots ettable, bool */
+    OGL_CONTEXT_PROPERTY_SUPPORT_GL_EXT_TEXTURE_FILTER_ANISOTROPIC,
 
     /* not settable, ogl_text_renderer. */
     OGL_CONTEXT_PROPERTY_TEXT_RENDERER,
