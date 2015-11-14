@@ -30,7 +30,6 @@ static system_hashed_ansi_string _object_type_ocl_context_hashed_ansi_string    
 static system_hashed_ansi_string _object_type_ocl_kdtree_hashed_ansi_string                            = NULL;
 static system_hashed_ansi_string _object_type_ocl_kernel_hashed_ansi_string                            = NULL;
 static system_hashed_ansi_string _object_type_ocl_program_hashed_ansi_string                           = NULL;
-static system_hashed_ansi_string _object_type_ogl_buffers_hashed_ansi_string                           = NULL;
 static system_hashed_ansi_string _object_type_ogl_context_hashed_ansi_string                           = NULL;
 static system_hashed_ansi_string _object_type_ogl_curve_renderer_hashed_ansi_string                    = NULL;
 static system_hashed_ansi_string _object_type_ogl_flyby_hashed_ansi_string                             = NULL;
@@ -60,6 +59,7 @@ static system_hashed_ansi_string _object_type_programs_curve_editor_lerp_hashed_
 static system_hashed_ansi_string _object_type_programs_curve_editor_quadselector_hashed_ansi_string    = NULL;
 static system_hashed_ansi_string _object_type_programs_curve_editor_static_hashed_ansi_string          = NULL;
 static system_hashed_ansi_string _object_type_programs_curve_editor_tcb_hashed_ansi_string             = NULL;
+static system_hashed_ansi_string _object_type_ragl_buffers_hashed_ansi_string                          = NULL;
 static system_hashed_ansi_string _object_type_ral_buffer_hashed_ansi_string                            = NULL;
 static system_hashed_ansi_string _object_type_ral_context_hashed_ansi_string                           = NULL;
 static system_hashed_ansi_string _object_type_ral_framebuffer_hashed_ansi_string                       = NULL;
@@ -117,7 +117,6 @@ PUBLIC system_hashed_ansi_string object_manager_convert_object_manager_object_ty
         case OBJECT_TYPE_OCL_KDTREE:                                      return _object_type_ocl_kdtree_hashed_ansi_string;
         case OBJECT_TYPE_OCL_KERNEL:                                      return _object_type_ocl_kernel_hashed_ansi_string;
         case OBJECT_TYPE_OCL_PROGRAM:                                     return _object_type_ocl_program_hashed_ansi_string;
-        case OBJECT_TYPE_OGL_BUFFERS:                                     return _object_type_ogl_buffers_hashed_ansi_string;
         case OBJECT_TYPE_OGL_CONTEXT:                                     return _object_type_ogl_context_hashed_ansi_string;
         case OBJECT_TYPE_OGL_CURVE_RENDERER:                              return _object_type_ogl_curve_renderer_hashed_ansi_string;
         case OBJECT_TYPE_OGL_FLYBY:                                       return _object_type_ogl_flyby_hashed_ansi_string;
@@ -147,6 +146,7 @@ PUBLIC system_hashed_ansi_string object_manager_convert_object_manager_object_ty
         case OBJECT_TYPE_PROGRAMS_CURVE_EDITOR_QUADSELECTOR:              return _object_type_programs_curve_editor_quadselector_hashed_ansi_string;
         case OBJECT_TYPE_PROGRAMS_CURVE_EDITOR_STATIC:                    return _object_type_programs_curve_editor_static_hashed_ansi_string;
         case OBJECT_TYPE_PROGRAMS_CURVE_EDITOR_TCB:                       return _object_type_programs_curve_editor_tcb_hashed_ansi_string;
+        case OBJECT_TYPE_RAGL_BUFFERS:                                    return _object_type_ragl_buffers_hashed_ansi_string;
         case OBJECT_TYPE_RAL_BUFFER:                                      return _object_type_ral_buffer_hashed_ansi_string;
         case OBJECT_TYPE_RAL_CONTEXT:                                     return _object_type_ral_context_hashed_ansi_string;
         case OBJECT_TYPE_RAL_FRAMEBUFFER:                                 return _object_type_ral_framebuffer_hashed_ansi_string;
@@ -376,7 +376,6 @@ PUBLIC void _object_manager_init()
     _object_type_ocl_kdtree_hashed_ansi_string                            = system_hashed_ansi_string_create("OpenCL Kd Trees");
     _object_type_ocl_kernel_hashed_ansi_string                            = system_hashed_ansi_string_create("OpenCL Kernels");
     _object_type_ocl_program_hashed_ansi_string                           = system_hashed_ansi_string_create("OpenCL Programs");
-    _object_type_ogl_buffers_hashed_ansi_string                           = system_hashed_ansi_string_create("OpenGL Buffer Managers");
     _object_type_ogl_context_hashed_ansi_string                           = system_hashed_ansi_string_create("OpenGL Contexts");
     _object_type_ogl_curve_renderer_hashed_ansi_string                    = system_hashed_ansi_string_create("Curve Renderers");
     _object_type_ogl_flyby_hashed_ansi_string                             = system_hashed_ansi_string_create("Fly-by instances");
@@ -406,6 +405,7 @@ PUBLIC void _object_manager_init()
     _object_type_programs_curve_editor_quadselector_hashed_ansi_string    = system_hashed_ansi_string_create("Curve Editor Programs (Quad Selector)");
     _object_type_programs_curve_editor_static_hashed_ansi_string          = system_hashed_ansi_string_create("Curve Editor Programs (Static)");
     _object_type_programs_curve_editor_tcb_hashed_ansi_string             = system_hashed_ansi_string_create("Curve Editor Programs (TCB)");
+    _object_type_ragl_buffers_hashed_ansi_string                          = system_hashed_ansi_string_create("raGL Buffers");
     _object_type_ral_buffer_hashed_ansi_string                            = system_hashed_ansi_string_create("RAL Buffers");
     _object_type_ral_context_hashed_ansi_string                           = system_hashed_ansi_string_create("RAL Contexts");
     _object_type_ral_framebuffer_hashed_ansi_string                       = system_hashed_ansi_string_create("RAL Framebuffers");

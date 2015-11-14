@@ -12,6 +12,7 @@
 #include "ogl/ogl_rendering_handler.h"
 #include "ogl/ogl_shader.h"
 #include "ogl/ogl_types.h"
+#include "raGL/raGL_buffer.h"
 #include "system/system_assertions.h"
 #include "system/system_critical_section.h"
 #include "system/system_log.h"
@@ -25,9 +26,8 @@ typedef struct
     ogl_shader     vertex_shader;
     ogl_program    program;
     ogl_program_ub program_data_ub;
-    GLuint         program_data_ub_bo_id;
+    raGL_buffer    program_data_ub_bo;
     GLuint         program_data_ub_bo_size;
-    GLuint         program_data_ub_bo_start_offset;
 
     GLuint delta_time_ub_offset;
     GLuint delta_x_ub_offset;
@@ -331,11 +331,8 @@ PUBLIC curve_editor_program_tcb curve_editor_program_tcb_create(ogl_context     
                                         OGL_PROGRAM_UB_PROPERTY_BLOCK_DATA_SIZE,
                                        &result->program_data_ub_bo_size);
             ogl_program_ub_get_property(result->program_data_ub,
-                                        OGL_PROGRAM_UB_PROPERTY_BO_ID,
-                                       &result->program_data_ub_bo_id);
-            ogl_program_ub_get_property(result->program_data_ub,
-                                        OGL_PROGRAM_UB_PROPERTY_BO_START_OFFSET,
-                                       &result->program_data_ub_bo_start_offset);
+                                        OGL_PROGRAM_UB_PROPERTY_BO,
+                                       &result->program_data_ub_bo);
         }
 
         /* Add to the object manager */
@@ -455,8 +452,10 @@ PUBLIC void curve_editor_program_tcb_set_property(curve_editor_program_tcb      
 PUBLIC void curve_editor_program_tcb_use(ogl_context              context,
                                          curve_editor_program_tcb tcb)
 {
-    const ogl_context_gl_entrypoints* entry_points = NULL;
-    _curve_editor_program_tcb*        tcb_ptr      = (_curve_editor_program_tcb*) tcb;
+    const ogl_context_gl_entrypoints* entry_points                    = NULL;
+    GLuint                            program_data_ub_bo_id           = 0;
+    uint32_t                          program_data_ub_bo_start_offset = -1;
+    _curve_editor_program_tcb*        tcb_ptr                         = (_curve_editor_program_tcb*) tcb;
 
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
@@ -464,10 +463,17 @@ PUBLIC void curve_editor_program_tcb_use(ogl_context              context,
 
     ogl_program_ub_sync(tcb_ptr->program_data_ub);
 
+    raGL_buffer_get_property(tcb_ptr->program_data_ub_bo,
+                             RAGL_BUFFER_PROPERTY_ID,
+                            &program_data_ub_bo_id);
+    raGL_buffer_get_property(tcb_ptr->program_data_ub_bo,
+                             RAGL_BUFFER_PROPERTY_START_OFFSET,
+                            &program_data_ub_bo_start_offset);
+
     entry_points->pGLBindBufferRange(GL_UNIFORM_BUFFER,
                                      1, /* index */
-                                     tcb_ptr->program_data_ub_bo_id,
-                                     tcb_ptr->program_data_ub_bo_start_offset,
+                                     program_data_ub_bo_id,
+                                     program_data_ub_bo_start_offset,
                                      tcb_ptr->program_data_ub_bo_size);
     entry_points->pGLUseProgram     (ogl_program_get_id(tcb_ptr->program) );
 }

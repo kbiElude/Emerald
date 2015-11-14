@@ -11,6 +11,7 @@
 #include "ogl/ogl_program_ub.h"
 #include "ogl/ogl_shader.h"
 #include "ogl/ogl_types.h"
+#include "raGL/raGL_buffer.h"
 #include "system/system_assertions.h"
 #include "system/system_critical_section.h"
 #include "system/system_log.h"
@@ -24,9 +25,8 @@ typedef struct
     ogl_shader     vertex_shader;
     ogl_program    program;
     ogl_program_ub program_ub;
-    GLuint         program_ub_bo_id;
+    raGL_buffer    program_ub_bo;
     GLuint         program_ub_bo_size;
-    GLuint         program_ub_bo_start_offset;
 
     GLint pos1_ub_offset;
     GLint pos2_ub_offset;
@@ -217,11 +217,8 @@ PUBLIC curve_editor_program_lerp curve_editor_program_lerp_create(ogl_context   
             result->pos2_ub_offset = pos2_uniform_descriptor->block_offset;
 
             ogl_program_ub_get_property(result->program_ub,
-                                        OGL_PROGRAM_UB_PROPERTY_BO_ID,
-                                       &result->program_ub_bo_id);
-            ogl_program_ub_get_property(result->program_ub,
-                                        OGL_PROGRAM_UB_PROPERTY_BO_START_OFFSET,
-                                       &result->program_ub_bo_start_offset);
+                                        OGL_PROGRAM_UB_PROPERTY_BO,
+                                       &result->program_ub_bo);
             ogl_program_ub_get_property(result->program_ub,
                                         OGL_PROGRAM_UB_PROPERTY_BLOCK_DATA_SIZE,
                                        &result->program_ub_bo_size);
@@ -293,8 +290,10 @@ PUBLIC void curve_editor_program_lerp_set_property(curve_editor_program_lerp    
 PUBLIC void curve_editor_program_lerp_use(ogl_context               context,
                                           curve_editor_program_lerp lerp)
 {
-    const ogl_context_gl_entrypoints* entry_points = NULL;
-    _curve_editor_program_lerp*       lerp_ptr     = (_curve_editor_program_lerp*) lerp;
+    const ogl_context_gl_entrypoints* entry_points               = NULL;
+    _curve_editor_program_lerp*       lerp_ptr                   = (_curve_editor_program_lerp*) lerp;
+    GLuint                            program_ub_bo_id           = 0;
+    uint32_t                          program_ub_bo_start_offset = -1;
 
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
@@ -302,10 +301,17 @@ PUBLIC void curve_editor_program_lerp_use(ogl_context               context,
 
     ogl_program_ub_sync(lerp_ptr->program_ub);
 
+    raGL_buffer_get_property(lerp_ptr->program_ub_bo,
+                             RAGL_BUFFER_PROPERTY_ID,
+                            &program_ub_bo_id);
+    raGL_buffer_get_property(lerp_ptr->program_ub_bo,
+                             RAGL_BUFFER_PROPERTY_START_OFFSET,
+                            &program_ub_bo_start_offset);
+
     entry_points->pGLBindBufferRange(GL_UNIFORM_BUFFER,
                                      0, /* index */
-                                     lerp_ptr->program_ub_bo_id,
-                                     lerp_ptr->program_ub_bo_start_offset,
+                                     program_ub_bo_id,
+                                     program_ub_bo_start_offset,
                                      lerp_ptr->program_ub_bo_size);
     entry_points->pGLUseProgram     (ogl_program_get_id(lerp_ptr->program) );
 }

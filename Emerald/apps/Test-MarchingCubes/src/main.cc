@@ -179,24 +179,21 @@ PRIVATE void _init_scene()
     variant_one = NULL;
 
     /* Set up the metaballs mesh instance */
-    mesh         marching_cubes_mesh_gpu      = NULL;
-    GLuint       scalar_field_bo_id           = 0;
-    unsigned int scalar_field_bo_size         = 0;
-    unsigned int scalar_field_bo_start_offset = 0;
+    mesh         marching_cubes_mesh_gpu = NULL;
+    raGL_buffer  scalar_field_bo         = NULL;
+    GLuint       scalar_field_bo_id      = 0;
+    unsigned int scalar_field_bo_size    = 0;
 
     _metaballs = scalar_field_metaballs_create(_context,
                                                _blob_size,
                                                system_hashed_ansi_string_create("Metaballs"));
 
     scalar_field_metaballs_get_property(_metaballs,
-                                        SCALAR_FIELD_METABALLS_PROPERTY_DATA_BO_ID,
-                                       &scalar_field_bo_id);
+                                        SCALAR_FIELD_METABALLS_PROPERTY_DATA_BO,
+                                       &scalar_field_bo);
     scalar_field_metaballs_get_property(_metaballs,
                                         SCALAR_FIELD_METABALLS_PROPERTY_DATA_BO_SIZE,
                                        &scalar_field_bo_size);
-    scalar_field_metaballs_get_property(_metaballs,
-                                        SCALAR_FIELD_METABALLS_PROPERTY_DATA_BO_START_OFFSET,
-                                       &scalar_field_bo_start_offset);
 
     scalar_field_metaballs_set_property(_metaballs,
                                         SCALAR_FIELD_METABALLS_PROPERTY_N_METABALLS,
@@ -218,8 +215,7 @@ PRIVATE void _init_scene()
 
     _marching_cubes = mesh_marchingcubes_create(_context,
                                                 _blob_size,
-                                                scalar_field_bo_id,
-                                                scalar_field_bo_start_offset,
+                                                scalar_field_bo,
                                                 scalar_field_bo_size,
                                                 _isolevel,
                                                 material,

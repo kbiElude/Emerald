@@ -11,6 +11,7 @@
 #include "ogl/ogl_program_ub.h"
 #include "ogl/ogl_shader.h"
 #include "ogl/ogl_types.h"
+#include "raGL/raGL_buffer.h"
 #include "system/system_assertions.h"
 #include "system/system_critical_section.h"
 #include "system/system_log.h"
@@ -24,9 +25,8 @@ typedef struct
     ogl_shader     vertex_shader;
     ogl_program    program;
     ogl_program_ub program_ub;
-    GLuint         program_ub_bo_id;
+    raGL_buffer    program_ub_bo;
     GLuint         program_ub_bo_size;
-    GLuint         program_ub_bo_start_offset;
 
     GLint colors_ub_offset;
     GLint positions_ub_offset;
@@ -225,11 +225,8 @@ PUBLIC curve_editor_program_curvebackground curve_editor_program_curvebackground
                                         OGL_PROGRAM_UB_PROPERTY_BLOCK_DATA_SIZE,
                                        &result->program_ub_bo_size);
             ogl_program_ub_get_property(result->program_ub,
-                                        OGL_PROGRAM_UB_PROPERTY_BO_ID,
-                                       &result->program_ub_bo_id);
-            ogl_program_ub_get_property(result->program_ub,
-                                        OGL_PROGRAM_UB_PROPERTY_BO_START_OFFSET,
-                                       &result->program_ub_bo_start_offset);
+                                        OGL_PROGRAM_UB_PROPERTY_BO,
+                                       &result->program_ub_bo);
         }
 
         /* Add to the object manager */
@@ -296,8 +293,10 @@ PUBLIC void curve_editor_program_curvebackground_set_property(curve_editor_progr
 PUBLIC void curve_editor_program_curvebackground_use(ogl_context                          context,
                                                      curve_editor_program_curvebackground curvebackground)
 {
-    _curve_editor_program_curvebackground* curvebackground_ptr = (_curve_editor_program_curvebackground*) curvebackground;
-    const ogl_context_gl_entrypoints*      entry_points        = NULL;
+    _curve_editor_program_curvebackground* curvebackground_ptr        = (_curve_editor_program_curvebackground*) curvebackground;
+    const ogl_context_gl_entrypoints*      entry_points               = NULL;
+    GLuint                                 program_ub_bo_id           = 0;
+    uint32_t                               program_ub_bo_start_offset = -1;
 
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
@@ -305,10 +304,17 @@ PUBLIC void curve_editor_program_curvebackground_use(ogl_context                
 
     ogl_program_ub_sync(curvebackground_ptr->program_ub);
 
+    raGL_buffer_get_property(curvebackground_ptr->program_ub_bo,
+                             RAGL_BUFFER_PROPERTY_ID,
+                            &program_ub_bo_id);
+    raGL_buffer_get_property(curvebackground_ptr->program_ub_bo,
+                             RAGL_BUFFER_PROPERTY_START_OFFSET,
+                            &program_ub_bo_start_offset);
+
     entry_points->pGLBindBufferRange(GL_UNIFORM_BUFFER,
                                      0, /* index */
-                                     curvebackground_ptr->program_ub_bo_id,
-                                     curvebackground_ptr->program_ub_bo_start_offset,
+                                     program_ub_bo_id,
+                                     program_ub_bo_start_offset,
                                      curvebackground_ptr->program_ub_bo_size);
     entry_points->pGLUseProgram     (ogl_program_get_id(curvebackground_ptr->program) );
 }

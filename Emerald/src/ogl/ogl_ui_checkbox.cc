@@ -12,6 +12,7 @@
 #include "ogl/ogl_ui.h"
 #include "ogl/ogl_ui_checkbox.h"
 #include "ogl/ogl_ui_shared.h"
+#include "raGL\raGL_buffer.h"
 #include "system/system_assertions.h"
 #include "system/system_hashed_ansi_string.h"
 #include "system/system_log.h"
@@ -65,13 +66,11 @@ typedef struct
     GLint                   program_brightness_ub_offset;
     GLint                   program_text_brightness_ub_offset;
     ogl_program_ub          program_ub_fs;
-    GLuint                  program_ub_fs_bo_id;
+    raGL_buffer             program_ub_fs_bo;
     GLuint                  program_ub_fs_bo_size;
-    GLuint                  program_ub_fs_bo_start_offset;
     ogl_program_ub          program_ub_vs;
-    GLuint                  program_ub_vs_bo_id;
+    raGL_buffer             program_ub_vs_bo;
     GLuint                  program_ub_vs_bo_size;
-    GLuint                  program_ub_vs_bo_start_offset;
     GLint                   program_x1y1x2y2_ub_offset;
 
     GLint    text_index;
@@ -254,18 +253,11 @@ PRIVATE void _ogl_ui_checkbox_init_renderer_callback(ogl_context context,
                                &checkbox_ptr->program_ub_vs_bo_size);
 
     ogl_program_ub_get_property(checkbox_ptr->program_ub_fs,
-                                OGL_PROGRAM_UB_PROPERTY_BO_ID,
-                               &checkbox_ptr->program_ub_fs_bo_id);
+                                OGL_PROGRAM_UB_PROPERTY_BO,
+                               &checkbox_ptr->program_ub_fs_bo);
     ogl_program_ub_get_property(checkbox_ptr->program_ub_vs,
-                                OGL_PROGRAM_UB_PROPERTY_BO_ID,
-                               &checkbox_ptr->program_ub_vs_bo_id);
-
-    ogl_program_ub_get_property(checkbox_ptr->program_ub_fs,
-                                OGL_PROGRAM_UB_PROPERTY_BO_START_OFFSET,
-                               &checkbox_ptr->program_ub_fs_bo_start_offset);
-    ogl_program_ub_get_property(checkbox_ptr->program_ub_vs,
-                                OGL_PROGRAM_UB_PROPERTY_BO_START_OFFSET,
-                               &checkbox_ptr->program_ub_vs_bo_start_offset);
+                                OGL_PROGRAM_UB_PROPERTY_BO,
+                               &checkbox_ptr->program_ub_vs_bo);
 
     /* Set them up */
     const float default_brightness = NONFOCUSED_BRIGHTNESS;
@@ -465,15 +457,33 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_ui_checkbox_draw(void* internal_instance)
     ogl_program_ub_sync(checkbox_ptr->program_ub_vs);
 
     /* Draw */
+    GLuint   program_ub_fs_bo_id           = 0;
+    uint32_t program_ub_fs_bo_start_offset = -1;
+    GLuint   program_ub_vs_bo_id           = 0;
+    uint32_t program_ub_vs_bo_start_offset = -1;
+
+    raGL_buffer_get_property(checkbox_ptr->program_ub_fs_bo,
+                             RAGL_BUFFER_PROPERTY_ID,
+                            &program_ub_fs_bo_id);
+    raGL_buffer_get_property(checkbox_ptr->program_ub_fs_bo,
+                             RAGL_BUFFER_PROPERTY_START_OFFSET,
+                            &program_ub_fs_bo_start_offset);
+    raGL_buffer_get_property(checkbox_ptr->program_ub_vs_bo,
+                             RAGL_BUFFER_PROPERTY_ID,
+                            &program_ub_vs_bo_id);
+    raGL_buffer_get_property(checkbox_ptr->program_ub_vs_bo,
+                             RAGL_BUFFER_PROPERTY_START_OFFSET,
+                            &program_ub_vs_bo_start_offset);
+
     checkbox_ptr->pGLBindBufferRange(GL_UNIFORM_BUFFER,
                                      UB_FSDATA_BP_INDEX,
-                                     checkbox_ptr->program_ub_fs_bo_id,
-                                     checkbox_ptr->program_ub_fs_bo_start_offset,
+                                     program_ub_fs_bo_id,
+                                     program_ub_fs_bo_start_offset,
                                      checkbox_ptr->program_ub_fs_bo_size);
     checkbox_ptr->pGLBindBufferRange(GL_UNIFORM_BUFFER,
                                      UB_VSDATA_BP_INDEX,
-                                     checkbox_ptr->program_ub_vs_bo_id,
-                                     checkbox_ptr->program_ub_vs_bo_start_offset,
+                                     program_ub_vs_bo_id,
+                                     program_ub_vs_bo_start_offset,
                                      checkbox_ptr->program_ub_vs_bo_size);
 
     checkbox_ptr->pGLUseProgram(ogl_program_get_id(checkbox_ptr->program) );

@@ -13,28 +13,27 @@
 #include "ogl/ogl_program.h"
 #include "ogl/ogl_program_ub.h"
 #include "ogl/ogl_shader.h"
+#include "raGL/raGL_buffer.h"
 #include "shaders/shaders_fragment_static.h"
 #include "shaders/shaders_vertex_combinedmvp_generic.h"
 #include "system/system_matrix4x4.h"
 #include <string.h>
 
-ogl_program      _light_program                           =  0;
-ogl_program_ub   _light_program_datafs_ub                 = NULL;
-GLuint           _light_program_datafs_ub_bo_id           =  0;
-GLuint           _light_program_datafs_ub_bo_size         =  0;
-GLuint           _light_program_datafs_ub_bo_start_offset =  0;
-GLuint           _light_program_datafs_ub_bp              = -1;
-ogl_program_ub   _light_program_datavs_ub                 = NULL;
-GLuint           _light_program_datavs_ub_bo_id           =  0;
-GLuint           _light_program_datavs_ub_bo_size         =  0;
-GLuint           _light_program_datavs_ub_bo_start_offset =  0;
-GLuint           _light_program_datavs_ub_bp              = -1;
-GLuint           _light_color_ub_offset                   = -1;
-GLuint           _light_in_position_attribute_location    = -1;
-GLuint           _light_mvp_ub_offset                     = -1;
-GLuint           _light_vao_id                            = -1;
-GLuint           _light_vertex_attribute_location         = -1;
-system_matrix4x4 _light_view_matrix                       = NULL;
+ogl_program      _light_program                        =  0;
+ogl_program_ub   _light_program_datafs_ub              = NULL;
+raGL_buffer      _light_program_datafs_ub_bo           =  0;
+GLuint           _light_program_datafs_ub_bo_size      =  0;
+GLuint           _light_program_datafs_ub_bp           = -1;
+ogl_program_ub   _light_program_datavs_ub              = NULL;
+raGL_buffer      _light_program_datavs_ub_bo           =  0;
+GLuint           _light_program_datavs_ub_bo_size      =  0;
+GLuint           _light_program_datavs_ub_bp           = -1;
+GLuint           _light_color_ub_offset                = -1;
+GLuint           _light_in_position_attribute_location = -1;
+GLuint           _light_mvp_ub_offset                  = -1;
+GLuint           _light_vao_id                         = -1;
+GLuint           _light_vertex_attribute_location      = -1;
+system_matrix4x4 _light_view_matrix                    = NULL;
 
 /** TODO */
 static void _stage_step_light_execute(ogl_context context,
@@ -109,15 +108,33 @@ static void _stage_step_light_execute(ogl_context context,
     ogl_program_ub_sync(_light_program_datafs_ub);
     ogl_program_ub_sync(_light_program_datavs_ub);
 
+    GLuint   light_program_datafs_ub_bo_id           = 0;
+    uint32_t light_program_datafs_ub_bo_start_offset = -1;
+    GLuint   light_program_datavs_ub_bo_id           = 0;
+    uint32_t light_program_datavs_ub_bo_start_offset = -1;
+
+    raGL_buffer_get_property(_light_program_datafs_ub_bo,
+                             RAGL_BUFFER_PROPERTY_ID,
+                            &light_program_datafs_ub_bo_id);
+    raGL_buffer_get_property(_light_program_datafs_ub_bo,
+                             RAGL_BUFFER_PROPERTY_START_OFFSET,
+                            &light_program_datafs_ub_bo_start_offset);
+    raGL_buffer_get_property(_light_program_datavs_ub_bo,
+                             RAGL_BUFFER_PROPERTY_ID,
+                            &light_program_datavs_ub_bo_id);
+    raGL_buffer_get_property(_light_program_datavs_ub_bo,
+                             RAGL_BUFFER_PROPERTY_START_OFFSET,
+                            &light_program_datavs_ub_bo_start_offset);
+
     entrypoints->pGLBindBufferRange(GL_UNIFORM_BUFFER,
                                     _light_program_datafs_ub_bp,
-                                    _light_program_datafs_ub_bo_id,
-                                    _light_program_datafs_ub_bo_start_offset,
+                                     light_program_datafs_ub_bo_id,
+                                     light_program_datafs_ub_bo_start_offset,
                                     _light_program_datafs_ub_bo_size);
     entrypoints->pGLBindBufferRange(GL_UNIFORM_BUFFER,
                                     _light_program_datavs_ub_bp,
-                                    _light_program_datavs_ub_bo_id,
-                                    _light_program_datavs_ub_bo_start_offset,
+                                     light_program_datavs_ub_bo_id,
+                                     light_program_datavs_ub_bo_start_offset,
                                     _light_program_datavs_ub_bo_size);
 
     /* Draw light representation*/
@@ -197,11 +214,8 @@ PUBLIC void stage_step_light_init(ogl_context  context,
                                 OGL_PROGRAM_UB_PROPERTY_BLOCK_DATA_SIZE,
                                &_light_program_datafs_ub_bo_size);
     ogl_program_ub_get_property(_light_program_datafs_ub,
-                                OGL_PROGRAM_UB_PROPERTY_BO_ID,
-                               &_light_program_datafs_ub_bo_id);
-    ogl_program_ub_get_property(_light_program_datafs_ub,
-                                OGL_PROGRAM_UB_PROPERTY_BO_START_OFFSET,
-                               &_light_program_datafs_ub_bo_start_offset);
+                                OGL_PROGRAM_UB_PROPERTY_BO,
+                               &_light_program_datafs_ub_bo);
     ogl_program_ub_get_property(_light_program_datafs_ub,
                                 OGL_PROGRAM_UB_PROPERTY_INDEXED_BP,
                                &_light_program_datafs_ub_bp);
@@ -210,11 +224,8 @@ PUBLIC void stage_step_light_init(ogl_context  context,
                                 OGL_PROGRAM_UB_PROPERTY_BLOCK_DATA_SIZE,
                                &_light_program_datavs_ub_bo_size);
     ogl_program_ub_get_property(_light_program_datavs_ub,
-                                OGL_PROGRAM_UB_PROPERTY_BO_ID,
-                               &_light_program_datavs_ub_bo_id);
-    ogl_program_ub_get_property(_light_program_datavs_ub,
-                                OGL_PROGRAM_UB_PROPERTY_BO_START_OFFSET,
-                               &_light_program_datavs_ub_bo_start_offset);
+                                OGL_PROGRAM_UB_PROPERTY_BO,
+                               &_light_program_datavs_ub_bo);
     ogl_program_ub_get_property(_light_program_datavs_ub,
                                 OGL_PROGRAM_UB_PROPERTY_INDEXED_BP,
                                &_light_program_datavs_ub_bp);

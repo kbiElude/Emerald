@@ -15,6 +15,7 @@
 #include "ogl/ogl_shader_constructor.h"
 #include "ogl/ogl_texture.h"
 #include "ogl/ogl_uber.h"
+#include "raGL/raGL_buffers.h"
 #include "scene/scene.h"
 #include "scene/scene_curve.h"
 #include "scene/scene_graph.h"
@@ -155,7 +156,7 @@ typedef struct __ogl_uber_vao
 
 typedef struct _ogl_uber
 {
-    ogl_buffers               buffers;
+    raGL_buffers              buffers;
     ogl_context               context;
     system_hashed_ansi_string name;
 
@@ -195,13 +196,11 @@ typedef struct _ogl_uber
     bool                      is_rendering;
     uint32_t                  n_texture_units_assigned;
     ogl_program_ub            ub_fs;
-    GLuint                    ub_fs_bo_id;
+    raGL_buffer               ub_fs_bo;
     GLuint                    ub_fs_bo_size;
-    GLuint                    ub_fs_bo_start_offset;
     ogl_program_ub            ub_vs;
-    GLuint                    ub_vs_bo_id;
+    raGL_buffer               ub_vs_bo;
     GLuint                    ub_vs_bo_size;
-    GLuint                    ub_vs_bo_start_offset;
 
     system_matrix4x4          current_vp;
     float                     current_vsm_max_variance;
@@ -269,7 +268,7 @@ _ogl_uber::_ogl_uber(ogl_context               in_context,
     ub_vs                          = NULL;
 
     ogl_context_get_property(context,
-                             OGL_CONTEXT_PROPERTY_BUFFERS,
+                             OGL_CONTEXT_PROPERTY_BUFFERS_RAGL,
                             &buffers);
 
     _ogl_uber_reset_attribute_uniform_locations(this);
@@ -322,15 +321,15 @@ PRIVATE void _ogl_uber_bake_mesh_vao(_ogl_uber* uber_ptr,
     const ogl_context_gl_entrypoints*                         entrypoints                    = NULL;
     const ogl_context_gl_limits*                              limits                         = NULL;
     mesh_type                                                 mesh_instance_type;
-    GLint                                                     mesh_normals_bo_id             = 0;
+    raGL_buffer                                               mesh_normals_bo                = 0;
     unsigned int                                              mesh_normals_bo_n_components   = 3;
     unsigned int                                              mesh_normals_bo_offset         = 0;
     unsigned int                                              mesh_normals_bo_stride         = 0;
-    GLint                                                     mesh_texcoords_bo_id           = 0;
+    raGL_buffer                                               mesh_texcoords_bo              = NULL;
     unsigned int                                              mesh_texcoords_bo_n_components = 2;
     unsigned int                                              mesh_texcoords_bo_offset       = 0;
     unsigned int                                              mesh_texcoords_bo_stride       = 0;
-    GLint                                                     mesh_vertex_bo_id              = 0;
+    raGL_buffer                                               mesh_vertex_bo                 = NULL;
     unsigned int                                              mesh_vertex_bo_n_components    = 3;
     unsigned int                                              mesh_vertex_bo_offset          = 0;
     unsigned int                                              mesh_vertex_bo_stride          = 0;
@@ -394,15 +393,15 @@ PRIVATE void _ogl_uber_bake_mesh_vao(_ogl_uber* uber_ptr,
     {
         /* Regular meshes use the same stride and BO ID for all streams */
         mesh_get_property(mesh,
-                          MESH_PROPERTY_GL_BO_ID,
-                         &mesh_texcoords_bo_id);
+                          MESH_PROPERTY_GL_BO,
+                         &mesh_texcoords_bo);
         mesh_get_property(mesh,
                           MESH_PROPERTY_GL_STRIDE,
                          &mesh_texcoords_bo_stride);
 
-        mesh_normals_bo_id     = mesh_texcoords_bo_id;
+        mesh_normals_bo        = mesh_texcoords_bo;
         mesh_normals_bo_stride = mesh_texcoords_bo_stride;
-        mesh_vertex_bo_id      = mesh_texcoords_bo_id;
+        mesh_vertex_bo         = mesh_texcoords_bo;
         mesh_vertex_bo_stride  = mesh_texcoords_bo_stride;
     }
 
@@ -424,14 +423,20 @@ PRIVATE void _ogl_uber_bake_mesh_vao(_ogl_uber* uber_ptr,
             mesh_get_layer_data_stream_property(mesh,
                                                 0, /* layer_id - please see "sanity check" comment above for explanation */
                                                 MESH_LAYER_DATA_STREAM_TYPE_NORMALS,
-                                                MESH_LAYER_DATA_STREAM_PROPERTY_GL_BO_ID,
-                                               &mesh_normals_bo_id);
+                                                MESH_LAYER_DATA_STREAM_PROPERTY_GL_BO,
+                                               &mesh_normals_bo);
             mesh_get_layer_data_stream_property(mesh,
                                                 0, /* layer_id - please see "sanity check" comment above for explanation */
                                                 MESH_LAYER_DATA_STREAM_TYPE_NORMALS,
                                                 MESH_LAYER_DATA_STREAM_PROPERTY_GL_BO_STRIDE,
                                                &mesh_normals_bo_stride);
         }
+
+        GLuint mesh_normals_bo_id = 0;
+
+        raGL_buffer_get_property(mesh_normals_bo,
+                                 RAGL_BUFFER_PROPERTY_ID,
+                                &mesh_normals_bo_id);
 
         dsa_entrypoints->pGLVertexArrayVertexAttribOffsetEXT(vao_ptr->vao_id,
                                                              mesh_normals_bo_id,
@@ -464,8 +469,8 @@ PRIVATE void _ogl_uber_bake_mesh_vao(_ogl_uber* uber_ptr,
             mesh_get_layer_data_stream_property(mesh,
                                                 0, /* layer_id - please see "sanity check" comment above for explanation */
                                                 MESH_LAYER_DATA_STREAM_TYPE_TEXCOORDS,
-                                                MESH_LAYER_DATA_STREAM_PROPERTY_GL_BO_ID,
-                                               &mesh_texcoords_bo_id);
+                                                MESH_LAYER_DATA_STREAM_PROPERTY_GL_BO,
+                                               &mesh_texcoords_bo);
             mesh_get_layer_data_stream_property(mesh,
                                                 0, /* layer_id - please see "sanity check" comment above for explanation */
                                                 MESH_LAYER_DATA_STREAM_TYPE_TEXCOORDS,
@@ -492,14 +497,20 @@ PRIVATE void _ogl_uber_bake_mesh_vao(_ogl_uber* uber_ptr,
             mesh_get_layer_data_stream_property(mesh,
                                                 0, /* layer_id - please see "sanity check" comment above for explanation */
                                                 MESH_LAYER_DATA_STREAM_TYPE_VERTICES,
-                                                MESH_LAYER_DATA_STREAM_PROPERTY_GL_BO_ID,
-                                               &mesh_vertex_bo_id);
+                                                MESH_LAYER_DATA_STREAM_PROPERTY_GL_BO,
+                                               &mesh_vertex_bo);
             mesh_get_layer_data_stream_property(mesh,
                                                 0, /* layer_id - please see "sanity check" comment above for explanation */
                                                 MESH_LAYER_DATA_STREAM_TYPE_VERTICES,
                                                 MESH_LAYER_DATA_STREAM_PROPERTY_GL_BO_STRIDE,
                                                &mesh_vertex_bo_stride);
         }
+
+        GLuint mesh_vertex_bo_id = 0;
+
+        raGL_buffer_get_property(mesh_vertex_bo,
+                                 RAGL_BUFFER_PROPERTY_ID,
+                                &mesh_vertex_bo_id);
 
         dsa_entrypoints->pGLVertexArrayVertexAttribOffsetEXT(vao_ptr->vao_id,
                                                              mesh_vertex_bo_id,
@@ -517,8 +528,8 @@ PRIVATE void _ogl_uber_bake_mesh_vao(_ogl_uber* uber_ptr,
     /* A few sanity checks never hurt anyone.. */
     ASSERT_ALWAYS_SYNC(vao_ptr->vao_id != 0,
                        "VAO is 0");
-    ASSERT_ALWAYS_SYNC(mesh_vertex_bo_id != 0,
-                      "Mesh BO ID is 0");
+    ASSERT_ALWAYS_SYNC(mesh_vertex_bo != NULL,
+                      "Mesh BO is NULL");
 
     /* Bind the VAO before we move on */
     entrypoints->pGLBindVertexArray(vao_ptr->vao_id);
@@ -526,6 +537,12 @@ PRIVATE void _ogl_uber_bake_mesh_vao(_ogl_uber* uber_ptr,
     /* Bind the BO as a data source for the indexed draw calls, if we're dealing with a regular mesh */
     if (mesh_instance_type == MESH_TYPE_REGULAR)
     {
+        GLuint mesh_vertex_bo_id = 0;
+
+        raGL_buffer_get_property(mesh_vertex_bo,
+                                 RAGL_BUFFER_PROPERTY_ID,
+                                &mesh_vertex_bo_id);
+
         entrypoints->pGLBindBuffer(GL_ELEMENT_ARRAY_BUFFER,
                                    mesh_vertex_bo_id);
     }
@@ -566,8 +583,14 @@ PRIVATE void _ogl_uber_bake_mesh_vao(_ogl_uber* uber_ptr,
 
             if (item.attribute_location != -1)
             {
-                ASSERT_DEBUG_SYNC(mesh_texcoords_bo_id != 0,
+                GLuint mesh_texcoords_bo_id = 0;
+
+                ASSERT_DEBUG_SYNC(mesh_texcoords_bo != NULL,
                                   "Material requires texture coordinates, but none are provided by the mesh.");
+
+                raGL_buffer_get_property(mesh_texcoords_bo,
+                                         RAGL_BUFFER_PROPERTY_ID,
+                                        &mesh_texcoords_bo_id);
 
                 dsa_entrypoints->pGLVertexArrayVertexAttribOffsetEXT(vao_ptr->vao_id,
                                                                      mesh_texcoords_bo_id,
@@ -655,8 +678,14 @@ PRIVATE void _ogl_uber_bake_mesh_vao(_ogl_uber* uber_ptr,
                         /* Set up UV attribute data */
                         if (attachment.shader_uv_attribute_location != -1)
                         {
-                            ASSERT_DEBUG_SYNC(mesh_texcoords_bo_id != 0,
+                            GLuint mesh_texcoords_bo_id = 0;
+
+                            ASSERT_DEBUG_SYNC(mesh_texcoords_bo != NULL,
                                               "Material requires texture coordinates, but none are provided by the mesh.");
+
+                            raGL_buffer_get_property(mesh_texcoords_bo,
+                                                     RAGL_BUFFER_PROPERTY_ID,
+                                                    &mesh_texcoords_bo_id);
 
                             dsa_entrypoints->pGLVertexArrayVertexAttribOffsetEXT(vao_ptr->vao_id,
                                                                                  mesh_texcoords_bo_id,
@@ -1668,11 +1697,8 @@ PUBLIC EMERALD_API void ogl_uber_link(ogl_uber uber)
                                     OGL_PROGRAM_UB_PROPERTY_BLOCK_DATA_SIZE,
                                    &uber_ptr->ub_fs_bo_size);
         ogl_program_ub_get_property(uber_ptr->ub_fs,
-                                    OGL_PROGRAM_UB_PROPERTY_BO_ID,
-                                   &uber_ptr->ub_fs_bo_id);
-        ogl_program_ub_get_property(uber_ptr->ub_fs,
-                                    OGL_PROGRAM_UB_PROPERTY_BO_START_OFFSET,
-                                   &uber_ptr->ub_fs_bo_start_offset);
+                                    OGL_PROGRAM_UB_PROPERTY_BO,
+                                   &uber_ptr->ub_fs_bo);
     }
 
     if (uber_ptr->ub_vs != NULL)
@@ -1681,11 +1707,8 @@ PUBLIC EMERALD_API void ogl_uber_link(ogl_uber uber)
                                     OGL_PROGRAM_UB_PROPERTY_BLOCK_DATA_SIZE,
                                    &uber_ptr->ub_vs_bo_size);
         ogl_program_ub_get_property(uber_ptr->ub_vs,
-                                    OGL_PROGRAM_UB_PROPERTY_BO_ID,
-                                   &uber_ptr->ub_vs_bo_id);
-        ogl_program_ub_get_property(uber_ptr->ub_vs,
-                                    OGL_PROGRAM_UB_PROPERTY_BO_START_OFFSET,
-                                   &uber_ptr->ub_vs_bo_start_offset);
+                                    OGL_PROGRAM_UB_PROPERTY_BO,
+                                   &uber_ptr->ub_vs_bo);
     }
 
     /* Create internal representation of uber shader items */
@@ -2129,19 +2152,39 @@ PUBLIC void ogl_uber_rendering_render_mesh(mesh             mesh_gpu,
         /* Make sure the uniform buffer bindings are fine */
         if (uber_ptr->ub_fs != NULL)
         {
+            GLuint   ub_fs_bo_id           = 0;
+            uint32_t ub_fs_bo_start_offset = -1;
+
+            raGL_buffer_get_property(uber_ptr->ub_fs_bo,
+                                     RAGL_BUFFER_PROPERTY_ID,
+                                    &ub_fs_bo_id);
+            raGL_buffer_get_property(uber_ptr->ub_fs_bo,
+                                     RAGL_BUFFER_PROPERTY_START_OFFSET,
+                                    &ub_fs_bo_start_offset);
+
             entry_points->pGLBindBufferRange(GL_UNIFORM_BUFFER,
                                              FRAGMENT_SHADER_PROPERTIES_UBO_BINDING_ID,
-                                             uber_ptr->ub_fs_bo_id,
-                                             uber_ptr->ub_fs_bo_start_offset,
+                                             ub_fs_bo_id,
+                                             ub_fs_bo_start_offset,
                                              uber_ptr->ub_fs_bo_size);
         }
 
         if (uber_ptr->ub_vs != NULL)
         {
+            GLuint   ub_vs_bo_id           = 0;
+            uint32_t ub_vs_bo_start_offset = -1;
+
+            raGL_buffer_get_property(uber_ptr->ub_vs_bo,
+                                     RAGL_BUFFER_PROPERTY_ID,
+                                    &ub_vs_bo_id);
+            raGL_buffer_get_property(uber_ptr->ub_vs_bo,
+                                     RAGL_BUFFER_PROPERTY_START_OFFSET,
+                                    &ub_vs_bo_start_offset);
+
             entry_points->pGLBindBufferRange(GL_UNIFORM_BUFFER,
                                              VERTEX_SHADER_PROPERTIES_UBO_BINDING_ID,
-                                             uber_ptr->ub_vs_bo_id,
-                                             uber_ptr->ub_vs_bo_start_offset,
+                                             ub_vs_bo_id,
+                                             ub_vs_bo_start_offset,
                                              uber_ptr->ub_vs_bo_size);
         }
 
@@ -2752,12 +2795,14 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void ogl_uber_rendering_start(ogl_uber
     }
 
     /* Configure uniform buffer bindings */
-    GLuint   fs_ub_bo_id           =  0;
-    GLuint   fs_ub_bo_start_offset = -1;
-    uint32_t fs_ub_size            =  0;
-    GLuint   vs_ub_bo_id           =  0;
-    GLuint   vs_ub_bo_start_offset = -1;
-    uint32_t vs_ub_size            =  0;
+    raGL_buffer fs_ub_bo              =  NULL;
+    GLuint      fs_ub_bo_id           =  0;
+    GLuint      fs_ub_bo_start_offset = -1;
+    uint32_t    fs_ub_size            =  0;
+    raGL_buffer vs_ub_bo              =  NULL;
+    GLuint      vs_ub_bo_id           =  0;
+    GLuint      vs_ub_bo_start_offset = -1;
+    uint32_t    vs_ub_size            =  0;
 
     if (uber_ptr->ub_fs != NULL)
     {
@@ -2765,14 +2810,18 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void ogl_uber_rendering_start(ogl_uber
                                     OGL_PROGRAM_UB_PROPERTY_BLOCK_DATA_SIZE,
                                    &fs_ub_size);
         ogl_program_ub_get_property(uber_ptr->ub_fs,
-                                    OGL_PROGRAM_UB_PROPERTY_BO_ID,
-                                   &fs_ub_bo_id);
-        ogl_program_ub_get_property(uber_ptr->ub_fs,
-                                    OGL_PROGRAM_UB_PROPERTY_BO_START_OFFSET,
-                                   &fs_ub_bo_start_offset);
+                                    OGL_PROGRAM_UB_PROPERTY_BO,
+                                   &fs_ub_bo);
 
         if (fs_ub_size != 0)
         {
+            raGL_buffer_get_property(fs_ub_bo,
+                                     RAGL_BUFFER_PROPERTY_ID,
+                                    &fs_ub_bo_id);
+            raGL_buffer_get_property(fs_ub_bo,
+                                     RAGL_BUFFER_PROPERTY_START_OFFSET,
+                                    &fs_ub_bo_start_offset);
+
             entry_points->pGLBindBufferRange(GL_UNIFORM_BUFFER,
                                              FRAGMENT_SHADER_PROPERTIES_UBO_BINDING_ID,
                                              fs_ub_bo_id,
@@ -2787,14 +2836,18 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void ogl_uber_rendering_start(ogl_uber
                                     OGL_PROGRAM_UB_PROPERTY_BLOCK_DATA_SIZE,
                                    &vs_ub_size);
         ogl_program_ub_get_property(uber_ptr->ub_vs,
-                                    OGL_PROGRAM_UB_PROPERTY_BO_ID,
-                                   &vs_ub_bo_id);
-        ogl_program_ub_get_property(uber_ptr->ub_vs,
-                                    OGL_PROGRAM_UB_PROPERTY_BO_START_OFFSET,
-                                   &vs_ub_bo_start_offset);
+                                    OGL_PROGRAM_UB_PROPERTY_BO,
+                                   &vs_ub_bo);
 
         if (vs_ub_size != 0)
         {
+            raGL_buffer_get_property(vs_ub_bo,
+                                     RAGL_BUFFER_PROPERTY_ID,
+                                    &vs_ub_bo_id);
+            raGL_buffer_get_property(vs_ub_bo,
+                                     RAGL_BUFFER_PROPERTY_START_OFFSET,
+                                    &vs_ub_bo_start_offset);
+
             entry_points->pGLBindBufferRange(GL_UNIFORM_BUFFER,
                                              VERTEX_SHADER_PROPERTIES_UBO_BINDING_ID,
                                              vs_ub_bo_id,

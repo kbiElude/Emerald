@@ -17,6 +17,7 @@
 #include "ogl/ogl_program_ub.h"
 #include "ogl/ogl_shader.h"
 #include "ogl/ogl_texture.h"
+#include "raGL/raGL_buffer.h"
 
 
 #define DOWNSAMPLE_FACTOR (8)
@@ -34,10 +35,9 @@ GLuint                      _dof_scheuermann_vao_id                 = -1;
 /* Combination program */
 ogl_program                 _dof_scheuermann_combination_po                             = NULL;
 ogl_program_ub              _dof_scheuermann_combination_po_ub                          = NULL;
-GLuint                      _dof_scheuermann_combination_po_ub_bo_id                    =  0;
+raGL_buffer                 _dof_scheuermann_combination_po_ub_bo                       = NULL;
 GLuint                      _dof_scheuermann_combination_po_ub_max_coc_px_ub_offset     = -1;
 GLuint                      _dof_scheuermann_combination_po_ub_bo_size                  =  0;
-GLuint                      _dof_scheuermann_combination_po_ub_bo_start_offset          =  0;
 GLuint                      _dof_scheuermann_combination_po_bg_uniform_location         = -1;
 GLuint                      _dof_scheuermann_combination_po_data_high_uniform_location  = -1;
 GLuint                      _dof_scheuermann_combination_po_data_low_uniform_location   = -1;
@@ -140,10 +140,20 @@ static void _stage_step_dof_scheuermann_combine_execute(ogl_context context,
     ogl_program_ub_sync(_dof_scheuermann_combination_po_ub);
 
     /* Go on */
+    GLuint   dof_scheuermann_combination_po_ub_bo_id           = 0;
+    uint32_t dof_scheuermann_combination_po_ub_bo_start_offset = -1;
+
+    raGL_buffer_get_property(_dof_scheuermann_combination_po_ub_bo,
+                             RAGL_BUFFER_PROPERTY_ID,
+                             &dof_scheuermann_combination_po_ub_bo_id);
+    raGL_buffer_get_property(_dof_scheuermann_combination_po_ub_bo,
+                             RAGL_BUFFER_PROPERTY_START_OFFSET,
+                             &dof_scheuermann_combination_po_ub_bo_start_offset);
+
     entrypoints->pGLBindBufferRange(GL_UNIFORM_BUFFER,
                                     0, /* index */
-                                    _dof_scheuermann_combination_po_ub_bo_id,
-                                    _dof_scheuermann_combination_po_ub_bo_start_offset,
+                                     dof_scheuermann_combination_po_ub_bo_id,
+                                     dof_scheuermann_combination_po_ub_bo_start_offset,
                                     _dof_scheuermann_combination_po_ub_bo_size);
 
     entrypoints->pGLUseProgram(ogl_program_get_id(_dof_scheuermann_combination_po) );
@@ -397,11 +407,8 @@ PUBLIC void stage_step_dof_scheuermann_init(ogl_context  context,
                                 OGL_PROGRAM_UB_PROPERTY_BLOCK_DATA_SIZE,
                                &_dof_scheuermann_combination_po_ub_bo_size);
     ogl_program_ub_get_property(_dof_scheuermann_combination_po_ub,
-                                OGL_PROGRAM_UB_PROPERTY_BO_ID,
-                               &_dof_scheuermann_combination_po_ub_bo_id);
-    ogl_program_ub_get_property(_dof_scheuermann_combination_po_ub,
-                                OGL_PROGRAM_UB_PROPERTY_BO_START_OFFSET,
-                               &_dof_scheuermann_combination_po_ub_bo_start_offset);
+                                OGL_PROGRAM_UB_PROPERTY_BO,
+                               &_dof_scheuermann_combination_po_ub_bo);
 
     /* Retrieve combination program uniform locations */
     const ogl_program_variable* bg_uniform_descriptor         = NULL;

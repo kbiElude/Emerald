@@ -21,6 +21,7 @@
 #include "ogl/ogl_shader.h"
 #include "ogl/ogl_text.h"
 #include "ogl/ogl_types.h"
+#include "raGL/raGL_buffer.h"
 #include "shaders/shaders_vertex_combinedmvp_simplified_twopoint.h"
 #include "shaders/shaders_vertex_fullscreen.h"
 #include "system/system_assertions.h"
@@ -107,14 +108,12 @@ typedef struct
     GLuint         static_color_program_color_ub_offset;
     GLuint         static_color_program_mvp_ub_offset;
     ogl_program_ub static_color_program_ub_fs;
-    GLuint         static_color_program_ub_fs_bo_id;
+    raGL_buffer    static_color_program_ub_fs_bo;
     GLuint         static_color_program_ub_fs_bo_size;
-    GLuint         static_color_program_ub_fs_bo_start_offset;
     GLuint         static_color_program_ub_fs_bp;
     ogl_program_ub static_color_program_ub_vs;
-    GLuint         static_color_program_ub_vs_bo_id;
+    raGL_buffer    static_color_program_ub_vs_bo;
     GLuint         static_color_program_ub_vs_bo_size;
-    GLuint         static_color_program_ub_vs_bo_start_offset;
     GLuint         static_color_program_ub_vs_bp;
 
     float                     max_screen_height;
@@ -832,7 +831,7 @@ PRIVATE void _curve_editor_curve_window_renderer_draw_curve_background(ogl_conte
     text_position[0]   = segment_start_x_ss;
     text_position[1]   = 0;
 
-    if (*n_text_strings_used_ptr < descriptor_ptr->n_text_strings)
+    if (*n_text_strings_used_ptr < (int) descriptor_ptr->n_text_strings)
     {
         ogl_text_set                     (descriptor_ptr->text_renderer,
                                           *n_text_strings_used_ptr,
@@ -1804,47 +1803,45 @@ PRIVATE void _curve_editor_curve_window_renderer_init_descriptor(     _curve_edi
                                                                   curve_container                      curve,
                                                                   curve_editor_curve_window            owner)
 {
-    descriptor->context                                    = NULL;
-    descriptor->curve                                      = curve;
-    descriptor->float_variant                              = system_variant_create(SYSTEM_VARIANT_FLOAT);
-    descriptor->hovered_curve_segment_id                   = -1;
-    descriptor->is_left_button_down                        = false;
-    descriptor->max_screen_height                          = MAX_SCREEN_HEIGHT_DEFAULT;
-    descriptor->max_screen_width                           = MAX_SCREEN_WIDTH_DEFAULT;
-    descriptor->mouse_x                                    = 0;
-    descriptor->mouse_y                                    = 0;
-    descriptor->name                                       = name;
-    descriptor->nodemove_mode_active                       = false;
-    descriptor->nodemove_node_id                           = -1;
-    descriptor->nodemove_segment_id                        = 0;
-    descriptor->n_text_strings                             = 0;
-    descriptor->owner                                      = owner;
-    descriptor->quadselector_mode_active                   = false;
-    descriptor->segmentmove_mode_active                    = false;
-    descriptor->segmentresize_mode_active                  = false;
-    descriptor->selected_node_id                           = -1;
-    descriptor->selected_segment_id                        = -1;
-    descriptor->static_color_program_a_ub_offset           = -1;
-    descriptor->static_color_program_b_ub_offset           = -1;
-    descriptor->static_color_program_color_ub_offset       = -1;
-    descriptor->static_color_program_mvp_ub_offset         = -1;
-    descriptor->static_color_program_ub_fs                 = NULL;
-    descriptor->static_color_program_ub_fs_bo_id           = 0;
-    descriptor->static_color_program_ub_fs_bo_size         = 0;
-    descriptor->static_color_program_ub_fs_bo_start_offset = 0;
-    descriptor->static_color_program_ub_vs                 = NULL;
-    descriptor->static_color_program_ub_vs_bo_id           = 0;
-    descriptor->static_color_program_ub_vs_bo_size         = 0;
-    descriptor->static_color_program_ub_vs_bo_start_offset = 0;
-    descriptor->tcb_segments                               = system_hash64map_create(sizeof(void*) );
-    descriptor->text_renderer                              = NULL;
-    descriptor->text_variant                               = system_variant_create(SYSTEM_VARIANT_ANSI_STRING);
-    descriptor->view_window_handle                         = view_window_handle;
-    descriptor->window                                     = NULL;
-    descriptor->x1                                         = START_X1;
-    descriptor->x_width                                    = START_X_WIDTH;
-    descriptor->y1                                         = START_Y1;
-    descriptor->y_height                                   = START_Y_HEIGHT;
+    descriptor->context                              = NULL;
+    descriptor->curve                                = curve;
+    descriptor->float_variant                        = system_variant_create(SYSTEM_VARIANT_FLOAT);
+    descriptor->hovered_curve_segment_id             = -1;
+    descriptor->is_left_button_down                  = false;
+    descriptor->max_screen_height                    = MAX_SCREEN_HEIGHT_DEFAULT;
+    descriptor->max_screen_width                     = MAX_SCREEN_WIDTH_DEFAULT;
+    descriptor->mouse_x                              = 0;
+    descriptor->mouse_y                              = 0;
+    descriptor->name                                 = name;
+    descriptor->nodemove_mode_active                 = false;
+    descriptor->nodemove_node_id                     = -1;
+    descriptor->nodemove_segment_id                  = 0;
+    descriptor->n_text_strings                       = 0;
+    descriptor->owner                                = owner;
+    descriptor->quadselector_mode_active             = false;
+    descriptor->segmentmove_mode_active              = false;
+    descriptor->segmentresize_mode_active            = false;
+    descriptor->selected_node_id                     = -1;
+    descriptor->selected_segment_id                  = -1;
+    descriptor->static_color_program_a_ub_offset     = -1;
+    descriptor->static_color_program_b_ub_offset     = -1;
+    descriptor->static_color_program_color_ub_offset = -1;
+    descriptor->static_color_program_mvp_ub_offset   = -1;
+    descriptor->static_color_program_ub_fs           = NULL;
+    descriptor->static_color_program_ub_fs_bo        = NULL;
+    descriptor->static_color_program_ub_fs_bo_size   = 0;
+    descriptor->static_color_program_ub_vs           = NULL;
+    descriptor->static_color_program_ub_vs_bo        = NULL;
+    descriptor->static_color_program_ub_vs_bo_size   = 0;
+    descriptor->tcb_segments                         = system_hash64map_create(sizeof(void*) );
+    descriptor->text_renderer                        = NULL;
+    descriptor->text_variant                         = system_variant_create(SYSTEM_VARIANT_ANSI_STRING);
+    descriptor->view_window_handle                   = view_window_handle;
+    descriptor->window                               = NULL;
+    descriptor->x1                                   = START_X1;
+    descriptor->x_width                              = START_X_WIDTH;
+    descriptor->y1                                   = START_Y1;
+    descriptor->y_height                             = START_Y_HEIGHT;
 }
 
 /** TODO */
@@ -1995,7 +1992,7 @@ PRIVATE void _curve_editor_curve_window_renderer_init_globals(ogl_context contex
         system_time_get_msec_for_time(end_time - start_time,
                                      &execution_time_msec);
 
-        LOG_INFO("Time to initialize curve window renderer: %d ms",
+        LOG_INFO("Time to initialize curve window renderer: %u ms",
                  execution_time_msec);
 
         /* Mark initialization as done */
@@ -2926,11 +2923,8 @@ PRIVATE void _curve_editor_curve_window_renderer_rendering_callback_handler(ogl_
                                     OGL_PROGRAM_UB_PROPERTY_BLOCK_DATA_SIZE,
                                    &descriptor_ptr->static_color_program_ub_fs_bo_size);
         ogl_program_ub_get_property(descriptor_ptr->static_color_program_ub_fs,
-                                    OGL_PROGRAM_UB_PROPERTY_BO_ID,
-                                   &descriptor_ptr->static_color_program_ub_fs_bo_id);
-        ogl_program_ub_get_property(descriptor_ptr->static_color_program_ub_fs,
-                                    OGL_PROGRAM_UB_PROPERTY_BO_START_OFFSET,
-                                   &descriptor_ptr->static_color_program_ub_fs_bo_start_offset);
+                                    OGL_PROGRAM_UB_PROPERTY_BO,
+                                   &descriptor_ptr->static_color_program_ub_fs_bo);
         ogl_program_ub_get_property(descriptor_ptr->static_color_program_ub_fs,
                                     OGL_PROGRAM_UB_PROPERTY_INDEXED_BP,
                                    &descriptor_ptr->static_color_program_ub_fs_bp);
@@ -2939,11 +2933,8 @@ PRIVATE void _curve_editor_curve_window_renderer_rendering_callback_handler(ogl_
                                     OGL_PROGRAM_UB_PROPERTY_BLOCK_DATA_SIZE,
                                    &descriptor_ptr->static_color_program_ub_vs_bo_size);
         ogl_program_ub_get_property(descriptor_ptr->static_color_program_ub_vs,
-                                    OGL_PROGRAM_UB_PROPERTY_BO_ID,
-                                   &descriptor_ptr->static_color_program_ub_vs_bo_id);
-        ogl_program_ub_get_property(descriptor_ptr->static_color_program_ub_vs,
-                                    OGL_PROGRAM_UB_PROPERTY_BO_START_OFFSET,
-                                   &descriptor_ptr->static_color_program_ub_vs_bo_start_offset);
+                                    OGL_PROGRAM_UB_PROPERTY_BO,
+                                   &descriptor_ptr->static_color_program_ub_vs_bo);
         ogl_program_ub_get_property(descriptor_ptr->static_color_program_ub_vs,
                                     OGL_PROGRAM_UB_PROPERTY_INDEXED_BP,
                                    &descriptor_ptr->static_color_program_ub_vs_bp);
@@ -2995,15 +2986,33 @@ PRIVATE void _curve_editor_curve_window_renderer_rendering_callback_handler(ogl_
                                     4);
 
         /* Set up uniform buffers */
+        GLuint   static_color_program_ub_fs_bo_id           = 0;
+        uint32_t static_color_program_ub_fs_bo_start_offset = -1;
+        GLuint   static_color_program_ub_vs_bo_id           = 0;
+        uint32_t static_color_program_ub_vs_bo_start_offset = -1;
+
+        raGL_buffer_get_property(descriptor_ptr->static_color_program_ub_fs_bo,
+                                 RAGL_BUFFER_PROPERTY_ID,
+                                &static_color_program_ub_fs_bo_id);
+        raGL_buffer_get_property(descriptor_ptr->static_color_program_ub_fs_bo,
+                                 RAGL_BUFFER_PROPERTY_START_OFFSET,
+                                &static_color_program_ub_fs_bo_start_offset);
+        raGL_buffer_get_property(descriptor_ptr->static_color_program_ub_vs_bo,
+                                 RAGL_BUFFER_PROPERTY_ID,
+                                &static_color_program_ub_vs_bo_id);
+        raGL_buffer_get_property(descriptor_ptr->static_color_program_ub_vs_bo,
+                                 RAGL_BUFFER_PROPERTY_START_OFFSET,
+                                &static_color_program_ub_vs_bo_start_offset);
+
         entry_points->pGLBindBufferRange(GL_UNIFORM_BUFFER,
                                          descriptor_ptr->static_color_program_ub_fs_bp,
-                                         descriptor_ptr->static_color_program_ub_fs_bo_id,
-                                         descriptor_ptr->static_color_program_ub_fs_bo_start_offset,
+                                         static_color_program_ub_fs_bo_id,
+                                         static_color_program_ub_fs_bo_start_offset,
                                          descriptor_ptr->static_color_program_ub_fs_bo_size);
         entry_points->pGLBindBufferRange(GL_UNIFORM_BUFFER,
                                          descriptor_ptr->static_color_program_ub_vs_bp,
-                                         descriptor_ptr->static_color_program_ub_vs_bo_id,
-                                         descriptor_ptr->static_color_program_ub_vs_bo_start_offset,
+                                         static_color_program_ub_vs_bo_id,
+                                         static_color_program_ub_vs_bo_start_offset,
                                          descriptor_ptr->static_color_program_ub_vs_bo_size);
 
         /* Draw axes */
@@ -3202,7 +3211,7 @@ PRIVATE void _curve_editor_curve_window_renderer_rendering_callback_handler(ogl_
                 int text_position[] = {text_x,
                                        window_size[1] - separator_y_px_1 + (LENGTH_SEPARATORS_PX >> 1) + TEXT_SEPARATOR_DISTANCE_PX};
 
-                if (n_text_strings_used < descriptor_ptr->n_text_strings)
+                if (n_text_strings_used < (int) descriptor_ptr->n_text_strings)
                 {
                     ogl_text_set_text_string_property(descriptor_ptr->text_renderer,
                                                       n_text_strings_used,
@@ -3266,7 +3275,7 @@ PRIVATE void _curve_editor_curve_window_renderer_rendering_callback_handler(ogl_
                                         0,
                                         2);
 
-            if (n_text_strings_used < descriptor_ptr->n_text_strings)
+            if (n_text_strings_used < (int) descriptor_ptr->n_text_strings)
             {
                 /* Update text to be drawn */
                 char  buffer[32];
@@ -3347,7 +3356,7 @@ PRIVATE void _curve_editor_curve_window_renderer_rendering_callback_handler(ogl_
                   y_value,
                   system_hashed_ansi_string_get_buffer(curve_value) );
 
-        if (n_text_strings_used < descriptor_ptr->n_text_strings)
+        if (n_text_strings_used < (int) descriptor_ptr->n_text_strings)
         {
             ogl_text_set(descriptor_ptr->text_renderer,
                          n_text_strings_used,
@@ -3373,7 +3382,7 @@ PRIVATE void _curve_editor_curve_window_renderer_rendering_callback_handler(ogl_
 
         /* Not all strings might have landed because of insufficient space. If that was the case, allocate missing space
          * so that next frame will draw correctly */
-        if (n_text_strings_used > descriptor_ptr->n_text_strings)
+        if (n_text_strings_used > (int) descriptor_ptr->n_text_strings)
         {
             uint32_t n_missing_strings = n_text_strings_used - descriptor_ptr->n_text_strings;
 
@@ -3384,7 +3393,7 @@ PRIVATE void _curve_editor_curve_window_renderer_rendering_callback_handler(ogl_
                 ogl_text_add_string(descriptor_ptr->text_renderer);
             } /* for (uint32_t n = 0; n < n_missing_strings; ++n) */
 
-            LOG_FATAL("Added [%d] text strings to text renderer instance",
+            LOG_FATAL("Added [%u] text strings to text renderer instance",
                       n_missing_strings);
 
             descriptor_ptr->n_text_strings = n_text_strings_used;

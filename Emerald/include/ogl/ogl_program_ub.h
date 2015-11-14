@@ -26,11 +26,8 @@ typedef enum
     /* unsigned int */
     OGL_PROGRAM_UB_PROPERTY_BLOCK_DATA_SIZE,
 
-    /* GLuint */
-    OGL_PROGRAM_UB_PROPERTY_BO_ID,
-
-    /* GLuint */
-    OGL_PROGRAM_UB_PROPERTY_BO_START_OFFSET,
+    /* raGL_buffer */
+    OGL_PROGRAM_UB_PROPERTY_BO,
 
     /* GLuint */
     OGL_PROGRAM_UB_PROPERTY_INDEX,

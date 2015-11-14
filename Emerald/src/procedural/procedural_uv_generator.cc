@@ -5,7 +5,6 @@
  */
 #include "shared.h"
 #include "mesh/mesh.h"
-#include "ogl/ogl_buffers.h"
 #include "ogl/ogl_context.h"
 #include "ogl/ogl_program.h"
 #include "ogl/ogl_program_ssb.h"
@@ -13,6 +12,7 @@
 #include "ogl/ogl_programs.h"
 #include "ogl/ogl_shader.h"
 #include "procedural/procedural_uv_generator.h"
+#include "raGL/raGL_buffers.h"
 #include "system/system_assertions.h"
 #include "system/system_hashed_ansi_string.h"
 #include "system/system_log.h"
@@ -32,15 +32,13 @@ typedef struct _procedural_uv_generator
     ogl_program_ub  input_params_ub;
     GLint           input_params_ub_arg1_block_offset;
     GLint           input_params_ub_arg2_block_offset;
-    GLuint          input_params_ub_bo_id;
+    raGL_buffer     input_params_ub_bo;
     unsigned int    input_params_ub_bo_size;
-    unsigned int    input_params_ub_bo_start_offset;
     GLuint          input_params_ub_indexed_bp;
     GLint           input_params_ub_item_data_stride_block_offset;
     GLint           input_params_ub_start_offset_block_offset;
     ogl_program_ub  n_items_ub;
-    GLuint          n_items_ub_bo_id;
-    unsigned int    n_items_ub_bo_start_offset;
+    raGL_buffer     n_items_ub_bo;
     GLuint          n_items_ub_indexed_bp;
     ogl_program_ssb output_data_ssb;
     GLuint          output_data_ssb_indexed_bp;
@@ -63,9 +61,8 @@ typedef struct _procedural_uv_generator_object
 {
     procedural_uv_generator_object_id object_id;
 
-    unsigned int uv_bo_id;
+    raGL_buffer  uv_bo;
     unsigned int uv_bo_size;
-    unsigned int uv_bo_start_offset;
 
     mesh          owned_mesh;
     mesh_layer_id owned_mesh_layer_id;
@@ -105,7 +102,7 @@ REFCOUNT_INSERT_IMPLEMENTATION(procedural_uv_generator,
 _procedural_uv_generator::_procedural_uv_generator(ogl_context                  in_context,
                                                    procedural_uv_generator_type in_type)
 {
-    ogl_buffers  buffers             = NULL;
+    raGL_buffers buffers             = NULL;
     unsigned int texcoords_data_size = 0;
 
     /* Perform actual initialization. */
@@ -117,15 +114,13 @@ _procedural_uv_generator::_procedural_uv_generator(ogl_context                  
     input_params_ub                               = NULL;
     input_params_ub_arg1_block_offset             = -1;
     input_params_ub_arg2_block_offset             = -1;
-    input_params_ub_bo_id                         = 0;
+    input_params_ub_bo                            = NULL;
     input_params_ub_bo_size                       = 0;
-    input_params_ub_bo_start_offset               = -1;
     input_params_ub_indexed_bp                    = -1;
     input_params_ub_item_data_stride_block_offset = -1;
     input_params_ub_start_offset_block_offset     = -1;
     n_items_ub                                    = NULL;
-    n_items_ub_bo_id                              = 0;
-    n_items_ub_bo_start_offset                    = -1;
+    n_items_ub_bo                                 = NULL;
     n_items_ub_indexed_bp                         = 0;
     objects                                       = system_resizable_vector_create(4 /* capacity */);
     output_data_ssb                               = NULL;
@@ -157,13 +152,12 @@ _procedural_uv_generator_object::_procedural_uv_generator_object(_procedural_uv_
                       "Input owning generator is NULL");
 
     /* Fill the descriptor */
-    object_id            =  in_object_id;
-    owned_mesh           =  in_owned_mesh;
-    owned_mesh_layer_id  =  in_owned_mesh_layer_id;
-    owning_generator_ptr =  in_owning_generator_ptr;
-    uv_bo_id             =  0;
-    uv_bo_size           =  0;
-    uv_bo_start_offset   = -1;
+    object_id            = in_object_id;
+    owned_mesh           = in_owned_mesh;
+    owned_mesh_layer_id  = in_owned_mesh_layer_id;
+    owning_generator_ptr = in_owning_generator_ptr;
+    uv_bo                = NULL;
+    uv_bo_size           = 0;
 
     /* Retain the object, so that it never gets released while we use it */
     mesh_retain(in_owned_mesh);
@@ -230,20 +224,18 @@ _procedural_uv_generator_object::~_procedural_uv_generator_object()
     }
 
     /* Release buffer memory allocated to hold the texcoords data */
-    if (uv_bo_id != 0)
+    if (uv_bo != NULL)
     {
-        ogl_buffers buffers = NULL;
+        raGL_buffers buffers = NULL;
 
         ogl_context_get_property(owning_generator_ptr->context,
-                                 OGL_CONTEXT_PROPERTY_BUFFERS,
+                                 OGL_CONTEXT_PROPERTY_BUFFERS_RAGL,
                                 &buffers);
 
-        ogl_buffers_free_buffer_memory(buffers,
-                                       uv_bo_id,
-                                       uv_bo_start_offset);
+        raGL_buffers_free_buffer_memory(buffers,
+                                        uv_bo);
 
-        uv_bo_id           =  0;
-        uv_bo_start_offset = -1;
+        uv_bo = NULL;
     }
 }
 
@@ -573,11 +565,8 @@ PRIVATE void _procedural_uv_generator_init_generator_po(_procedural_uv_generator
                       "Could not retrieve inputParams uniform block instance");
 
     ogl_program_ub_get_property(generator_ptr->input_params_ub,
-                                OGL_PROGRAM_UB_PROPERTY_BO_ID,
-                               &generator_ptr->input_params_ub_bo_id);
-    ogl_program_ub_get_property(generator_ptr->input_params_ub,
-                                OGL_PROGRAM_UB_PROPERTY_BO_START_OFFSET,
-                               &generator_ptr->input_params_ub_bo_start_offset);
+                                OGL_PROGRAM_UB_PROPERTY_BO,
+                               &generator_ptr->input_params_ub_bo);
     ogl_program_ub_get_property(generator_ptr->input_params_ub,
                                 OGL_PROGRAM_UB_PROPERTY_BLOCK_DATA_SIZE,
                                &generator_ptr->input_params_ub_bo_size);
@@ -594,11 +583,8 @@ PRIVATE void _procedural_uv_generator_init_generator_po(_procedural_uv_generator
                       "Could not retrieve nItemsBlock uniform block instance");
 
     ogl_program_ub_get_property(generator_ptr->n_items_ub,
-                                OGL_PROGRAM_UB_PROPERTY_BO_ID,
-                               &generator_ptr->n_items_ub_bo_id);
-    ogl_program_ub_get_property(generator_ptr->n_items_ub,
-                                OGL_PROGRAM_UB_PROPERTY_BO_START_OFFSET,
-                               &generator_ptr->n_items_ub_bo_start_offset);
+                                OGL_PROGRAM_UB_PROPERTY_BO,
+                               &generator_ptr->n_items_ub_bo);
     ogl_program_ub_get_property(generator_ptr->n_items_ub,
                                 OGL_PROGRAM_UB_PROPERTY_INDEXED_BP,
                                &generator_ptr->n_items_ub_indexed_bp);
@@ -691,7 +677,7 @@ PRIVATE void _procedural_uv_generator_run_po(_procedural_uv_generator*        ge
 {
     const ogl_context_gl_entrypoints* entrypoints_ptr                        = NULL;
     unsigned int                      global_wg_size[3];
-    GLuint                            item_data_bo_id                        = 0;
+    raGL_buffer                       item_data_bo                           = 0;
     unsigned int                      item_data_bo_size                      = 0;
     unsigned int                      item_data_bo_start_offset              = 0;
     unsigned int                      item_data_bo_stride                    = 0;
@@ -700,9 +686,7 @@ PRIVATE void _procedural_uv_generator_run_po(_procedural_uv_generator*        ge
     int                               item_data_offset_adjustment_div_4      = 0;
     unsigned int                      item_data_bo_start_offset_ssbo_aligned = 0;
     const ogl_context_gl_limits*      limits_ptr                             = NULL;
-    GLuint                            n_items_bo_id                          = 0;
     bool                              n_items_bo_requires_memory_barrier     = false;
-    unsigned int                      n_items_bo_start_offset                = 0;
     mesh_layer_data_stream_source     n_items_source                         = MESH_LAYER_DATA_STREAM_SOURCE_UNDEFINED;
     mesh_layer_data_stream_type       source_item_data_stream_type           = MESH_LAYER_DATA_STREAM_TYPE_UNKNOWN;
 
@@ -752,21 +736,27 @@ PRIVATE void _procedural_uv_generator_run_po(_procedural_uv_generator*        ge
     {
         case MESH_LAYER_DATA_STREAM_SOURCE_BUFFER_MEMORY:
         {
+            raGL_buffer n_items_bo              = NULL;
+            GLuint      n_items_bo_id           = 0;
+            uint32_t    n_items_bo_start_offset = -1;
+
             mesh_get_layer_data_stream_property(object_ptr->owned_mesh,
                                                 object_ptr->owned_mesh_layer_id,
                                                 source_item_data_stream_type,
-                                                MESH_LAYER_DATA_STREAM_PROPERTY_N_ITEMS_BO_ID,
-                                               &n_items_bo_id);
-            mesh_get_layer_data_stream_property(object_ptr->owned_mesh,
-                                                object_ptr->owned_mesh_layer_id,
-                                                source_item_data_stream_type,
-                                                MESH_LAYER_DATA_STREAM_PROPERTY_N_ITEMS_BO_START_OFFSET,
-                                               &n_items_bo_start_offset);
+                                                MESH_LAYER_DATA_STREAM_PROPERTY_N_ITEMS_BO,
+                                               &n_items_bo);
             mesh_get_layer_data_stream_property(object_ptr->owned_mesh,
                                                 object_ptr->owned_mesh_layer_id,
                                                 source_item_data_stream_type,
                                                 MESH_LAYER_DATA_STREAM_PROPERTY_N_ITEMS_BO_READ_REQUIRES_MEMORY_BARRIER,
                                                &n_items_bo_requires_memory_barrier);
+
+            raGL_buffer_get_property(n_items_bo,
+                                     RAGL_BUFFER_PROPERTY_ID,
+                                    &n_items_bo_id);
+            raGL_buffer_get_property(n_items_bo,
+                                     RAGL_BUFFER_PROPERTY_START_OFFSET,
+                                    &n_items_bo_start_offset);
 
             entrypoints_ptr->pGLBindBufferRange(GL_UNIFORM_BUFFER,
                                                 generator_ptr->n_items_ub_indexed_bp,
@@ -795,8 +785,8 @@ PRIVATE void _procedural_uv_generator_run_po(_procedural_uv_generator*        ge
     mesh_get_layer_data_stream_property(object_ptr->owned_mesh,
                                         object_ptr->owned_mesh_layer_id,
                                         source_item_data_stream_type,
-                                        MESH_LAYER_DATA_STREAM_PROPERTY_GL_BO_ID,
-                                       &item_data_bo_id);
+                                        MESH_LAYER_DATA_STREAM_PROPERTY_GL_BO,
+                                       &item_data_bo);
     mesh_get_layer_data_stream_property(object_ptr->owned_mesh,
                                         object_ptr->owned_mesh_layer_id,
                                         source_item_data_stream_type,
@@ -813,8 +803,8 @@ PRIVATE void _procedural_uv_generator_run_po(_procedural_uv_generator*        ge
                                         MESH_LAYER_DATA_STREAM_PROPERTY_START_OFFSET,
                                        &item_data_bo_start_offset);
 
-    ASSERT_DEBUG_SYNC(item_data_bo_id != 0,
-                      "Invalid item data BO ID defined for the object.");
+    ASSERT_DEBUG_SYNC(item_data_bo != NULL,
+                      "Invalid item data BO defined for the object.");
 
     /* NOTE: Item data may not start at the alignment boundary needed for SSBOs. Adjust the offset
      *       we pass to the UB, so that the requirement is met.
@@ -861,10 +851,20 @@ PRIVATE void _procedural_uv_generator_run_po(_procedural_uv_generator*        ge
 
     ogl_program_ub_sync(generator_ptr->input_params_ub);
 
+    GLuint   input_params_ub_bo_id           = 0;
+    uint32_t input_params_ub_bo_start_offset = -1;
+
+    raGL_buffer_get_property(generator_ptr->input_params_ub_bo,
+                             RAGL_BUFFER_PROPERTY_ID,
+                            &input_params_ub_bo_id);
+    raGL_buffer_get_property(generator_ptr->input_params_ub_bo,
+                             RAGL_BUFFER_PROPERTY_START_OFFSET,
+                            &input_params_ub_bo_start_offset);
+
     entrypoints_ptr->pGLBindBufferRange(GL_UNIFORM_BUFFER,
                                         generator_ptr->input_params_ub_indexed_bp,
-                                        generator_ptr->input_params_ub_bo_id,
-                                        generator_ptr->input_params_ub_bo_start_offset,
+                                        input_params_ub_bo_id,
+                                        input_params_ub_bo_start_offset,
                                         generator_ptr->input_params_ub_bo_size);
 
     if (n_items_bo_requires_memory_barrier)
@@ -873,6 +873,20 @@ PRIVATE void _procedural_uv_generator_run_po(_procedural_uv_generator*        ge
     }
 
     /* Set up SSB bindings. */
+    GLuint   item_data_bo_id    = 0;
+    GLuint   uv_bo_id           = 0;
+    uint32_t uv_bo_start_offset = -1;
+
+    raGL_buffer_get_property(item_data_bo,
+                             RAGL_BUFFER_PROPERTY_ID,
+                            &item_data_bo_id);
+    raGL_buffer_get_property(object_ptr->uv_bo,
+                             RAGL_BUFFER_PROPERTY_ID,
+                            &uv_bo_id);
+    raGL_buffer_get_property(object_ptr->uv_bo,
+                             RAGL_BUFFER_PROPERTY_START_OFFSET,
+                            &uv_bo_start_offset);
+
     entrypoints_ptr->pGLBindBufferRange(GL_SHADER_STORAGE_BUFFER,
                                         generator_ptr->input_data_ssb_indexed_bp,
                                         item_data_bo_id,
@@ -880,8 +894,8 @@ PRIVATE void _procedural_uv_generator_run_po(_procedural_uv_generator*        ge
                                         item_data_bo_size + item_data_offset_adjustment); /* size */
     entrypoints_ptr->pGLBindBufferRange(GL_SHADER_STORAGE_BUFFER,
                                         generator_ptr->output_data_ssb_indexed_bp,
-                                        object_ptr->uv_bo_id,
-                                        object_ptr->uv_bo_start_offset,
+                                        uv_bo_id,
+                                        uv_bo_start_offset,
                                         object_ptr->uv_bo_size);
 
     /* Issue the dispatch call */
@@ -992,7 +1006,7 @@ PUBLIC EMERALD_API procedural_uv_generator_object_id procedural_uv_generator_add
                                                                                       mesh                    in_mesh,
                                                                                       mesh_layer_id           in_mesh_layer_id)
 {
-    ogl_buffers                       buffers               = NULL;
+    raGL_buffers                      buffers               = NULL;
     _procedural_uv_generator*         generator_ptr         = (_procedural_uv_generator*) in_generator;
     mesh_layer_data_stream_type       item_data_stream_type = MESH_LAYER_DATA_STREAM_TYPE_UNKNOWN;
     _procedural_uv_generator_object*  new_object_ptr       = NULL;
@@ -1035,8 +1049,7 @@ PUBLIC EMERALD_API procedural_uv_generator_object_id procedural_uv_generator_add
                                                   in_mesh_layer_id,
                                                   MESH_LAYER_DATA_STREAM_TYPE_TEXCOORDS,
                                                   2,                 /* n_components */
-                                                  0,                 /* bo_id */
-                                                 -1,                 /* bo_start_offset */
+                                                  NULL,              /* bo */
                                                   sizeof(float) * 2, /* bo_stride */
                                                   0);                /* bo_size */
 
@@ -1071,7 +1084,7 @@ PUBLIC EMERALD_API bool procedural_uv_generator_alloc_result_buffer_memory(proce
                                                                            procedural_uv_generator_object_id in_object_id,
                                                                            uint32_t                          n_bytes_to_preallocate)
 {
-    ogl_buffers                      buffers                          = NULL;
+    raGL_buffers                     buffers                          = NULL;
     _procedural_uv_generator*        generator_ptr                    = (_procedural_uv_generator*) in_generator;
     const ogl_context_gl_limits*     limits_ptr                       = NULL;
     GLuint                           n_items_bo_id                    = 0;
@@ -1101,34 +1114,36 @@ PUBLIC EMERALD_API bool procedural_uv_generator_alloc_result_buffer_memory(proce
 
     /* If a buffer memory is already allocated for the UV generator object, dealloc it before continuing */
     ogl_context_get_property(generator_ptr->context,
-                             OGL_CONTEXT_PROPERTY_BUFFERS,
+                             OGL_CONTEXT_PROPERTY_BUFFERS_RAGL,
                             &buffers);
 
-    if (object_ptr->uv_bo_id != 0)
+    if (object_ptr->uv_bo != NULL)
     {
-        ogl_buffers_free_buffer_memory(buffers,
-                                       object_ptr->uv_bo_id,
-                                       object_ptr->uv_bo_start_offset);
+        raGL_buffers_free_buffer_memory(buffers,
+                                        object_ptr->uv_bo);
 
-        object_ptr->uv_bo_id           = 0;
-        object_ptr->uv_bo_size         = 0;
-        object_ptr->uv_bo_start_offset = 0;
+        object_ptr->uv_bo      = NULL;
+        object_ptr->uv_bo_size = 0;
     }
 
     /* Allocate a new buffer for the result data storage. */
+    ral_buffer_create_info uv_bo_create_info;
+
     ogl_context_get_property(generator_ptr->context,
                              OGL_CONTEXT_PROPERTY_LIMITS,
                             &limits_ptr);
 
-    if (!ogl_buffers_allocate_buffer_memory(buffers,
-                                            n_bytes_to_preallocate,
-                                            RAL_BUFFER_MAPPABILITY_NONE,
-                                            RAL_BUFFER_USAGE_SHADER_STORAGE_BUFFER_BIT |
-                                            RAL_BUFFER_USAGE_UNIFORM_BUFFER_BIT        |
-                                            RAL_BUFFER_USAGE_VERTEX_BUFFER_BIT,
-                                            RAL_BUFFER_PROPERTY_SPARSE_IF_AVAILABLE_BIT,
-                                           &object_ptr->uv_bo_id,
-                                           &object_ptr->uv_bo_start_offset) )
+    uv_bo_create_info.mappability_bits = RAL_BUFFER_MAPPABILITY_NONE;
+    uv_bo_create_info.property_bits    = RAL_BUFFER_PROPERTY_SPARSE_IF_AVAILABLE_BIT;
+    uv_bo_create_info.size             = n_bytes_to_preallocate;
+    uv_bo_create_info.usage_bits       = RAL_BUFFER_USAGE_SHADER_STORAGE_BUFFER_BIT |
+                                         RAL_BUFFER_USAGE_UNIFORM_BUFFER_BIT        |
+                                         RAL_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+    uv_bo_create_info.user_queue_bits  = 0xFFFFFFFF;
+
+    if (!raGL_buffers_allocate_buffer_memory_for_ral_buffer_create_info(buffers,
+                                                                       &uv_bo_create_info,
+                                                                       &object_ptr->uv_bo) )
     {
         ASSERT_DEBUG_SYNC(false,
                           "Result buffer memory storage allocation failed");
@@ -1153,37 +1168,32 @@ PUBLIC EMERALD_API bool procedural_uv_generator_alloc_result_buffer_memory(proce
     ASSERT_DEBUG_SYNC(n_items_source == MESH_LAYER_DATA_STREAM_SOURCE_BUFFER_MEMORY,
                       "TODO: Support for client memory");
 
+    raGL_buffer n_items_bo = NULL;
+
     mesh_get_layer_data_stream_property(object_ptr->owned_mesh,
                                         object_ptr->owned_mesh_layer_id,
                                         source_item_data_stream_type,
-                                        MESH_LAYER_DATA_STREAM_PROPERTY_N_ITEMS_BO_ID,
-                                       &n_items_bo_id);
+                                        MESH_LAYER_DATA_STREAM_PROPERTY_N_ITEMS_BO,
+                                       &n_items_bo);
     mesh_get_layer_data_stream_property(object_ptr->owned_mesh,
                                         object_ptr->owned_mesh_layer_id,
                                         source_item_data_stream_type,
                                         MESH_LAYER_DATA_STREAM_PROPERTY_N_ITEMS_BO_READ_REQUIRES_MEMORY_BARRIER,
                                        &n_items_bo_read_reqs_mem_barrier);
-    mesh_get_layer_data_stream_property(object_ptr->owned_mesh,
-                                        object_ptr->owned_mesh_layer_id,
-                                        source_item_data_stream_type,
-                                        MESH_LAYER_DATA_STREAM_PROPERTY_N_ITEMS_BO_START_OFFSET,
-                                       &n_items_bo_start_offset);
 
     if (!mesh_set_layer_data_stream_property_with_buffer_memory(object_ptr->owned_mesh,
                                                                 object_ptr->owned_mesh_layer_id,
                                                                 MESH_LAYER_DATA_STREAM_TYPE_TEXCOORDS,
                                                                 MESH_LAYER_DATA_STREAM_PROPERTY_N_ITEMS,
-                                                                n_items_bo_id,
+                                                                n_items_bo,
                                                                 sizeof(unsigned int),
-                                                                n_items_bo_start_offset,
                                                                 n_items_bo_read_reqs_mem_barrier) ||
         !mesh_set_layer_data_stream_property_with_buffer_memory(object_ptr->owned_mesh,
                                                                 object_ptr->owned_mesh_layer_id,
                                                                 MESH_LAYER_DATA_STREAM_TYPE_TEXCOORDS,
-                                                                MESH_LAYER_DATA_STREAM_PROPERTY_GL_BO_ID,
-                                                                object_ptr->uv_bo_id,
+                                                                MESH_LAYER_DATA_STREAM_PROPERTY_GL_BO,
+                                                                object_ptr->uv_bo,
                                                                 n_bytes_to_preallocate,
-                                                                object_ptr->uv_bo_start_offset,
                                                                 true) /* does_read_require_memory_barrier */
                                                                 ) 
     {

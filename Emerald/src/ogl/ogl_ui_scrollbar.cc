@@ -12,6 +12,7 @@
 #include "ogl/ogl_ui.h"
 #include "ogl/ogl_ui_scrollbar.h"
 #include "ogl/ogl_ui_shared.h"
+#include "raGL/raGL_buffer.h"
 #include "system/system_assertions.h"
 #include "system/system_hashed_ansi_string.h"
 #include "system/system_log.h"
@@ -86,13 +87,11 @@ typedef struct
     GLint                          program_slider_is_handle_ub_offset;
     GLint                          program_slider_x1y1x2y2_ub_offset;
     ogl_program_ub                 program_slider_ub_fs;
-    GLint                          program_slider_ub_fs_bo_id;
+    raGL_buffer                    program_slider_ub_fs_bo;
     GLuint                         program_slider_ub_fs_bo_size;
-    GLuint                         program_slider_ub_fs_bo_start_offset;
     ogl_program_ub                 program_slider_ub_vs;
-    GLint                          program_slider_ub_vs_bo_id;
+    raGL_buffer                    program_slider_ub_vs_bo;
     GLuint                         program_slider_ub_vs_bo_size;
-    GLuint                         program_slider_ub_vs_bo_start_offset;
 
     system_variant                 min_value_variant;
     system_variant                 max_value_variant;
@@ -217,18 +216,11 @@ PRIVATE void _ogl_ui_scrollbar_init_renderer_callback(ogl_context context, void*
                                &scrollbar_ptr->program_slider_ub_vs_bo_size);
 
     ogl_program_ub_get_property(scrollbar_ptr->program_slider_ub_fs,
-                                OGL_PROGRAM_UB_PROPERTY_BO_ID,
-                               &scrollbar_ptr->program_slider_ub_fs_bo_id);
+                                OGL_PROGRAM_UB_PROPERTY_BO,
+                               &scrollbar_ptr->program_slider_ub_fs_bo);
     ogl_program_ub_get_property(scrollbar_ptr->program_slider_ub_vs,
-                                OGL_PROGRAM_UB_PROPERTY_BO_ID,
-                               &scrollbar_ptr->program_slider_ub_vs_bo_id);
-
-    ogl_program_ub_get_property(scrollbar_ptr->program_slider_ub_fs,
-                                OGL_PROGRAM_UB_PROPERTY_BO_START_OFFSET,
-                               &scrollbar_ptr->program_slider_ub_fs_bo_start_offset);
-    ogl_program_ub_get_property(scrollbar_ptr->program_slider_ub_vs,
-                                OGL_PROGRAM_UB_PROPERTY_BO_START_OFFSET,
-                               &scrollbar_ptr->program_slider_ub_vs_bo_start_offset);
+                                OGL_PROGRAM_UB_PROPERTY_BO,
+                               &scrollbar_ptr->program_slider_ub_vs_bo);
 
     ogl_program_ub_get_property(scrollbar_ptr->program_slider_ub_fs,
                                 OGL_PROGRAM_UB_PROPERTY_INDEX,
@@ -437,6 +429,24 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_ui_scrollbar_draw(void* internal_instance
         }
     }
 
+    GLuint   program_slider_ub_fs_bo_id           = 0;
+    uint32_t program_slider_ub_fs_bo_start_offset = -1;
+    GLuint   program_slider_ub_vs_bo_id           = 0;
+    uint32_t program_slider_ub_vs_bo_start_offset = -1;
+
+    raGL_buffer_get_property(scrollbar_ptr->program_slider_ub_fs_bo,
+                             RAGL_BUFFER_PROPERTY_ID,
+                            &program_slider_ub_fs_bo_id);
+    raGL_buffer_get_property(scrollbar_ptr->program_slider_ub_fs_bo,
+                             RAGL_BUFFER_PROPERTY_START_OFFSET,
+                            &program_slider_ub_fs_bo_start_offset);
+    raGL_buffer_get_property(scrollbar_ptr->program_slider_ub_vs_bo,
+                             RAGL_BUFFER_PROPERTY_ID,
+                            &program_slider_ub_vs_bo_id);
+    raGL_buffer_get_property(scrollbar_ptr->program_slider_ub_vs_bo,
+                             RAGL_BUFFER_PROPERTY_START_OFFSET,
+                            &program_slider_ub_vs_bo_start_offset);
+
     if (scrollbar_ptr->current_gpu_brightness_level != brightness ||
         scrollbar_ptr->force_gpu_brightness_update)
     {
@@ -459,13 +469,13 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_ui_scrollbar_draw(void* internal_instance
                                       GL_ONE_MINUS_SRC_ALPHA);
     scrollbar_ptr->pGLBindBufferRange(GL_UNIFORM_BUFFER,
                                       UB_DATAFS_BP,
-                                      scrollbar_ptr->program_slider_ub_fs_bo_id,
-                                      scrollbar_ptr->program_slider_ub_fs_bo_start_offset,
+                                      program_slider_ub_fs_bo_id,
+                                      program_slider_ub_fs_bo_start_offset,
                                       scrollbar_ptr->program_slider_ub_fs_bo_size);
     scrollbar_ptr->pGLBindBufferRange(GL_UNIFORM_BUFFER,
                                       UB_DATAVS_BP,
-                                      scrollbar_ptr->program_slider_ub_vs_bo_id,
-                                      scrollbar_ptr->program_slider_ub_vs_bo_start_offset,
+                                      program_slider_ub_vs_bo_id,
+                                      program_slider_ub_vs_bo_start_offset,
                                       scrollbar_ptr->program_slider_ub_vs_bo_size);
 
     {

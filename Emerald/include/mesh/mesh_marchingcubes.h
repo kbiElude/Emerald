@@ -8,6 +8,7 @@
 
 #include "ogl/ogl_types.h"
 #include "mesh/mesh_types.h"
+#include "raGL/raGL_buffer.h"
 
 REFCOUNT_INSERT_DECLARATIONS(mesh_marchingcubes,
                              mesh_marchingcubes)
@@ -21,14 +22,11 @@ typedef enum
     /* mesh; not settable. */
     MESH_MARCHINGCUBES_PROPERTY_MESH,
 
-    /* GLuint; settable. */
-    MESH_MARCHINGCUBES_PROPERTY_SCALAR_DATA_BO_ID,
+    /* raGL_buffer; settable. */
+    MESH_MARCHINGCUBES_PROPERTY_SCALAR_DATA_BO,
 
     /* unsigned int; settable. */
     MESH_MARCHINGCUBES_PROPERTY_SCALAR_DATA_BO_SIZE,
-
-    /* unsigned int; settable. */
-    MESH_MARCHINGCUBES_PROPERTY_SCALAR_DATA_BO_START_OFFSET,
 } mesh_marchingcubes_property;
 
 /** Instantiates a mesh_marchingcubes instance.
@@ -69,8 +67,7 @@ typedef enum
  * */
 PUBLIC EMERALD_API mesh_marchingcubes mesh_marchingcubes_create(ogl_context               context,
                                                                 const unsigned int*       grid_size_xyz,
-                                                                GLuint                    scalar_data_bo_id,
-                                                                GLuint                    scalar_data_bo_start_offset,
+                                                                raGL_buffer               scalar_data_bo,
                                                                 GLuint                    scalar_data_bo_size,
                                                                 float                     isolevel,
                                                                 scene_material            material,

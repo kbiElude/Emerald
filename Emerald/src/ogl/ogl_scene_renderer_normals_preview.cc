@@ -11,6 +11,7 @@
 #include "ogl/ogl_scene_renderer.h"
 #include "ogl/ogl_scene_renderer_normals_preview.h"
 #include "ogl/ogl_shader.h"
+#include "raGL/raGL_buffer.h"
 #include "scene/scene.h"
 #include "scene/scene_mesh.h"
 #include "system/system_matrix4x4.h"
@@ -98,14 +99,12 @@ typedef struct _ogl_scene_renderer_normals_preview
     GLint              preview_program_start_offsets_ub_offset;
     GLint              preview_program_stride_ub_offset;
     ogl_program_ub     preview_program_ub_gs;
-    GLuint             preview_program_ub_gs_bo_id;
+    raGL_buffer        preview_program_ub_gs_bo;
     unsigned int       preview_program_ub_gs_bo_size;
-    unsigned int       preview_program_ub_gs_bo_start_offset;
     GLuint             preview_program_ub_gs_ub_bp;
     ogl_program_ub     preview_program_ub_vs;
-    GLuint             preview_program_ub_vs_bo_id;
+    raGL_buffer        preview_program_ub_vs_bo;
     unsigned int       preview_program_ub_vs_bo_size;
-    unsigned int       preview_program_ub_vs_bo_start_offset;
     GLuint             preview_program_ub_vs_ub_bp;
     GLint              preview_program_vp_ub_offset;
 } _ogl_scene_renderer_normals_preview;
@@ -254,18 +253,11 @@ PRIVATE void _ogl_context_scene_renderer_normals_preview_init_preview_program(_o
                                &preview_ptr->preview_program_ub_vs_bo_size);
 
     ogl_program_ub_get_property(preview_ptr->preview_program_ub_gs,
-                                OGL_PROGRAM_UB_PROPERTY_BO_ID,
-                               &preview_ptr->preview_program_ub_gs_bo_id);
+                                OGL_PROGRAM_UB_PROPERTY_BO,
+                               &preview_ptr->preview_program_ub_gs_bo);
     ogl_program_ub_get_property(preview_ptr->preview_program_ub_vs,
-                                OGL_PROGRAM_UB_PROPERTY_BO_ID,
-                               &preview_ptr->preview_program_ub_vs_bo_id);
-
-    ogl_program_ub_get_property(preview_ptr->preview_program_ub_gs,
-                                OGL_PROGRAM_UB_PROPERTY_BO_START_OFFSET,
-                               &preview_ptr->preview_program_ub_gs_bo_start_offset);
-    ogl_program_ub_get_property(preview_ptr->preview_program_ub_vs,
-                                OGL_PROGRAM_UB_PROPERTY_BO_START_OFFSET,
-                               &preview_ptr->preview_program_ub_vs_bo_start_offset);
+                                OGL_PROGRAM_UB_PROPERTY_BO,
+                               &preview_ptr->preview_program_ub_vs_bo);
 
     ogl_program_ub_get_property(preview_ptr->preview_program_ub_gs,
                                 OGL_PROGRAM_UB_PROPERTY_INDEXED_BP,
@@ -375,9 +367,10 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_scene_renderer_normals_preview_render(ogl
                                                                              uint32_t                           mesh_id)
 {
     const ogl_context_gl_entrypoints*    entrypoints_ptr          = NULL;
+    raGL_buffer                          mesh_bo                  = NULL;
     GLuint                               mesh_bo_id               = 0;
     unsigned int                         mesh_bo_size             = 0;
-    unsigned int                         mesh_bo_start_offset     = -1;
+    uint32_t                             mesh_bo_start_offset     = -1;
     mesh                                 mesh_instance            = NULL;
     mesh_type                            mesh_instance_type;
     uint32_t                             mesh_start_offset_normal = -1;
@@ -412,11 +405,8 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_scene_renderer_normals_preview_render(ogl
 
     /* Retrieve start offsets & stride information */
     mesh_get_property(mesh_instance,
-                      MESH_PROPERTY_GL_BO_ID,
-                     &mesh_bo_id);
-    mesh_get_property(mesh_instance,
-                      MESH_PROPERTY_GL_BO_START_OFFSET,
-                     &mesh_bo_start_offset);
+                      MESH_PROPERTY_GL_BO,
+                     &mesh_bo);
     mesh_get_property(mesh_instance,
                       MESH_PROPERTY_GL_PROCESSED_DATA_SIZE,
                      &mesh_bo_size);
@@ -426,6 +416,13 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_scene_renderer_normals_preview_render(ogl
     mesh_get_property(mesh_instance,
                       MESH_PROPERTY_GL_TOTAL_ELEMENTS,
                      &mesh_total_elements);
+
+    raGL_buffer_get_property(mesh_bo,
+                             RAGL_BUFFER_PROPERTY_ID,
+                            &mesh_bo_id);
+    raGL_buffer_get_property(mesh_bo,
+                             RAGL_BUFFER_PROPERTY_START_OFFSET,
+                            &mesh_bo_start_offset);
 
     mesh_get_layer_data_stream_property(mesh_instance,
                                         0, /* layer_id - irrelevant for regular meshes */
@@ -516,15 +513,33 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_scene_renderer_normals_preview_start(ogl_
                                                 0, /* src_data_flags */
                                                 sizeof(float) * 16);
 
+    GLuint   preview_program_ub_gs_bo_id           = 0;
+    uint32_t preview_program_ub_gs_bo_start_offset = -1;
+    GLuint   preview_program_ub_vs_bo_id           = 0;
+    uint32_t preview_program_ub_vs_bo_start_offset = -1;
+
+    raGL_buffer_get_property(preview_ptr->preview_program_ub_gs_bo,
+                             RAGL_BUFFER_PROPERTY_ID,
+                            &preview_program_ub_gs_bo_id);
+    raGL_buffer_get_property(preview_ptr->preview_program_ub_gs_bo,
+                             RAGL_BUFFER_PROPERTY_START_OFFSET,
+                            &preview_program_ub_gs_bo_start_offset);
+    raGL_buffer_get_property(preview_ptr->preview_program_ub_vs_bo,
+                             RAGL_BUFFER_PROPERTY_ID,
+                            &preview_program_ub_vs_bo_id);
+    raGL_buffer_get_property(preview_ptr->preview_program_ub_vs_bo,
+                             RAGL_BUFFER_PROPERTY_START_OFFSET,
+                            &preview_program_ub_vs_bo_start_offset);
+
     entrypoints_ptr->pGLBindBufferRange(GL_UNIFORM_BUFFER,
                                         preview_ptr->preview_program_ub_gs_ub_bp,
-                                        preview_ptr->preview_program_ub_gs_bo_id,
-                                        preview_ptr->preview_program_ub_gs_bo_start_offset,
+                                        preview_program_ub_gs_bo_id,
+                                        preview_program_ub_gs_bo_start_offset,
                                         preview_ptr->preview_program_ub_gs_bo_size);
     entrypoints_ptr->pGLBindBufferRange(GL_UNIFORM_BUFFER,
                                         preview_ptr->preview_program_ub_vs_ub_bp,
-                                        preview_ptr->preview_program_ub_vs_bo_id,
-                                        preview_ptr->preview_program_ub_vs_bo_start_offset,
+                                        preview_program_ub_vs_bo_id,
+                                        preview_program_ub_vs_bo_start_offset,
                                         preview_ptr->preview_program_ub_vs_bo_size);
 
     entrypoints_ptr->pGLBindVertexArray(vao_id);

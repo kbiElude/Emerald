@@ -11,6 +11,7 @@
 #include "ogl/ogl_skybox.h"
 #include "ogl/ogl_texture.h"
 #include "object_manager/object_manager_general.h"
+#include "raGL/raGL_buffer.h"
 #include "shaders/shaders_embeddable_sh.h"
 #include "system/system_assertions.h"
 #include "system/system_hashed_ansi_string.h"
@@ -115,9 +116,8 @@ typedef struct
     GLuint         mv_ub_offset;
     ogl_program    program;
     ogl_program_ub program_ub;
-    GLuint         program_ub_bo_id;
+    raGL_buffer    program_ub_bo;
     unsigned int   program_ub_bo_size;
-    unsigned int   program_ub_bo_start_offset;
     GLuint         skybox_uniform_location;
 
     REFCOUNT_INSERT_VARIABLES
@@ -383,11 +383,8 @@ PRIVATE void _ogl_skybox_init_ub(_ogl_skybox* skybox_ptr)
                                 OGL_PROGRAM_UB_PROPERTY_BLOCK_DATA_SIZE,
                                &skybox_ptr->program_ub_bo_size);
     ogl_program_ub_get_property(skybox_ptr->program_ub,
-                                OGL_PROGRAM_UB_PROPERTY_BO_ID,
-                               &skybox_ptr->program_ub_bo_id);
-    ogl_program_ub_get_property(skybox_ptr->program_ub,
-                                OGL_PROGRAM_UB_PROPERTY_BO_START_OFFSET,
-                               &skybox_ptr->program_ub_bo_start_offset);
+                                OGL_PROGRAM_UB_PROPERTY_BO,
+                               &skybox_ptr->program_ub_bo);
 }
 
 /** TODO */
@@ -540,12 +537,22 @@ PUBLIC EMERALD_API void ogl_skybox_draw(ogl_skybox       skybox,
     } /* if (skybox_ptr->type == OGL_SKYBOX_SPHERICAL_PROJECTION_TEXTURE) */
 
     /* Draw. Do not modify depth information */
+    GLuint   program_ub_bo_id           = 0;
+    uint32_t program_ub_bo_start_offset = -1;
+
+    raGL_buffer_get_property(skybox_ptr->program_ub_bo,
+                             RAGL_BUFFER_PROPERTY_ID,
+                            &program_ub_bo_id);
+    raGL_buffer_get_property(skybox_ptr->program_ub_bo,
+                             RAGL_BUFFER_PROPERTY_START_OFFSET,
+                            &program_ub_bo_start_offset);
+
     ogl_program_ub_sync(skybox_ptr->program_ub);
 
     entry_points->pGLBindBufferRange(GL_UNIFORM_BUFFER,
                                      0, /* index */
-                                     skybox_ptr->program_ub_bo_id,
-                                     skybox_ptr->program_ub_bo_start_offset,
+                                     program_ub_bo_id,
+                                     program_ub_bo_start_offset,
                                      skybox_ptr->program_ub_bo_size);
     entry_points->pGLDepthMask      (GL_FALSE);
     {

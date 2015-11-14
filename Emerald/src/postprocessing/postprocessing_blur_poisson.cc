@@ -10,6 +10,7 @@
 #include "ogl/ogl_shader.h"
 #include "ogl/ogl_texture.h"
 #include "postprocessing/postprocessing_blur_poisson.h"
+#include "raGL/raGL_buffer.h"
 #include "shaders/shaders_vertex_fullscreen.h"
 #include "system/system_assertions.h"
 #include "system/system_hashed_ansi_string.h"
@@ -30,9 +31,8 @@ typedef struct
     system_hashed_ansi_string name;
     ogl_program               program;
     ogl_program_ub            program_ub;
-    GLuint                    program_ub_bo_id;
+    raGL_buffer               program_ub_bo;
     unsigned int              program_ub_bo_size;
-    unsigned int              program_ub_bo_start_offset;
 
     REFCOUNT_INSERT_VARIABLES
 } _postprocessing_blur_poisson;
@@ -168,14 +168,11 @@ PUBLIC void _postprocessing_blur_poisson_init_renderer_callback(ogl_context cont
                       "dataFS uniform block descriptor is NULL");
 
     ogl_program_ub_get_property(poisson_ptr->program_ub,
-                                OGL_PROGRAM_UB_PROPERTY_BO_ID,
-                               &poisson_ptr->program_ub_bo_id);
+                                OGL_PROGRAM_UB_PROPERTY_BO,
+                               &poisson_ptr->program_ub_bo);
     ogl_program_ub_get_property(poisson_ptr->program_ub,
                                 OGL_PROGRAM_UB_PROPERTY_BLOCK_DATA_SIZE,
                                &poisson_ptr->program_ub_bo_size);
-    ogl_program_ub_get_property(poisson_ptr->program_ub,
-                                OGL_PROGRAM_UB_PROPERTY_BO_START_OFFSET,
-                               &poisson_ptr->program_ub_bo_start_offset);
 
     /* Generate FBO */
     const ogl_context_gl_entrypoints* entrypoints = NULL;
@@ -333,10 +330,20 @@ PUBLIC EMERALD_API void postprocessing_blur_poisson_execute(postprocessing_blur_
                                     OGL_TEXTURE_MIPMAP_PROPERTY_WIDTH,
                                    &texture_width);
 
+    GLuint   program_ub_bo_id           = 0;
+    uint32_t program_ub_bo_start_offset = -1;
+
+    raGL_buffer_get_property(poisson_ptr->program_ub_bo,
+                             RAGL_BUFFER_PROPERTY_ID,
+                            &program_ub_bo_id);
+    raGL_buffer_get_property(poisson_ptr->program_ub_bo,
+                             RAGL_BUFFER_PROPERTY_START_OFFSET,
+                            &program_ub_bo_start_offset);
+
     entrypoints->pGLBindBufferRange(GL_UNIFORM_BUFFER,
                                     0, /* index */
-                                    poisson_ptr->program_ub_bo_id,
-                                    poisson_ptr->program_ub_bo_start_offset,
+                                    program_ub_bo_id,
+                                    program_ub_bo_start_offset,
                                     poisson_ptr->program_ub_bo_size);
 
     entrypoints->pGLViewport  (0,

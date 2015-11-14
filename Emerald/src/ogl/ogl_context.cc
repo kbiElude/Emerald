@@ -5,7 +5,6 @@
  */
 #include "shared.h"
 #include "gfx/gfx_image.h"
-#include "ogl/ogl_buffers.h"
 #include "ogl/ogl_context.h"
 #include "ogl/ogl_context_bo_bindings.h"
 #include "ogl/ogl_context_samplers.h"
@@ -23,6 +22,7 @@
 #include "ogl/ogl_shaders.h"
 #include "ogl/ogl_shadow_mapping.h"
 #include "ogl/ogl_text.h"
+#include "raGL/raGL_buffers.h"
 #include "raGL/raGL_utils.h"
 #include "system/system_assertions.h"
 #include "system/system_critical_section.h"
@@ -130,8 +130,9 @@ typedef struct
     bool gl_ext_direct_state_access_support;
     bool gl_ext_texture_filter_anisotropic_support;
 
+    raGL_buffers                    buffers;
+
     ogl_context_bo_bindings         bo_bindings;
-    ogl_buffers                     buffers;
     ogl_flyby                       flyby;
     ogl_materials                   materials;
     ogl_programs                    programs;
@@ -1141,8 +1142,7 @@ PRIVATE void _ogl_context_init_context_after_creation(ogl_context context)
     /* Set up the buffer object manager */
     if (context_ptr->parent_context == NULL)
     {
-        context_ptr->buffers = ogl_buffers_create((ogl_context) context_ptr,
-                                                  system_hashed_ansi_string_create("Context-wide Buffer Object manager") );
+        context_ptr->buffers = raGL_buffers_create((ogl_context) context_ptr);
     }
     else
     {
@@ -1151,7 +1151,7 @@ PRIVATE void _ogl_context_init_context_after_creation(ogl_context context)
         ASSERT_DEBUG_SYNC(context_ptr->buffers != NULL,
                           "Parent context has a NULL buffer manager");
 
-        ogl_buffers_retain(context_ptr->buffers);
+        raGL_buffers_retain(context_ptr->buffers);
     }
 
     /* Update gfx_image alternative file getter provider so that it can
@@ -3345,9 +3345,9 @@ PUBLIC EMERALD_API void ogl_context_get_property(ogl_context          context,
             break;
         }
 
-        case OGL_CONTEXT_PROPERTY_BUFFERS:
+        case OGL_CONTEXT_PROPERTY_BUFFERS_RAGL:
         {
-            *((ogl_buffers*) out_result) = context_ptr->buffers;
+            *((raGL_buffers*) out_result) = context_ptr->buffers;
 
             break;
         }
@@ -3844,7 +3844,7 @@ PUBLIC bool ogl_context_release_managers(ogl_context context)
     {
         if (context_ptr->buffers != NULL)
         {
-            ogl_buffers_release(context_ptr->buffers);
+            raGL_buffers_release(context_ptr->buffers);
 
             context_ptr->buffers = NULL;
         }

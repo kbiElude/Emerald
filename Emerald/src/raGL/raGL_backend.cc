@@ -9,6 +9,7 @@
 #include "ral/ral_context.h"
 #include "raGL/raGL_backend.h"
 #include "raGL/raGL_buffer.h"
+#include "raGL/raGL_buffers.h"
 #include "raGL/raGL_framebuffer.h"
 #include "raGL/raGL_sampler.h"
 #include "system/system_callback_manager.h"
@@ -36,6 +37,8 @@ typedef struct _raGL_backend
     system_hash64map        samplers_map;     /* maps ral_sampler to raGL_sampler instance; owns the mapped raGL_sampler instances */
     system_critical_section samplers_map_cs;
 
+    raGL_buffers buffers;
+
     ogl_context      gl_context;       /* NOT owned - DO NOT release */
     ral_context      owner_context;
     ral_framebuffer  system_framebuffer;
@@ -44,6 +47,7 @@ typedef struct _raGL_backend
 
     _raGL_backend(ral_context in_owner_context)
     {
+        buffers                           = NULL;
         buffers_map                       = system_hash64map_create       (sizeof(raGL_buffer) );
         buffers_map_cs                    = system_critical_section_create();
         framebuffers_map                  = system_hash64map_create       (sizeof(raGL_framebuffer) );
@@ -427,9 +431,7 @@ PRIVATE void _raGL_backend_on_objects_created_rendering_callback(ogl_context con
     {
         case RAGL_BACKEND_OBJECT_TYPE_BUFFER:
         {
-            entrypoints_ptr->pGLGenBuffers(n_objects_to_initialize,
-                                           result_object_ids_ptr);
-
+            /* IDs are associated by raGL_buffers */
             break;
         }
 
@@ -470,9 +472,9 @@ PRIVATE void _raGL_backend_on_objects_created_rendering_callback(ogl_context con
         {
             case RAGL_BACKEND_OBJECT_TYPE_BUFFER:
             {
-                new_object = raGL_buffer_create(context,
-                                                current_object_id,
-                                                ral_buffer_ptrs[n_object_id]);
+                raGL_buffers_allocate_buffer_memory_for_ral_buffer(callback_arg_ptr->backend_ptr->buffers,
+                                                                   ral_buffer_ptrs[n_object_id],
+                                                                   (raGL_buffer*) &new_object);
 
                 break;
             }
@@ -551,7 +553,8 @@ end:
                 {
                     case RAGL_BACKEND_OBJECT_TYPE_BUFFER:
                     {
-                        raGL_buffer_release( (raGL_buffer) object_instance);
+                        raGL_buffers_free_buffer_memory(callback_arg_ptr->backend_ptr->buffers,
+                                                        (raGL_buffer) object_instance);
 
                         break;
                     }
@@ -693,6 +696,9 @@ PUBLIC raGL_backend raGL_backend_create(ral_context owner_context)
         ASSERT_DEBUG_SYNC(new_backend_ptr->gl_context != NULL,
                           "Could not retrieve the GL rendering context instance");
 
+        /* Create buffer memory manager */
+        new_backend_ptr->buffers = raGL_buffers_create(new_backend_ptr->gl_context);
+
         /* Sign up for notifications */
         _raGL_backend_subscribe_for_notifications(new_backend_ptr,
                                                   true); /* should_subscribe */
@@ -710,7 +716,7 @@ PUBLIC raGL_backend raGL_backend_create(ral_context owner_context)
 /** Please see header for specification */
 PUBLIC bool raGL_backend_get_framebuffer(void*           backend,
                                          ral_framebuffer framebuffer_ral,
-                                         void**          out_framebuffer_backend_ptr)
+                                         void**          out_framebuffer_raGL_ptr)
 {
     _raGL_backend* backend_ptr = (_raGL_backend*) backend;
     bool           result      = false;
@@ -729,7 +735,7 @@ PUBLIC bool raGL_backend_get_framebuffer(void*           backend,
 
     if (!system_hash64map_get(backend_ptr->framebuffers_map,
                               (system_hash64) framebuffer_ral,
-                              out_framebuffer_backend_ptr) )
+                              out_framebuffer_raGL_ptr) )
     {
         ASSERT_DEBUG_SYNC(false,
                           "Provided RAL framebuffer handle was not recognized");

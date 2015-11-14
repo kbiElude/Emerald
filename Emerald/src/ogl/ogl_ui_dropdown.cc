@@ -12,6 +12,7 @@
 #include "ogl/ogl_ui.h"
 #include "ogl/ogl_ui_dropdown.h"
 #include "ogl/ogl_ui_shared.h"
+#include "raGL/raGL_buffer.h"
 #include "system/system_assertions.h"
 #include "system/system_hashed_ansi_string.h"
 #include "system/system_log.h"
@@ -120,13 +121,11 @@ typedef struct
     GLint                     program_stop_data_ub_offset;
     GLint                     program_x1y1x2y2_ub_offset;
     ogl_program_ub            program_ub_fs;
-    GLuint                    program_ub_fs_bo_id;
+    raGL_buffer               program_ub_fs_bo;
     GLuint                    program_ub_fs_bo_size;
-    GLuint                    program_ub_fs_bo_start_offset;
     ogl_program_ub            program_ub_vs;
-    GLuint                    program_ub_vs_bo_id;
+    raGL_buffer               program_ub_vs_bo;
     GLuint                    program_ub_vs_bo_size;
-    GLuint                    program_ub_vs_bo_start_offset;
 
     ogl_program               program_bg;
     GLint                     program_bg_border_width_ub_offset;
@@ -135,39 +134,33 @@ typedef struct
     GLint                     program_bg_selected_v1v2_ub_offset;
     GLint                     program_bg_x1y1x2y2_ub_offset;
     ogl_program_ub            program_bg_ub_fs;
-    GLuint                    program_bg_ub_fs_bo_id;
+    raGL_buffer               program_bg_ub_fs_bo;
     GLuint                    program_bg_ub_fs_bo_size;
-    GLuint                    program_bg_ub_fs_bo_start_offset;
     ogl_program_ub            program_bg_ub_vs;
-    GLuint                    program_bg_ub_vs_bo_id;
+    raGL_buffer               program_bg_ub_vs_bo;
     GLuint                    program_bg_ub_vs_bo_size;
-    GLuint                    program_bg_ub_vs_bo_start_offset;
 
     ogl_program               program_label_bg;
     GLuint                    program_label_bg_x1y1x2y2_ub_offset;
     ogl_program_ub            program_label_bg_ub_vs;
-    GLuint                    program_label_bg_ub_vs_bo_id;
+    raGL_buffer               program_label_bg_ub_vs_bo;
     GLuint                    program_label_bg_ub_vs_bo_size;
-    GLuint                    program_label_bg_ub_vs_bo_start_offset;
 
     ogl_program               program_separator;
     ogl_program_ub            program_separator_ub_vs;
-    GLuint                    program_separator_ub_vs_bo_id;
+    raGL_buffer               program_separator_ub_vs_bo;
     GLuint                    program_separator_ub_vs_bo_size;
-    GLuint                    program_separator_ub_vs_bo_start_offset;
     GLint                     program_separator_x1_x2_y_ub_offset;
 
     ogl_program               program_slider;
     GLint                     program_slider_color_ub_offset;
     GLint                     program_slider_x1y1x2y2_ub_offset;
     ogl_program_ub            program_slider_ub_fs;
-    GLuint                    program_slider_ub_fs_bo_id;
+    raGL_buffer               program_slider_ub_fs_bo;
     GLuint                    program_slider_ub_fs_bo_size;
-    GLuint                    program_slider_ub_fs_bo_start_offset;
     ogl_program_ub            program_slider_ub_vs;
-    GLuint                    program_slider_ub_vs_bo_id;
+    raGL_buffer               program_slider_ub_vs_bo;
     GLuint                    program_slider_ub_vs_bo_size;
-    GLuint                    program_slider_ub_vs_bo_start_offset;
 
     ogl_text_string_id        current_entry_string_id;
     system_resizable_vector   entries;
@@ -650,61 +643,32 @@ PRIVATE void _ogl_ui_dropdown_init_renderer_callback(ogl_context context, void* 
 
 
     ogl_program_ub_get_property(dropdown_ptr->program_ub_fs,
-                                OGL_PROGRAM_UB_PROPERTY_BO_ID,
-                               &dropdown_ptr->program_ub_fs_bo_id);
+                                OGL_PROGRAM_UB_PROPERTY_BO,
+                               &dropdown_ptr->program_ub_fs_bo);
     ogl_program_ub_get_property(dropdown_ptr->program_ub_vs,
-                                OGL_PROGRAM_UB_PROPERTY_BO_ID,
-                               &dropdown_ptr->program_ub_vs_bo_id);
+                                OGL_PROGRAM_UB_PROPERTY_BO,
+                               &dropdown_ptr->program_ub_vs_bo);
 
     ogl_program_ub_get_property(dropdown_ptr->program_bg_ub_fs,
-                                OGL_PROGRAM_UB_PROPERTY_BO_ID,
-                               &dropdown_ptr->program_bg_ub_fs_bo_id);
+                                OGL_PROGRAM_UB_PROPERTY_BO,
+                               &dropdown_ptr->program_bg_ub_fs_bo);
     ogl_program_ub_get_property(dropdown_ptr->program_bg_ub_vs,
-                                OGL_PROGRAM_UB_PROPERTY_BO_ID,
-                               &dropdown_ptr->program_bg_ub_vs_bo_id);
+                                OGL_PROGRAM_UB_PROPERTY_BO,
+                               &dropdown_ptr->program_bg_ub_vs_bo);
 
     ogl_program_ub_get_property(dropdown_ptr->program_label_bg_ub_vs,
-                                OGL_PROGRAM_UB_PROPERTY_BO_ID,
-                               &dropdown_ptr->program_label_bg_ub_vs_bo_id);
+                                OGL_PROGRAM_UB_PROPERTY_BO,
+                               &dropdown_ptr->program_label_bg_ub_vs_bo);
     ogl_program_ub_get_property(dropdown_ptr->program_separator_ub_vs,
-                                OGL_PROGRAM_UB_PROPERTY_BO_ID,
-                               &dropdown_ptr->program_separator_ub_vs_bo_id);
+                                OGL_PROGRAM_UB_PROPERTY_BO,
+                               &dropdown_ptr->program_separator_ub_vs_bo);
 
     ogl_program_ub_get_property(dropdown_ptr->program_slider_ub_fs,
-                                OGL_PROGRAM_UB_PROPERTY_BO_ID,
-                               &dropdown_ptr->program_slider_ub_fs_bo_id);
+                                OGL_PROGRAM_UB_PROPERTY_BO,
+                               &dropdown_ptr->program_slider_ub_fs_bo);
     ogl_program_ub_get_property(dropdown_ptr->program_slider_ub_vs,
-                                OGL_PROGRAM_UB_PROPERTY_BO_ID,
-                               &dropdown_ptr->program_slider_ub_vs_bo_id);
-
-
-    ogl_program_ub_get_property(dropdown_ptr->program_ub_fs,
-                                OGL_PROGRAM_UB_PROPERTY_BO_START_OFFSET,
-                               &dropdown_ptr->program_ub_fs_bo_start_offset);
-    ogl_program_ub_get_property(dropdown_ptr->program_ub_vs,
-                                OGL_PROGRAM_UB_PROPERTY_BO_START_OFFSET,
-                               &dropdown_ptr->program_ub_vs_bo_start_offset);
-
-    ogl_program_ub_get_property(dropdown_ptr->program_bg_ub_fs,
-                                OGL_PROGRAM_UB_PROPERTY_BO_START_OFFSET,
-                               &dropdown_ptr->program_bg_ub_fs_bo_start_offset);
-    ogl_program_ub_get_property(dropdown_ptr->program_bg_ub_vs,
-                                OGL_PROGRAM_UB_PROPERTY_BO_START_OFFSET,
-                               &dropdown_ptr->program_bg_ub_vs_bo_start_offset);
-
-    ogl_program_ub_get_property(dropdown_ptr->program_label_bg_ub_vs,
-                                OGL_PROGRAM_UB_PROPERTY_BO_START_OFFSET,
-                               &dropdown_ptr->program_label_bg_ub_vs_bo_start_offset);
-    ogl_program_ub_get_property(dropdown_ptr->program_separator_ub_vs,
-                                OGL_PROGRAM_UB_PROPERTY_BO_START_OFFSET,
-                               &dropdown_ptr->program_separator_ub_vs_bo_start_offset);
-
-    ogl_program_ub_get_property(dropdown_ptr->program_slider_ub_fs,
-                                OGL_PROGRAM_UB_PROPERTY_BO_START_OFFSET,
-                               &dropdown_ptr->program_slider_ub_fs_bo_start_offset);
-    ogl_program_ub_get_property(dropdown_ptr->program_slider_ub_vs,
-                                OGL_PROGRAM_UB_PROPERTY_BO_START_OFFSET,
-                               &dropdown_ptr->program_slider_ub_vs_bo_start_offset);
+                                OGL_PROGRAM_UB_PROPERTY_BO,
+                               &dropdown_ptr->program_slider_ub_vs_bo);
 
     /* Set up uniform block->buffer binding points mappings.
      *
@@ -1446,17 +1410,44 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_ui_dropdown_draw(void* internal_instance)
     /* Draw */
     if (dropdown_ptr->is_droparea_visible)
     {
+        GLuint   program_bg_ub_fs_bo_id                  = 0;
+        uint32_t program_bg_ub_fs_bo_start_offset        = -1;
+        GLuint   program_bg_ub_vs_bo_id                  = 0;
+        uint32_t program_bg_ub_vs_bo_start_offset        = -1;
+        GLuint   program_separator_ub_vs_bo_id           = 0;
+        uint32_t program_separator_ub_vs_bo_start_offset = -1;
+
+        raGL_buffer_get_property(dropdown_ptr->program_bg_ub_fs_bo,
+                                 RAGL_BUFFER_PROPERTY_ID,
+                                &program_bg_ub_fs_bo_id);
+        raGL_buffer_get_property(dropdown_ptr->program_bg_ub_fs_bo,
+                                 RAGL_BUFFER_PROPERTY_START_OFFSET,
+                                &program_bg_ub_fs_bo_start_offset);
+        raGL_buffer_get_property(dropdown_ptr->program_bg_ub_vs_bo,
+                                 RAGL_BUFFER_PROPERTY_ID,
+                                &program_bg_ub_vs_bo_id);
+        raGL_buffer_get_property(dropdown_ptr->program_bg_ub_vs_bo,
+                                 RAGL_BUFFER_PROPERTY_START_OFFSET,
+                                &program_bg_ub_vs_bo_start_offset);
+
+        raGL_buffer_get_property(dropdown_ptr->program_separator_ub_vs_bo,
+                                 RAGL_BUFFER_PROPERTY_ID,
+                                &program_separator_ub_vs_bo_id);
+        raGL_buffer_get_property(dropdown_ptr->program_separator_ub_vs_bo,
+                                 RAGL_BUFFER_PROPERTY_START_OFFSET,
+                                &program_separator_ub_vs_bo_start_offset);
+
         /* Background first */
         dropdown_ptr->pGLUseProgram     (program_bg_id);
         dropdown_ptr->pGLBindBufferRange(GL_UNIFORM_BUFFER,
                                          UB_FSDATA_BP,
-                                         dropdown_ptr->program_bg_ub_fs_bo_id,
-                                         dropdown_ptr->program_bg_ub_fs_bo_start_offset,
+                                         program_bg_ub_fs_bo_id,
+                                         program_bg_ub_fs_bo_start_offset,
                                          dropdown_ptr->program_bg_ub_fs_bo_size);
         dropdown_ptr->pGLBindBufferRange(GL_UNIFORM_BUFFER,
                                          UB_VSDATA_BP,
-                                         dropdown_ptr->program_bg_ub_vs_bo_id,
-                                         dropdown_ptr->program_bg_ub_vs_bo_start_offset,
+                                         program_bg_ub_vs_bo_id,
+                                         program_bg_ub_vs_bo_start_offset,
                                          dropdown_ptr->program_bg_ub_vs_bo_size);
 
         ogl_program_ub_sync(dropdown_ptr->program_bg_ub_fs);
@@ -1470,8 +1461,8 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_ui_dropdown_draw(void* internal_instance)
         dropdown_ptr->pGLUseProgram     (program_separator_id);
         dropdown_ptr->pGLBindBufferRange(GL_UNIFORM_BUFFER,
                                          UB_VSDATA_BP,
-                                         dropdown_ptr->program_separator_ub_vs_bo_id,
-                                         dropdown_ptr->program_separator_ub_vs_bo_start_offset,
+                                         program_separator_ub_vs_bo_id,
+                                         program_separator_ub_vs_bo_start_offset,
                                          dropdown_ptr->program_separator_ub_vs_bo_size);
 
         unsigned int n_separators     = 0;
@@ -1520,7 +1511,24 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_ui_dropdown_draw(void* internal_instance)
         }
 
         /* Draw the slider */
-        float slider_x1y1x2y2[4];
+        GLuint   program_slider_ub_fs_bo_id           = 0;
+        uint32_t program_slider_ub_fs_bo_start_offset = -1;
+        GLuint   program_slider_ub_vs_bo_id           = 0;
+        uint32_t program_slider_ub_vs_bo_start_offset = -1;
+        float    slider_x1y1x2y2[4];
+
+        raGL_buffer_get_property(dropdown_ptr->program_slider_ub_fs_bo,
+                                 RAGL_BUFFER_PROPERTY_ID,
+                                &program_slider_ub_fs_bo_id);
+        raGL_buffer_get_property(dropdown_ptr->program_slider_ub_fs_bo,
+                                 RAGL_BUFFER_PROPERTY_START_OFFSET,
+                                &program_slider_ub_fs_bo_start_offset);
+        raGL_buffer_get_property(dropdown_ptr->program_slider_ub_vs_bo,
+                                 RAGL_BUFFER_PROPERTY_ID,
+                                &program_slider_ub_vs_bo_id);
+        raGL_buffer_get_property(dropdown_ptr->program_slider_ub_vs_bo,
+                                 RAGL_BUFFER_PROPERTY_START_OFFSET,
+                                &program_slider_ub_vs_bo_start_offset);
 
         _ogl_ui_dropdown_get_slider_x1y1x2y2(dropdown_ptr,
                                              slider_x1y1x2y2);
@@ -1539,13 +1547,13 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_ui_dropdown_draw(void* internal_instance)
         dropdown_ptr->pGLUseProgram     (program_slider_id);
         dropdown_ptr->pGLBindBufferRange(GL_UNIFORM_BUFFER,
                                          UB_FSDATA_BP,
-                                         dropdown_ptr->program_slider_ub_fs_bo_id,
-                                         dropdown_ptr->program_slider_ub_fs_bo_start_offset,
+                                         program_slider_ub_fs_bo_id,
+                                         program_slider_ub_fs_bo_start_offset,
                                          dropdown_ptr->program_slider_ub_fs_bo_size);
         dropdown_ptr->pGLBindBufferRange(GL_UNIFORM_BUFFER,
                                          UB_VSDATA_BP,
-                                         dropdown_ptr->program_slider_ub_vs_bo_id,
-                                         dropdown_ptr->program_slider_ub_vs_bo_start_offset,
+                                         program_slider_ub_vs_bo_id,
+                                         program_slider_ub_vs_bo_start_offset,
                                          dropdown_ptr->program_slider_ub_vs_bo_size);
 
         ogl_program_ub_set_nonarrayed_uniform_value(dropdown_ptr->program_slider_ub_fs,
@@ -1568,16 +1576,34 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_ui_dropdown_draw(void* internal_instance)
     }
 
     /* Draw the bar */
+    GLuint   program_ub_fs_bo_id           = 0;
+    uint32_t program_ub_fs_bo_start_offset = -1;
+    GLuint   program_ub_vs_bo_id           = 0;
+    uint32_t program_ub_vs_bo_start_offset = -1;
+
+    raGL_buffer_get_property(dropdown_ptr->program_ub_fs_bo,
+                             RAGL_BUFFER_PROPERTY_ID,
+                            &program_ub_fs_bo_id);
+    raGL_buffer_get_property(dropdown_ptr->program_ub_fs_bo,
+                             RAGL_BUFFER_PROPERTY_START_OFFSET,
+                            &program_ub_fs_bo_start_offset);
+    raGL_buffer_get_property(dropdown_ptr->program_ub_vs_bo,
+                             RAGL_BUFFER_PROPERTY_ID,
+                            &program_ub_vs_bo_id);
+    raGL_buffer_get_property(dropdown_ptr->program_ub_vs_bo,
+                             RAGL_BUFFER_PROPERTY_START_OFFSET,
+                            &program_ub_vs_bo_start_offset);
+
     dropdown_ptr->pGLUseProgram     (program_id);
     dropdown_ptr->pGLBindBufferRange(GL_UNIFORM_BUFFER,
                                      UB_FSDATA_BP,
-                                     dropdown_ptr->program_ub_fs_bo_id,
-                                     dropdown_ptr->program_ub_fs_bo_start_offset,
+                                     program_ub_fs_bo_id,
+                                     program_ub_fs_bo_start_offset,
                                      dropdown_ptr->program_ub_fs_bo_size);
     dropdown_ptr->pGLBindBufferRange(GL_UNIFORM_BUFFER,
                                      UB_VSDATA_BP,
-                                     dropdown_ptr->program_ub_vs_bo_id,
-                                     dropdown_ptr->program_ub_vs_bo_start_offset,
+                                     program_ub_vs_bo_id,
+                                     program_ub_vs_bo_start_offset,
                                      dropdown_ptr->program_ub_vs_bo_size);
 
     ogl_program_ub_sync(dropdown_ptr->program_ub_fs);
@@ -1590,11 +1616,21 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_ui_dropdown_draw(void* internal_instance)
     /* Draw the label background */
     dropdown_ptr->pGLEnable(GL_BLEND);
     {
+        GLuint   program_label_bg_ub_vs_bo_id           = 0;
+        uint32_t program_label_bg_ub_vs_bo_start_offset = -1;
+
+        raGL_buffer_get_property(dropdown_ptr->program_label_bg_ub_vs_bo,
+                                 RAGL_BUFFER_PROPERTY_ID,
+                                &program_label_bg_ub_vs_bo_id);
+        raGL_buffer_get_property(dropdown_ptr->program_label_bg_ub_vs_bo,
+                                 RAGL_BUFFER_PROPERTY_START_OFFSET,
+                                &program_label_bg_ub_vs_bo_start_offset);
+
         dropdown_ptr->pGLUseProgram     (program_label_bg_id);
         dropdown_ptr->pGLBindBufferRange(GL_UNIFORM_BUFFER,
                                          UB_VSDATA_BP,
-                                         dropdown_ptr->program_label_bg_ub_vs_bo_id,
-                                         dropdown_ptr->program_label_bg_ub_vs_bo_start_offset,
+                                         program_label_bg_ub_vs_bo_id,
+                                         program_label_bg_ub_vs_bo_start_offset,
                                          dropdown_ptr->program_label_bg_ub_vs_bo_size);
 
         ogl_program_ub_sync(dropdown_ptr->program_label_bg_ub_vs);

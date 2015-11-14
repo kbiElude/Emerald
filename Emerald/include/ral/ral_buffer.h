@@ -5,6 +5,12 @@
 
 typedef enum
 {
+    /* not settable, ral_buffer_mappability_bits */
+    RAL_BUFFER_PROPERTY_MAPPABILITY_BITS,
+
+    /* not settable, ral_buffer_property_bits */
+    RAL_BUFFER_PROPERTY_PROPERTY_BITS,
+
     /* not settable, uint32_t */
     RAL_BUFFER_PROPERTY_SIZE,
 
@@ -34,5 +40,6 @@ PUBLIC ral_buffer ral_buffer_create(system_hashed_ansi_string     name,
 PUBLIC void ral_buffer_get_property(ral_buffer          buffer,
                                     ral_buffer_property property,
                                     void*               out_result_ptr);
+
 
 #endif /* RAL_BUFFER_H */

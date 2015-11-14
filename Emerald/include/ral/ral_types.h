@@ -19,6 +19,9 @@ typedef enum
     RAL_BUFFER_MAPPABILITY_WRITE_OP_BIT = (1 << 1),
 
     RAL_BUFFER_MAPPABILITY_COHERENT_BIT = (1 << 2),
+
+    /* Always last */
+    RAL_BUFFER_MAPPABILITY_LAST_USED_BIT = 2
 };
 typedef int ral_buffer_mappability_bits;
 
@@ -44,7 +47,7 @@ typedef enum
     RAL_BUFFER_USAGE_VERTEX_BUFFER_BIT            = (1 << 7),
 
     /* Always last */
-    RAL_BUFFER_USAGE_LAST_USED_BIT = 6
+    RAL_BUFFER_USAGE_LAST_USED_BIT = 7
 };
 typedef int ral_buffer_usage_bits;
 
@@ -67,10 +70,11 @@ typedef int ral_queue_bits;
 /** All info required to create a single buffer instance */
 typedef struct
 {
-    bool                  is_sparse;
-    uint32_t              size;
-    ral_buffer_usage_bits usage_bits;
-    ral_queue_bits        user_queue_bits;
+    uint32_t                    size;
+    ral_buffer_mappability_bits mappability_bits;
+    ral_buffer_property_bits    property_bits;
+    ral_buffer_usage_bits       usage_bits;
+    ral_queue_bits              user_queue_bits;
 } ral_buffer_create_info;
 
 /* RAL RGBA color */

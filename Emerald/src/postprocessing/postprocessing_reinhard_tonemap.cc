@@ -10,6 +10,7 @@
 #include "ogl/ogl_shader.h"
 #include "ogl/ogl_texture.h"
 #include "postprocessing/postprocessing_reinhard_tonemap.h"
+#include "raGL/raGL_buffer.h"
 #include "shaders/shaders_fragment_rgb_to_Yxy.h"
 #include "shaders/shaders_vertex_fullscreen.h"
 #include "system/system_assertions.h"
@@ -42,9 +43,8 @@ typedef struct
     ogl_program    operator_program;
     GLuint         operator_program_alpha_ub_offset;
     ogl_program_ub operator_program_ub;
-    GLuint         operator_program_ub_bo_id;
+    raGL_buffer    operator_program_ub_bo;
     GLuint         operator_program_ub_bo_size;
-    GLuint         operator_program_ub_bo_start_offset;
     ogl_shader     operator_fragment_shader;
     GLuint         operator_program_luminance_texture_location;
     GLuint         operator_program_luminance_texture_avg_location;
@@ -257,11 +257,8 @@ PRIVATE void _create_callback(ogl_context context,
                                           OGL_PROGRAM_UB_PROPERTY_BLOCK_DATA_SIZE,
                                          &data->data_ptr->operator_program_ub_bo_size);
     ogl_program_ub_get_property          (data->data_ptr->operator_program_ub,
-                                          OGL_PROGRAM_UB_PROPERTY_BO_ID,
-                                         &data->data_ptr->operator_program_ub_bo_id);
-    ogl_program_ub_get_property          (data->data_ptr->operator_program_ub,
-                                          OGL_PROGRAM_UB_PROPERTY_BO_START_OFFSET,
-                                         &data->data_ptr->operator_program_ub_bo_start_offset);
+                                          OGL_PROGRAM_UB_PROPERTY_BO,
+                                         &data->data_ptr->operator_program_ub_bo);
 
     /* Retrieve uniform properties */
     const ogl_program_variable* alpha_uniform_descriptor                 = NULL;
@@ -549,10 +546,20 @@ PUBLIC EMERALD_API void postprocessing_reinhard_tonemap_execute(postprocessing_r
                               tonemapper_ptr->texture_width,
                               tonemapper_ptr->texture_height);
 
+    GLuint   operator_program_ub_bo_id           = 0;
+    uint32_t operator_program_ub_bo_start_offset = -1;
+
+    raGL_buffer_get_property(tonemapper_ptr->operator_program_ub_bo,
+                             RAGL_BUFFER_PROPERTY_ID,
+                            &operator_program_ub_bo_id);
+    raGL_buffer_get_property(tonemapper_ptr->operator_program_ub_bo,
+                             RAGL_BUFFER_PROPERTY_START_OFFSET,
+                            &operator_program_ub_bo_start_offset);
+
     entry_points->pGLBindBufferRange(GL_UNIFORM_BUFFER,
                                      0, /* index */
-                                     tonemapper_ptr->operator_program_ub_bo_id,
-                                     tonemapper_ptr->operator_program_ub_bo_start_offset,
+                                     operator_program_ub_bo_id,
+                                     operator_program_ub_bo_start_offset,
                                      tonemapper_ptr->operator_program_ub_bo_size);
     entry_points->pGLDrawArrays     (GL_TRIANGLE_FAN,
                                      0,  /* first */

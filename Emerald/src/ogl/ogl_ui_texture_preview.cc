@@ -13,6 +13,7 @@
 #include "ogl/ogl_ui.h"
 #include "ogl/ogl_ui_texture_preview.h"
 #include "ogl/ogl_ui_shared.h"
+#include "raGL\raGL_buffer.h"
 #include "system/system_assertions.h"
 #include "system/system_hashed_ansi_string.h"
 #include "system/system_log.h"
@@ -51,13 +52,11 @@ typedef struct
     GLint                     program_layer_ub_offset;
     GLint                     program_texture_ub_offset;
     ogl_program_ub            program_ub_fs;
-    GLuint                    program_ub_fs_bo_id;
+    raGL_buffer               program_ub_fs_bo;
     GLuint                    program_ub_fs_bo_size;
-    GLuint                    program_ub_fs_bo_start_offset;
     ogl_program_ub            program_ub_vs;
-    GLuint                    program_ub_vs_bo_id;
+    raGL_buffer               program_ub_vs_bo;
     GLuint                    program_ub_vs_bo_size;
-    GLuint                    program_ub_vs_bo_start_offset;
     GLint                     program_x1y1x2y2_ub_offset;
     ogl_texture               texture;
     bool                      texture_initialized;
@@ -446,18 +445,11 @@ PRIVATE void _ogl_ui_texture_preview_init_texture_renderer_callback(ogl_context 
                                &texture_preview_ptr->program_ub_vs_bo_size);
 
     ogl_program_ub_get_property(texture_preview_ptr->program_ub_fs,
-                                OGL_PROGRAM_UB_PROPERTY_BO_ID,
-                               &texture_preview_ptr->program_ub_fs_bo_id);
+                                OGL_PROGRAM_UB_PROPERTY_BO,
+                               &texture_preview_ptr->program_ub_fs_bo);
     ogl_program_ub_get_property(texture_preview_ptr->program_ub_vs,
-                                OGL_PROGRAM_UB_PROPERTY_BO_ID,
-                               &texture_preview_ptr->program_ub_vs_bo_id);
-
-    ogl_program_ub_get_property(texture_preview_ptr->program_ub_fs,
-                                OGL_PROGRAM_UB_PROPERTY_BO_START_OFFSET,
-                               &texture_preview_ptr->program_ub_fs_bo_start_offset);
-    ogl_program_ub_get_property(texture_preview_ptr->program_ub_vs,
-                                OGL_PROGRAM_UB_PROPERTY_BO_START_OFFSET,
-                               &texture_preview_ptr->program_ub_vs_bo_start_offset);
+                                OGL_PROGRAM_UB_PROPERTY_BO,
+                               &texture_preview_ptr->program_ub_vs_bo);
 
     ogl_program_ub_get_property(texture_preview_ptr->program_ub_fs,
                                 OGL_PROGRAM_UB_PROPERTY_INDEX,
@@ -598,15 +590,33 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_ui_texture_preview_draw(void* internal_in
                                                   texture_preview_ptr->blend_function_dst_alpha);
 
     /* Draw */
+    GLuint   program_ub_fs_bo_id           = 0;
+    uint32_t program_ub_fs_bo_start_offset = -1;
+    GLuint   program_ub_vs_bo_id           = 0;
+    uint32_t program_ub_vs_bo_start_offset = -1;
+
+    raGL_buffer_get_property(texture_preview_ptr->program_ub_fs_bo,
+                             RAGL_BUFFER_PROPERTY_ID,
+                            &program_ub_fs_bo_id);
+    raGL_buffer_get_property(texture_preview_ptr->program_ub_fs_bo,
+                             RAGL_BUFFER_PROPERTY_START_OFFSET,
+                            &program_ub_fs_bo_start_offset);
+    raGL_buffer_get_property(texture_preview_ptr->program_ub_vs_bo,
+                             RAGL_BUFFER_PROPERTY_ID,
+                            &program_ub_vs_bo_id);
+    raGL_buffer_get_property(texture_preview_ptr->program_ub_vs_bo,
+                             RAGL_BUFFER_PROPERTY_START_OFFSET,
+                            &program_ub_vs_bo_start_offset);
+
     texture_preview_ptr->pGLBindBufferRange(GL_UNIFORM_BUFFER,
                                             UB_FS_BP_INDEX,
-                                            texture_preview_ptr->program_ub_fs_bo_id,
-                                            texture_preview_ptr->program_ub_fs_bo_start_offset,
+                                            program_ub_fs_bo_id,
+                                            program_ub_fs_bo_start_offset,
                                             texture_preview_ptr->program_ub_fs_bo_size);
     texture_preview_ptr->pGLBindBufferRange(GL_UNIFORM_BUFFER,
                                             UB_VS_BP_INDEX,
-                                            texture_preview_ptr->program_ub_vs_bo_id,
-                                            texture_preview_ptr->program_ub_vs_bo_start_offset,
+                                            program_ub_vs_bo_id,
+                                            program_ub_vs_bo_start_offset,
                                             texture_preview_ptr->program_ub_vs_bo_size);
 
     ogl_program_ub_sync(texture_preview_ptr->program_ub_fs);

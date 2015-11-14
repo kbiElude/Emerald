@@ -5,13 +5,13 @@
  */
 #include "shared.h"
 #include "mesh/mesh.h"
-#include "ogl/ogl_buffers.h"
 #include "ogl/ogl_context.h"
 #include "ogl/ogl_program.h"
 #include "ogl/ogl_program_ub.h"
 #include "ogl/ogl_scene_renderer.h"
 #include "ogl/ogl_scene_renderer_bbox_preview.h"
 #include "ogl/ogl_shader.h"
+#include "raGL/raGL_buffers.h"
 #include "scene/scene.h"
 #include "scene/scene_mesh.h"
 #include "system/system_matrix4x4.h"
@@ -109,17 +109,16 @@ static const char* preview_vertex_shader   = "#version 430 core\n"
 /** TODO */
 typedef struct _ogl_scene_renderer_bbox_preview
 {
-    /* Owned by ogl_context. DO NOT release. */
-    ogl_buffers buffers;
+    /* DO NOT release. */
+    raGL_buffers buffers;
 
     /* DO NOT retain/release, as this object is managed by ogl_context and retaining it
      * will cause the rendering context to never release itself.
      */
     ogl_context context;
 
-    GLuint             data_bo_id; /* owned by ogl_buffers - do NOT release with glDeleteBuffers() */
+    raGL_buffer        data_bo; /* owned by raGL_buffers - do NOT release with glDeleteBuffers() */
     unsigned int       data_bo_size;
-    unsigned int       data_bo_start_offset;
     uint32_t           data_n_meshes;
     scene              owned_scene;
     ogl_scene_renderer owner;
@@ -129,16 +128,16 @@ typedef struct _ogl_scene_renderer_bbox_preview
     GLuint             preview_program_ub_offset_vp;
 
     /* Cached func ptrs */
-    PFNGLBINDBUFFERPROC              pGLBindBuffer;
-    PFNGLBINDBUFFERRANGEPROC         pGLBindBufferRange;
-    PFNGLBINDVERTEXARRAYPROC         pGLBindVertexArray;
-    PFNGLBUFFERSUBDATAPROC           pGLBufferSubData;
-    PFNGLDELETEVERTEXARRAYSPROC      pGLDeleteVertexArrays;
-    PFNGLDRAWARRAYSPROC              pGLDrawArrays;
-    PFNGLGENBUFFERSPROC              pGLGenBuffers;
-    PFNGLGENVERTEXARRAYSPROC         pGLGenVertexArrays;
-    PFNGLUNIFORMBLOCKBINDINGPROC     pGLUniformBlockBinding;
-    PFNGLUSEPROGRAMPROC              pGLUseProgram;
+    PFNGLBINDBUFFERPROC          pGLBindBuffer;
+    PFNGLBINDBUFFERRANGEPROC     pGLBindBufferRange;
+    PFNGLBINDVERTEXARRAYPROC     pGLBindVertexArray;
+    PFNGLBUFFERSUBDATAPROC       pGLBufferSubData;
+    PFNGLDELETEVERTEXARRAYSPROC  pGLDeleteVertexArrays;
+    PFNGLDRAWARRAYSPROC          pGLDrawArrays;
+    PFNGLGENBUFFERSPROC          pGLGenBuffers;
+    PFNGLGENVERTEXARRAYSPROC     pGLGenVertexArrays;
+    PFNGLUNIFORMBLOCKBINDINGPROC pGLUniformBlockBinding;
+    PFNGLUSEPROGRAMPROC          pGLUseProgram;
 } _ogl_scene_renderer_bbox_preview;
 
 
@@ -416,20 +415,27 @@ PRIVATE void _ogl_context_scene_renderer_bbox_preview_init_ub_data(_ogl_scene_re
      *       simply push the AABB data behind its back. This is OK, since AABB data is set in stone
      *       and will not change later.
      */
+    GLuint   data_bo_id           = 0;
+    uint32_t data_bo_start_offset = -1;
+
     ogl_program_ub_get_property(preview_ptr->preview_program_data_ub,
                                 OGL_PROGRAM_UB_PROPERTY_BLOCK_DATA_SIZE,
                                &preview_ptr->data_bo_size);
     ogl_program_ub_get_property(preview_ptr->preview_program_data_ub,
-                                OGL_PROGRAM_UB_PROPERTY_BO_ID,
-                               &preview_ptr->data_bo_id);
-    ogl_program_ub_get_property(preview_ptr->preview_program_data_ub,
-                                OGL_PROGRAM_UB_PROPERTY_BO_START_OFFSET,
-                               &preview_ptr->data_bo_start_offset);
+                                OGL_PROGRAM_UB_PROPERTY_BO,
+                               &preview_ptr->data_bo);
+
+    raGL_buffer_get_property(preview_ptr->data_bo,
+                             RAGL_BUFFER_PROPERTY_ID,
+                            &data_bo_id);
+    raGL_buffer_get_property(preview_ptr->data_bo,
+                             RAGL_BUFFER_PROPERTY_START_OFFSET,
+                            &data_bo_start_offset);
 
     preview_ptr->pGLBindBuffer   (GL_ARRAY_BUFFER,
-                                  preview_ptr->data_bo_id);
+                                  data_bo_id);
     preview_ptr->pGLBufferSubData(GL_ARRAY_BUFFER,
-                                  preview_ptr->data_bo_start_offset,
+                                  data_bo_start_offset,
                                   matrix_data_size,
                                   ub_data);
 
@@ -473,9 +479,8 @@ PUBLIC ogl_scene_renderer_bbox_preview ogl_scene_renderer_bbox_preview_create(og
          * are asked to render the preview.
          */
         new_instance->context                         = context;
-        new_instance->data_bo_id                      = 0;
+        new_instance->data_bo                         = NULL;
         new_instance->data_bo_size                    = 0;
-        new_instance->data_bo_start_offset            = -1;
         new_instance->data_n_meshes                   = 0;
         new_instance->owned_scene                     = scene;
         new_instance->owner                           = owner;
@@ -485,7 +490,7 @@ PUBLIC ogl_scene_renderer_bbox_preview ogl_scene_renderer_bbox_preview_create(og
         new_instance->preview_program_ub_offset_vp    = -1;
 
         ogl_context_get_property(new_instance->context,
-                                 OGL_CONTEXT_PROPERTY_BUFFERS,
+                                 OGL_CONTEXT_PROPERTY_BUFFERS_RAGL,
                                 &new_instance->buffers);
 
         /* Is buffer_storage supported? */
@@ -553,7 +558,7 @@ PUBLIC void ogl_scene_renderer_bbox_preview_release(ogl_scene_renderer_bbox_prev
 {
     _ogl_scene_renderer_bbox_preview* preview_ptr = (_ogl_scene_renderer_bbox_preview*) preview;
 
-    if (preview_ptr->data_bo_id != 0)
+    if (preview_ptr->data_bo != NULL)
     {
         ogl_context_request_callback_from_context_thread(preview_ptr->context,
                                                          _ogl_scene_renderer_bbox_preview_release_renderer_callback,
@@ -615,14 +620,23 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_scene_renderer_bbox_preview_start(ogl_sce
     }
 
     /* Initialize a BO store if one has not been created yet */
-    if (preview_ptr->data_bo_id == 0)
+    if (preview_ptr->data_bo == NULL)
     {
         _ogl_context_scene_renderer_bbox_preview_init_ub_data(preview_ptr);
     }
 
     /* Issue the draw call */
-    const GLint program_id = ogl_program_get_id(preview_ptr->preview_program);
-    GLuint      vao_id     = 0;
+    GLuint      data_bo_id           = 0;
+    uint32_t    data_bo_start_offset = -1;
+    const GLint program_id           = ogl_program_get_id(preview_ptr->preview_program);
+    GLuint      vao_id               = 0;
+
+    raGL_buffer_get_property(preview_ptr->data_bo,
+                             RAGL_BUFFER_PROPERTY_ID,
+                            &data_bo_id);
+    raGL_buffer_get_property(preview_ptr->data_bo,
+                             RAGL_BUFFER_PROPERTY_START_OFFSET,
+                            &data_bo_start_offset);
 
     ogl_context_get_property(preview_ptr->context,
                              OGL_CONTEXT_PROPERTY_VAO_NO_VAAS,
@@ -638,8 +652,8 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_scene_renderer_bbox_preview_start(ogl_sce
 
     preview_ptr->pGLBindBufferRange(GL_UNIFORM_BUFFER,
                                     0, /* index */
-                                    preview_ptr->data_bo_id,
-                                    preview_ptr->data_bo_start_offset,
+                                    data_bo_id,
+                                    data_bo_start_offset,
                                     preview_ptr->data_bo_size);
 
     preview_ptr->pGLBindVertexArray(vao_id);

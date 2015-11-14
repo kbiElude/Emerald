@@ -16,6 +16,7 @@
 #include "ogl/ogl_shader.h"
 #include "ogl/ogl_texture.h"
 #include "procedural/procedural_mesh_sphere.h"
+#include "raGL/raGL_buffer.h"
 #include "system/system_matrix4x4.h"
 
 GLuint                 _julia_data_ub_offset                      = -1;
@@ -37,9 +38,8 @@ GLuint                 _julia_mv_ub_offset                        = -1;
 GLuint                 _julia_mvp_ub_offset                       = -1;
 ogl_program            _julia_program                             = NULL;
 ogl_program_ub         _julia_program_ub                          = NULL;
-GLuint                 _julia_program_ub_bo_id                    = 0;
+raGL_buffer            _julia_program_ub_bo                       = NULL;
 GLuint                 _julia_program_ub_bo_size                  = 0;
-GLuint                 _julia_program_ub_bo_start_offset          = 0;
 GLuint                 _julia_raycast_radius_multiplier_ub_offset = -1;
 GLuint                 _julia_reflectivity_ub_offset              = -1;
 GLuint                 _julia_sph_texture_uniform_location        = -1;
@@ -460,10 +460,20 @@ static void _stage_step_julia_execute(ogl_context context,
                                             stage_step_background_get_background_texture() );
 
     /* Draw the fractal */
+    GLuint   julia_program_ub_bo_id           = 0;
+    uint32_t julia_program_ub_bo_start_offset = -1;
+
+    raGL_buffer_get_property(_julia_program_ub_bo,
+                             RAGL_BUFFER_PROPERTY_ID,
+                            &julia_program_ub_bo_id);
+    raGL_buffer_get_property(_julia_program_ub_bo,
+                             RAGL_BUFFER_PROPERTY_START_OFFSET,
+                            &julia_program_ub_bo_start_offset);
+
     entrypoints->pGLBindBufferRange(GL_UNIFORM_BUFFER,
                                     0, /* index */
-                                    _julia_program_ub_bo_id,
-                                    _julia_program_ub_bo_start_offset,
+                                     julia_program_ub_bo_id,
+                                     julia_program_ub_bo_start_offset,
                                     _julia_program_ub_bo_size);
 
     entrypoints->pGLClearColor     (0.0f,  /* red */
@@ -596,11 +606,8 @@ PUBLIC void stage_step_julia_init(ogl_context  context,
                                 OGL_PROGRAM_UB_PROPERTY_BLOCK_DATA_SIZE,
                                &_julia_program_ub_bo_size);
     ogl_program_ub_get_property(_julia_program_ub,
-                                OGL_PROGRAM_UB_PROPERTY_BO_ID,
-                               &_julia_program_ub_bo_id);
-    ogl_program_ub_get_property(_julia_program_ub,
-                                OGL_PROGRAM_UB_PROPERTY_BO_START_OFFSET,
-                               &_julia_program_ub_bo_start_offset);
+                                OGL_PROGRAM_UB_PROPERTY_BO,
+                               &_julia_program_ub_bo);
 
     /* Retrieve attribute/uniform locations */
     const ogl_program_variable*             data_uniform_data                      = NULL;

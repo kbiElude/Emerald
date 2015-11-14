@@ -12,6 +12,7 @@
 #include "ogl/ogl_ui.h"
 #include "ogl/ogl_ui_frame.h"
 #include "ogl/ogl_ui_shared.h"
+#include "raGL/raGL_buffer.h"
 #include "system/system_assertions.h"
 #include "system/system_hashed_ansi_string.h"
 #include "system/system_log.h"
@@ -27,9 +28,8 @@ typedef struct
     float       x1y1x2y2[4];
 
     ogl_program_ub program_ub;
-    GLuint         program_ub_bo_id;
+    raGL_buffer    program_ub_bo;
     GLuint         program_ub_bo_size;
-    GLuint         program_ub_bo_start_offset;
     GLint          program_x1y1x2y2_ub_offset;
 
     /* Cached func ptrs */
@@ -130,11 +130,21 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_ui_frame_draw(void* internal_instance)
                                 GL_ONE_MINUS_SRC_ALPHA);
     frame_ptr->pGLEnable       (GL_BLEND);
     {
+        GLuint   program_ub_bo_id           = 0;
+        uint32_t program_ub_bo_start_offset = -1;
+
+        raGL_buffer_get_property(frame_ptr->program_ub_bo,
+                                 RAGL_BUFFER_PROPERTY_ID,
+                                &program_ub_bo_id);
+        raGL_buffer_get_property(frame_ptr->program_ub_bo,
+                                 RAGL_BUFFER_PROPERTY_START_OFFSET,
+                                &program_ub_bo_start_offset);
+
         frame_ptr->pGLUseProgram     (ogl_program_get_id(frame_ptr->program) );
         frame_ptr->pGLBindBufferRange(GL_UNIFORM_BUFFER,
                                       0, /* index */
-                                      frame_ptr->program_ub_bo_id,
-                                      frame_ptr->program_ub_bo_start_offset,
+                                      program_ub_bo_id,
+                                      program_ub_bo_start_offset,
                                       frame_ptr->program_ub_bo_size);
 
         ogl_program_ub_sync(frame_ptr->program_ub);
@@ -282,11 +292,8 @@ PUBLIC void* ogl_ui_frame_init(ogl_ui       instance,
                                     OGL_PROGRAM_UB_PROPERTY_BLOCK_DATA_SIZE,
                                    &new_frame->program_ub_bo_size);
         ogl_program_ub_get_property(new_frame->program_ub,
-                                    OGL_PROGRAM_UB_PROPERTY_BO_ID,
-                                   &new_frame->program_ub_bo_id);
-        ogl_program_ub_get_property(new_frame->program_ub,
-                                    OGL_PROGRAM_UB_PROPERTY_BO_START_OFFSET,
-                                   &new_frame->program_ub_bo_start_offset);
+                                    OGL_PROGRAM_UB_PROPERTY_BO,
+                                   &new_frame->program_ub_bo);
 
         /* Set up UBO bindings */
         new_frame->pGLUniformBlockBinding(ogl_program_get_id(new_frame->program),

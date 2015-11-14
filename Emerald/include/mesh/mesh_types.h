@@ -67,17 +67,11 @@ typedef enum
     /* not settable, mesh_creation_flags */
     MESH_PROPERTY_CREATION_FLAGS,
 
-    /* not settable, GLuint .
+    /* not settable, raGL_buffer
      *
      * Only used for regular meshes
      */
-    MESH_PROPERTY_GL_BO_ID,
-
-    /* not settable, unsigned int
-     *
-     * Only used for regular meshes.
-     */
-    MESH_PROPERTY_GL_BO_START_OFFSET,
+    MESH_PROPERTY_GL_BO,
 
     /* not settable, _mesh_index_type */
     MESH_PROPERTY_GL_INDEX_TYPE,
@@ -156,11 +150,11 @@ typedef enum
 
 typedef enum
 {
-    /* settable, unsigned int.
+    /* settable, raGL_buffer
      *
      * Only used by GPU stream meshes.
      */
-    MESH_LAYER_DATA_STREAM_PROPERTY_GL_BO_ID,
+    MESH_LAYER_DATA_STREAM_PROPERTY_GL_BO,
 
     /* settable, unsigned int.
      *
@@ -192,7 +186,7 @@ typedef enum
      * To change the value, use mesh_set_layer_data_stream_property_with_buffer_memory() with
      * MESH_LAYER_DATA_STREAM_PROPERTY_N_ITEMS pname.
      */
-    MESH_LAYER_DATA_STREAM_PROPERTY_N_ITEMS_BO_ID,
+    MESH_LAYER_DATA_STREAM_PROPERTY_N_ITEMS_BO,
 
     /* indirectly settable, bool.
      *
@@ -200,13 +194,6 @@ typedef enum
      * MESH_LAYER_DATA_STREAM_PROPERTY_N_ITEMS pname.
      */
      MESH_LAYER_DATA_STREAM_PROPERTY_N_ITEMS_BO_READ_REQUIRES_MEMORY_BARRIER,
-
-    /* indirectly settable, unsigned int.
-     *
-     * To change the value, use mesh_set_layer_data_stream_property_with_buffer_memory() with
-     * MESH_LAYER_DATA_STREAM_PROPERTY_N_ITEMS pname.
-     */
-    MESH_LAYER_DATA_STREAM_PROPERTY_N_ITEMS_BO_START_OFFSET,
 
     /* not settable, mesh_layer_data_stream_source.
      *

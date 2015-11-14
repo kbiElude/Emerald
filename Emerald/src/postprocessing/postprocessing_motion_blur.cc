@@ -13,6 +13,7 @@
 #include "ogl/ogl_shader.h"
 #include "ogl/ogl_texture.h"
 #include "postprocessing/postprocessing_motion_blur.h"
+#include "raGL/raGL_buffer.h"
 #include "system/system_assertions.h"
 #include "system/system_hashed_ansi_string.h"
 #include "system/system_log.h"
@@ -31,9 +32,8 @@ typedef struct _postprocessing_motion_blur
     unsigned int                            n_velocity_samples_max;
     ogl_program                             po;
     ogl_program_ub                          po_props_ub;
-    GLuint                                  po_props_ub_bo_id;
+    raGL_buffer                             po_props_ub_bo;
     unsigned int                            po_props_ub_bo_size;
-    unsigned int                            po_props_ub_bo_start_offset;
     unsigned int                            po_props_ub_bo_image_n_samples_start_offset;
     unsigned int                            po_props_ub_bo_n_velocity_samples_max_start_offset;
     const GLuint                            po_binding_src_color_image;
@@ -65,10 +65,9 @@ typedef struct _postprocessing_motion_blur
         n_velocity_samples_max                             = 32; /* as per documentation */
         po                                                 = NULL;
         po_props_ub                                        = NULL;
-        po_props_ub_bo_id                                  = 0;
+        po_props_ub_bo                                     = NULL;
         po_props_ub_bo_n_velocity_samples_max_start_offset = -1;
         po_props_ub_bo_size                                = 0;
-        po_props_ub_bo_start_offset                        = -1;
         sampler                                            = NULL;
         src_color_image_n_layer                            = 0;
         src_color_image_n_mipmap                           = 0;
@@ -303,7 +302,7 @@ PRIVATE system_hashed_ansi_string _postprocessing_motion_blur_get_cs_body(_postp
 
     snprintf(temp,
              sizeof(temp),
-             "%d",
+             "%u",
              motion_blur_ptr->wg_local_size_x);
     token_values[0] = system_hashed_ansi_string_create(temp);
 
@@ -458,14 +457,11 @@ PRIVATE void _postprocessing_motion_blur_init_po(_postprocessing_motion_blur* mo
                           "GL does not recognize motion blur post-processor's propsUB uniform block");
 
         ogl_program_ub_get_property(motion_blur_ptr->po_props_ub,
-                                    OGL_PROGRAM_UB_PROPERTY_BO_ID,
-                                   &motion_blur_ptr->po_props_ub_bo_id);
+                                    OGL_PROGRAM_UB_PROPERTY_BO,
+                                   &motion_blur_ptr->po_props_ub_bo);
         ogl_program_ub_get_property(motion_blur_ptr->po_props_ub,
                                     OGL_PROGRAM_UB_PROPERTY_BLOCK_DATA_SIZE,
                                    &motion_blur_ptr->po_props_ub_bo_size);
-        ogl_program_ub_get_property(motion_blur_ptr->po_props_ub,
-                                    OGL_PROGRAM_UB_PROPERTY_BO_START_OFFSET,
-                                   &motion_blur_ptr->po_props_ub_bo_start_offset);
 
         motion_blur_ptr->po_props_ub_bo_n_velocity_samples_max_start_offset = n_velocity_samples_max_variable_ptr->block_offset;
 
@@ -774,10 +770,20 @@ PUBLIC EMERALD_API RENDERING_CONTEXT_CALL void postprocessing_motion_blur_execut
 
     ogl_program_ub_sync(motion_blur_ptr->po_props_ub);
 
+    GLuint   po_props_ub_bo_id           = 0;
+    uint32_t po_props_ub_bo_start_offset = -1;
+
+    raGL_buffer_get_property(motion_blur_ptr->po_props_ub_bo,
+                             RAGL_BUFFER_PROPERTY_ID,
+                            &po_props_ub_bo_id);
+    raGL_buffer_get_property(motion_blur_ptr->po_props_ub_bo,
+                             RAGL_BUFFER_PROPERTY_START_OFFSET,
+                            &po_props_ub_bo_start_offset);
+
     entrypoints_ptr->pGLBindBufferRange(GL_UNIFORM_BUFFER,
                                         0, /* index */
-                                        motion_blur_ptr->po_props_ub_bo_id,
-                                        motion_blur_ptr->po_props_ub_bo_start_offset,
+                                        po_props_ub_bo_id,
+                                        po_props_ub_bo_start_offset,
                                         motion_blur_ptr->po_props_ub_bo_size);
 
     /* Launch the compute jobs */

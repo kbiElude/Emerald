@@ -10,6 +10,7 @@
 #include "ogl/ogl_scene_renderer.h"
 #include "ogl/ogl_scene_renderer_lights_preview.h"
 #include "ogl/ogl_shader.h"
+#include "raGL/raGL_buffer.h"
 #include "scene/scene.h"
 #include "system/system_matrix4x4.h"
 #include <string.h>
@@ -53,9 +54,8 @@ typedef struct _ogl_scene_renderer_lights_preview
     scene          owned_scene;
     ogl_program    preview_program;
     ogl_program_ub preview_program_ub;
-    GLuint         preview_program_ub_bo_id;
+    raGL_buffer    preview_program_ub_bo;
     unsigned int   preview_program_ub_bo_size;
-    unsigned int   preview_program_ub_bo_start_offset;
     GLint          preview_program_color_ub_offset;
     GLint          preview_program_position_ub_offset;
 
@@ -65,9 +65,8 @@ typedef struct _ogl_scene_renderer_lights_preview
         owned_scene                        = NULL;
         preview_program                    = NULL;
         preview_program_ub                 = NULL;
-        preview_program_ub_bo_id           = 0;
+        preview_program_ub_bo              = NULL;
         preview_program_ub_bo_size         = 0;
-        preview_program_ub_bo_start_offset = 0;
         preview_program_color_ub_offset    = -1;
         preview_program_position_ub_offset = -1;
     }
@@ -152,11 +151,8 @@ PRIVATE void _ogl_context_scene_renderer_lights_preview_init_preview_program(_og
                                 OGL_PROGRAM_UB_PROPERTY_BLOCK_DATA_SIZE,
                                &preview_ptr->preview_program_ub_bo_size);
     ogl_program_ub_get_property(preview_ptr->preview_program_ub,
-                                OGL_PROGRAM_UB_PROPERTY_BO_ID,
-                               &preview_ptr->preview_program_ub_bo_id);
-    ogl_program_ub_get_property(preview_ptr->preview_program_ub,
-                                OGL_PROGRAM_UB_PROPERTY_BO_START_OFFSET,
-                               &preview_ptr->preview_program_ub_bo_start_offset);
+                                OGL_PROGRAM_UB_PROPERTY_BO,
+                               &preview_ptr->preview_program_ub_bo);
 
     /* Retrieve uniform properties */
     ogl_program_get_uniform_by_name(preview_ptr->preview_program,
@@ -308,10 +304,20 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_scene_renderer_lights_preview_render(ogl_
      * but light preview is only used for debugging purposes, so not much sense
      * in writing an overbloated implementation.
      */
+    GLuint   preview_program_ub_bo_id           = 0;
+    uint32_t preview_program_ub_bo_start_offset = -1;
+
+    raGL_buffer_get_property(preview_ptr->preview_program_ub_bo,
+                             RAGL_BUFFER_PROPERTY_ID,
+                            &preview_program_ub_bo_id);
+    raGL_buffer_get_property(preview_ptr->preview_program_ub_bo,
+                             RAGL_BUFFER_PROPERTY_START_OFFSET,
+                            &preview_program_ub_bo_start_offset);
+
     entrypoints_ptr->pGLBindBufferRange(GL_UNIFORM_BUFFER,
                                         0, /* index */
-                                        preview_ptr->preview_program_ub_bo_id,
-                                        preview_ptr->preview_program_ub_bo_start_offset,
+                                        preview_program_ub_bo_id,
+                                        preview_program_ub_bo_start_offset,
                                         preview_ptr->preview_program_ub_bo_size);
 
     entrypoints_ptr->pGLDrawArrays(GL_POINTS,

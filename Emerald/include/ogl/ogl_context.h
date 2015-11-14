@@ -31,8 +31,10 @@ typedef enum ogl_context_property
     /* not settable, ogl_context_bo_bindings */
     OGL_CONTEXT_PROPERTY_BO_BINDINGS,
 
-    /* not settable, ogl_context_buffers. */
-    OGL_CONTEXT_PROPERTY_BUFFERS,
+    /* not settable, raGL_buffers.
+     *
+     * TODO: This will be removed after RAL integration is finished. */
+    OGL_CONTEXT_PROPERTY_BUFFERS_RAGL,
 
     /* not settable, GLuint */
     OGL_CONTEXT_PROPERTY_DEFAULT_FBO_ID,

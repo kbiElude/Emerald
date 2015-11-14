@@ -22,10 +22,6 @@ typedef enum
     PROCEDURAL_MESH_SPHERE_PROPERTY_ARRAYS_RAW_DATA,               /* not settable, GLfloat*. Will throw an assertion failure if the sphere
                                                                     *                         has not been created with DATA_RAW flag. */
 
-    PROCEDURAL_MESH_SPHERE_PROPERTY_ARRAYS_TBO_ID,                 /* not settable, ogl_texture. The getter will spawn the object, when the
-                                                                    *                            texture is requested for the 1st time.
-                                                                    **/
-
     PROCEDURAL_MESH_SPHERE_PROPERTY_N_TRIANGLES,                  /* not settable, unsigned int */
 } _procedural_mesh_sphere_property;
 

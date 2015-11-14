@@ -6,10 +6,10 @@
  * TODO: Improved synchronization impl.
  */
 #include "shared.h"
-#include "ogl/ogl_buffers.h"
 #include "ogl/ogl_context.h"
 #include "ogl/ogl_program.h"
 #include "ogl/ogl_program_block.h"
+#include "raGL/raGL_buffers.h"
 #include "system/system_assertions.h"
 #include "system/system_hashed_ansi_string.h"
 #include "system/system_hash64map.h"
@@ -23,15 +23,14 @@
 /** Internal types */
 typedef struct _ogl_program_block
 {
-    ogl_buffers  buffers; /* NOT retained */
+    raGL_buffers buffers; /* NOT retained */
     ogl_context  context; /* NOT retained */
     unsigned int index;
     ogl_program  owner;
 
     /* block_data holds a local cache of variable data. This helps us avoid all the complex logic
      * that would otherwise have to be used to store uniform values AND is pretty cache-friendly. */
-    GLuint                 block_bo_id;
-    unsigned int           block_bo_start_offset;
+    raGL_buffer            block_bo;
     unsigned char*         block_data;
     GLint                  block_data_size;
     ogl_program_block_type block_type;
@@ -81,8 +80,7 @@ typedef struct _ogl_program_block
                           "Sanity check failed");
 
         /* Initialize fields with default values */
-        block_bo_id                      = 0;
-        block_bo_start_offset            = -1;
+        block_bo                         = NULL;
         block_data                       = NULL;
         block_data_size                  = 0;
         block_type                       = in_type;
@@ -109,7 +107,7 @@ typedef struct _ogl_program_block
             offset_to_uniform_descriptor_map = system_hash64map_create(sizeof(ogl_program_variable*) );
 
             ogl_context_get_property(context,
-                                     OGL_CONTEXT_PROPERTY_BUFFERS,
+                                     OGL_CONTEXT_PROPERTY_BUFFERS_RAGL,
                                     &buffers);
 
             ASSERT_DEBUG_SYNC(members                          != NULL &&
@@ -120,14 +118,12 @@ typedef struct _ogl_program_block
 
     ~_ogl_program_block()
     {
-        if (block_bo_id != 0)
+        if (block_bo != NULL)
         {
-            ogl_buffers_free_buffer_memory(buffers,
-                                           block_bo_id,
-                                           block_bo_start_offset);
+            raGL_buffers_free_buffer_memory(buffers,
+                                            block_bo);
 
-            block_bo_id           = 0;
-            block_bo_start_offset = -1;
+            block_bo = NULL;
         }
 
         if (block_data != NULL)
@@ -438,6 +434,8 @@ PRIVATE bool _ogl_program_block_init(_ogl_program_block* block_ptr)
     if (block_ptr->block_data_size > 0 &&
         block_ptr->syncable)
     {
+        ral_buffer_create_info block_create_info;
+
         block_ptr->block_data = new (std::nothrow) unsigned char[block_ptr->block_data_size];
 
         if (block_ptr->block_data == NULL)
@@ -455,13 +453,15 @@ PRIVATE bool _ogl_program_block_init(_ogl_program_block* block_ptr)
                0,
                block_ptr->block_data_size);
 
-        ogl_buffers_allocate_buffer_memory(block_ptr->buffers,
-                                           block_ptr->block_data_size,
-                                           RAL_BUFFER_MAPPABILITY_NONE,
-                                           RAL_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-                                           RAL_BUFFER_PROPERTY_SPARSE_IF_AVAILABLE_BIT,
-                                          &block_ptr->block_bo_id,
-                                          &block_ptr->block_bo_start_offset);
+        block_create_info.mappability_bits = RAL_BUFFER_MAPPABILITY_NONE;
+        block_create_info.property_bits    = RAL_BUFFER_PROPERTY_SPARSE_IF_AVAILABLE_BIT;
+        block_create_info.size             = block_ptr->block_data_size;
+        block_create_info.usage_bits       = RAL_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
+        block_create_info.user_queue_bits  = 0xFFFFFFFF;
+
+        raGL_buffers_allocate_buffer_memory_for_ral_buffer_create_info(block_ptr->buffers,
+                                                                      &block_create_info,
+                                                                      &block_ptr->block_bo);
 
         /* Force a data sync */
         block_ptr->dirty_offset_end   = block_ptr->block_data_size;
@@ -972,22 +972,12 @@ PUBLIC void ogl_program_block_get_property(const ogl_program_block    block,
             break;
         }
 
-        case OGL_PROGRAM_BLOCK_PROPERTY_BO_ID:
+        case OGL_PROGRAM_BLOCK_PROPERTY_BO:
         {
             ASSERT_DEBUG_SYNC(block_ptr->syncable,
-                              "OGL_PROGRAM_UB_PROPERTY_BO_ID property only available for syncable ogl_program_ub instances.");
+                              "OGL_PROGRAM_BLOCK_PROPERTY_BO property only available for syncable ogl_program_ub instances.");
 
-            *(GLuint*) out_result = block_ptr->block_bo_id;
-
-            break;
-        }
-
-        case OGL_PROGRAM_BLOCK_PROPERTY_BO_START_OFFSET:
-        {
-            ASSERT_DEBUG_SYNC(block_ptr->syncable,
-                              "OGL_PROGRAM_UB_PROPERTY_BO_START_OFFSET property only available for syncable ogl_program_ub instances.");
-
-            *(GLuint*) out_result = block_ptr->block_bo_start_offset;
+            *(raGL_buffer*) out_result = block_ptr->block_bo;
 
             break;
         }
@@ -1093,7 +1083,9 @@ PUBLIC void ogl_program_block_set_property(const ogl_program_block    block,
 /* Please see header for spec */
 PUBLIC RENDERING_CONTEXT_CALL void ogl_program_block_sync(ogl_program_block block)
 {
-    _ogl_program_block* block_ptr = (_ogl_program_block*) block;
+    GLuint              block_bo_id           = 0;
+    uint32_t            block_bo_start_offset = -1;
+    _ogl_program_block* block_ptr             = (_ogl_program_block*) block;
 
     /* Sanity checks */
     ASSERT_DEBUG_SYNC(block_ptr->dirty_offset_end != DIRTY_OFFSET_UNUSED && block_ptr->dirty_offset_start != DIRTY_OFFSET_UNUSED ||
@@ -1117,22 +1109,29 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_program_block_sync(ogl_program_block bloc
         goto end;
     }
 
+    raGL_buffer_get_property(block_ptr->block_bo,
+                             RAGL_BUFFER_PROPERTY_ID,
+                            &block_bo_id);
+    raGL_buffer_get_property(block_ptr->block_bo,
+                             RAGL_BUFFER_PROPERTY_START_OFFSET,
+                            &block_bo_start_offset);
+
     if (block_ptr->pGLNamedBufferSubDataEXT != NULL)
     {
-        block_ptr->pGLNamedBufferSubDataEXT(block_ptr->block_bo_id,
-                                            block_ptr->block_bo_start_offset + block_ptr->dirty_offset_start,
-                                            block_ptr->dirty_offset_end      - block_ptr->dirty_offset_start,
-                                            block_ptr->block_data            + block_ptr->dirty_offset_start);
+        block_ptr->pGLNamedBufferSubDataEXT(block_bo_id,
+                                            block_bo_start_offset       + block_ptr->dirty_offset_start,
+                                            block_ptr->dirty_offset_end - block_ptr->dirty_offset_start,
+                                            block_ptr->block_data       + block_ptr->dirty_offset_start);
     }
     else
     {
         /* Use a rarely used binding point to avoid collisions with existing bindings */
         block_ptr->pGLBindBuffer   (GL_TRANSFORM_FEEDBACK_BUFFER,
-                                    block_ptr->block_bo_id);
+                                    block_bo_id);
         block_ptr->pGLBufferSubData(GL_TRANSFORM_FEEDBACK_BUFFER,
-                                    block_ptr->block_bo_start_offset + block_ptr->dirty_offset_start,
-                                    block_ptr->dirty_offset_end      - block_ptr->dirty_offset_start,
-                                    block_ptr->block_data            + block_ptr->dirty_offset_start);
+                                    block_bo_start_offset       + block_ptr->dirty_offset_start,
+                                    block_ptr->dirty_offset_end - block_ptr->dirty_offset_start,
+                                    block_ptr->block_data       + block_ptr->dirty_offset_start);
     }
 
     if (block_ptr->is_intel_driver)

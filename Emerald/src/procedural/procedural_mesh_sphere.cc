@@ -4,10 +4,10 @@
  *
  */
 #include "shared.h"
-#include "ogl/ogl_buffers.h"
 #include "ogl/ogl_context.h"
 #include "ogl/ogl_texture.h"
 #include "procedural/procedural_mesh_sphere.h"
+#include "raGL/raGL_buffers.h"
 #include "system/system_log.h"
 
 /** BUFFER DATA STRUCTURE:
@@ -20,16 +20,15 @@
 /* Internal type definitions */
 typedef struct
 {
-    ogl_buffers                   buffers; /* owned by ogl_context */
+    raGL_buffers                  buffers;
     ogl_context                   context;
     _procedural_mesh_data_bitmask creation_bitmask;
     uint32_t                      n_latitude_splices;
     uint32_t                      n_longitude_splices;
     system_hashed_ansi_string     name;
 
-    GLuint       arrays_bo_id;    /* owned by ogl_buffers - do NOT release with glDeleteBuffers() */
+    raGL_buffer  arrays_bo;      /* owned by raGL_buffers - do NOT release with glDeleteBuffers() */
     unsigned int arrays_bo_size;
-    unsigned int arrays_bo_start_offset;
     ogl_texture  arrays_tbo;
     GLuint       n_triangles;
     GLfloat*     raw_arrays_data;
@@ -180,16 +179,29 @@ PRIVATE void _procedural_mesh_sphere_create_renderer_callback(ogl_context contex
             mesh_sphere->n_triangles    = n_triangles;
 
             /* Set buffer object contents */
-            ogl_buffers_allocate_buffer_memory(mesh_sphere->buffers,
-                                               mesh_sphere->arrays_bo_size,
-                                               RAL_BUFFER_MAPPABILITY_NONE,
-                                               RAL_BUFFER_USAGE_RO_TEXTURE_BUFFER_BIT | RAL_BUFFER_USAGE_VERTEX_BUFFER_BIT,
-                                               RAL_BUFFER_PROPERTY_SPARSE_IF_AVAILABLE_BIT,
-                                               &mesh_sphere->arrays_bo_id,
-                                               &mesh_sphere->arrays_bo_start_offset);
+            GLuint                 arrays_bo_id           = 0;
+            uint32_t               arrays_bo_start_offset = -1;
+            ral_buffer_create_info arrays_create_info;
 
-            dsa_entry_points->pGLNamedBufferSubDataEXT(mesh_sphere->arrays_bo_id,
-                                                       mesh_sphere->arrays_bo_start_offset,
+            arrays_create_info.mappability_bits = RAL_BUFFER_MAPPABILITY_NONE;
+            arrays_create_info.property_bits    = RAL_BUFFER_PROPERTY_SPARSE_IF_AVAILABLE_BIT;
+            arrays_create_info.size             = mesh_sphere->arrays_bo_size;
+            arrays_create_info.usage_bits       = RAL_BUFFER_USAGE_RO_TEXTURE_BUFFER_BIT | RAL_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+            arrays_create_info.user_queue_bits  = 0xFFFFFFFF;
+
+            raGL_buffers_allocate_buffer_memory_for_ral_buffer_create_info(mesh_sphere->buffers,
+                                                                          &arrays_create_info,
+                                                                          &mesh_sphere->arrays_bo);
+
+            raGL_buffer_get_property(mesh_sphere->arrays_bo,
+                                     RAGL_BUFFER_PROPERTY_ID,
+                                    &arrays_bo_id);
+            raGL_buffer_get_property(mesh_sphere->arrays_bo,
+                                     RAGL_BUFFER_PROPERTY_START_OFFSET,
+                                    &arrays_bo_start_offset);
+
+            dsa_entry_points->pGLNamedBufferSubDataEXT(arrays_bo_id,
+                                                       arrays_bo_start_offset,
                                                        mesh_sphere->arrays_bo_size,
                                                        triangles);
 
@@ -216,32 +228,6 @@ PRIVATE void _procedural_mesh_sphere_create_renderer_callback(ogl_context contex
 }
 
 /** TODO */
-PRIVATE void _procedural_mesh_sphere_get_arrays_tbo_renderer_callback(ogl_context context, void* arg)
-{
-    const ogl_context_gl_entrypoints*                         entry_points     = NULL;
-    const ogl_context_gl_entrypoints_ext_direct_state_access* dsa_entry_points = NULL;
-    _procedural_mesh_sphere*                                  ptr              = (_procedural_mesh_sphere*) arg;
-
-    ogl_context_get_property(context,
-                             OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL_EXT_DIRECT_STATE_ACCESS,
-                            &dsa_entry_points);
-    ogl_context_get_property(context,
-                             OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
-                            &entry_points);
-
-    ptr->arrays_tbo = ogl_texture_create_empty(context,
-                                               system_hashed_ansi_string_create_by_merging_two_strings("Procedural mesh sphere texture ",
-                                                                                                       system_hashed_ansi_string_get_buffer(ptr->name) ));
-
-    dsa_entry_points->pGLTextureBufferRangeEXT(ptr->arrays_tbo,
-                                               GL_TEXTURE_BUFFER,
-                                               GL_RGB32F,
-                                               ptr->arrays_bo_id,
-                                               ptr->arrays_bo_start_offset,
-                                               ptr->arrays_bo_size);
-}
-
-/** TODO */
 PRIVATE void _procedural_mesh_sphere_release_renderer_callback(ogl_context context, void* arg)
 {
     const ogl_context_gl_entrypoints* entry_points = NULL;
@@ -253,9 +239,10 @@ PRIVATE void _procedural_mesh_sphere_release_renderer_callback(ogl_context conte
 
     if (mesh_sphere->creation_bitmask & DATA_BO_ARRAYS)
     {
-        ogl_buffers_free_buffer_memory(mesh_sphere->buffers,
-                                       mesh_sphere->arrays_bo_id,
-                                       mesh_sphere->arrays_bo_start_offset);
+        raGL_buffers_free_buffer_memory(mesh_sphere->buffers,
+                                        mesh_sphere->arrays_bo);
+
+        mesh_sphere->arrays_bo = NULL;
     }
 }
 
@@ -312,19 +299,18 @@ PUBLIC EMERALD_API procedural_mesh_sphere procedural_mesh_sphere_create(ogl_cont
     if (new_instance != NULL)
     {
         /* Cache input arguments */
-        new_instance->arrays_bo_id           = -1;
-        new_instance->arrays_bo_start_offset = -1;
-        new_instance->arrays_tbo             = 0;
-        new_instance->context                = context;
-        new_instance->creation_bitmask       = data_bitmask;
-        new_instance->n_latitude_splices     = n_latitude_splices;
-        new_instance->n_longitude_splices    = n_longitude_splices;
-        new_instance->name                   = name;
-        new_instance->n_triangles            = -1;
-        new_instance->raw_arrays_data        = NULL;
+        new_instance->arrays_bo           = NULL;
+        new_instance->arrays_tbo          = 0;
+        new_instance->context             = context;
+        new_instance->creation_bitmask    = data_bitmask;
+        new_instance->n_latitude_splices  = n_latitude_splices;
+        new_instance->n_longitude_splices = n_longitude_splices;
+        new_instance->name                = name;
+        new_instance->n_triangles         = -1;
+        new_instance->raw_arrays_data     = NULL;
 
         ogl_context_get_property(context,
-                                 OGL_CONTEXT_PROPERTY_BUFFERS,
+                                 OGL_CONTEXT_PROPERTY_BUFFERS_RAGL,
                                 &new_instance->buffers);
 
         /* Call back renderer to continue */
@@ -353,21 +339,19 @@ PUBLIC EMERALD_API void procedural_mesh_sphere_get_property(procedural_mesh_sphe
     {
         case PROCEDURAL_MESH_SPHERE_PROPERTY_ARRAYS_BO_ID:
         {
-            *(GLuint*) out_result = sphere_ptr->arrays_bo_id;
+            raGL_buffer_get_property(sphere_ptr->arrays_bo,
+                                     RAGL_BUFFER_PROPERTY_ID,
+                                     out_result);
 
             break;
         }
 
         case PROCEDURAL_MESH_SPHERE_PROPERTY_ARRAYS_BO_NORMALS_DATA_OFFSET:
-        {
-            *(GLuint*) out_result = sphere_ptr->arrays_bo_start_offset;
-
-            break;
-        }
-
         case PROCEDURAL_MESH_SPHERE_PROPERTY_ARRAYS_BO_VERTEX_DATA_OFFSET:
         {
-            *(GLuint*) out_result = sphere_ptr->arrays_bo_start_offset;
+            raGL_buffer_get_property(sphere_ptr->arrays_bo,
+                                     RAGL_BUFFER_PROPERTY_START_OFFSET,
+                                     out_result);
 
             break;
         }
@@ -379,20 +363,6 @@ PUBLIC EMERALD_API void procedural_mesh_sphere_get_property(procedural_mesh_sphe
                               " not created with DATA_RAW flag");
 
             *(GLfloat**) out_result = sphere_ptr->raw_arrays_data;
-
-            break;
-        }
-
-        case PROCEDURAL_MESH_SPHERE_PROPERTY_ARRAYS_TBO_ID:
-        {
-            if (sphere_ptr->arrays_tbo == 0)
-            {
-                ogl_context_request_callback_from_context_thread(sphere_ptr->context,
-                                                                 _procedural_mesh_sphere_get_arrays_tbo_renderer_callback,
-                                                                 sphere_ptr);
-            }
-
-            *(ogl_texture*) out_result = sphere_ptr->arrays_tbo;
 
             break;
         }

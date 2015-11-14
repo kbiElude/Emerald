@@ -16,7 +16,7 @@ REFCOUNT_INSERT_DECLARATIONS(procedural_mesh_circle,
 
 typedef enum
 {
-    PROCEDURAL_MESH_CIRCLE_PROPERTY_ARRAYS_BO_ID,                  /* not settable, GLuint */
+    PROCEDURAL_MESH_CIRCLE_PROPERTY_ARRAYS_BO,                     /* not settable, raGL_buffer */
     PROCEDURAL_MESH_CIRCLE_PROPERTY_ARRAYS_BO_VERTEX_DATA_OFFSET,  /* not settable, GLuint */
     PROCEDURAL_MESH_CIRCLE_PROPERTY_N_VERTICES,                    /* not settable, unsigned int */
 } _procedural_mesh_circle_property;

@@ -7,13 +7,13 @@
 #include "mesh/mesh.h"
 #include "mesh/mesh_material.h"
 #include "mesh/mesh_marchingcubes.h"
-#include "ogl/ogl_buffers.h"
 #include "ogl/ogl_context.h"
 #include "ogl/ogl_program.h"
 #include "ogl/ogl_program_ssb.h"
 #include "ogl/ogl_program_ub.h"
 #include "ogl/ogl_programs.h"
 #include "ogl/ogl_shader.h"
+#include "raGL/raGL_buffers.h"
 #include "scene/scene_material.h"
 #include "system/system_log.h"
 
@@ -29,24 +29,22 @@ typedef struct _mesh_marchingcubes
     system_hashed_ansi_string name;
     bool                      needs_polygonization;
     unsigned int              polygonized_data_size_reduction;
-    GLuint                    scalar_data_bo_id;
+    raGL_buffer               scalar_data_bo;
     unsigned int              scalar_data_bo_size;
-    unsigned int              scalar_data_bo_start_offset;
 
     unsigned int    indirect_draw_call_args_bo_count_arg_offset;
-    GLuint          indirect_draw_call_args_bo_id;
+    raGL_buffer     indirect_draw_call_args_bo;
     unsigned int    indirect_draw_call_args_bo_size;
-    unsigned int    indirect_draw_call_args_bo_start_offset;
 
-    GLuint          polygonized_data_bo_id;
+    raGL_buffer     polygonized_data_bo;
+    raGL_buffer     polygonized_data_normals_subregion_bo;
+    raGL_buffer     polygonized_data_vertices_subregion_bo;
     unsigned int    polygonized_data_bo_size;
-    unsigned int    polygonized_data_bo_start_offset;
 
     ogl_program     po_scalar_field_polygonizer;
     ogl_program_ub  po_scalar_field_polygonizer_data_ub;
-    GLuint          po_scalar_field_polygonizer_data_ub_bo_id;
+    raGL_buffer     po_scalar_field_polygonizer_data_ub_bo;
     GLuint          po_scalar_field_polygonizer_data_ub_bo_size;
-    GLuint          po_scalar_field_polygonizer_data_ub_bo_start_offset;
     GLuint          po_scalar_field_polygonizer_data_ub_bp;
     GLuint          po_scalar_field_polygonizer_data_ub_isolevel_offset;
     unsigned int    po_scalar_field_polygonizer_global_wg_size[3];
@@ -54,9 +52,8 @@ typedef struct _mesh_marchingcubes
     GLuint          po_scalar_field_polygonizer_indirect_draw_call_count_ssb_bp;
     ogl_program_ub  po_scalar_field_polygonizer_precomputed_tables_ub;
     GLuint          po_scalar_field_polygonizer_precomputed_tables_ub_bo_edge_table_offset;
-    GLuint          po_scalar_field_polygonizer_precomputed_tables_ub_bo_id;
+    raGL_buffer     po_scalar_field_polygonizer_precomputed_tables_ub_bo;
     GLuint          po_scalar_field_polygonizer_precomputed_tables_ub_bo_size;
-    GLuint          po_scalar_field_polygonizer_precomputed_tables_ub_bo_start_offset;
     GLuint          po_scalar_field_polygonizer_precomputed_tables_ub_bo_triangle_table_offset;
     GLuint          po_scalar_field_polygonizer_precomputed_tables_ub_bp;
     ogl_program_ssb po_scalar_field_polygonizer_result_data_ssb;
@@ -79,34 +76,30 @@ typedef struct _mesh_marchingcubes
         mesh_instance                   = NULL;
         needs_polygonization            = true;
         polygonized_data_size_reduction = 0;
-        scalar_data_bo_id               = 0;
+        scalar_data_bo                  = NULL;
         scalar_data_bo_size             = -1;
-        scalar_data_bo_start_offset     = -1;
 
         indirect_draw_call_args_bo_count_arg_offset = 0;
-        indirect_draw_call_args_bo_id               = 0;
+        indirect_draw_call_args_bo                  = NULL;
         indirect_draw_call_args_bo_size             = 0;
-        indirect_draw_call_args_bo_start_offset     = 0;
 
-        polygonized_data_bo_id           = 0;
-        polygonized_data_bo_size         = 0;
-        polygonized_data_bo_start_offset = 0;
+        polygonized_data_bo                    = NULL;
+        polygonized_data_bo_size               = 0;
+        polygonized_data_normals_subregion_bo  = NULL;
+        polygonized_data_vertices_subregion_bo = NULL;
 
         po_scalar_field_polygonizer                                                = NULL;
         po_scalar_field_polygonizer_data_ub                                        = NULL;
-        po_scalar_field_polygonizer_data_ub_bo_id                                  = 0;
+        po_scalar_field_polygonizer_data_ub_bo                                     = NULL;
         po_scalar_field_polygonizer_data_ub_bo_size                                = 0;
-        po_scalar_field_polygonizer_data_ub_bo_start_offset                        = -1;
         po_scalar_field_polygonizer_data_ub_bp                                     = -1;
         po_scalar_field_polygonizer_data_ub_isolevel_offset                        = -1;
-        po_scalar_field_polygonizer_global_wg_size[3];
         po_scalar_field_polygonizer_indirect_draw_call_count_ssb                   = NULL;
         po_scalar_field_polygonizer_indirect_draw_call_count_ssb_bp                = -1;
         po_scalar_field_polygonizer_precomputed_tables_ub                          = NULL;
         po_scalar_field_polygonizer_precomputed_tables_ub_bo_edge_table_offset     = -1;
-        po_scalar_field_polygonizer_precomputed_tables_ub_bo_id                    = 0;
+        po_scalar_field_polygonizer_precomputed_tables_ub_bo                       = NULL;
         po_scalar_field_polygonizer_precomputed_tables_ub_bo_size                  = 0;
-        po_scalar_field_polygonizer_precomputed_tables_ub_bo_start_offset          = 0;
         po_scalar_field_polygonizer_precomputed_tables_ub_bo_triangle_table_offset = -1;
         po_scalar_field_polygonizer_precomputed_tables_ub_bp                       = -1;
         po_scalar_field_polygonizer_result_data_ssb                                = NULL;
@@ -438,22 +431,20 @@ REFCOUNT_INSERT_IMPLEMENTATION(mesh_marchingcubes,
 PRIVATE void _mesh_marchingcubes_deinit_rendering_thread_callback(ogl_context context,
                                                                   void*       user_arg)
 {
-    ogl_buffers          buffers  = NULL;
+    raGL_buffers         buffers  = NULL;
     _mesh_marchingcubes* mesh_ptr = (_mesh_marchingcubes*) user_arg;
 
     ogl_context_get_property(mesh_ptr->context,
-                             OGL_CONTEXT_PROPERTY_BUFFERS,
+                             OGL_CONTEXT_PROPERTY_BUFFERS_RAGL,
                             &buffers);
 
-    if (mesh_ptr->indirect_draw_call_args_bo_id != 0)
+    if (mesh_ptr->indirect_draw_call_args_bo != NULL)
     {
-        ogl_buffers_free_buffer_memory(buffers,
-                                       mesh_ptr->indirect_draw_call_args_bo_id,
-                                       mesh_ptr->indirect_draw_call_args_bo_start_offset);
+        raGL_buffers_free_buffer_memory(buffers,
+                                        mesh_ptr->indirect_draw_call_args_bo);
 
-        mesh_ptr->indirect_draw_call_args_bo_id           = 0;
-        mesh_ptr->indirect_draw_call_args_bo_size         = -1;
-        mesh_ptr->indirect_draw_call_args_bo_start_offset = -1;
+        mesh_ptr->indirect_draw_call_args_bo      = NULL;
+        mesh_ptr->indirect_draw_call_args_bo_size = -1;
     }
 
     if (mesh_ptr->mesh_instance != NULL)
@@ -463,15 +454,27 @@ PRIVATE void _mesh_marchingcubes_deinit_rendering_thread_callback(ogl_context co
         mesh_ptr->mesh_instance = NULL;
     }
 
-    if (mesh_ptr->polygonized_data_bo_id != 0)
+    if (mesh_ptr->polygonized_data_bo != NULL)
     {
-        ogl_buffers_free_buffer_memory(buffers,
-                                       mesh_ptr->polygonized_data_bo_id,
-                                       mesh_ptr->polygonized_data_bo_start_offset);
+        if (mesh_ptr->polygonized_data_normals_subregion_bo != NULL)
+        {
+            raGL_buffer_release(mesh_ptr->polygonized_data_normals_subregion_bo);
 
-        mesh_ptr->polygonized_data_bo_id           = 0;
-        mesh_ptr->polygonized_data_bo_size         = -1;
-        mesh_ptr->polygonized_data_bo_start_offset = -1;
+            mesh_ptr->polygonized_data_normals_subregion_bo = NULL;
+        }
+
+        if (mesh_ptr->polygonized_data_vertices_subregion_bo != NULL)
+        {
+            raGL_buffer_release(mesh_ptr->polygonized_data_vertices_subregion_bo);
+
+            mesh_ptr->polygonized_data_vertices_subregion_bo = NULL;
+        }
+
+        raGL_buffers_free_buffer_memory(buffers,
+                                        mesh_ptr->polygonized_data_bo);
+
+        mesh_ptr->polygonized_data_bo      = NULL;
+        mesh_ptr->polygonized_data_bo_size = -1;
     }
 
     if (mesh_ptr->po_scalar_field_polygonizer != NULL)
@@ -481,27 +484,23 @@ PRIVATE void _mesh_marchingcubes_deinit_rendering_thread_callback(ogl_context co
         mesh_ptr->po_scalar_field_polygonizer = NULL;
     }
 
-    if (mesh_ptr->po_scalar_field_polygonizer_data_ub_bo_id != 0)
+    if (mesh_ptr->po_scalar_field_polygonizer_data_ub_bo != NULL)
     {
-        ogl_buffers_free_buffer_memory(buffers,
-                                       mesh_ptr->po_scalar_field_polygonizer_data_ub_bo_id,
-                                       mesh_ptr->po_scalar_field_polygonizer_data_ub_bo_start_offset);
+        raGL_buffers_free_buffer_memory(buffers,
+                                        mesh_ptr->po_scalar_field_polygonizer_data_ub_bo);
 
-        mesh_ptr->po_scalar_field_polygonizer_data_ub_bo_id           = 0;
-        mesh_ptr->po_scalar_field_polygonizer_data_ub_bo_size         = -1;
-        mesh_ptr->po_scalar_field_polygonizer_data_ub_bo_start_offset = -1;
+        mesh_ptr->po_scalar_field_polygonizer_data_ub_bo      = NULL;
+        mesh_ptr->po_scalar_field_polygonizer_data_ub_bo_size = -1;
     }
 
-    if (mesh_ptr->po_scalar_field_polygonizer_precomputed_tables_ub_bo_id != 0)
+    if (mesh_ptr->po_scalar_field_polygonizer_precomputed_tables_ub_bo != NULL)
     {
         /* TODO: This data could be re-used across mesh_marchingcubes instances! */
-        ogl_buffers_free_buffer_memory(buffers,
-                                       mesh_ptr->po_scalar_field_polygonizer_precomputed_tables_ub_bo_id,
-                                       mesh_ptr->po_scalar_field_polygonizer_precomputed_tables_ub_bo_start_offset);
+        raGL_buffers_free_buffer_memory(buffers,
+                                        mesh_ptr->po_scalar_field_polygonizer_precomputed_tables_ub_bo);
 
-        mesh_ptr->po_scalar_field_polygonizer_precomputed_tables_ub_bo_id           = 0;
-        mesh_ptr->po_scalar_field_polygonizer_precomputed_tables_ub_bo_size         = -1;
-        mesh_ptr->po_scalar_field_polygonizer_precomputed_tables_ub_bo_start_offset = -1;
+        mesh_ptr->po_scalar_field_polygonizer_precomputed_tables_ub_bo      = NULL;
+        mesh_ptr->po_scalar_field_polygonizer_precomputed_tables_ub_bo_size = -1;
     }
 }
 
@@ -525,7 +524,7 @@ PRIVATE system_hashed_ansi_string _mesh_marchingcubes_get_polygonizer_name(_mesh
 
     snprintf(temp,
              sizeof(temp),
-             "Marching Cubes polygonizer [%dx%dx%d]",
+             "Marching Cubes polygonizer [%ux%ux%u]",
              mesh_ptr->grid_size[0],
              mesh_ptr->grid_size[1],
              mesh_ptr->grid_size[2]);
@@ -570,11 +569,11 @@ PRIVATE void _mesh_marchingcubes_get_token_key_value_arrays(const _mesh_marching
     out_global_wg_size_uvec3_ptr[1] = 1;
     out_global_wg_size_uvec3_ptr[2] = 1;
 
-    ASSERT_DEBUG_SYNC(wg_local_size_x * wg_local_size_y * wg_local_size_z <= limits_ptr->max_compute_work_group_invocations,
+    ASSERT_DEBUG_SYNC(wg_local_size_x * wg_local_size_y * wg_local_size_z <= (uint32_t) limits_ptr->max_compute_work_group_invocations,
                       "Invalid local work-group size requested");
-    ASSERT_DEBUG_SYNC(out_global_wg_size_uvec3_ptr[0] < limits_ptr->max_compute_work_group_count[0] &&
-                      out_global_wg_size_uvec3_ptr[1] < limits_ptr->max_compute_work_group_count[1] &&
-                      out_global_wg_size_uvec3_ptr[2] < limits_ptr->max_compute_work_group_count[2],
+    ASSERT_DEBUG_SYNC(out_global_wg_size_uvec3_ptr[0] < (uint32_t) limits_ptr->max_compute_work_group_count[0] &&
+                      out_global_wg_size_uvec3_ptr[1] < (uint32_t) limits_ptr->max_compute_work_group_count[1] &&
+                      out_global_wg_size_uvec3_ptr[2] < (uint32_t) limits_ptr->max_compute_work_group_count[2],
                       "Invalid global work-group size requested");
 
     /* Fill the token value array */
@@ -582,55 +581,55 @@ PRIVATE void _mesh_marchingcubes_get_token_key_value_arrays(const _mesh_marching
 
     snprintf(temp_buffer,
              sizeof(temp_buffer),
-             "%d",
+             "%u",
              wg_local_size_x);
     (*out_token_value_array_ptr)[0] = system_hashed_ansi_string_create(temp_buffer);
 
     snprintf(temp_buffer,
              sizeof(temp_buffer),
-             "%d",
+             "%u",
              wg_local_size_y);
     (*out_token_value_array_ptr)[1] = system_hashed_ansi_string_create(temp_buffer);
 
     snprintf(temp_buffer,
              sizeof(temp_buffer),
-             "%d",
+             "%u",
              wg_local_size_z);
     (*out_token_value_array_ptr)[2] = system_hashed_ansi_string_create(temp_buffer);
 
     snprintf(temp_buffer,
              sizeof(temp_buffer),
-             "%d",
+             "%u",
              mesh_ptr->grid_size[0]);
     (*out_token_value_array_ptr)[3] = system_hashed_ansi_string_create(temp_buffer);
 
     snprintf(temp_buffer,
              sizeof(temp_buffer),
-             "%d",
+             "%u",
              mesh_ptr->grid_size[1]);
     (*out_token_value_array_ptr)[4] = system_hashed_ansi_string_create(temp_buffer);
 
     snprintf(temp_buffer,
              sizeof(temp_buffer),
-             "%d",
+             "%u",
              mesh_ptr->grid_size[2]);
     (*out_token_value_array_ptr)[5] = system_hashed_ansi_string_create(temp_buffer);
 
     snprintf(temp_buffer,
              sizeof(temp_buffer),
-             "%d",
+             "%u",
              out_global_wg_size_uvec3_ptr[0]);
     (*out_token_value_array_ptr)[6] = system_hashed_ansi_string_create(temp_buffer);
 
     snprintf(temp_buffer,
              sizeof(temp_buffer),
-             "%d",
+             "%u",
              out_global_wg_size_uvec3_ptr[1]);
     (*out_token_value_array_ptr)[7] = system_hashed_ansi_string_create(temp_buffer);
 
     snprintf(temp_buffer,
              sizeof(temp_buffer),
-             "%d",
+             "%u",
              out_global_wg_size_uvec3_ptr[2]);
     (*out_token_value_array_ptr)[8] = system_hashed_ansi_string_create(temp_buffer);
 }
@@ -664,8 +663,27 @@ PRIVATE void _mesh_marchingcubes_init_mesh_instance(_mesh_marchingcubes* mesh_pt
     mesh_layer_id            new_layer_id                  = mesh_add_layer(mesh_ptr->mesh_instance);
     mesh_layer_pass_id       new_layer_pass_id;
 
-    draw_call_arguments.draw_indirect_bo_binding        = mesh_ptr->indirect_draw_call_args_bo_id;
-    draw_call_arguments.indirect                        = (const GLvoid*) mesh_ptr->indirect_draw_call_args_bo_start_offset;
+    GLuint   indirect_draw_call_args_bo_id           = 0;
+    uint32_t indirect_draw_call_args_bo_start_offset = -1;
+    GLuint   polygonized_data_bo_id                  = 0;
+    uint32_t polygonized_data_bo_start_offset        = -1;
+
+    raGL_buffer_get_property(mesh_ptr->indirect_draw_call_args_bo,
+                             RAGL_BUFFER_PROPERTY_ID,
+                            &indirect_draw_call_args_bo_id);
+    raGL_buffer_get_property(mesh_ptr->indirect_draw_call_args_bo,
+                             RAGL_BUFFER_PROPERTY_START_OFFSET,
+                            &indirect_draw_call_args_bo_start_offset);
+    raGL_buffer_get_property(mesh_ptr->polygonized_data_bo,
+                             RAGL_BUFFER_PROPERTY_ID,
+                            &polygonized_data_bo_id);
+    raGL_buffer_get_property(mesh_ptr->polygonized_data_bo,
+                             RAGL_BUFFER_PROPERTY_START_OFFSET,
+                            &polygonized_data_bo_start_offset);
+
+
+    draw_call_arguments.draw_indirect_bo_binding        = indirect_draw_call_args_bo_id;
+    draw_call_arguments.indirect                        = (const GLvoid*) indirect_draw_call_args_bo_start_offset;
     draw_call_arguments.mode                            = GL_TRIANGLES;
     draw_call_arguments.pre_draw_call_barriers          = GL_COMMAND_BARRIER_BIT | GL_VERTEX_ATTRIB_ARRAY_BARRIER_BIT;
 
@@ -675,22 +693,46 @@ PRIVATE void _mesh_marchingcubes_init_mesh_instance(_mesh_marchingcubes* mesh_pt
                                                                 MESH_DRAW_CALL_TYPE_ARRAYS_INDIRECT,
                                                                &draw_call_arguments);
 
+    mesh_ptr->polygonized_data_normals_subregion_bo  = raGL_buffer_create_raGL_buffer_subregion(mesh_ptr->polygonized_data_bo,
+                                                                                                sizeof(float) * 4,
+                                                                                                0); /* size = 0: use all available space */
+    mesh_ptr->polygonized_data_vertices_subregion_bo = raGL_buffer_create_raGL_buffer_subregion(mesh_ptr->polygonized_data_bo,
+                                                                                                0,
+                                                                                                0); /* size = 0: use all available space */
+
     mesh_add_layer_data_stream_from_buffer_memory(mesh_ptr->mesh_instance,
                                                   new_layer_id,
                                                   MESH_LAYER_DATA_STREAM_TYPE_NORMALS,
                                                   3, /* n_components */
-                                                  mesh_ptr->polygonized_data_bo_id,
-                                                  mesh_ptr->polygonized_data_bo_start_offset + sizeof(float) * 4,
+                                                  mesh_ptr->polygonized_data_normals_subregion_bo,
                                                   sizeof(float) * 7, /* bo_stride */
                                                   0);                /* bo_size - unknown */
     mesh_add_layer_data_stream_from_buffer_memory(mesh_ptr->mesh_instance,
                                                   new_layer_id,
                                                   MESH_LAYER_DATA_STREAM_TYPE_VERTICES,
                                                   4, /* n_components */
-                                                  mesh_ptr->polygonized_data_bo_id,
-                                                  mesh_ptr->polygonized_data_bo_start_offset,
+                                                  mesh_ptr->polygonized_data_vertices_subregion_bo,
                                                   sizeof(float) * 7, /* bo_stride */
                                                   0);                /* bo_size - unknown */
+
+#if 0
+    mesh_add_layer_data_stream_from_buffer_memory(mesh_ptr->mesh_instance,
+                                                  new_layer_id,
+                                                  MESH_LAYER_DATA_STREAM_TYPE_NORMALS,
+                                                  3, /* n_components */
+                                                  polygonized_data_bo_id,
+                                                  polygonized_data_bo_start_offset + sizeof(float) * 4,
+                                                  sizeof(float) * 7, /* bo_stride */
+                                                  0);                /* bo_size - unknown */
+    mesh_add_layer_data_stream_from_buffer_memory(mesh_ptr->mesh_instance,
+                                                  new_layer_id,
+                                                  MESH_LAYER_DATA_STREAM_TYPE_VERTICES,
+                                                  4, /* n_components */
+                                                  polygonized_data_bo_id,
+                                                  polygonized_data_bo_start_offset,
+                                                  sizeof(float) * 7, /* bo_stride */
+                                                  0);                /* bo_size - unknown */
+#endif
 
     mesh_set_layer_data_stream_property(mesh_ptr->mesh_instance,
                                         new_layer_id,
@@ -707,18 +749,16 @@ PRIVATE void _mesh_marchingcubes_init_mesh_instance(_mesh_marchingcubes* mesh_pt
                                                            new_layer_id,
                                                            MESH_LAYER_DATA_STREAM_TYPE_NORMALS,
                                                            MESH_LAYER_DATA_STREAM_PROPERTY_N_ITEMS,
-                                                           mesh_ptr->indirect_draw_call_args_bo_id,
+                                                           mesh_ptr->indirect_draw_call_args_bo,
                                                            sizeof(unsigned int),
-                                                           mesh_ptr->indirect_draw_call_args_bo_start_offset,
                                                            true); /* does_read_require_memory_barrier */
 
     mesh_set_layer_data_stream_property_with_buffer_memory(mesh_ptr->mesh_instance,
                                                            new_layer_id,
                                                            MESH_LAYER_DATA_STREAM_TYPE_VERTICES,
                                                            MESH_LAYER_DATA_STREAM_PROPERTY_N_ITEMS,
-                                                           mesh_ptr->indirect_draw_call_args_bo_id,
+                                                           mesh_ptr->indirect_draw_call_args_bo,
                                                            sizeof(unsigned int),
-                                                           mesh_ptr->indirect_draw_call_args_bo_start_offset,
                                                            true); /* does_read_require_memory_barrier */
 }
 
@@ -1169,7 +1209,7 @@ PRIVATE void _mesh_marchingcubes_init_polygonizer_po(_mesh_marchingcubes* mesh_p
     ogl_program_link         (mesh_ptr->po_scalar_field_polygonizer);
 
     /* Set up a BO which is going to be used for holding indirect draw call arguments */
-    ogl_buffers        buffers                   = NULL;
+    raGL_buffers       buffers                   = NULL;
     const unsigned int indirect_draw_call_args[] =
     {
         0, /* count - will be filled by the polygonizer CS */
@@ -1177,35 +1217,50 @@ PRIVATE void _mesh_marchingcubes_init_polygonizer_po(_mesh_marchingcubes* mesh_p
         0, /* first                                        */
         0  /* baseInstance                                 */
     };
+    ral_buffer_create_info indirect_draw_call_args_bo_create_info;
+    GLuint                 indirect_draw_call_args_bo_id           = 0;
+    uint32_t               indirect_draw_call_args_bo_start_offset = -1;
+
     ASSERT_DEBUG_SYNC(sizeof(indirect_draw_call_args) == sizeof(unsigned int) * 4,
                       "Invalid invalid draw call arg structure instance size");
 
     ogl_context_get_property(mesh_ptr->context,
-                             OGL_CONTEXT_PROPERTY_BUFFERS,
+                             OGL_CONTEXT_PROPERTY_BUFFERS_RAGL,
                             &buffers);
 
-    ogl_buffers_allocate_buffer_memory(buffers,
-                                       sizeof(unsigned int) * 4,
-                                       RAL_BUFFER_MAPPABILITY_NONE,
-                                       RAL_BUFFER_USAGE_INDIRECT_DRAW_BUFFER_BIT  |
-                                       RAL_BUFFER_USAGE_SHADER_STORAGE_BUFFER_BIT |
-                                       RAL_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-                                       0, /* flags */
-                                      &mesh_ptr->indirect_draw_call_args_bo_id,
-                                      &mesh_ptr->indirect_draw_call_args_bo_start_offset);
+    indirect_draw_call_args_bo_create_info.mappability_bits = RAL_BUFFER_MAPPABILITY_NONE;
+    indirect_draw_call_args_bo_create_info.property_bits    = 0;
+    indirect_draw_call_args_bo_create_info.size             = sizeof(unsigned int) * 4;
+    indirect_draw_call_args_bo_create_info.usage_bits       = RAL_BUFFER_USAGE_INDIRECT_DRAW_BUFFER_BIT  |
+                                                              RAL_BUFFER_USAGE_SHADER_STORAGE_BUFFER_BIT |
+                                                              RAL_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
+    indirect_draw_call_args_bo_create_info.user_queue_bits  = 0xFFFFFFFF;
 
-    mesh_ptr->indirect_draw_call_args_bo_count_arg_offset = mesh_ptr->indirect_draw_call_args_bo_start_offset; /* count is the first argument */
+    raGL_buffers_allocate_buffer_memory_for_ral_buffer_create_info(buffers,
+                                                                  &indirect_draw_call_args_bo_create_info,
+                                                                  &mesh_ptr->indirect_draw_call_args_bo);
+
+    raGL_buffer_get_property(mesh_ptr->indirect_draw_call_args_bo,
+                             RAGL_BUFFER_PROPERTY_ID,
+                            &indirect_draw_call_args_bo_id);
+    raGL_buffer_get_property(mesh_ptr->indirect_draw_call_args_bo,
+                             RAGL_BUFFER_PROPERTY_START_OFFSET,
+                            &indirect_draw_call_args_bo_start_offset);
+
+    mesh_ptr->indirect_draw_call_args_bo_count_arg_offset = indirect_draw_call_args_bo_start_offset; /* count is the first argument */
     mesh_ptr->indirect_draw_call_args_bo_size             = sizeof(unsigned int) * 4;
 
     entrypoints_ptr->pGLBindBuffer   (GL_DRAW_INDIRECT_BUFFER,
-                                      mesh_ptr->indirect_draw_call_args_bo_id);
+                                      indirect_draw_call_args_bo_id);
     entrypoints_ptr->pGLBufferSubData(GL_DRAW_INDIRECT_BUFFER,
-                                      mesh_ptr->indirect_draw_call_args_bo_start_offset,
+                                      indirect_draw_call_args_bo_start_offset,
                                       mesh_ptr->indirect_draw_call_args_bo_size,
                                       indirect_draw_call_args);
 
     /* Set up a BO which is going to hold the polygonized data. At max, each cube is going to hold
      * five triangles. */
+    ral_buffer_create_info polygonized_data_bo_create_info;
+
     mesh_ptr->polygonized_data_bo_size = mesh_ptr->grid_size[0] * mesh_ptr->grid_size[1] * mesh_ptr->grid_size[2] *
                                          5 /* triangles */                                                        *
                                          3 /* vertices */                                                         *
@@ -1213,14 +1268,16 @@ PRIVATE void _mesh_marchingcubes_init_polygonizer_po(_mesh_marchingcubes* mesh_p
                                          sizeof(float)                                                            /
                                          mesh_ptr->polygonized_data_size_reduction;
 
-    ogl_buffers_allocate_buffer_memory(buffers,
-                                       mesh_ptr->polygonized_data_bo_size,
-                                       RAL_BUFFER_MAPPABILITY_NONE,
-                                       RAL_BUFFER_USAGE_SHADER_STORAGE_BUFFER_BIT |
-                                       RAL_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-                                       0, /* flags */
-                                      &mesh_ptr->polygonized_data_bo_id,
-                                      &mesh_ptr->polygonized_data_bo_start_offset);
+    polygonized_data_bo_create_info.mappability_bits = RAL_BUFFER_MAPPABILITY_NONE;
+    polygonized_data_bo_create_info.property_bits    = 0;
+    polygonized_data_bo_create_info.size             = mesh_ptr->polygonized_data_bo_size;
+    polygonized_data_bo_create_info.usage_bits       = RAL_BUFFER_USAGE_SHADER_STORAGE_BUFFER_BIT |
+                                                       RAL_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
+    polygonized_data_bo_create_info.user_queue_bits  = 0xFFFFFFFF;
+
+    raGL_buffers_allocate_buffer_memory_for_ral_buffer_create_info(buffers,
+                                                                  &polygonized_data_bo_create_info,
+                                                                  &mesh_ptr->polygonized_data_bo);
 
     /* Retrieve data UB properties */
     const ogl_program_variable* uniform_isolevel_ptr = NULL;
@@ -1230,14 +1287,11 @@ PRIVATE void _mesh_marchingcubes_init_polygonizer_po(_mesh_marchingcubes* mesh_p
                                          &mesh_ptr->po_scalar_field_polygonizer_data_ub);
 
     ogl_program_ub_get_property(mesh_ptr->po_scalar_field_polygonizer_data_ub,
-                                OGL_PROGRAM_UB_PROPERTY_BO_ID,
-                               &mesh_ptr->po_scalar_field_polygonizer_data_ub_bo_id);
+                                OGL_PROGRAM_UB_PROPERTY_BO,
+                               &mesh_ptr->po_scalar_field_polygonizer_data_ub_bo);
     ogl_program_ub_get_property(mesh_ptr->po_scalar_field_polygonizer_data_ub,
                                 OGL_PROGRAM_UB_PROPERTY_BLOCK_DATA_SIZE,
                                &mesh_ptr->po_scalar_field_polygonizer_data_ub_bo_size);
-    ogl_program_ub_get_property(mesh_ptr->po_scalar_field_polygonizer_data_ub,
-                                OGL_PROGRAM_UB_PROPERTY_BO_START_OFFSET,
-                               &mesh_ptr->po_scalar_field_polygonizer_data_ub_bo_start_offset);
     ogl_program_ub_get_property(mesh_ptr->po_scalar_field_polygonizer_data_ub,
                                 OGL_PROGRAM_UB_PROPERTY_INDEXED_BP,
                                &mesh_ptr->po_scalar_field_polygonizer_data_ub_bp);
@@ -1267,14 +1321,11 @@ PRIVATE void _mesh_marchingcubes_init_polygonizer_po(_mesh_marchingcubes* mesh_p
                                          &mesh_ptr->po_scalar_field_polygonizer_precomputed_tables_ub);
 
     ogl_program_ub_get_property(mesh_ptr->po_scalar_field_polygonizer_precomputed_tables_ub,
-                                OGL_PROGRAM_UB_PROPERTY_BO_ID,
-                               &mesh_ptr->po_scalar_field_polygonizer_precomputed_tables_ub_bo_id);
+                                OGL_PROGRAM_UB_PROPERTY_BO,
+                               &mesh_ptr->po_scalar_field_polygonizer_precomputed_tables_ub_bo);
     ogl_program_ub_get_property(mesh_ptr->po_scalar_field_polygonizer_precomputed_tables_ub,
                                 OGL_PROGRAM_UB_PROPERTY_BLOCK_DATA_SIZE,
                                &mesh_ptr->po_scalar_field_polygonizer_precomputed_tables_ub_bo_size);
-    ogl_program_ub_get_property(mesh_ptr->po_scalar_field_polygonizer_precomputed_tables_ub,
-                                OGL_PROGRAM_UB_PROPERTY_BO_START_OFFSET,
-                               &mesh_ptr->po_scalar_field_polygonizer_precomputed_tables_ub_bo_start_offset);
     ogl_program_ub_get_property(mesh_ptr->po_scalar_field_polygonizer_precomputed_tables_ub,
                                 OGL_PROGRAM_UB_PROPERTY_INDEXED_BP,
                                &mesh_ptr->po_scalar_field_polygonizer_precomputed_tables_ub_bp);
@@ -1355,8 +1406,7 @@ PRIVATE void _mesh_marchingcubes_release(void* arg)
 /** Please see header for specification */
 PUBLIC EMERALD_API mesh_marchingcubes mesh_marchingcubes_create(ogl_context               context,
                                                                 const unsigned int*       grid_size_xyz,
-                                                                GLuint                    scalar_data_bo_id,
-                                                                GLuint                    scalar_data_bo_start_offset,
+                                                                raGL_buffer               scalar_data_bo,
                                                                 GLuint                    scalar_data_bo_size,
                                                                 float                     isolevel,
                                                                 scene_material            material,
@@ -1383,8 +1433,8 @@ PUBLIC EMERALD_API mesh_marchingcubes mesh_marchingcubes_create(ogl_context     
                           "Invalid grid size requested.");
         ASSERT_DEBUG_SYNC(material != NULL,
                           "Input material is NULL");
-        ASSERT_DEBUG_SYNC(scalar_data_bo_id != 0,
-                          "Scalar data BO id is 0");
+        ASSERT_DEBUG_SYNC(scalar_data_bo != NULL,
+                          "Scalar data BO is NULL");
         ASSERT_DEBUG_SYNC(scalar_data_bo_size == sizeof(float) * grid_size_xyz[0] * grid_size_xyz[1] * grid_size_xyz[2],
                           "Invalid scalar data BO size detected.");
 
@@ -1400,9 +1450,8 @@ PUBLIC EMERALD_API mesh_marchingcubes mesh_marchingcubes_create(ogl_context     
                                                                              NULL); /* object_manager_path */
         new_mesh_ptr->name                            = name;
         new_mesh_ptr->polygonized_data_size_reduction = polygonized_data_size_reduction;
-        new_mesh_ptr->scalar_data_bo_id               = scalar_data_bo_id;
+        new_mesh_ptr->scalar_data_bo                  = scalar_data_bo;
         new_mesh_ptr->scalar_data_bo_size             = scalar_data_bo_size;
-        new_mesh_ptr->scalar_data_bo_start_offset     = scalar_data_bo_start_offset;
 
         scene_material_retain(material);
 
@@ -1465,9 +1514,9 @@ PUBLIC EMERALD_API void mesh_marchingcubes_get_property(mesh_marchingcubes      
             break;
         }
 
-        case MESH_MARCHINGCUBES_PROPERTY_SCALAR_DATA_BO_ID:
+        case MESH_MARCHINGCUBES_PROPERTY_SCALAR_DATA_BO:
         {
-            *(GLuint*) out_result = mesh_ptr->scalar_data_bo_id;
+            *(raGL_buffer*) out_result = mesh_ptr->scalar_data_bo;
 
             break;
         }
@@ -1475,13 +1524,6 @@ PUBLIC EMERALD_API void mesh_marchingcubes_get_property(mesh_marchingcubes      
         case MESH_MARCHINGCUBES_PROPERTY_SCALAR_DATA_BO_SIZE:
         {
             *(unsigned int*) out_result = mesh_ptr->scalar_data_bo_size;
-
-            break;
-        }
-
-        case MESH_MARCHINGCUBES_PROPERTY_SCALAR_DATA_BO_START_OFFSET:
-        {
-            *(unsigned int*) out_result = mesh_ptr->scalar_data_bo_start_offset;
 
             break;
         }
@@ -1534,31 +1576,73 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void mesh_marchingcubes_polygonize(mes
         ogl_program_ub_sync(mesh_ptr->po_scalar_field_polygonizer_precomputed_tables_ub);
 
         /* Set up the SSBO & UBO bindings */
+        GLuint   indirect_draw_call_args_bo_id                                     = 0;
+        GLuint   po_scalar_field_polygonizer_data_ub_bo_id                         = 0;
+        uint32_t po_scalar_field_polygonizer_data_ub_bo_start_offset               = -1;
+        GLuint   po_scalar_field_polygonizer_precomputed_tables_ub_bo_id           = 0;
+        uint32_t po_scalar_field_polygonizer_precomputed_tables_ub_bo_start_offset = -1;
+        GLuint   polygonized_data_bo_id                                            = 0;
+        uint32_t polygonized_data_bo_start_offset                                  = -1;
+        GLuint   scalar_data_bo_id                                                 = 0;
+        uint32_t scalar_data_bo_start_offset                                       = -1;
+
+        raGL_buffer_get_property(mesh_ptr->indirect_draw_call_args_bo,
+                                 RAGL_BUFFER_PROPERTY_ID,
+                                &indirect_draw_call_args_bo_id);
+
+        raGL_buffer_get_property(mesh_ptr->po_scalar_field_polygonizer_data_ub_bo,
+                                 RAGL_BUFFER_PROPERTY_ID,
+                                &po_scalar_field_polygonizer_data_ub_bo_id);
+        raGL_buffer_get_property(mesh_ptr->po_scalar_field_polygonizer_data_ub_bo,
+                                 RAGL_BUFFER_PROPERTY_START_OFFSET,
+                                &po_scalar_field_polygonizer_data_ub_bo_start_offset);
+
+        raGL_buffer_get_property(mesh_ptr->po_scalar_field_polygonizer_precomputed_tables_ub_bo,
+                                 RAGL_BUFFER_PROPERTY_ID,
+                                &po_scalar_field_polygonizer_precomputed_tables_ub_bo_id);
+        raGL_buffer_get_property(mesh_ptr->po_scalar_field_polygonizer_precomputed_tables_ub_bo,
+                                 RAGL_BUFFER_PROPERTY_START_OFFSET,
+                                &po_scalar_field_polygonizer_precomputed_tables_ub_bo_start_offset);
+
+        raGL_buffer_get_property(mesh_ptr->polygonized_data_bo,
+                                 RAGL_BUFFER_PROPERTY_ID,
+                                &polygonized_data_bo_id);
+        raGL_buffer_get_property(mesh_ptr->polygonized_data_bo,
+                                 RAGL_BUFFER_PROPERTY_START_OFFSET,
+                                &polygonized_data_bo_start_offset);
+
+        raGL_buffer_get_property(mesh_ptr->scalar_data_bo,
+                                 RAGL_BUFFER_PROPERTY_ID,
+                                &scalar_data_bo_id);
+        raGL_buffer_get_property(mesh_ptr->scalar_data_bo,
+                                 RAGL_BUFFER_PROPERTY_START_OFFSET,
+                                &scalar_data_bo_start_offset);
+
         entrypoints_ptr->pGLBindBufferRange(GL_SHADER_STORAGE_BUFFER,
                                             mesh_ptr->po_scalar_field_polygonizer_indirect_draw_call_count_ssb_bp,
-                                            mesh_ptr->indirect_draw_call_args_bo_id,
+                                            indirect_draw_call_args_bo_id,
                                             mesh_ptr->indirect_draw_call_args_bo_count_arg_offset,
                                             sizeof(int) );
         entrypoints_ptr->pGLBindBufferRange(GL_SHADER_STORAGE_BUFFER,
                                             mesh_ptr->po_scalar_field_polygonizer_scalar_field_data_ssb_bp,
-                                            mesh_ptr->scalar_data_bo_id,
-                                            mesh_ptr->scalar_data_bo_start_offset,
+                                            scalar_data_bo_id,
+                                            scalar_data_bo_start_offset,
                                             mesh_ptr->scalar_data_bo_size);
         entrypoints_ptr->pGLBindBufferRange(GL_SHADER_STORAGE_BUFFER,
                                             mesh_ptr->po_scalar_field_polygonizer_result_data_ssb_bp,
-                                            mesh_ptr->polygonized_data_bo_id,
-                                            mesh_ptr->polygonized_data_bo_start_offset,
+                                            polygonized_data_bo_id,
+                                            polygonized_data_bo_start_offset,
                                             mesh_ptr->polygonized_data_bo_size);
 
         entrypoints_ptr->pGLBindBufferRange(GL_UNIFORM_BUFFER,
                                             mesh_ptr->po_scalar_field_polygonizer_data_ub_bp,
-                                            mesh_ptr->po_scalar_field_polygonizer_data_ub_bo_id,
-                                            mesh_ptr->po_scalar_field_polygonizer_data_ub_bo_start_offset,
+                                            po_scalar_field_polygonizer_data_ub_bo_id,
+                                            po_scalar_field_polygonizer_data_ub_bo_start_offset,
                                             mesh_ptr->po_scalar_field_polygonizer_data_ub_bo_size);
         entrypoints_ptr->pGLBindBufferRange(GL_UNIFORM_BUFFER,
                                             mesh_ptr->po_scalar_field_polygonizer_precomputed_tables_ub_bp,
-                                            mesh_ptr->po_scalar_field_polygonizer_precomputed_tables_ub_bo_id,
-                                            mesh_ptr->po_scalar_field_polygonizer_precomputed_tables_ub_bo_start_offset,
+                                            po_scalar_field_polygonizer_precomputed_tables_ub_bo_id,
+                                            po_scalar_field_polygonizer_precomputed_tables_ub_bo_start_offset,
                                             mesh_ptr->po_scalar_field_polygonizer_precomputed_tables_ub_bo_size);
 
         /* Sync SSBO-based scalar field data. */
@@ -1571,7 +1655,7 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void mesh_marchingcubes_polygonize(mes
         static const int int_zero = 0;
 
         entrypoints_ptr->pGLBindBuffer        (GL_DRAW_INDIRECT_BUFFER,
-                                               mesh_ptr->indirect_draw_call_args_bo_id);
+                                               indirect_draw_call_args_bo_id);
         entrypoints_ptr->pGLClearBufferSubData(GL_DRAW_INDIRECT_BUFFER,
                                                GL_R32UI,
                                                mesh_ptr->indirect_draw_call_args_bo_count_arg_offset,
@@ -1616,14 +1700,14 @@ PUBLIC EMERALD_API void mesh_marchingcubes_set_property(mesh_marchingcubes      
             break;
         }
 
-        case MESH_MARCHINGCUBES_PROPERTY_SCALAR_DATA_BO_ID:
+        case MESH_MARCHINGCUBES_PROPERTY_SCALAR_DATA_BO:
         {
-            GLuint new_bo_id = *(GLuint*) data;
+            raGL_buffer new_bo = *(raGL_buffer*) data;
 
-            if (mesh_ptr->scalar_data_bo_id != new_bo_id)
+            if (mesh_ptr->scalar_data_bo != new_bo)
             {
                 mesh_ptr->needs_polygonization = true;
-                mesh_ptr->scalar_data_bo_id    = new_bo_id;
+                mesh_ptr->scalar_data_bo       = new_bo;
             }
 
             break;
@@ -1637,19 +1721,6 @@ PUBLIC EMERALD_API void mesh_marchingcubes_set_property(mesh_marchingcubes      
             {
                 mesh_ptr->needs_polygonization = true;
                 mesh_ptr->scalar_data_bo_size  = new_bo_size;
-            }
-
-            break;
-        }
-
-        case MESH_MARCHINGCUBES_PROPERTY_SCALAR_DATA_BO_START_OFFSET:
-        {
-            unsigned int new_bo_start_offset = *(unsigned int*) data;
-
-            if (mesh_ptr->scalar_data_bo_start_offset != new_bo_start_offset)
-            {
-                mesh_ptr->needs_polygonization        = true;
-                mesh_ptr->scalar_data_bo_start_offset = new_bo_start_offset;
             }
 
             break;

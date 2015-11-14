@@ -4,9 +4,9 @@
  *
  */
 #include "shared.h"
-#include "ogl/ogl_buffers.h"
 #include "ogl/ogl_context.h"
 #include "procedural/procedural_mesh_box.h"
+#include "raGL/raGL_buffers.h"
 #include "system/system_log.h"
 
 /** RESULT BUFFER DATA STRUCTURE:
@@ -18,21 +18,19 @@
 /* Internal type definitions */
 typedef struct
 {
-    ogl_buffers                   buffers; /* owned by ogl_context */
+    raGL_buffers                  buffers; /* do NOT release */
     ogl_context                   context;
     _procedural_mesh_data_bitmask data;
     uint32_t                      n_horizontal;
     uint32_t                      n_vertical;
     system_hashed_ansi_string     name;
 
-    GLuint       arrays_bo_id;             /* maintained by ogl_buffers, do NOT release with glDeleteBuffers() */
+    raGL_buffer  arrays_bo;                /* maintained by raGL_buffers, do NOT release with glDeleteBuffers() */
     GLuint       arrays_bo_normals_offset; /* does NOT include start offset */
-    unsigned int arrays_bo_start_offset;
 
-    GLuint       elements_bo_id;             /* maintained by ogl_buffers, do NOT release with glDeleteBuffers() */
+    raGL_buffer  elements_bo;                /* maintained by raGL_buffers, do NOT release with glDeleteBuffers() */
     unsigned int elements_bo_indexes_offset; /* does NOT include start offset */
     unsigned int elements_bo_normals_offset; /* does NOT include start offset */
-    unsigned int elements_bo_start_offset;
 
     GLuint n_points; /* elements only */
     GLuint n_triangles; /* arrays only */
@@ -455,23 +453,36 @@ PRIVATE void _procedural_mesh_box_create_renderer_callback(ogl_context context,
             } /* for (uint32_t n_index = 0; n_index < n_ordered_indexes; ++n_index)*/
 
             /* Store the data. */
+            GLuint                 arrays_bo_id;
+            uint32_t               arrays_bo_start_offset;
+            ral_buffer_create_info arrays_bo_create_info;
+
             mesh_box->arrays_bo_normals_offset = n_triangles * 9 * sizeof(GLfloat);
             mesh_box->n_triangles              = n_triangles;
 
-            ogl_buffers_allocate_buffer_memory(mesh_box->buffers,
-                                               mesh_box->arrays_bo_normals_offset * 2, /* size */
-                                               RAL_BUFFER_MAPPABILITY_NONE,
-                                               RAL_BUFFER_USAGE_VERTEX_BUFFER_BIT,
-                                               RAL_BUFFER_PROPERTY_SPARSE_IF_AVAILABLE_BIT,
-                                              &mesh_box->arrays_bo_id,
-                                              &mesh_box->arrays_bo_start_offset);
+            arrays_bo_create_info.mappability_bits = RAL_BUFFER_MAPPABILITY_NONE;
+            arrays_bo_create_info.property_bits    = RAL_BUFFER_PROPERTY_SPARSE_IF_AVAILABLE_BIT;
+            arrays_bo_create_info.size             = mesh_box->arrays_bo_normals_offset * 2;
+            arrays_bo_create_info.usage_bits       = RAL_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+            arrays_bo_create_info.user_queue_bits  = 0xFFFFFFFF;
 
-            entry_points_dsa->pGLNamedBufferSubDataEXT(mesh_box->arrays_bo_id,
-                                                       mesh_box->arrays_bo_start_offset + 0,
+            raGL_buffers_allocate_buffer_memory_for_ral_buffer_create_info(mesh_box->buffers,
+                                                                          &arrays_bo_create_info,
+                                                                          &mesh_box->arrays_bo);
+
+            raGL_buffer_get_property(mesh_box->arrays_bo,
+                                     RAGL_BUFFER_PROPERTY_ID,
+                                    &arrays_bo_id);
+            raGL_buffer_get_property(mesh_box->arrays_bo,
+                                     RAGL_BUFFER_PROPERTY_START_OFFSET,
+                                    &arrays_bo_start_offset);
+
+            entry_points_dsa->pGLNamedBufferSubDataEXT(arrays_bo_id,
+                                                       arrays_bo_start_offset + 0,
                                                        mesh_box->arrays_bo_normals_offset, /* size */
                                                        triangles);
-            entry_points_dsa->pGLNamedBufferSubDataEXT(mesh_box->arrays_bo_id,
-                                                       mesh_box->arrays_bo_start_offset + mesh_box->arrays_bo_normals_offset,
+            entry_points_dsa->pGLNamedBufferSubDataEXT(arrays_bo_id,
+                                                       arrays_bo_start_offset + mesh_box->arrays_bo_normals_offset,
                                                        mesh_box->arrays_bo_normals_offset, /* size */
                                                        normals);
 
@@ -486,28 +497,41 @@ PRIVATE void _procedural_mesh_box_create_renderer_callback(ogl_context context,
         uint32_t ordered_normals_size = n_ordered_indexes * 3 * sizeof(GLfloat);
 
         /* Set offsets. */
-        ogl_buffers_allocate_buffer_memory(mesh_box->buffers,
-                                           mesh_box->elements_bo_normals_offset + ordered_normals_size, /* size */
-                                           RAL_BUFFER_MAPPABILITY_NONE,
-                                           RAL_BUFFER_USAGE_INDEX_BUFFER_BIT,
-                                           RAL_BUFFER_PROPERTY_SPARSE_IF_AVAILABLE_BIT,
-                                          &mesh_box->elements_bo_id,
-                                          &mesh_box->elements_bo_start_offset);
+        GLuint                 elements_bo_id;
+        uint32_t               elements_bo_start_offset;
+        ral_buffer_create_info elements_create_info;
+
+        elements_create_info.mappability_bits = RAL_BUFFER_MAPPABILITY_NONE;
+        elements_create_info.property_bits    = RAL_BUFFER_PROPERTY_SPARSE_IF_AVAILABLE_BIT;
+        elements_create_info.size             = mesh_box->elements_bo_normals_offset + ordered_normals_size;
+        elements_create_info.usage_bits       = RAL_BUFFER_USAGE_INDEX_BUFFER_BIT;
+        elements_create_info.user_queue_bits  = 0xFFFFFFFF;
+
+        raGL_buffers_allocate_buffer_memory_for_ral_buffer_create_info(mesh_box->buffers,
+                                                                      &elements_create_info,
+                                                                      &mesh_box->elements_bo);
+
+        raGL_buffer_get_property(mesh_box->elements_bo,
+                                 RAGL_BUFFER_PROPERTY_ID,
+                                &elements_bo_id);
+        raGL_buffer_get_property(mesh_box->elements_bo,
+                                 RAGL_BUFFER_PROPERTY_START_OFFSET,
+                                &elements_bo_start_offset);
 
         mesh_box->elements_bo_indexes_offset =                                        n_points      * 3 * sizeof(GLfloat);
         mesh_box->elements_bo_normals_offset = mesh_box->elements_bo_indexes_offset + n_ordered_indexes * sizeof(GLushort);
 
         /* Set buffer object contents */
-        entry_points_dsa->pGLNamedBufferSubDataEXT(mesh_box->elements_bo_id,
-                                                   mesh_box->elements_bo_start_offset + 0,
+        entry_points_dsa->pGLNamedBufferSubDataEXT(elements_bo_id,
+                                                   elements_bo_start_offset + 0,
                                                    mesh_box->elements_bo_indexes_offset, /* size */
                                                    nonindexed_points);
-        entry_points_dsa->pGLNamedBufferSubDataEXT(mesh_box->elements_bo_id,
-                                                   mesh_box->elements_bo_start_offset + mesh_box->elements_bo_indexes_offset,
+        entry_points_dsa->pGLNamedBufferSubDataEXT(elements_bo_id,
+                                                   elements_bo_start_offset + mesh_box->elements_bo_indexes_offset,
                                                    (mesh_box->elements_bo_normals_offset - mesh_box->elements_bo_indexes_offset), /* size */
                                                    ordered_indexes);
-        entry_points_dsa->pGLNamedBufferSubDataEXT(mesh_box->elements_bo_id,
-                                                   mesh_box->elements_bo_start_offset + mesh_box->elements_bo_normals_offset,
+        entry_points_dsa->pGLNamedBufferSubDataEXT(elements_bo_id,
+                                                   elements_bo_start_offset + mesh_box->elements_bo_normals_offset,
                                                    ordered_normals_size,
                                                    ordered_normals);
     } /* if (mesh_box->data & DATA_BO_ELEMENTS) */
@@ -541,24 +565,20 @@ PRIVATE void _procedural_mesh_box_release_renderer_callback(ogl_context context,
 
     if (mesh_box->data & DATA_BO_ARRAYS)
     {
-        ogl_buffers_free_buffer_memory(mesh_box->buffers,
-                                       mesh_box->arrays_bo_id,
-                                       mesh_box->arrays_bo_start_offset);
+        raGL_buffers_free_buffer_memory(mesh_box->buffers,
+                                        mesh_box->arrays_bo);
 
-        mesh_box->arrays_bo_id             = 0;
+        mesh_box->arrays_bo                = NULL;
         mesh_box->arrays_bo_normals_offset = -1;
-        mesh_box->arrays_bo_start_offset   = -1;
     } /* if (mesh_box->data & DATA_BO_ARRAYS) */
 
     if (mesh_box->data & DATA_BO_ELEMENTS)
     {
-        ogl_buffers_free_buffer_memory(mesh_box->buffers,
-                                       mesh_box->elements_bo_id,
-                                       mesh_box->elements_bo_start_offset);
+        raGL_buffers_free_buffer_memory(mesh_box->buffers,
+                                        mesh_box->elements_bo);
 
-        mesh_box->elements_bo_id             = 0;
+        mesh_box->elements_bo                = NULL;
         mesh_box->elements_bo_indexes_offset = -1;
-        mesh_box->elements_bo_start_offset   = -1;
         mesh_box->elements_bo_normals_offset = -1;
     } /* if (mesh_box->data & DATA_BO_ELEMENTS) */
 }
@@ -615,19 +635,17 @@ PUBLIC EMERALD_API procedural_mesh_box procedural_mesh_box_create(ogl_context   
         new_instance->n_vertical   = n_vertical;
         new_instance->name         = name;
 
-        new_instance->arrays_bo_id               = -1;
+        new_instance->arrays_bo                  = NULL;
         new_instance->arrays_bo_normals_offset   = -1;
-        new_instance->arrays_bo_start_offset     = -1;
-        new_instance->elements_bo_id             = -1;
+        new_instance->elements_bo                = NULL;
         new_instance->elements_bo_indexes_offset = -1;
         new_instance->elements_bo_normals_offset = -1;
-        new_instance->elements_bo_start_offset   = -1;
         new_instance->n_points                   = -1;
         new_instance->n_triangles                = -1;
         new_instance->primitive_restart_index    = -1;
 
         ogl_context_get_property(context,
-                                 OGL_CONTEXT_PROPERTY_BUFFERS,
+                                 OGL_CONTEXT_PROPERTY_BUFFERS_RAGL,
                                 &new_instance->buffers);
 
         /* Call back renderer to continue */
@@ -656,49 +674,85 @@ PUBLIC EMERALD_API void procedural_mesh_box_get_property(procedural_mesh_box    
     {
         case PROCEDURAL_MESH_BOX_PROPERTY_ARRAYS_BO_ID:
         {
-            *(GLuint*) out_result = mesh_box_ptr->arrays_bo_id;
+            raGL_buffer_get_property(mesh_box_ptr->arrays_bo,
+                                     RAGL_BUFFER_PROPERTY_ID,
+                                     out_result);
 
             break;
         }
 
         case PROCEDURAL_MESH_BOX_PROPERTY_ARRAYS_BO_NORMALS_DATA_OFFSET:
         {
-            *(unsigned int*) out_result = mesh_box_ptr->arrays_bo_start_offset + mesh_box_ptr->arrays_bo_normals_offset;
+            uint32_t arrays_bo_start_offset = 0;
+
+            raGL_buffer_get_property(mesh_box_ptr->arrays_bo,
+                                     RAGL_BUFFER_PROPERTY_START_OFFSET,
+                                    &arrays_bo_start_offset);
+
+            *(unsigned int*) out_result = arrays_bo_start_offset + mesh_box_ptr->arrays_bo_normals_offset;
 
             break;
         }
 
         case PROCEDURAL_MESH_BOX_PROPERTY_ARRAYS_BO_VERTEX_DATA_OFFSET:
         {
-            *(unsigned int*) out_result = mesh_box_ptr->arrays_bo_start_offset + 0;
+            uint32_t arrays_bo_start_offset = 0;
+
+            raGL_buffer_get_property(mesh_box_ptr->arrays_bo,
+                                     RAGL_BUFFER_PROPERTY_START_OFFSET,
+                                    &arrays_bo_start_offset);
+
+            *(unsigned int*) out_result = arrays_bo_start_offset + 0;
 
             break;
         }
 
         case PROCEDURAL_MESH_BOX_PROPERTY_ELEMENTS_BO_ID:
         {
-            *(GLuint*) out_result = mesh_box_ptr->elements_bo_id;
+            raGL_buffer_get_property(mesh_box_ptr->elements_bo,
+                                     RAGL_BUFFER_PROPERTY_ID,
+                                     out_result);
 
             break;
         }
 
         case PROCEDURAL_MESH_BOX_PROPERTY_ELEMENTS_BO_INDICES_DATA_OFFSET:
         {
-            *(unsigned int*) out_result = mesh_box_ptr->elements_bo_start_offset + mesh_box_ptr->elements_bo_indexes_offset;
+            uint32_t elements_bo_start_offset = -1;
+
+            raGL_buffer_get_property(mesh_box_ptr->elements_bo,
+                                     RAGL_BUFFER_PROPERTY_START_OFFSET,
+                                    &elements_bo_start_offset);
+
+            *(unsigned int*) out_result = elements_bo_start_offset + mesh_box_ptr->elements_bo_indexes_offset;
 
             break;
         }
 
         case PROCEDURAL_MESH_BOX_PROPERTY_ELEMENTS_BO_NORMALS_DATA_OFFSET:
         {
-            *(unsigned int*) out_result = mesh_box_ptr->elements_bo_start_offset + mesh_box_ptr->elements_bo_normals_offset;
+            uint32_t elements_bo_start_offset = -1;
+
+            raGL_buffer_get_property(mesh_box_ptr->elements_bo,
+                                     RAGL_BUFFER_PROPERTY_START_OFFSET,
+                                    &elements_bo_start_offset);
+
+
+            *(unsigned int*) out_result = elements_bo_start_offset + mesh_box_ptr->elements_bo_normals_offset;
 
             break;
         }
 
         case PROCEDURAL_MESH_BOX_PROPERTY_ELEMENTS_BO_VERTEX_DATA_OFFSET:
         {
-            *(unsigned int*) out_result = mesh_box_ptr->elements_bo_start_offset + 0;
+            uint32_t elements_bo_start_offset = -1;
+
+            raGL_buffer_get_property(mesh_box_ptr->elements_bo,
+                                     RAGL_BUFFER_PROPERTY_START_OFFSET,
+                                    &elements_bo_start_offset);
+
+
+            *(unsigned int*) out_result = elements_bo_start_offset + 0;
 
             break;
         }

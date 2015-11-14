@@ -6,7 +6,6 @@
 #include "shared.h"
 #include "curve/curve_container.h"
 #include "mesh/mesh.h"
-#include "ogl/ogl_buffers.h"
 #include "ogl/ogl_context.h"
 #include "ogl/ogl_program.h"
 #include "ogl/ogl_program_ub.h"
@@ -15,6 +14,7 @@
 #include "ogl/ogl_texture.h"
 #include "ogl/ogl_vao.h"
 #include "postprocessing/postprocessing_motion_blur.h"
+#include "raGL/raGL_buffers.h"
 #include "system/system_assertions.h"
 #include "system/system_event.h"
 #include "system/system_hashed_ansi_string.h"
@@ -40,21 +40,18 @@ PRIVATE system_event     _window_closed_event = system_event_create(true); /* ma
 PRIVATE int              _window_size[2]      = {1280, 720};
 PRIVATE system_matrix4x4 _view_matrix         = NULL;
 
-PRIVATE unsigned int   _spinner_bo_size                        = 0;
-PRIVATE GLuint         _spinner_current_frame_bo_id            = 0;
-PRIVATE unsigned int   _spinner_current_frame_bo_start_offset  = -1;
-PRIVATE GLuint         _spinner_previous_frame_bo_id           = 0;
-PRIVATE unsigned int   _spinner_previous_frame_bo_start_offset = -1;
-PRIVATE GLuint         _spinner_vao_id                         = 0;
+PRIVATE unsigned int   _spinner_bo_size           = 0;
+PRIVATE raGL_buffer    _spinner_current_frame_bo  = NULL;
+PRIVATE raGL_buffer    _spinner_previous_frame_bo = NULL;
+PRIVATE GLuint         _spinner_vao_id            = 0;
 
 PRIVATE system_time                _spinner_first_frame_time                                     = 0;
 PRIVATE postprocessing_motion_blur _spinner_motion_blur                                          = NULL;
 PRIVATE ogl_program                _spinner_polygonizer_po                                       = NULL;
 PRIVATE unsigned int               _spinner_polygonizer_po_global_wg_size[3]                     = {0};
 PRIVATE ogl_program_ub             _spinner_polygonizer_po_propsBuffer_ub                        = NULL;
-PRIVATE GLuint                     _spinner_polygonizer_po_propsBuffer_ub_bo_id                  = 0;
+PRIVATE raGL_buffer                _spinner_polygonizer_po_propsBuffer_ub_bo                     = 0;
 PRIVATE unsigned int               _spinner_polygonizer_po_propsBuffer_ub_bo_size                = 0;
-PRIVATE unsigned int               _spinner_polygonizer_po_propsBuffer_ub_bo_start_offset        = -1;
 PRIVATE GLuint                     _spinner_polygonizer_po_propsBuffer_innerRingRadius_ub_offset = -1;
 PRIVATE GLuint                     _spinner_polygonizer_po_propsBuffer_nRingsToSkip_ub_offset    = -1;
 PRIVATE GLuint                     _spinner_polygonizer_po_propsBuffer_outerRingRadius_ub_offset = -1;
@@ -91,35 +88,31 @@ PRIVATE void _window_closing_callback_handler(system_window           window,
 /** TODO */
 PRIVATE void _deinit_spinner()
 {
-    ogl_buffers                 buffers         = NULL;
+    raGL_buffers                buffers         = NULL;
     ogl_context_gl_entrypoints* entrypoints_ptr = NULL;
 
     ogl_context_get_property(_context,
-                             OGL_CONTEXT_PROPERTY_BUFFERS,
+                             OGL_CONTEXT_PROPERTY_BUFFERS_RAGL,
                             &buffers);
     ogl_context_get_property(_context,
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
                             &entrypoints_ptr);
 
     /* BOs */
-    if (_spinner_current_frame_bo_id != 0)
+    if (_spinner_current_frame_bo != NULL)
     {
-        ogl_buffers_free_buffer_memory(buffers,
-                                       _spinner_current_frame_bo_id,
-                                       _spinner_current_frame_bo_start_offset);
+        raGL_buffers_free_buffer_memory(buffers,
+                                        _spinner_current_frame_bo);
 
-        _spinner_current_frame_bo_id           = 0;
-        _spinner_current_frame_bo_start_offset = -1;
+        _spinner_current_frame_bo = NULL;
     }
 
-    if (_spinner_previous_frame_bo_id != 0)
+    if (_spinner_previous_frame_bo != NULL)
     {
-        ogl_buffers_free_buffer_memory(buffers,
-                                       _spinner_previous_frame_bo_id,
-                                       _spinner_previous_frame_bo_start_offset);
+        raGL_buffers_free_buffer_memory(buffers,
+                                       _spinner_previous_frame_bo);
 
-        _spinner_previous_frame_bo_id           = 0;
-        _spinner_previous_frame_bo_start_offset = -1;
+        _spinner_previous_frame_bo = NULL;
     }
 
     _spinner_bo_size = 0;
@@ -346,7 +339,7 @@ PRIVATE void _init_spinner()
     const unsigned int              n_vs_body_token_values     = sizeof(vs_body_tokens) / sizeof(vs_body_tokens[0]);
     char                            temp[1024];
 
-    ogl_buffers                                               buffers             = NULL;
+    raGL_buffers                                              buffers             = NULL;
     const ogl_context_gl_entrypoints_ext_direct_state_access* dsa_entrypoints_ptr = NULL;
     const ogl_context_gl_entrypoints*                         entrypoints_ptr     = NULL;
     const ogl_context_gl_limits*                              limits_ptr          = NULL;
@@ -355,7 +348,7 @@ PRIVATE void _init_spinner()
     ogl_shader                                                renderer_vs         = NULL;
 
     ogl_context_get_property(_context,
-                             OGL_CONTEXT_PROPERTY_BUFFERS,
+                             OGL_CONTEXT_PROPERTY_BUFFERS_RAGL,
                             &buffers);
     ogl_context_get_property(_context,
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
@@ -455,11 +448,8 @@ PRIVATE void _init_spinner()
                                 OGL_PROGRAM_UB_PROPERTY_BLOCK_DATA_SIZE,
                                &_spinner_polygonizer_po_propsBuffer_ub_bo_size);
     ogl_program_ub_get_property(_spinner_polygonizer_po_propsBuffer_ub,
-                                OGL_PROGRAM_UB_PROPERTY_BO_ID,
-                               &_spinner_polygonizer_po_propsBuffer_ub_bo_id);
-    ogl_program_ub_get_property(_spinner_polygonizer_po_propsBuffer_ub,
-                                OGL_PROGRAM_UB_PROPERTY_BO_START_OFFSET,
-                               &_spinner_polygonizer_po_propsBuffer_ub_bo_start_offset);
+                                OGL_PROGRAM_UB_PROPERTY_BO,
+                               &_spinner_polygonizer_po_propsBuffer_ub_bo);
 
     ogl_program_ub_get_variable_by_name(_spinner_polygonizer_po_propsBuffer_ub,
                                         system_hashed_ansi_string_create("innerRingRadius"),
@@ -532,36 +522,37 @@ PRIVATE void _init_spinner()
     }
 
     /* Set up BO to hold polygonized spinner data */
+    ral_buffer_create_info frame_bo_create_info;
+
     _spinner_bo_size = SPINNER_N_SEGMENTS_PER_SPLINE * SPINNER_N_SPLINES * 2 /* triangles */ * 3 /* vertices per triangle */ * 4 /* comp's per vertex */ * sizeof(float) * 2 /* top half, bottom half */;
 
-    ogl_buffers_allocate_buffer_memory(buffers,
-                                       _spinner_bo_size,
-                                       RAL_BUFFER_MAPPABILITY_NONE,
-                                       RAL_BUFFER_USAGE_SHADER_STORAGE_BUFFER_BIT | RAL_BUFFER_USAGE_VERTEX_BUFFER_BIT,
-                                       0,
-                                      &_spinner_current_frame_bo_id,
-                                      &_spinner_current_frame_bo_start_offset);
-    ogl_buffers_allocate_buffer_memory(buffers,
-                                       _spinner_bo_size,
-                                       RAL_BUFFER_MAPPABILITY_NONE,
-                                       RAL_BUFFER_USAGE_SHADER_STORAGE_BUFFER_BIT | RAL_BUFFER_USAGE_VERTEX_BUFFER_BIT,
-                                       0,
-                                      &_spinner_previous_frame_bo_id,
-                                      &_spinner_previous_frame_bo_start_offset);
+    frame_bo_create_info.mappability_bits = RAL_BUFFER_MAPPABILITY_NONE;
+    frame_bo_create_info.property_bits    = 0;
+    frame_bo_create_info.size             = _spinner_bo_size;
+    frame_bo_create_info.usage_bits       = RAL_BUFFER_USAGE_SHADER_STORAGE_BUFFER_BIT | RAL_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+    frame_bo_create_info.user_queue_bits  = 0xFFFFFFFF;
+
+    raGL_buffers_allocate_buffer_memory_for_ral_buffer_create_info(buffers,
+                                                                  &frame_bo_create_info,
+                                                                  &_spinner_current_frame_bo);
+    raGL_buffers_allocate_buffer_memory_for_ral_buffer_create_info(buffers,
+                                                                  &frame_bo_create_info,
+                                                                  &_spinner_previous_frame_bo);
 
     /* Set up VAO for the rendering process */
     struct _vao
     {
-        GLuint  prev_frame_bo_id;
-        GLuint  prev_frame_bo_start_offset;
-
-        GLuint  this_frame_bo_id;
-        GLuint  this_frame_bo_start_offset;
+        raGL_buffer prev_frame_bo;
+        raGL_buffer this_frame_bo;
 
         GLuint* vao_id_ptr;
     } vaos[] =
     {
-        {_spinner_previous_frame_bo_id,  _spinner_previous_frame_bo_start_offset,  _spinner_current_frame_bo_id, _spinner_current_frame_bo_start_offset, &_spinner_vao_id},
+        {
+            _spinner_previous_frame_bo,
+            _spinner_current_frame_bo,
+           &_spinner_vao_id
+        },
     };
     const unsigned int n_vaos = sizeof(vaos) / sizeof(vaos[0]);
 
@@ -569,29 +560,46 @@ PRIVATE void _init_spinner()
                       n_vao < n_vaos;
                     ++n_vao)
     {
-        _vao& current_vao = vaos[n_vao];
+        _vao&    current_vao                = vaos[n_vao];
+        GLuint   prev_frame_bo_id           = 0;
+        uint32_t prev_frame_bo_start_offset = -1;
+        GLuint   this_frame_bo_id           =  0;
+        uint32_t this_frame_bo_start_offset = -1;
+
+        raGL_buffer_get_property(current_vao.prev_frame_bo,
+                                 RAGL_BUFFER_PROPERTY_ID,
+                                &prev_frame_bo_id);
+        raGL_buffer_get_property(current_vao.prev_frame_bo,
+                                 RAGL_BUFFER_PROPERTY_START_OFFSET,
+                                &prev_frame_bo_start_offset);
+        raGL_buffer_get_property(current_vao.this_frame_bo,
+                                 RAGL_BUFFER_PROPERTY_ID,
+                                &this_frame_bo_id);
+        raGL_buffer_get_property(current_vao.this_frame_bo,
+                                 RAGL_BUFFER_PROPERTY_START_OFFSET,
+                                &this_frame_bo_start_offset);
 
         entrypoints_ptr->pGLGenVertexArrays        (1,
                                                     current_vao.vao_id_ptr);
         entrypoints_ptr->pGLBindVertexArray        (*current_vao.vao_id_ptr);
 
         entrypoints_ptr->pGLBindBuffer             (GL_ARRAY_BUFFER,
-                                                    current_vao.this_frame_bo_id);
+                                                    this_frame_bo_id);
         entrypoints_ptr->pGLVertexAttribPointer    (0,                                            /* index */
                                                     4,                                            /* size */
                                                     GL_FLOAT,
-                                                    GL_FALSE,                                                /* normalized */
-                                                    sizeof(float) * 4,                                       /* stride */
-                                                    (const GLvoid*) current_vao.this_frame_bo_start_offset); /* pointer */
+                                                    GL_FALSE,                                    /* normalized */
+                                                    sizeof(float) * 4,                           /* stride */
+                                                    (const GLvoid*) this_frame_bo_start_offset); /* pointer */
 
         entrypoints_ptr->pGLBindBuffer             (GL_ARRAY_BUFFER,
-                                                    current_vao.prev_frame_bo_id);
+                                                    prev_frame_bo_id);
         entrypoints_ptr->pGLVertexAttribPointer    (1,                                            /* index */
                                                     4,                                            /* size */
                                                     GL_FLOAT,
-                                                    GL_FALSE,                                                /* normalized */
-                                                    sizeof(float) * 4,                                       /* stride */
-                                                    (const GLvoid*) current_vao.prev_frame_bo_start_offset); /* pointer */
+                                                    GL_FALSE,                                    /* normalized */
+                                                    sizeof(float) * 4,                           /* stride */
+                                                    (const GLvoid*) prev_frame_bo_start_offset); /* pointer */
 
         entrypoints_ptr->pGLEnableVertexAttribArray(0);                                           /* index */
         entrypoints_ptr->pGLEnableVertexAttribArray(1);                                           /* index */
@@ -823,6 +831,33 @@ PRIVATE void _render_spinner(unsigned int n_frames_rendered)
     const float        inner_ring_radius = 0.1f;
     const unsigned int n_rings_to_skip   = 1;
     const float        outer_ring_radius = 1.0f;
+    GLuint             spinner_current_frame_bo_id                           = 0;
+    uint32_t           spinner_current_frame_bo_start_offset                 = -1;
+    GLuint             spinner_polygonizer_po_propsBuffer_ub_bo_id           = 0;
+    uint32_t           spinner_polygonizer_po_propsBuffer_ub_bo_start_offset = -1;
+    GLuint             spinner_previous_frame_bo_id                          = 0;
+    uint32_t           spinner_previous_frame_bo_start_offset                = -1;
+
+    raGL_buffer_get_property(_spinner_current_frame_bo,
+                             RAGL_BUFFER_PROPERTY_ID,
+                             &spinner_current_frame_bo_id);
+    raGL_buffer_get_property(_spinner_current_frame_bo,
+                             RAGL_BUFFER_PROPERTY_START_OFFSET,
+                             &spinner_current_frame_bo_start_offset);
+
+    raGL_buffer_get_property(_spinner_polygonizer_po_propsBuffer_ub_bo,
+                             RAGL_BUFFER_PROPERTY_ID,
+                             &spinner_polygonizer_po_propsBuffer_ub_bo_id);
+    raGL_buffer_get_property(_spinner_polygonizer_po_propsBuffer_ub_bo,
+                             RAGL_BUFFER_PROPERTY_START_OFFSET,
+                             &spinner_polygonizer_po_propsBuffer_ub_bo_start_offset);
+
+    raGL_buffer_get_property(_spinner_previous_frame_bo,
+                             RAGL_BUFFER_PROPERTY_ID,
+                             &spinner_previous_frame_bo_id);
+    raGL_buffer_get_property(_spinner_previous_frame_bo,
+                             RAGL_BUFFER_PROPERTY_START_OFFSET,
+                             &spinner_previous_frame_bo_start_offset);
 
     entrypoints_ptr->pGLUseProgram(ogl_program_get_id(_spinner_polygonizer_po) );
 
@@ -845,13 +880,13 @@ PRIVATE void _render_spinner(unsigned int n_frames_rendered)
 
     entrypoints_ptr->pGLBindBufferRange(GL_SHADER_STORAGE_BUFFER,
                                         0, /* index */
-                                        _spinner_current_frame_bo_id,
-                                        _spinner_current_frame_bo_start_offset,
+                                        spinner_current_frame_bo_id,
+                                        spinner_current_frame_bo_start_offset,
                                         _spinner_bo_size);
     entrypoints_ptr->pGLBindBufferRange(GL_UNIFORM_BUFFER,
                                         0, /* index */
-                                        _spinner_polygonizer_po_propsBuffer_ub_bo_id,
-                                        _spinner_polygonizer_po_propsBuffer_ub_bo_start_offset,
+                                        spinner_polygonizer_po_propsBuffer_ub_bo_id,
+                                        spinner_polygonizer_po_propsBuffer_ub_bo_start_offset,
                                         _spinner_polygonizer_po_propsBuffer_ub_bo_size);
 
     entrypoints_ptr->pGLDispatchCompute(_spinner_polygonizer_po_global_wg_size[0],
@@ -906,15 +941,15 @@ PRIVATE void _render_spinner(unsigned int n_frames_rendered)
 
     /* Cache the contents of the data buffer for subsequent frame */
     entrypoints_ptr->pGLBindBuffer   (GL_COPY_READ_BUFFER,
-                                      _spinner_current_frame_bo_id);
+                                      spinner_current_frame_bo_id);
     entrypoints_ptr->pGLBindBuffer   (GL_COPY_WRITE_BUFFER,
-                                      _spinner_previous_frame_bo_id);
+                                      spinner_previous_frame_bo_id);
 
     entrypoints_ptr->pGLMemoryBarrier    (GL_BUFFER_UPDATE_BARRIER_BIT);
     entrypoints_ptr->pGLCopyBufferSubData(GL_COPY_READ_BUFFER,
                                           GL_COPY_WRITE_BUFFER,
-                                          _spinner_current_frame_bo_start_offset,  /* readOffset  */
-                                          _spinner_previous_frame_bo_start_offset, /* writeOffset */
+                                          spinner_current_frame_bo_start_offset,  /* readOffset  */
+                                          spinner_previous_frame_bo_start_offset, /* writeOffset */
                                           _spinner_bo_size);
 
     /* Apply motion blur to the rendered contents */

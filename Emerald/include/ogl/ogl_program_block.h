@@ -28,46 +28,22 @@
 
 typedef enum
 {
-    /* unsigned int.
-     *
-     * Supported for: UBs.
-     */
+    /* unsigned int. */
     OGL_PROGRAM_BLOCK_PROPERTY_BLOCK_DATA_SIZE,
 
-    /* GLuint
-     *
-     * Supported for: UBs.
-     */
-    OGL_PROGRAM_BLOCK_PROPERTY_BO_ID,
+    /* raGL_buffer */
+    OGL_PROGRAM_BLOCK_PROPERTY_BO,
 
-    /* GLuint
-     *
-     * Supported for: UBs.
-     */
-    OGL_PROGRAM_BLOCK_PROPERTY_BO_START_OFFSET,
-
-    /* GLuint
-     *
-     * Supported for: UBs.
-     */
+    /* GLuint */
     OGL_PROGRAM_BLOCK_PROPERTY_INDEX,
 
-    /* GLuint
-     *
-     * Supported for: UBs.
-     */
+    /* GLuint */
     OGL_PROGRAM_BLOCK_PROPERTY_INDEXED_BP,
 
-    /* system_hashed_ansi_string
-     *
-     * Supported for: UBs.
-     */
+    /* system_hashed_ansi_string */
     OGL_PROGRAM_BLOCK_PROPERTY_NAME,
 
-    /* unsigned int
-     *
-     * Supported for: UBs.
-     */
+    /* unsigned int */
     OGL_PROGRAM_BLOCK_PROPERTY_N_MEMBERS,
 
 } ogl_program_block_property;

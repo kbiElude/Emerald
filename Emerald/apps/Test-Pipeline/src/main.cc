@@ -13,6 +13,7 @@
 #include "ogl/ogl_rendering_handler.h"
 #include "ogl/ogl_shader.h"
 #include "ogl/ogl_texture.h"
+#include "raGL/raGL_buffer.h"
 #include "shaders/shaders_vertex_fullscreen.h"
 #include "system/system_assertions.h"
 #include "system/system_event.h"
@@ -32,9 +33,8 @@ GLuint         _fbo_id                           = -1;
 ogl_program    _generation_po                    = NULL;
 GLuint         _generation_po_time_ub_offset     = -1;
 ogl_program_ub _generation_po_ub                 = NULL;
-GLuint         _generation_po_ub_bo_id           = 0;
+raGL_buffer    _generation_po_ub_bo              = NULL;
 GLuint         _generation_po_ub_bo_size         = 0;
-GLuint         _generation_po_ub_bo_start_offset = 0;
 ogl_program    _modification_po                  = NULL;
 GLuint         _modification_po_input_location   = -1; /* set to GL_TEXTURE0 */
 ogl_texture    _to_1                             = 0;
@@ -226,11 +226,8 @@ void _init_gl(ogl_context context,
                                 OGL_PROGRAM_UB_PROPERTY_BLOCK_DATA_SIZE,
                                &_generation_po_ub_bo_size);
     ogl_program_ub_get_property(_generation_po_ub,
-                                OGL_PROGRAM_UB_PROPERTY_BO_ID,
-                               &_generation_po_ub_bo_id);
-    ogl_program_ub_get_property(_generation_po_ub,
-                                OGL_PROGRAM_UB_PROPERTY_BO_START_OFFSET,
-                               &_generation_po_ub_bo_start_offset);
+                                OGL_PROGRAM_UB_PROPERTY_BO,
+                               &_generation_po_ub_bo);
 }
 
 /* Stage step 1: sample data generation */
@@ -267,10 +264,20 @@ static void _stage_step_generate_data(ogl_context context,
                                                 sizeof(float) );
     ogl_program_ub_sync                        (_generation_po_ub);
 
+    GLuint   generation_po_ub_bo_id           = 0;
+    uint32_t generation_po_ub_bo_start_offset = -1;
+
+    raGL_buffer_get_property(_generation_po_ub_bo,
+                             RAGL_BUFFER_PROPERTY_ID,
+                            &generation_po_ub_bo_id);
+    raGL_buffer_get_property(_generation_po_ub_bo,
+                             RAGL_BUFFER_PROPERTY_START_OFFSET,
+                            &generation_po_ub_bo_start_offset);
+
     entry_points->pGLBindBufferRange(GL_UNIFORM_BUFFER,
                                      0, /* index */
-                                     _generation_po_ub_bo_id,
-                                     _generation_po_ub_bo_start_offset,
+                                      generation_po_ub_bo_id,
+                                      generation_po_ub_bo_start_offset,
                                      _generation_po_ub_bo_size);
     entry_points->pGLBindFramebuffer(GL_DRAW_FRAMEBUFFER,
                                      _fbo_id);

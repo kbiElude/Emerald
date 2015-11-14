@@ -37,6 +37,7 @@
 
 #include "ogl/ogl_types.h"
 #include "mesh/mesh_types.h"
+#include "raGL/raGL_buffer.h"
 #include "scene/scene_types.h"
 #include "sh/sh_types.h"
 
@@ -84,8 +85,7 @@ PUBLIC EMERALD_API mesh_layer_id mesh_add_layer(mesh);
  *  @param layer_id        Mesh layer ID.
  *  @param type            Type of the data stream to configure.
  *  @param n_components    Number of components per single item. (eg. you'd usually go with 2 for UV coords)
- *  @param bo_id           ID of the buffer object to source the data from.
- *  @param bo_start_offset Start offset, from which the data begins.
+ *  @param bo              Buffer object to source the data from.
  *  @param bo_stride       Stride between consecutive items in bytes. Must not be 0.
  *                         For floating-point UV coords, you'd want to pass sizeof(float) * 2.
  *  @param bo_size         Total size of the buffer memory region, from which the data is to be sourced.
@@ -94,8 +94,7 @@ PUBLIC EMERALD_API void mesh_add_layer_data_stream_from_buffer_memory(mesh      
                                                                       mesh_layer_id               layer_id,
                                                                       mesh_layer_data_stream_type type,
                                                                       unsigned int                n_components,
-                                                                      GLuint                      bo_id,
-                                                                      unsigned int                bo_start_offset,
+                                                                      raGL_buffer                 bo,
                                                                       unsigned int                bo_stride,
                                                                       unsigned int                bo_size);
 
@@ -366,10 +365,7 @@ PUBLIC EMERALD_API bool mesh_set_layer_data_stream_property(mesh                
  *  @param n_layer                          Mesh layer index.
  *  @param type                             Data stream type.
  *  @param property                         Property to update.
- *  @param bo_id                            ID of the buffer object which stores the value.
  *  @param bo_size                          Size of the memory region.
- *  @param bo_start_offset                  Start offset, relative to the beginning of the buffer object @param bo_id,
- *                                          at which the value is stored.
  *  @param does_read_require_memory_barrier true if a memory barrier should be issued before the data is read from
  *                                          the buffer memory; false if not.
  *
@@ -379,9 +375,8 @@ PUBLIC EMERALD_API bool mesh_set_layer_data_stream_property_with_buffer_memory(m
                                                                                uint32_t                        n_layer,
                                                                                mesh_layer_data_stream_type     type,
                                                                                mesh_layer_data_stream_property property,
-                                                                               unsigned int                    bo_id,
+                                                                               raGL_buffer                     bo,
                                                                                unsigned int                    bo_size,
-                                                                               unsigned int                    bo_start_offset,
                                                                                bool                            does_read_require_memory_barrier);
 
 /** TODO

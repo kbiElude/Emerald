@@ -14,7 +14,7 @@ PUBLIC raGL_backend raGL_backend_create(ral_context context);
 /** TODO */
 PUBLIC bool raGL_backend_get_framebuffer(void*           backend,
                                          ral_framebuffer framebuffer_ral,
-                                         void**          out_framebuffer_backend_ptr);
+                                         void**          out_framebuffer_raGL_ptr);
 
 /** TODO */
 PUBLIC void raGL_backend_get_property(void*                backend, /* raGL_backend instance */

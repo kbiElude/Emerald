@@ -4,11 +4,11 @@
  *
  */
 #include "shared.h"
-#include "ogl/ogl_buffers.h"
 #include "ogl/ogl_context.h"
 #include "ogl/ogl_primitive_renderer.h"
 #include "ogl/ogl_program.h"
 #include "ogl/ogl_shader.h"
+#include "raGL/raGL_buffers.h"
 #include "raGL/raGL_utils.h"
 #include "system/system_assertions.h"
 #include "system/system_critical_section.h"
@@ -95,13 +95,12 @@ typedef struct
      * [n_datasets] * vec4          - color data for subsequent datasets.
      * [n_datasets] * [vertex data] - vertex data for subsequent datasets.
      **/
+    raGL_buffer      bo;
     GLuint           bo_color_offset;
     unsigned char*   bo_data;
     unsigned int     bo_data_size;
-    GLuint           bo_id;             /* owned by ogl_buffers */
     system_matrix4x4 bo_mvp;
     GLuint           bo_mvp_offset;
-    unsigned int     bo_start_offset;
     GLuint           bo_storage_size;
     unsigned int     bo_vertex_offset;
 
@@ -130,7 +129,7 @@ typedef struct
     ogl_program program;
 
     /* Buffer memory manager */
-    ogl_buffers buffers;
+    raGL_buffers buffers;
 
     /* Rendering context */
     ogl_context context;
@@ -166,21 +165,29 @@ REFCOUNT_INSERT_IMPLEMENTATION(ogl_primitive_renderer,
 
 /** TODO */
 PRIVATE void _ogl_primitive_renderer_draw_rendering_thread_callback(ogl_context context,
-                                                                     void*       user_arg)
+                                                                    void*       user_arg)
 {
+    GLuint                                              bo_id            = 0;
+    uint32_t                                            bo_start_offset  = -1;
     ogl_context_gl_entrypoints_ext_direct_state_access* dsa_entry_points = NULL;
     ogl_context_gl_entrypoints*                         entry_points     = NULL;
 
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
                             &entry_points);
-
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL_EXT_DIRECT_STATE_ACCESS,
                             &dsa_entry_points);
 
     /* NOTE: draw_cs is locked while this call-back is being handled */
     _ogl_primitive_renderer* renderer_ptr = (_ogl_primitive_renderer*) user_arg;
+
+    raGL_buffer_get_property(renderer_ptr->bo,
+                             RAGL_BUFFER_PROPERTY_ID,
+                            &bo_id);
+    raGL_buffer_get_property(renderer_ptr->bo,
+                             RAGL_BUFFER_PROPERTY_START_OFFSET,
+                            &bo_start_offset);
 
     if (renderer_ptr->dirty)
     {
@@ -197,8 +204,8 @@ PRIVATE void _ogl_primitive_renderer_draw_rendering_thread_callback(ogl_context 
     if (!system_matrix4x4_is_equal(renderer_ptr->bo_mvp,
                                    renderer_ptr->draw_mvp) )
     {
-        dsa_entry_points->pGLNamedBufferSubDataEXT(renderer_ptr->bo_id,
-                                                   renderer_ptr->bo_start_offset + renderer_ptr->bo_mvp_offset,
+        dsa_entry_points->pGLNamedBufferSubDataEXT(bo_id,
+                                                   bo_start_offset + renderer_ptr->bo_mvp_offset,
                                                    sizeof(float) * 16,
                                                    system_matrix4x4_get_row_major_data(renderer_ptr->draw_mvp) );
 
@@ -209,8 +216,8 @@ PRIVATE void _ogl_primitive_renderer_draw_rendering_thread_callback(ogl_context 
     /* Draw line strips as requested */
     entry_points->pGLBindBufferRange(GL_UNIFORM_BUFFER,
                                      VS_UB_BINDING_ID,
-                                     renderer_ptr->bo_id,
-                                     renderer_ptr->bo_start_offset,
+                                     bo_id,
+                                     bo_start_offset,
                                      renderer_ptr->bo_storage_size);
     entry_points->pGLBindVertexArray(renderer_ptr->vao_id);
     entry_points->pGLUseProgram     (ogl_program_get_id(renderer_ptr->program) );
@@ -328,14 +335,12 @@ PRIVATE void _ogl_primitive_renderer_release_rendering_thread_callback(ogl_conte
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
                             &entrypoints);
 
-    if (instance_ptr->bo_id != 0)
+    if (instance_ptr->bo != NULL)
     {
-        ogl_buffers_free_buffer_memory(instance_ptr->buffers,
-                                       instance_ptr->bo_id,
-                                       instance_ptr->bo_start_offset);
+        raGL_buffers_free_buffer_memory(instance_ptr->buffers,
+                                        instance_ptr->bo);
 
-        instance_ptr->bo_id           = 0;
-        instance_ptr->bo_start_offset = -1;
+        instance_ptr->bo = NULL;
     }
 
     if (instance_ptr->program != NULL)
@@ -396,6 +401,8 @@ PRIVATE void _ogl_primitive_renderer_release(void* line_strip_renderer)
 PRIVATE void _ogl_primitive_renderer_update_bo_storage(ogl_context              context,
                                                        _ogl_primitive_renderer* renderer_ptr)
 {
+    GLuint                                              bo_id            = 0;
+    uint32_t                                            bo_start_offset  = -1;
     ogl_context_gl_entrypoints_ext_direct_state_access* dsa_entry_points = NULL;
     ogl_context_gl_entrypoints*                         entry_points     = NULL;
 
@@ -418,32 +425,41 @@ PRIVATE void _ogl_primitive_renderer_update_bo_storage(ogl_context              
     }
 
     /* Make sure we have a BO available and that it is capacious enough. */
-    if (renderer_ptr->bo_id           != 0 &&
+    if (renderer_ptr->bo              != NULL &&
         renderer_ptr->bo_storage_size <  renderer_ptr->bo_data_size)
     {
-        ogl_buffers_free_buffer_memory(renderer_ptr->buffers,
-                                       renderer_ptr->bo_id,
-                                       renderer_ptr->bo_start_offset);
+        raGL_buffers_free_buffer_memory(renderer_ptr->buffers,
+                                        renderer_ptr->bo);
 
-        renderer_ptr->bo_id           = 0;
-        renderer_ptr->bo_start_offset = -1;
+        renderer_ptr->bo = NULL;
     }
 
-    if (renderer_ptr->bo_id == 0)
+    if (renderer_ptr->bo == NULL)
     {
+        ral_buffer_create_info bo_create_info;
+
         LOG_INFO("Performance warning: Need to reallocate data BO storage");
 
-        ogl_buffers_allocate_buffer_memory(renderer_ptr->buffers,
-                                           renderer_ptr->bo_data_size,
-                                           RAL_BUFFER_MAPPABILITY_NONE,
-                                           RAL_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-                                           RAL_BUFFER_PROPERTY_SPARSE_IF_AVAILABLE_BIT,
-                                          &renderer_ptr->bo_id,
-                                          &renderer_ptr->bo_start_offset);
+        bo_create_info.mappability_bits = RAL_BUFFER_MAPPABILITY_NONE;
+        bo_create_info.property_bits    = RAL_BUFFER_PROPERTY_SPARSE_IF_AVAILABLE_BIT;
+        bo_create_info.size             = renderer_ptr->bo_data_size;
+        bo_create_info.usage_bits       = RAL_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
+        bo_create_info.user_queue_bits  = 0xFFFFFFFF;
+
+        raGL_buffers_allocate_buffer_memory_for_ral_buffer_create_info(renderer_ptr->buffers,
+                                                                      &bo_create_info,
+                                                                      &renderer_ptr->bo);
     }
 
-    dsa_entry_points->pGLNamedBufferSubDataEXT(renderer_ptr->bo_id,
-                                               renderer_ptr->bo_start_offset,
+    raGL_buffer_get_property(renderer_ptr->bo,
+                             RAGL_BUFFER_PROPERTY_ID,
+                            &bo_id);
+    raGL_buffer_get_property(renderer_ptr->bo,
+                             RAGL_BUFFER_PROPERTY_START_OFFSET,
+                            &bo_start_offset);
+
+    dsa_entry_points->pGLNamedBufferSubDataEXT(bo_id,
+                                               bo_start_offset,
                                                renderer_ptr->bo_data_size,
                                                renderer_ptr->bo_data);
 
@@ -552,18 +568,26 @@ PRIVATE void _ogl_primitive_renderer_update_data_buffer(_ogl_primitive_renderer*
 PRIVATE void _ogl_primitive_renderer_update_vao(ogl_context               context,
                                                 _ogl_primitive_renderer* renderer_ptr)
 {
-    const ogl_context_gl_entrypoints* entry_points = NULL;
+    GLuint                            bo_id           = 0;
+    uint32_t                          bo_start_offset = -1;
+    const ogl_context_gl_entrypoints* entry_points    = NULL;
 
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
                             &entry_points);
+    raGL_buffer_get_property(renderer_ptr->bo,
+                             RAGL_BUFFER_PROPERTY_ID,
+                            &bo_id);
+    raGL_buffer_get_property(renderer_ptr->bo,
+                             RAGL_BUFFER_PROPERTY_START_OFFSET,
+                            &bo_start_offset);
 
     /* Sanity check */
     ASSERT_DEBUG_SYNC(renderer_ptr->vao_id != 0,
                       "VAO is not generated");
 
     entry_points->pGLBindBuffer     (GL_ARRAY_BUFFER,
-                                     renderer_ptr->bo_id);
+                                     bo_id);
     entry_points->pGLBindVertexArray(renderer_ptr->vao_id);
 
     entry_points->pGLEnableVertexAttribArray(VS_COLOR_DATA_VAA_ID);
@@ -574,13 +598,13 @@ PRIVATE void _ogl_primitive_renderer_update_vao(ogl_context               contex
                                          GL_FLOAT,
                                          GL_FALSE, /* normalized */
                                          0,        /* stride */
-                                         (const GLvoid*) (intptr_t) (renderer_ptr->bo_start_offset + renderer_ptr->bo_color_offset) );
+                                         (const GLvoid*) (intptr_t) (bo_start_offset + renderer_ptr->bo_color_offset) );
     entry_points->pGLVertexAttribPointer(VS_VERTEX_DATA_VAA_ID,
                                          3, /* size */
                                          GL_FLOAT,
                                          GL_FALSE, /* normalized */
                                          0,        /* stride */
-                                         (const GLvoid*) (intptr_t) (renderer_ptr->bo_start_offset + renderer_ptr->bo_vertex_offset) );
+                                         (const GLvoid*) (intptr_t) (bo_start_offset + renderer_ptr->bo_vertex_offset) );
 
     entry_points->pGLVertexAttribDivisor(VS_COLOR_DATA_VAA_ID,
                                          1);
@@ -757,7 +781,7 @@ PUBLIC EMERALD_API ogl_primitive_renderer ogl_primitive_renderer_create(ogl_cont
                sizeof(*renderer_ptr) );
 
         ogl_context_get_property(context,
-                                 OGL_CONTEXT_PROPERTY_BUFFERS,
+                                 OGL_CONTEXT_PROPERTY_BUFFERS_RAGL,
                                 &renderer_ptr->buffers);
 
         renderer_ptr->bo_mvp   = system_matrix4x4_create       ();

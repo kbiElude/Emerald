@@ -21,6 +21,7 @@
 #include "ogl/ogl_ui_dropdown.h"
 #include "ogl/ogl_ui_frame.h"
 #include "ogl/ogl_ui_label.h"
+#include "raGL/raGL_buffer.h"
 #include "raGL/raGL_utils.h"
 #include "system/system_assertions.h"
 #include "system/system_event.h"
@@ -86,9 +87,8 @@ uint32_t                        _file_enumerator_n_files               = 0;
 ogl_shader                      _preview_fs                            = NULL;
 ogl_program                     _preview_po                            = NULL;
 ogl_program_ub                  _preview_po_ub                         = NULL;
-GLuint                          _preview_po_ub_bo_id                   = 0;
+raGL_buffer                     _preview_po_ub_bo                      = NULL;
 GLuint                          _preview_po_ub_bo_size                 = 0;
-GLuint                          _preview_po_ub_bo_start_offset         = 0;
 GLint                           _preview_po_uniform_texture            = -1;
 GLint                           _preview_po_uniform_x1y1x2y2_ub_offset = -1;
 ogl_shader                      _preview_vs                            = NULL;
@@ -829,11 +829,8 @@ void _rendering_handler(ogl_context context,
                                     OGL_PROGRAM_UB_PROPERTY_BLOCK_DATA_SIZE,
                                    &_preview_po_ub_bo_size);
         ogl_program_ub_get_property(_preview_po_ub,
-                                    OGL_PROGRAM_UB_PROPERTY_BO_ID,
-                                   &_preview_po_ub_bo_id);
-        ogl_program_ub_get_property(_preview_po_ub,
-                                    OGL_PROGRAM_UB_PROPERTY_BO_START_OFFSET,
-                                   &_preview_po_ub_bo_start_offset);
+                                    OGL_PROGRAM_UB_PROPERTY_BO,
+                                   &_preview_po_ub_bo);
 
         /* Instantiate a FBO we will use for conversions */
         entry_points->pGLGenFramebuffers(1,
@@ -947,10 +944,20 @@ void _rendering_handler(ogl_context context,
                                                 sizeof(float) * 4);
     ogl_program_ub_sync                        (_preview_po_ub);
 
+    GLuint   preview_po_ub_bo_id           = 0;
+    uint32_t preview_po_ub_bo_start_offset = -1;
+
+    raGL_buffer_get_property(_preview_po_ub_bo,
+                             RAGL_BUFFER_PROPERTY_ID,
+                            &preview_po_ub_bo_id);
+    raGL_buffer_get_property(_preview_po_ub_bo,
+                             RAGL_BUFFER_PROPERTY_START_OFFSET,
+                            &preview_po_ub_bo_start_offset);
+
     entry_points->pGLBindBufferRange(GL_UNIFORM_BUFFER,
                                      0, /* index */
-                                     _preview_po_ub_bo_id,
-                                     _preview_po_ub_bo_start_offset,
+                                      preview_po_ub_bo_id,
+                                      preview_po_ub_bo_start_offset,
                                      _preview_po_ub_bo_size);
 
     /* Clear the color buffer */

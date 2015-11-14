@@ -26,14 +26,11 @@ typedef enum
 
 typedef enum
 {
-    /* GLuint; not settable */
-    SCALAR_FIELD_METABALLS_PROPERTY_DATA_BO_ID,
+    /* raGL_buffer; not settable */
+    SCALAR_FIELD_METABALLS_PROPERTY_DATA_BO,
 
     /* unsigned int; not settable */
     SCALAR_FIELD_METABALLS_PROPERTY_DATA_BO_SIZE,
-
-    /* unsigned int; not settable */
-    SCALAR_FIELD_METABALLS_PROPERTY_DATA_BO_START_OFFSET,
 
     /* unsigned int; settable.
      *

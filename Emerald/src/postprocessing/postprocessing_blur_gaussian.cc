@@ -4,7 +4,6 @@
  *
  */
 #include "shared.h"
-#include "ogl/ogl_buffers.h"
 #include "ogl/ogl_context.h"
 #include "ogl/ogl_context_samplers.h"
 #include "ogl/ogl_context_state_cache.h"
@@ -16,6 +15,8 @@
 #include "ogl/ogl_shaders.h"
 #include "ogl/ogl_texture.h"
 #include "postprocessing/postprocessing_blur_gaussian.h"
+#include "raGL/raGL_buffer.h"
+#include "raGL/raGL_buffers.h"
 #include "system/system_assertions.h"
 #include "system/system_hashed_ansi_string.h"
 #include "system/system_log.h"
@@ -119,9 +120,8 @@ static const char* vs_body =     "#version 430 core\n"
 /** Internal type definition */
 typedef struct _postprocessing_blur_gaussian
 {
-    ogl_buffers               buffers;     /* owned by ogl_context - do NOT release */
-    GLuint                    coeff_bo_id; /* owned by ogl_buffers - do NOT release */
-    unsigned int              coeff_bo_start_offset;
+    raGL_buffers              buffers;     /* do NOT release */
+    raGL_buffer               coeff_bo;    /* owned by raGL_buffers - do NOT release */
     unsigned int              coeff_buffer_offset_for_value_1; /* holds offset to where 1.0 is stored in BO with id coeff_bo_id */
     unsigned int*             coeff_buffer_offsets; // [0] for n_min_taps, [1] for n_min_taps+1, etc..
     ogl_context               context;
@@ -142,8 +142,7 @@ typedef struct _postprocessing_blur_gaussian
      * memory copies to avoid pipeline stalls.
      */
     unsigned int other_data_bo_cached_value;
-    GLuint       other_data_bo_id;           /* owned by ogl_buffers - do NOT release */
-    unsigned int other_data_bo_start_offset;
+    raGL_buffer  other_data_bo;           /* do NOT release */
 
     _postprocessing_blur_gaussian(ogl_context               in_context,
                                   unsigned int              in_n_min_taps,
@@ -154,8 +153,7 @@ typedef struct _postprocessing_blur_gaussian
                           "Invalid min/max tap argument values");
 
         buffers                         = NULL;
-        coeff_bo_id                     = 0;
-        coeff_bo_start_offset           = -1;
+        coeff_bo                        = NULL;
         coeff_buffer_offset_for_value_1 = 0; /* always zero */
         coeff_buffer_offsets            = NULL;
         context                         = in_context;
@@ -164,13 +162,12 @@ typedef struct _postprocessing_blur_gaussian
         n_min_taps                      = in_n_min_taps;
         name                            = in_name;
         other_data_bo_cached_value      = 0;
-        other_data_bo_id                = 0;
-        other_data_bo_start_offset      = -1;
+        other_data_bo                   = NULL;
         po                              = NULL;
         sampler                         = NULL;
 
         ogl_context_get_property(context,
-                                 OGL_CONTEXT_PROPERTY_BUFFERS,
+                                 OGL_CONTEXT_PROPERTY_BUFFERS_RAGL,
                                 &buffers);
 
         memset(fbo_ids,
@@ -231,15 +228,13 @@ PRIVATE void _postprocessing_blur_gaussian_deinit_rendering_thread_callback(ogl_
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
                             &entrypoints_ptr);
 
-    if (instance_ptr->coeff_bo_id != 0)
+    if (instance_ptr->coeff_bo != NULL)
     {
-        ogl_buffers_free_buffer_memory(instance_ptr->buffers,
-                                       instance_ptr->coeff_bo_id,
-                                       instance_ptr->coeff_bo_start_offset);
+        raGL_buffers_free_buffer_memory(instance_ptr->buffers,
+                                        instance_ptr->coeff_bo);
 
-        instance_ptr->coeff_bo_id           = 0;
-        instance_ptr->coeff_bo_start_offset = -1;
-    } /* if (instance_ptr->coeff_bo_id != 0) */
+        instance_ptr->coeff_bo = NULL;
+    } /* if (instance_ptr->coeff_bo != NULL) */
 
     if (instance_ptr->fbo_ids[0] != 0 ||
         instance_ptr->fbo_ids[1] != 0)
@@ -253,12 +248,13 @@ PRIVATE void _postprocessing_blur_gaussian_deinit_rendering_thread_callback(ogl_
                sizeof(instance_ptr->fbo_ids) );
     }
 
-    if (instance_ptr->other_data_bo_id != 0)
+    if (instance_ptr->other_data_bo != NULL)
     {
-        ogl_buffers_free_buffer_memory(instance_ptr->buffers,
-                                       instance_ptr->other_data_bo_id,
-                                       instance_ptr->other_data_bo_start_offset);
-    } /* if (instance_ptr->other_data_bo_id != 0) */
+        raGL_buffers_free_buffer_memory(instance_ptr->buffers,
+                                        instance_ptr->other_data_bo);
+
+        instance_ptr->other_data_bo = NULL;
+    } /* if (instance_ptr->other_data_bo != NULL) */
 }
 
 /** TODO */
@@ -603,31 +599,46 @@ PRIVATE void _postprocessing_blur_gaussian_init_rendering_thread_callback(ogl_co
      * NOTE: The other data BO must not come from sparse buffers under NV drivers. Please see GitHub#61
      *       for more details. May be worth revisiting in the future.
      */
-    bool is_nv_driver = false;
+    ral_buffer_create_info coeff_bo_props;
+    GLuint                 coeff_bo_id           = 0;
+    uint32_t               coeff_bo_start_offset = 0;
+    bool                   is_nv_driver          = false;
+    ral_buffer_create_info other_data_bo_props;
 
     ogl_context_get_property(instance_ptr->context,
                              OGL_CONTEXT_PROPERTY_IS_NV_DRIVER,
                             &is_nv_driver);
 
-    ogl_buffers_allocate_buffer_memory(instance_ptr->buffers,
-                                       final_data_bo_size,
-                                       RAL_BUFFER_MAPPABILITY_NONE,
-                                       RAL_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-                                       RAL_BUFFER_PROPERTY_SPARSE_IF_AVAILABLE_BIT,
-                                      &instance_ptr->coeff_bo_id,
-                                      &instance_ptr->coeff_bo_start_offset);
+    coeff_bo_props.mappability_bits = RAL_BUFFER_MAPPABILITY_NONE;
+    coeff_bo_props.property_bits    = RAL_BUFFER_PROPERTY_SPARSE_IF_AVAILABLE_BIT;
+    coeff_bo_props.size             = final_data_bo_size;
+    coeff_bo_props.usage_bits       = RAL_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
+    coeff_bo_props.user_queue_bits  = 0xFFFFFFFF;
 
-    ogl_buffers_allocate_buffer_memory(instance_ptr->buffers,
-                                       sizeof(int) * 3,                             /* other data = three integers */
-                                       RAL_BUFFER_MAPPABILITY_NONE,
-                                       RAL_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-                                       (is_nv_driver) ? 0 :
-                                                        RAL_BUFFER_PROPERTY_SPARSE_IF_AVAILABLE_BIT,
-                                      &instance_ptr->other_data_bo_id,
-                                      &instance_ptr->other_data_bo_start_offset);
+    raGL_buffers_allocate_buffer_memory_for_ral_buffer_create_info(instance_ptr->buffers,
+                                                                  &coeff_bo_props,
+                                                                  &instance_ptr->coeff_bo);
 
-    dsa_entrypoints_ptr->pGLNamedBufferSubDataEXT(instance_ptr->coeff_bo_id,
-                                                  instance_ptr->coeff_bo_start_offset,
+    other_data_bo_props.mappability_bits = RAL_BUFFER_MAPPABILITY_NONE;
+    other_data_bo_props.property_bits    = (is_nv_driver) ? 0 :
+                                                            RAL_BUFFER_PROPERTY_SPARSE_IF_AVAILABLE_BIT;
+    other_data_bo_props.size             = sizeof(int) * 3,                             /* other data = three integers */
+    other_data_bo_props.usage_bits       = RAL_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
+    other_data_bo_props.user_queue_bits  = 0xFFFFFFFF;
+
+    raGL_buffers_allocate_buffer_memory_for_ral_buffer_create_info(instance_ptr->buffers,
+                                                                  &other_data_bo_props,
+                                                                  &instance_ptr->other_data_bo);
+
+    raGL_buffer_get_property(instance_ptr->coeff_bo,
+                             RAGL_BUFFER_PROPERTY_ID,
+                            &coeff_bo_id);
+    raGL_buffer_get_property(instance_ptr->coeff_bo,
+                             RAGL_BUFFER_PROPERTY_START_OFFSET,
+                            &coeff_bo_start_offset);
+
+    dsa_entrypoints_ptr->pGLNamedBufferSubDataEXT(coeff_bo_id,
+                                                  coeff_bo_start_offset,
                                                   final_data_bo_size,
                                                   final_data_bo_raw_ptr); /* flags */
 
@@ -806,7 +817,9 @@ PRIVATE void _postprocessing_blur_gaussian_release(void* ptr)
 PRIVATE RENDERING_CONTEXT_CALL void _postprocessing_blur_gaussian_update_other_data_bo_storage(_postprocessing_blur_gaussian* gaussian_ptr,
                                                                                                unsigned int                   new_other_data_cached_value)
 {
-    const ogl_context_gl_entrypoints_ext_direct_state_access* entrypoints_dsa = NULL;
+    const ogl_context_gl_entrypoints_ext_direct_state_access* entrypoints_dsa            = NULL;
+    GLuint                                                    other_data_bo_id           = 0;
+    uint32_t                                                  other_data_bo_start_offset = -1;
 
     const int data[] =
     {
@@ -819,8 +832,15 @@ PRIVATE RENDERING_CONTEXT_CALL void _postprocessing_blur_gaussian_update_other_d
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL_EXT_DIRECT_STATE_ACCESS,
                             &entrypoints_dsa);
 
-    entrypoints_dsa->pGLNamedBufferSubDataEXT(gaussian_ptr->other_data_bo_id,
-                                              gaussian_ptr->other_data_bo_start_offset,
+    raGL_buffer_get_property(gaussian_ptr->other_data_bo,
+                             RAGL_BUFFER_PROPERTY_ID,
+                            &other_data_bo_id);
+    raGL_buffer_get_property(gaussian_ptr->other_data_bo,
+                             RAGL_BUFFER_PROPERTY_START_OFFSET,
+                            &other_data_bo_start_offset);
+
+    entrypoints_dsa->pGLNamedBufferSubDataEXT(other_data_bo_id,
+                                              other_data_bo_start_offset,
                                               sizeof(data),
                                               data);
 
@@ -885,9 +905,13 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void postprocessing_blur_gaussian_exec
                                                                                     postprocessing_blur_gaussian_resolution blur_resolution)
 {
     _postprocessing_blur_gaussian*                            blur_ptr                      = (_postprocessing_blur_gaussian*) blur;
+    GLuint                                                    coeff_bo_id                   = 0;
+    uint32_t                                                  coeff_bo_start_offset         = -1;
     GLuint                                                    context_default_fbo_id        = -1;
     const ogl_context_gl_entrypoints_ext_direct_state_access* dsa_entrypoints_ptr           = NULL;
     const ogl_context_gl_entrypoints*                         entrypoints_ptr               = NULL;
+    GLuint                                                    other_data_bo_id              = 0;
+    uint32_t                                                  other_data_bo_start_offset    = -1;
     ral_texture_type                                          src_texture_type              = RAL_TEXTURE_TYPE_UNKNOWN;
     unsigned int                                              src_texture_height            = 0;
     ral_texture_format                                        src_texture_format            = RAL_TEXTURE_FORMAT_UNKNOWN;
@@ -934,6 +958,20 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void postprocessing_blur_gaussian_exec
                                          0, /* mipmap_level */
                                          OGL_TEXTURE_MIPMAP_PROPERTY_WIDTH,
                                          &src_texture_width);
+
+    raGL_buffer_get_property(blur_ptr->coeff_bo,
+                             RAGL_BUFFER_PROPERTY_ID,
+                            &coeff_bo_id);
+    raGL_buffer_get_property(blur_ptr->coeff_bo,
+                             RAGL_BUFFER_PROPERTY_START_OFFSET,
+                            &coeff_bo_start_offset);
+
+    raGL_buffer_get_property(blur_ptr->other_data_bo,
+                             RAGL_BUFFER_PROPERTY_ID,
+                            &other_data_bo_id);
+    raGL_buffer_get_property(blur_ptr->other_data_bo,
+                             RAGL_BUFFER_PROPERTY_START_OFFSET,
+                            &other_data_bo_start_offset);
 
     /* The implementation below may look a bit wooly. Below is the break-down of the
      * whole process:
@@ -1140,8 +1178,8 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void postprocessing_blur_gaussian_exec
 
     entrypoints_ptr->pGLBindBufferRange(GL_UNIFORM_BUFFER,
                                         OTHER_DATA_UB_BP,
-                                        blur_ptr->other_data_bo_id,
-                                        blur_ptr->other_data_bo_start_offset,
+                                        other_data_bo_id,
+                                        other_data_bo_start_offset,
                                         sizeof(int) * 3);
 
     for (unsigned int n_layer = 0;
@@ -1149,16 +1187,16 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void postprocessing_blur_gaussian_exec
                     ++n_layer)
     {
         /* Use the iteration-specific number of taps */
-        dsa_entrypoints_ptr->pGLNamedCopyBufferSubDataEXT(blur_ptr->other_data_bo_id,                             /* readBuffer */
-                                                          blur_ptr->other_data_bo_id,                             /* writeBuffer */
-                                                          blur_ptr->other_data_bo_start_offset + 1 * sizeof(int), /* readOffset */
-                                                          blur_ptr->other_data_bo_start_offset,                   /* writeOffset */
+        dsa_entrypoints_ptr->pGLNamedCopyBufferSubDataEXT(other_data_bo_id,                             /* readBuffer */
+                                                          other_data_bo_id,                             /* writeBuffer */
+                                                          other_data_bo_start_offset + 1 * sizeof(int), /* readOffset */
+                                                          other_data_bo_start_offset,                   /* writeOffset */
                                                           sizeof(int) );
 
         entrypoints_ptr->pGLBindBufferRange(GL_UNIFORM_BUFFER,
                                             COEFFS_DATA_UB_BP,
-                                            blur_ptr->coeff_bo_id,
-                                            blur_ptr->coeff_bo_start_offset + blur_ptr->coeff_buffer_offsets[n_taps - blur_ptr->n_min_taps],
+                                            coeff_bo_id,
+                                            coeff_bo_start_offset + blur_ptr->coeff_buffer_offsets[n_taps - blur_ptr->n_min_taps],
                                             blur_ptr->n_max_data_coeffs * 4 /* padding */ * sizeof(float) );
 
         /* Copy the layer to blur */
@@ -1283,15 +1321,15 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void postprocessing_blur_gaussian_exec
 
             entrypoints_ptr->pGLBindBufferRange(GL_UNIFORM_BUFFER,
                                                 COEFFS_DATA_UB_BP,
-                                                blur_ptr->coeff_bo_id,
-                                                blur_ptr->coeff_bo_start_offset + blur_ptr->coeff_buffer_offset_for_value_1,
+                                                coeff_bo_id,
+                                                coeff_bo_start_offset + blur_ptr->coeff_buffer_offset_for_value_1,
                                                 blur_ptr->n_max_data_coeffs * 4 /* padding */ * sizeof(float) );
 
             /* Set the number of taps to 1 */
-            dsa_entrypoints_ptr->pGLNamedCopyBufferSubDataEXT(blur_ptr->other_data_bo_id,                             /* readBuffer  */
-                                                              blur_ptr->other_data_bo_id,                             /* writeBuffer */
-                                                              blur_ptr->other_data_bo_start_offset + 2 * sizeof(int), /* readOffset  */
-                                                              blur_ptr->other_data_bo_start_offset,                   /* writeOffset */
+            dsa_entrypoints_ptr->pGLNamedCopyBufferSubDataEXT(other_data_bo_id,                             /* readBuffer  */
+                                                              other_data_bo_id,                             /* writeBuffer */
+                                                              other_data_bo_start_offset + 2 * sizeof(int), /* readOffset  */
+                                                              other_data_bo_start_offset,                   /* writeOffset */
                                                               sizeof(int) );
 
             /* Draw data from texture layer 1 */

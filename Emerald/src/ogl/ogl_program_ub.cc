@@ -22,16 +22,9 @@ PRIVATE ogl_program_block_property _ogl_program_ub_get_block_property_for_ub_pro
             break;
         }
 
-        case OGL_PROGRAM_UB_PROPERTY_BO_ID:
+        case OGL_PROGRAM_UB_PROPERTY_BO:
         {
-            result = OGL_PROGRAM_BLOCK_PROPERTY_BO_ID;
-
-            break;
-        }
-
-        case OGL_PROGRAM_UB_PROPERTY_BO_START_OFFSET:
-        {
-            result = OGL_PROGRAM_BLOCK_PROPERTY_BO_START_OFFSET;
+            result = OGL_PROGRAM_BLOCK_PROPERTY_BO;
 
             break;
         }

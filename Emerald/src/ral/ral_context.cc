@@ -16,14 +16,13 @@
 #include "system/system_resizable_vector.h"
 #include "system/system_window.h"
 
-
-typedef bool (*PFNRALBACKENDGETFRAMEBUFFERPROC)(void*                backend,
-                                                ral_framebuffer      framebuffer_ral,
-                                                void**               out_framebuffer_backend_ptr);
-typedef void (*PFNRALBACKENDGETPROPERTYPROC)   (void*                backend,
-                                                ral_context_property property,
-                                                void*                out_result_ptr);
-typedef void (*PFNRALBACKENDRELEASEPROC)       (void*                backend);
+typedef bool (*PFNRALBACKENDGETFRAMEBUFFERPROC)(void*                      backend,
+                                                ral_framebuffer            framebuffer_ral,
+                                                void**                     out_framebuffer_backend_ptr);
+typedef void (*PFNRALBACKENDGETPROPERTYPROC)   (void*                      backend,
+                                                ral_context_property       property,
+                                                void*                      out_result_ptr);
+typedef void (*PFNRALBACKENDRELEASEPROC)       (void*                      backend);
 
 
 typedef struct _ral_context
@@ -33,10 +32,10 @@ typedef struct _ral_context
      * OpenGL context:    raGL_backend instance
      * OpenGL ES context: raGL_backend instance
      **/
-    void*                           backend; 
-    PFNRALBACKENDGETFRAMEBUFFERPROC pfn_backend_get_framebuffer_proc;
-    PFNRALBACKENDGETPROPERTYPROC    pfn_backend_get_property_proc;
-    PFNRALBACKENDRELEASEPROC        pfn_backend_release_proc;
+    void*                              backend; 
+    PFNRALBACKENDGETFRAMEBUFFERPROC    pfn_backend_get_framebuffer_proc;
+    PFNRALBACKENDGETPROPERTYPROC       pfn_backend_get_property_proc;
+    PFNRALBACKENDRELEASEPROC           pfn_backend_release_proc;
 
     system_callback_manager callback_manager;
 
@@ -294,10 +293,10 @@ PUBLIC ral_context ral_context_create(system_hashed_ansi_string name,
             case OGL_CONTEXT_TYPE_ES:
             case OGL_CONTEXT_TYPE_GL:
             {
-                new_context_ptr->backend                          = (void*) raGL_backend_create( (ral_context) new_context_ptr);
-                new_context_ptr->pfn_backend_get_framebuffer_proc = raGL_backend_get_framebuffer;
-                new_context_ptr->pfn_backend_get_property_proc    = raGL_backend_get_property;
-                new_context_ptr->pfn_backend_release_proc         = raGL_backend_release;
+                new_context_ptr->backend                              = (void*) raGL_backend_create( (ral_context) new_context_ptr);
+                new_context_ptr->pfn_backend_get_framebuffer_proc     = raGL_backend_get_framebuffer;
+                new_context_ptr->pfn_backend_get_property_proc        = raGL_backend_get_property;
+                new_context_ptr->pfn_backend_release_proc             = raGL_backend_release;
 
                 break;
             }
