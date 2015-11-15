@@ -111,8 +111,8 @@ PUBLIC void stage_step_background_init(ogl_context  context,
     _result_texture = ogl_texture_create_and_initialize(context,
                                                         system_hashed_ansi_string_create("BG result texture"),
                                                         RAL_TEXTURE_TYPE_2D,
-                                                        1, /* n_mipmaps */
                                                         RAL_TEXTURE_FORMAT_RGBA32_FLOAT,
+                                                        false,  /* use_full_mipmap_chain */
                                                         main_get_output_resolution()[0],
                                                         main_get_output_resolution()[1],
                                                         1,      /* base_mipmap_depth */

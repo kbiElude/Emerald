@@ -281,8 +281,8 @@ PUBLIC void stage_step_dof_scheuermann_init(ogl_context  context,
     _dof_scheuermann_combination_to         = ogl_texture_create_and_initialize(context,
                                                                                 system_hashed_ansi_string_create("DOF Scheuermann combination TO"),
                                                                                 RAL_TEXTURE_TYPE_2D,
-                                                                                1, /* n_mipmaps */
                                                                                 RAL_TEXTURE_FORMAT_RGBA16_FLOAT,
+                                                                                false,  /* use_full_mipmap_chain */
                                                                                 output_resolution[0],
                                                                                 output_resolution[1],
                                                                                 1,      /* base_mipmap_depth    */
@@ -291,8 +291,8 @@ PUBLIC void stage_step_dof_scheuermann_init(ogl_context  context,
     _dof_scheuermann_downsampled_to         = ogl_texture_create_and_initialize(context,
                                                                                 system_hashed_ansi_string_create("DOF Scheuermann downsampled TO"),
                                                                                 RAL_TEXTURE_TYPE_2D,
-                                                                                1, /* n_mipmaps */
                                                                                 RAL_TEXTURE_FORMAT_RGBA16_FLOAT,
+                                                                                false,  /* use_full_mipmap_chain */
                                                                                 downsampled_output_resolution[0],
                                                                                 downsampled_output_resolution[1],
                                                                                 1,      /* base_mipmap_depth    */
@@ -301,8 +301,8 @@ PUBLIC void stage_step_dof_scheuermann_init(ogl_context  context,
     _dof_scheuermann_downsampled_blurred_to = ogl_texture_create_and_initialize(context,
                                                                                 system_hashed_ansi_string_create("DOF Scheuermann downsampled blurred TO"),
                                                                                 RAL_TEXTURE_TYPE_2D,
-                                                                                1, /* n_mipmaps */
                                                                                 RAL_TEXTURE_FORMAT_RGBA16_FLOAT,
+                                                                                false,  /* use_full_mipmap_chain */
                                                                                 downsampled_output_resolution[0],
                                                                                 downsampled_output_resolution[1],
                                                                                 1,      /* base_mipmap_depth    */

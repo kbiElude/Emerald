@@ -76,8 +76,6 @@ PUBLIC EMERALD_API ogl_texture ogl_context_textures_get_texture_by_name(ogl_cont
  *                            directly from a thread, to which the context has already been bound!
  *                            Must not be NULL.
  *  @param type               RAL texture type of the texture object to return.
- *  @param n_mipmaps          Number of mip-maps to prepare. The usual glTexStorage*D() requirements
- *                            apply.
  *  @param base_mipmap_width  Base mip-map width.
  *  @param base_mipmap_height Base mip-map height. (if meaningful for the requested texture target)
  *  @param base_mipmap_depth  Base mip-map depth   (if meaningful for the requested texture target)
@@ -87,8 +85,8 @@ PUBLIC EMERALD_API ogl_texture ogl_context_textures_get_texture_by_name(ogl_cont
  **/
 PUBLIC RENDERING_CONTEXT_CALL EMERALD_API ogl_texture ogl_context_textures_get_texture_from_pool(ogl_context        context,
                                                                                                  ral_texture_type   type,
-                                                                                                 unsigned int       n_mipmaps,
                                                                                                  ral_texture_format format,
+                                                                                                 bool               use_full_mipmap_chain,
                                                                                                  unsigned int       base_mipmap_width,
                                                                                                  unsigned int       base_mipmap_height,
                                                                                                  unsigned int       base_mipmap_depth,

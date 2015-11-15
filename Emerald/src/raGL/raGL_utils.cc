@@ -419,10 +419,8 @@ PUBLIC EMERALD_API ral_texture_type raGL_utils_get_ral_texture_type_for_ogl_text
         case OGL_TEXTURE_TARGET_GL_TEXTURE_2D_MULTISAMPLE:       result = RAL_TEXTURE_TYPE_MULTISAMPLE_2D;       break;
         case OGL_TEXTURE_TARGET_GL_TEXTURE_2D_MULTISAMPLE_ARRAY: result = RAL_TEXTURE_TYPE_MULTISAMPLE_2D_ARRAY; break;
         case OGL_TEXTURE_TARGET_GL_TEXTURE_3D:                   result = RAL_TEXTURE_TYPE_3D;                   break;
-        case OGL_TEXTURE_TARGET_GL_TEXTURE_BUFFER:               result = RAL_TEXTURE_TYPE_BUFFER;               break;
         case OGL_TEXTURE_TARGET_GL_TEXTURE_CUBE_MAP:             result = RAL_TEXTURE_TYPE_CUBE_MAP;             break;
         case OGL_TEXTURE_TARGET_GL_TEXTURE_CUBE_MAP_ARRAY:       result = RAL_TEXTURE_TYPE_CUBE_MAP_ARRAY;       break;
-        case OGL_TEXTURE_TARGET_GL_TEXTURE_RECTANGLE:            result = RAL_TEXTURE_TYPE_RECTANGLE;            break;
 
         default:
         {

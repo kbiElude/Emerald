@@ -119,8 +119,8 @@ void _init_gl(ogl_context context,
     tos[0] = ogl_texture_create_and_initialize(context,
                                                system_hashed_ansi_string_create("1"),
                                                RAL_TEXTURE_TYPE_2D,
-                                               1, /* n_mipmaps */
                                                RAL_TEXTURE_FORMAT_RGBA8_UNORM,
+                                               false,          /* use_full_mipmap_chain */
                                                _window_size[0],
                                                _window_size[1],
                                                1,               /* base_mipmap_depth    */
@@ -129,8 +129,8 @@ void _init_gl(ogl_context context,
     tos[1] = ogl_texture_create_and_initialize(context,
                                                system_hashed_ansi_string_create("2"),
                                                RAL_TEXTURE_TYPE_2D,
-                                               1, /* n_mipmaps */
                                                RAL_TEXTURE_FORMAT_DEPTH32_SNORM,
+                                               false,          /* use_full_mipmap_chain */
                                                _window_size[0],
                                                _window_size[1],
                                                1,               /* base_mipmap_depth    */

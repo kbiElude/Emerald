@@ -754,8 +754,8 @@ PUBLIC void stage_step_julia_init(ogl_context  context,
     _julia_fbo_color_to = ogl_texture_create_and_initialize(context,
                                                             system_hashed_ansi_string_create("Julia FBO color texture"),
                                                             RAL_TEXTURE_TYPE_2D,
-                                                            1, /* n_mipmaps */
                                                             RAL_TEXTURE_FORMAT_RGBA32_FLOAT,
+                                                            false,  /* use_full_mipmap_chain */
                                                             main_get_window_width(),
                                                             main_get_window_height(),
                                                             1,      /* base_mipmap_depth    */
@@ -764,8 +764,8 @@ PUBLIC void stage_step_julia_init(ogl_context  context,
     _julia_fbo_depth_to = ogl_texture_create_and_initialize(context,
                                                             system_hashed_ansi_string_create("Julia FBO depth texture"),
                                                             RAL_TEXTURE_TYPE_2D,
-                                                            1, /* n_mipmaps */
                                                             RAL_TEXTURE_FORMAT_DEPTH32_FLOAT,
+                                                            false,  /* use_full_mipmap_chain */
                                                             main_get_window_width(),
                                                             main_get_window_height(),
                                                             1,      /* base_mipmap_depth    */

@@ -1177,11 +1177,10 @@ PRIVATE void _demo_timeline_segment_update_node_texture_memory_allocations(_demo
                                                     n_current_alloc,
                                                    &current_alloc_details) )
     {
-        ogl_texture new_texture                 = NULL;
-        uint32_t    requested_texture_depth     = 0;
-        uint32_t    requested_texture_height    = 0;
-        uint32_t    requested_texture_n_mipmaps = 0;
-        uint32_t    requested_texture_width     = 0;
+        ogl_texture new_texture              = NULL;
+        uint32_t    requested_texture_depth  = 0;
+        uint32_t    requested_texture_height = 0;
+        uint32_t    requested_texture_width  = 0;
 
         ++n_current_alloc;
 
@@ -1274,25 +1273,11 @@ PRIVATE void _demo_timeline_segment_update_node_texture_memory_allocations(_demo
             }
         } /* switch (current_alloc_details.size.mode) */
 
-        /* How many mipmaps do we need? */
-        if (current_alloc_details.needs_full_mipmap_chain)
-        {
-            uint32_t max_size = 0;
-
-            max_size = (requested_texture_width > requested_texture_height) ? requested_texture_width : requested_texture_height;
-            max_size = (requested_texture_depth > max_size)                 ? requested_texture_depth : max_size;
-
-            requested_texture_n_mipmaps = 1 + system_math_other_log2_uint32(max_size);
-        } /* if (current_alloc_details.needs_full_mipmap_chain) */
-        else
-        {
-            requested_texture_n_mipmaps = 1;
-        }
-
+        /* Alloc */
         new_texture = ogl_context_textures_get_texture_from_pool(node_ptr->parent_segment_ptr->context,
                                                                  current_alloc_details.type,
-                                                                 requested_texture_n_mipmaps,
                                                                  current_alloc_details.format,
+                                                                 current_alloc_details.needs_full_mipmap_chain,
                                                                  requested_texture_width,
                                                                  requested_texture_height,
                                                                  requested_texture_depth,

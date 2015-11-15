@@ -571,18 +571,19 @@ PRIVATE void _ogl_texture_release(void* arg)
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API RENDERING_CONTEXT_CALL ogl_texture ogl_texture_create_and_initialize(ogl_context                context,
-                                                                                        system_hashed_ansi_string  name,
-                                                                                        ral_texture_type           type,
-                                                                                        unsigned int               n_mipmaps,
-                                                                                        ral_texture_format         format,
-                                                                                        unsigned int               base_mipmap_width,
-                                                                                        unsigned int               base_mipmap_height,
-                                                                                        unsigned int               base_mipmap_depth,
-                                                                                        unsigned int               n_samples,
-                                                                                        bool                       fixed_sample_locations)
+PUBLIC EMERALD_API RENDERING_CONTEXT_CALL ogl_texture ogl_texture_create_and_initialize(ogl_context               context,
+                                                                                        system_hashed_ansi_string name,
+                                                                                        ral_texture_type          type,
+                                                                                        ral_texture_format        format,
+                                                                                        bool                      use_full_mipmap_chain,
+                                                                                        unsigned int              base_mipmap_width,
+                                                                                        unsigned int              base_mipmap_height,
+                                                                                        unsigned int              base_mipmap_depth,
+                                                                                        unsigned int              n_samples,
+                                                                                        bool                      fixed_sample_locations)
 {
     const ogl_context_gl_entrypoints_ext_direct_state_access* dsa_entry_points = NULL;
+    uint32_t                                                  n_mipmaps        = 1;
     ogl_texture                                               result           = NULL;
     _ogl_texture*                                             result_ptr       = NULL;
 
@@ -590,9 +591,15 @@ PUBLIC EMERALD_API RENDERING_CONTEXT_CALL ogl_texture ogl_texture_create_and_ini
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL_EXT_DIRECT_STATE_ACCESS,
                             &dsa_entry_points);
 
+    /* Sanity checks */
     #ifdef _DEBUG
     {
-        ogl_context_type context_type = OGL_CONTEXT_TYPE_UNDEFINED;
+        ogl_context_type context_type                               = OGL_CONTEXT_TYPE_UNDEFINED;
+        bool             req_base_mipmap_depth_mul_six              = false;
+        bool             req_base_mipmap_depth_set_to_one           = false;
+        bool             req_base_mipmap_height_set_to_one          = false;
+        bool             req_base_mipmap_height_equals_mipmap_width = false;
+        bool             req_n_samples_set_to_one                   = false;
 
         ogl_context_get_property(context,
                                  OGL_CONTEXT_PROPERTY_TYPE,
@@ -600,9 +607,233 @@ PUBLIC EMERALD_API RENDERING_CONTEXT_CALL ogl_texture ogl_texture_create_and_ini
 
         ASSERT_DEBUG_SYNC(context_type == OGL_CONTEXT_TYPE_GL,
             "Only GL contexts are supported by ogl_textures_get_texture_from_pool()");
-    }
-    #endif
 
+        switch (type)
+        {
+            case RAL_TEXTURE_TYPE_1D:
+            {
+                req_base_mipmap_height_set_to_one = true;
+                req_base_mipmap_depth_set_to_one  = true;
+                req_n_samples_set_to_one          = true;
+
+                break;
+            }
+
+            case RAL_TEXTURE_TYPE_1D_ARRAY:
+            {
+                req_base_mipmap_height_set_to_one = true;
+                req_n_samples_set_to_one          = true;
+
+                break;
+            }
+
+            case RAL_TEXTURE_TYPE_CUBE_MAP:
+            {
+                req_base_mipmap_depth_set_to_one           = true;
+                req_base_mipmap_height_equals_mipmap_width = true;
+
+                break;
+            }
+
+            case RAL_TEXTURE_TYPE_CUBE_MAP_ARRAY:
+            {
+                req_base_mipmap_depth_mul_six              = true;
+                req_base_mipmap_height_equals_mipmap_width = true;
+
+                break;
+            }
+
+            case RAL_TEXTURE_TYPE_2D:
+            {
+                req_base_mipmap_depth_set_to_one = true;
+                req_n_samples_set_to_one         = true;
+
+                break;
+            }
+
+            case RAL_TEXTURE_TYPE_2D_ARRAY:
+            case RAL_TEXTURE_TYPE_3D:
+            {
+                req_n_samples_set_to_one = true;
+
+                break;
+            }
+
+            case RAL_TEXTURE_TYPE_MULTISAMPLE_2D:
+            {
+                req_base_mipmap_depth_set_to_one = true;
+
+                break;
+            }
+
+            case RAL_TEXTURE_TYPE_MULTISAMPLE_2D_ARRAY:
+            {
+                /* No requirements .. */
+                break;
+            }
+
+            default:
+            {
+                ASSERT_DEBUG_SYNC(false,
+                                  "Unrecognized RAL texture type");
+
+                goto end;
+            }
+        } /* switch (type) */
+
+        if (req_base_mipmap_depth_mul_six)
+        {
+            if ((base_mipmap_depth % 6) != 0)
+            {
+                ASSERT_DEBUG_SYNC(false,
+                                  "Base mipmap depth is not a multiple of 6.");
+
+                goto end;
+            }
+        } /* if (req_base_mipmap_depth_mul_six) */
+
+        if (req_base_mipmap_depth_set_to_one)
+        {
+            if (base_mipmap_depth != 1)
+            {
+                ASSERT_DEBUG_SYNC(false,
+                                  "Base mipmap depth must be 1");
+
+                goto end;
+            }
+        } /* if (req_base_mipmap_depth_set_to_one) */
+        else
+        {
+            if (base_mipmap_depth < 1)
+            {
+                ASSERT_DEBUG_SYNC(false,
+                                  "Base mipmap depth must not be smaller than 1");
+
+                goto end;
+            }
+        }
+
+        if (req_base_mipmap_height_set_to_one)
+        {
+            if (base_mipmap_height != 1)
+            {
+                ASSERT_DEBUG_SYNC(false,
+                                  "Base mipmap height must be 1");
+
+                goto end;
+            }
+        } /* if (req_base_mipmap_height_set_to_one) */
+        else
+        {
+            if (base_mipmap_height < 1)
+            {
+                ASSERT_DEBUG_SYNC(false,
+                                  "Base mipmap height must not be smaller than 1");
+
+                goto end;
+            }
+        }
+
+        if (req_base_mipmap_height_equals_mipmap_width)
+        {
+            if (base_mipmap_height != base_mipmap_width)
+            {
+                ASSERT_DEBUG_SYNC(false,
+                                  "Base mipmap height must be equal to base mipmap width");
+
+                goto end;
+            }
+        } /* if (req_base_mipmap_height_equals_mipmap_width) */
+
+        if (req_n_samples_set_to_one)
+        {
+            if (n_samples != 1)
+            {
+                ASSERT_DEBUG_SYNC(false,
+                                  "Exactly one sample must be requested for the specified texture type");
+
+                goto end;
+            }
+        } /* if (req_n_samples_set_to_one) */
+        else
+        {
+            if (n_samples < 1)
+            {
+                ASSERT_DEBUG_SYNC(false,
+                                  "At least one sample must be requested for the specified texture type");
+
+                goto end;
+            }
+        }
+    }
+    #endif /* _DEBUG */
+
+    /* Determine the number of mipmaps we will need to use */
+    if (use_full_mipmap_chain)
+    {
+        uint32_t max_size = base_mipmap_width;
+
+        switch (type)
+        {
+            case RAL_TEXTURE_TYPE_1D:
+            case RAL_TEXTURE_TYPE_1D_ARRAY:
+            case RAL_TEXTURE_TYPE_CUBE_MAP:
+            case RAL_TEXTURE_TYPE_CUBE_MAP_ARRAY:
+            {
+                /* Only width matters */
+                break;
+            }
+
+            case RAL_TEXTURE_TYPE_2D:
+            case RAL_TEXTURE_TYPE_2D_ARRAY:
+            {
+                /* Width and height matter */
+                if (base_mipmap_height > max_size)
+                {
+                    max_size = base_mipmap_height;
+                }
+
+                break;
+            }
+
+            case RAL_TEXTURE_TYPE_3D:
+            {
+                /* Width, height and depth matter */
+                if (base_mipmap_height > max_size)
+                {
+                    max_size = base_mipmap_height;
+                }
+
+                if (base_mipmap_depth > max_size)
+                {
+                    max_size = base_mipmap_depth;
+                }
+
+                break;
+            }
+
+            case RAL_TEXTURE_TYPE_MULTISAMPLE_2D:
+            case RAL_TEXTURE_TYPE_MULTISAMPLE_2D_ARRAY:
+            {
+                /* Multisample texture types can only use 1 mipmap by definition */
+                max_size = 0;
+
+                break;
+            }
+
+            default:
+            {
+                ASSERT_DEBUG_SYNC(false,
+                                  "Unrecognized RAL texture type");
+
+                goto end;
+            }
+        } /* switch (type) */
+
+        n_mipmaps = 1 + system_math_other_log2_uint32(max_size);
+    } /* if (use_full_mipmap_chain) */
+
+    /* Create the descriptor */
     result = _ogl_texture_create_base(context,
                                       name);
 
@@ -630,7 +861,6 @@ PUBLIC EMERALD_API RENDERING_CONTEXT_CALL ogl_texture ogl_texture_create_and_ini
         case RAL_TEXTURE_TYPE_1D_ARRAY:
         case RAL_TEXTURE_TYPE_2D:
         case RAL_TEXTURE_TYPE_CUBE_MAP:
-        case RAL_TEXTURE_TYPE_RECTANGLE:
         {
             dsa_entry_points->pGLTextureStorage2DEXT(result,
                                                      raGL_utils_get_ogl_texture_target_for_ral_texture_type(type),

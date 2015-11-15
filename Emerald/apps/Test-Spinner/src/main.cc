@@ -617,8 +617,8 @@ PRIVATE void _init_spinner()
     _spinner_color_to         = ogl_texture_create_and_initialize(_context,
                                                                   system_hashed_ansi_string_create("Color TO"),
                                                                   RAL_TEXTURE_TYPE_2D,
-                                                                  1, /* n_mipmaps */
                                                                   RAL_TEXTURE_FORMAT_RGBA8_UNORM,
+                                                                  false,  /* use_full_mipmap_chain */
                                                                   _window_size[0],
                                                                   _window_size[1],
                                                                   1,      /* base_mipmap_depth    */
@@ -627,8 +627,8 @@ PRIVATE void _init_spinner()
     _spinner_color_to_blurred = ogl_texture_create_and_initialize(_context,
                                                                   system_hashed_ansi_string_create("Post-processed color TO"),
                                                                   RAL_TEXTURE_TYPE_2D,
-                                                                  1, /* n_mipmaps */
                                                                   RAL_TEXTURE_FORMAT_RGBA8_UNORM,
+                                                                  false,  /* use_full_mipmap_chain */
                                                                   _window_size[0],
                                                                   _window_size[1],
                                                                   1,      /* base_mipmap_depth    */
@@ -637,8 +637,8 @@ PRIVATE void _init_spinner()
     _spinner_velocity_to      = ogl_texture_create_and_initialize(_context,
                                                                   system_hashed_ansi_string_create("Velocity TO"),
                                                                   RAL_TEXTURE_TYPE_2D,
-                                                                  1, /* n_mipmaps */
                                                                   RAL_TEXTURE_FORMAT_RG16_FLOAT,
+                                                                  false,  /* use_full_mipmap_chain */
                                                                   _window_size[0],
                                                                   _window_size[1],
                                                                   1,      /* base_mipmap_depth    */

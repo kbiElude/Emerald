@@ -1074,8 +1074,8 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void postprocessing_blur_gaussian_exec
     /* Retrieve a 2D Array texture we will use for execution of the iterations */
     temp_2d_array_texture = ogl_context_textures_get_texture_from_pool(blur_ptr->context,
                                                                        RAL_TEXTURE_TYPE_2D_ARRAY,
-                                                                       1, /* n_mipmaps */
                                                                        src_texture_format,
+                                                                       false,  /* use_full_mipmap_chain */
                                                                        target_width,
                                                                        target_height,
                                                                        3,      /* base_mipmap_depth */

@@ -97,16 +97,16 @@ PUBLIC EMERALD_API ogl_texture ogl_texture_create_from_gfx_image(ogl_context    
                                                                  system_hashed_ansi_string name);
 
 /** TODO */
-PUBLIC EMERALD_API RENDERING_CONTEXT_CALL ogl_texture ogl_texture_create_and_initialize(ogl_context                context,
-                                                                                        system_hashed_ansi_string  name,
-                                                                                        ral_texture_type           type,
-                                                                                        unsigned int               n_mipmaps,
-                                                                                        ral_texture_format         format,
-                                                                                        unsigned int               base_mipmap_width,
-                                                                                        unsigned int               base_mipmap_height,
-                                                                                        unsigned int               base_mipmap_depth,
-                                                                                        unsigned int               n_samples,
-                                                                                        bool                       fixed_sample_locations);
+PUBLIC EMERALD_API RENDERING_CONTEXT_CALL ogl_texture ogl_texture_create_and_initialize(ogl_context               context,
+                                                                                        system_hashed_ansi_string name,
+                                                                                        ral_texture_type          type,
+                                                                                        ral_texture_format        format,
+                                                                                        bool                      use_full_mipmap_chain,
+                                                                                        unsigned int              base_mipmap_width,
+                                                                                        unsigned int              base_mipmap_height,
+                                                                                        unsigned int              base_mipmap_depth,
+                                                                                        unsigned int              n_samples,
+                                                                                        bool                      fixed_sample_locations);
 
 /** TODO */
 PUBLIC EMERALD_API void ogl_texture_generate_mipmaps(ogl_texture texture);

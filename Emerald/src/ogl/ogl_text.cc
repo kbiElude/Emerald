@@ -709,8 +709,8 @@ PRIVATE void _ogl_text_create_font_table_to_callback_from_renderer(ogl_context c
         descriptor.to = ogl_texture_create_and_initialize(context,
                                                           to_name,
                                                           RAL_TEXTURE_TYPE_2D,
-                                                          1 + system_math_other_log2_uint32( (font_table_width > font_table_height) ? font_table_width : font_table_height),
                                                           RAL_TEXTURE_FORMAT_RGB8_UNORM,
+                                                          true,   /* use_full_mipmap_chain */
                                                           font_table_width,
                                                           font_table_height,
                                                           1,      /* base_mipmap_depth    */

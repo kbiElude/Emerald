@@ -138,8 +138,8 @@ PRIVATE void _create_callback(ogl_context context,
     data->data_ptr->yxy_texture = ogl_texture_create_and_initialize(context,
                                                                     yxy_texture_name,
                                                                     RAL_TEXTURE_TYPE_2D,
-                                                                    system_math_other_log2_uint32(std::max(data->data_ptr->texture_width, data->data_ptr->texture_height) ),
                                                                     RAL_TEXTURE_FORMAT_RGB32_FLOAT,
+                                                                    true, /* use_full_mipmap_chain */
                                                                     data->data_ptr->texture_width,
                                                                     data->data_ptr->texture_height,
                                                                     1,      /* base_mipmap_depth */
@@ -170,13 +170,13 @@ PRIVATE void _create_callback(ogl_context context,
         data->data_ptr->downsampled_yxy_texture = ogl_texture_create_and_initialize(context,
                                                                                     downsampled_yxy_texture_name,
                                                                                     RAL_TEXTURE_TYPE_2D,
-                                                                                    6, /* n_mipmaps - initialize the mip-map chain up to 1x1 */
                                                                                     RAL_TEXTURE_FORMAT_RGB32_FLOAT,
-                                                                                    64,     /* base_mipmap_width    */
-                                                                                    64,     /* base_mipmap_height   */
-                                                                                    1,      /* base_mipmap_depth    */
-                                                                                    1,      /* n_samples            */
-                                                                                    false); /* fixedsamplelocations */
+                                                                                    true,   /* use_full_mipmap_chain */
+                                                                                    64,     /* base_mipmap_width     */
+                                                                                    64,     /* base_mipmap_height    */
+                                                                                    1,      /* base_mipmap_depth     */
+                                                                                    1,      /* n_samples             */
+                                                                                    false); /* fixedsamplelocations  */
 
         entry_points->pGLBindTexture  (GL_TEXTURE_2D,
                                        data->data_ptr->downsampled_yxy_texture);

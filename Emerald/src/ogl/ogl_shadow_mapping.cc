@@ -3325,8 +3325,8 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_shadow_mapping_toggle(ogl_shadow_mapping 
 
             handler_ptr->current_sm_depth_texture = ogl_context_textures_get_texture_from_pool(handler_ptr->context,
                                                                                                light_shadow_map_type,
-                                                                                               1, /* n_mipmaps */
                                                                                                light_shadow_map_format_depth,
+                                                                                               false, /* use_full_mipmap_chain */
                                                                                                light_shadow_map_size[0],
                                                                                                light_shadow_map_size[1],
                                                                                                light_shadow_map_size[2],
@@ -3344,8 +3344,8 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_shadow_mapping_toggle(ogl_shadow_mapping 
 
                 handler_ptr->current_sm_color0_texture = ogl_context_textures_get_texture_from_pool(handler_ptr->context,
                                                                                                     light_shadow_map_type,
-                                                                                                    system_math_other_log2_uint32(light_shadow_map_size[0]),
                                                                                                     light_shadow_map_format_color,
+                                                                                                    true,   /* use_full_mipmap_chain */
                                                                                                     light_shadow_map_size[0],
                                                                                                     light_shadow_map_size[1],
                                                                                                     light_shadow_map_size[2],

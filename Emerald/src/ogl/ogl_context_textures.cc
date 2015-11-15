@@ -21,10 +21,10 @@ typedef struct
      bool               fixed_sample_locations;
      ral_texture_format format;
      ogl_texture        result;
-     unsigned int       n_mipmaps;
      unsigned int       n_samples;
      char*              spawned_texture_id_text;
      ral_texture_type   type;
+     bool               use_full_mipmap_chain;
  } _ogl_context_textures_create_and_init_texture_rendering_callback_arg;
 
 typedef struct _ogl_context_textures
@@ -169,7 +169,7 @@ PRIVATE system_hash64 _ogl_context_textures_get_reusable_texture_key(ral_texture
                                                                      unsigned int       base_mipmap_depth,
                                                                      unsigned int       base_mipmap_height,
                                                                      unsigned int       base_mipmap_width,
-                                                                     unsigned int       n_mipmaps,
+                                                                     bool               use_full_mipmap_chain,
                                                                      unsigned int       n_samples,
                                                                      ral_texture_format format,
                                                                      bool               fixed_sample_locations)
@@ -187,24 +187,22 @@ PRIVATE system_hash64 _ogl_context_textures_get_reusable_texture_key(ral_texture
      */
 
     /* Some checks to make sure the crucial properties fit within the key.. */
-
-    ASSERT_DEBUG_SYNC((n_mipmaps          < (1 << 5)   &&
-                       n_samples          < (1 << 6)   &&
-                       format             < (1 << 10)  &&
+    ASSERT_DEBUG_SYNC((n_samples          < (1 << 6)   &&
+                       format             < (1 << 9)   &&
                        type               < (1 << 5)   &&
                        base_mipmap_depth  < (1 << 8)   &&
-                       base_mipmap_height < (1 << 16)  &&
-                       base_mipmap_width  < (1 << 16)),
+                       base_mipmap_height < (1 << 14)  &&
+                       base_mipmap_width  < (1 << 14)),
                       "Texture properties overflow the texture pool key");
 
-    return (( ((system_hash64) n_mipmaps)                      & ((1 << 5)  - 1)) << 0)  |
-           (( ((system_hash64) n_samples)                      & ((1 << 6)  - 1)) << 5)  |
-           (( ((system_hash64) format)                         & ((1 << 9)  - 1)) << 11) |
-           (( ((system_hash64) type)                           & ((1 << 5)  - 1)) << 20) |
-           (( ((system_hash64) base_mipmap_width)              & ((1 << 14) - 1)) << 25) |
-           (( ((system_hash64) base_mipmap_height)             & ((1 << 14) - 1)) << 39) |
-           (( ((system_hash64) base_mipmap_depth)              & ((1 << 8)  - 1)) << 53) |
-           (   (system_hash64)(fixed_sample_locations ? 1 : 0)                    << 61);
+    return ((  (system_hash64)(use_full_mipmap_chain ? 1 : 0)  & ((1 << 1)  - 1)) << 0)  |
+           (( ((system_hash64) n_samples)                      & ((1 << 6)  - 1)) << 1)  |
+           (( ((system_hash64) format)                         & ((1 << 9)  - 1)) << 7)  |
+           (( ((system_hash64) type)                           & ((1 << 5)  - 1)) << 16) |
+           (( ((system_hash64) base_mipmap_width)              & ((1 << 14) - 1)) << 21) |
+           (( ((system_hash64) base_mipmap_height)             & ((1 << 14) - 1)) << 35) |
+           (( ((system_hash64) base_mipmap_depth)              & ((1 << 8)  - 1)) << 49) |
+           (   (system_hash64)(fixed_sample_locations ? 1 : 0)                    << 57);
 }
 
 PRIVATE void _ogl_context_textures_create_and_init_texture_rendering_callback(ogl_context context,
@@ -216,8 +214,8 @@ PRIVATE void _ogl_context_textures_create_and_init_texture_rendering_callback(og
                                                          system_hashed_ansi_string_create_by_merging_two_strings("Re-usable texture ",
                                                                                                                  arg_ptr->spawned_texture_id_text),
                                                          arg_ptr->type,
-                                                         arg_ptr->n_mipmaps,
                                                          arg_ptr->format,
+                                                         arg_ptr->use_full_mipmap_chain,
                                                          arg_ptr->base_mipmap_width,
                                                          arg_ptr->base_mipmap_height,
                                                          arg_ptr->base_mipmap_depth,
@@ -302,8 +300,8 @@ PUBLIC ogl_context_textures ogl_context_textures_create(ogl_context context)
 /** Please see header for specification */
 PUBLIC EMERALD_API ogl_texture ogl_context_textures_get_texture_from_pool(ogl_context        context,
                                                                           ral_texture_type   type,
-                                                                          unsigned int       n_mipmaps,
                                                                           ral_texture_format format,
+                                                                          bool               use_full_mipmap_chain,
                                                                           unsigned int       base_mipmap_width,
                                                                           unsigned int       base_mipmap_height,
                                                                           unsigned int       base_mipmap_depth,
@@ -315,7 +313,7 @@ PUBLIC EMERALD_API ogl_texture ogl_context_textures_get_texture_from_pool(ogl_co
                                                                                              base_mipmap_depth,
                                                                                              base_mipmap_height,
                                                                                              base_mipmap_width,
-                                                                                             n_mipmaps,
+                                                                                             use_full_mipmap_chain,
                                                                                              n_samples,
                                                                                              format,
                                                                                              fixed_sample_locations);
@@ -356,13 +354,13 @@ PUBLIC EMERALD_API ogl_texture ogl_context_textures_get_texture_from_pool(ogl_co
 
         snprintf(spawned_texture_id_text,
                  sizeof(spawned_texture_id_text),
-                 "%d",
+                 "%u",
                  spawned_texture_id);
 
         /* No free re-usable texture available. Spawn a new texture object. This needs to be done from
          * a rendering thread.
          */
-        LOG_INFO("Creating a new re-usable texture object [index:%d]..",
+        LOG_INFO("Creating a new re-usable texture object [index:%u]..",
                  spawned_texture_id);
 
         _ogl_context_textures_create_and_init_texture_rendering_callback_arg callback_arg;
@@ -373,10 +371,10 @@ PUBLIC EMERALD_API ogl_texture ogl_context_textures_get_texture_from_pool(ogl_co
         callback_arg.fixed_sample_locations  = fixed_sample_locations;
         callback_arg.format                  = format;
         callback_arg.result                  = NULL;
-        callback_arg.n_mipmaps               = n_mipmaps;
         callback_arg.n_samples               = n_samples;
         callback_arg.spawned_texture_id_text = spawned_texture_id_text;
         callback_arg.type                    = type;
+        callback_arg.use_full_mipmap_chain   = use_full_mipmap_chain;
 
         ogl_context_request_callback_from_context_thread(context,
                                                          _ogl_context_textures_create_and_init_texture_rendering_callback,
@@ -518,7 +516,7 @@ PUBLIC EMERALD_API void ogl_context_textures_return_reusable(ogl_context context
                                                                           texture_base_mipmap_depth,
                                                                           texture_base_mipmap_height,
                                                                           texture_base_mipmap_width,
-                                                                          texture_n_mipmaps,
+                                                                          (texture_n_mipmaps > 1) ? true : false,
                                                                           texture_n_samples,
                                                                           texture_format,
                                                                           texture_fixed_sample_locations);
