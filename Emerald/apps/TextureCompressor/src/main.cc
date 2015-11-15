@@ -478,10 +478,9 @@ bool _compress_texture(ogl_context context,
         _texture_c = NULL;
     }
 
-    _texture_c = ogl_texture_create_empty(context,
-                                          system_hashed_ansi_string_create("Compressed texture") );
-
     /* Set up compressed mipmap chain */
+    unsigned int base_mipmap_height          = 0;
+    unsigned int base_mipmap_width           = 0;
     unsigned int compressed_size_all_mipmaps = 0;
     unsigned int compressed_size_base_mipmap = 0;
     unsigned int n_mipmaps                   = 0;
@@ -489,6 +488,26 @@ bool _compress_texture(ogl_context context,
     ogl_texture_get_property(_texture_nc,
                              OGL_TEXTURE_PROPERTY_N_MIPMAPS,
                             &n_mipmaps);
+
+    ogl_texture_get_mipmap_property(_texture_nc,
+                                    0, /* n_mipmap */
+                                    OGL_TEXTURE_MIPMAP_PROPERTY_WIDTH,
+                                   &base_mipmap_width);
+    ogl_texture_get_mipmap_property(_texture_nc,
+                                    0, /* n_mipmap */
+                                    OGL_TEXTURE_MIPMAP_PROPERTY_HEIGHT,
+                                   &base_mipmap_height);
+
+    _texture_c = ogl_texture_create_and_initialize(context,
+                                                   system_hashed_ansi_string_create("Compressed texture"),
+                                                   RAL_TEXTURE_TYPE_2D,
+                                                   n_mipmaps,
+                                                   raGL_utils_get_ral_texture_format_for_ogl_enum(compression_algorithm->gl_enum),
+                                                   base_mipmap_width,
+                                                   base_mipmap_height,
+                                                   1,      /* base_mipmap_depth    */
+                                                   1,      /* n_samples            */
+                                                   false); /* fixedsamplelocations */
 
     entry_points->pGLBindTexture(GL_TEXTURE_2D,
                                  _texture_c);
@@ -510,14 +529,14 @@ bool _compress_texture(ogl_context context,
                                         OGL_TEXTURE_MIPMAP_PROPERTY_HEIGHT,
                                        &mipmap_height);
 
-        entry_points->pGLCopyTexImage2D(GL_TEXTURE_2D,
-                                        n_mipmap,
-                                        compression_algorithm->gl_enum,
-                                        0, /* x */
-                                        0, /* y */
-                                        mipmap_width,
-                                        mipmap_height,
-                                        0); /* border */
+        entry_points->pGLCopyTexSubImage2D(GL_TEXTURE_2D,
+                                           n_mipmap,
+                                           0, /* xoffset */
+                                           0, /* yoffset */
+                                           0, /* x */
+                                           0, /* y */
+                                           mipmap_width,
+                                           mipmap_height);
 
         entry_points->pGLGetTexLevelParameteriv(GL_TEXTURE_2D,
                                                 n_mipmap,

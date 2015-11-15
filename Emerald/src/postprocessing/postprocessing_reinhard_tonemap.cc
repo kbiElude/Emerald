@@ -132,18 +132,22 @@ PRIVATE void _create_callback(ogl_context context,
     data->data_ptr->context = context;
 
     /* TODO */
-    data->data_ptr->yxy_texture = ogl_texture_create_empty(context,
-                                                           system_hashed_ansi_string_create_by_merging_two_strings("Reinhard tonemap [YXY texture] ",
-                                                           system_hashed_ansi_string_get_buffer(data->name) ));
+    const system_hashed_ansi_string yxy_texture_name = system_hashed_ansi_string_create_by_merging_two_strings("Reinhard tonemap [YXY texture] ",
+                                                                                                               system_hashed_ansi_string_get_buffer(data->name) );
+
+    data->data_ptr->yxy_texture = ogl_texture_create_and_initialize(context,
+                                                                    yxy_texture_name,
+                                                                    RAL_TEXTURE_TYPE_2D,
+                                                                    system_math_other_log2_uint32(std::max(data->data_ptr->texture_width, data->data_ptr->texture_height) ),
+                                                                    RAL_TEXTURE_FORMAT_RGB32_FLOAT,
+                                                                    data->data_ptr->texture_width,
+                                                                    data->data_ptr->texture_height,
+                                                                    1,      /* base_mipmap_depth */
+                                                                    1,      /* n_samples */
+                                                                    false); /* fixedsamplelocations */
 
     entry_points->pGLBindTexture  (GL_TEXTURE_2D,
                                    data->data_ptr->yxy_texture);
-    entry_points->pGLTexStorage2D (GL_TEXTURE_2D,
-                                   system_math_other_log2_uint32(std::max(data->data_ptr->texture_width, data->data_ptr->texture_height) ),
-                                   GL_RGB32F,
-                                   data->data_ptr->texture_width,
-                                   data->data_ptr->texture_height);
-
     entry_points->pGLTexParameteri(GL_TEXTURE_2D,
                                    GL_TEXTURE_WRAP_S,
                                    GL_CLAMP_TO_BORDER);
@@ -160,17 +164,22 @@ PRIVATE void _create_callback(ogl_context context,
     /* TODO */
     if (data->data_ptr->use_crude_downsampled_lum_average_calculation)
     {
-        data->data_ptr->downsampled_yxy_texture = ogl_texture_create_empty(context,
-                                                                           system_hashed_ansi_string_create_by_merging_two_strings("Reinhard tonemap [downsampled YXY texture] ",
-                                                                                                                                   system_hashed_ansi_string_get_buffer(data->name) ));
+        const system_hashed_ansi_string downsampled_yxy_texture_name = system_hashed_ansi_string_create_by_merging_two_strings("Reinhard tonemap [downsampled YXY texture] ",
+                                                                                                                               system_hashed_ansi_string_get_buffer(data->name) );
+
+        data->data_ptr->downsampled_yxy_texture = ogl_texture_create_and_initialize(context,
+                                                                                    downsampled_yxy_texture_name,
+                                                                                    RAL_TEXTURE_TYPE_2D,
+                                                                                    6, /* n_mipmaps - initialize the mip-map chain up to 1x1 */
+                                                                                    RAL_TEXTURE_FORMAT_RGB32_FLOAT,
+                                                                                    64,     /* base_mipmap_width    */
+                                                                                    64,     /* base_mipmap_height   */
+                                                                                    1,      /* base_mipmap_depth    */
+                                                                                    1,      /* n_samples            */
+                                                                                    false); /* fixedsamplelocations */
 
         entry_points->pGLBindTexture  (GL_TEXTURE_2D,
                                        data->data_ptr->downsampled_yxy_texture);
-        entry_points->pGLTexStorage2D (GL_TEXTURE_2D,
-                                       6,  /* levels - initialize the mip-map chain up to 1x1 */
-                                       GL_RGB32F,
-                                       64,  /* width */
-                                       64); /* height */
         entry_points->pGLTexParameteri(GL_TEXTURE_2D,
                                        GL_TEXTURE_WRAP_S,
                                        GL_CLAMP_TO_BORDER);

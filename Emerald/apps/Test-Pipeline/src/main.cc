@@ -116,10 +116,26 @@ void _init_gl(ogl_context context,
     entry_points->pGLGenVertexArrays(1,
                                     &_vao_id);
 
-    tos[0] = ogl_texture_create_empty(context,
-                                      system_hashed_ansi_string_create("1"));
-    tos[1] = ogl_texture_create_empty(context,
-                                      system_hashed_ansi_string_create("2"));
+    tos[0] = ogl_texture_create_and_initialize(context,
+                                               system_hashed_ansi_string_create("1"),
+                                               RAL_TEXTURE_TYPE_2D,
+                                               1, /* n_mipmaps */
+                                               RAL_TEXTURE_FORMAT_RGBA8_UNORM,
+                                               _window_size[0],
+                                               _window_size[1],
+                                               1,               /* base_mipmap_depth    */
+                                               1,               /* n_samples            */
+                                               false);          /* fixedsamplelocations */
+    tos[1] = ogl_texture_create_and_initialize(context,
+                                               system_hashed_ansi_string_create("2"),
+                                               RAL_TEXTURE_TYPE_2D,
+                                               1, /* n_mipmaps */
+                                               RAL_TEXTURE_FORMAT_DEPTH32_SNORM,
+                                               _window_size[0],
+                                               _window_size[1],
+                                               1,               /* base_mipmap_depth    */
+                                               1,               /* n_samples            */
+                                               false);          /* fixedsamplelocations */
 
     _to_1 = tos[0];
     _to_2 = tos[1];
@@ -129,19 +145,6 @@ void _init_gl(ogl_context context,
                       "Window width is 0");
     ASSERT_DEBUG_SYNC(_window_size[1] != 0,
                       "Window height is 0");
-
-    dsa_entry_points->pGLTextureStorage2DEXT (_to_1,
-                                              GL_TEXTURE_2D,
-                                              1, /* levels */
-                                              GL_RGBA8,
-                                              _window_size[0],
-                                              _window_size[1]);
-    dsa_entry_points->pGLTextureStorage2DEXT (_to_2,
-                                              GL_TEXTURE_2D,
-                                              1, /* levels */
-                                              GL_DEPTH_COMPONENT32,
-                                              _window_size[0],
-                                              _window_size[1]);
 
     dsa_entry_points->pGLTextureParameteriEXT(_to_1,
                                               GL_TEXTURE_2D,

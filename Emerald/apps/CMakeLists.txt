@@ -15,7 +15,6 @@ IF(MSVC)
     ADD_SUBDIRECTORY(SceneViewer)
     ADD_SUBDIRECTORY(Test-HDR)
     ADD_SUBDIRECTORY(Test-ObjectBrowser)
-    ADD_SUBDIRECTORY(Test-Particles)
     ADD_SUBDIRECTORY(TextureCompressor)
 ENDIF(MSVC)
 
@@ -36,4 +35,5 @@ ADD_SUBDIRECTORY(Test-Spinner)
 # These examples are left as reference only.
 
 # ADD_SUBDIRECTORY(Test-ParticlesAgainstKdTree)
+# ADD_SUBDIRECTORY(Test-Particles)
 # ADD_SUBDIRECTORY(Test-Uber)

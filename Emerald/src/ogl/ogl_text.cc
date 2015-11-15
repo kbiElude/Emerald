@@ -702,11 +702,20 @@ PRIVATE void _ogl_text_create_font_table_to_callback_from_renderer(ogl_context c
                                               &font_table_height);
 
         /* Create the descriptor */
-        _font_table_descriptor descriptor;
+        _font_table_descriptor          descriptor;
+        const system_hashed_ansi_string to_name = system_hashed_ansi_string_create_by_merging_two_strings("Text renderer ",
+                                                                                                         system_hashed_ansi_string_get_buffer(text_ptr->name) );
 
-        descriptor.to = ogl_texture_create_empty(context,
-                                                 system_hashed_ansi_string_create_by_merging_two_strings("Text renderer ",
-                                                                                                         system_hashed_ansi_string_get_buffer(text_ptr->name) ));
+        descriptor.to = ogl_texture_create_and_initialize(context,
+                                                          to_name,
+                                                          RAL_TEXTURE_TYPE_2D,
+                                                          1 + system_math_other_log2_uint32( (font_table_width > font_table_height) ? font_table_width : font_table_height),
+                                                          RAL_TEXTURE_FORMAT_RGB8_UNORM,
+                                                          font_table_width,
+                                                          font_table_height,
+                                                          1,      /* base_mipmap_depth    */
+                                                          1,      /* n_samples            */
+                                                          false); /* fixedsamplelocations */
 
         if (context_type == OGL_CONTEXT_TYPE_ES)
         {
@@ -725,11 +734,6 @@ PRIVATE void _ogl_text_create_font_table_to_callback_from_renderer(ogl_context c
                                         descriptor.to);
         }
 
-        text_ptr->pGLTexStorage2D  (GL_TEXTURE_2D,
-                                    1 + system_math_other_log2_uint32( (font_table_width > font_table_height) ? font_table_width : font_table_height),
-                                    GL_RGB8,
-                                    font_table_width,
-                                    font_table_height);
         text_ptr->pGLTexSubImage2D (GL_TEXTURE_2D,
                                     0, /* level */
                                     0, /* xoffset */

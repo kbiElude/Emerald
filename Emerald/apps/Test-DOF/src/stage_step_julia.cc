@@ -751,23 +751,26 @@ PUBLIC void stage_step_julia_init(ogl_context  context,
     entrypoints->pGLGenFramebuffers(1, /* n */
                                    &_julia_fbo_id);
 
-    _julia_fbo_color_to = ogl_texture_create_empty(context,
-                                                   system_hashed_ansi_string_create("Julia FBO color texture") );
-    _julia_fbo_depth_to = ogl_texture_create_empty(context,
-                                                   system_hashed_ansi_string_create("Julia FBO depth texture") );
-
-    dsa_entrypoints->pGLTextureStorage2DEXT(_julia_fbo_color_to,
-                                            GL_TEXTURE_2D,
-                                            1,         /* levels */
-                                            GL_RGBA32F,
-                                            main_get_window_width(),
-                                            main_get_window_height() );
-    dsa_entrypoints->pGLTextureStorage2DEXT(_julia_fbo_depth_to,
-                                            GL_TEXTURE_2D,
-                                            1,                     /* levels */
-                                            GL_DEPTH_COMPONENT32F,
-                                            main_get_window_width(),
-                                            main_get_window_height() );
+    _julia_fbo_color_to = ogl_texture_create_and_initialize(context,
+                                                            system_hashed_ansi_string_create("Julia FBO color texture"),
+                                                            RAL_TEXTURE_TYPE_2D,
+                                                            1, /* n_mipmaps */
+                                                            RAL_TEXTURE_FORMAT_RGBA32_FLOAT,
+                                                            main_get_window_width(),
+                                                            main_get_window_height(),
+                                                            1,      /* base_mipmap_depth    */
+                                                            1,      /* n_samples            */
+                                                            false); /* fixedsamplelocations */
+    _julia_fbo_depth_to = ogl_texture_create_and_initialize(context,
+                                                            system_hashed_ansi_string_create("Julia FBO depth texture"),
+                                                            RAL_TEXTURE_TYPE_2D,
+                                                            1, /* n_mipmaps */
+                                                            RAL_TEXTURE_FORMAT_DEPTH32_FLOAT,
+                                                            main_get_window_width(),
+                                                            main_get_window_height(),
+                                                            1,      /* base_mipmap_depth    */
+                                                            1,      /* n_samples            */
+                                                            false); /* fixedsamplelocations */
 
     dsa_entrypoints->pGLNamedFramebufferTexture2DEXT(_julia_fbo_id,
                                                      GL_COLOR_ATTACHMENT0,

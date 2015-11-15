@@ -87,10 +87,6 @@ typedef enum _ogl_texture_property
 } ogl_texture_property;
 
 /** TODO */
-PUBLIC EMERALD_API ogl_texture ogl_texture_create_empty(ogl_context               context,
-                                                        system_hashed_ansi_string name);
-
-/** TODO */
 PUBLIC EMERALD_API ogl_texture ogl_texture_create_from_file_name(ogl_context               context,
                                                                  system_hashed_ansi_string name,
                                                                  system_hashed_ansi_string src_filename);

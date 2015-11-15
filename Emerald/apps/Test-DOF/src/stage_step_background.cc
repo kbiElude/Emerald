@@ -108,15 +108,17 @@ PUBLIC void stage_step_background_init(ogl_context  context,
     _mv             = system_matrix4x4_create();
 
     /* Initialize result texture */
-    _result_texture = ogl_texture_create_empty(context,
-                                               system_hashed_ansi_string_create("BG result texture") );
+    _result_texture = ogl_texture_create_and_initialize(context,
+                                                        system_hashed_ansi_string_create("BG result texture"),
+                                                        RAL_TEXTURE_TYPE_2D,
+                                                        1, /* n_mipmaps */
+                                                        RAL_TEXTURE_FORMAT_RGBA32_FLOAT,
+                                                        main_get_output_resolution()[0],
+                                                        main_get_output_resolution()[1],
+                                                        1,      /* base_mipmap_depth */
+                                                        1,      /* n_samples         */
+                                                        false); /* fixedsamplelocations */
 
-    dsa_entrypoints->pGLTextureStorage2DEXT (_result_texture,
-                                             GL_TEXTURE_2D,
-                                             1,  /* levels */
-                                             GL_RGBA32F,
-                                             main_get_output_resolution()[0],
-                                             main_get_output_resolution()[1]);
     dsa_entrypoints->pGLTextureParameteriEXT(_result_texture,
                                              GL_TEXTURE_2D,
                                              GL_TEXTURE_MIN_FILTER,

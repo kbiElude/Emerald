@@ -614,36 +614,36 @@ PRIVATE void _init_spinner()
     const GLint  n_render_fbo_draw_buffers = sizeof(render_fbo_draw_buffers) / sizeof(render_fbo_draw_buffers[0]);
     const float  zero_vec4[4]              = { 0.0f, 0.0f, 0.0f, 0.0f };
 
-    _spinner_color_to         = ogl_texture_create_empty(_context,
-                                                         system_hashed_ansi_string_create("Color TO"));
-    _spinner_color_to_blurred = ogl_texture_create_empty(_context,
-                                                         system_hashed_ansi_string_create("Post-processed color TO"));
-    _spinner_velocity_to      = ogl_texture_create_empty(_context,
-                                                         system_hashed_ansi_string_create("Velocity TO"));
-
-    entrypoints_ptr->pGLBindTexture (GL_TEXTURE_2D,
-                                     _spinner_color_to);
-    entrypoints_ptr->pGLTexStorage2D(GL_TEXTURE_2D,
-                                     1, /* levels */
-                                     GL_RGBA8,
-                                     _window_size[0],
-                                     _window_size[1]);
-
-    entrypoints_ptr->pGLBindTexture (GL_TEXTURE_2D,
-                                     _spinner_color_to_blurred);
-    entrypoints_ptr->pGLTexStorage2D(GL_TEXTURE_2D,
-                                     1, /* levels */
-                                     GL_RGBA8,
-                                     _window_size[0],
-                                     _window_size[1]);
-
-    entrypoints_ptr->pGLBindTexture (GL_TEXTURE_2D,
-                                     _spinner_velocity_to);
-    entrypoints_ptr->pGLTexStorage2D(GL_TEXTURE_2D,
-                                     1, /* levels */
-                                     GL_RG16F,
-                                     _window_size[0],
-                                     _window_size[1]);
+    _spinner_color_to         = ogl_texture_create_and_initialize(_context,
+                                                                  system_hashed_ansi_string_create("Color TO"),
+                                                                  RAL_TEXTURE_TYPE_2D,
+                                                                  1, /* n_mipmaps */
+                                                                  RAL_TEXTURE_FORMAT_RGBA8_UNORM,
+                                                                  _window_size[0],
+                                                                  _window_size[1],
+                                                                  1,      /* base_mipmap_depth    */
+                                                                  1,      /* n_samples            */
+                                                                  false); /* fixedsamplelocations */
+    _spinner_color_to_blurred = ogl_texture_create_and_initialize(_context,
+                                                                  system_hashed_ansi_string_create("Post-processed color TO"),
+                                                                  RAL_TEXTURE_TYPE_2D,
+                                                                  1, /* n_mipmaps */
+                                                                  RAL_TEXTURE_FORMAT_RGBA8_UNORM,
+                                                                  _window_size[0],
+                                                                  _window_size[1],
+                                                                  1,      /* base_mipmap_depth    */
+                                                                  1,      /* n_samples            */
+                                                                  false); /* fixedsamplelocations */
+    _spinner_velocity_to      = ogl_texture_create_and_initialize(_context,
+                                                                  system_hashed_ansi_string_create("Velocity TO"),
+                                                                  RAL_TEXTURE_TYPE_2D,
+                                                                  1, /* n_mipmaps */
+                                                                  RAL_TEXTURE_FORMAT_RG16_FLOAT,
+                                                                  _window_size[0],
+                                                                  _window_size[1],
+                                                                  1,      /* base_mipmap_depth    */
+                                                                  1,      /* n_samples            */
+                                                                  false); /* fixedsamplelocations */
 
     entrypoints_ptr->pGLGenFramebuffers     (1,
                                             &_spinner_render_fbo_id);

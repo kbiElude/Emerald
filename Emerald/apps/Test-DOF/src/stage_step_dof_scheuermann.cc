@@ -278,31 +278,36 @@ PUBLIC void stage_step_dof_scheuermann_init(ogl_context  context,
     entrypoints->pGLGenFramebuffers(1, /* n */
                                    &_dof_scheuermann_downsample_src_fbo_id);
 
-    _dof_scheuermann_combination_to         = ogl_texture_create_empty(context,
-                                                                       system_hashed_ansi_string_create("DOF Scheuermann combination TO"));
-    _dof_scheuermann_downsampled_to         = ogl_texture_create_empty(context,
-                                                                       system_hashed_ansi_string_create("DOF Scheuermann downsampled TO"));
-    _dof_scheuermann_downsampled_blurred_to = ogl_texture_create_empty(context,
-                                                                       system_hashed_ansi_string_create("DOF Scheuermann downsampled blurred TO"));
-
-    dsa_entrypoints->pGLTextureStorage2DEXT(_dof_scheuermann_combination_to,
-                                            GL_TEXTURE_2D,
-                                            1,  /* levels */
-                                            GL_RGBA16F,
-                                            output_resolution[0],
-                                            output_resolution[1]);
-    dsa_entrypoints->pGLTextureStorage2DEXT(_dof_scheuermann_downsampled_to,
-                                            GL_TEXTURE_2D,
-                                            1, /* levels */
-                                            GL_RGBA16F,
-                                            downsampled_output_resolution[0],
-                                            downsampled_output_resolution[1]);
-    dsa_entrypoints->pGLTextureStorage2DEXT(_dof_scheuermann_downsampled_blurred_to,
-                                            GL_TEXTURE_2D,
-                                            1, /* levels */
-                                            GL_RGBA16F,
-                                            downsampled_output_resolution[0],
-                                            downsampled_output_resolution[1]);
+    _dof_scheuermann_combination_to         = ogl_texture_create_and_initialize(context,
+                                                                                system_hashed_ansi_string_create("DOF Scheuermann combination TO"),
+                                                                                RAL_TEXTURE_TYPE_2D,
+                                                                                1, /* n_mipmaps */
+                                                                                RAL_TEXTURE_FORMAT_RGBA16_FLOAT,
+                                                                                output_resolution[0],
+                                                                                output_resolution[1],
+                                                                                1,      /* base_mipmap_depth    */
+                                                                                1,      /* n_samples            */
+                                                                                false); /* fixedsamplelocations */
+    _dof_scheuermann_downsampled_to         = ogl_texture_create_and_initialize(context,
+                                                                                system_hashed_ansi_string_create("DOF Scheuermann downsampled TO"),
+                                                                                RAL_TEXTURE_TYPE_2D,
+                                                                                1, /* n_mipmaps */
+                                                                                RAL_TEXTURE_FORMAT_RGBA16_FLOAT,
+                                                                                downsampled_output_resolution[0],
+                                                                                downsampled_output_resolution[1],
+                                                                                1,      /* base_mipmap_depth    */
+                                                                                1,      /* n_samples            */
+                                                                                false); /* fixedsamplelocations */
+    _dof_scheuermann_downsampled_blurred_to = ogl_texture_create_and_initialize(context,
+                                                                                system_hashed_ansi_string_create("DOF Scheuermann downsampled blurred TO"),
+                                                                                RAL_TEXTURE_TYPE_2D,
+                                                                                1, /* n_mipmaps */
+                                                                                RAL_TEXTURE_FORMAT_RGBA16_FLOAT,
+                                                                                downsampled_output_resolution[0],
+                                                                                downsampled_output_resolution[1],
+                                                                                1,      /* base_mipmap_depth    */
+                                                                                1,      /* n_samples            */
+                                                                                false); /* fixedsamplelocations */
 
     dsa_entrypoints->pGLTextureParameteriEXT(_dof_scheuermann_combination_to,
                                              GL_TEXTURE_2D,

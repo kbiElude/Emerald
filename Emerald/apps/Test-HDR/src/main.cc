@@ -222,20 +222,19 @@ void _rendering_handler(ogl_context context,
         entry_points->pGLGenVertexArrays(1,
                                         &_vaa_id);
 
-        _texture = ogl_texture_create_empty(context,
-                                            system_hashed_ansi_string_create("Photo") );
+        _texture = ogl_texture_create_and_initialize(context,
+                                                     system_hashed_ansi_string_create("Photo"),
+                                                     RAL_TEXTURE_TYPE_2D,
+                                                     1, /* n_mipmaps */
+                                                     RAL_TEXTURE_FORMAT_RGBA32_FLOAT,
+                                                     _texture_width,
+                                                     _texture_height,
+                                                     1,      /* base_mipmap_depth    */
+                                                     1,      /* n_samples            */
+                                                     false); /* fixedsamplelocations */
 
         entry_points->pGLBindTexture  (GL_TEXTURE_2D,
                                        _texture);
-        entry_points->pGLTexImage2D   (GL_TEXTURE_2D,
-                                       0,              /* level */
-                                       GL_RGB32F,
-                                       _texture_width,
-                                       _texture_height,
-                                       0,              /* border */
-                                       GL_RGB,
-                                       GL_FLOAT,
-                                       texture_image_data_ptr);
         entry_points->pGLTexParameteri(GL_TEXTURE_2D,
                                        GL_TEXTURE_WRAP_S,
                                        GL_CLAMP_TO_BORDER);

@@ -625,6 +625,10 @@ PRIVATE void _mesh_fill_gl_buffers_renderer_callback(ogl_context context,
             mesh_ptr->gl_tbo = NULL;
         }
 
+        ASSERT_DEBUG_SYNC(false,
+                          "RAL does not support buffer textures yet. ");
+
+#if 0
         mesh_ptr->gl_tbo = ogl_texture_create_empty(context,
                                                     system_hashed_ansi_string_create_by_merging_two_strings("Mesh ",
                                                                                                             system_hashed_ansi_string_get_buffer(mesh_ptr->name) ));
@@ -635,6 +639,7 @@ PRIVATE void _mesh_fill_gl_buffers_renderer_callback(ogl_context context,
                                                    bo_id,
                                                    bo_start_offset,
                                                    mesh_ptr->gl_processed_data_size);
+#endif
     } /* if (mesh_ptr->n_sh_bands != 0) */
 
     /* Safe to release GL processed data buffer now! */
