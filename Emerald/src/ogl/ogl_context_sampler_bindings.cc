@@ -6,7 +6,6 @@
 #include "shared.h"
 #include "ogl/ogl_context.h"
 #include "ogl/ogl_context_sampler_bindings.h"
-#include "ogl/ogl_sampler.h"
 #include "system/system_hash64map.h"
 
 /** TODO */

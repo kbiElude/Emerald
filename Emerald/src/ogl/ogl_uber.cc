@@ -10,12 +10,13 @@
 #include "ogl/ogl_context.h"
 #include "ogl/ogl_program.h"
 #include "ogl/ogl_program_ub.h"
-#include "ogl/ogl_sampler.h"
 #include "ogl/ogl_shader.h"
 #include "ogl/ogl_shader_constructor.h"
 #include "ogl/ogl_texture.h"
 #include "ogl/ogl_uber.h"
 #include "raGL/raGL_buffers.h"
+#include "raGL/raGL_sampler.h"
+#include "raGL/raGL_samplers.h"
 #include "scene/scene.h"
 #include "scene/scene_curve.h"
 #include "scene/scene_graph.h"
@@ -2367,7 +2368,8 @@ PUBLIC void ogl_uber_rendering_render_mesh(mesh             mesh_gpu,
 
                             case MESH_MATERIAL_PROPERTY_ATTACHMENT_TEXTURE:
                             {
-                                ogl_sampler  layer_pass_sampler              = NULL;
+                                raGL_sampler layer_pass_sampler              = NULL;
+                                GLuint       layer_pass_sampler_id           = 0;
                                 ogl_texture  layer_pass_texture              = NULL;
                                 unsigned int layer_pass_texture_mipmap_level = 0;
 
@@ -2383,8 +2385,12 @@ PUBLIC void ogl_uber_rendering_render_mesh(mesh             mesh_gpu,
                                                                                 &layer_pass_texture_mipmap_level,
                                                                                 &layer_pass_sampler);
 
+                                raGL_sampler_get_property(layer_pass_sampler,
+                                                          RAGL_SAMPLER_PROPERTY_ID,
+                                                         &layer_pass_sampler_id);
+
                                 entry_points->pGLBindSampler(n_texture_units_used,
-                                                             ogl_sampler_get_id(layer_pass_sampler) );
+                                                             layer_pass_sampler_id);
 
                                 dsa_entry_points->pGLBindMultiTextureEXT (GL_TEXTURE0 + n_texture_units_used,
                                                                           GL_TEXTURE_2D,

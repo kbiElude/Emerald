@@ -194,6 +194,7 @@ typedef enum
 /* RAL texture mipmap modes */
 typedef enum
 {
+    RAL_TEXTURE_MIPMAP_MODE_BASE,
     RAL_TEXTURE_MIPMAP_MODE_NEAREST,
     RAL_TEXTURE_MIPMAP_MODE_LINEAR,
 
@@ -215,7 +216,7 @@ typedef enum
 } ral_texture_wrap_mode;
 
 /** All info required to create a single sampler instance */
-typedef struct
+typedef struct ral_sampler_create_info
 {
     ral_color               border_color;
     ral_compare_function    compare_function;
@@ -230,6 +231,27 @@ typedef struct
     ral_texture_wrap_mode   wrap_r;
     ral_texture_wrap_mode   wrap_s;
     ral_texture_wrap_mode   wrap_t;
+
+    ral_sampler_create_info()
+    {
+        border_color.data_type = ral_color::RAL_COLOR_DATA_TYPE_FLOAT;
+        border_color.f32[0]    = 0.0f;
+        border_color.f32[1]    = 0.0f;
+        border_color.f32[2]    = 0.0f;
+        border_color.f32[3]    = 1.0f;
+        compare_function       = RAL_COMPARE_FUNCTION_ALWAYS;
+        compare_mode_enabled   = false;
+        lod_bias               = 0.0f;
+        lod_min                = -1000.0f;
+        lod_max                =  1000.0f;
+        mag_filter             = RAL_TEXTURE_FILTER_LINEAR;
+        max_anisotropy         = 1.0f;
+        min_filter             = RAL_TEXTURE_FILTER_LINEAR;
+        mipmap_mode            = RAL_TEXTURE_MIPMAP_MODE_LINEAR;
+        wrap_r                 = RAL_TEXTURE_WRAP_MODE_REPEAT;
+        wrap_s                 = RAL_TEXTURE_WRAP_MODE_REPEAT;
+        wrap_t                 = RAL_TEXTURE_WRAP_MODE_REPEAT;
+    }
 } ral_sampler_create_info;
 
 /* RAL shader stages */

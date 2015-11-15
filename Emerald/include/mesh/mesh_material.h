@@ -9,6 +9,7 @@
 #include "curve/curve_types.h"
 #include "mesh/mesh_types.h"
 #include "ogl/ogl_types.h"
+#include "raGL/raGL_sampler.h"
 #include "scene/scene_types.h"
 
 REFCOUNT_INSERT_DECLARATIONS(mesh_material,
@@ -247,7 +248,7 @@ PUBLIC EMERALD_API void mesh_material_get_shading_property_value_texture(mesh_ma
                                                                          mesh_material_shading_property   property,
                                                                          ogl_texture*                     out_texture,
                                                                          unsigned int*                    out_mipmap_level,
-                                                                         ogl_sampler*                     out_sampler);
+                                                                         raGL_sampler*                    out_sampler);
 
 /** TODO */
 PUBLIC EMERALD_API void mesh_material_get_shading_property_value_vec4(mesh_material                  material,

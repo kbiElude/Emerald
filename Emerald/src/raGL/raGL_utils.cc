@@ -59,6 +59,7 @@ PUBLIC EMERALD_API ogl_texture_filter raGL_utils_get_ogl_texture_filter_for_ral_
         {
             switch (in_mipmap_mode)
             {
+                case RAL_TEXTURE_MIPMAP_MODE_BASE:    result = OGL_TEXTURE_FILTER_LINEAR;                break;
                 case RAL_TEXTURE_MIPMAP_MODE_LINEAR:  result = OGL_TEXTURE_FILTER_LINEAR_MIPMAP_LINEAR;  break;
                 case RAL_TEXTURE_MIPMAP_MODE_NEAREST: result = OGL_TEXTURE_FILTER_LINEAR_MIPMAP_NEAREST; break;
 
@@ -76,6 +77,7 @@ PUBLIC EMERALD_API ogl_texture_filter raGL_utils_get_ogl_texture_filter_for_ral_
         {
             switch (in_mipmap_mode)
             {
+                case RAL_TEXTURE_MIPMAP_MODE_BASE:    result = OGL_TEXTURE_FILTER_NEAREST;                break;
                 case RAL_TEXTURE_MIPMAP_MODE_LINEAR:  result = OGL_TEXTURE_FILTER_NEAREST_MIPMAP_LINEAR;  break;
                 case RAL_TEXTURE_MIPMAP_MODE_NEAREST: result = OGL_TEXTURE_FILTER_NEAREST_MIPMAP_NEAREST; break;
 

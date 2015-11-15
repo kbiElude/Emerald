@@ -6,7 +6,6 @@
 #include "shared.h"
 #include "ogl/ogl_context.h"
 #include "ogl/ogl_context_po_uniforms.h"
-#include "ogl/ogl_sampler.h"
 #include "system/system_hash64map.h"
 
 /* TODO: Only template is implemented atm! */

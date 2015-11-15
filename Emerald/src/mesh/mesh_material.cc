@@ -7,14 +7,14 @@
 #include "curve/curve_container.h"
 #include "mesh/mesh_material.h"
 #include "ogl/ogl_context.h"
-#include "ogl/ogl_context_samplers.h"
 #include "ogl/ogl_context_textures.h"
 #include "ogl/ogl_materials.h"
 #include "ogl/ogl_program.h"
-#include "ogl/ogl_sampler.h"
 #include "ogl/ogl_shader.h"
 #include "ogl/ogl_texture.h"
 #include "ogl/ogl_uber.h"
+#include "raGL/raGL_sampler.h"
+#include "raGL/raGL_samplers.h"
 #include "scene/scene.h"
 #include "scene/scene_light.h"
 #include "scene/scene_material.h"
@@ -30,7 +30,7 @@ typedef struct _mesh_material_property_texture
     mesh_material_texture_filtering mag_filter;
     mesh_material_texture_filtering min_filter;
     unsigned int                    mipmap_level;
-    ogl_sampler                     sampler;
+    raGL_sampler                    sampler;
     ogl_texture                     texture;
 
     _mesh_material_property_texture()
@@ -46,7 +46,7 @@ typedef struct _mesh_material_property_texture
     {
         if (sampler != NULL)
         {
-            ogl_sampler_release(sampler);
+            // raGL_sampler_release(sampler);
 
             sampler = NULL;
         }
@@ -226,8 +226,8 @@ PRIVATE void _mesh_material_release(void* data_ptr)
 
                 case MESH_MATERIAL_PROPERTY_ATTACHMENT_TEXTURE:
                 {
-                    ogl_sampler_release(material_ptr->shading_properties[current_property].texture_data.sampler);
-                    ogl_texture_release(material_ptr->shading_properties[current_property].texture_data.texture);
+                    // raGL_sampler_release(material_ptr->shading_properties[current_property].texture_data.sampler);
+                    ogl_texture_release (material_ptr->shading_properties[current_property].texture_data.texture);
 
                     material_ptr->shading_properties[current_property].texture_data.sampler = NULL;
                     material_ptr->shading_properties[current_property].texture_data.texture = NULL;
@@ -277,7 +277,9 @@ PRIVATE void _mesh_material_release(void* data_ptr)
 }
 
 /* Please see header for specification */
-PRIVATE GLenum _mesh_material_get_glenum_for_mesh_material_texture_filtering(mesh_material_texture_filtering filtering)
+PRIVATE void _mesh_material_get_ral_enums_for_mesh_material_texture_filtering(mesh_material_texture_filtering filtering,
+                                                                              ral_texture_filter*             out_texture_filter_ptr,
+                                                                              ral_texture_mipmap_mode*        out_texture_mipmap_mode_ptr)
 {
     GLenum result = GL_NONE;
 
@@ -285,42 +287,48 @@ PRIVATE GLenum _mesh_material_get_glenum_for_mesh_material_texture_filtering(mes
     {
         case MESH_MATERIAL_TEXTURE_FILTERING_LINEAR:
         {
-            result = GL_LINEAR;
+            *out_texture_filter_ptr      = RAL_TEXTURE_FILTER_LINEAR;
+            *out_texture_mipmap_mode_ptr = RAL_TEXTURE_MIPMAP_MODE_BASE;
 
             break;
         }
 
         case MESH_MATERIAL_TEXTURE_FILTERING_LINEAR_LINEAR:
         {
-            result = GL_LINEAR_MIPMAP_LINEAR;
+            *out_texture_filter_ptr      = RAL_TEXTURE_FILTER_LINEAR;
+            *out_texture_mipmap_mode_ptr = RAL_TEXTURE_MIPMAP_MODE_LINEAR;
 
             break;
         }
 
         case MESH_MATERIAL_TEXTURE_FILTERING_LINEAR_NEAREST:
         {
-            result = GL_LINEAR_MIPMAP_NEAREST;
+            *out_texture_filter_ptr      = RAL_TEXTURE_FILTER_LINEAR;
+            *out_texture_mipmap_mode_ptr = RAL_TEXTURE_MIPMAP_MODE_NEAREST;
 
             break;
         }
 
         case MESH_MATERIAL_TEXTURE_FILTERING_NEAREST:
         {
-            result = GL_NEAREST;
+            *out_texture_filter_ptr      = RAL_TEXTURE_FILTER_NEAREST;
+            *out_texture_mipmap_mode_ptr = RAL_TEXTURE_MIPMAP_MODE_BASE;
 
             break;
         }
 
         case MESH_MATERIAL_TEXTURE_FILTERING_NEAREST_LINEAR:
         {
-            result = GL_NEAREST_MIPMAP_LINEAR;
+            *out_texture_filter_ptr      = RAL_TEXTURE_FILTER_NEAREST;
+            *out_texture_mipmap_mode_ptr = RAL_TEXTURE_MIPMAP_MODE_LINEAR;
 
             break;
         }
 
         case MESH_MATERIAL_TEXTURE_FILTERING_NEAREST_NEAREST:
         {
-            result = GL_NEAREST_MIPMAP_NEAREST;
+            *out_texture_filter_ptr      = RAL_TEXTURE_FILTER_NEAREST;
+            *out_texture_mipmap_mode_ptr = RAL_TEXTURE_MIPMAP_MODE_NEAREST;
 
             break;
         }
@@ -332,8 +340,6 @@ PRIVATE GLenum _mesh_material_get_glenum_for_mesh_material_texture_filtering(mes
                               filtering);
         }
     } /* switch (filtering) */
-
-    return result;
 }
 
 
@@ -426,8 +432,8 @@ PUBLIC EMERALD_API mesh_material mesh_material_create_copy(system_hashed_ansi_st
                 else
                 if (shading_property.attachment == MESH_MATERIAL_PROPERTY_ATTACHMENT_TEXTURE)
                 {
-                    ogl_sampler_retain(shading_property.texture_data.sampler);
-                    ogl_texture_retain(shading_property.texture_data.texture);
+                    // raGL_sampler_retain(shading_property.texture_data.sampler);
+                    ogl_texture_retain (shading_property.texture_data.texture);
                 }
             }
         } /* if (new_material_ptr->type == MESH_MATERIAL_TYPE_GENERAL) */
@@ -1482,7 +1488,7 @@ PUBLIC EMERALD_API void mesh_material_get_shading_property_value_texture(mesh_ma
                                                                          mesh_material_shading_property   property,
                                                                          ogl_texture*                     out_texture,
                                                                          unsigned int*                    out_mipmap_level,
-                                                                         ogl_sampler*                     out_sampler)
+                                                                         raGL_sampler*                    out_sampler)
 {
     _mesh_material_property*         property_ptr     = ( (_mesh_material*) material)->shading_properties + property;
     _mesh_material_property_texture* texture_data_ptr = &property_ptr->texture_data;
@@ -1842,11 +1848,11 @@ PUBLIC EMERALD_API void mesh_material_set_shading_property_to_texture(mesh_mater
 
     if (material_ptr->shading_properties[property].attachment == MESH_MATERIAL_PROPERTY_ATTACHMENT_TEXTURE)
     {
-        ogl_sampler& bound_sampler = material_ptr->shading_properties[property].texture_data.sampler;
-        ogl_texture& bound_texture = material_ptr->shading_properties[property].texture_data.texture;
+        raGL_sampler& bound_sampler = material_ptr->shading_properties[property].texture_data.sampler;
+        ogl_texture&  bound_texture = material_ptr->shading_properties[property].texture_data.texture;
 
-        ogl_sampler_release(bound_sampler);
-        ogl_texture_release(bound_texture);
+        // raGL_sampler_release(bound_sampler);
+        ogl_texture_release (bound_texture);
 
         bound_sampler = NULL;
         bound_texture = NULL;
@@ -1863,28 +1869,33 @@ PUBLIC EMERALD_API void mesh_material_set_shading_property_to_texture(mesh_mater
      * Pass NULL to all irrelevant arguments - we will use default GL state values
      * for these attributes.
      **/
-    GLenum               mag_filter_gl = _mesh_material_get_glenum_for_mesh_material_texture_filtering(mag_filter);
-    GLenum               min_filter_gl = _mesh_material_get_glenum_for_mesh_material_texture_filtering(min_filter);
-    ogl_context_samplers samplers      = NULL;
+    ral_texture_filter      mag_filter_ral;
+    ral_texture_mipmap_mode mag_mipmap_mode_ral;
+    ral_texture_filter      min_filter_ral;
+    ral_texture_mipmap_mode min_mipmap_mode_ral;
+    ral_sampler_create_info sampler_create_info;
+    raGL_samplers           samplers = NULL;
+
+    _mesh_material_get_ral_enums_for_mesh_material_texture_filtering(mag_filter,
+                                                                    &mag_filter_ral,
+                                                                    &mag_mipmap_mode_ral);
+    _mesh_material_get_ral_enums_for_mesh_material_texture_filtering(min_filter,
+                                                                    &min_filter_ral,
+                                                                    &min_mipmap_mode_ral);
 
     ogl_context_get_property(material_ptr->context,
-                             OGL_CONTEXT_PROPERTY_SAMPLERS,
+                             OGL_CONTEXT_PROPERTY_SAMPLERS_RAGL,
                             &samplers);
 
-    material_ptr->shading_properties[property].texture_data.sampler = ogl_context_samplers_get_sampler(samplers,
-                                                                                                       NULL,  /* border_color */
-                                                                                                       &mag_filter_gl,
-                                                                                                       NULL,  /* max_lod_ptr */
-                                                                                                       &min_filter_gl,
-                                                                                                       NULL,  /* min_lod_ptr */
-                                                                                                       NULL,  /* texture_compare_func_ptr */
-                                                                                                       NULL,  /* texture_compare_mode_ptr */
-                                                                                                       NULL,  /* wrap_r_ptr */
-                                                                                                       NULL,  /* wrap_s_ptr */
-                                                                                                       NULL); /* wrap_t_ptr */
+    sampler_create_info.mag_filter  = mag_filter_ral;
+    sampler_create_info.min_filter  = min_filter_ral;
+    sampler_create_info.mipmap_mode = min_mipmap_mode_ral;
 
-    ogl_sampler_retain(material_ptr->shading_properties[property].texture_data.sampler);
-    ogl_texture_retain(texture);
+    material_ptr->shading_properties[property].texture_data.sampler = raGL_samplers_get_sampler_from_ral_sampler_create_info(samplers,
+                                                                                                                            &sampler_create_info);
+
+    // raGL_sampler_retain(material_ptr->shading_properties[property].texture_data.sampler);
+    ogl_texture_retain (texture);
 }
 
 /* Please see header for specification */

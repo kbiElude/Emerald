@@ -34,6 +34,8 @@ typedef struct _raGL_sampler
         sampler = in_sampler;
         id      = in_sampler_id;
 
+        ral_sampler_retain(sampler);
+
         max_anisotropy = 0.0f;
         max_lod_bias   = 0.0f;
 
@@ -63,7 +65,13 @@ typedef struct _raGL_sampler
 
     ~_raGL_sampler()
     {
-        /* Do not release the sampler. Object life-time is handled by raGL_backend. */
+        /* Do not release the GL object. Object life-time is handled by raGL_backend. */
+        if (sampler != NULL)
+        {
+            ral_sampler_release(sampler);
+
+            sampler = NULL;
+        } /* if (sampler != NULL) */
     }
 } _raGL_sampler;
 
@@ -261,6 +269,50 @@ PUBLIC raGL_sampler raGL_sampler_create(ogl_context context,
     } /* if (new_sampler_ptr != NULL) */
 
     return (raGL_sampler) new_sampler_ptr;
+}
+
+
+/** Please see header for specification */
+PUBLIC void raGL_sampler_get_property(raGL_sampler          sampler,
+                                      raGL_sampler_property property,
+                                      void*                 out_result_ptr)
+{
+    _raGL_sampler* sampler_ptr = (_raGL_sampler*) sampler;
+
+    /* Sanity checks */
+    if (sampler == NULL)
+    {
+        ASSERT_DEBUG_SYNC(false,
+                          "Input sampler is NULL");
+
+        goto end;
+    }
+
+    /* Retrieve the requested property value */
+    switch (property)
+    {
+        case RAGL_SAMPLER_PROPERTY_ID:
+        {
+            *(GLuint*) out_result_ptr = sampler_ptr->id;
+
+            break;
+        }
+
+        case RAGL_SAMPLER_PROPERTY_SAMPLER:
+        {
+            *(ral_sampler*) out_result_ptr = sampler_ptr->sampler;
+
+            break;
+        }
+
+        default:
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Unrecognized raGL_sampler_property value.");
+        }
+    } /* switch (property) */
+end:
+    ;
 }
 
 /** Please see header for specification */

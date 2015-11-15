@@ -5,15 +5,15 @@
  */
 #include "shared.h"
 #include "ogl/ogl_context.h"
-#include "ogl/ogl_context_samplers.h"
 #include "ogl/ogl_program.h"
 #include "ogl/ogl_program_ub.h"
 #include "ogl/ogl_programs.h"
-#include "ogl/ogl_sampler.h"
 #include "ogl/ogl_shader.h"
 #include "ogl/ogl_texture.h"
 #include "postprocessing/postprocessing_motion_blur.h"
 #include "raGL/raGL_buffer.h"
+#include "raGL/raGL_sampler.h"
+#include "raGL/raGL_samplers.h"
 #include "system/system_assertions.h"
 #include "system/system_hashed_ansi_string.h"
 #include "system/system_log.h"
@@ -39,7 +39,7 @@ typedef struct _postprocessing_motion_blur
     const GLuint                            po_binding_src_color_image;
     const GLuint                            po_binding_src_velocity_image;
     const GLuint                            po_binding_dst_color_image;
-    ogl_sampler                             sampler; /* owned by context - do not release */
+    raGL_sampler                            sampler; /* owned by context - do not release */
     postprocessing_motion_blur_image_format src_dst_color_image_format;
     unsigned int                            src_color_image_n_layer;
     unsigned int                            src_color_image_n_mipmap;
@@ -570,27 +570,21 @@ PUBLIC EMERALD_API postprocessing_motion_blur postprocessing_motion_blur_create(
     else
     {
         /* Retrieve a sampler object we will use to sample the color & velocity textures */
-        ogl_context_samplers context_samplers = NULL;
-        const GLenum         min_filter       = GL_LINEAR;
-        const GLenum         wrap_r           = GL_CLAMP_TO_EDGE;
-        const GLenum         wrap_s           = GL_CLAMP_TO_EDGE;
-        const GLenum         wrap_t           = GL_CLAMP_TO_EDGE;
+        ral_sampler_create_info blur_sampler_create_info;
+        raGL_samplers           context_samplers = NULL;
+
+        blur_sampler_create_info.mipmap_mode = RAL_TEXTURE_MIPMAP_MODE_BASE;
+        blur_sampler_create_info.min_filter  = RAL_TEXTURE_FILTER_LINEAR;
+        blur_sampler_create_info.wrap_r      = RAL_TEXTURE_WRAP_MODE_CLAMP_TO_EDGE;
+        blur_sampler_create_info.wrap_s      = RAL_TEXTURE_WRAP_MODE_CLAMP_TO_EDGE;
+        blur_sampler_create_info.wrap_t      = RAL_TEXTURE_WRAP_MODE_CLAMP_TO_EDGE;
 
         ogl_context_get_property(context,
-                                 OGL_CONTEXT_PROPERTY_SAMPLERS,
+                                 OGL_CONTEXT_PROPERTY_SAMPLERS_RAGL,
                                 &context_samplers);
 
-        motion_blur_ptr->sampler = ogl_context_samplers_get_sampler(context_samplers,
-                                                                    NULL, /* border_color */
-                                                                    NULL, /* mag_filter   */
-                                                                    NULL, /* max_lod_ptr  */
-                                                                   &min_filter,
-                                                                    NULL, /* min_lod_ptr */
-                                                                    NULL, /* texture_compare_func_ptr */
-                                                                    NULL, /* texture_compare_mode_ptr */
-                                                                   &wrap_r,
-                                                                   &wrap_s,
-                                                                   &wrap_t);
+        motion_blur_ptr->sampler = raGL_samplers_get_sampler_from_ral_sampler_create_info(context_samplers,
+                                                                                         &blur_sampler_create_info);
 
         /* Initialize the program object */
         _postprocessing_motion_blur_init_po(motion_blur_ptr);
@@ -721,17 +715,22 @@ PUBLIC EMERALD_API RENDERING_CONTEXT_CALL void postprocessing_motion_blur_execut
 
     /* Bind the images */
     const GLenum color_texture_target    = _postprocessing_motion_blur_get_blur_image_type_texture_target_glenum(motion_blur_ptr->image_type);
+    GLuint       sampler_id              = 0;
     const GLenum velocity_texture_target = GL_TEXTURE_2D;
+
+    raGL_sampler_get_property(motion_blur_ptr->sampler,
+                              RAGL_SAMPLER_PROPERTY_ID,
+                             &sampler_id);
 
     entrypoints_ptr->pGLActiveTexture(GL_TEXTURE0);
     entrypoints_ptr->pGLBindSampler  (0,
-                                      ogl_sampler_get_id(motion_blur_ptr->sampler) );
+                                      sampler_id);
     entrypoints_ptr->pGLBindTexture  (color_texture_target,
                                       input_color_texture);
 
     entrypoints_ptr->pGLActiveTexture(GL_TEXTURE1);
     entrypoints_ptr->pGLBindSampler  (1,
-                                      ogl_sampler_get_id(motion_blur_ptr->sampler) );
+                                      sampler_id);
     entrypoints_ptr->pGLBindTexture  (color_texture_target,
                                       input_velocity_texture);
 

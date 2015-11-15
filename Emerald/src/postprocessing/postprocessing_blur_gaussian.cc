@@ -5,18 +5,18 @@
  */
 #include "shared.h"
 #include "ogl/ogl_context.h"
-#include "ogl/ogl_context_samplers.h"
 #include "ogl/ogl_context_state_cache.h"
 #include "ogl/ogl_context_textures.h"
 #include "ogl/ogl_program.h"
 #include "ogl/ogl_programs.h"
-#include "ogl/ogl_sampler.h"
 #include "ogl/ogl_shader.h"
 #include "ogl/ogl_shaders.h"
 #include "ogl/ogl_texture.h"
 #include "postprocessing/postprocessing_blur_gaussian.h"
 #include "raGL/raGL_buffer.h"
 #include "raGL/raGL_buffers.h"
+#include "raGL/raGL_sampler.h"
+#include "raGL/raGL_samplers.h"
 #include "system/system_assertions.h"
 #include "system/system_hashed_ansi_string.h"
 #include "system/system_log.h"
@@ -131,7 +131,7 @@ typedef struct _postprocessing_blur_gaussian
     unsigned int              n_max_taps;
     unsigned int              n_min_taps;
     ogl_program               po;
-    ogl_sampler               sampler; /* do not release - retrieved from context-wide ogl_samplers */
+    raGL_sampler              sampler; /* do not release - retrieved from context-wide raGL_samplers */
 
     /* other data BO holds:
      *
@@ -725,25 +725,19 @@ PRIVATE void _postprocessing_blur_gaussian_init_rendering_thread_callback(ogl_co
     }
 
     /* Retrieve the sampler object we will use to perform the blur operation */
-    ogl_context_samplers context_samplers        = NULL;
-    const GLenum         filter_gl_clamp_to_edge = GL_CLAMP_TO_EDGE;
-    const GLenum         filter_gl_linear        = GL_LINEAR;
+    ral_sampler_create_info blur_sampler_create_info;
+    raGL_samplers           context_samplers        = NULL;
+
+    blur_sampler_create_info.mipmap_mode = RAL_TEXTURE_MIPMAP_MODE_BASE;
+    blur_sampler_create_info.wrap_s      = RAL_TEXTURE_WRAP_MODE_CLAMP_TO_EDGE;
+    blur_sampler_create_info.wrap_t      = RAL_TEXTURE_WRAP_MODE_CLAMP_TO_EDGE;
 
     ogl_context_get_property(instance_ptr->context,
-                             OGL_CONTEXT_PROPERTY_SAMPLERS,
+                             OGL_CONTEXT_PROPERTY_SAMPLERS_RAGL,
                             &context_samplers);
 
-    instance_ptr->sampler = ogl_context_samplers_get_sampler(context_samplers,
-                                                             NULL,                    /* border_color */
-                                                             &filter_gl_linear,       /* mag_filter_ptr */
-                                                             NULL,                    /* max_lod_ptr*/
-                                                             &filter_gl_linear,       /* min_filter_ptr */
-                                                             NULL,                    /* min_lod_ptr */
-                                                             NULL,                    /* texture_compare_func_ptr */
-                                                             NULL,                    /* texture_compare_mode_ptr */
-                                                             NULL,                    /* wrap_r_ptr */
-                                                            &filter_gl_clamp_to_edge, /* wrap_s_ptr */
-                                                            &filter_gl_clamp_to_edge);/* wrap_t_ptr */
+    instance_ptr->sampler = raGL_samplers_get_sampler_from_ral_sampler_create_info(context_samplers,
+                                                                                  &blur_sampler_create_info);
 
     ASSERT_DEBUG_SYNC(instance_ptr->sampler != NULL,
                       "Could not retrieve a sampler object from ogl_samplers");
@@ -917,7 +911,7 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void postprocessing_blur_gaussian_exec
     ral_texture_format                                        src_texture_format            = RAL_TEXTURE_FORMAT_UNKNOWN;
     unsigned int                                              src_texture_width             = 0;
     ogl_context_state_cache                                   state_cache                   = NULL;
-    ogl_sampler                                               temp_2d_array_texture_sampler = NULL;
+    raGL_sampler                                              temp_2d_array_texture_sampler = NULL;
     ogl_texture                                               temp_2d_array_texture         = NULL;
     GLuint                                                    vao_id                        = 0;
     GLint                                                     viewport_data[4]              = {0};
@@ -1106,7 +1100,12 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void postprocessing_blur_gaussian_exec
      * there are more interesting things to be looking at ATM!
      *
      */
-    const GLuint po_id = ogl_program_get_id(blur_ptr->po);
+    const GLuint po_id      = ogl_program_get_id(blur_ptr->po);
+    GLuint       sampler_id = 0;
+
+    raGL_sampler_get_property(blur_ptr->sampler,
+                              RAGL_SAMPLER_PROPERTY_ID,
+                             &sampler_id);
 
     entrypoints_ptr->pGLBindVertexArray(vao_id);
     entrypoints_ptr->pGLUseProgram     (po_id);
@@ -1119,7 +1118,7 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void postprocessing_blur_gaussian_exec
                                                 GL_TEXTURE_2D_ARRAY,
                                                 temp_2d_array_texture);
     entrypoints_ptr->pGLBindSampler            (DATA_SAMPLER_TEXTURE_UNIT_INDEX,
-                                                ogl_sampler_get_id(blur_ptr->sampler) );
+                                                sampler_id);
 
     /* Make sure the "other data BO" iteration-specific value is set to the number of taps the caller
      * is requesting */

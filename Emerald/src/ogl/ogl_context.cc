@@ -7,7 +7,6 @@
 #include "gfx/gfx_image.h"
 #include "ogl/ogl_context.h"
 #include "ogl/ogl_context_bo_bindings.h"
-#include "ogl/ogl_context_samplers.h"
 #include "ogl/ogl_context_state_cache.h"
 #include "ogl/ogl_context_texture_compression.h"
 #include "ogl/ogl_context_textures.h"
@@ -24,6 +23,7 @@
 #include "ogl/ogl_text.h"
 #include "raGL/raGL_buffers.h"
 #include "raGL/raGL_utils.h"
+#include "raGL/raGL_samplers.h"
 #include "system/system_assertions.h"
 #include "system/system_critical_section.h"
 #include "system/system_event.h"
@@ -138,7 +138,7 @@ typedef struct
     ogl_programs                    programs;
     ogl_primitive_renderer          primitive_renderer;
     ogl_context_sampler_bindings    sampler_bindings;
-    ogl_context_samplers            samplers;
+    raGL_samplers                   samplers;
     ogl_shaders                     shaders;
     ogl_shadow_mapping              shadow_mapping;
     ogl_context_state_cache         state_cache;
@@ -360,7 +360,6 @@ PRIVATE void APIENTRY _ogl_context_debug_message_gl_callback(GLenum        sourc
         !context_ptr->is_intel_driver && !context_ptr->is_nv_driver)
     {
         /* This function is called back from within driver layer! Do not issue GL commands from here! */
-        _ogl_context* context_ptr   = (_ogl_context*) userParam;
         const char*   source_name   = NULL;
         const char*   type_name     = NULL;
         const char*   severity_name = NULL;
@@ -396,7 +395,7 @@ PRIVATE void APIENTRY _ogl_context_debug_message_gl_callback(GLenum        sourc
         }
 
         sprintf(local_message,
-                "[Id:%d] [Source:%s] Type:[%s] Severity:[%s]: %s",
+                "[Id:%u] [Source:%s] Type:[%s] Severity:[%s]: %s",
                 id,
                 source_name,
                 type_name,
@@ -977,8 +976,8 @@ PRIVATE void _ogl_context_init_context_after_creation(ogl_context context)
     context_ptr->programs                                   = NULL;
     context_ptr->sampler_bindings                           = NULL;
     context_ptr->state_cache                                = NULL;
-    context_ptr->samplers                                   = ogl_context_samplers_create( (ogl_context) context_ptr);
-    context_ptr->shaders                                    = ogl_shaders_create         ();
+    context_ptr->samplers                                   = raGL_samplers_create( (ogl_context) context_ptr);
+    context_ptr->shaders                                    = ogl_shaders_create  ();
     context_ptr->shadow_mapping                             = NULL;
     context_ptr->text_renderer                              = NULL;
     context_ptr->texture_compression                        = NULL;
@@ -1196,7 +1195,7 @@ PRIVATE void _ogl_context_init_context_after_creation(ogl_context context)
                                     &context_ptr->vsync_enabled);
     }
     #endif
-end:
+
     /* Unbind the thread from the context. It is to be picked up by rendering thread */
     ogl_context_unbind_from_current_thread( (ogl_context) context_ptr);
 }
@@ -1492,7 +1491,7 @@ PRIVATE void _ogl_context_initialize_fbo(_ogl_context* context_ptr)
     LOG_INFO("Using the following FBO configuration for the rendering context:\n"
              "* Color RBO:         [%s]\n"
              "* Depth RBO:         [%s]\n"
-             "* Number of samples: [%d] (effective:[%d])\n",
+             "* Number of samples: [%u] (effective:[%u])\n",
              _ogl_context_get_internalformat_string(internalformat_color),
              _ogl_context_get_internalformat_string(internalformat_depth_stencil),
              n_samples,
@@ -3215,7 +3214,7 @@ PUBLIC EMERALD_API void ogl_context_enumerate_msaa_samples(system_pixel_format p
                       "Out of memory");
 
     for (unsigned int n_depth_stencil_n_samples = 0;
-                      n_depth_stencil_n_samples < root_window_context_ptr->msaa_enumeration_depth_stencil_n_samples;
+                      n_depth_stencil_n_samples < (uint32_t) root_window_context_ptr->msaa_enumeration_depth_stencil_n_samples;
                     ++n_depth_stencil_n_samples)
     {
         system_resizable_vector_push(depth_stencil_samples_vector,
@@ -3225,7 +3224,7 @@ PUBLIC EMERALD_API void ogl_context_enumerate_msaa_samples(system_pixel_format p
     if (depth_stencil_samples_vector != NULL)
     {
         for (unsigned int n_result_sample = 0;
-                          n_result_sample < root_window_context_ptr->msaa_enumeration_color_n_samples;
+                          n_result_sample < (uint32_t) root_window_context_ptr->msaa_enumeration_color_n_samples;
                         ++n_result_sample)
         {
             /* Only store the matches */
@@ -3241,7 +3240,7 @@ PUBLIC EMERALD_API void ogl_context_enumerate_msaa_samples(system_pixel_format p
     {
         /* Treat the color samples data as the needed info */
         for (unsigned int n_result_sample = 0;
-                          n_result_sample < root_window_context_ptr->msaa_enumeration_color_n_samples;
+                          n_result_sample < (uint32_t) root_window_context_ptr->msaa_enumeration_color_n_samples;
                         ++n_result_sample)
         {
             system_resizable_vector_push(result_vector,
@@ -3572,9 +3571,9 @@ PUBLIC EMERALD_API void ogl_context_get_property(ogl_context          context,
             break;
         }
 
-        case OGL_CONTEXT_PROPERTY_SAMPLERS:
+        case OGL_CONTEXT_PROPERTY_SAMPLERS_RAGL:
         {
-            *((ogl_context_samplers*) out_result) = context_ptr->samplers;
+            *((raGL_samplers*) out_result) = context_ptr->samplers;
 
             break;
         }
@@ -3814,7 +3813,7 @@ PUBLIC bool ogl_context_release_managers(ogl_context context)
 
     if (context_ptr->samplers != NULL)
     {
-        ogl_context_samplers_release(context_ptr->samplers);
+        raGL_samplers_release(context_ptr->samplers);
 
         context_ptr->samplers = NULL;
     }

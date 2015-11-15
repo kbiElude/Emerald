@@ -63,5 +63,8 @@ PUBLIC void ral_sampler_get_property(ral_sampler          sampler,
                                      ral_sampler_property property,
                                      void*                out_result_ptr);
 
+/** TODO */
+PUBLIC bool ral_sampler_is_equal(ral_sampler sampler_a,
+                                 ral_sampler sampler_b);
 
 #endif /* RAL_SAMPLER_H */

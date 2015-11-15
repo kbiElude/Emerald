@@ -12,6 +12,7 @@
 #include "raGL/raGL_buffers.h"
 #include "raGL/raGL_framebuffer.h"
 #include "raGL/raGL_sampler.h"
+#include "raGL/raGL_samplers.h"
 #include "system/system_callback_manager.h"
 #include "system/system_critical_section.h"
 #include "system/system_hash64map.h"
@@ -37,7 +38,8 @@ typedef struct _raGL_backend
     system_hash64map        samplers_map;     /* maps ral_sampler to raGL_sampler instance; owns the mapped raGL_sampler instances */
     system_critical_section samplers_map_cs;
 
-    raGL_buffers buffers;
+    raGL_buffers  buffers;
+    raGL_samplers samplers;
 
     ogl_context      gl_context;       /* NOT owned - DO NOT release */
     ral_context      owner_context;
@@ -55,6 +57,7 @@ typedef struct _raGL_backend
         gl_context                        = NULL;
         max_framebuffer_color_attachments = 0;
         owner_context                     = in_owner_context;
+        samplers                          = NULL;
         samplers_map                      = system_hash64map_create       (sizeof(raGL_sampler) );
         samplers_map_cs                   = system_critical_section_create();
         system_framebuffer                = NULL;
@@ -69,6 +72,21 @@ typedef struct _raGL_backend
 
     ~_raGL_backend()
     {
+        /* Release object managers */
+        if (buffers != NULL)
+        {
+            raGL_buffers_release(buffers);
+
+            buffers = NULL;
+        }
+
+        if (samplers != NULL)
+        {
+            raGL_samplers_release(samplers);
+
+            samplers = NULL;
+        }
+
         /* Delete the system framebuffer and then proceed with release of other dangling objects. */
         if (system_framebuffer != NULL)
         {
@@ -445,9 +463,7 @@ PRIVATE void _raGL_backend_on_objects_created_rendering_callback(ogl_context con
 
         case RAGL_BACKEND_OBJECT_TYPE_SAMPLER:
         {
-            entrypoints_ptr->pGLGenSamplers(n_objects_to_initialize,
-                                            result_object_ids_ptr);
-
+            /* IDs are associated by raGL_samplers */
             break;
         }
 
@@ -490,9 +506,8 @@ PRIVATE void _raGL_backend_on_objects_created_rendering_callback(ogl_context con
 
             case RAGL_BACKEND_OBJECT_TYPE_SAMPLER:
             {
-                new_object = raGL_sampler_create(context,
-                                                 current_object_id,
-                                                 ral_sampler_ptrs[n_object_id]);
+                new_object = raGL_samplers_get_sampler(callback_arg_ptr->backend_ptr->samplers,
+                                                       ral_sampler_ptrs[n_object_id]);
 
                 break;
             }
@@ -698,6 +713,9 @@ PUBLIC raGL_backend raGL_backend_create(ral_context owner_context)
 
         /* Create buffer memory manager */
         new_backend_ptr->buffers = raGL_buffers_create(new_backend_ptr->gl_context);
+
+        /* Create sampler manager */
+        new_backend_ptr->samplers = raGL_samplers_create(new_backend_ptr->gl_context);
 
         /* Sign up for notifications */
         _raGL_backend_subscribe_for_notifications(new_backend_ptr,

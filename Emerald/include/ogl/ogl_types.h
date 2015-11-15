@@ -63,10 +63,6 @@ typedef unsigned int ogl_curve_item_id;
 /* Scene renderer */
 DECLARE_HANDLE(ogl_scene_renderer);
 
-/** Sampler manager handle */
-DECLARE_HANDLE(ogl_context_samplers);
-DECLARE_HANDLE(ogl_sampler);
-
 /** Texture handle */
 DECLARE_HANDLE(ogl_context_textures);
 DECLARE_HANDLE(ogl_texture);

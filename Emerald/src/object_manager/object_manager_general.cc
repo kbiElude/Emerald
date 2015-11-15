@@ -38,7 +38,6 @@ static system_hashed_ansi_string _object_type_ogl_primitive_renderer_hashed_ansi
 static system_hashed_ansi_string _object_type_ogl_program_hashed_ansi_string                           = NULL;
 static system_hashed_ansi_string _object_type_ogl_programs_hashed_ansi_string                          = NULL;
 static system_hashed_ansi_string _object_type_ogl_rendering_handler_hashed_ansi_string                 = NULL;
-static system_hashed_ansi_string _object_type_ogl_sampler_hashed_ansi_string                           = NULL;
 static system_hashed_ansi_string _object_type_ogl_shader_constructor_hashed_ansi_string                = NULL;
 static system_hashed_ansi_string _object_type_ogl_shader_hashed_ansi_string                            = NULL;
 static system_hashed_ansi_string _object_type_ogl_skybox_hashed_ansi_string                            = NULL;
@@ -125,7 +124,6 @@ PUBLIC system_hashed_ansi_string object_manager_convert_object_manager_object_ty
         case OBJECT_TYPE_OGL_PROGRAM:                                     return _object_type_ogl_program_hashed_ansi_string;
         case OBJECT_TYPE_OGL_PROGRAMS:                                    return _object_type_ogl_programs_hashed_ansi_string;
         case OBJECT_TYPE_OGL_RENDERING_HANDLER:                           return _object_type_ogl_rendering_handler_hashed_ansi_string;
-        case OBJECT_TYPE_OGL_SAMPLER:                                     return _object_type_ogl_sampler_hashed_ansi_string;
         case OBJECT_TYPE_OGL_SHADER:                                      return _object_type_ogl_shader_hashed_ansi_string;
         case OBJECT_TYPE_OGL_SHADER_CONSTRUCTOR:                          return _object_type_ogl_shader_constructor_hashed_ansi_string;
         case OBJECT_TYPE_OGL_SKYBOX:                                      return _object_type_ogl_skybox_hashed_ansi_string;
@@ -384,7 +382,6 @@ PUBLIC void _object_manager_init()
     _object_type_ogl_program_hashed_ansi_string                           = system_hashed_ansi_string_create("OpenGL Programs");
     _object_type_ogl_programs_hashed_ansi_string                          = system_hashed_ansi_string_create("OpenGL Program Managers");
     _object_type_ogl_rendering_handler_hashed_ansi_string                 = system_hashed_ansi_string_create("OpenGL Rendering Handlers");
-    _object_type_ogl_sampler_hashed_ansi_string                           = system_hashed_ansi_string_create("OpenGL Samplers");
     _object_type_ogl_shader_constructor_hashed_ansi_string                = system_hashed_ansi_string_create("OpenGL Shader Constructors");
     _object_type_ogl_shader_hashed_ansi_string                            = system_hashed_ansi_string_create("OpenGL Shaders");
     _object_type_ogl_skybox_hashed_ansi_string                            = system_hashed_ansi_string_create("OpenGL Skyboxes");

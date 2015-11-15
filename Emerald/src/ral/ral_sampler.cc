@@ -234,3 +234,90 @@ end:
     ;
 }
 
+/** Please see header for specification */
+PUBLIC bool ral_sampler_is_equal(ral_sampler sampler_a,
+                                 ral_sampler sampler_b)
+{
+    bool          result        = false;
+    _ral_sampler* sampler_a_ptr = (_ral_sampler*) sampler_a;
+    _ral_sampler* sampler_b_ptr = (_ral_sampler*) sampler_b;
+
+    /* Sanity checks */
+    if (sampler_a == NULL ||
+        sampler_b == NULL)
+    {
+        ASSERT_DEBUG_SYNC(false,
+                          "One or more input samplers is NULL");
+
+        goto end;
+    }
+
+    if (sampler_a_ptr->border_color.data_type != sampler_b_ptr->border_color.data_type)
+    {
+        goto end;
+    }
+
+    switch (sampler_a_ptr->border_color.data_type)
+    {
+        case ral_color::RAL_COLOR_DATA_TYPE_FLOAT:
+        {
+            if (fabs(sampler_a_ptr->border_color.f32[0] - sampler_b_ptr->border_color.f32[0]) > 1e-5f ||
+                fabs(sampler_a_ptr->border_color.f32[1] - sampler_b_ptr->border_color.f32[1]) > 1e-5f ||
+                fabs(sampler_a_ptr->border_color.f32[2] - sampler_b_ptr->border_color.f32[2]) > 1e-5f ||
+                fabs(sampler_a_ptr->border_color.f32[3] - sampler_b_ptr->border_color.f32[3]) > 1e-5f)
+            {
+                goto end;
+            }
+
+            break;
+        }
+
+        case ral_color::RAL_COLOR_DATA_TYPE_SINT:
+        case ral_color::RAL_COLOR_DATA_TYPE_UINT:
+        {
+            if (sampler_a_ptr->border_color.i32[0] != sampler_b_ptr->border_color.i32[0] ||
+                sampler_a_ptr->border_color.i32[1] != sampler_b_ptr->border_color.i32[1] ||
+                sampler_a_ptr->border_color.i32[2] != sampler_b_ptr->border_color.i32[2] ||
+                sampler_a_ptr->border_color.i32[3] != sampler_b_ptr->border_color.i32[3])
+            {
+                goto end;
+            }
+
+            break;
+        }
+
+        default:
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Unrecognized border color type");
+
+            break;
+        }
+    } /* switch (sampler_a_ptr->border_color.data_type) */
+
+    if (sampler_a_ptr->compare_function     != sampler_b_ptr->compare_function     ||
+        sampler_a_ptr->compare_mode_enabled != sampler_b_ptr->compare_mode_enabled ||
+        sampler_a_ptr->mag_filter           != sampler_b_ptr->mag_filter           ||
+        sampler_a_ptr->min_filter           != sampler_b_ptr->min_filter           ||
+        sampler_a_ptr->mipmap_mode          != sampler_b_ptr->mipmap_mode          ||
+        sampler_a_ptr->wrap_r               != sampler_b_ptr->wrap_r               ||
+        sampler_a_ptr->wrap_s               != sampler_b_ptr->wrap_s               ||
+        sampler_a_ptr->wrap_t               != sampler_b_ptr->wrap_t)
+    {
+        goto end;
+    }
+
+    if (fabs(sampler_a_ptr->lod_bias       - sampler_b_ptr->lod_bias)       > 1e-5f ||
+        fabs(sampler_a_ptr->lod_max        - sampler_b_ptr->lod_max)        > 1e-5f ||
+        fabs(sampler_a_ptr->lod_min        - sampler_b_ptr->lod_min)        > 1e-5f ||
+        fabs(sampler_a_ptr->max_anisotropy - sampler_b_ptr->max_anisotropy) > 1e-5f)
+    {
+        goto end;
+    }
+
+    /* All done */
+    result = true;
+
+end:
+    return result;
+}
