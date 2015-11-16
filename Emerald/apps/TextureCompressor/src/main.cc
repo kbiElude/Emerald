@@ -520,6 +520,10 @@ bool _compress_texture(ogl_context context,
         int      mipmap_size   = 0;
         uint32_t mipmap_width  = 0;
 
+        ogl_texture_get_mipmap_property(_texture_c,
+                                        n_mipmap,
+                                        OGL_TEXTURE_MIPMAP_PROPERTY_COMPRESSED_DATA_SIZE,
+                                       &mipmap_size);
         ogl_texture_get_mipmap_property(_texture_nc,
                                         n_mipmap,
                                         OGL_TEXTURE_MIPMAP_PROPERTY_WIDTH,
@@ -538,18 +542,8 @@ bool _compress_texture(ogl_context context,
                                            mipmap_width,
                                            mipmap_height);
 
-        entry_points->pGLGetTexLevelParameteriv(GL_TEXTURE_2D,
-                                                n_mipmap,
-                                                GL_TEXTURE_COMPRESSED_IMAGE_SIZE,
-                                               &mipmap_size);
-
         ASSERT_DEBUG_SYNC(mipmap_size != 0,
                           "Compressed texture mipmap size is reported to be 0");
-
-        ogl_texture_set_mipmap_property(_texture_c,
-                                        n_mipmap,
-                                        OGL_TEXTURE_MIPMAP_PROPERTY_DATA_SIZE,
-                                       &mipmap_size);
 
         if (n_mipmap == 0)
         {
@@ -1158,10 +1152,11 @@ void _save_compressed_texture()
         {
             int data_size = 0;
 
-            ogl_texture_get_mipmap_property(_texture_c,
-                                            n_mipmap,
-                                            OGL_TEXTURE_MIPMAP_PROPERTY_DATA_SIZE,
-                                           &data_size);
+            dsa_entry_points->pGLGetTextureLevelParameterivEXT(_texture_c,
+                                                               GL_TEXTURE_2D,
+                                                               n_mipmap,
+                                                               GL_TEXTURE_COMPRESSED_IMAGE_SIZE,
+                                                              &data_size);
 
             dsa_entry_points->pGLGetCompressedTextureImageEXT(_texture_c,
                                                               GL_TEXTURE_2D,
@@ -1200,7 +1195,7 @@ void _save_compressed_texture()
                             ++n_mipmap)
             {
                 ogl_context_texture_compression_compressed_blob_mipmap_header mipmap_header;
-                unsigned int                                                  mipmap_data_size = 0;
+                GLint                                                         mipmap_data_size = 0;
                 unsigned int                                                  mipmap_depth     = 0;
                 unsigned int                                                  mipmap_height    = 0;
                 unsigned int                                                  mipmap_width     = 0;
@@ -1217,10 +1212,12 @@ void _save_compressed_texture()
                                                 n_mipmap,
                                                 OGL_TEXTURE_MIPMAP_PROPERTY_DEPTH,
                                                &mipmap_depth);
-                ogl_texture_get_mipmap_property(_texture_c,
-                                                n_mipmap,
-                                                OGL_TEXTURE_MIPMAP_PROPERTY_DATA_SIZE,
-                                               &mipmap_data_size);
+
+                dsa_entry_points->pGLGetTextureLevelParameterivEXT(_texture_c,
+                                                               GL_TEXTURE_2D,
+                                                               n_mipmap,
+                                                               GL_TEXTURE_COMPRESSED_IMAGE_SIZE,
+                                                              &mipmap_data_size);
 
                 ASSERT_ALWAYS_SYNC(mipmap_depth  < (1 << (8 * sizeof(mipmap_header.depth))),
                                    "Unsupported depth");

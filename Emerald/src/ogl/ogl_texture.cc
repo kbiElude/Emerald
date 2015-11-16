@@ -10,6 +10,7 @@
 #include "ogl/ogl_context_textures.h"
 #include "ogl/ogl_texture.h"
 #include "raGL/raGL_utils.h"
+#include "ral/ral_utils.h"
 #include "system/system_log.h"
 #include "system/system_math_other.h"
 #include "system/system_resizable_vector.h"
@@ -27,7 +28,6 @@ typedef struct
     unsigned int     data_size;
     unsigned int     depth;
     unsigned int     height;
-    bool             was_configured;
     unsigned int     width;
 } _ogl_texture_mipmap;
 
@@ -79,22 +79,19 @@ REFCOUNT_INSERT_IMPLEMENTATION(ogl_texture,
                               _ogl_texture);
 
 /* Forward declarations */
-PRIVATE ogl_texture _ogl_texture_create_base                                       (ogl_context               context,
-                                                                                    system_hashed_ansi_string name,
-                                                                                    system_hashed_ansi_string file_name);
-PRIVATE void        _ogl_texture_create_from_gfx_image_renderer_callback           (ogl_context               context,
-                                                                                    void*                     texture);
-PRIVATE void        _ogl_texture_deinit_renderer_callback                          (ogl_context               context,
-                                                                                    void*                     texture);
-PRIVATE void        _ogl_texture_generate_mipmaps                                  (ogl_context               context,
-                                                                                    void*                     texture);
-PRIVATE void        _ogl_texture_get_gl_texture_format_type_from_ral_texture_format(ral_texture_format        format,
-                                                                                    GLenum*                   out_format_gl,
-                                                                                    GLenum*                   out_datatype_gl);
-PRIVATE void        _ogl_texture_init_renderer_callback                            (ogl_context               context,
-                                                                                    void*                     texture);
-PRIVATE void        _ogl_texture_mipmap_deinit                                     (_ogl_texture_mipmap*      mipmap_ptr);
-PRIVATE void        _ogl_texture_release                                           (void*                     arg);
+PRIVATE ogl_texture _ogl_texture_create_base                            (ogl_context               context,
+                                                                         system_hashed_ansi_string name,
+                                                                         system_hashed_ansi_string file_name);
+PRIVATE void        _ogl_texture_create_from_gfx_image_renderer_callback(ogl_context               context,
+                                                                         void*                     texture);
+PRIVATE void        _ogl_texture_deinit_renderer_callback               (ogl_context               context,
+                                                                         void*                     texture);
+PRIVATE void        _ogl_texture_generate_mipmaps                       (ogl_context               context,
+                                                                         void*                     texture);
+PRIVATE void        _ogl_texture_init_renderer_callback                 (ogl_context               context,
+                                                                         void*                     texture);
+PRIVATE void        _ogl_texture_mipmap_deinit                          (_ogl_texture_mipmap*      mipmap_ptr);
+PRIVATE void        _ogl_texture_release                                (void*                     arg);
 
 
 /** TODO */
@@ -140,7 +137,7 @@ PRIVATE void _ogl_texture_create_from_gfx_image_renderer_callback(ogl_context co
 {
     ogl_context_type                               context_type                         = OGL_CONTEXT_TYPE_UNDEFINED;
     PFNWRAPPEDGLCOMPRESSEDTEXTURESUBIMAGE2DEXTPROC gl_pGLCompressedTextureSubImage2DEXT = NULL;
-    PFNWRAPPEDGLTEXTURESTORAGE2DEXTPROC            gl_pGLTextureStorage2DEXT            = NULL;
+    PFNGLTEXTURESTORAGE2DEXTPROC                   gl_pGLTextureStorage2DEXT            = NULL;
     PFNWRAPPEDGLTEXTURESUBIMAGE2DEXTPROC           gl_pGLTextureSubImage2DEXT           = NULL;
     PFNGLBINDTEXTUREPROC                           pGLBindTexture                       = NULL;
     PFNGLCOMPRESSEDTEXSUBIMAGE2DPROC               pGLCompressedTexSubImage2D           = NULL;
@@ -194,11 +191,16 @@ PRIVATE void _ogl_texture_create_from_gfx_image_renderer_callback(ogl_context co
                           &n_mipmaps);
 
     /* Retrieve base mip-map details. */
-    unsigned int base_image_height         = 0;
-    bool         base_image_is_compressed  = false;
-    unsigned int base_image_row_alignment  = 0;
-    unsigned int base_image_width          = 0;
+    ral_texture_data_type base_image_data_type      = RAL_TEXTURE_DATA_TYPE_UNKNOWN;
+    unsigned int          base_image_height         = 0;
+    bool                  base_image_is_compressed  = false;
+    unsigned int          base_image_row_alignment  = 0;
+    unsigned int          base_image_width          = 0;
 
+    gfx_image_get_mipmap_property(texture_ptr->src_image,
+                                  0, /* n_mipmap */
+                                  GFX_IMAGE_MIPMAP_PROPERTY_DATA_TYPE,
+                                 &base_image_data_type);
     gfx_image_get_mipmap_property(texture_ptr->src_image,
                                   0, /* n_mipmap */
                                   GFX_IMAGE_MIPMAP_PROPERTY_HEIGHT,
@@ -236,7 +238,7 @@ PRIVATE void _ogl_texture_create_from_gfx_image_renderer_callback(ogl_context co
 
     if (context_type == OGL_CONTEXT_TYPE_GL)
     {
-        gl_pGLTextureStorage2DEXT((ogl_texture) texture,
+        gl_pGLTextureStorage2DEXT(texture_ptr->gl_id,
                                   GL_TEXTURE_2D,
                                   levels,
                                   raGL_utils_get_ogl_texture_internalformat_for_ral_texture_format(texture_ptr->format),
@@ -255,29 +257,29 @@ PRIVATE void _ogl_texture_create_from_gfx_image_renderer_callback(ogl_context co
     }
 
     /* Set the mip-maps */
-    unsigned int expected_mipmap_height = base_image_height;
-    unsigned int expected_mipmap_width  = base_image_width;
-    GLenum       texture_format_gl      = GL_NONE;
-    GLenum       texture_type_gl        = GL_NONE;
+    unsigned int            expected_mipmap_height = base_image_height;
+    unsigned int            expected_mipmap_width  = base_image_width;
+    ogl_texture_data_format texture_format_gl      = OGL_TEXTURE_DATA_FORMAT_UNDEFINED;
+    ogl_texture_data_type   texture_type_gl        = OGL_TEXTURE_DATA_TYPE_UNDEFINED;
 
     if (!base_image_is_compressed)
     {
-        _ogl_texture_get_gl_texture_format_type_from_ral_texture_format(texture_ptr->format,
-                                                                       &texture_format_gl,
-                                                                       &texture_type_gl);
+        texture_format_gl = raGL_utils_get_ogl_data_format_for_ral_texture_format (texture_ptr->format);
+        texture_type_gl   = raGL_utils_get_ogl_data_type_for_ral_texture_data_type(base_image_data_type);
     }
 
     for (unsigned int n_mipmap = 0;
                       n_mipmap < n_mipmaps;
                     ++n_mipmap)
     {
-        const unsigned char* image_data_ptr       = NULL;
-        unsigned int         image_data_size      = 0;
-        ral_texture_format   image_format         = RAL_TEXTURE_FORMAT_UNKNOWN;
-        unsigned int         image_height         = 0;
-        bool                 image_is_compressed  = false;
-        unsigned int         image_row_alignment  = 0;
-        unsigned int         image_width          = 0;
+        const unsigned char*  image_data_ptr      = NULL;
+        unsigned int          image_data_size     = 0;
+        ral_texture_data_type image_data_type     = RAL_TEXTURE_DATA_TYPE_UNKNOWN;
+        ral_texture_format    image_format        = RAL_TEXTURE_FORMAT_UNKNOWN;
+        unsigned int          image_height        = 0;
+        bool                  image_is_compressed = false;
+        unsigned int          image_row_alignment = 0;
+        unsigned int          image_width         = 0;
 
         gfx_image_get_mipmap_property(texture_ptr->src_image,
                                       n_mipmap,
@@ -287,6 +289,10 @@ PRIVATE void _ogl_texture_create_from_gfx_image_renderer_callback(ogl_context co
                                       n_mipmap,
                                       GFX_IMAGE_MIPMAP_PROPERTY_DATA_SIZE,
                                      &image_data_size);
+        gfx_image_get_mipmap_property(texture_ptr->src_image,
+                                      n_mipmap,
+                                      GFX_IMAGE_MIPMAP_PROPERTY_DATA_TYPE,
+                                     &image_data_type);
         gfx_image_get_mipmap_property(texture_ptr->src_image,
                                       n_mipmap,
                                       GFX_IMAGE_MIPMAP_PROPERTY_HEIGHT,
@@ -377,6 +383,20 @@ PRIVATE void _ogl_texture_create_from_gfx_image_renderer_callback(ogl_context co
             }
         }
 
+        /* Create a mipmap descriptor for this mipmap */
+        _ogl_texture_mipmap* new_mipmap_ptr = new (std::nothrow) _ogl_texture_mipmap();
+
+        ASSERT_ALWAYS_SYNC(new_mipmap_ptr != NULL,
+                           "Out of memory");
+
+        new_mipmap_ptr->data_size = 0;
+        new_mipmap_ptr->depth     = 1;
+        new_mipmap_ptr->height    = expected_mipmap_height;
+        new_mipmap_ptr->width     = expected_mipmap_width;
+
+        system_resizable_vector_push(texture_ptr->mipmaps,
+                                     new_mipmap_ptr);
+
         expected_mipmap_width  = std::max(1u, expected_mipmap_width  / 2);
         expected_mipmap_height = std::max(1u, expected_mipmap_height / 2);
     } /* for (all mipmaps) */
@@ -449,55 +469,6 @@ PRIVATE void _ogl_texture_generate_mipmaps(ogl_context context,
 
     texture_ptr->has_had_mipmaps_generated = true;
 }
-
-/** TODO */
-PRIVATE void _ogl_texture_get_gl_texture_format_type_from_ral_texture_format(ral_texture_format format,
-                                                                             GLenum*            out_format_gl,
-                                                                             GLenum*            out_datatype_gl)
-{
-    switch (format)
-    {
-        case RAL_TEXTURE_FORMAT_RGB32_FLOAT:
-        {
-            *out_datatype_gl = GL_FLOAT;
-            *out_format_gl   = GL_RGB;
-
-            break;
-        }
-
-        case RAL_TEXTURE_FORMAT_RGB8_UNORM:
-        case RAL_TEXTURE_FORMAT_SRGB8_UNORM:
-        {
-            *out_datatype_gl = GL_UNSIGNED_BYTE;
-            *out_format_gl   = GL_RGB;
-
-            break;
-        }
-
-        case RAL_TEXTURE_FORMAT_RGBA32_FLOAT:
-        {
-            *out_datatype_gl = GL_FLOAT;
-            *out_format_gl   = GL_RGBA;
-
-            break;
-        }
-
-        case RAL_TEXTURE_FORMAT_RGBA8_UNORM:
-        {
-            *out_datatype_gl = GL_UNSIGNED_BYTE;
-            *out_format_gl   = GL_RGBA;
-
-            break;
-        }
-
-        default:
-        {
-            /* TODO: Add support for any compressed texture formats we use in the future */
-            ASSERT_ALWAYS_SYNC(false,
-                               "Unrecognized image internal format");
-        } /* default:*/
-    }
-} /* if (!image_is_compressed) */
 
 /** TODO */
 PRIVATE void _ogl_texture_init_renderer_callback(ogl_context context,
@@ -582,14 +553,20 @@ PUBLIC EMERALD_API RENDERING_CONTEXT_CALL ogl_texture ogl_texture_create_and_ini
                                                                                         unsigned int              n_samples,
                                                                                         bool                      fixed_sample_locations)
 {
-    const ogl_context_gl_entrypoints_ext_direct_state_access* dsa_entry_points = NULL;
-    uint32_t                                                  n_mipmaps        = 1;
-    ogl_texture                                               result           = NULL;
-    _ogl_texture*                                             result_ptr       = NULL;
+    const ogl_context_gl_entrypoints_ext_direct_state_access* dsa_entry_points     = NULL;
+    bool                                                      is_format_compressed = false;
+    uint32_t                                                  n_mipmaps            = 1;
+    ogl_texture                                               result               = NULL;
+    GLuint                                                    result_id            = 0;
+    _ogl_texture*                                             result_ptr           = NULL;
 
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL_EXT_DIRECT_STATE_ACCESS,
                             &dsa_entry_points);
+
+    ral_utils_get_texture_format_property(format,
+                                          RAL_TEXTURE_FORMAT_PROPERTY_IS_COMPRESSED,
+                                         &is_format_compressed);
 
     /* Sanity checks */
     #ifdef _DEBUG
@@ -845,11 +822,15 @@ PUBLIC EMERALD_API RENDERING_CONTEXT_CALL ogl_texture ogl_texture_create_and_ini
         goto end;
     }
 
+    ogl_texture_get_property(result,
+                             OGL_TEXTURE_PROPERTY_ID,
+                            &result_id);
+
     switch (type)
     {
         case RAL_TEXTURE_TYPE_1D:
         {
-            dsa_entry_points->pGLTextureStorage1DEXT(result,
+            dsa_entry_points->pGLTextureStorage1DEXT(result_id,
                                                      GL_TEXTURE_1D,
                                                      n_mipmaps,
                                                      raGL_utils_get_ogl_texture_internalformat_for_ral_texture_format(format),
@@ -862,7 +843,7 @@ PUBLIC EMERALD_API RENDERING_CONTEXT_CALL ogl_texture ogl_texture_create_and_ini
         case RAL_TEXTURE_TYPE_2D:
         case RAL_TEXTURE_TYPE_CUBE_MAP:
         {
-            dsa_entry_points->pGLTextureStorage2DEXT(result,
+            dsa_entry_points->pGLTextureStorage2DEXT(result_id,
                                                      raGL_utils_get_ogl_texture_target_for_ral_texture_type(type),
                                                      n_mipmaps,
                                                      raGL_utils_get_ogl_texture_internalformat_for_ral_texture_format(format),
@@ -874,7 +855,7 @@ PUBLIC EMERALD_API RENDERING_CONTEXT_CALL ogl_texture ogl_texture_create_and_ini
 
         case RAL_TEXTURE_TYPE_MULTISAMPLE_2D:
         {
-            dsa_entry_points->pGLTextureStorage2DMultisampleEXT(result,
+            dsa_entry_points->pGLTextureStorage2DMultisampleEXT(result_id,
                                                                 GL_TEXTURE_2D_MULTISAMPLE,
                                                                 n_samples,
                                                                 raGL_utils_get_ogl_texture_internalformat_for_ral_texture_format(format),
@@ -889,7 +870,7 @@ PUBLIC EMERALD_API RENDERING_CONTEXT_CALL ogl_texture ogl_texture_create_and_ini
         case RAL_TEXTURE_TYPE_3D:
         case RAL_TEXTURE_TYPE_CUBE_MAP_ARRAY:
         {
-            dsa_entry_points->pGLTextureStorage3DEXT(result,
+            dsa_entry_points->pGLTextureStorage3DEXT(result_id,
                                                      raGL_utils_get_ogl_texture_target_for_ral_texture_type(type),
                                                      n_mipmaps,
                                                      raGL_utils_get_ogl_texture_internalformat_for_ral_texture_format(format),
@@ -902,7 +883,7 @@ PUBLIC EMERALD_API RENDERING_CONTEXT_CALL ogl_texture ogl_texture_create_and_ini
         
         case RAL_TEXTURE_TYPE_MULTISAMPLE_2D_ARRAY:
         {
-            dsa_entry_points->pGLTextureStorage3DMultisampleEXT(result,
+            dsa_entry_points->pGLTextureStorage3DMultisampleEXT(result_id,
                                                                 GL_TEXTURE_2D_MULTISAMPLE_ARRAY,
                                                                 n_samples,
                                                                 raGL_utils_get_ogl_texture_internalformat_for_ral_texture_format(format),
@@ -935,6 +916,51 @@ PUBLIC EMERALD_API RENDERING_CONTEXT_CALL ogl_texture ogl_texture_create_and_ini
     result_ptr->target_gl              = raGL_utils_get_ogl_texture_target_for_ral_texture_type(type);
     result_ptr->type                   = type;
 
+    /* Initialize descriptor for each mipmap level */
+    for (uint32_t n_mipmap = 0;
+                  n_mipmap < n_mipmaps;
+                ++n_mipmap)
+    {
+        /* As per spec language.. */
+        const uint32_t w_d = 1 << (n_mipmap);
+        const uint32_t h_d = (type == RAL_TEXTURE_TYPE_1D        ||
+                              type == RAL_TEXTURE_TYPE_1D_ARRAY) ? 1   : w_d;
+        const uint32_t d_d = (type == RAL_TEXTURE_TYPE_3D)       ? w_d : 1;
+
+        const uint32_t mipmap_width  = std::max(1u, base_mipmap_width  / w_d);
+        const uint32_t mipmap_height = std::max(1u, base_mipmap_height / h_d);
+        const uint32_t mipmap_depth  = std::max(1u, base_mipmap_depth  / d_d);
+
+        _ogl_texture_mipmap* new_mipmap_ptr = new (std::nothrow) _ogl_texture_mipmap();
+
+        if (new_mipmap_ptr == NULL)
+        {
+            ASSERT_ALWAYS_SYNC(new_mipmap_ptr != NULL,
+                               "Out of memory");
+
+            continue;
+        } /* if (new_mipmap_ptr == NULL) */
+
+        if (is_format_compressed)
+        {
+            dsa_entry_points->pGLGetTextureLevelParameterivEXT(result,
+                                                               GL_TEXTURE_2D,
+                                                               n_mipmap,
+                                                               GL_TEXTURE_COMPRESSED_IMAGE_SIZE,
+                                                               (GLint*) &new_mipmap_ptr->data_size);
+        }
+        else
+        {
+            new_mipmap_ptr->data_size = 0;
+        }
+
+        new_mipmap_ptr->depth  = mipmap_depth;
+        new_mipmap_ptr->height = mipmap_height;
+        new_mipmap_ptr->width  = mipmap_width;
+
+        system_resizable_vector_push(result_ptr->mipmaps,
+                                     new_mipmap_ptr);
+    } /* for (all mipmaps) */
 end:
     return result;
 }
@@ -1053,10 +1079,10 @@ PUBLIC EMERALD_API bool ogl_texture_get_mipmap_property(ogl_texture             
 
         switch (property_value)
         {
-            case OGL_TEXTURE_MIPMAP_PROPERTY_DATA_SIZE:
+            case OGL_TEXTURE_MIPMAP_PROPERTY_COMPRESSED_DATA_SIZE:
             {
                 ASSERT_DEBUG_SYNC(mipmap_ptr->data_size != 0,
-                                  "Mipmap data size is 0"); /* only valid for decompressed textures - you shouldn't be using this query for those */
+                                  "OGL_TEXTURE_MIPMAP_PROPERTY_COMPRESSED_DATA_SIZE query is only valid for compressed textures");
 
                 *(unsigned int*) out_result = mipmap_ptr->data_size;
 
@@ -1166,38 +1192,16 @@ PUBLIC EMERALD_API void ogl_texture_get_property(const ogl_texture    texture,
 
         case OGL_TEXTURE_PROPERTY_N_LAYERS:
         {
-            *(unsigned int*) out_result = texture_ptr->n_layers;
+            *(uint32_t*) out_result = texture_ptr->n_layers;
 
             break;
         }
 
         case OGL_TEXTURE_PROPERTY_N_MIPMAPS:
         {
-            unsigned int n_defined_mipmaps = 0;
-            unsigned int n_mipmaps         = 0;
-
             system_resizable_vector_get_property(texture_ptr->mipmaps,
                                                  SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
-                                                &n_mipmaps);
-
-            for (unsigned int n_mipmap = 0;
-                              n_mipmap < n_mipmaps;
-                              n_mipmap ++)
-            {
-                _ogl_texture_mipmap* mipmap_ptr = NULL;
-
-                if (system_resizable_vector_get_element_at(texture_ptr->mipmaps,
-                                                           n_mipmap,
-                                                          &mipmap_ptr) )
-                {
-                    if (mipmap_ptr->was_configured)
-                    {
-                        n_defined_mipmaps++;
-                    }
-                }
-            } /* for (all mipmaps) */
-
-            *(unsigned int*) out_result = n_defined_mipmaps;
+                                                 out_result);
 
             break;
         }
@@ -1241,106 +1245,6 @@ end:
     ;
 }
 
-/* Please see header for specification */
-PUBLIC EMERALD_API void ogl_texture_set_mipmap_property(ogl_texture                 texture,
-                                                        unsigned int                n_mipmap,
-                                                        ogl_texture_mipmap_property property_value,
-                                                        void*                       value_ptr)
-{
-    _ogl_texture* texture_ptr         = (_ogl_texture*) texture;
-    unsigned int  n_mipmaps_allocated = 0;
-
-    system_resizable_vector_get_property(texture_ptr->mipmaps,
-                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
-                                        &n_mipmaps_allocated);
-
-    if (n_mipmaps_allocated <= n_mipmap)
-    {
-        ASSERT_DEBUG_SYNC(n_mipmap < 128,
-                          "Insane mipmap level [%d] about to be used",
-                          n_mipmap);
-
-        LOG_INFO("Performance hit: need to allocate space for mipmap storage [index:%d]",
-                 n_mipmap);
-
-        for (;
-             n_mipmaps_allocated <= n_mipmap;
-           ++n_mipmaps_allocated)
-        {
-            _ogl_texture_mipmap* mipmap = new (std::nothrow) _ogl_texture_mipmap;
-
-            ASSERT_ALWAYS_SYNC(mipmap != NULL,
-                               "Out of memory");
-
-            if (mipmap != NULL)
-            {
-                memset(mipmap,
-                       0,
-                       sizeof(*mipmap) );
-
-                system_resizable_vector_push(texture_ptr->mipmaps,
-                                             mipmap);
-            } /* if (mipmap != NULL) */
-        } /* for (; n_mipmaps_allocated < n_needed_mipmaps; ++n_mipmaps_allocated) */
-    } /* if (n_mipmaps_allocated < mipmap_level) */
-
-    /* Retrieve mipmap container for requested index */
-    _ogl_texture_mipmap* mipmap_ptr = NULL;
-
-    if (system_resizable_vector_get_element_at(texture_ptr->mipmaps,
-                                               (size_t) n_mipmap,
-                                              &mipmap_ptr) )
-    {
-        ASSERT_DEBUG_SYNC(mipmap_ptr != NULL,
-                          "Mipmap container is NULL");
-
-        switch (property_value)
-        {
-            case OGL_TEXTURE_MIPMAP_PROPERTY_DATA_SIZE:
-            {
-                mipmap_ptr->data_size = *(unsigned int*) value_ptr;
-
-                break;
-            }
-
-            case OGL_TEXTURE_MIPMAP_PROPERTY_DEPTH:
-            {
-                mipmap_ptr->depth = *(unsigned int*) value_ptr;
-
-                break;
-            }
-
-            case OGL_TEXTURE_MIPMAP_PROPERTY_HEIGHT:
-            {
-                mipmap_ptr->height = *(unsigned int*) value_ptr;
-
-                break;
-            }
-
-            case OGL_TEXTURE_MIPMAP_PROPERTY_WIDTH:
-            {
-                mipmap_ptr->width = *(unsigned int*) value_ptr;
-
-                break;
-            }
-
-            default:
-            {
-                ASSERT_DEBUG_SYNC(false,
-                                  "Unrecognized texture mipmap property");
-            }
-        } /* switch (property_value) */
-
-        mipmap_ptr->was_configured = true;
-    }
-    else
-    {
-        ASSERT_DEBUG_SYNC(false,
-                          "Could not retrieve mipmap container for mipmap level [%d]",
-                          n_mipmap);
-    }
-}
-
 /** Please see header for spec */
 PUBLIC EMERALD_API void ogl_texture_set_property(ogl_texture          texture,
                                                  ogl_texture_property property,
@@ -1359,50 +1263,9 @@ PUBLIC EMERALD_API void ogl_texture_set_property(ogl_texture          texture,
             break;
         }
 
-        case OGL_TEXTURE_PROPERTY_FORMAT_RAL:
+        case OGL_TEXTURE_PROPERTY_HAS_HAD_MIPMAPS_GENERATED:
         {
-            /* Emerald only supports immutable textures. */
-            ASSERT_DEBUG_SYNC(texture_ptr->format == RAL_TEXTURE_FORMAT_UNKNOWN ||
-                              texture_ptr->format == *(ral_texture_format*) data,
-                              "Invalid setter call!");
-
-            ASSERT_DEBUG_SYNC( *(ral_texture_format*) data < RAL_TEXTURE_FORMAT_COUNT,
-                               "Invalid RAL texture format");
-
-            texture_ptr->format = *(ral_texture_format*) data;
-
-            break;
-        }
-
-        case OGL_TEXTURE_PROPERTY_N_LAYERS:
-        {
-            ASSERT_DEBUG_SYNC(texture_ptr->n_layers == 0,
-                              "OGL_TEXTURE_PROPERTY_N_LAYERS property has already been assigned a value");
-
-            texture_ptr->n_layers = *(unsigned int*) data;
-
-            break;
-        }
-
-        case OGL_TEXTURE_PROPERTY_N_SAMPLES:
-        {
-            ASSERT_DEBUG_SYNC(texture_ptr->n_samples == 0,
-                              "OGL_TEXTURE_PROPERTY_N_SAMPLES property has already been assigned a value");
-
-            texture_ptr->n_samples = *(unsigned int*) data;
-
-            break;
-        }
-
-        case OGL_TEXTURE_PROPERTY_TYPE:
-        {
-            ASSERT_DEBUG_SYNC( *(ral_texture_type*) data < RAL_TEXTURE_TYPE_COUNT,
-                              "Invalid RAL texture type");
-            ASSERT_DEBUG_SYNC( texture_ptr->type == RAL_TEXTURE_TYPE_UNKNOWN ||
-                               texture_ptr->type == *(ral_texture_type*) data,
-                               "Invalid setter call");
-
-            texture_ptr->type = *(ral_texture_type*) data;
+            texture_ptr->has_had_mipmaps_generated = *(bool*) data;
 
             break;
         }

@@ -376,6 +376,7 @@ PRIVATE gfx_image _gfx_rgbe_shared_load_handler(system_hashed_ansi_string name,
                          false,
                          (unsigned char*) data_buffer,
                          data_buffer_size,
+                         RAL_TEXTURE_DATA_TYPE_FLOAT,
                          false);
 
     return result;

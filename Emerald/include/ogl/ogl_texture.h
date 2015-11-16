@@ -22,8 +22,10 @@ REFCOUNT_INSERT_DECLARATIONS(ogl_texture,
 
 typedef enum _ogl_texture_mipmap_property
 {
-    /* not settable, unsigned int; currently only set for loaded compressed texture mipmaps */
-    OGL_TEXTURE_MIPMAP_PROPERTY_DATA_SIZE,
+    /* not settable, unsigned int.
+     *
+     * This query is only valid for compressed textures */
+    OGL_TEXTURE_MIPMAP_PROPERTY_COMPRESSED_DATA_SIZE,
 
     /* not settable, unsigned int */
     OGL_TEXTURE_MIPMAP_PROPERTY_DEPTH,
@@ -43,7 +45,7 @@ typedef enum _ogl_texture_property
     /* not settable, bool */
     OGL_TEXTURE_PROPERTY_FIXED_SAMPLE_LOCATIONS,
 
-    /* settable (only once), ral_texture_format */
+    /* not settable, ral_texture_format */
     OGL_TEXTURE_PROPERTY_FORMAT_RAL,
 
     /* settable, bool;
@@ -64,13 +66,13 @@ typedef enum _ogl_texture_property
     /* not settable, system_hashed_ansi_string */
     OGL_TEXTURE_PROPERTY_NAME,
 
-    /* settabe (only once), unsigned int */
+    /* not settable, unsigned i nt */
     OGL_TEXTURE_PROPERTY_N_LAYERS,
 
     /* not settable, unsigned int */
     OGL_TEXTURE_PROPERTY_N_MIPMAPS,
 
-    /* settable (only once), unsigned int */
+    /* not settable, unsigned int */
     OGL_TEXTURE_PROPERTY_N_SAMPLES,
 
     /* not settable, system_hashed_ansi_string */
@@ -79,7 +81,7 @@ typedef enum _ogl_texture_property
     /* not settable, GLenum */
     OGL_TEXTURE_PROPERTY_TARGET_GL,
 
-    /* settable (only once), ral_texture_type */
+    /* not settable, unsigned int */
     OGL_TEXTURE_PROPERTY_TYPE,
 
     /* Always last */
@@ -121,12 +123,6 @@ PUBLIC EMERALD_API bool ogl_texture_get_mipmap_property(ogl_texture             
 PUBLIC EMERALD_API void ogl_texture_get_property(const ogl_texture    texture,
                                                  ogl_texture_property property,
                                                  void*                out_result);
-
-/** TODO */
-PUBLIC EMERALD_API void ogl_texture_set_mipmap_property(ogl_texture                 texture,
-                                                        unsigned int                n_mipmap,
-                                                        ogl_texture_mipmap_property property_value,
-                                                        void*                       value_ptr);
 
 /** TODO */
 PUBLIC EMERALD_API void ogl_texture_set_property(ogl_texture          texture,

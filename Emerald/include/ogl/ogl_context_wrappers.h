@@ -251,25 +251,6 @@ PUBLIC void APIENTRY ogl_context_wrappers_glCopyBufferSubData(GLenum     readTar
                                                               GLsizeiptr size);
 
 /** TODO */
-PUBLIC void APIENTRY ogl_context_wrappers_glCopyTexImage1D(GLenum  target,
-                                                           GLint   level,
-                                                           GLenum  internalformat,
-                                                           GLint   x,
-                                                           GLint   y,
-                                                           GLsizei width,
-                                                           GLint   border);
-
-/** TODO */
-PUBLIC void APIENTRY ogl_context_wrappers_glCopyTexImage2D(GLenum target,
-                                                           GLint   level,
-                                                           GLenum  internalformat,
-                                                           GLint   x,
-                                                           GLint   y,
-                                                           GLsizei width,
-                                                           GLsizei height,
-                                                           GLint   border);
-
-/** TODO */
 PUBLIC void APIENTRY ogl_context_wrappers_glCopyTexSubImage1D(GLenum  target,
                                                               GLint   level,
                                                               GLint   xoffset,
@@ -297,27 +278,6 @@ PUBLIC void APIENTRY ogl_context_wrappers_glCopyTexSubImage3D(GLenum target,
                                                               GLint   y,
                                                               GLsizei width,
                                                               GLsizei height);
-
-/** TODO */
-PUBLIC void APIENTRY ogl_context_wrappers_glCopyTextureImage1DEXT(ogl_texture texture,
-                                                                  GLenum      target,
-                                                                  GLint       level,
-                                                                  GLenum      internalformat,
-                                                                  GLint       x,
-                                                                  GLint       y,
-                                                                  GLsizei     width,
-                                                                  GLint       border);
-
-/** TODO */
-PUBLIC void APIENTRY ogl_context_wrappers_glCopyTextureImage2DEXT(ogl_texture texture,
-                                                                  GLenum      target,
-                                                                  GLint       level,
-                                                                  GLenum      internalformat,
-                                                                  GLint       x,
-                                                                  GLint       y,
-                                                                  GLsizei     width,
-                                                                  GLsizei     height,
-                                                                  GLint       border);
 
 /** TODO */
 PUBLIC void APIENTRY ogl_context_wrappers_glCopyTextureSubImage1DEXT(ogl_texture texture,
@@ -1016,44 +976,6 @@ PUBLIC void APIENTRY ogl_context_wrappers_glTexParameterIuiv(GLenum        targe
                                                              const GLuint* params);
 
 /** TODO */
-PUBLIC void APIENTRY ogl_context_wrappers_glTexStorage1D(GLenum  target,
-                                                         GLsizei levels,
-                                                         GLenum  internalformat,
-                                                         GLsizei width);
-
-/** TODO */
-PUBLIC void APIENTRY ogl_context_wrappers_glTexStorage2D(GLenum  target,
-                                                         GLsizei levels,
-                                                         GLenum  internalformat,
-                                                         GLsizei width,
-                                                         GLsizei height);
-
-/** TODO */
-PUBLIC void APIENTRY ogl_context_wrappers_glTexStorage2DMultisample(GLenum    target,
-                                                                    GLsizei   levels,
-                                                                    GLenum    internalformat,
-                                                                    GLsizei   width,
-                                                                    GLsizei   height,
-                                                                    GLboolean fixedsamplelocations);
-
-/** TODO */
-PUBLIC void APIENTRY ogl_context_wrappers_glTexStorage3D(GLenum  target,
-                                                         GLsizei levels,
-                                                         GLenum  internalformat,
-                                                         GLsizei width,
-                                                         GLsizei height,
-                                                         GLsizei depth);
-
-/** TODO */
-PUBLIC void APIENTRY ogl_context_wrappers_glTexStorage3DMultisample(GLenum    target,
-                                                                    GLsizei   levels,
-                                                                    GLenum    internalformat,
-                                                                    GLsizei   width,
-                                                                    GLsizei   height,
-                                                                    GLsizei   depth,
-                                                                    GLboolean fixedsamplelocations);
-
-/** TODO */
 PUBLIC void APIENTRY ogl_context_wrappers_glTexSubImage1D(GLenum        target,
                                                           GLint         level,
                                                           GLint         xoffset,
@@ -1135,49 +1057,6 @@ PUBLIC void APIENTRY ogl_context_wrappers_glTextureParameterivEXT(ogl_texture  t
                                                                   GLenum       target,
                                                                   GLenum       pname,
                                                                   const GLint* params);
-
-/** TODO */
-PUBLIC void APIENTRY ogl_context_wrappers_glTextureStorage1DEXT(ogl_texture texture,
-                                                                GLenum      target,
-                                                                GLsizei     levels,
-                                                                GLenum      internalformat,
-                                                                GLsizei     width);
-
-/** TODO */
-PUBLIC void APIENTRY ogl_context_wrappers_glTextureStorage2DEXT(ogl_texture texture,
-                                                                GLenum      target,
-                                                                GLsizei     levels,
-                                                                GLenum      internalformat,
-                                                                GLsizei     width,
-                                                                GLsizei     height);
-
-/** TODO */
-PUBLIC void APIENTRY ogl_context_wrappers_glTextureStorage2DMultisampleEXT(ogl_texture texture,
-                                                                           GLenum      target,
-                                                                           GLsizei     levels,
-                                                                           GLenum      internalformat,
-                                                                           GLsizei     width,
-                                                                           GLsizei     height,
-                                                                           GLboolean   fixedsamplelocations);
-
-/** TODO */
-PUBLIC void APIENTRY ogl_context_wrappers_glTextureStorage3DEXT(ogl_texture texture,
-                                                                GLenum      target,
-                                                                GLsizei     levels,
-                                                                GLenum      internalformat,
-                                                                GLsizei     width,
-                                                                GLsizei     height,
-                                                                GLsizei     depth);
-
-/** TODO */
-PUBLIC void APIENTRY ogl_context_wrappers_glTextureStorage3DMultisampleEXT(ogl_texture texture,
-                                                                           GLenum      target,
-                                                                           GLsizei     levels,
-                                                                           GLenum      internalformat,
-                                                                           GLsizei     width,
-                                                                           GLsizei     height,
-                                                                           GLsizei     depth,
-                                                                           GLboolean   fixedsamplelocations);
 
 /** TODO */
 PUBLIC void APIENTRY ogl_context_wrappers_glTextureSubImage1DEXT(ogl_texture   texture,

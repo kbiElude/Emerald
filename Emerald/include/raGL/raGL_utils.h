@@ -9,6 +9,12 @@
 PUBLIC EMERALD_API ogl_compare_function raGL_utils_get_ogl_compare_function_for_ral_compare_function(ral_compare_function in_compare_function);
 
 /** TODO */
+PUBLIC EMERALD_API ogl_texture_data_format raGL_utils_get_ogl_data_format_for_ral_texture_format(ral_texture_format in_format);
+
+/** TODO */
+PUBLIC EMERALD_API ogl_texture_data_type raGL_utils_get_ogl_data_type_for_ral_texture_data_type(ral_texture_data_type in_data_type);
+
+/** TODO */
 PUBLIC EMERALD_API ogl_primitive_type raGL_utils_get_ogl_primive_type_for_ral_primitive_type(ral_primitive_type in_primitive_type);
 
 /** TODO */

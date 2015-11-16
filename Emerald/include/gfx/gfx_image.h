@@ -39,6 +39,7 @@ enum gfx_image_mipmap_property
 {
     GFX_IMAGE_MIPMAP_PROPERTY_DATA_POINTER,
     GFX_IMAGE_MIPMAP_PROPERTY_DATA_SIZE,
+    GFX_IMAGE_MIPMAP_PROPERTY_DATA_TYPE,
     GFX_IMAGE_MIPMAP_PROPERTY_FORMAT_RAL,
     GFX_IMAGE_MIPMAP_PROPERTY_HEIGHT,
     GFX_IMAGE_MIPMAP_PROPERTY_IS_COMPRESSED,
@@ -57,16 +58,17 @@ typedef system_hashed_ansi_string (*PFNGFXIMAGEGETALTERNATIVEFILENAMEPROCPTR)(vo
                                                                               system_file_unpacker*     out_file_unpacker);             /* can be NULL if the file does not come from a file unpacker */
 
 /** TODO */
-PUBLIC unsigned int gfx_image_add_mipmap(gfx_image            image,
-                                         unsigned int         width,
-                                         unsigned int         height,
-                                         unsigned int         row_alignment,
-                                         ral_texture_format   format,
-                                         bool                 is_compressed,
-                                         const unsigned char* data_ptr,
-                                         unsigned int         data_size,
-                                         bool                 should_cache_data_ptr,
-                                         bool                 should_release_cached_data = false);
+PUBLIC unsigned int gfx_image_add_mipmap(gfx_image             image,
+                                         unsigned int          width,
+                                         unsigned int          height,
+                                         unsigned int          row_alignment,
+                                         ral_texture_format    format,
+                                         bool                  is_compressed,
+                                         const unsigned char*  data_ptr,
+                                         unsigned int          data_size,
+                                         ral_texture_data_type data_type,
+                                         bool                  should_cache_data_ptr,
+                                         bool                  should_release_cached_data = false);
 
 /** Creates a new instance of gfx_image.
  *

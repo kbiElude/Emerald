@@ -187,6 +187,7 @@ PRIVATE gfx_image gfx_bmp_shared_load_handler(bool                      should_l
                                                  header_ptr->width,
                                                  header_ptr->height,
                                                  4),
+                         RAL_TEXTURE_DATA_TYPE_UBYTE,
                         !should_load_from_file,  /* should_cache_data_ptr */
                          should_load_from_file); /* should_release_cached_data */
 

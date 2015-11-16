@@ -31,20 +31,22 @@ volatile PFNGFXIMAGEGETALTERNATIVEFILENAMEPROCPTR _alternative_filename_getter_p
 /** Private declarations */
 typedef struct _gfx_image_mipmap
 {
-    bool                 data_ptr_releaseable;
-    unsigned int         data_size;
-    const unsigned char* data_ptr;
-    ral_texture_format   format;
-    unsigned int         height;
-    bool                 is_compressed;
-    unsigned int         row_alignment;
-    unsigned int         width;
+    bool                  data_ptr_releaseable;
+    unsigned int          data_size;
+    ral_texture_data_type data_type;
+    const unsigned char*  data_ptr;
+    ral_texture_format    format;
+    unsigned int          height;
+    bool                  is_compressed;
+    unsigned int          row_alignment;
+    unsigned int          width;
 
     _gfx_image_mipmap()
     {
         data_ptr             = NULL;
         data_ptr_releaseable = false;
         data_size            = 0;
+        data_type            = RAL_TEXTURE_DATA_TYPE_UNKNOWN;
         format               = RAL_TEXTURE_FORMAT_UNKNOWN;
         height               = 0;
         is_compressed        = false;
@@ -202,6 +204,9 @@ PRIVATE gfx_image _gfx_image_create_from_alternative_file(system_hashed_ansi_str
                               sizeof(ogl_context_texture_compression_compressed_blob_header)                   +
                               sizeof(ogl_context_texture_compression_compressed_blob_mipmap_header) * n_mipmap);
 
+        ASSERT_DEBUG_SYNC(false,
+                          "TODO?");
+
         gfx_image_add_mipmap(result,
                              mipmap_header_ptr->width,
                              mipmap_header_ptr->height,
@@ -210,6 +215,7 @@ PRIVATE gfx_image _gfx_image_create_from_alternative_file(system_hashed_ansi_str
                              true,   /* is_compressed */
                              data,
                              mipmap_header_ptr->data_size,
+                             RAL_TEXTURE_DATA_TYPE_UNKNOWN, /* TODO TODO TODO */
                              false,  /* should_cache_data_ptr */
                              true); /* should_release_cached_data */
 
@@ -269,16 +275,17 @@ PUBLIC void _gfx_image_release(void* image)
 }
 
 /** Please see header for specification */
-PUBLIC unsigned int gfx_image_add_mipmap(gfx_image            image,
-                                         unsigned int         width,
-                                         unsigned int         height,
-                                         unsigned int         row_alignment,
-                                         ral_texture_format   format,
-                                         bool                 is_compressed,
-                                         const unsigned char* data_ptr,
-                                         unsigned int         data_size,
-                                         bool                 should_cache_data_ptr,
-                                         bool                 should_release_cached_data)
+PUBLIC unsigned int gfx_image_add_mipmap(gfx_image             image,
+                                         unsigned int          width,
+                                         unsigned int          height,
+                                         unsigned int          row_alignment,
+                                         ral_texture_format    format,
+                                         bool                  is_compressed,
+                                         const unsigned char*  data_ptr,
+                                         unsigned int          data_size,
+                                         ral_texture_data_type data_type,
+                                         bool                  should_cache_data_ptr,
+                                         bool                  should_release_cached_data)
 {
     _gfx_image*  image_ptr = (_gfx_image*) image;
     unsigned int result    = -1;
@@ -294,6 +301,7 @@ PUBLIC unsigned int gfx_image_add_mipmap(gfx_image            image,
     }
 
     mipmap_ptr->data_size      = data_size;
+    mipmap_ptr->data_type      = data_type;
     mipmap_ptr->format         = format;
     mipmap_ptr->height         = height;
     mipmap_ptr->is_compressed  = is_compressed;
@@ -553,6 +561,13 @@ PUBLIC EMERALD_API bool gfx_image_get_mipmap_property(gfx_image                 
                 case GFX_IMAGE_MIPMAP_PROPERTY_DATA_SIZE:
                 {
                     *(unsigned int*) out_result = mipmap_ptr->data_size;
+
+                    break;
+                }
+
+                case GFX_IMAGE_MIPMAP_PROPERTY_DATA_TYPE:
+                {
+                    *((ral_texture_data_type*) out_result) = mipmap_ptr->data_type;
 
                     break;
                 }

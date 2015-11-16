@@ -31,6 +31,171 @@ PUBLIC EMERALD_API ogl_compare_function raGL_utils_get_ogl_compare_function_for_
     return result_array[in_compare_function];
 }
 
+/** Please see header for sepcification */
+PUBLIC EMERALD_API ogl_texture_data_format raGL_utils_get_ogl_data_format_for_ral_texture_format(ral_texture_format in_format)
+{
+    ogl_texture_data_format result = OGL_TEXTURE_DATA_FORMAT_UNDEFINED;
+
+    switch (in_format)
+    {
+
+        case RAL_TEXTURE_FORMAT_COMPRESSED_BC4_SNORM:
+        case RAL_TEXTURE_FORMAT_COMPRESSED_BC4_UNORM:
+        case RAL_TEXTURE_FORMAT_COMPRESSED_R11_EAC_SNORM:
+        case RAL_TEXTURE_FORMAT_COMPRESSED_R11_EAC_UNORM:
+        case RAL_TEXTURE_FORMAT_DEPTH16_SNORM:
+        case RAL_TEXTURE_FORMAT_DEPTH24_SNORM:
+        case RAL_TEXTURE_FORMAT_DEPTH32_FLOAT:
+        case RAL_TEXTURE_FORMAT_DEPTH32_SNORM:
+        case RAL_TEXTURE_FORMAT_R16_FLOAT:
+        case RAL_TEXTURE_FORMAT_R16_SINT:
+        case RAL_TEXTURE_FORMAT_R16_SNORM:
+        case RAL_TEXTURE_FORMAT_R16_UINT:
+        case RAL_TEXTURE_FORMAT_R16_UNORM:
+        case RAL_TEXTURE_FORMAT_R32_FLOAT:
+        case RAL_TEXTURE_FORMAT_R32_SINT:
+        case RAL_TEXTURE_FORMAT_R32_UINT:
+        case RAL_TEXTURE_FORMAT_R8_SINT:
+        case RAL_TEXTURE_FORMAT_R8_SNORM:
+        case RAL_TEXTURE_FORMAT_R8_UINT:
+        case RAL_TEXTURE_FORMAT_R8_UNORM:
+        {
+            result = OGL_TEXTURE_DATA_FORMAT_RED;
+
+            break;
+        }
+
+        case RAL_TEXTURE_FORMAT_COMPRESSED_BC5_SNORM:
+        case RAL_TEXTURE_FORMAT_COMPRESSED_BC5_UNORM:
+        case RAL_TEXTURE_FORMAT_COMPRESSED_RG11_EAC_SNORM:
+        case RAL_TEXTURE_FORMAT_COMPRESSED_RG11_EAC_UNORM:
+        case RAL_TEXTURE_FORMAT_RG16_FLOAT:
+        case RAL_TEXTURE_FORMAT_RG16_SINT:
+        case RAL_TEXTURE_FORMAT_RG16_SNORM:
+        case RAL_TEXTURE_FORMAT_RG16_UINT:
+        case RAL_TEXTURE_FORMAT_RG16_UNORM:
+        case RAL_TEXTURE_FORMAT_RG32_FLOAT:
+        case RAL_TEXTURE_FORMAT_RG32_SINT:
+        case RAL_TEXTURE_FORMAT_RG32_UINT:
+        case RAL_TEXTURE_FORMAT_RG8_SINT:
+        case RAL_TEXTURE_FORMAT_RG8_SNORM:
+        case RAL_TEXTURE_FORMAT_RG8_UINT:
+        case RAL_TEXTURE_FORMAT_RG8_UNORM:
+        {
+            result = OGL_TEXTURE_DATA_FORMAT_RG;
+
+            break;
+        }
+
+        case RAL_TEXTURE_FORMAT_COMPRESSED_BC6_SFLOAT:
+        case RAL_TEXTURE_FORMAT_COMPRESSED_BC6_UFLOAT:
+        case RAL_TEXTURE_FORMAT_COMPRESSED_RGB8_ETC2_UNORM:
+        case RAL_TEXTURE_FORMAT_COMPRESSED_SRGB8_ETC2_UNORM:
+        case RAL_TEXTURE_FORMAT_R11FG11FB10F:
+        case RAL_TEXTURE_FORMAT_R3G3B2_UNORM:
+        case RAL_TEXTURE_FORMAT_RGB10_UNORM:
+        case RAL_TEXTURE_FORMAT_RGB12_UNORM:
+        case RAL_TEXTURE_FORMAT_RGB16_FLOAT:
+        case RAL_TEXTURE_FORMAT_RGB16_SINT:
+        case RAL_TEXTURE_FORMAT_RGB16_SNORM:
+        case RAL_TEXTURE_FORMAT_RGB16_UINT:
+        case RAL_TEXTURE_FORMAT_RGB16_UNORM:
+        case RAL_TEXTURE_FORMAT_RGB32_FLOAT:
+        case RAL_TEXTURE_FORMAT_RGB32_SINT:
+        case RAL_TEXTURE_FORMAT_RGB32_UINT:
+        case RAL_TEXTURE_FORMAT_RGB4_UNORM:
+        case RAL_TEXTURE_FORMAT_RGB5A1_UNORM:
+        case RAL_TEXTURE_FORMAT_RGB5_UNORM:
+        case RAL_TEXTURE_FORMAT_RGB8_SINT:
+        case RAL_TEXTURE_FORMAT_RGB8_SNORM:
+        case RAL_TEXTURE_FORMAT_RGB8_UINT:
+        case RAL_TEXTURE_FORMAT_RGB8_UNORM:
+        case RAL_TEXTURE_FORMAT_SRGB8_UNORM:
+        {
+            result = OGL_TEXTURE_DATA_FORMAT_RGB;
+
+            break;
+        }
+
+        case RAL_TEXTURE_FORMAT_COMPRESSED_BC7_SRGB_UNORM:
+        case RAL_TEXTURE_FORMAT_COMPRESSED_BC7_UNORM:
+        case RAL_TEXTURE_FORMAT_COMPRESSED_RGB8_PUNCHTHROUGH_ALPHA1_ETC2_UNORM:
+        case RAL_TEXTURE_FORMAT_COMPRESSED_RGBA8_ETC2_EAC_UNORM:
+        case RAL_TEXTURE_FORMAT_COMPRESSED_SRGB8_ALPHA8_ETC2_EAC_UNORM:
+        case RAL_TEXTURE_FORMAT_COMPRESSED_SRGB8_PUNCHTHROUGH_ALPHA1_ETC2_UNORM:
+        case RAL_TEXTURE_FORMAT_RGB10A2_UINT:
+        case RAL_TEXTURE_FORMAT_RGB10A2_UNORM:
+        case RAL_TEXTURE_FORMAT_RGBA12_UNORM:
+        case RAL_TEXTURE_FORMAT_RGBA16_FLOAT:
+        case RAL_TEXTURE_FORMAT_RGBA16_SINT:
+        case RAL_TEXTURE_FORMAT_RGBA16_SNORM:
+        case RAL_TEXTURE_FORMAT_RGBA16_UINT:
+        case RAL_TEXTURE_FORMAT_RGBA16_UNORM:
+        case RAL_TEXTURE_FORMAT_RGBA2_UNORM:
+        case RAL_TEXTURE_FORMAT_RGBA32_FLOAT:
+        case RAL_TEXTURE_FORMAT_RGBA32_SINT:
+        case RAL_TEXTURE_FORMAT_RGBA32_UINT:
+        case RAL_TEXTURE_FORMAT_RGBA4_UNORM:
+        case RAL_TEXTURE_FORMAT_RGBA8_SINT:
+        case RAL_TEXTURE_FORMAT_RGBA8_SNORM:
+        case RAL_TEXTURE_FORMAT_RGBA8_UINT:
+        case RAL_TEXTURE_FORMAT_RGBA8_UNORM:
+        {
+            result = OGL_TEXTURE_DATA_FORMAT_RGBA;
+
+            break;
+        }
+
+        case RAL_TEXTURE_FORMAT_RGB9E5_FLOAT:
+        {
+            result = OGL_TEXTURE_DATA_FORMAT_RGBE;
+
+            break;
+        }
+
+        case RAL_TEXTURE_FORMAT_DEPTH24_STENCIL8:
+        case RAL_TEXTURE_FORMAT_DEPTH32F_STENCIL8:
+        {
+            result = OGL_TEXTURE_DATA_FORMAT_DEPTH_STENCIL;
+
+            break;
+        }
+
+        default:
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Unrecognized ral_texture_format specified.");
+        }
+    }
+
+    return result;
+}
+
+/** Please see header for specification */
+PUBLIC EMERALD_API ogl_texture_data_type raGL_utils_get_ogl_data_type_for_ral_texture_data_type(ral_texture_data_type in_data_type)
+{
+    ogl_texture_data_type result = OGL_TEXTURE_DATA_TYPE_UNDEFINED;
+
+    switch (in_data_type)
+    {
+        case RAL_TEXTURE_DATA_TYPE_FLOAT:  result = OGL_TEXTURE_DATA_TYPE_FLOAT;  break;
+        case RAL_TEXTURE_DATA_TYPE_SBYTE:  result = OGL_TEXTURE_DATA_TYPE_SBYTE;  break;
+        case RAL_TEXTURE_DATA_TYPE_SINT:   result = OGL_TEXTURE_DATA_TYPE_SINT;   break;
+        case RAL_TEXTURE_DATA_TYPE_SSHORT: result = OGL_TEXTURE_DATA_TYPE_SSHORT; break;
+        case RAL_TEXTURE_DATA_TYPE_UBYTE:  result = OGL_TEXTURE_DATA_TYPE_UBYTE;  break;
+        case RAL_TEXTURE_DATA_TYPE_UINT:   result = OGL_TEXTURE_DATA_TYPE_UINT;   break;
+        case RAL_TEXTURE_DATA_TYPE_USHORT: result = OGL_TEXTURE_DATA_TYPE_USHORT; break;
+
+        default:
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Unrecognized input ral_texture_data_type value.");
+        }
+    } /* switch (in_data_type) */
+
+    return result;
+}
+
 /** Please see header for specification */
 PUBLIC EMERALD_API ogl_texture_filter raGL_utils_get_ogl_texture_filter_for_ral_mag_texture_filter(ral_texture_filter in_texture_filter)
 {

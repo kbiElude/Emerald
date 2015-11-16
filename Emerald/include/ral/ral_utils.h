@@ -6,6 +6,11 @@
 
 typedef enum
 {
+    /* bool.
+     *
+     * true if the texture format is compressed; false otherwise */
+    RAL_TEXTURE_FORMAT_PROPERTY_IS_COMPRESSED,
+
     /* uint32_t.
      *
      * Number of components that a given texture format provides data for.

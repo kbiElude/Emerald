@@ -1629,7 +1629,6 @@ PRIVATE void _ogl_context_retrieve_ES_function_pointers(_ogl_context* context_pt
         {&context_ptr->entry_points_es.pGLCompressedTexSubImage2D,             "glCompressedTexSubImage2D"},
         {&context_ptr->entry_points_es.pGLCompressedTexSubImage3D,             "glCompressedTexSubImage3D"},
         {&context_ptr->entry_points_es.pGLCopyBufferSubData,                   "glCopyBufferSubData"},
-        {&context_ptr->entry_points_es.pGLCopyTexImage2D,                      "glCopyTexImage2D"},
         {&context_ptr->entry_points_es.pGLCopyTexSubImage2D,                   "glCopyTexSubImage2D"},
         {&context_ptr->entry_points_es.pGLCopyTexSubImage3D,                   "glCopyTexSubImage3D"},
         {&context_ptr->entry_points_es.pGLCreateProgram,                       "glCreateProgram"},
@@ -2005,8 +2004,6 @@ PRIVATE void _ogl_context_retrieve_GL_EXT_direct_state_access_function_pointers(
         {&context_ptr->entry_points_private.pGLCompressedTextureSubImage1DEXT,                                 "glCompressedTextureSubImage1DEXT"},
         {&context_ptr->entry_points_private.pGLCompressedTextureSubImage2DEXT,                                 "glCompressedTextureSubImage2DEXT"},
         {&context_ptr->entry_points_private.pGLCompressedTextureSubImage3DEXT,                                 "glCompressedTextureSubImage3DEXT"},
-        {&context_ptr->entry_points_private.pGLCopyTextureImage1DEXT,                                          "glCopyTextureImage1DEXT"},
-        {&context_ptr->entry_points_private.pGLCopyTextureImage2DEXT,                                          "glCopyTextureImage2DEXT"},
         {&context_ptr->entry_points_private.pGLCopyTextureSubImage1DEXT,                                       "glCopyTextureSubImage1DEXT"},
         {&context_ptr->entry_points_private.pGLCopyTextureSubImage2DEXT,                                       "glCopyTextureSubImage2DEXT"},
         {&context_ptr->entry_points_private.pGLCopyTextureSubImage3DEXT,                                       "glCopyTextureSubImage3DEXT"},
@@ -2050,9 +2047,6 @@ PRIVATE void _ogl_context_retrieve_GL_EXT_direct_state_access_function_pointers(
         {&context_ptr->entry_points_private.pGLTextureParameterIuivEXT,                                        "glTextureParameterIuivEXT"},
         {&context_ptr->entry_points_private.pGLTextureParameterfEXT,                                           "glTextureParameterfEXT"},
         {&context_ptr->entry_points_private.pGLTextureParameterfvEXT,                                          "glTextureParameterfvEXT"},
-        {&context_ptr->entry_points_private.pGLTextureStorage1DEXT,                                            "glTextureStorage1DEXT"},
-        {&context_ptr->entry_points_private.pGLTextureStorage2DEXT,                                            "glTextureStorage2DEXT"},
-        {&context_ptr->entry_points_private.pGLTextureStorage3DEXT,                                            "glTextureStorage3DEXT"},
         {&context_ptr->entry_points_private.pGLTextureSubImage1DEXT,                                           "glTextureSubImage1DEXT"},
         {&context_ptr->entry_points_private.pGLTextureSubImage2DEXT,                                           "glTextureSubImage2DEXT"},
         {&context_ptr->entry_points_private.pGLTextureSubImage3DEXT,                                           "glTextureSubImage3DEXT"},
@@ -2091,14 +2085,30 @@ PRIVATE void _ogl_context_retrieve_GL_EXT_direct_state_access_function_pointers(
             }
         }
 
-        /* ARB_texture_storage_multisample */
-        context_ptr->entry_points_private.pGLTextureStorage2DMultisampleEXT = (PFNGLTEXTURESTORAGE2DMULTISAMPLEEXTPROC) context_ptr->pfn_get_func_ptr(context_ptr->context_platform,
-                                                                                                                                                      "glTextureStorage2DMultisampleEXT");
-        context_ptr->entry_points_private.pGLTextureStorage3DMultisampleEXT = (PFNGLTEXTURESTORAGE3DMULTISAMPLEEXTPROC) context_ptr->pfn_get_func_ptr(context_ptr->context_platform,
-                                                                                                                                                      "glTextureStorage3DMultisampleEXT");
+        /* ARB_texture_storage */
+        context_ptr->entry_points_gl_ext_direct_state_access.pGLTextureStorage1DEXT = (PFNGLTEXTURESTORAGE1DEXTPROC) context_ptr->pfn_get_func_ptr(context_ptr->context_platform,
+                                                                                                                                                   "glTextureStorage1DEXT");
+        context_ptr->entry_points_gl_ext_direct_state_access.pGLTextureStorage2DEXT = (PFNGLTEXTURESTORAGE2DEXTPROC) context_ptr->pfn_get_func_ptr(context_ptr->context_platform,
+                                                                                                                                                   "glTextureStorage2DEXT");
+        context_ptr->entry_points_gl_ext_direct_state_access.pGLTextureStorage3DEXT = (PFNGLTEXTURESTORAGE3DEXTPROC) context_ptr->pfn_get_func_ptr(context_ptr->context_platform,
+                                                                                                                                                   "glTextureStorage3DEXT");
 
-        if (context_ptr->entry_points_private.pGLTextureStorage2DMultisampleEXT == NULL ||
-            context_ptr->entry_points_private.pGLTextureStorage3DMultisampleEXT == NULL)
+        if (context_ptr->entry_points_gl_ext_direct_state_access.pGLTextureStorage1DEXT == NULL ||
+            context_ptr->entry_points_gl_ext_direct_state_access.pGLTextureStorage2DEXT == NULL ||
+            context_ptr->entry_points_gl_ext_direct_state_access.pGLTextureStorage3DEXT == NULL)
+        {
+            ASSERT_ALWAYS_SYNC(false,
+                               "DSA version entry-points of GL_ARB_texture_storage are unavailable in spite of being reported.");
+        }
+
+        /* ARB_texture_storage_multisample */
+        context_ptr->entry_points_gl_ext_direct_state_access.pGLTextureStorage2DMultisampleEXT = (PFNGLTEXTURESTORAGE2DMULTISAMPLEEXTPROC) context_ptr->pfn_get_func_ptr(context_ptr->context_platform,
+                                                                                                                                                                         "glTextureStorage2DMultisampleEXT");
+        context_ptr->entry_points_gl_ext_direct_state_access.pGLTextureStorage3DMultisampleEXT = (PFNGLTEXTURESTORAGE3DMULTISAMPLEEXTPROC) context_ptr->pfn_get_func_ptr(context_ptr->context_platform,
+                                                                                                                                                                         "glTextureStorage3DMultisampleEXT");
+
+        if (context_ptr->entry_points_gl_ext_direct_state_access.pGLTextureStorage2DMultisampleEXT == NULL ||
+            context_ptr->entry_points_gl_ext_direct_state_access.pGLTextureStorage3DMultisampleEXT == NULL)
         {
             ASSERT_ALWAYS_SYNC(false,
                                "DSA version entry-points of GL_ARB_texture_storage_multisample are unavailable in spite of being reported.");
@@ -2111,8 +2121,6 @@ PRIVATE void _ogl_context_retrieve_GL_EXT_direct_state_access_function_pointers(
     context_ptr->entry_points_gl_ext_direct_state_access.pGLCompressedTextureSubImage1DEXT    = ogl_context_wrappers_glCompressedTextureSubImage1DEXT;
     context_ptr->entry_points_gl_ext_direct_state_access.pGLCompressedTextureSubImage2DEXT    = ogl_context_wrappers_glCompressedTextureSubImage2DEXT;
     context_ptr->entry_points_gl_ext_direct_state_access.pGLCompressedTextureSubImage3DEXT    = ogl_context_wrappers_glCompressedTextureSubImage3DEXT;
-    context_ptr->entry_points_gl_ext_direct_state_access.pGLCopyTextureImage1DEXT             = ogl_context_wrappers_glCopyTextureImage1DEXT;
-    context_ptr->entry_points_gl_ext_direct_state_access.pGLCopyTextureImage2DEXT             = ogl_context_wrappers_glCopyTextureImage2DEXT;
     context_ptr->entry_points_gl_ext_direct_state_access.pGLCopyTextureSubImage1DEXT          = ogl_context_wrappers_glCopyTextureSubImage1DEXT;
     context_ptr->entry_points_gl_ext_direct_state_access.pGLCopyTextureSubImage2DEXT          = ogl_context_wrappers_glCopyTextureSubImage2DEXT;
     context_ptr->entry_points_gl_ext_direct_state_access.pGLCopyTextureSubImage3DEXT          = ogl_context_wrappers_glCopyTextureSubImage3DEXT;
@@ -2144,11 +2152,6 @@ PRIVATE void _ogl_context_retrieve_GL_EXT_direct_state_access_function_pointers(
     context_ptr->entry_points_gl_ext_direct_state_access.pGLTextureParameterfvEXT             = ogl_context_wrappers_glTextureParameterfvEXT;
     context_ptr->entry_points_gl_ext_direct_state_access.pGLTextureParameterIivEXT            = ogl_context_wrappers_glTextureParameterIivEXT;
     context_ptr->entry_points_gl_ext_direct_state_access.pGLTextureParameterIuivEXT           = ogl_context_wrappers_glTextureParameterIuivEXT;
-    context_ptr->entry_points_gl_ext_direct_state_access.pGLTextureStorage1DEXT               = ogl_context_wrappers_glTextureStorage1DEXT;
-    context_ptr->entry_points_gl_ext_direct_state_access.pGLTextureStorage2DEXT               = ogl_context_wrappers_glTextureStorage2DEXT;
-    context_ptr->entry_points_gl_ext_direct_state_access.pGLTextureStorage2DMultisampleEXT    = ogl_context_wrappers_glTextureStorage2DMultisampleEXT;
-    context_ptr->entry_points_gl_ext_direct_state_access.pGLTextureStorage3DEXT               = ogl_context_wrappers_glTextureStorage3DEXT;
-    context_ptr->entry_points_gl_ext_direct_state_access.pGLTextureStorage3DMultisampleEXT    = ogl_context_wrappers_glTextureStorage3DMultisampleEXT;
     context_ptr->entry_points_gl_ext_direct_state_access.pGLTextureSubImage1DEXT              = ogl_context_wrappers_glTextureSubImage1DEXT;
     context_ptr->entry_points_gl_ext_direct_state_access.pGLTextureSubImage2DEXT              = ogl_context_wrappers_glTextureSubImage2DEXT;
     context_ptr->entry_points_gl_ext_direct_state_access.pGLTextureSubImage3DEXT              = ogl_context_wrappers_glTextureSubImage3DEXT;
@@ -2227,8 +2230,6 @@ PRIVATE void _ogl_context_retrieve_GL_function_pointers(_ogl_context* context_pt
         {&context_ptr->entry_points_private.pGLCompressedTexSubImage3D,                     "glCompressedTexSubImage3D"},
         {&context_ptr->entry_points_private.pGLCopyBufferSubData,                           "glCopyBufferSubData"},
         {&context_ptr->entry_points_gl.pGLCopyImageSubData,                                 "glCopyImageSubData"},
-        {&context_ptr->entry_points_private.pGLCopyTexImage1D,                              "glCopyTexImage1D"},
-        {&context_ptr->entry_points_private.pGLCopyTexImage2D,                              "glCopyTexImage2D"},
         {&context_ptr->entry_points_private.pGLCopyTexSubImage1D,                           "glCopyTexSubImage1D"},
         {&context_ptr->entry_points_private.pGLCopyTexSubImage2D,                           "glCopyTexSubImage2D"},
         {&context_ptr->entry_points_private.pGLCopyTexSubImage3D,                           "glCopyTexSubImage3D"},
@@ -2473,9 +2474,6 @@ PRIVATE void _ogl_context_retrieve_GL_function_pointers(_ogl_context* context_pt
         {&context_ptr->entry_points_gl.pGLStencilOpSeparate,                                "glStencilOpSeparate"},
         {&context_ptr->entry_points_private.pGLTexBuffer,                                   "glTexBuffer"},
         {&context_ptr->entry_points_private.pGLTexBufferRange,                              "glTexBufferRange"},
-        {&context_ptr->entry_points_private.pGLTexImage1D,                                  "glTexImage1D"},
-        {&context_ptr->entry_points_private.pGLTexImage2D,                                  "glTexImage2D"},
-        {&context_ptr->entry_points_private.pGLTexImage3D,                                  "glTexImage3D"},
         {&context_ptr->entry_points_private.pGLTexParameterf,                               "glTexParameterf"},
         {&context_ptr->entry_points_private.pGLTexParameterfv,                              "glTexParameterfv"},
         {&context_ptr->entry_points_private.pGLTexParameteri,                               "glTexParameteri"},
@@ -2598,8 +2596,6 @@ PRIVATE void _ogl_context_retrieve_GL_function_pointers(_ogl_context* context_pt
     context_ptr->entry_points_gl.pGLCompressedTexSubImage2D                     = ogl_context_wrappers_glCompressedTexSubImage2D;
     context_ptr->entry_points_gl.pGLCompressedTexSubImage3D                     = ogl_context_wrappers_glCompressedTexSubImage3D;
     context_ptr->entry_points_gl.pGLCopyBufferSubData                           = ogl_context_wrappers_glCopyBufferSubData;
-    context_ptr->entry_points_gl.pGLCopyTexImage1D                              = ogl_context_wrappers_glCopyTexImage1D;
-    context_ptr->entry_points_gl.pGLCopyTexImage2D                              = ogl_context_wrappers_glCopyTexImage2D;
     context_ptr->entry_points_gl.pGLCopyTexSubImage1D                           = ogl_context_wrappers_glCopyTexSubImage1D;
     context_ptr->entry_points_gl.pGLCopyTexSubImage2D                           = ogl_context_wrappers_glCopyTexSubImage2D;
     context_ptr->entry_points_gl.pGLCopyTexSubImage3D                           = ogl_context_wrappers_glCopyTexSubImage3D;
@@ -2704,11 +2700,6 @@ PRIVATE void _ogl_context_retrieve_GL_function_pointers(_ogl_context* context_pt
     context_ptr->entry_points_gl.pGLTexParameterIuiv                            = ogl_context_wrappers_glTexParameterIuiv;
     context_ptr->entry_points_gl.pGLTexParameteri                               = ogl_context_wrappers_glTexParameteri;
     context_ptr->entry_points_gl.pGLTexParameteriv                              = ogl_context_wrappers_glTexParameteriv;
-    context_ptr->entry_points_gl.pGLTexStorage1D                                = ogl_context_wrappers_glTexStorage1D;
-    context_ptr->entry_points_gl.pGLTexStorage2D                                = ogl_context_wrappers_glTexStorage2D;
-    context_ptr->entry_points_gl.pGLTexStorage2DMultisample                     = ogl_context_wrappers_glTexStorage2DMultisample;
-    context_ptr->entry_points_gl.pGLTexStorage3D                                = ogl_context_wrappers_glTexStorage3D;
-    context_ptr->entry_points_gl.pGLTexStorage3DMultisample                     = ogl_context_wrappers_glTexStorage3DMultisample;
     context_ptr->entry_points_gl.pGLTexSubImage1D                               = ogl_context_wrappers_glTexSubImage1D;
     context_ptr->entry_points_gl.pGLTexSubImage2D                               = ogl_context_wrappers_glTexSubImage2D;
     context_ptr->entry_points_gl.pGLTexSubImage3D                               = ogl_context_wrappers_glTexSubImage3D;

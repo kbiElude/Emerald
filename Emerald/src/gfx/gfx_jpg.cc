@@ -238,6 +238,7 @@ PRIVATE gfx_image gfx_jpg_shared_load_handler(bool                      should_l
                          false,
                          temp_buffer,
                          row_stride * cinfo.output_height,
+                         RAL_TEXTURE_DATA_TYPE_UBYTE,
                          !should_load_from_file, /* should_cache_data_ptr */
                          should_load_from_file); /* should_release_cached_data */
 

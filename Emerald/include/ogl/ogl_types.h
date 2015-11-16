@@ -55,6 +55,35 @@ typedef enum
     OGL_PRIMITIVE_TYPE_UNDEFINED
 } ogl_primitive_type;
 
+typedef enum
+{
+    OGL_TEXTURE_DATA_FORMAT_DEPTH_STENCIL = GL_DEPTH_STENCIL,
+    OGL_TEXTURE_DATA_FORMAT_RED           = GL_RED,
+    OGL_TEXTURE_DATA_FORMAT_RED_INTEGER   = GL_RED_INTEGER,
+    OGL_TEXTURE_DATA_FORMAT_RG            = GL_RG,
+    OGL_TEXTURE_DATA_FORMAT_RG_INTEGER    = GL_RG_INTEGER,
+    OGL_TEXTURE_DATA_FORMAT_RGB           = GL_RGB,
+    OGL_TEXTURE_DATA_FORMAT_RGB_INTEGER   = GL_RGB_INTEGER,
+    OGL_TEXTURE_DATA_FORMAT_RGBA          = GL_RGBA,
+    OGL_TEXTURE_DATA_FORMAT_RGBA_INTEGER  = GL_RGBA_INTEGER,
+    OGL_TEXTURE_DATA_FORMAT_RGBE          = GL_RGB, /* as per spec */
+
+    OGL_TEXTURE_DATA_FORMAT_UNDEFINED = GL_NONE
+} ogl_texture_data_format;
+
+typedef enum
+{
+    OGL_TEXTURE_DATA_TYPE_FLOAT  = GL_FLOAT,
+    OGL_TEXTURE_DATA_TYPE_SBYTE  = GL_BYTE,
+    OGL_TEXTURE_DATA_TYPE_SINT   = GL_INT,
+    OGL_TEXTURE_DATA_TYPE_SSHORT = GL_SHORT,
+    OGL_TEXTURE_DATA_TYPE_UBYTE  = GL_UNSIGNED_BYTE,
+    OGL_TEXTURE_DATA_TYPE_UINT   = GL_UNSIGNED_INT,
+    OGL_TEXTURE_DATA_TYPE_USHORT = GL_UNSIGNED_SHORT,
+
+    OGL_TEXTURE_DATA_TYPE_UNDEFINED = GL_NONE
+} ogl_texture_data_type;
+
 /* Curve renderer */
 DECLARE_HANDLE(ogl_curve_renderer);
 
@@ -75,8 +104,6 @@ typedef                 PFNGLACTIVETEXTUREPROC                          PFNWRAPP
 typedef                 PFNGLCOMPRESSEDTEXSUBIMAGE1DPROC                PFNWRAPPEDGLCOMPRESSEDTEXSUBIMAGE1DPROC;
 typedef                 PFNGLCOMPRESSEDTEXSUBIMAGE2DPROC                PFNWRAPPEDGLCOMPRESSEDTEXSUBIMAGE2DPROC;
 typedef                 PFNGLCOMPRESSEDTEXSUBIMAGE3DPROC                PFNWRAPPEDGLCOMPRESSEDTEXSUBIMAGE3DPROC;
-typedef                 PFNGLCOPYTEXIMAGE1DPROC                         PFNWRAPPEDGLCOPYTEXIMAGE1DPROC;
-typedef                 PFNGLCOPYTEXIMAGE2DPROC                         PFNWRAPPEDGLCOPYTEXIMAGE2DPROC;
 typedef                 PFNGLCOPYTEXSUBIMAGE1DPROC                      PFNWRAPPEDGLCOPYTEXSUBIMAGE1DPROC;
 typedef                 PFNGLCOPYTEXSUBIMAGE2DPROC                      PFNWRAPPEDGLCOPYTEXSUBIMAGE2DPROC;
 typedef                 PFNGLCOPYTEXSUBIMAGE3DPROC                      PFNWRAPPEDGLCOPYTEXSUBIMAGE3DPROC;
@@ -116,8 +143,6 @@ typedef void (APIENTRY* PFNWRAPPEDGLCOMPRESSEDTEXTUREIMAGE1DEXTPROC)    (ogl_tex
 typedef void (APIENTRY* PFNWRAPPEDGLCOMPRESSEDTEXTURESUBIMAGE3DEXTPROC) (ogl_texture texture, GLenum target, GLint level, GLint xoffset, GLint yoffset, GLint zoffset, GLsizei width, GLsizei height, GLsizei depth, GLenum format, GLsizei imageSize, const GLvoid *bits);
 typedef void (APIENTRY* PFNWRAPPEDGLCOMPRESSEDTEXTURESUBIMAGE2DEXTPROC) (ogl_texture texture, GLenum target, GLint level, GLint xoffset, GLint yoffset, GLsizei width, GLsizei height, GLenum format, GLsizei imageSize, const GLvoid *bits);
 typedef void (APIENTRY* PFNWRAPPEDGLCOMPRESSEDTEXTURESUBIMAGE1DEXTPROC) (ogl_texture texture, GLenum target, GLint level, GLint xoffset, GLsizei width, GLenum format, GLsizei imageSize, const GLvoid *bits);
-typedef void (APIENTRY *PFNWRAPPEDGLCOPYTEXTUREIMAGE1DEXTPROC)          (ogl_texture texture, GLenum target, GLint level, GLenum internalformat, GLint x, GLint y, GLsizei width, GLint border);
-typedef void (APIENTRY *PFNWRAPPEDGLCOPYTEXTUREIMAGE2DEXTPROC)          (ogl_texture texture, GLenum target, GLint level, GLenum internalformat, GLint x, GLint y, GLsizei width, GLsizei height, GLint border);
 typedef void (APIENTRY *PFNWRAPPEDGLCOPYTEXTURESUBIMAGE1DEXTPROC)       (ogl_texture texture, GLenum target, GLint level, GLint xoffset, GLint x, GLint y, GLsizei width);
 typedef void (APIENTRY *PFNWRAPPEDGLCOPYTEXTURESUBIMAGE2DEXTPROC)       (ogl_texture texture, GLenum target, GLint level, GLint xoffset, GLint yoffset, GLint x, GLint y, GLsizei width, GLsizei height);
 typedef void (APIENTRY *PFNWRAPPEDGLCOPYTEXTURESUBIMAGE3DEXTPROC)       (ogl_texture texture, GLenum target, GLint level, GLint xoffset, GLint yoffset, GLint zoffset, GLint x, GLint y, GLsizei width, GLsizei height);
@@ -140,11 +165,6 @@ typedef void (APIENTRY* PFNWRAPPEDGLNAMEDFRAMEBUFFERTEXTURE1DEXTPROC)   (GLuint 
 typedef void (APIENTRY* PFNWRAPPEDGLNAMEDFRAMEBUFFERTEXTURE2DEXTPROC)   (GLuint framebuffer, GLenum attachment, GLenum textarget, ogl_texture texture, GLint level);
 typedef void (APIENTRY* PFNWRAPPEDGLNAMEDFRAMEBUFFERTEXTURE3DEXTPROC)   (GLuint framebuffer, GLenum attachment, GLenum textarget, ogl_texture texture, GLint level, GLint zoffset);
 typedef void (APIENTRY* PFNWRAPPEDGLTEXBUFFERRANGEPROC)                 (GLenum target,      GLenum internalformat, GLuint buffer, GLintptr offset, GLsizeiptr size);
-typedef void (APIENTRY* PFNWRAPPEDGLTEXSTORAGE1DPROC)                   (GLenum target,      GLsizei levels, GLenum internalformat, GLsizei width);
-typedef void (APIENTRY* PFNWRAPPEDGLTEXSTORAGE2DPROC)                   (GLenum target,      GLsizei levels, GLenum internalformat, GLsizei width, GLsizei height);
-typedef void (APIENTRY* PFNWRAPPEDGLTEXSTORAGE2DMULTISAMPLEPROC)        (GLenum target,      GLsizei samples, GLenum internalformat, GLsizei width, GLsizei height, GLboolean fixedsamplelocations);
-typedef void (APIENTRY* PFNWRAPPEDGLTEXSTORAGE3DPROC)                   (GLenum target,      GLsizei levels, GLenum internalformat, GLsizei width, GLsizei height, GLsizei depth);
-typedef void (APIENTRY* PFNWRAPPEDGLTEXSTORAGE3DMULTISAMPLEPROC)        (GLenum target,      GLsizei samples, GLenum internalformat, GLsizei width, GLsizei height, GLsizei depth, GLboolean fixedsamplelocations);
 typedef void (APIENTRY* PFNWRAPPEDGLTEXTUREBUFFEREXTPROC)               (ogl_texture texture, GLenum target, GLenum internalformat, GLuint buffer);
 typedef void (APIENTRY* PFNWRAPPEDGLTEXTUREBUFFERRANGEEXTPROC)          (ogl_texture texture, GLenum target, GLenum internalformat, GLuint buffer, GLintptr offset, GLsizeiptr size);
 typedef void (APIENTRY *PFNWRAPPEDGLTEXTUREIMAGE1DEXTPROC)              (ogl_texture texture, GLenum target, GLint       level, GLenum internalformat, GLsizei width, GLint border, GLenum format, GLenum type, const GLvoid *pixels);
@@ -558,7 +578,6 @@ typedef struct
     PFNGLCOMPRESSEDTEXSUBIMAGE2DPROC             pGLCompressedTexSubImage2D;
     PFNGLCOMPRESSEDTEXSUBIMAGE3DPROC             pGLCompressedTexSubImage3D;
     PFNGLCOPYBUFFERSUBDATAPROC                   pGLCopyBufferSubData;
-    PFNGLCOPYTEXIMAGE2DPROC                      pGLCopyTexImage2D;
     PFNGLCOPYTEXSUBIMAGE2DPROC                   pGLCopyTexSubImage2D;
     PFNGLCOPYTEXSUBIMAGE3DPROC                   pGLCopyTexSubImage3D;
     PFNGLCREATEPROGRAMPROC                       pGLCreateProgram;
@@ -1008,8 +1027,6 @@ typedef struct
     PFNWRAPPEDGLCOMPRESSEDTEXSUBIMAGE3DPROC              pGLCompressedTexSubImage3D;
     PFNGLCOPYBUFFERSUBDATAPROC                           pGLCopyBufferSubData;
     PFNGLCOPYIMAGESUBDATAPROC                            pGLCopyImageSubData;
-    PFNWRAPPEDGLCOPYTEXIMAGE1DPROC                       pGLCopyTexImage1D;
-    PFNWRAPPEDGLCOPYTEXIMAGE2DPROC                       pGLCopyTexImage2D;
     PFNWRAPPEDGLCOPYTEXSUBIMAGE1DPROC                    pGLCopyTexSubImage1D;
     PFNWRAPPEDGLCOPYTEXSUBIMAGE2DPROC                    pGLCopyTexSubImage2D;
     PFNWRAPPEDGLCOPYTEXSUBIMAGE3DPROC                    pGLCopyTexSubImage3D;
@@ -1265,11 +1282,6 @@ typedef struct
     PFNWRAPPEDGLTEXPARAMETERIUIVPROC                     pGLTexParameterIuiv;
     PFNWRAPPEDGLTEXPARAMETERIPROC                        pGLTexParameteri;
     PFNWRAPPEDGLTEXPARAMETERIVPROC                       pGLTexParameteriv;
-    PFNWRAPPEDGLTEXSTORAGE1DPROC                         pGLTexStorage1D;
-    PFNWRAPPEDGLTEXSTORAGE2DPROC                         pGLTexStorage2D;
-    PFNWRAPPEDGLTEXSTORAGE2DMULTISAMPLEPROC              pGLTexStorage2DMultisample;
-    PFNWRAPPEDGLTEXSTORAGE3DPROC                         pGLTexStorage3D;
-    PFNWRAPPEDGLTEXSTORAGE3DMULTISAMPLEPROC              pGLTexStorage3DMultisample;
     PFNWRAPPEDGLTEXSUBIMAGE1DPROC                        pGLTexSubImage1D;
     PFNWRAPPEDGLTEXSUBIMAGE2DPROC                        pGLTexSubImage2D;
     PFNWRAPPEDGLTEXSUBIMAGE3DPROC                        pGLTexSubImage3D;
@@ -1378,8 +1390,6 @@ typedef struct
     PFNGLCOMPRESSEDTEXSUBIMAGE2DPROC                     pGLCompressedTexSubImage2D;
     PFNGLCOMPRESSEDTEXSUBIMAGE1DPROC                     pGLCompressedTexSubImage1D;
     PFNGLCOPYBUFFERSUBDATAPROC                           pGLCopyBufferSubData;
-    PFNGLCOPYTEXIMAGE1DPROC                              pGLCopyTexImage1D;
-    PFNGLCOPYTEXIMAGE2DPROC                              pGLCopyTexImage2D;
     PFNGLCOPYTEXSUBIMAGE1DPROC                           pGLCopyTexSubImage1D;
     PFNGLCOPYTEXSUBIMAGE2DPROC                           pGLCopyTexSubImage2D;
     PFNGLCOPYTEXSUBIMAGE3DPROC                           pGLCopyTexSubImage3D;
@@ -1472,9 +1482,6 @@ typedef struct
     PFNGLSAMPLERPARAMETERIVPROC                          pGLSamplerParameteriv;
     PFNGLSCISSORPROC                                     pGLScissor;
     PFNGLSHADERSTORAGEBLOCKBINDINGPROC                   pGLShaderStorageBlockBinding;
-    PFNGLTEXIMAGE1DPROC                                  pGLTexImage1D;
-    PFNGLTEXIMAGE2DPROC                                  pGLTexImage2D;
-    PFNGLTEXIMAGE3DPROC                                  pGLTexImage3D;
     PFNGLTEXPARAMETERIIVPROC                             pGLTexParameterIiv;
     PFNGLTEXPARAMETERIUIVPROC                            pGLTexParameterIuiv;
     PFNGLTEXSTORAGE1DPROC                                pGLTexStorage1D;
@@ -1505,8 +1512,6 @@ typedef struct
     PFNGLCOMPRESSEDTEXTURESUBIMAGE3DEXTPROC  pGLCompressedTextureSubImage3DEXT;
     PFNGLCOMPRESSEDTEXTURESUBIMAGE2DEXTPROC  pGLCompressedTextureSubImage2DEXT;
     PFNGLCOMPRESSEDTEXTURESUBIMAGE1DEXTPROC  pGLCompressedTextureSubImage1DEXT;
-    PFNGLCOPYTEXTUREIMAGE1DEXTPROC           pGLCopyTextureImage1DEXT;
-    PFNGLCOPYTEXTUREIMAGE2DEXTPROC           pGLCopyTextureImage2DEXT;
     PFNGLCOPYTEXTURESUBIMAGE1DEXTPROC        pGLCopyTextureSubImage1DEXT;
     PFNGLCOPYTEXTURESUBIMAGE2DEXTPROC        pGLCopyTextureSubImage2DEXT;
     PFNGLCOPYTEXTURESUBIMAGE3DEXTPROC        pGLCopyTextureSubImage3DEXT;
@@ -1536,11 +1541,6 @@ typedef struct
     PFNGLTEXTUREPARAMETERIIVEXTPROC         pGLTextureParameterIivEXT;
     PFNGLTEXTUREPARAMETERIUIVEXTPROC        pGLTextureParameterIuivEXT;
     PFNGLTEXTUREPARAMETERIVEXTPROC          pGLTextureParameterivEXT;
-    PFNGLTEXTURESTORAGE1DEXTPROC            pGLTextureStorage1DEXT;
-    PFNGLTEXTURESTORAGE2DEXTPROC            pGLTextureStorage2DEXT;
-    PFNGLTEXTURESTORAGE2DMULTISAMPLEEXTPROC pGLTextureStorage2DMultisampleEXT;
-    PFNGLTEXTURESTORAGE3DEXTPROC            pGLTextureStorage3DEXT;
-    PFNGLTEXTURESTORAGE3DMULTISAMPLEEXTPROC pGLTextureStorage3DMultisampleEXT;
     PFNGLTEXTURESUBIMAGE1DEXTPROC           pGLTextureSubImage1DEXT;
     PFNGLTEXTURESUBIMAGE2DEXTPROC           pGLTextureSubImage2DEXT;
     PFNGLTEXTURESUBIMAGE3DEXTPROC           pGLTextureSubImage3DEXT;
@@ -1633,8 +1633,6 @@ typedef struct
     PFNWRAPPEDGLCOMPRESSEDTEXTURESUBIMAGE1DEXTPROC          pGLCompressedTextureSubImage1DEXT;
     PFNWRAPPEDGLCOMPRESSEDTEXTURESUBIMAGE2DEXTPROC          pGLCompressedTextureSubImage2DEXT;
     PFNWRAPPEDGLCOMPRESSEDTEXTURESUBIMAGE3DEXTPROC          pGLCompressedTextureSubImage3DEXT;
-    PFNWRAPPEDGLCOPYTEXTUREIMAGE1DEXTPROC                   pGLCopyTextureImage1DEXT;
-    PFNWRAPPEDGLCOPYTEXTUREIMAGE2DEXTPROC                   pGLCopyTextureImage2DEXT;
     PFNWRAPPEDGLCOPYTEXTURESUBIMAGE1DEXTPROC                pGLCopyTextureSubImage1DEXT;
     PFNWRAPPEDGLCOPYTEXTURESUBIMAGE2DEXTPROC                pGLCopyTextureSubImage2DEXT;
     PFNWRAPPEDGLCOPYTEXTURESUBIMAGE3DEXTPROC                pGLCopyTextureSubImage3DEXT;
@@ -1676,18 +1674,17 @@ typedef struct
     PFNWRAPPEDGLTEXTUREPARAMETERFVEXTPROC                   pGLTextureParameterfvEXT;
     PFNWRAPPEDGLTEXTUREPARAMETERIIVEXTPROC                  pGLTextureParameterIivEXT;
     PFNWRAPPEDGLTEXTUREPARAMETERIUIVEXTPROC                 pGLTextureParameterIuivEXT;
-    PFNWRAPPEDGLTEXTURESTORAGE1DEXTPROC                     pGLTextureStorage1DEXT;
-    PFNWRAPPEDGLTEXTURESTORAGE2DEXTPROC                     pGLTextureStorage2DEXT;
-    PFNWRAPPEDGLTEXTURESTORAGE2DMULTISAMPLEEXTPROC          pGLTextureStorage2DMultisampleEXT;
-    PFNWRAPPEDGLTEXTURESTORAGE3DEXTPROC                     pGLTextureStorage3DEXT;
-    PFNWRAPPEDGLTEXTURESTORAGE3DMULTISAMPLEEXTPROC          pGLTextureStorage3DMultisampleEXT;
+    PFNGLTEXTURESTORAGE1DEXTPROC                            pGLTextureStorage1DEXT;
+    PFNGLTEXTURESTORAGE2DEXTPROC                            pGLTextureStorage2DEXT;
+    PFNGLTEXTURESTORAGE2DMULTISAMPLEEXTPROC                 pGLTextureStorage2DMultisampleEXT;
+    PFNGLTEXTURESTORAGE3DEXTPROC                            pGLTextureStorage3DEXT;
+    PFNGLTEXTURESTORAGE3DMULTISAMPLEEXTPROC                 pGLTextureStorage3DMultisampleEXT;
     PFNWRAPPEDGLTEXTURESUBIMAGE1DEXTPROC                    pGLTextureSubImage1DEXT;
     PFNWRAPPEDGLTEXTURESUBIMAGE2DEXTPROC                    pGLTextureSubImage2DEXT;
     PFNWRAPPEDGLTEXTURESUBIMAGE3DEXTPROC                    pGLTextureSubImage3DEXT;
     PFNGLUNMAPNAMEDBUFFEREXTPROC                            pGLUnmapNamedBufferEXT;
     PFNGLVERTEXARRAYVERTEXATTRIBOFFSETEXTPROC               pGLVertexArrayVertexAttribOffsetEXT;
     PFNGLVERTEXARRAYVERTEXATTRIBIOFFSETEXTPROC              pGLVertexArrayVertexAttribIOffsetEXT;
-
 } ogl_context_gl_entrypoints_ext_direct_state_access;
 
 

@@ -211,6 +211,8 @@ PRIVATE gfx_image gfx_png_shared_load_handler(bool                      should_l
                          RAL_TEXTURE_FORMAT_SRGB8_UNORM,
                          false,                  /* is_compressed */
                          data_ptr,
+                         n_components * png_info_ptr->width * png_info_ptr->height,
+                         RAL_TEXTURE_DATA_TYPE_UBYTE,
                         !should_load_from_file,  /* should_cache_data_ptr */
                          should_load_from_file); /* should_release_cached_data */
 

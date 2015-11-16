@@ -84,7 +84,7 @@ typedef struct
     PFNGLPOLYGONMODEPROC                  gl_pGLPolygonMode;
     PFNWRAPPEDGLTEXTUREBUFFERRANGEEXTPROC gl_pGLTextureBufferRangeEXT;
     PFNWRAPPEDGLTEXTUREPARAMETERIEXTPROC  gl_pGLTextureParameteriEXT;
-    PFNWRAPPEDGLTEXTURESTORAGE2DEXTPROC   gl_pGLTextureStorage2DEXT;
+    PFNGLTEXTURESTORAGE2DEXTPROC          gl_pGLTextureStorage2DEXT;
     PFNWRAPPEDGLTEXTURESUBIMAGE2DEXTPROC  gl_pGLTextureSubImage2DEXT;
     PFNGLACTIVETEXTUREPROC                pGLActiveTexture;
     PFNGLBINDBUFFERPROC                   pGLBindBuffer;
@@ -104,7 +104,6 @@ typedef struct
     PFNGLSCISSORPROC                      pGLScissor;
     PFNGLTEXBUFFERRANGEPROC               pGLTexBufferRange;
     PFNGLTEXPARAMETERIPROC                pGLTexParameteri;
-    PFNGLTEXSTORAGE2DPROC                 pGLTexStorage2D;
     PFNGLTEXSUBIMAGE2DPROC                pGLTexSubImage2D;
     PFNGLUNIFORMBLOCKBINDINGPROC          pGLUniformBlockBinding;
     PFNGLUSEPROGRAMPROC                   pGLUseProgram;
@@ -1210,7 +1209,6 @@ PUBLIC EMERALD_API ogl_text ogl_text_create(system_hashed_ansi_string name,
             result->pGLScissor             = entry_points->pGLScissor;
             result->pGLTexBufferRange      = ts_entry_points->pGLTexBufferRangeEXT;
             result->pGLTexParameteri       = entry_points->pGLTexParameteri;
-            result->pGLTexStorage2D        = entry_points->pGLTexStorage2D;
             result->pGLTexSubImage2D       = entry_points->pGLTexSubImage2D;
             result->pGLUniformBlockBinding = entry_points->pGLUniformBlockBinding;
             result->pGLUseProgram          = entry_points->pGLUseProgram;
@@ -1254,7 +1252,6 @@ PUBLIC EMERALD_API ogl_text ogl_text_create(system_hashed_ansi_string name,
             result->pGLScissor                  = entry_points->pGLScissor;
             result->pGLTexBufferRange           = entry_points->pGLTexBufferRange;
             result->pGLTexParameteri            = entry_points->pGLTexParameteri;
-            result->pGLTexStorage2D             = entry_points->pGLTexStorage2D;
             result->pGLTexSubImage2D            = entry_points->pGLTexSubImage2D;
             result->pGLUniformBlockBinding      = entry_points->pGLUniformBlockBinding;
             result->pGLUseProgram               = entry_points->pGLUseProgram;
