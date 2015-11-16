@@ -98,7 +98,11 @@ PUBLIC EMERALD_API ogl_texture ogl_texture_create_from_gfx_image(ogl_context    
                                                                  gfx_image                 image,
                                                                  system_hashed_ansi_string name);
 
-/** TODO */
+/** TODO
+ *
+ *  @param src_filename Hint to ogl_textures, telling what filename the result instance should
+ *                      be associated with. Can be NULL.
+ **/
 PUBLIC EMERALD_API RENDERING_CONTEXT_CALL ogl_texture ogl_texture_create_and_initialize(ogl_context               context,
                                                                                         system_hashed_ansi_string name,
                                                                                         ral_texture_type          type,
@@ -108,7 +112,8 @@ PUBLIC EMERALD_API RENDERING_CONTEXT_CALL ogl_texture ogl_texture_create_and_ini
                                                                                         unsigned int              base_mipmap_height,
                                                                                         unsigned int              base_mipmap_depth,
                                                                                         unsigned int              n_samples,
-                                                                                        bool                      fixed_sample_locations);
+                                                                                        bool                      fixed_sample_locations,
+                                                                                        system_hashed_ansi_string src_filename = NULL);
 
 /** TODO */
 PUBLIC EMERALD_API void ogl_texture_generate_mipmaps(ogl_texture texture);

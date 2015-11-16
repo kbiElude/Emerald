@@ -72,6 +72,15 @@ typedef struct _ogl_texture
     REFCOUNT_INSERT_VARIABLES
 } _ogl_texture;
 
+typedef struct
+{
+
+    gfx_image                 image;
+    system_hashed_ansi_string name;
+    ogl_texture               result_texture;
+
+} _ogl_texture_create_from_gfx_image_renderer_callback_arg;
+
 
 /** Reference counter impl */
 REFCOUNT_INSERT_IMPLEMENTATION(ogl_texture,
@@ -133,19 +142,16 @@ PRIVATE ogl_texture _ogl_texture_create_base(ogl_context               context,
 
 /** TODO */
 PRIVATE void _ogl_texture_create_from_gfx_image_renderer_callback(ogl_context context,
-                                                                  void*       texture)
+                                                                  void*       arg)
 {
-    ogl_context_type                               context_type                         = OGL_CONTEXT_TYPE_UNDEFINED;
-    PFNWRAPPEDGLCOMPRESSEDTEXTURESUBIMAGE2DEXTPROC gl_pGLCompressedTextureSubImage2DEXT = NULL;
-    PFNGLTEXTURESTORAGE2DEXTPROC                   gl_pGLTextureStorage2DEXT            = NULL;
-    PFNWRAPPEDGLTEXTURESUBIMAGE2DEXTPROC           gl_pGLTextureSubImage2DEXT           = NULL;
-    PFNGLBINDTEXTUREPROC                           pGLBindTexture                       = NULL;
-    PFNGLCOMPRESSEDTEXSUBIMAGE2DPROC               pGLCompressedTexSubImage2D           = NULL;
-    PFNGLPIXELSTOREIPROC                           pGLPixelStorei                       = NULL;
-    PFNGLTEXSTORAGE2DPROC                          pGLTexStorage2D                      = NULL;
-    PFNGLTEXSUBIMAGE2DPROC                         pGLTexSubImage2D                     = NULL;
-    unsigned int                                   n_mipmaps                            = 0;
-    _ogl_texture*                                  texture_ptr                          = (_ogl_texture*) texture;
+    _ogl_texture_create_from_gfx_image_renderer_callback_arg* arg_ptr                              = (_ogl_texture_create_from_gfx_image_renderer_callback_arg*) arg;
+    ogl_context_type                                          context_type                         = OGL_CONTEXT_TYPE_UNDEFINED;
+    PFNWRAPPEDGLCOMPRESSEDTEXTURESUBIMAGE2DEXTPROC            gl_pGLCompressedTextureSubImage2DEXT = NULL;
+    PFNWRAPPEDGLTEXTURESUBIMAGE2DEXTPROC                      gl_pGLTextureSubImage2DEXT           = NULL;
+    PFNGLBINDTEXTUREPROC                                      pGLBindTexture                       = NULL;
+    PFNGLCOMPRESSEDTEXSUBIMAGE2DPROC                          pGLCompressedTexSubImage2D           = NULL;
+    PFNGLPIXELSTOREIPROC                                      pGLPixelStorei                       = NULL;
+    PFNGLTEXSUBIMAGE2DPROC                                    pGLTexSubImage2D                     = NULL;
 
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_TYPE,
@@ -162,7 +168,6 @@ PRIVATE void _ogl_texture_create_from_gfx_image_renderer_callback(ogl_context co
         pGLBindTexture             = entry_points->pGLBindTexture;
         pGLCompressedTexSubImage2D = entry_points->pGLCompressedTexSubImage2D;
         pGLPixelStorei             = entry_points->pGLPixelStorei;
-        pGLTexStorage2D            = entry_points->pGLTexStorage2D;
         pGLTexSubImage2D           = entry_points->pGLTexSubImage2D;
     }
     else
@@ -181,43 +186,47 @@ PRIVATE void _ogl_texture_create_from_gfx_image_renderer_callback(ogl_context co
                                 &dsa_entry_points);
 
         gl_pGLCompressedTextureSubImage2DEXT = dsa_entry_points->pGLCompressedTextureSubImage2DEXT;
-        gl_pGLTextureStorage2DEXT            = dsa_entry_points->pGLTextureStorage2DEXT;
         gl_pGLTextureSubImage2DEXT           = dsa_entry_points->pGLTextureSubImage2DEXT;
         pGLPixelStorei                       = entry_points->pGLPixelStorei;
     }
 
-    gfx_image_get_property(texture_ptr->src_image,
-                           GFX_IMAGE_PROPERTY_N_MIPMAPS,
-                          &n_mipmaps);
-
     /* Retrieve base mip-map details. */
-    ral_texture_data_type base_image_data_type      = RAL_TEXTURE_DATA_TYPE_UNKNOWN;
-    unsigned int          base_image_height         = 0;
-    bool                  base_image_is_compressed  = false;
-    unsigned int          base_image_row_alignment  = 0;
-    unsigned int          base_image_width          = 0;
+    ral_texture_data_type     base_image_data_type      = RAL_TEXTURE_DATA_TYPE_UNKNOWN;
+    system_hashed_ansi_string base_image_file_name      = NULL;
+    ral_texture_format        base_image_format         = RAL_TEXTURE_FORMAT_UNKNOWN;
+    unsigned int              base_image_height         = 0;
+    bool                      base_image_is_compressed  = false;
+    unsigned int              base_image_row_alignment  = 0;
+    unsigned int              base_image_width          = 0;
+    unsigned int              n_mipmaps                 = 0;
 
-    gfx_image_get_mipmap_property(texture_ptr->src_image,
+    gfx_image_get_property       (arg_ptr->image,
+                                  GFX_IMAGE_PROPERTY_FILENAME,
+                                 &base_image_file_name);
+    gfx_image_get_property       (arg_ptr->image,
+                                  GFX_IMAGE_PROPERTY_N_MIPMAPS,
+                                 &n_mipmaps);
+    gfx_image_get_mipmap_property(arg_ptr->image,
                                   0, /* n_mipmap */
                                   GFX_IMAGE_MIPMAP_PROPERTY_DATA_TYPE,
                                  &base_image_data_type);
-    gfx_image_get_mipmap_property(texture_ptr->src_image,
+    gfx_image_get_mipmap_property(arg_ptr->image,
                                   0, /* n_mipmap */
                                   GFX_IMAGE_MIPMAP_PROPERTY_HEIGHT,
                                  &base_image_height);
-    gfx_image_get_mipmap_property(texture_ptr->src_image,
+    gfx_image_get_mipmap_property(arg_ptr->image,
                                   0, /* n_mipmap */
                                   GFX_IMAGE_MIPMAP_PROPERTY_FORMAT_RAL,
-                                 &texture_ptr->format);
-    gfx_image_get_mipmap_property(texture_ptr->src_image,
+                                 &base_image_format);
+    gfx_image_get_mipmap_property(arg_ptr->image,
                                   0, /* n_mipmap */
                                   GFX_IMAGE_MIPMAP_PROPERTY_IS_COMPRESSED,
                                  &base_image_is_compressed);
-    gfx_image_get_mipmap_property(texture_ptr->src_image,
+    gfx_image_get_mipmap_property(arg_ptr->image,
                                   0, /* n_mipmap */
                                   GFX_IMAGE_MIPMAP_PROPERTY_ROW_ALIGNMENT,
                                  &base_image_row_alignment);
-    gfx_image_get_mipmap_property(texture_ptr->src_image,
+    gfx_image_get_mipmap_property(arg_ptr->image,
                                   0, /* n_mipmap */
                                   GFX_IMAGE_MIPMAP_PROPERTY_WIDTH,
                                  &base_image_width);
@@ -231,30 +240,17 @@ PRIVATE void _ogl_texture_create_from_gfx_image_renderer_callback(ogl_context co
                    base_image_row_alignment);
 
     /* Use immutable storage to avoid texture completeness checks during draw calls */
-    const unsigned int levels = 1 + system_math_other_log2_uint32( (base_image_width > base_image_height) ? base_image_width :
-                                                                                                            base_image_height);
-
-    texture_ptr->n_max_mipmaps = levels;
-
-    if (context_type == OGL_CONTEXT_TYPE_GL)
-    {
-        gl_pGLTextureStorage2DEXT(texture_ptr->gl_id,
-                                  GL_TEXTURE_2D,
-                                  levels,
-                                  raGL_utils_get_ogl_texture_internalformat_for_ral_texture_format(texture_ptr->format),
-                                  base_image_width,
-                                  base_image_height);
-    }
-    else
-    {
-        pGLBindTexture (GL_TEXTURE_2D,
-                        texture_ptr->gl_id);
-        pGLTexStorage2D(GL_TEXTURE_2D,
-                        levels,
-                        raGL_utils_get_ogl_texture_internalformat_for_ral_texture_format(texture_ptr->format),
-                        base_image_width,
-                        base_image_height);
-    }
+    arg_ptr->result_texture = ogl_texture_create_and_initialize(context,
+                                                                arg_ptr->name,
+                                                                RAL_TEXTURE_TYPE_2D,
+                                                                base_image_format,
+                                                                (n_mipmaps > 1) ? true : false,
+                                                                base_image_width,
+                                                                base_image_height,
+                                                                1,      /* base_mipmap_depth      */
+                                                                1,      /* n_samples              */
+                                                                false,  /* fixed_sample_locations */
+                                                                base_image_file_name);
 
     /* Set the mip-maps */
     unsigned int            expected_mipmap_height = base_image_height;
@@ -264,7 +260,7 @@ PRIVATE void _ogl_texture_create_from_gfx_image_renderer_callback(ogl_context co
 
     if (!base_image_is_compressed)
     {
-        texture_format_gl = raGL_utils_get_ogl_data_format_for_ral_texture_format (texture_ptr->format);
+        texture_format_gl = raGL_utils_get_ogl_data_format_for_ral_texture_format (base_image_format);
         texture_type_gl   = raGL_utils_get_ogl_data_type_for_ral_texture_data_type(base_image_data_type);
     }
 
@@ -281,41 +277,41 @@ PRIVATE void _ogl_texture_create_from_gfx_image_renderer_callback(ogl_context co
         unsigned int          image_row_alignment = 0;
         unsigned int          image_width         = 0;
 
-        gfx_image_get_mipmap_property(texture_ptr->src_image,
+        gfx_image_get_mipmap_property(arg_ptr->image,
                                       n_mipmap,
                                       GFX_IMAGE_MIPMAP_PROPERTY_DATA_POINTER,
                                      &image_data_ptr);
-        gfx_image_get_mipmap_property(texture_ptr->src_image,
+        gfx_image_get_mipmap_property(arg_ptr->image,
                                       n_mipmap,
                                       GFX_IMAGE_MIPMAP_PROPERTY_DATA_SIZE,
                                      &image_data_size);
-        gfx_image_get_mipmap_property(texture_ptr->src_image,
+        gfx_image_get_mipmap_property(arg_ptr->image,
                                       n_mipmap,
                                       GFX_IMAGE_MIPMAP_PROPERTY_DATA_TYPE,
                                      &image_data_type);
-        gfx_image_get_mipmap_property(texture_ptr->src_image,
+        gfx_image_get_mipmap_property(arg_ptr->image,
                                       n_mipmap,
                                       GFX_IMAGE_MIPMAP_PROPERTY_HEIGHT,
                                      &image_height);
-        gfx_image_get_mipmap_property(texture_ptr->src_image,
+        gfx_image_get_mipmap_property(arg_ptr->image,
                                       n_mipmap,
                                       GFX_IMAGE_MIPMAP_PROPERTY_FORMAT_RAL,
                                      &image_format);
-        gfx_image_get_mipmap_property(texture_ptr->src_image,
+        gfx_image_get_mipmap_property(arg_ptr->image,
                                       n_mipmap,
                                       GFX_IMAGE_MIPMAP_PROPERTY_IS_COMPRESSED,
                                      &image_is_compressed);
-        gfx_image_get_mipmap_property(texture_ptr->src_image,
+        gfx_image_get_mipmap_property(arg_ptr->image,
                                       n_mipmap,
                                       GFX_IMAGE_MIPMAP_PROPERTY_ROW_ALIGNMENT,
                                      &image_row_alignment);
-        gfx_image_get_mipmap_property(texture_ptr->src_image,
+        gfx_image_get_mipmap_property(arg_ptr->image,
                                       n_mipmap,
                                       GFX_IMAGE_MIPMAP_PROPERTY_WIDTH,
                                      &image_width);
 
         /* Sanity checks */
-        ASSERT_DEBUG_SYNC(texture_ptr->format == image_format,
+        ASSERT_DEBUG_SYNC(base_image_format == image_format,
                           "Non-base mipmap does not use the same RAL format as the base mipmap");
         ASSERT_DEBUG_SYNC(base_image_row_alignment  == image_row_alignment,
                           "Non-base mipmap does not use the same row alignment as the base mipmap");
@@ -330,6 +326,14 @@ PRIVATE void _ogl_texture_create_from_gfx_image_renderer_callback(ogl_context co
         {
             if (context_type == OGL_CONTEXT_TYPE_ES)
             {
+                GLuint texture_id = 0;
+
+                ogl_texture_get_property(arg_ptr->result_texture,
+                                         OGL_TEXTURE_PROPERTY_ID,
+                                        &texture_id);
+
+                pGLBindTexture            (GL_TEXTURE_2D,
+                                           texture_id);
                 pGLCompressedTexSubImage2D(GL_TEXTURE_2D,
                                            n_mipmap,
                                            0, /* xoffset */
@@ -342,7 +346,7 @@ PRIVATE void _ogl_texture_create_from_gfx_image_renderer_callback(ogl_context co
             }
             else
             {
-                gl_pGLCompressedTextureSubImage2DEXT((ogl_texture) texture,
+                gl_pGLCompressedTextureSubImage2DEXT(arg_ptr->result_texture,
                                                      GL_TEXTURE_2D,
                                                      n_mipmap,
                                                      0, /* xoffset */
@@ -358,6 +362,14 @@ PRIVATE void _ogl_texture_create_from_gfx_image_renderer_callback(ogl_context co
         {
             if (context_type == OGL_CONTEXT_TYPE_ES)
             {
+                GLuint texture_id = 0;
+
+                ogl_texture_get_property(arg_ptr->result_texture,
+                                         OGL_TEXTURE_PROPERTY_ID,
+                                        &texture_id);
+
+                pGLBindTexture  (GL_TEXTURE_2D,
+                                 texture_id);
                 pGLTexSubImage2D(GL_TEXTURE_2D,
                                  n_mipmap,
                                  0, /* xoffset */
@@ -370,7 +382,7 @@ PRIVATE void _ogl_texture_create_from_gfx_image_renderer_callback(ogl_context co
             }
             else
             {
-                gl_pGLTextureSubImage2DEXT((ogl_texture) texture,
+                gl_pGLTextureSubImage2DEXT(arg_ptr->result_texture,
                                            GL_TEXTURE_2D,
                                            n_mipmap,
                                            0, /* xoffset */
@@ -382,27 +394,7 @@ PRIVATE void _ogl_texture_create_from_gfx_image_renderer_callback(ogl_context co
                                            image_data_ptr);
             }
         }
-
-        /* Create a mipmap descriptor for this mipmap */
-        _ogl_texture_mipmap* new_mipmap_ptr = new (std::nothrow) _ogl_texture_mipmap();
-
-        ASSERT_ALWAYS_SYNC(new_mipmap_ptr != NULL,
-                           "Out of memory");
-
-        new_mipmap_ptr->data_size = 0;
-        new_mipmap_ptr->depth     = 1;
-        new_mipmap_ptr->height    = expected_mipmap_height;
-        new_mipmap_ptr->width     = expected_mipmap_width;
-
-        system_resizable_vector_push(texture_ptr->mipmaps,
-                                     new_mipmap_ptr);
-
-        expected_mipmap_width  = std::max(1u, expected_mipmap_width  / 2);
-        expected_mipmap_height = std::max(1u, expected_mipmap_height / 2);
     } /* for (all mipmaps) */
-
-    /* OK, we no longer need the gfx_image instance at this point */
-    gfx_image_release(texture_ptr->src_image);
 }
 
 /** TODO */
@@ -551,7 +543,8 @@ PUBLIC EMERALD_API RENDERING_CONTEXT_CALL ogl_texture ogl_texture_create_and_ini
                                                                                         unsigned int              base_mipmap_height,
                                                                                         unsigned int              base_mipmap_depth,
                                                                                         unsigned int              n_samples,
-                                                                                        bool                      fixed_sample_locations)
+                                                                                        bool                      fixed_sample_locations,
+                                                                                        system_hashed_ansi_string src_filename)
 {
     const ogl_context_gl_entrypoints_ext_direct_state_access* dsa_entry_points     = NULL;
     bool                                                      is_format_compressed = false;
@@ -812,7 +805,8 @@ PUBLIC EMERALD_API RENDERING_CONTEXT_CALL ogl_texture ogl_texture_create_and_ini
 
     /* Create the descriptor */
     result = _ogl_texture_create_base(context,
-                                      name);
+                                      name,
+                                      src_filename);
 
     if (result == NULL)
     {
@@ -1008,34 +1002,20 @@ PUBLIC EMERALD_API ogl_texture ogl_texture_create_from_gfx_image(ogl_context    
         goto end;
     }
 
-    /* Retrieve image file name - we'll store it in ogl_texture instance
-     * in order to make sure we do not load the same image more than once.
-     */
-    gfx_image_get_property(image,
-                           GFX_IMAGE_PROPERTY_FILENAME,
-                          &image_filename);
+    /* Request a rendering thread callback. We need it, since we'll be uploading data
+     * to texture mipmaps. */
+    _ogl_texture_create_from_gfx_image_renderer_callback_arg arg;
 
-    /* First create a regular texture container */
-    result = _ogl_texture_create_base(context,
-                                      name,
-                                      image_filename);
-
-    if (result == NULL)
-    {
-        ASSERT_ALWAYS_SYNC(result != NULL,
-                           "Could not create an empty texture container");
-
-        goto end;
-    }
-
-    /* Set the base mip-map - we need a renderer thread call-back to make this happen. */
-    ((_ogl_texture*) result)->src_image = image;
-
-    gfx_image_retain(image);
+    arg.image          = image;
+    arg.name           = name;
+    arg.result_texture = NULL;
 
     ogl_context_request_callback_from_context_thread(context,
                                                      _ogl_texture_create_from_gfx_image_renderer_callback,
-                                                     result);
+                                                    &arg);
+
+    result                              = arg.result_texture;
+    ((_ogl_texture*) result)->src_image = image;
 
     /* Done */
 end:
