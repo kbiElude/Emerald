@@ -120,11 +120,11 @@ typedef enum
     /* not settable, scene_light_shadow_map_algorithm */
     OGL_UBER_ITEM_PROPERTY_LIGHT_SHADOW_MAP_ALGORITHM,
 
-    /* settable, ogl_texture */
-    OGL_UBER_ITEM_PROPERTY_LIGHT_SHADOW_MAP_TEXTURE_COLOR,
+    /* settable, ral_texture */
+    OGL_UBER_ITEM_PROPERTY_LIGHT_SHADOW_MAP_TEXTURE_RAL_COLOR,
 
-    /* settable, ogl_texture */
-    OGL_UBER_ITEM_PROPERTY_LIGHT_SHADOW_MAP_TEXTURE_DEPTH,
+    /* settable, ral_texture */
+    OGL_UBER_ITEM_PROPERTY_LIGHT_SHADOW_MAP_TEXTURE_RAL_DEPTH,
 
     /* not settable, scene_light_shadow_map_bias */
     OGL_UBER_ITEM_PROPERTY_LIGHT_SHADOW_MAP_BIAS,
@@ -173,11 +173,11 @@ PUBLIC EMERALD_API ogl_uber_item_id ogl_uber_add_light_item(ogl_uber            
                                                             void*                            light_property_values);
 
 /** TODO */
-PUBLIC EMERALD_API ogl_uber ogl_uber_create(ogl_context                context,
+PUBLIC EMERALD_API ogl_uber ogl_uber_create(ral_context                context,
                                             system_hashed_ansi_string  name);
 
 /** TODO */
-PUBLIC EMERALD_API ogl_uber ogl_uber_create_from_ogl_program(ogl_context               context,
+PUBLIC EMERALD_API ogl_uber ogl_uber_create_from_ogl_program(ral_context               context,
                                                              system_hashed_ansi_string name,
                                                              ogl_program               program);
 

@@ -14,13 +14,15 @@
 #include "ogl/ogl_programs.h"
 #include "ogl/ogl_shader.h"
 #include "raGL/raGL_buffers.h"
+#include "ral/ral_context.h"
 #include "scene/scene_material.h"
 #include "system/system_log.h"
 
 
 typedef struct _mesh_marchingcubes
 {
-    ogl_context               context; /* DO NOT release */
+    ral_context               context; /* DO NOT release */
+    ogl_context               context_gl; /* TEMP */
     unsigned int              grid_size[3];
     float                     isolevel;
     scene_material            material;
@@ -434,7 +436,7 @@ PRIVATE void _mesh_marchingcubes_deinit_rendering_thread_callback(ogl_context co
     raGL_buffers         buffers  = NULL;
     _mesh_marchingcubes* mesh_ptr = (_mesh_marchingcubes*) user_arg;
 
-    ogl_context_get_property(mesh_ptr->context,
+    ogl_context_get_property(mesh_ptr->context_gl,
                              OGL_CONTEXT_PROPERTY_BUFFERS_RAGL,
                             &buffers);
 
@@ -1165,10 +1167,10 @@ PRIVATE void _mesh_marchingcubes_init_polygonizer_po(_mesh_marchingcubes* mesh_p
     system_hashed_ansi_string*        token_key_array_ptr     = NULL;
     system_hashed_ansi_string*        token_value_array_ptr   = NULL;
 
-    ogl_context_get_property(mesh_ptr->context,
+    ogl_context_get_property(mesh_ptr->context_gl,
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
                             &entrypoints_ptr);
-    ogl_context_get_property(mesh_ptr->context,
+    ogl_context_get_property(mesh_ptr->context_gl,
                              OGL_CONTEXT_PROPERTY_LIMITS,
                             &limits_ptr);
 
@@ -1181,7 +1183,7 @@ PRIVATE void _mesh_marchingcubes_init_polygonizer_po(_mesh_marchingcubes* mesh_p
 
     /* Initialize the shader */
     system_hashed_ansi_string polygonizer_has = _mesh_marchingcubes_get_polygonizer_name(mesh_ptr);
-    ogl_shader                cs              = ogl_shader_create                       (mesh_ptr->context,
+    ogl_shader                cs              = ogl_shader_create                       (mesh_ptr->context_gl,
                                                                                          RAL_SHADER_TYPE_COMPUTE,
                                                                                          system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(polygonizer_has),
                                                                                                                                                  " CS") );
@@ -1199,7 +1201,7 @@ PRIVATE void _mesh_marchingcubes_init_polygonizer_po(_mesh_marchingcubes* mesh_p
     token_value_array_ptr = NULL;
 
     /* Prepare & link the program object */
-    mesh_ptr->po_scalar_field_polygonizer = ogl_program_create(mesh_ptr->context,
+    mesh_ptr->po_scalar_field_polygonizer = ogl_program_create(mesh_ptr->context_gl,
                                                                system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(polygonizer_has),
                                                                                                                                                  " PO"),
                                                                OGL_PROGRAM_SYNCABLE_UBS_MODE_ENABLE_GLOBAL);
@@ -1224,7 +1226,7 @@ PRIVATE void _mesh_marchingcubes_init_polygonizer_po(_mesh_marchingcubes* mesh_p
     ASSERT_DEBUG_SYNC(sizeof(indirect_draw_call_args) == sizeof(unsigned int) * 4,
                       "Invalid invalid draw call arg structure instance size");
 
-    ogl_context_get_property(mesh_ptr->context,
+    ogl_context_get_property(mesh_ptr->context_gl,
                              OGL_CONTEXT_PROPERTY_BUFFERS_RAGL,
                             &buffers);
 
@@ -1370,7 +1372,7 @@ PRIVATE void _mesh_marchingcubes_init_rendering_thread_callback(ogl_context cont
     system_hashed_ansi_string polygonizer_name_has = NULL;
     ogl_program               polygonizer_po       = NULL;
 
-    ogl_context_get_property(new_mesh_ptr->context,
+    ogl_context_get_property(new_mesh_ptr->context_gl,
                              OGL_CONTEXT_PROPERTY_PROGRAMS,
                             &context_programs);
 
@@ -1404,7 +1406,7 @@ PRIVATE void _mesh_marchingcubes_release(void* arg)
 
 
 /** Please see header for specification */
-PUBLIC EMERALD_API mesh_marchingcubes mesh_marchingcubes_create(ogl_context               context,
+PUBLIC EMERALD_API mesh_marchingcubes mesh_marchingcubes_create(ral_context               context,
                                                                 const unsigned int*       grid_size_xyz,
                                                                 raGL_buffer               scalar_data_bo,
                                                                 GLuint                    scalar_data_bo_size,
@@ -1453,6 +1455,10 @@ PUBLIC EMERALD_API mesh_marchingcubes mesh_marchingcubes_create(ogl_context     
         new_mesh_ptr->scalar_data_bo                  = scalar_data_bo;
         new_mesh_ptr->scalar_data_bo_size             = scalar_data_bo_size;
 
+        ral_context_get_property(new_mesh_ptr->context,
+                                 RAL_CONTEXT_PROPERTY_BACKEND_CONTEXT,
+                                &new_mesh_ptr->context_gl);
+
         scene_material_retain(material);
 
         /* Set up the GPU material instance */
@@ -1473,7 +1479,7 @@ PUBLIC EMERALD_API mesh_marchingcubes mesh_marchingcubes_create(ogl_context     
                                                     2.0f);
 
         /* Request a rendering context call-back to set up more interesting stuff */
-        ogl_context_request_callback_from_context_thread(new_mesh_ptr->context,
+        ogl_context_request_callback_from_context_thread(new_mesh_ptr->context_gl,
                                                          _mesh_marchingcubes_init_rendering_thread_callback,
                                                          new_mesh_ptr);
 
@@ -1547,7 +1553,7 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void mesh_marchingcubes_polygonize(mes
     if (mesh_ptr->needs_polygonization ||
         has_scalar_field_changed)
     {
-        ogl_context_get_property(mesh_ptr->context,
+        ogl_context_get_property(mesh_ptr->context_gl,
                                  OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
                                 &entrypoints_ptr);
 

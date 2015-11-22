@@ -100,9 +100,9 @@ PUBLIC EMERALD_API postprocessing_motion_blur postprocessing_motion_blur_create(
  *
  */
 PUBLIC EMERALD_API RENDERING_CONTEXT_CALL void postprocessing_motion_blur_execute(postprocessing_motion_blur motion_blur,
-                                                                                  ogl_texture                input_color_texture,
-                                                                                  ogl_texture                input_velocity_texture,
-                                                                                  ogl_texture                output_texture);
+                                                                                  raGL_texture               input_color_texture,
+                                                                                  raGL_texture               input_velocity_texture,
+                                                                                  raGL_texture               output_texture);
 
 /** TODO */
 PUBLIC EMERALD_API void postprocessing_motion_blur_get_property(postprocessing_motion_blur          motion_blur,

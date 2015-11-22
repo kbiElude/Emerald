@@ -10,6 +10,7 @@
 #define OGL_SCENE_RENDERER_LIGHTS_PREVIEW_H
 
 #include "ogl/ogl_types.h"
+#include "ral/ral_types.h"
 #include "scene/scene_types.h"
 
 DECLARE_HANDLE(ogl_scene_renderer_lights_preview);
@@ -26,7 +27,7 @@ DECLARE_HANDLE(ogl_scene_renderer_lights_preview);
  *
  *  @return Requested object or NULL if failure occured for whatever reason.
  **/
-PUBLIC ogl_scene_renderer_lights_preview ogl_scene_renderer_lights_preview_create(ogl_context context,
+PUBLIC ogl_scene_renderer_lights_preview ogl_scene_renderer_lights_preview_create(ral_context context,
                                                                                   scene       scene);
 
 /** Renders a single light instance. Requires a former call to ogl_scene_renderer_lights_preview_start().

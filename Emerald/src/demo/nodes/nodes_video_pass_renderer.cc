@@ -9,9 +9,9 @@
 #include "demo/demo_timeline_segment.h"
 #include "demo/demo_timeline_segment_node.h"
 #include "ogl/ogl_pipeline.h" /* TODO: Remove OGL dep */
-#include "ogl/ogl_texture.h"  /* TODO: Remove OGL dep */
 #include "ral/ral_context.h"
 #include "ral/ral_framebuffer.h"
+#include "ral/ral_texture.h"
 #include "ral/ral_utils.h"
 #include "system/system_critical_section.h"
 
@@ -36,7 +36,7 @@ typedef struct _nodes_video_pass_renderer
     demo_timeline               timeline;       /* DO NOT release */
 
     demo_timeline_segment_node_output_id output_id;
-    ogl_texture                          output_texture;
+    ral_texture                          output_texture;
     ral_framebuffer                      rendering_framebuffer;
     uint32_t                             rendering_pipeline_stage_id;
 
@@ -345,7 +345,7 @@ end:
 /** Please see header for specification */
 PUBLIC void nodes_video_pass_renderer_set_texture_memory_allocation(demo_timeline_segment_node_private node,
                                                                     uint32_t                           n_allocation,
-                                                                    ogl_texture                        texture)
+                                                                    ral_texture                        texture)
 {
     _nodes_video_pass_renderer* node_ptr = (_nodes_video_pass_renderer*) node;
 

@@ -9,7 +9,6 @@
 #include "ogl/ogl_context_bo_bindings.h"
 #include "ogl/ogl_context_state_cache.h"
 #include "ogl/ogl_context_texture_compression.h"
-#include "ogl/ogl_context_textures.h"
 #include "ogl/ogl_context_to_bindings.h"
 #include "ogl/ogl_context_vaos.h"
 #include "ogl/ogl_context_wrappers.h"
@@ -24,6 +23,7 @@
 #include "raGL/raGL_buffers.h"
 #include "raGL/raGL_utils.h"
 #include "raGL/raGL_samplers.h"
+#include "ral/ral_context.h"
 #include "system/system_assertions.h"
 #include "system/system_critical_section.h"
 #include "system/system_event.h"
@@ -73,7 +73,7 @@ typedef struct
     ogl_context_linux           context_platform;
 #endif
 
-    ogl_context_type     context_type;
+    ral_backend_type     backend_type;
     bool                 is_intel_driver;
     bool                 is_nv_driver;
     uint32_t             major_version;
@@ -130,7 +130,8 @@ typedef struct
     bool gl_ext_direct_state_access_support;
     bool gl_ext_texture_filter_anisotropic_support;
 
-    raGL_buffers                    buffers;
+    raGL_backend  backend;
+    ral_context   context;
 
     ogl_context_bo_bindings         bo_bindings;
     ogl_flyby                       flyby;
@@ -144,7 +145,6 @@ typedef struct
     ogl_context_state_cache         state_cache;
     ogl_text                        text_renderer;
     ogl_context_texture_compression texture_compression;
-    ogl_context_textures            textures;
     ogl_context_to_bindings         to_bindings;
     ogl_context_vaos                vaos;
 
@@ -237,7 +237,8 @@ PRIVATE bool                      _ogl_context_sort_descending                  
 
 /** TODO */
 PRIVATE ogl_context _ogl_context_create_from_system_window_shared(system_hashed_ansi_string name,
-                                                                  ogl_context_type          type,
+                                                                  ral_context               context,
+                                                                  raGL_backend              backend,
                                                                   system_window             window,
                                                                   system_pixel_format       in_pfd,
                                                                   bool                      vsync_enabled,
@@ -260,8 +261,13 @@ PRIVATE ogl_context _ogl_context_create_from_system_window_shared(system_hashed_
                                                    system_hashed_ansi_string_get_buffer(name))
                                                    );
 
+    ral_context_get_property(context,
+                             RAL_CONTEXT_PROPERTY_BACKEND_TYPE,
+                            &new_context_ptr->backend_type);
+
+    new_context_ptr->backend                                = backend;
+    new_context_ptr->context                                = context;
     new_context_ptr->context_platform                       = NULL;
-    new_context_ptr->context_type                           = type;
     new_context_ptr->fbo_color_texture_format               = RAL_TEXTURE_FORMAT_UNKNOWN;
     new_context_ptr->fbo_depth_stencil_texture_format       = RAL_TEXTURE_FORMAT_UNKNOWN;
     new_context_ptr->msaa_enumeration_color_samples         = NULL;
@@ -300,7 +306,7 @@ PRIVATE ogl_context _ogl_context_create_from_system_window_shared(system_hashed_
         ogl_context_retain(new_context_ptr->parent_context);
     }
 
-    if (type == OGL_CONTEXT_TYPE_GL)
+    if (new_context_ptr->backend_type == RAL_BACKEND_TYPE_GL)
     {
         new_context_ptr->major_version = 4;
         new_context_ptr->minor_version = 3;
@@ -432,14 +438,14 @@ PRIVATE void _ogl_context_enumerate_msaa_samples_rendering_thread_callback(ogl_c
     };
     const unsigned int n_internalformats = sizeof(internalformats) / sizeof(internalformats[0]);
 
-    if (context_ptr->context_type == OGL_CONTEXT_TYPE_GL)
+    if (context_ptr->backend_type == RAL_BACKEND_TYPE_GL)
     {
         pGLGetInternalformativ = context_ptr->entry_points_gl.pGLGetInternalformativ;
     }
     else
     {
-        ASSERT_DEBUG_SYNC(context_ptr->context_type == OGL_CONTEXT_TYPE_ES,
-                          "Unrecognized context type");
+        ASSERT_DEBUG_SYNC(context_ptr->backend_type == RAL_BACKEND_TYPE_ES,
+                          "Unrecognized backend type");
 
         pGLGetInternalformativ = context_ptr->entry_points_es.pGLGetInternalformativ;
     }
@@ -954,8 +960,9 @@ PRIVATE void _ogl_context_init_context_after_creation(ogl_context context)
            0,
            sizeof(context_ptr->limits) );
 
+    context_ptr->backend                                    = NULL;
     context_ptr->bo_bindings                                = NULL;
-    context_ptr->buffers                                    = NULL;
+    context_ptr->context                                    = NULL;
     context_ptr->es_ext_texture_buffer_support              = false;
     context_ptr->fbo_color_rbo_id                           = 0;
     context_ptr->fbo_depth_stencil_rbo_id                   = 0;
@@ -981,7 +988,6 @@ PRIVATE void _ogl_context_init_context_after_creation(ogl_context context)
     context_ptr->shadow_mapping                             = NULL;
     context_ptr->text_renderer                              = NULL;
     context_ptr->texture_compression                        = NULL;
-    context_ptr->textures                                   = ogl_context_textures_create( (ogl_context) context_ptr);
     context_ptr->to_bindings                                = NULL;
     context_ptr->vao_no_vaas_id                             = 0;
 
@@ -1016,7 +1022,7 @@ PRIVATE void _ogl_context_init_context_after_creation(ogl_context context)
     /* OpenGL ES support is supposed to be low-level. For OpenGL, we use additional tools like
      * state caching to improve rendering efficiency.
      */
-    if (context_ptr->context_type == OGL_CONTEXT_TYPE_ES)
+    if (context_ptr->backend_type == RAL_BACKEND_TYPE_ES)
     {
         _ogl_context_retrieve_ES_function_pointers(context_ptr);
 
@@ -1032,7 +1038,7 @@ PRIVATE void _ogl_context_init_context_after_creation(ogl_context context)
     }
     else
     {
-        ASSERT_DEBUG_SYNC(context_ptr->context_type == OGL_CONTEXT_TYPE_GL,
+        ASSERT_DEBUG_SYNC(context_ptr->backend_type == RAL_BACKEND_TYPE_GL,
                           "Unrecognized context type");
 
         /* Retrieve function pointers for the context */
@@ -1139,18 +1145,19 @@ PRIVATE void _ogl_context_init_context_after_creation(ogl_context context)
     } /* if (type == OGL_CONTEXT_TYPE_GL) */
 
     /* Set up the buffer object manager */
-    if (context_ptr->parent_context == NULL)
+    if (context_ptr->parent_context != NULL)
     {
-        context_ptr->buffers = raGL_buffers_create((ogl_context) context_ptr);
-    }
-    else
-    {
+        ASSERT_ALWAYS_SYNC(false,
+                           "TODO: context sharing support");
+
+#if 0
         context_ptr->buffers = ((_ogl_context*) context_ptr->parent_context)->buffers;
 
         ASSERT_DEBUG_SYNC(context_ptr->buffers != NULL,
                           "Parent context has a NULL buffer manager");
 
         raGL_buffers_retain(context_ptr->buffers);
+#endif
     }
 
     /* Update gfx_image alternative file getter provider so that it can
@@ -1248,7 +1255,7 @@ PRIVATE void _ogl_context_initialize_fbo(_ogl_context* context_ptr)
         GLuint rbo_id;
     } rbos[2];
 
-    if (context_ptr->context_type == OGL_CONTEXT_TYPE_ES)
+    if (context_ptr->backend_type == RAL_BACKEND_TYPE_ES)
     {
         pGLBindFramebuffer                = context_ptr->entry_points_es.pGLBindFramebuffer;
         pGLBindRenderbuffer               = context_ptr->entry_points_es.pGLBindRenderbuffer;
@@ -1262,7 +1269,7 @@ PRIVATE void _ogl_context_initialize_fbo(_ogl_context* context_ptr)
     }
     else
     {
-        ASSERT_DEBUG_SYNC(context_ptr->context_type == OGL_CONTEXT_TYPE_GL,
+        ASSERT_DEBUG_SYNC(context_ptr->backend_type == RAL_BACKEND_TYPE_GL,
                           "Unrecognized context type");
 
         pGLBindFramebuffer                = context_ptr->entry_points_gl.pGLBindFramebuffer;
@@ -1928,7 +1935,7 @@ PRIVATE void _ogl_context_retrieve_GL_ARB_buffer_storage_function_pointers(_ogl_
 /** TODO */
 PRIVATE void _ogl_context_retrieve_GL_ARB_multi_bind_function_pointers(_ogl_context* context_ptr)
 {
-    ASSERT_DEBUG_SYNC(context_ptr->context_type == OGL_CONTEXT_TYPE_GL,
+    ASSERT_DEBUG_SYNC(context_ptr->backend_type == RAL_BACKEND_TYPE_GL,
                       "GL-specific function called for a non-GL context");
 
     func_ptr_table_entry func_ptr_table[] =
@@ -1956,7 +1963,7 @@ PRIVATE void _ogl_context_retrieve_GL_ARB_multi_bind_function_pointers(_ogl_cont
 /** TODO */
 PRIVATE void _ogl_context_retrieve_GL_ARB_sparse_buffer_function_pointers(_ogl_context* context_ptr)
 {
-    ASSERT_DEBUG_SYNC(context_ptr->context_type == OGL_CONTEXT_TYPE_GL,
+    ASSERT_DEBUG_SYNC(context_ptr->backend_type == RAL_BACKEND_TYPE_GL,
                       "GL-specific function called for a non-GL context");
 
     func_ptr_table_entry func_ptr_table[] =
@@ -1976,7 +1983,7 @@ PRIVATE void _ogl_context_retrieve_GL_ARB_sparse_buffer_function_pointers(_ogl_c
 /** TODO */
 PRIVATE void _ogl_context_retrieve_GL_ARB_sparse_buffer_limits(_ogl_context* context_ptr)
 {
-    ASSERT_DEBUG_SYNC(context_ptr->context_type == OGL_CONTEXT_TYPE_GL,
+    ASSERT_DEBUG_SYNC(context_ptr->backend_type == RAL_BACKEND_TYPE_GL,
                       "GL-specific function called for a non-GL context");
 
     if (context_ptr->gl_arb_sparse_buffer_support)
@@ -1992,7 +1999,7 @@ PRIVATE void _ogl_context_retrieve_GL_ARB_sparse_buffer_limits(_ogl_context* con
 /** TODO */
 PRIVATE void _ogl_context_retrieve_GL_EXT_direct_state_access_function_pointers(_ogl_context* context_ptr)
 {
-    ASSERT_DEBUG_SYNC(context_ptr->context_type == OGL_CONTEXT_TYPE_GL,
+    ASSERT_DEBUG_SYNC(context_ptr->backend_type == RAL_BACKEND_TYPE_GL,
                       "GL-specific function called for a non-GL context");
 
     func_ptr_table_entry func_ptr_table[] =
@@ -2009,31 +2016,31 @@ PRIVATE void _ogl_context_retrieve_GL_EXT_direct_state_access_function_pointers(
         {&context_ptr->entry_points_private.pGLCopyTextureSubImage3DEXT,                                       "glCopyTextureSubImage3DEXT"},
         {&context_ptr->entry_points_gl_ext_direct_state_access.pGLDisableVertexArrayAttribEXT,                 "glDisableVertexArrayAttribEXT"},
         {&context_ptr->entry_points_gl_ext_direct_state_access.pGLEnableVertexArrayAttribEXT,                  "glEnableVertexArrayAttribEXT"},
-        {&context_ptr->entry_points_private.pGLFramebufferDrawBufferEXT,                                       "glFramebufferDrawBufferEXT"},
-        {&context_ptr->entry_points_private.pGLFramebufferDrawBuffersEXT,                                      "glFramebufferDrawBuffersEXT"},
+        {&context_ptr->entry_points_gl_ext_direct_state_access.pGLFramebufferDrawBufferEXT,                    "glFramebufferDrawBufferEXT"},
+        {&context_ptr->entry_points_gl_ext_direct_state_access.pGLFramebufferDrawBuffersEXT,                   "glFramebufferDrawBuffersEXT"},
         {&context_ptr->entry_points_private.pGLFramebufferReadBufferEXT,                                       "glFramebufferReadBufferEXT"},
         {&context_ptr->entry_points_private.pGLGenerateTextureMipmapEXT,                                       "glGenerateTextureMipmapEXT"},
         {&context_ptr->entry_points_private.pGLGetCompressedTextureImageEXT,                                   "glGetCompressedTextureImageEXT"},
         {&context_ptr->entry_points_gl_ext_direct_state_access.pGLGetFramebufferParameterivEXT,                "glGetFramebufferParameterivEXT"},
-        {&context_ptr->entry_points_private.pGLGetNamedBufferParameterivEXT,                                   "glGetNamedBufferParameterivEXT"},
-        {&context_ptr->entry_points_private.pGLGetNamedBufferPointervEXT,                                      "glGetNamedBufferPointervEXT"},
-        {&context_ptr->entry_points_private.pGLGetNamedBufferSubDataEXT,                                       "glGetNamedBufferSubDataEXT"},
+        {&context_ptr->entry_points_gl_ext_direct_state_access.pGLGetNamedBufferParameterivEXT,                "glGetNamedBufferParameterivEXT"},
+        {&context_ptr->entry_points_gl_ext_direct_state_access.pGLGetNamedBufferPointervEXT,                   "glGetNamedBufferPointervEXT"},
+        {&context_ptr->entry_points_gl_ext_direct_state_access.pGLGetNamedBufferSubDataEXT,                    "glGetNamedBufferSubDataEXT"},
         {&context_ptr->entry_points_gl_ext_direct_state_access.pGLGetNamedFramebufferAttachmentParameterivEXT, "glGetNamedFramebufferAttachmentParameterivEXT"},
         {&context_ptr->entry_points_gl_ext_direct_state_access.pGLGetNamedProgramivEXT,                        "glGetNamedProgramivEXT"},
         {&context_ptr->entry_points_gl_ext_direct_state_access.pGLGetNamedRenderbufferParameterivEXT,          "glGetNamedRenderbufferParameterivEXT"},
         {&context_ptr->entry_points_private.pGLGetTextureImageEXT,                                             "glGetTextureImageEXT"},
-        {&context_ptr->entry_points_private.pGLGetTextureLevelParameterfvEXT,                                  "glGetTextureLevelParameterfvEXT"},
-        {&context_ptr->entry_points_private.pGLGetTextureLevelParameterivEXT,                                  "glGetTextureLevelParameterivEXT"},
+        {&context_ptr->entry_points_gl_ext_direct_state_access.pGLGetTextureLevelParameterfvEXT,               "glGetTextureLevelParameterfvEXT"},
+        {&context_ptr->entry_points_gl_ext_direct_state_access.pGLGetTextureLevelParameterivEXT,               "glGetTextureLevelParameterivEXT"},
         {&context_ptr->entry_points_private.pGLMapNamedBufferEXT,                                              "glMapNamedBufferEXT"},
         {&context_ptr->entry_points_private.pGLNamedBufferDataEXT,                                             "glNamedBufferDataEXT"},
-        {&context_ptr->entry_points_private.pGLNamedBufferSubDataEXT,                                          "glNamedBufferSubDataEXT"},
-        {&context_ptr->entry_points_private.pGLNamedCopyBufferSubDataEXT,                                      "glNamedCopyBufferSubDataEXT"},
+        {&context_ptr->entry_points_gl_ext_direct_state_access.pGLNamedBufferSubDataEXT,                       "glNamedBufferSubDataEXT"},
+        {&context_ptr->entry_points_gl_ext_direct_state_access.pGLNamedCopyBufferSubDataEXT,                   "glNamedCopyBufferSubDataEXT"},
         {&context_ptr->entry_points_gl_ext_direct_state_access.pGLNamedFramebufferRenderbufferEXT,             "glNamedFramebufferRenderbufferEXT"},
-        {&context_ptr->entry_points_private.pGLNamedFramebufferTexture1DEXT,                                   "glNamedFramebufferTexture1DEXT"},
-        {&context_ptr->entry_points_private.pGLNamedFramebufferTexture2DEXT,                                   "glNamedFramebufferTexture2DEXT"},
-        {&context_ptr->entry_points_private.pGLNamedFramebufferTexture3DEXT,                                   "glNamedFramebufferTexture3DEXT"},
-        {&context_ptr->entry_points_private.pGLNamedFramebufferTextureEXT,                                     "glNamedFramebufferTextureEXT"},
-        {&context_ptr->entry_points_private.pGLNamedFramebufferTextureLayerEXT,                                "glNamedFramebufferTextureLayerEXT"},
+        {&context_ptr->entry_points_gl_ext_direct_state_access.pGLNamedFramebufferTexture1DEXT,                "glNamedFramebufferTexture1DEXT"},
+        {&context_ptr->entry_points_gl_ext_direct_state_access.pGLNamedFramebufferTexture2DEXT,                "glNamedFramebufferTexture2DEXT"},
+        {&context_ptr->entry_points_gl_ext_direct_state_access.pGLNamedFramebufferTexture3DEXT,                "glNamedFramebufferTexture3DEXT"},
+        {&context_ptr->entry_points_gl_ext_direct_state_access.pGLNamedFramebufferTextureEXT,                  "glNamedFramebufferTextureEXT"},
+        {&context_ptr->entry_points_gl_ext_direct_state_access.pGLNamedFramebufferTextureLayerEXT,             "glNamedFramebufferTextureLayerEXT"},
         {&context_ptr->entry_points_gl_ext_direct_state_access.pGLNamedRenderbufferStorageEXT,                 "glNamedRenderbufferStorageEXT"},
         {&context_ptr->entry_points_gl_ext_direct_state_access.pGLNamedRenderbufferStorageMultisampleEXT,      "glNamedRenderbufferStorageMultisampleEXT"},
         {&context_ptr->entry_points_private.pGLTextureBufferEXT,                                               "glTextureBufferEXT"},
@@ -2041,16 +2048,16 @@ PRIVATE void _ogl_context_retrieve_GL_EXT_direct_state_access_function_pointers(
         {&context_ptr->entry_points_private.pGLTextureImage1DEXT,                                              "glTextureImage1DEXT"},
         {&context_ptr->entry_points_private.pGLTextureImage2DEXT,                                              "glTextureImage2DEXT"},
         {&context_ptr->entry_points_private.pGLTextureImage3DEXT,                                              "glTextureImage3DEXT"},
-        {&context_ptr->entry_points_private.pGLTextureParameteriEXT,                                           "glTextureParameteriEXT"},
-        {&context_ptr->entry_points_private.pGLTextureParameterivEXT,                                          "glTextureParameterivEXT"},
-        {&context_ptr->entry_points_private.pGLTextureParameterIivEXT,                                         "glTextureParameterIivEXT"},
-        {&context_ptr->entry_points_private.pGLTextureParameterIuivEXT,                                        "glTextureParameterIuivEXT"},
-        {&context_ptr->entry_points_private.pGLTextureParameterfEXT,                                           "glTextureParameterfEXT"},
-        {&context_ptr->entry_points_private.pGLTextureParameterfvEXT,                                          "glTextureParameterfvEXT"},
+        {&context_ptr->entry_points_gl_ext_direct_state_access.pGLTextureParameteriEXT,                        "glTextureParameteriEXT"},
+        {&context_ptr->entry_points_gl_ext_direct_state_access.pGLTextureParameterivEXT,                       "glTextureParameterivEXT"},
+        {&context_ptr->entry_points_gl_ext_direct_state_access.pGLTextureParameterIivEXT,                      "glTextureParameterIivEXT"},
+        {&context_ptr->entry_points_gl_ext_direct_state_access.pGLTextureParameterIuivEXT,                     "glTextureParameterIuivEXT"},
+        {&context_ptr->entry_points_gl_ext_direct_state_access.pGLTextureParameterfEXT,                        "glTextureParameterfEXT"},
+        {&context_ptr->entry_points_gl_ext_direct_state_access.pGLTextureParameterfvEXT,                       "glTextureParameterfvEXT"},
         {&context_ptr->entry_points_private.pGLTextureSubImage1DEXT,                                           "glTextureSubImage1DEXT"},
         {&context_ptr->entry_points_private.pGLTextureSubImage2DEXT,                                           "glTextureSubImage2DEXT"},
         {&context_ptr->entry_points_private.pGLTextureSubImage3DEXT,                                           "glTextureSubImage3DEXT"},
-        {&context_ptr->entry_points_private.pGLUnmapNamedBufferEXT,                                            "glUnmapNamedBufferEXT"},
+        {&context_ptr->entry_points_gl_ext_direct_state_access.pGLUnmapNamedBufferEXT,                         "glUnmapNamedBufferEXT"},
         {&context_ptr->entry_points_private.pGLVertexArrayVertexAttribOffsetEXT,                               "glVertexArrayVertexAttribOffsetEXT"},
         {&context_ptr->entry_points_private.pGLVertexArrayVertexAttribIOffsetEXT,                              "glVertexArrayVertexAttribIOffsetEXT"}
     };
@@ -2124,38 +2131,16 @@ PRIVATE void _ogl_context_retrieve_GL_EXT_direct_state_access_function_pointers(
     context_ptr->entry_points_gl_ext_direct_state_access.pGLCopyTextureSubImage1DEXT          = ogl_context_wrappers_glCopyTextureSubImage1DEXT;
     context_ptr->entry_points_gl_ext_direct_state_access.pGLCopyTextureSubImage2DEXT          = ogl_context_wrappers_glCopyTextureSubImage2DEXT;
     context_ptr->entry_points_gl_ext_direct_state_access.pGLCopyTextureSubImage3DEXT          = ogl_context_wrappers_glCopyTextureSubImage3DEXT;
-    context_ptr->entry_points_gl_ext_direct_state_access.pGLFramebufferDrawBufferEXT          = ogl_context_wrappers_glFramebufferDrawBufferEXT;
-    context_ptr->entry_points_gl_ext_direct_state_access.pGLFramebufferDrawBuffersEXT         = ogl_context_wrappers_glFramebufferDrawBuffersEXT;
     context_ptr->entry_points_gl_ext_direct_state_access.pGLFramebufferReadBufferEXT          = ogl_context_wrappers_glFramebufferReadBufferEXT;
     context_ptr->entry_points_gl_ext_direct_state_access.pGLGenerateTextureMipmapEXT          = ogl_context_wrappers_glGenerateTextureMipmapEXT;
     context_ptr->entry_points_gl_ext_direct_state_access.pGLGetCompressedTextureImageEXT      = ogl_context_wrappers_glGetCompressedTextureImageEXT;
-    context_ptr->entry_points_gl_ext_direct_state_access.pGLGetNamedBufferParameterivEXT      = ogl_context_wrappers_glGetNamedBufferParameterivEXT;
-    context_ptr->entry_points_gl_ext_direct_state_access.pGLGetNamedBufferPointervEXT         = ogl_context_wrappers_glGetNamedBufferPointervEXT;
-    context_ptr->entry_points_gl_ext_direct_state_access.pGLGetNamedBufferSubDataEXT          = ogl_context_wrappers_glGetNamedBufferSubDataEXT;
     context_ptr->entry_points_gl_ext_direct_state_access.pGLGetTextureImageEXT                = ogl_context_wrappers_glGetTextureImageEXT;
-    context_ptr->entry_points_gl_ext_direct_state_access.pGLGetTextureLevelParameterfvEXT     = ogl_context_wrappers_glGetTextureLevelParameterfvEXT;
-    context_ptr->entry_points_gl_ext_direct_state_access.pGLGetTextureLevelParameterivEXT     = ogl_context_wrappers_glGetTextureLevelParameterivEXT;
-    context_ptr->entry_points_gl_ext_direct_state_access.pGLMapNamedBufferEXT                 = ogl_context_wrappers_glMapNamedBufferEXT;
     context_ptr->entry_points_gl_ext_direct_state_access.pGLNamedBufferDataEXT                = ogl_context_wrappers_glNamedBufferDataEXT;
-    context_ptr->entry_points_gl_ext_direct_state_access.pGLNamedBufferSubDataEXT             = ogl_context_wrappers_glNamedBufferSubDataEXT;
-    context_ptr->entry_points_gl_ext_direct_state_access.pGLNamedCopyBufferSubDataEXT         = ogl_context_wrappers_glNamedCopyBufferSubDataEXT;
-    context_ptr->entry_points_gl_ext_direct_state_access.pGLNamedFramebufferTexture1DEXT      = ogl_context_wrappers_glNamedFramebufferTexture1DEXT;
-    context_ptr->entry_points_gl_ext_direct_state_access.pGLNamedFramebufferTexture2DEXT      = ogl_context_wrappers_glNamedFramebufferTexture2DEXT;
-    context_ptr->entry_points_gl_ext_direct_state_access.pGLNamedFramebufferTexture3DEXT      = ogl_context_wrappers_glNamedFramebufferTexture3DEXT;
-    context_ptr->entry_points_gl_ext_direct_state_access.pGLNamedFramebufferTextureEXT        = ogl_context_wrappers_glNamedFramebufferTextureEXT;
-    context_ptr->entry_points_gl_ext_direct_state_access.pGLNamedFramebufferTextureLayerEXT   = ogl_context_wrappers_glNamedFramebufferTextureLayerEXT;
     context_ptr->entry_points_gl_ext_direct_state_access.pGLTextureBufferEXT                  = ogl_context_wrappers_glTextureBufferEXT;
     context_ptr->entry_points_gl_ext_direct_state_access.pGLTextureBufferRangeEXT             = ogl_context_wrappers_glTextureBufferRangeEXT;
-    context_ptr->entry_points_gl_ext_direct_state_access.pGLTextureParameteriEXT              = ogl_context_wrappers_glTextureParameteriEXT;
-    context_ptr->entry_points_gl_ext_direct_state_access.pGLTextureParameterivEXT             = ogl_context_wrappers_glTextureParameterivEXT;
-    context_ptr->entry_points_gl_ext_direct_state_access.pGLTextureParameterfEXT              = ogl_context_wrappers_glTextureParameterfEXT;
-    context_ptr->entry_points_gl_ext_direct_state_access.pGLTextureParameterfvEXT             = ogl_context_wrappers_glTextureParameterfvEXT;
-    context_ptr->entry_points_gl_ext_direct_state_access.pGLTextureParameterIivEXT            = ogl_context_wrappers_glTextureParameterIivEXT;
-    context_ptr->entry_points_gl_ext_direct_state_access.pGLTextureParameterIuivEXT           = ogl_context_wrappers_glTextureParameterIuivEXT;
     context_ptr->entry_points_gl_ext_direct_state_access.pGLTextureSubImage1DEXT              = ogl_context_wrappers_glTextureSubImage1DEXT;
     context_ptr->entry_points_gl_ext_direct_state_access.pGLTextureSubImage2DEXT              = ogl_context_wrappers_glTextureSubImage2DEXT;
     context_ptr->entry_points_gl_ext_direct_state_access.pGLTextureSubImage3DEXT              = ogl_context_wrappers_glTextureSubImage3DEXT;
-    context_ptr->entry_points_gl_ext_direct_state_access.pGLUnmapNamedBufferEXT               = ogl_context_wrappers_glUnmapNamedBufferEXT;
     context_ptr->entry_points_gl_ext_direct_state_access.pGLVertexArrayVertexAttribOffsetEXT  = ogl_context_wrappers_glVertexArrayVertexAttribOffsetEXT;
     context_ptr->entry_points_gl_ext_direct_state_access.pGLVertexArrayVertexAttribIOffsetEXT = ogl_context_wrappers_glVertexArrayVertexAttribIOffsetEXT;
 }
@@ -2163,7 +2148,7 @@ PRIVATE void _ogl_context_retrieve_GL_EXT_direct_state_access_function_pointers(
 /** TODO */
 PRIVATE void _ogl_context_retrieve_GL_EXT_texture_filter_anisotropic_limits(_ogl_context* context_ptr)
 {
-    ASSERT_DEBUG_SYNC(context_ptr->context_type == OGL_CONTEXT_TYPE_GL,
+    ASSERT_DEBUG_SYNC(context_ptr->backend_type == RAL_BACKEND_TYPE_GL,
                       "GL-specific function called for a non-GL context");
 
     context_ptr->entry_points_private.pGLGetFloatv(GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT,
@@ -2176,7 +2161,7 @@ PRIVATE void _ogl_context_retrieve_GL_EXT_texture_filter_anisotropic_limits(_ogl
 /** TODO */
 PRIVATE void _ogl_context_retrieve_GL_function_pointers(_ogl_context* context_ptr)
 {
-    ASSERT_DEBUG_SYNC(context_ptr->context_type == OGL_CONTEXT_TYPE_GL,
+    ASSERT_DEBUG_SYNC(context_ptr->backend_type == RAL_BACKEND_TYPE_GL,
                       "GL-specific function called for a non-GL context");
 
     func_ptr_table_entry func_ptr_table[] =
@@ -2193,7 +2178,7 @@ PRIVATE void _ogl_context_retrieve_GL_function_pointers(_ogl_context* context_pt
         {&context_ptr->entry_points_private.pGLBindBufferRange,                             "glBindBufferRange"},
         {&context_ptr->entry_points_gl.pGLBindFragDataLocation,                             "glBindFragDataLocation"},
         {&context_ptr->entry_points_private.pGLBindFramebuffer,                             "glBindFramebuffer"},
-        {&context_ptr->entry_points_private.pGLBindImageTexture,                            "glBindImageTexture"},
+        {&context_ptr->entry_points_gl.pGLBindImageTexture,                                 "glBindImageTexture"},
         {&context_ptr->entry_points_gl.pGLBindProgramPipeline,                              "glBindProgramPipeline"},
         {&context_ptr->entry_points_private.pGLBindRenderbuffer,                            "glBindRenderbuffer"},
         {&context_ptr->entry_points_private.pGLBindSampler,                                 "glBindSampler"},
@@ -2457,12 +2442,12 @@ PRIVATE void _ogl_context_retrieve_GL_function_pointers(_ogl_context* context_pt
         {&context_ptr->entry_points_gl.pGLPointSize,                                        "glPointSize"},
         {&context_ptr->entry_points_gl.pGLPushDebugGroup,                                   "glPushDebugGroup"},
         {&context_ptr->entry_points_gl.pGLSampleCoverage,                                   "glSampleCoverage"},
-        {&context_ptr->entry_points_private.pGLSamplerParameterf,                           "glSamplerParameterf"},
-        {&context_ptr->entry_points_private.pGLSamplerParameterfv,                          "glSamplerParameterfv"},
-        {&context_ptr->entry_points_private.pGLSamplerParameterIiv,                         "glSamplerParameterIiv"},
-        {&context_ptr->entry_points_private.pGLSamplerParameterIuiv,                        "glSamplerParameterIuiv"},
-        {&context_ptr->entry_points_private.pGLSamplerParameteri,                           "glSamplerParameteri"},
-        {&context_ptr->entry_points_private.pGLSamplerParameteriv,                          "glSamplerParameteriv"},
+        {&context_ptr->entry_points_gl.pGLSamplerParameterf,                                "glSamplerParameterf"},
+        {&context_ptr->entry_points_gl.pGLSamplerParameterfv,                               "glSamplerParameterfv"},
+        {&context_ptr->entry_points_gl.pGLSamplerParameterIiv,                              "glSamplerParameterIiv"},
+        {&context_ptr->entry_points_gl.pGLSamplerParameterIuiv,                             "glSamplerParameterIuiv"},
+        {&context_ptr->entry_points_gl.pGLSamplerParameteri,                                "glSamplerParameteri"},
+        {&context_ptr->entry_points_gl.pGLSamplerParameteriv,                               "glSamplerParameteriv"},
         {&context_ptr->entry_points_private.pGLScissor,                                     "glScissor"},
         {&context_ptr->entry_points_private.pGLShaderStorageBlockBinding,                   "glShaderStorageBlockBinding"},
         {&context_ptr->entry_points_gl.pGLShaderSource,                                     "glShaderSource"},
@@ -2573,7 +2558,6 @@ PRIVATE void _ogl_context_retrieve_GL_function_pointers(_ogl_context* context_pt
     context_ptr->entry_points_gl.pGLBindBufferBase                              = ogl_context_wrappers_glBindBufferBase;
     context_ptr->entry_points_gl.pGLBindBufferRange                             = ogl_context_wrappers_glBindBufferRange;
     context_ptr->entry_points_gl.pGLBindFramebuffer                             = ogl_context_wrappers_glBindFramebuffer;
-    context_ptr->entry_points_gl.pGLBindImageTexture                            = ogl_context_wrappers_glBindImageTextureEXT;
     context_ptr->entry_points_gl.pGLBindRenderbuffer                            = ogl_context_wrappers_glBindRenderbuffer;
     context_ptr->entry_points_gl.pGLBindSampler                                 = ogl_context_wrappers_glBindSampler;
     context_ptr->entry_points_gl.pGLBindTexture                                 = ogl_context_wrappers_glBindTexture;
@@ -2684,12 +2668,6 @@ PRIVATE void _ogl_context_retrieve_GL_function_pointers(_ogl_context* context_pt
     context_ptr->entry_points_gl.pGLRenderbufferStorage                         = ogl_context_wrappers_glRenderbufferStorage;
     context_ptr->entry_points_gl.pGLRenderbufferStorageMultisample              = ogl_context_wrappers_glRenderbufferStorageMultisample;
     context_ptr->entry_points_gl.pGLResumeTransformFeedback                     = ogl_context_wrappers_glResumeTransformFeedback;
-    context_ptr->entry_points_gl.pGLSamplerParameterf                           = ogl_context_wrappers_glSamplerParameterf;
-    context_ptr->entry_points_gl.pGLSamplerParameterfv                          = ogl_context_wrappers_glSamplerParameterfv;
-    context_ptr->entry_points_gl.pGLSamplerParameterIiv                         = ogl_context_wrappers_glSamplerParameterIiv;
-    context_ptr->entry_points_gl.pGLSamplerParameterIuiv                        = ogl_context_wrappers_glSamplerParameterIuiv;
-    context_ptr->entry_points_gl.pGLSamplerParameteri                           = ogl_context_wrappers_glSamplerParameteri;
-    context_ptr->entry_points_gl.pGLSamplerParameteriv                          = ogl_context_wrappers_glSamplerParameteriv;
     context_ptr->entry_points_gl.pGLScissor                                     = ogl_context_wrappers_glScissor;
     context_ptr->entry_points_gl.pGLShaderStorageBlockBinding                   = ogl_context_wrappers_glShaderStorageBlockBinding;
     context_ptr->entry_points_gl.pGLTexBuffer                                   = ogl_context_wrappers_glTexBuffer;
@@ -2721,14 +2699,14 @@ PRIVATE void _ogl_context_retrieve_GL_info(_ogl_context* context_ptr)
     PFNGLGETSTRINGPROC  pGLGetString  = NULL;
     PFNGLGETSTRINGIPROC pGLGetStringi = NULL;
 
-    if (context_ptr->context_type == OGL_CONTEXT_TYPE_ES)
+    if (context_ptr->backend_type == RAL_BACKEND_TYPE_ES)
     {
         pGLGetString  = context_ptr->entry_points_es.pGLGetString;
         pGLGetStringi = context_ptr->entry_points_es.pGLGetStringi;
     }
     else
     {
-        ASSERT_DEBUG_SYNC(context_ptr->context_type == OGL_CONTEXT_TYPE_GL,
+        ASSERT_DEBUG_SYNC(context_ptr->backend_type == RAL_BACKEND_TYPE_GL,
                           "Unrecognized context type");
 
         pGLGetString  = context_ptr->entry_points_gl.pGLGetString;
@@ -2741,7 +2719,7 @@ PRIVATE void _ogl_context_retrieve_GL_info(_ogl_context* context_ptr)
     context_ptr->info.shading_language_version = pGLGetString(GL_SHADING_LANGUAGE_VERSION);
 
     /* Retrieve extensions supported by the implementation */
-    if (context_ptr->context_type == OGL_CONTEXT_TYPE_ES)
+    if (context_ptr->backend_type == RAL_BACKEND_TYPE_ES)
     {
         context_ptr->entry_points_es.pGLGetIntegerv(GL_NUM_EXTENSIONS,
                                                    &context_ptr->limits.num_extensions);
@@ -2778,7 +2756,7 @@ PRIVATE void _ogl_context_retrieve_GL_info(_ogl_context* context_ptr)
 /** TODO */
 PRIVATE void _ogl_context_retrieve_GL_limits(_ogl_context* context_ptr)
 {
-    ASSERT_DEBUG_SYNC(context_ptr->context_type == OGL_CONTEXT_TYPE_GL,
+    ASSERT_DEBUG_SYNC(context_ptr->backend_type == RAL_BACKEND_TYPE_GL,
                       "_ogl_context_retrieve_GL_limits() called for a non-GL context");
 
     /* NOTE: This function uses private entry-points, because at the time of the call,
@@ -3068,7 +3046,8 @@ PUBLIC void ogl_context_unbind_from_current_thread(ogl_context context)
  *  creates the WGL context, allows OGL_info to update its data model and returns a ogl_context instance.
  *
  *  @param name          TODO
- *  @param type          TODO
+ *  @param context       TODO
+ *  @param backend       TODO
  *  @param window        TODO
  *  @param in_pfd        Pixel format descriptor object instance.
  *  @param vsync_enabled TODO
@@ -3078,7 +3057,8 @@ PUBLIC void ogl_context_unbind_from_current_thread(ogl_context context)
  *  @return A new ogl_context instance, if successful, or NULL otherwise.
 */
 PUBLIC EMERALD_API ogl_context ogl_context_create_from_system_window(system_hashed_ansi_string name,
-                                                                     ogl_context_type          type,
+                                                                     ral_context               context,
+                                                                     raGL_backend              backend,
                                                                      system_window             window,
                                                                      bool                      vsync_enabled,
                                                                      ogl_context               parent_context)
@@ -3094,7 +3074,8 @@ PUBLIC EMERALD_API ogl_context ogl_context_create_from_system_window(system_hash
 
     /* The new context takes over the ownership of the duplicate pixel format object instance */
     return _ogl_context_create_from_system_window_shared(name,
-                                                         type,
+                                                         context,
+                                                         backend,
                                                          window,
                                                          window_pf,
                                                          vsync_enabled,
@@ -3328,16 +3309,16 @@ PUBLIC EMERALD_API void ogl_context_get_property(ogl_context          context,
 
     switch (property)
     {
-        case OGL_CONTEXT_PROPERTY_BO_BINDINGS:
+        case OGL_CONTEXT_PROPERTY_BACKEND:
         {
-            *((ogl_context_bo_bindings*) out_result) = context_ptr->bo_bindings;
+            *((raGL_backend*) out_result) = context_ptr->backend;
 
             break;
         }
 
-        case OGL_CONTEXT_PROPERTY_BUFFERS_RAGL:
+        case OGL_CONTEXT_PROPERTY_BO_BINDINGS:
         {
-            *((raGL_buffers*) out_result) = context_ptr->buffers;
+            *((ogl_context_bo_bindings*) out_result) = context_ptr->bo_bindings;
 
             break;
         }
@@ -3386,7 +3367,7 @@ PUBLIC EMERALD_API void ogl_context_get_property(ogl_context          context,
 
         case OGL_CONTEXT_PROPERTY_ENTRYPOINTS_ES:
         {
-            ASSERT_DEBUG_SYNC(context_ptr->context_type == OGL_CONTEXT_TYPE_ES,
+            ASSERT_DEBUG_SYNC(context_ptr->backend_type == RAL_BACKEND_TYPE_ES,
                               "OGL_CONTEXT_PROPERTY_ENTRYPOINTS_ES property requested for a non-ES context");
 
             *((const ogl_context_es_entrypoints**) out_result) = &context_ptr->entry_points_es;
@@ -3396,7 +3377,7 @@ PUBLIC EMERALD_API void ogl_context_get_property(ogl_context          context,
 
         case OGL_CONTEXT_PROPERTY_ENTRYPOINTS_ES_EXT_TEXTURE_BUFFER:
         {
-            ASSERT_DEBUG_SYNC(context_ptr->context_type == OGL_CONTEXT_TYPE_ES,
+            ASSERT_DEBUG_SYNC(context_ptr->backend_type == RAL_BACKEND_TYPE_ES,
                               "OGL_CONTEXT_PROPERTY_ENTRYPOINTS_ES_EXT_TEXTURE_BUFFER property requested for a non-ES context");
 
             *((const ogl_context_es_entrypoints_ext_texture_buffer**) out_result) = &context_ptr->entry_points_es_ext_texture_buffer;
@@ -3406,7 +3387,7 @@ PUBLIC EMERALD_API void ogl_context_get_property(ogl_context          context,
 
         case OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL:
         {
-            ASSERT_DEBUG_SYNC(context_ptr->context_type == OGL_CONTEXT_TYPE_GL,
+            ASSERT_DEBUG_SYNC(context_ptr->backend_type == RAL_BACKEND_TYPE_GL,
                               "OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL property requested for a non-GL context");
 
             *((const ogl_context_gl_entrypoints**) out_result) = &context_ptr->entry_points_gl;
@@ -3416,7 +3397,7 @@ PUBLIC EMERALD_API void ogl_context_get_property(ogl_context          context,
 
         case OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL_ARB_BUFFER_STORAGE:
         {
-            ASSERT_DEBUG_SYNC(context_ptr->context_type == OGL_CONTEXT_TYPE_GL,
+            ASSERT_DEBUG_SYNC(context_ptr->backend_type == RAL_BACKEND_TYPE_GL,
                               "OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL_ARB_BUFFER_STORAGE property requested for a non-GL context");
 
             *((const ogl_context_gl_entrypoints_arb_buffer_storage**) out_result) = &context_ptr->entry_points_gl_arb_buffer_storage;
@@ -3426,7 +3407,7 @@ PUBLIC EMERALD_API void ogl_context_get_property(ogl_context          context,
 
         case OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL_ARB_SPARSE_BUFFER:
         {
-            ASSERT_DEBUG_SYNC(context_ptr->context_type == OGL_CONTEXT_TYPE_GL,
+            ASSERT_DEBUG_SYNC(context_ptr->backend_type == RAL_BACKEND_TYPE_GL,
                               "OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL_ARB_SPARSE_BUFFER property requested for a non-GL context");
 
             *((const ogl_context_gl_entrypoints_arb_sparse_buffer**) out_result) = &context_ptr->entry_points_gl_arb_sparse_buffer;
@@ -3436,7 +3417,7 @@ PUBLIC EMERALD_API void ogl_context_get_property(ogl_context          context,
 
         case OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL_EXT_DIRECT_STATE_ACCESS:
         {
-            ASSERT_DEBUG_SYNC(context_ptr->context_type == OGL_CONTEXT_TYPE_GL,
+            ASSERT_DEBUG_SYNC(context_ptr->backend_type == RAL_BACKEND_TYPE_GL,
                               "OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL_EXT_DIRECT_STATE_ACCESS property requested for a non-GL context");
 
             *((const ogl_context_gl_entrypoints_ext_direct_state_access**) out_result) = &context_ptr->entry_points_gl_ext_direct_state_access;
@@ -3512,7 +3493,7 @@ PUBLIC EMERALD_API void ogl_context_get_property(ogl_context          context,
             /* If there's no material manager available, create one now */
             if (context_ptr->materials == NULL)
             {
-                context_ptr->materials = ogl_materials_create(context);
+                context_ptr->materials = ogl_materials_create(context_ptr->context);
             }
 
             *((ogl_materials*) out_result) = context_ptr->materials;
@@ -3581,7 +3562,7 @@ PUBLIC EMERALD_API void ogl_context_get_property(ogl_context          context,
             if (context_ptr->shadow_mapping == NULL)
             {
                 /* Create the shadow mapping handler if this is the first incoming request */
-                context_ptr->shadow_mapping = ogl_shadow_mapping_create( (ogl_context) context_ptr);
+                context_ptr->shadow_mapping = ogl_shadow_mapping_create(context_ptr->context);
             }
 
             *(ogl_shadow_mapping*) out_result = context_ptr->shadow_mapping;
@@ -3652,7 +3633,7 @@ PUBLIC EMERALD_API void ogl_context_get_property(ogl_context          context,
                                           &window_name);
 
                 context_ptr->text_renderer = ogl_text_create(window_name,
-                                                             context,
+                                                             context_ptr->context,
                                                              system_resources_get_meiryo_font_table(),
                                                              window_size[0],
                                                              window_size[1]);
@@ -3679,23 +3660,9 @@ PUBLIC EMERALD_API void ogl_context_get_property(ogl_context          context,
             break;
         }
 
-        case OGL_CONTEXT_PROPERTY_TEXTURES:
-        {
-            *((ogl_context_textures*) out_result) = context_ptr->textures;
-
-            break;
-        }
-
         case OGL_CONTEXT_PROPERTY_TO_BINDINGS:
         {
             *((ogl_context_to_bindings*) out_result) = context_ptr->to_bindings;
-
-            break;
-        }
-
-        case OGL_CONTEXT_PROPERTY_TYPE:
-        {
-            *((ogl_context_type*) out_result) = context_ptr->context_type;
 
             break;
         }
@@ -3822,24 +3789,6 @@ PUBLIC bool ogl_context_release_managers(ogl_context context)
 
         context_ptr->shadow_mapping = NULL;
     }
-
-    if (context_ptr->textures != NULL)
-    {
-        ogl_context_textures_release(context_ptr->textures);
-
-        context_ptr->textures = NULL;
-    }
-
-    ogl_context_bind_to_current_thread(context);
-    {
-        if (context_ptr->buffers != NULL)
-        {
-            raGL_buffers_release(context_ptr->buffers);
-
-            context_ptr->buffers = NULL;
-        }
-    }
-    ogl_context_unbind_from_current_thread(context);
 
 
     if (context_ptr->bo_bindings != NULL)

@@ -35,9 +35,9 @@ DECLARE_HANDLE(ogl_context_to_bindings);
 PUBLIC ogl_context_to_bindings ogl_context_to_bindings_create(ogl_context context);
 
 /** TODO */
-PUBLIC ogl_texture ogl_context_to_bindings_get_bound_texture(const ogl_context_to_bindings to_bindings,
-                                                             GLuint                        texture_unit,
-                                                             GLenum                        target);
+PUBLIC GLuint ogl_context_to_bindings_get_bound_texture_id(const ogl_context_to_bindings to_bindings,
+                                                           GLuint                        texture_unit,
+                                                           GLenum                        target);
 
 /** TODO */
 PUBLIC ogl_context_to_bindings_sync_bit ogl_context_to_bindings_get_ogl_context_to_bindings_sync_bit_from_gl_target(GLenum binding_target);
@@ -57,7 +57,7 @@ PUBLIC void ogl_context_to_bindings_reset_all_bindings_for_texture_unit(ogl_cont
 PUBLIC void ogl_context_to_bindings_set_binding(ogl_context_to_bindings bindings,
                                                 GLuint                  texture_unit,
                                                 GLenum                  target,
-                                                ogl_texture             texture);
+                                                GLuint                  texture_id);
 
 /** TODO
  *

@@ -59,10 +59,12 @@ static system_hashed_ansi_string _object_type_programs_curve_editor_quadselector
 static system_hashed_ansi_string _object_type_programs_curve_editor_static_hashed_ansi_string          = NULL;
 static system_hashed_ansi_string _object_type_programs_curve_editor_tcb_hashed_ansi_string             = NULL;
 static system_hashed_ansi_string _object_type_ragl_buffers_hashed_ansi_string                          = NULL;
+static system_hashed_ansi_string _object_type_ragl_textures_hashed_ansi_string                         = NULL;
 static system_hashed_ansi_string _object_type_ral_buffer_hashed_ansi_string                            = NULL;
 static system_hashed_ansi_string _object_type_ral_context_hashed_ansi_string                           = NULL;
 static system_hashed_ansi_string _object_type_ral_framebuffer_hashed_ansi_string                       = NULL;
 static system_hashed_ansi_string _object_type_ral_sampler_hashed_ansi_string                           = NULL;
+static system_hashed_ansi_string _object_type_ral_texture_hashed_ansi_string                           = NULL;
 static system_hashed_ansi_string _object_type_scalar_field_metaballs_hashed_ansi_string                = NULL;
 static system_hashed_ansi_string _object_type_scene_hashed_ansi_string                                 = NULL;
 static system_hashed_ansi_string _object_type_scene_camera_hashed_ansi_string                          = NULL;
@@ -145,10 +147,12 @@ PUBLIC system_hashed_ansi_string object_manager_convert_object_manager_object_ty
         case OBJECT_TYPE_PROGRAMS_CURVE_EDITOR_STATIC:                    return _object_type_programs_curve_editor_static_hashed_ansi_string;
         case OBJECT_TYPE_PROGRAMS_CURVE_EDITOR_TCB:                       return _object_type_programs_curve_editor_tcb_hashed_ansi_string;
         case OBJECT_TYPE_RAGL_BUFFERS:                                    return _object_type_ragl_buffers_hashed_ansi_string;
+        case OBJECT_TYPE_RAGL_TEXTURES:                                   return _object_type_ragl_textures_hashed_ansi_string;
         case OBJECT_TYPE_RAL_BUFFER:                                      return _object_type_ral_buffer_hashed_ansi_string;
         case OBJECT_TYPE_RAL_CONTEXT:                                     return _object_type_ral_context_hashed_ansi_string;
         case OBJECT_TYPE_RAL_FRAMEBUFFER:                                 return _object_type_ral_framebuffer_hashed_ansi_string;
         case OBJECT_TYPE_RAL_SAMPLER:                                     return _object_type_ral_sampler_hashed_ansi_string;
+        case OBJECT_TYPE_RAL_TEXTURE:                                     return _object_type_ral_texture_hashed_ansi_string;
         case OBJECT_TYPE_SCALAR_FIELD_METABALLS:                          return _object_type_scalar_field_metaballs_hashed_ansi_string;
         case OBJECT_TYPE_SCENE:                                           return _object_type_scene_hashed_ansi_string;
         case OBJECT_TYPE_SCENE_CAMERA:                                    return _object_type_scene_camera_hashed_ansi_string;
@@ -403,10 +407,12 @@ PUBLIC void _object_manager_init()
     _object_type_programs_curve_editor_static_hashed_ansi_string          = system_hashed_ansi_string_create("Curve Editor Programs (Static)");
     _object_type_programs_curve_editor_tcb_hashed_ansi_string             = system_hashed_ansi_string_create("Curve Editor Programs (TCB)");
     _object_type_ragl_buffers_hashed_ansi_string                          = system_hashed_ansi_string_create("raGL Buffers");
+    _object_type_ragl_textures_hashed_ansi_string                         = system_hashed_ansi_string_create("raGL Textures");
     _object_type_ral_buffer_hashed_ansi_string                            = system_hashed_ansi_string_create("RAL Buffers");
     _object_type_ral_context_hashed_ansi_string                           = system_hashed_ansi_string_create("RAL Contexts");
     _object_type_ral_framebuffer_hashed_ansi_string                       = system_hashed_ansi_string_create("RAL Framebuffers");
     _object_type_ral_sampler_hashed_ansi_string                           = system_hashed_ansi_string_create("RAL Samplers");
+    _object_type_ral_texture_hashed_ansi_string                           = system_hashed_ansi_string_create("RAL Textures");
     _object_type_scalar_field_metaballs_hashed_ansi_string                = system_hashed_ansi_string_create("Scalar Field (Metaballs)");
     _object_type_scene_hashed_ansi_string                                 = system_hashed_ansi_string_create("Scenes");
     _object_type_scene_camera_hashed_ansi_string                          = system_hashed_ansi_string_create("Scene Cameras");

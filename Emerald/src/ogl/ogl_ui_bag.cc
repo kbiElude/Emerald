@@ -4,13 +4,13 @@
  *
  */
 #include "shared.h"
-#include "ogl/ogl_context.h"
 #include "ogl/ogl_ui.h"
 #include "ogl/ogl_ui_bag.h"
 #include "ogl/ogl_ui_dropdown.h"
 #include "ogl/ogl_ui_frame.h"
 #include "ogl/ogl_ui_scrollbar.h"
 #include "ogl/ogl_ui_shared.h"
+#include "ral/ral_context.h"
 #include "system/system_assertions.h"
 #include "system/system_log.h"
 #include "system/system_resizable_vector.h"
@@ -67,12 +67,12 @@ PRIVATE void _ogl_ui_bag_position_controls(_ogl_ui_bag* bag_ptr)
                                         &n_controls);
 
     /* Determine deltas */
-    ogl_context   context              = ogl_ui_get_context(bag_ptr->ui);
+    ral_context   context              = ogl_ui_get_context(bag_ptr->ui);
     system_window window               = NULL;
     int           window_dimensions[2] = {0};
 
-    ogl_context_get_property  (context,
-                               OGL_CONTEXT_PROPERTY_WINDOW,
+    ral_context_get_property  (context,
+                               RAL_CONTEXT_PROPERTY_WINDOW,
                               &window);
     system_window_get_property(window,
                                SYSTEM_WINDOW_PROPERTY_DIMENSIONS,
@@ -244,8 +244,7 @@ PUBLIC EMERALD_API ogl_ui_bag ogl_ui_bag_create(ogl_ui                ui,
         ASSERT_DEBUG_SYNC(new_bag_ptr->controls == NULL,
                           "_ogl_ui_bag spawned a controls vector");
 
-        new_bag_ptr->controls = system_resizable_vector_create(n_controls,
-                                                               sizeof(ogl_ui_control) );
+        new_bag_ptr->controls = system_resizable_vector_create(n_controls);
 
         /* Cache UI controls */
         for (unsigned int n_control = 0;

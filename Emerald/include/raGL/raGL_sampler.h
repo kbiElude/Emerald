@@ -6,9 +6,6 @@
 #include "system/system_types.h"
 
 
-DECLARE_HANDLE(raGL_sampler);
-
-
 typedef enum
 {
     /* not settable; GLuint */

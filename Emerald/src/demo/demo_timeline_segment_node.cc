@@ -6,7 +6,7 @@
 #include "shared.h"
 
 #include "demo/demo_timeline_segment_node.h"
-#include "ogl/ogl_texture.h"
+#include "ral/ral_texture.h"
 #include "ral/ral_types.h"
 #include "ral/ral_utils.h"
 #include "system/system_callback_manager.h"
@@ -27,7 +27,7 @@ typedef struct _demo_timeline_segment_node_texture_io
     struct _demo_timeline_segment_node* parent_node_ptr;
     ral_texture_type                    type;
 
-    ogl_texture bound_texture;
+    ral_texture bound_texture;
 
     explicit _demo_timeline_segment_node_texture_io(_demo_timeline_segment_node* in_parent_node_ptr,
                                                     uint32_t                     in_id,
@@ -408,7 +408,7 @@ PUBLIC bool demo_timeline_segment_node_attach_texture_to_texture_io(demo_timelin
     _demo_timeline_segment_node*            node_ptr              = (_demo_timeline_segment_node*) node;
     bool                                    result                = false;
     _demo_timeline_segment_node_texture_io* texture_io_ptr        = NULL;
-    ogl_texture*                            texture_to_detach_ptr = NULL;
+    ral_texture*                            texture_to_detach_ptr = NULL;
 
     ASSERT_DEBUG_SYNC(node_ptr != NULL,
                       "Input node is NULL");
@@ -431,7 +431,7 @@ PUBLIC bool demo_timeline_segment_node_attach_texture_to_texture_io(demo_timelin
     if (texture_attachment_ptr != NULL)
     {
         /* Make sure the texture the caller wants to attach is different from the one that's already bound */
-        if (texture_attachment_ptr->texture == texture_io_ptr->bound_texture)
+        if (texture_attachment_ptr->texture_ral == texture_io_ptr->bound_texture)
         {
             LOG_ERROR("Redundant demo_timeline_segment_node_attach_texture_to_texture_io() call detected.");
 
@@ -448,17 +448,17 @@ PUBLIC bool demo_timeline_segment_node_attach_texture_to_texture_io(demo_timelin
 
         is_arg_texture_layered = ral_utils_is_texture_type_layered(texture_io_ptr->type);
 
-        ogl_texture_get_property(texture_attachment_ptr->texture,
-                                 OGL_TEXTURE_PROPERTY_FORMAT_RAL,
+        ral_texture_get_property(texture_attachment_ptr->texture_ral,
+                                 RAL_TEXTURE_PROPERTY_FORMAT,
                                 &texture_format);
-        ogl_texture_get_property(texture_attachment_ptr->texture,
-                                 OGL_TEXTURE_PROPERTY_N_LAYERS,
+        ral_texture_get_property(texture_attachment_ptr->texture_ral,
+                                 RAL_TEXTURE_PROPERTY_N_LAYERS,
                                 &texture_n_layers);
-        ogl_texture_get_property(texture_attachment_ptr->texture,
-                                 OGL_TEXTURE_PROPERTY_N_SAMPLES,
+        ral_texture_get_property(texture_attachment_ptr->texture_ral,
+                                 RAL_TEXTURE_PROPERTY_N_SAMPLES,
                                 &texture_n_samples);
-        ogl_texture_get_property(texture_attachment_ptr->texture,
-                                 OGL_TEXTURE_PROPERTY_TYPE,
+        ral_texture_get_property(texture_attachment_ptr->texture_ral,
+                                 RAL_TEXTURE_PROPERTY_TYPE,
                                 &texture_type);
 
         ral_utils_get_texture_format_property(texture_format,
@@ -522,12 +522,12 @@ PUBLIC bool demo_timeline_segment_node_attach_texture_to_texture_io(demo_timelin
     } /* if (*texture_to_detach_ptr != NULL) */
 
     /* Looks like this texture can be bound to the specified IO! */
-    texture_io_ptr->bound_texture = texture_attachment_ptr->texture;
+    texture_io_ptr->bound_texture = texture_attachment_ptr->texture_ral;
 
     /* Notify subscribers */
     system_callback_manager_call_back(texture_io_ptr->parent_node_ptr->callback_manager,
                                       DEMO_TIMELINE_SEGMENT_NODE_CALLBACK_ID_TEXTURE_ATTACHED,
-                                      texture_attachment_ptr->texture);
+                                      texture_attachment_ptr->texture_ral);
 
     /* All done */
     result = true;
@@ -765,9 +765,9 @@ PUBLIC void demo_timeline_segment_node_get_io_property(demo_timeline_segment_nod
 
     switch (property)
     {
-        case DEMO_TIMELINE_SEGMENT_NODE_IO_PROPERTY_BOUND_TEXTURE:
+        case DEMO_TIMELINE_SEGMENT_NODE_IO_PROPERTY_BOUND_TEXTURE_RAL:
         {
-            *(ogl_texture*) out_result_ptr = texture_io_ptr->bound_texture;
+            *(ral_texture*) out_result_ptr = texture_io_ptr->bound_texture;
 
             break;
         }
@@ -954,7 +954,7 @@ PUBLIC void demo_timeline_segment_node_get_property(demo_timeline_segment_node  
 PUBLIC bool demo_timeline_segment_node_get_texture_attachment(demo_timeline_segment_node node,
                                                               bool                       is_input_id,
                                                               uint32_t                   id,
-                                                              ogl_texture*               out_attached_texture_ptr)
+                                                              ral_texture*               out_attached_texture_ptr)
 {
     _demo_timeline_segment_node*            node_ptr       = (_demo_timeline_segment_node*) node;
     bool                                    result         = false;

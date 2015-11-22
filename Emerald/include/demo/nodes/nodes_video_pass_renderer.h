@@ -53,6 +53,6 @@ PUBLIC bool nodes_video_pass_renderer_set_property(demo_timeline_segment_node_pr
 /** TODO */
 PUBLIC void nodes_video_pass_renderer_set_texture_memory_allocation(demo_timeline_segment_node_private node,
                                                                     uint32_t                           n_allocation,
-                                                                    ogl_texture                        texture);
+                                                                    ral_texture                        texture);
 
 #endif /* NODES_VIDEO_PASS_RENDERER_H */

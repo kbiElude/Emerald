@@ -6,17 +6,18 @@
 #include "shared.h"
 #include "ogl/ogl_context.h"
 #include "ogl/ogl_context_state_cache.h"
-#include "ogl/ogl_context_textures.h"
 #include "ogl/ogl_program.h"
 #include "ogl/ogl_programs.h"
 #include "ogl/ogl_shader.h"
 #include "ogl/ogl_shaders.h"
-#include "ogl/ogl_texture.h"
 #include "postprocessing/postprocessing_blur_gaussian.h"
 #include "raGL/raGL_buffer.h"
 #include "raGL/raGL_buffers.h"
 #include "raGL/raGL_sampler.h"
 #include "raGL/raGL_samplers.h"
+#include "raGL/raGL_texture.h"
+#include "raGL/raGL_textures.h"
+#include "ral/ral_texture.h"
 #include "system/system_assertions.h"
 #include "system/system_hashed_ansi_string.h"
 #include "system/system_log.h"
@@ -895,7 +896,7 @@ end:
 PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void postprocessing_blur_gaussian_execute(postprocessing_blur_gaussian            blur,
                                                                                     unsigned int                            n_taps,
                                                                                     float                                   n_iterations,
-                                                                                    ogl_texture                             src_texture,
+                                                                                    raGL_texture                            src_texture,
                                                                                     postprocessing_blur_gaussian_resolution blur_resolution)
 {
     _postprocessing_blur_gaussian*                            blur_ptr                      = (_postprocessing_blur_gaussian*) blur;
@@ -906,13 +907,19 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void postprocessing_blur_gaussian_exec
     const ogl_context_gl_entrypoints*                         entrypoints_ptr               = NULL;
     GLuint                                                    other_data_bo_id              = 0;
     uint32_t                                                  other_data_bo_start_offset    = -1;
-    ral_texture_type                                          src_texture_type              = RAL_TEXTURE_TYPE_UNKNOWN;
-    unsigned int                                              src_texture_height            = 0;
     ral_texture_format                                        src_texture_format            = RAL_TEXTURE_FORMAT_UNKNOWN;
+    unsigned int                                              src_texture_height            = 0;
+    GLuint                                                    src_texture_id                = 0;
+    bool                                                      src_texture_is_rbo            = false;
+    ral_texture                                               src_texture_ral               = NULL;
     unsigned int                                              src_texture_width             = 0;
+    ral_texture_type                                          src_texture_type              = RAL_TEXTURE_TYPE_UNKNOWN;
     ogl_context_state_cache                                   state_cache                   = NULL;
     raGL_sampler                                              temp_2d_array_texture_sampler = NULL;
-    ogl_texture                                               temp_2d_array_texture         = NULL;
+    raGL_texture                                              temp_2d_array_texture         = NULL;
+    GLuint                                                    temp_2d_array_texture_id      = 0;
+    bool                                                      temp_2d_array_texture_is_rbo  = false;
+    raGL_textures                                             texture_pool                  = NULL;
     GLuint                                                    vao_id                        = 0;
     GLint                                                     viewport_data[4]              = {0};
 
@@ -933,25 +940,44 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void postprocessing_blur_gaussian_exec
                                          OGL_CONTEXT_PROPERTY_STATE_CACHE,
                                         &state_cache);
     ogl_context_get_property            (blur_ptr->context,
+                                         OGL_CONTEXT_PROPERTY_TEXTURES_RAGL,
+                                        &texture_pool);
+    ogl_context_get_property            (blur_ptr->context,
                                          OGL_CONTEXT_PROPERTY_VAO_NO_VAAS,
                                         &vao_id);
     ogl_context_state_cache_get_property(state_cache,
                                          OGL_CONTEXT_STATE_CACHE_PROPERTY_VIEWPORT,
                                          viewport_data);
-    ogl_texture_get_mipmap_property     (src_texture,
-                                         0, /* mipmap_level */
-                                         OGL_TEXTURE_MIPMAP_PROPERTY_HEIGHT,
-                                         &src_texture_height);
-    ogl_texture_get_property            (src_texture,
-                                         OGL_TEXTURE_PROPERTY_TYPE,
-                                        &src_texture_type);
-    ogl_texture_get_property            (src_texture,
-                                         OGL_TEXTURE_PROPERTY_FORMAT_RAL,
-                                         &src_texture_format);
-    ogl_texture_get_mipmap_property     (src_texture,
-                                         0, /* mipmap_level */
-                                         OGL_TEXTURE_MIPMAP_PROPERTY_WIDTH,
-                                         &src_texture_width);
+
+    raGL_texture_get_property(src_texture,
+                              RAGL_TEXTURE_PROPERTY_ID,
+                             &src_texture_id);
+    raGL_texture_get_property(src_texture,
+                              RAGL_TEXTURE_PROPERTY_IS_RENDERBUFFER,
+                             &src_texture_is_rbo);
+    raGL_texture_get_property(src_texture,
+                              RAGL_TEXTURE_PROPERTY_RAL_TEXTURE,
+                             &src_texture_ral);
+
+    ASSERT_DEBUG_SYNC(!src_texture_is_rbo,
+                      "TODO");
+
+    ral_texture_get_mipmap_property    (src_texture_ral,
+                                        0, /* n_layer */
+                                        0, /* n_mipmap */
+                                        RAL_TEXTURE_MIPMAP_PROPERTY_HEIGHT,
+                                       &src_texture_height);
+    ral_texture_get_property           (src_texture_ral,
+                                        RAL_TEXTURE_PROPERTY_TYPE,
+                                       &src_texture_type);
+    ral_texture_get_property           (src_texture_ral,
+                                        RAL_TEXTURE_PROPERTY_FORMAT,
+                                       &src_texture_format);
+    ral_texture_get_mipmap_property    (src_texture_ral,
+                                        0, /* n_layer  */
+                                        0, /* n_mipmap */
+                                        RAL_TEXTURE_MIPMAP_PROPERTY_WIDTH,
+                                       &src_texture_width);
 
     raGL_buffer_get_property(blur_ptr->coeff_bo,
                              RAGL_BUFFER_PROPERTY_ID,
@@ -1072,15 +1098,34 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void postprocessing_blur_gaussian_exec
     } /* switch (blur_resolution) */
 
     /* Retrieve a 2D Array texture we will use for execution of the iterations */
-    temp_2d_array_texture = ogl_context_textures_get_texture_from_pool(blur_ptr->context,
-                                                                       RAL_TEXTURE_TYPE_2D_ARRAY,
-                                                                       src_texture_format,
-                                                                       false,  /* use_full_mipmap_chain */
-                                                                       target_width,
-                                                                       target_height,
-                                                                       3,      /* base_mipmap_depth */
-                                                                       1,      /* n_samples */
-                                                                       false); /* fixed_sample_locations */
+    ral_texture_create_info temp_2d_array_texture_create_info;
+
+    temp_2d_array_texture_create_info.base_mipmap_depth      = 1;
+    temp_2d_array_texture_create_info.base_mipmap_height     = target_height;
+    temp_2d_array_texture_create_info.base_mipmap_width      = target_width;
+    temp_2d_array_texture_create_info.fixed_sample_locations = false;
+    temp_2d_array_texture_create_info.format                 = src_texture_format;
+    temp_2d_array_texture_create_info.n_layers               = 3;
+    temp_2d_array_texture_create_info.n_samples              = 1;
+    temp_2d_array_texture_create_info.type                   = RAL_TEXTURE_TYPE_2D_ARRAY;
+    temp_2d_array_texture_create_info.usage                  = RAL_TEXTURE_USAGE_BLIT_DST_BIT         |
+                                                               RAL_TEXTURE_USAGE_BLIT_SRC_BIT         |
+                                                               RAL_TEXTURE_USAGE_COLOR_ATTACHMENT_BIT |
+                                                               RAL_TEXTURE_USAGE_SAMPLED_BIT;
+    temp_2d_array_texture_create_info.use_full_mipmap_chain  = false;
+
+    temp_2d_array_texture = raGL_textures_get_texture_from_pool_with_create_info(texture_pool,
+                                                                                &temp_2d_array_texture_create_info);
+
+    raGL_texture_get_property(temp_2d_array_texture,
+                              RAGL_TEXTURE_PROPERTY_ID,
+                             &temp_2d_array_texture_id);
+    raGL_texture_get_property(temp_2d_array_texture,
+                              RAGL_TEXTURE_PROPERTY_IS_RENDERBUFFER,
+                             &temp_2d_array_texture_is_rbo);
+
+    ASSERT_DEBUG_SYNC(!temp_2d_array_texture_is_rbo,
+                      "TODO");
 
     /* Step 2): Set-up
      *
@@ -1116,7 +1161,7 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void postprocessing_blur_gaussian_exec
 
     dsa_entrypoints_ptr->pGLBindMultiTextureEXT(GL_TEXTURE0 + DATA_SAMPLER_TEXTURE_UNIT_INDEX,
                                                 GL_TEXTURE_2D_ARRAY,
-                                                temp_2d_array_texture);
+                                                temp_2d_array_texture_id);
     entrypoints_ptr->pGLBindSampler            (DATA_SAMPLER_TEXTURE_UNIT_INDEX,
                                                 sampler_id);
 
@@ -1150,10 +1195,9 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void postprocessing_blur_gaussian_exec
 
         case RAL_TEXTURE_TYPE_2D_ARRAY:
         {
-            ogl_texture_get_mipmap_property(src_texture,
-                                            0, /* mipmap_level */
-                                            OGL_TEXTURE_MIPMAP_PROPERTY_DEPTH,
-                                           &n_layers);
+            ral_texture_get_property(src_texture_ral,
+                                     RAL_TEXTURE_PROPERTY_N_LAYERS,
+                                    &n_layers);
 
             ASSERT_DEBUG_SYNC(n_layers != 0,
                               "Could not retrieve the number of layers of the input 2D Array Texture.");
@@ -1206,7 +1250,7 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void postprocessing_blur_gaussian_exec
 
         dsa_entrypoints_ptr->pGLNamedFramebufferTextureLayerEXT(ping_fbo_id,
                                                                 GL_COLOR_ATTACHMENT0,
-                                                                temp_2d_array_texture,
+                                                                temp_2d_array_texture_id,
                                                                 0,  /* level */
                                                                 0); /* layer */
 
@@ -1215,14 +1259,14 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void postprocessing_blur_gaussian_exec
             dsa_entrypoints_ptr->pGLNamedFramebufferTexture2DEXT(pong_fbo_id,
                                                                  GL_COLOR_ATTACHMENT0,
                                                                  GL_TEXTURE_2D,
-                                                                 src_texture,
+                                                                 src_texture_id,
                                                                  0); /* level */
         }
         else
         {
             dsa_entrypoints_ptr->pGLNamedFramebufferTextureLayerEXT(pong_fbo_id,
                                                                     GL_COLOR_ATTACHMENT0,
-                                                                    src_texture,
+                                                                    src_texture_id,
                                                                     0, /* level */
                                                                     n_layer);
         }
@@ -1240,12 +1284,12 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void postprocessing_blur_gaussian_exec
 
         dsa_entrypoints_ptr->pGLNamedFramebufferTextureLayerEXT(ping_fbo_id,
                                                                 GL_COLOR_ATTACHMENT0,
-                                                                temp_2d_array_texture,
+                                                                temp_2d_array_texture_id,
                                                                 0,  /* level */
                                                                 0); /* layer */
         dsa_entrypoints_ptr->pGLNamedFramebufferTextureLayerEXT(pong_fbo_id,
                                                                 GL_COLOR_ATTACHMENT0,
-                                                                temp_2d_array_texture,
+                                                                temp_2d_array_texture_id,
                                                                 0,  /* level */
                                                                 1); /* layer */
 
@@ -1284,7 +1328,7 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void postprocessing_blur_gaussian_exec
 
             dsa_entrypoints_ptr->pGLNamedFramebufferTextureLayerEXT(pong_fbo_id,
                                                                     GL_COLOR_ATTACHMENT0,
-                                                                    temp_2d_array_texture,
+                                                                    temp_2d_array_texture_id,
                                                                     0,  /* level */
                                                                     2); /* layer */
 
@@ -1295,7 +1339,7 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void postprocessing_blur_gaussian_exec
             /* Vertical pass */
             dsa_entrypoints_ptr->pGLNamedFramebufferTextureLayerEXT(pong_fbo_id,
                                                                     GL_COLOR_ATTACHMENT0,
-                                                                    temp_2d_array_texture,
+                                                                    temp_2d_array_texture_id,
                                                                     0,  /* level */
                                                                     1); /* layer */
 
@@ -1350,14 +1394,14 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void postprocessing_blur_gaussian_exec
             dsa_entrypoints_ptr->pGLNamedFramebufferTexture2DEXT(pong_fbo_id,
                                                                  GL_COLOR_ATTACHMENT0,
                                                                  GL_TEXTURE_2D,
-                                                                 src_texture,
+                                                                 src_texture_id,
                                                                  0); /* level */
         }
         else
         {
             dsa_entrypoints_ptr->pGLNamedFramebufferTextureLayerEXT(pong_fbo_id,
                                                                     GL_COLOR_ATTACHMENT0,
-                                                                    src_texture,
+                                                                    src_texture_id,
                                                                     0, /* level */
                                                                     n_layer);
         }
@@ -1375,12 +1419,6 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void postprocessing_blur_gaussian_exec
     } /* for (all layers that need to be blurred) */
 
     /* All done */
-    GLuint temp_2d_array_texture_id = 0;
-
-    ogl_texture_get_property(temp_2d_array_texture,
-                             OGL_TEXTURE_PROPERTY_ID,
-                            &temp_2d_array_texture_id);
-
     entrypoints_ptr->pGLInvalidateTexImage(temp_2d_array_texture_id,
                                            0); /* level */
 
@@ -1398,6 +1436,6 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void postprocessing_blur_gaussian_exec
         entrypoints_ptr->pGLEnable(GL_CULL_FACE);
     }
 
-    ogl_context_textures_return_reusable(blur_ptr->context,
-                                         temp_2d_array_texture);
+    raGL_textures_return_to_pool(texture_pool,
+                                 temp_2d_array_texture);
 }

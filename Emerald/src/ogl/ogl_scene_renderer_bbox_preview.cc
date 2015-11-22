@@ -12,6 +12,7 @@
 #include "ogl/ogl_scene_renderer_bbox_preview.h"
 #include "ogl/ogl_shader.h"
 #include "raGL/raGL_buffers.h"
+#include "ral/ral_context.h"
 #include "scene/scene.h"
 #include "scene/scene_mesh.h"
 #include "system/system_matrix4x4.h"
@@ -112,10 +113,7 @@ typedef struct _ogl_scene_renderer_bbox_preview
     /* DO NOT release. */
     raGL_buffers buffers;
 
-    /* DO NOT retain/release, as this object is managed by ogl_context and retaining it
-     * will cause the rendering context to never release itself.
-     */
-    ogl_context context;
+    ral_context context;
 
     raGL_buffer        data_bo; /* owned by raGL_buffers - do NOT release with glDeleteBuffers() */
     unsigned int       data_bo_size;
@@ -172,24 +170,27 @@ PRIVATE void _ogl_context_scene_renderer_bbox_preview_init_preview_program(_ogl_
     }
 
     /* Create shaders and set their bodies */
+    ogl_shader                fs_shader  = NULL;
+    ogl_shader                gs_shader  = NULL;
     system_hashed_ansi_string scene_name = NULL;
+    ogl_shader                vs_shader  = NULL;
 
     scene_get_property(preview_ptr->owned_scene,
                        SCENE_PROPERTY_NAME,
                       &scene_name);
 
-    ogl_shader fs_shader = ogl_shader_create(preview_ptr->context,
-                                             RAL_SHADER_TYPE_FRAGMENT,
-                                             system_hashed_ansi_string_create_by_merging_two_strings("Scene Renderer BB preview FS shader ",
-                                                                                                     system_hashed_ansi_string_get_buffer(scene_name)) );
-    ogl_shader gs_shader = ogl_shader_create(preview_ptr->context,
-                                             RAL_SHADER_TYPE_GEOMETRY,
-                                             system_hashed_ansi_string_create_by_merging_two_strings("Scene Renderer BB preview GS shader ",
-                                                                                                     system_hashed_ansi_string_get_buffer(scene_name)) );
-    ogl_shader vs_shader = ogl_shader_create(preview_ptr->context,
-                                             RAL_SHADER_TYPE_VERTEX,
-                                             system_hashed_ansi_string_create_by_merging_two_strings("Scene Renderer BB preview VS shader ",
-                                                                                                     system_hashed_ansi_string_get_buffer(scene_name)) );
+    fs_shader = ogl_shader_create(ral_context_get_gl_context(preview_ptr->context),
+                                  RAL_SHADER_TYPE_FRAGMENT,
+                                  system_hashed_ansi_string_create_by_merging_two_strings("Scene Renderer BB preview FS shader ",
+                                                                                          system_hashed_ansi_string_get_buffer(scene_name)) );
+    gs_shader = ogl_shader_create(ral_context_get_gl_context(preview_ptr->context),
+                                  RAL_SHADER_TYPE_GEOMETRY,
+                                  system_hashed_ansi_string_create_by_merging_two_strings("Scene Renderer BB preview GS shader ",
+                                                                                          system_hashed_ansi_string_get_buffer(scene_name)) );
+    vs_shader = ogl_shader_create(ral_context_get_gl_context(preview_ptr->context),
+                                  RAL_SHADER_TYPE_VERTEX,
+                                  system_hashed_ansi_string_create_by_merging_two_strings("Scene Renderer BB preview VS shader ",
+                                                                                          system_hashed_ansi_string_get_buffer(scene_name)) );
 
     ogl_shader_set_body(fs_shader,
                         system_hashed_ansi_string_create(preview_fragment_shader) );
@@ -209,7 +210,7 @@ PRIVATE void _ogl_context_scene_renderer_bbox_preview_init_preview_program(_ogl_
     }
 
     /* Initialize the program object */
-    preview_ptr->preview_program = ogl_program_create(preview_ptr->context,
+    preview_ptr->preview_program = ogl_program_create(ral_context_get_gl_context(preview_ptr->context),
                                                       system_hashed_ansi_string_create_by_merging_two_strings("Scene Renderer BB preview program ",
                                                                                                               system_hashed_ansi_string_get_buffer(scene_name)),
                                                       OGL_PROGRAM_SYNCABLE_UBS_MODE_ENABLE_GLOBAL);
@@ -291,7 +292,7 @@ end:
 /** TODO */
 PRIVATE void _ogl_context_scene_renderer_bbox_preview_init_ub_data(_ogl_scene_renderer_bbox_preview* preview_ptr)
 {
-    ogl_context_type context_type                    = OGL_CONTEXT_TYPE_UNDEFINED;
+    ral_backend_type backend_type                    = RAL_BACKEND_TYPE_UNKNOWN;
     float*           traveller_ptr                   = NULL;
     float*           ub_data                         = NULL;
     GLuint           uniform_buffer_offset_alignment = -1;
@@ -386,23 +387,23 @@ PRIVATE void _ogl_context_scene_renderer_bbox_preview_init_ub_data(_ogl_scene_re
     } /* for (both iterations) */
 
     /* Retrieve UB offset alignment */
-    ogl_context_get_property(preview_ptr->context,
-                             OGL_CONTEXT_PROPERTY_TYPE,
-                            &context_type);
+    ral_context_get_property(preview_ptr->context,
+                             RAL_CONTEXT_PROPERTY_BACKEND_TYPE,
+                            &backend_type);
 
-    if (context_type == OGL_CONTEXT_TYPE_ES)
+    if (backend_type == RAL_BACKEND_TYPE_ES)
     {
         ASSERT_DEBUG_SYNC(false,
                           "TODO: ES limits");
-    } /* if (context_type == OGL_CONTEXT_TYPE_ES) */
+    } /* if (backend_type == RAL_BACKEND_TYPE_ES) */
     else
     {
         ogl_context_gl_limits* limits_ptr = NULL;
 
-        ASSERT_DEBUG_SYNC(context_type == OGL_CONTEXT_TYPE_GL,
-                          "Unrecognized rendering context type.");
+        ASSERT_DEBUG_SYNC(backend_type == RAL_BACKEND_TYPE_GL,
+                          "Unrecognized rendering bakcend type.");
 
-        ogl_context_get_property(preview_ptr->context,
+        ogl_context_get_property(ral_context_get_gl_context(preview_ptr->context),
                                  OGL_CONTEXT_PROPERTY_LIMITS,
                                 &limits_ptr);
 
@@ -464,7 +465,7 @@ PRIVATE void _ogl_scene_renderer_bbox_preview_release_renderer_callback(ogl_cont
 }
 
 /** Please see header for spec */
-PUBLIC ogl_scene_renderer_bbox_preview ogl_scene_renderer_bbox_preview_create(ogl_context        context,
+PUBLIC ogl_scene_renderer_bbox_preview ogl_scene_renderer_bbox_preview_create(ral_context        context,
                                                                               scene              scene,
                                                                               ogl_scene_renderer owner)
 {
@@ -489,22 +490,22 @@ PUBLIC ogl_scene_renderer_bbox_preview ogl_scene_renderer_bbox_preview_create(og
         new_instance->preview_program_ub_offset_model = -1;
         new_instance->preview_program_ub_offset_vp    = -1;
 
-        ogl_context_get_property(new_instance->context,
+        ogl_context_get_property(ral_context_get_gl_context(new_instance->context),
                                  OGL_CONTEXT_PROPERTY_BUFFERS_RAGL,
                                 &new_instance->buffers);
 
         /* Is buffer_storage supported? */
-        ogl_context_type context_type = OGL_CONTEXT_TYPE_UNDEFINED;
+        ral_backend_type backend_type = RAL_BACKEND_TYPE_UNKNOWN;
 
-        ogl_context_get_property(context,
-                                 OGL_CONTEXT_PROPERTY_TYPE,
-                                &context_type);
+        ral_context_get_property(context,
+                                 RAL_CONTEXT_PROPERTY_BACKEND_TYPE,
+                                &backend_type);
 
-        if (context_type == OGL_CONTEXT_TYPE_ES)
+        if (backend_type == RAL_BACKEND_TYPE_ES)
         {
             const ogl_context_es_entrypoints* entry_points = NULL;
 
-            ogl_context_get_property(new_instance->context,
+            ogl_context_get_property(ral_context_get_gl_context(new_instance->context),
                                      OGL_CONTEXT_PROPERTY_ENTRYPOINTS_ES,
                                     &entry_points);
 
@@ -521,12 +522,12 @@ PUBLIC ogl_scene_renderer_bbox_preview ogl_scene_renderer_bbox_preview_create(og
         }
         else
         {
-            ASSERT_DEBUG_SYNC(context_type == OGL_CONTEXT_TYPE_GL,
-                              "Unrecognized context type");
+            ASSERT_DEBUG_SYNC(backend_type == RAL_BACKEND_TYPE_GL,
+                              "Unrecognized rendering backend type");
 
             const ogl_context_gl_entrypoints* entry_points = NULL;
 
-            ogl_context_get_property(new_instance->context,
+            ogl_context_get_property(ral_context_get_gl_context(new_instance->context),
                                      OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
                                     &entry_points);
 
@@ -560,7 +561,7 @@ PUBLIC void ogl_scene_renderer_bbox_preview_release(ogl_scene_renderer_bbox_prev
 
     if (preview_ptr->data_bo != NULL)
     {
-        ogl_context_request_callback_from_context_thread(preview_ptr->context,
+        ogl_context_request_callback_from_context_thread(ral_context_get_gl_context(preview_ptr->context),
                                                          _ogl_scene_renderer_bbox_preview_release_renderer_callback,
                                                          preview_ptr);
     }
@@ -638,7 +639,7 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_scene_renderer_bbox_preview_start(ogl_sce
                              RAGL_BUFFER_PROPERTY_START_OFFSET,
                             &data_bo_start_offset);
 
-    ogl_context_get_property(preview_ptr->context,
+    ogl_context_get_property(ral_context_get_gl_context(preview_ptr->context),
                              OGL_CONTEXT_PROPERTY_VAO_NO_VAAS,
                             &vao_id);
 

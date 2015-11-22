@@ -797,7 +797,7 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API bool ogl_pipeline_draw_stage(ogl_pipel
 
                         snprintf(buffer,
                                  sizeof(buffer),
-                                 "%d.%03d ms [%llu primitives generated]",
+                                 "%u.%03u ms [%llu primitives generated]",
                                  (unsigned int) step_ms / 1000,
                                  (unsigned int) step_ms % 1000,
                                  (long long unsigned int) step_ptr->n_primitives_generated);

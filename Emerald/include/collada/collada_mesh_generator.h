@@ -11,9 +11,10 @@
 
 #include "collada/collada_types.h"
 #include "mesh/mesh_types.h"
+#include "ral/ral_types.h"
 
 /** TODO */
-PUBLIC mesh collada_mesh_generator_create(ogl_context  context,
+PUBLIC mesh collada_mesh_generator_create(ral_context  context,
                                           collada_data data,
                                           unsigned int n_geometry);
 

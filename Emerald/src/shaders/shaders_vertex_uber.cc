@@ -591,7 +591,7 @@ PUBLIC EMERALD_API bool shaders_vertex_uber_get_item_type(shaders_vertex_uber   
 
     if (!system_resizable_vector_get_element_at(uber_ptr->added_items, item_id, &item_ptr) )
     {
-        LOG_ERROR("Could not retrieve uber vertex shader item type at index [%d]", item_id);
+        LOG_ERROR("Could not retrieve uber vertex shader item type at index [%u]", item_id);
 
         goto end;
     }
@@ -616,7 +616,7 @@ PUBLIC EMERALD_API bool shaders_vertex_uber_get_light_type(shaders_vertex_uber  
                                                 item_id,
                                                &item_ptr) )
     {
-        LOG_ERROR("Could not retrieve uber vertex shader item type at index [%d]",
+        LOG_ERROR("Could not retrieve uber vertex shader item type at index [%u]",
                   item_id);
 
         goto end;
@@ -624,7 +624,7 @@ PUBLIC EMERALD_API bool shaders_vertex_uber_get_light_type(shaders_vertex_uber  
 
     if (item_ptr->type != SHADERS_VERTEX_UBER_ITEM_LIGHT)
     {
-        LOG_ERROR("Uber vertex shader item at index [%d] is not a light.",
+        LOG_ERROR("Uber vertex shader item at index [%u] is not a light.",
                   item_id);
 
         goto end;

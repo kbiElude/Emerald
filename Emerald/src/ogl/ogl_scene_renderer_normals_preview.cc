@@ -12,6 +12,7 @@
 #include "ogl/ogl_scene_renderer_normals_preview.h"
 #include "ogl/ogl_shader.h"
 #include "raGL/raGL_buffer.h"
+#include "ral/ral_context.h"
 #include "scene/scene.h"
 #include "scene/scene_mesh.h"
 #include "system/system_matrix4x4.h"
@@ -90,7 +91,7 @@ typedef struct _ogl_scene_renderer_normals_preview
     /* DO NOT retain/release, as this object is managed by ogl_context and retaining it
      * will cause the rendering context to never release itself.
      */
-    ogl_context context;
+    ral_context context;
 
     scene              owned_scene;
     ogl_scene_renderer owner;
@@ -130,24 +131,27 @@ PRIVATE void _ogl_context_scene_renderer_normals_preview_init_preview_program(_o
     const ogl_program_variable*       vp_uniform_descriptor_ptr            = NULL;
 
     /* Create shaders and set their bodies */
+    ogl_shader                fs_shader  = NULL;
+    ogl_shader                gs_shader  = NULL;
     system_hashed_ansi_string scene_name = NULL;
+    ogl_shader                vs_shader  = NULL;
 
     scene_get_property(preview_ptr->owned_scene,
                        SCENE_PROPERTY_NAME,
                       &scene_name);
 
-    ogl_shader fs_shader = ogl_shader_create(preview_ptr->context,
-                                             RAL_SHADER_TYPE_FRAGMENT,
-                                             system_hashed_ansi_string_create_by_merging_two_strings("Scene Renderer normals preview FS shader ",
-                                                                                                     system_hashed_ansi_string_get_buffer(scene_name)) );
-    ogl_shader gs_shader = ogl_shader_create(preview_ptr->context,
-                                             RAL_SHADER_TYPE_GEOMETRY,
-                                             system_hashed_ansi_string_create_by_merging_two_strings("Scene Renderer normals preview GS shader ",
-                                                                                                     system_hashed_ansi_string_get_buffer(scene_name)) );
-    ogl_shader vs_shader = ogl_shader_create(preview_ptr->context,
-                                             RAL_SHADER_TYPE_VERTEX,
-                                             system_hashed_ansi_string_create_by_merging_two_strings("Scene Renderer normals preview VS shader ",
-                                                                                                     system_hashed_ansi_string_get_buffer(scene_name)) );
+    fs_shader = ogl_shader_create(ral_context_get_gl_context(preview_ptr->context),
+                                  RAL_SHADER_TYPE_FRAGMENT,
+                                  system_hashed_ansi_string_create_by_merging_two_strings("Scene Renderer normals preview FS shader ",
+                                                                                          system_hashed_ansi_string_get_buffer(scene_name)) );
+    gs_shader = ogl_shader_create(ral_context_get_gl_context(preview_ptr->context),
+                                  RAL_SHADER_TYPE_GEOMETRY,
+                                  system_hashed_ansi_string_create_by_merging_two_strings("Scene Renderer normals preview GS shader ",
+                                                                                          system_hashed_ansi_string_get_buffer(scene_name)) );
+    vs_shader = ogl_shader_create(ral_context_get_gl_context(preview_ptr->context),
+                                  RAL_SHADER_TYPE_VERTEX,
+                                  system_hashed_ansi_string_create_by_merging_two_strings("Scene Renderer normals preview VS shader ",
+                                                                                          system_hashed_ansi_string_get_buffer(scene_name)) );
 
     ogl_shader_set_body(fs_shader,
                         system_hashed_ansi_string_create(preview_fragment_shader) );
@@ -167,7 +171,7 @@ PRIVATE void _ogl_context_scene_renderer_normals_preview_init_preview_program(_o
     }
 
     /* Initialize the program object */
-    preview_ptr->preview_program = ogl_program_create(preview_ptr->context,
+    preview_ptr->preview_program = ogl_program_create(ral_context_get_gl_context(preview_ptr->context),
                                                       system_hashed_ansi_string_create_by_merging_two_strings("Scene Renderer normals preview program ",
                                                                                                               system_hashed_ansi_string_get_buffer(scene_name)),
                                                       OGL_PROGRAM_SYNCABLE_UBS_MODE_ENABLE_GLOBAL);
@@ -312,7 +316,7 @@ end:
 
 
 /** Please see header for spec */
-PUBLIC ogl_scene_renderer_normals_preview ogl_scene_renderer_normals_preview_create(ogl_context        context,
+PUBLIC ogl_scene_renderer_normals_preview ogl_scene_renderer_normals_preview_create(ral_context        context,
                                                                                     scene              scene,
                                                                                     ogl_scene_renderer owner)
 {
@@ -382,7 +386,7 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_scene_renderer_normals_preview_render(ogl
     const GLint                          program_id               = ogl_program_get_id(preview_ptr->preview_program);
 
     /* Retrieve mesh properties */
-    ogl_context_get_property               (preview_ptr->context,
+    ogl_context_get_property               (ral_context_get_gl_context(preview_ptr->context),
                                             OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
                                            &entrypoints_ptr);
     ogl_scene_renderer_get_indexed_property(preview_ptr->owner,
@@ -482,10 +486,10 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_scene_renderer_normals_preview_start(ogl_
     const ogl_context_gl_entrypoints*                         entrypoints_ptr     = NULL;
     _ogl_scene_renderer_normals_preview*                      preview_ptr         = (_ogl_scene_renderer_normals_preview*) preview;
 
-    ogl_context_get_property(preview_ptr->context,
+    ogl_context_get_property(ral_context_get_gl_context(preview_ptr->context),
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
                             &entrypoints_ptr);
-    ogl_context_get_property(preview_ptr->context,
+    ogl_context_get_property(ral_context_get_gl_context(preview_ptr->context),
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL_EXT_DIRECT_STATE_ACCESS,
                             &dsa_entrypoints_ptr);
 
@@ -502,7 +506,7 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_scene_renderer_normals_preview_start(ogl_
     const GLint program_id = ogl_program_get_id(preview_ptr->preview_program);
     GLuint      vao_id     = 0;
 
-    ogl_context_get_property(preview_ptr->context,
+    ogl_context_get_property(ral_context_get_gl_context(preview_ptr->context),
                              OGL_CONTEXT_PROPERTY_VAO_NO_VAAS,
                             &vao_id);
 
@@ -551,7 +555,7 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_scene_renderer_normals_preview_stop(ogl_s
     const ogl_context_gl_entrypoints*    entrypoints_ptr = NULL;
     _ogl_scene_renderer_normals_preview* preview_ptr     = (_ogl_scene_renderer_normals_preview*) preview;
 
-    ogl_context_get_property(preview_ptr->context,
+    ogl_context_get_property(ral_context_get_gl_context(preview_ptr->context),
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
                             &entrypoints_ptr);
 

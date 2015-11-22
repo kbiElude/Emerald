@@ -14,7 +14,7 @@ DECLARE_HANDLE(ogl_scene_renderer_frustum_preview);
 
 
 /** TODO */
-PUBLIC ogl_scene_renderer_frustum_preview ogl_scene_renderer_frustum_preview_create(ogl_context context,
+PUBLIC ogl_scene_renderer_frustum_preview ogl_scene_renderer_frustum_preview_create(ral_context context,
                                                                                     scene       scene);
 
 /** TODO */

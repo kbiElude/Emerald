@@ -85,9 +85,6 @@ typedef enum
     /* settable, uint32_t */
     MESH_PROPERTY_GL_STRIDE,
 
-    /* not settable, ogl_texture */
-    MESH_PROPERTY_GL_TBO,
-
     /* settable, uint32_t */
     MESH_PROPERTY_GL_TOTAL_ELEMENTS,
 

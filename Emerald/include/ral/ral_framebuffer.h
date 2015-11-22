@@ -10,8 +10,8 @@ REFCOUNT_INSERT_DECLARATIONS(ral_framebuffer,
 
 typedef enum
 {
-    /* settable with ral_framebuffer_set_attachment_*(); ogl_texture. */
-    RAL_FRAMEBUFFER_ATTACHMENT_PROPERTY_BOUND_TEXTURE,
+    /* settable with ral_framebuffer_set_attachment_*(); ral_texture. */
+    RAL_FRAMEBUFFER_ATTACHMENT_PROPERTY_BOUND_TEXTURE_RAL,
 
     /* settable; bool.
      *
@@ -129,7 +129,7 @@ PUBLIC void ral_framebuffer_get_property(ral_framebuffer          framebuffer,
 PUBLIC bool ral_framebuffer_set_attachment_2D(ral_framebuffer                 framebuffer,
                                               ral_framebuffer_attachment_type attachment_type,
                                               uint32_t                        index,
-                                              ogl_texture                     texture_2d,
+                                              ral_texture                     texture_2d,
                                               uint32_t                        n_mipmap,
                                               bool                            should_enable);
 

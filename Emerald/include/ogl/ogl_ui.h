@@ -7,6 +7,7 @@
 #define OGL_UI_H
 
 #include "ogl/ogl_types.h"
+#include "ral/ral_types.h"
 #include "system/system_variant.h"
 
 
@@ -75,7 +76,7 @@ typedef enum
     OGL_UI_CONTROL_PROPERTY_TEXTURE_PREVIEW_IS_BLENDING_ENABLED,      /* settable, bool                                              */
     OGL_UI_CONTROL_PROPERTY_TEXTURE_PREVIEW_LAYER_SHOWN,              /* settable, GLuint. Only useful for 2d array texture previews */
     OGL_UI_CONTROL_PROPERTY_TEXTURE_PREVIEW_SHOW_TEXTURE_NAME,        /* settable, bool                                              */
-    OGL_UI_CONTROL_PROPERTY_TEXTURE_PREVIEW_TEXTURE,                  /* settable, ogl_texture                                       */
+    OGL_UI_CONTROL_PROPERTY_TEXTURE_PREVIEW_TEXTURE_RAL,              /* settable, ral_texture                                       */
 } _ogl_ui_control_property;
 
 typedef enum _ogl_ui_control_type
@@ -144,7 +145,7 @@ PUBLIC EMERALD_API ogl_ui_control ogl_ui_add_texture_preview(ogl_ui             
                                                              system_hashed_ansi_string   name,
                                                              const float*                x1y1,
                                                              const float*                max_size,
-                                                             ogl_texture                 texture,
+                                                             ral_texture                 texture,
                                                              ogl_ui_texture_preview_type preview_type);
 /** TODO */
 PUBLIC EMERALD_API ogl_ui ogl_ui_create(ogl_text                  text_renderer,
@@ -162,7 +163,7 @@ PUBLIC EMERALD_API void ogl_ui_get_control_property(ogl_ui_control           con
  *
  *  TODO
  **/
-PUBLIC ogl_context ogl_ui_get_context(ogl_ui);
+PUBLIC ral_context ogl_ui_get_context(ogl_ui);
 
 /** INTERNAL USAGE ONLY.
  *

@@ -13,6 +13,7 @@
 #include "ogl/ogl_ui_frame.h"
 #include "ogl/ogl_ui_shared.h"
 #include "raGL/raGL_buffer.h"
+#include "ral/ral_context.h"
 #include "system/system_assertions.h"
 #include "system/system_hashed_ansi_string.h"
 #include "system/system_log.h"
@@ -22,7 +23,7 @@
 /** Internal types */
 typedef struct
 {
-    ogl_context context;
+    ral_context context;
     ogl_program program;
     bool        visible;
     float       x1y1x2y2[4];
@@ -60,15 +61,19 @@ PRIVATE void _ogl_ui_frame_init_program(ogl_ui         ui,
                                         _ogl_ui_frame* frame_ptr)
 {
     /* Create all objects */
-    ogl_context context         = ogl_ui_get_context(ui);
-    ogl_shader  fragment_shader = ogl_shader_create(context,
-                                                    RAL_SHADER_TYPE_FRAGMENT,
-                                                    system_hashed_ansi_string_create("UI frame fragment shader") );
-    ogl_shader  vertex_shader   = ogl_shader_create(context,
-                                                    RAL_SHADER_TYPE_VERTEX,
-                                                    system_hashed_ansi_string_create("UI frame vertex shader") );
+    ral_context context         = ogl_ui_get_context(ui);
+    ogl_context context_gl      = ral_context_get_gl_context(context);
+    ogl_shader  fragment_shader = NULL;
+    ogl_shader  vertex_shader   = NULL;
 
-    frame_ptr->program = ogl_program_create(context,
+    fragment_shader = ogl_shader_create(context_gl,
+                                        RAL_SHADER_TYPE_FRAGMENT,
+                                        system_hashed_ansi_string_create("UI frame fragment shader") );
+    vertex_shader   = ogl_shader_create(context_gl,
+                                        RAL_SHADER_TYPE_VERTEX,
+                                        system_hashed_ansi_string_create("UI frame vertex shader") );
+
+    frame_ptr->program = ogl_program_create(context_gl,
                                             system_hashed_ansi_string_create("UI frame program"),
                                             OGL_PROGRAM_SYNCABLE_UBS_MODE_ENABLE_GLOBAL);
 
@@ -104,7 +109,7 @@ PUBLIC void ogl_ui_frame_deinit(void* internal_instance)
 {
     _ogl_ui_frame* ui_frame_ptr = (_ogl_ui_frame*) internal_instance;
 
-    ogl_context_release(ui_frame_ptr->context);
+    ral_context_release(ui_frame_ptr->context);
     ogl_program_release(ui_frame_ptr->program);
 
     delete ui_frame_ptr;
@@ -220,20 +225,20 @@ PUBLIC void* ogl_ui_frame_init(ogl_ui       instance,
         new_frame->x1y1x2y2[2] = x1y1x2y2[2];
         new_frame->x1y1x2y2[3] = 1.0f - x1y1x2y2[3];
 
-        ogl_context_retain(new_frame->context);
+        ral_context_retain(new_frame->context);
 
         /* Cache GL func pointers */
-        ogl_context_type context_type = OGL_CONTEXT_TYPE_UNDEFINED;
+        ral_backend_type backend_type = RAL_BACKEND_TYPE_UNKNOWN;
 
-        ogl_context_get_property(new_frame->context,
-                                 OGL_CONTEXT_PROPERTY_TYPE,
-                                &context_type);
+        ral_context_get_property(new_frame->context,
+                                 RAL_CONTEXT_PROPERTY_BACKEND_TYPE,
+                                &backend_type);
 
-        if (context_type == OGL_CONTEXT_TYPE_ES)
+        if (backend_type == RAL_BACKEND_TYPE_ES)
         {
             const ogl_context_es_entrypoints* entry_points = NULL;
 
-            ogl_context_get_property(new_frame->context,
+            ogl_context_get_property(ral_context_get_gl_context(new_frame->context),
                                      OGL_CONTEXT_PROPERTY_ENTRYPOINTS_ES,
                                     &entry_points);
 
@@ -248,12 +253,12 @@ PUBLIC void* ogl_ui_frame_init(ogl_ui       instance,
         }
         else
         {
-            ASSERT_DEBUG_SYNC(context_type == OGL_CONTEXT_TYPE_GL,
-                              "Unrecognized context type");
+            ASSERT_DEBUG_SYNC(backend_type == RAL_BACKEND_TYPE_GL,
+                              "Unrecognized backend type");
 
             const ogl_context_gl_entrypoints* entry_points = NULL;
 
-            ogl_context_get_property(new_frame->context,
+            ogl_context_get_property(ral_context_get_gl_context(new_frame->context),
                                      OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
                                     &entry_points);
 

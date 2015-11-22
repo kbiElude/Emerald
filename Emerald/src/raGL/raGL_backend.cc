@@ -5,7 +5,6 @@
  */
 #include "shared.h"
 #include "ogl/ogl_context.h"
-#include "ogl/ogl_context_textures.h"
 #include "ral/ral_context.h"
 #include "raGL/raGL_backend.h"
 #include "raGL/raGL_buffer.h"
@@ -13,6 +12,8 @@
 #include "raGL/raGL_framebuffer.h"
 #include "raGL/raGL_sampler.h"
 #include "raGL/raGL_samplers.h"
+#include "raGL/raGL_texture.h"
+#include "raGL/raGL_textures.h"
 #include "system/system_callback_manager.h"
 #include "system/system_critical_section.h"
 #include "system/system_hash64map.h"
@@ -24,6 +25,7 @@ typedef enum
     RAGL_BACKEND_OBJECT_TYPE_BUFFER,
     RAGL_BACKEND_OBJECT_TYPE_FRAMEBUFFER,
     RAGL_BACKEND_OBJECT_TYPE_SAMPLER,
+    RAGL_BACKEND_OBJECT_TYPE_TEXTURE,
 
     /* Always last */
     RAGL_BACKEND_OBJECT_TYPE_COUNT
@@ -37,9 +39,12 @@ typedef struct _raGL_backend
     system_critical_section framebuffers_map_cs;
     system_hash64map        samplers_map;     /* maps ral_sampler to raGL_sampler instance; owns the mapped raGL_sampler instances */
     system_critical_section samplers_map_cs;
+    system_hash64map        textures_map;     /* maps ral_texture to raGL_texture instance; owns the mapped raGL_texture instances */
+    system_critical_section textures_map_cs;
 
     raGL_buffers  buffers;
     raGL_samplers samplers;
+    raGL_textures textures;
 
     ogl_context      gl_context;       /* NOT owned - DO NOT release */
     ral_context      owner_context;
@@ -61,6 +66,7 @@ typedef struct _raGL_backend
         samplers_map                      = system_hash64map_create       (sizeof(raGL_sampler) );
         samplers_map_cs                   = system_critical_section_create();
         system_framebuffer                = NULL;
+        textures                          = NULL;
 
         ASSERT_DEBUG_SYNC(buffers_map != NULL,
                           "Could not create the buffers map");
@@ -85,6 +91,13 @@ typedef struct _raGL_backend
             raGL_samplers_release(samplers);
 
             samplers = NULL;
+        }
+
+        if (textures != NULL)
+        {
+            raGL_textures_release(textures);
+
+            textures = NULL;
         }
 
         /* Delete the system framebuffer and then proceed with release of other dangling objects. */
@@ -130,6 +143,14 @@ typedef struct _raGL_backend
                     break;
                 }
 
+                case RAGL_BACKEND_OBJECT_TYPE_TEXTURE:
+                {
+                    cs              = textures_map_cs;
+                    objects_map_ptr = &textures_map;
+
+                    break;
+                }
+
                 default:
                 {
                     ASSERT_DEBUG_SYNC(false,
@@ -171,6 +192,7 @@ typedef struct _raGL_backend
                             case RAGL_BACKEND_OBJECT_TYPE_BUFFER:      raGL_buffer_release     ( (raGL_buffer&)      current_object); break;
                             case RAGL_BACKEND_OBJECT_TYPE_FRAMEBUFFER: raGL_framebuffer_release( (raGL_framebuffer&) current_object); break;
                             case RAGL_BACKEND_OBJECT_TYPE_SAMPLER:     raGL_sampler_release    ( (raGL_sampler&)     current_object); break;
+                            case RAGL_BACKEND_OBJECT_TYPE_TEXTURE:     raGL_texture_release    ( (raGL_texture&)     current_object); break;
 
                             default:
                             {
@@ -228,6 +250,10 @@ PRIVATE void _raGL_backend_on_samplers_created                  (const void*    
                                                                  void*          backend);
 PRIVATE void _raGL_backend_on_samplers_deleted                  (const void*    callback_arg_data,
                                                                  void*          backend);
+PRIVATE void _raGL_backend_on_textures_created                  (const void*    callback_arg_data,
+                                                                 void*          backend);
+PRIVATE void _raGL_backend_on_textures_deleted                  (const void*    callback_arg_data,
+                                                                 void*          backend);
 PRIVATE void _raGL_backend_subscribe_for_notifications          (_raGL_backend* backend_ptr,
                                                                  bool           should_subscribe);
 
@@ -247,16 +273,12 @@ PRIVATE void _raGL_backend_cache_limits(_raGL_backend* backend_ptr)
 /** TODO */
 PRIVATE void _raGL_backend_init_system_fbo(_raGL_backend* backend_ptr)
 {
-    ogl_context_textures context_textures = NULL;
-    GLuint               system_fbo_id    = 0;
+    GLuint system_fbo_id    = 0;
 
     /* Create the ral_framebuffer instance from an existing FBO the ogl_context has already set up. */
     ogl_context_get_property(backend_ptr->gl_context,
                              OGL_CONTEXT_PROPERTY_DEFAULT_FBO_ID,
                             &system_fbo_id);
-    ogl_context_get_property(backend_ptr->gl_context,
-                             OGL_CONTEXT_PROPERTY_TEXTURES,
-                            &context_textures);
 
     // TODO .. note: system FB's attachments are RBOs! will need raGL_texture to support both.
 }
@@ -330,40 +352,6 @@ PRIVATE void _raGL_backend_on_framebuffers_deleted(const void* callback_arg_data
 }
 
 /** TODO */
-PRIVATE void _raGL_backend_on_samplers_created(const void* callback_arg_data,
-                                               void*       backend)
-{
-    _raGL_backend* backend_ptr = (_raGL_backend*) backend;
-
-    /* Sanity checks */
-    ASSERT_DEBUG_SYNC(backend_ptr != NULL,
-                      "Backend instance is NULL");
-    ASSERT_DEBUG_SYNC(callback_arg_data != NULL,
-                      "Callback argument is NULL");
-
-    /* Request a rendering call-back to create the sampler instances */
-    _raGL_backend_on_objects_created_rendering_callback_arg rendering_callback_arg;
-
-    rendering_callback_arg.backend_ptr          = backend_ptr;
-    rendering_callback_arg.object_type          = RAGL_BACKEND_OBJECT_TYPE_SAMPLER;
-    rendering_callback_arg.ral_callback_arg_ptr = callback_arg_data;
-
-    ogl_context_request_callback_from_context_thread(backend_ptr->gl_context,
-                                                     _raGL_backend_on_objects_created_rendering_callback,
-                                                    &rendering_callback_arg);
-
-    /* All done - the rendering callback does all the dirty job needed. */
-}
-
-/** TODO */
-PRIVATE void _raGL_backend_on_samplers_deleted(const void* callback_arg_data,
-                                               void*       backend)
-{
-    ASSERT_DEBUG_SYNC(false,
-                      "TODO");
-}
-
-/** TODO */
 PRIVATE void _raGL_backend_on_objects_created_rendering_callback(ogl_context context,
                                                                  void*       callback_arg)
 {
@@ -381,6 +369,7 @@ PRIVATE void _raGL_backend_on_objects_created_rendering_callback(ogl_context con
         ral_framebuffer* ral_framebuffer_ptrs;
         void**           ral_object_ptrs;
         ral_sampler*     ral_sampler_ptrs;
+        ral_texture*     ral_texture_ptrs;
     };
 
     ASSERT_DEBUG_SYNC(callback_arg != NULL,
@@ -421,6 +410,16 @@ PRIVATE void _raGL_backend_on_objects_created_rendering_callback(ogl_context con
             objects_map             = callback_arg_ptr->backend_ptr->samplers_map;
             objects_map_cs          = callback_arg_ptr->backend_ptr->samplers_map_cs;
             ral_sampler_ptrs        = ((ral_context_callback_samplers_created_callback_arg*) callback_arg_ptr->ral_callback_arg_ptr)->created_samplers;
+
+            break;
+        }
+
+        case RAGL_BACKEND_OBJECT_TYPE_TEXTURE:
+        {
+            n_objects_to_initialize = ((ral_context_callback_textures_created_callback_arg*) callback_arg_ptr->ral_callback_arg_ptr)->n_textures;
+            objects_map             = callback_arg_ptr->backend_ptr->textures_map;
+            objects_map_cs          = callback_arg_ptr->backend_ptr->textures_map_cs;
+            ral_texture_ptrs        = ((ral_context_callback_textures_created_callback_arg*) callback_arg_ptr->ral_callback_arg_ptr)->created_textures;
 
             break;
         }
@@ -467,6 +466,12 @@ PRIVATE void _raGL_backend_on_objects_created_rendering_callback(ogl_context con
             break;
         }
 
+        case RAGL_BACKEND_OBJECT_TYPE_TEXTURE:
+        {
+            /* IDs are associated by raGL_textures */
+            break;
+        }
+
         default:
         {
             ASSERT_DEBUG_SYNC(false,
@@ -508,6 +513,14 @@ PRIVATE void _raGL_backend_on_objects_created_rendering_callback(ogl_context con
             {
                 new_object = raGL_samplers_get_sampler(callback_arg_ptr->backend_ptr->samplers,
                                                        ral_sampler_ptrs[n_object_id]);
+
+                break;
+            }
+
+            case RAGL_BACKEND_OBJECT_TYPE_TEXTURE:
+            {
+                new_object = raGL_textures_get_texture_from_pool(callback_arg_ptr->backend_ptr->textures,
+                                                                 ral_texture_ptrs[n_object_id]);
 
                 break;
             }
@@ -588,6 +601,13 @@ end:
                         break;
                     }
 
+                    case RAGL_BACKEND_OBJECT_TYPE_TEXTURE:
+                    {
+                        raGL_texture_release( (raGL_texture) object_instance);
+
+                        break;
+                    }
+
                     default:
                     {
                         ASSERT_DEBUG_SYNC(false,
@@ -604,6 +624,73 @@ end:
         result_object_ids_ptr = NULL;
     } /* if (result_object_ids_ptr != NULL) */
 
+}
+
+/** TODO */
+PRIVATE void _raGL_backend_on_samplers_created(const void* callback_arg_data,
+                                               void*       backend)
+{
+    _raGL_backend* backend_ptr = (_raGL_backend*) backend;
+
+    /* Sanity checks */
+    ASSERT_DEBUG_SYNC(backend_ptr != NULL,
+                      "Backend instance is NULL");
+    ASSERT_DEBUG_SYNC(callback_arg_data != NULL,
+                      "Callback argument is NULL");
+
+    /* Request a rendering call-back to create the sampler instances */
+    _raGL_backend_on_objects_created_rendering_callback_arg rendering_callback_arg;
+
+    rendering_callback_arg.backend_ptr          = backend_ptr;
+    rendering_callback_arg.object_type          = RAGL_BACKEND_OBJECT_TYPE_SAMPLER;
+    rendering_callback_arg.ral_callback_arg_ptr = callback_arg_data;
+
+    ogl_context_request_callback_from_context_thread(backend_ptr->gl_context,
+                                                     _raGL_backend_on_objects_created_rendering_callback,
+                                                    &rendering_callback_arg);
+
+    /* All done - the rendering callback does all the dirty job needed. */
+}
+
+/** TODO */
+PRIVATE void _raGL_backend_on_samplers_deleted(const void* callback_arg_data,
+                                               void*       backend)
+{
+    ASSERT_DEBUG_SYNC(false,
+                      "TODO");
+}
+
+PRIVATE void _raGL_backend_on_textures_created(const void* callback_arg_data,
+                                               void*       backend)
+{
+    _raGL_backend* backend_ptr = (_raGL_backend*) backend;
+
+    /* Sanity checks */
+    ASSERT_DEBUG_SYNC(backend_ptr != NULL,
+                      "Backend instance is NULL");
+    ASSERT_DEBUG_SYNC(callback_arg_data != NULL,
+                      "Callback argument is NULL");
+
+    /* Request a rendering call-back to create the sampler instances */
+    _raGL_backend_on_objects_created_rendering_callback_arg rendering_callback_arg;
+
+    rendering_callback_arg.backend_ptr          = backend_ptr;
+    rendering_callback_arg.object_type          = RAGL_BACKEND_OBJECT_TYPE_TEXTURE;
+    rendering_callback_arg.ral_callback_arg_ptr = callback_arg_data;
+
+    ogl_context_request_callback_from_context_thread(backend_ptr->gl_context,
+                                                     _raGL_backend_on_objects_created_rendering_callback,
+                                                    &rendering_callback_arg);
+
+    /* All done - the rendering callback does all the dirty job needed. */
+}
+
+/** TODO */
+PRIVATE void _raGL_backend_on_textures_deleted(const void* callback_arg_data,
+                                               void*       backend)
+{
+    ASSERT_DEBUG_SYNC(false,
+                      "TODO");
 }
 
 /** TODO */
@@ -653,6 +740,18 @@ PRIVATE void _raGL_backend_subscribe_for_notifications(_raGL_backend* backend_pt
                                                         CALLBACK_SYNCHRONICITY_SYNCHRONOUS,
                                                         _raGL_backend_on_samplers_deleted,
                                                         backend_ptr);
+
+        /* Texture notifications */
+        system_callback_manager_subscribe_for_callbacks(context_callback_manager,
+                                                        RAL_CONTEXT_CALLBACK_ID_TEXTURES_CREATED,
+                                                        CALLBACK_SYNCHRONICITY_SYNCHRONOUS,
+                                                        _raGL_backend_on_textures_created,
+                                                        backend_ptr);
+        system_callback_manager_subscribe_for_callbacks(context_callback_manager,
+                                                        RAL_CONTEXT_CALLBACK_ID_TEXTURES_DELETED,
+                                                        CALLBACK_SYNCHRONICITY_SYNCHRONOUS,
+                                                        _raGL_backend_on_textures_deleted,
+                                                        backend_ptr);
     } /* if (should_subscribe) */
     else
     {
@@ -684,6 +783,16 @@ PRIVATE void _raGL_backend_subscribe_for_notifications(_raGL_backend* backend_pt
         system_callback_manager_unsubscribe_from_callbacks(context_callback_manager,
                                                            RAL_CONTEXT_CALLBACK_ID_SAMPLERS_DELETED,
                                                            _raGL_backend_on_samplers_deleted,
+                                                           backend_ptr);
+
+        /* Texture notifications */
+        system_callback_manager_unsubscribe_from_callbacks(context_callback_manager,
+                                                           RAL_CONTEXT_CALLBACK_ID_TEXTURES_CREATED,
+                                                           _raGL_backend_on_textures_created,
+                                                           backend_ptr);
+        system_callback_manager_unsubscribe_from_callbacks(context_callback_manager,
+                                                           RAL_CONTEXT_CALLBACK_ID_TEXTURES_DELETED,
+                                                           _raGL_backend_on_textures_deleted,
                                                            backend_ptr);
     }
 }
@@ -717,6 +826,9 @@ PUBLIC raGL_backend raGL_backend_create(ral_context owner_context)
         /* Create sampler manager */
         new_backend_ptr->samplers = raGL_samplers_create(new_backend_ptr->gl_context);
 
+        /* Create texture manager */
+        new_backend_ptr->textures = raGL_textures_create(new_backend_ptr->gl_context);
+
         /* Sign up for notifications */
         _raGL_backend_subscribe_for_notifications(new_backend_ptr,
                                                   true); /* should_subscribe */
@@ -732,9 +844,9 @@ PUBLIC raGL_backend raGL_backend_create(ral_context owner_context)
 }
 
 /** Please see header for specification */
-PUBLIC bool raGL_backend_get_framebuffer(void*           backend,
-                                         ral_framebuffer framebuffer_ral,
-                                         void**          out_framebuffer_raGL_ptr)
+PUBLIC bool raGL_backend_get_framebuffer(void*              backend,
+                                         ral_framebuffer    framebuffer_ral,
+                                         raGL_framebuffer** out_framebuffer_raGL_ptr)
 {
     _raGL_backend* backend_ptr = (_raGL_backend*) backend;
     bool           result      = false;
@@ -777,6 +889,7 @@ end:
 PUBLIC void raGL_backend_get_property(void*                backend,
                                       ral_context_property property,
                                       void*                out_result_ptr)
+
 {
     _raGL_backend* backend_ptr = (_raGL_backend*) backend;
 

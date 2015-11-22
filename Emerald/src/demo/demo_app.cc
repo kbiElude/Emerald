@@ -193,6 +193,13 @@ PUBLIC EMERALD_API void demo_app_get_property(const demo_app    app,
             break;
         }
 
+        case DEMO_APP_PROPERTY_TIMELINE:
+        {
+            *(demo_timeline*) out_result_ptr = app_ptr->timeline;
+
+            break;
+        }
+
         default:
         {
             ASSERT_DEBUG_SYNC(false,
@@ -244,7 +251,7 @@ PUBLIC EMERALD_API void demo_app_run(demo_app app)
                                                    app_ptr->refresh_rate,
                                                   &screen_mode) )
         {
-            LOG_FATAL("No suitable screen mode found for resolution [%d x %d x %dHz]",
+            LOG_FATAL("No suitable screen mode found for resolution [%u x %u x %uHz]",
                       app_ptr->resolution[0],
                       app_ptr->resolution[1],
                       app_ptr->refresh_rate);
@@ -274,7 +281,7 @@ PUBLIC EMERALD_API void demo_app_run(demo_app app)
     ASSERT_ALWAYS_SYNC(app_ptr->window != NULL,
                        "Could not create rendering window");
 
-    /* Set up the rendering context.
+    /* Set up the rendering handler.
      *
      * The object does a few important things:
      *

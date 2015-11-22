@@ -8,6 +8,7 @@
 
 #include "mesh/mesh_types.h"
 #include "ogl/ogl_types.h"
+#include "ral/ral_types.h"
 #include "scene/scene_types.h"
 
 #ifdef __linux__
@@ -74,8 +75,8 @@ typedef enum
 
 typedef enum
 {
-    /* general property, value: ogl_context */
-    OGL_SCENE_RENDERER_PROPERTY_CONTEXT,
+    /* general property, value: ral_context */
+    OGL_SCENE_RENDERER_PROPERTY_CONTEXT_RAL,
 
     /* general property, value: scene_graph */
     OGL_SCENE_RENDERER_PROPERTY_GRAPH,
@@ -136,7 +137,7 @@ PUBLIC bool ogl_scene_renderer_cull_against_frustum(ogl_scene_renderer          
                                                     const void*                                  behavior_data);
 
 /** TODO. **/
-PUBLIC EMERALD_API ogl_scene_renderer ogl_scene_renderer_create(ogl_context context,
+PUBLIC EMERALD_API ogl_scene_renderer ogl_scene_renderer_create(ral_context context,
                                                                 scene       scene);
 
 /** TODO. Internal usage only */

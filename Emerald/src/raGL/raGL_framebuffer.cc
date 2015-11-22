@@ -6,6 +6,7 @@
 #include "shared.h"
 #include "ogl/ogl_context.h"
 #include "raGL/raGL_framebuffer.h"
+#include "raGL/raGL_texture.h"
 #include "ral/ral_framebuffer.h"
 #include "system/system_callback_manager.h"
 #include "system/system_log.h"
@@ -20,8 +21,8 @@ typedef struct _raGL_framebuffer_attachment
     bool bound_layered_texture_local;
 
     /* What's the texture bound to the attachment? */
-    ogl_texture bound_texture_gl;
-    ogl_texture bound_texture_local;
+    raGL_texture bound_texture_gl;
+    raGL_texture bound_texture_local;
 
     /* Is the draw buffer enabled for this attachment? */
     bool is_enabled_gl;
@@ -281,13 +282,33 @@ PRIVATE void _raGL_framebuffer_on_sync_required(const void* callback_data,
             /* Update the attachment.. */
             switch (current_attachment_ptr->texture_type_local)
             {
-                case  RAL_FRAMEBUFFER_ATTACHMENT_TEXTURE_TYPE_2D:
+                case RAL_FRAMEBUFFER_ATTACHMENT_TEXTURE_TYPE_2D:
                 {
-                    framebuffer_raGL_ptr->entrypoints_dsa_ptr->pGLNamedFramebufferTexture2DEXT(framebuffer_raGL_ptr->id,
-                                                                                               attachment_gl,
-                                                                                               GL_TEXTURE_2D,
-                                                                                               current_attachment_ptr->bound_texture_local,
-                                                                                               current_attachment_ptr->n_texture_mipmap_level_local);
+                    GLuint attachment_object_id = 0;
+                    bool   is_renderbuffer      = false;
+
+                    raGL_texture_get_property(current_attachment_ptr->bound_texture_local,
+                                              RAGL_TEXTURE_PROPERTY_ID,
+                                             &attachment_object_id);
+                    raGL_texture_get_property(current_attachment_ptr->bound_texture_local,
+                                              RAGL_TEXTURE_PROPERTY_IS_RENDERBUFFER,
+                                             &is_renderbuffer);
+
+                    if (is_renderbuffer)
+                    {
+                        framebuffer_raGL_ptr->entrypoints_dsa_ptr->pGLNamedFramebufferRenderbufferEXT(framebuffer_raGL_ptr->id,
+                                                                                                      attachment_gl,
+                                                                                                      GL_RENDERBUFFER,
+                                                                                                      attachment_object_id);
+                    }
+                    else
+                    {
+                        framebuffer_raGL_ptr->entrypoints_dsa_ptr->pGLNamedFramebufferTexture2DEXT(framebuffer_raGL_ptr->id,
+                                                                                                   attachment_gl,
+                                                                                                   GL_TEXTURE_2D,
+                                                                                                   attachment_object_id,
+                                                                                                   current_attachment_ptr->n_texture_mipmap_level_local);
+                    }
 
                     break;
                 }
@@ -376,7 +397,7 @@ PRIVATE void _raGL_framebuffer_update_attachment_configuration(_raGL_framebuffer
                                                                ral_framebuffer_attachment_type attachment_type,
                                                                uint32_t                        attachment_index)
 {
-    ogl_texture                             attachment_bound_texture = NULL;
+    raGL_texture                            attachment_bound_texture = NULL;
     bool                                    attachment_enabled       = false;
     uint32_t                                attachment_n_layer       = -1;
     uint32_t                                attachment_n_mipmap      = -1;

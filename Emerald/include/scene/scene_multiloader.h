@@ -15,12 +15,12 @@
 #include "scene/scene_types.h"
 
 /** TODO */
-PUBLIC EMERALD_API scene_multiloader scene_multiloader_create_from_filenames(ogl_context                      context,
+PUBLIC EMERALD_API scene_multiloader scene_multiloader_create_from_filenames(ral_context                      context,
                                                                              unsigned int                     n_scenes,
                                                                              const system_hashed_ansi_string* scene_filenames);
 
 /** TODO */
-PUBLIC EMERALD_API scene_multiloader scene_multiloader_create_from_system_file_serializers(ogl_context                   context,
+PUBLIC EMERALD_API scene_multiloader scene_multiloader_create_from_system_file_serializers(ral_context                   context,
                                                                                            unsigned int                  n_scenes,
                                                                                            const system_file_serializer* scene_file_serializers,
                                                                                            bool                          free_serializers_at_release_time = false);

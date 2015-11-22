@@ -7,14 +7,13 @@
 #include "curve/curve_container.h"
 #include "mesh/mesh_material.h"
 #include "ogl/ogl_context.h"
-#include "ogl/ogl_context_textures.h"
 #include "ogl/ogl_materials.h"
 #include "ogl/ogl_program.h"
 #include "ogl/ogl_shader.h"
-#include "ogl/ogl_texture.h"
 #include "ogl/ogl_uber.h"
-#include "raGL/raGL_sampler.h"
-#include "raGL/raGL_samplers.h"
+#include "ral/ral_context.h"
+#include "ral/ral_sampler.h"
+#include "ral/ral_texture.h"
 #include "scene/scene.h"
 #include "scene/scene_light.h"
 #include "scene/scene_material.h"
@@ -30,8 +29,8 @@ typedef struct _mesh_material_property_texture
     mesh_material_texture_filtering mag_filter;
     mesh_material_texture_filtering min_filter;
     unsigned int                    mipmap_level;
-    raGL_sampler                    sampler;
-    ogl_texture                     texture;
+    ral_sampler                     sampler;
+    ral_texture                     texture;
 
     _mesh_material_property_texture()
     {
@@ -46,14 +45,14 @@ typedef struct _mesh_material_property_texture
     {
         if (sampler != NULL)
         {
-            // raGL_sampler_release(sampler);
+            ral_sampler_release(sampler);
 
             sampler = NULL;
         }
 
         if (texture != NULL)
         {
-            ogl_texture_release(texture);
+            ral_texture_release(texture);
 
             texture = NULL;
         }
@@ -104,7 +103,7 @@ typedef enum
 typedef struct _mesh_material
 {
     system_callback_manager   callback_manager;
-    ogl_context               context;
+    ral_context               context;
     bool                      dirty;
     system_hashed_ansi_string name;
     system_hashed_ansi_string object_manager_path;
@@ -226,8 +225,8 @@ PRIVATE void _mesh_material_release(void* data_ptr)
 
                 case MESH_MATERIAL_PROPERTY_ATTACHMENT_TEXTURE:
                 {
-                    // raGL_sampler_release(material_ptr->shading_properties[current_property].texture_data.sampler);
-                    ogl_texture_release (material_ptr->shading_properties[current_property].texture_data.texture);
+                    ral_sampler_release(material_ptr->shading_properties[current_property].texture_data.sampler);
+                    ral_texture_release(material_ptr->shading_properties[current_property].texture_data.texture);
 
                     material_ptr->shading_properties[current_property].texture_data.sampler = NULL;
                     material_ptr->shading_properties[current_property].texture_data.texture = NULL;
@@ -345,7 +344,7 @@ PRIVATE void _mesh_material_get_ral_enums_for_mesh_material_texture_filtering(me
 
 /* Please see header for specification */
 PUBLIC EMERALD_API mesh_material mesh_material_create(system_hashed_ansi_string name,
-                                                      ogl_context               context,
+                                                      ral_context               context,
                                                       system_hashed_ansi_string object_manager_path)
 {
     _mesh_material* new_material = new (std::nothrow) _mesh_material;
@@ -432,8 +431,8 @@ PUBLIC EMERALD_API mesh_material mesh_material_create_copy(system_hashed_ansi_st
                 else
                 if (shading_property.attachment == MESH_MATERIAL_PROPERTY_ATTACHMENT_TEXTURE)
                 {
-                    // raGL_sampler_retain(shading_property.texture_data.sampler);
-                    ogl_texture_retain (shading_property.texture_data.texture);
+                    ral_sampler_retain(shading_property.texture_data.sampler);
+                    ral_texture_retain (shading_property.texture_data.texture);
                 }
             }
         } /* if (new_material_ptr->type == MESH_MATERIAL_TYPE_GENERAL) */
@@ -481,14 +480,13 @@ PUBLIC EMERALD_API mesh_material mesh_material_create_copy(system_hashed_ansi_st
 
 /* Please see header for specification */
 PUBLIC EMERALD_API mesh_material mesh_material_create_from_scene_material(scene_material src_material,
-                                                                          ogl_context    context)
+                                                                          ral_context    context_ral)
 {
     /* Create a new mesh_material instance */
     curve_container*                color                            = NULL;
     system_hashed_ansi_string       color_texture_file_name          = NULL;
     mesh_material_texture_filtering color_texture_mag_filter         = MESH_MATERIAL_TEXTURE_FILTERING_UNKNOWN;
     mesh_material_texture_filtering color_texture_min_filter         = MESH_MATERIAL_TEXTURE_FILTERING_UNKNOWN;
-    ogl_context_textures            context_textures                 = NULL;
     curve_container                 glosiness                        = NULL;
     curve_container                 luminance                        = NULL;
     system_hashed_ansi_string       luminance_texture_file_name      = NULL;
@@ -561,7 +559,7 @@ PUBLIC EMERALD_API mesh_material mesh_material_create_from_scene_material(scene_
                                &src_material_object_manager_path);
 
     result_material = mesh_material_create(src_material_name,
-                                           context,
+                                           context_ral,
                                            src_material_object_manager_path);
 
     ASSERT_DEBUG_SYNC(result_material != NULL,
@@ -570,13 +568,6 @@ PUBLIC EMERALD_API mesh_material mesh_material_create_from_scene_material(scene_
     if (result_material == NULL)
     {
         goto end;
-    }
-
-    if (context != NULL)
-    {
-        ogl_context_get_property(context,
-                                 OGL_CONTEXT_PROPERTY_TEXTURES,
-                                &context_textures);
     }
 
     /* Update source material */
@@ -747,46 +738,49 @@ PUBLIC EMERALD_API mesh_material mesh_material_create_from_scene_material(scene_
 
             case MESH_MATERIAL_PROPERTY_ATTACHMENT_TEXTURE:
             {
-                /* Do not attach anything if context is NULL.
+                ral_texture texture = NULL;
+
+                /* Do not attach anything if context_ral is NULL.
                  *
                  * This won't backfire if the mesh_material is an intermediate object used
-                 * for mesh baking. Otherwise context should never be NULL.
+                 * for mesh baking. Otherwise context_ral should never be NULL.
                  */
-                if (context != NULL)
+                if (context_ral == NULL)
                 {
-                    ogl_texture texture = NULL;
+                    break;
+                }
 
-                    texture = ogl_context_textures_get_texture_by_filename(context_textures,
-                                                                           config.texture_filename);
+                texture = ral_context_get_texture_by_file_name(context_ral,
+                                                               config.texture_filename);
 
-                    if (texture == NULL)
+                if (texture == NULL)
+                {
+                    ral_context_create_textures_from_file_names(context_ral,
+                                                                1, /* n_file_names */
+                                                               &config.texture_filename,
+                                                               &texture);
+                }
+
+                ASSERT_ALWAYS_SYNC(texture != NULL,
+                                   "Texture [%s] unavailable in the rendering context",
+                                   system_hashed_ansi_string_get_buffer(config.texture_filename) );
+
+                if (texture != NULL)
+                {
+                    mesh_material_set_shading_property_to_texture(result_material,
+                                                                  config.shading_property,
+                                                                  texture,
+                                                                  0, /* mipmap_level */
+                                                                  config.texture_mag_filter,
+                                                                  config.texture_min_filter);
+
+                    /* Generate mip-maps if needed */
+                    if (config.texture_min_filter != MESH_MATERIAL_TEXTURE_FILTERING_LINEAR &&
+                        config.texture_min_filter != MESH_MATERIAL_TEXTURE_FILTERING_NEAREST)
                     {
-                        texture = ogl_texture_create_from_file_name(context,
-                                                                    config.texture_filename,
-                                                                    config.texture_filename);
+                        ral_texture_generate_mipmaps(texture);
                     }
-
-                    ASSERT_ALWAYS_SYNC(texture != NULL,
-                                       "Texture [%s] unavailable in the rendering context",
-                                       system_hashed_ansi_string_get_buffer(config.texture_filename) );
-
-                    if (texture != NULL)
-                    {
-                        mesh_material_set_shading_property_to_texture(result_material,
-                                                                      config.shading_property,
-                                                                      texture,
-                                                                      0, /* mipmap_level */
-                                                                      config.texture_mag_filter,
-                                                                      config.texture_min_filter);
-
-                        /* Generate mip-maps if needed */
-                        if (config.texture_min_filter != MESH_MATERIAL_TEXTURE_FILTERING_LINEAR &&
-                            config.texture_min_filter != MESH_MATERIAL_TEXTURE_FILTERING_NEAREST)
-                        {
-                            ogl_texture_generate_mipmaps(texture);
-                        }
-                    }
-                } /* if (context != NULL) */
+                }
 
                 break;
             } /* case MESH_MATERIAL_PROPERTY_ATTACHMENT_TEXTURE: */
@@ -810,7 +804,7 @@ end:
 
 /* Please see header for specification */
 PUBLIC EMERALD_API mesh_material mesh_material_create_from_shader_bodies(system_hashed_ansi_string name,
-                                                                         ogl_context               context,
+                                                                         ral_context               context,
                                                                          system_hashed_ansi_string object_manager_path,
                                                                          system_hashed_ansi_string fs_body,
                                                                          system_hashed_ansi_string gs_body,
@@ -818,10 +812,12 @@ PUBLIC EMERALD_API mesh_material mesh_material_create_from_shader_bodies(system_
                                                                          system_hashed_ansi_string te_body,
                                                                          system_hashed_ansi_string vs_body)
 {
-    mesh_material   result_material     = NULL;
-    _mesh_material* result_material_ptr = NULL;
-    ogl_program     result_program      = NULL;
-    ogl_shader      temp_shader         = NULL;
+    ogl_context      backend_context     = NULL;
+    ral_backend_type backend_type        = RAL_BACKEND_TYPE_UNKNOWN;
+    mesh_material    result_material     = NULL;
+    _mesh_material*  result_material_ptr = NULL;
+    ogl_program      result_program      = NULL;
+    ogl_shader       temp_shader         = NULL;
 
     struct _body
     {
@@ -852,8 +848,20 @@ PUBLIC EMERALD_API mesh_material mesh_material_create_from_shader_bodies(system_
     }
 
     /* Update the mesh_material instance by changing its type and setting up the program object */
+    ral_context_get_property(context,
+                             RAL_CONTEXT_PROPERTY_BACKEND_TYPE,
+                            &backend_type);
+
+    ASSERT_DEBUG_SYNC(backend_type == RAL_BACKEND_TYPE_ES ||
+                      backend_type == RAL_BACKEND_TYPE_GL,
+                      "Unsupported backend type");
+
+    ral_context_get_property(context,
+                              RAL_CONTEXT_PROPERTY_BACKEND_CONTEXT,
+                             &backend_context);
+
     result_material_ptr = (_mesh_material*) result_material;
-    result_program      = ogl_program_create(context,
+    result_program      = ogl_program_create(backend_context,
                                              name,
                                              OGL_PROGRAM_SYNCABLE_UBS_MODE_ENABLE_GLOBAL);
 
@@ -873,7 +881,7 @@ PUBLIC EMERALD_API mesh_material mesh_material_create_from_shader_bodies(system_
     {
         if (bodies[n_body].body != NULL)
         {
-            temp_shader = ogl_shader_create(context,
+            temp_shader = ogl_shader_create(backend_context,
                                             bodies[n_body].type,
                                             system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(name),
                                                                                                     bodies[n_body].suffix) );
@@ -1197,9 +1205,14 @@ PUBLIC EMERALD_API ogl_uber mesh_material_get_ogl_uber(mesh_material material,
 
     if (material_ptr->dirty)
     {
-        ogl_materials materials = NULL;
+        ogl_context   backend_context = NULL;
+        ogl_materials materials       = NULL;
 
-        ogl_context_get_property(material_ptr->context,
+        ral_context_get_property(material_ptr->context,
+                                 RAL_CONTEXT_PROPERTY_BACKEND_CONTEXT,
+                                &backend_context);
+
+        ogl_context_get_property(backend_context,
                                  OGL_CONTEXT_PROPERTY_MATERIALS,
                                 &materials);
 
@@ -1486,9 +1499,9 @@ PUBLIC EMERALD_API void mesh_material_get_shading_property_value_input_fragment_
 /* Please see header for specification */
 PUBLIC EMERALD_API void mesh_material_get_shading_property_value_texture(mesh_material                    material,
                                                                          mesh_material_shading_property   property,
-                                                                         ogl_texture*                     out_texture,
+                                                                         ral_texture*                     out_texture,
                                                                          unsigned int*                    out_mipmap_level,
-                                                                         raGL_sampler*                    out_sampler)
+                                                                         ral_sampler*                     out_sampler)
 {
     _mesh_material_property*         property_ptr     = ( (_mesh_material*) material)->shading_properties + property;
     _mesh_material_property_texture* texture_data_ptr = &property_ptr->texture_data;
@@ -1628,10 +1641,10 @@ PUBLIC bool mesh_material_is_a_match_to_mesh_material(mesh_material material_a,
 
             case MESH_MATERIAL_PROPERTY_ATTACHMENT_TEXTURE:
             {
-                ogl_texture      material_a_texture = NULL;
-                ral_texture_type material_a_type;
-                ogl_texture      material_b_texture = NULL;
-                ral_texture_type material_b_type;
+                ral_texture      material_a_texture = NULL;
+                ral_texture_type material_a_texture_type;
+                ral_texture      material_b_texture = NULL;
+                ral_texture_type material_b_texture_type;
 
                 mesh_material_get_shading_property_value_texture(material_a,
                                                                  property,
@@ -1645,14 +1658,14 @@ PUBLIC bool mesh_material_is_a_match_to_mesh_material(mesh_material material_a,
                                                                  NULL, /* out_mipmap_level - irrelevant */
                                                                  NULL);/* out_sampler - irrelevant */
 
-                ogl_texture_get_property(material_a_texture,
-                                         OGL_TEXTURE_PROPERTY_TYPE,
-                                        &material_a_type);
-                ogl_texture_get_property(material_b_texture,
-                                         OGL_TEXTURE_PROPERTY_TYPE,
-                                        &material_b_type);
+                ral_texture_get_property(material_a_texture,
+                                         RAL_TEXTURE_PROPERTY_TYPE,
+                                        &material_a_texture_type);
+                ral_texture_get_property(material_b_texture,
+                                         RAL_TEXTURE_PROPERTY_TYPE,
+                                        &material_b_texture_type);
 
-                if (material_a_type != material_b_type)
+                if (material_a_texture_type != material_b_texture_type)
                 {
                     goto end;
                 }
@@ -1834,7 +1847,7 @@ PUBLIC EMERALD_API void mesh_material_set_shading_property_to_input_fragment_att
 /* Please see header for specification */
 PUBLIC EMERALD_API void mesh_material_set_shading_property_to_texture(mesh_material                   material,
                                                                       mesh_material_shading_property  property,
-                                                                      ogl_texture                     texture,
+                                                                      ral_texture                     texture,
                                                                       unsigned int                    mipmap_level,
                                                                       mesh_material_texture_filtering mag_filter,
                                                                       mesh_material_texture_filtering min_filter)
@@ -1848,11 +1861,11 @@ PUBLIC EMERALD_API void mesh_material_set_shading_property_to_texture(mesh_mater
 
     if (material_ptr->shading_properties[property].attachment == MESH_MATERIAL_PROPERTY_ATTACHMENT_TEXTURE)
     {
-        raGL_sampler& bound_sampler = material_ptr->shading_properties[property].texture_data.sampler;
-        ogl_texture&  bound_texture = material_ptr->shading_properties[property].texture_data.texture;
+        ral_sampler&  bound_sampler = material_ptr->shading_properties[property].texture_data.sampler;
+        ral_texture&  bound_texture = material_ptr->shading_properties[property].texture_data.texture;
 
-        // raGL_sampler_release(bound_sampler);
-        ogl_texture_release (bound_texture);
+        ral_sampler_release(bound_sampler);
+        ral_texture_release(bound_texture);
 
         bound_sampler = NULL;
         bound_texture = NULL;
@@ -1874,7 +1887,6 @@ PUBLIC EMERALD_API void mesh_material_set_shading_property_to_texture(mesh_mater
     ral_texture_filter      min_filter_ral;
     ral_texture_mipmap_mode min_mipmap_mode_ral;
     ral_sampler_create_info sampler_create_info;
-    raGL_samplers           samplers = NULL;
 
     _mesh_material_get_ral_enums_for_mesh_material_texture_filtering(mag_filter,
                                                                     &mag_filter_ral,
@@ -1883,19 +1895,15 @@ PUBLIC EMERALD_API void mesh_material_set_shading_property_to_texture(mesh_mater
                                                                     &min_filter_ral,
                                                                     &min_mipmap_mode_ral);
 
-    ogl_context_get_property(material_ptr->context,
-                             OGL_CONTEXT_PROPERTY_SAMPLERS_RAGL,
-                            &samplers);
-
     sampler_create_info.mag_filter  = mag_filter_ral;
     sampler_create_info.min_filter  = min_filter_ral;
     sampler_create_info.mipmap_mode = min_mipmap_mode_ral;
 
-    material_ptr->shading_properties[property].texture_data.sampler = raGL_samplers_get_sampler_from_ral_sampler_create_info(samplers,
-                                                                                                                            &sampler_create_info);
+    material_ptr->shading_properties[property].texture_data.sampler = ral_context_get_sampler_by_create_info(material_ptr->context,
+                                                                                                            &sampler_create_info);
 
-    // raGL_sampler_retain(material_ptr->shading_properties[property].texture_data.sampler);
-    ogl_texture_retain (texture);
+    ral_sampler_retain(material_ptr->shading_properties[property].texture_data.sampler);
+    ral_texture_retain(texture);
 }
 
 /* Please see header for specification */

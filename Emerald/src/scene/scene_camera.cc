@@ -883,8 +883,7 @@ PUBLIC EMERALD_API void scene_camera_get_property(scene_camera          camera,
 }
 
 /* Please see header for specification */
-PUBLIC scene_camera scene_camera_load(ogl_context               context,
-                                      system_file_serializer    serializer,
+PUBLIC scene_camera scene_camera_load(system_file_serializer    serializer,
                                       scene                     owner_scene,
                                       system_hashed_ansi_string object_manager_path)
 {
@@ -999,6 +998,7 @@ PUBLIC scene_camera scene_camera_load(ogl_context               context,
      */
     if (fabs(camera_ar) < 1e-5f)
     {
+#if 0
         ogl_context_state_cache state_cache = NULL;
 
         ASSERT_DEBUG_SYNC(context != NULL,
@@ -1025,6 +1025,10 @@ PUBLIC scene_camera scene_camera_load(ogl_context               context,
 
             camera_ar = current_viewport_width / current_viewport_height;
         } /* if (context != NULL) */
+#else
+        ASSERT_DEBUG_SYNC(false,
+                          "TODO");
+#endif
     } /* if (fabs(camera_ar) < 1e-5f) */
 
     /* Set the float properties */

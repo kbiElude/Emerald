@@ -8,6 +8,7 @@
 
 #include "gfx/gfx_types.h"
 #include "ogl/ogl_types.h"
+#include "ral/ral_types.h"
 
 REFCOUNT_INSERT_DECLARATIONS(ogl_text,
                              ogl_text)
@@ -34,7 +35,7 @@ PUBLIC EMERALD_API ogl_text_string_id ogl_text_add_string(ogl_text text);
 
 /** TODO */
 PUBLIC EMERALD_API ogl_text ogl_text_create(system_hashed_ansi_string name,
-                                            ogl_context               context,
+                                            ral_context               context,
                                             gfx_bfg_font_table        font_table,
                                             uint32_t                  screen_width,
                                             uint32_t                  screen_height);
@@ -55,7 +56,7 @@ PUBLIC EMERALD_API const unsigned char* ogl_text_get(ogl_text           text,
 PUBLIC EMERALD_API uint32_t ogl_text_get_added_strings_counter(ogl_text instance);
 
 /** TODO */
-PUBLIC EMERALD_API ogl_context ogl_text_get_context(ogl_text text);
+PUBLIC EMERALD_API ral_context ogl_text_get_context(ogl_text text);
 
 /** TODO */
 PUBLIC EMERALD_API void ogl_text_get_text_string_property(ogl_text                 text,

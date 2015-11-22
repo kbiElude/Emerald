@@ -58,7 +58,7 @@ PRIVATE system_hashed_ansi_string _collada_data_float_array_get_cached_blob_file
 
     snprintf(temp_file_name,
              sizeof(temp_file_name),
-             "collada_float_array_%s_%s_%d",
+             "collada_float_array_%s_%s_%u",
              system_hashed_ansi_string_get_buffer(parent_source_name),
              system_hashed_ansi_string_get_buffer(float_array_id),
              count);

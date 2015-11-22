@@ -7,8 +7,8 @@
 #define SCENE_H
 
 #include "curve/curve_types.h"
-#include "ogl/ogl_types.h"
 #include "mesh/mesh_types.h"
+#include "ral/ral_types.h"
 #include "scene/scene_types.h"
 
 REFCOUNT_INSERT_DECLARATIONS(scene, 
@@ -48,10 +48,6 @@ typedef enum
 } scene_callback_id;
 
 /** TODO */
-PUBLIC EMERALD_API scene scene_create(ogl_context               context,
-                                      system_hashed_ansi_string name);
-
-/** TODO */
 PUBLIC EMERALD_API bool scene_add_camera(scene        scene_instance,
                                          scene_camera new_camera);
 
@@ -87,6 +83,9 @@ PUBLIC EMERALD_API bool scene_add_mesh_instance_defined(scene      scene,
 PUBLIC EMERALD_API bool scene_add_texture(scene         scene_instance,
                                           scene_texture texture_instance);
 
+/** TODO */
+PUBLIC EMERALD_API scene scene_create(ral_context               context,
+                                      system_hashed_ansi_string name);
 
 /** TODO */
 PUBLIC EMERALD_API scene_camera scene_get_camera_by_index(scene        scene,

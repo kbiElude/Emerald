@@ -63,6 +63,9 @@ typedef enum
      **/
     DEMO_APP_PROPERTY_TARGET_FRAME_RATE,
 
+    /* demo_timeline, not settable. */
+    DEMO_APP_PROPERTY_TIMELINE,
+
     /* bool, settable (before calling run() ).
      *
      * Tells if (adaptive) vertical sync should be enabled.

@@ -712,7 +712,7 @@ PRIVATE void _ogl_program_link_callback(ogl_context context,
 
             program_ptr->program_info_log = system_hashed_ansi_string_create(program_info_log);
 
-            LOG_INFO("Program [%d] info log:\n>>\n%s\n<<",
+            LOG_INFO("Program [%u] info log:\n>>\n%s\n<<",
                      program_ptr->id,
                      program_info_log);
 
@@ -727,7 +727,7 @@ PRIVATE void _ogl_program_link_callback(ogl_context context,
     system_time_get_msec_for_time(end_time - start_time,
                                  &execution_time_msec);
 
-    LOG_INFO("Linking time: %d ms",
+    LOG_INFO("Linking time: %u ms",
              execution_time_msec);
 }
 
@@ -796,7 +796,7 @@ PRIVATE bool _ogl_program_load_binary_blob( ogl_context  context,
                     }
                     else
                     {
-                        LOG_ERROR("Could not retrieve %dth element from attached_shaders", n);
+                        LOG_ERROR("Could not retrieve %uth element from attached_shaders", n);
 
                         hashes_ok = false;
                         break;
@@ -1656,7 +1656,7 @@ PUBLIC EMERALD_API bool ogl_program_detach_shader(ogl_program program,
         }
         else
         {
-            LOG_ERROR("Could not detach shader [%d] from program [%d] - not attached.",
+            LOG_ERROR("Could not detach shader [%u] from program [%u] - not attached.",
                       ogl_shader_get_id(shader),
                       program_ptr->id);
         }
@@ -2192,7 +2192,7 @@ PUBLIC EMERALD_API bool ogl_program_link(ogl_program program)
 
             if (!is_compiled_successfully)
             {
-                LOG_ERROR("Shader object [%d] has not been compiled successfully prior to linking. Attempting to compile.",
+                LOG_ERROR("Shader object [%u] has not been compiled successfully prior to linking. Attempting to compile.",
                           current_shader_gl_id
                 );
 

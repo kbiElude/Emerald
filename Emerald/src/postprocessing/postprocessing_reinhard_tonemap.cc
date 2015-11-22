@@ -8,9 +8,11 @@
 #include "ogl/ogl_program.h"
 #include "ogl/ogl_program_ub.h"
 #include "ogl/ogl_shader.h"
-#include "ogl/ogl_texture.h"
 #include "postprocessing/postprocessing_reinhard_tonemap.h"
 #include "raGL/raGL_buffer.h"
+#include "raGL/raGL_texture.h"
+#include "ral/ral_context.h"
+#include "ral/ral_texture.h"
 #include "shaders/shaders_fragment_rgb_to_Yxy.h"
 #include "shaders/shaders_vertex_fullscreen.h"
 #include "system/system_assertions.h"
@@ -26,10 +28,13 @@
 /** Internal type definition */
 typedef struct
 {
-    ogl_context context;
+    ral_context context;
 
-    ogl_texture downsampled_yxy_texture;
-    ogl_texture yxy_texture;
+    ral_texture  downsampled_yxy_texture;
+    raGL_texture downsampled_yxy_texture_gl;
+
+    ral_texture  yxy_texture;
+    raGL_texture yxy_texture_gl;
 
     GLuint  dst_framebuffer_id;
     GLuint  src_framebuffer_id;
@@ -109,13 +114,6 @@ REFCOUNT_INSERT_IMPLEMENTATION(postprocessing_reinhard_tonemap,
                                postprocessing_reinhard_tonemap,
                               _postprocessing_reinhard_tonemap);
 
-/* Forward declarations */
-#ifdef _DEBUG
-    PRIVATE void _postprocessing_reinhard_tonemap_verify_context_type(ogl_context);
-#else
-    #define _postprocessing_reinhard_tonemap_verify_context_type(x)
-#endif
-
 
 /** TODO */
 PRIVATE void _create_callback(ogl_context context,
@@ -129,25 +127,46 @@ PRIVATE void _create_callback(ogl_context context,
                             &entry_points);
 
     /* TODO */
-    data->data_ptr->context = context;
+    ral_texture_create_info         yxy_texture_create_info;
+    raGL_texture                    yxy_texture_gl     = NULL;
+    GLuint                          yxy_texture_id     = 0;
+    bool                            yxy_texture_is_rbo = false;
+    const system_hashed_ansi_string yxy_texture_name   = system_hashed_ansi_string_create_by_merging_two_strings("Reinhard tonemap [YXY texture] ",
+                                                                                                                 system_hashed_ansi_string_get_buffer(data->name) );
 
-    /* TODO */
-    const system_hashed_ansi_string yxy_texture_name = system_hashed_ansi_string_create_by_merging_two_strings("Reinhard tonemap [YXY texture] ",
-                                                                                                               system_hashed_ansi_string_get_buffer(data->name) );
+    yxy_texture_create_info.base_mipmap_depth = 1;
+    yxy_texture_create_info.base_mipmap_height = data->data_ptr->texture_height;
+    yxy_texture_create_info.base_mipmap_width  = data->data_ptr->texture_width;
+    yxy_texture_create_info.fixed_sample_locations = false;
+    yxy_texture_create_info.format                 = RAL_TEXTURE_FORMAT_RGB32_FLOAT;
+    yxy_texture_create_info.n_layers               = 1;
+    yxy_texture_create_info.n_samples              = 1;
+    yxy_texture_create_info.type                   = RAL_TEXTURE_TYPE_2D;
+    yxy_texture_create_info.usage                  = RAL_TEXTURE_USAGE_BLIT_SRC_BIT         |
+                                                     RAL_TEXTURE_USAGE_COLOR_ATTACHMENT_BIT |
+                                                     RAL_TEXTURE_USAGE_SAMPLED_BIT;
+    yxy_texture_create_info.use_full_mipmap_chain  = true;
 
-    data->data_ptr->yxy_texture = ogl_texture_create_and_initialize(context,
-                                                                    yxy_texture_name,
-                                                                    RAL_TEXTURE_TYPE_2D,
-                                                                    RAL_TEXTURE_FORMAT_RGB32_FLOAT,
-                                                                    true, /* use_full_mipmap_chain */
-                                                                    data->data_ptr->texture_width,
-                                                                    data->data_ptr->texture_height,
-                                                                    1,      /* base_mipmap_depth */
-                                                                    1,      /* n_samples */
-                                                                    false); /* fixedsamplelocations */
+    ral_context_create_textures(data->data_ptr->context,
+                                1, /* n_textures */
+                               &yxy_texture_create_info,
+                               &data->data_ptr->yxy_texture);
+
+    data->data_ptr->yxy_texture_gl = ral_context_get_texture_gl(data->data_ptr->context,
+                                                                data->data_ptr->yxy_texture);
+
+    raGL_texture_get_property(data->data_ptr->yxy_texture_gl,
+                              RAGL_TEXTURE_PROPERTY_ID,
+                             &yxy_texture_id);
+    raGL_texture_get_property(data->data_ptr->yxy_texture_gl,
+                              RAGL_TEXTURE_PROPERTY_IS_RENDERBUFFER,
+                             &yxy_texture_is_rbo);
+
+    ASSERT_DEBUG_SYNC(!yxy_texture_is_rbo,
+                      "TODO");
 
     entry_points->pGLBindTexture  (GL_TEXTURE_2D,
-                                   data->data_ptr->yxy_texture);
+                                   yxy_texture_id);
     entry_points->pGLTexParameteri(GL_TEXTURE_2D,
                                    GL_TEXTURE_WRAP_S,
                                    GL_CLAMP_TO_BORDER);
@@ -164,22 +183,45 @@ PRIVATE void _create_callback(ogl_context context,
     /* TODO */
     if (data->data_ptr->use_crude_downsampled_lum_average_calculation)
     {
-        const system_hashed_ansi_string downsampled_yxy_texture_name = system_hashed_ansi_string_create_by_merging_two_strings("Reinhard tonemap [downsampled YXY texture] ",
-                                                                                                                               system_hashed_ansi_string_get_buffer(data->name) );
+        ral_texture_create_info         downsampled_yxy_texture_create_info;
+        GLuint                          downsampled_yxy_texture_id     = 0;
+        bool                            downsampled_yxy_texture_is_rbo = false;
+        const system_hashed_ansi_string downsampled_yxy_texture_name   = system_hashed_ansi_string_create_by_merging_two_strings("Reinhard tonemap [downsampled YXY texture] ",
+                                                                                                                                 system_hashed_ansi_string_get_buffer(data->name) );
 
-        data->data_ptr->downsampled_yxy_texture = ogl_texture_create_and_initialize(context,
-                                                                                    downsampled_yxy_texture_name,
-                                                                                    RAL_TEXTURE_TYPE_2D,
-                                                                                    RAL_TEXTURE_FORMAT_RGB32_FLOAT,
-                                                                                    true,   /* use_full_mipmap_chain */
-                                                                                    64,     /* base_mipmap_width     */
-                                                                                    64,     /* base_mipmap_height    */
-                                                                                    1,      /* base_mipmap_depth     */
-                                                                                    1,      /* n_samples             */
-                                                                                    false); /* fixedsamplelocations  */
+        downsampled_yxy_texture_create_info.base_mipmap_depth = 1;
+        downsampled_yxy_texture_create_info.base_mipmap_height = 64;
+        downsampled_yxy_texture_create_info.base_mipmap_width  = 64;
+        downsampled_yxy_texture_create_info.fixed_sample_locations = false;
+        downsampled_yxy_texture_create_info.format                 = RAL_TEXTURE_FORMAT_RGB32_FLOAT;
+        downsampled_yxy_texture_create_info.n_layers               = 1;
+        downsampled_yxy_texture_create_info.n_samples              = 1;
+        downsampled_yxy_texture_create_info.type                   = RAL_TEXTURE_TYPE_2D;
+        downsampled_yxy_texture_create_info.usage                  = RAL_TEXTURE_USAGE_BLIT_DST_BIT |
+                                                                     RAL_TEXTURE_USAGE_SAMPLED_BIT;
+        downsampled_yxy_texture_create_info.use_full_mipmap_chain  = true;
+
+        ral_context_create_textures(data->data_ptr->context,
+                                    1, /* n_textures */
+                                   &downsampled_yxy_texture_create_info,
+                                   &data->data_ptr->downsampled_yxy_texture);
+
+        data->data_ptr->downsampled_yxy_texture_gl = ral_context_get_texture_gl(data->data_ptr->context,
+                                                                                data->data_ptr->downsampled_yxy_texture);
+
+        raGL_texture_get_property(data->data_ptr->downsampled_yxy_texture_gl,
+                                  RAGL_TEXTURE_PROPERTY_ID,
+                                 &downsampled_yxy_texture_id);
+        raGL_texture_get_property(data->data_ptr->downsampled_yxy_texture_gl,
+                                  RAGL_TEXTURE_PROPERTY_IS_RENDERBUFFER,
+                                 &downsampled_yxy_texture_is_rbo);
+
+        ASSERT_DEBUG_SYNC(!downsampled_yxy_texture_is_rbo,
+                          "TODO");
+
 
         entry_points->pGLBindTexture  (GL_TEXTURE_2D,
-                                       data->data_ptr->downsampled_yxy_texture);
+                                       downsampled_yxy_texture_id);
         entry_points->pGLTexParameteri(GL_TEXTURE_2D,
                                        GL_TEXTURE_WRAP_S,
                                        GL_CLAMP_TO_BORDER);
@@ -301,7 +343,7 @@ PRIVATE void _release_callback(ogl_context context,
     _postprocessing_reinhard_tonemap* data_ptr     = (_postprocessing_reinhard_tonemap*) arg;
     const ogl_context_gl_entrypoints* entry_points = NULL;
 
-    ogl_context_get_property(data_ptr->context,
+    ogl_context_get_property(ral_context_get_gl_context(data_ptr->context),
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
                             &entry_points);
 
@@ -312,10 +354,18 @@ PRIVATE void _release_callback(ogl_context context,
 
     if (data_ptr->downsampled_yxy_texture != NULL)
     {
-        ogl_texture_release(data_ptr->downsampled_yxy_texture);
+        ral_context_delete_textures(data_ptr->context,
+                                    1, /* n_textures */
+                                   &data_ptr->downsampled_yxy_texture);
+
+        data_ptr->downsampled_yxy_texture_gl = NULL;
     }
 
-    ogl_texture_release(data_ptr->yxy_texture);
+    ral_context_delete_textures(data_ptr->context,
+                                1, /* n_textures */
+                               &data_ptr->yxy_texture);
+
+    data_ptr->yxy_texture = NULL;
 
     shaders_fragment_rgb_to_Yxy_release(data_ptr->rgb_to_Yxy_fragment_shader);
     shaders_vertex_fullscreen_release  (data_ptr->fullscreen_vertex_shader);
@@ -329,35 +379,18 @@ PRIVATE void _postprocessing_reinhard_tonemap_release(void* ptr)
 {
     _postprocessing_reinhard_tonemap* data_ptr = (_postprocessing_reinhard_tonemap*) ptr;
 
-    ogl_context_request_callback_from_context_thread(data_ptr->context,
+    ogl_context_request_callback_from_context_thread(ral_context_get_gl_context(data_ptr->context),
                                                      _release_callback,
                                                      data_ptr);
 }
 
-/** TODO */
-#ifdef _DEBUG
-    /* TODO */
-    PRIVATE void _postprocessing_reinhard_tonemap_verify_context_type(ogl_context context)
-    {
-        ogl_context_type context_type = OGL_CONTEXT_TYPE_UNDEFINED;
-
-        ogl_context_get_property(context,
-                                 OGL_CONTEXT_PROPERTY_TYPE,
-                                &context_type);
-
-        ASSERT_DEBUG_SYNC(context_type == OGL_CONTEXT_TYPE_GL,
-                          "postprocessing_reinhard_tonemap is only supported under GL contexts")
-    }
-#endif
 
 /** Please see header for specification */
-PUBLIC EMERALD_API postprocessing_reinhard_tonemap postprocessing_reinhard_tonemap_create(ogl_context               context,
+PUBLIC EMERALD_API postprocessing_reinhard_tonemap postprocessing_reinhard_tonemap_create(ral_context               context,
                                                                                           system_hashed_ansi_string name,
                                                                                           bool                      use_crude_downsampled_lum_average_calculation,
                                                                                           uint32_t*                 texture_size)
 {
-    _postprocessing_reinhard_tonemap_verify_context_type(context);
-
     /* Instantiate the object */
     _postprocessing_reinhard_tonemap* result_object = new (std::nothrow) _postprocessing_reinhard_tonemap;
 
@@ -371,6 +404,8 @@ PUBLIC EMERALD_API postprocessing_reinhard_tonemap postprocessing_reinhard_tonem
         goto end;
     }
 
+    result_object->context = context;
+
     /* Pass control to rendering thread */
     _create_callback_data data;
 
@@ -380,7 +415,7 @@ PUBLIC EMERALD_API postprocessing_reinhard_tonemap postprocessing_reinhard_tonem
     data.name                                                    = name;
     data.data_ptr->use_crude_downsampled_lum_average_calculation = use_crude_downsampled_lum_average_calculation;
 
-    ogl_context_request_callback_from_context_thread(context,
+    ogl_context_request_callback_from_context_thread(ral_context_get_gl_context(context),
                                                      _create_callback,
                                                     &data);
 
@@ -406,23 +441,70 @@ end:
 
 /** Please see header for specification */
 PUBLIC EMERALD_API void postprocessing_reinhard_tonemap_execute(postprocessing_reinhard_tonemap tonemapper,
-                                                                ogl_texture                     in_texture,
+                                                                ral_texture                     in_texture,
                                                                 float                           alpha,
                                                                 float                           white_level,
-                                                                ogl_texture                     out_texture)
+                                                                ral_texture                     out_texture)
 {
-    GLuint                            context_default_fbo_id = -1;
-    const ogl_context_gl_entrypoints* entry_points           = NULL;
-    _postprocessing_reinhard_tonemap* tonemapper_ptr         = (_postprocessing_reinhard_tonemap*) tonemapper;
-    GLuint                            vao_id                 = 0;
+    GLuint                            context_default_fbo_id         = -1;
+    GLuint                            downsampled_yxy_texture_id     = 0;
+    bool                              downsampled_yxy_texture_is_rbo = false;
+    const ogl_context_gl_entrypoints* entry_points                   = NULL;
+    raGL_texture                      in_texture_gl                  = NULL;
+    GLuint                            in_texture_id                  = 0;
+    bool                              in_texture_is_rbo              = false;
+    raGL_texture                      out_texture_gl                 = NULL;
+    GLuint                            out_texture_id                 = 0;
+    bool                              out_texture_is_rbo             = false;
+    _postprocessing_reinhard_tonemap* tonemapper_ptr                 = (_postprocessing_reinhard_tonemap*) tonemapper;
+    GLuint                            yxy_texture_id                 = 0;
+    bool                              yxy_texture_is_rbo             = false;
+    GLuint                            vao_id                         = 0;
 
-    ogl_context_get_property(tonemapper_ptr->context,
+    in_texture_gl  = ral_context_get_texture_gl(tonemapper_ptr->context,
+                                                in_texture);
+    out_texture_gl = ral_context_get_texture_gl(tonemapper_ptr->context,
+                                                out_texture);
+
+    raGL_texture_get_property(tonemapper_ptr->downsampled_yxy_texture_gl,
+                              RAGL_TEXTURE_PROPERTY_ID,
+                             &in_texture_id);
+    raGL_texture_get_property(in_texture_gl,
+                              RAGL_TEXTURE_PROPERTY_ID,
+                             &in_texture_id);
+    raGL_texture_get_property(out_texture_gl,
+                              RAGL_TEXTURE_PROPERTY_ID,
+                             &out_texture_id);
+    raGL_texture_get_property(tonemapper_ptr->yxy_texture_gl,
+                              RAGL_TEXTURE_PROPERTY_ID,
+                             &yxy_texture_id);
+
+    raGL_texture_get_property(tonemapper_ptr->downsampled_yxy_texture_gl,
+                              RAGL_TEXTURE_PROPERTY_IS_RENDERBUFFER,
+                             &downsampled_yxy_texture_is_rbo);
+    raGL_texture_get_property(in_texture_gl,
+                              RAGL_TEXTURE_PROPERTY_IS_RENDERBUFFER,
+                             &in_texture_is_rbo);
+    raGL_texture_get_property(out_texture_gl,
+                              RAGL_TEXTURE_PROPERTY_IS_RENDERBUFFER,
+                             &out_texture_is_rbo);
+    raGL_texture_get_property(tonemapper_ptr->yxy_texture_gl,
+                              RAGL_TEXTURE_PROPERTY_IS_RENDERBUFFER,
+                             &yxy_texture_is_rbo);
+
+    ASSERT_DEBUG_SYNC(!downsampled_yxy_texture_is_rbo &&
+                      !in_texture_is_rbo              &&
+                      !out_texture_is_rbo             &&
+                      !yxy_texture_is_rbo,
+                      "TODO");
+
+    ogl_context_get_property(ral_context_get_gl_context(tonemapper_ptr->context),
                              OGL_CONTEXT_PROPERTY_DEFAULT_FBO_ID,
                             &context_default_fbo_id);
-    ogl_context_get_property(tonemapper_ptr->context,
+    ogl_context_get_property(ral_context_get_gl_context(tonemapper_ptr->context),
                              OGL_CONTEXT_PROPERTY_VAO_NO_VAAS,
                             &vao_id);
-    ogl_context_get_property(tonemapper_ptr->context,
+    ogl_context_get_property(ral_context_get_gl_context(tonemapper_ptr->context),
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
                             &entry_points);
 
@@ -439,13 +521,13 @@ PUBLIC EMERALD_API void postprocessing_reinhard_tonemap_execute(postprocessing_r
     entry_points->pGLFramebufferTexture2D(GL_DRAW_FRAMEBUFFER,                      /* TODO: WTF is happening here? Why isn't this FBO pre-configured? */
                                           GL_COLOR_ATTACHMENT0,
                                           GL_TEXTURE_2D,
-                                          tonemapper_ptr->yxy_texture,
+                                          yxy_texture_id,
                                           0);
 
     entry_points->pGLUseProgram      (rgb_to_Yxy_program_id);
     entry_points->pGLActiveTexture   (GL_TEXTURE0);
     entry_points->pGLBindTexture     (GL_TEXTURE_2D,
-                                      in_texture);
+                                      in_texture_id);
     entry_points->pGLProgramUniform1i(rgb_to_Yxy_program_id,
                                       tonemapper_ptr->rgb_to_Yxy_program_tex_uniform_location,
                                       0);
@@ -466,7 +548,7 @@ PUBLIC EMERALD_API void postprocessing_reinhard_tonemap_execute(postprocessing_r
         entry_points->pGLFramebufferTexture2D(GL_READ_FRAMEBUFFER,
                                               GL_COLOR_ATTACHMENT0,
                                               GL_TEXTURE_2D,
-                                              tonemapper_ptr->yxy_texture,
+                                              yxy_texture_id,
                                               0);
         entry_points->pGLBindFramebuffer     (GL_DRAW_FRAMEBUFFER,
                                               tonemapper_ptr->dst_framebuffer_id);
@@ -475,7 +557,7 @@ PUBLIC EMERALD_API void postprocessing_reinhard_tonemap_execute(postprocessing_r
         entry_points->pGLFramebufferTexture2D(GL_DRAW_FRAMEBUFFER,
                                               GL_COLOR_ATTACHMENT0,
                                               GL_TEXTURE_2D,
-                                              tonemapper_ptr->downsampled_yxy_texture,
+                                              downsampled_yxy_texture_id,
                                               0);
 
         entry_points->pGLBlitFramebuffer     (0, /* srcX0 */
@@ -497,8 +579,8 @@ PUBLIC EMERALD_API void postprocessing_reinhard_tonemap_execute(postprocessing_r
 
     /* 3. Generate mipmaps so that the last level contains average luminance */
     entry_points->pGLBindTexture   (GL_TEXTURE_2D,
-                                    (tonemapper_ptr->use_crude_downsampled_lum_average_calculation ? tonemapper_ptr->downsampled_yxy_texture :
-                                                                                                     tonemapper_ptr->yxy_texture) );
+                                    (tonemapper_ptr->use_crude_downsampled_lum_average_calculation ? downsampled_yxy_texture_id :
+                                                                                                     yxy_texture_id) );
     entry_points->pGLGenerateMipmap(GL_TEXTURE_2D);
 
     /* 4. Process input texture */
@@ -507,13 +589,13 @@ PUBLIC EMERALD_API void postprocessing_reinhard_tonemap_execute(postprocessing_r
     entry_points->pGLUseProgram   (tonemapper_program_id);
     entry_points->pGLActiveTexture(GL_TEXTURE0);
     entry_points->pGLBindTexture  (GL_TEXTURE_2D,
-                                   tonemapper_ptr->yxy_texture);
+                                   yxy_texture_id);
 
     if (tonemapper_ptr->use_crude_downsampled_lum_average_calculation)
     {
         entry_points->pGLActiveTexture(GL_TEXTURE1);
         entry_points->pGLBindTexture  (GL_TEXTURE_2D,
-                                       tonemapper_ptr->downsampled_yxy_texture);
+                                       downsampled_yxy_texture_id);
     }
 
     entry_points->pGLProgramUniform1i(tonemapper_program_id,
@@ -541,7 +623,7 @@ PUBLIC EMERALD_API void postprocessing_reinhard_tonemap_execute(postprocessing_r
         entry_points->pGLFramebufferTexture2D(GL_DRAW_FRAMEBUFFER,
                                               GL_COLOR_ATTACHMENT0,
                                               GL_TEXTURE_2D,
-                                              out_texture,
+                                              out_texture_id,
                                               0);
     }
     else

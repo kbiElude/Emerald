@@ -13,6 +13,8 @@
 #include "ogl/ogl_ui_checkbox.h"
 #include "ogl/ogl_ui_shared.h"
 #include "raGL\raGL_buffer.h"
+#include "ral/ral_context.h"
+#include "ral/ral_texture.h"
 #include "system/system_assertions.h"
 #include "system/system_hashed_ansi_string.h"
 #include "system/system_log.h"
@@ -60,7 +62,7 @@ typedef struct
     bool        status;
     bool        visible;
 
-    ogl_context             context;
+    ral_context             context;
     ogl_program             program;
     GLint                   program_border_width_ub_offset;
     GLint                   program_brightness_ub_offset;
@@ -118,15 +120,19 @@ PRIVATE void _ogl_ui_checkbox_init_program(ogl_ui            ui,
                                            _ogl_ui_checkbox* checkbox_ptr)
 {
     /* Create all objects */
-    ogl_context context         = ogl_ui_get_context(ui);
-    ogl_shader  fragment_shader = ogl_shader_create (context,
-                                                     RAL_SHADER_TYPE_FRAGMENT,
-                                                     system_hashed_ansi_string_create("UI checkbox fragment shader") );
-    ogl_shader  vertex_shader   = ogl_shader_create (context,
-                                                     RAL_SHADER_TYPE_VERTEX,
-                                                     system_hashed_ansi_string_create("UI checkbox vertex shader") );
+    ral_context context         = ogl_ui_get_context(ui);
+    ogl_context context_gl      = ral_context_get_gl_context(context);
+    ogl_shader  fragment_shader = NULL;
+    ogl_shader  vertex_shader   = NULL;
 
-    checkbox_ptr->program = ogl_program_create(context,
+    fragment_shader = ogl_shader_create (context_gl,
+                                         RAL_SHADER_TYPE_FRAGMENT,
+                                         system_hashed_ansi_string_create("UI checkbox fragment shader") );
+    vertex_shader   = ogl_shader_create (context_gl,
+                                         RAL_SHADER_TYPE_VERTEX,
+                                         system_hashed_ansi_string_create("UI checkbox vertex shader") );
+
+    checkbox_ptr->program = ogl_program_create(context_gl,
                                                system_hashed_ansi_string_create("UI checkbox program"),
                                                OGL_PROGRAM_SYNCABLE_UBS_MODE_ENABLE_GLOBAL);
 
@@ -304,8 +310,8 @@ PRIVATE void _ogl_ui_checkbox_update_text_location(_ogl_ui_checkbox* checkbox_pt
                                       checkbox_ptr->text_index,
                                      &text_width);
 
-    ogl_context_get_property(checkbox_ptr->context,
-                             OGL_CONTEXT_PROPERTY_WINDOW,
+    ral_context_get_property(checkbox_ptr->context,
+                             RAL_CONTEXT_PROPERTY_WINDOW,
                             &window);
 
     system_window_get_property(window,
@@ -338,8 +344,8 @@ PRIVATE void _ogl_ui_checkbox_update_x1y1x2y2(_ogl_ui_checkbox* checkbox_ptr)
                                       checkbox_ptr->text_index,
                                      &text_width);
 
-    ogl_context_get_property   (checkbox_ptr->context,
-                                OGL_CONTEXT_PROPERTY_WINDOW,
+    ral_context_get_property   (checkbox_ptr->context,
+                                RAL_CONTEXT_PROPERTY_WINDOW,
                                &window);
     system_window_get_property(window,
                                SYSTEM_WINDOW_PROPERTY_DIMENSIONS,
@@ -356,7 +362,7 @@ PUBLIC void ogl_ui_checkbox_deinit(void* internal_instance)
 {
     _ogl_ui_checkbox* ui_checkbox_ptr = (_ogl_ui_checkbox*) internal_instance;
 
-    ogl_context_release(ui_checkbox_ptr->context);
+    ral_context_release(ui_checkbox_ptr->context);
     ogl_program_release(ui_checkbox_ptr->program);
     ogl_text_set       (ui_checkbox_ptr->text_renderer,
                         ui_checkbox_ptr->text_index,
@@ -555,20 +561,20 @@ PUBLIC void* ogl_ui_checkbox_init(ogl_ui                    instance,
         new_checkbox->text_index         = ogl_text_add_string(text_renderer);
         new_checkbox->visible            = true;
 
-        ogl_context_retain(new_checkbox->context);
+        ral_context_retain(new_checkbox->context);
 
         /* Cache GL func pointers */
-        ogl_context_type context_type = OGL_CONTEXT_TYPE_UNDEFINED;
+        ral_backend_type backend_type = RAL_BACKEND_TYPE_UNKNOWN;
 
-        ogl_context_get_property(new_checkbox->context,
-                                 OGL_CONTEXT_PROPERTY_TYPE,
-                                &context_type);
+        ral_context_get_property(new_checkbox->context,
+                                 RAL_CONTEXT_PROPERTY_BACKEND_TYPE,
+                                &backend_type);
 
-        if (context_type == OGL_CONTEXT_TYPE_ES)
+        if (backend_type == RAL_BACKEND_TYPE_ES)
         {
             const ogl_context_es_entrypoints* entry_points = NULL;
 
-            ogl_context_get_property(new_checkbox->context,
+            ogl_context_get_property(ral_context_get_gl_context(new_checkbox->context),
                                      OGL_CONTEXT_PROPERTY_ENTRYPOINTS_ES,
                                     &entry_points);
 
@@ -579,12 +585,12 @@ PUBLIC void* ogl_ui_checkbox_init(ogl_ui                    instance,
         }
         else
         {
-            ASSERT_DEBUG_SYNC(context_type == OGL_CONTEXT_TYPE_GL,
+            ASSERT_DEBUG_SYNC(backend_type == RAL_BACKEND_TYPE_GL,
                               "Unrecognized context type");
 
             const ogl_context_gl_entrypoints* entry_points = NULL;
 
-            ogl_context_get_property(new_checkbox->context,
+            ogl_context_get_property(ral_context_get_gl_context(new_checkbox->context),
                                      OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
                                     &entry_points);
 
@@ -621,7 +627,7 @@ PUBLIC void* ogl_ui_checkbox_init(ogl_ui                    instance,
         } /* if (new_button->program == NULL) */
 
         /* Set up predefined values */
-        ogl_context_request_callback_from_context_thread(new_checkbox->context,
+        ogl_context_request_callback_from_context_thread(ral_context_get_gl_context(new_checkbox->context),
                                                          _ogl_ui_checkbox_init_renderer_callback,
                                                          new_checkbox);
     } /* if (new_checkbox != NULL) */

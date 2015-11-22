@@ -11,6 +11,7 @@
 #include "ogl/ogl_ui.h"
 #include "ogl/ogl_ui_label.h"
 #include "ogl/ogl_ui_shared.h"
+#include "ral/ral_context.h"
 #include "system/system_assertions.h"
 #include "system/system_hashed_ansi_string.h"
 #include "system/system_log.h"
@@ -22,7 +23,6 @@ const float _ui_button_text_color[] = {1, 1, 1, 1.0f};
 /** Internal types */
 typedef struct
 {
-    ogl_context         context;
     ogl_text_string_id  text_id;
     ogl_text            text_renderer;
     bool                visible;
@@ -35,7 +35,6 @@ PUBLIC void ogl_ui_label_deinit(void* internal_instance)
     const bool     new_visibility = false;
     _ogl_ui_label* ui_label_ptr   = (_ogl_ui_label*) internal_instance;
 
-    ogl_context_release              (ui_label_ptr->context);
     ogl_text_set_text_string_property(ui_label_ptr->text_renderer,
                                       ui_label_ptr->text_id,
                                       OGL_TEXT_STRING_PROPERTY_VISIBILITY,
@@ -99,12 +98,9 @@ PUBLIC void* ogl_ui_label_init(ogl_ui                    instance,
         new_label->x1y1[0] =     x1y1[0];
         new_label->x1y1[1] = 1 - x1y1[1];
 
-        new_label->context       = ogl_ui_get_context(instance);
         new_label->text_renderer = text_renderer;
         new_label->text_id       = ogl_text_add_string(text_renderer);
         new_label->visible       = true;
-
-        ogl_context_retain(new_label->context);
 
         /* Configure the text to be shown on the button */
         ogl_text_set(new_label->text_renderer,

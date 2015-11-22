@@ -13,6 +13,14 @@ DECLARE_HANDLE(ral_texture);
 
 typedef enum
 {
+    RAL_BACKEND_TYPE_ES,
+    RAL_BACKEND_TYPE_GL,
+
+    RAL_BACKEND_TYPE_UNKNOWN
+} ral_backend_type;
+
+typedef enum
+{
     RAL_BUFFER_MAPPABILITY_NONE = 0,
 
     RAL_BUFFER_MAPPABILITY_READ_OP_BIT  = (1 << 0),
@@ -115,6 +123,18 @@ typedef enum
 
 typedef enum
 {
+    /* TODO TODO TEMPORARY. THIS WILL BE REMOVED AFTER 1ST INTEGRATION STAGE IS FINISHED.
+     *
+     * not settable; ogl_context.
+     **/
+    RAL_CONTEXT_PROPERTY_BACKEND_CONTEXT,
+
+    /* not settable; ral_backend_type.
+     *
+     * NOTE: This query will be passed to the rendering back-end.
+     */
+    RAL_CONTEXT_PROPERTY_BACKEND_TYPE,
+
     /* not settable; system_callback_manager */
     RAL_CONTEXT_PROPERTY_CALLBACK_MANAGER,
 
@@ -282,7 +302,7 @@ typedef enum
     RAL_TEXTURE_COMPONENT_ONE,
     /* The value accessible under the component should be set to the value of the texture's red component */
     RAL_TEXTURE_COMPONENT_RED,
-    /* The value accessible under the comp-onent should be set to zero. */
+    /* The value accessible under the component should be set to zero. */
     RAL_TEXTURE_COMPONENT_ZERO,
 
     /* Always last */
@@ -431,7 +451,7 @@ typedef enum
 
 typedef enum
 {
-    /* NOTE: Make sure to update *_for_ral_texture_type() functions whenever modifying
+    /* NOTE: Make sure to update *_for_ral_texture_type() and ral_utils_get_texture_type_property() functions whenever modifying
      *       this enum definition!
      */
     RAL_TEXTURE_TYPE_1D,
@@ -442,11 +462,68 @@ typedef enum
     RAL_TEXTURE_TYPE_CUBE_MAP,
     RAL_TEXTURE_TYPE_CUBE_MAP_ARRAY,
 
-    RAL_TEXTURE_TYPE_MULTISAMPLE_2D,
-    RAL_TEXTURE_TYPE_MULTISAMPLE_2D_ARRAY,
+    RAL_TEXTURE_TYPE_MULTISAMPLE_2D,       /* TODO: remove - merge with _2D and _2D_ARRAY types */
+    RAL_TEXTURE_TYPE_MULTISAMPLE_2D_ARRAY, /* TODO: remove - merge with _2D and _2D_ARRAY types */
 
     RAL_TEXTURE_TYPE_UNKNOWN,
     RAL_TEXTURE_TYPE_COUNT = RAL_TEXTURE_TYPE_UNKNOWN
 } ral_texture_type;
+
+/* Defines usage patterns for texture instances.
+ *
+ * For OpenGL back-end, these bits help determine whether a renderbuffer or a texture
+ * should be spawned when creating the raGL_texture instance for a RAL texture.
+ */
+typedef enum
+{
+    /* The described texture will be used as a destination for blit operations */
+    RAL_TEXTURE_USAGE_BLIT_DST_BIT                 = 1 << 0,
+
+    /* The described texture will be used as a source for blit operations */
+    RAL_TEXTURE_USAGE_BLIT_SRC_BIT                 = 1 << 1,
+
+    /* The described texture will have contents uploaded from client memory */
+    RAL_TEXTURE_USAGE_CLIENT_MEMORY_UPDATE_BIT     = 1 << 2,
+
+    /* The described texture will be used as a color attachment */
+    RAL_TEXTURE_USAGE_COLOR_ATTACHMENT_BIT         = 1 << 3,
+
+    /* The described texture will be used as a depth-stencil attachment */
+    RAL_TEXTURE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT = 1 << 4,
+
+    /* The described texture will be sampled from in shader stages */
+    RAL_TEXTURE_USAGE_SAMPLED_BIT                  = 1 << 5,
+};
+typedef int ral_texture_usage_bits;
+
+/** All info required to create a single texture instance */
+typedef struct
+{
+    unsigned int           base_mipmap_depth;
+    unsigned int           base_mipmap_height;
+    unsigned int           base_mipmap_width;
+    bool                   fixed_sample_locations;
+    ral_texture_format     format;
+    unsigned int           n_layers;
+    unsigned int           n_samples;
+    ral_texture_type       type;
+    ral_texture_usage_bits usage;
+    bool                   use_full_mipmap_chain;
+} ral_texture_create_info;
+
+/** All info required to update a single texture mip-map */
+typedef struct
+{
+    unsigned int n_layer;
+    unsigned int n_mipmap;
+
+    const void*           data;
+    uint32_t              data_row_alignment;
+    unsigned int          data_size;
+    ral_texture_data_type data_type;
+
+    unsigned int region_size        [3];
+    unsigned int region_start_offset[3];
+} ral_texture_mipmap_client_sourced_update_info;
 
 #endif /* RAL_TYPES_H */

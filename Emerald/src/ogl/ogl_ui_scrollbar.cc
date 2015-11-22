@@ -13,6 +13,7 @@
 #include "ogl/ogl_ui_scrollbar.h"
 #include "ogl/ogl_ui_shared.h"
 #include "raGL/raGL_buffer.h"
+#include "ral/ral_context.h"
 #include "system/system_assertions.h"
 #include "system/system_hashed_ansi_string.h"
 #include "system/system_log.h"
@@ -73,7 +74,7 @@ static const char* ui_scrollbar_fragment_shader_body = "#version 430 core\n"
 /** Internal types */
 typedef struct
 {
-    ogl_context                    context;
+    ral_context                    context;
     system_hashed_ansi_string      name;
 
     uint32_t                       text_index;
@@ -138,15 +139,19 @@ PRIVATE void _ogl_ui_scrollbar_init_program(ogl_ui             ui,
                                             _ogl_ui_scrollbar* scrollbar_ptr)
 {
     /* Create all objects */
-    ogl_context context         = ogl_ui_get_context(ui);
-    ogl_shader  fragment_shader = ogl_shader_create (context,
-                                                     RAL_SHADER_TYPE_FRAGMENT,
-                                                     system_hashed_ansi_string_create("UI scrollbar slider fragment shader") );
-    ogl_shader  vertex_shader   = ogl_shader_create (context,
-                                                     RAL_SHADER_TYPE_VERTEX,
-                                                     system_hashed_ansi_string_create("UI scrollbar slider vertex shader") );
+    ral_context context         = ogl_ui_get_context(ui);
+    ogl_context context_gl      = ral_context_get_gl_context(context);
+    ogl_shader  fragment_shader = NULL;
+    ogl_shader  vertex_shader   = NULL;
 
-    scrollbar_ptr->program_slider = ogl_program_create(context,
+    fragment_shader = ogl_shader_create (context_gl,
+                                         RAL_SHADER_TYPE_FRAGMENT,
+                                         system_hashed_ansi_string_create("UI scrollbar slider fragment shader") );
+    vertex_shader   = ogl_shader_create (context_gl,
+                                         RAL_SHADER_TYPE_VERTEX,
+                                         system_hashed_ansi_string_create("UI scrollbar slider vertex shader") );
+
+    scrollbar_ptr->program_slider = ogl_program_create(context_gl,
                                                        system_hashed_ansi_string_create("UI scrollbar program"),
                                                        OGL_PROGRAM_SYNCABLE_UBS_MODE_ENABLE_GLOBAL);
 
@@ -312,8 +317,8 @@ PRIVATE void _ogl_ui_scrollbar_update_text_position(_ogl_ui_scrollbar* scrollbar
     system_window window         = NULL;
     int           window_size[2] = {0};
 
-    ogl_context_get_property  (scrollbar_ptr->context,
-                               OGL_CONTEXT_PROPERTY_WINDOW,
+    ral_context_get_property  (scrollbar_ptr->context,
+                               RAL_CONTEXT_PROPERTY_WINDOW,
                               &window);
     system_window_get_property(window,
                                SYSTEM_WINDOW_PROPERTY_DIMENSIONS,
@@ -359,7 +364,7 @@ PUBLIC void ogl_ui_scrollbar_deinit(void* internal_instance)
     system_variant_release(scrollbar_ptr->temp_variant);
 
     /* Release context */
-    ogl_context_release(scrollbar_ptr->context);
+    ral_context_release(scrollbar_ptr->context);
 }
 
 /** TODO */
@@ -668,20 +673,20 @@ PUBLIC void* ogl_ui_scrollbar_init(ogl_ui                         instance,
                            min_value,
                            false);
 
-        ogl_context_retain(new_scrollbar->context);
+        ral_context_retain(new_scrollbar->context);
 
         /* Cache GL func pointers */
-        ogl_context_type context_type = OGL_CONTEXT_TYPE_UNDEFINED;
+        ral_backend_type backend_type = RAL_BACKEND_TYPE_UNKNOWN;
 
-        ogl_context_get_property(new_scrollbar->context,
-                                 OGL_CONTEXT_PROPERTY_TYPE,
-                                &context_type);
+        ral_context_get_property(new_scrollbar->context,
+                                 RAL_CONTEXT_PROPERTY_BACKEND_TYPE,
+                                &backend_type);
 
-        if (context_type == OGL_CONTEXT_TYPE_ES)
+        if (backend_type == RAL_BACKEND_TYPE_ES)
         {
             const ogl_context_es_entrypoints* entry_points = NULL;
 
-            ogl_context_get_property(new_scrollbar->context,
+            ogl_context_get_property(ral_context_get_gl_context(new_scrollbar->context),
                                      OGL_CONTEXT_PROPERTY_ENTRYPOINTS_ES,
                                     &entry_points);
 
@@ -696,12 +701,12 @@ PUBLIC void* ogl_ui_scrollbar_init(ogl_ui                         instance,
         }
         else
         {
-            ASSERT_DEBUG_SYNC(context_type == OGL_CONTEXT_TYPE_GL,
-                              "Unrecognized context type");
+            ASSERT_DEBUG_SYNC(backend_type == RAL_BACKEND_TYPE_GL,
+                              "Unrecognized backend type");
 
             const ogl_context_gl_entrypoints* entry_points = NULL;
 
-            ogl_context_get_property(new_scrollbar->context,
+            ogl_context_get_property(ral_context_get_gl_context(new_scrollbar->context),
                                      OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
                                     &entry_points);
 
@@ -729,8 +734,8 @@ PUBLIC void* ogl_ui_scrollbar_init(ogl_ui                         instance,
                                           new_scrollbar->text_index,
                                          &text_height);
 
-        ogl_context_get_property  (new_scrollbar->context,
-                                   OGL_CONTEXT_PROPERTY_WINDOW,
+        ral_context_get_property  (new_scrollbar->context,
+                                   RAL_CONTEXT_PROPERTY_WINDOW,
                                   &window);
         system_window_get_property(window,
                                    SYSTEM_WINDOW_PROPERTY_DIMENSIONS,
@@ -775,7 +780,7 @@ PUBLIC void* ogl_ui_scrollbar_init(ogl_ui                         instance,
         } /* if (new_scrollbar->program == NULL) */
 
         /* Set up predefined values */
-        ogl_context_request_callback_from_context_thread(new_scrollbar->context,
+        ogl_context_request_callback_from_context_thread(ral_context_get_gl_context(new_scrollbar->context),
                                                          _ogl_ui_scrollbar_init_renderer_callback,
                                                          new_scrollbar);
     } /* if (new_button != NULL) */

@@ -7,8 +7,8 @@
 #include "shared.h"
 #include "mesh/mesh.h"
 #include "mesh/mesh_material.h"
-#include "ogl/ogl_context.h"
-#include "ogl/ogl_texture.h"
+#include "ral/ral_context.h"
+#include "ral/ral_texture.h"
 #include "scene/scene.h"
 #include "scene/scene_camera.h"
 #include "scene/scene_curve.h"
@@ -30,7 +30,7 @@
 /* Private declarations */
 typedef struct
 {
-    ogl_context               context;
+    ral_context               context;
 
     system_resizable_vector   cameras;        /* TODO: make this a hasy64 map hashed by camera name */
     system_hash64map          curves_map;
@@ -200,7 +200,9 @@ PRIVATE void _scene_release(void* arg)
 
     if (scene_ptr->context != NULL)
     {
-        ogl_context_release(scene_ptr->context);
+        ral_context_release(scene_ptr->context);
+
+        scene_ptr->context = NULL;
     }
 }
 
@@ -483,7 +485,7 @@ PUBLIC EMERALD_API bool scene_add_texture(scene         scene_instance,
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API scene scene_create(ogl_context               context,
+PUBLIC EMERALD_API scene scene_create(ral_context               context,
                                       system_hashed_ansi_string name)
 {
     _scene* new_scene = new (std::nothrow) _scene;
@@ -499,7 +501,7 @@ PUBLIC EMERALD_API scene scene_create(ogl_context               context,
 
         if (context != NULL)
         {
-            ogl_context_retain(context);
+            ral_context_retain(context);
         }
 
         new_scene->context                = context;
@@ -1066,7 +1068,7 @@ PUBLIC EMERALD_API mesh scene_get_unique_mesh_by_index(scene        scene,
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API scene scene_load(ogl_context               context,
+PUBLIC EMERALD_API scene scene_load(ral_context               context,
                                     system_hashed_ansi_string full_file_name_with_path)
 {
     /* Use multi-loader to load the scene */
@@ -1091,7 +1093,7 @@ PUBLIC EMERALD_API scene scene_load(ogl_context               context,
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API scene scene_load_with_serializer(ogl_context            context,
+PUBLIC EMERALD_API scene scene_load_with_serializer(ral_context            context,
                                                     system_file_serializer serializer)
 {
     /* Use multi-loader to load the scene */

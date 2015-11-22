@@ -14,9 +14,6 @@
  *
  * Repeated as many times as there are characters in the string.
  *
- * NOTE: Text rendering used to be implemented with buffer textures, but these
- *       misbehaved on a certain vendor's hardware. This implementation could
- *       benefit from a re-write for the sake of improving the code readability.
  */
 #include "shared.h"
 #include "gfx/gfx_bfg_font_table.h"
@@ -27,8 +24,9 @@
 #include "ogl/ogl_rendering_handler.h"
 #include "ogl/ogl_shader.h"
 #include "ogl/ogl_text.h"
-#include "ogl/ogl_texture.h"
 #include "raGL/raGL_buffers.h"
+#include "ral/ral_context.h"
+#include "ral/ral_texture.h"
 #include "system/system_assertions.h"
 #include "system/system_critical_section.h"
 #include "system/system_hash64map.h"
@@ -47,7 +45,7 @@
 /** Internal types */
 typedef struct
 {
-    ogl_texture to;
+    ral_texture to;
 } _font_table_descriptor;
 
 typedef std::map<gfx_bfg_font_table, _font_table_descriptor> FontTable;
@@ -70,22 +68,20 @@ typedef struct
     system_critical_section   draw_cs;
     gfx_bfg_font_table        font_table;
     system_hashed_ansi_string name;
-    ogl_context               owner_context;
+    ral_context               owner_context;
     uint32_t                  screen_height;
     uint32_t                  screen_width;
     system_resizable_vector   strings;
 
     raGL_buffers buffers;
-    ogl_context  context;
+    ral_context  context;
 
     /* GL function pointers cache */
-    PFNWRAPPEDGLBINDTEXTUREPROC           gl_pGLBindTexture;
     PFNGLNAMEDBUFFERSUBDATAEXTPROC        gl_pGLNamedBufferSubDataEXT;
     PFNGLPOLYGONMODEPROC                  gl_pGLPolygonMode;
-    PFNWRAPPEDGLTEXTUREBUFFERRANGEEXTPROC gl_pGLTextureBufferRangeEXT;
-    PFNWRAPPEDGLTEXTUREPARAMETERIEXTPROC  gl_pGLTextureParameteriEXT;
+    PFNGLTEXTUREPARAMETERIEXTPROC         gl_pGLTextureParameteriEXT;
     PFNGLTEXTURESTORAGE2DEXTPROC          gl_pGLTextureStorage2DEXT;
-    PFNWRAPPEDGLTEXTURESUBIMAGE2DEXTPROC  gl_pGLTextureSubImage2DEXT;
+    PFNGLTEXTURESUBIMAGE2DEXTPROC         gl_pGLTextureSubImage2DEXT;
     PFNGLACTIVETEXTUREPROC                pGLActiveTexture;
     PFNGLBINDBUFFERPROC                   pGLBindBuffer;
     PFNGLBINDBUFFERRANGEPROC              pGLBindBufferRange;
@@ -276,7 +272,7 @@ PRIVATE void _ogl_text_release(void* text)
     _ogl_text* text_ptr = (_ogl_text*) text;
 
     /* First we need to call-back from the rendering thread, in order to free resources owned by GL */
-    ogl_context_request_callback_from_context_thread(text_ptr->owner_context,
+    ogl_context_request_callback_from_context_thread(ral_context_get_gl_context(text_ptr->owner_context),
                                                      _ogl_text_destruction_callback_from_renderer,
                                                      text);
 
@@ -307,12 +303,12 @@ PRIVATE void _ogl_text_release(void* text)
 PRIVATE void _ogl_text_update_vram_data_storage(ogl_context context,
                                                 void*       text)
 {
-    ogl_context_type context_type = OGL_CONTEXT_TYPE_UNDEFINED;
+    ral_backend_type backend_type = RAL_BACKEND_TYPE_UNKNOWN;
     _ogl_text*       text_ptr     = (_ogl_text*) text;
 
-    ogl_context_get_property(context,
-                             OGL_CONTEXT_PROPERTY_TYPE,
-                            &context_type);
+    ral_context_get_property(text_ptr->context,
+                             RAL_CONTEXT_PROPERTY_BACKEND_TYPE,
+                            &backend_type);
 
     /* Prepare UV data to be uploaded to VRAM */
     uint32_t n_text_strings     = 0;
@@ -446,7 +442,7 @@ PRIVATE void _ogl_text_update_vram_data_storage(ogl_context context,
                              RAGL_BUFFER_PROPERTY_START_OFFSET,
                             &data_buffer_start_offset);
 
-    if (context_type == OGL_CONTEXT_TYPE_GL)
+    if (backend_type == RAL_BACKEND_TYPE_GL)
     {
         text_ptr->gl_pGLNamedBufferSubDataEXT(data_buffer_id,
                                               data_buffer_start_offset,
@@ -475,26 +471,28 @@ PRIVATE void _ogl_text_construction_callback_from_renderer(ogl_context context,
     {
         if (_n_global_owners == 0)
         {
-            _global.draw_text_fragment_shader = ogl_shader_create (context,
+            ogl_context context_gl = ral_context_get_gl_context(text_ptr->context);
+
+            _global.draw_text_fragment_shader = ogl_shader_create (context_gl,
                                                                    RAL_SHADER_TYPE_FRAGMENT,
                                                                    system_hashed_ansi_string_create("ogl_text fragment shader"));
-            _global.draw_text_program         = ogl_program_create(context,
+            _global.draw_text_program         = ogl_program_create(context_gl,
                                                                    system_hashed_ansi_string_create("ogl_text program"),
                                                                    OGL_PROGRAM_SYNCABLE_UBS_MODE_ENABLE_PER_CONTEXT);
-            _global.draw_text_vertex_shader   = ogl_shader_create (context,
+            _global.draw_text_vertex_shader   = ogl_shader_create (context_gl,
                                                                    RAL_SHADER_TYPE_VERTEX,
                                                                    system_hashed_ansi_string_create("ogl_text vertex shader") );
 
             /* Prepare the bodies */
-            ogl_context_type  context_type = OGL_CONTEXT_TYPE_UNDEFINED;
+            ral_backend_type  backend_type = RAL_BACKEND_TYPE_UNKNOWN;
             std::stringstream fs_sstream;
             std::stringstream vs_sstream;
 
-            ogl_context_get_property(context,
-                                     OGL_CONTEXT_PROPERTY_TYPE,
-                                    &context_type);
+            ral_context_get_property(text_ptr->context,
+                                     RAL_CONTEXT_PROPERTY_BACKEND_TYPE,
+                                    &backend_type);
 
-            if (context_type == OGL_CONTEXT_TYPE_ES)
+            if (backend_type == RAL_BACKEND_TYPE_ES)
             {
                 fs_sstream << "#version 310 es\n"
                               "\n"
@@ -506,7 +504,7 @@ PRIVATE void _ogl_text_construction_callback_from_renderer(ogl_context context,
             }
             else
             {
-                ASSERT_DEBUG_SYNC(context_type == OGL_CONTEXT_TYPE_GL,
+                ASSERT_DEBUG_SYNC(backend_type == RAL_BACKEND_TYPE_GL,
                                   "Unrecognized context type");
 
                 fs_sstream << "#version 430 core\n"
@@ -682,12 +680,12 @@ PRIVATE void _ogl_text_construction_callback_from_renderer(ogl_context context,
 PRIVATE void _ogl_text_create_font_table_to_callback_from_renderer(ogl_context context,
                                                                    void*       text)
 {
-    ogl_context_type context_type = OGL_CONTEXT_TYPE_UNDEFINED;
+    ral_backend_type backend_type = RAL_BACKEND_TYPE_UNKNOWN;
     _ogl_text*       text_ptr     = (_ogl_text*) text;
 
-    ogl_context_get_property(context,
-                             OGL_CONTEXT_PROPERTY_TYPE,
-                            &context_type);
+    ral_context_get_property(text_ptr->context,
+                             RAL_CONTEXT_PROPERTY_BACKEND_TYPE,
+                            &backend_type);
 
     if (_global.font_tables.find(text_ptr->font_table) == _global.font_tables.end() )
     {
@@ -702,36 +700,29 @@ PRIVATE void _ogl_text_create_font_table_to_callback_from_renderer(ogl_context c
 
         /* Create the descriptor */
         _font_table_descriptor          descriptor;
+        ral_texture_create_info         to_create_info;
         const system_hashed_ansi_string to_name = system_hashed_ansi_string_create_by_merging_two_strings("Text renderer ",
                                                                                                          system_hashed_ansi_string_get_buffer(text_ptr->name) );
 
-        descriptor.to = ogl_texture_create_and_initialize(context,
-                                                          to_name,
-                                                          RAL_TEXTURE_TYPE_2D,
-                                                          RAL_TEXTURE_FORMAT_RGB8_UNORM,
-                                                          true,   /* use_full_mipmap_chain */
-                                                          font_table_width,
-                                                          font_table_height,
-                                                          1,      /* base_mipmap_depth    */
-                                                          1,      /* n_samples            */
-                                                          false); /* fixedsamplelocations */
+        to_create_info.base_mipmap_depth      = 1;
+        to_create_info.base_mipmap_height     = font_table_height;
+        to_create_info.base_mipmap_width      = font_table_width;
+        to_create_info.fixed_sample_locations = false;
+        to_create_info.format                 = RAL_TEXTURE_FORMAT_RGB8_UNORM;
+        to_create_info.n_layers               = 1;
+        to_create_info.n_samples              = 1;
+        to_create_info.type                   = RAL_TEXTURE_TYPE_2D;
+        to_create_info.usage                  = RAL_TEXTURE_USAGE_SAMPLED_BIT;
+        to_create_info.use_full_mipmap_chain  = true;
 
-        if (context_type == OGL_CONTEXT_TYPE_ES)
-        {
-            GLint to_id = 0;
+        ral_context_create_textures(text_ptr->context,
+                                    1, /* n_textures */
+                                    &to_create_info,
+                                   &descriptor.to);
 
-            ogl_texture_get_property(descriptor.to,
-                                     OGL_TEXTURE_PROPERTY_ID,
-                                    &to_id);
-
-            text_ptr->pGLBindTexture(GL_TEXTURE_2D,
-                                     to_id);
-        }
-        else
-        {
-            text_ptr->gl_pGLBindTexture(GL_TEXTURE_2D,
-                                        descriptor.to);
-        }
+        text_ptr->pGLBindTexture(GL_TEXTURE_2D,
+                                 ral_context_get_texture_gl_id(text_ptr->context,
+                                                               descriptor.to) );
 
         text_ptr->pGLTexSubImage2D (GL_TEXTURE_2D,
                                     0, /* level */
@@ -769,7 +760,7 @@ PRIVATE void _ogl_text_create_font_table_to_callback_from_renderer(ogl_context c
         /* We need to retain the ogl_texture instance since we will need to manually manage
          * the lifetime of this object.
          */
-        ogl_texture_retain(descriptor.to);
+        ral_texture_retain(descriptor.to);
 
         _global.font_tables[text_ptr->font_table] = descriptor;
     }
@@ -804,7 +795,7 @@ PRIVATE void _ogl_text_destruction_callback_from_renderer(ogl_context context,
                                    iterator != _global.font_tables.end();
                                  ++iterator)
             {
-                ogl_texture_release(iterator->second.to);
+                ral_texture_release(iterator->second.to);
             }
             _global.font_tables.clear();
 
@@ -922,23 +913,9 @@ PRIVATE void _ogl_text_draw_callback_from_renderer(ogl_context context,
                                   "Could not find corresponding texture for a font table!");
 
                 text_ptr->pGLActiveTexture(GL_TEXTURE1);
-
-                if (context_type == OGL_CONTEXT_TYPE_ES)
-                {
-                    GLint to_id = 0;
-
-                    ogl_texture_get_property(_global.font_tables[text_ptr->font_table].to,
-                                             OGL_TEXTURE_PROPERTY_ID,
-                                            &to_id);
-
-                    text_ptr->pGLBindTexture(GL_TEXTURE_2D,
-                                             to_id);
-                }
-                else
-                {
-                    text_ptr->gl_pGLBindTexture(GL_TEXTURE_2D,
-                                                _global.font_tables[text_ptr->font_table].to);
-                }
+                text_ptr->pGLBindTexture  (GL_TEXTURE_2D,
+                                           ral_context_get_texture_gl_id(text_ptr->context,
+                                                                         _global.font_tables[text_ptr->font_table].to) );
 
                 /* Draw! */
                 GLuint   draw_text_program_ub_fsdata_bo_id           =  0;
@@ -1107,7 +1084,7 @@ PUBLIC EMERALD_API ogl_text_string_id ogl_text_add_string(ogl_text text)
 
 /** Please see header for specification */
 PUBLIC EMERALD_API ogl_text ogl_text_create(system_hashed_ansi_string name,
-                                            ogl_context               context,
+                                            ral_context               context,
                                             gfx_bfg_font_table        font_table,
                                             uint32_t                  screen_width,
                                             uint32_t                  screen_height)
@@ -1141,6 +1118,8 @@ PUBLIC EMERALD_API ogl_text ogl_text_create(system_hashed_ansi_string name,
     {
         /* Now that we have place to store OGL-specific ids, we can request a call-back from context thread to fill them up.
          * Before that, however, fill the structure with data that is necessary for that to happen. */
+        ogl_context context_gl = ral_context_get_gl_context(context);
+
         memset(result,
                0,
                sizeof(_ogl_text) );
@@ -1159,35 +1138,35 @@ PUBLIC EMERALD_API ogl_text ogl_text_create(system_hashed_ansi_string name,
         result->strings          = system_resizable_vector_create(4 /* default capacity */);
 
         /* Cache the buffer manager */
-        ogl_context_get_property(context,
+        ogl_context_get_property(context_gl,
                                  OGL_CONTEXT_PROPERTY_BUFFERS_RAGL,
                                 &result->buffers);
 
         /* Retrieve TBO alignment requirement */
         const ogl_context_gl_limits* limits_ptr = NULL;
 
-        ogl_context_get_property(context,
+        ogl_context_get_property(context_gl,
                                  OGL_CONTEXT_PROPERTY_LIMITS,
                                 &limits_ptr);
 
         result->shader_storage_buffer_offset_alignment = limits_ptr->shader_storage_buffer_offset_alignment;
 
         /* Initialize GL func pointers */
-        ogl_context_type context_type = OGL_CONTEXT_TYPE_UNDEFINED;
+        ral_backend_type backend_type = RAL_BACKEND_TYPE_UNKNOWN;
 
-        ogl_context_get_property(context,
-                                 OGL_CONTEXT_PROPERTY_TYPE,
-                                &context_type);
+        ral_context_get_property(context,
+                                 RAL_CONTEXT_PROPERTY_BACKEND_TYPE,
+                                &backend_type);
 
-        if (context_type == OGL_CONTEXT_TYPE_ES)
+        if (backend_type == RAL_BACKEND_TYPE_ES)
         {
             const ogl_context_es_entrypoints*                    entry_points    = NULL;
             const ogl_context_es_entrypoints_ext_texture_buffer* ts_entry_points = NULL;
 
-            ogl_context_get_property(context,
+            ogl_context_get_property(context_gl,
                                      OGL_CONTEXT_PROPERTY_ENTRYPOINTS_ES,
                                     &entry_points);
-            ogl_context_get_property(context,
+            ogl_context_get_property(context_gl,
                                      OGL_CONTEXT_PROPERTY_ENTRYPOINTS_ES_EXT_TEXTURE_BUFFER,
                                     &ts_entry_points);
 
@@ -1215,29 +1194,28 @@ PUBLIC EMERALD_API ogl_text ogl_text_create(system_hashed_ansi_string name,
         }
         else
         {
-            ASSERT_DEBUG_SYNC(context_type == OGL_CONTEXT_TYPE_GL,
-                              "Unrecognized context type");
+            ASSERT_DEBUG_SYNC(backend_type == RAL_BACKEND_TYPE_GL,
+                              "Unrecognized backend type");
 
             const ogl_context_gl_entrypoints_ext_direct_state_access* dsa_entry_points = NULL;
             const ogl_context_gl_entrypoints*                         entry_points     = NULL;
 
-            ogl_context_get_property(context,
+            ogl_context_get_property(context_gl,
                                      OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
                                     &entry_points);
-            ogl_context_get_property(context,
+            ogl_context_get_property(context_gl,
                                      OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL_EXT_DIRECT_STATE_ACCESS,
                                     &dsa_entry_points);
 
-            result->gl_pGLBindTexture           = entry_points->pGLBindTexture;
             result->gl_pGLNamedBufferSubDataEXT = dsa_entry_points->pGLNamedBufferSubDataEXT;
             result->gl_pGLPolygonMode           = entry_points->pGLPolygonMode;
-            result->gl_pGLTextureBufferRangeEXT = dsa_entry_points->pGLTextureBufferRangeEXT;
             result->gl_pGLTextureParameteriEXT  = dsa_entry_points->pGLTextureParameteriEXT;
             result->gl_pGLTextureStorage2DEXT   = dsa_entry_points->pGLTextureStorage2DEXT;
             result->gl_pGLTextureSubImage2DEXT  = dsa_entry_points->pGLTextureSubImage2DEXT;
             result->pGLActiveTexture            = entry_points->pGLActiveTexture;
             result->pGLBindBuffer               = entry_points->pGLBindBuffer;
             result->pGLBindBufferRange          = entry_points->pGLBindBufferRange;
+            result->pGLBindTexture              = entry_points->pGLBindTexture;
             result->pGLBindVertexArray          = entry_points->pGLBindVertexArray;
             result->pGLBlendEquation            = entry_points->pGLBlendEquation;
             result->pGLBlendFunc                = entry_points->pGLBlendFunc;
@@ -1260,13 +1238,13 @@ PUBLIC EMERALD_API ogl_text ogl_text_create(system_hashed_ansi_string name,
         /* Make sure the font table has been assigned a texture object */
         if (_global.font_tables.find(font_table) == _global.font_tables.end() )
         {
-            ogl_context_request_callback_from_context_thread(context,
+            ogl_context_request_callback_from_context_thread(context_gl,
                                                              _ogl_text_create_font_table_to_callback_from_renderer,
                                                              result);
         }
 
         /* We need a call-back, now */
-        ogl_context_request_callback_from_context_thread(context,
+        ogl_context_request_callback_from_context_thread(context_gl,
                                                          _ogl_text_construction_callback_from_renderer,
                                                          result);
 
@@ -1334,7 +1312,7 @@ PUBLIC EMERALD_API uint32_t ogl_text_get_added_strings_counter(ogl_text instance
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API ogl_context ogl_text_get_context(ogl_text text)
+PUBLIC EMERALD_API ral_context ogl_text_get_context(ogl_text text)
 {
     return ((_ogl_text*) text)->context;
 }

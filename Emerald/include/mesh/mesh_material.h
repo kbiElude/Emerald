@@ -8,8 +8,7 @@
 
 #include "curve/curve_types.h"
 #include "mesh/mesh_types.h"
-#include "ogl/ogl_types.h"
-#include "raGL/raGL_sampler.h"
+#include "ral/ral_types.h"
 #include "scene/scene_types.h"
 
 REFCOUNT_INSERT_DECLARATIONS(mesh_material,
@@ -157,7 +156,7 @@ typedef enum
 
 /** TODO */
 PUBLIC EMERALD_API mesh_material mesh_material_create(system_hashed_ansi_string name,
-                                                      ogl_context               context,
+                                                      ral_context               context,
                                                       system_hashed_ansi_string object_manager_path);
 
 /** TODO */
@@ -166,11 +165,11 @@ PUBLIC EMERALD_API mesh_material mesh_material_create_copy(system_hashed_ansi_st
 
 /** TODO */
 PUBLIC EMERALD_API mesh_material mesh_material_create_from_scene_material(scene_material src_material,
-                                                                          ogl_context    context);
+                                                                          ral_context    context);
 
 /** TODO */
 PUBLIC EMERALD_API mesh_material mesh_material_create_from_shader_bodies(system_hashed_ansi_string name,
-                                                                         ogl_context               context,
+                                                                         ral_context               context,
                                                                          system_hashed_ansi_string object_manager_path,
                                                                          system_hashed_ansi_string fs_body,
                                                                          system_hashed_ansi_string gs_body,
@@ -244,11 +243,11 @@ PUBLIC EMERALD_API void mesh_material_get_shading_property_value_input_fragment_
                                                                                           mesh_material_input_fragment_attribute* out_attribute);
 
 /** TODO */
-PUBLIC EMERALD_API void mesh_material_get_shading_property_value_texture(mesh_material                    material,
-                                                                         mesh_material_shading_property   property,
-                                                                         ogl_texture*                     out_texture,
-                                                                         unsigned int*                    out_mipmap_level,
-                                                                         raGL_sampler*                    out_sampler);
+PUBLIC EMERALD_API void mesh_material_get_shading_property_value_texture(mesh_material                   material,
+                                                                         mesh_material_shading_property  property,
+                                                                         ral_texture*                    out_texture,
+                                                                         unsigned int*                   out_mipmap_level,
+                                                                         ral_sampler*                    out_sampler);
 
 /** TODO */
 PUBLIC EMERALD_API void mesh_material_get_shading_property_value_vec4(mesh_material                  material,
@@ -287,7 +286,7 @@ PUBLIC EMERALD_API void mesh_material_set_shading_property_to_input_fragment_att
 /** TODO. */
 PUBLIC EMERALD_API void mesh_material_set_shading_property_to_texture(mesh_material                   material,
                                                                       mesh_material_shading_property  property,
-                                                                      ogl_texture                     texture,
+                                                                      ral_texture                     texture,
                                                                       unsigned int                    mipmap_level,
                                                                       mesh_material_texture_filtering mag_filter,
                                                                       mesh_material_texture_filtering min_filter);

@@ -6,7 +6,7 @@
 #ifndef DEMO_TYPES_H
 #define DEMO_TYPES_H
 
-#include "ogl/ogl_types.h" /* TODO: Remove OGL dep */
+#include "raGL/raGL_types.h"
 #include "ral/ral_types.h"
 #include "system/system_types.h"
 
@@ -22,7 +22,7 @@ typedef struct
 {
     // TODO: stuff like n_start_layer, n_start_mipmap, etc. should be added here one day */
 
-    ogl_texture  texture; /* TODO: This should be a RAL type */
+    ral_texture  texture_ral;
 } demo_texture_attachment_declaration;
 
 /** Structure used to describe a new texture input. Should only be used at creation time */
@@ -85,7 +85,7 @@ typedef struct
 /* Specifies texture memory allocation. */
 typedef struct
 {
-    ogl_texture                   bound_texture;
+    ral_texture                   bound_texture;
     ral_texture_component         components[4];
     ral_texture_format            format;
     uint32_t                      n_layers;
@@ -113,13 +113,13 @@ typedef unsigned int demo_timeline_segment_node_output_id;
 
 typedef enum
 {
-    /* not settable; ogl_texture.
+    /* not settable; ral_texture.
      *
      * Tells what texture attachment is bound to the output.
      *
      * Query only valid for texture interfaces.
      */
-    DEMO_TIMELINE_SEGMENT_NODE_IO_PROPERTY_BOUND_TEXTURE,
+    DEMO_TIMELINE_SEGMENT_NODE_IO_PROPERTY_BOUND_TEXTURE_RAL,
 
     /* not settable; demo_timeline_segment_node_interface_type.
      *
@@ -246,6 +246,6 @@ typedef                        bool                               (*PFNSEGMENTNO
                                                                                                                          const void*                        data);
 typedef                       void                                (*PFNSEGMENTNODESETTEXTUREMEMORYALLOCATIONPROC)       (demo_timeline_segment_node_private node,
                                                                                                                          uint32_t                           n_allocation,
-                                                                                                                         ogl_texture                        texture);
+                                                                                                                         ral_texture                        texture);
 
 #endif /* DEMO_TYPES_H */

@@ -27,7 +27,7 @@ PUBLIC void* ogl_ui_texture_preview_init(ogl_ui                      instance,
                                          system_hashed_ansi_string   name,
                                          const float*                x1y1,
                                          const float*                max_size,
-                                         ogl_texture                 to,
+                                         ral_texture                 to,
                                          ogl_ui_texture_preview_type preview_type);
 
 /** TODO */

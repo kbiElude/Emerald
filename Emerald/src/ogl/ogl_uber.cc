@@ -12,11 +12,13 @@
 #include "ogl/ogl_program_ub.h"
 #include "ogl/ogl_shader.h"
 #include "ogl/ogl_shader_constructor.h"
-#include "ogl/ogl_texture.h"
 #include "ogl/ogl_uber.h"
 #include "raGL/raGL_buffers.h"
 #include "raGL/raGL_sampler.h"
 #include "raGL/raGL_samplers.h"
+#include "raGL/raGL_utils.h"
+#include "ral/ral_context.h"
+#include "ral/ral_texture.h"
 #include "scene/scene.h"
 #include "scene/scene_curve.h"
 #include "scene/scene_graph.h"
@@ -59,9 +61,9 @@ typedef struct _ogl_uber_fragment_shader_item
     GLint current_light_shadow_map_vsm_min_variance_ub_offset;
     GLint current_light_view_ub_offset;
 
-    ogl_texture current_light_shadow_map_texture_color;
+    ral_texture current_light_shadow_map_texture_color;
     GLuint      current_light_shadow_map_texture_color_sampler_location;
-    ogl_texture current_light_shadow_map_texture_depth;
+    ral_texture current_light_shadow_map_texture_depth;
     GLuint      current_light_shadow_map_texture_depth_sampler_location;
 
     _ogl_uber_fragment_shader_item()
@@ -158,7 +160,7 @@ typedef struct __ogl_uber_vao
 typedef struct _ogl_uber
 {
     raGL_buffers              buffers;
-    ogl_context               context;
+    ral_context               context;
     system_hashed_ansi_string name;
 
     ogl_program               program;
@@ -217,7 +219,7 @@ typedef struct _ogl_uber
 
     REFCOUNT_INSERT_VARIABLES
 
-    explicit _ogl_uber(ogl_context               context,
+    explicit _ogl_uber(ral_context               context,
                        system_hashed_ansi_string name,
                        _ogl_uber_type            type);
 } _ogl_uber;
@@ -238,16 +240,11 @@ PRIVATE void _ogl_uber_release_renderer_callback                 (ogl_context   
                                                                   void*                                       arg);
 PRIVATE void _ogl_uber_reset_attribute_uniform_locations         (_ogl_uber*                                  uber_ptr);
 
-#ifdef _DEBUG
-    PRIVATE void _ogl_uber_verify_context_type(ogl_context);
-#else
-    #define _ogl_uber_verify_context_type(x)
-#endif
 
 /** Internal variables */
 
 /** TODO */
-_ogl_uber::_ogl_uber(ogl_context               in_context,
+_ogl_uber::_ogl_uber(ral_context               in_context,
                      system_hashed_ansi_string in_name,
                      _ogl_uber_type            in_type)
 {
@@ -268,7 +265,7 @@ _ogl_uber::_ogl_uber(ogl_context               in_context,
     ub_fs                          = NULL;
     ub_vs                          = NULL;
 
-    ogl_context_get_property(context,
+    ogl_context_get_property(ral_context_get_gl_context(context),
                              OGL_CONTEXT_PROPERTY_BUFFERS_RAGL,
                             &buffers);
 
@@ -337,13 +334,13 @@ PRIVATE void _ogl_uber_bake_mesh_vao(_ogl_uber* uber_ptr,
     uint32_t                                                  n_layers                       = 0;
     _ogl_uber_vao*                                            vao_ptr                        = NULL;
 
-    ogl_context_get_property(uber_ptr->context,
+    ogl_context_get_property(ral_context_get_gl_context(uber_ptr->context),
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL_EXT_DIRECT_STATE_ACCESS,
                             &dsa_entrypoints);
-    ogl_context_get_property(uber_ptr->context,
+    ogl_context_get_property(ral_context_get_gl_context(uber_ptr->context),
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
                             &entrypoints);
-    ogl_context_get_property(uber_ptr->context,
+    ogl_context_get_property(ral_context_get_gl_context(uber_ptr->context),
                              OGL_CONTEXT_PROPERTY_LIMITS,
                             &limits);
 
@@ -836,7 +833,7 @@ PRIVATE void _ogl_uber_release(void* uber)
             ASSERT_DEBUG_SYNC(uber_ptr->context != NULL,
                               "Rendering context is NULL");
 
-            ogl_context_request_callback_from_context_thread(uber_ptr->context,
+            ogl_context_request_callback_from_context_thread(ral_context_get_gl_context(uber_ptr->context),
                                                              _ogl_uber_release_renderer_callback,
                                                              uber_ptr);
 
@@ -937,23 +934,6 @@ PRIVATE void _ogl_uber_reset_attribute_uniform_locations(_ogl_uber* uber_ptr)
     uber_ptr->vp_ub_offset                                 = -1;
     uber_ptr->world_camera_ub_offset                       = -1;
 }
-
-/** TODO */
-#ifdef _DEBUG
-    /* TODO */
-    PRIVATE void _ogl_uber_verify_context_type(ogl_context context)
-    {
-        ogl_context_type context_type = OGL_CONTEXT_TYPE_UNDEFINED;
-
-        ogl_context_get_property(context,
-                                 OGL_CONTEXT_PROPERTY_TYPE,
-                                &context_type);
-
-        ASSERT_DEBUG_SYNC(context_type == OGL_CONTEXT_TYPE_GL,
-                          "ogl_uber is only supported under GL contexts")
-    }
-#endif
-
 
 /* Please see header for specification */
 PUBLIC EMERALD_API ogl_uber_item_id ogl_uber_add_input_fragment_attribute_item(ogl_uber                           uber,
@@ -1147,11 +1127,9 @@ end:
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API ogl_uber ogl_uber_create(ogl_context                context,
+PUBLIC EMERALD_API ogl_uber ogl_uber_create(ral_context                context,
                                             system_hashed_ansi_string  name)
 {
-    _ogl_uber_verify_context_type(context);
-
     _ogl_uber* result = new (std::nothrow) _ogl_uber(context,
                                                      name,
                                                      OGL_UBER_TYPE_REGULAR);
@@ -1174,7 +1152,7 @@ PUBLIC EMERALD_API ogl_uber ogl_uber_create(ogl_context                context,
                                                                                                                system_hashed_ansi_string_get_buffer(name)) );
 
         /* Create a program with the shaders we were provided */
-        result->program = ogl_program_create(context,
+        result->program = ogl_program_create(ral_context_get_gl_context(context),
                                              name,
                                              OGL_PROGRAM_SYNCABLE_UBS_MODE_ENABLE_GLOBAL);
         result->type    = OGL_UBER_TYPE_REGULAR;
@@ -1199,12 +1177,10 @@ PUBLIC EMERALD_API ogl_uber ogl_uber_create(ogl_context                context,
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API ogl_uber ogl_uber_create_from_ogl_program(ogl_context               context,
+PUBLIC EMERALD_API ogl_uber ogl_uber_create_from_ogl_program(ral_context               context,
                                                              system_hashed_ansi_string name,
                                                              ogl_program               program)
 {
-    _ogl_uber_verify_context_type(context);
-
     _ogl_uber* result = new (std::nothrow) _ogl_uber(context,
                                                      name,
                                                      OGL_UBER_TYPE_OGL_PROGRAM_DRIVEN);
@@ -2013,7 +1989,7 @@ PUBLIC EMERALD_API void ogl_uber_link(ogl_uber uber)
     } /* for (all uber items) */
 
     /* Request renderer thread call-back to do the other part of the initialization */
-    ogl_context_request_callback_from_context_thread(uber_ptr->context,
+    ogl_context_request_callback_from_context_thread(ral_context_get_gl_context(uber_ptr->context),
                                                      _ogl_uber_link_renderer_callback,
                                                      uber_ptr);
 
@@ -2108,10 +2084,10 @@ PUBLIC void ogl_uber_rendering_render_mesh(mesh             mesh_gpu,
         const ogl_context_gl_entrypoints_ext_direct_state_access* dsa_entry_points = NULL;
         const ogl_context_gl_entrypoints*                         entry_points     = NULL;
 
-        ogl_context_get_property(uber_ptr->context,
+        ogl_context_get_property(ral_context_get_gl_context(uber_ptr->context),
                                  OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL_EXT_DIRECT_STATE_ACCESS,
                                 &dsa_entry_points);
-        ogl_context_get_property(uber_ptr->context,
+        ogl_context_get_property(ral_context_get_gl_context(uber_ptr->context),
                                  OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
                                 &entry_points);
 
@@ -2368,9 +2344,9 @@ PUBLIC void ogl_uber_rendering_render_mesh(mesh             mesh_gpu,
 
                             case MESH_MATERIAL_PROPERTY_ATTACHMENT_TEXTURE:
                             {
-                                raGL_sampler layer_pass_sampler              = NULL;
+                                ral_sampler  layer_pass_sampler              = NULL;
                                 GLuint       layer_pass_sampler_id           = 0;
-                                ogl_texture  layer_pass_texture              = NULL;
+                                ral_texture  layer_pass_texture              = NULL;
                                 unsigned int layer_pass_texture_mipmap_level = 0;
 
                                 if (attachment.shader_sampler_uniform_location == -1)
@@ -2385,16 +2361,16 @@ PUBLIC void ogl_uber_rendering_render_mesh(mesh             mesh_gpu,
                                                                                 &layer_pass_texture_mipmap_level,
                                                                                 &layer_pass_sampler);
 
-                                raGL_sampler_get_property(layer_pass_sampler,
-                                                          RAGL_SAMPLER_PROPERTY_ID,
-                                                         &layer_pass_sampler_id);
+                                layer_pass_sampler_id = ral_context_get_sampler_gl_id(uber_ptr->context,
+                                                                                      layer_pass_sampler);
 
                                 entry_points->pGLBindSampler(n_texture_units_used,
                                                              layer_pass_sampler_id);
 
                                 dsa_entry_points->pGLBindMultiTextureEXT (GL_TEXTURE0 + n_texture_units_used,
                                                                           GL_TEXTURE_2D,
-                                                                          layer_pass_texture);
+                                                                          ral_context_get_texture_gl_id(uber_ptr->context,
+                                                                                                        layer_pass_texture) );
                                 entry_points->pGLProgramUniform1i        (po_id,
                                                                           attachment.shader_sampler_uniform_location,
                                                                           n_texture_units_used);
@@ -2582,10 +2558,10 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void ogl_uber_rendering_start(ogl_uber
     const ogl_context_gl_entrypoints*                         entry_points     = NULL;
     const ogl_context_gl_entrypoints_ext_direct_state_access* dsa_entry_points = NULL;
 
-    ogl_context_get_property(uber_ptr->context,
+    ogl_context_get_property(ral_context_get_gl_context(uber_ptr->context),
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL_EXT_DIRECT_STATE_ACCESS,
                             &dsa_entry_points);
-    ogl_context_get_property(uber_ptr->context,
+    ogl_context_get_property(ral_context_get_gl_context(uber_ptr->context),
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
                             &entry_points);
 
@@ -2634,21 +2610,25 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void ogl_uber_rendering_start(ogl_uber
                     if (item_ptr->fragment_shader_item.current_light_shadow_map_texture_color_sampler_location != -1)
                     {
                         /* Bind the shadow map */
-                        GLuint n_texture_unit            = uber_ptr->n_texture_units_assigned++;
-                        GLenum shadow_map_texture_target = GL_NONE;
+                        GLuint           n_texture_unit            = uber_ptr->n_texture_units_assigned++;
+                        GLenum           shadow_map_texture_target = GL_NONE;
+                        ral_texture_type shadow_map_texture_type   = RAL_TEXTURE_TYPE_UNKNOWN;
 
                         ASSERT_DEBUG_SYNC(item_ptr->fragment_shader_item.current_light_shadow_map_texture_color != NULL,
                                           "No color shadow map assigned to a light which casts shadows");
 
-                        ogl_texture_get_property(item_ptr->fragment_shader_item.current_light_shadow_map_texture_color,
-                                                 OGL_TEXTURE_PROPERTY_TARGET_GL,
-                                                 &shadow_map_texture_target);
+                        ral_texture_get_property(item_ptr->fragment_shader_item.current_light_shadow_map_texture_color,
+                                                 RAL_TEXTURE_PROPERTY_TYPE,
+                                                &shadow_map_texture_type);
+
+                        shadow_map_texture_target = raGL_utils_get_ogl_texture_target_for_ral_texture_type(shadow_map_texture_type);
 
                         entry_points->pGLBindSampler            (n_texture_unit,
                                                                  0);            /* TODO: use a sampler instead of SM texture state! */
                         dsa_entry_points->pGLBindMultiTextureEXT(GL_TEXTURE0 + n_texture_unit,
                                                                  shadow_map_texture_target,
-                                                                 item_ptr->fragment_shader_item.current_light_shadow_map_texture_color);
+                                                                 ral_context_get_texture_gl_id(uber_ptr->context,
+                                                                                               item_ptr->fragment_shader_item.current_light_shadow_map_texture_color) );
                         entry_points->pGLProgramUniform1i       (ogl_program_get_id(uber_ptr->program),
                                                                  item_ptr->fragment_shader_item.current_light_shadow_map_texture_color_sampler_location,
                                                                  n_texture_unit);
@@ -2659,19 +2639,23 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void ogl_uber_rendering_start(ogl_uber
                         /* Bind the shadow map */
                         GLuint n_texture_unit            = uber_ptr->n_texture_units_assigned++;
                         GLenum shadow_map_texture_target = GL_NONE;
+                        ral_texture_type shadow_map_texture_type   = RAL_TEXTURE_TYPE_UNKNOWN;
 
                         ASSERT_DEBUG_SYNC(item_ptr->fragment_shader_item.current_light_shadow_map_texture_depth != NULL,
                                           "No depth shadow map assigned to a light which casts shadows");
 
-                        ogl_texture_get_property(item_ptr->fragment_shader_item.current_light_shadow_map_texture_depth,
-                                                 OGL_TEXTURE_PROPERTY_TARGET_GL,
-                                                 &shadow_map_texture_target);
+                        ral_texture_get_property(item_ptr->fragment_shader_item.current_light_shadow_map_texture_color,
+                                                 RAL_TEXTURE_PROPERTY_TYPE,
+                                                &shadow_map_texture_type);
+
+                        shadow_map_texture_target = raGL_utils_get_ogl_texture_target_for_ral_texture_type(shadow_map_texture_type);
 
                         entry_points->pGLBindSampler            (n_texture_unit,
                                                                  0);            /* TODO: use a sampler instead of SM texture state! */
                         dsa_entry_points->pGLBindMultiTextureEXT(GL_TEXTURE0 + n_texture_unit,
                                                                  shadow_map_texture_target,
-                                                                 item_ptr->fragment_shader_item.current_light_shadow_map_texture_depth);
+                                                                 ral_context_get_texture_gl_id(uber_ptr->context,
+                                                                                               item_ptr->fragment_shader_item.current_light_shadow_map_texture_depth) );
                         entry_points->pGLProgramUniform1i       (ogl_program_get_id(uber_ptr->program),
                                                                  item_ptr->fragment_shader_item.current_light_shadow_map_texture_depth_sampler_location,
                                                                  n_texture_unit);
@@ -2998,8 +2982,8 @@ PUBLIC EMERALD_API void ogl_uber_set_shader_item_property(ogl_uber              
         case OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_PROJECTION_MATRIX:
         case OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_RANGE:
         case OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_VIEW_MATRIX:
-        case OGL_UBER_ITEM_PROPERTY_LIGHT_SHADOW_MAP_TEXTURE_COLOR:
-        case OGL_UBER_ITEM_PROPERTY_LIGHT_SHADOW_MAP_TEXTURE_DEPTH:
+        case OGL_UBER_ITEM_PROPERTY_LIGHT_SHADOW_MAP_TEXTURE_RAL_COLOR:
+        case OGL_UBER_ITEM_PROPERTY_LIGHT_SHADOW_MAP_TEXTURE_RAL_DEPTH:
         case OGL_UBER_ITEM_PROPERTY_LIGHT_SHADOW_MAP_VSM_CUTOFF:
         case OGL_UBER_ITEM_PROPERTY_LIGHT_SHADOW_MAP_VSM_MIN_VARIANCE:
         case OGL_UBER_ITEM_PROPERTY_VERTEX_LIGHT_DEPTH_VP:
@@ -3216,16 +3200,16 @@ PUBLIC EMERALD_API void ogl_uber_set_shader_item_property(ogl_uber              
                         break;
                     }
 
-                    case OGL_UBER_ITEM_PROPERTY_LIGHT_SHADOW_MAP_TEXTURE_COLOR:
+                    case OGL_UBER_ITEM_PROPERTY_LIGHT_SHADOW_MAP_TEXTURE_RAL_COLOR:
                     {
-                        item_ptr->fragment_shader_item.current_light_shadow_map_texture_color = *(ogl_texture*) data;
+                        item_ptr->fragment_shader_item.current_light_shadow_map_texture_color = *(ral_texture*) data;
 
                         break;
                     }
 
-                    case OGL_UBER_ITEM_PROPERTY_LIGHT_SHADOW_MAP_TEXTURE_DEPTH:
+                    case OGL_UBER_ITEM_PROPERTY_LIGHT_SHADOW_MAP_TEXTURE_RAL_DEPTH:
                     {
-                        item_ptr->fragment_shader_item.current_light_shadow_map_texture_depth = *(ogl_texture*) data;
+                        item_ptr->fragment_shader_item.current_light_shadow_map_texture_depth = *(ral_texture*) data;
 
                         break;
                     }
@@ -3333,7 +3317,7 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void ogl_uber_rendering_stop(ogl_uber 
     _ogl_uber*                        uber_ptr     = (_ogl_uber*) uber;
     const ogl_context_gl_entrypoints* entry_points = NULL;
 
-    ogl_context_get_property(uber_ptr->context,
+    ogl_context_get_property(ral_context_get_gl_context(uber_ptr->context),
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
                             &entry_points);
 

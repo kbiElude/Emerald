@@ -25,8 +25,8 @@
  *  Yeah, yeah, globals suck. But assuming demo environment, this solution
  *  will do just fine.
  */
-volatile PFNGFXIMAGEGETALTERNATIVEFILENAMEPROCPTR _alternative_filename_getter_proc_ptr = NULL;
-         void*                                    _alternative_filename_getter_user_arg = NULL;
+static volatile PFNGFXIMAGEGETALTERNATIVEFILENAMEPROCPTR _alternative_filename_getter_proc_ptr = NULL;
+static          void*                                    _alternative_filename_getter_user_arg = NULL;
 
 /** Private declarations */
 typedef struct _gfx_image_mipmap

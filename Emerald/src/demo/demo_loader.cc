@@ -121,6 +121,7 @@ typedef struct _demo_loader_op
 
 typedef struct _demo_loader
 {
+    ral_context             context;      /* DO NOT retain or release */
     system_resizable_vector enqueued_ops; /* each item is a _demo_loader_op instance */
     bool                    has_been_launched;
     system_resizable_vector loaded_objects[DEMO_LOADER_OBJECT_TYPE_COUNT];
@@ -138,6 +139,16 @@ typedef struct _demo_loader
         {
             loaded_objects[object_type_index] = system_resizable_vector_create(4 /* capacity */);
         } /* for (all object types) */
+
+        /* TEMP: Retrieve the RAL context from the timeline object. */
+        demo_timeline timeline = NULL;
+
+        demo_app_get_property     (in_owner_app,
+                                   DEMO_APP_PROPERTY_TIMELINE,
+                                  &timeline);
+        demo_timeline_get_property(timeline,
+                                   DEMO_TIMELINE_PROPERTY_CONTEXT,
+                                  &context);
     }
 
     ~_demo_loader()
@@ -606,26 +617,21 @@ PUBLIC void demo_loader_run(demo_loader   loader,
 
             case DEMO_LOADER_OP_LOAD_SCENES:
             {
-                ogl_context             context           = NULL;
-                scene_multiloader       loader            = NULL;
+                scene_multiloader       multiloader       = NULL;
                 system_file_serializer* scene_serializers = NULL;
 
                 ASSERT_DEBUG_SYNC(op_ptr->data.load_scenes.n_scenes >= 1,
                                   "Invalid number of scenes requested for DEMO_LOADER_OP_LOAD_SCENES operation.");
 
-                system_window_get_property(renderer_window,
-                                           SYSTEM_WINDOW_PROPERTY_RENDERING_CONTEXT,
-                                          &context);
+                multiloader = scene_multiloader_create_from_filenames(loader_ptr->context,
+                                                                      op_ptr->data.load_scenes.n_scenes,
+                                                                      op_ptr->data.load_scenes.scene_file_names);
 
-                loader = scene_multiloader_create_from_filenames(context,
-                                                                 op_ptr->data.load_scenes.n_scenes,
-                                                                 op_ptr->data.load_scenes.scene_file_names);
-
-                ASSERT_DEBUG_SYNC(loader != NULL,
+                ASSERT_DEBUG_SYNC(multiloader != NULL,
                                   "Could not spawn a scene_multiloader instance");
 
-                scene_multiloader_load_async         (loader);
-                scene_multiloader_wait_until_finished(loader);
+                scene_multiloader_load_async         (multiloader);
+                scene_multiloader_wait_until_finished(multiloader);
 
                 /* Store the loaded scenes */
                 for (uint32_t n_scene = 0;
@@ -634,7 +640,7 @@ PUBLIC void demo_loader_run(demo_loader   loader,
                 {
                     scene result_scene = NULL;
 
-                    scene_multiloader_get_loaded_scene(loader,
+                    scene_multiloader_get_loaded_scene(multiloader,
                                                        n_scene,
                                                       &result_scene);
 

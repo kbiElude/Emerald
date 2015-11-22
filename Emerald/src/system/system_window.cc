@@ -65,7 +65,7 @@ typedef struct
 typedef struct
 {
     audio_stream               audio_strm;
-    ogl_context_type           context_type;
+    ral_backend_type           backend_type;
     bool                       is_closing; /* in the process of calling the "window closing" call-backs */
     bool                       is_cursor_visible;
     bool                       is_fullscreen;
@@ -155,8 +155,8 @@ PRIVATE void          _deinit_system_window                                    (
 PRIVATE void          _init_system_window                                      (_system_window*                      descriptor);
 PRIVATE volatile void _system_window_teardown_thread_pool_callback             (system_thread_pool_callback_argument arg);
 PRIVATE void          _system_window_thread_entrypoint                         (void*                                in_arg);
-PRIVATE void          _system_window_create_root_window                        (ogl_context_type                     context_type);
-PRIVATE system_window _system_window_create_shared                             (ogl_context_type                     context_type,
+PRIVATE void          _system_window_create_root_window                        (ral_backend_type                     backend_type);
+PRIVATE system_window _system_window_create_shared                             (ral_backend_type                     backend_type,
                                                                                 bool                                 is_fullscreen,
                                                                                 const int*                           x1y1x2y2,
                                                                                 system_screen_mode                   screen_mode,
@@ -1698,9 +1698,9 @@ PUBLIC EMERALD_API void system_window_get_property(system_window          window
             break;
         }
 
-        case SYSTEM_WINDOW_PROPERTY_CONTEXT_TYPE:
+        case SYSTEM_WINDOW_PROPERTY_BACKEND_TYPE:
         {
-            *(ogl_context_type*) out_result = window_ptr->context_type;
+            *(ral_backend_type*) out_result = window_ptr->backend_type;
 
             break;
         }

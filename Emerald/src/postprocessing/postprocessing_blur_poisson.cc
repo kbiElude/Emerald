@@ -8,9 +8,10 @@
 #include "ogl/ogl_program.h"
 #include "ogl/ogl_program_ub.h"
 #include "ogl/ogl_shader.h"
-#include "ogl/ogl_texture.h"
 #include "postprocessing/postprocessing_blur_poisson.h"
 #include "raGL/raGL_buffer.h"
+#include "raGL/raGL_texture.h"
+#include "ral/ral_texture.h"
 #include "shaders/shaders_vertex_fullscreen.h"
 #include "system/system_assertions.h"
 #include "system/system_hashed_ansi_string.h"
@@ -270,18 +271,23 @@ end:
 
 /* Please see header for specification */
 PUBLIC EMERALD_API void postprocessing_blur_poisson_execute(postprocessing_blur_poisson blur_poisson,
-                                                            ogl_texture                 input_texture,
+                                                            raGL_texture                input_texture,
                                                             float                       blur_strength,
-                                                            ogl_texture                 result_texture)
+                                                            raGL_texture                result_texture)
 {
-    _postprocessing_blur_poisson*                             poisson_ptr     = (_postprocessing_blur_poisson*) blur_poisson;
-    const ogl_context_gl_entrypoints_ext_direct_state_access* dsa_entrypoints = NULL;
-    const ogl_context_gl_entrypoints*                         entrypoints     = NULL;
-    unsigned int                                              texture_height  = 0;
-    unsigned int                                              texture_width   = 0;
-    system_window                                             window          = NULL;
-    int                                                       window_size[2]  = {0};
-    GLuint                                                    vao_id          = 0;
+    _postprocessing_blur_poisson*                             poisson_ptr           = (_postprocessing_blur_poisson*) blur_poisson;
+    const ogl_context_gl_entrypoints_ext_direct_state_access* dsa_entrypoints       = NULL;
+    const ogl_context_gl_entrypoints*                         entrypoints           = NULL;
+    GLuint                                                    input_texture_id      = 0;
+    bool                                                      input_texture_is_rbo  = false;
+    GLuint                                                    result_texture_id     = 0;
+    bool                                                      result_texture_is_rbo = false;
+    ral_texture                                               result_texture_ral    = NULL;
+    unsigned int                                              texture_height        = 0;
+    unsigned int                                              texture_width         = 0;
+    system_window                                             window                = NULL;
+    int                                                       window_size[2]        = {0};
+    GLuint                                                    vao_id                = 0;
 
     ogl_context_get_property(poisson_ptr->context,
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL_EXT_DIRECT_STATE_ACCESS,
@@ -296,6 +302,27 @@ PUBLIC EMERALD_API void postprocessing_blur_poisson_execute(postprocessing_blur_
                              OGL_CONTEXT_PROPERTY_WINDOW,
                             &window);
 
+    raGL_texture_get_property(input_texture,
+                              RAGL_TEXTURE_PROPERTY_ID,
+                             &input_texture_id);
+    raGL_texture_get_property(input_texture,
+                              RAGL_TEXTURE_PROPERTY_IS_RENDERBUFFER,
+                             &input_texture_is_rbo);
+    raGL_texture_get_property(result_texture,
+                              RAGL_TEXTURE_PROPERTY_ID,
+                             &result_texture_id);
+    raGL_texture_get_property(result_texture,
+                              RAGL_TEXTURE_PROPERTY_IS_RENDERBUFFER,
+                             &result_texture_is_rbo);
+    raGL_texture_get_property(result_texture,
+                              RAGL_TEXTURE_PROPERTY_RAL_TEXTURE,
+                             &result_texture_ral);
+
+    ASSERT_DEBUG_SYNC(!input_texture_is_rbo,
+                      "TODO");
+    ASSERT_DEBUG_SYNC(!result_texture_is_rbo,
+                      "TODO");
+
     system_window_get_property(window,
                                SYSTEM_WINDOW_PROPERTY_DIMENSIONS,
                                window_size);
@@ -306,13 +333,13 @@ PUBLIC EMERALD_API void postprocessing_blur_poisson_execute(postprocessing_blur_
     entrypoints->pGLFramebufferTexture2D(GL_DRAW_FRAMEBUFFER,
                                          GL_COLOR_ATTACHMENT0,
                                          GL_TEXTURE_2D,
-                                         result_texture,
+                                         result_texture_id,
                                          0);
 
     entrypoints->pGLUseProgram             (ogl_program_get_id(poisson_ptr->program) );
     dsa_entrypoints->pGLBindMultiTextureEXT(GL_TEXTURE0,
                                             GL_TEXTURE_2D,
-                                            input_texture);
+                                            input_texture_id);
 
     ogl_program_ub_set_nonarrayed_uniform_value(poisson_ptr->program_ub,
                                                 poisson_ptr->blur_strength_ub_offset,
@@ -321,13 +348,15 @@ PUBLIC EMERALD_API void postprocessing_blur_poisson_execute(postprocessing_blur_
                                                sizeof(float) );
     ogl_program_ub_sync                        (poisson_ptr->program_ub);
 
-    ogl_texture_get_mipmap_property(result_texture,
-                                    0, /* mipmap_levle */
-                                    OGL_TEXTURE_MIPMAP_PROPERTY_HEIGHT,
+    ral_texture_get_mipmap_property(result_texture_ral,
+                                    0, /* n_layer */
+                                    0, /* n_mipmap */
+                                    RAL_TEXTURE_MIPMAP_PROPERTY_HEIGHT,
                                    &texture_height);
-    ogl_texture_get_mipmap_property(result_texture,
-                                    0, /* mipmap_levle */
-                                    OGL_TEXTURE_MIPMAP_PROPERTY_WIDTH,
+    ral_texture_get_mipmap_property(result_texture_ral,
+                                    0, /* n_layer */
+                                    0, /* n_mipmap */
+                                    RAL_TEXTURE_MIPMAP_PROPERTY_WIDTH,
                                    &texture_width);
 
     GLuint   program_ub_bo_id           = 0;

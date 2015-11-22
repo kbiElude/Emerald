@@ -1625,7 +1625,7 @@ PUBLIC EMERALD_API void collada_data_get_effect(collada_data         data,
 
 /* Please see header for specification */
 PUBLIC EMERALD_API mesh collada_data_get_emerald_mesh(collada_data data,
-                                                      ogl_context  context,
+                                                      ral_context  context,
                                                       unsigned int n_mesh)
 {
     _collada_data*  collada_data_ptr            = (_collada_data*) data;
@@ -2031,7 +2031,8 @@ PUBLIC EMERALD_API mesh collada_data_get_emerald_mesh(collada_data data,
         }
         else
         {
-            LOG_ERROR("Could not retrieve geometry descriptor at index [%d]", n_mesh);
+            LOG_ERROR("Could not retrieve geometry descriptor at index [%u]",
+                      n_mesh);
         }
     }
 
@@ -2040,7 +2041,7 @@ PUBLIC EMERALD_API mesh collada_data_get_emerald_mesh(collada_data data,
 
 /* Please see header for specification */
 PUBLIC EMERALD_API mesh collada_data_get_emerald_mesh_by_name(collada_data              data,
-                                                              ogl_context               context,
+                                                              ral_context               context,
                                                               system_hashed_ansi_string name)
 {
     LOG_INFO("Invoked collada_data_get_emerald_mesh_by_name() is a slow code path!");
@@ -2082,7 +2083,7 @@ PUBLIC EMERALD_API mesh collada_data_get_emerald_mesh_by_name(collada_data      
         }
         else
         {
-            LOG_ERROR("Could not retrieve geometry descriptor at index [%d]",
+            LOG_ERROR("Could not retrieve geometry descriptor at index [%u]",
                       n_mesh);
         }
     }
@@ -2104,7 +2105,7 @@ PUBLIC EMERALD_API mesh collada_data_get_emerald_mesh_by_name(collada_data      
 
 /* Please see header for specification */
 PUBLIC EMERALD_API scene collada_data_get_emerald_scene(collada_data data,
-                                                        ogl_context  context,
+                                                        ral_context  context,
                                                         unsigned int n_scene)
 {
     _collada_data* collada_data_ptr = (_collada_data*) data;
@@ -2157,7 +2158,7 @@ PUBLIC EMERALD_API scene collada_data_get_emerald_scene(collada_data data,
         }
         else
         {
-            LOG_ERROR("Could not retrieve scene descriptor at index [%d]",
+            LOG_ERROR("Could not retrieve scene descriptor at index [%u]",
                       n_scene);
         }
     }
@@ -2212,7 +2213,7 @@ PUBLIC EMERALD_API void collada_data_get_scene(collada_data        data,
                                                 n_scene,
                                                 out_scene) )
     {
-        LOG_FATAL("Could not retrieve COLLADA scene at index [%d]",
+        LOG_FATAL("Could not retrieve COLLADA scene at index [%u]",
                   n_scene);
     }
 }

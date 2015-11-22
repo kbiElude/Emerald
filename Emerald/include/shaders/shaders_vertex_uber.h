@@ -7,7 +7,7 @@
 #ifndef SHADERS_VERTEX_UBER_H
 #define SHADERS_VERTEX_UBER_H
 
-#include "ogl/ogl_types.h"
+#include "ral/ral_types.h"
 
 REFCOUNT_INSERT_DECLARATIONS(shaders_vertex_uber,
                              shaders_vertex_uber)
@@ -48,7 +48,7 @@ PUBLIC EMERALD_API shaders_vertex_uber_item_id shaders_vertex_uber_add_light(sha
  * 
  *  @return shaders_vertex_uber instance if successful, NULL otherwise.
  */
-PUBLIC EMERALD_API shaders_vertex_uber shaders_vertex_uber_create(ogl_context               context,
+PUBLIC EMERALD_API shaders_vertex_uber shaders_vertex_uber_create(ral_context               context,
                                                                   system_hashed_ansi_string name);
 
 /** TODO */

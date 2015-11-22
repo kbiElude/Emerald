@@ -19,14 +19,14 @@ REFCOUNT_INSERT_DECLARATIONS(postprocessing_reinhard_tonemap,
 
 
 /** TODO */
-PUBLIC EMERALD_API postprocessing_reinhard_tonemap postprocessing_reinhard_tonemap_create(ogl_context               context, 
+PUBLIC EMERALD_API postprocessing_reinhard_tonemap postprocessing_reinhard_tonemap_create(ral_context               context, 
                                                                                           system_hashed_ansi_string name,
                                                                                           bool                      use_crude_downsampled_lum_average_calculation,
                                                                                           uint32_t*                 texture_size);
 /** TODO */
 PUBLIC EMERALD_API void postprocessing_reinhard_tonemap_execute(postprocessing_reinhard_tonemap tonemapper,
-                                                                ogl_texture                     in_texture,
+                                                                ral_texture                     in_texture,
                                                                 float                           alpha,
                                                                 float                           white_level,
-                                                                ogl_texture                     out_texture);
+                                                                ral_texture                     out_texture);
 #endif /* POSTPROCESSING_REINHARD_TONEMAP_H */

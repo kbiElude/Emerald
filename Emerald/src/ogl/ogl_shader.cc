@@ -86,7 +86,7 @@ PRIVATE void _ogl_shader_compile_callback(ogl_context context,
                                             NULL,
                                             shader_ptr->shader_info_log);
 
-            LOG_ERROR("Shader info log for shader [%d] follows: \n>>\n%s\n<<",
+            LOG_ERROR("Shader info log for shader [%u] follows: \n>>\n%s\n<<",
                       shader_ptr->id,
                       shader_ptr->shader_info_log);
         }

@@ -21,7 +21,8 @@
 #include "collada/collada_value.h"
 #include "curve/curve_container.h"
 #include "gfx/gfx_image.h"
-#include "ogl/ogl_texture.h"
+#include "ral/ral_context.h"
+#include "ral/ral_texture.h"
 #include "scene/scene.h"
 #include "scene/scene_camera.h"
 #include "scene/scene_graph.h"
@@ -44,7 +45,7 @@ PRIVATE void             _collada_scene_generator_process_collada_data_node     
                                                                                       scene_graph_node              parent_node,
                                                                                       scene_graph                   graph,
                                                                                       system_hash64map              scene_to_dag_node_map,
-                                                                                      ogl_context                   context);
+                                                                                      ral_context                   context);
 PRIVATE void             _collada_scene_generator_process_camera_instance_node_item  (collada_data                  data,
                                                                                       scene                         scene,
                                                                                       scene_graph                   graph,
@@ -55,7 +56,7 @@ PRIVATE void             _collada_scene_generator_process_geometry_instance_node
                                                                                       scene_graph                   graph,
                                                                                       scene_graph_node              parent_node,
                                                                                       void*                         node_item_data,
-                                                                                      ogl_context                   context);
+                                                                                      ral_context                   context);
 PRIVATE void             _collada_scene_generator_process_light_instance_node_item   (collada_data                  data,
                                                                                       scene                         scene,
                                                                                       scene_graph                   graph,
@@ -314,7 +315,7 @@ end:
 PRIVATE void _collada_scene_generator_create_scene_graph(collada_data       data,
                                                          collada_data_scene collada_scene,
                                                          scene              result_scene,
-                                                         ogl_context        context)
+                                                         ral_context        context)
 {
     scene_graph                   scene_graph           = scene_graph_create(result_scene,
                                                                              NULL); /* object_manager_path */
@@ -368,7 +369,7 @@ struct _texture_loader_workload
     unsigned int              n_workload;
     volatile unsigned int*    n_workloads_processed_ptr;
     unsigned int              n_workloads_to_process;
-    ogl_texture               texture;
+    ral_texture               texture;
     bool                      texture_has_mipmaps;
     system_event              workloads_processed_event;
 
@@ -455,11 +456,13 @@ volatile void _collada_scene_generator_process_workload(system_thread_pool_callb
 PRIVATE void _collada_scene_generator_create_textures(collada_data       data,
                                                       collada_data_scene collada_scene,
                                                       scene              result_scene,
-                                                      ogl_context        context)
+                                                      ral_context        context)
 {
     unsigned int n_images = 0;
 
-    collada_data_get_property(data, COLLADA_DATA_PROPERTY_N_IMAGES, &n_images);
+    collada_data_get_property(data,
+                              COLLADA_DATA_PROPERTY_N_IMAGES,
+                             &n_images);
 
     /* Texture loading process can be distributed across available threads. However, we first need
      * to accumulate unique file names, so that each thread will be guaranteed to work on a different
@@ -599,17 +602,18 @@ PRIVATE void _collada_scene_generator_create_textures(collada_data       data,
         else
         {
             bool        has_created_texture = false;
-            ogl_texture result_ogl_texture  = NULL;
+            ral_texture result_ral_texture  = NULL;
 
             /* Has an ogl_texture object already been spawned for this image? */
             if (image_workload_ptr->texture == NULL)
             {
-                /* Try to spawn ogl_texture object */
-                result_ogl_texture = ogl_texture_create_from_gfx_image(context,
-                                                                       image_workload_ptr->image,
-                                                                       image_file_name);
+                /* Try to spawn ral_texture object */
+                ral_context_create_textures_from_gfx_images(context,
+                                                            1, /* n_images */
+                                                           &image_workload_ptr->image,
+                                                           &result_ral_texture);
 
-                if (result_ogl_texture == NULL)
+                if (result_ral_texture == NULL)
                 {
                     ASSERT_ALWAYS_SYNC(false,
                                        "Could not create ogl_texture [%s] from file [%s]",
@@ -620,12 +624,12 @@ PRIVATE void _collada_scene_generator_create_textures(collada_data       data,
                 {
                     /* Cache the ogl_texture instance */
                     has_created_texture         = true;
-                    image_workload_ptr->texture = result_ogl_texture;
+                    image_workload_ptr->texture = result_ral_texture;
                 }
             }
             else
             {
-                result_ogl_texture = image_workload_ptr->texture;
+                result_ral_texture = image_workload_ptr->texture;
             }
 
             /* Spawn scene_texture instance */
@@ -649,14 +653,14 @@ PRIVATE void _collada_scene_generator_create_textures(collada_data       data,
                    LOG_INFO("VRAM usage warning: texture [%s] requires mip-maps - generating..",
                             system_hashed_ansi_string_get_buffer(name) );
 
-                   ogl_texture_generate_mipmaps(result_ogl_texture);
+                   ral_texture_generate_mipmaps(result_ral_texture);
 
                    image_workload_ptr->texture_has_mipmaps = true;
                 }
 
                 scene_texture_set(result_texture,
-                                  SCENE_TEXTURE_PROPERTY_OGL_TEXTURE,
-                                 &result_ogl_texture);
+                                  SCENE_TEXTURE_PROPERTY_TEXTURE_RAL,
+                                 &result_ral_texture);
 
                 /* Bind the new scene texture object to the scene */
                 if (!scene_add_texture(result_scene,
@@ -669,7 +673,7 @@ PRIVATE void _collada_scene_generator_create_textures(collada_data       data,
                 /* We do not need to own the assets anymore */
                 if (has_created_texture)
                 {
-                    ogl_texture_release(result_ogl_texture);
+                    ral_texture_release(result_ral_texture);
                 }
 
                 scene_texture_release(result_texture);
@@ -707,7 +711,7 @@ PRIVATE void _collada_scene_generator_process_collada_data_node(collada_data    
                                                                 scene_graph_node              parent_node,
                                                                 scene_graph                   graph,
                                                                 system_hash64map              scene_to_dag_node_map,
-                                                                ogl_context                   context)
+                                                                ral_context                   context)
 {
     scene_graph_node        current_node = NULL;
     _collada_data_node_type node_type    = COLLADA_DATA_NODE_TYPE_UNDEFINED;
@@ -940,7 +944,7 @@ PRIVATE void _collada_scene_generator_process_geometry_instance_node_item(collad
                                                                           scene_graph      graph,
                                                                           scene_graph_node parent_node,
                                                                           void*            node_item_data,
-                                                                          ogl_context      context)
+                                                                          ral_context      context)
 {
     collada_data_geometry     geometry      = NULL;
     system_hashed_ansi_string instance_name = NULL;
@@ -958,7 +962,9 @@ PRIVATE void _collada_scene_generator_process_geometry_instance_node_item(collad
                                        COLLADA_DATA_GEOMETRY_PROPERTY_ID,
                                        &mesh_name);
 
-    mesh = collada_data_get_emerald_mesh_by_name(data, context, mesh_name);
+    mesh = collada_data_get_emerald_mesh_by_name(data,
+                                                 context,
+                                                 mesh_name);
     ASSERT_DEBUG_SYNC(mesh != NULL,
                       "Mesh is NULL");
 
@@ -1486,7 +1492,7 @@ PRIVATE scene_graph_node _collada_scene_generator_process_transformation_node_it
 
 /** Please see header for specification */
 PUBLIC scene collada_scene_generator_create(collada_data data,
-                                            ogl_context  context,
+                                            ral_context  context,
                                             unsigned int n_scene)
 {
     float                         animation_time    = 0.0f;
@@ -1501,7 +1507,7 @@ PUBLIC scene collada_scene_generator_create(collada_data data,
 
     if (collada_scene == NULL)
     {
-        LOG_FATAL("No scene found at index [%d]",
+        LOG_FATAL("No scene found at index [%u]",
                   n_scene);
 
         goto end;

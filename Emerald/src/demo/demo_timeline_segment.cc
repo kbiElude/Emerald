@@ -10,8 +10,8 @@
 #include "demo/demo_timeline_segment.h"
 #include "demo/demo_timeline_segment_node.h"
 #include "ogl/ogl_context.h"                 /* TODO: Remove OpenGL dependency ! */
-#include "ogl/ogl_context_textures.h"        /* TODO: Remove OpenGL dependency ! */
-#include "ogl/ogl_texture.h"                 /* TODO: Remove OpenGL dependency ! */
+#include "ral/ral_context.h"
+#include "ral/ral_texture.h"
 #include "ral/ral_types.h"
 #include "ral/ral_utils.h"
 #include "system/system_assertions.h"
@@ -630,7 +630,7 @@ PRIVATE void _demo_timeline_segment_on_texture_attached_to_node(const void* text
                                                                       void* segment)
 {
     _demo_timeline_segment* segment_ptr = (_demo_timeline_segment*) segment;
-    ogl_texture             texture     = (ogl_texture)             texture_void_ptr;
+    ral_texture             texture     = (ral_texture)             texture_void_ptr;
 
     ASSERT_DEBUG_SYNC(segment_ptr != NULL,
                       "Input segment instance is NULL");
@@ -683,14 +683,14 @@ PRIVATE void _demo_timeline_segment_on_texture_attached_to_node(const void* text
                       n_input_id < n_current_destination_node_input_ids;
                     ++n_input_id)
         {
-            ogl_texture                         bound_texture                = NULL;
+            ral_texture                         bound_texture                = NULL;
             demo_timeline_segment_node_input_id current_destination_input_id = current_destination_node_input_ids[n_input_id];
             bool                                has_bound_texture_to_input   = false;
 
             demo_timeline_segment_node_get_io_property(current_destination_node_ptr->node,
                                                        true, /* is_input_io */
                                                        current_destination_input_id,
-                                                       DEMO_TIMELINE_SEGMENT_NODE_IO_PROPERTY_BOUND_TEXTURE,
+                                                       DEMO_TIMELINE_SEGMENT_NODE_IO_PROPERTY_BOUND_TEXTURE_RAL,
                                                       &bound_texture);
 
             if (bound_texture != NULL)
@@ -749,12 +749,12 @@ PRIVATE void _demo_timeline_segment_on_texture_attached_to_node(const void* text
                     if (connection_ptr->dst_node == current_destination_node_ptr)
                     {
                         /* OK, we have a matching connection. Does the source node expose a texture? */
-                        ogl_texture source_node_bound_texture = NULL;
+                        ral_texture source_node_bound_texture = NULL;
 
                         demo_timeline_segment_node_get_io_property(connection_ptr->src_node->node,
                                                                    false, /* is_input_io */
                                                                    connection_ptr->src_node_output_id,
-                                                                   DEMO_TIMELINE_SEGMENT_NODE_IO_PROPERTY_BOUND_TEXTURE,
+                                                                   DEMO_TIMELINE_SEGMENT_NODE_IO_PROPERTY_BOUND_TEXTURE_RAL,
                                                                   &source_node_bound_texture);
 
                         if (source_node_bound_texture != NULL)
@@ -762,7 +762,7 @@ PRIVATE void _demo_timeline_segment_on_texture_attached_to_node(const void* text
                             /* Bind that texture to the currently processed destination node and then move on to the next destination node. */
                             demo_texture_attachment_declaration new_texture_attachment;
 
-                            new_texture_attachment.texture = source_node_bound_texture;
+                            new_texture_attachment.texture_ral = source_node_bound_texture;
 
                             if (!demo_timeline_segment_node_attach_texture_to_texture_io(current_destination_node_ptr->node,
                                                                                          false, /* is_input_id */
@@ -788,7 +788,7 @@ PRIVATE void _demo_timeline_segment_on_texture_detached_from_node(const void* te
 {
     uint32_t                n_nodes     = 0;
     _demo_timeline_segment* segment_ptr = (_demo_timeline_segment*) segment;
-    ogl_texture             texture     = (ogl_texture)             texture_void_ptr;
+    ral_texture             texture     = (ral_texture)             texture_void_ptr;
 
     /* Sanity checks */
     ASSERT_DEBUG_SYNC(segment_ptr != NULL,
@@ -843,14 +843,14 @@ PRIVATE void _demo_timeline_segment_on_texture_detached_from_node(const void* te
                       n_node_output_id < n_node_outputs;
                     ++n_node_output_id)
         {
-            ogl_texture                          current_node_bound_texture = NULL;
+            ral_texture                          current_node_bound_texture = NULL;
             uint32_t                             current_node_n_connections = 0;
             demo_timeline_segment_node_output_id current_node_output_id     = node_output_ids[n_node_output_id];
 
             demo_timeline_segment_node_get_io_property(current_node_ptr->node,
                                                        false, /* is_input_io */
                                                        current_node_output_id,
-                                                       DEMO_TIMELINE_SEGMENT_NODE_IO_PROPERTY_BOUND_TEXTURE,
+                                                       DEMO_TIMELINE_SEGMENT_NODE_IO_PROPERTY_BOUND_TEXTURE_RAL,
                                                       &current_node_bound_texture);
 
             if (current_node_bound_texture != texture)
@@ -885,13 +885,13 @@ PRIVATE void _demo_timeline_segment_on_texture_detached_from_node(const void* te
                 if (current_connection_ptr->src_node           == current_node_ptr       &&
                     current_connection_ptr->src_node_output_id == current_node_output_id)
                 {
-                    ogl_texture dst_node_bound_texture = NULL;
+                    ral_texture dst_node_bound_texture = NULL;
 
                     /* Sanity check.. */
                     demo_timeline_segment_node_get_io_property(current_connection_ptr->dst_node->node,
                                                                true, /* is_input_io */
                                                                current_connection_ptr->dst_node_input_id,
-                                                               DEMO_TIMELINE_SEGMENT_NODE_IO_PROPERTY_BOUND_TEXTURE,
+                                                               DEMO_TIMELINE_SEGMENT_NODE_IO_PROPERTY_BOUND_TEXTURE_RAL,
                                                               &dst_node_bound_texture);
 
                     ASSERT_DEBUG_SYNC(dst_node_bound_texture == texture,
@@ -915,8 +915,9 @@ PRIVATE void _demo_timeline_segment_on_texture_detached_from_node(const void* te
      * TODO: We need a refcounted solution here to properly support cases where the same texture is
      *       consumed by multiple inputs !
      */
-    ogl_context_textures_return_reusable(segment_ptr->context,
-                                         texture);
+    ral_context_delete_textures(segment_ptr->context_ral,
+                                1, /* n_textures */
+                               &texture);
 }
 
 /** TODO */
@@ -1147,11 +1148,7 @@ PRIVATE void _demo_timeline_segment_update_node_texture_memory_allocations(_demo
     uint32_t                                            n_current_alloc                          = 0;
     PFNSEGMENTNODEGETTEXTUREMEMORYALLOCATIONDETAILSPROC pfn_get_texture_memory_alloc_details_ptr = NULL;
     PFNSEGMENTNODESETTEXTUREMEMORYALLOCATIONPROC        pfn_set_texture_memory_allocation_ptr    = NULL;
-    ogl_context_textures                                texture_pool                             = NULL;
 
-    ogl_context_get_property               (node_ptr->parent_segment_ptr->context,
-                                            OGL_CONTEXT_PROPERTY_TEXTURES,
-                                           &texture_pool);
     demo_timeline_segment_node_get_property(node_ptr->node,
                                             DEMO_TIMELINE_SEGMENT_NODE_PROPERTY_GET_TEXTURE_MEMORY_ALLOCATION_DETAILS_FUNC_PTR,
                                            &pfn_get_texture_memory_alloc_details_ptr);
@@ -1177,7 +1174,7 @@ PRIVATE void _demo_timeline_segment_update_node_texture_memory_allocations(_demo
                                                     n_current_alloc,
                                                    &current_alloc_details) )
     {
-        ogl_texture new_texture              = NULL;
+        ral_texture new_texture              = NULL;
         uint32_t    requested_texture_depth  = 0;
         uint32_t    requested_texture_height = 0;
         uint32_t    requested_texture_width  = 0;
@@ -1274,15 +1271,23 @@ PRIVATE void _demo_timeline_segment_update_node_texture_memory_allocations(_demo
         } /* switch (current_alloc_details.size.mode) */
 
         /* Alloc */
-        new_texture = ogl_context_textures_get_texture_from_pool(node_ptr->parent_segment_ptr->context,
-                                                                 current_alloc_details.type,
-                                                                 current_alloc_details.format,
-                                                                 current_alloc_details.needs_full_mipmap_chain,
-                                                                 requested_texture_width,
-                                                                 requested_texture_height,
-                                                                 requested_texture_depth,
-                                                                 current_alloc_details.n_samples,
-                                                                 false); /* fixed_sample_locations */
+        ral_texture_create_info new_texture_create_info;
+
+        new_texture_create_info.base_mipmap_depth      = requested_texture_depth;
+        new_texture_create_info.base_mipmap_height     = requested_texture_height;
+        new_texture_create_info.base_mipmap_width      = requested_texture_width;
+        new_texture_create_info.fixed_sample_locations = false;
+        new_texture_create_info.format                 = current_alloc_details.format;
+        new_texture_create_info.n_layers               = current_alloc_details.n_layers;
+        new_texture_create_info.n_samples              = current_alloc_details.n_samples;
+        new_texture_create_info.type                   = current_alloc_details.type;
+        new_texture_create_info.usage                  = RAL_TEXTURE_USAGE_SAMPLED_BIT; /* TODO? */
+        new_texture_create_info.use_full_mipmap_chain  = current_alloc_details.needs_full_mipmap_chain;
+
+        ral_context_create_textures(node_ptr->parent_segment_ptr->context_ral,
+                                    1, /* n_textures */
+                                   &new_texture_create_info,
+                                   &new_texture);
 
         if (new_texture == NULL)
         {
@@ -1709,7 +1714,7 @@ PUBLIC EMERALD_API bool demo_timeline_segment_connect_nodes(demo_timeline_segmen
 
     if (dst_node_id == src_node_id)
     {
-        LOG_FATAL("Node loop-backs are forbidden (src_node_id == %d == dst_node_id.",
+        LOG_FATAL("Node loop-backs are forbidden (src_node_id == %u == dst_node_id).",
                   src_node_id);
 
         goto end;
@@ -2824,7 +2829,7 @@ PUBLIC EMERALD_API RENDERING_CONTEXT_CALL bool demo_timeline_segment_render(demo
                       n_node_input_id < n_node_input_ids;
                     ++n_node_input_id)
         {
-            ogl_texture bound_texture          = NULL;
+            ral_texture bound_texture          = NULL;
             bool        is_attachment_required = false;
 
             demo_timeline_segment_node_get_io_property(node_ptr->node,
@@ -2842,7 +2847,7 @@ PUBLIC EMERALD_API RENDERING_CONTEXT_CALL bool demo_timeline_segment_render(demo
             demo_timeline_segment_node_get_io_property(node_ptr->node,
                                                        true, /* is_input_io */
                                                        node_input_ids[n_node_input_id],
-                                                       DEMO_TIMELINE_SEGMENT_NODE_IO_PROPERTY_BOUND_TEXTURE,
+                                                       DEMO_TIMELINE_SEGMENT_NODE_IO_PROPERTY_BOUND_TEXTURE_RAL,
                                                       &bound_texture);
 
             if (bound_texture == NULL)
@@ -2904,7 +2909,7 @@ PUBLIC EMERALD_API bool demo_timeline_segment_set_node_io_property(demo_timeline
     /* If this is a segment-specific request, handle it now. Otherwise, pass it to the general node handler */
     switch (property)
     {
-        case DEMO_TIMELINE_SEGMENT_NODE_IO_PROPERTY_BOUND_TEXTURE:
+        case DEMO_TIMELINE_SEGMENT_NODE_IO_PROPERTY_BOUND_TEXTURE_RAL:
         {
             demo_timeline_segment_node_attach_texture_to_texture_io(node_ptr->node,
                                                                     is_input_io,

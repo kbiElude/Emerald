@@ -65,7 +65,7 @@ typedef enum
  *
  *  @return Requested instance.
  * */
-PUBLIC EMERALD_API mesh_marchingcubes mesh_marchingcubes_create(ogl_context               context,
+PUBLIC EMERALD_API mesh_marchingcubes mesh_marchingcubes_create(ral_context               context,
                                                                 const unsigned int*       grid_size_xyz,
                                                                 raGL_buffer               scalar_data_bo,
                                                                 GLuint                    scalar_data_bo_size,

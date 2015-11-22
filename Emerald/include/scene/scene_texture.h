@@ -12,7 +12,7 @@ typedef enum
 {
     SCENE_TEXTURE_PROPERTY_NAME,       /* system_hashed_ansi_string */
     SCENE_TEXTURE_PROPERTY_FILENAME,   /* system_hashed_ansi_string */
-    SCENE_TEXTURE_PROPERTY_OGL_TEXTURE
+    SCENE_TEXTURE_PROPERTY_TEXTURE_RAL
 } scene_texture_property;
 
 typedef void (*PFNSETOGLTEXTUREBACKINGPROC)(scene_texture             texture,
@@ -41,7 +41,7 @@ PUBLIC EMERALD_API void scene_texture_get(scene_texture          instance,
 /** TODO */
 PUBLIC EMERALD_API scene_texture scene_texture_load_with_serializer(system_file_serializer      serializer,
                                                                     system_hashed_ansi_string   object_manager_path,
-                                                                    ogl_context                 context,
+                                                                    ral_context                 context,
                                                                     PFNSETOGLTEXTUREBACKINGPROC pGLSetOGLTextureBacking_callback,
                                                                     void*                       callback_user_data = NULL);
 

@@ -5,9 +5,9 @@
  */
 #include "shared.h"
 #include "ogl/ogl_context.h"
-#include "ogl/ogl_texture.h"
 #include "procedural/procedural_mesh_sphere.h"
 #include "raGL/raGL_buffers.h"
+#include "raGL/raGL_texture.h"
 #include "system/system_log.h"
 
 /** BUFFER DATA STRUCTURE:
@@ -29,7 +29,6 @@ typedef struct
 
     raGL_buffer  arrays_bo;      /* owned by raGL_buffers - do NOT release with glDeleteBuffers() */
     unsigned int arrays_bo_size;
-    ogl_texture  arrays_tbo;
     GLuint       n_triangles;
     GLfloat*     raw_arrays_data;
 
@@ -186,7 +185,7 @@ PRIVATE void _procedural_mesh_sphere_create_renderer_callback(ogl_context contex
             arrays_create_info.mappability_bits = RAL_BUFFER_MAPPABILITY_NONE;
             arrays_create_info.property_bits    = RAL_BUFFER_PROPERTY_SPARSE_IF_AVAILABLE_BIT;
             arrays_create_info.size             = mesh_sphere->arrays_bo_size;
-            arrays_create_info.usage_bits       = RAL_BUFFER_USAGE_RO_TEXTURE_BUFFER_BIT | RAL_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+            arrays_create_info.usage_bits       = RAL_BUFFER_USAGE_VERTEX_BUFFER_BIT;
             arrays_create_info.user_queue_bits  = 0xFFFFFFFF;
 
             raGL_buffers_allocate_buffer_memory_for_ral_buffer_create_info(mesh_sphere->buffers,
@@ -300,7 +299,6 @@ PUBLIC EMERALD_API procedural_mesh_sphere procedural_mesh_sphere_create(ogl_cont
     {
         /* Cache input arguments */
         new_instance->arrays_bo           = NULL;
-        new_instance->arrays_tbo          = 0;
         new_instance->context             = context;
         new_instance->creation_bitmask    = data_bitmask;
         new_instance->n_latitude_splices  = n_latitude_splices;

@@ -74,7 +74,7 @@ typedef struct _raGL_buffer
             }
         }
 
-        /* Do not release the buffer. Object life-time is handled by raGL_backend. */
+        /* Do not release the buffer. Object life-time is handled by raGL_buffers. */
     }
 } _raGL_sampler;
 

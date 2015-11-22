@@ -125,8 +125,7 @@ PUBLIC EMERALD_API void scene_camera_get_property(scene_camera          camera,
                                                   void*                 out_result);
 
 /** TODO */
-PUBLIC scene_camera scene_camera_load(ogl_context               context,
-                                      system_file_serializer    serializer,
+PUBLIC scene_camera scene_camera_load(system_file_serializer    serializer,
                                       scene                     owner_scene,
                                       system_hashed_ansi_string object_manager_path);
 

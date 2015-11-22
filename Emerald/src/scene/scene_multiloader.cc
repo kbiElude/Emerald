@@ -7,9 +7,8 @@
 #include "gfx/gfx_image.h"
 #include "mesh/mesh.h"
 #include "mesh/mesh_material.h"
-#include "ogl/ogl_context.h"
-#include "ogl/ogl_context_textures.h"
-#include "ogl/ogl_texture.h"
+#include "ral/ral_context.h"
+#include "ral/ral_texture.h"
 #include "scene/scene.h"
 #include "scene/scene_camera.h"
 #include "scene/scene_curve.h"
@@ -102,7 +101,7 @@ typedef struct _scene_multiloader
     system_barrier           barrier_all_scenes_loaded;
     system_critical_section  cs;
 
-    ogl_context              context;
+    ral_context              context_ral;
     bool                     free_serializers_at_release_time;
     bool                     is_finished;
     system_resizable_vector  scenes;   /* _scene_multiloader_scene* */
@@ -112,7 +111,7 @@ typedef struct _scene_multiloader
     system_resizable_vector  enqueued_image_file_names_vector; /* system_hashed_ansi_string */
     system_hash64map         image_filename_to_gfx_image_map;
 
-     explicit _scene_multiloader(ogl_context  in_context,
+     explicit _scene_multiloader(ral_context  in_context_ral,
                                  bool         in_free_serializers_at_release_time,
                                  unsigned int in_n_scenes);
              ~_scene_multiloader();
@@ -168,14 +167,14 @@ _scene_multiloader_scene::~_scene_multiloader_scene()
 }
 
 /** TODO */
-_scene_multiloader::_scene_multiloader(ogl_context  in_context,
+_scene_multiloader::_scene_multiloader(ral_context  in_context_ral,
                                        bool         in_free_serializers_at_release_time,
                                        unsigned int in_n_scenes)
 {
     barrier_all_scene_gfx_images_enqueued = system_barrier_create(in_n_scenes);
     barrier_all_scene_gfx_images_loaded   = NULL;
-    barrier_all_scenes_loaded             = system_barrier_create         (in_n_scenes);
-    context                               = in_context;
+    barrier_all_scenes_loaded             = system_barrier_create(in_n_scenes);
+    context_ral                           = in_context_ral;
     cs                                    = system_critical_section_create();
     enqueued_gfx_image_load_ops           = system_resizable_vector_create(4,     /* capacity */
                                                                            true);  /* should_be_thread_safe */
@@ -215,12 +214,12 @@ _scene_multiloader::~_scene_multiloader()
         barrier_all_scenes_loaded = NULL;
     } /* if (barrier_all_scenes_loaded != NULL) */
 
-    if (context != NULL)
+    if (context_ral != NULL)
     {
-        ogl_context_release(context);
+        ral_context_release(context_ral);
 
-        context = NULL;
-    } /* if (context != NULL) */
+        context_ral = NULL;
+    } /* if (context_ral != NULL) */
 
     if (cs != NULL)
     {
@@ -353,7 +352,7 @@ PRIVATE  bool _scene_multiloader_load_scene_internal_get_mesh_instances_data    
 PRIVATE  bool _scene_multiloader_load_scene_internal_get_texture_data                (_scene_multiloader_scene*            scene_ptr,
                                                                                       system_hashed_ansi_string            object_manager_path,
                                                                                       unsigned int                         n_scene_textures,
-                                                                                      ogl_context_textures                 context_textures,
+                                                                                      ral_context                          context,
                                                                                       system_hash64map                     texture_id_to_ogl_texture_map);
 volatile void _scene_multiloader_load_scene_internal_load_gfx_image_entrypoint       (system_thread_pool_callback_argument op);
 PRIVATE  void _scene_multiloader_load_scene_internal                                 (_scene_multiloader_scene*            scene_ptr);
@@ -448,7 +447,7 @@ PRIVATE bool _scene_multiloader_load_scene_internal_create_mesh_materials(_scene
         current_scene_material = scene_get_material_by_index             (scene_ptr->result_scene,
                                                                           n_scene_material);
         new_mesh_material      = mesh_material_create_from_scene_material(current_scene_material,
-                                                                          scene_ptr->loader_ptr->context);
+                                                                          scene_ptr->loader_ptr->context_ral);
 
         ASSERT_DEBUG_SYNC(new_mesh_material != NULL,
                           "Could not create a mesh_material out of a scene_material");
@@ -548,8 +547,7 @@ PRIVATE bool _scene_multiloader_load_scene_internal_get_camera_data(_scene_multi
                   n_scene_camera < n_scene_cameras;
                 ++n_scene_camera)
     {
-        scene_camera new_camera = scene_camera_load(scene_ptr->loader_ptr->context,
-                                                    scene_ptr->serializer,
+        scene_camera new_camera = scene_camera_load(scene_ptr->serializer,
                                                     scene_ptr->result_scene,
                                                     scene_file_name);
 
@@ -746,7 +744,7 @@ PRIVATE bool _scene_multiloader_load_scene_internal_get_mesh_data(_scene_multilo
                                               sizeof(mesh_gpu_id),
                                              &mesh_gpu_id);
 
-        mesh_gpu = mesh_load_with_serializer(scene_ptr->loader_ptr->context,
+        mesh_gpu = mesh_load_with_serializer(scene_ptr->loader_ptr->context_ral,
                                              0, /* flags */
                                              scene_ptr->serializer,
                                              material_id_to_mesh_material_map,
@@ -850,7 +848,7 @@ end:
 PRIVATE bool _scene_multiloader_load_scene_internal_get_texture_data(_scene_multiloader_scene* scene_ptr,
                                                                      system_hashed_ansi_string object_manager_path,
                                                                      unsigned int              n_scene_textures,
-                                                                     ogl_context_textures      context_textures,
+                                                                     ral_context               context,
                                                                      system_hash64map          texture_id_to_ogl_texture_map)
 {
     /*
@@ -875,7 +873,7 @@ PRIVATE bool _scene_multiloader_load_scene_internal_get_texture_data(_scene_mult
     {
         scene_texture new_texture = scene_texture_load_with_serializer(scene_ptr->serializer,
                                                                        object_manager_path,
-                                                                       scene_ptr->loader_ptr->context,
+                                                                       scene_ptr->loader_ptr->context_ral,
                                                                        _scene_multiloader_load_scene_internal_enqueue_gfx_filenames,
                                                                        scene_ptr);
 
@@ -942,7 +940,7 @@ PRIVATE bool _scene_multiloader_load_scene_internal_get_texture_data(_scene_mult
             gfx_image                 gfx_image_instance      = NULL;
             system_hashed_ansi_string gfx_image_filename      = NULL;
             system_hash64             gfx_image_filename_hash = 0;
-            ogl_texture               gfx_image_texture       = NULL;
+            ral_texture               gfx_image_texture       = NULL;
 
             system_hash64map_get_element_at(scene_ptr->loader_ptr->image_filename_to_gfx_image_map,
                                             n_entry,
@@ -953,9 +951,11 @@ PRIVATE bool _scene_multiloader_load_scene_internal_get_texture_data(_scene_mult
                               "gfx_image_instance instance is NULL");
 
             gfx_image_filename = (system_hashed_ansi_string) gfx_image_filename_hash;
-            gfx_image_texture  = ogl_texture_create_from_gfx_image(scene_ptr->loader_ptr->context,
-                                                                   gfx_image_instance,
-                                                                   gfx_image_filename);
+
+            ral_context_create_textures_from_gfx_images(scene_ptr->loader_ptr->context_ral,
+                                                        1, /* n_images */
+                                                       &gfx_image_instance,
+                                                       &gfx_image_texture);
 
             ASSERT_DEBUG_SYNC(gfx_image_texture != NULL,
                               "ogl_texture_create_from_gfx_image() call failed.");
@@ -974,8 +974,12 @@ PRIVATE bool _scene_multiloader_load_scene_internal_get_texture_data(_scene_mult
         while (system_resizable_vector_pop(scene_ptr->enqueued_gfx_image_to_scene_texture_assignment_ops,
                                           &op_ptr) )
         {
-            ogl_texture texture = ogl_context_textures_get_texture_by_filename(context_textures,
-                                                                               op_ptr->filename);
+            ral_texture texture = NULL;
+
+            ral_context_create_textures_from_file_names(context,
+                                                        1, /* n_filenames */
+                                                       &op_ptr->filename,
+                                                       &texture);
 
             ASSERT_DEBUG_SYNC(texture != NULL,
                               "Could not retrieve an ogl_texture instance for filename [%s]",
@@ -985,18 +989,18 @@ PRIVATE bool _scene_multiloader_load_scene_internal_get_texture_data(_scene_mult
             {
                 bool are_texture_mips_initialized = false;
 
-                ogl_texture_get_property(texture,
-                                         OGL_TEXTURE_PROPERTY_HAS_HAD_MIPMAPS_GENERATED,
+                ral_texture_get_property(texture,
+                                         RAL_TEXTURE_PROPERTY_HAS_HAD_MIPMAPS_GENERATED,
                                         &are_texture_mips_initialized);
 
                 if (!are_texture_mips_initialized)
                 {
-                    ogl_texture_generate_mipmaps(texture);
+                    ral_texture_generate_mipmaps(texture);
                 }
             }
 
             scene_texture_set(op_ptr->texture,
-                              SCENE_TEXTURE_PROPERTY_OGL_TEXTURE,
+                              SCENE_TEXTURE_PROPERTY_TEXTURE_RAL,
                              &texture);
 
             /* Release the op descriptor */
@@ -1017,12 +1021,12 @@ PRIVATE bool _scene_multiloader_load_scene_internal_get_texture_data(_scene_mult
 
         /* Map the serialized texture ID to the ogl_texture instance, if necessary */
         unsigned int texture_gl_id    = 0;
-        ogl_texture  texture_instance = NULL;
+        ral_texture  texture_instance = NULL;
 
         scene_texture_get       (current_texture,
-                                 SCENE_TEXTURE_PROPERTY_OGL_TEXTURE,
+                                 SCENE_TEXTURE_PROPERTY_TEXTURE_RAL,
                                 &texture_instance);
-        ogl_texture_get_property(texture_instance,
+        ral_texture_get_property(texture_instance,
                                  OGL_TEXTURE_PROPERTY_ID,
                                 &texture_gl_id);
 
@@ -1095,7 +1099,6 @@ volatile void _scene_multiloader_load_scene_internal_load_gfx_image_entrypoint(s
 /** TODO */
 PRIVATE void _scene_multiloader_load_scene_internal(_scene_multiloader_scene* scene_ptr)
 {
-    ogl_context_textures      context_textures                  = NULL;
     system_hash64map          material_id_to_scene_material_map = system_hash64map_create(sizeof(scene_material));
     system_hash64map          material_id_to_mesh_material_map  = system_hash64map_create(sizeof(void*)         );
     system_hash64map          mesh_id_to_mesh_map               = system_hash64map_create(sizeof(void*)         );
@@ -1122,10 +1125,6 @@ PRIVATE void _scene_multiloader_load_scene_internal(_scene_multiloader_scene* sc
     uint32_t                  n_scene_mesh_instances   = 0;
     uint32_t                  n_scene_textures         = 0;
 
-    ogl_context_get_property(scene_ptr->loader_ptr->context,
-                             OGL_CONTEXT_PROPERTY_TEXTURES,
-                            &context_textures);
-
     result &= _scene_multiloader_load_scene_internal_get_basic_data(scene_ptr,
                                                                    &scene_name,
                                                                    &scene_fps,
@@ -1151,7 +1150,7 @@ PRIVATE void _scene_multiloader_load_scene_internal(_scene_multiloader_scene* sc
                                         SYSTEM_FILE_SERIALIZER_PROPERTY_FILE_NAME,
                                        &scene_file_name);
 
-    scene_ptr->result_scene = scene_create(scene_ptr->loader_ptr->context,
+    scene_ptr->result_scene = scene_create(scene_ptr->loader_ptr->context_ral,
                                            scene_file_name);
 
     if (scene_ptr->result_scene == NULL)
@@ -1259,7 +1258,7 @@ PRIVATE void _scene_multiloader_load_scene_internal(_scene_multiloader_scene* sc
     result &= _scene_multiloader_load_scene_internal_get_texture_data(scene_ptr,
                                                                       scene_name,
                                                                       n_scene_textures,
-                                                                      context_textures,
+                                                                      scene_ptr->loader_ptr->context_ral,
                                                                       texture_id_to_ogl_texture_map);
 
     if (!result)
@@ -1500,7 +1499,7 @@ PRIVATE void _scene_multiloader_load_scene_thread_entrypoint(system_threads_entr
 
 
 /** Please see header for specification */
-PUBLIC EMERALD_API scene_multiloader scene_multiloader_create_from_filenames(ogl_context                      context,
+PUBLIC EMERALD_API scene_multiloader scene_multiloader_create_from_filenames(ral_context                      context,
                                                                              unsigned int                     n_scenes,
                                                                              const system_hashed_ansi_string* scene_filenames)
 {
@@ -1542,7 +1541,7 @@ PUBLIC EMERALD_API scene_multiloader scene_multiloader_create_from_filenames(ogl
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API scene_multiloader scene_multiloader_create_from_system_file_serializers(ogl_context                   context,
+PUBLIC EMERALD_API scene_multiloader scene_multiloader_create_from_system_file_serializers(ral_context                   context,
                                                                                            unsigned int                  n_scenes,
                                                                                            const system_file_serializer* scene_file_serializers,
                                                                                            bool                          free_serializers_at_release_time)
@@ -1577,7 +1576,7 @@ PUBLIC EMERALD_API scene_multiloader scene_multiloader_create_from_system_file_s
         } /* for (all scenes to be enqueued) */
 
         /* Retain the context - we'll need it for the loading process. */
-        ogl_context_retain(context);
+        ral_context_retain(context);
     }
 
     return (scene_multiloader) multiloader_ptr;
@@ -1676,11 +1675,11 @@ PUBLIC EMERALD_API void scene_multiloader_release(scene_multiloader instance)
 {
     _scene_multiloader* instance_ptr = (_scene_multiloader*) instance;
 
-    if (instance_ptr->context != NULL)
+    if (instance_ptr->context_ral != NULL)
     {
-        ogl_context_release(instance_ptr->context);
+        ral_context_release(instance_ptr->context_ral);
 
-        instance_ptr->context = NULL;
+        instance_ptr->context_ral = NULL;
     }
 
     delete instance_ptr;

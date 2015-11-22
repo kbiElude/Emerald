@@ -13,6 +13,7 @@
 #include "ogl/ogl_shader.h"
 #include "ogl/ogl_text.h"
 #include "raGL/raGL_buffers.h"
+#include "ral/ral_context.h"
 #include "scene/scene.h"
 #include "scene/scene_camera.h"
 #include "scene/scene_graph.h"
@@ -120,7 +121,7 @@ typedef struct _ogl_scene_renderer_frustum_preview
     ogl_text_string_id      test_text_id;
 
     raGL_buffers            buffers; /* do NOT release */
-    ogl_context             context;
+    ral_context             context;
     unsigned char*          data_bo_buffer;
     system_time             data_bo_buffer_last_update_time;
     unsigned int            data_bo_buffer_size;
@@ -354,7 +355,7 @@ PRIVATE void _ogl_scene_renderer_frustum_preview_init_rendering_thread_callback(
                                  viewport);
 
     preview_ptr->text_renderer = ogl_text_create(final_renderer_name,
-                                                 context,
+                                                 preview_ptr->context,
                                                  system_resources_get_meiryo_font_table(),
                                                  viewport[2],
                                                  viewport[3]);
@@ -700,10 +701,10 @@ PRIVATE void _ogl_scene_renderer_frustum_preview_update_data_bo_buffer(_ogl_scen
     const ogl_context_gl_entrypoints_ext_direct_state_access* dsa_entrypoints_ptr = NULL;
     const ogl_context_gl_entrypoints*                         entrypoints_ptr     = NULL;
 
-    ogl_context_get_property(preview_ptr->context,
+    ogl_context_get_property(ral_context_get_gl_context(preview_ptr->context),
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
                             &entrypoints_ptr);
-    ogl_context_get_property(preview_ptr->context,
+    ogl_context_get_property(ral_context_get_gl_context(preview_ptr->context),
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL_EXT_DIRECT_STATE_ACCESS,
                             &dsa_entrypoints_ptr);
 
@@ -878,7 +879,7 @@ PUBLIC void ogl_scene_renderer_frustum_preview_assign_cameras(ogl_scene_renderer
 }
 
 /** Please see header for spec */
-PUBLIC ogl_scene_renderer_frustum_preview ogl_scene_renderer_frustum_preview_create(ogl_context context,
+PUBLIC ogl_scene_renderer_frustum_preview ogl_scene_renderer_frustum_preview_create(ral_context context,
                                                                                     scene       scene)
 {
     _ogl_scene_renderer_frustum_preview* new_instance = new (std::nothrow) _ogl_scene_renderer_frustum_preview;
@@ -888,14 +889,16 @@ PUBLIC ogl_scene_renderer_frustum_preview ogl_scene_renderer_frustum_preview_cre
 
     if (new_instance != NULL)
     {
-        ogl_context_get_property(context,
+        ogl_context context_gl = ral_context_get_gl_context(context);
+
+        ogl_context_get_property(context_gl,
                                  OGL_CONTEXT_PROPERTY_BUFFERS_RAGL,
                                 &new_instance->buffers);
 
         new_instance->context     = context;
         new_instance->owned_scene = scene;
 
-        ogl_context_request_callback_from_context_thread(context,
+        ogl_context_request_callback_from_context_thread(context_gl,
                                                          _ogl_scene_renderer_frustum_preview_init_rendering_thread_callback,
                                                          new_instance);
     } /* if (new_instance != NULL) */
@@ -908,7 +911,7 @@ PUBLIC void ogl_scene_renderer_frustum_preview_release(ogl_scene_renderer_frustu
 {
     _ogl_scene_renderer_frustum_preview* preview_ptr = (_ogl_scene_renderer_frustum_preview*) preview;
 
-    ogl_context_request_callback_from_context_thread(preview_ptr->context,
+    ogl_context_request_callback_from_context_thread(ral_context_get_gl_context(preview_ptr->context),
                                                      _ogl_scene_renderer_frustum_preview_deinit_rendering_thread_callback,
                                                      preview);
 
@@ -926,10 +929,12 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_scene_renderer_frustum_preview_render(ogl
     _ogl_scene_renderer_frustum_preview*                      preview_ptr         = (_ogl_scene_renderer_frustum_preview*) preview;
 
     /* Retrieve entry-points */
-    ogl_context_get_property(preview_ptr->context,
+    ogl_context context_gl = ral_context_get_gl_context(preview_ptr->context);
+
+    ogl_context_get_property(context_gl,
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL_EXT_DIRECT_STATE_ACCESS,
                             &dsa_entrypoints_ptr);
-    ogl_context_get_property(preview_ptr->context,
+    ogl_context_get_property(context_gl,
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
                             &entrypoints_ptr);
 
@@ -990,7 +995,7 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_scene_renderer_frustum_preview_render(ogl
     entrypoints_ptr->pGLDisable(GL_PRIMITIVE_RESTART_FIXED_INDEX);
 
     /* Draw the labels */
-    ogl_text_draw(preview_ptr->context,
+    ogl_text_draw(ral_context_get_gl_context(preview_ptr->context),
                   preview_ptr->text_renderer);
 }
 

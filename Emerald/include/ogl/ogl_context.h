@@ -10,6 +10,7 @@
 #include "ogl/ogl_context_bo_bindings.h"
 #include "ogl/ogl_context_sampler_bindings.h"
 #include "ogl/ogl_context_texture_compression.h"
+#include "raGL/raGL_backend.h"
 
 REFCOUNT_INSERT_DECLARATIONS(ogl_context,
                              ogl_context)
@@ -28,13 +29,11 @@ REFCOUNT_INSERT_DECLARATIONS(ogl_context,
 
 typedef enum ogl_context_property
 {
+    /* not settable, raGL_backend */
+    OGL_CONTEXT_PROPERTY_BACKEND,
+
     /* not settable, ogl_context_bo_bindings */
     OGL_CONTEXT_PROPERTY_BO_BINDINGS,
-
-    /* not settable, raGL_buffers.
-     *
-     * TODO: This will be removed after RAL integration is finished. */
-    OGL_CONTEXT_PROPERTY_BUFFERS_RAGL,
 
     /* not settable, GLuint */
     OGL_CONTEXT_PROPERTY_DEFAULT_FBO_ID,
@@ -179,14 +178,8 @@ typedef enum ogl_context_property
     /* not settable, ogl_context_texture_compression */
     OGL_CONTEXT_PROPERTY_TEXTURE_COMPRESSION,
 
-    /* not settable, ogl_context_textures */
-    OGL_CONTEXT_PROPERTY_TEXTURES,
-
     /* not settable, ogl_context_to_bindings */
     OGL_CONTEXT_PROPERTY_TO_BINDINGS,
-
-    /* not settable, ogl_context_type */
-    OGL_CONTEXT_PROPERTY_TYPE,
 
     /* not settable, system_window */
     OGL_CONTEXT_PROPERTY_WINDOW,
@@ -225,7 +218,8 @@ PUBLIC void ogl_context_bind_to_current_thread( ogl_context);
 
 /** TODO */
 PUBLIC EMERALD_API ogl_context ogl_context_create_from_system_window(system_hashed_ansi_string name,
-                                                                     ogl_context_type          type,
+                                                                     ral_context               context,
+                                                                     raGL_backend              backend,
                                                                      system_window             window,
                                                                      bool                      vsync_enabled,
                                                                      ogl_context               parent_context);

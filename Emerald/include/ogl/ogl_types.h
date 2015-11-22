@@ -7,12 +7,14 @@
 #define OGL_TYPES_H
 
 #include "ogl/gl3.h"
+#include "raGL/raGL_types.h"
 #include "system/system_time.h"
 #include "system/system_types.h"
 
 #ifdef __linux
     #include <GL/glx.h>
 #endif
+
 
 /* Primitive renderer */
 DECLARE_HANDLE(ogl_primitive_renderer);
@@ -92,109 +94,14 @@ typedef unsigned int ogl_curve_item_id;
 /* Scene renderer */
 DECLARE_HANDLE(ogl_scene_renderer);
 
-/** Texture handle */
-DECLARE_HANDLE(ogl_context_textures);
-DECLARE_HANDLE(ogl_texture);
-
 /* Vertex array object handles */
 DECLARE_HANDLE(ogl_context_vaos);
 DECLARE_HANDLE(ogl_vao);
 
-typedef                 PFNGLACTIVETEXTUREPROC                          PFNWRAPPEDGLACTIVETEXTUREPROC;
-typedef                 PFNGLCOMPRESSEDTEXSUBIMAGE1DPROC                PFNWRAPPEDGLCOMPRESSEDTEXSUBIMAGE1DPROC;
-typedef                 PFNGLCOMPRESSEDTEXSUBIMAGE2DPROC                PFNWRAPPEDGLCOMPRESSEDTEXSUBIMAGE2DPROC;
-typedef                 PFNGLCOMPRESSEDTEXSUBIMAGE3DPROC                PFNWRAPPEDGLCOMPRESSEDTEXSUBIMAGE3DPROC;
-typedef                 PFNGLCOPYTEXSUBIMAGE1DPROC                      PFNWRAPPEDGLCOPYTEXSUBIMAGE1DPROC;
-typedef                 PFNGLCOPYTEXSUBIMAGE2DPROC                      PFNWRAPPEDGLCOPYTEXSUBIMAGE2DPROC;
-typedef                 PFNGLCOPYTEXSUBIMAGE3DPROC                      PFNWRAPPEDGLCOPYTEXSUBIMAGE3DPROC;
-typedef void (APIENTRY *PFNGLDISABLEVERTEXARRAYATTRIBEXTPROC)           (GLuint vaobj, GLuint index);
-typedef void (APIENTRY *PFNGLENABLEVERTEXARRAYATTRIBEXTPROC)            (GLuint vaobj, GLuint index);
-typedef                 PFNGLGETCOMPRESSEDTEXIMAGEPROC                  PFNWRAPPEDGLGETCOMPRESSEDTEXIMAGEPROC;
-typedef                 PFNGLGETTEXIMAGEPROC                            PFNWRAPPEDGLGETTEXIMAGEPROC;
-typedef                 PFNGLGETTEXLEVELPARAMETERFVPROC                 PFNWRAPPEDGLGETTEXLEVELPARAMETERFVPROC;
-typedef                 PFNGLGETTEXLEVELPARAMETERIVPROC                 PFNWRAPPEDGLGETTEXLEVELPARAMETERIVPROC;
-typedef                 PFNGLGETTEXPARAMETERFVPROC                      PFNWRAPPEDGLGETTEXPARAMETERFVPROC;
-typedef                 PFNGLGETTEXPARAMETERIVPROC                      PFNWRAPPEDGLGETTEXPARAMETERIVPROC;
-typedef                 PFNGLGETTEXPARAMETERIIVPROC                     PFNWRAPPEDGLGETTEXPARAMETERIIVPROC;
-typedef                 PFNGLGETTEXPARAMETERIUIVPROC                    PFNWRAPPEDGLGETTEXPARAMETERIUIVPROC;
-typedef                 PFNGLTEXBUFFERPROC                              PFNWRAPPEDGLTEXBUFFERPROC;
-typedef                 PFNGLTEXIMAGE1DPROC                             PFNWRAPPEDGLTEXIMAGE1DPROC;
-typedef                 PFNGLTEXIMAGE2DPROC                             PFNWRAPPEDGLTEXIMAGE2DPROC;
-typedef                 PFNGLTEXIMAGE3DPROC                             PFNWRAPPEDGLTEXIMAGE3DPROC;
-typedef                 PFNGLTEXPARAMETERFPROC                          PFNWRAPPEDGLTEXPARAMETERFPROC;
-typedef                 PFNGLTEXPARAMETERFVPROC                         PFNWRAPPEDGLTEXPARAMETERFVPROC;
-typedef                 PFNGLTEXPARAMETERIPROC                          PFNWRAPPEDGLTEXPARAMETERIPROC;
-typedef                 PFNGLTEXPARAMETERIVPROC                         PFNWRAPPEDGLTEXPARAMETERIVPROC;
-typedef                 PFNGLTEXPARAMETERIIVPROC                        PFNWRAPPEDGLTEXPARAMETERIIVPROC;
-typedef                 PFNGLTEXPARAMETERIUIVPROC                       PFNWRAPPEDGLTEXPARAMETERIUIVPROC;
-typedef                 PFNGLTEXSUBIMAGE1DPROC                          PFNWRAPPEDGLTEXSUBIMAGE1DPROC;
-typedef                 PFNGLTEXSUBIMAGE2DPROC                          PFNWRAPPEDGLTEXSUBIMAGE2DPROC;
-typedef                 PFNGLTEXSUBIMAGE3DPROC                          PFNWRAPPEDGLTEXSUBIMAGE3DPROC;
-
-typedef void (APIENTRY *PFNGLVERTEXARRAYVERTEXATTRIBIOFFSETEXTPROC)     (GLuint vaobj, GLuint buffer, GLuint index, GLint size, GLenum type, GLsizei stride,       GLintptr offset);
-typedef void (APIENTRY *PFNGLVERTEXARRAYVERTEXATTRIBOFFSETEXTPROC)      (GLuint vaobj, GLuint buffer, GLuint index, GLint size, GLenum type, GLboolean normalized, GLsizei stride, GLintptr offset);
-typedef void (APIENTRY* PFNWRAPPEDGLBINDMULTITEXTUREEXTPROC)            (GLenum texunit,      GLenum      target, ogl_texture texture);
-typedef void (APIENTRY *PFNWRAPPEDGLBINDIMAGETEXTUREEXTPROC)            (GLuint index,        ogl_texture texture, GLint level, GLboolean layered, GLint layer, GLenum access, GLint format);
-typedef void (APIENTRY* PFNWRAPPEDGLBINDTEXTUREPROC)                    (GLenum target,       ogl_texture texture);
-typedef void (APIENTRY* PFNWRAPPEDGLBINDTEXTURESPROC)                   (GLuint first,        GLsizei     count, ogl_texture* textures);
-typedef void (APIENTRY* PFNWRAPPEDGLCOMPRESSEDTEXTUREIMAGE3DEXTPROC)    (ogl_texture texture, GLenum target, GLint level, GLenum internalformat, GLsizei width, GLsizei height, GLsizei depth, GLint border, GLsizei imageSize, const GLvoid *bits);
-typedef void (APIENTRY* PFNWRAPPEDGLCOMPRESSEDTEXTUREIMAGE2DEXTPROC)    (ogl_texture texture, GLenum target, GLint level, GLenum internalformat, GLsizei width, GLsizei height, GLint border, GLsizei imageSize, const GLvoid *bits);
-typedef void (APIENTRY* PFNWRAPPEDGLCOMPRESSEDTEXTUREIMAGE1DEXTPROC)    (ogl_texture texture, GLenum target, GLint level, GLenum internalformat, GLsizei width, GLint border, GLsizei imageSize, const GLvoid *bits);
-typedef void (APIENTRY* PFNWRAPPEDGLCOMPRESSEDTEXTURESUBIMAGE3DEXTPROC) (ogl_texture texture, GLenum target, GLint level, GLint xoffset, GLint yoffset, GLint zoffset, GLsizei width, GLsizei height, GLsizei depth, GLenum format, GLsizei imageSize, const GLvoid *bits);
-typedef void (APIENTRY* PFNWRAPPEDGLCOMPRESSEDTEXTURESUBIMAGE2DEXTPROC) (ogl_texture texture, GLenum target, GLint level, GLint xoffset, GLint yoffset, GLsizei width, GLsizei height, GLenum format, GLsizei imageSize, const GLvoid *bits);
-typedef void (APIENTRY* PFNWRAPPEDGLCOMPRESSEDTEXTURESUBIMAGE1DEXTPROC) (ogl_texture texture, GLenum target, GLint level, GLint xoffset, GLsizei width, GLenum format, GLsizei imageSize, const GLvoid *bits);
-typedef void (APIENTRY *PFNWRAPPEDGLCOPYTEXTURESUBIMAGE1DEXTPROC)       (ogl_texture texture, GLenum target, GLint level, GLint xoffset, GLint x, GLint y, GLsizei width);
-typedef void (APIENTRY *PFNWRAPPEDGLCOPYTEXTURESUBIMAGE2DEXTPROC)       (ogl_texture texture, GLenum target, GLint level, GLint xoffset, GLint yoffset, GLint x, GLint y, GLsizei width, GLsizei height);
-typedef void (APIENTRY *PFNWRAPPEDGLCOPYTEXTURESUBIMAGE3DEXTPROC)       (ogl_texture texture, GLenum target, GLint level, GLint xoffset, GLint yoffset, GLint zoffset, GLint x, GLint y, GLsizei width, GLsizei height);
-typedef void (APIENTRY* PFNWRAPPEDGLFRAMEBUFFERTEXTUREPROC)             (GLenum target, GLenum attachment, ogl_texture texture,   GLint       level);
-typedef void (APIENTRY* PFNWRAPPEDGLFRAMEBUFFERTEXTURE1DPROC)           (GLenum target, GLenum attachment, GLenum      textarget, ogl_texture texture, GLint level);
-typedef void (APIENTRY* PFNWRAPPEDGLFRAMEBUFFERTEXTURE2DPROC)           (GLenum target, GLenum attachment, GLenum      textarget, ogl_texture texture, GLint level);
-typedef void (APIENTRY* PFNWRAPPEDGLFRAMEBUFFERTEXTURE3DPROC)           (GLenum target, GLenum attachment, GLenum      textarget, ogl_texture texture, GLint level, GLint layer);
-typedef void (APIENTRY* PFNWRAPPEDGLFRAMEBUFFERTEXTURELAYERPROC)        (GLenum target, GLenum attachment, ogl_texture texture,   GLint       level,   GLint layer);
-typedef void (APIENTRY* PFNWRAPPEDGLGENERATETEXTUREMIPMAPEXTPROC)       (ogl_texture texture, GLenum target);
-typedef void (APIENTRY* PFNWRAPPEDGLGETCOMPRESSEDTEXTUREIMAGEEXTPROC)   (ogl_texture texture, GLenum target, GLint lod, GLvoid *img);
-typedef void (APIENTRY* PFNWRAPPEDGLGETTEXTUREIMAGEEXTPROC)             (ogl_texture texture, GLenum target, GLint level, GLenum format, GLenum type, GLvoid *pixels);
-typedef void (APIENTRY *PFNWRAPPEDGLGETTEXTUREPARAMETERFVEXTPROC)       (ogl_texture, GLenum target, GLint level, GLenum pname, GLfloat* params);
-typedef void (APIENTRY *PFNWRAPPEDGLGETTEXTUREPARAMETERIVEXTPROC)       (ogl_texture, GLenum target, GLint level, GLenum pname, GLint* params);
-typedef void (APIENTRY* PFNWRAPPEDGLGETTEXTUREPARAMETERIIVEXTPROC)      (ogl_texture texture, GLenum target, GLenum pname, GLint *params);
-typedef void (APIENTRY* PFNWRAPPEDGLGETTEXTUREPARAMETERIUIVEXTPROC)     (ogl_texture texture, GLenum target, GLenum pname, GLuint *params);
-typedef void (APIENTRY* PFNWRAPPEDGLNAMEDFRAMEBUFFERTEXTUREEXTPROC)     (GLuint framebuffer, GLenum attachment, ogl_texture texture, GLint level);
-typedef void (APIENTRY* PFNWRAPPEDGLNAMEDFRAMEBUFFERTEXTUREFACEEXTPROC) (GLuint framebuffer, GLenum attachment, ogl_texture texture, GLint level, GLenum face);
-typedef void (APIENTRY* PFNWRAPPEDGLNAMEDFRAMEBUFFERTEXTURELAYEREXTPROC)(GLuint framebuffer, GLenum attachment, ogl_texture texture, GLint level, GLint layer);
-typedef void (APIENTRY* PFNWRAPPEDGLNAMEDFRAMEBUFFERTEXTURE1DEXTPROC)   (GLuint framebuffer, GLenum attachment, GLenum textarget, ogl_texture texture, GLint level);
-typedef void (APIENTRY* PFNWRAPPEDGLNAMEDFRAMEBUFFERTEXTURE2DEXTPROC)   (GLuint framebuffer, GLenum attachment, GLenum textarget, ogl_texture texture, GLint level);
-typedef void (APIENTRY* PFNWRAPPEDGLNAMEDFRAMEBUFFERTEXTURE3DEXTPROC)   (GLuint framebuffer, GLenum attachment, GLenum textarget, ogl_texture texture, GLint level, GLint zoffset);
-typedef void (APIENTRY* PFNWRAPPEDGLTEXBUFFERRANGEPROC)                 (GLenum target,      GLenum internalformat, GLuint buffer, GLintptr offset, GLsizeiptr size);
-typedef void (APIENTRY* PFNWRAPPEDGLTEXTUREBUFFEREXTPROC)               (ogl_texture texture, GLenum target, GLenum internalformat, GLuint buffer);
-typedef void (APIENTRY* PFNWRAPPEDGLTEXTUREBUFFERRANGEEXTPROC)          (ogl_texture texture, GLenum target, GLenum internalformat, GLuint buffer, GLintptr offset, GLsizeiptr size);
-typedef void (APIENTRY *PFNWRAPPEDGLTEXTUREIMAGE1DEXTPROC)              (ogl_texture texture, GLenum target, GLint       level, GLenum internalformat, GLsizei width, GLint border, GLenum format, GLenum type, const GLvoid *pixels);
-typedef void (APIENTRY *PFNWRAPPEDGLTEXTUREIMAGE2DEXTPROC)              (ogl_texture texture, GLenum target, GLint       level, GLenum internalformat, GLsizei width, GLsizei height, GLint border, GLenum format, GLenum type, const GLvoid *pixels);
-typedef void (APIENTRY *PFNWRAPPEDGLTEXTUREIMAGE3DEXTPROC)              (ogl_texture texture, GLenum target, GLint       level, GLenum internalformat, GLsizei width, GLsizei height, GLsizei depth, GLint border, GLenum format, GLenum type, const GLvoid *pixels);
-typedef void (APIENTRY *PFNWRAPPEDGLTEXTUREPARAMETERFEXTPROC)           (ogl_texture texture, GLenum target, GLenum      pname, GLfloat param);
-typedef void (APIENTRY *PFNWRAPPEDGLTEXTUREPARAMETERFVEXTPROC)          (ogl_texture texture, GLenum target, GLenum      pname, const GLfloat* params);
-typedef void (APIENTRY *PFNWRAPPEDGLTEXTUREPARAMETERIEXTPROC)           (ogl_texture texture, GLenum target, GLenum      pname, GLint          param);
-typedef void (APIENTRY *PFNWRAPPEDGLTEXTUREPARAMETERIIVEXTPROC)         (ogl_texture texture, GLenum target, GLenum      pname, const GLint*   params);
-typedef void (APIENTRY *PFNWRAPPEDGLTEXTUREPARAMETERIUIVEXTPROC)        (ogl_texture texture, GLenum target, GLenum      pname, const GLuint*  params);
-typedef void (APIENTRY *PFNWRAPPEDGLTEXTUREPARAMETERIVEXTPROC)          (ogl_texture texture, GLenum target, GLenum      pname, const GLint*   params);
-typedef void (APIENTRY *PFNWRAPPEDGLTEXTURERENDERBUFFEREXTPROC)         (ogl_texture texture, GLenum target, GLuint      renderbuffer);
-typedef void (APIENTRY *PFNWRAPPEDGLTEXTURESTORAGE1DEXTPROC)            (ogl_texture texture, GLenum target, GLsizei     levels,      GLenum  internalformat, GLsizei width);
-typedef void (APIENTRY *PFNWRAPPEDGLTEXTURESTORAGE2DEXTPROC)            (ogl_texture texture, GLenum target, GLsizei     levels,      GLenum  internalformat, GLsizei width,    GLsizei height);
-typedef void (APIENTRY *PFNWRAPPEDGLTEXTURESTORAGE2DMULTISAMPLEEXTPROC) (ogl_texture texture, GLenum target, GLsizei     samples,     GLenum  internalformat, GLsizei width,    GLsizei height,    GLboolean fixedsamplelocations);
-typedef void (APIENTRY *PFNWRAPPEDGLTEXTURESTORAGE3DEXTPROC)            (ogl_texture texture, GLenum target, GLsizei     levels,      GLenum  internalformat, GLsizei width,    GLsizei height,    GLsizei   depth);
-typedef void (APIENTRY *PFNWRAPPEDGLTEXTURESTORAGE3DMULTISAMPLEEXTPROC) (ogl_texture texture, GLenum target, GLsizei     samples,     GLenum  internalformat, GLsizei width,    GLsizei height,    GLsizei   depth,    GLboolean     fixedsamplelocations);
-typedef void (APIENTRY *PFNWRAPPEDGLTEXTURESUBIMAGE1DEXTPROC)           (ogl_texture texture, GLenum target, GLint       level,       GLint   xoffset,        GLsizei width,    GLenum  format,    GLenum    type,     const GLvoid *pixels);
-typedef void (APIENTRY *PFNWRAPPEDGLTEXTURESUBIMAGE2DEXTPROC)           (ogl_texture texture, GLenum target, GLint       level,       GLint   xoffset,        GLint   yoffset,  GLsizei width,     GLsizei   height,   GLenum        format, GLenum  type,  const GLvoid *pixels);
-typedef void (APIENTRY *PFNWRAPPEDGLTEXTURESUBIMAGE3DEXTPROC)           (ogl_texture texture, GLenum target, GLint       level,       GLint   xoffset,        GLint   yoffset,  GLint   zoffset,   GLsizei   width,    GLsizei       height, GLsizei depth, GLenum        format, GLenum type, const GLvoid *pixels);
-typedef void (APIENTRY *PFNWRAPPEDGLTEXTUREVIEWPROC)                    (ogl_texture texture, GLenum target, ogl_texture origtexture, GLenum  internalformat, GLuint  minlevel, GLuint  numlevels, GLuint    minlayer, GLuint        numlayers);
-
-/** Enumerator that tells type of the rendering context */
-typedef enum
-{
-    OGL_CONTEXT_TYPE_ES,
-    OGL_CONTEXT_TYPE_GL,
-
-    OGL_CONTEXT_TYPE_UNDEFINED
-} ogl_context_type;
+typedef void (APIENTRY *PFNGLDISABLEVERTEXARRAYATTRIBEXTPROC)      (GLuint vaobj, GLuint index);
+typedef void (APIENTRY *PFNGLENABLEVERTEXARRAYATTRIBEXTPROC)       (GLuint vaobj, GLuint index);
+typedef void (APIENTRY *PFNGLVERTEXARRAYVERTEXATTRIBIOFFSETEXTPROC)(GLuint vaobj, GLuint buffer, GLuint index, GLint size, GLenum type, GLsizei stride,       GLintptr offset);
+typedef void (APIENTRY *PFNGLVERTEXARRAYVERTEXATTRIBOFFSETEXTPROC) (GLuint vaobj, GLuint buffer, GLuint index, GLint size, GLenum type, GLboolean normalized, GLsizei stride, GLintptr offset);
 
 /** Enumerator that describes allowed types for a program attribute */
 typedef enum
@@ -980,7 +887,7 @@ typedef struct
 typedef struct
 {
     PFNGLACTIVESHADERPROGRAMPROC                         pGLActiveShaderProgram;
-    PFNWRAPPEDGLACTIVETEXTUREPROC                        pGLActiveTexture;
+    PFNGLACTIVETEXTUREPROC                               pGLActiveTexture;
     PFNGLATTACHSHADERPROC                                pGLAttachShader;
     PFNGLBEGINCONDITIONALRENDERPROC                      pGLBeginConditionalRender;
     PFNGLBEGINQUERYPROC                                  pGLBeginQuery;
@@ -991,12 +898,12 @@ typedef struct
     PFNGLBINDBUFFERRANGEPROC                             pGLBindBufferRange;
     PFNGLBINDFRAGDATALOCATIONPROC                        pGLBindFragDataLocation;
     PFNGLBINDFRAMEBUFFERPROC                             pGLBindFramebuffer;
-    PFNWRAPPEDGLBINDIMAGETEXTUREEXTPROC                  pGLBindImageTexture;
+    PFNGLBINDIMAGETEXTUREEXTPROC                         pGLBindImageTexture;
     PFNGLBINDPROGRAMPIPELINEPROC                         pGLBindProgramPipeline;
     PFNGLBINDRENDERBUFFERPROC                            pGLBindRenderbuffer;
     PFNGLBINDSAMPLERPROC                                 pGLBindSampler;
     PFNGLBINDTRANSFORMFEEDBACKPROC                       pGLBindTransformFeedback;
-    PFNWRAPPEDGLBINDTEXTUREPROC                          pGLBindTexture;
+    PFNGLBINDTEXTUREPROC                                 pGLBindTexture;
     PFNGLBINDVERTEXARRAYPROC                             pGLBindVertexArray;
     PFNGLBINDVERTEXBUFFERPROC                            pGLBindVertexBuffer;
     PFNGLBLENDCOLORPROC                                  pGLBlendColor;
@@ -1022,14 +929,14 @@ typedef struct
     PFNGLCOLORMASKPROC                                   pGLColorMask;
     PFNGLCOLORMASKIPROC                                  pGLColorMaski;
     PFNGLCOMPILESHADERPROC                               pGLCompileShader;
-    PFNWRAPPEDGLCOMPRESSEDTEXSUBIMAGE1DPROC              pGLCompressedTexSubImage1D;
-    PFNWRAPPEDGLCOMPRESSEDTEXSUBIMAGE2DPROC              pGLCompressedTexSubImage2D;
-    PFNWRAPPEDGLCOMPRESSEDTEXSUBIMAGE3DPROC              pGLCompressedTexSubImage3D;
+    PFNGLCOMPRESSEDTEXSUBIMAGE1DPROC                     pGLCompressedTexSubImage1D;
+    PFNGLCOMPRESSEDTEXSUBIMAGE2DPROC                     pGLCompressedTexSubImage2D;
+    PFNGLCOMPRESSEDTEXSUBIMAGE3DPROC                     pGLCompressedTexSubImage3D;
     PFNGLCOPYBUFFERSUBDATAPROC                           pGLCopyBufferSubData;
     PFNGLCOPYIMAGESUBDATAPROC                            pGLCopyImageSubData;
-    PFNWRAPPEDGLCOPYTEXSUBIMAGE1DPROC                    pGLCopyTexSubImage1D;
-    PFNWRAPPEDGLCOPYTEXSUBIMAGE2DPROC                    pGLCopyTexSubImage2D;
-    PFNWRAPPEDGLCOPYTEXSUBIMAGE3DPROC                    pGLCopyTexSubImage3D;
+    PFNGLCOPYTEXSUBIMAGE1DPROC                           pGLCopyTexSubImage1D;
+    PFNGLCOPYTEXSUBIMAGE2DPROC                           pGLCopyTexSubImage2D;
+    PFNGLCOPYTEXSUBIMAGE3DPROC                           pGLCopyTexSubImage3D;
     PFNGLCREATEPROGRAMPROC                               pGLCreateProgram;
     PFNGLCREATESHADERPROC                                pGLCreateShader;
     PFNGLCREATESHADERPROGRAMVPROC                        pGLCreateShaderProgramv;
@@ -1081,11 +988,11 @@ typedef struct
     PFNGLFLUSHPROC                                       pGLFlush;
     PFNGLFRAMEBUFFERPARAMETERIPROC                       pGLFramebufferParameteri;
     PFNGLFRAMEBUFFERRENDERBUFFERPROC                     pGLFramebufferRenderbuffer;
-    PFNWRAPPEDGLFRAMEBUFFERTEXTUREPROC                   pGLFramebufferTexture;
-    PFNWRAPPEDGLFRAMEBUFFERTEXTURE1DPROC                 pGLFramebufferTexture1D;
-    PFNWRAPPEDGLFRAMEBUFFERTEXTURE2DPROC                 pGLFramebufferTexture2D;
-    PFNWRAPPEDGLFRAMEBUFFERTEXTURE3DPROC                 pGLFramebufferTexture3D;
-    PFNWRAPPEDGLFRAMEBUFFERTEXTURELAYERPROC              pGLFramebufferTextureLayer;
+    PFNGLFRAMEBUFFERTEXTUREPROC                          pGLFramebufferTexture;
+    PFNGLFRAMEBUFFERTEXTURE1DPROC                        pGLFramebufferTexture1D;
+    PFNGLFRAMEBUFFERTEXTURE2DPROC                        pGLFramebufferTexture2D;
+    PFNGLFRAMEBUFFERTEXTURE3DPROC                        pGLFramebufferTexture3D;
+    PFNGLFRAMEBUFFERTEXTURELAYERPROC                     pGLFramebufferTextureLayer;
     PFNGLFRONTFACEPROC                                   pGLFrontFace;
     PFNGLGENBUFFERSPROC                                  pGLGenBuffers;
     PFNGLGENERATEMIPMAPPROC                              pGLGenerateMipmap;
@@ -1111,7 +1018,7 @@ typedef struct
     PFNGLGETBUFFERPOINTERVPROC                           pGLGetBufferPointerv;
     PFNGLGETBUFFERSUBDATAPROC                            pGLGetBufferSubData;
     PFNGLGETBOOLEANI_VPROC                               pGLGetBooleani_v;
-    PFNWRAPPEDGLGETCOMPRESSEDTEXIMAGEPROC                pGLGetCompressedTexImage;
+    PFNGLGETCOMPRESSEDTEXIMAGEPROC                       pGLGetCompressedTexImage;
     PFNGLGETDEBUGMESSAGELOGPROC                          pGLGetDebugMessageLog;
     PFNGLGETFRAMEBUFFERPARAMETERIVPROC                   pGLGetFramebufferParameteriv;
     PFNGLGETDOUBLEVPROC                                  pGLGetDoublev;
@@ -1143,13 +1050,13 @@ typedef struct
     PFNGLGETSHADERSOURCEPROC                             pGLGetShaderSource;
     PFNGLGETSTRINGPROC                                   pGLGetString;
     PFNGLGETSTRINGIPROC                                  pGLGetStringi;
-    PFNWRAPPEDGLGETTEXIMAGEPROC                          pGLGetTexImage;
-    PFNWRAPPEDGLGETTEXLEVELPARAMETERFVPROC               pGLGetTexLevelParameterfv;
-    PFNWRAPPEDGLGETTEXLEVELPARAMETERIVPROC               pGLGetTexLevelParameteriv;
-    PFNWRAPPEDGLGETTEXPARAMETERFVPROC                    pGLGetTexParameterfv;
-    PFNWRAPPEDGLGETTEXPARAMETERIIVPROC                   pGLGetTexParameterIiv;
-    PFNWRAPPEDGLGETTEXPARAMETERIUIVPROC                  pGLGetTexParameterIuiv;
-    PFNWRAPPEDGLGETTEXPARAMETERIVPROC                    pGLGetTexParameteriv;
+    PFNGLGETTEXIMAGEPROC                                 pGLGetTexImage;
+    PFNGLGETTEXLEVELPARAMETERFVPROC                      pGLGetTexLevelParameterfv;
+    PFNGLGETTEXLEVELPARAMETERIVPROC                      pGLGetTexLevelParameteriv;
+    PFNGLGETTEXPARAMETERFVPROC                           pGLGetTexParameterfv;
+    PFNGLGETTEXPARAMETERIIVPROC                          pGLGetTexParameterIiv;
+    PFNGLGETTEXPARAMETERIUIVPROC                         pGLGetTexParameterIuiv;
+    PFNGLGETTEXPARAMETERIVPROC                           pGLGetTexParameteriv;
     PFNGLGETTRANSFORMFEEDBACKVARYINGPROC                 pGLGetTransformFeedbackVarying;
     PFNGLGETUNIFORMBLOCKINDEXPROC                        pGLGetUniformBlockIndex;
     PFNGLGETUNIFORMFVPROC                                pGLGetUniformfv;
@@ -1271,21 +1178,21 @@ typedef struct
     PFNGLSTENCILMASKSEPARATEPROC                         pGLStencilMaskSeparate;
     PFNGLSTENCILOPPROC                                   pGLStencilOp;
     PFNGLSTENCILOPSEPARATEPROC                           pGLStencilOpSeparate;
-    PFNWRAPPEDGLTEXBUFFERPROC                            pGLTexBuffer;
+    PFNGLTEXBUFFERPROC                                   pGLTexBuffer;
     PFNGLTEXBUFFERRANGEPROC                              pGLTexBufferRange;
-    PFNWRAPPEDGLTEXIMAGE1DPROC                           pGLTexImage1D;
-    PFNWRAPPEDGLTEXIMAGE2DPROC                           pGLTexImage2D;
-    PFNWRAPPEDGLTEXIMAGE3DPROC                           pGLTexImage3D;
-    PFNWRAPPEDGLTEXPARAMETERFPROC                        pGLTexParameterf;
-    PFNWRAPPEDGLTEXPARAMETERFVPROC                       pGLTexParameterfv;
-    PFNWRAPPEDGLTEXPARAMETERIIVPROC                      pGLTexParameterIiv;
-    PFNWRAPPEDGLTEXPARAMETERIUIVPROC                     pGLTexParameterIuiv;
-    PFNWRAPPEDGLTEXPARAMETERIPROC                        pGLTexParameteri;
-    PFNWRAPPEDGLTEXPARAMETERIVPROC                       pGLTexParameteriv;
-    PFNWRAPPEDGLTEXSUBIMAGE1DPROC                        pGLTexSubImage1D;
-    PFNWRAPPEDGLTEXSUBIMAGE2DPROC                        pGLTexSubImage2D;
-    PFNWRAPPEDGLTEXSUBIMAGE3DPROC                        pGLTexSubImage3D;
-    PFNWRAPPEDGLTEXTUREVIEWPROC                          pGLTextureView;
+    PFNGLTEXIMAGE1DPROC                                  pGLTexImage1D;
+    PFNGLTEXIMAGE2DPROC                                  pGLTexImage2D;
+    PFNGLTEXIMAGE3DPROC                                  pGLTexImage3D;
+    PFNGLTEXPARAMETERFPROC                               pGLTexParameterf;
+    PFNGLTEXPARAMETERFVPROC                              pGLTexParameterfv;
+    PFNGLTEXPARAMETERIIVPROC                             pGLTexParameterIiv;
+    PFNGLTEXPARAMETERIUIVPROC                            pGLTexParameterIuiv;
+    PFNGLTEXPARAMETERIPROC                               pGLTexParameteri;
+    PFNGLTEXPARAMETERIVPROC                              pGLTexParameteriv;
+    PFNGLTEXSUBIMAGE1DPROC                               pGLTexSubImage1D;
+    PFNGLTEXSUBIMAGE2DPROC                               pGLTexSubImage2D;
+    PFNGLTEXSUBIMAGE3DPROC                               pGLTexSubImage3D;
+    PFNGLTEXTUREVIEWPROC                                 pGLTextureView;
     PFNGLTRANSFORMFEEDBACKVARYINGSPROC                   pGLTransformFeedbackVaryings;
     PFNGLUNIFORMBLOCKBINDINGPROC                         pGLUniformBlockBinding;
     PFNGLUNMAPBUFFERPROC                                 pGLUnmapBuffer;
@@ -1367,7 +1274,6 @@ typedef struct
     PFNGLBINDBUFFERBASEPROC                              pGLBindBufferBase;
     PFNGLBINDBUFFERRANGEPROC                             pGLBindBufferRange;
     PFNGLBINDFRAMEBUFFERPROC                             pGLBindFramebuffer;
-    PFNGLBINDIMAGETEXTUREPROC                            pGLBindImageTexture;
     PFNGLBINDRENDERBUFFERPROC                            pGLBindRenderbuffer;
     PFNGLBINDSAMPLERPROC                                 pGLBindSampler;
     PFNGLBINDTEXTUREPROC                                 pGLBindTexture;
@@ -1474,12 +1380,6 @@ typedef struct
     PFNGLRENDERBUFFERSTORAGEPROC                         pGLRenderbufferStorage;
     PFNGLRENDERBUFFERSTORAGEMULTISAMPLEPROC              pGLRenderbufferStorageMultisample;
     PFNGLRESUMETRANSFORMFEEDBACKPROC                     pGLResumeTransformFeedback;
-    PFNGLSAMPLERPARAMETERFPROC                           pGLSamplerParameterf;
-    PFNGLSAMPLERPARAMETERFVPROC                          pGLSamplerParameterfv;
-    PFNGLSAMPLERPARAMETERIIVPROC                         pGLSamplerParameterIiv;
-    PFNGLSAMPLERPARAMETERIUIVPROC                        pGLSamplerParameterIuiv;
-    PFNGLSAMPLERPARAMETERIPROC                           pGLSamplerParameteri;
-    PFNGLSAMPLERPARAMETERIVPROC                          pGLSamplerParameteriv;
     PFNGLSCISSORPROC                                     pGLScissor;
     PFNGLSHADERSTORAGEBLOCKBINDINGPROC                   pGLShaderStorageBlockBinding;
     PFNGLTEXPARAMETERIIVPROC                             pGLTexParameterIiv;
@@ -1515,44 +1415,23 @@ typedef struct
     PFNGLCOPYTEXTURESUBIMAGE1DEXTPROC        pGLCopyTextureSubImage1DEXT;
     PFNGLCOPYTEXTURESUBIMAGE2DEXTPROC        pGLCopyTextureSubImage2DEXT;
     PFNGLCOPYTEXTURESUBIMAGE3DEXTPROC        pGLCopyTextureSubImage3DEXT;
-    PFNGLFRAMEBUFFERDRAWBUFFEREXTPROC        pGLFramebufferDrawBufferEXT;
-    PFNGLFRAMEBUFFERDRAWBUFFERSEXTPROC       pGLFramebufferDrawBuffersEXT;
     PFNGLFRAMEBUFFERREADBUFFEREXTPROC        pGLFramebufferReadBufferEXT;
     PFNGLGENERATETEXTUREMIPMAPEXTPROC        pGLGenerateTextureMipmapEXT;
     PFNGLGETCOMPRESSEDTEXTUREIMAGEEXTPROC    pGLGetCompressedTextureImageEXT;
     PFNGLGETTEXTUREIMAGEEXTPROC              pGLGetTextureImageEXT;
-    PFNGLGETTEXTURELEVELPARAMETERFVEXTPROC   pGLGetTextureLevelParameterfvEXT;
-    PFNGLGETTEXTURELEVELPARAMETERIVEXTPROC   pGLGetTextureLevelParameterivEXT;
     PFNGLGETTEXTUREPARAMETERIIVEXTPROC       pGLGetTextureParameterIiv;
     PFNGLGETTEXTUREPARAMETERIUIVEXTPROC      pGLGetTextureParameterIuiv;
-    PFNGLNAMEDFRAMEBUFFERTEXTUREEXTPROC      pGLNamedFramebufferTextureEXT;
-    PFNGLNAMEDFRAMEBUFFERTEXTURELAYEREXTPROC pGLNamedFramebufferTextureLayerEXT;
-    PFNGLNAMEDFRAMEBUFFERTEXTURE1DEXTPROC    pGLNamedFramebufferTexture1DEXT;
-    PFNGLNAMEDFRAMEBUFFERTEXTURE2DEXTPROC    pGLNamedFramebufferTexture2DEXT;
-    PFNGLNAMEDFRAMEBUFFERTEXTURE3DEXTPROC    pGLNamedFramebufferTexture3DEXT;
 
     PFNGLTEXTUREBUFFEREXTPROC               pGLTextureBufferEXT;
     PFNGLTEXTUREIMAGE1DEXTPROC              pGLTextureImage1DEXT;
     PFNGLTEXTUREIMAGE2DEXTPROC              pGLTextureImage2DEXT;
     PFNGLTEXTUREIMAGE3DEXTPROC              pGLTextureImage3DEXT;
-    PFNGLTEXTUREPARAMETERFEXTPROC           pGLTextureParameterfEXT;
-    PFNGLTEXTUREPARAMETERFVEXTPROC          pGLTextureParameterfvEXT;
-    PFNGLTEXTUREPARAMETERIEXTPROC           pGLTextureParameteriEXT;
-    PFNGLTEXTUREPARAMETERIIVEXTPROC         pGLTextureParameterIivEXT;
-    PFNGLTEXTUREPARAMETERIUIVEXTPROC        pGLTextureParameterIuivEXT;
-    PFNGLTEXTUREPARAMETERIVEXTPROC          pGLTextureParameterivEXT;
     PFNGLTEXTURESUBIMAGE1DEXTPROC           pGLTextureSubImage1DEXT;
     PFNGLTEXTURESUBIMAGE2DEXTPROC           pGLTextureSubImage2DEXT;
     PFNGLTEXTURESUBIMAGE3DEXTPROC           pGLTextureSubImage3DEXT;
 
-    PFNGLGETNAMEDBUFFERPARAMETERIVEXTPROC pGLGetNamedBufferParameterivEXT;
-    PFNGLGETNAMEDBUFFERPOINTERVEXTPROC    pGLGetNamedBufferPointervEXT;
-    PFNGLGETNAMEDBUFFERSUBDATAEXTPROC     pGLGetNamedBufferSubDataEXT;
     PFNGLMAPNAMEDBUFFEREXTPROC            pGLMapNamedBufferEXT;
     PFNGLNAMEDBUFFERDATAEXTPROC           pGLNamedBufferDataEXT;
-    PFNGLNAMEDBUFFERSUBDATAEXTPROC        pGLNamedBufferSubDataEXT;
-    PFNGLNAMEDCOPYBUFFERSUBDATAEXTPROC    pGLNamedCopyBufferSubDataEXT;
-    PFNGLUNMAPNAMEDBUFFEREXTPROC          pGLUnmapNamedBufferEXT;
 
     PFNGLVERTEXARRAYVERTEXATTRIBOFFSETEXTPROC  pGLVertexArrayVertexAttribOffsetEXT;
     PFNGLVERTEXARRAYVERTEXATTRIBIOFFSETEXTPROC pGLVertexArrayVertexAttribIOffsetEXT;
@@ -1598,11 +1477,11 @@ typedef struct
 
 typedef struct
 {
-    PFNGLBINDBUFFERSBASEPROC     pGLBindBuffersBase;
-    PFNGLBINDBUFFERSRANGEPROC    pGLBindBuffersRange;
-    PFNGLBINDIMAGETEXTURESPROC   pGLBindImageTextures;
-    PFNGLBINDSAMPLERSPROC        pGLBindSamplers;
-    PFNWRAPPEDGLBINDTEXTURESPROC pGLBindTextures;
+    PFNGLBINDBUFFERSBASEPROC   pGLBindBuffersBase;
+    PFNGLBINDBUFFERSRANGEPROC  pGLBindBuffersRange;
+    PFNGLBINDIMAGETEXTURESPROC pGLBindImageTextures;
+    PFNGLBINDSAMPLERSPROC      pGLBindSamplers;
+    PFNGLBINDTEXTURESPROC      pGLBindTextures;
 } ogl_context_gl_entrypoints_arb_multi_bind;
 
 typedef struct
@@ -1629,62 +1508,62 @@ typedef struct
      *       If you need to add a new entry-point, please ensure these come from core GL 4.2
      *       feature-set and carry no vendor-specific dependencies.
      */
-    PFNWRAPPEDGLBINDMULTITEXTUREEXTPROC                     pGLBindMultiTextureEXT;
-    PFNWRAPPEDGLCOMPRESSEDTEXTURESUBIMAGE1DEXTPROC          pGLCompressedTextureSubImage1DEXT;
-    PFNWRAPPEDGLCOMPRESSEDTEXTURESUBIMAGE2DEXTPROC          pGLCompressedTextureSubImage2DEXT;
-    PFNWRAPPEDGLCOMPRESSEDTEXTURESUBIMAGE3DEXTPROC          pGLCompressedTextureSubImage3DEXT;
-    PFNWRAPPEDGLCOPYTEXTURESUBIMAGE1DEXTPROC                pGLCopyTextureSubImage1DEXT;
-    PFNWRAPPEDGLCOPYTEXTURESUBIMAGE2DEXTPROC                pGLCopyTextureSubImage2DEXT;
-    PFNWRAPPEDGLCOPYTEXTURESUBIMAGE3DEXTPROC                pGLCopyTextureSubImage3DEXT;
-    PFNGLDISABLEVERTEXARRAYATTRIBEXTPROC                    pGLDisableVertexArrayAttribEXT;
-    PFNGLENABLEVERTEXARRAYATTRIBEXTPROC                     pGLEnableVertexArrayAttribEXT;
-    PFNGLFRAMEBUFFERDRAWBUFFEREXTPROC                       pGLFramebufferDrawBufferEXT;
-    PFNGLFRAMEBUFFERDRAWBUFFERSEXTPROC                      pGLFramebufferDrawBuffersEXT;
-    PFNGLFRAMEBUFFERREADBUFFEREXTPROC                       pGLFramebufferReadBufferEXT;
-    PFNWRAPPEDGLGENERATETEXTUREMIPMAPEXTPROC                pGLGenerateTextureMipmapEXT;
-    PFNWRAPPEDGLGETCOMPRESSEDTEXTUREIMAGEEXTPROC            pGLGetCompressedTextureImageEXT;
-    PFNGLGETFRAMEBUFFERPARAMETERIVEXTPROC                   pGLGetFramebufferParameterivEXT;
-    PFNGLGETNAMEDBUFFERPARAMETERIVEXTPROC                   pGLGetNamedBufferParameterivEXT;
-    PFNGLGETNAMEDBUFFERPOINTERVEXTPROC                      pGLGetNamedBufferPointervEXT;
-    PFNGLGETNAMEDBUFFERSUBDATAEXTPROC                       pGLGetNamedBufferSubDataEXT;
-    PFNGLGETNAMEDFRAMEBUFFERATTACHMENTPARAMETERIVEXTPROC    pGLGetNamedFramebufferAttachmentParameterivEXT;
-    PFNGLGETNAMEDPROGRAMIVEXTPROC                           pGLGetNamedProgramivEXT;
-    PFNGLGETNAMEDRENDERBUFFERPARAMETERIVEXTPROC             pGLGetNamedRenderbufferParameterivEXT;
-    PFNWRAPPEDGLGETTEXTUREIMAGEEXTPROC                      pGLGetTextureImageEXT;
-    PFNWRAPPEDGLGETTEXTUREPARAMETERFVEXTPROC                pGLGetTextureLevelParameterfvEXT;
-    PFNWRAPPEDGLGETTEXTUREPARAMETERIVEXTPROC                pGLGetTextureLevelParameterivEXT;
-    PFNGLMAPNAMEDBUFFEREXTPROC                              pGLMapNamedBufferEXT;
-    PFNGLNAMEDBUFFERDATAEXTPROC                             pGLNamedBufferDataEXT;
-    PFNGLNAMEDBUFFERSTORAGEEXTPROC                          pGLNamedBufferStorageEXT;
-    PFNGLNAMEDBUFFERSUBDATAEXTPROC                          pGLNamedBufferSubDataEXT;
-    PFNGLNAMEDCOPYBUFFERSUBDATAEXTPROC                      pGLNamedCopyBufferSubDataEXT;
-    PFNGLNAMEDFRAMEBUFFERRENDERBUFFEREXTPROC                pGLNamedFramebufferRenderbufferEXT;
-    PFNWRAPPEDGLNAMEDFRAMEBUFFERTEXTUREEXTPROC              pGLNamedFramebufferTextureEXT;
-    PFNWRAPPEDGLNAMEDFRAMEBUFFERTEXTURE1DEXTPROC            pGLNamedFramebufferTexture1DEXT;
-    PFNWRAPPEDGLNAMEDFRAMEBUFFERTEXTURE2DEXTPROC            pGLNamedFramebufferTexture2DEXT;
-    PFNWRAPPEDGLNAMEDFRAMEBUFFERTEXTURE3DEXTPROC            pGLNamedFramebufferTexture3DEXT;
-    PFNWRAPPEDGLNAMEDFRAMEBUFFERTEXTURELAYEREXTPROC         pGLNamedFramebufferTextureLayerEXT;
-    PFNGLNAMEDRENDERBUFFERSTORAGEEXTPROC                    pGLNamedRenderbufferStorageEXT;
-    PFNGLNAMEDRENDERBUFFERSTORAGEMULTISAMPLEEXTPROC         pGLNamedRenderbufferStorageMultisampleEXT;
-    PFNWRAPPEDGLTEXTUREBUFFEREXTPROC                        pGLTextureBufferEXT;
-    PFNWRAPPEDGLTEXTUREBUFFERRANGEEXTPROC                   pGLTextureBufferRangeEXT;
-    PFNWRAPPEDGLTEXTUREPARAMETERIEXTPROC                    pGLTextureParameteriEXT;
-    PFNWRAPPEDGLTEXTUREPARAMETERIVEXTPROC                   pGLTextureParameterivEXT;
-    PFNWRAPPEDGLTEXTUREPARAMETERFEXTPROC                    pGLTextureParameterfEXT;
-    PFNWRAPPEDGLTEXTUREPARAMETERFVEXTPROC                   pGLTextureParameterfvEXT;
-    PFNWRAPPEDGLTEXTUREPARAMETERIIVEXTPROC                  pGLTextureParameterIivEXT;
-    PFNWRAPPEDGLTEXTUREPARAMETERIUIVEXTPROC                 pGLTextureParameterIuivEXT;
-    PFNGLTEXTURESTORAGE1DEXTPROC                            pGLTextureStorage1DEXT;
-    PFNGLTEXTURESTORAGE2DEXTPROC                            pGLTextureStorage2DEXT;
-    PFNGLTEXTURESTORAGE2DMULTISAMPLEEXTPROC                 pGLTextureStorage2DMultisampleEXT;
-    PFNGLTEXTURESTORAGE3DEXTPROC                            pGLTextureStorage3DEXT;
-    PFNGLTEXTURESTORAGE3DMULTISAMPLEEXTPROC                 pGLTextureStorage3DMultisampleEXT;
-    PFNWRAPPEDGLTEXTURESUBIMAGE1DEXTPROC                    pGLTextureSubImage1DEXT;
-    PFNWRAPPEDGLTEXTURESUBIMAGE2DEXTPROC                    pGLTextureSubImage2DEXT;
-    PFNWRAPPEDGLTEXTURESUBIMAGE3DEXTPROC                    pGLTextureSubImage3DEXT;
-    PFNGLUNMAPNAMEDBUFFEREXTPROC                            pGLUnmapNamedBufferEXT;
-    PFNGLVERTEXARRAYVERTEXATTRIBOFFSETEXTPROC               pGLVertexArrayVertexAttribOffsetEXT;
-    PFNGLVERTEXARRAYVERTEXATTRIBIOFFSETEXTPROC              pGLVertexArrayVertexAttribIOffsetEXT;
+    PFNGLBINDMULTITEXTUREEXTPROC                         pGLBindMultiTextureEXT;
+    PFNGLCOMPRESSEDTEXTURESUBIMAGE1DEXTPROC              pGLCompressedTextureSubImage1DEXT;
+    PFNGLCOMPRESSEDTEXTURESUBIMAGE2DEXTPROC              pGLCompressedTextureSubImage2DEXT;
+    PFNGLCOMPRESSEDTEXTURESUBIMAGE3DEXTPROC              pGLCompressedTextureSubImage3DEXT;
+    PFNGLCOPYTEXTURESUBIMAGE1DEXTPROC                    pGLCopyTextureSubImage1DEXT;
+    PFNGLCOPYTEXTURESUBIMAGE2DEXTPROC                    pGLCopyTextureSubImage2DEXT;
+    PFNGLCOPYTEXTURESUBIMAGE3DEXTPROC                    pGLCopyTextureSubImage3DEXT;
+    PFNGLDISABLEVERTEXARRAYATTRIBEXTPROC                 pGLDisableVertexArrayAttribEXT;
+    PFNGLENABLEVERTEXARRAYATTRIBEXTPROC                  pGLEnableVertexArrayAttribEXT;
+    PFNGLFRAMEBUFFERDRAWBUFFEREXTPROC                    pGLFramebufferDrawBufferEXT;
+    PFNGLFRAMEBUFFERDRAWBUFFERSEXTPROC                   pGLFramebufferDrawBuffersEXT;
+    PFNGLFRAMEBUFFERREADBUFFEREXTPROC                    pGLFramebufferReadBufferEXT;
+    PFNGLGENERATETEXTUREMIPMAPEXTPROC                    pGLGenerateTextureMipmapEXT;
+    PFNGLGETCOMPRESSEDTEXTUREIMAGEEXTPROC                pGLGetCompressedTextureImageEXT;
+    PFNGLGETFRAMEBUFFERPARAMETERIVEXTPROC                pGLGetFramebufferParameterivEXT;
+    PFNGLGETNAMEDBUFFERPARAMETERIVEXTPROC                pGLGetNamedBufferParameterivEXT;
+    PFNGLGETNAMEDBUFFERPOINTERVEXTPROC                   pGLGetNamedBufferPointervEXT;
+    PFNGLGETNAMEDBUFFERSUBDATAEXTPROC                    pGLGetNamedBufferSubDataEXT;
+    PFNGLGETNAMEDFRAMEBUFFERATTACHMENTPARAMETERIVEXTPROC pGLGetNamedFramebufferAttachmentParameterivEXT;
+    PFNGLGETNAMEDPROGRAMIVEXTPROC                        pGLGetNamedProgramivEXT;
+    PFNGLGETNAMEDRENDERBUFFERPARAMETERIVEXTPROC          pGLGetNamedRenderbufferParameterivEXT;
+    PFNGLGETTEXTUREIMAGEEXTPROC                          pGLGetTextureImageEXT;
+    PFNGLGETTEXTURELEVELPARAMETERFVEXTPROC               pGLGetTextureLevelParameterfvEXT;
+    PFNGLGETTEXTURELEVELPARAMETERIVEXTPROC               pGLGetTextureLevelParameterivEXT;
+    PFNGLGETTEXTUREPARAMETERIVEXTPROC                    pGLGetTextureParameterivEXT;
+    PFNGLNAMEDBUFFERDATAEXTPROC                          pGLNamedBufferDataEXT;
+    PFNGLNAMEDBUFFERSUBDATAEXTPROC                       pGLNamedBufferSubDataEXT;
+    PFNGLNAMEDBUFFERSTORAGEEXTPROC                       pGLNamedBufferStorageEXT;
+    PFNGLNAMEDCOPYBUFFERSUBDATAEXTPROC                   pGLNamedCopyBufferSubDataEXT;
+    PFNGLNAMEDFRAMEBUFFERRENDERBUFFEREXTPROC             pGLNamedFramebufferRenderbufferEXT;
+    PFNGLNAMEDFRAMEBUFFERTEXTURE1DEXTPROC                pGLNamedFramebufferTexture1DEXT;
+    PFNGLNAMEDFRAMEBUFFERTEXTURE2DEXTPROC                pGLNamedFramebufferTexture2DEXT;
+    PFNGLNAMEDFRAMEBUFFERTEXTURE3DEXTPROC                pGLNamedFramebufferTexture3DEXT;
+    PFNGLNAMEDFRAMEBUFFERTEXTUREEXTPROC                  pGLNamedFramebufferTextureEXT;
+    PFNGLNAMEDFRAMEBUFFERTEXTURELAYEREXTPROC             pGLNamedFramebufferTextureLayerEXT;
+    PFNGLNAMEDRENDERBUFFERSTORAGEEXTPROC                 pGLNamedRenderbufferStorageEXT;
+    PFNGLNAMEDRENDERBUFFERSTORAGEMULTISAMPLEEXTPROC      pGLNamedRenderbufferStorageMultisampleEXT;
+    PFNGLTEXTUREBUFFEREXTPROC                            pGLTextureBufferEXT;
+    PFNGLTEXTUREBUFFERRANGEEXTPROC                       pGLTextureBufferRangeEXT;
+    PFNGLTEXTUREPARAMETERFEXTPROC                        pGLTextureParameterfEXT;
+    PFNGLTEXTUREPARAMETERFVEXTPROC                       pGLTextureParameterfvEXT;
+    PFNGLTEXTUREPARAMETERIEXTPROC                        pGLTextureParameteriEXT;
+    PFNGLTEXTUREPARAMETERIVEXTPROC                       pGLTextureParameterivEXT;
+    PFNGLTEXTUREPARAMETERIIVEXTPROC                      pGLTextureParameterIivEXT;
+    PFNGLTEXTUREPARAMETERIUIVEXTPROC                     pGLTextureParameterIuivEXT;
+    PFNGLTEXTURESTORAGE1DEXTPROC                         pGLTextureStorage1DEXT;
+    PFNGLTEXTURESTORAGE2DEXTPROC                         pGLTextureStorage2DEXT;
+    PFNGLTEXTURESTORAGE2DMULTISAMPLEEXTPROC              pGLTextureStorage2DMultisampleEXT;
+    PFNGLTEXTURESTORAGE3DEXTPROC                         pGLTextureStorage3DEXT;
+    PFNGLTEXTURESTORAGE3DMULTISAMPLEEXTPROC              pGLTextureStorage3DMultisampleEXT;
+    PFNGLTEXTURESUBIMAGE1DEXTPROC                        pGLTextureSubImage1DEXT;
+    PFNGLTEXTURESUBIMAGE2DEXTPROC                        pGLTextureSubImage2DEXT;
+    PFNGLTEXTURESUBIMAGE3DEXTPROC                        pGLTextureSubImage3DEXT;
+    PFNGLUNMAPNAMEDBUFFEREXTPROC                         pGLUnmapNamedBufferEXT;
+    PFNGLVERTEXARRAYVERTEXATTRIBOFFSETEXTPROC            pGLVertexArrayVertexAttribOffsetEXT;
+    PFNGLVERTEXARRAYVERTEXATTRIBIOFFSETEXTPROC           pGLVertexArrayVertexAttribIOffsetEXT;
 } ogl_context_gl_entrypoints_ext_direct_state_access;
 
 

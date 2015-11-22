@@ -7,7 +7,6 @@
 #include "curve/curve_container.h"
 #include "mesh/mesh_material.h"
 #include "ogl/ogl_context.h"
-#include "ogl/ogl_context_textures.h"
 #include "ogl/ogl_materials.h"
 #include "ogl/ogl_scene_renderer.h"
 #include "ogl/ogl_scene_renderer_bbox_preview.h"
@@ -16,6 +15,8 @@
 #include "ogl/ogl_scene_renderer_normals_preview.h"
 #include "ogl/ogl_shadow_mapping.h"
 #include "ogl/ogl_uber.h"
+#include "ral/ral_context.h"
+#include "ral/ral_texture.h"
 #include "scene/scene.h"
 #include "scene/scene_camera.h"
 #include "scene/scene_graph.h"
@@ -132,7 +133,7 @@ typedef struct _ogl_scene_renderer
     ogl_scene_renderer_lights_preview  lights_preview;
     ogl_scene_renderer_normals_preview normals_preview;
 
-    ogl_context    context;
+    ral_context    context;
     ogl_materials  material_manager;
     scene          owned_scene;
     system_variant temp_variant_float;
@@ -178,7 +179,7 @@ typedef struct _ogl_scene_renderer
      **/
     system_hash64map regular_mesh_ubers_map; /* key: ogl_uber; value: _ogl_scene_renderer_uber */
 
-     _ogl_scene_renderer(ogl_context in_context,
+     _ogl_scene_renderer(ral_context in_context,
                          scene       in_scene);
     ~_ogl_scene_renderer();
 } _ogl_scene_renderer;
@@ -223,7 +224,7 @@ PRIVATE void _ogl_scene_renderer_update_ogl_uber_light_properties         (ogl_u
 
 
 /** TODO */
-_ogl_scene_renderer::_ogl_scene_renderer(ogl_context in_context,
+_ogl_scene_renderer::_ogl_scene_renderer(ral_context in_context,
                                          scene       in_scene)
 {
     bbox_preview                    = NULL;

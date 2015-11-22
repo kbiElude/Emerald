@@ -13,6 +13,7 @@
 #include "ogl/ogl_ui_button.h"
 #include "ogl/ogl_ui_shared.h"
 #include "raGL/raGL_buffer.h"
+#include "ral/ral_context.h"
 #include "system/system_assertions.h"
 #include "system/system_hashed_ansi_string.h"
 #include "system/system_log.h"
@@ -51,7 +52,7 @@ typedef struct
     system_time start_hovering_time;
     bool        visible;
 
-    ogl_context    context;
+    ral_context    context;
     ogl_program    program;
     GLint          program_border_width_ub_offset;
     GLint          program_brightness_ub_offset;
@@ -103,15 +104,19 @@ PRIVATE void _ogl_ui_button_init_program(ogl_ui          ui,
                                          _ogl_ui_button* button_ptr)
 {
     /* Create all objects */
-    ogl_context context         = ogl_ui_get_context(ui);
-    ogl_shader  fragment_shader = ogl_shader_create (context,
-                                                     RAL_SHADER_TYPE_FRAGMENT,
-                                                     system_hashed_ansi_string_create("UI button fragment shader") );
-    ogl_shader  vertex_shader   = ogl_shader_create (context,
-                                                     RAL_SHADER_TYPE_VERTEX,
-                                                     system_hashed_ansi_string_create("UI button vertex shader") );
+    ral_context context         = ogl_ui_get_context(ui);
+    ogl_context context_gl      = ral_context_get_gl_context(context);
+    ogl_shader  fragment_shader = NULL;
+    ogl_shader  vertex_shader   = NULL;
 
-    button_ptr->program = ogl_program_create(context,
+    fragment_shader = ogl_shader_create (context_gl,
+                                         RAL_SHADER_TYPE_FRAGMENT,
+                                         system_hashed_ansi_string_create("UI button fragment shader") );
+    vertex_shader   = ogl_shader_create (context_gl,
+                                         RAL_SHADER_TYPE_VERTEX,
+                                         system_hashed_ansi_string_create("UI button vertex shader") );
+
+    button_ptr->program = ogl_program_create(context_gl,
                                              system_hashed_ansi_string_create("UI button program"),
                                              OGL_PROGRAM_SYNCABLE_UBS_MODE_ENABLE_GLOBAL);
 
@@ -153,8 +158,8 @@ PRIVATE void _ogl_ui_button_init_renderer_callback(ogl_context context, void* bu
                                    1.0f,  10.0f  / 255.0f * 0.5f, 8.0f   / 255.0f * 0.5f, 9.0f   / 255.0f * 0.5f};
     system_window   window      = NULL;
 
-    ogl_context_get_property  (button_ptr->context,
-                               OGL_CONTEXT_PROPERTY_WINDOW,
+    ral_context_get_property  (button_ptr->context,
+                               RAL_CONTEXT_PROPERTY_WINDOW,
                               &window);
 
     /* Retrieve uniform UB offsets */
@@ -263,8 +268,8 @@ PRIVATE void _ogl_ui_button_update_text_location(_ogl_ui_button* button_ptr)
                                       button_ptr->text_index,
                                      &text_width);
 
-    ogl_context_get_property  (button_ptr->context,
-                               OGL_CONTEXT_PROPERTY_WINDOW,
+    ral_context_get_property  (button_ptr->context,
+                               RAL_CONTEXT_PROPERTY_WINDOW,
                               &window);
     system_window_get_property(window,
                                SYSTEM_WINDOW_PROPERTY_DIMENSIONS,
@@ -285,7 +290,7 @@ PUBLIC void ogl_ui_button_deinit(void* internal_instance)
 {
     _ogl_ui_button* ui_button_ptr = (_ogl_ui_button*) internal_instance;
 
-    ogl_context_release(ui_button_ptr->context);
+    ral_context_release(ui_button_ptr->context);
     ogl_program_release(ui_button_ptr->program);
     ogl_text_set       (ui_button_ptr->text_renderer,
                         ui_button_ptr->text_index,
@@ -388,8 +393,8 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_ui_button_draw(void* internal_instance)
         system_window window          = NULL;
         int           window_size[2];
 
-        ogl_context_get_property    (button_ptr->context,
-                                     OGL_CONTEXT_PROPERTY_WINDOW,
+        ral_context_get_property    (button_ptr->context,
+                                     RAL_CONTEXT_PROPERTY_WINDOW,
                                     &window);
         system_window_get_property  (window,
                                      SYSTEM_WINDOW_PROPERTY_DIMENSIONS,
@@ -519,20 +524,20 @@ PUBLIC void* ogl_ui_button_init(ogl_ui                    instance,
         new_button->text_index         = ogl_text_add_string(text_renderer);
         new_button->visible            = true;
 
-        ogl_context_retain(new_button->context);
+        ral_context_retain(new_button->context);
 
         /* Cache GL func pointers */
-        ogl_context_type context_type = OGL_CONTEXT_TYPE_UNDEFINED;
+        ral_backend_type backend_type = RAL_BACKEND_TYPE_UNKNOWN;
 
-        ogl_context_get_property(new_button->context,
-                                 OGL_CONTEXT_PROPERTY_TYPE,
-                                &context_type);
+        ral_context_get_property(new_button->context,
+                                 RAL_CONTEXT_PROPERTY_BACKEND_TYPE,
+                                &backend_type);
 
-        if (context_type == OGL_CONTEXT_TYPE_ES)
+        if (backend_type == RAL_BACKEND_TYPE_ES)
         {
             const ogl_context_es_entrypoints* entry_points = NULL;
 
-            ogl_context_get_property(new_button->context,
+            ogl_context_get_property(ral_context_get_gl_context(new_button->context),
                                      OGL_CONTEXT_PROPERTY_ENTRYPOINTS_ES,
                                     &entry_points);
 
@@ -543,12 +548,12 @@ PUBLIC void* ogl_ui_button_init(ogl_ui                    instance,
         }
         else
         {
-            ASSERT_DEBUG_SYNC(context_type == OGL_CONTEXT_TYPE_GL,
-                              "Unrecognized context type");
+            ASSERT_DEBUG_SYNC(backend_type == RAL_BACKEND_TYPE_GL,
+                              "Unrecognized backend type");
 
             const ogl_context_gl_entrypoints* entry_points = NULL;
 
-            ogl_context_get_property(new_button->context,
+            ogl_context_get_property(ral_context_get_gl_context(new_button->context),
                                      OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
                                     &entry_points);
 
@@ -584,7 +589,7 @@ PUBLIC void* ogl_ui_button_init(ogl_ui                    instance,
         } /* if (new_button->program == NULL) */
 
         /* Set up predefined values */
-        ogl_context_request_callback_from_context_thread(new_button->context,
+        ogl_context_request_callback_from_context_thread(ral_context_get_gl_context(new_button->context),
                                                          _ogl_ui_button_init_renderer_callback,
                                                          new_button);
     } /* if (new_button != NULL) */

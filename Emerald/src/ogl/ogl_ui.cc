@@ -20,6 +20,7 @@
 #include "ogl/ogl_ui_label.h"
 #include "ogl/ogl_ui_scrollbar.h"
 #include "ogl/ogl_ui_texture_preview.h"
+#include "ral/ral_context.h"
 #include "system/system_assertions.h"
 #include "system/system_critical_section.h"
 #include "system/system_hash64map.h"
@@ -259,7 +260,7 @@ PRIVATE void _ogl_ui_deinit(_ogl_ui* ui_ptr)
                                        ui_ptr);
 
     /* Release GL stuff. */
-    ogl_context_request_callback_from_context_thread(ogl_text_get_context(ui_ptr->text_renderer),
+    ogl_context_request_callback_from_context_thread(ral_context_get_gl_context(ogl_text_get_context(ui_ptr->text_renderer)),
                                                      _ogl_ui_deinit_gl_renderer_callback,
                                                      ui_ptr);
 
@@ -423,7 +424,7 @@ PRIVATE void _ogl_ui_init(_ogl_ui*                  ui_ptr,
                           system_hashed_ansi_string name,
                           ogl_text                  text_renderer)
 {
-    ogl_context context = ogl_text_get_context(text_renderer);
+    ral_context context = ogl_text_get_context(text_renderer);
 
     ui_ptr->controls                        = system_resizable_vector_create(N_START_CONTROLS);
     ui_ptr->controls_rw_mutex               = system_read_write_mutex_create();
@@ -438,22 +439,22 @@ PRIVATE void _ogl_ui_init(_ogl_ui*                  ui_ptr,
 
     ogl_text_retain(text_renderer);
 
-    ogl_context_get_property(context,
-                             OGL_CONTEXT_PROPERTY_WINDOW,
+    ral_context_get_property(context,
+                             RAL_CONTEXT_PROPERTY_WINDOW,
                             &ui_ptr->window);
 
     /* Cache GL func ptrs that will be used by the draw routine */
-    ogl_context_type context_type = OGL_CONTEXT_TYPE_UNDEFINED;
+    ral_backend_type backend_type = RAL_BACKEND_TYPE_UNKNOWN;
 
-    ogl_context_get_property(context,
-                             OGL_CONTEXT_PROPERTY_TYPE,
-                            &context_type);
+    ral_context_get_property(context,
+                             RAL_CONTEXT_PROPERTY_BACKEND_TYPE,
+                            &backend_type);
 
-    if (context_type == OGL_CONTEXT_TYPE_ES)
+    if (backend_type == RAL_BACKEND_TYPE_ES)
     {
         ogl_context_es_entrypoints* entry_points = NULL;
 
-        ogl_context_get_property(context,
+        ogl_context_get_property(ral_context_get_gl_context(context),
                                  OGL_CONTEXT_PROPERTY_ENTRYPOINTS_ES,
                                 &entry_points);
 
@@ -462,12 +463,12 @@ PRIVATE void _ogl_ui_init(_ogl_ui*                  ui_ptr,
     }
     else
     {
-        ASSERT_DEBUG_SYNC(context_type == OGL_CONTEXT_TYPE_GL,
+        ASSERT_DEBUG_SYNC(backend_type == RAL_BACKEND_TYPE_GL,
                           "Unrecognized context type");
 
         ogl_context_gl_entrypoints* entry_points = NULL;
 
-        ogl_context_get_property(context,
+        ogl_context_get_property(ral_context_get_gl_context(context),
                                  OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
                                 &entry_points);
 
@@ -498,7 +499,7 @@ PRIVATE void _ogl_ui_init(_ogl_ui*                  ui_ptr,
                                     ui_ptr);
 
     /* Create GL-specific objects */
-    ogl_context_request_callback_from_context_thread(context,
+    ogl_context_request_callback_from_context_thread(ral_context_get_gl_context(context),
                                                      _ogl_ui_init_gl_renderer_callback,
                                                      ui_ptr);
 }
@@ -1198,7 +1199,7 @@ PUBLIC EMERALD_API ogl_ui_control ogl_ui_add_texture_preview(ogl_ui             
                                                              system_hashed_ansi_string   name,
                                                              const float*                x1y1,
                                                              const float*                max_size,
-                                                             ogl_texture                 texture,
+                                                             ral_texture                 texture,
                                                              ogl_ui_texture_preview_type preview_type)
 {
     _ogl_ui_control* new_ui_control_ptr = new (std::nothrow) _ogl_ui_control;
@@ -1355,7 +1356,7 @@ PUBLIC EMERALD_API void ogl_ui_get_control_property( ogl_ui_control           co
 }
 
 /** Please see header for specification */
-PUBLIC ogl_context ogl_ui_get_context(ogl_ui ui)
+PUBLIC ral_context ogl_ui_get_context(ogl_ui ui)
 {
     return ogl_text_get_context( ((_ogl_ui*) ui)->text_renderer);
 }

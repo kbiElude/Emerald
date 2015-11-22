@@ -28,9 +28,9 @@ PUBLIC EMERALD_API postprocessing_blur_poisson postprocessing_blur_poisson_creat
 
 /** TODO */
 PUBLIC EMERALD_API void postprocessing_blur_poisson_execute(postprocessing_blur_poisson blur_poisson,
-                                                            ogl_texture                 input_texture,
+                                                            raGL_texture                input_texture,
                                                             float                       blur_strength,
-                                                            ogl_texture                 result_texture);
+                                                            raGL_texture                result_texture);
 
 /** TODO */
 PUBLIC EMERALD_API const char* postprocessing_blur_poisson_get_tap_data_shader_code();

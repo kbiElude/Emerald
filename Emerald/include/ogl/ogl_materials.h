@@ -47,7 +47,7 @@ typedef enum
  *
  *  This function is not exported.
  **/
-PUBLIC ogl_materials ogl_materials_create(ogl_context context);
+PUBLIC ogl_materials ogl_materials_create(ral_context context);
 
 /** TODO */
 PUBLIC EMERALD_API void ogl_materials_force_mesh_material_shading_property_attachment(ogl_materials                     materials,

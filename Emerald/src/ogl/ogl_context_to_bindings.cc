@@ -6,7 +6,6 @@
 #include "shared.h"
 #include "ogl/ogl_context.h"
 #include "ogl/ogl_context_to_bindings.h"
-#include "ogl/ogl_texture.h"
 #include "system/system_hash64map.h"
 #include <string.h>
 
@@ -32,13 +31,13 @@ typedef enum
 /** TODO */
 typedef struct _ogl_context_to_bindings_to_info
 {
-    ogl_texture texture_context;
-    ogl_texture texture_local;
+    GLuint texture_context;
+    GLuint texture_local;
 
     _ogl_context_to_bindings_to_info()
     {
-        texture_context = NULL;
-        texture_local   = NULL;
+        texture_context = 0;
+        texture_local   = 0;
     }
 } _ogl_context_to_bindings_to_info;
 
@@ -180,11 +179,8 @@ PRIVATE void _ogl_context_to_bindings_sync_multi_bind_process(ogl_context_to_bin
 
                     n_texture_unit_count = n_texture_unit - n_texture_unit_first;
 
-                    ogl_texture_get_property(binding_ptr->texture_local,
-                                             OGL_TEXTURE_PROPERTY_ID,
-                                             bindings_ptr->sync_data_textures + n_texture_unit_count);
-
-                    binding_ptr->texture_context = binding_ptr->texture_local;
+                    bindings_ptr->sync_data_textures[n_texture_unit_count] = binding_ptr->texture_local;
+                    binding_ptr->texture_context                           = binding_ptr->texture_local;
                 }/* if (binding does not match on client & server side */
 
                 /* Mark the binding targets of this texture unit as no longer dirty */
@@ -236,16 +232,10 @@ PRIVATE void _ogl_context_to_bindings_sync_non_multi_bind_process(ogl_context_to
 
                 if (binding_ptr->texture_context != binding_ptr->texture_local)
                 {
-                    GLuint texture_id = 0;
-
-                    ogl_texture_get_property(binding_ptr->texture_local,
-                                             OGL_TEXTURE_PROPERTY_ID,
-                                            &texture_id);
-
                     /** TODO: This will crash without DSA support */
                     bindings_ptr->entrypoints_private_ptr->pGLBindMultiTextureEXT(GL_TEXTURE0 + n_texture_unit,
                                                                                   binding_target_gl,
-                                                                                  texture_id);
+                                                                                  binding_ptr->texture_local);
 
                     /* Update internal representation */
                     binding_ptr->texture_context = binding_ptr->texture_local;
@@ -275,11 +265,11 @@ PUBLIC ogl_context_to_bindings ogl_context_to_bindings_create(ogl_context contex
 }
 
 /** Please see header for spec */
-PUBLIC ogl_texture ogl_context_to_bindings_get_bound_texture(const ogl_context_to_bindings to_bindings,
-                                                             GLuint                        texture_unit,
-                                                             GLenum                        target)
+PUBLIC GLuint ogl_context_to_bindings_get_bound_texture(const ogl_context_to_bindings to_bindings,
+                                                        GLuint                        texture_unit,
+                                                        GLenum                        target)
 {
-    ogl_texture                     result          = NULL;
+    GLuint                          result          = 0;
     const _ogl_context_to_bindings* to_bindings_ptr = (const _ogl_context_to_bindings*) to_bindings;
 
     ASSERT_DEBUG_SYNC(texture_unit < to_bindings_ptr->gl_max_texture_image_units_value,
@@ -448,7 +438,7 @@ PUBLIC void ogl_context_to_bindings_reset_all_bindings_for_texture_unit(ogl_cont
 PUBLIC void ogl_context_to_bindings_set_binding(ogl_context_to_bindings bindings,
                                                 GLuint                  texture_unit,
                                                 GLenum                  target,
-                                                ogl_texture             texture)
+                                                GLuint                  texture)
 {
     _ogl_context_to_bindings* bindings_ptr = (_ogl_context_to_bindings*) bindings;
 
@@ -469,6 +459,9 @@ PUBLIC void ogl_context_to_bindings_set_binding(ogl_context_to_bindings bindings
              *       not been configured. Verify the object has been bound to a texture target - if not,
              *       bind it *now*
              */
+#if 0
+            TODO: is this still important????
+
             if (texture != NULL)
             {
                 bool texture_bound = false;
@@ -497,6 +490,7 @@ PUBLIC void ogl_context_to_bindings_set_binding(ogl_context_to_bindings bindings
                                             &texture_bound);
                 }
             } /* if (texture != NULL) */
+#endif
         }
     } /* if (texture_unit < bindings_ptr->gl_max_texture_image_units_value) */
 }

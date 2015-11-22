@@ -52,8 +52,8 @@ typedef struct
     system_matrix4x4                            shadow_map_projection;
     float                                       shadow_map_spotlight_near_plane;
     unsigned int                                shadow_map_size[2];
-    ogl_texture                                 shadow_map_texture_color;
-    ogl_texture                                 shadow_map_texture_depth;
+    ral_texture                                 shadow_map_texture_color;
+    ral_texture                                 shadow_map_texture_depth;
     system_matrix4x4                            shadow_map_view;
     system_matrix4x4                            shadow_map_vp;
     float                                       shadow_map_vsm_blur_n_passes;
@@ -889,16 +889,16 @@ PUBLIC EMERALD_API void scene_light_get_property(scene_light          light,
             break;
         }
 
-        case SCENE_LIGHT_PROPERTY_SHADOW_MAP_TEXTURE_COLOR:
+        case SCENE_LIGHT_PROPERTY_SHADOW_MAP_TEXTURE_COLOR_RAL:
         {
-            *(ogl_texture*) out_result = light_ptr->shadow_map_texture_color;
+            *(ral_texture*) out_result = light_ptr->shadow_map_texture_color;
 
             break;
         }
 
-        case SCENE_LIGHT_PROPERTY_SHADOW_MAP_TEXTURE_DEPTH:
+        case SCENE_LIGHT_PROPERTY_SHADOW_MAP_TEXTURE_DEPTH_RAL:
         {
-            *(ogl_texture*) out_result = light_ptr->shadow_map_texture_depth;
+            *(ral_texture*) out_result = light_ptr->shadow_map_texture_depth;
 
             break;
         }
@@ -1777,22 +1777,22 @@ PUBLIC EMERALD_API void scene_light_set_property(scene_light          light,
             break;
         }
 
-        case SCENE_LIGHT_PROPERTY_SHADOW_MAP_TEXTURE_COLOR:
+        case SCENE_LIGHT_PROPERTY_SHADOW_MAP_TEXTURE_COLOR_RAL:
         {
-            /* NOTE: ogl_texture is considered a state by scene_light. It's not used
+            /* NOTE: ral_texture is considered a state by scene_light. It's not used
              *       by scene_light in any way, so its reference counter is left intact.
              */
-            light_ptr->shadow_map_texture_color = *(ogl_texture*) data;
+            light_ptr->shadow_map_texture_color = *(ral_texture*) data;
 
             break;
         }
 
-        case SCENE_LIGHT_PROPERTY_SHADOW_MAP_TEXTURE_DEPTH:
+        case SCENE_LIGHT_PROPERTY_SHADOW_MAP_TEXTURE_DEPTH_RAL:
         {
-            /* NOTE: ogl_texture is considered a state by scene_light. It's not used
+            /* NOTE: ral_texture is considered a state by scene_light. It's not used
              *       by scene_light in any way, so its reference counter is left intact.
              */
-            light_ptr->shadow_map_texture_depth = *(ogl_texture*) data;
+            light_ptr->shadow_map_texture_depth = *(ral_texture*) data;
 
             break;
         }

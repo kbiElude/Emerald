@@ -29,6 +29,9 @@ typedef enum
      */
     SYSTEM_WINDOW_PROPERTY_AUDIO_STREAM,
 
+    /* not settable, ral_backend_type */
+    SYSTEM_WINDOW_PROPERTY_BACKEND_TYPE,
+
     /* not settable, int[2].
      *
      * Returned coordinates are in screen space. */
@@ -144,7 +147,7 @@ PUBLIC EMERALD_API bool system_window_close(system_window window);
 /** TODO
  *
  *  @param name                 TODO.
- *  @param contxt_type          TODO.
+ *  @param backend_type         TODO.
  *  @param vsync_enabled        TODO.
  *  @param parent_window_handle TODO.
  *  @param pixel_format         TODO. system_window takes over the ownership of the object.
@@ -152,14 +155,14 @@ PUBLIC EMERALD_API bool system_window_close(system_window window);
  *  @return TODO
  */
 PUBLIC EMERALD_API system_window system_window_create_by_replacing_window(system_hashed_ansi_string name,
-                                                                          ogl_context_type          context_type,
+                                                                          ral_backend_type          backend_type,
                                                                           bool                      vsync_enabled,
                                                                           system_window_handle      parent_window_handle,
                                                                           system_pixel_format       pixel_format);
 
 /** TODO
  *
- *  @param context_type  TODO
+ *  @param backend_type  TODO
  *  @param x1y1x2y2      TODO
  *  @param title         TODO
  *  @param scalable      TODO
@@ -169,7 +172,7 @@ PUBLIC EMERALD_API system_window system_window_create_by_replacing_window(system
  *
  *  @return TODO
  */
-PUBLIC EMERALD_API system_window system_window_create_not_fullscreen(ogl_context_type          context_type,
+PUBLIC EMERALD_API system_window system_window_create_not_fullscreen(ral_backend_type          backend_type,
                                                                      const int*                x1y1x2y2,
                                                                      system_hashed_ansi_string title,
                                                                      bool                      scalable,
@@ -180,14 +183,14 @@ PUBLIC EMERALD_API system_window system_window_create_not_fullscreen(ogl_context
 
 /** TODO
  *
- *  @param context_type  TODO
+ *  @param backend_type  TODO
  *  @param mode          TODO
  *  @param vsync_enabled TODO
  *  @param pixel_format  TODO. system_window takes over the ownership of the object.
  *
  *  @return TODO
  */
-PUBLIC EMERALD_API system_window system_window_create_fullscreen(ogl_context_type    context_type,
+PUBLIC EMERALD_API system_window system_window_create_fullscreen(ral_backend_type    backend_type,
                                                                  system_screen_mode  mode,
                                                                  bool                vsync_enabled,
                                                                  system_pixel_format pixel_format);
@@ -231,7 +234,7 @@ PUBLIC EMERALD_API void system_window_get_property(system_window          window
  *
  *  @return TODO
  */
-PUBLIC system_window system_window_get_root_window(ogl_context_type context_type = OGL_CONTEXT_TYPE_GL);
+PUBLIC system_window system_window_get_root_window(ral_backend_type backend_type = RAL_BACKEND_TYPE_GL);
 
 /** TODO */
 PUBLIC EMERALD_API bool system_window_set_cursor_visibility(system_window window,

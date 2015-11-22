@@ -108,7 +108,7 @@ PUBLIC void ogl_shadow_mapping_adjust_vertex_uber_code(ogl_shader_constructor   
  *
  *  NOTE: MUST be called from within an active GL context.
  */
-PUBLIC RENDERING_CONTEXT_CALL ogl_shadow_mapping ogl_shadow_mapping_create(ogl_context context);
+PUBLIC RENDERING_CONTEXT_CALL ogl_shadow_mapping ogl_shadow_mapping_create(ral_context context);
 
 /** TODO */
 PUBLIC void ogl_shadow_mapping_get_matrices_for_light(ogl_shadow_mapping             shadow_mapping,

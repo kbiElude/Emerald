@@ -8,8 +8,10 @@
 #include "mesh/mesh.h"
 #include "mesh/mesh_material.h"
 #include "ogl/ogl_context.h"
-#include "ogl/ogl_texture.h"
 #include "raGL/raGL_buffers.h"
+#include "ral/ral_context.h"
+#include "ral/ral_sampler.h"
+#include "ral/ral_texture.h"
 #include "sh/sh_types.h"
 #include "system/system_bst.h"
 #include "system/system_callback_manager.h"
@@ -55,15 +57,13 @@ typedef struct
      */
     raGL_buffer  gl_bo;
 
-    /* refers to TBO created for a BO containing gl_processed data. Uses GL_RGBA32F type for 4 SH bands, GL_RGB32F for 3 SH bands*/
-    ogl_texture      gl_tbo;
-
     float*           gl_processed_data;
     uint32_t         gl_processed_data_size; /* tells size of gl_processed_data */
     uint32_t         gl_processed_data_stream_start_offset[MESH_LAYER_DATA_STREAM_TYPE_COUNT];
     uint32_t         gl_processed_data_stride;
     uint32_t         gl_processed_data_total_elements;
     ogl_context      gl_context;
+    ral_context      ral_context;
     _mesh_index_type gl_index_type;
     bool             gl_storage_initialized;
     bool             gl_thread_fill_gl_buffers_call_needed;
@@ -611,37 +611,6 @@ PRIVATE void _mesh_fill_gl_buffers_renderer_callback(ogl_context context,
                                                mesh_ptr->gl_processed_data_size,
                                                mesh_ptr->gl_processed_data);
 
-    /* Create TBO for the BO */
-    if (mesh_ptr->n_sh_bands != 0)
-    {
-        ASSERT_DEBUG_SYNC(mesh_ptr->n_sh_bands == 3 ||
-                          mesh_ptr->n_sh_bands == 4,
-                          "Only 3 or 4 SH bands are supported");
-
-        if (mesh_ptr->gl_tbo != NULL)
-        {
-            ogl_texture_release(mesh_ptr->gl_tbo);
-
-            mesh_ptr->gl_tbo = NULL;
-        }
-
-        ASSERT_DEBUG_SYNC(false,
-                          "RAL does not support buffer textures yet. ");
-
-#if 0
-        mesh_ptr->gl_tbo = ogl_texture_create_empty(context,
-                                                    system_hashed_ansi_string_create_by_merging_two_strings("Mesh ",
-                                                                                                            system_hashed_ansi_string_get_buffer(mesh_ptr->name) ));
-
-        dsa_entry_points->pGLTextureBufferRangeEXT(mesh_ptr->gl_tbo,
-                                                   GL_TEXTURE_BUFFER,
-                                                   (mesh_ptr->n_sh_bands == 4 ? GL_RGBA32F : GL_RGB32F),
-                                                   bo_id,
-                                                   bo_start_offset,
-                                                   mesh_ptr->gl_processed_data_size);
-#endif
-    } /* if (mesh_ptr->n_sh_bands != 0) */
-
     /* Safe to release GL processed data buffer now! */
     if (!(mesh_ptr->creation_flags & MESH_CREATION_FLAGS_SAVE_SUPPORT) )
     {
@@ -1020,7 +989,6 @@ PRIVATE void _mesh_init_mesh(_mesh*                    new_mesh_ptr,
     new_mesh_ptr->gl_processed_data                      = NULL;
     new_mesh_ptr->gl_processed_data_size                 = 0;
     new_mesh_ptr->gl_storage_initialized                 = false;
-    new_mesh_ptr->gl_tbo                                 = 0;
     new_mesh_ptr->gl_thread_fill_gl_buffers_call_needed  = false;
     new_mesh_ptr->instantiation_parent                   = NULL;
     new_mesh_ptr->layers                                 = NULL;
@@ -1334,7 +1302,7 @@ PRIVATE void _mesh_material_setting_changed(const void* callback_data,
 
         /* Update GL blob */
         mesh_fill_gl_buffers( (mesh) mesh_ptr,
-                             mesh_ptr->gl_context);
+                             mesh_ptr->ral_context);
     } /* if (needs_normals_data_regen) */
 }
 
@@ -1582,11 +1550,6 @@ PRIVATE void _mesh_release_renderer_callback(ogl_context context,
 
         mesh_ptr->gl_bo = NULL;
     } /* if (mesh->gl_bo != NULL) */
-
-    if (mesh_ptr->gl_tbo != NULL)
-    {
-        ogl_texture_release(mesh_ptr->gl_tbo);
-    }
 }
 
 /** TODO */
@@ -2828,7 +2791,7 @@ PUBLIC EMERALD_API void mesh_create_single_indexed_representation(mesh instance)
 
 /* Please see header for specification */
 PUBLIC EMERALD_API bool mesh_fill_gl_buffers(mesh        instance,
-                                             ogl_context context)
+                                             ral_context context)
 {
     _mesh* mesh_ptr = (_mesh*) instance;
     bool   result   = false;
@@ -2846,17 +2809,18 @@ PUBLIC EMERALD_API bool mesh_fill_gl_buffers(mesh        instance,
     /* Request renderer thread call-back */
     if (mesh_ptr->gl_context == NULL)
     {
-        mesh_ptr->gl_context = context;
+        mesh_ptr->ral_context = context;
+        mesh_ptr->gl_context  = ral_context_get_gl_context(context);
 
-        ogl_context_retain(context);
+        ogl_context_retain(mesh_ptr->gl_context);
     }
     else
     {
-        ASSERT_DEBUG_SYNC(mesh_ptr->gl_context == context,
+        ASSERT_DEBUG_SYNC(mesh_ptr->ral_context == context,
                           "Inter-context sharing of meshes is not supported");
     }
 
-    if (!ogl_context_request_callback_from_context_thread(context,
+    if (!ogl_context_request_callback_from_context_thread(mesh_ptr->gl_context,
                                                           _mesh_fill_gl_buffers_renderer_callback,
                                                           mesh_ptr,
                                                           false,   /* swap_buffers_afterward */
@@ -2991,7 +2955,7 @@ PUBLIC EMERALD_API void mesh_generate_normal_data(mesh mesh)
                                           2. per-polygon normal calculation */
                     ++n_iteration)
     {
-        LOG_INFO("Generating normal data for mesh [%s] (iteration %d/3) ...",
+        LOG_INFO("Generating normal data for mesh [%s] (iteration %u/3) ...",
                  system_hashed_ansi_string_get_buffer(mesh_ptr->name),
                  n_iteration + 1);
 
@@ -3921,8 +3885,13 @@ PUBLIC EMERALD_API bool mesh_get_property(mesh          instance,
             {
                 if (!mesh_ptr->gl_storage_initialized)
                 {
+                    ASSERT_DEBUG_SYNC(false,
+                                      "TODO");
+
+#if 0
                     mesh_fill_gl_buffers(instance,
                                          ogl_context_get_current_context() );
+#endif
                 }
 
                 ASSERT_DEBUG_SYNC(mesh_ptr->gl_storage_initialized,
@@ -3995,24 +3964,6 @@ PUBLIC EMERALD_API bool mesh_get_property(mesh          instance,
             {
                 mesh_get_property(mesh_ptr->instantiation_parent,
                                   MESH_PROPERTY_GL_STRIDE,
-                                  out_result_ptr);
-            }
-
-            break;
-        }
-
-        case MESH_PROPERTY_GL_TBO:
-        {
-            if (mesh_ptr->instantiation_parent == NULL)
-            {
-                ASSERT_DEBUG_SYNC(mesh_ptr->gl_storage_initialized, "Cannot query GL TBO id - GL storage not initialized");
-
-                *((ogl_texture*) out_result_ptr) = mesh_ptr->gl_tbo;
-            }
-            else
-            {
-                mesh_get_property(mesh_ptr->instantiation_parent,
-                                  MESH_PROPERTY_GL_TBO,
                                   out_result_ptr);
             }
 
@@ -4333,7 +4284,7 @@ PUBLIC EMERALD_API bool mesh_get_layer_pass_property(mesh                instanc
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API mesh mesh_load(ogl_context               context,
+PUBLIC EMERALD_API mesh mesh_load(ral_context               context,
                                   mesh_creation_flags       flags,
                                   system_hashed_ansi_string full_file_path,
                                   system_hash64map          material_id_to_mesh_material_map,
@@ -4362,7 +4313,7 @@ PUBLIC EMERALD_API mesh mesh_load(ogl_context               context,
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API mesh mesh_load_with_serializer(ogl_context            context,
+PUBLIC EMERALD_API mesh mesh_load_with_serializer(ral_context            context_ral,
                                                   mesh_creation_flags    flags,
                                                   system_file_serializer serializer,
                                                   system_hash64map       material_id_to_mesh_material_map,
@@ -4414,8 +4365,8 @@ PUBLIC EMERALD_API mesh mesh_load_with_serializer(ogl_context            context
     /* Set GL context */
     mesh_ptr = (_mesh*) result;
 
-    mesh_ptr->gl_context = context;
-    ogl_context_retain(context);
+    mesh_ptr->gl_context = ral_context_get_gl_context(context_ral);
+    ogl_context_retain(mesh_ptr->gl_context);
 
     /* Fork, depending on whether we're dealing with an instantiated mesh,
      * or a parent instance */
@@ -4616,7 +4567,7 @@ PUBLIC EMERALD_API mesh mesh_load_with_serializer(ogl_context            context
 
         /* Generate GL buffers off the data we loaded */
         mesh_fill_gl_buffers(result,
-                             mesh_ptr->gl_context);
+                             mesh_ptr->ral_context);
     } /* if (!is_mesh_instantiated) */
     else
     {

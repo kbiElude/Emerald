@@ -9,9 +9,10 @@
 #include "ogl/ogl_program_ub.h"
 #include "ogl/ogl_shader.h"
 #include "ogl/ogl_skybox.h"
-#include "ogl/ogl_texture.h"
 #include "object_manager/object_manager_general.h"
 #include "raGL/raGL_buffer.h"
+#include "ral/ral_context.h"
+#include "ral/ral_texture.h"
 #include "shaders/shaders_embeddable_sh.h"
 #include "system/system_assertions.h"
 #include "system/system_hashed_ansi_string.h"
@@ -105,10 +106,10 @@ const char* vertex_shader_preview = "#version 430 core\n"
 /** Internal type declarations */
 typedef struct
 {
-    ogl_context               context;
+    ral_context               context;
     system_hashed_ansi_string name;
     sh_samples                samples;
-    ogl_texture               texture;
+    ral_texture               texture;
     _ogl_skybox_type          type;
 
     GLuint         input_sh_light_data_uniform_location;
@@ -142,8 +143,8 @@ PRIVATE void        _ogl_skybox_init_ogl_skybox         (_ogl_skybox*           
                                                          system_hashed_ansi_string name,
                                                          _ogl_skybox_type          type,
                                                          sh_samples                samples,
-                                                         ogl_context               context,
-                                                         ogl_texture               texture);
+                                                         ral_context               context,
+                                                         ral_texture               texture);
 PRIVATE void        _ogl_skybox_init_ogl_skybox_sh      (_ogl_skybox*              skybox_ptr);
 PRIVATE void        _ogl_skybox_init_ub                 (_ogl_skybox*              skybox_ptr);
 
@@ -251,7 +252,7 @@ PRIVATE void        _ogl_skybox_init_ub                 (_ogl_skybox*           
 PRIVATE void _ogl_skybox_init_ogl_skybox_spherical_projection_texture(_ogl_skybox* skybox_ptr)
 {
     /* Initialize the vertex shader. */
-    ogl_shader vertex_shader = ogl_shader_create(skybox_ptr->context,
+    ogl_shader vertex_shader = ogl_shader_create(ral_context_get_gl_context(skybox_ptr->context),
                                                  RAL_SHADER_TYPE_VERTEX,
                                                  system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(skybox_ptr->name),
                                                                                                          " vertex shader") );
@@ -262,7 +263,7 @@ PRIVATE void _ogl_skybox_init_ogl_skybox_spherical_projection_texture(_ogl_skybo
                         system_hashed_ansi_string_create(vertex_shader_preview) );
 
     /* Initialize the fragment shader */
-    ogl_shader fragment_shader = ogl_shader_create(skybox_ptr->context,
+    ogl_shader fragment_shader = ogl_shader_create(ral_context_get_gl_context(skybox_ptr->context),
                                                    RAL_SHADER_TYPE_FRAGMENT,
                                                    system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(skybox_ptr->name),
                                                                                                            " fragment shader") );
@@ -273,7 +274,7 @@ PRIVATE void _ogl_skybox_init_ogl_skybox_spherical_projection_texture(_ogl_skybo
                         system_hashed_ansi_string_create(fragment_shader_spherical_texture_preview) );
 
     /* Create a program */
-    skybox_ptr->program = ogl_program_create(skybox_ptr->context,
+    skybox_ptr->program = ogl_program_create(ral_context_get_gl_context(skybox_ptr->context),
                                              system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(skybox_ptr->name),
                                                                                                      " program"),
                                              OGL_PROGRAM_SYNCABLE_UBS_MODE_ENABLE_GLOBAL);
@@ -328,8 +329,8 @@ PRIVATE void _ogl_skybox_init_ogl_skybox(_ogl_skybox*              skybox_ptr,
                                          system_hashed_ansi_string name,
                                          _ogl_skybox_type          type,
                                          sh_samples                samples,
-                                         ogl_context               context,
-                                         ogl_texture               texture)
+                                         ral_context               context,
+                                         ral_texture               texture)
 {
     memset(skybox_ptr,
            0,
@@ -366,7 +367,7 @@ PRIVATE void _ogl_skybox_init_ogl_skybox(_ogl_skybox*              skybox_ptr,
         } /* default:*/
     } /* switch (type) */
 
-    ogl_context_retain(skybox_ptr->context);
+    ral_context_retain(skybox_ptr->context);
 }
 
 /** TODO */
@@ -392,25 +393,9 @@ PRIVATE void _ogl_skybox_release(void* skybox)
 {
     _ogl_skybox* skybox_ptr = (_ogl_skybox*) skybox;
 
-    ogl_context_release(skybox_ptr->context);
+    ral_context_release(skybox_ptr->context);
     ogl_program_release(skybox_ptr->program);
 }
-
-/** TODO */
-#ifdef _DEBUG
-    /* TODO */
-    PRIVATE void _ogl_skybox_verify_context_type(ogl_context context)
-    {
-        ogl_context_type context_type = OGL_CONTEXT_TYPE_UNDEFINED;
-
-        ogl_context_get_property(context,
-                                 OGL_CONTEXT_PROPERTY_TYPE,
-                                &context_type);
-
-        ASSERT_DEBUG_SYNC(context_type == OGL_CONTEXT_TYPE_GL,
-                          "ogl_skybox is only supported under GL contexts")
-    }
-#endif
 
 #ifdef INCLUDE_OPENCL
     /** Please see header for specification */
@@ -446,12 +431,10 @@ PRIVATE void _ogl_skybox_release(void* skybox)
 #endif
 
 /** Please see header for specification */
-PUBLIC EMERALD_API ogl_skybox ogl_skybox_create_spherical_projection_texture(ogl_context               context,
-                                                                             ogl_texture               texture,
+PUBLIC EMERALD_API ogl_skybox ogl_skybox_create_spherical_projection_texture(ral_context               context,
+                                                                             ral_texture               texture,
                                                                              system_hashed_ansi_string name)
 {
-    _ogl_skybox_verify_context_type(context);
-
     _ogl_skybox* new_instance = new (std::nothrow) _ogl_skybox;
 
     ASSERT_DEBUG_SYNC(new_instance != NULL,
@@ -478,23 +461,25 @@ PUBLIC EMERALD_API ogl_skybox ogl_skybox_create_spherical_projection_texture(ogl
 
 /** Please see header for specification */
 PUBLIC EMERALD_API void ogl_skybox_draw(ogl_skybox       skybox,
-                                        ogl_texture      light_sh_data_tbo,
                                         system_matrix4x4 modelview,
                                         system_matrix4x4 inverted_projection)
 {
-    _ogl_skybox*                                              skybox_ptr        = (_ogl_skybox*) skybox;
+    ogl_context                                               context_gl        = NULL;
     const ogl_context_gl_entrypoints_ext_direct_state_access* dsa_entry_points  = NULL;
     const ogl_context_gl_entrypoints*                         entry_points      = NULL;
+    _ogl_skybox*                                              skybox_ptr        = (_ogl_skybox*) skybox;
     GLuint                                                    skybox_program_id = ogl_program_get_id(skybox_ptr->program);
     GLuint                                                    vao_id            = 0;
 
-    ogl_context_get_property(skybox_ptr->context,
+    context_gl = ral_context_get_gl_context(skybox_ptr->context);
+
+    ogl_context_get_property(context_gl,
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL_EXT_DIRECT_STATE_ACCESS,
                             &dsa_entry_points);
-    ogl_context_get_property(skybox_ptr->context,
+    ogl_context_get_property(context_gl,
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
                             &entry_points);
-    ogl_context_get_property(skybox_ptr->context,
+    ogl_context_get_property(context_gl,
                              OGL_CONTEXT_PROPERTY_VAO_NO_VAAS,
                             &vao_id);
 
@@ -531,9 +516,12 @@ PUBLIC EMERALD_API void ogl_skybox_draw(ogl_skybox       skybox,
     /* Do spherial projection-specific stuff */
     if (skybox_ptr->type == OGL_SKYBOX_SPHERICAL_PROJECTION_TEXTURE)
     {
+        GLuint texture_id = ral_context_get_texture_gl_id(skybox_ptr->context,
+                                                          skybox_ptr->texture);
+
         dsa_entry_points->pGLBindMultiTextureEXT(GL_TEXTURE0,
                                                  GL_TEXTURE_2D,
-                                                 skybox_ptr->texture);
+                                                 texture_id);
     } /* if (skybox_ptr->type == OGL_SKYBOX_SPHERICAL_PROJECTION_TEXTURE) */
 
     /* Draw. Do not modify depth information */

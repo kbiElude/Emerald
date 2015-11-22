@@ -13,6 +13,7 @@
 #include "ogl/ogl_ui_dropdown.h"
 #include "ogl/ogl_ui_shared.h"
 #include "raGL/raGL_buffer.h"
+#include "ral/ral_context.h"
 #include "system/system_assertions.h"
 #include "system/system_hashed_ansi_string.h"
 #include "system/system_log.h"
@@ -113,7 +114,7 @@ typedef struct
     float       start_hovering_brightness;
     system_time start_hovering_time;
 
-    ogl_context               context;
+    ral_context               context;
     ogl_program               program;
     GLint                     program_border_width_ub_offset;
     GLint                     program_button_start_u_ub_offset;
@@ -422,42 +423,51 @@ PRIVATE void _ogl_ui_dropdown_init_program(ogl_ui            ui,
                                            _ogl_ui_dropdown* dropdown_ptr)
 {
     /* Create all objects */
-    ogl_context context                   = ogl_ui_get_context(ui);
-    ogl_shader  fragment_shader_bg        = ogl_shader_create(context,
-                                                              RAL_SHADER_TYPE_FRAGMENT,
-                                                              system_hashed_ansi_string_create("UI dropdown fragment shader (bg)") );
-    ogl_shader  fragment_shader_label_bg  = ogl_shader_create(context,
-                                                              RAL_SHADER_TYPE_FRAGMENT,
-                                                              system_hashed_ansi_string_create("UI dropdown fragment shader (label bg)") );
-    ogl_shader  fragment_shader_separator = ogl_shader_create(context,
-                                                              RAL_SHADER_TYPE_FRAGMENT,
-                                                              system_hashed_ansi_string_create("UI dropdown framgent shader (separator)") );
-    ogl_shader  fragment_shader_slider    = ogl_shader_create(context,
-                                                              RAL_SHADER_TYPE_FRAGMENT,
-                                                              system_hashed_ansi_string_create("UI dropdown framgent shader (slider)") );
-    ogl_shader  fragment_shader           = ogl_shader_create(context,
-                                                              RAL_SHADER_TYPE_FRAGMENT,
-                                                              system_hashed_ansi_string_create("UI dropdown fragment shader") );
-    ogl_shader  vertex_shader             = ogl_shader_create(context,
-                                                              RAL_SHADER_TYPE_VERTEX,
-                                                              system_hashed_ansi_string_create("UI dropdown vertex shader") );
-    ogl_shader  vertex_shader_separator   = ogl_shader_create(context,
-                                                              RAL_SHADER_TYPE_VERTEX,
-                                                              system_hashed_ansi_string_create("UI dropdown vertex shader (separator)") );
+    ral_context context                   = ogl_ui_get_context(ui);
+    ogl_context context_gl                = ral_context_get_gl_context(context);
+    ogl_shader  fragment_shader_bg        = NULL;
+    ogl_shader  fragment_shader_label_bg  = NULL;
+    ogl_shader  fragment_shader_separator = NULL;
+    ogl_shader  fragment_shader_slider    = NULL;
+    ogl_shader  fragment_shader           = NULL;
+    ogl_shader  vertex_shader             = NULL;
+    ogl_shader  vertex_shader_separator   = NULL;
 
-    dropdown_ptr->program_bg        = ogl_program_create(context,
+    fragment_shader_bg        = ogl_shader_create(context_gl,
+                                                  RAL_SHADER_TYPE_FRAGMENT,
+                                                  system_hashed_ansi_string_create("UI dropdown fragment shader (bg)") );
+    fragment_shader_label_bg  = ogl_shader_create(context_gl,
+                                                  RAL_SHADER_TYPE_FRAGMENT,
+                                                  system_hashed_ansi_string_create("UI dropdown fragment shader (label bg)") );
+    fragment_shader_separator = ogl_shader_create(context_gl,
+                                                  RAL_SHADER_TYPE_FRAGMENT,
+                                                  system_hashed_ansi_string_create("UI dropdown framgent shader (separator)") );
+    fragment_shader_slider    = ogl_shader_create(context_gl,
+                                                  RAL_SHADER_TYPE_FRAGMENT,
+                                                  system_hashed_ansi_string_create("UI dropdown framgent shader (slider)") );
+    fragment_shader           = ogl_shader_create(context_gl,
+                                                  RAL_SHADER_TYPE_FRAGMENT,
+                                                  system_hashed_ansi_string_create("UI dropdown fragment shader") );
+    vertex_shader             = ogl_shader_create(context_gl,
+                                                  RAL_SHADER_TYPE_VERTEX,
+                                                  system_hashed_ansi_string_create("UI dropdown vertex shader") );
+    vertex_shader_separator   = ogl_shader_create(context_gl,
+                                                  RAL_SHADER_TYPE_VERTEX,
+                                                  system_hashed_ansi_string_create("UI dropdown vertex shader (separator)") );
+
+    dropdown_ptr->program_bg        = ogl_program_create(context_gl,
                                                          system_hashed_ansi_string_create("UI dropdown program (bg)"),
                                                          OGL_PROGRAM_SYNCABLE_UBS_MODE_ENABLE_GLOBAL);
-    dropdown_ptr->program_label_bg  = ogl_program_create(context,
+    dropdown_ptr->program_label_bg  = ogl_program_create(context_gl,
                                                          system_hashed_ansi_string_create("UI dropdown program (label bg)"),
                                                          OGL_PROGRAM_SYNCABLE_UBS_MODE_ENABLE_GLOBAL);
-    dropdown_ptr->program_separator = ogl_program_create(context,
+    dropdown_ptr->program_separator = ogl_program_create(context_gl,
                                                          system_hashed_ansi_string_create("UI dropdown program (separator)"),
                                                          OGL_PROGRAM_SYNCABLE_UBS_MODE_ENABLE_GLOBAL);
-    dropdown_ptr->program_slider    = ogl_program_create(context,
+    dropdown_ptr->program_slider    = ogl_program_create(context_gl,
                                                          system_hashed_ansi_string_create("UI dropdown program (slider)"),
                                                          OGL_PROGRAM_SYNCABLE_UBS_MODE_ENABLE_GLOBAL);
-    dropdown_ptr->program           = ogl_program_create(context,
+    dropdown_ptr->program           = ogl_program_create(context_gl,
                                                          system_hashed_ansi_string_create("UI dropdown program"),
                                                          OGL_PROGRAM_SYNCABLE_UBS_MODE_ENABLE_GLOBAL);
 
@@ -562,8 +572,8 @@ PRIVATE void _ogl_ui_dropdown_init_renderer_callback(ogl_context context, void* 
     system_window     window               = NULL;
     int               window_size[2]       = {0};
 
-    ogl_context_get_property  (dropdown_ptr->context,
-                               OGL_CONTEXT_PROPERTY_WINDOW,
+    ral_context_get_property  (dropdown_ptr->context,
+                               RAL_CONTEXT_PROPERTY_WINDOW,
                               &window);
     system_window_get_property(window,
                                SYSTEM_WINDOW_PROPERTY_DIMENSIONS,
@@ -855,8 +865,8 @@ PRIVATE void _ogl_ui_dropdown_update_entry_positions(_ogl_ui_dropdown* dropdown_
                                          SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
                                         &n_entries);
 
-    ogl_context_get_property  (dropdown_ptr->context,
-                               OGL_CONTEXT_PROPERTY_WINDOW,
+    ral_context_get_property  (dropdown_ptr->context,
+                               RAL_CONTEXT_PROPERTY_WINDOW,
                               &context_window);
     system_window_get_property(context_window,
                                SYSTEM_WINDOW_PROPERTY_DIMENSIONS,
@@ -913,8 +923,8 @@ PRIVATE void _ogl_ui_dropdown_update_entry_strings(_ogl_ui_dropdown* dropdown_pt
         1.0f - dropdown_ptr->x1y1x2y2[1]
     };
 
-    ogl_context_get_property  (dropdown_ptr->context,
-                               OGL_CONTEXT_PROPERTY_WINDOW,
+    ral_context_get_property  (dropdown_ptr->context,
+                               RAL_CONTEXT_PROPERTY_WINDOW,
                               &window);
     system_window_get_property(window,
                                SYSTEM_WINDOW_PROPERTY_DIMENSIONS,
@@ -1073,8 +1083,8 @@ PRIVATE void _ogl_ui_dropdown_update_position(_ogl_ui_dropdown* dropdown_ptr,
     system_window window         = NULL;
     int           window_size[2] = {0};
 
-    ogl_context_get_property  (dropdown_ptr->context,
-                               OGL_CONTEXT_PROPERTY_WINDOW,
+    ral_context_get_property  (dropdown_ptr->context,
+                               RAL_CONTEXT_PROPERTY_WINDOW,
                               &window);
     system_window_get_property(window,
                                SYSTEM_WINDOW_PROPERTY_DIMENSIONS,
@@ -1226,7 +1236,7 @@ PUBLIC void ogl_ui_dropdown_deinit(void* internal_instance)
     _ogl_ui_dropdown* ui_dropdown_ptr  = (_ogl_ui_dropdown*) internal_instance;
     const static bool visibility_false = false;
 
-    ogl_context_release(ui_dropdown_ptr->context);
+    ral_context_release(ui_dropdown_ptr->context);
 
     ogl_program_release(ui_dropdown_ptr->program);
     ogl_program_release(ui_dropdown_ptr->program_bg);
@@ -1268,8 +1278,8 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_ui_dropdown_draw(void* internal_instance)
     system_window     window       = NULL;
     int               window_size[2];
 
-    ogl_context_get_property  (dropdown_ptr->context,
-                               OGL_CONTEXT_PROPERTY_WINDOW,
+    ral_context_get_property  (dropdown_ptr->context,
+                               RAL_CONTEXT_PROPERTY_WINDOW,
                               &window);
     system_window_get_property(window,
                                SYSTEM_WINDOW_PROPERTY_DIMENSIONS,
@@ -1794,20 +1804,20 @@ PUBLIC void* ogl_ui_dropdown_init(ogl_ui                     instance,
         new_dropdown->ui                  = instance;
         new_dropdown->visible             = true;
 
-        ogl_context_retain(new_dropdown->context);
+        ral_context_retain(new_dropdown->context);
 
         /* Cache GL func pointers */
-        ogl_context_type context_type = OGL_CONTEXT_TYPE_UNDEFINED;
+        ral_backend_type backend_type = RAL_BACKEND_TYPE_UNKNOWN;
 
-        ogl_context_get_property(new_dropdown->context,
-                                 OGL_CONTEXT_PROPERTY_TYPE,
-                                &context_type);
+        ral_context_get_property(new_dropdown->context,
+                                 RAL_CONTEXT_PROPERTY_BACKEND_TYPE,
+                                &backend_type);
 
-        if (context_type == OGL_CONTEXT_TYPE_ES)
+        if (backend_type == RAL_BACKEND_TYPE_ES)
         {
             const ogl_context_es_entrypoints* entry_points = NULL;
 
-            ogl_context_get_property(new_dropdown->context,
+            ogl_context_get_property(ral_context_get_gl_context(new_dropdown->context),
                                      OGL_CONTEXT_PROPERTY_ENTRYPOINTS_ES,
                                     &entry_points);
 
@@ -1820,12 +1830,12 @@ PUBLIC void* ogl_ui_dropdown_init(ogl_ui                     instance,
         }
         else
         {
-            ASSERT_DEBUG_SYNC(context_type == OGL_CONTEXT_TYPE_GL,
+            ASSERT_DEBUG_SYNC(backend_type == RAL_BACKEND_TYPE_GL,
                               "Unrecognized context type");
 
             const ogl_context_gl_entrypoints* entry_points = NULL;
 
-            ogl_context_get_property(new_dropdown->context,
+            ogl_context_get_property(ral_context_get_gl_context(new_dropdown->context),
                                      OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
                                     &entry_points);
 
@@ -1841,8 +1851,8 @@ PUBLIC void* ogl_ui_dropdown_init(ogl_ui                     instance,
         system_window window         = NULL;
         int           window_size[2] = {0};
 
-        ogl_context_get_property  (new_dropdown->context,
-                                   OGL_CONTEXT_PROPERTY_WINDOW,
+        ral_context_get_property  (new_dropdown->context,
+                                   RAL_CONTEXT_PROPERTY_WINDOW,
                                   &window);
         system_window_get_property(window,
                                    SYSTEM_WINDOW_PROPERTY_DIMENSIONS,
@@ -1922,7 +1932,7 @@ PUBLIC void* ogl_ui_dropdown_init(ogl_ui                     instance,
         } /* if (new_button->program == NULL) */
 
         /* Set up predefined values */
-        ogl_context_request_callback_from_context_thread(new_dropdown->context,
+        ogl_context_request_callback_from_context_thread(ral_context_get_gl_context(new_dropdown->context),
                                                          _ogl_ui_dropdown_init_renderer_callback,
                                                          new_dropdown);
     } /* if (new_dropdown != NULL) */

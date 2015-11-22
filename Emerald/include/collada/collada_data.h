@@ -7,8 +7,8 @@
 #define COLLADA_DATA_H
 
 #include "collada/collada_types.h"
-#include "ogl/ogl_types.h"
 #include "mesh/mesh_types.h"
+#include "ral/ral_types.h"
 #include "scene/scene_types.h"
 
 REFCOUNT_INSERT_DECLARATIONS(collada_data, collada_data)
@@ -62,17 +62,17 @@ PUBLIC EMERALD_API void collada_data_get_effect(collada_data         data,
  *  mesh = renderer+geometrical mesh representation
  **/
 PUBLIC EMERALD_API mesh collada_data_get_emerald_mesh(collada_data data,
-                                                      ogl_context  context,
+                                                      ral_context  context,
                                                       unsigned int n_mesh);
 
 /** TODO */
 PUBLIC EMERALD_API mesh collada_data_get_emerald_mesh_by_name(collada_data              data,
-                                                              ogl_context               context,
+                                                              ral_context               context,
                                                               system_hashed_ansi_string name);
 
 /** TODO. */
 PUBLIC EMERALD_API scene collada_data_get_emerald_scene(collada_data data,
-                                                        ogl_context  context,
+                                                        ral_context  context,
                                                         unsigned int n_scene);
 
 /** TODO */

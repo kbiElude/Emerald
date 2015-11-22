@@ -7,6 +7,7 @@
 #define OGL_SKYBOX_H
 
 #include "ogl/ogl_types.h"
+#include "ral/ral_types.h"
 #include "sh/sh_types.h"
 
 REFCOUNT_INSERT_DECLARATIONS(ogl_skybox,
@@ -32,12 +33,11 @@ typedef enum
 
 /** TODO */
 PUBLIC EMERALD_API ogl_skybox ogl_skybox_create_spherical_projection_texture(ogl_context               context,
-                                                                             ogl_texture               texture,
+                                                                             ral_texture               texture,
                                                                              system_hashed_ansi_string name);
 
 /** TODO */
 PUBLIC EMERALD_API void ogl_skybox_draw(ogl_skybox       skybox,
-                                        ogl_texture      light_sh_data_tbo,
                                         system_matrix4x4 modelview,
                                         system_matrix4x4 inverted_projection);
 

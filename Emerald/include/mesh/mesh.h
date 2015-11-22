@@ -35,9 +35,9 @@
 #ifndef MESH_H
 #define MESH_H
 
-#include "ogl/ogl_types.h"
 #include "mesh/mesh_types.h"
 #include "raGL/raGL_buffer.h"
+#include "ral/ral_types.h"
 #include "scene/scene_types.h"
 #include "sh/sh_types.h"
 
@@ -55,7 +55,7 @@ typedef enum
 typedef void (*PFNGETMESHAABBPROC)     (const void*            user_arg,
                                         float*                 out_aabb_model_vec3_min,
                                         float*                 out_aabb_model_vec3_max);
-typedef void (*PFNRENDERCUSTOMMESHPROC)(ogl_context            context,
+typedef void (*PFNRENDERCUSTOMMESHPROC)(ral_context            context_ral,
                                         const void*            user_arg,
                                         const system_matrix4x4 model_matrix,
                                         const system_matrix4x4 vp_matrix,
@@ -200,7 +200,7 @@ PUBLIC EMERALD_API bool mesh_delete_layer_pass_index_data(mesh                  
  *  NOTE: Can only be called against regular meshes.
  */
 PUBLIC EMERALD_API bool mesh_fill_gl_buffers(mesh        instance,
-                                             ogl_context context);
+                                             ral_context context_ral);
 
 /** TODO.
  *
@@ -281,14 +281,14 @@ PUBLIC EMERALD_API bool mesh_get_property(mesh          instance,
                                           void*         out_result_ptr);
 
 /** TODO */
-PUBLIC EMERALD_API mesh mesh_load(ogl_context               context,
+PUBLIC EMERALD_API mesh mesh_load(ral_context               context_ral,
                                   mesh_creation_flags       flags,
                                   system_hashed_ansi_string full_file_path,
                                   system_hash64map          material_id_to_mesh_material_map,
                                   system_hash64map          mesh_name_to_mesh_map);
 
 /** TODO */
-PUBLIC EMERALD_API mesh mesh_load_with_serializer(ogl_context            context,
+PUBLIC EMERALD_API mesh mesh_load_with_serializer(ral_context            context_ral,
                                                   mesh_creation_flags    flags,
                                                   system_file_serializer serializer,
                                                   system_hash64map       material_id_to_mesh_material_map,

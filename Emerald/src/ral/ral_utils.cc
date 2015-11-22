@@ -282,8 +282,8 @@ PUBLIC EMERALD_API bool ral_utils_get_texture_format_property(ral_texture_format
         {false, 4},
     };
 
-    ASSERT_DEBUG_SYNC(sizeof(format_data) / sizeof(format_data[0]) == RAL_TEXTURE_FORMAT_COUNT,
-                      "Predefined data out of sync!");
+    static_assert(sizeof(format_data) / sizeof(format_data[0]) == RAL_TEXTURE_FORMAT_COUNT,
+                  "Predefined data out of sync!");
 
     switch (property)
     {
@@ -305,6 +305,70 @@ PUBLIC EMERALD_API bool ral_utils_get_texture_format_property(ral_texture_format
         {
             ASSERT_DEBUG_SYNC(false,
                               "Unrecognized ral_texture_format_property value");
+
+            result = false;
+        }
+    } /* switch (property) */
+
+    return result;
+}
+
+/** Please see header for specification */
+PUBLIC EMERALD_API bool ral_utils_get_texture_type_property(ral_texture_type          texture_type,
+                                                            ral_texture_type_property property,
+                                                            void*                     out_result_ptr)
+{
+    static const struct
+    {
+        int n_dimensions;
+    } results[] =
+    {
+        /* RAL_TEXTURE_TYPE_1D */
+        { 1 },
+
+        /* RAL_TEXTURE_TYPE_1D_ARRAY */
+        { 1 },
+
+        /* RAL_TEXTURE_TYPE_2D */
+        { 2 },
+
+        /* RAL_TEXTURE_TYPE_2D_ARRAY */
+        { 2 },
+
+        /* RAL_TEXTURE_TYPE_3D */
+        { 3 },
+
+        /* RAL_TEXTURE_TYPE_CUBE_MAP */
+        { 2 },
+
+        /* RAL_TEXTURE_TYPE_CUBE_MAP_ARRAY */
+        { 2 },
+
+        /* RAL_TEXTURE_TYPE_MULTISAMPLE_2D */
+        { 2 },
+
+        /* RAL_TEXTURE_TYPE_MULTISAMPLE_2D_ARRAY */
+        { 2 },
+    };
+
+    static_assert(sizeof(results) / sizeof(results[0]) == RAL_TEXTURE_TYPE_COUNT,
+                  "Predefined result array needs to be updated.");
+
+    bool result = true;
+
+    switch (property)
+    {
+        case RAL_TEXTURE_TYPE_PROPERTY_N_DIMENSIONS:
+        {
+            *(uint32_t*) out_result_ptr = results[texture_type].n_dimensions;
+
+            break;
+        }
+
+        default:
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Unrecognized ral_texture_type_property value.");
 
             result = false;
         }

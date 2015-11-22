@@ -5,11 +5,10 @@
  */
 #include "shared.h"
 #include "mesh/mesh_material.h"
-#include "ogl/ogl_context.h"
 #include "ogl/ogl_materials.h"
 #include "ogl/ogl_shadow_mapping.h"
-#include "ogl/ogl_texture.h"
 #include "ogl/ogl_uber.h"
+#include "ral/ral_texture.h"
 #include "scene/scene.h"
 #include "scene/scene_light.h"
 #include "shaders/shaders_fragment_uber.h"
@@ -49,7 +48,7 @@ typedef struct _ogl_materials_mesh_material_setting
 
                 case MESH_MATERIAL_PROPERTY_ATTACHMENT_TEXTURE:
                 {
-                    ogl_texture_release( (ogl_texture&) attachment_data);
+                    ral_texture_release( (ral_texture&) attachment_data);
 
                     attachment_data = NULL;
                     break;
@@ -106,7 +105,7 @@ typedef struct _ogl_materials_uber
 
 typedef struct _ogl_materials
 {
-    ogl_context             context;
+    ral_context             context;
     system_resizable_vector forced_mesh_material_settings;
     mesh_material           special_materials[SPECIAL_MATERIAL_COUNT];
     system_resizable_vector ubers; /* stores _ogl_materials_uber* */
@@ -206,7 +205,7 @@ PRIVATE ogl_uber _ogl_materials_bake_uber(ogl_materials materials,
                                           bool          use_shadow_maps)
 {
     _ogl_materials* materials_ptr = (_ogl_materials*) materials;
-    ogl_context     context       = materials_ptr->context;
+    ral_context     context       = materials_ptr->context;
 
     LOG_INFO("Performance warning: _ogl_materials_bake_uber() called.");
 
@@ -1103,7 +1102,7 @@ PRIVATE void _ogl_materials_init_special_materials(_ogl_materials* materials_ptr
 
 
 /** Please see header for specification */
-PUBLIC ogl_materials ogl_materials_create(ogl_context context)
+PUBLIC ogl_materials ogl_materials_create(ral_context context)
 {
     _ogl_materials* materials_ptr = new (std::nothrow) _ogl_materials;
 

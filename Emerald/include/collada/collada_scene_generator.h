@@ -10,12 +10,12 @@
 #define COLLADA_SCENE_GENERATOR_H
 
 #include "collada/collada_types.h"
-#include "ogl/ogl_context.h"
+#include "ral/ral_context.h"
 #include "scene/scene_types.h"
 
 /** TODO */
 PUBLIC scene collada_scene_generator_create(collada_data data,
-                                            ogl_context  context,
+                                            ral_context  context,
                                             unsigned int n_scene);
 
 #endif /* COLLADA_SCENE_GENERATOR_H */

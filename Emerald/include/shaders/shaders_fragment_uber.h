@@ -7,9 +7,10 @@
 #ifndef SHADERS_FRAGMENT_UBER_H
 #define SHADERS_FRAGMENT_UBER_H
 
-#include "ogl/ogl_types.h"
+#include "ral/ral_types.h"
 
-REFCOUNT_INSERT_DECLARATIONS(shaders_fragment_uber, shaders_fragment_uber)
+REFCOUNT_INSERT_DECLARATIONS(shaders_fragment_uber,
+                             shaders_fragment_uber)
 
 typedef enum
 {
@@ -137,7 +138,7 @@ PUBLIC EMERALD_API shaders_fragment_uber_item_id shaders_fragment_uber_add_light
  * 
  *  @return shaders_fragment_static instance if successful, NULL otherwise.
  */
-PUBLIC EMERALD_API shaders_fragment_uber shaders_fragment_uber_create(ogl_context,
+PUBLIC EMERALD_API shaders_fragment_uber shaders_fragment_uber_create(ral_context                context,
                                                                       system_hashed_ansi_string  name);
 
 /** TODO */

@@ -167,7 +167,7 @@ PRIVATE RENDERING_CONTEXT_CALL void _raGL_sampler_init_rendering_thread_callback
     if (max_anisotropy > sampler_ptr->max_anisotropy)
     {
         /* Clamp the max anisotropy setting. */
-        LOG_ERROR("Clamping max anisotropy setting for a GL sampler instance: requested value [%d] exceeds the maximum permitted value [%d]",
+        LOG_ERROR("Clamping max anisotropy setting for a GL sampler instance: requested value [%f] exceeds the maximum permitted value [%f]",
                   max_anisotropy,
                   sampler_ptr->max_anisotropy);
 

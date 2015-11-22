@@ -49,18 +49,9 @@ PUBLIC void APIENTRY ogl_context_wrappers_glBindFramebuffer(GLenum target,
                                                             GLuint fbo_id);
 
 /** TODO */
-PUBLIC void APIENTRY ogl_context_wrappers_glBindImageTextureEXT(GLuint      index,
-                                                                ogl_texture texture,
-                                                                GLint       level,
-                                                                GLboolean   layered,
-                                                                GLint       layer,
-                                                                GLenum      access,
-                                                                GLint       format);
-
-/** TODO */
-PUBLIC void APIENTRY ogl_context_wrappers_glBindMultiTextureEXT(GLenum      texunit,
-                                                                GLenum      target,
-                                                                ogl_texture texture);
+PUBLIC void APIENTRY ogl_context_wrappers_glBindMultiTextureEXT(GLenum texunit,
+                                                                GLenum target,
+                                                                GLuint texture);
 
 /** TODO */
 PUBLIC void APIENTRY ogl_context_wrappers_glBindRenderbuffer(GLenum target,
@@ -76,13 +67,13 @@ PUBLIC void APIENTRY ogl_context_wrappers_glBindSamplers(GLuint        first,
                                                          const GLuint* samplers);
 
 /** TODO */
-PUBLIC void APIENTRY ogl_context_wrappers_glBindTexture(GLenum      target,
-                                                        ogl_texture texture);
+PUBLIC void APIENTRY ogl_context_wrappers_glBindTexture(GLenum target,
+                                                        GLuint texture);
 
 /** TODO */
-PUBLIC void APIENTRY ogl_context_wrappers_glBindTextures(GLuint       first,
-                                                         GLsizei      count,
-                                                         ogl_texture* textures);
+PUBLIC void APIENTRY ogl_context_wrappers_glBindTextures(GLuint        first,
+                                                         GLsizei       count,
+                                                         const GLuint* textures);
 
 /** TODO */
 PUBLIC void APIENTRY ogl_context_wrappers_glBindVertexArray(GLuint array);
@@ -208,7 +199,7 @@ PUBLIC void APIENTRY ogl_context_wrappers_glCompressedTexSubImage1D(GLenum      
                                                                     const GLvoid* data);
 
 /** TODO */
-PUBLIC void APIENTRY ogl_context_wrappers_glCompressedTextureSubImage1DEXT(ogl_texture   texture,
+PUBLIC void APIENTRY ogl_context_wrappers_glCompressedTextureSubImage1DEXT(GLuint        texture,
                                                                            GLenum        target,
                                                                            GLint         level,
                                                                            GLint         xoffset,
@@ -218,7 +209,7 @@ PUBLIC void APIENTRY ogl_context_wrappers_glCompressedTextureSubImage1DEXT(ogl_t
                                                                            const GLvoid* bits);
 
 /** TODO */
-PUBLIC void APIENTRY ogl_context_wrappers_glCompressedTextureSubImage2DEXT(ogl_texture   texture,
+PUBLIC void APIENTRY ogl_context_wrappers_glCompressedTextureSubImage2DEXT(GLuint        texture,
                                                                            GLenum        target,
                                                                            GLint         level,
                                                                            GLint         xoffset,
@@ -230,7 +221,7 @@ PUBLIC void APIENTRY ogl_context_wrappers_glCompressedTextureSubImage2DEXT(ogl_t
                                                                            const GLvoid* bits);
 
 /** TODO */
-PUBLIC void APIENTRY ogl_context_wrappers_glCompressedTextureSubImage3DEXT(ogl_texture   texture,
+PUBLIC void APIENTRY ogl_context_wrappers_glCompressedTextureSubImage3DEXT(GLuint        texture,
                                                                            GLenum        target,
                                                                            GLint         level,
                                                                            GLint         xoffset,
@@ -280,36 +271,36 @@ PUBLIC void APIENTRY ogl_context_wrappers_glCopyTexSubImage3D(GLenum target,
                                                               GLsizei height);
 
 /** TODO */
-PUBLIC void APIENTRY ogl_context_wrappers_glCopyTextureSubImage1DEXT(ogl_texture texture,
-                                                                     GLenum      target,
-                                                                     GLint       level,
-                                                                     GLint       xoffset,
-                                                                     GLint       x,
-                                                                     GLint       y,
-                                                                     GLsizei     width);
+PUBLIC void APIENTRY ogl_context_wrappers_glCopyTextureSubImage1DEXT(GLuint  texture,
+                                                                     GLenum  target,
+                                                                     GLint   level,
+                                                                     GLint   xoffset,
+                                                                     GLint   x,
+                                                                     GLint   y,
+                                                                     GLsizei width);
 
 /** TODO */
-PUBLIC void APIENTRY ogl_context_wrappers_glCopyTextureSubImage2DEXT(ogl_texture texture,
-                                                                     GLenum      target,
-                                                                     GLint       level,
-                                                                     GLint       xoffset,
-                                                                     GLint       yoffset,
-                                                                     GLint       x,
-                                                                     GLint       y,
-                                                                     GLsizei     width,
-                                                                     GLsizei     height);
+PUBLIC void APIENTRY ogl_context_wrappers_glCopyTextureSubImage2DEXT(GLuint  texture,
+                                                                     GLenum  target,
+                                                                     GLint   level,
+                                                                     GLint   xoffset,
+                                                                     GLint   yoffset,
+                                                                     GLint   x,
+                                                                     GLint   y,
+                                                                     GLsizei width,
+                                                                     GLsizei height);
 
 /** TODO */
-PUBLIC void APIENTRY ogl_context_wrappers_glCopyTextureSubImage3DEXT(ogl_texture texture,
-                                                                     GLenum      target,
-                                                                     GLint       level,
-                                                                     GLint       xoffset,
-                                                                     GLint       yoffset,
-                                                                     GLint       zoffset,
-                                                                     GLint       x,
-                                                                     GLint       y,
-                                                                     GLsizei     width,
-                                                                     GLsizei     height);
+PUBLIC void APIENTRY ogl_context_wrappers_glCopyTextureSubImage3DEXT(GLuint  texture,
+                                                                     GLenum  target,
+                                                                     GLint   level,
+                                                                     GLint   xoffset,
+                                                                     GLint   yoffset,
+                                                                     GLint   zoffset,
+                                                                     GLint   x,
+                                                                     GLint   y,
+                                                                     GLsizei width,
+                                                                     GLsizei height);
 
 /** TODO */
 PUBLIC void APIENTRY ogl_context_wrappers_glCullFace(GLenum mode);
@@ -443,15 +434,6 @@ PUBLIC void APIENTRY ogl_context_wrappers_glEnablei(GLenum cap,
 PUBLIC void APIENTRY ogl_context_wrappers_glEnableVertexAttribArray(GLuint index);
 
 /** TODO */
-PUBLIC void APIENTRY ogl_context_wrappers_glFramebufferDrawBufferEXT(GLuint framebuffer,
-                                                                     GLenum mode);
-
-/** TODO */
-PUBLIC void APIENTRY ogl_context_wrappers_glFramebufferDrawBuffersEXT(      GLuint  framebuffer,
-                                                                            GLsizei n,
-                                                                      const GLenum* bufs);
-
-/** TODO */
 PUBLIC void APIENTRY ogl_context_wrappers_glFramebufferParameteri(GLenum target,
                                                                   GLenum pname,
                                                                   GLint  param);
@@ -472,38 +454,38 @@ PUBLIC void APIENTRY ogl_context_wrappers_glFramebufferRenderbuffer(GLenum targe
                                                                     GLuint renderbuffer);
 
 /** TODO */
-PUBLIC void APIENTRY ogl_context_wrappers_glFramebufferTexture(GLenum      target,
-                                                               GLenum      attachment,
-                                                               ogl_texture texture,
-                                                               GLint       level);
+PUBLIC void APIENTRY ogl_context_wrappers_glFramebufferTexture(GLenum target,
+                                                               GLenum attachment,
+                                                               GLuint texture,
+                                                               GLint  level);
 /** TODO */
-PUBLIC void APIENTRY ogl_context_wrappers_glFramebufferTexture1D(GLenum      target,
-                                                                 GLenum      attachment,
-                                                                 GLenum      textarget,
-                                                                 ogl_texture texture,
-                                                                 GLint       level);
+PUBLIC void APIENTRY ogl_context_wrappers_glFramebufferTexture1D(GLenum target,
+                                                                 GLenum attachment,
+                                                                 GLenum textarget,
+                                                                 GLuint texture,
+                                                                 GLint  level);
 
 /** TODO */
-PUBLIC void APIENTRY ogl_context_wrappers_glFramebufferTexture2D(GLenum      target,
-                                                                 GLenum      attachment,
-                                                                 GLenum      textarget,
-                                                                 ogl_texture texture,
-                                                                 GLint       level);
+PUBLIC void APIENTRY ogl_context_wrappers_glFramebufferTexture2D(GLenum target,
+                                                                 GLenum attachment,
+                                                                 GLenum textarget,
+                                                                 GLuint texture,
+                                                                 GLint  level);
 
 /** TODO */
-PUBLIC void APIENTRY ogl_context_wrappers_glFramebufferTexture3D(GLenum      target,
-                                                                 GLenum      attachment,
-                                                                 GLenum      textarget,
-                                                                 ogl_texture texture,
-                                                                 GLint       level,
-                                                                 GLint       layer);
+PUBLIC void APIENTRY ogl_context_wrappers_glFramebufferTexture3D(GLenum target,
+                                                                 GLenum attachment,
+                                                                 GLenum textarget,
+                                                                 GLuint texture,
+                                                                 GLint  level,
+                                                                 GLint  layer);
 
 /** TODO */
-PUBLIC void APIENTRY ogl_context_wrappers_glFramebufferTextureLayer(GLenum      target,
-                                                                    GLenum      attachment,
-                                                                    ogl_texture texture,
-                                                                    GLint       level,
-                                                                    GLint       layer);
+PUBLIC void APIENTRY ogl_context_wrappers_glFramebufferTextureLayer(GLenum target,
+                                                                    GLenum attachment,
+                                                                    GLuint texture,
+                                                                    GLint  level,
+                                                                    GLint  layer);
 
 /** TODO */
 PUBLIC void APIENTRY ogl_context_wrappers_glFrontFace(GLenum mode);
@@ -581,22 +563,6 @@ PUBLIC void APIENTRY ogl_context_wrappers_glGetInternalformativ(GLenum  target,
                                                                 GLint*  params);
 
 /** TODO */
-PUBLIC void APIENTRY ogl_context_wrappers_glGetNamedBufferParameterivEXT(GLuint buffer,
-                                                                         GLenum pname,
-                                                                         GLint* params);
-
-/** TODO */
-PUBLIC void APIENTRY ogl_context_wrappers_glGetNamedBufferPointervEXT(GLuint buffer,
-                                                                      GLenum pname,
-                                                                      void** params);
-
-/** TODO */
-PUBLIC void APIENTRY ogl_context_wrappers_glGetNamedBufferSubDataEXT(GLuint     buffer,
-                                                                     GLintptr   offset,
-                                                                     GLsizeiptr size,
-                                                                     void*      data);
-
-/** TODO */
 PUBLIC void APIENTRY ogl_context_wrappers_glGetSamplerParameterfv(GLuint   sampler,
                                                                   GLenum   pname,
                                                                   GLfloat* params);
@@ -617,8 +583,8 @@ PUBLIC void APIENTRY ogl_context_wrappers_glGetSamplerParameteriv(GLuint sampler
                                                                   GLint* params);
 
 /** TODO */
-PUBLIC void APIENTRY ogl_context_wrappers_glGenerateTextureMipmapEXT(ogl_texture texture,
-                                                                     GLenum      target);
+PUBLIC void APIENTRY ogl_context_wrappers_glGenerateTextureMipmapEXT(GLuint texture,
+                                                                     GLenum target);
 
 /** TODO */
 PUBLIC void APIENTRY ogl_context_wrappers_glGetCompressedTexImage(GLenum  target,
@@ -626,10 +592,10 @@ PUBLIC void APIENTRY ogl_context_wrappers_glGetCompressedTexImage(GLenum  target
                                                                   GLvoid* img);
 
 /** TODO */
-PUBLIC void APIENTRY ogl_context_wrappers_glGetCompressedTextureImageEXT(ogl_texture texture,
-                                                                         GLenum      target,
-                                                                         GLint       lod,
-                                                                         GLvoid*     img);
+PUBLIC void APIENTRY ogl_context_wrappers_glGetCompressedTextureImageEXT(GLuint  texture,
+                                                                         GLenum  target,
+                                                                         GLint   lod,
+                                                                         GLvoid* img);
 
 /** TODO */
 PUBLIC void APIENTRY ogl_context_wrappers_glGetRenderbufferParameteriv(GLenum target,
@@ -676,38 +642,12 @@ PUBLIC void APIENTRY ogl_context_wrappers_glGetTexParameterIuiv(GLenum  target,
                                                                 GLuint* params);
 
 /** TODO */
-PUBLIC void APIENTRY ogl_context_wrappers_glGetTextureImageEXT(ogl_texture texture,
-                                                               GLenum      target,
-                                                               GLint       level,
-                                                               GLenum      format,
-                                                               GLenum      type,
-                                                               GLvoid*     pixels);
-
-/** TODO */
-PUBLIC void APIENTRY ogl_context_wrappers_glGetTextureLevelParameterfvEXT(ogl_texture texture,
-                                                                          GLenum      target,
-                                                                          GLint       level,
-                                                                          GLenum      pname,
-                                                                          GLfloat*    params);
-
-/** TODO */
-PUBLIC void APIENTRY ogl_context_wrappers_glGetTextureLevelParameterivEXT(ogl_texture texture,
-                                                                          GLenum      target,
-                                                                          GLint       level,
-                                                                          GLenum      pname,
-                                                                          GLint*      params);
-
-/** TODO */
-PUBLIC void APIENTRY ogl_context_wrappers_glGetTextureParameterIiv(ogl_texture texture,
-                                                                   GLenum      target,
-                                                                   GLenum      pname,
-                                                                   GLint*      params);
-
-/** TODO */
-PUBLIC void APIENTRY ogl_context_wrappers_glGetTextureParameterIuiv(ogl_texture texture,
-                                                                    GLenum      target,
-                                                                    GLenum      pname,
-                                                                    GLuint*     params);
+PUBLIC void APIENTRY ogl_context_wrappers_glGetTextureImageEXT(GLuint  texture,
+                                                               GLenum  target,
+                                                               GLint   level,
+                                                               GLenum  format,
+                                                               GLenum  type,
+                                                               GLvoid* pixels);
 
 /** TODO */
 PUBLIC void APIENTRY ogl_context_wrappers_glGetVertexAttribdv(GLuint    index,
@@ -767,10 +707,6 @@ PUBLIC GLvoid* APIENTRY ogl_context_wrappers_glMapBufferRange(GLenum     target,
 PUBLIC void APIENTRY ogl_context_wrappers_glMemoryBarrier(GLbitfield barriers);
 
 /** TODO */
-PUBLIC void* APIENTRY ogl_context_wrappers_glMapNamedBufferEXT(GLuint buffer,
-                                                               GLenum access);
-
-/** TODO */
 PUBLIC GLvoid APIENTRY ogl_context_wrappers_glMultiDrawArrays(GLenum         mode,
                                                               const GLint*   first,
                                                               const GLsizei* count,
@@ -817,54 +753,6 @@ PUBLIC void APIENTRY ogl_context_wrappers_glNamedBufferStorageEXT(GLuint        
                                                                   GLbitfield    flags);
 
 /** TODO */
-PUBLIC void APIENTRY ogl_context_wrappers_glNamedBufferSubDataEXT(GLuint      buffer,
-                                                                  GLintptr    offset,
-                                                                  GLsizeiptr  size,
-                                                                  const void* data);
-
-/** TODO */
-PUBLIC void APIENTRY ogl_context_wrappers_glNamedCopyBufferSubDataEXT(GLuint     readBuffer,
-                                                                      GLuint     writeBuffer,
-                                                                      GLintptr   readOffset,
-                                                                      GLintptr   writeOffset,
-                                                                      GLsizeiptr size);
-
-/** TODO */
-PUBLIC void APIENTRY ogl_context_wrappers_glNamedFramebufferTexture1DEXT(GLuint      framebuffer,
-                                                                         GLenum      attachment,
-                                                                         GLenum      textarget,
-                                                                         ogl_texture texture,
-                                                                         GLint       level);
-
-/** TODO */
-PUBLIC void APIENTRY ogl_context_wrappers_glNamedFramebufferTexture2DEXT(GLuint      framebuffer,
-                                                                         GLenum      attachment,
-                                                                         GLenum      textarget,
-                                                                         ogl_texture texture,
-                                                                         GLint       level);
-
-/** TODO */
-PUBLIC void APIENTRY ogl_context_wrappers_glNamedFramebufferTexture3DEXT(GLuint      framebuffer,
-                                                                         GLenum      attachment,
-                                                                         GLenum      textarget,
-                                                                         ogl_texture texture,
-                                                                         GLint       level,
-                                                                         GLint       zoffset);
-
-/** TODO */
-PUBLIC void APIENTRY ogl_context_wrappers_glNamedFramebufferTextureEXT(GLuint      framebuffer,
-                                                                       GLenum      attachment,
-                                                                       ogl_texture texture,
-                                                                       GLint       level);
-
-/** TODO */
-PUBLIC void APIENTRY ogl_context_wrappers_glNamedFramebufferTextureLayerEXT(GLuint      framebuffer,
-                                                                            GLenum      attachment,
-                                                                            ogl_texture texture,
-                                                                            GLint       level,
-                                                                            GLint       layer);
-
-/** TODO */
 PUBLIC void APIENTRY ogl_context_wrappers_glReadBuffer(GLenum mode);
 
 /** TODO */
@@ -891,36 +779,6 @@ PUBLIC void APIENTRY ogl_context_wrappers_glRenderbufferStorageMultisample(GLenu
 
 /** TODO */
 PUBLIC void APIENTRY ogl_context_wrappers_glResumeTransformFeedback(void);
-
-/** TODO */
-PUBLIC void APIENTRY ogl_context_wrappers_glSamplerParameterf(GLuint sampler,
-                                                             GLenum  pname,
-                                                             GLfloat param);
-
-/** TODO */
-PUBLIC void APIENTRY ogl_context_wrappers_glSamplerParameterfv(GLuint         sampler,
-                                                               GLenum         pname,
-                                                               const GLfloat* param);
-
-/** TODO */
-PUBLIC void APIENTRY ogl_context_wrappers_glSamplerParameteri(GLuint sampler,
-                                                              GLenum pname,
-                                                              GLint  param);
-
-/** TODO */
-PUBLIC void APIENTRY ogl_context_wrappers_glSamplerParameteriv(GLuint       sampler,
-                                                               GLenum       pname,
-                                                               const GLint* param);
-
-/** TODO */
-PUBLIC void APIENTRY ogl_context_wrappers_glSamplerParameterIiv(GLuint       sampler,
-                                                                GLenum       pname,
-                                                                const GLint* param);
-
-/** TODO */
-PUBLIC void APIENTRY ogl_context_wrappers_glSamplerParameterIuiv(GLuint        sampler,
-                                                                 GLenum        pname,
-                                                                 const GLuint* param);
 
 /** TODO */
 PUBLIC void APIENTRY ogl_context_wrappers_glScissor(GLint   x,
@@ -1009,57 +867,21 @@ PUBLIC void APIENTRY ogl_context_wrappers_glTexSubImage3D(GLenum        target,
                                                           const GLvoid* pixels);
 
 /** TODO */
-PUBLIC void APIENTRY ogl_context_wrappers_glTextureBufferEXT(ogl_texture texture,
-                                                             GLenum      target,
-                                                             GLenum      internalformat,
-                                                             GLuint      buffer);
+PUBLIC void APIENTRY ogl_context_wrappers_glTextureBufferEXT(GLuint texture,
+                                                             GLenum target,
+                                                             GLenum internalformat,
+                                                             GLuint buffer);
 
 /** TODO */
-PUBLIC void APIENTRY ogl_context_wrappers_glTextureBufferRangeEXT(ogl_texture texture,
-                                                                  GLenum      target,
-                                                                  GLenum      internalformat,
-                                                                  GLuint      buffer,
-                                                                  GLintptr    offset,
-                                                                  GLsizeiptr  size);
+PUBLIC void APIENTRY ogl_context_wrappers_glTextureBufferRangeEXT(GLuint     texture,
+                                                                  GLenum     target,
+                                                                  GLenum     internalformat,
+                                                                  GLuint     buffer,
+                                                                  GLintptr   offset,
+                                                                  GLsizeiptr size);
 
 /** TODO */
-PUBLIC void APIENTRY ogl_context_wrappers_glTextureParameterfEXT(ogl_texture texture,
-                                                                 GLenum      target,
-                                                                 GLenum      pname,
-                                                                 GLfloat     param);
-
-/** TODO */
-PUBLIC void APIENTRY ogl_context_wrappers_glTextureParameterfvEXT(ogl_texture   texture,
-                                                                  GLenum         target,
-                                                                  GLenum         pname,
-                                                                  const GLfloat* params);
-
-/** TODO */
-PUBLIC void APIENTRY ogl_context_wrappers_glTextureParameteriEXT(ogl_texture texture,
-                                                                 GLenum      target,
-                                                                 GLenum      pname,
-                                                                 GLint       param);
-
-/** TODO */
-PUBLIC void APIENTRY ogl_context_wrappers_glTextureParameterIivEXT(ogl_texture  texture,
-                                                                   GLenum       target,
-                                                                   GLenum       pname,
-                                                                   const GLint* params);
-
-/** TODO */
-PUBLIC void APIENTRY ogl_context_wrappers_glTextureParameterIuivEXT(ogl_texture   texture,
-                                                                    GLenum        target,
-                                                                    GLenum        pname,
-                                                                    const GLuint* params);
-
-/** TODO */
-PUBLIC void APIENTRY ogl_context_wrappers_glTextureParameterivEXT(ogl_texture  texture,
-                                                                  GLenum       target,
-                                                                  GLenum       pname,
-                                                                  const GLint* params);
-
-/** TODO */
-PUBLIC void APIENTRY ogl_context_wrappers_glTextureSubImage1DEXT(ogl_texture   texture,
+PUBLIC void APIENTRY ogl_context_wrappers_glTextureSubImage1DEXT(GLuint        texture,
                                                                  GLenum        target,
                                                                  GLint         level,
                                                                  GLint         xoffset,
@@ -1069,7 +891,7 @@ PUBLIC void APIENTRY ogl_context_wrappers_glTextureSubImage1DEXT(ogl_texture   t
                                                                  const GLvoid* pixels);
 
 /** TODO */
-PUBLIC void APIENTRY ogl_context_wrappers_glTextureSubImage2DEXT(ogl_texture  texture,
+PUBLIC void APIENTRY ogl_context_wrappers_glTextureSubImage2DEXT(GLuint        texture,
                                                                  GLenum        target,
                                                                  GLint         level,
                                                                  GLint         xoffset,
@@ -1081,7 +903,7 @@ PUBLIC void APIENTRY ogl_context_wrappers_glTextureSubImage2DEXT(ogl_texture  te
                                                                  const GLvoid* pixels);
 
 /** TODO */
-PUBLIC void APIENTRY ogl_context_wrappers_glTextureSubImage3DEXT(ogl_texture   texture,
+PUBLIC void APIENTRY ogl_context_wrappers_glTextureSubImage3DEXT(GLuint        texture,
                                                                  GLenum        target,
                                                                  GLint         level,
                                                                  GLint         xoffset,
@@ -1101,9 +923,6 @@ PUBLIC void APIENTRY ogl_context_wrappers_glUniformBlockBinding(GLuint program,
 
 /** TODO */
 PUBLIC GLboolean APIENTRY ogl_context_wrappers_glUnmapBuffer(GLenum target);
-
-/** TODO */
-PUBLIC GLboolean APIENTRY ogl_context_wrappers_glUnmapNamedBufferEXT(GLuint buffer);
 
 /** TODO */
 PUBLIC void APIENTRY ogl_context_wrappers_glUseProgram(GLuint program);

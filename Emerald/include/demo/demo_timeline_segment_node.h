@@ -17,6 +17,7 @@
 #define DEMO_TIMELINE_SEGMENT_NODE_H
 
 #include "demo/demo_types.h"
+#include "ral/ral_types.h"
 #include "system/system_types.h"
 
 /* IDs of call-backs used by demo_timeline_video_segment */
@@ -188,7 +189,7 @@ PUBLIC void demo_timeline_segment_node_get_property(demo_timeline_segment_node  
 PUBLIC bool demo_timeline_segment_node_get_texture_attachment(demo_timeline_segment_node node,
                                                               bool                       is_input_id,
                                                               uint32_t                   id,
-                                                              ogl_texture*               out_attached_texture_ptr);
+                                                              ral_texture*               out_attached_texture_ptr);
 
 /** TODO */
 PUBLIC bool demo_timeline_segment_node_is_node_output_compatible_with_node_input(demo_timeline_segment_node           src_node,

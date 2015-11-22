@@ -4,9 +4,9 @@
  *
  */
 #include "shared.h"
-#include "ogl/ogl_texture.h" /* TODO: Remove OGL dep */
 #include "ral/ral_context.h"
 #include "ral/ral_framebuffer.h"
+#include "ral/ral_texture.h"
 #include "system/system_assertions.h"
 #include "system/system_callback_manager.h"
 #include "system/system_log.h"
@@ -18,7 +18,7 @@ typedef struct _ral_framebuffer_attachment
     bool                                    is_enabled;
     uint32_t                                n_layer;
     uint32_t                                n_mipmap;
-    ogl_texture                             texture;
+    ral_texture                             texture;
     ral_framebuffer_attachment_texture_type texture_type;
 
     _ral_framebuffer_attachment()
@@ -279,9 +279,9 @@ PUBLIC void ral_framebuffer_get_attachment_property(ral_framebuffer             
     /* Return the requested value */
     switch (property)
     {
-        case RAL_FRAMEBUFFER_ATTACHMENT_PROPERTY_BOUND_TEXTURE:
+        case RAL_FRAMEBUFFER_ATTACHMENT_PROPERTY_BOUND_TEXTURE_RAL:
         {
-            *(ogl_texture*) out_result_ptr = attachment_ptr->texture;
+            *(ral_texture*) out_result_ptr = attachment_ptr->texture;
 
             break;
         }
@@ -364,7 +364,7 @@ end:
 PUBLIC bool ral_framebuffer_set_attachment_2D(ral_framebuffer                 framebuffer,
                                               ral_framebuffer_attachment_type attachment_type,
                                               uint32_t                        index,
-                                              ogl_texture                     texture_2d,
+                                              ral_texture                     texture_2d,
                                               uint32_t                        n_mipmap,
                                               bool                            should_enable)
 {
@@ -395,11 +395,11 @@ PUBLIC bool ral_framebuffer_set_attachment_2D(ral_framebuffer                 fr
     }
 
     /* Verify the specified texture is valid.. */
-    ogl_texture_get_property(texture_2d,
-                             OGL_TEXTURE_PROPERTY_N_MIPMAPS,
+    ral_texture_get_property(texture_2d,
+                             RAL_TEXTURE_PROPERTY_N_MIPMAPS,
                             &texture_n_mipmaps);
-    ogl_texture_get_property(texture_2d,
-                             OGL_TEXTURE_PROPERTY_TYPE,
+    ral_texture_get_property(texture_2d,
+                             RAL_TEXTURE_PROPERTY_TYPE,
                             &texture_type);
 
     if (texture_type != RAL_TEXTURE_TYPE_2D)
@@ -424,7 +424,7 @@ PUBLIC bool ral_framebuffer_set_attachment_2D(ral_framebuffer                 fr
 
     if (target_attachment_ptr->texture != NULL)
     {
-        ogl_texture_release(target_attachment_ptr->texture);
+        ral_texture_release(target_attachment_ptr->texture);
 
         target_attachment_ptr->texture = NULL;
     }
@@ -435,7 +435,7 @@ PUBLIC bool ral_framebuffer_set_attachment_2D(ral_framebuffer                 fr
     target_attachment_ptr->texture      = texture_2d;
     target_attachment_ptr->texture_type = RAL_FRAMEBUFFER_ATTACHMENT_TEXTURE_TYPE_2D;
 
-    ogl_texture_retain(texture_2d);
+    ral_texture_retain(texture_2d);
 
     /* Update the subscribers */
     system_callback_manager_call_back(framebuffer_ptr->callback_manager,
