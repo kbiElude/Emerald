@@ -3316,6 +3316,15 @@ PUBLIC EMERALD_API void ogl_context_get_property(ogl_context          context,
             break;
         }
 
+        case OGL_CONTEXT_PROPERTY_BACKEND_TYPE:
+        {
+            raGL_backend_get_property(context_ptr->backend,
+                                      RAL_CONTEXT_PROPERTY_BACKEND_TYPE,
+                                      out_result);
+
+            break;
+        }
+
         case OGL_CONTEXT_PROPERTY_BO_BINDINGS:
         {
             *((ogl_context_bo_bindings*) out_result) = context_ptr->bo_bindings;

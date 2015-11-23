@@ -7,6 +7,7 @@
 #include "ogl/ogl_context.h"
 #include "ogl/ogl_query.h"
 #include "ogl/ogl_rendering_handler.h"
+#include "ral/ral_context.h"
 #include "system/system_log.h"
 
 
@@ -32,7 +33,8 @@ typedef struct _ogl_query_item
 typedef struct _ogl_query
 {
     /* DO NOT retain/release */
-    ogl_context      context;
+    raGL_backend     backend;
+    ral_context      context;
     unsigned int     ring_buffer_size;
     _ogl_query_item* qo_items;
     GLenum           target_gl;
@@ -62,7 +64,7 @@ typedef struct _ogl_query
     PFNGLGETQUERYOBJECTUIVPROC   pGLGetQueryObjectuiv;
     PFNGLGETQUERYOBJECTUI64VPROC pGLGetQueryObjectui64v;
 
-     _ogl_query(ogl_context  in_context,
+     _ogl_query(ral_context  in_context,
                 unsigned int in_ring_buffer_size,
                 GLenum       in_target_gl);
     ~_ogl_query();
@@ -77,11 +79,11 @@ PRIVATE void _ogl_query_init_renderer_callback  (ogl_context context,
 
 
 /** TODO */
-_ogl_query::_ogl_query(ogl_context  in_context,
+_ogl_query::_ogl_query(ral_context  in_context,
                        unsigned int in_ring_buffer_size,
                        GLenum       in_target_gl)
 {
-    ogl_context_type context_type = OGL_CONTEXT_TYPE_UNDEFINED;
+    ral_backend_type backend_type = RAL_BACKEND_TYPE_UNKNOWN;
 
     ASSERT_DEBUG_SYNC(in_ring_buffer_size > 0,
                       "Ring buffer size is invalid");
@@ -96,16 +98,20 @@ _ogl_query::_ogl_query(ogl_context  in_context,
     ASSERT_DEBUG_SYNC(qo_items != NULL,
                       "Out of memory");
 
-    /* Cache ES/GL entry-points */
-    ogl_context_get_property(context,
-                             OGL_CONTEXT_PROPERTY_TYPE,
-                            &context_type);
+    ral_context_get_property(context,
+                             RAL_CONTEXT_PROPERTY_BACKEND,
+                            &backend);
 
-    if (context_type == OGL_CONTEXT_TYPE_GL)
+    /* Cache ES/GL entry-points */
+    ral_context_get_property(context,
+                             RAL_CONTEXT_PROPERTY_BACKEND_TYPE,
+                            &backend_type);
+
+    if (backend_type == RAL_BACKEND_TYPE_GL)
     {
         const ogl_context_gl_entrypoints* entry_points = NULL;
 
-        ogl_context_get_property(context,
+        ogl_context_get_property(ral_context_get_gl_context(context),
                                  OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
                                 &entry_points);
 
@@ -118,12 +124,12 @@ _ogl_query::_ogl_query(ogl_context  in_context,
     } /* if (context_type == OGL_CONTEXT_TYPE_GL) */
     else
     {
-        ASSERT_DEBUG_SYNC(context_type == OGL_CONTEXT_TYPE_ES,
-                          "Unrecognized rendering context type");
+        ASSERT_DEBUG_SYNC(backend_type == RAL_BACKEND_TYPE_ES,
+                          "Unrecognized rendering backend type");
 
         const ogl_context_es_entrypoints* entry_points = NULL;
 
-        ogl_context_get_property(context,
+        ogl_context_get_property(ral_context_get_gl_context(context),
                                  OGL_CONTEXT_PROPERTY_ENTRYPOINTS_ES,
                                 &entry_points);
 
@@ -136,7 +142,7 @@ _ogl_query::_ogl_query(ogl_context  in_context,
     }
 
     /* Initialize the object */
-    ogl_context_request_callback_from_context_thread(context,
+    ogl_context_request_callback_from_context_thread(ral_context_get_gl_context(context),
                                                      _ogl_query_init_renderer_callback,
                                                      this);
 
@@ -145,7 +151,7 @@ _ogl_query::_ogl_query(ogl_context  in_context,
 /** TODO */
 _ogl_query::~_ogl_query()
 {
-    ogl_context_request_callback_from_context_thread(context,
+    ogl_context_request_callback_from_context_thread(ral_context_get_gl_context(context),
                                                      _ogl_query_deinit_renderer_callback,
                                                      this);
 
@@ -217,7 +223,7 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_query_begin(ogl_query query)
 }
 
 /** Please see header for spec */
-PUBLIC ogl_query ogl_query_create(ogl_context  context,
+PUBLIC ogl_query ogl_query_create(ral_context  context,
                                   unsigned int ring_buffer_size,
                                   GLenum       gl_query_target)
 {

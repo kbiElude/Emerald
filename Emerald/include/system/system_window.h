@@ -6,7 +6,7 @@
 #ifndef SYSTEM_WINDOW_H
 #define SYSTEM_WINDOW_H
 
-#include "ogl/ogl_types.h"
+#include "ral/ral_types.h"
 #include "system/system_types.h"
 
 

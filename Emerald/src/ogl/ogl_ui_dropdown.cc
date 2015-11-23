@@ -122,10 +122,10 @@ typedef struct
     GLint                     program_stop_data_ub_offset;
     GLint                     program_x1y1x2y2_ub_offset;
     ogl_program_ub            program_ub_fs;
-    raGL_buffer               program_ub_fs_bo;
+    ral_buffer                program_ub_fs_bo;
     GLuint                    program_ub_fs_bo_size;
     ogl_program_ub            program_ub_vs;
-    raGL_buffer               program_ub_vs_bo;
+    ral_buffer                program_ub_vs_bo;
     GLuint                    program_ub_vs_bo_size;
 
     ogl_program               program_bg;
@@ -135,21 +135,21 @@ typedef struct
     GLint                     program_bg_selected_v1v2_ub_offset;
     GLint                     program_bg_x1y1x2y2_ub_offset;
     ogl_program_ub            program_bg_ub_fs;
-    raGL_buffer               program_bg_ub_fs_bo;
+    ral_buffer                program_bg_ub_fs_bo;
     GLuint                    program_bg_ub_fs_bo_size;
     ogl_program_ub            program_bg_ub_vs;
-    raGL_buffer               program_bg_ub_vs_bo;
+    ral_buffer                program_bg_ub_vs_bo;
     GLuint                    program_bg_ub_vs_bo_size;
 
     ogl_program               program_label_bg;
     GLuint                    program_label_bg_x1y1x2y2_ub_offset;
     ogl_program_ub            program_label_bg_ub_vs;
-    raGL_buffer               program_label_bg_ub_vs_bo;
+    ral_buffer                program_label_bg_ub_vs_bo;
     GLuint                    program_label_bg_ub_vs_bo_size;
 
     ogl_program               program_separator;
     ogl_program_ub            program_separator_ub_vs;
-    raGL_buffer               program_separator_ub_vs_bo;
+    ral_buffer                program_separator_ub_vs_bo;
     GLuint                    program_separator_ub_vs_bo_size;
     GLint                     program_separator_x1_x2_y_ub_offset;
 
@@ -157,10 +157,10 @@ typedef struct
     GLint                     program_slider_color_ub_offset;
     GLint                     program_slider_x1y1x2y2_ub_offset;
     ogl_program_ub            program_slider_ub_fs;
-    raGL_buffer               program_slider_ub_fs_bo;
+    ral_buffer                program_slider_ub_fs_bo;
     GLuint                    program_slider_ub_fs_bo_size;
     ogl_program_ub            program_slider_ub_vs;
-    raGL_buffer               program_slider_ub_vs_bo;
+    ral_buffer                program_slider_ub_vs_bo;
     GLuint                    program_slider_ub_vs_bo_size;
 
     ogl_text_string_id        current_entry_string_id;
@@ -653,31 +653,31 @@ PRIVATE void _ogl_ui_dropdown_init_renderer_callback(ogl_context context, void* 
 
 
     ogl_program_ub_get_property(dropdown_ptr->program_ub_fs,
-                                OGL_PROGRAM_UB_PROPERTY_BO,
+                                OGL_PROGRAM_UB_PROPERTY_BUFFER_RAL,
                                &dropdown_ptr->program_ub_fs_bo);
     ogl_program_ub_get_property(dropdown_ptr->program_ub_vs,
-                                OGL_PROGRAM_UB_PROPERTY_BO,
+                                OGL_PROGRAM_UB_PROPERTY_BUFFER_RAL,
                                &dropdown_ptr->program_ub_vs_bo);
 
     ogl_program_ub_get_property(dropdown_ptr->program_bg_ub_fs,
-                                OGL_PROGRAM_UB_PROPERTY_BO,
+                                OGL_PROGRAM_UB_PROPERTY_BUFFER_RAL,
                                &dropdown_ptr->program_bg_ub_fs_bo);
     ogl_program_ub_get_property(dropdown_ptr->program_bg_ub_vs,
-                                OGL_PROGRAM_UB_PROPERTY_BO,
+                                OGL_PROGRAM_UB_PROPERTY_BUFFER_RAL,
                                &dropdown_ptr->program_bg_ub_vs_bo);
 
     ogl_program_ub_get_property(dropdown_ptr->program_label_bg_ub_vs,
-                                OGL_PROGRAM_UB_PROPERTY_BO,
+                                OGL_PROGRAM_UB_PROPERTY_BUFFER_RAL,
                                &dropdown_ptr->program_label_bg_ub_vs_bo);
     ogl_program_ub_get_property(dropdown_ptr->program_separator_ub_vs,
-                                OGL_PROGRAM_UB_PROPERTY_BO,
+                                OGL_PROGRAM_UB_PROPERTY_BUFFER_RAL,
                                &dropdown_ptr->program_separator_ub_vs_bo);
 
     ogl_program_ub_get_property(dropdown_ptr->program_slider_ub_fs,
-                                OGL_PROGRAM_UB_PROPERTY_BO,
+                                OGL_PROGRAM_UB_PROPERTY_BUFFER_RAL,
                                &dropdown_ptr->program_slider_ub_fs_bo);
     ogl_program_ub_get_property(dropdown_ptr->program_slider_ub_vs,
-                                OGL_PROGRAM_UB_PROPERTY_BO,
+                                OGL_PROGRAM_UB_PROPERTY_BUFFER_RAL,
                                &dropdown_ptr->program_slider_ub_vs_bo);
 
     /* Set up uniform block->buffer binding points mappings.
@@ -1420,30 +1420,40 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_ui_dropdown_draw(void* internal_instance)
     /* Draw */
     if (dropdown_ptr->is_droparea_visible)
     {
-        GLuint   program_bg_ub_fs_bo_id                  = 0;
-        uint32_t program_bg_ub_fs_bo_start_offset        = -1;
-        GLuint   program_bg_ub_vs_bo_id                  = 0;
-        uint32_t program_bg_ub_vs_bo_start_offset        = -1;
-        GLuint   program_separator_ub_vs_bo_id           = 0;
-        uint32_t program_separator_ub_vs_bo_start_offset = -1;
+        GLuint      program_bg_ub_fs_bo_id                  = 0;
+        raGL_buffer program_bg_ub_fs_bo_raGL                = NULL;
+        uint32_t    program_bg_ub_fs_bo_start_offset        = -1;
+        GLuint      program_bg_ub_vs_bo_id                  = 0;
+        raGL_buffer program_bg_ub_vs_bo_raGL                = NULL;
+        uint32_t    program_bg_ub_vs_bo_start_offset        = -1;
+        GLuint      program_separator_ub_vs_bo_id           = 0;
+        raGL_buffer program_separator_ub_vs_bo_raGL         = NULL;
+        uint32_t    program_separator_ub_vs_bo_start_offset = -1;
 
-        raGL_buffer_get_property(dropdown_ptr->program_bg_ub_fs_bo,
+        program_bg_ub_fs_bo_raGL        = ral_context_get_buffer_gl(dropdown_ptr->context,
+                                                                    dropdown_ptr->program_bg_ub_fs_bo);
+        program_bg_ub_vs_bo_raGL        = ral_context_get_buffer_gl(dropdown_ptr->context,
+                                                                    dropdown_ptr->program_bg_ub_vs_bo);
+        program_separator_ub_vs_bo_raGL = ral_context_get_buffer_gl(dropdown_ptr->context,
+                                                                    dropdown_ptr->program_separator_ub_vs_bo);
+
+        raGL_buffer_get_property(program_bg_ub_fs_bo_raGL,
                                  RAGL_BUFFER_PROPERTY_ID,
                                 &program_bg_ub_fs_bo_id);
-        raGL_buffer_get_property(dropdown_ptr->program_bg_ub_fs_bo,
+        raGL_buffer_get_property(program_bg_ub_fs_bo_raGL,
                                  RAGL_BUFFER_PROPERTY_START_OFFSET,
                                 &program_bg_ub_fs_bo_start_offset);
-        raGL_buffer_get_property(dropdown_ptr->program_bg_ub_vs_bo,
+        raGL_buffer_get_property(program_bg_ub_vs_bo_raGL,
                                  RAGL_BUFFER_PROPERTY_ID,
                                 &program_bg_ub_vs_bo_id);
-        raGL_buffer_get_property(dropdown_ptr->program_bg_ub_vs_bo,
+        raGL_buffer_get_property(program_bg_ub_vs_bo_raGL,
                                  RAGL_BUFFER_PROPERTY_START_OFFSET,
                                 &program_bg_ub_vs_bo_start_offset);
 
-        raGL_buffer_get_property(dropdown_ptr->program_separator_ub_vs_bo,
+        raGL_buffer_get_property(program_separator_ub_vs_bo_raGL,
                                  RAGL_BUFFER_PROPERTY_ID,
                                 &program_separator_ub_vs_bo_id);
-        raGL_buffer_get_property(dropdown_ptr->program_separator_ub_vs_bo,
+        raGL_buffer_get_property(program_separator_ub_vs_bo_raGL,
                                  RAGL_BUFFER_PROPERTY_START_OFFSET,
                                 &program_separator_ub_vs_bo_start_offset);
 
@@ -1521,22 +1531,29 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_ui_dropdown_draw(void* internal_instance)
         }
 
         /* Draw the slider */
-        GLuint   program_slider_ub_fs_bo_id           = 0;
-        uint32_t program_slider_ub_fs_bo_start_offset = -1;
-        GLuint   program_slider_ub_vs_bo_id           = 0;
-        uint32_t program_slider_ub_vs_bo_start_offset = -1;
-        float    slider_x1y1x2y2[4];
+        GLuint      program_slider_ub_fs_bo_id           = 0;
+        raGL_buffer program_slider_ub_fs_bo_raGL         = NULL;
+        uint32_t    program_slider_ub_fs_bo_start_offset = -1;
+        GLuint      program_slider_ub_vs_bo_id           = 0;
+        raGL_buffer program_slider_ub_vs_bo_raGL         = NULL;
+        uint32_t    program_slider_ub_vs_bo_start_offset = -1;
+        float       slider_x1y1x2y2[4];
 
-        raGL_buffer_get_property(dropdown_ptr->program_slider_ub_fs_bo,
+        program_slider_ub_fs_bo_raGL = ral_context_get_buffer_gl(dropdown_ptr->context,
+                                                                 dropdown_ptr->program_slider_ub_fs_bo);
+        program_slider_ub_vs_bo_raGL = ral_context_get_buffer_gl(dropdown_ptr->context,
+                                                                 dropdown_ptr->program_slider_ub_vs_bo);
+
+        raGL_buffer_get_property(program_slider_ub_fs_bo_raGL,
                                  RAGL_BUFFER_PROPERTY_ID,
                                 &program_slider_ub_fs_bo_id);
-        raGL_buffer_get_property(dropdown_ptr->program_slider_ub_fs_bo,
+        raGL_buffer_get_property(program_slider_ub_fs_bo_raGL,
                                  RAGL_BUFFER_PROPERTY_START_OFFSET,
                                 &program_slider_ub_fs_bo_start_offset);
-        raGL_buffer_get_property(dropdown_ptr->program_slider_ub_vs_bo,
+        raGL_buffer_get_property(program_slider_ub_vs_bo_raGL,
                                  RAGL_BUFFER_PROPERTY_ID,
                                 &program_slider_ub_vs_bo_id);
-        raGL_buffer_get_property(dropdown_ptr->program_slider_ub_vs_bo,
+        raGL_buffer_get_property(program_slider_ub_vs_bo_raGL,
                                  RAGL_BUFFER_PROPERTY_START_OFFSET,
                                 &program_slider_ub_vs_bo_start_offset);
 
@@ -1586,21 +1603,28 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_ui_dropdown_draw(void* internal_instance)
     }
 
     /* Draw the bar */
-    GLuint   program_ub_fs_bo_id           = 0;
-    uint32_t program_ub_fs_bo_start_offset = -1;
-    GLuint   program_ub_vs_bo_id           = 0;
-    uint32_t program_ub_vs_bo_start_offset = -1;
+    GLuint      program_ub_fs_bo_id           = 0;
+    raGL_buffer program_ub_fs_bo_raGL         = NULL;
+    uint32_t    program_ub_fs_bo_start_offset = -1;
+    GLuint      program_ub_vs_bo_id           = 0;
+    raGL_buffer program_ub_vs_bo_raGL         = NULL;
+    uint32_t    program_ub_vs_bo_start_offset = -1;
 
-    raGL_buffer_get_property(dropdown_ptr->program_ub_fs_bo,
+    program_ub_fs_bo_raGL = ral_context_get_buffer_gl(dropdown_ptr->context,
+                                                      dropdown_ptr->program_ub_fs_bo);
+    program_ub_vs_bo_raGL = ral_context_get_buffer_gl(dropdown_ptr->context,
+                                                      dropdown_ptr->program_ub_vs_bo);
+
+    raGL_buffer_get_property(program_ub_fs_bo_raGL,
                              RAGL_BUFFER_PROPERTY_ID,
                             &program_ub_fs_bo_id);
-    raGL_buffer_get_property(dropdown_ptr->program_ub_fs_bo,
+    raGL_buffer_get_property(program_ub_fs_bo_raGL,
                              RAGL_BUFFER_PROPERTY_START_OFFSET,
                             &program_ub_fs_bo_start_offset);
-    raGL_buffer_get_property(dropdown_ptr->program_ub_vs_bo,
+    raGL_buffer_get_property(program_ub_vs_bo_raGL,
                              RAGL_BUFFER_PROPERTY_ID,
                             &program_ub_vs_bo_id);
-    raGL_buffer_get_property(dropdown_ptr->program_ub_vs_bo,
+    raGL_buffer_get_property(program_ub_vs_bo_raGL,
                              RAGL_BUFFER_PROPERTY_START_OFFSET,
                             &program_ub_vs_bo_start_offset);
 
@@ -1626,13 +1650,17 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_ui_dropdown_draw(void* internal_instance)
     /* Draw the label background */
     dropdown_ptr->pGLEnable(GL_BLEND);
     {
-        GLuint   program_label_bg_ub_vs_bo_id           = 0;
-        uint32_t program_label_bg_ub_vs_bo_start_offset = -1;
+        GLuint      program_label_bg_ub_vs_bo_id           = 0;
+        raGL_buffer program_label_bg_ub_vs_bo_raGL         = NULL;
+        uint32_t    program_label_bg_ub_vs_bo_start_offset = -1;
 
-        raGL_buffer_get_property(dropdown_ptr->program_label_bg_ub_vs_bo,
+        program_label_bg_ub_vs_bo_raGL = ral_context_get_buffer_gl(dropdown_ptr->context,
+                                                                   dropdown_ptr->program_label_bg_ub_vs_bo);
+
+        raGL_buffer_get_property(program_label_bg_ub_vs_bo_raGL,
                                  RAGL_BUFFER_PROPERTY_ID,
                                 &program_label_bg_ub_vs_bo_id);
-        raGL_buffer_get_property(dropdown_ptr->program_label_bg_ub_vs_bo,
+        raGL_buffer_get_property(program_label_bg_ub_vs_bo_raGL,
                                  RAGL_BUFFER_PROPERTY_START_OFFSET,
                                 &program_label_bg_ub_vs_bo_start_offset);
 

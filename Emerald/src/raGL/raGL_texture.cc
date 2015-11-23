@@ -44,13 +44,13 @@ typedef struct _raGL_texture
         ral_texture_retain(texture);
 
         /* NOTE: Only GL is supported at the moment. */
-        ogl_context_type context_type = OGL_CONTEXT_TYPE_UNDEFINED;
+        ral_backend_type backend_type = RAL_BACKEND_TYPE_UNKNOWN;
 
         ogl_context_get_property(context,
-                                 OGL_CONTEXT_PROPERTY_TYPE,
-                                &context_type);
+                                 OGL_CONTEXT_PROPERTY_BACKEND_TYPE,
+                                &backend_type);
 
-        ASSERT_DEBUG_SYNC(context_type == OGL_CONTEXT_TYPE_GL,
+        ASSERT_DEBUG_SYNC(backend_type == RAL_BACKEND_TYPE_GL,
                           "TODO");
     }
 

@@ -145,11 +145,11 @@ PUBLIC EMERALD_API mesh scene_get_unique_mesh_by_index(scene        scene,
                                                        unsigned int index);
 
 /** TODO */
-PUBLIC EMERALD_API scene scene_load(ogl_context               context,
+PUBLIC EMERALD_API scene scene_load(ral_context               context,
                                     system_hashed_ansi_string full_file_name_with_path);
 
 /** TODO */
-PUBLIC EMERALD_API scene scene_load_with_serializer(ogl_context            context,
+PUBLIC EMERALD_API scene scene_load_with_serializer(ral_context            context,
                                                     system_file_serializer serializer);
 
 /** TODO.

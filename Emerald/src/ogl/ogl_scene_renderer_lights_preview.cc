@@ -11,6 +11,7 @@
 #include "ogl/ogl_scene_renderer_lights_preview.h"
 #include "ogl/ogl_shader.h"
 #include "raGL/raGL_buffer.h"
+#include "ral/ral_buffer.h"
 #include "ral/ral_context.h"
 #include "scene/scene.h"
 #include "system/system_matrix4x4.h"
@@ -55,7 +56,7 @@ typedef struct _ogl_scene_renderer_lights_preview
     scene          owned_scene;
     ogl_program    preview_program;
     ogl_program_ub preview_program_ub;
-    raGL_buffer    preview_program_ub_bo;
+    ral_buffer     preview_program_ub_bo;
     unsigned int   preview_program_ub_bo_size;
     GLint          preview_program_color_ub_offset;
     GLint          preview_program_position_ub_offset;
@@ -154,7 +155,7 @@ PRIVATE void _ogl_context_scene_renderer_lights_preview_init_preview_program(_og
                                 OGL_PROGRAM_UB_PROPERTY_BLOCK_DATA_SIZE,
                                &preview_ptr->preview_program_ub_bo_size);
     ogl_program_ub_get_property(preview_ptr->preview_program_ub,
-                                OGL_PROGRAM_UB_PROPERTY_BO,
+                                OGL_PROGRAM_UB_PROPERTY_BUFFER_RAL,
                                &preview_ptr->preview_program_ub_bo);
 
     /* Retrieve uniform properties */
@@ -194,22 +195,6 @@ end:
         ogl_shader_release(vs_shader);
     }
 }
-
-/** TODO */
-#ifdef _DEBUG
-    /* TODO */
-    PRIVATE void _ogl_scene_renderer_lights_preview_verify_context_type(ogl_context context)
-    {
-        ogl_context_type context_type = OGL_CONTEXT_TYPE_UNDEFINED;
-
-        ogl_context_get_property(context,
-                                 OGL_CONTEXT_PROPERTY_TYPE,
-                                &context_type);
-
-        ASSERT_DEBUG_SYNC(context_type == OGL_CONTEXT_TYPE_GL,
-                          "ogl_scene_renderer_lights_preview is only supported under GL contexts")
-    }
-#endif
 
 
 /** Please see header for spec */
@@ -307,13 +292,17 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_scene_renderer_lights_preview_render(ogl_
      * but light preview is only used for debugging purposes, so not much sense
      * in writing an overbloated implementation.
      */
-    GLuint   preview_program_ub_bo_id           = 0;
-    uint32_t preview_program_ub_bo_start_offset = -1;
+    GLuint      preview_program_ub_bo_id           = 0;
+    raGL_buffer preview_program_ub_bo_raGL         = NULL;
+    uint32_t    preview_program_ub_bo_start_offset = -1;
 
-    raGL_buffer_get_property(preview_ptr->preview_program_ub_bo,
+    preview_program_ub_bo_raGL = ral_context_get_buffer_gl(preview_ptr->context,
+                                                           preview_ptr->preview_program_ub_bo);
+
+    raGL_buffer_get_property(preview_program_ub_bo_raGL,
                              RAGL_BUFFER_PROPERTY_ID,
                             &preview_program_ub_bo_id);
-    raGL_buffer_get_property(preview_ptr->preview_program_ub_bo,
+    raGL_buffer_get_property(preview_program_ub_bo_raGL,
                              RAGL_BUFFER_PROPERTY_START_OFFSET,
                             &preview_program_ub_bo_start_offset);
 

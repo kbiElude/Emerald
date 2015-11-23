@@ -26,11 +26,8 @@ typedef enum
 
 typedef enum
 {
-    /* raGL_buffer; not settable */
-    SCALAR_FIELD_METABALLS_PROPERTY_DATA_BO,
-
-    /* unsigned int; not settable */
-    SCALAR_FIELD_METABALLS_PROPERTY_DATA_BO_SIZE,
+    /* ral_buffer; not settable */
+    SCALAR_FIELD_METABALLS_PROPERTY_DATA_BO_RAL,
 
     /* unsigned int; settable.
      *
@@ -46,7 +43,7 @@ typedef enum
 } scalar_field_metaballs_property;
 
 /** TODO */
-PUBLIC EMERALD_API scalar_field_metaballs scalar_field_metaballs_create(ogl_context               context,
+PUBLIC EMERALD_API scalar_field_metaballs scalar_field_metaballs_create(ral_context               context,
                                                                         const unsigned int*       grid_size_xyz,
                                                                         system_hashed_ansi_string name);
 

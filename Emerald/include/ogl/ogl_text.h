@@ -45,7 +45,7 @@ PUBLIC EMERALD_API void ogl_text_delete_string(ogl_text           text,
                                                ogl_text_string_id text_id);
 
 /** TODO */
-PUBLIC EMERALD_API void ogl_text_draw(ogl_context context,
+PUBLIC EMERALD_API void ogl_text_draw(ral_context context,
                                       ogl_text    text);
 
 /** TODO */

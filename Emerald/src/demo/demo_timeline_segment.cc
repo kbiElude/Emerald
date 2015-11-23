@@ -119,8 +119,7 @@ typedef struct _demo_timeline_segment
 {
     float                             aspect_ratio;       /* AR to use for a video segment */
     system_callback_manager           callback_manager;
-    ogl_context                       context;      /* TODO: remove */
-    ral_context                       context_ral;
+    ral_context                       context;
     system_hash64map                  dag_node_to_node_descriptor_map; /* does NOT own the stored _demo_timeline_segment_node instances */
     demo_timeline_segment_id          id;
     bool                              is_teardown_in_process;
@@ -150,7 +149,7 @@ typedef struct _demo_timeline_segment
     REFCOUNT_INSERT_VARIABLES
 
 
-    explicit _demo_timeline_segment(ogl_context                in_context,
+    explicit _demo_timeline_segment(ral_context                in_context,
                                     system_hashed_ansi_string  in_name,
                                     demo_timeline              in_timeline,
                                     ral_texture_format         in_output_texture_format,
@@ -162,7 +161,6 @@ typedef struct _demo_timeline_segment
         aspect_ratio           = 1.0f;
         callback_manager       = system_callback_manager_create( (_callback_id) DEMO_TIMELINE_SEGMENT_CALLBACK_ID_COUNT);
         context                = in_context;
-        context_ral            = NULL;
         dag                    = system_dag_create();
         dag_sorted_nodes       = system_resizable_vector_create(16 /* capacity */);
         end_time               = in_end_time;
@@ -184,13 +182,9 @@ typedef struct _demo_timeline_segment
         exposed_input_ios  = system_resizable_vector_create(sizeof(_demo_timeline_segment_io*) );
         exposed_output_ios = system_resizable_vector_create(sizeof(_demo_timeline_segment_io*) );
 
-        demo_timeline_get_property(timeline,
-                                   DEMO_TIMELINE_PROPERTY_CONTEXT,
-                                  &context_ral);
-
         ASSERT_ALWAYS_SYNC(callback_manager != NULL,
                            "Could not spawn the callback manager");
-        ASSERT_ALWAYS_SYNC(context_ral != NULL,
+        ASSERT_ALWAYS_SYNC(context != NULL,
                            "RAL context is NULL");
         ASSERT_ALWAYS_SYNC(dag_sorted_nodes != NULL,
                            "Could not create a vector holding sorted DAG nodes");
@@ -622,7 +616,7 @@ PRIVATE void _demo_timeline_segment_init_node_rendering_callback(ogl_context con
 
     segment_node_ptr->node_internal = pfn_segment_init_proc( (demo_timeline_segment) segment_node_ptr->parent_segment_ptr,
                                                              segment_node_ptr->node,
-                                                             segment_node_ptr->parent_segment_ptr->context_ral);
+                                                             segment_node_ptr->parent_segment_ptr->context);
 }
 
 /** TODO */
@@ -915,7 +909,7 @@ PRIVATE void _demo_timeline_segment_on_texture_detached_from_node(const void* te
      * TODO: We need a refcounted solution here to properly support cases where the same texture is
      *       consumed by multiple inputs !
      */
-    ral_context_delete_textures(segment_ptr->context_ral,
+    ral_context_delete_textures(segment_ptr->context,
                                 1, /* n_textures */
                                &texture);
 }
@@ -1252,7 +1246,7 @@ PRIVATE void _demo_timeline_segment_update_node_texture_memory_allocations(_demo
             {
                 uint32_t context_fb_size[2] = {0};
 
-                ogl_context_get_property(node_ptr->parent_segment_ptr->context,
+                ogl_context_get_property(ral_context_get_gl_context(node_ptr->parent_segment_ptr->context),
                                          OGL_CONTEXT_PROPERTY_DEFAULT_FBO_SIZE,
                                          context_fb_size);
 
@@ -1284,7 +1278,7 @@ PRIVATE void _demo_timeline_segment_update_node_texture_memory_allocations(_demo
         new_texture_create_info.usage                  = RAL_TEXTURE_USAGE_SAMPLED_BIT; /* TODO? */
         new_texture_create_info.use_full_mipmap_chain  = current_alloc_details.needs_full_mipmap_chain;
 
-        ral_context_create_textures(node_ptr->parent_segment_ptr->context_ral,
+        ral_context_create_textures(node_ptr->parent_segment_ptr->context,
                                     1, /* n_textures */
                                    &new_texture_create_info,
                                    &new_texture);
@@ -1577,7 +1571,7 @@ PUBLIC EMERALD_API bool demo_timeline_segment_add_node(demo_timeline_segment    
     /* If the node needs to be initialized, request a rendering callback and call back node impl */
     if (node_data_ptr[node_type].pfn_init_proc != NULL)
     {
-        ogl_context_request_callback_from_context_thread(segment_ptr->context,
+        ogl_context_request_callback_from_context_thread(ral_context_get_gl_context(segment_ptr->context),
                                                          _demo_timeline_segment_init_node_rendering_callback,
                                                          new_node_ptr);
     }
@@ -1871,7 +1865,7 @@ end:
 }
 
 /** Please see header for specification */
-PUBLIC demo_timeline_segment demo_timeline_segment_create_postprocessing(ogl_context               context,
+PUBLIC demo_timeline_segment demo_timeline_segment_create_postprocessing(ral_context               context,
                                                                          demo_timeline             owner_timeline,
                                                                          system_hashed_ansi_string name,
                                                                          system_time               start_time,
@@ -1891,7 +1885,7 @@ PUBLIC demo_timeline_segment demo_timeline_segment_create_postprocessing(ogl_con
                       "Invalid postprocessing segment name specified");
 
     /* Create a new instance */
-    ogl_context_get_property(context,
+    ogl_context_get_property(ral_context_get_gl_context(context),
                              OGL_CONTEXT_PROPERTY_DEFAULT_FBO_COLOR_TEXTURE_FORMAT,
                             &context_fbo_color_format);
 
@@ -1935,7 +1929,7 @@ PUBLIC demo_timeline_segment demo_timeline_segment_create_postprocessing(ogl_con
 }
 
 /** Please see header for specification */
-PUBLIC demo_timeline_segment demo_timeline_segment_create_video(ogl_context               context,
+PUBLIC demo_timeline_segment demo_timeline_segment_create_video(ral_context               context,
                                                                 demo_timeline             owner_timeline,
                                                                 ral_texture_format        output_texture_format,
                                                                 system_hashed_ansi_string name,
@@ -2108,7 +2102,7 @@ PUBLIC bool demo_timeline_segment_delete_nodes(demo_timeline_segment            
 
         if (node_pfn_deinit_proc != NULL)
         {
-            ogl_context_request_callback_from_context_thread(segment_ptr->context,
+            ogl_context_request_callback_from_context_thread(ral_context_get_gl_context(segment_ptr->context),
                                                              _demo_timeline_segment_deinit_node_rendering_callback,
                                                              node_ptr);
         } /* if (node_pfn_deinit_proc != NULL) */
@@ -2775,7 +2769,7 @@ PUBLIC EMERALD_API RENDERING_CONTEXT_CALL bool demo_timeline_segment_render(demo
     _demo_timeline_segment* segment_ptr    = (_demo_timeline_segment*) segment;
 
     /* Sanity checks */
-    ASSERT_DEBUG_SYNC(ogl_context_get_current_context() == segment_ptr->context,
+    ASSERT_DEBUG_SYNC(ogl_context_get_current_context() == ral_context_get_gl_context(segment_ptr->context),
                       "Invalid rendering context thread");
     ASSERT_DEBUG_SYNC(segment != NULL,
                       "Input video segment is NULL");

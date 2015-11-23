@@ -7,7 +7,6 @@
 #define DEMO_TIMELINE_SEGMENT_H
 
 #include "demo/demo_types.h"
-#include "ogl/ogl_types.h"          /* TODO: Remove OGL stuff */
 #include "ral/ral_types.h"
 #include "system/system_types.h"
 
@@ -181,7 +180,7 @@ PUBLIC EMERALD_API bool demo_timeline_segment_connect_nodes(demo_timeline_segmen
                                                             demo_timeline_segment_node_input_id  dst_node_input_id);
 
 /** TODO */
-PUBLIC demo_timeline_segment demo_timeline_segment_create_postprocessing(ogl_context               context,
+PUBLIC demo_timeline_segment demo_timeline_segment_create_postprocessing(ral_context               context,
                                                                          demo_timeline             owner_timeline,
                                                                          system_hashed_ansi_string name,
                                                                          system_time               start_time,
@@ -209,7 +208,7 @@ PUBLIC demo_timeline_segment demo_timeline_segment_create_postprocessing(ogl_con
  *
  *  @return Requested instance.
  */
-PUBLIC demo_timeline_segment demo_timeline_segment_create_video(ogl_context               context,
+PUBLIC demo_timeline_segment demo_timeline_segment_create_video(ral_context               context,
                                                                 demo_timeline             owner_timeline,
                                                                 ral_texture_format        output_texture_format,
                                                                 system_hashed_ansi_string name,

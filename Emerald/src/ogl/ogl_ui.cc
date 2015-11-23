@@ -207,15 +207,15 @@ PRIVATE void _ogl_ui_control_init(_ogl_ui_control* ui_control_ptr)
 PRIVATE void _ogl_ui_deinit_gl_renderer_callback(ogl_context context,
                                                  void*       user_arg)
 {
-    ogl_context_type            context_type          = OGL_CONTEXT_TYPE_UNDEFINED;
+    ral_backend_type            backend_type          = RAL_BACKEND_TYPE_UNKNOWN;
     PFNGLDELETEVERTEXARRAYSPROC pGLDeleteVertexArrays = NULL;
     _ogl_ui*                    ui_ptr                = (_ogl_ui*) user_arg;
 
     ogl_context_get_property(context,
-                             OGL_CONTEXT_PROPERTY_TYPE,
-                            &context_type);
+                             OGL_CONTEXT_PROPERTY_BACKEND_TYPE,
+                            &backend_type);
 
-    if (context_type == OGL_CONTEXT_TYPE_ES)
+    if (backend_type == RAL_BACKEND_TYPE_ES)
     {
         const ogl_context_es_entrypoints* entry_points = NULL;
 
@@ -227,8 +227,8 @@ PRIVATE void _ogl_ui_deinit_gl_renderer_callback(ogl_context context,
     }
     else
     {
-        ASSERT_DEBUG_SYNC(context_type == OGL_CONTEXT_TYPE_GL,
-                          "Unsupported context type");
+        ASSERT_DEBUG_SYNC(backend_type == RAL_BACKEND_TYPE_GL,
+                          "Unsupportedbackend type");
 
         const ogl_context_gl_entrypoints* entry_points = NULL;
 
@@ -386,15 +386,15 @@ PRIVATE void _ogl_ui_deinit(_ogl_ui* ui_ptr)
 PRIVATE void _ogl_ui_init_gl_renderer_callback(ogl_context context,
                                                void*       user_arg)
 {
-    ogl_context_type         context_type       = OGL_CONTEXT_TYPE_UNDEFINED;
+    ral_backend_type         backend_type       = RAL_BACKEND_TYPE_UNKNOWN;
     PFNGLGENVERTEXARRAYSPROC pGLGenVertexArrays = NULL;
     _ogl_ui*                 ui_ptr             = (_ogl_ui*) user_arg;
 
     ogl_context_get_property(context,
-                             OGL_CONTEXT_PROPERTY_TYPE,
-                            &context_type);
+                             OGL_CONTEXT_PROPERTY_BACKEND_TYPE,
+                            &backend_type);
 
-    if (context_type == OGL_CONTEXT_TYPE_ES)
+    if (backend_type == RAL_BACKEND_TYPE_ES)
     {
         const ogl_context_es_entrypoints* entry_points = NULL;
 
@@ -406,7 +406,7 @@ PRIVATE void _ogl_ui_init_gl_renderer_callback(ogl_context context,
     }
     else
     {
-        ASSERT_DEBUG_SYNC(context_type == OGL_CONTEXT_TYPE_GL,
+        ASSERT_DEBUG_SYNC(backend_type == RAL_BACKEND_TYPE_GL,
                           "Unsupported context type");
 
         const ogl_context_gl_entrypoints* entry_points = NULL;

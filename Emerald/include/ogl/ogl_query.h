@@ -8,6 +8,7 @@
 #define OGL_QUERY_H
 
 #include "ogl/ogl_types.h"
+#include "ral/ral_types.h"
 
 
 /* Declare private handle */
@@ -17,7 +18,7 @@ DECLARE_HANDLE(ogl_query);
 PUBLIC RENDERING_CONTEXT_CALL void ogl_query_begin(ogl_query query);
 
 /** TODO */
-PUBLIC ogl_query ogl_query_create(ogl_context  context,
+PUBLIC ogl_query ogl_query_create(ral_context  context,
                                   unsigned int ring_buffer_size,
                                   GLenum       gl_query_target);
 

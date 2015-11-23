@@ -41,7 +41,6 @@
 
 #include "demo/demo_timeline_segment.h"
 #include "system/system_types.h"
-#include "ogl/ogl_types.h"
 #include "ral/ral_types.h"
 
 REFCOUNT_INSERT_DECLARATIONS(demo_timeline,
@@ -109,9 +108,6 @@ typedef enum
     /* system_callback_manager; not settable. */
     DEMO_TIMELINE_PROPERTY_CALLBACK_MANAGER,
 
-    /* ral_context; not settable. */
-    DEMO_TIMELINE_PROPERTY_CONTEXT,
-
     /* system_time; not settable.
      *
      * End time of the segment located the furthest from the beginning of the timeline */
@@ -167,8 +163,7 @@ PUBLIC EMERALD_API bool demo_timeline_add_video_segment(demo_timeline           
 
 /** TODO. */
 PUBLIC EMERALD_API demo_timeline demo_timeline_create(system_hashed_ansi_string name,
-                                                      ogl_context               context,
-                                                      ogl_rendering_handler     rendering_handler,
+                                                      ral_context               context,
                                                       system_window             window);
 
 /** TODO */

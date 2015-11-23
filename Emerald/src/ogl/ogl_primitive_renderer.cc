@@ -8,8 +8,11 @@
 #include "ogl/ogl_primitive_renderer.h"
 #include "ogl/ogl_program.h"
 #include "ogl/ogl_shader.h"
-#include "raGL/raGL_buffers.h"
+#include "raGL/raGL_backend.h"
+#include "raGL/raGL_buffer.h"
 #include "raGL/raGL_utils.h"
+#include "ral/ral_buffer.h"
+#include "ral/ral_context.h"
 #include "system/system_assertions.h"
 #include "system/system_critical_section.h"
 #include "system/system_hashed_ansi_string.h"
@@ -95,7 +98,7 @@ typedef struct
      * [n_datasets] * vec4          - color data for subsequent datasets.
      * [n_datasets] * [vertex data] - vertex data for subsequent datasets.
      **/
-    raGL_buffer      bo;
+    ral_buffer       bo;
     GLuint           bo_color_offset;
     unsigned char*   bo_data;
     unsigned int     bo_data_size;
@@ -128,11 +131,9 @@ typedef struct
     /* Rendering program */
     ogl_program program;
 
-    /* Buffer memory manager */
-    raGL_buffers buffers;
-
     /* Rendering context */
-    ogl_context context;
+    raGL_backend backend;
+    ral_context  context;
 
     /* Cached object name */
     system_hashed_ansi_string name;
@@ -167,8 +168,6 @@ REFCOUNT_INSERT_IMPLEMENTATION(ogl_primitive_renderer,
 PRIVATE void _ogl_primitive_renderer_draw_rendering_thread_callback(ogl_context context,
                                                                     void*       user_arg)
 {
-    GLuint                                              bo_id            = 0;
-    uint32_t                                            bo_start_offset  = -1;
     ogl_context_gl_entrypoints_ext_direct_state_access* dsa_entry_points = NULL;
     ogl_context_gl_entrypoints*                         entry_points     = NULL;
 
@@ -181,13 +180,6 @@ PRIVATE void _ogl_primitive_renderer_draw_rendering_thread_callback(ogl_context 
 
     /* NOTE: draw_cs is locked while this call-back is being handled */
     _ogl_primitive_renderer* renderer_ptr = (_ogl_primitive_renderer*) user_arg;
-
-    raGL_buffer_get_property(renderer_ptr->bo,
-                             RAGL_BUFFER_PROPERTY_ID,
-                            &bo_id);
-    raGL_buffer_get_property(renderer_ptr->bo,
-                             RAGL_BUFFER_PROPERTY_START_OFFSET,
-                            &bo_start_offset);
 
     if (renderer_ptr->dirty)
     {
@@ -204,16 +196,36 @@ PRIVATE void _ogl_primitive_renderer_draw_rendering_thread_callback(ogl_context 
     if (!system_matrix4x4_is_equal(renderer_ptr->bo_mvp,
                                    renderer_ptr->draw_mvp) )
     {
-        dsa_entry_points->pGLNamedBufferSubDataEXT(bo_id,
-                                                   bo_start_offset + renderer_ptr->bo_mvp_offset,
-                                                   sizeof(float) * 16,
-                                                   system_matrix4x4_get_row_major_data(renderer_ptr->draw_mvp) );
+        ral_buffer_client_sourced_update_info bo_update_info;
+
+        bo_update_info.data         = system_matrix4x4_get_row_major_data(renderer_ptr->draw_mvp);
+        bo_update_info.data_size    = sizeof(float) * 16;
+        bo_update_info.start_offset = renderer_ptr->bo_mvp_offset;
+
+        ral_buffer_set_data_from_client_memory(renderer_ptr->bo,
+                                               1, /* n_updates */
+                                              &bo_update_info);
 
         system_matrix4x4_set_from_matrix4x4(renderer_ptr->bo_mvp,
                                             renderer_ptr->draw_mvp);
     }
 
     /* Draw line strips as requested */
+    GLuint      bo_id           = 0;
+    raGL_buffer bo_raGL         = NULL;
+    GLuint      bo_start_offset = 0;
+
+    raGL_backend_get_buffer(renderer_ptr->backend,
+                            renderer_ptr->bo,
+                  (void**) &bo_raGL);
+
+    raGL_buffer_get_property(bo_raGL,
+                             RAGL_BUFFER_PROPERTY_ID,
+                            &bo_id);
+    raGL_buffer_get_property(bo_raGL,
+                             RAGL_BUFFER_PROPERTY_START_OFFSET,
+                            &bo_start_offset);
+
     entry_points->pGLBindBufferRange(GL_UNIFORM_BUFFER,
                                      VS_UB_BINDING_ID,
                                      bo_id,
@@ -262,16 +274,19 @@ PRIVATE void _ogl_primitive_renderer_init_program(_ogl_primitive_renderer* rende
     const unsigned int n_vs_parts = sizeof(vs_parts) / sizeof(vs_parts[0]);
 
     /* Prepare the objects */
-    ogl_shader fs = ogl_shader_create(renderer_ptr->context,
-                                      RAL_SHADER_TYPE_FRAGMENT,
-                                      system_hashed_ansi_string_create_by_merging_two_strings("Line strip renderer FS ",
-                                                                                              system_hashed_ansi_string_get_buffer(renderer_ptr->name) ));
-    ogl_shader vs = ogl_shader_create(renderer_ptr->context,
-                                      RAL_SHADER_TYPE_VERTEX,
-                                      system_hashed_ansi_string_create_by_merging_two_strings("Line strip renderer VS ",
-                                                                                              system_hashed_ansi_string_get_buffer(renderer_ptr->name) ));
+    ogl_shader fs = NULL;
+    ogl_shader vs = NULL;
 
-    renderer_ptr->program = ogl_program_create(renderer_ptr->context,
+    fs = ogl_shader_create(ral_context_get_gl_context(renderer_ptr->context),
+                           RAL_SHADER_TYPE_FRAGMENT,
+                           system_hashed_ansi_string_create_by_merging_two_strings("Line strip renderer FS ",
+                                                                                   system_hashed_ansi_string_get_buffer(renderer_ptr->name) ));
+    vs = ogl_shader_create(ral_context_get_gl_context(renderer_ptr->context),
+                           RAL_SHADER_TYPE_VERTEX,
+                           system_hashed_ansi_string_create_by_merging_two_strings("Line strip renderer VS ",
+                                                                                   system_hashed_ansi_string_get_buffer(renderer_ptr->name) ));
+
+    renderer_ptr->program = ogl_program_create(ral_context_get_gl_context(renderer_ptr->context),
                                                system_hashed_ansi_string_create_by_merging_two_strings("Line strip renderer program ",
                                                                                                        system_hashed_ansi_string_get_buffer(renderer_ptr->name) ));
 
@@ -301,7 +316,7 @@ PRIVATE void _ogl_primitive_renderer_init_program(_ogl_primitive_renderer* rende
 PRIVATE void _ogl_primitive_renderer_init_vao(_ogl_primitive_renderer* renderer_ptr)
 {
     /* Request a call-back from the rendering trhread */
-    ogl_context_request_callback_from_context_thread(renderer_ptr->context,
+    ogl_context_request_callback_from_context_thread(ral_context_get_gl_context(renderer_ptr->context),
                                                      _ogl_primitive_renderer_init_vao_rendering_thread_callback,
                                                      renderer_ptr);
 }
@@ -313,7 +328,7 @@ PRIVATE void _ogl_primitive_renderer_init_vao_rendering_thread_callback(ogl_cont
     const ogl_context_gl_entrypoints* entry_points = NULL;
     _ogl_primitive_renderer*         renderer_ptr = (_ogl_primitive_renderer*) user_arg;
 
-    ogl_context_get_property(renderer_ptr->context,
+    ogl_context_get_property(ral_context_get_gl_context(renderer_ptr->context),
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
                             &entry_points);
 
@@ -331,14 +346,15 @@ PRIVATE void _ogl_primitive_renderer_release_rendering_thread_callback(ogl_conte
     ogl_context_gl_entrypoints* entrypoints  = NULL;
     _ogl_primitive_renderer*    instance_ptr = (_ogl_primitive_renderer*) user_arg;
 
-    ogl_context_get_property(instance_ptr->context,
+    ogl_context_get_property(ral_context_get_gl_context(instance_ptr->context),
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
                             &entrypoints);
 
     if (instance_ptr->bo != NULL)
     {
-        raGL_buffers_free_buffer_memory(instance_ptr->buffers,
-                                        instance_ptr->bo);
+        ral_context_delete_buffers(instance_ptr->context,
+                                   1, /* n_buffers */
+                                  &instance_ptr->bo);
 
         instance_ptr->bo = NULL;
     }
@@ -364,7 +380,7 @@ PRIVATE void _ogl_primitive_renderer_release(void* line_strip_renderer)
 {
     _ogl_primitive_renderer* instance_ptr = (_ogl_primitive_renderer*) line_strip_renderer;
 
-    ogl_context_request_callback_from_context_thread(instance_ptr->context,
+    ogl_context_request_callback_from_context_thread(ral_context_get_gl_context(instance_ptr->context),
                                                      _ogl_primitive_renderer_release_rendering_thread_callback,
                                                      instance_ptr);
 
@@ -401,8 +417,7 @@ PRIVATE void _ogl_primitive_renderer_release(void* line_strip_renderer)
 PRIVATE void _ogl_primitive_renderer_update_bo_storage(ogl_context              context,
                                                        _ogl_primitive_renderer* renderer_ptr)
 {
-    GLuint                                              bo_id            = 0;
-    uint32_t                                            bo_start_offset  = -1;
+    ral_buffer_client_sourced_update_info               bo_update_info;
     ogl_context_gl_entrypoints_ext_direct_state_access* dsa_entry_points = NULL;
     ogl_context_gl_entrypoints*                         entry_points     = NULL;
 
@@ -428,8 +443,9 @@ PRIVATE void _ogl_primitive_renderer_update_bo_storage(ogl_context              
     if (renderer_ptr->bo              != NULL &&
         renderer_ptr->bo_storage_size <  renderer_ptr->bo_data_size)
     {
-        raGL_buffers_free_buffer_memory(renderer_ptr->buffers,
-                                        renderer_ptr->bo);
+        ral_context_delete_buffers(renderer_ptr->context,
+                                   1, /* n_buffers */
+                                  &renderer_ptr->bo);
 
         renderer_ptr->bo = NULL;
     }
@@ -446,22 +462,19 @@ PRIVATE void _ogl_primitive_renderer_update_bo_storage(ogl_context              
         bo_create_info.usage_bits       = RAL_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
         bo_create_info.user_queue_bits  = 0xFFFFFFFF;
 
-        raGL_buffers_allocate_buffer_memory_for_ral_buffer_create_info(renderer_ptr->buffers,
-                                                                      &bo_create_info,
-                                                                      &renderer_ptr->bo);
+        ral_context_create_buffers(renderer_ptr->context,
+                                   1, /* n_buffers */
+                                  &bo_create_info,
+                                  &renderer_ptr->bo);
     }
 
-    raGL_buffer_get_property(renderer_ptr->bo,
-                             RAGL_BUFFER_PROPERTY_ID,
-                            &bo_id);
-    raGL_buffer_get_property(renderer_ptr->bo,
-                             RAGL_BUFFER_PROPERTY_START_OFFSET,
-                            &bo_start_offset);
+    bo_update_info.data         = renderer_ptr->bo_data;
+    bo_update_info.data_size    = renderer_ptr->bo_data_size;
+    bo_update_info.start_offset = 0;
 
-    dsa_entry_points->pGLNamedBufferSubDataEXT(bo_id,
-                                               bo_start_offset,
-                                               renderer_ptr->bo_data_size,
-                                               renderer_ptr->bo_data);
+    ral_buffer_set_data_from_client_memory(renderer_ptr->bo,
+                                           1, /* n_updates */
+                                          &bo_update_info);
 
     renderer_ptr->bo_storage_size = renderer_ptr->bo_data_size;
 
@@ -569,16 +582,22 @@ PRIVATE void _ogl_primitive_renderer_update_vao(ogl_context               contex
                                                 _ogl_primitive_renderer* renderer_ptr)
 {
     GLuint                            bo_id           = 0;
+    raGL_buffer                       bo_raGL         = NULL;
     uint32_t                          bo_start_offset = -1;
     const ogl_context_gl_entrypoints* entry_points    = NULL;
 
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
                             &entry_points);
-    raGL_buffer_get_property(renderer_ptr->bo,
+
+    raGL_backend_get_buffer(renderer_ptr->backend,
+                            renderer_ptr->bo,
+                  (void**) &bo_raGL);
+
+    raGL_buffer_get_property(bo_raGL,
                              RAGL_BUFFER_PROPERTY_ID,
                             &bo_id);
-    raGL_buffer_get_property(renderer_ptr->bo,
+    raGL_buffer_get_property(bo_raGL,
                              RAGL_BUFFER_PROPERTY_START_OFFSET,
                             &bo_start_offset);
 
@@ -755,19 +774,9 @@ end:
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API ogl_primitive_renderer ogl_primitive_renderer_create(ogl_context               context,
+PUBLIC EMERALD_API ogl_primitive_renderer ogl_primitive_renderer_create(ral_context               context,
                                                                         system_hashed_ansi_string name)
 {
-    /* Context type verification */
-    ogl_context_type context_type = OGL_CONTEXT_TYPE_UNDEFINED;
-
-    ogl_context_get_property(context,
-                             OGL_CONTEXT_PROPERTY_TYPE,
-                            &context_type);
-
-    ASSERT_DEBUG_SYNC(context_type == OGL_CONTEXT_TYPE_GL,
-                      "ES contexts are not supported for ogl_primitive_renderer");
-
     /* Spawn the new instance */
     _ogl_primitive_renderer* renderer_ptr = new (std::nothrow) _ogl_primitive_renderer;
 
@@ -780,15 +789,15 @@ PUBLIC EMERALD_API ogl_primitive_renderer ogl_primitive_renderer_create(ogl_cont
                0,
                sizeof(*renderer_ptr) );
 
-        ogl_context_get_property(context,
-                                 OGL_CONTEXT_PROPERTY_BUFFERS_RAGL,
-                                &renderer_ptr->buffers);
-
         renderer_ptr->bo_mvp   = system_matrix4x4_create       ();
         renderer_ptr->context  = context; /* DO NOT retain the context - otherwise you'll get a circular dependency! */
         renderer_ptr->datasets = system_resizable_vector_create(4 /* capacity */);
         renderer_ptr->dirty    = true;
         renderer_ptr->name     = name;
+
+        ral_context_get_property(context,
+                                 RAL_CONTEXT_PROPERTY_BACKEND,
+                                &renderer_ptr->backend);
 
         _ogl_primitive_renderer_init_program(renderer_ptr);
         _ogl_primitive_renderer_init_vao    (renderer_ptr);
@@ -869,7 +878,7 @@ PUBLIC EMERALD_API void ogl_primitive_renderer_draw(ogl_primitive_renderer      
         renderer_ptr->draw_n_dataset_ids = n_dataset_ids;
 
         /* Switch to the rendering context */
-        ogl_context_request_callback_from_context_thread(renderer_ptr->context,
+        ogl_context_request_callback_from_context_thread(ral_context_get_gl_context(renderer_ptr->context),
                                                          _ogl_primitive_renderer_draw_rendering_thread_callback,
                                                          renderer_ptr);
     }

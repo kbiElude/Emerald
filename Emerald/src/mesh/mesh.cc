@@ -8,7 +8,7 @@
 #include "mesh/mesh.h"
 #include "mesh/mesh_material.h"
 #include "ogl/ogl_context.h"
-#include "raGL/raGL_buffers.h"
+#include "ral/ral_buffer.h"
 #include "ral/ral_context.h"
 #include "ral/ral_sampler.h"
 #include "ral/ral_texture.h"
@@ -55,7 +55,7 @@ typedef struct
      *                   separated with a mesh-specific stride.
      *                   SH MUST be aligned to 32 (as it's used by means of a RGBA32F texture buffer.
      */
-    raGL_buffer  gl_bo;
+    ral_buffer  gl_bo;
 
     float*           gl_processed_data;
     uint32_t         gl_processed_data_size; /* tells size of gl_processed_data */
@@ -105,8 +105,7 @@ typedef struct _mesh_layer_data_stream
     mesh_layer_data_stream_source    source;
 
     /* GPU stream meshes: */
-    raGL_buffer  bo;
-    unsigned int bo_size;
+    ral_buffer   bo;
     unsigned int bo_stride;
 
     /* Regular meshes: */
@@ -119,7 +118,7 @@ typedef struct _mesh_layer_data_stream
      * - client memory (use *n_items_ptr).
      * - buffer memory (use n_items_bo_id and n_items_bo_start_offset. size is always equal to sizeof(int)
      */
-    raGL_buffer                   n_items_bo;
+    ral_buffer                    n_items_bo;
     bool                          n_items_bo_requires_memory_barrier;
     unsigned int*                 n_items_ptr;
     mesh_layer_data_stream_source n_items_source;
@@ -281,13 +280,6 @@ PRIVATE void              _mesh_release_normals_data                     (      
 PRIVATE void              _mesh_release_renderer_callback                (      ogl_context                       context,
                                                                                 void*                             arg);
 PRIVATE void              _mesh_update_aabb                              (      _mesh*                            mesh_ptr);
-
-
-#ifdef _DEBUG
-    PRIVATE void _mesh_verify_context_type(ogl_context);
-#else
-    #define _mesh_verify_context_type(x)
-#endif
 
 
 /** TODO */
@@ -549,17 +541,11 @@ PRIVATE void _mesh_deinit_mesh_layer_pass(const _mesh*            mesh_ptr,
 PRIVATE void _mesh_fill_gl_buffers_renderer_callback(ogl_context context,
                                                      void*        arg)
 {
-    raGL_buffers                                              buffers          = NULL;
     const ogl_context_gl_entrypoints_ext_direct_state_access* dsa_entry_points = NULL;
     const ogl_context_gl_entrypoints*                         entry_points     = NULL;
     const ogl_context_gl_limits*                              limits_ptr       = NULL;
     _mesh*                                                    mesh_ptr         = (_mesh*) arg;
 
-    _mesh_verify_context_type(context);
-
-    ogl_context_get_property(context,
-                             OGL_CONTEXT_PROPERTY_BUFFERS_RAGL,
-                            &buffers);
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
                             &entry_points);
@@ -570,8 +556,9 @@ PRIVATE void _mesh_fill_gl_buffers_renderer_callback(ogl_context context,
     /* Retrieve BO region to hold the data */
     if (mesh_ptr->gl_bo != NULL)
     {
-        raGL_buffers_free_buffer_memory(buffers,
-                                        mesh_ptr->gl_bo);
+        ral_context_delete_buffers(mesh_ptr->ral_context,
+                                   1, /* n_buffers */
+                                  &mesh_ptr->gl_bo);
 
         mesh_ptr->gl_bo = NULL;
     }
@@ -581,9 +568,8 @@ PRIVATE void _mesh_fill_gl_buffers_renderer_callback(ogl_context context,
      * NOTE: For normals preview renderer, we need to align
      *       mesh data on SSBO boundary.
      */
-    ral_buffer_create_info bo_create_info;
-    GLuint                 bo_id           = 0;
-    uint32_t               bo_start_offset = -1;
+    ral_buffer_create_info                bo_create_info;
+    ral_buffer_client_sourced_update_info bo_update_info;
 
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_LIMITS,
@@ -595,21 +581,18 @@ PRIVATE void _mesh_fill_gl_buffers_renderer_callback(ogl_context context,
     bo_create_info.usage_bits       = RAL_BUFFER_USAGE_SHADER_STORAGE_BUFFER_BIT | RAL_BUFFER_USAGE_UNIFORM_BUFFER_BIT | RAL_BUFFER_USAGE_VERTEX_BUFFER_BIT;
     bo_create_info.user_queue_bits  = 0xFFFFFFFF;
 
-    raGL_buffers_allocate_buffer_memory_for_ral_buffer_create_info(buffers,
-                                                                  &bo_create_info,
-                                                                  &mesh_ptr->gl_bo);
+    ral_context_create_buffers(mesh_ptr->ral_context,
+                               1, /* n_buffers */
+                              &bo_create_info,
+                              &mesh_ptr->gl_bo);
 
-    raGL_buffer_get_property(mesh_ptr->gl_bo,
-                             RAGL_BUFFER_PROPERTY_ID,
-                            &bo_id);
-    raGL_buffer_get_property(mesh_ptr->gl_bo,
-                             RAGL_BUFFER_PROPERTY_START_OFFSET,
-                            &bo_start_offset);
+    bo_update_info.data         = mesh_ptr->gl_processed_data;
+    bo_update_info.data_size    = mesh_ptr->gl_processed_data_size;
+    bo_update_info.start_offset = 0;
 
-    dsa_entry_points->pGLNamedBufferSubDataEXT(bo_id,
-                                               bo_start_offset,
-                                               mesh_ptr->gl_processed_data_size,
-                                               mesh_ptr->gl_processed_data);
+    ral_buffer_set_data_from_client_memory(mesh_ptr->gl_bo,
+                                           1, /* n_updates */
+                                          &bo_update_info);
 
     /* Safe to release GL processed data buffer now! */
     if (!(mesh_ptr->creation_flags & MESH_CREATION_FLAGS_SAVE_SUPPORT) )
@@ -1037,7 +1020,6 @@ PRIVATE void _mesh_init_mesh_layer_data_stream(_mesh_layer_data_stream*      new
                                                mesh_layer_data_stream_source source)
 {
     new_mesh_layer_data_stream_ptr->bo                                 = NULL;
-    new_mesh_layer_data_stream_ptr->bo_size                            = 0;
     new_mesh_layer_data_stream_ptr->bo_stride                          = 0;
     new_mesh_layer_data_stream_ptr->data                               = NULL;
     new_mesh_layer_data_stream_ptr->data_type                          = MESH_LAYER_DATA_STREAM_DATA_TYPE_UNKNOWN;
@@ -1531,22 +1513,15 @@ PRIVATE void _mesh_release_renderer_callback(ogl_context context,
     const ogl_context_gl_entrypoints* entry_points = NULL;
     _mesh*                            mesh_ptr     = (_mesh*) arg;
 
-    _mesh_verify_context_type(context);
-
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
                             &entry_points);
 
     if (mesh_ptr->gl_bo != NULL)
     {
-        raGL_buffers buffers = NULL;
-
-        ogl_context_get_property(context,
-                                 OGL_CONTEXT_PROPERTY_BUFFERS_RAGL,
-                                &buffers);
-
-        raGL_buffers_free_buffer_memory(buffers,
-                                        mesh_ptr->gl_bo);
+        ral_context_delete_buffers(mesh_ptr->ral_context,
+                                   1, /* n_buffers */
+                                  &mesh_ptr->gl_bo);
 
         mesh_ptr->gl_bo = NULL;
     } /* if (mesh->gl_bo != NULL) */
@@ -1603,22 +1578,6 @@ PRIVATE void _mesh_update_aabb(_mesh* mesh_ptr)
         }
     } /* for (all layers) */
 }
-
-/** TODO */
-#ifdef _DEBUG
-    /* TODO */
-    PRIVATE void _mesh_verify_context_type(ogl_context context)
-    {
-        ogl_context_type context_type = OGL_CONTEXT_TYPE_UNDEFINED;
-
-        ogl_context_get_property(context,
-                                 OGL_CONTEXT_PROPERTY_TYPE,
-                                &context_type);
-
-        ASSERT_DEBUG_SYNC(context_type == OGL_CONTEXT_TYPE_GL,
-                          "mesh is only supported under GL contexts")
-    }
-#endif
 
 
 /* Please see header for specification */
@@ -1685,9 +1644,8 @@ PUBLIC EMERALD_API void mesh_add_layer_data_stream_from_buffer_memory(mesh      
                                                                       mesh_layer_id               layer_id,
                                                                       mesh_layer_data_stream_type type,
                                                                       unsigned int                n_components,
-                                                                      raGL_buffer                 bo,
-                                                                      unsigned int                bo_stride,
-                                                                      unsigned int                bo_size)
+                                                                      ral_buffer                  bo,
+                                                                      unsigned int                bo_stride)
 {
     _mesh_layer* layer_ptr         = NULL;
     _mesh*       mesh_instance_ptr = (_mesh*) mesh;
@@ -1717,7 +1675,6 @@ PUBLIC EMERALD_API void mesh_add_layer_data_stream_from_buffer_memory(mesh      
                                                   MESH_LAYER_DATA_STREAM_SOURCE_BUFFER_MEMORY);
 
                 data_stream_ptr->bo           = bo;
-                data_stream_ptr->bo_size      = bo_size;
                 data_stream_ptr->bo_stride    = bo_stride;
                 data_stream_ptr->n_components = n_components;
 
@@ -3637,11 +3594,11 @@ PUBLIC EMERALD_API bool mesh_get_layer_data_stream_property(mesh                
         if  (mesh_ptr->type == MESH_TYPE_REGULAR                            &&
              property       == MESH_LAYER_DATA_STREAM_PROPERTY_START_OFFSET)
         {
-            uint32_t bo_start_offset = -1;
+            uint32_t bo_start_offset = 0;
 
-            raGL_buffer_get_property(mesh_ptr->gl_bo,
-                                     RAGL_BUFFER_PROPERTY_START_OFFSET,
-                                    &bo_start_offset);
+            ral_buffer_get_property(mesh_ptr->gl_bo,
+                                    RAL_BUFFER_PROPERTY_START_OFFSET,
+                                   &bo_start_offset);
 
             *((uint32_t*) out_result_ptr) = bo_start_offset + mesh_ptr->gl_processed_data_stream_start_offset[type];
             result                        = true;
@@ -3662,18 +3619,10 @@ PUBLIC EMERALD_API bool mesh_get_layer_data_stream_property(mesh                
                 {
                     switch (property)
                     {
-                        case MESH_LAYER_DATA_STREAM_PROPERTY_GL_BO:
+                        case MESH_LAYER_DATA_STREAM_PROPERTY_GL_BO_RAL:
                         {
-                            *(raGL_buffer*) out_result_ptr = stream_ptr->bo;
-                            result                         = true;
-
-                            break;
-                        }
-
-                        case MESH_LAYER_DATA_STREAM_PROPERTY_GL_BO_SIZE:
-                        {
-                            *(unsigned int*) out_result_ptr = stream_ptr->bo_size;
-                            result                          = true;
+                            *(ral_buffer*) out_result_ptr = stream_ptr->bo;
+                            result                        = true;
 
                             break;
                         }
@@ -3707,12 +3656,12 @@ PUBLIC EMERALD_API bool mesh_get_layer_data_stream_property(mesh                
                             break;
                         }
 
-                        case MESH_LAYER_DATA_STREAM_PROPERTY_N_ITEMS_BO:
+                        case MESH_LAYER_DATA_STREAM_PROPERTY_N_ITEMS_BO_RAL:
                         {
                             ASSERT_DEBUG_SYNC(mesh_ptr->type == MESH_TYPE_GPU_STREAM,
                                               "Invalid mesh type for the MESH_LAYER_DATA_STREAM_PROPERTY_N_ITEMS_BO query.");
 
-                            *(raGL_buffer*) out_result_ptr = stream_ptr->n_items_bo;
+                            *(ral_buffer*) out_result_ptr = stream_ptr->n_items_bo;
 
                             break;
                         }
@@ -3736,10 +3685,14 @@ PUBLIC EMERALD_API bool mesh_get_layer_data_stream_property(mesh                
 
                         case MESH_LAYER_DATA_STREAM_PROPERTY_START_OFFSET:
                         {
+#if 0
                             raGL_buffer_get_property(stream_ptr->bo,
                                                      RAGL_BUFFER_PROPERTY_START_OFFSET,
                                                      out_result_ptr);
-
+#else
+                            /* ral_buffer defines where the buffer memory region starts from. */
+                            *(uint32_t*) out_result_ptr = 0;
+#endif
                             break;
                         }
 
@@ -3879,7 +3832,7 @@ PUBLIC EMERALD_API bool mesh_get_property(mesh          instance,
             break;
         }
 
-        case MESH_PROPERTY_GL_BO:
+        case MESH_PROPERTY_GL_BO_RAL:
         {
             if (mesh_ptr->instantiation_parent == NULL)
             {
@@ -3897,7 +3850,7 @@ PUBLIC EMERALD_API bool mesh_get_property(mesh          instance,
                 ASSERT_DEBUG_SYNC(mesh_ptr->gl_storage_initialized,
                                   "Cannot query GL BO id - GL storage not initialized");
 
-                *(raGL_buffer*) out_result_ptr = mesh_ptr->gl_bo;
+                *(ral_buffer*) out_result_ptr = mesh_ptr->gl_bo;
             } /* if (mesh_ptr->instantiation_parent == NULL) */
             else
             {
@@ -4179,14 +4132,14 @@ PUBLIC EMERALD_API bool mesh_get_layer_pass_property(mesh                instanc
 
                 case MESH_LAYER_PROPERTY_GL_BO_ELEMENTS_OFFSET:
                 {
-                    uint32_t gl_bo_start_offset = -1;
+                    uint32_t gl_bo_start_offset = 0;
 
                     ASSERT_DEBUG_SYNC(mesh_ptr->type == MESH_TYPE_REGULAR,
                                       "MESH_LAYER_PROPERTY_GL_BO_ELEMENTS_OFFSET query is only valid for regular meshes.");
 
-                    raGL_buffer_get_property(mesh_ptr->gl_bo,
-                                             RAGL_BUFFER_PROPERTY_START_OFFSET,
-                                            &gl_bo_start_offset);
+                    ral_buffer_get_property(mesh_ptr->gl_bo,
+                                            RAL_BUFFER_PROPERTY_START_OFFSET,
+                                           &gl_bo_start_offset);
 
                     *((uint32_t*) out_result_ptr) = gl_bo_start_offset + mesh_layer_pass_ptr->gl_bo_elements_offset;
 
@@ -5069,14 +5022,6 @@ PUBLIC EMERALD_API bool mesh_set_layer_data_stream_property(mesh                
     /* Update the property */
     switch (property)
     {
-        case MESH_LAYER_DATA_STREAM_PROPERTY_GL_BO_SIZE:
-        {
-            data_stream_ptr->bo_size = *(unsigned int*) data;
-
-            result = true;
-            break;
-        }
-
         case MESH_LAYER_DATA_STREAM_PROPERTY_N_ITEMS:
         {
             if (data_stream_ptr->n_items_bo != NULL)
@@ -5116,8 +5061,7 @@ PUBLIC EMERALD_API bool mesh_set_layer_data_stream_property_with_buffer_memory(m
                                                                                uint32_t                        n_layer,
                                                                                mesh_layer_data_stream_type     type,
                                                                                mesh_layer_data_stream_property property,
-                                                                               raGL_buffer                     bo,
-                                                                               unsigned int                    bo_size,
+                                                                               ral_buffer                      bo,
                                                                                bool                            does_read_require_memory_barrier)
 {
     _mesh_layer_data_stream* data_stream_ptr = NULL;
@@ -5154,10 +5098,9 @@ PUBLIC EMERALD_API bool mesh_set_layer_data_stream_property_with_buffer_memory(m
     /* Update the property */
     switch (property)
     {
-        case MESH_LAYER_DATA_STREAM_PROPERTY_GL_BO:
+        case MESH_LAYER_DATA_STREAM_PROPERTY_GL_BO_RAL:
         {
-            data_stream_ptr->bo      = bo;
-            data_stream_ptr->bo_size = bo_size;
+            data_stream_ptr->bo = bo;
 
             result = true;
             break;
@@ -5165,12 +5108,18 @@ PUBLIC EMERALD_API bool mesh_set_layer_data_stream_property_with_buffer_memory(m
 
         case MESH_LAYER_DATA_STREAM_PROPERTY_N_ITEMS:
         {
+            uint32_t bo_size = 0;
+
             if (data_stream_ptr->n_items_ptr != NULL)
             {
                 delete data_stream_ptr->n_items_ptr;
 
                 data_stream_ptr->n_items_ptr = NULL;
             } /* if (data_stream_ptr->n_items_ptr != NULL) */
+
+            ral_buffer_get_property(bo,
+                                    RAL_BUFFER_PROPERTY_SIZE,
+                                   &bo_size);
 
             ASSERT_DEBUG_SYNC(bo_size == sizeof(unsigned int),
                               "Invalid buffer memory region size requested.");

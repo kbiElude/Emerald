@@ -49,8 +49,7 @@ typedef struct _demo_timeline
 {
     float                        aspect_ratio;                    /* AR for frame times, for which no video segments are defined */
     system_callback_manager      callback_manager;
-    ogl_context                  context;       /* TODO: remove */
-    ral_context                  context_ral;
+    ral_context                  context;
     system_critical_section      cs;
     system_time                  duration;
     _demo_timeline_segment_item* last_used_video_segment_ptr;
@@ -72,9 +71,8 @@ typedef struct _demo_timeline
 
     REFCOUNT_INSERT_VARIABLES;
 
-    explicit _demo_timeline(ogl_context           in_context,
-                            ogl_rendering_handler in_rendering_handler,
-                            system_window         in_window)
+    explicit _demo_timeline(ral_context   in_context,
+                            system_window in_window)
     {
         ASSERT_DEBUG_SYNC(in_context != NULL,
                           "Input rendering context is NULL");
@@ -82,13 +80,10 @@ typedef struct _demo_timeline
         aspect_ratio                             = 1.0f;
         callback_manager                         = system_callback_manager_create( (_callback_id) DEMO_TIMELINE_CALLBACK_ID_COUNT);
         context                                  = in_context;
-        context_ral                              = ral_context_create(system_hashed_ansi_string_create("Demo timeline RAL context"),
-                                                                      in_window,
-                                                                      in_rendering_handler);
         cs                                       = system_critical_section_create();
         duration                                 = 0;
         last_used_video_segment_ptr              = NULL;
-        rendering_pipeline                       = ogl_pipeline_create(in_context,
+        rendering_pipeline                       = ogl_pipeline_create(ral_context_get_gl_context(in_context),
 #ifdef _DEBUG
                                                                        true, /* should_overlay_performance_info */
 #else
@@ -105,12 +100,10 @@ typedef struct _demo_timeline
         postprocessing_segment_id_counter        = 0;
         video_segment_id_counter                 = 0;
 
-        ASSERT_DEBUG_SYNC (context_ral != NULL,
-                           "Could not create RAL context");
         ASSERT_DEBUG_SYNC (rendering_pipeline != NULL,
                            "Could not spawn a rendering pipeline instance.");
 
-        ogl_context_retain(in_context);
+        ral_context_retain(in_context);
     }
 
     ~_demo_timeline()
@@ -122,11 +115,11 @@ typedef struct _demo_timeline
             callback_manager = NULL;
         } /* if (callback_manager != NULL) */
 
-        if (context_ral != NULL)
+        if (context != NULL)
         {
-            ral_context_release(context_ral);
+            ral_context_release(context);
 
-            context_ral = NULL;
+            context = NULL;
         }
 
         if (cs != NULL)
@@ -141,13 +134,6 @@ typedef struct _demo_timeline
             ogl_pipeline_release(rendering_pipeline);
 
             rendering_pipeline = NULL;
-        }
-
-        if (context != NULL)
-        {
-            ogl_context_release(context);
-
-            context = NULL;
         }
 
         if (postprocessing_segments != NULL)
@@ -854,12 +840,10 @@ PUBLIC EMERALD_API bool demo_timeline_add_video_segment(demo_timeline           
 
 /** Please see header for spec */
 PUBLIC EMERALD_API demo_timeline demo_timeline_create(system_hashed_ansi_string name,
-                                                      ogl_context               context,
-                                                      ogl_rendering_handler     rendering_handler,
+                                                      ral_context               context,
                                                       system_window             window)
 {
     _demo_timeline* timeline_ptr = new (std::nothrow) _demo_timeline(context,
-                                                                     rendering_handler,
                                                                      window);
 
     ASSERT_ALWAYS_SYNC(timeline_ptr != NULL,
@@ -1045,13 +1029,6 @@ PUBLIC EMERALD_API bool demo_timeline_get_property(demo_timeline          timeli
         case DEMO_TIMELINE_PROPERTY_CALLBACK_MANAGER:
         {
             *(system_callback_manager*) out_result_ptr = timeline_ptr->callback_manager;
-
-            break;
-        }
-
-        case DEMO_TIMELINE_PROPERTY_CONTEXT:
-        {
-            *(ral_context*) out_result_ptr = timeline_ptr->context_ral;
 
             break;
         }

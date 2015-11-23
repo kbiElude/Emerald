@@ -29,7 +29,7 @@ typedef struct
     float       x1y1x2y2[4];
 
     ogl_program_ub program_ub;
-    raGL_buffer    program_ub_bo;
+    ral_buffer     program_ub_bo;
     GLuint         program_ub_bo_size;
     GLint          program_x1y1x2y2_ub_offset;
 
@@ -135,13 +135,17 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_ui_frame_draw(void* internal_instance)
                                 GL_ONE_MINUS_SRC_ALPHA);
     frame_ptr->pGLEnable       (GL_BLEND);
     {
-        GLuint   program_ub_bo_id           = 0;
-        uint32_t program_ub_bo_start_offset = -1;
+        GLuint      program_ub_bo_id           = 0;
+        raGL_buffer program_ub_bo_raGL         = NULL;
+        uint32_t    program_ub_bo_start_offset = -1;
 
-        raGL_buffer_get_property(frame_ptr->program_ub_bo,
+        program_ub_bo_raGL = ral_context_get_buffer_gl(frame_ptr->context,
+                                                       frame_ptr->program_ub_bo);
+
+        raGL_buffer_get_property(program_ub_bo_raGL,
                                  RAGL_BUFFER_PROPERTY_ID,
                                 &program_ub_bo_id);
-        raGL_buffer_get_property(frame_ptr->program_ub_bo,
+        raGL_buffer_get_property(program_ub_bo_raGL,
                                  RAGL_BUFFER_PROPERTY_START_OFFSET,
                                 &program_ub_bo_start_offset);
 
@@ -297,7 +301,7 @@ PUBLIC void* ogl_ui_frame_init(ogl_ui       instance,
                                     OGL_PROGRAM_UB_PROPERTY_BLOCK_DATA_SIZE,
                                    &new_frame->program_ub_bo_size);
         ogl_program_ub_get_property(new_frame->program_ub,
-                                    OGL_PROGRAM_UB_PROPERTY_BO,
+                                    OGL_PROGRAM_UB_PROPERTY_BUFFER_RAL,
                                    &new_frame->program_ub_bo);
 
         /* Set up UBO bindings */

@@ -6,20 +6,19 @@
 #include "shared.h"
 #include "ogl/ogl_context.h"
 #include "procedural/procedural_mesh_circle.h"
-#include "raGL/raGL_buffers.h"
+#include "ral/ral_buffer.h"
+#include "ral/ral_context.h"
 #include "system/system_log.h"
 
 /* Internal type definitions */
 typedef struct
 {
-    raGL_buffers                  buffers;
-    ogl_context                   context;
-    uint32_t                      n_segments;
-    system_hashed_ansi_string     name;
+    ral_context               context;
+    uint32_t                  n_segments;
+    system_hashed_ansi_string name;
 
-    raGL_buffer  arrays_bo;    /* owned by raGL_buffers - do NOT release with glDeleteBuffers() */
-    unsigned int arrays_bo_size;
-    GLuint       n_vertices;
+    ral_buffer arrays_bo;
+    GLuint     n_vertices;
 
     REFCOUNT_INSERT_VARIABLES
 } _procedural_mesh_circle;
@@ -73,35 +72,30 @@ PRIVATE void _procedural_mesh_circle_create_renderer_callback(ogl_context contex
     ASSERT_DEBUG_SYNC( ((char*) data_traveller_ptr - (char*) data_ptr) == data_size,
                       "Buffer underflow/overflow detected");
 
-    mesh_circle_ptr->arrays_bo_size = data_size;
-    mesh_circle_ptr->n_vertices     = n_vertices;
+    mesh_circle_ptr->n_vertices = n_vertices;
 
     /* Store the data in buffer memory */
-    ral_buffer_create_info arrays_bo_create_info;
-    GLuint                 arrays_bo_id           = 0;
-    uint32_t               arrays_bo_start_offset = -1;
+    ral_buffer_create_info                arrays_bo_create_info;
+    ral_buffer_client_sourced_update_info arrays_bo_update_info;
 
     arrays_bo_create_info.mappability_bits = RAL_BUFFER_MAPPABILITY_NONE;
     arrays_bo_create_info.property_bits    = RAL_BUFFER_PROPERTY_SPARSE_IF_AVAILABLE_BIT;
-    arrays_bo_create_info.size             = mesh_circle_ptr->arrays_bo_size;
+    arrays_bo_create_info.size             = data_size;
     arrays_bo_create_info.usage_bits       = RAL_BUFFER_USAGE_VERTEX_BUFFER_BIT;
     arrays_bo_create_info.user_queue_bits  = 0xFFFFFFFF;
 
-    raGL_buffers_allocate_buffer_memory_for_ral_buffer_create_info(mesh_circle_ptr->buffers,
-                                                                  &arrays_bo_create_info,
-                                                                  &mesh_circle_ptr->arrays_bo);
+    arrays_bo_update_info.data         = data_ptr;
+    arrays_bo_update_info.data_size    = data_size;
+    arrays_bo_update_info.start_offset = 0;
 
-    raGL_buffer_get_property(mesh_circle_ptr->arrays_bo,
-                             RAGL_BUFFER_PROPERTY_ID,
-                            &arrays_bo_id);
-    raGL_buffer_get_property(mesh_circle_ptr->arrays_bo,
-                             RAGL_BUFFER_PROPERTY_START_OFFSET,
-                            &arrays_bo_start_offset);
+    ral_context_create_buffers(mesh_circle_ptr->context,
+                               1, /* n_buffers */
+                               &arrays_bo_create_info,
+                              &mesh_circle_ptr->arrays_bo);
 
-    dsa_entry_points->pGLNamedBufferSubDataEXT(arrays_bo_id,
-                                               arrays_bo_start_offset,
-                                               mesh_circle_ptr->arrays_bo_size,
-                                               data_ptr);
+    ral_buffer_set_data_from_client_memory(mesh_circle_ptr->arrays_bo,
+                                           1, /* n_updates */
+                                          &arrays_bo_update_info);
 
     /* Safe to release the data buffer at this point */
     delete [] data_ptr;
@@ -115,8 +109,9 @@ PRIVATE void _procedural_mesh_circle_release_renderer_callback(ogl_context conte
 
     if (mesh_circle_ptr->arrays_bo != NULL)
     {
-        raGL_buffers_free_buffer_memory(mesh_circle_ptr->buffers,
-                                        mesh_circle_ptr->arrays_bo);
+        ral_context_delete_buffers(mesh_circle_ptr->context,
+                                   1, /* n_buffers */
+                                  &mesh_circle_ptr->arrays_bo);
 
         mesh_circle_ptr->arrays_bo = NULL;
     }
@@ -127,13 +122,13 @@ PRIVATE void _procedural_mesh_circle_release(void* arg)
 {
     _procedural_mesh_circle* instance_ptr = (_procedural_mesh_circle*) arg;
 
-    ogl_context_request_callback_from_context_thread(instance_ptr->context,
+    ogl_context_request_callback_from_context_thread(ral_context_get_gl_context(instance_ptr->context),
                                                      _procedural_mesh_circle_release_renderer_callback,
                                                      instance_ptr);
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API procedural_mesh_circle procedural_mesh_circle_create(ogl_context                   context,
+PUBLIC EMERALD_API procedural_mesh_circle procedural_mesh_circle_create(ral_context                   context,
                                                                         _procedural_mesh_data_bitmask data_bitmask,
                                                                         uint32_t                      n_segments,
                                                                         system_hashed_ansi_string     name)
@@ -159,12 +154,8 @@ PUBLIC EMERALD_API procedural_mesh_circle procedural_mesh_circle_create(ogl_cont
         new_circle_ptr->n_segments = n_segments;
         new_circle_ptr->name       = name;
 
-        ogl_context_get_property(context,
-                                 OGL_CONTEXT_PROPERTY_BUFFERS_RAGL,
-                                &new_circle_ptr->buffers);
-
         /* Call back renderer to continue */
-        ogl_context_request_callback_from_context_thread(context,
+        ogl_context_request_callback_from_context_thread(ral_context_get_gl_context(context),
                                                          _procedural_mesh_circle_create_renderer_callback,
                                                          new_circle_ptr);
 
@@ -187,18 +178,16 @@ PUBLIC EMERALD_API void procedural_mesh_circle_get_property(procedural_mesh_circ
 
     switch (property)
     {
-        case PROCEDURAL_MESH_CIRCLE_PROPERTY_ARRAYS_BO:
+        case PROCEDURAL_MESH_CIRCLE_PROPERTY_ARRAYS_BO_RAL:
         {
-            *(raGL_buffer*) out_result = circle_ptr->arrays_bo;
+            *(ral_buffer*) out_result = circle_ptr->arrays_bo;
 
             break;
         }
 
         case PROCEDURAL_MESH_CIRCLE_PROPERTY_ARRAYS_BO_VERTEX_DATA_OFFSET:
         {
-            raGL_buffer_get_property(circle_ptr->arrays_bo,
-                                     RAGL_BUFFER_PROPERTY_START_OFFSET,
-                                     out_result);
+            *(uint32_t*) out_result = 0;
 
             break;
         }

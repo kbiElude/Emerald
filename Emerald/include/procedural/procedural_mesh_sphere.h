@@ -16,7 +16,7 @@ REFCOUNT_INSERT_DECLARATIONS(procedural_mesh_sphere,
 
 typedef enum
 {
-    PROCEDURAL_MESH_SPHERE_PROPERTY_ARRAYS_BO_ID,                  /* not settable, GLuint */
+    PROCEDURAL_MESH_SPHERE_PROPERTY_ARRAYS_BO_RAL,                 /* not settable, GLuint */
     PROCEDURAL_MESH_SPHERE_PROPERTY_ARRAYS_BO_NORMALS_DATA_OFFSET, /* not settable, GLuint */
     PROCEDURAL_MESH_SPHERE_PROPERTY_ARRAYS_BO_VERTEX_DATA_OFFSET,  /* not settable, GLuint */
     PROCEDURAL_MESH_SPHERE_PROPERTY_ARRAYS_RAW_DATA,               /* not settable, GLfloat*. Will throw an assertion failure if the sphere

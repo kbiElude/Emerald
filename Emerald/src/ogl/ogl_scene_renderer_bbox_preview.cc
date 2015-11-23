@@ -12,6 +12,7 @@
 #include "ogl/ogl_scene_renderer_bbox_preview.h"
 #include "ogl/ogl_shader.h"
 #include "raGL/raGL_buffers.h"
+#include "ral/ral_buffer.h"
 #include "ral/ral_context.h"
 #include "scene/scene.h"
 #include "scene/scene_mesh.h"
@@ -111,12 +112,9 @@ static const char* preview_vertex_shader   = "#version 430 core\n"
 typedef struct _ogl_scene_renderer_bbox_preview
 {
     /* DO NOT release. */
-    raGL_buffers buffers;
-
     ral_context context;
 
-    raGL_buffer        data_bo; /* owned by raGL_buffers - do NOT release with glDeleteBuffers() */
-    unsigned int       data_bo_size;
+    ral_buffer         data_bo;
     uint32_t           data_n_meshes;
     scene              owned_scene;
     ogl_scene_renderer owner;
@@ -416,29 +414,24 @@ PRIVATE void _ogl_context_scene_renderer_bbox_preview_init_ub_data(_ogl_scene_re
      *       simply push the AABB data behind its back. This is OK, since AABB data is set in stone
      *       and will not change later.
      */
-    GLuint   data_bo_id           = 0;
-    uint32_t data_bo_start_offset = -1;
+    uint32_t                              data_bo_size = 0;
+    ral_buffer_client_sourced_update_info data_bo_update;
 
     ogl_program_ub_get_property(preview_ptr->preview_program_data_ub,
-                                OGL_PROGRAM_UB_PROPERTY_BLOCK_DATA_SIZE,
-                               &preview_ptr->data_bo_size);
-    ogl_program_ub_get_property(preview_ptr->preview_program_data_ub,
-                                OGL_PROGRAM_UB_PROPERTY_BO,
+                                OGL_PROGRAM_UB_PROPERTY_BUFFER_RAL,
                                &preview_ptr->data_bo);
 
-    raGL_buffer_get_property(preview_ptr->data_bo,
-                             RAGL_BUFFER_PROPERTY_ID,
-                            &data_bo_id);
-    raGL_buffer_get_property(preview_ptr->data_bo,
-                             RAGL_BUFFER_PROPERTY_START_OFFSET,
-                            &data_bo_start_offset);
+    ral_buffer_get_property (preview_ptr->data_bo,
+                             RAL_BUFFER_PROPERTY_SIZE,
+                            &data_bo_size);
 
-    preview_ptr->pGLBindBuffer   (GL_ARRAY_BUFFER,
-                                  data_bo_id);
-    preview_ptr->pGLBufferSubData(GL_ARRAY_BUFFER,
-                                  data_bo_start_offset,
-                                  matrix_data_size,
-                                  ub_data);
+    data_bo_update.data         = ub_data;
+    data_bo_update.data_size    = matrix_data_size;
+    data_bo_update.start_offset = 0;
+
+    ral_buffer_set_data_from_client_memory(preview_ptr->data_bo,
+                                           1, /* n_updates */
+                                           &data_bo_update);
 
     /* All set! */
 end:
@@ -481,7 +474,6 @@ PUBLIC ogl_scene_renderer_bbox_preview ogl_scene_renderer_bbox_preview_create(ra
          */
         new_instance->context                         = context;
         new_instance->data_bo                         = NULL;
-        new_instance->data_bo_size                    = 0;
         new_instance->data_n_meshes                   = 0;
         new_instance->owned_scene                     = scene;
         new_instance->owner                           = owner;
@@ -489,10 +481,6 @@ PUBLIC ogl_scene_renderer_bbox_preview ogl_scene_renderer_bbox_preview_create(ra
         new_instance->preview_program_data_ub         = NULL;
         new_instance->preview_program_ub_offset_model = -1;
         new_instance->preview_program_ub_offset_vp    = -1;
-
-        ogl_context_get_property(ral_context_get_gl_context(new_instance->context),
-                                 OGL_CONTEXT_PROPERTY_BUFFERS_RAGL,
-                                &new_instance->buffers);
 
         /* Is buffer_storage supported? */
         ral_backend_type backend_type = RAL_BACKEND_TYPE_UNKNOWN;
@@ -628,16 +616,24 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_scene_renderer_bbox_preview_start(ogl_sce
 
     /* Issue the draw call */
     GLuint      data_bo_id           = 0;
+    raGL_buffer data_bo_raGL         = NULL;
+    uint32_t    data_bo_size         =  0;
     uint32_t    data_bo_start_offset = -1;
     const GLint program_id           = ogl_program_get_id(preview_ptr->preview_program);
     GLuint      vao_id               = 0;
 
-    raGL_buffer_get_property(preview_ptr->data_bo,
+    data_bo_raGL = ral_context_get_buffer_gl(preview_ptr->context,
+                                             preview_ptr->data_bo);
+
+    raGL_buffer_get_property(data_bo_raGL,
                              RAGL_BUFFER_PROPERTY_ID,
                             &data_bo_id);
-    raGL_buffer_get_property(preview_ptr->data_bo,
+    raGL_buffer_get_property(data_bo_raGL,
                              RAGL_BUFFER_PROPERTY_START_OFFSET,
                             &data_bo_start_offset);
+    ral_buffer_get_property (preview_ptr->data_bo,
+                             RAL_BUFFER_PROPERTY_SIZE,
+                            &data_bo_size);
 
     ogl_context_get_property(ral_context_get_gl_context(preview_ptr->context),
                              OGL_CONTEXT_PROPERTY_VAO_NO_VAAS,
@@ -655,7 +651,7 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_scene_renderer_bbox_preview_start(ogl_sce
                                     0, /* index */
                                     data_bo_id,
                                     data_bo_start_offset,
-                                    preview_ptr->data_bo_size);
+                                    data_bo_size);
 
     preview_ptr->pGLBindVertexArray(vao_id);
 }

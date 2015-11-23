@@ -7,6 +7,7 @@
 #define DEMO_LOADER_H
 
 #include "demo/demo_timeline.h"
+#include "ogl/ogl_types.h"
 #include "system/system_types.h"
 
 typedef void (*PFNBUILDPROGRAMCALLBACKPROC)     (ogl_program   result_program,
@@ -201,7 +202,8 @@ typedef enum
 
 
 /** TODO */
-PUBLIC demo_loader demo_loader_create(demo_app owner_app);
+PUBLIC demo_loader demo_loader_create(demo_app    owner_app,
+                                      ral_context context);
 
 /** Enqueues an operation for execution at _run() time. The operations will be executed
  *  in the order of operation submissions.

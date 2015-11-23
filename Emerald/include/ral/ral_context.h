@@ -214,13 +214,19 @@ PUBLIC ral_texture ral_context_get_texture_by_file_name(ral_context             
 /** TODO
  *
  *  TEMPORARY. Will be removed during RAL integration */
+PUBLIC raGL_buffer ral_context_get_buffer_gl(ral_context context,
+                                             ral_buffer  buffer);
+
+/** TODO
+ *
+ *  TEMPORARY. Will be removed during RAL integration */
 PUBLIC ogl_context ral_context_get_gl_context(ral_context context);
 
 /** TODO
  *
  *  TEMPORARY. Will be removed during RAL integration */
-PUBLIC GLuint ral_context_get_sampler_gl_id(ral_context context,
-                                            ral_sampler sampler);
+PUBLIC raGL_sampler ral_context_get_sampler_gl(ral_context context,
+                                               ral_sampler texture);
 
 /** TODO
  *

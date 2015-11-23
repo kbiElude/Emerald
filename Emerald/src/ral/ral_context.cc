@@ -627,20 +627,20 @@ PUBLIC ral_context ral_context_create(system_hashed_ansi_string name,
     if (new_context_ptr != NULL)
     {
         /* Instantiate the rendering back-end */
+        ral_backend_type backend_type = RAL_BACKEND_TYPE_UNKNOWN;
         ogl_context      context      = NULL;
-        ogl_context_type context_type = OGL_CONTEXT_TYPE_UNDEFINED;
 
         system_window_get_property(window,
                                    SYSTEM_WINDOW_PROPERTY_RENDERING_CONTEXT,
                                   &context);
         ogl_context_get_property  (context,
-                                   OGL_CONTEXT_PROPERTY_TYPE,
-                                  &context_type);
+                                   OGL_CONTEXT_PROPERTY_BACKEND_TYPE,
+                                  &backend_type);
 
-        switch (context_type)
+        switch (backend_type)
         {
-            case OGL_CONTEXT_TYPE_ES:
-            case OGL_CONTEXT_TYPE_GL:
+            case RAL_BACKEND_TYPE_ES:
+            case RAL_BACKEND_TYPE_GL:
             {
                 new_context_ptr->backend                              = (void*) raGL_backend_create( (ral_context) new_context_ptr);
                 new_context_ptr->pfn_backend_get_framebuffer_proc     = raGL_backend_get_framebuffer;
@@ -653,9 +653,9 @@ PUBLIC ral_context ral_context_create(system_hashed_ansi_string name,
             default:
             {
                 ASSERT_DEBUG_SYNC(false,
-                                  "Unsupported context type requested.");
+                                  "Unsupported backend type requested.");
             }
-        } /* switch(type) */
+        } /* switch(backend_type) */
 
         /* Register in the object manager */
         REFCOUNT_INSERT_INIT_CODE_WITH_RELEASE_HANDLER(new_context_ptr,
@@ -1459,6 +1459,13 @@ PUBLIC void ral_context_get_property(ral_context          context,
      * Otherwise, try to handle it. */
     switch (property)
     {
+        case RAL_CONTEXT_PROPERTY_BACKEND:
+        {
+            *(raGL_backend*) out_result_ptr = (raGL_backend) context_ptr->backend;
+
+            break;
+        }
+
         case RAL_CONTEXT_PROPERTY_BACKEND_TYPE:
         case RAL_CONTEXT_PROPERTY_MAX_FRAMEBUFFER_COLOR_ATTACHMENTS:
         case RAL_CONTEXT_PROPERTY_N_OF_SYSTEM_FRAMEBUFFERS:
@@ -1466,8 +1473,8 @@ PUBLIC void ral_context_get_property(ral_context          context,
         case RAL_CONTEXT_PROPERTY_SYSTEM_FRAMEBUFFERS:
         {
             context_ptr->pfn_backend_get_property_proc(context_ptr->backend,
-                                                        property,
-                                                        out_result_ptr);
+                                                       property,
+                                                       out_result_ptr);
 
             break;
         }

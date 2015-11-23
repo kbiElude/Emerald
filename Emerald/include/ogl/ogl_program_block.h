@@ -23,6 +23,7 @@
 #define OGL_PROGRAM_BLOCK_H
 
 #include "ogl/ogl_types.h"
+#include "ral/ral_types.h"
 #include "system/system_types.h"
 
 
@@ -31,8 +32,8 @@ typedef enum
     /* unsigned int. */
     OGL_PROGRAM_BLOCK_PROPERTY_BLOCK_DATA_SIZE,
 
-    /* raGL_buffer */
-    OGL_PROGRAM_BLOCK_PROPERTY_BO,
+    /* ral_buffer */
+    OGL_PROGRAM_BLOCK_PROPERTY_BUFFER_RAL,
 
     /* GLuint */
     OGL_PROGRAM_BLOCK_PROPERTY_INDEX,
@@ -65,7 +66,7 @@ typedef enum
  *
  *  @param owner_program TODO. NOT retained.
  */
-PUBLIC RENDERING_CONTEXT_CALL ogl_program_block ogl_program_block_create(ogl_context               context,
+PUBLIC RENDERING_CONTEXT_CALL ogl_program_block ogl_program_block_create(ral_context               context,
                                                                          ogl_program               owner_program,
                                                                          ogl_program_block_type    block_type,
                                                                          unsigned int              block_index,

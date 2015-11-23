@@ -8,14 +8,18 @@
 #include "ogl/ogl_program.h"
 #include "ogl/ogl_program_ub.h"
 #include "ogl/ogl_shader.h"
-#include "raGL/raGL_buffers.h"
+#include "raGL/raGL_backend.h"
+#include "raGL/raGL_buffer.h"
+#include "ral/ral_buffer.h"
+#include "ral/ral_context.h"
 #include "scalar_field/scalar_field_metaballs.h"
 #include "system/system_log.h"
 
 
 typedef struct _scalar_field_metaballs
 {
-    ogl_context               context; /* DO NOT release */
+    raGL_backend              backend;
+    ral_context               context; /* DO NOT release */
     GLint                     global_wg_size[3];
     unsigned int              grid_size_xyz[3];
     bool                      is_update_needed;
@@ -26,18 +30,17 @@ typedef struct _scalar_field_metaballs
     system_hashed_ansi_string name;
     ogl_program               po;
     ogl_program_ub            po_props_ub;
-    raGL_buffer               po_props_ub_bo;
+    ral_buffer                po_props_ub_bo;
     unsigned int              po_props_ub_bo_offset_metaball_data;
     unsigned int              po_props_ub_bo_offset_n_metaballs;
     uint32_t                  po_props_ub_bo_size;
-    raGL_buffer               scalar_field_bo;
-    uint32_t                  scalar_field_bo_size;
+    ral_buffer                scalar_field_bo;
     int                       sync_max_index;
     int                       sync_min_index;
     REFCOUNT_INSERT_VARIABLES
 
 
-    explicit _scalar_field_metaballs(ogl_context               in_context,
+    explicit _scalar_field_metaballs(ral_context               in_context,
                                      const unsigned int*       in_grid_size_xyz,
                                      system_hashed_ansi_string in_name)
     {
@@ -48,6 +51,7 @@ typedef struct _scalar_field_metaballs
                in_grid_size_xyz,
                sizeof(grid_size_xyz) );
 
+        backend                             =  NULL;
         context                             =  in_context;
         is_update_needed                    =  true;
         metaball_data                       =  NULL;
@@ -62,9 +66,12 @@ typedef struct _scalar_field_metaballs
         po_props_ub_bo_offset_n_metaballs   = -1;
         po_props_ub_bo_size                 = 0;
         scalar_field_bo                     = NULL;
-        scalar_field_bo_size                = 0;
         sync_max_index                      = -1;
         sync_min_index                      = -1;
+
+        ral_context_get_property(in_context,
+                                 RAL_CONTEXT_PROPERTY_BACKEND,
+                                &backend);
     }
 } _scalar_field_metaballs;
 
@@ -79,16 +86,7 @@ REFCOUNT_INSERT_IMPLEMENTATION(scalar_field_metaballs,
 PRIVATE void _scalar_field_metaballs_deinit_rendering_thread_callback(ogl_context context,
                                                                       void*       user_arg)
 {
-    raGL_buffers                      buffers         = NULL;
-    const ogl_context_gl_entrypoints* entrypoints_ptr = NULL;
-    _scalar_field_metaballs*          metaballs_ptr   = (_scalar_field_metaballs*) user_arg;
-
-    ogl_context_get_property(metaballs_ptr->context,
-                             OGL_CONTEXT_PROPERTY_BUFFERS_RAGL,
-                            &buffers);
-    ogl_context_get_property(metaballs_ptr->context,
-                             OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
-                            &entrypoints_ptr);
+    _scalar_field_metaballs* metaballs_ptr = (_scalar_field_metaballs*) user_arg;
 
     if (metaballs_ptr->po != NULL)
     {
@@ -99,8 +97,9 @@ PRIVATE void _scalar_field_metaballs_deinit_rendering_thread_callback(ogl_contex
 
     if (metaballs_ptr->scalar_field_bo != NULL)
     {
-        raGL_buffers_free_buffer_memory(buffers,
-                                        metaballs_ptr->scalar_field_bo);
+        ral_context_delete_buffers(metaballs_ptr->context,
+                                   1, /* n_buffers */
+                                  &metaballs_ptr->scalar_field_bo);
 
         metaballs_ptr->scalar_field_bo = NULL;
     }
@@ -199,7 +198,6 @@ PRIVATE void _scalar_field_metaballs_get_token_key_value_arrays(const ogl_contex
 PRIVATE void _scalar_field_metaballs_init_rendering_thread_callback(ogl_context context,
                                                                     void*       user_arg)
 {
-    raGL_buffers                      buffers                 = NULL;
     ogl_shader                        cs                      = NULL;
     const ogl_context_gl_entrypoints* entrypoints_ptr         = NULL;
     const ogl_context_gl_limits*      limits_ptr              = NULL;
@@ -276,12 +274,12 @@ PRIVATE void _scalar_field_metaballs_init_rendering_thread_callback(ogl_context 
                                                        metaballs_ptr->global_wg_size);
 
     /* Create program & shader objects */
-    cs = ogl_shader_create(metaballs_ptr->context,
+    cs = ogl_shader_create(ral_context_get_gl_context(metaballs_ptr->context),
                            RAL_SHADER_TYPE_COMPUTE,
                            system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(metaballs_ptr->name),
                                                                                    " CS") );
 
-    metaballs_ptr->po = ogl_program_create(metaballs_ptr->context,
+    metaballs_ptr->po = ogl_program_create(ral_context_get_gl_context(metaballs_ptr->context),
                                            system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(metaballs_ptr->name),
                                                                                    " PO"),
                                            OGL_PROGRAM_SYNCABLE_UBS_MODE_ENABLE_GLOBAL);
@@ -323,7 +321,7 @@ PRIVATE void _scalar_field_metaballs_init_rendering_thread_callback(ogl_context 
                                 OGL_PROGRAM_UB_PROPERTY_BLOCK_DATA_SIZE,
                                &metaballs_ptr->po_props_ub_bo_size);
     ogl_program_ub_get_property(metaballs_ptr->po_props_ub,
-                                OGL_PROGRAM_UB_PROPERTY_BO,
+                                OGL_PROGRAM_UB_PROPERTY_BUFFER_RAL,
                                &metaballs_ptr->po_props_ub_bo);
 
     metaballs_ptr->po_props_ub_bo_offset_metaball_data = uniform_metaball_data_variable_ptr->block_offset;
@@ -332,24 +330,19 @@ PRIVATE void _scalar_field_metaballs_init_rendering_thread_callback(ogl_context 
     /* Prepare a BO which is going to hold the scalar field data */
     ral_buffer_create_info scalar_field_buffer_create_info;
 
-    ogl_context_get_property(metaballs_ptr->context,
-                             OGL_CONTEXT_PROPERTY_BUFFERS_RAGL,
-                            &buffers);
-
-    metaballs_ptr->scalar_field_bo_size = sizeof(float) *
-                                          metaballs_ptr->grid_size_xyz[0] *
-                                          metaballs_ptr->grid_size_xyz[1] *
-                                          metaballs_ptr->grid_size_xyz[2];
-
     scalar_field_buffer_create_info.mappability_bits = RAL_BUFFER_MAPPABILITY_NONE;
     scalar_field_buffer_create_info.property_bits    = 0;
-    scalar_field_buffer_create_info.size             = metaballs_ptr->scalar_field_bo_size;
+    scalar_field_buffer_create_info.size             = sizeof(float)                   *
+                                                       metaballs_ptr->grid_size_xyz[0] *
+                                                       metaballs_ptr->grid_size_xyz[1] *
+                                                       metaballs_ptr->grid_size_xyz[2];
     scalar_field_buffer_create_info.usage_bits       = RAL_BUFFER_USAGE_SHADER_STORAGE_BUFFER_BIT;
     scalar_field_buffer_create_info.user_queue_bits  = 0xFFFFFFFF;
 
-    raGL_buffers_allocate_buffer_memory_for_ral_buffer_create_info(buffers,
-                                                                  &scalar_field_buffer_create_info,
-                                                                  &metaballs_ptr->scalar_field_bo);
+    ral_context_create_buffers(metaballs_ptr->context,
+                               1, /* n_buffers */
+                              &scalar_field_buffer_create_info,
+                              &metaballs_ptr->scalar_field_bo);
 
     /* All done! */
     ogl_shader_release(cs);
@@ -361,7 +354,7 @@ PRIVATE void _scalar_field_metaballs_release(void* metaballs)
     _scalar_field_metaballs* metaballs_ptr = (_scalar_field_metaballs*) metaballs;
 
     /* Request rendering thread call-back */
-    ogl_context_request_callback_from_context_thread(metaballs_ptr->context,
+    ogl_context_request_callback_from_context_thread(ral_context_get_gl_context(metaballs_ptr->context),
                                                      _scalar_field_metaballs_deinit_rendering_thread_callback,
                                                      metaballs_ptr);
 
@@ -376,7 +369,7 @@ PRIVATE void _scalar_field_metaballs_release(void* metaballs)
 
 
 /** Please see header for specification */
-PUBLIC EMERALD_API scalar_field_metaballs scalar_field_metaballs_create(ogl_context               context,
+PUBLIC EMERALD_API scalar_field_metaballs scalar_field_metaballs_create(ral_context               context,
                                                                         const unsigned int*       grid_size_xyz,
                                                                         system_hashed_ansi_string name)
 {
@@ -392,7 +385,7 @@ PUBLIC EMERALD_API scalar_field_metaballs scalar_field_metaballs_create(ogl_cont
         /* Set up metaballs storage */
         const ogl_context_gl_limits* limits_ptr = NULL;
 
-        ogl_context_get_property(context,
+        ogl_context_get_property(ral_context_get_gl_context(context),
                                  OGL_CONTEXT_PROPERTY_LIMITS,
                                 &limits_ptr);
 
@@ -406,7 +399,7 @@ PUBLIC EMERALD_API scalar_field_metaballs scalar_field_metaballs_create(ogl_cont
         metaballs_ptr->metaball_data = new float[4 /* size + xyz */ * metaballs_ptr->n_max_metaballs];
 
         /* Call back the rendering thread to set up context-specific objects */
-        ogl_context_request_callback_from_context_thread(context,
+        ogl_context_request_callback_from_context_thread(ral_context_get_gl_context(context),
                                                          _scalar_field_metaballs_init_rendering_thread_callback,
                                                          metaballs_ptr);
 
@@ -430,16 +423,9 @@ PUBLIC EMERALD_API void scalar_field_metaballs_get_property(scalar_field_metabal
 
     switch (property)
     {
-        case SCALAR_FIELD_METABALLS_PROPERTY_DATA_BO:
+        case SCALAR_FIELD_METABALLS_PROPERTY_DATA_BO_RAL:
         {
-            *(raGL_buffer*) out_result = metaballs_ptr->scalar_field_bo;
-
-            break;
-        }
-
-        case SCALAR_FIELD_METABALLS_PROPERTY_DATA_BO_SIZE:
-        {
-            *(unsigned int*) out_result = metaballs_ptr->scalar_field_bo_size;
+            *(ral_buffer*) out_result = metaballs_ptr->scalar_field_bo;
 
             break;
         }
@@ -542,7 +528,7 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API bool scalar_field_metaballs_update(sca
 
     if (metaballs_ptr->is_update_needed)
     {
-        ogl_context_get_property(metaballs_ptr->context,
+        ogl_context_get_property(ral_context_get_gl_context(metaballs_ptr->context),
                                  OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
                                 &entrypoints_ptr);
 
@@ -560,8 +546,8 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API bool scalar_field_metaballs_update(sca
 
             ogl_program_ub_set_arrayed_uniform_value(metaballs_ptr->po_props_ub,
                                                      metaballs_ptr->po_props_ub_bo_offset_metaball_data,
-                                                     metaballs_ptr->metaball_data                       + metaballs_ptr->sync_min_index * 4 /* size + xyz */,
-                                                     0,                                                          /* src_data_flags        */
+                                                     metaballs_ptr->metaball_data + metaballs_ptr->sync_min_index * 4 /* size + xyz */,
+                                                     0,                                                               /* src_data_flags        */
                                                      sizeof(float) * n_metaballs_to_update * 4 /* size + xyz */, /* src_data_size         */
                                                      metaballs_ptr->sync_min_index,                              /* dst_array_start_index */
                                                      n_metaballs_to_update);                                     /* dst_array_item_count  */
@@ -573,21 +559,35 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API bool scalar_field_metaballs_update(sca
         ogl_program_ub_sync(metaballs_ptr->po_props_ub);
 
         /* Run the CS and generate the scalar field data */
-        GLuint   po_props_ub_bo_id            = 0;
-        uint32_t po_props_ub_bo_start_offset  = -1;
-        GLuint   scalar_field_bo_id           = 0;
-        uint32_t scalar_field_bo_start_offset = -1;
+        GLuint      po_props_ub_bo_id            = 0;
+        raGL_buffer po_props_ub_bo_raGL          = NULL;
+        uint32_t    po_props_ub_bo_start_offset  = -1;
+        GLuint      scalar_field_bo_id           = 0;
+        raGL_buffer scalar_field_bo_raGL         = NULL;
+        uint32_t    scalar_field_bo_size         = 0;
+        uint32_t    scalar_field_bo_start_offset = -1;
 
-        raGL_buffer_get_property(metaballs_ptr->po_props_ub_bo,
+        ral_buffer_get_property(metaballs_ptr->scalar_field_bo,
+                                RAL_BUFFER_PROPERTY_SIZE,
+                               &scalar_field_bo_size);
+
+        raGL_backend_get_buffer(metaballs_ptr->backend,
+                                metaballs_ptr->po_props_ub_bo,
+                      (void**) &po_props_ub_bo_raGL);
+        raGL_backend_get_buffer(metaballs_ptr->backend,
+                                metaballs_ptr->scalar_field_bo,
+                      (void**) &scalar_field_bo_raGL);
+
+        raGL_buffer_get_property(po_props_ub_bo_raGL,
                                  RAGL_BUFFER_PROPERTY_ID,
                                 &po_props_ub_bo_id);
-        raGL_buffer_get_property(metaballs_ptr->po_props_ub_bo,
+        raGL_buffer_get_property(po_props_ub_bo_raGL,
                                  RAGL_BUFFER_PROPERTY_START_OFFSET,
                                 &po_props_ub_bo_start_offset);
-        raGL_buffer_get_property(metaballs_ptr->scalar_field_bo,
+        raGL_buffer_get_property(scalar_field_bo_raGL,
                                  RAGL_BUFFER_PROPERTY_ID,
                                 &scalar_field_bo_id);
-        raGL_buffer_get_property(metaballs_ptr->scalar_field_bo,
+        raGL_buffer_get_property(scalar_field_bo_raGL,
                                  RAGL_BUFFER_PROPERTY_START_OFFSET,
                                 &scalar_field_bo_start_offset);
 
@@ -596,7 +596,7 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API bool scalar_field_metaballs_update(sca
                                             0, /* index */
                                             scalar_field_bo_id,
                                             scalar_field_bo_start_offset,
-                                            metaballs_ptr->scalar_field_bo_size);
+                                            scalar_field_bo_size);
         entrypoints_ptr->pGLBindBufferRange(GL_UNIFORM_BUFFER,
                                             0, /* index */
                                             po_props_ub_bo_id,

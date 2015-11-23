@@ -76,6 +76,9 @@ PUBLIC ral_buffer ral_buffer_create(system_hashed_ansi_string     name,
         goto end;
     }
 
+    ASSERT_DEBUG_SYNC(create_info_ptr->parent_buffer == NULL,
+                      "TODO");
+
     if (create_info_ptr->mappability_bits >= (1 << (RAL_BUFFER_MAPPABILITY_LAST_USED_BIT + 1)) )
     {
         ASSERT_DEBUG_SYNC(false,

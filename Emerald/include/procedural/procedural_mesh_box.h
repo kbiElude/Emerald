@@ -14,8 +14,8 @@
 #ifndef PROCEDURAL_MESH_BOX_H
 #define PROCEDURAL_MESH_BOX_H
 
-#include "ogl/ogl_types.h"
 #include "procedural/procedural_types.h"
+#include "ral/ral_types.h"
 
 REFCOUNT_INSERT_DECLARATIONS(procedural_mesh_box,
                              procedural_mesh_box)
@@ -24,7 +24,7 @@ REFCOUNT_INSERT_DECLARATIONS(procedural_mesh_box,
 typedef enum
 {
     /* GLuint */
-    PROCEDURAL_MESH_BOX_PROPERTY_ARRAYS_BO_ID,
+    PROCEDURAL_MESH_BOX_PROPERTY_ARRAYS_BO_RAL,
 
     /* unsigned int */
     PROCEDURAL_MESH_BOX_PROPERTY_ARRAYS_BO_NORMALS_DATA_OFFSET,
@@ -34,7 +34,7 @@ typedef enum
 
 
     /* GLuint */
-    PROCEDURAL_MESH_BOX_PROPERTY_ELEMENTS_BO_ID,
+    PROCEDURAL_MESH_BOX_PROPERTY_ELEMENTS_BO_RAL,
 
     /* GLuint */
     PROCEDURAL_MESH_BOX_PROPERTY_ELEMENTS_BO_INDICES_DATA_OFFSET,
@@ -59,7 +59,7 @@ typedef enum
 /** TODO.
  *
  **/
-PUBLIC EMERALD_API procedural_mesh_box procedural_mesh_box_create(ogl_context                   context,
+PUBLIC EMERALD_API procedural_mesh_box procedural_mesh_box_create(ral_context                   context,
                                                                   _procedural_mesh_data_bitmask mesh_data_bitmask,
                                                                   uint32_t                      n_horizontal_patches, /* number of horizontal patches per plane */
                                                                   uint32_t                      n_vertical_patches,   /* number of vertical patches per plane */

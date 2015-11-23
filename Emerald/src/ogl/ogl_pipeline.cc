@@ -12,6 +12,7 @@
 #include "ogl/ogl_rendering_handler.h"
 #include "ogl/ogl_text.h"
 #include "ogl/ogl_ui.h"
+#include "ral/ral_context.h"
 #include "system/system_assertions.h"
 #include "system/system_hashed_ansi_string.h"
 #include "system/system_log.h"
@@ -37,7 +38,7 @@ const float TEXT_SCALE    = 0.5f;
 /** TODO */
 typedef struct
 {
-    ogl_context               context;
+    ral_context               context;
     system_hashed_ansi_string name;
     bool                      should_overlay_performance_info;
 
@@ -62,7 +63,7 @@ typedef struct
 /** TODO */
 typedef struct
 {
-    ogl_context                context;
+    ral_context                context;
     system_hashed_ansi_string  name;
     PFNOGLPIPELINECALLBACKPROC pfn_step_callback;
     void*                      step_callback_user_arg;
@@ -91,24 +92,17 @@ PRIVATE void _ogl_pipeline_deinit_pipeline_stage_step                  (_ogl_pip
 PRIVATE void _ogl_pipeline_deinit_pipeline_stage_step_renderer_callback(ogl_context                context,
                                                                         void*                      user_arg);
 PRIVATE void _ogl_pipeline_init_pipeline                               (_ogl_pipeline*             pipeline_ptr,
-                                                                        ogl_context                context,
+                                                                        ral_context                context,
                                                                         bool                       should_overlay_performance_info);
 PRIVATE void _ogl_pipeline_init_pipeline_stage                         (_ogl_pipeline_stage*       stage_ptr);
 PRIVATE void _ogl_pipeline_init_pipeline_stage_step                    (_ogl_pipeline_stage_step*  step_ptr,
                                                                         system_hashed_ansi_string  name,
                                                                         PFNOGLPIPELINECALLBACKPROC pfn_step_callback,
                                                                         void*                      step_callback_user_arg,
-                                                                        ogl_context                context);
+                                                                        ral_context                context);
 PRIVATE void _ogl_pipeline_init_pipeline_stage_step_renderer_callback  (ogl_context                context,
                                                                         void*                      user_arg);
 PRIVATE void _ogl_pipeline_release                                     (void*                      pipeline);
-
-
-#ifdef _DEBUG
-    PRIVATE void _ogl_pipeline_verify_context_type(ogl_context);
-#else
-    #define _ogl_pipeline_verify_context_type(x)
-#endif
 
 
 /** TODO */
@@ -116,7 +110,7 @@ PRIVATE void _ogl_pipeline_deinit_pipeline(_ogl_pipeline* pipeline_ptr)
 {
     if (pipeline_ptr->context != NULL)
     {
-        ogl_context_release(pipeline_ptr->context);
+        ral_context_release(pipeline_ptr->context);
     } /* if (pipeline_ptr->context != NULL) */
 
     while (true)
@@ -166,13 +160,13 @@ PRIVATE void _ogl_pipeline_deinit_pipeline_stage(_ogl_pipeline_stage* stage_ptr)
 /** TODO */
 PRIVATE void _ogl_pipeline_deinit_pipeline_stage_step(_ogl_pipeline_stage_step* step_ptr)
 {
-    ogl_context_request_callback_from_context_thread(step_ptr->context,
+    ogl_context_request_callback_from_context_thread(ral_context_get_gl_context(step_ptr->context),
                                                      _ogl_pipeline_deinit_pipeline_stage_step_renderer_callback,
                                                      step_ptr);
 
     if (step_ptr->context != NULL)
     {
-        ogl_context_release(step_ptr->context);
+        ral_context_release(step_ptr->context);
     } /* if (step_ptr->context != NULL) */
 }
 
@@ -199,7 +193,7 @@ PRIVATE void _ogl_pipeline_deinit_pipeline_stage_step_renderer_callback(ogl_cont
 
 /** TODO */
 PRIVATE void _ogl_pipeline_init_pipeline(_ogl_pipeline*            pipeline_ptr,
-                                         ogl_context               context,
+                                         ral_context               context,
                                          bool                      should_overlay_performance_info,
                                          system_hashed_ansi_string name)
 {
@@ -208,15 +202,15 @@ PRIVATE void _ogl_pipeline_init_pipeline(_ogl_pipeline*            pipeline_ptr,
     gfx_bfg_font_table    font_table            = system_resources_get_meiryo_font_table();
     ogl_rendering_handler rendering_handler     = NULL;
 
-    ogl_context_get_property(context,
-                             OGL_CONTEXT_PROPERTY_WINDOW,
+    ral_context_get_property(context,
+                             RAL_CONTEXT_PROPERTY_WINDOW,
                             &context_window);
 
     system_window_get_property(context_window,
                                SYSTEM_WINDOW_PROPERTY_RENDERING_HANDLER,
                               &rendering_handler);
 
-    ogl_context_get_property(context,
+    ogl_context_get_property(ral_context_get_gl_context(context),
                              OGL_CONTEXT_PROPERTY_TEXT_RENDERER,
                             &pipeline_ptr->text_renderer);
     ogl_text_retain         (pipeline_ptr->text_renderer);
@@ -241,7 +235,7 @@ PRIVATE void _ogl_pipeline_init_pipeline(_ogl_pipeline*            pipeline_ptr,
                                       OGL_TEXT_STRING_PROPERTY_SCALE,
                                      &text_scale);
 
-    ogl_context_retain(context);
+    ral_context_retain(context);
 }
 
 /** TODO */
@@ -258,7 +252,7 @@ PRIVATE void _ogl_pipeline_init_pipeline_stage_step(_ogl_pipeline_stage_step*  s
                                                     system_hashed_ansi_string  name,
                                                     PFNOGLPIPELINECALLBACKPROC pfn_step_callback,
                                                     void*                      step_callback_user_arg,
-                                                    ogl_context                context)
+                                                    ral_context                context)
 {
     /* Truncate input name if too long */
     uint32_t name_length = system_hashed_ansi_string_get_length(name);
@@ -285,8 +279,8 @@ PRIVATE void _ogl_pipeline_init_pipeline_stage_step(_ogl_pipeline_stage_step*  s
            0,
            sizeof(step_ptr->execution_times) );
 
-    ogl_context_retain                              (context);
-    ogl_context_request_callback_from_context_thread(context,
+    ral_context_retain                              (context);
+    ogl_context_request_callback_from_context_thread(ral_context_get_gl_context(context),
                                                      _ogl_pipeline_init_pipeline_stage_step_renderer_callback,
                                                      step_ptr);
 }
@@ -297,10 +291,10 @@ PRIVATE void _ogl_pipeline_init_pipeline_stage_step_renderer_callback(ogl_contex
 {
     _ogl_pipeline_stage_step* step_ptr = (_ogl_pipeline_stage_step*) user_arg;
 
-    step_ptr->primitives_generated_qo = ogl_query_create(context,
+    step_ptr->primitives_generated_qo = ogl_query_create(step_ptr->context,
                                                          QO_RING_BUFFER_SIZE,
                                                          GL_PRIMITIVES_GENERATED);
-    step_ptr->timestamp_qo            = ogl_query_create(context,
+    step_ptr->timestamp_qo            = ogl_query_create(step_ptr->context,
                                                          QO_RING_BUFFER_SIZE,
                                                          GL_TIME_ELAPSED);
 }
@@ -311,21 +305,6 @@ PRIVATE void _ogl_pipeline_release(void* pipeline)
     _ogl_pipeline_deinit_pipeline( (_ogl_pipeline*) pipeline);
 }
 
-/** TODO */
-#ifdef _DEBUG
-    /* TODO */
-    PRIVATE void _ogl_pipeline_verify_context_type(ogl_context context)
-    {
-        ogl_context_type context_type = OGL_CONTEXT_TYPE_UNDEFINED;
-
-        ogl_context_get_property(context,
-                                 OGL_CONTEXT_PROPERTY_TYPE,
-                                &context_type);
-
-        ASSERT_DEBUG_SYNC(context_type == OGL_CONTEXT_TYPE_GL,
-                          "ogl_pipeline is only supported under GL contexts")
-    }
-#endif
 
 
 /** Please see header for specification */
@@ -535,13 +514,11 @@ PUBLIC EMERALD_API uint32_t ogl_pipeline_add_stage_with_steps(ogl_pipeline      
 }
 
 /** Please see header for specification */
-PUBLIC RENDERING_CONTEXT_CALL EMERALD_API ogl_pipeline ogl_pipeline_create(ogl_context               context,
+PUBLIC RENDERING_CONTEXT_CALL EMERALD_API ogl_pipeline ogl_pipeline_create(ral_context               context,
                                                                            bool                      should_overlay_performance_info,
                                                                            system_hashed_ansi_string name)
 {
     _ogl_pipeline* pipeline_ptr = new (std::nothrow) _ogl_pipeline;
-
-    _ogl_pipeline_verify_context_type(context);
 
     ASSERT_DEBUG_SYNC(pipeline_ptr != NULL,
                       "Out of memory");
@@ -579,13 +556,13 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API bool ogl_pipeline_draw_stage(ogl_pipel
     const ogl_context_gl_entrypoints_ext_direct_state_access* dsa_entry_points   = NULL;
     const ogl_context_gl_entrypoints*                         entry_points       = NULL;
 
-    ogl_context_get_property(pipeline_ptr->context,
+    ogl_context_get_property(ral_context_get_gl_context(pipeline_ptr->context),
                              OGL_CONTEXT_PROPERTY_FLYBY,
                             &flyby);
-    ogl_context_get_property(pipeline_ptr->context,
+    ogl_context_get_property(ral_context_get_gl_context(pipeline_ptr->context),
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
                             &entry_points);
-    ogl_context_get_property(pipeline_ptr->context,
+    ogl_context_get_property(ral_context_get_gl_context(pipeline_ptr->context),
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL_EXT_DIRECT_STATE_ACCESS,
                             &dsa_entry_points);
 
@@ -685,7 +662,7 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API bool ogl_pipeline_draw_stage(ogl_pipel
                     ogl_query_begin(step_ptr->timestamp_qo);
                 }
                 {
-                    step_ptr->pfn_step_callback(step_ptr->context,
+                    step_ptr->pfn_step_callback(ral_context_get_gl_context(step_ptr->context),
                                                 frame_index,
                                                 time,
                                                 rendering_area_px_topdown,
@@ -825,7 +802,7 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API bool ogl_pipeline_draw_stage(ogl_pipel
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API ogl_context ogl_pipeline_get_context(ogl_pipeline instance)
+PUBLIC EMERALD_API ral_context ogl_pipeline_get_context(ogl_pipeline instance)
 {
     return ((_ogl_pipeline*) instance)->context;
 }

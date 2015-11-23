@@ -9,7 +9,8 @@
 #include "ogl/ogl_context.h"
 #include "ogl/ogl_program.h"
 #include "ogl/ogl_program_block.h"
-#include "raGL/raGL_buffers.h"
+#include "ral/ral_buffer.h"
+#include "ral/ral_context.h"
 #include "system/system_assertions.h"
 #include "system/system_hashed_ansi_string.h"
 #include "system/system_hash64map.h"
@@ -23,14 +24,13 @@
 /** Internal types */
 typedef struct _ogl_program_block
 {
-    raGL_buffers buffers; /* NOT retained */
-    ogl_context  context; /* NOT retained */
+    ral_context  context; /* NOT retained */
     unsigned int index;
     ogl_program  owner;
 
     /* block_data holds a local cache of variable data. This helps us avoid all the complex logic
      * that would otherwise have to be used to store uniform values AND is pretty cache-friendly. */
-    raGL_buffer            block_bo;
+    ral_buffer             block_bo;
     unsigned char*         block_data;
     GLint                  block_data_size;
     ogl_program_block_type block_type;
@@ -64,7 +64,7 @@ typedef struct _ogl_program_block
     unsigned int dirty_offset_end;
     unsigned int dirty_offset_start;
 
-    explicit _ogl_program_block(ogl_context               in_context,
+    explicit _ogl_program_block(ral_context               in_context,
                                 ogl_program               in_owner,
                                 unsigned int              in_index,
                                 system_hashed_ansi_string in_name,
@@ -84,7 +84,6 @@ typedef struct _ogl_program_block
         block_data                       = NULL;
         block_data_size                  = 0;
         block_type                       = in_type;
-        buffers                          = NULL;
         context                          = in_context;
         dirty_offset_end                 = DIRTY_OFFSET_UNUSED;
         dirty_offset_start               = DIRTY_OFFSET_UNUSED;
@@ -106,10 +105,6 @@ typedef struct _ogl_program_block
         {
             offset_to_uniform_descriptor_map = system_hash64map_create(sizeof(ogl_program_variable*) );
 
-            ogl_context_get_property(context,
-                                     OGL_CONTEXT_PROPERTY_BUFFERS_RAGL,
-                                    &buffers);
-
             ASSERT_DEBUG_SYNC(members                          != NULL &&
                               offset_to_uniform_descriptor_map != NULL,
                               "Out of memory");
@@ -120,8 +115,9 @@ typedef struct _ogl_program_block
     {
         if (block_bo != NULL)
         {
-            raGL_buffers_free_buffer_memory(buffers,
-                                            block_bo);
+            ral_context_delete_buffers(context,
+                                       1, /* n_buffers */
+                                      &block_bo);
 
             block_bo = NULL;
         }
@@ -355,28 +351,28 @@ PRIVATE bool _ogl_program_block_init(_ogl_program_block* block_ptr)
                       "Input argument is NULL");
 
     /* Retrieve entry-points & platform-specific UB alignment requirement */
-    ogl_context_type context_type = OGL_CONTEXT_TYPE_UNDEFINED;
+    ral_backend_type backend_type = RAL_BACKEND_TYPE_UNKNOWN;
 
-    ogl_context_get_property(block_ptr->context,
-                             OGL_CONTEXT_PROPERTY_TYPE,
-                            &context_type);
+    ral_context_get_property(block_ptr->context,
+                             RAL_CONTEXT_PROPERTY_BACKEND_TYPE,
+                            &backend_type);
 
-    if (context_type == OGL_CONTEXT_TYPE_GL)
+    if (backend_type == RAL_BACKEND_TYPE_GL)
     {
         const ogl_context_gl_entrypoints*                         entry_points     = NULL;
         const ogl_context_gl_entrypoints_ext_direct_state_access* entry_points_dsa = NULL;
         const ogl_context_gl_limits*                              limits_ptr       = NULL;
 
-        ogl_context_get_property(block_ptr->context,
+        ogl_context_get_property(ral_context_get_gl_context(block_ptr->context),
                                  OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
                                 &entry_points);
-        ogl_context_get_property(block_ptr->context,
+        ogl_context_get_property(ral_context_get_gl_context(block_ptr->context),
                                  OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL_EXT_DIRECT_STATE_ACCESS,
                                 &entry_points_dsa);
-        ogl_context_get_property(block_ptr->context,
+        ogl_context_get_property(ral_context_get_gl_context(block_ptr->context),
                                  OGL_CONTEXT_PROPERTY_IS_INTEL_DRIVER,
                                 &block_ptr->is_intel_driver);
-        ogl_context_get_property(block_ptr->context,
+        ogl_context_get_property(ral_context_get_gl_context(block_ptr->context),
                                  OGL_CONTEXT_PROPERTY_LIMITS,
                                 &limits_ptr);
 
@@ -392,12 +388,12 @@ PRIVATE bool _ogl_program_block_init(_ogl_program_block* block_ptr)
     }
     else
     {
-        ASSERT_DEBUG_SYNC(context_type == OGL_CONTEXT_TYPE_ES,
-                          "Unrecognized rendering context type");
+        ASSERT_DEBUG_SYNC(backend_type == RAL_BACKEND_TYPE_ES,
+                          "Unrecognized rendering backend type");
 
         const ogl_context_es_entrypoints* entry_points = NULL;
 
-        ogl_context_get_property(block_ptr->context,
+        ogl_context_get_property(ral_context_get_gl_context(block_ptr->context),
                                  OGL_CONTEXT_PROPERTY_ENTRYPOINTS_ES,
                                 &entry_points);
 
@@ -459,9 +455,10 @@ PRIVATE bool _ogl_program_block_init(_ogl_program_block* block_ptr)
         block_create_info.usage_bits       = RAL_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
         block_create_info.user_queue_bits  = 0xFFFFFFFF;
 
-        raGL_buffers_allocate_buffer_memory_for_ral_buffer_create_info(block_ptr->buffers,
-                                                                      &block_create_info,
-                                                                      &block_ptr->block_bo);
+        ral_context_create_buffers(block_ptr->context,
+                                   1,
+                                  &block_create_info,
+                                  &block_ptr->block_bo);
 
         /* Force a data sync */
         block_ptr->dirty_offset_end   = block_ptr->block_data_size;
@@ -888,7 +885,7 @@ end:
 
 
 /** Please see header for spec */
-PUBLIC ogl_program_block ogl_program_block_create(ogl_context               context,
+PUBLIC ogl_program_block ogl_program_block_create(ral_context               context,
                                                   ogl_program               owner_program,
                                                   ogl_program_block_type    block_type,
                                                   unsigned int              block_index,
@@ -972,12 +969,12 @@ PUBLIC void ogl_program_block_get_property(const ogl_program_block    block,
             break;
         }
 
-        case OGL_PROGRAM_BLOCK_PROPERTY_BO:
+        case OGL_PROGRAM_BLOCK_PROPERTY_BUFFER_RAL:
         {
             ASSERT_DEBUG_SYNC(block_ptr->syncable,
-                              "OGL_PROGRAM_BLOCK_PROPERTY_BO property only available for syncable ogl_program_ub instances.");
+                              "OGL_PROGRAM_BLOCK_PROPERTY_BUFFER_RAL property only available for syncable ogl_program_ub instances.");
 
-            *(raGL_buffer*) out_result = block_ptr->block_bo;
+            *(ral_buffer*) out_result = block_ptr->block_bo;
 
             break;
         }
@@ -1083,9 +1080,7 @@ PUBLIC void ogl_program_block_set_property(const ogl_program_block    block,
 /* Please see header for spec */
 PUBLIC RENDERING_CONTEXT_CALL void ogl_program_block_sync(ogl_program_block block)
 {
-    GLuint              block_bo_id           = 0;
-    uint32_t            block_bo_start_offset = -1;
-    _ogl_program_block* block_ptr             = (_ogl_program_block*) block;
+    _ogl_program_block* block_ptr = (_ogl_program_block*) block;
 
     /* Sanity checks */
     ASSERT_DEBUG_SYNC(block_ptr->dirty_offset_end != DIRTY_OFFSET_UNUSED && block_ptr->dirty_offset_start != DIRTY_OFFSET_UNUSED ||
@@ -1109,30 +1104,15 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_program_block_sync(ogl_program_block bloc
         goto end;
     }
 
-    raGL_buffer_get_property(block_ptr->block_bo,
-                             RAGL_BUFFER_PROPERTY_ID,
-                            &block_bo_id);
-    raGL_buffer_get_property(block_ptr->block_bo,
-                             RAGL_BUFFER_PROPERTY_START_OFFSET,
-                            &block_bo_start_offset);
+    ral_buffer_client_sourced_update_info bo_update_info;
 
-    if (block_ptr->pGLNamedBufferSubDataEXT != NULL)
-    {
-        block_ptr->pGLNamedBufferSubDataEXT(block_bo_id,
-                                            block_bo_start_offset       + block_ptr->dirty_offset_start,
-                                            block_ptr->dirty_offset_end - block_ptr->dirty_offset_start,
-                                            block_ptr->block_data       + block_ptr->dirty_offset_start);
-    }
-    else
-    {
-        /* Use a rarely used binding point to avoid collisions with existing bindings */
-        block_ptr->pGLBindBuffer   (GL_TRANSFORM_FEEDBACK_BUFFER,
-                                    block_bo_id);
-        block_ptr->pGLBufferSubData(GL_TRANSFORM_FEEDBACK_BUFFER,
-                                    block_bo_start_offset       + block_ptr->dirty_offset_start,
-                                    block_ptr->dirty_offset_end - block_ptr->dirty_offset_start,
-                                    block_ptr->block_data       + block_ptr->dirty_offset_start);
-    }
+    bo_update_info.data         = block_ptr->block_data       + block_ptr->dirty_offset_start;
+    bo_update_info.data_size    = block_ptr->dirty_offset_end - block_ptr->dirty_offset_start;
+    bo_update_info.start_offset = block_ptr->dirty_offset_start;
+
+    ral_buffer_set_data_from_client_memory(block_ptr->block_bo,
+                                           1, /* n_updates */
+                                          &bo_update_info);
 
     if (block_ptr->is_intel_driver)
     {

@@ -49,14 +49,14 @@ typedef struct _ogl_vao
     explicit _ogl_vao(ogl_context  in_context,
                       unsigned int in_gl_id)
     {
-        ogl_context_type context_type         = OGL_CONTEXT_TYPE_UNDEFINED;
+        ral_backend_type backend_type         = RAL_BACKEND_TYPE_UNKNOWN;
         unsigned int     n_max_vertex_attribs = 0;
 
         ogl_context_get_property(in_context,
-                                 OGL_CONTEXT_PROPERTY_TYPE,
-                                &context_type);
+                                 OGL_CONTEXT_PROPERTY_BACKEND_TYPE,
+                                &backend_type);
 
-        if (context_type == OGL_CONTEXT_TYPE_GL)
+        if (backend_type == RAL_BACKEND_TYPE_GL)
         {
             const ogl_context_gl_limits* limits_ptr = NULL;
 
@@ -65,11 +65,11 @@ typedef struct _ogl_vao
                                     &limits_ptr);
 
             n_max_vertex_attribs = limits_ptr->max_vertex_attribs;
-        } /* if (context_type == OGL_CONTEXT_TYPE_GL) */
+        } /* if (context_type == RAL_BACKEND_TYPE_GL) */
         else
         {
-            ASSERT_DEBUG_SYNC(context_type == OGL_CONTEXT_TYPE_ES,
-                              "Unrecognized rendering context type.");
+            ASSERT_DEBUG_SYNC(backend_type == RAL_BACKEND_TYPE_ES,
+                              "Unrecognized rendering backend type.");
 
             ASSERT_DEBUG_SYNC(false,
                               "TODO: ES limits");

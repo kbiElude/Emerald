@@ -32,6 +32,9 @@ typedef enum ogl_context_property
     /* not settable, raGL_backend */
     OGL_CONTEXT_PROPERTY_BACKEND,
 
+    /* not settable, ral_backend_type */
+    OGL_CONTEXT_PROPERTY_BACKEND_TYPE,
+
     /* not settable, ogl_context_bo_bindings */
     OGL_CONTEXT_PROPERTY_BO_BINDINGS,
 

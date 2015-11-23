@@ -7,6 +7,7 @@
 #define OGL_PIPELINE_H
 
 #include "ogl/ogl_types.h"
+#include "ral/ral_types.h"
 #include "system/system_types.h"
 
 REFCOUNT_INSERT_DECLARATIONS(ogl_pipeline,
@@ -41,7 +42,7 @@ PUBLIC EMERALD_API uint32_t ogl_pipeline_add_stage_with_steps(ogl_pipeline      
                                                               const ogl_pipeline_stage_step_declaration* steps);
 
 /** TODO */
-PUBLIC RENDERING_CONTEXT_CALL EMERALD_API ogl_pipeline ogl_pipeline_create(ogl_context               context,
+PUBLIC RENDERING_CONTEXT_CALL EMERALD_API ogl_pipeline ogl_pipeline_create(ral_context               context,
                                                                            bool                      should_overlay_performance_info,
                                                                            system_hashed_ansi_string name);
 
@@ -64,7 +65,7 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API bool ogl_pipeline_draw_stage(ogl_pipel
                                                                        const int*   rendering_area_px_topdown);
 
 /** TODO */
-PUBLIC EMERALD_API ogl_context ogl_pipeline_get_context(ogl_pipeline instance);
+PUBLIC EMERALD_API ral_context ogl_pipeline_get_context(ogl_pipeline instance);
 
 /** INTERNAL USE ONLY. TODO. */
 PUBLIC ogl_text ogl_pipeline_get_text_renderer(ogl_pipeline instance);

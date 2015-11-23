@@ -178,17 +178,17 @@ _raGL_buffers::_raGL_buffers(ogl_context in_context)
     sparse_buffers           = system_resizable_vector_create(16); /* capacity */
 
     /* Retrieve alignment requirements */
-    ogl_context_type             context_type;
+    ral_backend_type             backend_type;
     const ogl_context_gl_limits* limits_ptr = NULL;
 
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_LIMITS,
                             &limits_ptr);
     ogl_context_get_property(context,
-                             OGL_CONTEXT_PROPERTY_TYPE,
-                            &context_type);
+                             OGL_CONTEXT_PROPERTY_BACKEND_TYPE,
+                            &backend_type);
 
-    ASSERT_DEBUG_SYNC(context_type == OGL_CONTEXT_TYPE_GL,
+    ASSERT_DEBUG_SYNC(backend_type == RAL_BACKEND_TYPE_GL,
                       "TODO");
 
     shader_storage_buffer_alignment = limits_ptr->shader_storage_buffer_offset_alignment;
@@ -204,7 +204,7 @@ _raGL_buffers::_raGL_buffers(ogl_context in_context)
     } /* for (all buffer usage types) */
 
     /* Cache the entry-points */
-    if (context_type == OGL_CONTEXT_TYPE_ES)
+    if (backend_type == RAL_BACKEND_TYPE_ES)
     {
         ogl_context_get_property(context,
                                  OGL_CONTEXT_PROPERTY_ENTRYPOINTS_ES,

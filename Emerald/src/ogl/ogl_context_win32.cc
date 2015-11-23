@@ -7,6 +7,7 @@
 #include "ogl/ogl_context.h"
 #include "ogl/ogl_context_win32.h"
 #include "ogl/ogl_rendering_handler.h"
+#include "ral/ral_types.h"
 #include "system/system_assertions.h"
 #include "system/system_log.h"
 #include "system/system_pixel_format.h"
@@ -361,11 +362,11 @@ PUBLIC void ogl_context_win32_init(ogl_context                     context,
     }
 
     /* Okay, try creating the context */
+    ral_backend_type backend_type               = RAL_BACKEND_TYPE_UNKNOWN;
     int              context_major_version      = 0;
     int              context_minor_version      = 0;
     int              context_profile_mask_key   = 0;
     int              context_profile_mask_value = 0;
-    ogl_context_type context_type               = OGL_CONTEXT_TYPE_UNDEFINED;
 
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_MAJOR_VERSION,
@@ -374,17 +375,17 @@ PUBLIC void ogl_context_win32_init(ogl_context                     context,
                              OGL_CONTEXT_PROPERTY_MINOR_VERSION,
                             &context_minor_version);
     ogl_context_get_property(context,
-                             OGL_CONTEXT_PROPERTY_TYPE,
-                            &context_type);
+                             OGL_CONTEXT_PROPERTY_BACKEND_TYPE,
+                            &backend_type);
 
-    if (context_type == OGL_CONTEXT_TYPE_ES)
+    if (backend_type == RAL_BACKEND_TYPE_ES)
     {
         context_profile_mask_key   = WGL_CONTEXT_PROFILE_MASK_ARB;
         context_profile_mask_value = WGL_CONTEXT_ES2_PROFILE_BIT_EXT;
     }
     else
     {
-        ASSERT_DEBUG_SYNC(context_type == OGL_CONTEXT_TYPE_GL,
+        ASSERT_DEBUG_SYNC(backend_type == RAL_BACKEND_TYPE_GL,
                           "Unrecognized context type requested");
     }
 

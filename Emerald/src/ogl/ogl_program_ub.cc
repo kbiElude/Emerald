@@ -22,9 +22,9 @@ PRIVATE ogl_program_block_property _ogl_program_ub_get_block_property_for_ub_pro
             break;
         }
 
-        case OGL_PROGRAM_UB_PROPERTY_BO:
+        case OGL_PROGRAM_UB_PROPERTY_BUFFER_RAL:
         {
-            result = OGL_PROGRAM_BLOCK_PROPERTY_BO;
+            result = OGL_PROGRAM_BLOCK_PROPERTY_BUFFER_RAL;
 
             break;
         }
@@ -69,7 +69,7 @@ PRIVATE ogl_program_block_property _ogl_program_ub_get_block_property_for_ub_pro
 
 
 /** Please see header for spec */
-PUBLIC ogl_program_ub ogl_program_ub_create(ogl_context               context,
+PUBLIC ogl_program_ub ogl_program_ub_create(ral_context               context,
                                             ogl_program               owner_program,
                                             unsigned int              ub_index,
                                             system_hashed_ansi_string ub_name,

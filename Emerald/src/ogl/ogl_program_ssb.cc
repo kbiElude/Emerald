@@ -62,7 +62,7 @@ PRIVATE ogl_program_block_property _ogl_program_ssb_get_block_property_for_ssb_p
 
 
 /** Please see header for spec */
-PUBLIC ogl_program_ssb ogl_program_ssb_create(ogl_context               context,
+PUBLIC ogl_program_ssb ogl_program_ssb_create(ral_context               context,
                                               ogl_program               owner_program,
                                               unsigned int              ssb_index,
                                               system_hashed_ansi_string ssb_name)

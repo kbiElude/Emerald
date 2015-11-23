@@ -43,6 +43,15 @@ typedef enum
 };
 typedef int ral_buffer_property_bits;
 
+/** All data required to perform a RAM->buffer memory transfer */
+typedef struct
+{
+    const void* data;
+    uint32_t    data_size;
+
+    uint32_t    start_offset;
+} ral_buffer_client_sourced_update_info;
+
 typedef enum
 {
     RAL_BUFFER_USAGE_COPY_BIT                     = (1 << 0),
@@ -76,13 +85,27 @@ typedef enum
 typedef int ral_queue_bits;
 
 /** All info required to create a single buffer instance */
-typedef struct
+typedef struct ral_buffer_create_info
 {
-    uint32_t                    size;
+    ral_buffer                  parent_buffer;
+    uint32_t                    size;           /* if parent_buffer != NULL && size == 0: all parent_buffer's storage should be used */
+    uint32_t                    start_offset;
+
     ral_buffer_mappability_bits mappability_bits;
     ral_buffer_property_bits    property_bits;
     ral_buffer_usage_bits       usage_bits;
     ral_queue_bits              user_queue_bits;
+
+    ral_buffer_create_info()
+    {
+        mappability_bits = 0;
+        parent_buffer    = NULL;
+        property_bits    = 0;
+        size             = 0;
+        start_offset     = 0;
+        usage_bits       = 0;
+        user_queue_bits  = 0;
+    }
 } ral_buffer_create_info;
 
 /* RAL RGBA color */
@@ -123,6 +146,12 @@ typedef enum
 
 typedef enum
 {
+    /* TODO TODO TEMPORARY. THIS WILL BE REMOVED AFTER 1ST INTEGRATION STAGE IS FINISHED.
+     *
+     * not settable; void* (eg. raGL_backend for ES / GL).
+     **/
+    RAL_CONTEXT_PROPERTY_BACKEND,
+
     /* TODO TODO TEMPORARY. THIS WILL BE REMOVED AFTER 1ST INTEGRATION STAGE IS FINISHED.
      *
      * not settable; ogl_context.

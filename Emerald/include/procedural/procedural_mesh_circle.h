@@ -16,7 +16,7 @@ REFCOUNT_INSERT_DECLARATIONS(procedural_mesh_circle,
 
 typedef enum
 {
-    PROCEDURAL_MESH_CIRCLE_PROPERTY_ARRAYS_BO,                     /* not settable, raGL_buffer */
+    PROCEDURAL_MESH_CIRCLE_PROPERTY_ARRAYS_BO_RAL,                 /* not settable, ral_buffer */
     PROCEDURAL_MESH_CIRCLE_PROPERTY_ARRAYS_BO_VERTEX_DATA_OFFSET,  /* not settable, GLuint */
     PROCEDURAL_MESH_CIRCLE_PROPERTY_N_VERTICES,                    /* not settable, unsigned int */
 } _procedural_mesh_circle_property;
@@ -36,7 +36,7 @@ typedef enum
  *
  * @return Requested instance.
  **/
-PUBLIC EMERALD_API procedural_mesh_circle procedural_mesh_circle_create(ogl_context                   context,
+PUBLIC EMERALD_API procedural_mesh_circle procedural_mesh_circle_create(ral_context                   context,
                                                                         _procedural_mesh_data_bitmask data_bitmask,
                                                                         uint32_t                      n_segments,
                                                                         system_hashed_ansi_string     name);

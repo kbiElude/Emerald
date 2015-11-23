@@ -11,6 +11,8 @@
 #include "postprocessing/postprocessing_blur_poisson.h"
 #include "raGL/raGL_buffer.h"
 #include "raGL/raGL_texture.h"
+#include "ral/ral_buffer.h"
+#include "ral/ral_context.h"
 #include "ral/ral_texture.h"
 #include "shaders/shaders_vertex_fullscreen.h"
 #include "system/system_assertions.h"
@@ -22,7 +24,7 @@
 typedef struct
 {
     postprocessing_blur_poisson_blur_bluriness_source bluriness_source;
-    ogl_context                                       context;
+    ral_context                                       context;
     const char*                                       custom_shader_code;
 
     GLint blur_strength_ub_offset;
@@ -32,41 +34,40 @@ typedef struct
     system_hashed_ansi_string name;
     ogl_program               program;
     ogl_program_ub            program_ub;
-    raGL_buffer               program_ub_bo;
-    unsigned int              program_ub_bo_size;
+    ral_buffer                program_ub_bo;
 
     REFCOUNT_INSERT_VARIABLES
 } _postprocessing_blur_poisson;
 
 
 /** Internal variables */ 
-static const char* postprocessing_blur_poisson_uniform_blur_strength_body = "vec2 get_blur_strength()\n"
-                                                                            "{\n"
-                                                                            "    return vec2(blur_strength);\n"
-                                                                            "}\n";
+static const char* postprocessing_blur_poisson_uniform_blur_strength_body            = "vec2 get_blur_strength()\n"
+                                                                                       "{\n"
+                                                                                       "    return vec2(blur_strength);\n"
+                                                                                       "}\n";
 static const char* postprocessing_blur_poisson_source_input_alpha_blur_strength_body = "vec2 get_blur_strength()\n"
                                                                                        "{\n"
                                                                                        "    return texture(data, uv).aa;\n"
                                                                                        "}\n";
 
-static const char* postprocessing_blur_poisson_fragment_shader_body_preambule = "#version 430 core\n"
-                                                                                "\n";
-static const char* postprocessing_blur_poisson_tap_data_body = "const float taps[] = float[](-0.37468f,     0.8566398f,\n"
-                                                               "                              0.2497663f,   0.5130413f,\n"
-                                                               "                             -0.3814645f,   0.4049693f,\n"
-                                                               "                             -0.7627723f,   0.06273784f,\n"
-                                                               "                             -0.1496337f,   0.007745424f,\n"
-                                                               "                              0.07355442f,  0.984551f,\n"
-                                                               "                              0.5004861f,  -0.2253174f,\n"
-                                                               "                              0.7175385f,   0.4638414f,\n"
-                                                               "                              0.9855714f,   0.01321317f,\n"
-                                                               "                             -0.3985322f,  -0.5223456f,\n"
-                                                               "                              0.2407384f,  -0.888767f,\n"
-                                                               "                              0.07159682f, -0.4352953f,\n"
-                                                               "                             -0.2808287f,  -0.9595322f,\n"
-                                                               "                             -0.8836895f,  -0.4189175f,\n"
-                                                               "                             -0.7953489f,   0.5906183f,\n"
-                                                               "                              0.8182191f,  -0.5711964f);\n";
+static const char* postprocessing_blur_poisson_fragment_shader_body_preambule    = "#version 430 core\n"
+                                                                                   "\n";
+static const char* postprocessing_blur_poisson_tap_data_body                     = "const float taps[] = float[](-0.37468f,     0.8566398f,\n"
+                                                                                   "                              0.2497663f,   0.5130413f,\n"
+                                                                                   "                             -0.3814645f,   0.4049693f,\n"
+                                                                                   "                             -0.7627723f,   0.06273784f,\n"
+                                                                                   "                             -0.1496337f,   0.007745424f,\n"
+                                                                                   "                              0.07355442f,  0.984551f,\n"
+                                                                                   "                              0.5004861f,  -0.2253174f,\n"
+                                                                                   "                              0.7175385f,   0.4638414f,\n"
+                                                                                   "                              0.9855714f,   0.01321317f,\n"
+                                                                                   "                             -0.3985322f,  -0.5223456f,\n"
+                                                                                   "                              0.2407384f,  -0.888767f,\n"
+                                                                                   "                              0.07159682f, -0.4352953f,\n"
+                                                                                   "                             -0.2808287f,  -0.9595322f,\n"
+                                                                                   "                             -0.8836895f,  -0.4189175f,\n"
+                                                                                   "                             -0.7953489f,   0.5906183f,\n"
+                                                                                   "                              0.8182191f,  -0.5711964f);\n";
 static const char* postprocessing_blur_poisson_fragment_shader_body_declarations = "uniform dataFS\n"
                                                                                    "{\n"
                                                                                    "    float blur_strength;\n"
@@ -79,30 +80,23 @@ static const char* postprocessing_blur_poisson_fragment_shader_body_declarations
                                                                                    "vec2 get_blur_strength();\n"
                                                                                    "\n"
                                                                                    "\n";
-static const char* postprocessing_blur_poisson_fragment_shader_body_main ="void main()\n"
-                                                                          "{\n"
-                                                                          "\n"
-                                                                          "   vec4 temp_result = vec4(0.0);\n"
-                                                                          "\n"
-                                                                          "   for (int i = 0; i < taps.length(); i += 2)\n"
-                                                                          "   {\n"
-                                                                          "      temp_result += texture(data, uv + vec2(taps[i], taps[i+1]) / textureSize(data, 0) * get_blur_strength() );\n"
-                                                                          "   }\n"
-                                                                          "\n"
-                                                                          "   result = temp_result / taps.length() * 2;\n"
-                                                                          "}\n";
+static const char* postprocessing_blur_poisson_fragment_shader_body_main         = "void main()\n"
+                                                                                   "{\n"
+                                                                                   "\n"
+                                                                                   "   vec4 temp_result = vec4(0.0);\n"
+                                                                                   "\n"
+                                                                                   "   for (int i = 0; i < taps.length(); i += 2)\n"
+                                                                                   "   {\n"
+                                                                                   "      temp_result += texture(data, uv + vec2(taps[i], taps[i+1]) / textureSize(data, 0) * get_blur_strength() );\n"
+                                                                                   "   }\n"
+                                                                                   "\n"
+                                                                                   "   result = temp_result / taps.length() * 2;\n"
+                                                                                   "}\n";
 
 /** Reference counter impl */
 REFCOUNT_INSERT_IMPLEMENTATION(postprocessing_blur_poisson,
                                postprocessing_blur_poisson,
                               _postprocessing_blur_poisson);
-
-/* Forward declarations */
-#ifdef _DEBUG
-    PRIVATE void _postprocessing_blur_poisson_verify_context_type(ogl_context);
-#else
-    #define _postprocessing_blur_poisson_verify_context_type(x)
-#endif
 
 
 /** TODO */
@@ -130,10 +124,10 @@ PUBLIC void _postprocessing_blur_poisson_init_renderer_callback(ogl_context cont
                                                             RAL_SHADER_TYPE_FRAGMENT,
                                                             system_hashed_ansi_string_create_by_merging_two_strings("Postprocessing blur poisson fragment shader ", 
                                                                                                                     system_hashed_ansi_string_get_buffer(poisson_ptr->name) ));
-    vertex_shader        = shaders_vertex_fullscreen_create(poisson_ptr->context,
+    vertex_shader        = shaders_vertex_fullscreen_create(ral_context_get_gl_context(poisson_ptr->context),
                                                             true,
                                                             poisson_ptr->name);
-    poisson_ptr->program = ogl_program_create              (poisson_ptr->context,
+    poisson_ptr->program = ogl_program_create              (ral_context_get_gl_context(poisson_ptr->context),
                                                             system_hashed_ansi_string_create_by_merging_two_strings("Postprocessing blur poisson program ",
                                                                                                                     system_hashed_ansi_string_get_buffer(poisson_ptr->name) ),
                                                             OGL_PROGRAM_SYNCABLE_UBS_MODE_ENABLE_GLOBAL);
@@ -169,11 +163,8 @@ PUBLIC void _postprocessing_blur_poisson_init_renderer_callback(ogl_context cont
                       "dataFS uniform block descriptor is NULL");
 
     ogl_program_ub_get_property(poisson_ptr->program_ub,
-                                OGL_PROGRAM_UB_PROPERTY_BO,
+                                OGL_PROGRAM_UB_PROPERTY_BUFFER_RAL,
                                &poisson_ptr->program_ub_bo);
-    ogl_program_ub_get_property(poisson_ptr->program_ub,
-                                OGL_PROGRAM_UB_PROPERTY_BLOCK_DATA_SIZE,
-                               &poisson_ptr->program_ub_bo_size);
 
     /* Generate FBO */
     const ogl_context_gl_entrypoints* entrypoints = NULL;
@@ -198,31 +189,13 @@ PRIVATE void _postprocessing_blur_poisson_release(void* ptr)
     ogl_program_release(data_ptr->program);
 }
 
-/** TODO */
-#ifdef _DEBUG
-    /* TODO */
-    PRIVATE void _postprocessing_blur_poisson_verify_context_type(ogl_context context)
-    {
-        ogl_context_type context_type = OGL_CONTEXT_TYPE_UNDEFINED;
-
-        ogl_context_get_property(context,
-                                 OGL_CONTEXT_PROPERTY_TYPE,
-                                &context_type);
-
-        ASSERT_DEBUG_SYNC(context_type == OGL_CONTEXT_TYPE_GL,
-                          "postprocessing_blur_poisson is only supported under GL contexts")
-    }
-#endif
-
 
 /** Please see header for specification */
-PUBLIC EMERALD_API postprocessing_blur_poisson postprocessing_blur_poisson_create(ogl_context                                       context,
+PUBLIC EMERALD_API postprocessing_blur_poisson postprocessing_blur_poisson_create(ral_context                                       context,
                                                                                   system_hashed_ansi_string                         name,
                                                                                   postprocessing_blur_poisson_blur_bluriness_source bluriness_source,
                                                                                   const char*                                       custom_shader_code)
 {
-    _postprocessing_blur_poisson_verify_context_type(context);
-
     /* Instantiate the object */
     _postprocessing_blur_poisson* result_object = new (std::nothrow) _postprocessing_blur_poisson;
 
@@ -245,7 +218,7 @@ PUBLIC EMERALD_API postprocessing_blur_poisson postprocessing_blur_poisson_creat
     result_object->custom_shader_code = custom_shader_code;
     result_object->name               = name;
 
-    ogl_context_request_callback_from_context_thread(context,
+    ogl_context_request_callback_from_context_thread(ral_context_get_gl_context(context),
                                                      _postprocessing_blur_poisson_init_renderer_callback,
                                                      result_object);
 
@@ -271,17 +244,19 @@ end:
 
 /* Please see header for specification */
 PUBLIC EMERALD_API void postprocessing_blur_poisson_execute(postprocessing_blur_poisson blur_poisson,
-                                                            raGL_texture                input_texture,
+                                                            ral_texture                 input_texture,
                                                             float                       blur_strength,
-                                                            raGL_texture                result_texture)
+                                                            ral_texture                 result_texture)
 {
     _postprocessing_blur_poisson*                             poisson_ptr           = (_postprocessing_blur_poisson*) blur_poisson;
     const ogl_context_gl_entrypoints_ext_direct_state_access* dsa_entrypoints       = NULL;
     const ogl_context_gl_entrypoints*                         entrypoints           = NULL;
     GLuint                                                    input_texture_id      = 0;
     bool                                                      input_texture_is_rbo  = false;
+    raGL_texture                                              input_texture_raGL    = NULL;
     GLuint                                                    result_texture_id     = 0;
     bool                                                      result_texture_is_rbo = false;
+    raGL_texture                                              result_texture_raGL   = NULL;
     ral_texture                                               result_texture_ral    = NULL;
     unsigned int                                              texture_height        = 0;
     unsigned int                                              texture_width         = 0;
@@ -289,32 +264,37 @@ PUBLIC EMERALD_API void postprocessing_blur_poisson_execute(postprocessing_blur_
     int                                                       window_size[2]        = {0};
     GLuint                                                    vao_id                = 0;
 
-    ogl_context_get_property(poisson_ptr->context,
+    ogl_context_get_property(ral_context_get_gl_context(poisson_ptr->context),
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL_EXT_DIRECT_STATE_ACCESS,
                             &dsa_entrypoints);
-    ogl_context_get_property(poisson_ptr->context,
+    ogl_context_get_property(ral_context_get_gl_context(poisson_ptr->context),
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
                             &entrypoints);
-    ogl_context_get_property(poisson_ptr->context,
+    ogl_context_get_property(ral_context_get_gl_context(poisson_ptr->context),
                              OGL_CONTEXT_PROPERTY_VAO_NO_VAAS,
                             &vao_id);
-    ogl_context_get_property(poisson_ptr->context,
-                             OGL_CONTEXT_PROPERTY_WINDOW,
+    ral_context_get_property(poisson_ptr->context,
+                             RAL_CONTEXT_PROPERTY_WINDOW,
                             &window);
 
-    raGL_texture_get_property(input_texture,
+    input_texture_raGL  = ral_context_get_texture_gl(poisson_ptr->context,
+                                                     input_texture);
+    result_texture_raGL = ral_context_get_texture_gl(poisson_ptr->context,
+                                                     result_texture);
+
+    raGL_texture_get_property(input_texture_raGL,
                               RAGL_TEXTURE_PROPERTY_ID,
                              &input_texture_id);
-    raGL_texture_get_property(input_texture,
+    raGL_texture_get_property(input_texture_raGL,
                               RAGL_TEXTURE_PROPERTY_IS_RENDERBUFFER,
                              &input_texture_is_rbo);
-    raGL_texture_get_property(result_texture,
+    raGL_texture_get_property(result_texture_raGL,
                               RAGL_TEXTURE_PROPERTY_ID,
                              &result_texture_id);
-    raGL_texture_get_property(result_texture,
+    raGL_texture_get_property(result_texture_raGL,
                               RAGL_TEXTURE_PROPERTY_IS_RENDERBUFFER,
                              &result_texture_is_rbo);
-    raGL_texture_get_property(result_texture,
+    raGL_texture_get_property(result_texture_raGL,
                               RAGL_TEXTURE_PROPERTY_RAL_TEXTURE,
                              &result_texture_ral);
 
@@ -359,21 +339,29 @@ PUBLIC EMERALD_API void postprocessing_blur_poisson_execute(postprocessing_blur_
                                     RAL_TEXTURE_MIPMAP_PROPERTY_WIDTH,
                                    &texture_width);
 
-    GLuint   program_ub_bo_id           = 0;
-    uint32_t program_ub_bo_start_offset = -1;
+    raGL_buffer program_ub_bo_raGL         = NULL;
+    GLuint      program_ub_bo_id           = 0;
+    uint32_t    program_ub_bo_size         = 0;
+    uint32_t    program_ub_bo_start_offset = -1;
 
-    raGL_buffer_get_property(poisson_ptr->program_ub_bo,
+    program_ub_bo_raGL = ral_context_get_buffer_gl(poisson_ptr->context,
+                                                   poisson_ptr->program_ub_bo);
+
+    raGL_buffer_get_property(program_ub_bo_raGL,
                              RAGL_BUFFER_PROPERTY_ID,
                             &program_ub_bo_id);
-    raGL_buffer_get_property(poisson_ptr->program_ub_bo,
+    raGL_buffer_get_property(program_ub_bo_raGL,
                              RAGL_BUFFER_PROPERTY_START_OFFSET,
                             &program_ub_bo_start_offset);
+    ral_buffer_get_property (poisson_ptr->program_ub_bo,
+                             RAL_BUFFER_PROPERTY_SIZE,
+                            &program_ub_bo_size);
 
     entrypoints->pGLBindBufferRange(GL_UNIFORM_BUFFER,
                                     0, /* index */
                                     program_ub_bo_id,
                                     program_ub_bo_start_offset,
-                                    poisson_ptr->program_ub_bo_size);
+                                    program_ub_bo_size);
 
     entrypoints->pGLViewport  (0,
                                0,

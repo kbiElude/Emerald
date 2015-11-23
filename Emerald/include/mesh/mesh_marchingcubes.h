@@ -22,11 +22,8 @@ typedef enum
     /* mesh; not settable. */
     MESH_MARCHINGCUBES_PROPERTY_MESH,
 
-    /* raGL_buffer; settable. */
-    MESH_MARCHINGCUBES_PROPERTY_SCALAR_DATA_BO,
-
-    /* unsigned int; settable. */
-    MESH_MARCHINGCUBES_PROPERTY_SCALAR_DATA_BO_SIZE,
+    /* ral_buffer; settable. */
+    MESH_MARCHINGCUBES_PROPERTY_SCALAR_DATA_BUFFER_RAL,
 } mesh_marchingcubes_property;
 
 /** Instantiates a mesh_marchingcubes instance.
@@ -67,8 +64,7 @@ typedef enum
  * */
 PUBLIC EMERALD_API mesh_marchingcubes mesh_marchingcubes_create(ral_context               context,
                                                                 const unsigned int*       grid_size_xyz,
-                                                                raGL_buffer               scalar_data_bo,
-                                                                GLuint                    scalar_data_bo_size,
+                                                                ral_buffer                scalar_data_bo,
                                                                 float                     isolevel,
                                                                 scene_material            material,
                                                                 system_hashed_ansi_string name,

@@ -44,7 +44,7 @@ typedef enum
  *
  *  @param owner_program TODO. NOT retained.
  */
-PUBLIC RENDERING_CONTEXT_CALL ogl_program_ssb ogl_program_ssb_create(ogl_context               context,
+PUBLIC RENDERING_CONTEXT_CALL ogl_program_ssb ogl_program_ssb_create(ral_context               context,
                                                                      ogl_program               owner_program,
                                                                      unsigned int              ssb_index,
                                                                      system_hashed_ansi_string ssb_name);

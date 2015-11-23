@@ -115,7 +115,7 @@ PUBLIC EMERALD_API bool procedural_uv_generator_alloc_result_buffer_memory(proce
  *
  *  @return Object instance.
  ***/
-PUBLIC EMERALD_API procedural_uv_generator procedural_uv_generator_create(ogl_context                  in_context,
+PUBLIC EMERALD_API procedural_uv_generator procedural_uv_generator_create(ral_context                  in_context,
                                                                           procedural_uv_generator_type in_type,
                                                                           system_hashed_ansi_string    in_name);
 

@@ -58,10 +58,10 @@ typedef struct
     GLint          program_brightness_ub_offset;
     GLint          program_stop_data_ub_offset;
     ogl_program_ub program_ub_fs;
-    raGL_buffer    program_ub_fs_bo;
+    ral_buffer     program_ub_fs_bo;
     GLuint         program_ub_fs_bo_size;
     ogl_program_ub program_ub_vs;
-    raGL_buffer    program_ub_vs_bo;
+    ral_buffer     program_ub_vs_bo;
     GLuint         program_ub_vs_bo_size;
     GLint          program_x1y1x2y2_ub_offset;
 
@@ -208,10 +208,10 @@ PRIVATE void _ogl_ui_button_init_renderer_callback(ogl_context context, void* bu
                                &button_ptr->program_ub_vs_bo_size);
 
     ogl_program_ub_get_property(button_ptr->program_ub_fs,
-                                OGL_PROGRAM_UB_PROPERTY_BO,
+                                OGL_PROGRAM_UB_PROPERTY_BUFFER_RAL,
                                &button_ptr->program_ub_fs_bo);
     ogl_program_ub_get_property(button_ptr->program_ub_vs,
-                                OGL_PROGRAM_UB_PROPERTY_BO,
+                                OGL_PROGRAM_UB_PROPERTY_BUFFER_RAL,
                                &button_ptr->program_ub_vs_bo);
 
     ogl_program_ub_get_property(button_ptr->program_ub_fs,
@@ -413,21 +413,28 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_ui_button_draw(void* internal_instance)
     }
 
     /* Draw */
-    GLuint   program_ub_fs_bo_id           = 0;
-    uint32_t program_ub_fs_bo_start_offset = -1;
-    GLuint   program_ub_vs_bo_id           = 0;
-    uint32_t program_ub_vs_bo_start_offset = -1;
+    GLuint      program_ub_fs_bo_id           = 0;
+    raGL_buffer program_ub_fs_bo_raGL         = NULL;
+    uint32_t    program_ub_fs_bo_start_offset = -1;
+    GLuint      program_ub_vs_bo_id           = 0;
+    raGL_buffer program_ub_vs_bo_raGL         = NULL;
+    uint32_t    program_ub_vs_bo_start_offset = -1;
 
-    raGL_buffer_get_property(button_ptr->program_ub_fs_bo,
+    program_ub_fs_bo_raGL = ral_context_get_buffer_gl(button_ptr->context,
+                                                      button_ptr->program_ub_fs_bo);
+    program_ub_vs_bo_raGL = ral_context_get_buffer_gl(button_ptr->context,
+                                                      button_ptr->program_ub_vs_bo);
+
+    raGL_buffer_get_property(program_ub_fs_bo_raGL,
                              RAGL_BUFFER_PROPERTY_ID,
                             &program_ub_fs_bo_id);
-    raGL_buffer_get_property(button_ptr->program_ub_fs_bo,
+    raGL_buffer_get_property(program_ub_fs_bo_raGL,
                              RAGL_BUFFER_PROPERTY_START_OFFSET,
                             &program_ub_fs_bo_start_offset);
-    raGL_buffer_get_property(button_ptr->program_ub_vs_bo,
+    raGL_buffer_get_property(program_ub_vs_bo_raGL,
                              RAGL_BUFFER_PROPERTY_ID,
                             &program_ub_vs_bo_id);
-    raGL_buffer_get_property(button_ptr->program_ub_vs_bo,
+    raGL_buffer_get_property(program_ub_vs_bo_raGL,
                              RAGL_BUFFER_PROPERTY_START_OFFSET,
                             &program_ub_vs_bo_start_offset);
 

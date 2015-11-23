@@ -88,10 +88,10 @@ typedef struct
     GLint                          program_slider_is_handle_ub_offset;
     GLint                          program_slider_x1y1x2y2_ub_offset;
     ogl_program_ub                 program_slider_ub_fs;
-    raGL_buffer                    program_slider_ub_fs_bo;
+    ral_buffer                     program_slider_ub_fs_bo;
     GLuint                         program_slider_ub_fs_bo_size;
     ogl_program_ub                 program_slider_ub_vs;
-    raGL_buffer                    program_slider_ub_vs_bo;
+    ral_buffer                     program_slider_ub_vs_bo;
     GLuint                         program_slider_ub_vs_bo_size;
 
     system_variant                 min_value_variant;
@@ -221,10 +221,10 @@ PRIVATE void _ogl_ui_scrollbar_init_renderer_callback(ogl_context context, void*
                                &scrollbar_ptr->program_slider_ub_vs_bo_size);
 
     ogl_program_ub_get_property(scrollbar_ptr->program_slider_ub_fs,
-                                OGL_PROGRAM_UB_PROPERTY_BO,
+                                OGL_PROGRAM_UB_PROPERTY_BUFFER_RAL,
                                &scrollbar_ptr->program_slider_ub_fs_bo);
     ogl_program_ub_get_property(scrollbar_ptr->program_slider_ub_vs,
-                                OGL_PROGRAM_UB_PROPERTY_BO,
+                                OGL_PROGRAM_UB_PROPERTY_BUFFER_RAL,
                                &scrollbar_ptr->program_slider_ub_vs_bo);
 
     ogl_program_ub_get_property(scrollbar_ptr->program_slider_ub_fs,
@@ -434,21 +434,28 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_ui_scrollbar_draw(void* internal_instance
         }
     }
 
-    GLuint   program_slider_ub_fs_bo_id           = 0;
-    uint32_t program_slider_ub_fs_bo_start_offset = -1;
-    GLuint   program_slider_ub_vs_bo_id           = 0;
-    uint32_t program_slider_ub_vs_bo_start_offset = -1;
+    GLuint      program_slider_ub_fs_bo_id           = 0;
+    raGL_buffer program_slider_ub_fs_bo_raGL         = NULL;
+    uint32_t    program_slider_ub_fs_bo_start_offset = -1;
+    GLuint      program_slider_ub_vs_bo_id           = 0;
+    raGL_buffer program_slider_ub_vs_bo_raGL         = NULL;
+    uint32_t    program_slider_ub_vs_bo_start_offset = -1;
 
-    raGL_buffer_get_property(scrollbar_ptr->program_slider_ub_fs_bo,
+    program_slider_ub_fs_bo_raGL = ral_context_get_buffer_gl(scrollbar_ptr->context,
+                                                             scrollbar_ptr->program_slider_ub_fs_bo);
+    program_slider_ub_vs_bo_raGL = ral_context_get_buffer_gl(scrollbar_ptr->context,
+                                                             scrollbar_ptr->program_slider_ub_vs_bo);
+
+    raGL_buffer_get_property(program_slider_ub_fs_bo_raGL,
                              RAGL_BUFFER_PROPERTY_ID,
                             &program_slider_ub_fs_bo_id);
-    raGL_buffer_get_property(scrollbar_ptr->program_slider_ub_fs_bo,
+    raGL_buffer_get_property(program_slider_ub_fs_bo_raGL,
                              RAGL_BUFFER_PROPERTY_START_OFFSET,
                             &program_slider_ub_fs_bo_start_offset);
-    raGL_buffer_get_property(scrollbar_ptr->program_slider_ub_vs_bo,
+    raGL_buffer_get_property(program_slider_ub_vs_bo_raGL,
                              RAGL_BUFFER_PROPERTY_ID,
                             &program_slider_ub_vs_bo_id);
-    raGL_buffer_get_property(scrollbar_ptr->program_slider_ub_vs_bo,
+    raGL_buffer_get_property(program_slider_ub_vs_bo_raGL,
                              RAGL_BUFFER_PROPERTY_START_OFFSET,
                             &program_slider_ub_vs_bo_start_offset);
 

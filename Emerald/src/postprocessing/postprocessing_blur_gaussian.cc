@@ -12,11 +12,10 @@
 #include "ogl/ogl_shaders.h"
 #include "postprocessing/postprocessing_blur_gaussian.h"
 #include "raGL/raGL_buffer.h"
-#include "raGL/raGL_buffers.h"
 #include "raGL/raGL_sampler.h"
-#include "raGL/raGL_samplers.h"
 #include "raGL/raGL_texture.h"
-#include "raGL/raGL_textures.h"
+#include "ral/ral_buffer.h"
+#include "ral/ral_context.h"
 #include "ral/ral_texture.h"
 #include "system/system_assertions.h"
 #include "system/system_hashed_ansi_string.h"
@@ -121,18 +120,17 @@ static const char* vs_body =     "#version 430 core\n"
 /** Internal type definition */
 typedef struct _postprocessing_blur_gaussian
 {
-    raGL_buffers              buffers;     /* do NOT release */
-    raGL_buffer               coeff_bo;    /* owned by raGL_buffers - do NOT release */
+    ral_buffer                coeff_bo;
     unsigned int              coeff_buffer_offset_for_value_1; /* holds offset to where 1.0 is stored in BO with id coeff_bo_id */
     unsigned int*             coeff_buffer_offsets; // [0] for n_min_taps, [1] for n_min_taps+1, etc..
-    ogl_context               context;
+    ral_context               context;
     GLuint                    fbo_ids[2]; /* ping/pong FBO */
     system_hashed_ansi_string name;
     unsigned int              n_max_data_coeffs;
     unsigned int              n_max_taps;
     unsigned int              n_min_taps;
     ogl_program               po;
-    raGL_sampler              sampler; /* do not release - retrieved from context-wide raGL_samplers */
+    ral_sampler               sampler;
 
     /* other data BO holds:
      *
@@ -143,9 +141,9 @@ typedef struct _postprocessing_blur_gaussian
      * memory copies to avoid pipeline stalls.
      */
     unsigned int other_data_bo_cached_value;
-    raGL_buffer  other_data_bo;           /* do NOT release */
+    ral_buffer   other_data_bo;           /* do NOT release */
 
-    _postprocessing_blur_gaussian(ogl_context               in_context,
+    _postprocessing_blur_gaussian(ral_context               in_context,
                                   unsigned int              in_n_min_taps,
                                   unsigned int              in_n_max_taps,
                                   system_hashed_ansi_string in_name)
@@ -153,7 +151,6 @@ typedef struct _postprocessing_blur_gaussian
         ASSERT_DEBUG_SYNC(in_n_min_taps <= in_n_max_taps,
                           "Invalid min/max tap argument values");
 
-        buffers                         = NULL;
         coeff_bo                        = NULL;
         coeff_buffer_offset_for_value_1 = 0; /* always zero */
         coeff_buffer_offsets            = NULL;
@@ -167,15 +164,11 @@ typedef struct _postprocessing_blur_gaussian
         po                              = NULL;
         sampler                         = NULL;
 
-        ogl_context_get_property(context,
-                                 OGL_CONTEXT_PROPERTY_BUFFERS_RAGL,
-                                &buffers);
-
         memset(fbo_ids,
                0,
                sizeof(fbo_ids) );
 
-        ogl_context_retain(context);
+        ral_context_retain(context);
     }
 
     ~_postprocessing_blur_gaussian()
@@ -200,7 +193,7 @@ typedef struct _postprocessing_blur_gaussian
 
         if (context != NULL)
         {
-            ogl_context_release(context);
+            ral_context_release(context);
 
             context = NULL;
         }
@@ -231,8 +224,9 @@ PRIVATE void _postprocessing_blur_gaussian_deinit_rendering_thread_callback(ogl_
 
     if (instance_ptr->coeff_bo != NULL)
     {
-        raGL_buffers_free_buffer_memory(instance_ptr->buffers,
-                                        instance_ptr->coeff_bo);
+        ral_context_delete_buffers(instance_ptr->context,
+                                   1, /* n_buffers */
+                                  &instance_ptr->coeff_bo);
 
         instance_ptr->coeff_bo = NULL;
     } /* if (instance_ptr->coeff_bo != NULL) */
@@ -251,8 +245,9 @@ PRIVATE void _postprocessing_blur_gaussian_deinit_rendering_thread_callback(ogl_
 
     if (instance_ptr->other_data_bo != NULL)
     {
-        raGL_buffers_free_buffer_memory(instance_ptr->buffers,
-                                        instance_ptr->other_data_bo);
+        ral_context_delete_buffers(instance_ptr->context,
+                                   1, /* n_buffers */
+                                   &instance_ptr->other_data_bo);
 
         instance_ptr->other_data_bo = NULL;
     } /* if (instance_ptr->other_data_bo != NULL) */
@@ -600,13 +595,12 @@ PRIVATE void _postprocessing_blur_gaussian_init_rendering_thread_callback(ogl_co
      * NOTE: The other data BO must not come from sparse buffers under NV drivers. Please see GitHub#61
      *       for more details. May be worth revisiting in the future.
      */
-    ral_buffer_create_info coeff_bo_props;
-    GLuint                 coeff_bo_id           = 0;
-    uint32_t               coeff_bo_start_offset = 0;
-    bool                   is_nv_driver          = false;
-    ral_buffer_create_info other_data_bo_props;
+    ral_buffer_create_info                coeff_bo_props;
+    ral_buffer_client_sourced_update_info coeff_bo_update;
+    bool                                  is_nv_driver          = false;
+    ral_buffer_create_info                other_data_bo_props;
 
-    ogl_context_get_property(instance_ptr->context,
+    ogl_context_get_property(ral_context_get_gl_context(instance_ptr->context),
                              OGL_CONTEXT_PROPERTY_IS_NV_DRIVER,
                             &is_nv_driver);
 
@@ -616,9 +610,10 @@ PRIVATE void _postprocessing_blur_gaussian_init_rendering_thread_callback(ogl_co
     coeff_bo_props.usage_bits       = RAL_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
     coeff_bo_props.user_queue_bits  = 0xFFFFFFFF;
 
-    raGL_buffers_allocate_buffer_memory_for_ral_buffer_create_info(instance_ptr->buffers,
-                                                                  &coeff_bo_props,
-                                                                  &instance_ptr->coeff_bo);
+    ral_context_create_buffers(instance_ptr->context,
+                               1, /* n_buffers */
+                               &coeff_bo_props,
+                               &instance_ptr->coeff_bo);
 
     other_data_bo_props.mappability_bits = RAL_BUFFER_MAPPABILITY_NONE;
     other_data_bo_props.property_bits    = (is_nv_driver) ? 0 :
@@ -627,21 +622,18 @@ PRIVATE void _postprocessing_blur_gaussian_init_rendering_thread_callback(ogl_co
     other_data_bo_props.usage_bits       = RAL_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
     other_data_bo_props.user_queue_bits  = 0xFFFFFFFF;
 
-    raGL_buffers_allocate_buffer_memory_for_ral_buffer_create_info(instance_ptr->buffers,
-                                                                  &other_data_bo_props,
-                                                                  &instance_ptr->other_data_bo);
+    ral_context_create_buffers(instance_ptr->context,
+                               1, /* n_buffers */
+                               &other_data_bo_props,
+                               &instance_ptr->other_data_bo);
 
-    raGL_buffer_get_property(instance_ptr->coeff_bo,
-                             RAGL_BUFFER_PROPERTY_ID,
-                            &coeff_bo_id);
-    raGL_buffer_get_property(instance_ptr->coeff_bo,
-                             RAGL_BUFFER_PROPERTY_START_OFFSET,
-                            &coeff_bo_start_offset);
+    coeff_bo_update.data         = final_data_bo_raw_ptr;
+    coeff_bo_update.data_size    = final_data_bo_size;
+    coeff_bo_update.start_offset = 0;
 
-    dsa_entrypoints_ptr->pGLNamedBufferSubDataEXT(coeff_bo_id,
-                                                  coeff_bo_start_offset,
-                                                  final_data_bo_size,
-                                                  final_data_bo_raw_ptr); /* flags */
+    ral_buffer_set_data_from_client_memory(instance_ptr->coeff_bo,
+                                           1, /* n_updates */
+                                          &coeff_bo_update);
 
     /* Set up the PO */
     ogl_shader                      fs       = NULL;
@@ -652,17 +644,17 @@ PRIVATE void _postprocessing_blur_gaussian_init_rendering_thread_callback(ogl_co
     ogl_shader                      vs       = NULL;
     const system_hashed_ansi_string vs_name  = system_hashed_ansi_string_create("Postprocessing blur Gaussian VS");
 
-    ogl_context_get_property(instance_ptr->context,
+    ogl_context_get_property(ral_context_get_gl_context(instance_ptr->context),
                              OGL_CONTEXT_PROPERTY_PROGRAMS,
                             &programs);
-    ogl_context_get_property(instance_ptr->context,
+    ogl_context_get_property(ral_context_get_gl_context(instance_ptr->context),
                              OGL_CONTEXT_PROPERTY_SHADERS,
                             &shaders);
 
     if ( (instance_ptr->po = ogl_programs_get_program_by_name(programs,
                                                               po_name)) == NULL)
     {
-        instance_ptr->po = ogl_program_create(instance_ptr->context,
+        instance_ptr->po = ogl_program_create(ral_context_get_gl_context(instance_ptr->context),
                                               po_name);
 
         if ( (fs = ogl_shaders_get_shader_by_name(shaders,
@@ -727,18 +719,15 @@ PRIVATE void _postprocessing_blur_gaussian_init_rendering_thread_callback(ogl_co
 
     /* Retrieve the sampler object we will use to perform the blur operation */
     ral_sampler_create_info blur_sampler_create_info;
-    raGL_samplers           context_samplers        = NULL;
 
     blur_sampler_create_info.mipmap_mode = RAL_TEXTURE_MIPMAP_MODE_BASE;
     blur_sampler_create_info.wrap_s      = RAL_TEXTURE_WRAP_MODE_CLAMP_TO_EDGE;
     blur_sampler_create_info.wrap_t      = RAL_TEXTURE_WRAP_MODE_CLAMP_TO_EDGE;
 
-    ogl_context_get_property(instance_ptr->context,
-                             OGL_CONTEXT_PROPERTY_SAMPLERS_RAGL,
-                            &context_samplers);
-
-    instance_ptr->sampler = raGL_samplers_get_sampler_from_ral_sampler_create_info(context_samplers,
-                                                                                  &blur_sampler_create_info);
+    ral_context_create_samplers(instance_ptr->context,
+                                1, /* n_samplers */
+                               &blur_sampler_create_info,
+                               &instance_ptr->sampler);
 
     ASSERT_DEBUG_SYNC(instance_ptr->sampler != NULL,
                       "Could not retrieve a sampler object from ogl_samplers");
@@ -803,7 +792,7 @@ PRIVATE void _postprocessing_blur_gaussian_release(void* ptr)
 {
     _postprocessing_blur_gaussian* data_ptr = (_postprocessing_blur_gaussian*) ptr;
 
-    ogl_context_request_callback_from_context_thread(data_ptr->context,
+    ogl_context_request_callback_from_context_thread(ral_context_get_gl_context(data_ptr->context),
                                                      _postprocessing_blur_gaussian_deinit_rendering_thread_callback,
                                                      data_ptr);
 }
@@ -812,39 +801,28 @@ PRIVATE void _postprocessing_blur_gaussian_release(void* ptr)
 PRIVATE RENDERING_CONTEXT_CALL void _postprocessing_blur_gaussian_update_other_data_bo_storage(_postprocessing_blur_gaussian* gaussian_ptr,
                                                                                                unsigned int                   new_other_data_cached_value)
 {
-    const ogl_context_gl_entrypoints_ext_direct_state_access* entrypoints_dsa            = NULL;
-    GLuint                                                    other_data_bo_id           = 0;
-    uint32_t                                                  other_data_bo_start_offset = -1;
-
     const int data[] =
     {
         0,
         new_other_data_cached_value,
         1                            /* predefined value */
     };
+    ral_buffer_client_sourced_update_info other_data_bo_update;
 
-    ogl_context_get_property(gaussian_ptr->context,
-                             OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL_EXT_DIRECT_STATE_ACCESS,
-                            &entrypoints_dsa);
+    other_data_bo_update.data         = data;
+    other_data_bo_update.data_size    = sizeof(data);
+    other_data_bo_update.start_offset = 0;
 
-    raGL_buffer_get_property(gaussian_ptr->other_data_bo,
-                             RAGL_BUFFER_PROPERTY_ID,
-                            &other_data_bo_id);
-    raGL_buffer_get_property(gaussian_ptr->other_data_bo,
-                             RAGL_BUFFER_PROPERTY_START_OFFSET,
-                            &other_data_bo_start_offset);
-
-    entrypoints_dsa->pGLNamedBufferSubDataEXT(other_data_bo_id,
-                                              other_data_bo_start_offset,
-                                              sizeof(data),
-                                              data);
+    ral_buffer_set_data_from_client_memory(gaussian_ptr->other_data_bo,
+                                           1, /* n_updates */
+                                           &other_data_bo_update);
 
     gaussian_ptr->other_data_bo_cached_value = new_other_data_cached_value;
 }
 
 
 /** Please see header for specification */
-PUBLIC RENDERING_CONTEXT_CALL EMERALD_API postprocessing_blur_gaussian postprocessing_blur_gaussian_create(ogl_context               context,
+PUBLIC RENDERING_CONTEXT_CALL EMERALD_API postprocessing_blur_gaussian postprocessing_blur_gaussian_create(ral_context               context,
                                                                                                            system_hashed_ansi_string name,
                                                                                                            unsigned int              n_min_taps,
                                                                                                            unsigned int              n_max_taps)
@@ -867,7 +845,7 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API postprocessing_blur_gaussian postproce
 
     /* Since we're already in a rendering thread, just call the rendering thread callback entry-point
      * directly. */
-    _postprocessing_blur_gaussian_init_rendering_thread_callback(context,
+    _postprocessing_blur_gaussian_init_rendering_thread_callback(ral_context_get_gl_context(context),
                                                                  result_object);
 
     /* Register it with the object manager */
@@ -901,11 +879,13 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void postprocessing_blur_gaussian_exec
 {
     _postprocessing_blur_gaussian*                            blur_ptr                      = (_postprocessing_blur_gaussian*) blur;
     GLuint                                                    coeff_bo_id                   = 0;
+    raGL_buffer                                               coeff_bo_raGL                 = NULL;
     uint32_t                                                  coeff_bo_start_offset         = -1;
     GLuint                                                    context_default_fbo_id        = -1;
     const ogl_context_gl_entrypoints_ext_direct_state_access* dsa_entrypoints_ptr           = NULL;
     const ogl_context_gl_entrypoints*                         entrypoints_ptr               = NULL;
     GLuint                                                    other_data_bo_id              = 0;
+    raGL_buffer                                               other_data_bo_raGL            = NULL;
     uint32_t                                                  other_data_bo_start_offset    = -1;
     ral_texture_format                                        src_texture_format            = RAL_TEXTURE_FORMAT_UNKNOWN;
     unsigned int                                              src_texture_height            = 0;
@@ -916,10 +896,10 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void postprocessing_blur_gaussian_exec
     ral_texture_type                                          src_texture_type              = RAL_TEXTURE_TYPE_UNKNOWN;
     ogl_context_state_cache                                   state_cache                   = NULL;
     raGL_sampler                                              temp_2d_array_texture_sampler = NULL;
-    raGL_texture                                              temp_2d_array_texture         = NULL;
+    ral_texture                                               temp_2d_array_texture         = NULL;
     GLuint                                                    temp_2d_array_texture_id      = 0;
     bool                                                      temp_2d_array_texture_is_rbo  = false;
-    raGL_textures                                             texture_pool                  = NULL;
+    raGL_texture                                              temp_2d_array_texture_raGL    = NULL;
     GLuint                                                    vao_id                        = 0;
     GLint                                                     viewport_data[4]              = {0};
 
@@ -927,22 +907,19 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void postprocessing_blur_gaussian_exec
                       n_taps <= blur_ptr->n_max_taps,
                       "Invalid number of taps requested");
 
-    ogl_context_get_property            (blur_ptr->context,
+    ogl_context_get_property            (ral_context_get_gl_context(blur_ptr->context),
                                          OGL_CONTEXT_PROPERTY_DEFAULT_FBO_ID,
                                         &context_default_fbo_id);
-    ogl_context_get_property            (blur_ptr->context,
+    ogl_context_get_property            (ral_context_get_gl_context(blur_ptr->context),
                                          OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL_EXT_DIRECT_STATE_ACCESS,
                                         &dsa_entrypoints_ptr);
-    ogl_context_get_property            (blur_ptr->context,
+    ogl_context_get_property            (ral_context_get_gl_context(blur_ptr->context),
                                          OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
                                         &entrypoints_ptr);
-    ogl_context_get_property            (blur_ptr->context,
+    ogl_context_get_property            (ral_context_get_gl_context(blur_ptr->context),
                                          OGL_CONTEXT_PROPERTY_STATE_CACHE,
                                         &state_cache);
-    ogl_context_get_property            (blur_ptr->context,
-                                         OGL_CONTEXT_PROPERTY_TEXTURES_RAGL,
-                                        &texture_pool);
-    ogl_context_get_property            (blur_ptr->context,
+    ogl_context_get_property            (ral_context_get_gl_context(blur_ptr->context),
                                          OGL_CONTEXT_PROPERTY_VAO_NO_VAAS,
                                         &vao_id);
     ogl_context_state_cache_get_property(state_cache,
@@ -979,17 +956,22 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void postprocessing_blur_gaussian_exec
                                         RAL_TEXTURE_MIPMAP_PROPERTY_WIDTH,
                                        &src_texture_width);
 
-    raGL_buffer_get_property(blur_ptr->coeff_bo,
+    coeff_bo_raGL      = ral_context_get_buffer_gl(blur_ptr->context,
+                                                   blur_ptr->coeff_bo);
+    other_data_bo_raGL = ral_context_get_buffer_gl(blur_ptr->context,
+                                                   blur_ptr->other_data_bo);
+
+    raGL_buffer_get_property(coeff_bo_raGL,
                              RAGL_BUFFER_PROPERTY_ID,
                             &coeff_bo_id);
-    raGL_buffer_get_property(blur_ptr->coeff_bo,
+    raGL_buffer_get_property(coeff_bo_raGL,
                              RAGL_BUFFER_PROPERTY_START_OFFSET,
                             &coeff_bo_start_offset);
 
-    raGL_buffer_get_property(blur_ptr->other_data_bo,
+    raGL_buffer_get_property(other_data_bo_raGL,
                              RAGL_BUFFER_PROPERTY_ID,
                             &other_data_bo_id);
-    raGL_buffer_get_property(blur_ptr->other_data_bo,
+    raGL_buffer_get_property(other_data_bo_raGL,
                              RAGL_BUFFER_PROPERTY_START_OFFSET,
                             &other_data_bo_start_offset);
 
@@ -1114,13 +1096,18 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void postprocessing_blur_gaussian_exec
                                                                RAL_TEXTURE_USAGE_SAMPLED_BIT;
     temp_2d_array_texture_create_info.use_full_mipmap_chain  = false;
 
-    temp_2d_array_texture = raGL_textures_get_texture_from_pool_with_create_info(texture_pool,
-                                                                                &temp_2d_array_texture_create_info);
+    ral_context_create_textures(blur_ptr->context,
+                                1, /* n_textures */
+                               &temp_2d_array_texture_create_info,
+                               &temp_2d_array_texture);
 
-    raGL_texture_get_property(temp_2d_array_texture,
+    temp_2d_array_texture_raGL = ral_context_get_texture_gl(blur_ptr->context,
+                                                            temp_2d_array_texture);
+
+    raGL_texture_get_property(temp_2d_array_texture_raGL,
                               RAGL_TEXTURE_PROPERTY_ID,
                              &temp_2d_array_texture_id);
-    raGL_texture_get_property(temp_2d_array_texture,
+    raGL_texture_get_property(temp_2d_array_texture_raGL,
                               RAGL_TEXTURE_PROPERTY_IS_RENDERBUFFER,
                              &temp_2d_array_texture_is_rbo);
 
@@ -1145,10 +1132,14 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void postprocessing_blur_gaussian_exec
      * there are more interesting things to be looking at ATM!
      *
      */
-    const GLuint po_id      = ogl_program_get_id(blur_ptr->po);
-    GLuint       sampler_id = 0;
+    const GLuint po_id        = ogl_program_get_id(blur_ptr->po);
+    GLuint       sampler_id   = 0;
+    raGL_sampler sampler_raGL = NULL;
 
-    raGL_sampler_get_property(blur_ptr->sampler,
+    sampler_raGL = ral_context_get_sampler_gl(blur_ptr->context,
+                                              blur_ptr->sampler);
+
+    raGL_sampler_get_property(sampler_raGL,
                               RAGL_SAMPLER_PROPERTY_ID,
                              &sampler_id);
 
@@ -1436,6 +1427,7 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void postprocessing_blur_gaussian_exec
         entrypoints_ptr->pGLEnable(GL_CULL_FACE);
     }
 
-    raGL_textures_return_to_pool(texture_pool,
-                                 temp_2d_array_texture);
+    ral_context_delete_textures(blur_ptr->context,
+                                1, /* n_textures */
+                               &temp_2d_array_texture);
 }

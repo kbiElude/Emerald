@@ -5,6 +5,7 @@
  */
 #include "shared.h"
 #include "ogl/ogl_context.h"
+#include "raGL/raGL_backend.h"
 #include "raGL/raGL_framebuffer.h"
 #include "raGL/raGL_texture.h"
 #include "ral/ral_framebuffer.h"
@@ -21,8 +22,8 @@ typedef struct _raGL_framebuffer_attachment
     bool bound_layered_texture_local;
 
     /* What's the texture bound to the attachment? */
-    raGL_texture bound_texture_gl;
-    raGL_texture bound_texture_local;
+    ral_texture bound_texture_gl;
+    ral_texture bound_texture_local;
 
     /* Is the draw buffer enabled for this attachment? */
     bool is_enabled_gl;
@@ -58,6 +59,7 @@ typedef struct _raGL_framebuffer_attachment
 
 typedef struct _raGL_framebuffer
 {
+    raGL_backend                  backend;
     _raGL_framebuffer_attachment* color_attachments;
     ogl_context                   context; /* NOT owned */
     _raGL_framebuffer_attachment  depth_stencil_attachment;
@@ -83,6 +85,9 @@ typedef struct _raGL_framebuffer
         id                = in_fb_id;
 
         ogl_context_get_property(context,
+                                 OGL_CONTEXT_PROPERTY_BACKEND,
+                                &backend);
+        ogl_context_get_property(context,
                                  OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
                                 &entrypoints_ptr);
         ogl_context_get_property(context,
@@ -96,13 +101,13 @@ typedef struct _raGL_framebuffer
         max_draw_buffers      = limits_ptr->max_draw_buffers;
 
         /* NOTE: Only GL is supported at the moment. */
-        ogl_context_type context_type = OGL_CONTEXT_TYPE_UNDEFINED;
+        ral_backend_type backend_type = RAL_BACKEND_TYPE_UNKNOWN;
 
         ogl_context_get_property(context,
-                                 OGL_CONTEXT_PROPERTY_TYPE,
-                                &context_type);
+                                 OGL_CONTEXT_PROPERTY_BACKEND_TYPE,
+                                &backend_type);
 
-        ASSERT_DEBUG_SYNC(context_type == OGL_CONTEXT_TYPE_GL,
+        ASSERT_DEBUG_SYNC(backend_type == RAL_BACKEND_TYPE_GL,
                           "TODO");
     }
 
@@ -284,13 +289,21 @@ PRIVATE void _raGL_framebuffer_on_sync_required(const void* callback_data,
             {
                 case RAL_FRAMEBUFFER_ATTACHMENT_TEXTURE_TYPE_2D:
                 {
-                    GLuint attachment_object_id = 0;
-                    bool   is_renderbuffer      = false;
+                    GLuint       attachment_object_id   = 0;
+                    raGL_texture bound_texture_local_gl = NULL;
+                    bool         is_renderbuffer        = false;
 
-                    raGL_texture_get_property(current_attachment_ptr->bound_texture_local,
+                    raGL_backend_get_texture(framebuffer_raGL_ptr->backend,
+                                             current_attachment_ptr->bound_texture_local,
+                                   (void**) &bound_texture_local_gl);
+
+                    ASSERT_DEBUG_SYNC(bound_texture_local_gl != NULL,
+                                      "No raGL_texture instance associated with a ral_texture FB attachment?");
+
+                    raGL_texture_get_property(bound_texture_local_gl,
                                               RAGL_TEXTURE_PROPERTY_ID,
                                              &attachment_object_id);
-                    raGL_texture_get_property(current_attachment_ptr->bound_texture_local,
+                    raGL_texture_get_property(bound_texture_local_gl,
                                               RAGL_TEXTURE_PROPERTY_IS_RENDERBUFFER,
                                              &is_renderbuffer);
 
@@ -397,7 +410,7 @@ PRIVATE void _raGL_framebuffer_update_attachment_configuration(_raGL_framebuffer
                                                                ral_framebuffer_attachment_type attachment_type,
                                                                uint32_t                        attachment_index)
 {
-    raGL_texture                            attachment_bound_texture = NULL;
+    ral_texture                             attachment_bound_texture = NULL;
     bool                                    attachment_enabled       = false;
     uint32_t                                attachment_n_layer       = -1;
     uint32_t                                attachment_n_mipmap      = -1;
@@ -419,7 +432,7 @@ PRIVATE void _raGL_framebuffer_update_attachment_configuration(_raGL_framebuffer
     ral_framebuffer_get_attachment_property(fb_ptr->fb,
                                             attachment_type,
                                             attachment_index,
-                                            RAL_FRAMEBUFFER_ATTACHMENT_PROPERTY_BOUND_TEXTURE,
+                                            RAL_FRAMEBUFFER_ATTACHMENT_PROPERTY_BOUND_TEXTURE_RAL,
                                           &attachment_bound_texture);
     ral_framebuffer_get_attachment_property(fb_ptr->fb,
                                             attachment_type,

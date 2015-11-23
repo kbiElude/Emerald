@@ -15,22 +15,23 @@
 #include "ogl/ogl_types.h"
 #include "postprocessing/postprocessing_types.h"
 
-REFCOUNT_INSERT_DECLARATIONS(postprocessing_blur_poisson, postprocessing_blur_poisson)
+REFCOUNT_INSERT_DECLARATIONS(postprocessing_blur_poisson,
+                             postprocessing_blur_poisson)
 
 
 /** TODO.
  *
  *  @param custom_shader_code Only used if bluriness_source is POSTPROCESSING_BLUR_POISSON_BLUR_BLURRINESS_SOURCE_CUSTOM */
-PUBLIC EMERALD_API postprocessing_blur_poisson postprocessing_blur_poisson_create(ogl_context                                       context,
+PUBLIC EMERALD_API postprocessing_blur_poisson postprocessing_blur_poisson_create(ral_context                                       context,
                                                                                   system_hashed_ansi_string                         name,
                                                                                   postprocessing_blur_poisson_blur_bluriness_source bluriness_source,
                                                                                   const char*                                       custom_shader_code = NULL);
 
 /** TODO */
 PUBLIC EMERALD_API void postprocessing_blur_poisson_execute(postprocessing_blur_poisson blur_poisson,
-                                                            raGL_texture                input_texture,
+                                                            ral_texture                 input_texture,
                                                             float                       blur_strength,
-                                                            raGL_texture                result_texture);
+                                                            ral_texture                 result_texture);
 
 /** TODO */
 PUBLIC EMERALD_API const char* postprocessing_blur_poisson_get_tap_data_shader_code();

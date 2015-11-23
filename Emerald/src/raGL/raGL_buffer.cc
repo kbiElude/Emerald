@@ -14,6 +14,7 @@
 
 typedef struct _raGL_buffer
 {
+    raGL_backend            backend;
     system_resizable_vector child_buffers; /* DOES NOT own _raGL_buffer* instances */
     ogl_context             context;       /* NOT owned */
     GLint                   id;            /* NOT owned */
@@ -39,14 +40,18 @@ typedef struct _raGL_buffer
         size              = in_size;
         start_offset      = in_start_offset;
 
+        ogl_context_get_property(in_context,
+                                 OGL_CONTEXT_PROPERTY_BACKEND,
+                                &backend);
+
         /* NOTE: Only GL is supported at the moment. */
-        ogl_context_type context_type = OGL_CONTEXT_TYPE_UNDEFINED;
+        ral_backend_type backend_type = RAL_BACKEND_TYPE_UNKNOWN;
 
         ogl_context_get_property(context,
-                                 OGL_CONTEXT_PROPERTY_TYPE,
-                                &context_type);
+                                 OGL_CONTEXT_PROPERTY_BACKEND_TYPE,
+                                &backend_type);
 
-        ASSERT_DEBUG_SYNC(context_type == OGL_CONTEXT_TYPE_GL,
+        ASSERT_DEBUG_SYNC(backend_type == RAL_BACKEND_TYPE_GL,
                           "TODO");
     }
 

@@ -127,8 +127,10 @@ typedef struct _demo_loader
     system_resizable_vector loaded_objects[DEMO_LOADER_OBJECT_TYPE_COUNT];
     demo_app                owner_app;    /* DO NOT retain or release */
 
-    explicit _demo_loader(demo_app in_owner_app)
+    explicit _demo_loader(demo_app    in_owner_app,
+                          ral_context in_context)
     {
+        context           = in_context;
         enqueued_ops      = system_resizable_vector_create(16 /* capacity */);
         has_been_launched = false;
         owner_app         = in_owner_app;
@@ -139,16 +141,6 @@ typedef struct _demo_loader
         {
             loaded_objects[object_type_index] = system_resizable_vector_create(4 /* capacity */);
         } /* for (all object types) */
-
-        /* TEMP: Retrieve the RAL context from the timeline object. */
-        demo_timeline timeline = NULL;
-
-        demo_app_get_property     (in_owner_app,
-                                   DEMO_APP_PROPERTY_TIMELINE,
-                                  &timeline);
-        demo_timeline_get_property(timeline,
-                                   DEMO_TIMELINE_PROPERTY_CONTEXT,
-                                  &context);
     }
 
     ~_demo_loader()
@@ -248,9 +240,11 @@ typedef struct _demo_loader
 
 
 /** Please see header for specification */
-PUBLIC demo_loader demo_loader_create(demo_app owner_app)
+PUBLIC demo_loader demo_loader_create(demo_app    owner_app,
+                                      ral_context context)
 {
-    _demo_loader* new_loader_ptr = new (std::nothrow) _demo_loader(owner_app);
+    _demo_loader* new_loader_ptr = new (std::nothrow) _demo_loader(owner_app,
+                                                                   context);
 
     ASSERT_DEBUG_SYNC(new_loader_ptr != NULL,
                       "Out of memory");

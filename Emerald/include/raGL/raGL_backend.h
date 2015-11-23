@@ -5,9 +5,6 @@
 #include "system/system_types.h"
 
 
-DECLARE_HANDLE(raGL_backend);
-
-
 typedef enum
 {
     /* not settable; raGL_buffers.
@@ -27,6 +24,11 @@ typedef enum
 
 /** TODO */
 PUBLIC raGL_backend raGL_backend_create(ral_context context);
+
+/** TODO */
+PUBLIC bool raGL_backend_get_buffer(void*      backend,
+                                    ral_buffer buffer_ral,
+                                    void**     out_buffer_raGL_ptr);
 
 /** TODO */
 PUBLIC bool raGL_backend_get_framebuffer(void*           backend,

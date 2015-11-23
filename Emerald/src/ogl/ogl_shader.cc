@@ -221,13 +221,13 @@ PUBLIC EMERALD_API ogl_shader ogl_shader_create(ogl_context               contex
         result->type              = shader_type;
 
         /* Initialize entry-point cache */
-        ogl_context_type context_type = OGL_CONTEXT_TYPE_UNDEFINED;
+        ral_backend_type backend_type = RAL_BACKEND_TYPE_UNKNOWN;
 
         ogl_context_get_property(context,
-                                 OGL_CONTEXT_PROPERTY_TYPE,
-                                &context_type);
+                                 OGL_CONTEXT_PROPERTY_BACKEND_TYPE,
+                                &backend_type);
 
-        if (context_type == OGL_CONTEXT_TYPE_ES)
+        if (backend_type == RAL_BACKEND_TYPE_ES)
         {
             const ogl_context_es_entrypoints* entry_points = NULL;
 
@@ -244,8 +244,8 @@ PUBLIC EMERALD_API ogl_shader ogl_shader_create(ogl_context               contex
         }
         else
         {
-            ASSERT_DEBUG_SYNC(context_type == OGL_CONTEXT_TYPE_GL,
-                              "Unrecognized context type");
+            ASSERT_DEBUG_SYNC(backend_type == RAL_BACKEND_TYPE_GL,
+                              "Unrecognized backendtype");
 
             const ogl_context_gl_entrypoints* entry_points = NULL;
 

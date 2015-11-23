@@ -11,7 +11,6 @@
 #ifndef OGL_PRIMITIVE_RENDERER_H
 #define OGL_PRIMITIVE_RENDERER_H
 
-#include "ogl/ogl_types.h"
 #include "ral/ral_types.h"
 
 
@@ -32,7 +31,7 @@ PUBLIC EMERALD_API void ogl_primitive_renderer_change_dataset_data(ogl_primitive
                                                                    const float*                      vertex_data);
 
 /** TODO. **/
-PUBLIC EMERALD_API ogl_primitive_renderer ogl_primitive_renderer_create(ogl_context               context,
+PUBLIC EMERALD_API ogl_primitive_renderer ogl_primitive_renderer_create(ral_context               context,
                                                                         system_hashed_ansi_string name);
 
 /** TODO */

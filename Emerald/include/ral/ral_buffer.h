@@ -8,11 +8,20 @@ typedef enum
     /* not settable, ral_buffer_mappability_bits */
     RAL_BUFFER_PROPERTY_MAPPABILITY_BITS,
 
+    /* not settable, ral_buffer
+     *
+     * Parent buffer. This is used for cases when the ral_buffer instance describes a sub-region of another ral_buffer.
+     */
+    RAL_BUFFER_PROPERTY_PARENT_BUFFER,
+
     /* not settable, ral_buffer_property_bits */
     RAL_BUFFER_PROPERTY_PROPERTY_BITS,
 
     /* not settable, uint32_t */
     RAL_BUFFER_PROPERTY_SIZE,
+
+    /* not settable, uint32_t. */
+    RAL_BUFFER_PROPERTY_START_OFFSET,
 
     /* not settable, ral_buffer_usage_bits */
     RAL_BUFFER_PROPERTY_USAGE_BITS,
@@ -41,5 +50,8 @@ PUBLIC void ral_buffer_get_property(ral_buffer          buffer,
                                     ral_buffer_property property,
                                     void*               out_result_ptr);
 
-
+/** TODO */
+PUBLIC bool ral_buffer_set_data_from_client_memory(ral_buffer                                   buffer,
+                                                   uint32_t                                     n_updates,
+                                                   const ral_buffer_client_sourced_update_info* updates);
 #endif /* RAL_BUFFER_H */

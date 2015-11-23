@@ -90,7 +90,7 @@ PRIVATE system_hashed_ansi_string _collada_data_polylist_get_cached_blob_file_na
 
     snprintf(temp_file_name,
              sizeof(temp_file_name),
-             "collada_polylist_%s_%d_%s",
+             "collada_polylist_%s_%u_%s",
              system_hashed_ansi_string_get_buffer(geometry_name),
              count,
              system_hashed_ansi_string_get_buffer(material) );
@@ -361,7 +361,7 @@ next_input:
                 while (n_counts_read != polylist_count)
                 {
                     sscanf(traveller_ptr,
-                           "%d",
+                           "%u",
                            vcount_data + n_counts_read);
 
                     if (result_polylist_ptr->polygon_indices_max == 0xFFFFFFFF                  ||
@@ -410,7 +410,7 @@ next_input:
                 while (n_indices_read != total_vcount * n_inputs)
                 {
                     sscanf(traveller_ptr,
-                           "%d",
+                           "%u",
                            index_data + n_indices_read);
 
                     traveller_ptr = strchr(traveller_ptr, ' ') + 1;

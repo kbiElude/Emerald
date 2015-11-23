@@ -267,7 +267,7 @@ PRIVATE void _ogl_shader_constructor_bake_body(_ogl_shader_constructor* construc
         }
         else
         {
-            LOG_ERROR("Could not retrieve structure descriptor at index [%d]",
+            LOG_ERROR("Could not retrieve structure descriptor at index [%u]",
                       n_structure);
         }
     } /* for (all structures) */
@@ -294,7 +294,7 @@ PRIVATE void _ogl_shader_constructor_bake_body(_ogl_shader_constructor* construc
         }
         else
         {
-            LOG_ERROR("Could not retrieve uniform block descriptor at index [%d]",
+            LOG_ERROR("Could not retrieve uniform block descriptor at index [%u]",
                       n_ub);
         }
     } /* for (all uniform blocks) */
@@ -324,7 +324,7 @@ PRIVATE void _ogl_shader_constructor_bake_body(_ogl_shader_constructor* construc
         }
         else
         {
-            LOG_ERROR("Could not retrieve function descriptor at index [%d]",
+            LOG_ERROR("Could not retrieve function descriptor at index [%u]",
                      n_function);
         }
     } /* for (all functions) */
@@ -528,7 +528,7 @@ PRIVATE std::string _ogl_shader_constructor_get_structure_declaration_string(_og
         }
         else
         {
-            LOG_ERROR("Could not retrieve structure member descriptor at index [%d]",
+            LOG_ERROR("Could not retrieve structure member descriptor at index [%u]",
                       n_member);
         }
     } /* for (all members) */
@@ -669,7 +669,7 @@ PRIVATE std::string _ogl_shader_constructor_get_uniform_block_declaration_string
             }
             else
             {
-                LOG_ERROR("Could not release variable descriptor at index [%d]",
+                LOG_ERROR("Could not release variable descriptor at index [%u]",
                           n_variable);
             }
         } /* for (all variables) */
@@ -873,7 +873,7 @@ PUBLIC EMERALD_API void ogl_shader_constructor_add_function_argument(ogl_shader_
                                                 function_id,
                                                &function_ptr) )
     {
-        LOG_ERROR("Could not retrieve function descriptor for function id [%d]",
+        LOG_ERROR("Could not retrieve function descriptor for function id [%u]",
                   function_id);
 
         goto end;
@@ -894,7 +894,7 @@ PUBLIC EMERALD_API void ogl_shader_constructor_add_function_argument(ogl_shader_
                                                     n_argument,
                                                    &argument_ptr) )
         {
-            LOG_ERROR("Could not retrieve function argument at index [%d]",
+            LOG_ERROR("Could not retrieve function argument at index [%u]",
                       n_argument);
         }
         else
@@ -953,7 +953,7 @@ PUBLIC EMERALD_API bool ogl_shader_constructor_add_general_variable_to_structure
                                                 structure,
                                                &structure_ptr) )
     {
-        LOG_ERROR("Could not retrieve descriptor of structure with id [%d]",
+        LOG_ERROR("Could not retrieve descriptor of structure with id [%u]",
                   structure);
 
         goto end;
@@ -1026,7 +1026,7 @@ PUBLIC EMERALD_API bool ogl_shader_constructor_add_general_variable_to_ub(ogl_sh
                                                 uniform_block,
                                                &ub_ptr) )
     {
-        LOG_ERROR("Could not retrieve descriptor of UB with id [%d]",
+        LOG_ERROR("Could not retrieve descriptor of UB with id [%u]",
                   uniform_block);
 
         goto end;
@@ -1139,7 +1139,7 @@ PUBLIC EMERALD_API bool ogl_shader_constructor_add_structure(ogl_shader_construc
                                                     n_structure,
                                                    &structure_ptr) )
         {
-            LOG_ERROR("Could not retrieve structure descriptor at index [%d]",
+            LOG_ERROR("Could not retrieve structure descriptor at index [%u]",
                       n_structure);
         }
         else
@@ -1207,7 +1207,7 @@ PUBLIC EMERALD_API bool ogl_shader_constructor_add_structure_variable_to_ub(ogl_
                                                 structure,
                                                &structure_ptr) )
     {
-        LOG_ERROR("Could not retrieve descriptor of structure with id [%d]",
+        LOG_ERROR("Could not retrieve descriptor of structure with id [%u]",
                   structure);
 
         goto end;
@@ -1218,7 +1218,7 @@ PUBLIC EMERALD_API bool ogl_shader_constructor_add_structure_variable_to_ub(ogl_
                                                 uniform_block,
                                                &ub_ptr) )
     {
-        LOG_ERROR("Could not retrieve descriptor of UB with id [%d]",
+        LOG_ERROR("Could not retrieve descriptor of UB with id [%u]",
                   uniform_block);
 
         goto end;
@@ -1265,7 +1265,7 @@ PUBLIC EMERALD_API void ogl_shader_constructor_append_to_function_body(ogl_shade
                                                 function_id,
                                                &function_ptr) )
     {
-        LOG_ERROR("Could not retrieve descriptor of function with id [%d]",
+        LOG_ERROR("Could not retrieve descriptor of function with id [%u]",
                   function_id);
 
         goto end;
@@ -1311,7 +1311,7 @@ PUBLIC EMERALD_API _uniform_block_id ogl_shader_constructor_add_uniform_block(og
                                                     n_uniform_block,
                                                    &ub_ptr) )
         {
-            LOG_ERROR("Could not retrieve uniform block descriptor at index [%d]",
+            LOG_ERROR("Could not retrieve uniform block descriptor at index [%u]",
                       n_uniform_block);
         }
         else
@@ -1433,7 +1433,7 @@ PUBLIC EMERALD_API unsigned int ogl_shader_constructor_get_amount_of_variables_i
                                                 ub_id,
                                                &ub_ptr) )
     {
-        LOG_ERROR("Could not retrieve descriptor of uniform block with id [%d]",
+        LOG_ERROR("Could not retrieve descriptor of uniform block with id [%u]",
                   ub_id);
 
         goto end;
@@ -1532,7 +1532,7 @@ PUBLIC EMERALD_API void ogl_shader_constructor_set_function_body(ogl_shader_cons
                                                 function_id,
                                                &function_ptr) )
     {
-        LOG_ERROR("Could not retrieve descriptor of function with id [%d]",
+        LOG_ERROR("Could not retrieve descriptor of function with id [%u]",
                   function_id);
 
         goto end;
@@ -1567,7 +1567,7 @@ PUBLIC EMERALD_API bool ogl_shader_constructor_set_general_variable_default_valu
                                                 uniform_block,
                                                &ub_ptr) )
     {
-        LOG_ERROR("Could not retrieve descriptor of UB with id [%d]",
+        LOG_ERROR("Could not retrieve descriptor of UB with id [%u]",
                   uniform_block);
 
         goto end;
@@ -1578,7 +1578,7 @@ PUBLIC EMERALD_API bool ogl_shader_constructor_set_general_variable_default_valu
                                                 variable_id,
                                                &variable_ptr) )
     {
-        LOG_ERROR("Could not retrieve variable descriptor at index [%d]",
+        LOG_ERROR("Could not retrieve variable descriptor at index [%u]",
                   variable_id);
 
         goto end;
