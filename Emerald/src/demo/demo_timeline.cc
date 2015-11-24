@@ -83,7 +83,7 @@ typedef struct _demo_timeline
         cs                                       = system_critical_section_create();
         duration                                 = 0;
         last_used_video_segment_ptr              = NULL;
-        rendering_pipeline                       = ogl_pipeline_create(ral_context_get_gl_context(in_context),
+        rendering_pipeline                       = ogl_pipeline_create(in_context,
 #ifdef _DEBUG
                                                                        true, /* should_overlay_performance_info */
 #else

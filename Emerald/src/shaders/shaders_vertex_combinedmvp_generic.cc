@@ -45,7 +45,7 @@ PRIVATE void _shaders_vertex_combinedmvp_generic_release(void* ptr)
 
 
 /** Please see header for specification */
-PUBLIC EMERALD_API shaders_vertex_combinedmvp_generic shaders_vertex_combinedmvp_generic_create(ogl_context               context,
+PUBLIC EMERALD_API shaders_vertex_combinedmvp_generic shaders_vertex_combinedmvp_generic_create(ral_context               context,
                                                                                                 system_hashed_ansi_string name)
 {
     bool                                 result        = false;

@@ -11,6 +11,7 @@
 #include "curve/curve_types.h"
 #include "curve_editor/curve_editor_types.h"
 #include "ogl/ogl_types.h"
+#include "ral/ral_types.h"
 
 
 typedef enum
@@ -44,7 +45,7 @@ REFCOUNT_INSERT_DECLARATIONS(curve_editor_program_tcb,
 
 
 /** TODO */
-PUBLIC curve_editor_program_tcb curve_editor_program_tcb_create(ogl_context               context,
+PUBLIC curve_editor_program_tcb curve_editor_program_tcb_create(ral_context               context,
                                                                 system_hashed_ansi_string name);
 
 /** TODO */
@@ -53,7 +54,7 @@ PUBLIC void curve_editor_program_tcb_set_property(curve_editor_program_tcb      
                                                   const void*                       data);
 
 /** TODO */
-PUBLIC void curve_editor_program_tcb_use(ogl_context              context,
+PUBLIC void curve_editor_program_tcb_use(ral_context              context,
                                          curve_editor_program_tcb tcb);
 
 #endif /* CURVE_EDITOR_PROGRAM_TCB_H */

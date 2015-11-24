@@ -7,6 +7,7 @@
 #define OGL_PROGRAM_H
 
 #include "ogl/ogl_types.h"
+#include "ral/ral_types.h"
 #include "system/system_types.h"
 
 typedef enum
@@ -64,7 +65,7 @@ PUBLIC EMERALD_API bool ogl_program_attach_shader(ogl_program,
  *
  *  @return New ogl_program instance.
  **/
-PUBLIC EMERALD_API ogl_program ogl_program_create(ogl_context                   context,
+PUBLIC EMERALD_API ogl_program ogl_program_create(ral_context                   context,
                                                   system_hashed_ansi_string     name,
                                                   ogl_program_syncable_ubs_mode syncable_ubs_mode = OGL_PROGRAM_SYNCABLE_UBS_MODE_DISABLE);
 

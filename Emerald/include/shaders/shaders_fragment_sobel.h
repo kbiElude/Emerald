@@ -11,7 +11,7 @@
 #define SHADERS_FRAGMENT_SOBEL_H
 
 #include "gfx/gfx_types.h"
-#include "ogl/ogl_types.h"
+#include "ral/ral_types.h"
 
 REFCOUNT_INSERT_DECLARATIONS(shaders_fragment_sobel,
                              shaders_fragment_sobel)

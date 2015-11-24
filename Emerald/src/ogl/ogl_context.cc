@@ -3529,7 +3529,7 @@ PUBLIC EMERALD_API void ogl_context_get_property(ogl_context          context,
             /* If there's no primitive renderer, create one now */
             if (context_ptr->primitive_renderer == NULL)
             {
-                context_ptr->primitive_renderer = ogl_primitive_renderer_create(context,
+                context_ptr->primitive_renderer = ogl_primitive_renderer_create(context_ptr->context,
                                                                                 system_hashed_ansi_string_create("Context primitive renderer") );
             }
 

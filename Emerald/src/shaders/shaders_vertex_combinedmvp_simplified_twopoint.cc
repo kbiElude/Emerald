@@ -45,7 +45,7 @@ PRIVATE void _shaders_vertex_combinedmvp_simplified_twopoint_release(void* ptr)
 
 
 /** Please see header for specification */
-PUBLIC EMERALD_API shaders_vertex_combinedmvp_simplified_twopoint shaders_vertex_combinedmvp_simplified_twopoint_create(ogl_context               context,
+PUBLIC EMERALD_API shaders_vertex_combinedmvp_simplified_twopoint shaders_vertex_combinedmvp_simplified_twopoint_create(ral_context               context,
                                                                                                                         system_hashed_ansi_string name)
 {
     bool                                             result        = false;

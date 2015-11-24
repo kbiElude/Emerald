@@ -79,7 +79,7 @@ PUBLIC EMERALD_API bool curve_editor_hide()
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API void curve_editor_set_property(ogl_context           context,
+PUBLIC EMERALD_API void curve_editor_set_property(ral_context           context,
                                                   curve_editor_property property,
                                                   void*                 data)
 {
@@ -110,7 +110,7 @@ PUBLIC EMERALD_API void curve_editor_set_property(ogl_context           context,
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API bool curve_editor_show(ogl_context context)
+PUBLIC EMERALD_API bool curve_editor_show(ral_context context)
 {
     bool result = false;
 

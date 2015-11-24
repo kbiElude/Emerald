@@ -8,7 +8,7 @@
 #define SHADERS_FRAGMENT_STATIC_H
 
 #include "gfx/gfx_types.h"
-#include "ogl/ogl_types.h"
+#include "ral/ral_types.h"
 
 REFCOUNT_INSERT_DECLARATIONS(shaders_fragment_static,
                              shaders_fragment_static)
@@ -21,7 +21,7 @@ REFCOUNT_INSERT_DECLARATIONS(shaders_fragment_static,
  * 
  *  @return shaders_fragment_static instance if successful, NULL otherwise.
  */
-PUBLIC EMERALD_API shaders_fragment_static shaders_fragment_static_create(ogl_context,
+PUBLIC EMERALD_API shaders_fragment_static shaders_fragment_static_create(ral_context,
                                                                           system_hashed_ansi_string name);
 
 /** Retrieves ogl_shader object associated with the instance. Do not release the object or modify it in any way.

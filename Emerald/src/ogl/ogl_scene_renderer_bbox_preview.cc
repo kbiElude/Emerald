@@ -177,15 +177,15 @@ PRIVATE void _ogl_context_scene_renderer_bbox_preview_init_preview_program(_ogl_
                        SCENE_PROPERTY_NAME,
                       &scene_name);
 
-    fs_shader = ogl_shader_create(ral_context_get_gl_context(preview_ptr->context),
+    fs_shader = ogl_shader_create(preview_ptr->context,
                                   RAL_SHADER_TYPE_FRAGMENT,
                                   system_hashed_ansi_string_create_by_merging_two_strings("Scene Renderer BB preview FS shader ",
                                                                                           system_hashed_ansi_string_get_buffer(scene_name)) );
-    gs_shader = ogl_shader_create(ral_context_get_gl_context(preview_ptr->context),
+    gs_shader = ogl_shader_create(preview_ptr->context,
                                   RAL_SHADER_TYPE_GEOMETRY,
                                   system_hashed_ansi_string_create_by_merging_two_strings("Scene Renderer BB preview GS shader ",
                                                                                           system_hashed_ansi_string_get_buffer(scene_name)) );
-    vs_shader = ogl_shader_create(ral_context_get_gl_context(preview_ptr->context),
+    vs_shader = ogl_shader_create(preview_ptr->context,
                                   RAL_SHADER_TYPE_VERTEX,
                                   system_hashed_ansi_string_create_by_merging_two_strings("Scene Renderer BB preview VS shader ",
                                                                                           system_hashed_ansi_string_get_buffer(scene_name)) );
@@ -208,7 +208,7 @@ PRIVATE void _ogl_context_scene_renderer_bbox_preview_init_preview_program(_ogl_
     }
 
     /* Initialize the program object */
-    preview_ptr->preview_program = ogl_program_create(ral_context_get_gl_context(preview_ptr->context),
+    preview_ptr->preview_program = ogl_program_create(preview_ptr->context,
                                                       system_hashed_ansi_string_create_by_merging_two_strings("Scene Renderer BB preview program ",
                                                                                                               system_hashed_ansi_string_get_buffer(scene_name)),
                                                       OGL_PROGRAM_SYNCABLE_UBS_MODE_ENABLE_GLOBAL);

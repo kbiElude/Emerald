@@ -120,14 +120,14 @@ PUBLIC void _postprocessing_blur_poisson_init_renderer_callback(ogl_context cont
     const uint32_t fragment_shader_n_body_parts = sizeof(fragment_shader_body_parts) / sizeof(fragment_shader_body_parts[0]);
 
 
-    fragment_shader      = ogl_shader_create               (context,
+    fragment_shader      = ogl_shader_create               (poisson_ptr->context,
                                                             RAL_SHADER_TYPE_FRAGMENT,
                                                             system_hashed_ansi_string_create_by_merging_two_strings("Postprocessing blur poisson fragment shader ", 
                                                                                                                     system_hashed_ansi_string_get_buffer(poisson_ptr->name) ));
-    vertex_shader        = shaders_vertex_fullscreen_create(ral_context_get_gl_context(poisson_ptr->context),
+    vertex_shader        = shaders_vertex_fullscreen_create(poisson_ptr->context,
                                                             true,
                                                             poisson_ptr->name);
-    poisson_ptr->program = ogl_program_create              (ral_context_get_gl_context(poisson_ptr->context),
+    poisson_ptr->program = ogl_program_create              (poisson_ptr->context,
                                                             system_hashed_ansi_string_create_by_merging_two_strings("Postprocessing blur poisson program ",
                                                                                                                     system_hashed_ansi_string_get_buffer(poisson_ptr->name) ),
                                                             OGL_PROGRAM_SYNCABLE_UBS_MODE_ENABLE_GLOBAL);

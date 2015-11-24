@@ -274,12 +274,12 @@ PRIVATE void _scalar_field_metaballs_init_rendering_thread_callback(ogl_context 
                                                        metaballs_ptr->global_wg_size);
 
     /* Create program & shader objects */
-    cs = ogl_shader_create(ral_context_get_gl_context(metaballs_ptr->context),
+    cs = ogl_shader_create(metaballs_ptr->context,
                            RAL_SHADER_TYPE_COMPUTE,
                            system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(metaballs_ptr->name),
                                                                                    " CS") );
 
-    metaballs_ptr->po = ogl_program_create(ral_context_get_gl_context(metaballs_ptr->context),
+    metaballs_ptr->po = ogl_program_create(metaballs_ptr->context,
                                            system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(metaballs_ptr->name),
                                                                                    " PO"),
                                            OGL_PROGRAM_SYNCABLE_UBS_MODE_ENABLE_GLOBAL);

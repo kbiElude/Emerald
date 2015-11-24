@@ -7,7 +7,7 @@
 #define CURVE_EDITOR_CURVE_WINDOW_RENDERER_H
 
 #include "curve_editor/curve_editor_types.h"
-#include "ogl/ogl_types.h"
+#include "ral/ral_types.h"
 
 typedef enum
 {
@@ -18,7 +18,7 @@ typedef enum
 /** TODO */
 PUBLIC curve_editor_curve_window_renderer curve_editor_curve_window_renderer_create(system_hashed_ansi_string,
                                                                                     HWND,
-                                                                                    ogl_context,
+                                                                                    ral_context,
                                                                                     curve_container,
                                                                                     curve_editor_curve_window);
 

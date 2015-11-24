@@ -12,6 +12,7 @@
 #include "ogl/ogl_shader.h"
 #include "ogl/ogl_types.h"
 #include "raGL/raGL_buffer.h"
+#include "ral/ral_context.h"
 #include "system/system_assertions.h"
 #include "system/system_critical_section.h"
 #include "system/system_log.h"
@@ -25,7 +26,7 @@ typedef struct
     ogl_shader     vertex_shader;
     ogl_program    program;
     ogl_program_ub program_ub;
-    raGL_buffer    program_ub_bo;
+    ral_buffer     program_ub_bo;
     GLuint         program_ub_bo_size;
 
     GLint pos1_ub_offset;
@@ -66,7 +67,7 @@ PRIVATE void _curve_editor_program_static_release(void* in)
 
 
 /** Please see header for specification */
-PUBLIC curve_editor_program_static curve_editor_program_static_create(ogl_context               context,
+PUBLIC curve_editor_program_static curve_editor_program_static_create(ral_context               context,
                                                                       system_hashed_ansi_string name)
 {
     _curve_editor_program_static* result = new (std::nothrow) _curve_editor_program_static;
@@ -224,7 +225,7 @@ PUBLIC curve_editor_program_static curve_editor_program_static_create(ogl_contex
                                         OGL_PROGRAM_UB_PROPERTY_BLOCK_DATA_SIZE,
                                        &result->program_ub_bo_size);
             ogl_program_ub_get_property(result->program_ub,
-                                        OGL_PROGRAM_UB_PROPERTY_BO,
+                                        OGL_PROGRAM_UB_PROPERTY_BUFFER_RAL,
                                        &result->program_ub_bo);
         }
 
@@ -287,24 +288,28 @@ PUBLIC void curve_editor_program_static_set_property(curve_editor_program_static
 }
 
 /** Please see header for spec */
-PUBLIC void curve_editor_program_static_use(ogl_context                 context,
+PUBLIC void curve_editor_program_static_use(ral_context                 context,
                                             curve_editor_program_static instance)
 {
     const ogl_context_gl_entrypoints* entry_points               = NULL;
     GLuint                            program_ub_bo_id           = 0;
+    raGL_buffer                       program_ub_bo_raGL         = NULL;
     uint32_t                          program_ub_bo_start_offset = -1;
     _curve_editor_program_static*     static_ptr                 = (_curve_editor_program_static*) instance;
 
-    ogl_context_get_property(context,
+    ogl_context_get_property(ral_context_get_gl_context(context),
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
                             &entry_points);
 
+    program_ub_bo_raGL = ral_context_get_buffer_gl(context,
+                                                   static_ptr->program_ub_bo);
+
     ogl_program_ub_sync(static_ptr->program_ub);
 
-    raGL_buffer_get_property(static_ptr->program_ub_bo,
+    raGL_buffer_get_property(program_ub_bo_raGL,
                              RAGL_BUFFER_PROPERTY_ID,
                             &program_ub_bo_id);
-    raGL_buffer_get_property(static_ptr->program_ub_bo,
+    raGL_buffer_get_property(program_ub_bo_raGL,
                              RAGL_BUFFER_PROPERTY_START_OFFSET,
                             &program_ub_bo_start_offset);
 

@@ -7,8 +7,8 @@
 #ifndef POSTPROCESSING_MOTION_BLUR_H
 #define POSTPROCESSING_MOTION_BLUR_H
 
-#include "ogl/ogl_types.h"
 #include "postprocessing/postprocessing_types.h"
+#include "ral/ral_types.h"
 #include "system/system_types.h"
 
 REFCOUNT_INSERT_DECLARATIONS(postprocessing_motion_blur,
@@ -81,7 +81,7 @@ typedef enum
 } postprocessing_motion_blur_property;
 
 /** TODO */
-PUBLIC EMERALD_API postprocessing_motion_blur postprocessing_motion_blur_create(ogl_context                             context,
+PUBLIC EMERALD_API postprocessing_motion_blur postprocessing_motion_blur_create(ral_context                             context,
                                                                                 postprocessing_motion_blur_image_format src_dst_color_image_format,
                                                                                 postprocessing_motion_blur_image_format src_velocity_image_format,
                                                                                 postprocessing_motion_blur_image_type   image_type,
@@ -100,9 +100,9 @@ PUBLIC EMERALD_API postprocessing_motion_blur postprocessing_motion_blur_create(
  *
  */
 PUBLIC EMERALD_API RENDERING_CONTEXT_CALL void postprocessing_motion_blur_execute(postprocessing_motion_blur motion_blur,
-                                                                                  raGL_texture               input_color_texture,
-                                                                                  raGL_texture               input_velocity_texture,
-                                                                                  raGL_texture               output_texture);
+                                                                                  ral_texture                input_color_texture,
+                                                                                  ral_texture                input_velocity_texture,
+                                                                                  ral_texture                output_texture);
 
 /** TODO */
 PUBLIC EMERALD_API void postprocessing_motion_blur_get_property(postprocessing_motion_blur          motion_blur,

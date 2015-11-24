@@ -10,7 +10,6 @@
 #define POSTPROCESSING_REINHARD_TONEMAP_H
 
 #include "gfx/gfx_types.h"
-#include "ogl/ogl_types.h"
 #include "postprocessing/postprocessing_types.h"
 
 

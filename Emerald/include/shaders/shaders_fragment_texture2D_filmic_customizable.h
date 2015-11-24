@@ -20,7 +20,7 @@
 #define SHADERS_FRAGMENT_TEXTURE2D_FILMIC_CUSTOMIZABLE_H
 
 #include "gfx/gfx_types.h"
-#include "ogl/ogl_types.h"
+#include "ral/ral_types.h"
 
 REFCOUNT_INSERT_DECLARATIONS(shaders_fragment_texture2D_filmic_customizable,
                              shaders_fragment_texture2D_filmic_customizable)
@@ -34,7 +34,7 @@ REFCOUNT_INSERT_DECLARATIONS(shaders_fragment_texture2D_filmic_customizable,
  * 
  *  @return shaders_fragment_texture2D_filmic_customizable instance if successful, NULL otherwise.
  */
-PUBLIC EMERALD_API shaders_fragment_texture2D_filmic_customizable shaders_fragment_texture2D_filmic_customizable_create(ogl_context               context,
+PUBLIC EMERALD_API shaders_fragment_texture2D_filmic_customizable shaders_fragment_texture2D_filmic_customizable_create(ral_context               context,
                                                                                                                         bool                      should_revert_y,
                                                                                                                         system_hashed_ansi_string name);
 

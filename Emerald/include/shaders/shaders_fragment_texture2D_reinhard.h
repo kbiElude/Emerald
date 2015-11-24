@@ -10,7 +10,7 @@
 #define SHADERS_FRAGMENT_TEXTURE2D_REINHARDT_H
 
 #include "gfx/gfx_types.h"
-#include "ogl/ogl_types.h"
+#include "ral/ral_types.h"
 
 REFCOUNT_INSERT_DECLARATIONS(shaders_fragment_texture2D_reinhardt,
                              shaders_fragment_texture2D_reinhardt)
@@ -24,7 +24,7 @@ REFCOUNT_INSERT_DECLARATIONS(shaders_fragment_texture2D_reinhardt,
  * 
  *  @return shaders_fragment_texture2D_reinhardt instance if successful, NULL otherwise.
  */
-PUBLIC EMERALD_API shaders_fragment_texture2D_reinhardt shaders_fragment_texture2D_reinhardt_create(ogl_context               context,
+PUBLIC EMERALD_API shaders_fragment_texture2D_reinhardt shaders_fragment_texture2D_reinhardt_create(ral_context               context,
                                                                                                     bool                      should_revert_y,
                                                                                                     system_hashed_ansi_string name);
 

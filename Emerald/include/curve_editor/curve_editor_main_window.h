@@ -6,7 +6,7 @@
 #ifndef CURVE_EDITOR_MAIN_WINDOW_H
 #define CURVE_EDITOR_MAIN_WINDOW_H
 
-#include "ogl/ogl_types.h"
+#include "ral/ral_types.h"
 
 typedef enum
 {
@@ -15,7 +15,7 @@ typedef enum
 
 /** TODO */
 PUBLIC curve_editor_main_window curve_editor_main_window_create(PFNONMAINWINDOWRELEASECALLBACKHANDLERPROC,
-                                                                ogl_context);
+                                                                ral_context);
 
 /** TODO */
 PUBLIC void curve_editor_main_window_release(curve_editor_main_window);

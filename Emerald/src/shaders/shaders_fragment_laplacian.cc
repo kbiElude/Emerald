@@ -51,7 +51,7 @@ PRIVATE void _shaders_fragment_laplacian_release(void* ptr)
 
 
 /** Please see header for specification */
-PUBLIC EMERALD_API shaders_fragment_laplacian shaders_fragment_laplacian_create(ogl_context               context,
+PUBLIC EMERALD_API shaders_fragment_laplacian shaders_fragment_laplacian_create(ral_context               context,
                                                                                 system_hashed_ansi_string name)
 {
     _shaders_fragment_laplacian* result_object = NULL;

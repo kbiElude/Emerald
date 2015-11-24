@@ -64,7 +64,7 @@ PRIVATE void _shaders_fragment_sobel_release(void* ptr)
 
 
 /** Please see header for specification */
-PUBLIC EMERALD_API shaders_fragment_sobel shaders_fragment_sobel_create(ogl_context               context,
+PUBLIC EMERALD_API shaders_fragment_sobel shaders_fragment_sobel_create(ral_context               context,
                                                                         system_hashed_ansi_string name)
 {
     shaders_fragment_convolution3x3 dy_shader     = NULL;

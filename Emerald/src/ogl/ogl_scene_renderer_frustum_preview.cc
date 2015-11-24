@@ -12,7 +12,8 @@
 #include "ogl/ogl_scene_renderer_frustum_preview.h"
 #include "ogl/ogl_shader.h"
 #include "ogl/ogl_text.h"
-#include "raGL/raGL_buffers.h"
+#include "raGL/raGL_buffer.h"
+#include "ral/ral_buffer.h"
 #include "ral/ral_context.h"
 #include "scene/scene.h"
 #include "scene/scene_camera.h"
@@ -120,17 +121,16 @@ typedef struct _ogl_scene_renderer_frustum_preview
     system_resizable_vector assigned_cameras; /* holds _ogl_scene_renderer_frustum_preview_camera instances */
     ogl_text_string_id      test_text_id;
 
-    raGL_buffers            buffers; /* do NOT release */
     ral_context             context;
     unsigned char*          data_bo_buffer;
     system_time             data_bo_buffer_last_update_time;
     unsigned int            data_bo_buffer_size;
-    raGL_buffer             data_bo;
+    ral_buffer              data_bo;
     unsigned int            data_bo_size;
     scene                   owned_scene;
     ogl_program             po;
     ogl_program_ub          po_ub;
-    raGL_buffer             po_ub_bo;
+    ral_buffer              po_ub_bo;
     unsigned int            po_ub_bo_size;
     GLint                   po_vp_ub_offset;
     ogl_text                text_renderer;  /* TODO: use a global text renderer */
@@ -285,8 +285,9 @@ PRIVATE void _ogl_scene_renderer_frustum_preview_deinit_rendering_thread_callbac
     /* Release data BO */
     if (preview_ptr->data_bo != NULL)
     {
-        raGL_buffers_free_buffer_memory(preview_ptr->buffers,
-                                        preview_ptr->data_bo);
+        ral_context_delete_buffers(preview_ptr->context,
+                                   1, /* n_buffers */
+                                  &preview_ptr->data_bo);
 
         preview_ptr->data_bo = NULL;
     }
@@ -390,14 +391,14 @@ PRIVATE void _ogl_scene_renderer_frustum_preview_init_rendering_thread_callback(
         ogl_shader fs = NULL;
         ogl_shader vs = NULL;
 
-        fs = ogl_shader_create(context,
+        fs = ogl_shader_create(preview_ptr->context,
                                RAL_SHADER_TYPE_FRAGMENT,
                                system_hashed_ansi_string_create("Frustum preview renderer FS") );
-        vs = ogl_shader_create(context,
+        vs = ogl_shader_create(preview_ptr->context,
                                RAL_SHADER_TYPE_VERTEX,
                                system_hashed_ansi_string_create("Frustum preview renderer VS") );
 
-        preview_ptr->po = ogl_program_create(context,
+        preview_ptr->po = ogl_program_create(preview_ptr->context,
                                              system_hashed_ansi_string_create(po_name),
                                              OGL_PROGRAM_SYNCABLE_UBS_MODE_ENABLE_GLOBAL);
 
@@ -441,7 +442,7 @@ PRIVATE void _ogl_scene_renderer_frustum_preview_init_rendering_thread_callback(
                                 OGL_PROGRAM_UB_PROPERTY_BLOCK_DATA_SIZE,
                                &preview_ptr->po_ub_bo_size);
     ogl_program_ub_get_property(preview_ptr->po_ub,
-                                OGL_PROGRAM_UB_PROPERTY_BO,
+                                OGL_PROGRAM_UB_PROPERTY_BUFFER_RAL,
                                &preview_ptr->po_ub_bo);
 
     /* Retrieve PO uniform locations */
@@ -684,7 +685,10 @@ PRIVATE void _ogl_scene_renderer_frustum_preview_update_data_bo_buffer(_ogl_scen
 
         if (preview_ptr->data_bo != NULL)
         {
-            raGL_buffer_get_property(preview_ptr->data_bo,
+            raGL_buffer data_bo_raGL = ral_context_get_buffer_gl(preview_ptr->context,
+                                                                 preview_ptr->data_bo);
+
+            raGL_buffer_get_property(data_bo_raGL,
                                      RAGL_BUFFER_PROPERTY_START_OFFSET,
                                     &data_bo_start_offset);
         }
@@ -695,77 +699,72 @@ PRIVATE void _ogl_scene_renderer_frustum_preview_update_data_bo_buffer(_ogl_scen
     } /* for (all assigned cameras) */
 
     /* Set up the data BO */
-    GLuint                                                    data_dst_offset     = 0;
-    GLuint                                                    data_src_offset     = 0;
-    GLuint                                                    data_size           = 0;
-    const ogl_context_gl_entrypoints_ext_direct_state_access* dsa_entrypoints_ptr = NULL;
-    const ogl_context_gl_entrypoints*                         entrypoints_ptr     = NULL;
+    GLuint                            data_dst_offset = 0;
+    GLuint                            data_src_offset = 0;
+    GLuint                            data_size       = 0;
+    const ogl_context_gl_entrypoints* entrypoints_ptr = NULL;
 
     ogl_context_get_property(ral_context_get_gl_context(preview_ptr->context),
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
                             &entrypoints_ptr);
-    ogl_context_get_property(ral_context_get_gl_context(preview_ptr->context),
-                             OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL_EXT_DIRECT_STATE_ACCESS,
-                            &dsa_entrypoints_ptr);
 
-    if (preview_ptr->data_bo != NULL && realloc_needed||
+    if (preview_ptr->data_bo != NULL && realloc_needed ||
         preview_ptr->data_bo == NULL)
     {
         ral_buffer_create_info data_bo_create_info;
 
         if (preview_ptr->data_bo != NULL)
         {
-            raGL_buffers_free_buffer_memory(preview_ptr->buffers,
-                                            preview_ptr->data_bo);
+            ral_context_delete_buffers(preview_ptr->context,
+                                       1, /* n_buffers */
+                                      &preview_ptr->data_bo);
 
             preview_ptr->data_bo = NULL;
         } /* if (preview_ptr->data_bo != NULL) */
 
         data_bo_create_info.mappability_bits = RAL_BUFFER_MAPPABILITY_NONE;
+        data_bo_create_info.parent_buffer    = 0;
         data_bo_create_info.property_bits    = RAL_BUFFER_PROPERTY_SPARSE_IF_AVAILABLE_BIT;
         data_bo_create_info.size             = preview_ptr->data_bo_buffer_size;
+        data_bo_create_info.start_offset     = 0;
         data_bo_create_info.usage_bits       = RAL_BUFFER_USAGE_VERTEX_BUFFER_BIT;
         data_bo_create_info.user_queue_bits  = 0xFFFFFFFF;
 
-        raGL_buffers_allocate_buffer_memory_for_ral_buffer_create_info(preview_ptr->buffers,
-                                                                      &data_bo_create_info,
-                                                                      &preview_ptr->data_bo);
-
-        raGL_buffer_get_property(preview_ptr->data_bo,
-                                 RAGL_BUFFER_PROPERTY_START_OFFSET,
-                                 &data_dst_offset);
+        ral_context_create_buffers(preview_ptr->context,
+                                   1, /* n_buffers */
+                                  &data_bo_create_info,
+                                  &preview_ptr->data_bo);
 
         data_src_offset = 0;
         data_size       = preview_ptr->data_bo_buffer_size;
     } /* if (data BO needs to be realloced) */
     else
     {
-        uint32_t data_bo_start_offset = 0;
-
-        raGL_buffer_get_property(preview_ptr->data_bo,
-                                 RAGL_BUFFER_PROPERTY_START_OFFSET,
-                                 &data_bo_start_offset);
-
-        data_dst_offset = data_bo_start_offset             + BO_DATA_VERTEX_DATA_OFFSET;
+        data_dst_offset = BO_DATA_VERTEX_DATA_OFFSET;
         data_src_offset = BO_DATA_VERTEX_DATA_OFFSET;
         data_size       = preview_ptr->data_bo_buffer_size - BO_DATA_VERTEX_DATA_OFFSET;
     }
 
-    raGL_buffer_get_property(preview_ptr->data_bo,
-                             RAGL_BUFFER_PROPERTY_ID,
-                            &data_bo_id);
+    ral_buffer_client_sourced_update_info data_bo_update_info;
 
-    dsa_entrypoints_ptr->pGLNamedBufferSubDataEXT(data_bo_id,
-                                                  data_dst_offset,
-                                                  data_size,
-                                                  preview_ptr->data_bo_buffer + data_src_offset);
+    data_bo_update_info.data         = preview_ptr->data_bo_buffer + data_src_offset;
+    data_bo_update_info.data_size    = data_size;
+    data_bo_update_info.start_offset = data_dst_offset;
+
+    ral_buffer_set_data_from_client_memory(preview_ptr->data_bo,
+                                           1, /* n_updates */
+                                          &data_bo_update_info);
 
     preview_ptr->data_bo_buffer_last_update_time = frame_time;
 
     /* Set up the VAO */
-    uint32_t data_bo_start_offset = 0;
+    raGL_buffer data_bo_raGL         = NULL;
+    uint32_t    data_bo_start_offset = 0;
 
-    raGL_buffer_get_property(preview_ptr->data_bo,
+    data_bo_raGL = ral_context_get_buffer_gl(preview_ptr->context,
+                                             preview_ptr->data_bo);
+
+    raGL_buffer_get_property(data_bo_raGL,
                              RAGL_BUFFER_PROPERTY_START_OFFSET,
                              &data_bo_start_offset);
 
@@ -783,22 +782,6 @@ PRIVATE void _ogl_scene_renderer_frustum_preview_update_data_bo_buffer(_ogl_scen
                                                 0,        /* stride */
                                                 (const GLvoid*) (data_bo_start_offset + BO_DATA_VERTEX_DATA_OFFSET) );
 }
-
-/** TODO */
-#ifdef _DEBUG
-    /* TODO */
-    PRIVATE void _ogl_scene_renderer_frustum_preview_verify_context_type(ogl_context context)
-    {
-        ogl_context_type context_type = OGL_CONTEXT_TYPE_UNDEFINED;
-
-        ogl_context_get_property(context,
-                                 OGL_CONTEXT_PROPERTY_TYPE,
-                                &context_type);
-
-        ASSERT_DEBUG_SYNC(context_type == OGL_CONTEXT_TYPE_GL,
-                          "ogl_scene_renderer_frustum_preview is only supported under GL contexts")
-    }
-#endif
 
 
 /** Please see header for spec */
@@ -891,10 +874,6 @@ PUBLIC ogl_scene_renderer_frustum_preview ogl_scene_renderer_frustum_preview_cre
     {
         ogl_context context_gl = ral_context_get_gl_context(context);
 
-        ogl_context_get_property(context_gl,
-                                 OGL_CONTEXT_PROPERTY_BUFFERS_RAGL,
-                                &new_instance->buffers);
-
         new_instance->context     = context;
         new_instance->owned_scene = scene;
 
@@ -970,13 +949,17 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_scene_renderer_frustum_preview_render(ogl
     /* Draw! */
     entrypoints_ptr->pGLEnable(GL_PRIMITIVE_RESTART_FIXED_INDEX);
     {
-        GLuint   po_ub_bo_id           = 0;
-        uint32_t po_ub_bo_start_offset = -1;
+        GLuint      po_ub_bo_id           = 0;
+        raGL_buffer po_ub_bo_raGL         = NULL;
+        uint32_t    po_ub_bo_start_offset = -1;
 
-        raGL_buffer_get_property(preview_ptr->po_ub_bo,
+        po_ub_bo_raGL = ral_context_get_buffer_gl(preview_ptr->context,
+                                                  preview_ptr->po_ub_bo);
+
+        raGL_buffer_get_property(po_ub_bo_raGL,
                                  RAGL_BUFFER_PROPERTY_ID,
                                 &po_ub_bo_id);
-        raGL_buffer_get_property(preview_ptr->po_ub_bo,
+        raGL_buffer_get_property(po_ub_bo_raGL,
                                  RAGL_BUFFER_PROPERTY_START_OFFSET,
                                 &po_ub_bo_start_offset);
 
@@ -995,7 +978,7 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_scene_renderer_frustum_preview_render(ogl
     entrypoints_ptr->pGLDisable(GL_PRIMITIVE_RESTART_FIXED_INDEX);
 
     /* Draw the labels */
-    ogl_text_draw(ral_context_get_gl_context(preview_ptr->context),
+    ogl_text_draw(preview_ptr->context,
                   preview_ptr->text_renderer);
 }
 

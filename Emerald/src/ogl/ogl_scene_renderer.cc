@@ -992,7 +992,7 @@ PRIVATE void _ogl_scene_renderer_render_traversed_scene_graph(_ogl_scene_rendere
     ogl_materials materials                 = NULL;
     uint32_t      n_custom_meshes_to_render = 0;
 
-    ogl_context_get_property(renderer_ptr->context,
+    ogl_context_get_property(ral_context_get_gl_context(renderer_ptr->context),
                              OGL_CONTEXT_PROPERTY_MATERIALS,
                             &materials);
 
@@ -1321,50 +1321,46 @@ PRIVATE void _ogl_scene_renderer_return_shadow_maps_to_pool(ogl_scene_renderer r
     uint32_t             n_lights       = 0;
     _ogl_scene_renderer* renderer_ptr   = (_ogl_scene_renderer*) renderer;
     ogl_shadow_mapping   shadow_mapping = NULL;
-    ogl_context_textures texture_pool   = NULL;
 
-    ogl_context_get_property(renderer_ptr->context,
+    ogl_context_get_property(ral_context_get_gl_context(renderer_ptr->context),
                              OGL_CONTEXT_PROPERTY_SHADOW_MAPPING,
                             &shadow_mapping);
-    ogl_context_get_property(renderer_ptr->context,
-                             OGL_CONTEXT_PROPERTY_TEXTURES,
-                            &texture_pool);
     scene_get_property      (renderer_ptr->owned_scene,
                              SCENE_PROPERTY_N_LIGHTS,
                             &n_lights);
 
     /* Iterate over all lights defined for the scene. */
-    ogl_texture null_texture = NULL;
-
     for (uint32_t n_light = 0;
                   n_light < n_lights;
                 ++n_light)
     {
         scene_light current_light                  = scene_get_light_by_index(renderer_ptr->owned_scene,
                                                                               n_light);
-        ogl_texture current_light_sm_texture_color = NULL;
-        ogl_texture current_light_sm_texture_depth = NULL;
+        ral_texture current_light_sm_texture_color = NULL;
+        ral_texture current_light_sm_texture_depth = NULL;
 
         ASSERT_DEBUG_SYNC(current_light != NULL,
                           "Scene light is NULL");
 
         scene_light_get_property(current_light,
-                                 SCENE_LIGHT_PROPERTY_SHADOW_MAP_TEXTURE_COLOR,
+                                 SCENE_LIGHT_PROPERTY_SHADOW_MAP_TEXTURE_COLOR_RAL,
                                 &current_light_sm_texture_color);
         scene_light_get_property(current_light,
-                                 SCENE_LIGHT_PROPERTY_SHADOW_MAP_TEXTURE_DEPTH,
+                                 SCENE_LIGHT_PROPERTY_SHADOW_MAP_TEXTURE_DEPTH_RAL,
                                 &current_light_sm_texture_depth);
 
         if (current_light_sm_texture_color != NULL)
         {
-            ogl_context_textures_return_reusable(renderer_ptr->context,
-                                                 current_light_sm_texture_color);
+            ral_context_delete_textures(renderer_ptr->context,
+                                        1, /* n_textures */
+                                       &current_light_sm_texture_color);
         } /* if (current_light_sm_texture_color != NULL) */
 
         if (current_light_sm_texture_depth != NULL)
         {
-            ogl_context_textures_return_reusable(renderer_ptr->context,
-                                                 current_light_sm_texture_depth);
+            ral_context_delete_textures(renderer_ptr->context,
+                                        1, /* n_textures */
+                                       &current_light_sm_texture_depth);
         } /* if (current_light_sm_texture_depth != NULL) */
     } /* for (all scene lights) */
 }
@@ -1486,8 +1482,8 @@ PRIVATE void _ogl_scene_renderer_update_ogl_uber_light_properties(ogl_uber      
             const float*                     current_light_depth_view_row_major        = NULL;
             const float*                     current_light_depth_vp_row_major          = NULL;
             system_matrix4x4                 current_light_depth_vp                    = NULL;
-            ogl_texture                      current_light_shadow_map_texture_color    = NULL;
-            ogl_texture                      current_light_shadow_map_texture_depth    = NULL;
+            ral_texture                      current_light_shadow_map_texture_color    = NULL;
+            ral_texture                      current_light_shadow_map_texture_depth    = NULL;
             float                            current_light_shadow_map_vsm_cutoff       = 0;
             float                            current_light_shadow_map_vsm_min_variance = 0;
             scene_light_shadow_map_algorithm current_light_sm_algo;
@@ -1496,10 +1492,10 @@ PRIVATE void _ogl_scene_renderer_update_ogl_uber_light_properties(ogl_uber      
                                      SCENE_LIGHT_PROPERTY_SHADOW_MAP_ALGORITHM,
                                     &current_light_sm_algo);
             scene_light_get_property(current_light,
-                                     SCENE_LIGHT_PROPERTY_SHADOW_MAP_TEXTURE_COLOR,
+                                     SCENE_LIGHT_PROPERTY_SHADOW_MAP_TEXTURE_COLOR_RAL,
                                     &current_light_shadow_map_texture_color);
             scene_light_get_property(current_light,
-                                     SCENE_LIGHT_PROPERTY_SHADOW_MAP_TEXTURE_DEPTH,
+                                     SCENE_LIGHT_PROPERTY_SHADOW_MAP_TEXTURE_DEPTH_RAL,
                                     &current_light_shadow_map_texture_depth);
             scene_light_get_property(current_light,
                                      SCENE_LIGHT_PROPERTY_SHADOW_MAP_VIEW,
@@ -1533,11 +1529,11 @@ PRIVATE void _ogl_scene_renderer_update_ogl_uber_light_properties(ogl_uber      
             /* Shadow map textures */
             ogl_uber_set_shader_item_property(material_uber,
                                               n_light,
-                                              OGL_UBER_ITEM_PROPERTY_LIGHT_SHADOW_MAP_TEXTURE_COLOR,
+                                              OGL_UBER_ITEM_PROPERTY_LIGHT_SHADOW_MAP_TEXTURE_RAL_COLOR,
                                              &current_light_shadow_map_texture_color);
             ogl_uber_set_shader_item_property(material_uber,
                                               n_light,
-                                              OGL_UBER_ITEM_PROPERTY_LIGHT_SHADOW_MAP_TEXTURE_DEPTH,
+                                              OGL_UBER_ITEM_PROPERTY_LIGHT_SHADOW_MAP_TEXTURE_RAL_DEPTH,
                                              &current_light_shadow_map_texture_depth);
 
             /* VSM cut-off (if VSM is enabled) */
@@ -1771,7 +1767,7 @@ PUBLIC EMERALD_API void ogl_scene_renderer_bake_gpu_assets(ogl_scene_renderer re
     ogl_materials        context_materials = NULL;
     _ogl_scene_renderer* renderer_ptr      = (_ogl_scene_renderer*) renderer;
 
-    ogl_context_get_property(renderer_ptr->context,
+    ogl_context_get_property(ral_context_get_gl_context(renderer_ptr->context),
                              OGL_CONTEXT_PROPERTY_MATERIALS,
                             &context_materials);
 
@@ -1842,7 +1838,7 @@ PUBLIC EMERALD_API void ogl_scene_renderer_bake_gpu_assets(ogl_scene_renderer re
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API ogl_scene_renderer ogl_scene_renderer_create(ogl_context context,
+PUBLIC EMERALD_API ogl_scene_renderer ogl_scene_renderer_create(ral_context context,
                                                                 scene       scene)
 {
     _ogl_scene_renderer* scene_renderer_ptr = new (std::nothrow) _ogl_scene_renderer(context,
@@ -1853,7 +1849,7 @@ PUBLIC EMERALD_API ogl_scene_renderer ogl_scene_renderer_create(ogl_context cont
 
     if (scene_renderer_ptr != NULL)
     {
-        ogl_context_get_property(context,
+        ogl_context_get_property(ral_context_get_gl_context(context),
                                  OGL_CONTEXT_PROPERTY_MATERIALS,
                                 &scene_renderer_ptr->material_manager);
 
@@ -2328,9 +2324,9 @@ PUBLIC EMERALD_API void ogl_scene_renderer_get_property(ogl_scene_renderer      
 
     switch (property)
     {
-        case OGL_SCENE_RENDERER_PROPERTY_CONTEXT:
+        case OGL_SCENE_RENDERER_PROPERTY_CONTEXT_RAL:
         {
-            *(ogl_context *) out_result = renderer_ptr->context;
+            *(ral_context *) out_result = renderer_ptr->context;
 
             break;
         }
@@ -2403,10 +2399,10 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_scene_renderer_render_scene_graph(ogl_sce
                        SCENE_PROPERTY_GRAPH,
                       &graph);
 
-    ogl_context_get_property(renderer_ptr->context,
+    ogl_context_get_property(ral_context_get_gl_context(renderer_ptr->context),
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
                             &entry_points);
-    ogl_context_get_property(renderer_ptr->context,
+    ogl_context_get_property(ral_context_get_gl_context(renderer_ptr->context),
                              OGL_CONTEXT_PROPERTY_SHADOW_MAPPING,
                             &shadow_mapping);
 

@@ -12,7 +12,9 @@ typedef struct _ral_buffer
 {
     ral_buffer_mappability_bits mappability_bits;
     system_hashed_ansi_string   name;
+    ral_buffer                  parent_buffer;
     uint32_t                    size;
+    uint32_t                    start_offset;
     ral_buffer_property_bits    property_bits;
     ral_buffer_usage_bits       usage_bits;
     ral_queue_bits              user_queue_bits;
@@ -21,16 +23,22 @@ typedef struct _ral_buffer
 
 
     _ral_buffer(system_hashed_ansi_string   in_name,
+                ral_buffer                  in_parent_buffer,
                 uint32_t                    in_size,
+                uint32_t                    in_start_offset,
                 ral_buffer_usage_bits       in_usage_bits,
                 ral_queue_bits              in_user_queue_bits,
                 ral_buffer_property_bits    in_property_bits,
                 ral_buffer_mappability_bits in_mappability_bits)
     {
+        ASSERT_DEBUG_SYNC(start_offset == 0, "!!");
+
         mappability_bits = in_mappability_bits;
         name             = in_name;
+        parent_buffer    = NULL;
         property_bits    = in_property_bits;
         size             = in_size;
+        start_offset     = in_start_offset;
         usage_bits       = in_usage_bits;
         user_queue_bits  = in_user_queue_bits;
     }
@@ -121,7 +129,9 @@ PUBLIC ral_buffer ral_buffer_create(system_hashed_ansi_string     name,
 
     /* Create the new descriptor */
     new_buffer_ptr = new (std::nothrow) _ral_buffer(name,
+                                                    create_info_ptr->parent_buffer,
                                                     create_info_ptr->size,
+                                                    create_info_ptr->start_offset,
                                                     create_info_ptr->usage_bits,
                                                     create_info_ptr->user_queue_bits,
                                                     create_info_ptr->property_bits,
@@ -170,9 +180,23 @@ PUBLIC void ral_buffer_get_property(ral_buffer          buffer,
             break;
         }
 
+        case RAL_BUFFER_PROPERTY_PARENT_BUFFER:
+        {
+            *(ral_buffer*) out_result_ptr = buffer_ptr->parent_buffer;
+
+            break;
+        }
+
         case RAL_BUFFER_PROPERTY_PROPERTY_BITS:
         {
             *(ral_buffer_property_bits*) out_result_ptr = buffer_ptr->property_bits;
+
+            break;
+        }
+
+        case RAL_BUFFER_PROPERTY_START_OFFSET:
+        {
+            *(uint32_t*) out_result_ptr = buffer_ptr->start_offset;
 
             break;
         }

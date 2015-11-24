@@ -277,16 +277,16 @@ PRIVATE void _ogl_primitive_renderer_init_program(_ogl_primitive_renderer* rende
     ogl_shader fs = NULL;
     ogl_shader vs = NULL;
 
-    fs = ogl_shader_create(ral_context_get_gl_context(renderer_ptr->context),
+    fs = ogl_shader_create(renderer_ptr->context,
                            RAL_SHADER_TYPE_FRAGMENT,
                            system_hashed_ansi_string_create_by_merging_two_strings("Line strip renderer FS ",
                                                                                    system_hashed_ansi_string_get_buffer(renderer_ptr->name) ));
-    vs = ogl_shader_create(ral_context_get_gl_context(renderer_ptr->context),
+    vs = ogl_shader_create(renderer_ptr->context,
                            RAL_SHADER_TYPE_VERTEX,
                            system_hashed_ansi_string_create_by_merging_two_strings("Line strip renderer VS ",
                                                                                    system_hashed_ansi_string_get_buffer(renderer_ptr->name) ));
 
-    renderer_ptr->program = ogl_program_create(ral_context_get_gl_context(renderer_ptr->context),
+    renderer_ptr->program = ogl_program_create(renderer_ptr->context,
                                                system_hashed_ansi_string_create_by_merging_two_strings("Line strip renderer program ",
                                                                                                        system_hashed_ansi_string_get_buffer(renderer_ptr->name) ));
 

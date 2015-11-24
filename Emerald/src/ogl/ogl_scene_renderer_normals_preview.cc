@@ -12,6 +12,7 @@
 #include "ogl/ogl_scene_renderer_normals_preview.h"
 #include "ogl/ogl_shader.h"
 #include "raGL/raGL_buffer.h"
+#include "ral/ral_buffer.h"
 #include "ral/ral_context.h"
 #include "scene/scene.h"
 #include "scene/scene_mesh.h"
@@ -100,11 +101,11 @@ typedef struct _ogl_scene_renderer_normals_preview
     GLint              preview_program_start_offsets_ub_offset;
     GLint              preview_program_stride_ub_offset;
     ogl_program_ub     preview_program_ub_gs;
-    raGL_buffer        preview_program_ub_gs_bo;
+    ral_buffer         preview_program_ub_gs_bo;
     unsigned int       preview_program_ub_gs_bo_size;
     GLuint             preview_program_ub_gs_ub_bp;
     ogl_program_ub     preview_program_ub_vs;
-    raGL_buffer        preview_program_ub_vs_bo;
+    ral_buffer         preview_program_ub_vs_bo;
     unsigned int       preview_program_ub_vs_bo_size;
     GLuint             preview_program_ub_vs_ub_bp;
     GLint              preview_program_vp_ub_offset;
@@ -140,15 +141,15 @@ PRIVATE void _ogl_context_scene_renderer_normals_preview_init_preview_program(_o
                        SCENE_PROPERTY_NAME,
                       &scene_name);
 
-    fs_shader = ogl_shader_create(ral_context_get_gl_context(preview_ptr->context),
+    fs_shader = ogl_shader_create(preview_ptr->context,
                                   RAL_SHADER_TYPE_FRAGMENT,
                                   system_hashed_ansi_string_create_by_merging_two_strings("Scene Renderer normals preview FS shader ",
                                                                                           system_hashed_ansi_string_get_buffer(scene_name)) );
-    gs_shader = ogl_shader_create(ral_context_get_gl_context(preview_ptr->context),
+    gs_shader = ogl_shader_create(preview_ptr->context,
                                   RAL_SHADER_TYPE_GEOMETRY,
                                   system_hashed_ansi_string_create_by_merging_two_strings("Scene Renderer normals preview GS shader ",
                                                                                           system_hashed_ansi_string_get_buffer(scene_name)) );
-    vs_shader = ogl_shader_create(ral_context_get_gl_context(preview_ptr->context),
+    vs_shader = ogl_shader_create(preview_ptr->context,
                                   RAL_SHADER_TYPE_VERTEX,
                                   system_hashed_ansi_string_create_by_merging_two_strings("Scene Renderer normals preview VS shader ",
                                                                                           system_hashed_ansi_string_get_buffer(scene_name)) );
@@ -171,7 +172,7 @@ PRIVATE void _ogl_context_scene_renderer_normals_preview_init_preview_program(_o
     }
 
     /* Initialize the program object */
-    preview_ptr->preview_program = ogl_program_create(ral_context_get_gl_context(preview_ptr->context),
+    preview_ptr->preview_program = ogl_program_create(preview_ptr->context,
                                                       system_hashed_ansi_string_create_by_merging_two_strings("Scene Renderer normals preview program ",
                                                                                                               system_hashed_ansi_string_get_buffer(scene_name)),
                                                       OGL_PROGRAM_SYNCABLE_UBS_MODE_ENABLE_GLOBAL);
@@ -257,10 +258,10 @@ PRIVATE void _ogl_context_scene_renderer_normals_preview_init_preview_program(_o
                                &preview_ptr->preview_program_ub_vs_bo_size);
 
     ogl_program_ub_get_property(preview_ptr->preview_program_ub_gs,
-                                OGL_PROGRAM_UB_PROPERTY_BO,
+                                OGL_PROGRAM_UB_PROPERTY_BUFFER_RAL,
                                &preview_ptr->preview_program_ub_gs_bo);
     ogl_program_ub_get_property(preview_ptr->preview_program_ub_vs,
-                                OGL_PROGRAM_UB_PROPERTY_BO,
+                                OGL_PROGRAM_UB_PROPERTY_BUFFER_RAL,
                                &preview_ptr->preview_program_ub_vs_bo);
 
     ogl_program_ub_get_property(preview_ptr->preview_program_ub_gs,
@@ -297,23 +298,6 @@ end:
         ogl_shader_release(vs_shader);
     }
 }
-
-/** TODO */
-#ifdef _DEBUG
-    /* TODO */
-    PRIVATE void _ogl_scene_renderer_normals_preview_verify_context_type(ogl_context context)
-    {
-        ogl_context_type context_type = OGL_CONTEXT_TYPE_UNDEFINED;
-
-        ogl_context_get_property(context,
-                                 OGL_CONTEXT_PROPERTY_TYPE,
-                                &context_type);
-
-        ASSERT_DEBUG_SYNC(context_type == OGL_CONTEXT_TYPE_GL,
-                          "ogl_scene_renderer_normals_preview is only supported under GL contexts")
-    }
-#endif
-
 
 /** Please see header for spec */
 PUBLIC ogl_scene_renderer_normals_preview ogl_scene_renderer_normals_preview_create(ral_context        context,
@@ -371,8 +355,9 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_scene_renderer_normals_preview_render(ogl
                                                                              uint32_t                           mesh_id)
 {
     const ogl_context_gl_entrypoints*    entrypoints_ptr          = NULL;
-    raGL_buffer                          mesh_bo                  = NULL;
+    ral_buffer                           mesh_bo                  = NULL;
     GLuint                               mesh_bo_id               = 0;
+    raGL_buffer                          mesh_bo_raGL             = NULL;
     unsigned int                         mesh_bo_size             = 0;
     uint32_t                             mesh_bo_start_offset     = -1;
     mesh                                 mesh_instance            = NULL;
@@ -409,7 +394,7 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_scene_renderer_normals_preview_render(ogl
 
     /* Retrieve start offsets & stride information */
     mesh_get_property(mesh_instance,
-                      MESH_PROPERTY_GL_BO,
+                      MESH_PROPERTY_GL_BO_RAL,
                      &mesh_bo);
     mesh_get_property(mesh_instance,
                       MESH_PROPERTY_GL_PROCESSED_DATA_SIZE,
@@ -421,10 +406,13 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_scene_renderer_normals_preview_render(ogl
                       MESH_PROPERTY_GL_TOTAL_ELEMENTS,
                      &mesh_total_elements);
 
-    raGL_buffer_get_property(mesh_bo,
+    mesh_bo_raGL = ral_context_get_buffer_gl(preview_ptr->context,
+                                             mesh_bo);
+
+    raGL_buffer_get_property(mesh_bo_raGL,
                              RAGL_BUFFER_PROPERTY_ID,
                             &mesh_bo_id);
-    raGL_buffer_get_property(mesh_bo,
+    raGL_buffer_get_property(mesh_bo_raGL,
                              RAGL_BUFFER_PROPERTY_START_OFFSET,
                             &mesh_bo_start_offset);
 
@@ -442,8 +430,8 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_scene_renderer_normals_preview_render(ogl
     /* Set the uniforms */
     const uint32_t start_offsets[] =
     {
-        mesh_start_offset_normal - mesh_bo_start_offset,
-        mesh_start_offset_vertex - mesh_bo_start_offset
+        mesh_start_offset_normal/* - mesh_bo_start_offset */,
+        mesh_start_offset_vertex/* - mesh_bo_start_offset */
     };
 
     ogl_program_ub_set_nonarrayed_uniform_value(preview_ptr->preview_program_ub_gs,
@@ -517,21 +505,28 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_scene_renderer_normals_preview_start(ogl_
                                                 0, /* src_data_flags */
                                                 sizeof(float) * 16);
 
-    GLuint   preview_program_ub_gs_bo_id           = 0;
-    uint32_t preview_program_ub_gs_bo_start_offset = -1;
-    GLuint   preview_program_ub_vs_bo_id           = 0;
-    uint32_t preview_program_ub_vs_bo_start_offset = -1;
+    GLuint      preview_program_ub_gs_bo_id           = 0;
+    raGL_buffer preview_program_ub_gs_bo_raGL         = NULL;
+    uint32_t    preview_program_ub_gs_bo_start_offset = -1;
+    GLuint      preview_program_ub_vs_bo_id           = 0;
+    raGL_buffer preview_program_ub_vs_bo_raGL         = NULL;
+    uint32_t    preview_program_ub_vs_bo_start_offset = -1;
 
-    raGL_buffer_get_property(preview_ptr->preview_program_ub_gs_bo,
+    preview_program_ub_gs_bo_raGL = ral_context_get_buffer_gl(preview_ptr->context,
+                                                              preview_ptr->preview_program_ub_gs_bo);
+    preview_program_ub_vs_bo_raGL = ral_context_get_buffer_gl(preview_ptr->context,
+                                                              preview_ptr->preview_program_ub_vs_bo);
+
+    raGL_buffer_get_property(preview_program_ub_gs_bo_raGL,
                              RAGL_BUFFER_PROPERTY_ID,
                             &preview_program_ub_gs_bo_id);
-    raGL_buffer_get_property(preview_ptr->preview_program_ub_gs_bo,
+    raGL_buffer_get_property(preview_program_ub_gs_bo_raGL,
                              RAGL_BUFFER_PROPERTY_START_OFFSET,
                             &preview_program_ub_gs_bo_start_offset);
-    raGL_buffer_get_property(preview_ptr->preview_program_ub_vs_bo,
+    raGL_buffer_get_property(preview_program_ub_vs_bo_raGL,
                              RAGL_BUFFER_PROPERTY_ID,
                             &preview_program_ub_vs_bo_id);
-    raGL_buffer_get_property(preview_ptr->preview_program_ub_vs_bo,
+    raGL_buffer_get_property(preview_program_ub_vs_bo_raGL,
                              RAGL_BUFFER_PROPERTY_START_OFFSET,
                             &preview_program_ub_vs_bo_start_offset);
 

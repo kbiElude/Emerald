@@ -8,7 +8,7 @@
 
 #include "curve/curve_types.h"
 #include "curve_editor/curve_editor_types.h"
-#include "ogl/ogl_types.h"
+#include "ral/ral_types.h"
 
 
 typedef enum
@@ -26,7 +26,7 @@ REFCOUNT_INSERT_DECLARATIONS(curve_editor_program_curvebackground,
 
 
 /** TODO */
-PUBLIC curve_editor_program_curvebackground curve_editor_program_curvebackground_create(ogl_context               context,
+PUBLIC curve_editor_program_curvebackground curve_editor_program_curvebackground_create(ral_context               context,
                                                                                         system_hashed_ansi_string name);
 
 /** TODO */
@@ -35,7 +35,7 @@ PUBLIC void curve_editor_program_curvebackground_set_property(curve_editor_progr
                                                               const void*                                   data);
 
 /** TODO */
-PUBLIC void curve_editor_program_curvebackground_use(ogl_context                          context,
+PUBLIC void curve_editor_program_curvebackground_use(ral_context                          context,
                                                      curve_editor_program_curvebackground curvebackground);
 
 #endif /* CURVE_EDITOR_PROGRAM_CURVEBACKGROUND_H */

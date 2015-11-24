@@ -1134,23 +1134,6 @@ PRIVATE void _ogl_shadow_mapping_process_mesh_for_shadow_map_pre_pass(scene_mesh
     }
 }
 
-/** TODO */
-#ifdef _DEBUG
-    /* TODO */
-    PRIVATE void _ogl_shadow_mapping_verify_context_type(ogl_context context)
-    {
-        ogl_context_type context_type = OGL_CONTEXT_TYPE_UNDEFINED;
-
-        ogl_context_get_property(context,
-                                 OGL_CONTEXT_PROPERTY_TYPE,
-                                &context_type);
-
-        ASSERT_DEBUG_SYNC(context_type == OGL_CONTEXT_TYPE_GL,
-                          "ogl_shadow_mapping is only supported under GL contexts")
-    }
-#endif
-
-
 /** Please see header for spec */
 PUBLIC void ogl_shadow_mapping_adjust_fragment_uber_code(ogl_shader_constructor     shader_constructor_fs,
                                                          uint32_t                   n_light,

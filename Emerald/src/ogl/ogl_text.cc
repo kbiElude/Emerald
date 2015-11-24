@@ -24,7 +24,7 @@
 #include "ogl/ogl_rendering_handler.h"
 #include "ogl/ogl_shader.h"
 #include "ogl/ogl_text.h"
-#include "raGL/raGL_buffers.h"
+#include "raGL/raGL_buffer.h"
 #include "ral/ral_context.h"
 #include "ral/ral_texture.h"
 #include "system/system_assertions.h"
@@ -60,7 +60,7 @@ typedef struct
     bool         dirty;
     unsigned int shader_storage_buffer_offset_alignment;
 
-    raGL_buffer data_buffer; /* managed by raGL_buffers */
+    ral_buffer data_buffer;
 
     float default_color[3];
     float default_scale;
@@ -73,7 +73,6 @@ typedef struct
     uint32_t                  screen_width;
     system_resizable_vector   strings;
 
-    raGL_buffers buffers;
     ral_context  context;
 
     /* GL function pointers cache */
@@ -125,11 +124,11 @@ typedef struct
 typedef struct _global_per_context_variables
 {
     ogl_program_ub draw_text_program_ub_fsdata;
-    raGL_buffer    draw_text_program_ub_fsdata_bo;
+    ral_buffer     draw_text_program_ub_fsdata_bo;
     GLuint         draw_text_program_ub_fsdata_bo_size;
     GLuint         draw_text_program_ub_fsdata_index;
     ogl_program_ub draw_text_program_ub_vsdata;
-    raGL_buffer    draw_text_program_ub_vsdata_bo;
+    ral_buffer     draw_text_program_ub_vsdata_bo;
     GLuint         draw_text_program_ub_vsdata_bo_size;
     GLuint         draw_text_program_ub_vsdata_index;
 
@@ -361,21 +360,25 @@ PRIVATE void _ogl_text_update_vram_data_storage(ogl_context context,
         if (text_ptr->data_buffer != NULL)
         {
             /* Since we're using raGL_buffers, we need to free the region first */
-            raGL_buffers_free_buffer_memory(text_ptr->buffers,
-                                            text_ptr->data_buffer);
+            ral_context_delete_buffers(text_ptr->context,
+                                       1, /* n_buffers */
+                                      &text_ptr->data_buffer);
 
             text_ptr->data_buffer = NULL;
         }
 
         alloc_info.mappability_bits = RAL_BUFFER_MAPPABILITY_NONE;
+        alloc_info.parent_buffer    = NULL;
         alloc_info.property_bits    = RAL_BUFFER_PROPERTY_SPARSE_IF_AVAILABLE_BIT;
         alloc_info.size             = text_ptr->data_buffer_contents_size;
+        alloc_info.start_offset     = 0;
         alloc_info.usage_bits       = RAL_BUFFER_USAGE_SHADER_STORAGE_BUFFER_BIT;
         alloc_info.user_queue_bits  = 0xFFFFFFFF;
 
-        alloc_result = raGL_buffers_allocate_buffer_memory_for_ral_buffer_create_info(text_ptr->buffers,
-                                                                                     &alloc_info,
-                                                                                     &text_ptr->data_buffer);
+        alloc_result = ral_context_create_buffers(text_ptr->context,
+                                                  1, /* n_buffers */
+                                                 &alloc_info,
+                                                 &text_ptr->data_buffer);
 
         ASSERT_DEBUG_SYNC(alloc_result,
                           "Text data buffer allocation failed.");
@@ -432,13 +435,17 @@ PRIVATE void _ogl_text_update_vram_data_storage(ogl_context context,
     } /* for (size_t n_text_string = 0; n_text_string < n_text_strings; ++n_text_string) */
 
     /* Upload the data */
-    GLuint   data_buffer_id           = 0;
-    uint32_t data_buffer_start_offset = -1;
+    GLuint      data_buffer_id           = 0;
+    raGL_buffer data_buffer_raGL         = NULL;
+    uint32_t    data_buffer_start_offset = -1;
 
-    raGL_buffer_get_property(text_ptr->data_buffer,
+    data_buffer_raGL = ral_context_get_buffer_gl(text_ptr->context,
+                                                 text_ptr->data_buffer);
+
+    raGL_buffer_get_property(data_buffer_raGL,
                              RAGL_BUFFER_PROPERTY_ID,
                             &data_buffer_id);
-    raGL_buffer_get_property(text_ptr->data_buffer,
+    raGL_buffer_get_property(data_buffer_raGL,
                              RAGL_BUFFER_PROPERTY_START_OFFSET,
                             &data_buffer_start_offset);
 
@@ -473,13 +480,13 @@ PRIVATE void _ogl_text_construction_callback_from_renderer(ogl_context context,
         {
             ogl_context context_gl = ral_context_get_gl_context(text_ptr->context);
 
-            _global.draw_text_fragment_shader = ogl_shader_create (context_gl,
+            _global.draw_text_fragment_shader = ogl_shader_create (text_ptr->context,
                                                                    RAL_SHADER_TYPE_FRAGMENT,
                                                                    system_hashed_ansi_string_create("ogl_text fragment shader"));
-            _global.draw_text_program         = ogl_program_create(context_gl,
+            _global.draw_text_program         = ogl_program_create(text_ptr->context,
                                                                    system_hashed_ansi_string_create("ogl_text program"),
                                                                    OGL_PROGRAM_SYNCABLE_UBS_MODE_ENABLE_PER_CONTEXT);
-            _global.draw_text_vertex_shader   = ogl_shader_create (context_gl,
+            _global.draw_text_vertex_shader   = ogl_shader_create (text_ptr->context,
                                                                    RAL_SHADER_TYPE_VERTEX,
                                                                    system_hashed_ansi_string_create("ogl_text vertex shader") );
 
@@ -643,7 +650,7 @@ PRIVATE void _ogl_text_construction_callback_from_renderer(ogl_context context,
                                         OGL_PROGRAM_UB_PROPERTY_BLOCK_DATA_SIZE,
                                        &per_context_data_ptr->draw_text_program_ub_fsdata_bo_size);
             ogl_program_ub_get_property(per_context_data_ptr->draw_text_program_ub_fsdata,
-                                        OGL_PROGRAM_UB_PROPERTY_BO,
+                                        OGL_PROGRAM_UB_PROPERTY_BUFFER_RAL,
                                        &per_context_data_ptr->draw_text_program_ub_fsdata_bo);
 
             ogl_program_ub_get_property(per_context_data_ptr->draw_text_program_ub_vsdata,
@@ -653,7 +660,7 @@ PRIVATE void _ogl_text_construction_callback_from_renderer(ogl_context context,
                                         OGL_PROGRAM_UB_PROPERTY_BLOCK_DATA_SIZE,
                                        &per_context_data_ptr->draw_text_program_ub_vsdata_bo_size);
             ogl_program_ub_get_property(per_context_data_ptr->draw_text_program_ub_vsdata,
-                                        OGL_PROGRAM_UB_PROPERTY_BO,
+                                        OGL_PROGRAM_UB_PROPERTY_BUFFER_RAL,
                                        &per_context_data_ptr->draw_text_program_ub_vsdata_bo);
 
             text_ptr->pGLUniformBlockBinding(ogl_program_get_id(_global.draw_text_program),
@@ -775,8 +782,9 @@ PRIVATE void _ogl_text_destruction_callback_from_renderer(ogl_context context,
     /* First, free all objects that are not global */
     if (text_ptr->data_buffer != NULL)
     {
-        raGL_buffers_free_buffer_memory(text_ptr->buffers,
-                                        text_ptr->data_buffer);
+        ral_context_delete_buffers(text_ptr->context,
+                                   1, /* n_buffers */
+                                  &text_ptr->data_buffer);
 
         text_ptr->data_buffer = NULL;
     }
@@ -842,11 +850,14 @@ PRIVATE void _ogl_text_destruction_callback_from_renderer(ogl_context context,
 PRIVATE void _ogl_text_draw_callback_from_renderer(ogl_context context,
                                                    void*       text)
 {
-    ogl_context_type context_type = OGL_CONTEXT_TYPE_UNDEFINED;
+    ral_backend_type backend_type = RAL_BACKEND_TYPE_UNKNOWN;
     GLuint           program_id   = ogl_program_get_id(_global.draw_text_program);
     _ogl_text*       text_ptr     = (_ogl_text*) text;
     uint32_t         n_strings    = 0;
 
+    ral_context_get_property            (text_ptr->context,
+                                         RAL_CONTEXT_PROPERTY_BACKEND,
+                                        &backend_type);
     system_resizable_vector_get_property(text_ptr->strings,
                                          SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
                                         &n_strings);
@@ -883,7 +894,7 @@ PRIVATE void _ogl_text_draw_callback_from_renderer(ogl_context context,
                                   "Per-context text variable data is unavailable");
 
                 /* Mark the text drawing program as active */
-                if (context_type == OGL_CONTEXT_TYPE_GL)
+                if (backend_type == RAL_BACKEND_TYPE_GL)
                 {
                     text_ptr->gl_pGLPolygonMode(GL_FRONT_AND_BACK,
                                                 GL_FILL);
@@ -892,13 +903,17 @@ PRIVATE void _ogl_text_draw_callback_from_renderer(ogl_context context,
                 text_ptr->pGLUseProgram (program_id);
 
                 /* Bind data BO to the 0-th SSBO BP */
-                GLuint   data_buffer_id           = 0;
-                uint32_t data_buffer_start_offset = -1;
+                GLuint      data_buffer_id           = 0;
+                raGL_buffer data_buffer_raGL         = NULL;
+                uint32_t    data_buffer_start_offset = -1;
 
-                raGL_buffer_get_property(text_ptr->data_buffer,
+                data_buffer_raGL = ral_context_get_buffer_gl(text_ptr->context,
+                                                             text_ptr->data_buffer);
+
+                raGL_buffer_get_property(data_buffer_raGL,
                                          RAGL_BUFFER_PROPERTY_ID,
                                         &data_buffer_id);
-                raGL_buffer_get_property(text_ptr->data_buffer,
+                raGL_buffer_get_property(data_buffer_raGL,
                                          RAGL_BUFFER_PROPERTY_START_OFFSET,
                                         &data_buffer_start_offset);
 
@@ -918,21 +933,28 @@ PRIVATE void _ogl_text_draw_callback_from_renderer(ogl_context context,
                                                                          _global.font_tables[text_ptr->font_table].to) );
 
                 /* Draw! */
-                GLuint   draw_text_program_ub_fsdata_bo_id           =  0;
-                uint32_t draw_text_program_ub_fsdata_bo_start_offset = -1;
-                GLuint   draw_text_program_ub_vsdata_bo_id           =  0;
-                uint32_t draw_text_program_ub_vsdata_bo_start_offset = -1;
+                GLuint      draw_text_program_ub_fsdata_bo_id           =  0;
+                raGL_buffer draw_text_program_ub_fsdata_bo_raGL         = NULL;
+                uint32_t    draw_text_program_ub_fsdata_bo_start_offset = -1;
+                GLuint      draw_text_program_ub_vsdata_bo_id           =  0;
+                raGL_buffer draw_text_program_ub_vsdata_bo_raGL         = NULL;
+                uint32_t    draw_text_program_ub_vsdata_bo_start_offset = -1;
 
-                raGL_buffer_get_property(variables_ptr->draw_text_program_ub_fsdata_bo,
+                draw_text_program_ub_fsdata_bo_raGL = ral_context_get_buffer_gl(text_ptr->context,
+                                                                                variables_ptr->draw_text_program_ub_fsdata_bo);
+                draw_text_program_ub_vsdata_bo_raGL = ral_context_get_buffer_gl(text_ptr->context,
+                                                                                variables_ptr->draw_text_program_ub_vsdata_bo);
+
+                raGL_buffer_get_property(draw_text_program_ub_fsdata_bo_raGL,
                                          RAGL_BUFFER_PROPERTY_ID,
                                         &draw_text_program_ub_fsdata_bo_id);
-                raGL_buffer_get_property(variables_ptr->draw_text_program_ub_fsdata_bo,
+                raGL_buffer_get_property(draw_text_program_ub_fsdata_bo_raGL,
                                          RAGL_BUFFER_PROPERTY_START_OFFSET,
                                         &draw_text_program_ub_fsdata_bo_start_offset);
-                raGL_buffer_get_property(variables_ptr->draw_text_program_ub_vsdata_bo,
+                raGL_buffer_get_property(draw_text_program_ub_vsdata_bo_raGL,
                                          RAGL_BUFFER_PROPERTY_ID,
                                         &draw_text_program_ub_vsdata_bo_id);
-                raGL_buffer_get_property(variables_ptr->draw_text_program_ub_vsdata_bo,
+                raGL_buffer_get_property(draw_text_program_ub_vsdata_bo_raGL,
                                          RAGL_BUFFER_PROPERTY_START_OFFSET,
                                         &draw_text_program_ub_vsdata_bo_start_offset);
 
@@ -1136,11 +1158,6 @@ PUBLIC EMERALD_API ogl_text ogl_text_create(system_hashed_ansi_string name,
         result->screen_width     = screen_width;
         result->screen_height    = screen_height;
         result->strings          = system_resizable_vector_create(4 /* default capacity */);
-
-        /* Cache the buffer manager */
-        ogl_context_get_property(context_gl,
-                                 OGL_CONTEXT_PROPERTY_BUFFERS_RAGL,
-                                &result->buffers);
 
         /* Retrieve TBO alignment requirement */
         const ogl_context_gl_limits* limits_ptr = NULL;

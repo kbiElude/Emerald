@@ -8,7 +8,7 @@
 
 #include "curve/curve_types.h"
 #include "curve_editor/curve_editor_types.h"
-#include "ogl/ogl_types.h"
+#include "ral/ral_types.h"
 
 typedef enum
 {
@@ -23,7 +23,7 @@ PUBLIC EMERALD_API void curve_editor_curve_window_hide(curve_editor_curve_window
 PUBLIC EMERALD_API void curve_editor_curve_window_redraw(curve_editor_curve_window);
 
 /** TODO */
-PUBLIC EMERALD_API curve_editor_curve_window curve_editor_curve_window_show(ogl_context,
+PUBLIC EMERALD_API curve_editor_curve_window curve_editor_curve_window_show(ral_context,
                                                                             curve_container,
                                                                             PFNONCURVEWINDOWRELEASECALLBACKHANDLERPROC,
                                                                             void*,

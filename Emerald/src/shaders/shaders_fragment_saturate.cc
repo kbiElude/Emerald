@@ -62,7 +62,7 @@ PRIVATE void _shaders_fragment_saturate_release(void* ptr)
 
 
 /** Please see header for specification */
-PUBLIC EMERALD_API shaders_fragment_saturate shaders_fragment_saturate_create(ogl_context               context,
+PUBLIC EMERALD_API shaders_fragment_saturate shaders_fragment_saturate_create(ral_context               context,
                                                                               system_hashed_ansi_string name)
 {
     _shaders_fragment_saturate* result_object = NULL;

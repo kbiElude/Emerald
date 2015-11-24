@@ -1187,7 +1187,7 @@ PRIVATE void _mesh_marchingcubes_init_polygonizer_po(_mesh_marchingcubes* mesh_p
     ogl_shader                cs              = NULL;
     system_hashed_ansi_string polygonizer_has = _mesh_marchingcubes_get_polygonizer_name(mesh_ptr);
 
-    cs = ogl_shader_create(ral_context_get_gl_context(mesh_ptr->context),
+    cs = ogl_shader_create(mesh_ptr->context,
                            RAL_SHADER_TYPE_COMPUTE,
                            system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(polygonizer_has),
                                                                                    " CS") );
@@ -1205,7 +1205,7 @@ PRIVATE void _mesh_marchingcubes_init_polygonizer_po(_mesh_marchingcubes* mesh_p
     token_value_array_ptr = NULL;
 
     /* Prepare & link the program object */
-    mesh_ptr->po_scalar_field_polygonizer = ogl_program_create(ral_context_get_gl_context(mesh_ptr->context),
+    mesh_ptr->po_scalar_field_polygonizer = ogl_program_create(mesh_ptr->context,
                                                                system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(polygonizer_has),
                                                                                                                                                  " PO"),
                                                                OGL_PROGRAM_SYNCABLE_UBS_MODE_ENABLE_GLOBAL);

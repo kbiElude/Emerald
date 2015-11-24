@@ -11,7 +11,7 @@
 #define SHADERS_FRAGMENT_LAPLACIAN_H
 
 #include "gfx/gfx_types.h"
-#include "ogl/ogl_types.h"
+#include "ral/ral_types.h"
 
 REFCOUNT_INSERT_DECLARATIONS(shaders_fragment_laplacian,
                              shaders_fragment_laplacian)
@@ -24,7 +24,7 @@ REFCOUNT_INSERT_DECLARATIONS(shaders_fragment_laplacian,
  * 
  *  @return shaders_fragment_laplacian instance if successful, NULL otherwise.
  */
-PUBLIC EMERALD_API shaders_fragment_laplacian shaders_fragment_laplacian_create(ogl_context,
+PUBLIC EMERALD_API shaders_fragment_laplacian shaders_fragment_laplacian_create(ral_context,
                                                                                 system_hashed_ansi_string name);
 
 /** Retrieves ogl_shader object associated with the instance. Do not release the object or modify it in any way.

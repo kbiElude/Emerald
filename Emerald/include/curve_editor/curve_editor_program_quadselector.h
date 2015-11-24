@@ -8,7 +8,7 @@
 
 #include "curve/curve_types.h"
 #include "curve_editor/curve_editor_types.h"
-#include "ogl/ogl_types.h"
+#include "ral/ral_types.h"
 
 
 typedef enum
@@ -27,7 +27,7 @@ REFCOUNT_INSERT_DECLARATIONS(curve_editor_program_quadselector,
 
 
 /** TODO */
-PUBLIC curve_editor_program_quadselector curve_editor_program_quadselector_create(ogl_context               context,
+PUBLIC curve_editor_program_quadselector curve_editor_program_quadselector_create(ral_context               context,
                                                                                   system_hashed_ansi_string name);
 
 /** TODO */
@@ -36,7 +36,7 @@ PUBLIC void curve_editor_program_quadselector_set_property(curve_editor_program_
                                                            const void*                                data);
 
 /** TODO */
-PUBLIC void curve_editor_program_quadselector_use(ogl_context                       context,
+PUBLIC void curve_editor_program_quadselector_use(ral_context                       context,
                                                   curve_editor_program_quadselector quadselector);
 
 #endif /* CURVE_EDITOR_PROGRAM_QUADSELECTOR_H */

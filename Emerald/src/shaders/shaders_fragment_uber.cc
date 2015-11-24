@@ -10,6 +10,7 @@
 #include "ogl/ogl_shaders.h"
 #include "ogl/ogl_shader_constructor.h"
 #include "ogl/ogl_shadow_mapping.h"
+#include "ral/ral_context.h"
 #include "scene/scene_light.h"
 #include "shaders/shaders_fragment_uber.h"
 #include "system/system_assertions.h"
@@ -1284,7 +1285,7 @@ PUBLIC EMERALD_API shaders_fragment_uber_item_id shaders_fragment_uber_add_light
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API shaders_fragment_uber shaders_fragment_uber_create(ogl_context                context,
+PUBLIC EMERALD_API shaders_fragment_uber shaders_fragment_uber_create(ral_context                context,
                                                                       system_hashed_ansi_string  name)
 {
     ogl_shader              embedded_shader               = NULL;
@@ -1300,7 +1301,7 @@ PUBLIC EMERALD_API shaders_fragment_uber shaders_fragment_uber_create(ogl_contex
                                                                                                                  " fragment uber");
     ogl_shaders               shaders                  = NULL;
 
-    ogl_context_get_property(context,
+    ogl_context_get_property(ral_context_get_gl_context(context),
                              OGL_CONTEXT_PROPERTY_SHADERS,
                             &shaders);
 

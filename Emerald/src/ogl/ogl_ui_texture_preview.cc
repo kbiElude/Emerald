@@ -142,23 +142,21 @@ PRIVATE void _ogl_ui_texture_preview_init_program(ogl_ui                   ui,
 {
     /* Create all objects */
     ral_context context         = NULL;
-    ogl_context context_gl      = NULL;
     ogl_shader  fragment_shader = NULL;
     ogl_shader  vertex_shader   = NULL;
 
-    context    = ogl_ui_get_context(ui);
-    context_gl = ral_context_get_gl_context(context);
+    context = ogl_ui_get_context(ui);
 
-    fragment_shader = ogl_shader_create(context_gl,
+    fragment_shader = ogl_shader_create(context,
                                         RAL_SHADER_TYPE_FRAGMENT,
                                         system_hashed_ansi_string_create_by_merging_two_strings(_ogl_ui_texture_preview_get_program_name(texture_preview_ptr->preview_type),
                                                                                                 " fragment shader") );
-    vertex_shader   = ogl_shader_create(context_gl,
+    vertex_shader   = ogl_shader_create(context,
                                         RAL_SHADER_TYPE_VERTEX,
                                         system_hashed_ansi_string_create_by_merging_two_strings(_ogl_ui_texture_preview_get_program_name(texture_preview_ptr->preview_type),
                                                                                                 " vertex shader") );
 
-    texture_preview_ptr->program = ogl_program_create(context_gl,
+    texture_preview_ptr->program = ogl_program_create(context,
                                                       system_hashed_ansi_string_create(_ogl_ui_texture_preview_get_program_name(texture_preview_ptr->preview_type)),
                                                       OGL_PROGRAM_SYNCABLE_UBS_MODE_ENABLE_GLOBAL);
 

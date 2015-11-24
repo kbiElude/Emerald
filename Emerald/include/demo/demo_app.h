@@ -10,15 +10,6 @@
 
 typedef enum
 {
-
-    /* ogl_context_type, settable (before calling run() ).
-     *
-     * Defines type of the rendering context to set up for the demo.
-     *
-     * Default value: OGL_CONTEXT_TYPE_GL
-     **/
-    DEMO_APP_PROPERTY_CONTEXT_TYPE,
-
     /* bool, settable (before calling run() ).
      *
      * Defines whether the demo should run in full-screen or not.

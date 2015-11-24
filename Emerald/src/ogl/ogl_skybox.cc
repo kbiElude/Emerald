@@ -117,7 +117,7 @@ typedef struct
     GLuint         mv_ub_offset;
     ogl_program    program;
     ogl_program_ub program_ub;
-    raGL_buffer    program_ub_bo;
+    ral_buffer     program_ub_bo;
     unsigned int   program_ub_bo_size;
     GLuint         skybox_uniform_location;
 
@@ -252,7 +252,7 @@ PRIVATE void        _ogl_skybox_init_ub                 (_ogl_skybox*           
 PRIVATE void _ogl_skybox_init_ogl_skybox_spherical_projection_texture(_ogl_skybox* skybox_ptr)
 {
     /* Initialize the vertex shader. */
-    ogl_shader vertex_shader = ogl_shader_create(ral_context_get_gl_context(skybox_ptr->context),
+    ogl_shader vertex_shader = ogl_shader_create(skybox_ptr->context,
                                                  RAL_SHADER_TYPE_VERTEX,
                                                  system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(skybox_ptr->name),
                                                                                                          " vertex shader") );
@@ -263,7 +263,7 @@ PRIVATE void _ogl_skybox_init_ogl_skybox_spherical_projection_texture(_ogl_skybo
                         system_hashed_ansi_string_create(vertex_shader_preview) );
 
     /* Initialize the fragment shader */
-    ogl_shader fragment_shader = ogl_shader_create(ral_context_get_gl_context(skybox_ptr->context),
+    ogl_shader fragment_shader = ogl_shader_create(skybox_ptr->context,
                                                    RAL_SHADER_TYPE_FRAGMENT,
                                                    system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(skybox_ptr->name),
                                                                                                            " fragment shader") );
@@ -274,7 +274,7 @@ PRIVATE void _ogl_skybox_init_ogl_skybox_spherical_projection_texture(_ogl_skybo
                         system_hashed_ansi_string_create(fragment_shader_spherical_texture_preview) );
 
     /* Create a program */
-    skybox_ptr->program = ogl_program_create(ral_context_get_gl_context(skybox_ptr->context),
+    skybox_ptr->program = ogl_program_create(skybox_ptr->context,
                                              system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(skybox_ptr->name),
                                                                                                      " program"),
                                              OGL_PROGRAM_SYNCABLE_UBS_MODE_ENABLE_GLOBAL);
@@ -384,7 +384,7 @@ PRIVATE void _ogl_skybox_init_ub(_ogl_skybox* skybox_ptr)
                                 OGL_PROGRAM_UB_PROPERTY_BLOCK_DATA_SIZE,
                                &skybox_ptr->program_ub_bo_size);
     ogl_program_ub_get_property(skybox_ptr->program_ub,
-                                OGL_PROGRAM_UB_PROPERTY_BO,
+                                OGL_PROGRAM_UB_PROPERTY_BUFFER_RAL,
                                &skybox_ptr->program_ub_bo);
 }
 
@@ -525,13 +525,17 @@ PUBLIC EMERALD_API void ogl_skybox_draw(ogl_skybox       skybox,
     } /* if (skybox_ptr->type == OGL_SKYBOX_SPHERICAL_PROJECTION_TEXTURE) */
 
     /* Draw. Do not modify depth information */
-    GLuint   program_ub_bo_id           = 0;
-    uint32_t program_ub_bo_start_offset = -1;
+    GLuint      program_ub_bo_id           = 0;
+    raGL_buffer program_ub_bo_raGL         = NULL;
+    uint32_t    program_ub_bo_start_offset = -1;
 
-    raGL_buffer_get_property(skybox_ptr->program_ub_bo,
+    program_ub_bo_raGL = ral_context_get_buffer_gl(skybox_ptr->context,
+                                                   skybox_ptr->program_ub_bo);
+
+    raGL_buffer_get_property(program_ub_bo_raGL,
                              RAGL_BUFFER_PROPERTY_ID,
                             &program_ub_bo_id);
-    raGL_buffer_get_property(skybox_ptr->program_ub_bo,
+    raGL_buffer_get_property(program_ub_bo_raGL,
                              RAGL_BUFFER_PROPERTY_START_OFFSET,
                             &program_ub_bo_start_offset);
 

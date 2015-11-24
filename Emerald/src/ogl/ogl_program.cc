@@ -11,6 +11,7 @@
 #include "ogl/ogl_program_ub.h"
 #include "ogl/ogl_programs.h"
 #include "ogl/ogl_shader.h"
+#include "ral/ral_context.h"
 #include "system/system_assertions.h"
 #include "system/system_file_serializer.h"
 #include "system/system_hash64.h"
@@ -30,7 +31,7 @@ typedef struct
     system_resizable_vector       active_attributes;
     system_resizable_vector       active_uniforms;
     system_resizable_vector       attached_shaders;
-    ogl_context                   context; /* DO NOT retain - context owns the instance! */
+    ral_context                   context; /* DO NOT retain - context owns the instance! */
     GLuint                        id;
     bool                          link_status;
     system_hashed_ansi_string     name;
@@ -269,7 +270,7 @@ PRIVATE void _ogl_program_init_blocks_for_context(ogl_program_block_type block_t
      */
     bool is_intel_driver = false;
 
-    ogl_context_get_property(program_ptr->context,
+    ogl_context_get_property(ral_context_get_gl_context(program_ptr->context),
                              OGL_CONTEXT_PROPERTY_IS_INTEL_DRIVER,
                             &is_intel_driver);
 
@@ -338,7 +339,7 @@ PRIVATE void _ogl_program_init_blocks_for_context(ogl_program_block_type block_t
         {
             case OGL_PROGRAM_BLOCK_TYPE_SHADER_STORAGE_BUFFER:
             {
-                ogl_program_ssb new_ssb = ogl_program_ssb_create(context,
+                ogl_program_ssb new_ssb = ogl_program_ssb_create(program_ptr->context,
                                                                  (ogl_program) program_ptr,
                                                                  n_active_block,
                                                                  block_name_has);
@@ -891,7 +892,7 @@ PRIVATE void _ogl_program_release(void* program)
     /* Unregister the PO from the registry */
     ogl_programs programs = NULL;
 
-    ogl_context_get_property(program_ptr->context,
+    ogl_context_get_property(ral_context_get_gl_context(program_ptr->context),
                              OGL_CONTEXT_PROPERTY_PROGRAMS,
                             &programs);
 
@@ -911,7 +912,7 @@ PRIVATE void _ogl_program_release(void* program)
     }
 
     /* Do releasing stuff in GL context first */
-    ogl_context_request_callback_from_context_thread(program_ptr->context,
+    ogl_context_request_callback_from_context_thread(ral_context_get_gl_context(program_ptr->context),
                                                      _ogl_program_release_callback,
                                                      program_ptr);
 
@@ -1484,7 +1485,7 @@ PUBLIC EMERALD_API bool ogl_program_attach_shader(ogl_program program,
         callback_argument.program_ptr = program_ptr;
         callback_argument.shader      = shader;
 
-        ogl_context_request_callback_from_context_thread(program_ptr->context,
+        ogl_context_request_callback_from_context_thread(ral_context_get_gl_context(program_ptr->context),
                                                          _ogl_program_attach_shader_callback,
                                                         &callback_argument);
 
@@ -1500,7 +1501,7 @@ PUBLIC EMERALD_API bool ogl_program_attach_shader(ogl_program program,
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API ogl_program ogl_program_create(ogl_context                   context,
+PUBLIC EMERALD_API ogl_program ogl_program_create(ral_context                   context,
                                                   system_hashed_ansi_string     name,
                                                   ogl_program_syncable_ubs_mode syncable_ubs_mode)
 {
@@ -1536,17 +1537,17 @@ PUBLIC EMERALD_API ogl_program ogl_program_create(ogl_context                   
         result->tf_varyings                   = NULL;
 
         /* Init GL entry-point cache */
-        ogl_context_type context_type = OGL_CONTEXT_TYPE_UNDEFINED;
+        ral_backend_type backend_type = RAL_BACKEND_TYPE_UNKNOWN;
 
-        ogl_context_get_property(context,
-                                 OGL_CONTEXT_PROPERTY_TYPE,
-                                &context_type);
+        ral_context_get_property(context,
+                                 RAL_CONTEXT_PROPERTY_BACKEND_TYPE,
+                                &backend_type);
 
-        if (context_type == OGL_CONTEXT_TYPE_ES)
+        if (backend_type == RAL_BACKEND_TYPE_ES)
         {
             const ogl_context_es_entrypoints* entry_points = NULL;
 
-            ogl_context_get_property(context,
+            ogl_context_get_property(ral_context_get_gl_context(context),
                                      OGL_CONTEXT_PROPERTY_ENTRYPOINTS_ES,
                                     &entry_points);
 
@@ -1574,12 +1575,12 @@ PUBLIC EMERALD_API ogl_program ogl_program_create(ogl_context                   
         }
         else
         {
-            ASSERT_DEBUG_SYNC(context_type == OGL_CONTEXT_TYPE_GL,
+            ASSERT_DEBUG_SYNC(backend_type == RAL_BACKEND_TYPE_GL,
                               "Unrecognized context type");
 
             const ogl_context_gl_entrypoints* entry_points = NULL;
 
-            ogl_context_get_property(context,
+            ogl_context_get_property(ral_context_get_gl_context(context),
                                      OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
                                     &entry_points);
 
@@ -1607,7 +1608,7 @@ PUBLIC EMERALD_API ogl_program ogl_program_create(ogl_context                   
         }
 
         /* Carry on */
-        ogl_context_request_callback_from_context_thread(context,
+        ogl_context_request_callback_from_context_thread(ral_context_get_gl_context(context),
                                                          _ogl_program_create_callback,
                                                          result);
 
@@ -1616,7 +1617,7 @@ PUBLIC EMERALD_API ogl_program ogl_program_create(ogl_context                   
          */
         ogl_programs context_programs = NULL;
 
-        ogl_context_get_property(context,
+        ogl_context_get_property(ral_context_get_gl_context(context),
                                  OGL_CONTEXT_PROPERTY_PROGRAMS,
                                 &context_programs);
 
@@ -1648,7 +1649,7 @@ PUBLIC EMERALD_API bool ogl_program_detach_shader(ogl_program program,
             callback_argument.program_ptr = program_ptr;
             callback_argument.shader      = shader;
 
-            ogl_context_request_callback_from_context_thread(program_ptr->context,
+            ogl_context_request_callback_from_context_thread(ral_context_get_gl_context(program_ptr->context),
                                                              _ogl_program_detach_shader_callback,
                                                             &callback_argument);
 
@@ -2214,7 +2215,7 @@ PUBLIC EMERALD_API bool ogl_program_link(ogl_program program)
         if (all_shaders_compiled)
         {
             /* Let's go. */
-            ogl_context_request_callback_from_context_thread(program_ptr->context,
+            ogl_context_request_callback_from_context_thread(ral_context_get_gl_context(program_ptr->context),
                                                              _ogl_program_link_callback,
                                                              program);
 

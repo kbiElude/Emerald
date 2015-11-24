@@ -48,7 +48,7 @@ typedef struct
     ogl_program    operator_program;
     GLuint         operator_program_alpha_ub_offset;
     ogl_program_ub operator_program_ub;
-    raGL_buffer    operator_program_ub_bo;
+    ral_buffer     operator_program_ub_bo;
     GLuint         operator_program_ub_bo_size;
     ogl_shader     operator_fragment_shader;
     GLuint         operator_program_luminance_texture_location;
@@ -249,19 +249,19 @@ PRIVATE void _create_callback(ogl_context context,
                                     &data->data_ptr->dst_framebuffer_id);
 
     /* Create RGB=>Yxy fragment shader */
-    data->data_ptr->rgb_to_Yxy_fragment_shader = shaders_fragment_rgb_to_Yxy_create(context,
+    data->data_ptr->rgb_to_Yxy_fragment_shader = shaders_fragment_rgb_to_Yxy_create(data->data_ptr->context,
                                                                                     system_hashed_ansi_string_create_by_merging_two_strings("Reinhard Tonemap RGB2YXY ",
                                                                                                                                             system_hashed_ansi_string_get_buffer(data->name) ),
                                                                                     true);
 
     /* Create fullscreen vertex shader */
-    data->data_ptr->fullscreen_vertex_shader = shaders_vertex_fullscreen_create(context,
+    data->data_ptr->fullscreen_vertex_shader = shaders_vertex_fullscreen_create(data->data_ptr->context,
                                                                                 true,
                                                                                 system_hashed_ansi_string_create_by_merging_two_strings("Reinhard Tonemap Fullscreen ",
                                                                                                                                         system_hashed_ansi_string_get_buffer(data->name) ));
 
     /* Create RGB=>Yxy program */
-    data->data_ptr->rgb_to_Yxy_program = ogl_program_create(context,
+    data->data_ptr->rgb_to_Yxy_program = ogl_program_create(data->data_ptr->context,
                                                             system_hashed_ansi_string_create_by_merging_two_strings("Reinhard Tonemap RGB2YXY ",
                                                                                                                     system_hashed_ansi_string_get_buffer(data->name) ));
 
@@ -280,7 +280,7 @@ PRIVATE void _create_callback(ogl_context context,
     data->data_ptr->rgb_to_Yxy_program_tex_uniform_location = tex_uniform_descriptor->location;
 
     /* Create operator fragment shader */
-    data->data_ptr->operator_fragment_shader = ogl_shader_create(context,
+    data->data_ptr->operator_fragment_shader = ogl_shader_create(data->data_ptr->context,
                                                                  RAL_SHADER_TYPE_FRAGMENT,
                                                                  system_hashed_ansi_string_create_by_merging_two_strings("Reinhard Tonemap operator ",
                                                                                                                          system_hashed_ansi_string_get_buffer(data->name) ));
@@ -289,7 +289,7 @@ PRIVATE void _create_callback(ogl_context context,
                         reinhard_tonemap_fragment_shader_body);
 
     /* Create operator program */
-    data->data_ptr->operator_program = ogl_program_create(context,
+    data->data_ptr->operator_program = ogl_program_create(data->data_ptr->context,
                                                           system_hashed_ansi_string_create_by_merging_two_strings("Reinhard Tonemap operator ",
                                                                                                                   system_hashed_ansi_string_get_buffer(data->name) ),
                                                           OGL_PROGRAM_SYNCABLE_UBS_MODE_ENABLE_GLOBAL);
@@ -308,7 +308,7 @@ PRIVATE void _create_callback(ogl_context context,
                                           OGL_PROGRAM_UB_PROPERTY_BLOCK_DATA_SIZE,
                                          &data->data_ptr->operator_program_ub_bo_size);
     ogl_program_ub_get_property          (data->data_ptr->operator_program_ub,
-                                          OGL_PROGRAM_UB_PROPERTY_BO,
+                                          OGL_PROGRAM_UB_PROPERTY_BUFFER_RAL,
                                          &data->data_ptr->operator_program_ub_bo);
 
     /* Retrieve uniform properties */
@@ -637,13 +637,17 @@ PUBLIC EMERALD_API void postprocessing_reinhard_tonemap_execute(postprocessing_r
                               tonemapper_ptr->texture_width,
                               tonemapper_ptr->texture_height);
 
-    GLuint   operator_program_ub_bo_id           = 0;
-    uint32_t operator_program_ub_bo_start_offset = -1;
+    GLuint      operator_program_ub_bo_id           = 0;
+    raGL_buffer operator_program_ub_bo_raGL         = NULL;
+    uint32_t    operator_program_ub_bo_start_offset = -1;
 
-    raGL_buffer_get_property(tonemapper_ptr->operator_program_ub_bo,
+    operator_program_ub_bo_raGL = ral_context_get_buffer_gl(tonemapper_ptr->context,
+                                                            tonemapper_ptr->operator_program_ub_bo);
+
+    raGL_buffer_get_property(operator_program_ub_bo_raGL,
                              RAGL_BUFFER_PROPERTY_ID,
                             &operator_program_ub_bo_id);
-    raGL_buffer_get_property(tonemapper_ptr->operator_program_ub_bo,
+    raGL_buffer_get_property(operator_program_ub_bo_raGL,
                              RAGL_BUFFER_PROPERTY_START_OFFSET,
                             &operator_program_ub_bo_start_offset);
 

@@ -22,6 +22,7 @@
 #include "ogl/ogl_text.h"
 #include "ogl/ogl_types.h"
 #include "raGL/raGL_buffer.h"
+#include "ral/ral_context.h"
 #include "shaders/shaders_vertex_combinedmvp_simplified_twopoint.h"
 #include "shaders/shaders_vertex_fullscreen.h"
 #include "system/system_assertions.h"
@@ -95,7 +96,7 @@ typedef struct
 typedef struct
 {
 
-    ogl_context               context;
+    ral_context               context;
     curve_container           curve;
     system_hashed_ansi_string name;
     curve_editor_curve_window owner;
@@ -108,11 +109,11 @@ typedef struct
     GLuint         static_color_program_color_ub_offset;
     GLuint         static_color_program_mvp_ub_offset;
     ogl_program_ub static_color_program_ub_fs;
-    raGL_buffer    static_color_program_ub_fs_bo;
+    ral_buffer     static_color_program_ub_fs_bo;
     GLuint         static_color_program_ub_fs_bo_size;
     GLuint         static_color_program_ub_fs_bp;
     ogl_program_ub static_color_program_ub_vs;
-    raGL_buffer    static_color_program_ub_vs_bo;
+    ral_buffer     static_color_program_ub_vs_bo;
     GLuint         static_color_program_ub_vs_bo_size;
     GLuint         static_color_program_ub_vs_bp;
 
@@ -212,11 +213,11 @@ system_hashed_ansi_string _static_color_fragment_shader_body = system_hashed_ans
                                                                                                 );
 
 /* Forward declarations */
-PRIVATE void _curve_editor_curve_window_renderer_draw_curve                (ogl_context,
+PRIVATE void _curve_editor_curve_window_renderer_draw_curve                (ral_context,
                                                                             curve_editor_curve_window_renderer,
                                                                             const ogl_context_gl_entrypoints*,
                                                                             int*);
-PRIVATE void _curve_editor_curve_window_renderer_draw_curve_background     (ogl_context,
+PRIVATE void _curve_editor_curve_window_renderer_draw_curve_background     (ral_context,
                                                                             _curve_editor_curve_window_renderer*,
                                                                             const ogl_context_gl_entrypoints*,
                                                                             float,
@@ -224,14 +225,14 @@ PRIVATE void _curve_editor_curve_window_renderer_draw_curve_background     (ogl_
                                                                             const float*,
                                                                             const char*,
                                                                             int*);
-PRIVATE void _curve_editor_curve_window_renderer_draw_curve_lerp_px        (ogl_context,
+PRIVATE void _curve_editor_curve_window_renderer_draw_curve_lerp_px        (ral_context,
                                                                             const ogl_context_gl_entrypoints*,
                                                                             _curve_editor_curve_window_renderer*,
                                                                             float,
                                                                             float,
                                                                             float,
                                                                             float);
-PRIVATE void _curve_editor_curve_window_renderer_draw_curve_lerp_segment   (ogl_context,
+PRIVATE void _curve_editor_curve_window_renderer_draw_curve_lerp_segment   (ral_context,
                                                                             _curve_editor_curve_window_renderer*,
                                                                             const ogl_context_gl_entrypoints*,
                                                                             curve_container,
@@ -241,7 +242,7 @@ PRIVATE void _curve_editor_curve_window_renderer_draw_curve_lerp_segment   (ogl_
                                                                             float,
                                                                             float,
                                                                             int*);
-PRIVATE void _curve_editor_curve_window_renderer_draw_curve_lerp_ss        (ogl_context,
+PRIVATE void _curve_editor_curve_window_renderer_draw_curve_lerp_ss        (ral_context,
                                                                             const ogl_context_gl_entrypoints*,
                                                                             _curve_editor_curve_window_renderer*,
                                                                             float,
@@ -249,7 +250,7 @@ PRIVATE void _curve_editor_curve_window_renderer_draw_curve_lerp_ss        (ogl_
                                                                             float,
                                                                             float);
 PRIVATE void _curve_editor_curve_window_renderer_draw_curve_node_ss        (_curve_editor_curve_window_renderer*,
-                                                                            ogl_context,
+                                                                            ral_context,
                                                                             const ogl_context_gl_entrypoints*,
                                                                             float,
                                                                             float,
@@ -258,13 +259,13 @@ PRIVATE void _curve_editor_curve_window_renderer_draw_curve_node_ss        (_cur
                                                                             bool,
                                                                             curve_segment_id,
                                                                             curve_segment_node_id);
-PRIVATE void _curve_editor_curve_window_renderer_draw_curve_static_px      (ogl_context,
+PRIVATE void _curve_editor_curve_window_renderer_draw_curve_static_px      (ral_context,
                                                                             const ogl_context_gl_entrypoints*,
                                                                             _curve_editor_curve_window_renderer*,
                                                                             float,
                                                                             float,
                                                                             float);
-PRIVATE void _curve_editor_curve_window_renderer_draw_curve_static_segment (ogl_context,
+PRIVATE void _curve_editor_curve_window_renderer_draw_curve_static_segment (ral_context,
                                                                             _curve_editor_curve_window_renderer*,
                                                                             const ogl_context_gl_entrypoints*,
                                                                             curve_container,
@@ -274,13 +275,13 @@ PRIVATE void _curve_editor_curve_window_renderer_draw_curve_static_segment (ogl_
                                                                             float,
                                                                             float,
                                                                             int*);
-PRIVATE void _curve_editor_curve_window_renderer_draw_curve_static_ss      (ogl_context,
+PRIVATE void _curve_editor_curve_window_renderer_draw_curve_static_ss      (ral_context,
                                                                             const ogl_context_gl_entrypoints*,
                                                                             _curve_editor_curve_window_renderer*,
                                                                             float,
                                                                             float,
                                                                             float);
-PRIVATE void _curve_editor_curve_window_renderer_draw_curve_tcb_segment    (ogl_context,
+PRIVATE void _curve_editor_curve_window_renderer_draw_curve_tcb_segment    (ral_context,
                                                                             _curve_editor_curve_window_renderer*,
                                                                             const ogl_context_gl_entrypoints*,
                                                                             curve_container,
@@ -292,7 +293,7 @@ PRIVATE void _curve_editor_curve_window_renderer_draw_curve_tcb_segment    (ogl_
                                                                             int*);
 PRIVATE void _curve_editor_curve_window_renderer_init_globals              (ogl_context,
                                                                             void* not_used);
-PRIVATE void _curve_editor_curve_window_renderer_init_tcb_segment_rendering(ogl_context,
+PRIVATE void _curve_editor_curve_window_renderer_init_tcb_segment_rendering(ral_context,
                                                                             _curve_editor_curve_window_renderer*,
                                                                             const ogl_context_gl_entrypoints*,
                                                                             curve_container,
@@ -510,7 +511,7 @@ PRIVATE void _curve_editor_curve_window_renderer_deinit_globals()
 }
 
 /** TODO */
-PRIVATE void _curve_editor_curve_window_renderer_draw_curve(ogl_context                        context,
+PRIVATE void _curve_editor_curve_window_renderer_draw_curve(ral_context                        context,
                                                             curve_editor_curve_window_renderer descriptor,
                                                             const ogl_context_gl_entrypoints*  entry_points,
                                                             int*                               n_strings_used_ptr)
@@ -764,7 +765,7 @@ PRIVATE void _curve_editor_curve_window_renderer_draw_curve(ogl_context         
 }
 
 /** TODO */
-PRIVATE void _curve_editor_curve_window_renderer_draw_curve_background(ogl_context                          context,
+PRIVATE void _curve_editor_curve_window_renderer_draw_curve_background(ral_context                          context,
                                                                        _curve_editor_curve_window_renderer* descriptor_ptr,
                                                                        const ogl_context_gl_entrypoints*    entry_points,
                                                                        float                                start_ss,
@@ -846,7 +847,7 @@ PRIVATE void _curve_editor_curve_window_renderer_draw_curve_background(ogl_conte
 }
 
 /** TODO */
-PRIVATE void _curve_editor_curve_window_renderer_draw_curve_lerp_px(ogl_context                          context,
+PRIVATE void _curve_editor_curve_window_renderer_draw_curve_lerp_px(ral_context                          context,
                                                                     const ogl_context_gl_entrypoints*    entry_points,
                                                                     _curve_editor_curve_window_renderer* descriptor_ptr,
                                                                     float                                start_curve_value,
@@ -894,7 +895,7 @@ PRIVATE void _curve_editor_curve_window_renderer_draw_curve_lerp_px(ogl_context 
 }
 
 /** TODO */
-PRIVATE void _curve_editor_curve_window_renderer_draw_curve_lerp_ss(ogl_context                          context,
+PRIVATE void _curve_editor_curve_window_renderer_draw_curve_lerp_ss(ral_context                          context,
                                                                     const ogl_context_gl_entrypoints*    entry_points,
                                                                     _curve_editor_curve_window_renderer* descriptor_ptr,
                                                                     float                                start_curve_value,
@@ -926,7 +927,7 @@ PRIVATE void _curve_editor_curve_window_renderer_draw_curve_lerp_ss(ogl_context 
 }
 
 /** TODO */
-PRIVATE void _curve_editor_curve_window_renderer_draw_curve_lerp_segment(ogl_context                          context,
+PRIVATE void _curve_editor_curve_window_renderer_draw_curve_lerp_segment(ral_context                          context,
                                                                          _curve_editor_curve_window_renderer* descriptor_ptr,
                                                                          const ogl_context_gl_entrypoints*    entry_points,
                                                                          curve_container                      curve,
@@ -1065,7 +1066,7 @@ PRIVATE void _curve_editor_curve_window_renderer_draw_curve_lerp_segment(ogl_con
 
 /** TODO */
 PRIVATE void _curve_editor_curve_window_renderer_draw_curve_node_ss(_curve_editor_curve_window_renderer* descriptor_ptr,
-                                                                    ogl_context                          context,
+                                                                    ral_context                          context,
                                                                     const ogl_context_gl_entrypoints*    entry_points,
                                                                     float                                node_x_start,
                                                                     float                                node_x_end,
@@ -1113,7 +1114,7 @@ PRIVATE void _curve_editor_curve_window_renderer_draw_curve_node_ss(_curve_edito
 }
 
 /** TODO */
-PRIVATE void _curve_editor_curve_window_renderer_draw_curve_static_px(ogl_context                          context,
+PRIVATE void _curve_editor_curve_window_renderer_draw_curve_static_px(ral_context                          context,
                                                                       const ogl_context_gl_entrypoints*    entry_points,
                                                                       _curve_editor_curve_window_renderer* descriptor_ptr,
                                                                       float                                curve_value,
@@ -1156,7 +1157,7 @@ PRIVATE void _curve_editor_curve_window_renderer_draw_curve_static_px(ogl_contex
 }
 
 /** TODO */
-PRIVATE void _curve_editor_curve_window_renderer_draw_curve_static_ss(ogl_context                          context,
+PRIVATE void _curve_editor_curve_window_renderer_draw_curve_static_ss(ral_context                          context,
                                                                       const ogl_context_gl_entrypoints*    entry_points,
                                                                       _curve_editor_curve_window_renderer* descriptor_ptr,
                                                                       float                                curve_value,
@@ -1187,7 +1188,7 @@ PRIVATE void _curve_editor_curve_window_renderer_draw_curve_static_ss(ogl_contex
 }
 
 /** TODO */
-PRIVATE void _curve_editor_curve_window_renderer_draw_curve_static_segment(ogl_context                          context,
+PRIVATE void _curve_editor_curve_window_renderer_draw_curve_static_segment(ral_context                          context,
                                                                            _curve_editor_curve_window_renderer* descriptor_ptr,
                                                                            const ogl_context_gl_entrypoints*    entry_points,
                                                                            curve_container                      curve,
@@ -1294,7 +1295,7 @@ PRIVATE void _curve_editor_curve_window_renderer_draw_curve_static_segment(ogl_c
 }
 
 /** TODO */
-PRIVATE void _curve_editor_curve_window_renderer_draw_curve_tcb_segment(ogl_context                          context,
+PRIVATE void _curve_editor_curve_window_renderer_draw_curve_tcb_segment(ral_context                          context,
                                                                         _curve_editor_curve_window_renderer* descriptor_ptr,
                                                                         const ogl_context_gl_entrypoints*    entry_points,
                                                                         curve_container                      curve,
@@ -1691,7 +1692,7 @@ PRIVATE bool _curve_editor_curve_window_renderer_init(_curve_editor_curve_window
                                                                                               0); /* stencil_buffer_bits */
 
     descriptor->window = system_window_create_by_replacing_window(full_name,
-                                                                  OGL_CONTEXT_TYPE_GL,
+                                                                  RAL_BACKEND_TYPE_GL,
                                                                   true, /* vsync_enabled */
                                                                   descriptor->view_window_handle,
                                                                   window_pf);
@@ -1784,7 +1785,7 @@ PRIVATE bool _curve_editor_curve_window_renderer_init(_curve_editor_curve_window
     {
         ogl_rendering_handler_request_callback_from_context_thread(descriptor->rendering_handler,
                                                                    _curve_editor_curve_window_renderer_init_globals,
-                                                                   NULL);
+                                                                   descriptor->context);
     }
 
     /* Render one frame */
@@ -1797,13 +1798,14 @@ PRIVATE bool _curve_editor_curve_window_renderer_init(_curve_editor_curve_window
 }
 
 /** TODO */
-PRIVATE void _curve_editor_curve_window_renderer_init_descriptor(     _curve_editor_curve_window_renderer* descriptor,
-                                                                      HWND                                 view_window_handle,
-                                                                      system_hashed_ansi_string            name,
-                                                                  curve_container                      curve,
-                                                                  curve_editor_curve_window            owner)
+PRIVATE void _curve_editor_curve_window_renderer_init_descriptor(_curve_editor_curve_window_renderer* descriptor,
+                                                                 HWND                                 view_window_handle,
+                                                                 system_hashed_ansi_string            name,
+                                                                 curve_container                      curve,
+                                                                 curve_editor_curve_window            owner,
+                                                                 ral_context                          context)
 {
-    descriptor->context                              = NULL;
+    descriptor->context                              = context;
     descriptor->curve                                = curve;
     descriptor->float_variant                        = system_variant_create(SYSTEM_VARIANT_FLOAT);
     descriptor->hovered_curve_segment_id             = -1;
@@ -1846,12 +1848,16 @@ PRIVATE void _curve_editor_curve_window_renderer_init_descriptor(     _curve_edi
 
 /** TODO */
 PRIVATE void _curve_editor_curve_window_renderer_init_globals(ogl_context context,
-                                                              void*       not_used)
+                                                              void*       ral_context_raw_ptr)
 {
+    ral_context context_ral = (ral_context) ral_context_raw_ptr;
+
     ASSERT_DEBUG_SYNC(_globals == NULL,
                       "Globals not null - reinitialization to take place!");
     ASSERT_DEBUG_SYNC(context  != NULL,
                       "Input GL context is null.");
+    ASSERT_DEBUG_SYNC(ral_context_raw_ptr != NULL,
+                      "Input RAL context is null.");
 
     _globals = new (std::nothrow) _curve_window_renderer_globals;
 
@@ -1863,16 +1869,16 @@ PRIVATE void _curve_editor_curve_window_renderer_init_globals(ogl_context contex
         system_time start_time = system_time_now();
 
         /* Create background program */
-        _globals->bg_program = ogl_program_create(context,
+        _globals->bg_program = ogl_program_create(context_ral,
                                                   system_hashed_ansi_string_create("Background program") );
 
         ASSERT_DEBUG_SYNC(_globals->bg_program != NULL,
                           "Could not create background program for curve window renderer.");
 
-        _globals->bg_fragment_shader = ogl_shader_create               (context,
+        _globals->bg_fragment_shader = ogl_shader_create               (context_ral,
                                                                         RAL_SHADER_TYPE_FRAGMENT,
                                                                         system_hashed_ansi_string_create("Curve window renderer: background fragment shader") );
-        _globals->bg_vertex_shader   = shaders_vertex_fullscreen_create(context,
+        _globals->bg_vertex_shader   = shaders_vertex_fullscreen_create(context_ral,
                                                                         true,
                                                                         system_hashed_ansi_string_create("Curve window renderer: background vertex shader") );
 
@@ -1905,17 +1911,17 @@ PRIVATE void _curve_editor_curve_window_renderer_init_globals(ogl_context contex
                           "Could not link background program for curve window renderer.");
 
         /* Create static color program and corresponding shaders */
-        _globals->static_color_program = ogl_program_create(context,
+        _globals->static_color_program = ogl_program_create(context_ral,
                                                             system_hashed_ansi_string_create("Static color program"),
                                                             OGL_PROGRAM_SYNCABLE_UBS_MODE_ENABLE_PER_CONTEXT);
 
         ASSERT_DEBUG_SYNC(_globals->static_color_program != NULL,
                           "Could not craete static color program for curve window renderer.");
 
-        _globals->static_color_fragment_shader = ogl_shader_create                                    (context,
+        _globals->static_color_fragment_shader = ogl_shader_create                                    (context_ral,
                                                                                                        RAL_SHADER_TYPE_FRAGMENT,
                                                                                                        system_hashed_ansi_string_create("Curve window renderer: static color fragment shader") );
-        _globals->static_color_vertex_shader   = shaders_vertex_combinedmvp_simplified_twopoint_create(context,
+        _globals->static_color_vertex_shader   = shaders_vertex_combinedmvp_simplified_twopoint_create(context_ral,
                                                                                                        system_hashed_ansi_string_create("Curve window renderer: static color vertex shader") );
 
         ASSERT_DEBUG_SYNC(_globals->static_color_fragment_shader != NULL,
@@ -1949,35 +1955,35 @@ PRIVATE void _curve_editor_curve_window_renderer_init_globals(ogl_context contex
                           "Could not link static color program for curve window renderer.");
 
         /* Create curve background program */
-        _globals->curvebackground_program = curve_editor_program_curvebackground_create(context,
+        _globals->curvebackground_program = curve_editor_program_curvebackground_create(context_ral,
                                                                                         system_hashed_ansi_string_create("Global Curve Background") );
 
         ASSERT_DEBUG_SYNC(_globals->curvebackground_program != NULL,
                           "Could not create curve background program.");
 
         /* Create curve static program */
-        _globals->static_curve_program = curve_editor_program_static_create(context,
+        _globals->static_curve_program = curve_editor_program_static_create(context_ral,
                                                                             system_hashed_ansi_string_create("Global Curve Static") );
 
         ASSERT_DEBUG_SYNC(_globals->static_curve_program != NULL,
                           "Could not create static curve program.");
 
         /* Create curve lerp program */
-        _globals->lerp_curve_program = curve_editor_program_lerp_create(context,
+        _globals->lerp_curve_program = curve_editor_program_lerp_create(context_ral,
                                                                         system_hashed_ansi_string_create("Global Curve LERP") );
 
         ASSERT_DEBUG_SYNC(_globals->lerp_curve_program != NULL,
                           "Could not create lerp curve program.");
 
         /* Create curve tcb program */
-        _globals->tcb_curve_program = curve_editor_program_tcb_create(context,
+        _globals->tcb_curve_program = curve_editor_program_tcb_create(context_ral,
                                                                       system_hashed_ansi_string_create("Global Curve TCB") );
 
         ASSERT_DEBUG_SYNC(_globals->tcb_curve_program != NULL,
                           "Could not create tcb curve program.");
 
         /* Create quad selector program */
-        _globals->quadselector_program = curve_editor_program_quadselector_create(context,
+        _globals->quadselector_program = curve_editor_program_quadselector_create(context_ral,
                                                                                   system_hashed_ansi_string_create("Global Curve QuadSelector") );
 
         ASSERT_DEBUG_SYNC(_globals->quadselector_program != NULL,
@@ -2001,7 +2007,7 @@ PRIVATE void _curve_editor_curve_window_renderer_init_globals(ogl_context contex
 }
 
 /** TODO */
-PRIVATE void _curve_editor_curve_window_renderer_init_tcb_segment_rendering(ogl_context                          context,
+PRIVATE void _curve_editor_curve_window_renderer_init_tcb_segment_rendering(ral_context                          context,
                                                                             _curve_editor_curve_window_renderer* renderer_ptr,
                                                                             const ogl_context_gl_entrypoints*    entry_points,
                                                                             curve_container                      curve,
@@ -2923,7 +2929,7 @@ PRIVATE void _curve_editor_curve_window_renderer_rendering_callback_handler(ogl_
                                     OGL_PROGRAM_UB_PROPERTY_BLOCK_DATA_SIZE,
                                    &descriptor_ptr->static_color_program_ub_fs_bo_size);
         ogl_program_ub_get_property(descriptor_ptr->static_color_program_ub_fs,
-                                    OGL_PROGRAM_UB_PROPERTY_BO,
+                                    OGL_PROGRAM_UB_PROPERTY_BUFFER_RAL,
                                    &descriptor_ptr->static_color_program_ub_fs_bo);
         ogl_program_ub_get_property(descriptor_ptr->static_color_program_ub_fs,
                                     OGL_PROGRAM_UB_PROPERTY_INDEXED_BP,
@@ -2933,7 +2939,7 @@ PRIVATE void _curve_editor_curve_window_renderer_rendering_callback_handler(ogl_
                                     OGL_PROGRAM_UB_PROPERTY_BLOCK_DATA_SIZE,
                                    &descriptor_ptr->static_color_program_ub_vs_bo_size);
         ogl_program_ub_get_property(descriptor_ptr->static_color_program_ub_vs,
-                                    OGL_PROGRAM_UB_PROPERTY_BO,
+                                    OGL_PROGRAM_UB_PROPERTY_BUFFER_RAL,
                                    &descriptor_ptr->static_color_program_ub_vs_bo);
         ogl_program_ub_get_property(descriptor_ptr->static_color_program_ub_vs,
                                     OGL_PROGRAM_UB_PROPERTY_INDEXED_BP,
@@ -2986,21 +2992,28 @@ PRIVATE void _curve_editor_curve_window_renderer_rendering_callback_handler(ogl_
                                     4);
 
         /* Set up uniform buffers */
-        GLuint   static_color_program_ub_fs_bo_id           = 0;
-        uint32_t static_color_program_ub_fs_bo_start_offset = -1;
-        GLuint   static_color_program_ub_vs_bo_id           = 0;
-        uint32_t static_color_program_ub_vs_bo_start_offset = -1;
+        GLuint      static_color_program_ub_fs_bo_id           = 0;
+        raGL_buffer static_color_program_ub_fs_bo_raGL         = NULL;
+        uint32_t    static_color_program_ub_fs_bo_start_offset = -1;
+        GLuint      static_color_program_ub_vs_bo_id           = 0;
+        raGL_buffer static_color_program_ub_vs_bo_raGL         = NULL;
+        uint32_t    static_color_program_ub_vs_bo_start_offset = -1;
 
-        raGL_buffer_get_property(descriptor_ptr->static_color_program_ub_fs_bo,
+        static_color_program_ub_fs_bo_raGL = ral_context_get_buffer_gl(descriptor_ptr->context,
+                                                                       descriptor_ptr->static_color_program_ub_fs_bo);
+        static_color_program_ub_vs_bo_raGL = ral_context_get_buffer_gl(descriptor_ptr->context,
+                                                                       descriptor_ptr->static_color_program_ub_vs_bo);
+
+        raGL_buffer_get_property(static_color_program_ub_fs_bo_raGL,
                                  RAGL_BUFFER_PROPERTY_ID,
                                 &static_color_program_ub_fs_bo_id);
-        raGL_buffer_get_property(descriptor_ptr->static_color_program_ub_fs_bo,
+        raGL_buffer_get_property(static_color_program_ub_fs_bo_raGL,
                                  RAGL_BUFFER_PROPERTY_START_OFFSET,
                                 &static_color_program_ub_fs_bo_start_offset);
-        raGL_buffer_get_property(descriptor_ptr->static_color_program_ub_vs_bo,
+        raGL_buffer_get_property(static_color_program_ub_vs_bo_raGL,
                                  RAGL_BUFFER_PROPERTY_ID,
                                 &static_color_program_ub_vs_bo_id);
-        raGL_buffer_get_property(descriptor_ptr->static_color_program_ub_vs_bo,
+        raGL_buffer_get_property(static_color_program_ub_vs_bo_raGL,
                                  RAGL_BUFFER_PROPERTY_START_OFFSET,
                                 &static_color_program_ub_vs_bo_start_offset);
 
@@ -3371,7 +3384,7 @@ PRIVATE void _curve_editor_curve_window_renderer_rendering_callback_handler(ogl_
         n_text_strings_used++;
 
         /* Draw curve */
-        _curve_editor_curve_window_renderer_draw_curve(context,
+        _curve_editor_curve_window_renderer_draw_curve(descriptor_ptr->context,
                                                        (curve_editor_curve_window_renderer) descriptor,
                                                        entry_points,
                                                       &n_text_strings_used);
@@ -3445,7 +3458,7 @@ PRIVATE void _curve_editor_curve_window_renderer_rendering_callback_handler(ogl_
                 curve_editor_program_quadselector_set_property(_globals->quadselector_program,
                                                                CURVE_EDITOR_PROGRAM_QUADSELECTOR_PROPERTY_POSITIONS_DATA,
                                                                positions);
-                curve_editor_program_quadselector_use         (context,
+                curve_editor_program_quadselector_use         (descriptor_ptr->context,
                                                                _globals->quadselector_program);
 
                 entry_points->pGLDrawArrays(GL_TRIANGLE_FAN,
@@ -3494,7 +3507,7 @@ PRIVATE void _curve_editor_curve_window_renderer_rendering_callback_handler(ogl_
             curve_editor_program_quadselector_set_property(_globals->quadselector_program,
                                                            CURVE_EDITOR_PROGRAM_QUADSELECTOR_PROPERTY_POSITIONS_DATA,
                                                            positions);
-            curve_editor_program_quadselector_use         (context,
+            curve_editor_program_quadselector_use         (descriptor_ptr->context,
                                                            _globals->quadselector_program);
 
             entry_points->pGLDrawArrays(GL_TRIANGLE_FAN,
@@ -3613,7 +3626,7 @@ PRIVATE void _curve_editor_curve_window_renderer_update_tcb_ubo(      curve_segm
 /* Please see header for specification */
 PUBLIC curve_editor_curve_window_renderer curve_editor_curve_window_renderer_create(system_hashed_ansi_string name,
                                                                                     HWND                      view_window_handle,
-                                                                                    ogl_context               context,
+                                                                                    ral_context               context,
                                                                                     curve_container           curve,
                                                                                     curve_editor_curve_window owner)
 {
@@ -3637,7 +3650,8 @@ PUBLIC curve_editor_curve_window_renderer curve_editor_curve_window_renderer_cre
                                                             view_window_handle,
                                                             name,
                                                             curve,
-                                                            owner);
+                                                            owner,
+                                                            context);
 
         if (!_curve_editor_curve_window_renderer_init(result) )
         {

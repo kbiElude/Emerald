@@ -10,7 +10,7 @@
 #define SHADERS_FRAGMENT_RGB_TO_YXY_H
 
 #include "gfx/gfx_types.h"
-#include "ogl/ogl_types.h"
+#include "ral/ral_types.h"
 
 REFCOUNT_INSERT_DECLARATIONS(shaders_fragment_rgb_to_Yxy,
                              shaders_fragment_rgb_to_Yxy)
@@ -23,7 +23,7 @@ REFCOUNT_INSERT_DECLARATIONS(shaders_fragment_rgb_to_Yxy,
  * 
  *  @return shaders_fragment_rgb_to_yxy instance if successful, NULL otherwise.
  */
-PUBLIC EMERALD_API shaders_fragment_rgb_to_Yxy shaders_fragment_rgb_to_Yxy_create(ogl_context,
+PUBLIC EMERALD_API shaders_fragment_rgb_to_Yxy shaders_fragment_rgb_to_Yxy_create(ral_context,
                                                                                   system_hashed_ansi_string name,
                                                                                   bool                      convert_to_log_Yxy);
 

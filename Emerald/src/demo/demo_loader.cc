@@ -483,7 +483,7 @@ PUBLIC void demo_loader_run(demo_loader   loader,
                                            SYSTEM_WINDOW_PROPERTY_RENDERING_CONTEXT,
                                           &context);
 
-                new_program = ogl_program_create(context,
+                new_program = ogl_program_create(loader_ptr->context,
                                                  op_ptr->data.build_program.name);
 
                 ASSERT_DEBUG_SYNC(new_program != NULL,
@@ -512,7 +512,7 @@ PUBLIC void demo_loader_run(demo_loader   loader,
 
                     if (current_shader.data_ptr->body != NULL)
                     {
-                        ogl_shader new_shader = ogl_shader_create(context,
+                        ogl_shader new_shader = ogl_shader_create(loader_ptr->context,
                                                                   current_shader.type,
                                                                   current_shader.data_ptr->name);
 

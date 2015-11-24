@@ -71,7 +71,7 @@ PRIVATE void _shaders_fragment_texture2D_plain_release(void* ptr)
 
 
 /** Please see header for specification */
-PUBLIC EMERALD_API shaders_fragment_texture2D_plain shaders_fragment_texture2D_plain_create(ogl_context               context,
+PUBLIC EMERALD_API shaders_fragment_texture2D_plain shaders_fragment_texture2D_plain_create(ral_context               context,
                                                                                             bool                      should_revert_y,
                                                                                             system_hashed_ansi_string name)
 {

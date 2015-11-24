@@ -379,10 +379,10 @@ PRIVATE bool _procedural_uv_generator_build_generator_po(_procedural_uv_generato
     system_hashed_ansi_string merged_cs_body = system_hashed_ansi_string_create_by_merging_strings(n_cs_body_parts,
                                                                                                    cs_body_parts);
 
-    generator_ptr->generator_cs = ogl_shader_create (ral_context_get_gl_context(generator_ptr->context),
+    generator_ptr->generator_cs = ogl_shader_create (generator_ptr->context,
                                                      RAL_SHADER_TYPE_COMPUTE,
                                                      _procedural_uv_generator_get_generator_name(generator_ptr->type) );
-    generator_ptr->generator_po = ogl_program_create(ral_context_get_gl_context(generator_ptr->context),
+    generator_ptr->generator_po = ogl_program_create(generator_ptr->context,
                                                      _procedural_uv_generator_get_generator_name(generator_ptr->type),
                                                      OGL_PROGRAM_SYNCABLE_UBS_MODE_ENABLE_GLOBAL);
 

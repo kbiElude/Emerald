@@ -37,7 +37,7 @@ PUBLIC EMERALD_API bool ogl_shader_compile(ogl_shader shader);
  *
  *  @return GL shader instance.
  **/
-PUBLIC EMERALD_API ogl_shader ogl_shader_create(ogl_context               context,
+PUBLIC EMERALD_API ogl_shader ogl_shader_create(ral_context               context,
                                                 ral_shader_type           shader_type,
                                                 system_hashed_ansi_string name);
 

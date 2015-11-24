@@ -11,6 +11,7 @@
 #include "curve_editor/curve_editor_types.h"
 #include "curve_editor/curve_editor_curve_window.h"
 #include "curve_editor/curve_editor_curve_window_renderer.h"
+#include "ral/ral_context.h"
 #include "system/system_assertions.h"
 #include "system/system_critical_section.h"
 #include "system/system_event.h"
@@ -62,7 +63,7 @@ typedef struct
     RECT ref_window_rect;
 
     /* Rendering handler stuff */
-    ogl_context                        context;
+    ral_context                        context;
     system_hashed_ansi_string          name;
     curve_editor_curve_window_renderer renderer;
     system_critical_section            serialization_cs;
@@ -795,7 +796,7 @@ PRIVATE void _curve_editor_curve_window_init_curve_editor_curve_window(_curve_ed
                                                                        curve_container                            curve,
                                                                        PFNONCURVEWINDOWRELEASECALLBACKHANDLERPROC release_callback_handler,
                                                                        void*                                      release_callback_handler_arg,
-                                                                       ogl_context                                context,
+                                                                       ral_context                                context,
                                                                        system_hashed_ansi_string                  name,
                                                                        system_critical_section                    serialization_cs)
 {
@@ -991,7 +992,7 @@ PUBLIC void curve_editor_curve_window_create_tcb_segment_handler(void* arg)
 }
 
 /* Please see header for specification */
-PUBLIC curve_editor_curve_window curve_editor_curve_window_show(ogl_context                                context,
+PUBLIC curve_editor_curve_window curve_editor_curve_window_show(ral_context                                context,
                                                                 curve_container                            curve,
                                                                 PFNONCURVEWINDOWRELEASECALLBACKHANDLERPROC release_callback_handler,
                                                                 void*                                      owner,

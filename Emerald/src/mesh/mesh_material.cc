@@ -857,11 +857,11 @@ PUBLIC EMERALD_API mesh_material mesh_material_create_from_shader_bodies(system_
                       "Unsupported backend type");
 
     ral_context_get_property(context,
-                              RAL_CONTEXT_PROPERTY_BACKEND_CONTEXT,
-                             &backend_context);
+                             RAL_CONTEXT_PROPERTY_BACKEND_CONTEXT,
+                            &backend_context);
 
     result_material_ptr = (_mesh_material*) result_material;
-    result_program      = ogl_program_create(backend_context,
+    result_program      = ogl_program_create(context,
                                              name,
                                              OGL_PROGRAM_SYNCABLE_UBS_MODE_ENABLE_GLOBAL);
 
@@ -881,7 +881,7 @@ PUBLIC EMERALD_API mesh_material mesh_material_create_from_shader_bodies(system_
     {
         if (bodies[n_body].body != NULL)
         {
-            temp_shader = ogl_shader_create(backend_context,
+            temp_shader = ogl_shader_create(context,
                                             bodies[n_body].type,
                                             system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(name),
                                                                                                     bodies[n_body].suffix) );

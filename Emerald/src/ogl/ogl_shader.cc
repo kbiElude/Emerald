@@ -8,6 +8,7 @@
 #include "ogl/ogl_shader.h"
 #include "ogl/ogl_shaders.h"
 #include "raGL/raGL_utils.h"
+#include "ral/ral_context.h"
 #include "system/system_assertions.h"
 #include "system/system_hashed_ansi_string.h"
 #include "system/system_log.h"
@@ -18,7 +19,7 @@ typedef struct
 {
     system_hashed_ansi_string body;
     bool                      compile_status;
-    ogl_context               context; /* DO NOT retain - context owns the instance */
+    ral_context               context; /* DO NOT retain - context owns the instance */
     bool                      has_been_compiled;
     GLuint                    id;
     system_hashed_ansi_string name;
@@ -137,14 +138,14 @@ PRIVATE void _ogl_shader_release(void* shader)
         shader_ptr->shader_info_log = NULL;
     }
 
-    ogl_context_request_callback_from_context_thread(shader_ptr->context,
+    ogl_context_request_callback_from_context_thread(ral_context_get_gl_context(shader_ptr->context),
                                                      _ogl_shader_release_callback,
                                                      shader_ptr);
 
     /* Finally, unregister the shader from the shaders manager. */
     ogl_shaders shaders = NULL;
 
-    ogl_context_get_property(shader_ptr->context,
+    ogl_context_get_property(ral_context_get_gl_context(shader_ptr->context),
                              OGL_CONTEXT_PROPERTY_SHADERS,
                             &shaders);
 
@@ -167,7 +168,7 @@ PUBLIC EMERALD_API bool ogl_shader_compile(ogl_shader shader)
     
     if (system_hashed_ansi_string_get_length(shader_ptr->body) != 0)
     {
-        ogl_context_request_callback_from_context_thread(shader_ptr->context,
+        ogl_context_request_callback_from_context_thread(ral_context_get_gl_context(shader_ptr->context),
                                                          _ogl_shader_compile_callback,
                                                          shader_ptr);
 
@@ -183,7 +184,7 @@ PUBLIC EMERALD_API bool ogl_shader_compile(ogl_shader shader)
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API ogl_shader ogl_shader_create(ogl_context               context,
+PUBLIC EMERALD_API ogl_shader ogl_shader_create(ral_context               context,
                                                 ral_shader_type           shader_type,
                                                 system_hashed_ansi_string name)
 {
@@ -191,7 +192,7 @@ PUBLIC EMERALD_API ogl_shader ogl_shader_create(ogl_context               contex
      *               If you ever reach this point, please ensure shader instances are uniquely named. */
     ogl_shaders shaders = NULL;
 
-    ogl_context_get_property(context,
+    ogl_context_get_property(ral_context_get_gl_context(context),
                              OGL_CONTEXT_PROPERTY_SHADERS,
                             &shaders);
 
@@ -223,15 +224,15 @@ PUBLIC EMERALD_API ogl_shader ogl_shader_create(ogl_context               contex
         /* Initialize entry-point cache */
         ral_backend_type backend_type = RAL_BACKEND_TYPE_UNKNOWN;
 
-        ogl_context_get_property(context,
-                                 OGL_CONTEXT_PROPERTY_BACKEND_TYPE,
+        ral_context_get_property(context,
+                                 RAL_CONTEXT_PROPERTY_BACKEND_TYPE,
                                 &backend_type);
 
         if (backend_type == RAL_BACKEND_TYPE_ES)
         {
             const ogl_context_es_entrypoints* entry_points = NULL;
 
-            ogl_context_get_property(context,
+            ogl_context_get_property(ral_context_get_gl_context(context),
                                      OGL_CONTEXT_PROPERTY_ENTRYPOINTS_ES,
                                     &entry_points);
 
@@ -249,7 +250,7 @@ PUBLIC EMERALD_API ogl_shader ogl_shader_create(ogl_context               contex
 
             const ogl_context_gl_entrypoints* entry_points = NULL;
 
-            ogl_context_get_property(context,
+            ogl_context_get_property(ral_context_get_gl_context(context),
                                      OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
                                     &entry_points);
 
@@ -262,7 +263,7 @@ PUBLIC EMERALD_API ogl_shader ogl_shader_create(ogl_context               contex
         }
 
         /* Carry on */
-        ogl_context_request_callback_from_context_thread(context,
+        ogl_context_request_callback_from_context_thread(ral_context_get_gl_context(context),
                                                          _ogl_shader_create_callback,
                                                          result);
 
@@ -336,7 +337,7 @@ PUBLIC EMERALD_API bool ogl_shader_set_body(ogl_shader                shader,
             shader_ptr->body = body;
             result           = true;
 
-            ogl_context_request_callback_from_context_thread(shader_ptr->context,
+            ogl_context_request_callback_from_context_thread(ral_context_get_gl_context(shader_ptr->context),
                                                              _ogl_shader_set_body_callback,
                                                              shader_ptr);
         }

@@ -424,7 +424,6 @@ PRIVATE void _ogl_ui_dropdown_init_program(ogl_ui            ui,
 {
     /* Create all objects */
     ral_context context                   = ogl_ui_get_context(ui);
-    ogl_context context_gl                = ral_context_get_gl_context(context);
     ogl_shader  fragment_shader_bg        = NULL;
     ogl_shader  fragment_shader_label_bg  = NULL;
     ogl_shader  fragment_shader_separator = NULL;
@@ -433,41 +432,41 @@ PRIVATE void _ogl_ui_dropdown_init_program(ogl_ui            ui,
     ogl_shader  vertex_shader             = NULL;
     ogl_shader  vertex_shader_separator   = NULL;
 
-    fragment_shader_bg        = ogl_shader_create(context_gl,
+    fragment_shader_bg        = ogl_shader_create(context,
                                                   RAL_SHADER_TYPE_FRAGMENT,
                                                   system_hashed_ansi_string_create("UI dropdown fragment shader (bg)") );
-    fragment_shader_label_bg  = ogl_shader_create(context_gl,
+    fragment_shader_label_bg  = ogl_shader_create(context,
                                                   RAL_SHADER_TYPE_FRAGMENT,
                                                   system_hashed_ansi_string_create("UI dropdown fragment shader (label bg)") );
-    fragment_shader_separator = ogl_shader_create(context_gl,
+    fragment_shader_separator = ogl_shader_create(context,
                                                   RAL_SHADER_TYPE_FRAGMENT,
                                                   system_hashed_ansi_string_create("UI dropdown framgent shader (separator)") );
-    fragment_shader_slider    = ogl_shader_create(context_gl,
+    fragment_shader_slider    = ogl_shader_create(context,
                                                   RAL_SHADER_TYPE_FRAGMENT,
                                                   system_hashed_ansi_string_create("UI dropdown framgent shader (slider)") );
-    fragment_shader           = ogl_shader_create(context_gl,
+    fragment_shader           = ogl_shader_create(context,
                                                   RAL_SHADER_TYPE_FRAGMENT,
                                                   system_hashed_ansi_string_create("UI dropdown fragment shader") );
-    vertex_shader             = ogl_shader_create(context_gl,
+    vertex_shader             = ogl_shader_create(context,
                                                   RAL_SHADER_TYPE_VERTEX,
                                                   system_hashed_ansi_string_create("UI dropdown vertex shader") );
-    vertex_shader_separator   = ogl_shader_create(context_gl,
+    vertex_shader_separator   = ogl_shader_create(context,
                                                   RAL_SHADER_TYPE_VERTEX,
                                                   system_hashed_ansi_string_create("UI dropdown vertex shader (separator)") );
 
-    dropdown_ptr->program_bg        = ogl_program_create(context_gl,
+    dropdown_ptr->program_bg        = ogl_program_create(context,
                                                          system_hashed_ansi_string_create("UI dropdown program (bg)"),
                                                          OGL_PROGRAM_SYNCABLE_UBS_MODE_ENABLE_GLOBAL);
-    dropdown_ptr->program_label_bg  = ogl_program_create(context_gl,
+    dropdown_ptr->program_label_bg  = ogl_program_create(context,
                                                          system_hashed_ansi_string_create("UI dropdown program (label bg)"),
                                                          OGL_PROGRAM_SYNCABLE_UBS_MODE_ENABLE_GLOBAL);
-    dropdown_ptr->program_separator = ogl_program_create(context_gl,
+    dropdown_ptr->program_separator = ogl_program_create(context,
                                                          system_hashed_ansi_string_create("UI dropdown program (separator)"),
                                                          OGL_PROGRAM_SYNCABLE_UBS_MODE_ENABLE_GLOBAL);
-    dropdown_ptr->program_slider    = ogl_program_create(context_gl,
+    dropdown_ptr->program_slider    = ogl_program_create(context,
                                                          system_hashed_ansi_string_create("UI dropdown program (slider)"),
                                                          OGL_PROGRAM_SYNCABLE_UBS_MODE_ENABLE_GLOBAL);
-    dropdown_ptr->program           = ogl_program_create(context_gl,
+    dropdown_ptr->program           = ogl_program_create(context,
                                                          system_hashed_ansi_string_create("UI dropdown program"),
                                                          OGL_PROGRAM_SYNCABLE_UBS_MODE_ENABLE_GLOBAL);
 

@@ -654,7 +654,7 @@ PRIVATE void _postprocessing_blur_gaussian_init_rendering_thread_callback(ogl_co
     if ( (instance_ptr->po = ogl_programs_get_program_by_name(programs,
                                                               po_name)) == NULL)
     {
-        instance_ptr->po = ogl_program_create(ral_context_get_gl_context(instance_ptr->context),
+        instance_ptr->po = ogl_program_create(instance_ptr->context,
                                               po_name);
 
         if ( (fs = ogl_shaders_get_shader_by_name(shaders,
@@ -668,7 +668,7 @@ PRIVATE void _postprocessing_blur_gaussian_init_rendering_thread_callback(ogl_co
                             << fs_body;
 
             /* Create the fragment shader */
-            fs = ogl_shader_create(context,
+            fs = ogl_shader_create(instance_ptr->context,
                                    RAL_SHADER_TYPE_FRAGMENT,
                                    fs_name);
 
@@ -686,7 +686,7 @@ PRIVATE void _postprocessing_blur_gaussian_init_rendering_thread_callback(ogl_co
                                                   vs_name)) == NULL)
         {
             /* Create the vertex shader */
-            vs = ogl_shader_create(context,
+            vs = ogl_shader_create(instance_ptr->context,
                                    RAL_SHADER_TYPE_VERTEX,
                                    vs_name);
 

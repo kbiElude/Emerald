@@ -20,7 +20,7 @@
 #include "object_manager/object_manager_directory.h"
 #include "object_manager/object_manager_general.h"
 #include "object_manager/object_manager_item.h"
-#include "ogl/ogl_context.h"
+#include "ral/ral_context.h"
 #include "system/system_assertions.h"
 #include "system/system_callback_manager.h"
 #include "system/system_critical_section.h"
@@ -53,7 +53,7 @@ typedef struct
     HWND type_static_window_handle;
     HWND curve_editbox_window_handle;
 
-    ogl_context           context;
+    ral_context           context;
     curve_editor_watchdog watchdog;
     HWND                  window_handle;
 
@@ -855,7 +855,7 @@ PRIVATE INT_PTR CALLBACK _curve_editor_dialog_window_message_handler(HWND   dial
 /** TODO */
 PRIVATE void _curve_editor_init_descriptor(_curve_editor_main_window*                descriptor,
                                            PFNONMAINWINDOWRELEASECALLBACKHANDLERPROC on_release_callback_handler_func,
-                                           ogl_context                               context)
+                                           ral_context                               context)
 {
     descriptor->context                                                = context;
     descriptor->curve_node_handle_to_curve_window_map_array_descriptor = system_hash64map_create(sizeof(_window_map_array_descriptor*) );
@@ -919,7 +919,7 @@ PRIVATE void _curve_editor_main_window_on_curves_changed_callback(const void* ca
 
 /* Please see header for specification */
 PUBLIC curve_editor_main_window curve_editor_main_window_create(PFNONMAINWINDOWRELEASECALLBACKHANDLERPROC on_release_callback_handler_func,
-                                                                ogl_context                               context)
+                                                                ral_context                               context)
 {
     /* Create result container */
     _curve_editor_main_window* result = new (std::nothrow) _curve_editor_main_window;
@@ -932,7 +932,7 @@ PUBLIC curve_editor_main_window curve_editor_main_window_create(PFNONMAINWINDOWR
                                       context);
 
         /* Retain the context - we need to cache it */
-        ogl_context_retain(context);
+        ral_context_retain(context);
 
         /* Dialog must be hosted within a thread of its own. Therefore, create a new thread, launch the dialog in there and wait till it
          * notifies us stuff is set up.
@@ -1029,7 +1029,7 @@ PUBLIC void curve_editor_main_window_release(curve_editor_main_window main_windo
     } /* if (main_window_ptr->curve_node_handle_to_curve_window_map_array_descriptor != NULL) */
 
     /* Release the context - we are cool if it was to be released now */
-    ogl_context_release(main_window_ptr->context);
+    ral_context_release(main_window_ptr->context);
 
     /* If the window is up, get rid of it */
     if (main_window_ptr->window_handle != NULL)

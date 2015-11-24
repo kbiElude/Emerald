@@ -45,7 +45,7 @@ PRIVATE void _shaders_vertex_fullscreen_release(void* ptr)
 
 
 /** Please see header for specification */
-PUBLIC EMERALD_API shaders_vertex_fullscreen shaders_vertex_fullscreen_create(ogl_context               context,
+PUBLIC EMERALD_API shaders_vertex_fullscreen shaders_vertex_fullscreen_create(ral_context               context,
                                                                               bool                      export_uv,
                                                                               system_hashed_ansi_string name)
 {

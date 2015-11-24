@@ -59,7 +59,7 @@ PRIVATE void _shaders_fragment_static_release(void* ptr)
 
 
 /** Please see header for specification */
-PUBLIC EMERALD_API shaders_fragment_static shaders_fragment_static_create(ogl_context               context,
+PUBLIC EMERALD_API shaders_fragment_static shaders_fragment_static_create(ral_context               context,
                                                                           system_hashed_ansi_string name)
 {
     _shaders_fragment_static* result_object = NULL;

@@ -14,7 +14,7 @@
 #ifndef SHADERS_VERTEX_COMBINEDMVP_GENERIC_H
 #define SHADERS_VERTEX_COMBINEDMVP_GENERIC_H
 
-#include "ogl/ogl_types.h"
+#include "ral/ral_types.h"
 
 REFCOUNT_INSERT_DECLARATIONS(shaders_vertex_combinedmvp_generic,
                              shaders_vertex_combinedmvp_generic)
@@ -27,7 +27,7 @@ REFCOUNT_INSERT_DECLARATIONS(shaders_vertex_combinedmvp_generic,
  * 
  *  @return shaders_vertex_combinedmvp instance if successful, NULL otherwise.
  */
-PUBLIC EMERALD_API shaders_vertex_combinedmvp_generic shaders_vertex_combinedmvp_generic_create(ogl_context,
+PUBLIC EMERALD_API shaders_vertex_combinedmvp_generic shaders_vertex_combinedmvp_generic_create(ral_context,
                                                                                                 system_hashed_ansi_string);
 
 /** Retrieves ogl_shader object associated with the instance. Do not release the object or modify it in any way.

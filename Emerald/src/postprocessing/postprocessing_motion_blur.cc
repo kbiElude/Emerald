@@ -12,9 +12,8 @@
 #include "postprocessing/postprocessing_motion_blur.h"
 #include "raGL/raGL_buffer.h"
 #include "raGL/raGL_sampler.h"
-#include "raGL/raGL_samplers.h"
 #include "raGL/raGL_texture.h"
-#include "raGL/raGL_textures.h"
+#include "ral/ral_context.h"
 #include "ral/ral_texture.h"
 #include "system/system_assertions.h"
 #include "system/system_hashed_ansi_string.h"
@@ -26,7 +25,7 @@ static const char* _postprocessing_motion_blur_po_template_name = "Motion Blur p
 /** Internal type definition */
 typedef struct _postprocessing_motion_blur
 {
-    ogl_context context;
+    ral_context context;
 
     unsigned int                            dst_color_image_n_layer;
     unsigned int                            dst_color_image_n_mipmap;
@@ -34,14 +33,14 @@ typedef struct _postprocessing_motion_blur
     unsigned int                            n_velocity_samples_max;
     ogl_program                             po;
     ogl_program_ub                          po_props_ub;
-    raGL_buffer                             po_props_ub_bo;
+    ral_buffer                              po_props_ub_bo;
     unsigned int                            po_props_ub_bo_size;
     unsigned int                            po_props_ub_bo_image_n_samples_start_offset;
     unsigned int                            po_props_ub_bo_n_velocity_samples_max_start_offset;
     const GLuint                            po_binding_src_color_image;
     const GLuint                            po_binding_src_velocity_image;
     const GLuint                            po_binding_dst_color_image;
-    raGL_sampler                            sampler; /* owned by context - do not release */
+    ral_sampler                             sampler; /* owned by context - do not release */
     postprocessing_motion_blur_image_format src_dst_color_image_format;
     unsigned int                            src_color_image_n_layer;
     unsigned int                            src_color_image_n_mipmap;
@@ -52,7 +51,7 @@ typedef struct _postprocessing_motion_blur
 
     unsigned int wg_local_size_x; /* y, z = 1 */
 
-    explicit _postprocessing_motion_blur(ogl_context                             in_context,
+    explicit _postprocessing_motion_blur(ral_context                             in_context,
                                          postprocessing_motion_blur_image_format in_src_dst_color_image_format,
                                          postprocessing_motion_blur_image_format in_src_velocity_image_format,
                                          postprocessing_motion_blur_image_type   in_image_type)
@@ -279,7 +278,7 @@ PRIVATE system_hashed_ansi_string _postprocessing_motion_blur_get_cs_body(_postp
     /* Determine the local work-group size */
     const ogl_context_gl_limits* limits_ptr = NULL;
 
-    ogl_context_get_property(motion_blur_ptr->context,
+    ogl_context_get_property(ral_context_get_gl_context(motion_blur_ptr->context),
                              OGL_CONTEXT_PROPERTY_LIMITS,
                             &limits_ptr);
 
@@ -390,7 +389,7 @@ PRIVATE void _postprocessing_motion_blur_init_po(_postprocessing_motion_blur* mo
     system_hashed_ansi_string po_name  = _postprocessing_motion_blur_get_po_name(motion_blur_ptr);
     ogl_programs              programs = NULL;
 
-    ogl_context_get_property(motion_blur_ptr->context,
+    ogl_context_get_property(ral_context_get_gl_context(motion_blur_ptr->context),
                              OGL_CONTEXT_PROPERTY_PROGRAMS,
                             &programs);
 
@@ -459,7 +458,7 @@ PRIVATE void _postprocessing_motion_blur_init_po(_postprocessing_motion_blur* mo
                           "GL does not recognize motion blur post-processor's propsUB uniform block");
 
         ogl_program_ub_get_property(motion_blur_ptr->po_props_ub,
-                                    OGL_PROGRAM_UB_PROPERTY_BO,
+                                    OGL_PROGRAM_UB_PROPERTY_BUFFER_RAL,
                                    &motion_blur_ptr->po_props_ub_bo);
         ogl_program_ub_get_property(motion_blur_ptr->po_props_ub,
                                     OGL_PROGRAM_UB_PROPERTY_BLOCK_DATA_SIZE,
@@ -499,7 +498,7 @@ PRIVATE void _postprocessing_motion_blur_init_po(_postprocessing_motion_blur* mo
         } /* switch (motion_blur_ptr->image_type) */
 
         /* Request a rendering context call-back to set up texture unit bindings and stuff */
-        ogl_context_request_callback_from_context_thread(motion_blur_ptr->context,
+        ogl_context_request_callback_from_context_thread(ral_context_get_gl_context(motion_blur_ptr->context),
                                                          _postprocessing_motion_blur_init_po_rendering_callback,
                                                          motion_blur_ptr);
     }
@@ -547,7 +546,7 @@ PRIVATE void _postprocessing_motion_blur_release(void* ptr)
 
 
 /** Please see header for specification */
-PUBLIC EMERALD_API postprocessing_motion_blur postprocessing_motion_blur_create(ogl_context                             context,
+PUBLIC EMERALD_API postprocessing_motion_blur postprocessing_motion_blur_create(ral_context                             context,
                                                                                 postprocessing_motion_blur_image_format src_dst_color_image_format,
                                                                                 postprocessing_motion_blur_image_format src_velocity_image_format,
                                                                                 postprocessing_motion_blur_image_type   image_type,
@@ -573,7 +572,6 @@ PUBLIC EMERALD_API postprocessing_motion_blur postprocessing_motion_blur_create(
     {
         /* Retrieve a sampler object we will use to sample the color & velocity textures */
         ral_sampler_create_info blur_sampler_create_info;
-        raGL_samplers           context_samplers = NULL;
 
         blur_sampler_create_info.mipmap_mode = RAL_TEXTURE_MIPMAP_MODE_BASE;
         blur_sampler_create_info.min_filter  = RAL_TEXTURE_FILTER_LINEAR;
@@ -581,12 +579,10 @@ PUBLIC EMERALD_API postprocessing_motion_blur postprocessing_motion_blur_create(
         blur_sampler_create_info.wrap_s      = RAL_TEXTURE_WRAP_MODE_CLAMP_TO_EDGE;
         blur_sampler_create_info.wrap_t      = RAL_TEXTURE_WRAP_MODE_CLAMP_TO_EDGE;
 
-        ogl_context_get_property(context,
-                                 OGL_CONTEXT_PROPERTY_SAMPLERS_RAGL,
-                                &context_samplers);
-
-        motion_blur_ptr->sampler = raGL_samplers_get_sampler_from_ral_sampler_create_info(context_samplers,
-                                                                                         &blur_sampler_create_info);
+        ral_context_create_samplers(context,
+                                    1, /* n_samplers */
+                                   &blur_sampler_create_info,
+                                   &motion_blur_ptr->sampler);
 
         /* Initialize the program object */
         _postprocessing_motion_blur_init_po(motion_blur_ptr);
@@ -607,55 +603,52 @@ end:
 
 /** PLease see header for specification */
 PUBLIC EMERALD_API RENDERING_CONTEXT_CALL void postprocessing_motion_blur_execute(postprocessing_motion_blur motion_blur,
-                                                                                  raGL_texture               input_color_texture,
-                                                                                  raGL_texture               input_velocity_texture,
-                                                                                  raGL_texture               output_texture)
+                                                                                  ral_texture                input_color_texture,
+                                                                                  ral_texture                input_velocity_texture,
+                                                                                  ral_texture                output_texture)
 {
-    const ogl_context_gl_entrypoints* entrypoints_ptr            = NULL;
-    bool                              input_color_is_rbo         = false;
-    GLuint                            input_color_texture_id     = 0;
-    ral_texture                       input_color_texture_ral    = NULL;
-    bool                              input_velocity_is_rbo      = false;
-    GLuint                            input_velocity_texture_id  = 0;
-    ral_texture                       input_velocity_texture_ral = NULL;
-    _postprocessing_motion_blur*      motion_blur_ptr            = (_postprocessing_motion_blur*) motion_blur;
-    bool                              output_is_rbo              = false;
-    GLuint                            output_texture_id          = 0;
-    ral_texture                       output_texture_ral         = NULL;
+    const ogl_context_gl_entrypoints* entrypoints_ptr             = NULL;
+    bool                              input_color_is_rbo          = false;
+    GLuint                            input_color_texture_id      = 0;
+    raGL_texture                      input_color_texture_raGL    = NULL;
+    bool                              input_velocity_is_rbo       = false;
+    raGL_texture                      input_velocity_texture_raGL = NULL;
+    GLuint                            input_velocity_texture_id   = 0;
+    _postprocessing_motion_blur*      motion_blur_ptr             = (_postprocessing_motion_blur*) motion_blur;
+    bool                              output_is_rbo               = false;
+    GLuint                            output_texture_id           = 0;
+    raGL_texture                      output_texture_raGL         = NULL;
+    ral_texture                       output_texture_ral          = NULL;
 
-    ogl_context_get_property(motion_blur_ptr->context,
+    ogl_context_get_property(ral_context_get_gl_context(motion_blur_ptr->context),
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
                             &entrypoints_ptr);
 
-    raGL_texture_get_property(input_color_texture,
+    input_color_texture_raGL    = ral_context_get_texture_gl(motion_blur_ptr->context,
+                                                             input_color_texture);
+    input_velocity_texture_raGL = ral_context_get_texture_gl(motion_blur_ptr->context,
+                                                             input_velocity_texture);
+
+    raGL_texture_get_property(input_color_texture_raGL,
                               RAGL_TEXTURE_PROPERTY_ID,
                              &input_color_texture_id);
-    raGL_texture_get_property(input_color_texture,
+    raGL_texture_get_property(input_color_texture_raGL,
                               RAGL_TEXTURE_PROPERTY_IS_RENDERBUFFER,
                              &input_color_is_rbo);
-    raGL_texture_get_property(input_color_texture,
-                              RAGL_TEXTURE_PROPERTY_RAL_TEXTURE,
-                             &input_color_texture_ral);
 
-    raGL_texture_get_property(input_velocity_texture,
+    raGL_texture_get_property(input_velocity_texture_raGL,
                               RAGL_TEXTURE_PROPERTY_ID,
                              &input_velocity_texture_id);
-    raGL_texture_get_property(input_velocity_texture,
+    raGL_texture_get_property(input_velocity_texture_raGL,
                               RAGL_TEXTURE_PROPERTY_IS_RENDERBUFFER,
                              &input_velocity_is_rbo);
-    raGL_texture_get_property(input_velocity_texture,
-                              RAGL_TEXTURE_PROPERTY_RAL_TEXTURE,
-                             &input_velocity_texture_ral);
 
-    raGL_texture_get_property(output_texture,
+    raGL_texture_get_property(output_texture_raGL,
                               RAGL_TEXTURE_PROPERTY_ID,
                              &output_texture_id);
-    raGL_texture_get_property(output_texture,
+    raGL_texture_get_property(output_texture_raGL,
                               RAGL_TEXTURE_PROPERTY_IS_RENDERBUFFER,
                              &output_is_rbo);
-    raGL_texture_get_property(output_texture,
-                              RAGL_TEXTURE_PROPERTY_RAL_TEXTURE,
-                             &output_texture_ral);
 
     ASSERT_DEBUG_SYNC(!input_color_is_rbo    &&
                       !input_velocity_is_rbo &&
@@ -671,21 +664,21 @@ PUBLIC EMERALD_API RENDERING_CONTEXT_CALL void postprocessing_motion_blur_execut
     unsigned int     input_color_texture_n_samples     = 0;
     ral_texture_type input_velocity_texture_type;
 
-    ral_texture_get_property       (input_color_texture_ral,
+    ral_texture_get_property       (input_color_texture,
                                     RAL_TEXTURE_PROPERTY_TYPE,
                                    &input_color_texture_type);
-    ral_texture_get_property       (input_velocity_texture_ral,
+    ral_texture_get_property       (input_velocity_texture,
                                     RAL_TEXTURE_PROPERTY_TYPE,
                                    &input_velocity_texture_type);
-    ral_texture_get_property       (input_color_texture_ral,
+    ral_texture_get_property       (input_color_texture,
                                     RAL_TEXTURE_PROPERTY_N_SAMPLES,
                                    &input_color_texture_n_samples);
-    ral_texture_get_mipmap_property(input_color_texture_ral,
+    ral_texture_get_mipmap_property(input_color_texture,
                                     0, /* n_layer */
                                     motion_blur_ptr->src_color_image_n_mipmap,
                                     RAL_TEXTURE_MIPMAP_PROPERTY_HEIGHT,
                                    &input_color_texture_mipmap_height);
-    ral_texture_get_mipmap_property(input_color_texture_ral,
+    ral_texture_get_mipmap_property(input_color_texture,
                                     0, /* n_layer */
                                     motion_blur_ptr->src_color_image_n_mipmap,
                                     RAL_TEXTURE_MIPMAP_PROPERTY_WIDTH,
@@ -705,22 +698,22 @@ PUBLIC EMERALD_API RENDERING_CONTEXT_CALL void postprocessing_motion_blur_execut
         unsigned int     output_texture_n_samples             = 0;
         ral_texture_type output_texture_type;
 
-        ral_texture_get_property(input_color_texture_ral,
+        ral_texture_get_property(input_color_texture,
                                  RAL_TEXTURE_PROPERTY_N_MIPMAPS,
                                 &input_color_texture_n_mipmaps);
-        ral_texture_get_property(input_velocity_texture_ral,
+        ral_texture_get_property(input_velocity_texture,
                                  RAL_TEXTURE_PROPERTY_N_MIPMAPS,
                                 &input_velocity_texture_n_mipmaps);
-        ral_texture_get_property(input_velocity_texture_ral,
+        ral_texture_get_property(input_velocity_texture,
                                  RAL_TEXTURE_PROPERTY_N_SAMPLES,
                                 &input_velocity_texture_n_samples);
-        ral_texture_get_property(output_texture_ral,
+        ral_texture_get_property(output_texture,
                                  RAL_TEXTURE_PROPERTY_TYPE,
                                 &output_texture_type);
-        ral_texture_get_property(output_texture_ral,
+        ral_texture_get_property(output_texture,
                                  RAL_TEXTURE_PROPERTY_N_MIPMAPS,
                                 &output_texture_n_mipmaps);
-        ral_texture_get_property(output_texture_ral,
+        ral_texture_get_property(output_texture,
                                  RAL_TEXTURE_PROPERTY_N_SAMPLES,
                                 &output_texture_n_samples);
 
@@ -736,22 +729,22 @@ PUBLIC EMERALD_API RENDERING_CONTEXT_CALL void postprocessing_motion_blur_execut
                           motion_blur_ptr->src_velocity_image_n_mipmap < input_velocity_texture_n_mipmaps,
                           "Invalid image mipmap level requested");
 
-        ral_texture_get_mipmap_property(input_velocity_texture_ral,
+        ral_texture_get_mipmap_property(input_velocity_texture,
                                         0, /* n_layer */
                                         motion_blur_ptr->src_velocity_image_n_mipmap,
                                         RAL_TEXTURE_MIPMAP_PROPERTY_HEIGHT,
                                        &input_velocity_texture_mipmap_height);
-        ral_texture_get_mipmap_property(input_velocity_texture_ral,
+        ral_texture_get_mipmap_property(input_velocity_texture,
                                         0, /* n_layer */
                                         motion_blur_ptr->src_velocity_image_n_mipmap,
                                         RAL_TEXTURE_MIPMAP_PROPERTY_WIDTH,
                                        &input_velocity_texture_mipmap_width);
-        ral_texture_get_mipmap_property(output_texture_ral,
+        ral_texture_get_mipmap_property(output_texture,
                                         0, /* n_layer */
                                         motion_blur_ptr->dst_color_image_n_mipmap,
                                         RAL_TEXTURE_MIPMAP_PROPERTY_HEIGHT,
                                        &output_texture_mipmap_height);
-        ral_texture_get_mipmap_property(output_texture_ral,
+        ral_texture_get_mipmap_property(output_texture,
                                         0, /* n_layer */
                                         motion_blur_ptr->dst_color_image_n_mipmap,
                                         RAL_TEXTURE_MIPMAP_PROPERTY_WIDTH,
@@ -768,9 +761,13 @@ PUBLIC EMERALD_API RENDERING_CONTEXT_CALL void postprocessing_motion_blur_execut
     /* Bind the images */
     const GLenum color_texture_target    = _postprocessing_motion_blur_get_blur_image_type_texture_target_glenum(motion_blur_ptr->image_type);
     GLuint       sampler_id              = 0;
+    raGL_sampler sampler_raGL            = NULL;
     const GLenum velocity_texture_target = GL_TEXTURE_2D;
 
-    raGL_sampler_get_property(motion_blur_ptr->sampler,
+    sampler_raGL = ral_context_get_sampler_gl(motion_blur_ptr->context,
+                                              motion_blur_ptr->sampler);
+
+    raGL_sampler_get_property(sampler_raGL,
                               RAGL_SAMPLER_PROPERTY_ID,
                              &sampler_id);
 
@@ -805,7 +802,7 @@ PUBLIC EMERALD_API RENDERING_CONTEXT_CALL void postprocessing_motion_blur_execut
     {
         unsigned int n_samples = 0;
 
-        ral_texture_get_property(input_color_texture_ral,
+        ral_texture_get_property(input_color_texture,
                                  RAL_TEXTURE_PROPERTY_N_SAMPLES,
                                 &n_samples);
 
@@ -821,13 +818,17 @@ PUBLIC EMERALD_API RENDERING_CONTEXT_CALL void postprocessing_motion_blur_execut
 
     ogl_program_ub_sync(motion_blur_ptr->po_props_ub);
 
-    GLuint   po_props_ub_bo_id           = 0;
-    uint32_t po_props_ub_bo_start_offset = -1;
+    GLuint      po_props_ub_bo_id           = 0;
+    raGL_buffer po_props_ub_bo_raGL         = NULL;
+    uint32_t    po_props_ub_bo_start_offset = -1;
 
-    raGL_buffer_get_property(motion_blur_ptr->po_props_ub_bo,
+    po_props_ub_bo_raGL = ral_context_get_buffer_gl(motion_blur_ptr->context,
+                                                    motion_blur_ptr->po_props_ub_bo);
+
+    raGL_buffer_get_property(po_props_ub_bo_raGL,
                              RAGL_BUFFER_PROPERTY_ID,
                             &po_props_ub_bo_id);
-    raGL_buffer_get_property(motion_blur_ptr->po_props_ub_bo,
+    raGL_buffer_get_property(po_props_ub_bo_raGL,
                              RAGL_BUFFER_PROPERTY_START_OFFSET,
                             &po_props_ub_bo_start_offset);
 

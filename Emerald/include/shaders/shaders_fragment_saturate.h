@@ -10,7 +10,7 @@
 #define SHADERS_FRAGMENT_SATURATE_H
 
 #include "gfx/gfx_types.h"
-#include "ogl/ogl_types.h"
+#include "ral/ral_types.h"
 
 REFCOUNT_INSERT_DECLARATIONS(shaders_fragment_saturate,
                              shaders_fragment_saturate)
@@ -23,7 +23,7 @@ REFCOUNT_INSERT_DECLARATIONS(shaders_fragment_saturate,
  * 
  *  @return shaders_fragment_saturate instance if successful, NULL otherwise.
  */
-PUBLIC EMERALD_API shaders_fragment_saturate shaders_fragment_saturate_create(ogl_context,
+PUBLIC EMERALD_API shaders_fragment_saturate shaders_fragment_saturate_create(ral_context,
                                                                               system_hashed_ansi_string name);
 
 /** Retrieves ogl_shader object associated with the instance. Do not release the object or modify it in any way.
