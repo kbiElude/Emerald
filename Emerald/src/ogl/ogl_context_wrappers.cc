@@ -2796,12 +2796,6 @@ PUBLIC void APIENTRY ogl_context_wrappers_glGenerateMipmap(GLenum target)
                                  ogl_context_to_bindings_get_ogl_context_to_bindings_sync_bit_from_gl_target(target) );
 
     _private_entrypoints_ptr->pGLGenerateMipmap(target);
-
-    ogl_texture_set_property(ogl_context_to_bindings_get_bound_texture_id(to_bindings,
-                                                                          current_texture_unit,
-                                                                          target),
-                             OGL_TEXTURE_PROPERTY_HAS_HAD_MIPMAPS_GENERATED,
-                            &mipmaps_generated);
 }
 
 /** Please see header for spec */
@@ -2839,12 +2833,8 @@ PUBLIC void APIENTRY ogl_context_wrappers_glGenerateTextureMipmapEXT(GLuint text
     const static bool       mipmaps_generated    = true;
     ogl_context_to_bindings to_bindings          = NULL;
 
-    _private_entrypoints_ptr->pGLGenerateTextureMipmapEXT(texture_id,
+    _private_entrypoints_ptr->pGLGenerateTextureMipmapEXT(texture,
                                                           target);
-
-    ogl_texture_set_property(texture,
-                             OGL_TEXTURE_PROPERTY_HAS_HAD_MIPMAPS_GENERATED,
-                            &mipmaps_generated);
 }
 
 /** Please see header for spec */

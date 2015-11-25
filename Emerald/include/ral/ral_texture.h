@@ -29,6 +29,9 @@ typedef enum
 
 typedef enum
 {
+    /* not settable, bool */
+    RAL_TEXTURE_MIPMAP_PROPERTY_CONTENTS_SET,
+
     /* not settable, uint32_t int */
     RAL_TEXTURE_MIPMAP_PROPERTY_DEPTH,
 

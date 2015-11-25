@@ -7,6 +7,7 @@
 #include "gfx/gfx_image.h"
 #include "mesh/mesh.h"
 #include "mesh/mesh_material.h"
+#include "raGL/raGL_texture.h"
 #include "ral/ral_context.h"
 #include "ral/ral_texture.h"
 #include "scene/scene.h"
@@ -987,17 +988,38 @@ PRIVATE bool _scene_multiloader_load_scene_internal_get_texture_data(_scene_mult
 
             if (op_ptr->uses_mipmaps)
             {
-                bool are_texture_mips_initialized = false;
+                bool     are_texture_mips_initialized = true;
+                uint32_t n_texture_mips               = 0;
 
                 ral_texture_get_property(texture,
-                                         RAL_TEXTURE_PROPERTY_HAS_HAD_MIPMAPS_GENERATED,
-                                        &are_texture_mips_initialized);
+                                         RAL_TEXTURE_PROPERTY_N_MIPMAPS,
+                                        &n_texture_mips);
+
+                for (uint32_t n_texture_mip = 0;
+                              n_texture_mip < n_texture_mips;
+                            ++n_texture_mip)
+                {
+                    bool is_current_mip_initialized = false;
+
+                    ral_texture_get_mipmap_property(texture,
+                                                    0, /* n_layer */
+                                                    n_texture_mip,
+                                                    RAL_TEXTURE_MIPMAP_PROPERTY_CONTENTS_SET,
+                                                   &is_current_mip_initialized);
+
+                    if (!is_current_mip_initialized)
+                    {
+                        are_texture_mips_initialized = false;
+
+                        break;
+                    }
+                } /* for (all texture mipmaps) */
 
                 if (!are_texture_mips_initialized)
                 {
                     ral_texture_generate_mipmaps(texture);
                 }
-            }
+            } /* if (op_ptr->uses_mipmaps) */
 
             scene_texture_set(op_ptr->texture,
                               SCENE_TEXTURE_PROPERTY_TEXTURE_RAL,
@@ -1022,13 +1044,18 @@ PRIVATE bool _scene_multiloader_load_scene_internal_get_texture_data(_scene_mult
         /* Map the serialized texture ID to the ogl_texture instance, if necessary */
         unsigned int texture_gl_id    = 0;
         ral_texture  texture_instance = NULL;
+        raGL_texture texture_raGL     = NULL;
 
         scene_texture_get       (current_texture,
                                  SCENE_TEXTURE_PROPERTY_TEXTURE_RAL,
                                 &texture_instance);
-        ral_texture_get_property(texture_instance,
-                                 OGL_TEXTURE_PROPERTY_ID,
-                                &texture_gl_id);
+
+        texture_raGL = ral_context_get_texture_gl(scene_ptr->loader_ptr->context_ral,
+                                                  texture_instance);
+
+        raGL_texture_get_property(texture_raGL,
+                                  RAGL_TEXTURE_PROPERTY_ID,
+                                 &texture_gl_id);
 
         if (!system_hash64map_contains(texture_id_to_ogl_texture_map,
                                        texture_gl_id) )

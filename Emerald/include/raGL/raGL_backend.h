@@ -1,6 +1,7 @@
 #ifndef RAGL_BACKEND_H
 #define RAGL_BACKEND_H
 
+#include "raGL/raGL_types.h"
 #include "ral/ral_types.h"
 #include "system/system_types.h"
 

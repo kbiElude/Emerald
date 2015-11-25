@@ -4,6 +4,7 @@
  *
  */
 #include "shared.h"
+#include "raGL/raGL_backend.h"
 #include "raGL/raGL_buffer.h"
 #include "raGL/raGL_buffers.h"
 #include "ral/ral_buffer.h"
@@ -48,6 +49,7 @@ typedef struct _raGL_buffers_buffer
 typedef struct _raGL_buffers
 {
     bool                                           are_sparse_buffers_in;
+    raGL_backend                                   backend;
     system_resource_pool                           buffer_descriptor_pool;
     ogl_context                                    context; /* do not retain - else face circular dependencies */
     ogl_context_es_entrypoints*                    entry_points_es;
@@ -68,7 +70,8 @@ typedef struct _raGL_buffers
     REFCOUNT_INSERT_VARIABLES
 
 
-    _raGL_buffers(ogl_context in_context);
+    _raGL_buffers(raGL_backend in_backend,
+                  ogl_context  in_context);
 
     ~_raGL_buffers()
     {
@@ -161,9 +164,11 @@ PRIVATE void                  _raGL_buffers_release                            (
 
 
 /** TODO */
-_raGL_buffers::_raGL_buffers(ogl_context in_context)
+_raGL_buffers::_raGL_buffers(raGL_backend in_backend,
+                             ogl_context  in_context)
 {
     are_sparse_buffers_in    = false;
+    backend                  = in_backend;
     buffer_descriptor_pool   = system_resource_pool_create(sizeof(_raGL_buffers_buffer),
                                                            16,                                   /* n_elements_to_preallocate */
                                                            NULL,                                 /* init_fn */
@@ -629,14 +634,18 @@ PRIVATE void _raGL_buffers_release(void* buffers)
 }
 
 /** Please see header for spec */
-PUBLIC EMERALD_API bool raGL_buffers_allocate_buffer_memory_for_ral_buffer(raGL_buffers in_raGL_buffers,
-                                                                           ral_buffer   in_ral_buffer,
-                                                                           raGL_buffer* out_buffer_ptr)
+PUBLIC bool raGL_buffers_allocate_buffer_memory_for_ral_buffer(raGL_buffers in_raGL_buffers,
+                                                               ral_buffer   in_ral_buffer,
+                                                               raGL_buffer* out_buffer_ptr)
 {
     uint32_t                    alignment_requirement      = 1;
     ral_buffer_mappability_bits buffer_mappability         = 0;
+    ral_buffer                  buffer_parent              = NULL;
+    raGL_buffer                 buffer_parent_raGL         = NULL;
     ral_buffer_property_bits    buffer_properties          = 0;
+    raGL_buffer                 buffer_raGL                = NULL;
     uint32_t                    buffer_size                = 0;
+    uint32_t                    buffer_start_offset        = -1;
     ral_buffer_usage_bits       buffer_usage               = 0;
     _raGL_buffers_buffer*       buffer_ptr                 = NULL;
     _raGL_buffers*              buffers_ptr                = (_raGL_buffers*) in_raGL_buffers;
@@ -654,13 +663,68 @@ PUBLIC EMERALD_API bool raGL_buffers_allocate_buffer_memory_for_ral_buffer(raGL_
                             RAL_BUFFER_PROPERTY_PROPERTY_BITS,
                            &buffer_properties);
     ral_buffer_get_property(in_ral_buffer,
+                            RAL_BUFFER_PROPERTY_PARENT_BUFFER,
+                           &buffer_parent);
+    ral_buffer_get_property(in_ral_buffer,
                             RAL_BUFFER_PROPERTY_SIZE,
                            &buffer_size);
+    ral_buffer_get_property(in_ral_buffer,
+                            RAL_BUFFER_PROPERTY_START_OFFSET,
+                           &buffer_start_offset);
     ral_buffer_get_property(in_ral_buffer,
                             RAL_BUFFER_PROPERTY_USAGE_BITS,
                            &buffer_usage);
 
     must_be_immutable_bo_based = (buffer_properties & RAL_BUFFER_PROPERTY_SPARSE_IF_AVAILABLE_BIT) == 0;
+
+    /* If this raGL_buffer instance is being created with aliasing the existing buffer memory storage in mind,
+     * do not allocate any memory. */
+    if (buffer_parent != NULL)
+    {
+        raGL_buffer result_buffer_raGL = NULL;
+
+        if (!raGL_backend_get_buffer(buffers_ptr->backend,
+                                     buffer_parent,
+                           (void**) &buffer_parent_raGL) )
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Could not find a raGL_buffer instance for the parent ral_buffer instance.");
+
+            goto end;
+        }
+
+        if (buffer_size == 0)
+        {
+            uint32_t buffer_parent_size = 0;
+
+            /* In this case, the subregion should use all available buffer memory space. */
+            ral_buffer_get_property(buffer_parent,
+                                    RAL_BUFFER_PROPERTY_SIZE,
+                                   &buffer_parent_size);
+
+            ASSERT_DEBUG_SYNC(buffer_parent_size > buffer_start_offset,
+                              "Requested subregion's start offset exceeds parent buffer's size");
+
+            buffer_size = buffer_parent_size - buffer_start_offset;
+        } /* if (buffer_size == 0) */
+
+        result_buffer_raGL = raGL_buffer_create_raGL_buffer_subregion(buffer_parent_raGL,
+                                                                      buffer_start_offset,
+                                                                      buffer_size);
+
+        if (result_buffer_raGL == NULL)
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Failed to create a new raGL_buffer subregion instance");
+
+            goto end;
+        }
+
+        *out_buffer_ptr = result_buffer_raGL;
+        result          = true;
+
+        goto end;
+    } /* if (buffer_parent != NULL) */
 
     /* Determine the alignment requirement */
     if ((buffer_usage & RAL_BUFFER_USAGE_SHADER_STORAGE_BUFFER_BIT) != 0)
@@ -850,13 +914,14 @@ PUBLIC EMERALD_API bool raGL_buffers_allocate_buffer_memory_for_ral_buffer(raGL_
                            "Out of memory");
     }
 
+end:
     return result;
 }
 
 /** Please see header for spec */
-PUBLIC EMERALD_API RENDERING_CONTEXT_CALL bool raGL_buffers_allocate_buffer_memory_for_ral_buffer_create_info(raGL_buffers                  buffers,
-                                                                                                              const ral_buffer_create_info* buffer_create_info_ptr,
-                                                                                                              raGL_buffer*                  out_buffer_ptr)
+PUBLIC RENDERING_CONTEXT_CALL bool raGL_buffers_allocate_buffer_memory_for_ral_buffer_create_info(raGL_buffers                  buffers,
+                                                                                                  const ral_buffer_create_info* buffer_create_info_ptr,
+                                                                                                  raGL_buffer*                  out_buffer_ptr)
 {
     bool       result      = false;
     ral_buffer temp_buffer = ral_buffer_create(system_hashed_ansi_string_create("Temporary RAL buffer"),
@@ -872,9 +937,11 @@ PUBLIC EMERALD_API RENDERING_CONTEXT_CALL bool raGL_buffers_allocate_buffer_memo
 }
 
 /** Please see header for spec */
-PUBLIC raGL_buffers raGL_buffers_create(ogl_context context)
+PUBLIC raGL_buffers raGL_buffers_create(raGL_backend backend,
+                                        ogl_context  context)
 {
-    _raGL_buffers* new_buffers = new (std::nothrow) _raGL_buffers(context);
+    _raGL_buffers* new_buffers = new (std::nothrow) _raGL_buffers(backend,
+                                                                  context);
 
     ASSERT_DEBUG_SYNC(new_buffers != NULL,
                       "Out of memory");
@@ -917,8 +984,8 @@ PUBLIC raGL_buffers raGL_buffers_create(ogl_context context)
 }
 
 /** Please see header for spec */
-PUBLIC EMERALD_API void raGL_buffers_free_buffer_memory(raGL_buffers buffers,
-                                                        raGL_buffer  buffer)
+PUBLIC void raGL_buffers_free_buffer_memory(raGL_buffers buffers,
+                                            raGL_buffer  buffer)
 {
     GLuint                bo_id             = -1;
     system_memory_manager bo_memory_manager = NULL;

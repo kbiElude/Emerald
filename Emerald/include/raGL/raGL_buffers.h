@@ -45,18 +45,18 @@ REFCOUNT_INSERT_DECLARATIONS(raGL_buffers,
  *
  *  TODO
  */
-PUBLIC EMERALD_API RENDERING_CONTEXT_CALL bool raGL_buffers_allocate_buffer_memory_for_ral_buffer(raGL_buffers buffers,
-                                                                                                  ral_buffer   buffer,
-                                                                                                  raGL_buffer* out_buffer_ptr);
+PUBLIC RENDERING_CONTEXT_CALL bool raGL_buffers_allocate_buffer_memory_for_ral_buffer(raGL_buffers buffers,
+                                                                                      ral_buffer   buffer,
+                                                                                      raGL_buffer* out_buffer_ptr);
 
 /** TODO.
  *
  *  NOTE: This is a temporary function that will be removed after RAL integration is finished.
  *        DO NOT use.
  **/
-PUBLIC EMERALD_API RENDERING_CONTEXT_CALL bool raGL_buffers_allocate_buffer_memory_for_ral_buffer_create_info(raGL_buffers                  buffers,
-                                                                                                              const ral_buffer_create_info* buffer_create_info_ptr,
-                                                                                                              raGL_buffer*                  out_buffer_ptr);
+PUBLIC RENDERING_CONTEXT_CALL bool raGL_buffers_allocate_buffer_memory_for_ral_buffer_create_info(raGL_buffers                  buffers,
+                                                                                                  const ral_buffer_create_info* buffer_create_info_ptr,
+                                                                                                  raGL_buffer*                  out_buffer_ptr);
 
 /** TODO.
  *
@@ -64,7 +64,8 @@ PUBLIC EMERALD_API RENDERING_CONTEXT_CALL bool raGL_buffers_allocate_buffer_memo
  *
  *  TODO
  **/
-PUBLIC raGL_buffers raGL_buffers_create(ogl_context context);
+PUBLIC raGL_buffers raGL_buffers_create(raGL_backend backend,
+                                        ogl_context  context);
 
 /** TODO
  *
@@ -72,7 +73,7 @@ PUBLIC raGL_buffers raGL_buffers_create(ogl_context context);
  *        controlling the back-end.
  *
  *  TODO */
-PUBLIC EMERALD_API void raGL_buffers_free_buffer_memory(raGL_buffers buffers,
-                                                        raGL_buffer  buffer);
+PUBLIC void raGL_buffers_free_buffer_memory(raGL_buffers buffers,
+                                            raGL_buffer  buffer);
 
 #endif /* RAGL_BUFFERS_H */

@@ -17,6 +17,7 @@
 
 typedef struct _ral_texture_mipmap
 {
+    bool         contents_set;
     unsigned int depth;
     unsigned int height;
     unsigned int width;
@@ -25,9 +26,10 @@ typedef struct _ral_texture_mipmap
                                  uint32_t in_height,
                                  uint32_t in_depth)
     {
-        depth  = in_depth;
-        height = in_height;
-        width  = in_width;
+        contents_set = false;
+        depth        = in_depth;
+        height       = in_height;
+        width        = in_width;
     }
 } _ral_texture_mipmap;
 
@@ -698,6 +700,13 @@ PUBLIC EMERALD_API bool ral_texture_get_mipmap_property(ral_texture             
 
     switch (mipmap_property)
     {
+        case RAL_TEXTURE_MIPMAP_PROPERTY_CONTENTS_SET:
+        {
+            *(bool*) out_result_ptr = texture_mipmap_ptr->contents_set;
+
+            break;
+        }
+
         case RAL_TEXTURE_MIPMAP_PROPERTY_DEPTH:
         {
             *(uint32_t*) out_result_ptr = texture_mipmap_ptr->depth;
@@ -966,6 +975,38 @@ PUBLIC EMERALD_API bool ral_texture_set_mipmap_data_from_client_memory(ral_textu
     system_callback_manager_call_back(texture_ptr->callback_manager,
                                       RAL_TEXTURE_CALLBACK_ID_CLIENT_MEMORY_SOURCE_UPDATE_REQUESTED,
                                      &callback_arg);
+
+    /* Mark the mipmaps as set. This is a simplified approach, since the updates might have only touched
+     * mipmap storage partially, but it's enough for scene loaders */
+    for (uint32_t n_update = 0;
+                  n_update < n_updates;
+                ++n_update)
+    {
+        _ral_texture_layer*  texture_layer_ptr  = NULL;
+        _ral_texture_mipmap* texture_mipmap_ptr = NULL;
+
+        if (!system_resizable_vector_get_element_at(texture_ptr->layers,
+                                                   updates[n_update].n_layer,
+                                                  &texture_layer_ptr) )
+       {
+           ASSERT_DEBUG_SYNC(false,
+                             "Could not retrieve texture layer descriptor.");
+
+           continue;
+       }
+
+       if (!system_resizable_vector_get_element_at(texture_layer_ptr->mipmaps,
+                                                   updates[n_update].n_mipmap,
+                                                  &texture_mipmap_ptr) )
+       {
+           ASSERT_DEBUG_SYNC(false,
+                             "Could not retrieve texture layer mipmap descriptor.");
+
+           continue;
+       }
+
+       texture_mipmap_ptr->contents_set = true;
+    }
 
     /* All done */
     result = true;

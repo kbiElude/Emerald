@@ -13,7 +13,6 @@
 #include "ogl/ogl_program_ub.h"
 #include "ogl/ogl_programs.h"
 #include "ogl/ogl_shader.h"
-#include "raGL/raGL_buffers.h"
 #include "ral/ral_buffer.h"
 #include "ral/ral_context.h"
 #include "scene/scene_material.h"
@@ -699,12 +698,22 @@ PRIVATE void _mesh_marchingcubes_init_mesh_instance(_mesh_marchingcubes* mesh_pt
                                                                 MESH_DRAW_CALL_TYPE_ARRAYS_INDIRECT,
                                                                &draw_call_arguments);
 
-    mesh_ptr->polygonized_data_normals_subregion_bo  = raGL_buffer_create_raGL_buffer_subregion(mesh_ptr->polygonized_data_bo,
-                                                                                                sizeof(float) * 4,
-                                                                                                0); /* size = 0: use all available space */
-    mesh_ptr->polygonized_data_vertices_subregion_bo = raGL_buffer_create_raGL_buffer_subregion(mesh_ptr->polygonized_data_bo,
-                                                                                                0,
-                                                                                                0); /* size = 0: use all available space */
+    /* Create new normals & vertices subregion buffers */
+    ral_buffer_create_info normals_subregion_bo_create_info;
+    ral_buffer_create_info vertices_subregion_bo_create_info;
+
+    normals_subregion_bo_create_info.parent_buffer = mesh_ptr->polygonized_data_bo;
+    normals_subregion_bo_create_info.size          = max_normals_data_stream_size;
+    normals_subregion_bo_create_info.start_offset  = sizeof(float) * 4;
+
+    vertices_subregion_bo_create_info.parent_buffer = mesh_ptr->polygonized_data_bo;
+    vertices_subregion_bo_create_info.size          = max_vertices_data_stream_size;
+    vertices_subregion_bo_create_info.start_offset  = 0;
+
+    mesh_ptr->polygonized_data_normals_subregion_bo  = ral_buffer_create(system_hashed_ansi_string_create("Marching cubes normals sub-region BO"),
+                                                                        &normals_subregion_bo_create_info);
+    mesh_ptr->polygonized_data_vertices_subregion_bo = ral_buffer_create(system_hashed_ansi_string_create("Marching cubes vertices sub-region BO"),
+                                                                        &vertices_subregion_bo_create_info);
 
     mesh_add_layer_data_stream_from_buffer_memory(mesh_ptr->mesh_instance,
                                                   new_layer_id,
@@ -719,42 +728,12 @@ PRIVATE void _mesh_marchingcubes_init_mesh_instance(_mesh_marchingcubes* mesh_pt
                                                   mesh_ptr->polygonized_data_vertices_subregion_bo,
                                                   sizeof(float) * 7); /* bo_stride */
 
-#if 0
-    mesh_add_layer_data_stream_from_buffer_memory(mesh_ptr->mesh_instance,
-                                                  new_layer_id,
-                                                  MESH_LAYER_DATA_STREAM_TYPE_NORMALS,
-                                                  3, /* n_components */
-                                                  polygonized_data_bo_id,
-                                                  polygonized_data_bo_start_offset + sizeof(float) * 4,
-                                                  sizeof(float) * 7, /* bo_stride */
-                                                  0);                /* bo_size - unknown */
-    mesh_add_layer_data_stream_from_buffer_memory(mesh_ptr->mesh_instance,
-                                                  new_layer_id,
-                                                  MESH_LAYER_DATA_STREAM_TYPE_VERTICES,
-                                                  4, /* n_components */
-                                                  polygonized_data_bo_id,
-                                                  polygonized_data_bo_start_offset,
-                                                  sizeof(float) * 7, /* bo_stride */
-                                                  0);                /* bo_size - unknown */
-#endif
-
-    mesh_set_layer_data_stream_property(mesh_ptr->mesh_instance,
-                                        new_layer_id,
-                                        MESH_LAYER_DATA_STREAM_TYPE_NORMALS,
-                                        MESH_LAYER_DATA_STREAM_PROPERTY_GL_BO_SIZE,
-                                       &max_normals_data_stream_size);
-    mesh_set_layer_data_stream_property(mesh_ptr->mesh_instance,
-                                        new_layer_id,
-                                        MESH_LAYER_DATA_STREAM_TYPE_VERTICES,
-                                        MESH_LAYER_DATA_STREAM_PROPERTY_GL_BO_SIZE,
-                                       &max_vertices_data_stream_size);
-
     mesh_set_layer_data_stream_property_with_buffer_memory(mesh_ptr->mesh_instance,
                                                            new_layer_id,
                                                            MESH_LAYER_DATA_STREAM_TYPE_NORMALS,
                                                            MESH_LAYER_DATA_STREAM_PROPERTY_N_ITEMS,
                                                            mesh_ptr->indirect_draw_call_args_bo,
-                                                           sizeof(unsigned int),
+                                                           // sizeof(unsigned int),
                                                            true); /* does_read_require_memory_barrier */
 
     mesh_set_layer_data_stream_property_with_buffer_memory(mesh_ptr->mesh_instance,
@@ -762,7 +741,7 @@ PRIVATE void _mesh_marchingcubes_init_mesh_instance(_mesh_marchingcubes* mesh_pt
                                                            MESH_LAYER_DATA_STREAM_TYPE_VERTICES,
                                                            MESH_LAYER_DATA_STREAM_PROPERTY_N_ITEMS,
                                                            mesh_ptr->indirect_draw_call_args_bo,
-                                                           sizeof(unsigned int),
+                                                           // sizeof(unsigned int),
                                                            true); /* does_read_require_memory_barrier */
 }
 
