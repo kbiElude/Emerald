@@ -6,6 +6,7 @@
 #include "shared.h"
 #include "ogl/ogl_context.h"
 #include "ogl/ogl_rendering_handler.h"
+#include "ral/ral_context.h"
 #include "system/system_assertions.h"
 #include "system/system_constants.h"
 #include "system/system_event.h"
@@ -205,11 +206,11 @@ LRESULT CALLBACK _system_window_class_message_loop_entrypoint(HWND   window_hand
         {
             /* If the window is being closed per system request (eg. ALT+F4 was pressed), we need to stop
              * the rendering process first! Otherwise we're very likely to end up with a nasty crash. */
-            ogl_context           context           = NULL;
+            ral_context           context           = NULL;
             ogl_rendering_handler rendering_handler = NULL;
 
             system_window_get_property(win32_ptr->window,
-                                       SYSTEM_WINDOW_PROPERTY_RENDERING_CONTEXT,
+                                       SYSTEM_WINDOW_PROPERTY_RENDERING_CONTEXT_RAL,
                                       &context);
             system_window_get_property(win32_ptr->window,
                                        SYSTEM_WINDOW_PROPERTY_RENDERING_HANDLER,
@@ -233,7 +234,7 @@ LRESULT CALLBACK _system_window_class_message_loop_entrypoint(HWND   window_hand
                  *
                  * This should work out of the box, since we've just stopped the play-back.
                  */
-                ogl_context_request_callback_from_context_thread(context,
+                ogl_context_request_callback_from_context_thread(ral_context_get_gl_context(context),
                                                                  _system_window_window_closing_rendering_thread_entrypoint,
                                                                  win32_ptr);
             }

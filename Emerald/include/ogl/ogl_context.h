@@ -224,7 +224,6 @@ PUBLIC EMERALD_API ogl_context ogl_context_create_from_system_window(system_hash
                                                                      ral_context               context,
                                                                      raGL_backend              backend,
                                                                      system_window             window,
-                                                                     bool                      vsync_enabled,
                                                                      ogl_context               parent_context);
 
 /** TODO
@@ -248,15 +247,17 @@ PUBLIC void ogl_context_deinit_global();
  *  NOTE: The returned data is sorted in a descending order.
  *
  *  NOTE: It is caller's responsibility to ensure only one ogl_context_enumerate_msaa_samples() call
- *        is active at the same time. The function uses root window's rendering context to retrieve
- *        GL-specific information and badness may/will happen if this requirement is ignored.
+ *        is active at the same time. The function uses root context to retrieve
+ *        API-specific information and badness may/will happen if this requirement is ignored.
  *
+ *  @param backend_type            TODO.
  *  @param pf                      TODO. Ownership is NOT claimed by the function.
  *  @param out_n_supported_samples TODO.
  *  @param out_supported_samples   TODO.
  *
  */
-PUBLIC EMERALD_API void ogl_context_enumerate_msaa_samples(system_pixel_format pf,
+PUBLIC EMERALD_API void ogl_context_enumerate_msaa_samples(ral_backend_type    backend_type,
+                                                           system_pixel_format pf,
                                                            unsigned int*       out_n_supported_samples,
                                                            unsigned int**      out_supported_samples);
 

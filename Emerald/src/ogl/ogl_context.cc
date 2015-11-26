@@ -241,7 +241,6 @@ PRIVATE ogl_context _ogl_context_create_from_system_window_shared(system_hashed_
                                                                   raGL_backend              backend,
                                                                   system_window             window,
                                                                   system_pixel_format       in_pfd,
-                                                                  bool                      vsync_enabled,
                                                                   ogl_context               parent_context)
 {
     /* Create the ogl_context instance. */
@@ -261,9 +260,12 @@ PRIVATE ogl_context _ogl_context_create_from_system_window_shared(system_hashed_
                                                    system_hashed_ansi_string_get_buffer(name))
                                                    );
 
-    ral_context_get_property(context,
-                             RAL_CONTEXT_PROPERTY_BACKEND_TYPE,
-                            &new_context_ptr->backend_type);
+    ral_context_get_property  (context,
+                               RAL_CONTEXT_PROPERTY_BACKEND_TYPE,
+                              &new_context_ptr->backend_type);
+    system_window_get_property(window,
+                               SYSTEM_WINDOW_PROPERTY_IS_VSYNC_ENABLED,
+                              &new_context_ptr->vsync_enabled);
 
     new_context_ptr->backend                                = backend;
     new_context_ptr->context                                = context;
@@ -274,7 +276,6 @@ PRIVATE ogl_context _ogl_context_create_from_system_window_shared(system_hashed_
     new_context_ptr->msaa_enumeration_depth_stencil_samples = NULL;
     new_context_ptr->parent_context                         = parent_context;
     new_context_ptr->pfd                                    = in_pfd;
-    new_context_ptr->vsync_enabled                          = vsync_enabled;
     new_context_ptr->window                                 = window;
 
     #ifdef _WIN32
@@ -1315,7 +1316,8 @@ PRIVATE void _ogl_context_initialize_fbo(_ogl_context* context_ptr)
         unsigned int  reported_n_samples = 0;
         unsigned int* reported_samples   = NULL;
 
-        ogl_context_enumerate_msaa_samples(pixel_format,
+        ogl_context_enumerate_msaa_samples(context_ptr->backend_type,
+                                           pixel_format,
                                           &reported_n_samples,
                                           &reported_samples);
 
@@ -3060,7 +3062,6 @@ PUBLIC EMERALD_API ogl_context ogl_context_create_from_system_window(system_hash
                                                                      ral_context               context,
                                                                      raGL_backend              backend,
                                                                      system_window             window,
-                                                                     bool                      vsync_enabled,
                                                                      ogl_context               parent_context)
 {
     system_pixel_format window_pf      = NULL;
@@ -3078,7 +3079,6 @@ PUBLIC EMERALD_API ogl_context ogl_context_create_from_system_window(system_hash
                                                          backend,
                                                          window,
                                                          window_pf,
-                                                         vsync_enabled,
                                                          parent_context);
 }
 
@@ -3097,7 +3097,8 @@ PUBLIC void ogl_context_deinit_global()
 }
 
 /* Please see header for spec */
-PUBLIC EMERALD_API void ogl_context_enumerate_msaa_samples(system_pixel_format pf,
+PUBLIC EMERALD_API void ogl_context_enumerate_msaa_samples(ral_backend_type    backend_type,
+                                                           system_pixel_format pf,
                                                            unsigned int*       out_n_supported_samples,
                                                            unsigned int**      out_supported_samples)
 {
@@ -3108,9 +3109,8 @@ PUBLIC EMERALD_API void ogl_context_enumerate_msaa_samples(system_pixel_format p
     GLenum                  internalformat_depth_stencil           = GL_NONE;
     bool                    result                                 = true;
     system_resizable_vector result_vector                          = NULL;
-    system_window           root_window                            = NULL;
-    ogl_context             root_window_context                    = NULL;
-    _ogl_context*           root_window_context_ptr                = NULL;
+    ogl_context             root_context                           = NULL;
+    _ogl_context*           root_context_ptr                       = NULL;
 
     result = _ogl_context_get_attachment_internalformats_for_system_pixel_format(pf,
                                                                                 &internalformat_color,
@@ -3125,36 +3125,23 @@ PUBLIC EMERALD_API void ogl_context_enumerate_msaa_samples(system_pixel_format p
     }
 
     /* Determine the number of samples which can be used for the specified internalformats */
-    root_window = system_window_get_root_window();
+    root_context = raGL_backend_get_root_context(backend_type);
 
-    if (root_window == NULL)
+    if (root_context == NULL)
     {
         ASSERT_DEBUG_SYNC(false,
-                          "Could not obtain root window");
+                          "Could not obtain root context");
 
         result = false;
         goto end;
     }
 
-    system_window_get_property(root_window,
-                               SYSTEM_WINDOW_PROPERTY_RENDERING_CONTEXT,
-                              &root_window_context);
+    root_context_ptr = (_ogl_context*) root_context;
 
-    if (root_window_context == NULL)
-    {
-        ASSERT_DEBUG_SYNC(false,
-                          "Root window's rendering context is NULL");
+    root_context_ptr->msaa_enumeration_color_internalformat         = internalformat_color;
+    root_context_ptr->msaa_enumeration_depth_stencil_internalformat = internalformat_depth_stencil;
 
-        result = false;
-        goto end;
-    }
-
-    root_window_context_ptr = (_ogl_context*) root_window_context;
-
-    root_window_context_ptr->msaa_enumeration_color_internalformat         = internalformat_color;
-    root_window_context_ptr->msaa_enumeration_depth_stencil_internalformat = internalformat_depth_stencil;
-
-    ogl_context_request_callback_from_context_thread(root_window_context,
+    ogl_context_request_callback_from_context_thread(root_context,
                                                      _ogl_context_enumerate_msaa_samples_rendering_thread_callback,
                                                      NULL); /* user_arg */
 
@@ -3162,11 +3149,11 @@ PUBLIC EMERALD_API void ogl_context_enumerate_msaa_samples(system_pixel_format p
      * used for color & depth attachments must match, we can only return values that are supported
      * for both internalformats.
      */
-    consider_color_internalformats         = (root_window_context_ptr->msaa_enumeration_color_internalformat         != GL_NONE);
-    consider_depth_stencil_internalformats = (root_window_context_ptr->msaa_enumeration_depth_stencil_internalformat != GL_NONE);
+    consider_color_internalformats         = (root_context_ptr->msaa_enumeration_color_internalformat         != GL_NONE);
+    consider_depth_stencil_internalformats = (root_context_ptr->msaa_enumeration_depth_stencil_internalformat != GL_NONE);
 
-    if (consider_color_internalformats         && root_window_context_ptr->msaa_enumeration_color_n_samples         == 0 ||
-        consider_depth_stencil_internalformats && root_window_context_ptr->msaa_enumeration_depth_stencil_n_samples == 0)
+    if (consider_color_internalformats         && root_context_ptr->msaa_enumeration_color_n_samples         == 0 ||
+        consider_depth_stencil_internalformats && root_context_ptr->msaa_enumeration_depth_stencil_n_samples == 0)
     {
         ASSERT_DEBUG_SYNC(false,
                           "MSAA not supported for the requested color / depth / depth-stencil internalformats");
@@ -3175,9 +3162,9 @@ PUBLIC EMERALD_API void ogl_context_enumerate_msaa_samples(system_pixel_format p
         goto end;
     }
 
-    if (consider_depth_stencil_internalformats && root_window_context_ptr->msaa_enumeration_depth_stencil_n_samples != 0)
+    if (consider_depth_stencil_internalformats && root_context_ptr->msaa_enumeration_depth_stencil_n_samples != 0)
     {
-        depth_stencil_samples_vector = system_resizable_vector_create(root_window_context_ptr->msaa_enumeration_depth_stencil_n_samples);
+        depth_stencil_samples_vector = system_resizable_vector_create(root_context_ptr->msaa_enumeration_depth_stencil_n_samples);
     }
 
     result_vector = system_resizable_vector_create(32 /* capacity */);
@@ -3186,25 +3173,25 @@ PUBLIC EMERALD_API void ogl_context_enumerate_msaa_samples(system_pixel_format p
                       "Out of memory");
 
     for (unsigned int n_depth_stencil_n_samples = 0;
-                      n_depth_stencil_n_samples < (uint32_t) root_window_context_ptr->msaa_enumeration_depth_stencil_n_samples;
+                      n_depth_stencil_n_samples < (uint32_t) root_context_ptr->msaa_enumeration_depth_stencil_n_samples;
                     ++n_depth_stencil_n_samples)
     {
         system_resizable_vector_push(depth_stencil_samples_vector,
-                                     (void*) root_window_context_ptr->msaa_enumeration_depth_stencil_samples[n_depth_stencil_n_samples]);
+                                     (void*) root_context_ptr->msaa_enumeration_depth_stencil_samples[n_depth_stencil_n_samples]);
     }
 
     if (depth_stencil_samples_vector != NULL)
     {
         for (unsigned int n_result_sample = 0;
-                          n_result_sample < (uint32_t) root_window_context_ptr->msaa_enumeration_color_n_samples;
+                          n_result_sample < (uint32_t) root_context_ptr->msaa_enumeration_color_n_samples;
                         ++n_result_sample)
         {
             /* Only store the matches */
             if (system_resizable_vector_find(depth_stencil_samples_vector,
-                                             (void*) root_window_context_ptr->msaa_enumeration_color_samples[n_result_sample]) != ITEM_NOT_FOUND)
+                                             (void*) root_context_ptr->msaa_enumeration_color_samples[n_result_sample]) != ITEM_NOT_FOUND)
             {
                 system_resizable_vector_push(result_vector,
-                                             (void*) root_window_context_ptr->msaa_enumeration_color_samples[n_result_sample]);
+                                             (void*) root_context_ptr->msaa_enumeration_color_samples[n_result_sample]);
             }
         }
     } /* if (depth_stencil_samples_vector != NULL) */
@@ -3212,11 +3199,11 @@ PUBLIC EMERALD_API void ogl_context_enumerate_msaa_samples(system_pixel_format p
     {
         /* Treat the color samples data as the needed info */
         for (unsigned int n_result_sample = 0;
-                          n_result_sample < (uint32_t) root_window_context_ptr->msaa_enumeration_color_n_samples;
+                          n_result_sample < (uint32_t) root_context_ptr->msaa_enumeration_color_n_samples;
                         ++n_result_sample)
         {
             system_resizable_vector_push(result_vector,
-                                         (void*) root_window_context_ptr->msaa_enumeration_color_samples[n_result_sample]);
+                                         (void*) root_context_ptr->msaa_enumeration_color_samples[n_result_sample]);
         }
     }
 
@@ -3253,18 +3240,18 @@ end:
     }
 
     /* Clean up */
-    if (root_window_context_ptr->msaa_enumeration_color_samples != NULL)
+    if (root_context_ptr->msaa_enumeration_color_samples != NULL)
     {
-        delete [] root_window_context_ptr->msaa_enumeration_color_samples;
+        delete [] root_context_ptr->msaa_enumeration_color_samples;
 
-        root_window_context_ptr->msaa_enumeration_color_samples = NULL;
+        root_context_ptr->msaa_enumeration_color_samples = NULL;
     }
 
-    if (root_window_context_ptr->msaa_enumeration_depth_stencil_samples != NULL)
+    if (root_context_ptr->msaa_enumeration_depth_stencil_samples != NULL)
     {
-        delete [] root_window_context_ptr->msaa_enumeration_depth_stencil_samples;
+        delete [] root_context_ptr->msaa_enumeration_depth_stencil_samples;
 
-        root_window_context_ptr->msaa_enumeration_depth_stencil_samples = NULL;
+        root_context_ptr->msaa_enumeration_depth_stencil_samples = NULL;
     }
 
     if (depth_stencil_samples_vector != NULL)

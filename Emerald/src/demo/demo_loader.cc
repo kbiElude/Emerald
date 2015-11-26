@@ -476,11 +476,11 @@ PUBLIC void demo_loader_run(demo_loader   loader,
         {
             case DEMO_LOADER_OP_BUILD_PROGRAM:
             {
-                ogl_context context     = NULL;
+                ral_context context     = NULL;
                 ogl_program new_program = NULL;
 
                 system_window_get_property(renderer_window,
-                                           SYSTEM_WINDOW_PROPERTY_RENDERING_CONTEXT,
+                                           SYSTEM_WINDOW_PROPERTY_RENDERING_CONTEXT_RAL,
                                           &context);
 
                 new_program = ogl_program_create(loader_ptr->context,

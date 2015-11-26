@@ -68,8 +68,7 @@ typedef struct _ral_context
 
 
     _ral_context(system_hashed_ansi_string in_name,
-                 system_window             in_window,
-                 ogl_rendering_handler     in_rendering_handler)
+                 system_window             in_window)
     {
         backend                  = NULL;
         buffers                  = system_resizable_vector_create(sizeof(ral_buffer) );
@@ -82,7 +81,7 @@ typedef struct _ral_context
         n_samplers_created       = 0;
         n_textures_created       = 0;
         name                     = in_name;
-        rendering_handler        = in_rendering_handler;
+        rendering_handler        = NULL;
         samplers                 = system_resizable_vector_create(sizeof(ral_sampler) );
         samplers_cs              = system_critical_section_create();
         textures                 = system_resizable_vector_create(sizeof(ral_texture) );
@@ -93,12 +92,18 @@ typedef struct _ral_context
 
         pfn_backend_get_property_proc = NULL;
 
+        system_window_get_property(in_window,
+                                   SYSTEM_WINDOW_PROPERTY_RENDERING_HANDLER,
+                                  &rendering_handler);
+
         ASSERT_DEBUG_SYNC(buffers != NULL,
                           "Could not create the buffers vector.");
         ASSERT_DEBUG_SYNC(callback_manager != NULL,
                           "Could not create a callback manager instance");
         ASSERT_DEBUG_SYNC(framebuffers != NULL,
                           "Could not create the framebuffers vector.");
+        ASSERT_DEBUG_SYNC(rendering_handler != NULL,
+                          "Rendering handler reported by the system_window instance is NULL");
         ASSERT_DEBUG_SYNC(samplers != NULL,
                           "Could not create the samplers vector.");
         ASSERT_DEBUG_SYNC(textures != NULL,
@@ -615,12 +620,10 @@ PRIVATE void _ral_context_release(void* context)
 
 /** Please see header for specification */
 PUBLIC ral_context ral_context_create(system_hashed_ansi_string name,
-                                      system_window             window,
-                                      ogl_rendering_handler     rendering_handler)
+                                      system_window             window)
 {
     _ral_context* new_context_ptr = new (std::nothrow) _ral_context(name,
-                                                                    window,
-                                                                    rendering_handler);
+                                                                    window);
 
     ASSERT_ALWAYS_SYNC(new_context_ptr != NULL,
                        "Out of memory");
@@ -628,13 +631,9 @@ PUBLIC ral_context ral_context_create(system_hashed_ansi_string name,
     {
         /* Instantiate the rendering back-end */
         ral_backend_type backend_type = RAL_BACKEND_TYPE_UNKNOWN;
-        ogl_context      context      = NULL;
 
         system_window_get_property(window,
-                                   SYSTEM_WINDOW_PROPERTY_RENDERING_CONTEXT,
-                                  &context);
-        ogl_context_get_property  (context,
-                                   OGL_CONTEXT_PROPERTY_BACKEND_TYPE,
+                                   SYSTEM_WINDOW_PROPERTY_BACKEND_TYPE,
                                   &backend_type);
 
         switch (backend_type)
@@ -642,7 +641,9 @@ PUBLIC ral_context ral_context_create(system_hashed_ansi_string name,
             case RAL_BACKEND_TYPE_ES:
             case RAL_BACKEND_TYPE_GL:
             {
-                new_context_ptr->backend                              = (void*) raGL_backend_create( (ral_context) new_context_ptr);
+                new_context_ptr->backend                              = (void*) raGL_backend_create( (ral_context) new_context_ptr,
+                                                                                                    name,
+                                                                                                    backend_type);
                 new_context_ptr->pfn_backend_get_framebuffer_proc     = raGL_backend_get_framebuffer;
                 new_context_ptr->pfn_backend_get_property_proc        = raGL_backend_get_property;
                 new_context_ptr->pfn_backend_release_proc             = raGL_backend_release;

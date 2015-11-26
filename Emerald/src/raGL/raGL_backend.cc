@@ -4,7 +4,10 @@
  *
  */
 #include "shared.h"
+#include "demo/demo_app.h"
+#include "demo/demo_window.h"
 #include "ogl/ogl_context.h"
+#include "ogl/ogl_rendering_handler.h"
 #include "ral/ral_context.h"
 #include "raGL/raGL_backend.h"
 #include "raGL/raGL_buffer.h"
@@ -17,7 +20,11 @@
 #include "system/system_callback_manager.h"
 #include "system/system_critical_section.h"
 #include "system/system_hash64map.h"
+#include "system/system_pixel_format.h"
 #include "system/system_window.h"
+
+#define ROOT_WINDOW_ES_NAME "Root window ES"
+#define ROOT_WINDOW_GL_NAME "Root window GL"
 
 
 typedef enum
@@ -46,22 +53,28 @@ typedef struct _raGL_backend
     raGL_samplers samplers;
     raGL_textures textures;
 
-    ogl_context      gl_context;       /* NOT owned - DO NOT release */
-    ral_context      owner_context;
-    ral_framebuffer  system_framebuffer;
+    ral_backend_type          backend_type;
+    ogl_context               context_gl;
+    ral_context               context_ral;
+    system_hashed_ansi_string name;
+    ral_framebuffer           system_framebuffer;
 
     uint32_t max_framebuffer_color_attachments;
 
-    _raGL_backend(ral_context in_owner_context)
+    _raGL_backend(ral_context               in_owner_context,
+                  system_hashed_ansi_string in_name,
+                  ral_backend_type          in_backend_type)
     {
+        backend_type                      = in_backend_type;
         buffers                           = NULL;
         buffers_map                       = system_hash64map_create       (sizeof(raGL_buffer) );
         buffers_map_cs                    = system_critical_section_create();
+        context_gl                        = NULL;
+        context_ral                       = in_owner_context;
         framebuffers_map                  = system_hash64map_create       (sizeof(raGL_framebuffer) );
         framebuffers_map_cs               = system_critical_section_create();
-        gl_context                        = NULL;
         max_framebuffer_color_attachments = 0;
-        owner_context                     = in_owner_context;
+        name                              = NULL;
         samplers                          = NULL;
         samplers_map                      = system_hash64map_create       (sizeof(raGL_sampler) );
         samplers_map_cs                   = system_critical_section_create();
@@ -103,7 +116,7 @@ typedef struct _raGL_backend
         /* Delete the system framebuffer and then proceed with release of other dangling objects. */
         if (system_framebuffer != NULL)
         {
-            ral_context_delete_framebuffers(owner_context,
+            ral_context_delete_framebuffers(context_ral,
                                             1, /* n_framebuffers */
                                            &system_framebuffer);
 
@@ -212,6 +225,13 @@ typedef struct _raGL_backend
             } /* for (all raGL object types) */
         }
 
+        if (context_gl != NULL)
+        {
+            ogl_context_release(context_gl);
+
+            context_gl = NULL;
+        } /* if (context_gl != NULL) */
+
         system_critical_section_release(buffers_map_cs);
         buffers_map_cs = NULL;
 
@@ -263,11 +283,73 @@ PRIVATE void _raGL_backend_cache_limits(_raGL_backend* backend_ptr)
 {
     ogl_context_gl_limits* limits_ptr = NULL;
 
-    ogl_context_get_property(backend_ptr->gl_context,
+    ogl_context_get_property(backend_ptr->context_gl,
                              OGL_CONTEXT_PROPERTY_LIMITS,
                             &limits_ptr);
 
     backend_ptr->max_framebuffer_color_attachments = limits_ptr->max_color_attachments;
+}
+
+/** TODO */
+PRIVATE void _raGL_backend_create_root_window(ral_backend_type backend_type)
+{
+    system_window             root_window                   = NULL;
+    system_hashed_ansi_string root_window_name              = (backend_type == RAL_BACKEND_TYPE_ES) ? system_hashed_ansi_string_create(ROOT_WINDOW_ES_NAME)
+                                                                                                    : system_hashed_ansi_string_create(ROOT_WINDOW_GL_NAME);
+    system_pixel_format       root_window_pf                = NULL;
+    ogl_rendering_handler     root_window_rendering_handler = NULL;
+    static const int          root_window_x1y1x2y2[] =
+    {
+        0,
+        0,
+        64,
+        64
+    };
+
+    /* Spawn a new root window. All client-created windows will share namespace with root
+     * window's context.
+     *
+     * NOTE: Spawned window takes ownership of the pixel_format object.
+     *
+     * NOTE: The pixel format we use to initialize the root window uses 0 bits for the
+     *       color, depth and stencil attachments. That's fine, we don't really need
+     *       to render anything to the window; we only use it as a mean to share objects
+     *       between contexts.
+     */
+    root_window_pf = system_pixel_format_create(8,  /* red_bits     */
+                                                8,  /* green_bits   */
+                                                8,  /* blue_bits    */
+                                                0,  /* alpha_bits   */
+                                                24, /* depth_bits   */
+                                                1,  /* n_samples    */
+                                                0); /* stencil_bits */
+
+    root_window = system_window_create_not_fullscreen(backend_type,
+                                                      root_window_x1y1x2y2,
+                                                      root_window_name,
+                                                      false, /* scalable      */
+                                                      false, /* vsync_enabled */
+                                                      false, /* visible       */
+                                                      root_window_pf);
+
+    ASSERT_DEBUG_SYNC(root_window != NULL,
+                      "Root window context creation failed");
+
+    root_window_rendering_handler = ogl_rendering_handler_create_with_render_per_request_policy(system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(root_window_name),
+                                                                                                                                                        " rendering handler"),
+                                                                                                NULL,  /* pfn_rendering_callback */
+                                                                                                NULL); /* user_arg */
+
+    ASSERT_DEBUG_SYNC(root_window_rendering_handler != NULL,
+                      "Root window rendering handler creation failed");
+
+    system_window_set_property(root_window,
+                               SYSTEM_WINDOW_PROPERTY_RENDERING_HANDLER,
+                              &root_window_rendering_handler);
+
+    /* The setter takes ownership of root_window, but for the sake of code maintainability,
+     * retain the RH so that we can release it at the moment root_window is also released. */
+    ogl_rendering_handler_retain(root_window_rendering_handler);
 }
 
 /** TODO */
@@ -276,11 +358,14 @@ PRIVATE void _raGL_backend_init_system_fbo(_raGL_backend* backend_ptr)
     GLuint system_fbo_id    = 0;
 
     /* Create the ral_framebuffer instance from an existing FBO the ogl_context has already set up. */
-    ogl_context_get_property(backend_ptr->gl_context,
+    ogl_context_get_property(backend_ptr->context_gl,
                              OGL_CONTEXT_PROPERTY_DEFAULT_FBO_ID,
                             &system_fbo_id);
 
-    // TODO .. note: system FB's attachments are RBOs! will need raGL_texture to support both.
+    ASSERT_DEBUG_SYNC(false,
+                      "TODO");
+
+    // TODO ..
 }
 
 /** TODO */
@@ -302,7 +387,7 @@ PRIVATE void _raGL_backend_on_buffers_created(const void* callback_arg_data,
     rendering_callback_arg.object_type          = RAGL_BACKEND_OBJECT_TYPE_BUFFER;
     rendering_callback_arg.ral_callback_arg_ptr = callback_arg_data;
 
-    ogl_context_request_callback_from_context_thread(backend_ptr->gl_context,
+    ogl_context_request_callback_from_context_thread(backend_ptr->context_gl,
                                                      _raGL_backend_on_objects_created_rendering_callback,
                                                     &rendering_callback_arg);
 
@@ -336,7 +421,7 @@ PRIVATE void _raGL_backend_on_framebuffers_created(const void* callback_arg_data
     rendering_callback_arg.object_type          = RAGL_BACKEND_OBJECT_TYPE_FRAMEBUFFER;
     rendering_callback_arg.ral_callback_arg_ptr = callback_arg_data;
 
-    ogl_context_request_callback_from_context_thread(backend_ptr->gl_context,
+    ogl_context_request_callback_from_context_thread(backend_ptr->context_gl,
                                                      _raGL_backend_on_objects_created_rendering_callback,
                                                     &rendering_callback_arg);
 
@@ -375,7 +460,7 @@ PRIVATE void _raGL_backend_on_objects_created_rendering_callback(ogl_context con
     ASSERT_DEBUG_SYNC(callback_arg != NULL,
                       "Callback argument is NULL");
 
-    ogl_context_get_property(callback_arg_ptr->backend_ptr->gl_context,
+    ogl_context_get_property(callback_arg_ptr->backend_ptr->context_gl,
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
                             &entrypoints_ptr);
 
@@ -486,8 +571,7 @@ PRIVATE void _raGL_backend_on_objects_created_rendering_callback(ogl_context con
                   n_object_id < n_objects_to_initialize;
                 ++n_object_id)
     {
-        GLuint current_object_id = result_object_ids_ptr[n_object_id];
-        void*  new_object        = NULL;
+        void* new_object = NULL;
 
         switch (callback_arg_ptr->object_type)
         {
@@ -502,6 +586,8 @@ PRIVATE void _raGL_backend_on_objects_created_rendering_callback(ogl_context con
 
             case RAGL_BACKEND_OBJECT_TYPE_FRAMEBUFFER:
             {
+                GLuint current_object_id = result_object_ids_ptr[n_object_id];
+
                 new_object = raGL_framebuffer_create(context,
                                                      current_object_id,
                                                      ral_framebuffer_ptrs[n_object_id]);
@@ -645,7 +731,7 @@ PRIVATE void _raGL_backend_on_samplers_created(const void* callback_arg_data,
     rendering_callback_arg.object_type          = RAGL_BACKEND_OBJECT_TYPE_SAMPLER;
     rendering_callback_arg.ral_callback_arg_ptr = callback_arg_data;
 
-    ogl_context_request_callback_from_context_thread(backend_ptr->gl_context,
+    ogl_context_request_callback_from_context_thread(backend_ptr->context_gl,
                                                      _raGL_backend_on_objects_created_rendering_callback,
                                                     &rendering_callback_arg);
 
@@ -678,7 +764,7 @@ PRIVATE void _raGL_backend_on_textures_created(const void* callback_arg_data,
     rendering_callback_arg.object_type          = RAGL_BACKEND_OBJECT_TYPE_TEXTURE;
     rendering_callback_arg.ral_callback_arg_ptr = callback_arg_data;
 
-    ogl_context_request_callback_from_context_thread(backend_ptr->gl_context,
+    ogl_context_request_callback_from_context_thread(backend_ptr->context_gl,
                                                      _raGL_backend_on_objects_created_rendering_callback,
                                                     &rendering_callback_arg);
 
@@ -699,7 +785,7 @@ PRIVATE void _raGL_backend_subscribe_for_notifications(_raGL_backend* backend_pt
 {
     system_callback_manager context_callback_manager = NULL;
 
-    ral_context_get_property(backend_ptr->owner_context,
+    ral_context_get_property(backend_ptr->context_ral,
                              RAL_CONTEXT_PROPERTY_CALLBACK_MANAGER,
                             &context_callback_manager);
 
@@ -799,39 +885,59 @@ PRIVATE void _raGL_backend_subscribe_for_notifications(_raGL_backend* backend_pt
 
 
 /** Please see header for specification */
-PUBLIC raGL_backend raGL_backend_create(ral_context owner_context)
+PUBLIC raGL_backend raGL_backend_create(ral_context               context_ral,
+                                        system_hashed_ansi_string name,
+                                        ral_backend_type          type)
 {
-    _raGL_backend* new_backend_ptr = new (std::nothrow) _raGL_backend(owner_context);
+    _raGL_backend* new_backend_ptr = new (std::nothrow) _raGL_backend(context_ral,
+                                                                      name,
+                                                                      type);
 
     ASSERT_ALWAYS_SYNC(new_backend_ptr != NULL,
                        "Out of memory");
     if (new_backend_ptr != NULL)
     {
-        system_window window = NULL;
+        _raGL_backend* root_backend_ptr = NULL;
+        system_window  window           = NULL;
+        bool           vsync_enabled    = false;
 
-        /* Retrieve the GL context handle */
-        ral_context_get_property  (owner_context,
-                                   RAL_CONTEXT_PROPERTY_WINDOW,
-                                  &window);
-        system_window_get_property(window,
-                                   SYSTEM_WINDOW_PROPERTY_RENDERING_CONTEXT,
-                                  &new_backend_ptr->gl_context);
+        root_backend_ptr = (_raGL_backend*) raGL_backend_get_root_context(type);
 
-        ASSERT_DEBUG_SYNC(new_backend_ptr->gl_context != NULL,
-                          "Could not retrieve the GL rendering context instance");
+        ASSERT_DEBUG_SYNC(root_backend_ptr != NULL,
+                          "Root window back-end is NULL");
+
+        /* Create a GL context  */
+        ral_context_get_property(context_ral,
+                                 RAL_CONTEXT_PROPERTY_WINDOW,
+                                &window);
+
+        new_backend_ptr->context_gl = ogl_context_create_from_system_window(name,
+                                                                            context_ral,
+                                                                            (raGL_backend) new_backend_ptr,
+                                                                            window,
+                                                                            root_backend_ptr->context_gl);
+        ASSERT_DEBUG_SYNC(new_backend_ptr->context_gl != NULL,
+                          "Could not create the GL rendering context instance");
 
         /* Create buffer memory manager */
-        new_backend_ptr->buffers = raGL_buffers_create(new_backend_ptr->gl_context);
+        new_backend_ptr->buffers = raGL_buffers_create((raGL_backend) new_backend_ptr,
+                                                       new_backend_ptr->context_gl);
 
         /* Create sampler manager */
-        new_backend_ptr->samplers = raGL_samplers_create(new_backend_ptr->gl_context);
+        new_backend_ptr->samplers = raGL_samplers_create(new_backend_ptr->context_gl);
 
         /* Create texture manager */
-        new_backend_ptr->textures = raGL_textures_create(new_backend_ptr->gl_context);
+        new_backend_ptr->textures = raGL_textures_create(new_backend_ptr->context_gl);
 
         /* Sign up for notifications */
         _raGL_backend_subscribe_for_notifications(new_backend_ptr,
                                                   true); /* should_subscribe */
+
+        /* Bind the context to current thread. As a side effect, stuff like text rendering will
+         * be initialized.
+         */
+        ogl_context_bind_to_current_thread    (new_backend_ptr->context_gl);
+        ogl_context_unbind_from_current_thread(new_backend_ptr->context_gl);
 
         /* Configure the system framebuffer */
         _raGL_backend_init_system_fbo(new_backend_ptr);
@@ -886,6 +992,39 @@ end:
 }
 
 /** Please see header for specification */
+PUBLIC ogl_context raGL_backend_get_root_context(ral_backend_type backend_type)
+{
+    _raGL_backend*                  root_backend_ptr   = NULL;
+    ral_context                     root_context_ral   = NULL;
+    const system_hashed_ansi_string root_window_name   = (backend_type == RAL_BACKEND_TYPE_ES) ? system_hashed_ansi_string_create(ROOT_WINDOW_ES_NAME)
+                                                                                               : system_hashed_ansi_string_create(ROOT_WINDOW_GL_NAME);
+    system_window                   root_window_system = NULL;
+    demo_window                     root_window        = demo_app_get_window_by_name(root_window_name);
+
+    if (root_window == NULL)
+    {
+        _raGL_backend_create_root_window(backend_type);
+
+        root_window = demo_app_get_window_by_name(root_window_name);
+
+        ASSERT_DEBUG_SYNC(root_window != NULL,
+                          "Could not create a root window");
+    } /* if (root_window == NULL) */
+
+    demo_window_get_property  (root_window,
+                               DEMO_WINDOW_PROPERTY_WINDOW,
+                              &root_window_system);
+    system_window_get_property(root_window_system,
+                               SYSTEM_WINDOW_PROPERTY_RENDERING_CONTEXT_RAL,
+                              &root_context_ral);
+    ral_context_get_property  (root_context_ral,
+                               RAL_CONTEXT_PROPERTY_BACKEND,
+                              &root_backend_ptr);
+
+    return root_backend_ptr->context_gl;
+}
+
+/** Please see header for specification */
 PUBLIC void raGL_backend_get_property(void*                backend,
                                       ral_context_property property,
                                       void*                out_result_ptr)
@@ -922,7 +1061,7 @@ PUBLIC void raGL_backend_get_property(void*                backend,
 
         case RAL_CONTEXT_PROPERTY_SYSTEM_FRAMEBUFFER_COLOR_TEXTURE_FORMAT:
         {
-            ogl_context_get_property(backend_ptr->gl_context,
+            ogl_context_get_property(backend_ptr->context_gl,
                                      OGL_CONTEXT_PROPERTY_DEFAULT_FBO_COLOR_TEXTURE_FORMAT,
                                      out_result_ptr);
 
@@ -960,6 +1099,8 @@ PUBLIC void raGL_backend_release(void* backend)
 
     if (backend != NULL)
     {
+        ogl_context_release_managers(backend_ptr->context_gl);
+
         /* Sign out from notifications */
         _raGL_backend_subscribe_for_notifications(backend_ptr,
                                                   false); /* should_subscribe */

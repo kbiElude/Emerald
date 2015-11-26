@@ -32,6 +32,9 @@ typedef enum
     /* not settable, ral_backend_type */
     SYSTEM_WINDOW_PROPERTY_BACKEND_TYPE,
 
+    /* not settable, system_callback_manager */
+    SYSTEM_WINDOW_PROPERTY_CALLBACK_MANAGER,
+
     /* not settable, int[2].
      *
      * Returned coordinates are in screen space. */
@@ -41,9 +44,6 @@ typedef enum
     /* not settable, system_window_dc */
     SYSTEM_WINDOW_PROPERTY_DC,
 #endif
-
-    /* not settable, ogl_context_type */
-    SYSTEM_WINDOW_PROPERTY_CONTEXT_TYPE,
 
     /* settable, system_window_mouse_cursor */
     SYSTEM_WINDOW_PROPERTY_CURSOR,
@@ -76,9 +76,6 @@ typedef enum
     SYSTEM_WINDOW_PROPERTY_IS_FULLSCREEN,
 
     /* not settable, bool */
-    SYSTEM_WINDOW_PROPERTY_IS_ROOT_WINDOW,
-
-    /* not settable, bool */
     SYSTEM_WINDOW_PROPERTY_IS_SCALABLE,
 
     /* not settable, bool */
@@ -99,8 +96,8 @@ typedef enum
     /* settable, int[2] */
     SYSTEM_WINDOW_PROPERTY_POSITION,
 
-    /* not settable, ogl_context */
-    SYSTEM_WINDOW_PROPERTY_RENDERING_CONTEXT,
+    /* not settable, ral_context */
+    SYSTEM_WINDOW_PROPERTY_RENDERING_CONTEXT_RAL,
 
     /* settable, ogl_rendering_handler
      *
@@ -227,14 +224,6 @@ PUBLIC EMERALD_API bool system_window_get_centered_window_position_for_primary_m
 PUBLIC EMERALD_API void system_window_get_property(system_window          window,
                                                    system_window_property property,
                                                    void*                  out_result);
-
-/** TODO
- *
- *  NOTE: Internal use only.
- *
- *  @return TODO
- */
-PUBLIC system_window system_window_get_root_window(ral_backend_type backend_type = RAL_BACKEND_TYPE_GL);
 
 /** TODO */
 PUBLIC EMERALD_API bool system_window_set_cursor_visibility(system_window window,

@@ -7,6 +7,7 @@
 #define OGL_RENDERING_HANDLER_H
 
 #include "ogl/ogl_types.h"
+#include "ral/ral_types.h"
 
 REFCOUNT_INSERT_DECLARATIONS(ogl_rendering_handler,
                              ogl_rendering_handler)
@@ -135,7 +136,7 @@ PUBLIC EMERALD_API bool ogl_rendering_handler_stop(ogl_rendering_handler renderi
 
 /** TODO */
 PUBLIC bool _ogl_rendering_handler_on_bound_to_context(ogl_rendering_handler rendering_handler,
-                                                       ogl_context           context);
+                                                       ral_context           context);
 
 /** TODO */
 PUBLIC EMERALD_API void ogl_rendering_handler_unlock_bound_context(ogl_rendering_handler rendering_handler);

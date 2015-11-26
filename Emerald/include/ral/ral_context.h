@@ -142,8 +142,7 @@ typedef struct
 
 /** TODO */
 PUBLIC ral_context ral_context_create(system_hashed_ansi_string name,
-                                      system_window             window,
-                                      ogl_rendering_handler     rendering_handler);
+                                      system_window             window);
 
 /** TODO */
 PUBLIC bool ral_context_create_buffers(ral_context                   context,

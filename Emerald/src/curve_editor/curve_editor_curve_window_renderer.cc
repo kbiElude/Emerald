@@ -1750,7 +1750,7 @@ PRIVATE bool _curve_editor_curve_window_renderer_init(_curve_editor_curve_window
     float text_scale   = 0.4f;
 
     system_window_get_property(descriptor->window,
-                               SYSTEM_WINDOW_PROPERTY_RENDERING_CONTEXT,
+                               SYSTEM_WINDOW_PROPERTY_RENDERING_CONTEXT_RAL,
                               &descriptor->context);
 
     string_table[0] = "Curve window renderer text renderer for ";

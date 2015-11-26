@@ -16,7 +16,9 @@
 #include "ogl/ogl_program_ub.h"
 #include "ogl/ogl_programs.h"
 #include "ogl/ogl_vao.h"
+#include "raGL/raGL_texture.h"
 #include "raGL/raGL_utils.h"
+#include "ral/ral_texture.h"
 #include "system/system_log.h"
 #include <math.h>
 
@@ -515,9 +517,13 @@ PUBLIC void APIENTRY ogl_context_wrappers_glBindTextures(GLuint        first,
                                                          GLsizei       count,
                                                          const GLuint* textures)
 {
-    ogl_context_to_bindings to_bindings = NULL;
+    raGL_backend            backend         = NULL;
+    ogl_context             current_context = ogl_context_get_current_context();
+    raGL_texture            texture_raGL    = NULL;
+    ral_texture             texture_ral     = NULL;
+    ogl_context_to_bindings to_bindings     = NULL;
 
-    ogl_context_get_property(ogl_context_get_current_context(),
+    ogl_context_get_property(current_context,
                              OGL_CONTEXT_PROPERTY_TO_BINDINGS,
                             &to_bindings);
 
@@ -532,11 +538,23 @@ PUBLIC void APIENTRY ogl_context_wrappers_glBindTextures(GLuint        first,
         }
         else
         {
-            GLenum texture_target;
+            GLenum           texture_target;
+            ral_texture_type texture_type_ral = RAL_TEXTURE_TYPE_UNKNOWN;
 
-            ogl_texture_get_property(textures[n_texture],
-                                     OGL_TEXTURE_PROPERTY_TARGET_GL,
-                                    &texture_target);
+            ogl_context_get_property      (current_context,
+                                           OGL_CONTEXT_PROPERTY_BACKEND,
+                                          &backend);
+            raGL_backend_get_texture_by_id(backend,
+                                           textures[n_texture],
+                                          &texture_raGL);
+            raGL_texture_get_property     (texture_raGL,
+                                           RAGL_TEXTURE_PROPERTY_RAL_TEXTURE,
+                                          &texture_ral);
+            ral_texture_get_property      (texture_ral,
+                                           RAL_TEXTURE_PROPERTY_TYPE,
+                                          &texture_type_ral);
+
+            texture_target = raGL_utils_get_ogl_texture_target_for_ral_texture_type(texture_type_ral);
 
             ogl_context_to_bindings_set_binding(to_bindings,
                                                 first + n_texture, /* texture_unit */
@@ -2708,20 +2726,36 @@ PUBLIC void APIENTRY ogl_context_wrappers_glFramebufferTextureLayer(GLenum fb_ta
                                                                     GLint  level,
                                                                     GLint  layer)
 {
-    ogl_context             context        = ogl_context_get_current_context();
-    ogl_context_state_cache state_cache    = NULL;
-    GLenum                  texture_target = GL_ZERO;
-    ogl_context_to_bindings to_bindings    = NULL;
+    raGL_backend            backend          = NULL;
+    ogl_context             current_context  = ogl_context_get_current_context();
+    ogl_context_state_cache state_cache      = NULL;
+    raGL_texture            texture_raGL     = NULL;
+    ral_texture             texture_ral      = NULL;
+    GLenum                  texture_target   = GL_ZERO;
+    ral_texture_type        texture_type_ral = RAL_TEXTURE_TYPE_UNKNOWN;
+    ogl_context_to_bindings to_bindings      = NULL;
 
-    ogl_context_get_property(context,
+    ogl_context_get_property(current_context,
                              OGL_CONTEXT_PROPERTY_STATE_CACHE,
                             &state_cache);
-    ogl_context_get_property(context,
+    ogl_context_get_property(current_context,
                              OGL_CONTEXT_PROPERTY_TO_BINDINGS,
                             &to_bindings);
-    ogl_texture_get_property(texture,
-                             OGL_TEXTURE_PROPERTY_TARGET_GL,
-                            &texture_target);
+
+    ogl_context_get_property      (current_context,
+                                   OGL_CONTEXT_PROPERTY_BACKEND,
+                                  &backend);
+    raGL_backend_get_texture_by_id(backend,
+                                   texture,
+                                  &texture_raGL);
+    raGL_texture_get_property     (texture_raGL,
+                                   RAGL_TEXTURE_PROPERTY_RAL_TEXTURE,
+                                  &texture_ral);
+    ral_texture_get_property      (texture_ral,
+                                   RAL_TEXTURE_PROPERTY_TYPE,
+                                  &texture_type_ral);
+
+    texture_target = raGL_utils_get_ogl_texture_target_for_ral_texture_type(texture_type_ral);
 
     switch (fb_target)
     {

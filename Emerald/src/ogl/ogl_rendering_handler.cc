@@ -11,6 +11,7 @@
 #include "ogl/ogl_pipeline.h"
 #include "ogl/ogl_rendering_handler.h"
 #include "ogl/ogl_text.h"
+#include "ral/ral_context.h"
 #include "system/system_assertions.h"
 #include "system/system_critical_section.h"
 #include "system/system_event.h"
@@ -31,7 +32,7 @@ typedef struct
 {
     audio_stream                          active_audio_stream;
     float                                 aspect_ratio;
-    ogl_context                           context;
+    ral_context                           context;
     system_event                          context_set_event;
     uint32_t                              fps;
     uint32_t                              last_frame_index;      /* only when fps policy is used */
@@ -440,7 +441,9 @@ PRIVATE void _ogl_rendering_handler_thread_entrypoint(void* in_arg)
         system_event_wait_single(rendering_handler->context_set_event);
 
         /* Cache some variables.. */
-        ogl_context_type          context_type                       = OGL_CONTEXT_TYPE_UNDEFINED;
+        ral_backend_type          backend_type                       = RAL_BACKEND_TYPE_UNKNOWN;
+        ogl_context               context_gl                         = ral_context_get_gl_context(rendering_handler->context);
+        ogl_context               context_gl_parent_gl               = NULL;
         system_window             context_window                     = NULL;
         unsigned char             context_window_n_depth_bits        = 0;
         unsigned char             context_window_n_stencil_bits      = 0;
@@ -452,7 +455,7 @@ PRIVATE void _ogl_rendering_handler_thread_entrypoint(void* in_arg)
         GLuint                    default_fbo_id                     = -1;
         bool                      default_fbo_id_set                 = false;
         bool                      is_multisample_pf                  = false;
-        bool                      is_root_window                     = false;
+        bool                      is_root_context                    = false;
         PFNGLBINDFRAMEBUFFERPROC  pGLBindFramebuffer                 = NULL;
         PFNGLBLITFRAMEBUFFERPROC  pGLBlitFramebuffer                 = NULL;
         PFNGLCLEARPROC            pGLClear                           = NULL;
@@ -472,18 +475,18 @@ PRIVATE void _ogl_rendering_handler_thread_entrypoint(void* in_arg)
         };
         GLint                     window_size[2]                    = {0};
 
-        ogl_context_get_property  (rendering_handler->context,
-                                   OGL_CONTEXT_PROPERTY_TYPE,
-                                  &context_type);
-        ogl_context_get_property  (rendering_handler->context,
-                                   OGL_CONTEXT_PROPERTY_WINDOW,
+        ogl_context_get_property  (context_gl,
+                                   OGL_CONTEXT_PROPERTY_PARENT_CONTEXT,
+                                  &context_gl_parent_gl);
+        ral_context_get_property  (rendering_handler->context,
+                                   RAL_CONTEXT_PROPERTY_BACKEND_TYPE,
+                                  &backend_type);
+        ral_context_get_property  (rendering_handler->context,
+                                   RAL_CONTEXT_PROPERTY_WINDOW,
                                   &context_window);
         system_window_get_property(context_window,
                                    SYSTEM_WINDOW_PROPERTY_DIMENSIONS,
                                    window_size);
-        system_window_get_property(context_window,
-                                   SYSTEM_WINDOW_PROPERTY_IS_ROOT_WINDOW,
-                                  &is_root_window);
         system_window_get_property(context_window,
                                    SYSTEM_WINDOW_PROPERTY_PIXEL_FORMAT,
                                   &context_window_pf);
@@ -501,19 +504,20 @@ PRIVATE void _ogl_rendering_handler_thread_entrypoint(void* in_arg)
                                          SYSTEM_PIXEL_FORMAT_PROPERTY_STENCIL_BITS,
                                         &context_window_n_stencil_bits);
 
-        default_fbo_has_depth_attachment   = (context_window_n_depth_bits   > 0);
-        default_fbo_has_stencil_attachment = (context_window_n_stencil_bits > 0);
-        is_multisample_pf                  = (context_window_n_samples      > 1);
+        default_fbo_has_depth_attachment   = (context_window_n_depth_bits   >  0);
+        default_fbo_has_stencil_attachment = (context_window_n_stencil_bits >  0);
+        is_multisample_pf                  = (context_window_n_samples      >  1);
+        is_root_context                    = (context_gl_parent_gl          == NULL);
 
         ASSERT_DEBUG_SYNC(window_size[0] != 0 &&
                           window_size[1] != 0,
                           "Rendering window's width or height is 0");
 
-        if (context_type == OGL_CONTEXT_TYPE_ES)
+        if (backend_type == RAL_BACKEND_TYPE_ES)
         {
             const ogl_context_es_entrypoints* entrypoints = NULL;
 
-            ogl_context_get_property(rendering_handler->context,
+            ogl_context_get_property(context_gl,
                                      OGL_CONTEXT_PROPERTY_ENTRYPOINTS_ES,
                                     &entrypoints);
 
@@ -531,10 +535,10 @@ PRIVATE void _ogl_rendering_handler_thread_entrypoint(void* in_arg)
         {
             const ogl_context_gl_entrypoints* entrypoints = NULL;
 
-            ASSERT_DEBUG_SYNC(context_type == OGL_CONTEXT_TYPE_GL,
+            ASSERT_DEBUG_SYNC(backend_type == RAL_BACKEND_TYPE_GL,
                               "Unrecognized context type");
 
-            ogl_context_get_property(rendering_handler->context,
+            ogl_context_get_property(context_gl,
                                      OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
                                     &entrypoints);
 
@@ -550,7 +554,7 @@ PRIVATE void _ogl_rendering_handler_thread_entrypoint(void* in_arg)
         }
 
         /* Bind the thread to GL */
-        ogl_context_bind_to_current_thread(rendering_handler->context);
+        ogl_context_bind_to_current_thread(context_gl);
 
         /* Create a new text string which we will use to show performance info */
         const float text_color[4]          = {1.0f, 1.0f, 1.0f, 1.0f};
@@ -558,7 +562,7 @@ PRIVATE void _ogl_rendering_handler_thread_entrypoint(void* in_arg)
         const float text_scale             = 0.75f;
         const int   text_string_position[] = {0, window_size[1]};
 
-        ogl_context_get_property(rendering_handler->context,
+        ogl_context_get_property(context_gl,
                                  OGL_CONTEXT_PROPERTY_TEXT_RENDERER,
                                 &text_renderer);
 
@@ -615,14 +619,14 @@ PRIVATE void _ogl_rendering_handler_thread_entrypoint(void* in_arg)
             if (event_set == 1)
             {
                 /* Call-back requested */
-                rendering_handler->pfn_callback_proc(rendering_handler->context,
+                rendering_handler->pfn_callback_proc(context_gl,
                                                      rendering_handler->callback_request_user_arg);
 
                 if (rendering_handler->callback_request_needs_buffer_swap)
                 {
                     if (default_fbo_id == -1)
                     {
-                        ogl_context_get_property(rendering_handler->context,
+                        ogl_context_get_property(context_gl,
                                                  OGL_CONTEXT_PROPERTY_DEFAULT_FBO_ID,
                                                 &default_fbo_id);
                     }
@@ -644,7 +648,7 @@ PRIVATE void _ogl_rendering_handler_thread_entrypoint(void* in_arg)
                                        GL_COLOR_BUFFER_BIT,
                                        GL_NEAREST);
 
-                    ogl_context_swap_buffers(rendering_handler->context);
+                    ogl_context_swap_buffers(context_gl);
                 }
 
                 /* Reset callback data */
@@ -660,12 +664,12 @@ PRIVATE void _ogl_rendering_handler_thread_entrypoint(void* in_arg)
             {
                 /* This event is used for setting up context sharing. In order for it to succeed, we must unbind the context from
                  * current thread, then wait for a 'job done' signal, and bind the context back to this thread */
-                ogl_context_unbind_from_current_thread(rendering_handler->context);
+                ogl_context_unbind_from_current_thread(context_gl);
 
                 system_event_set        (rendering_handler->unbind_context_request_ack_event);
                 system_event_wait_single(rendering_handler->bind_context_request_event);
 
-                ogl_context_bind_to_current_thread(rendering_handler->context);
+                ogl_context_bind_to_current_thread(context_gl);
 
                 system_event_set(rendering_handler->bind_context_request_ack_event);
             }
@@ -776,12 +780,12 @@ PRIVATE void _ogl_rendering_handler_thread_entrypoint(void* in_arg)
                         /* Bind the context's default FBO and call the user app's call-back */
                         if (!default_fbo_id_set)
                         {
-                            ogl_context_get_property(rendering_handler->context,
+                            ogl_context_get_property(context_gl,
                                                      OGL_CONTEXT_PROPERTY_DEFAULT_FBO_ID,
                                                     &default_fbo_id);
 
-                            ASSERT_DEBUG_SYNC( is_root_window && default_fbo_id == 0 ||
-                                              !is_root_window && default_fbo_id != 0,
+                            ASSERT_DEBUG_SYNC( is_root_context && default_fbo_id == 0 ||
+                                              !is_root_context && default_fbo_id != 0,
                                              "Rendering context's default FBO is assigned an invalid ID");
 
                             default_fbo_id_set = true;
@@ -806,7 +810,7 @@ PRIVATE void _ogl_rendering_handler_thread_entrypoint(void* in_arg)
                                           (default_fbo_has_stencil_attachment ? GL_STENCIL_BUFFER_BIT : 0) );
 
                             /* Enable per-sample shading if needed */
-                            if (is_multisample_pf && context_type == OGL_CONTEXT_TYPE_GL)
+                            if (is_multisample_pf && backend_type == RAL_BACKEND_TYPE_GL)
                             {
                                 pGLEnable(GL_MULTISAMPLE);
                             }
@@ -825,7 +829,7 @@ PRIVATE void _ogl_rendering_handler_thread_entrypoint(void* in_arg)
                             {
                                 if (rendering_handler->pfn_rendering_callback != NULL)
                                 {
-                                    rendering_handler->pfn_rendering_callback(rendering_handler->context,
+                                    rendering_handler->pfn_rendering_callback(context_gl,
                                                                               frame_index,
                                                                               new_frame_time,
                                                                               rendering_area,
@@ -846,7 +850,7 @@ PRIVATE void _ogl_rendering_handler_thread_entrypoint(void* in_arg)
                                 pGLClear     (GL_COLOR_BUFFER_BIT);
                             } /* if (!has_rendered_frame) */
 
-                            if (is_multisample_pf && context_type == OGL_CONTEXT_TYPE_GL)
+                            if (is_multisample_pf && backend_type == RAL_BACKEND_TYPE_GL)
                             {
                                 pGLDisable(GL_MULTISAMPLE);
                             }
@@ -877,7 +881,7 @@ PRIVATE void _ogl_rendering_handler_thread_entrypoint(void* in_arg)
                         rendering_handler->last_frame_index = frame_index;
                         rendering_handler->last_frame_time  = new_frame_time;
 
-                        ogl_context_swap_buffers(rendering_handler->context);
+                        ogl_context_swap_buffers(context_gl);
 
                         /* If vertical sync is enabled, force a full pipeline flush + GPU-side execution
                          * of the enqueued commands. This helps fighting the tearing A LOT for scenes
@@ -911,7 +915,7 @@ PRIVATE void _ogl_rendering_handler_thread_entrypoint(void* in_arg)
         system_event_set(rendering_handler->playback_waiting_event);
 
         /* Unbind the thread from GL */
-        ogl_context_unbind_from_current_thread(rendering_handler->context);
+        ogl_context_unbind_from_current_thread(context_gl);
 
         /* Let any waiters know that we're done */
         system_event_set(rendering_handler->shutdown_request_ack_event);
@@ -940,7 +944,9 @@ PRIVATE void _ogl_rendering_handler_release(void* in_arg)
     system_event_wait_single(rendering_handler->shutdown_request_ack_event);
 
     /* Release the context */
-    ogl_context_release(rendering_handler->context);
+    ogl_context context_gl = ral_context_get_gl_context(rendering_handler->context);
+
+    ogl_context_release(context_gl);
 
     /* Release created events */
     system_event_release(rendering_handler->bind_context_request_event);
@@ -961,8 +967,8 @@ PRIVATE void _ogl_rendering_handler_release(void* in_arg)
     {
         system_window window = NULL;
 
-        ogl_context_get_property(rendering_handler->context,
-                                 OGL_CONTEXT_PROPERTY_WINDOW,
+        ral_context_get_property(rendering_handler->context,
+                                 RAL_CONTEXT_PROPERTY_WINDOW,
                                 &window);
 
         system_window_delete_callback_func(window,
@@ -1249,8 +1255,8 @@ PUBLIC EMERALD_API bool ogl_rendering_handler_play(ogl_rendering_handler renderi
                     audio_stream  context_window_audio_stream = NULL;
                     bool          use_audio_playback          = false;
 
-                    ogl_context_get_property(rendering_handler_ptr->context,
-                                             OGL_CONTEXT_PROPERTY_WINDOW,
+                    ral_context_get_property(rendering_handler_ptr->context,
+                                             RAL_CONTEXT_PROPERTY_WINDOW,
                                             &context_window);
 
                     ASSERT_DEBUG_SYNC(context_window != NULL,
@@ -1353,7 +1359,7 @@ PUBLIC EMERALD_API bool ogl_rendering_handler_request_callback_from_context_thre
 
     if (rendering_handler_ptr->thread_id == system_threads_get_thread_id() )
     {
-        pfn_callback_proc(rendering_handler_ptr->context,
+        pfn_callback_proc(ral_context_get_gl_context(rendering_handler_ptr->context),
                           user_arg);
 
         result = true;
@@ -1507,7 +1513,7 @@ PUBLIC EMERALD_API bool ogl_rendering_handler_stop(ogl_rendering_handler renderi
 
 /** Please see header for specification */
 PUBLIC bool _ogl_rendering_handler_on_bound_to_context(ogl_rendering_handler rendering_handler,
-                                                       ogl_context           context)
+                                                       ral_context           context)
 {
     _ogl_rendering_handler* rendering_handler_ptr = (_ogl_rendering_handler*) rendering_handler;
     bool                    result                = false;
@@ -1520,8 +1526,8 @@ PUBLIC bool _ogl_rendering_handler_on_bound_to_context(ogl_rendering_handler ren
         system_window context_window = NULL;
         int           window_size[2];
 
-        ogl_context_get_property(context,
-                                 OGL_CONTEXT_PROPERTY_WINDOW,
+        ral_context_get_property(context,
+                                 RAL_CONTEXT_PROPERTY_WINDOW,
                                 &context_window);
 
         ASSERT_DEBUG_SYNC(context_window != NULL,
@@ -1530,7 +1536,7 @@ PUBLIC bool _ogl_rendering_handler_on_bound_to_context(ogl_rendering_handler ren
         rendering_handler_ptr->context = context;
         result                         = true;
 
-        ogl_context_retain(context);
+        ogl_context_retain(ral_context_get_gl_context(context) );
         system_event_set  (rendering_handler_ptr->context_set_event);
 
         /* Register for key press callbacks. These are essential for the "runtime time adjustment" mode

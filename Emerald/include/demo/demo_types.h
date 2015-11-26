@@ -17,6 +17,7 @@ DECLARE_HANDLE(demo_timeline_segment);
 DECLARE_HANDLE(demo_timeline_segment_graph);
 DECLARE_HANDLE(demo_timeline_segment_node);
 DECLARE_HANDLE(demo_timeline_segment_node_private);
+DECLARE_HANDLE(demo_window);
 
 typedef struct
 {
