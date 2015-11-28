@@ -5,6 +5,13 @@
 
 typedef enum
 {
+    /* not settable; available after run() call; system_window */
+    DEMO_WINDOW_PRIVATE_PROPERTY_WINDOW,
+
+} demo_window_private_property;
+
+typedef enum
+{
     /* not settable; ral_backend_type */
     DEMO_WINDOW_PROPERTY_BACKEND_TYPE,
 
@@ -23,28 +30,43 @@ typedef enum
     /* settable (before run() call); uint32_t */
     DEMO_WINDOW_PROPERTY_REFRESH_RATE,
 
+    /* not settable; ral_context */
+    DEMO_WINDOW_PROPERTY_RENDERING_CONTEXT,
+
     /* not settable; available after run() call; demo_rendering_handler */
     DEMO_WINDOW_PROPERTY_RENDERING_HANDLER,
 
     /* settable (before run() call); uint32_t[2] */
     DEMO_WINDOW_PROPERTY_RESOLUTION,
 
-    /* settable (before run() call); uint32_t */
+    /* settable (before run() call); uint32_t
+     *
+     * Setting this to 0 will cause the window to render one frame per each start_rendering() request.
+     * Setting this to ~0 will cause the window to render as many frames as possible.
+     **/
     DEMO_WINDOW_PROPERTY_TARGET_FRAME_RATE,
 
-    /* not settable; demo_timeline */
+    /* not settable; demo_timeline. Available after the window is shown. */
     DEMO_WINDOW_PROPERTY_TIMELINE,
 
     /* settable (before run() call); bool */
     DEMO_WINDOW_PROPERTY_USE_VSYNC,
 
-    /* not settable; available after run() call; system_window */
-    DEMO_WINDOW_PROPERTY_WINDOW
+    /* settable; bool */
+    DEMO_WINDOW_PROPERTY_VISIBLE,
 } demo_window_property;
 
 typedef void (*PFNDEMOWINDOWLOADERSETUPCALLBACKPROC)(demo_window window,
                                                      demo_loader loader,
                                                      void*       user_arg);
+
+/** TODO
+ *
+ *  Releases the underlying rendering handler, as well as the system window instance.
+ *  It is OK to call demo_window_show() for the same demo_window instance afterward.
+ *
+ */
+PUBLIC EMERALD_API bool demo_window_close(demo_window window);
 
 /** TODO.
  *
@@ -73,16 +95,14 @@ PUBLIC demo_window demo_window_create(system_hashed_ansi_string name,
                                       ral_backend_type          backend_type);
 
 /** TODO */
+PUBLIC void demo_window_get_private_property(const demo_window            window,
+                                             demo_window_private_property property,
+                                             void*                        out_result_ptr);
+
+/** TODO */
 PUBLIC EMERALD_API void demo_window_get_property(const demo_window    window,
                                                  demo_window_property property,
                                                  void*                out_result_ptr);
-
-/** TODO
- *
- *  This is a blocking call. (TODO: this can be worked around if necessary)
- *
- **/
-PUBLIC bool demo_window_run(demo_window window);
 
 /** TODO
  *
@@ -90,9 +110,29 @@ PUBLIC bool demo_window_run(demo_window window);
  **/
 PUBLIC void demo_window_release(demo_window window);
 
+/** TODO
+ *
+ *  Shows the window but does not start the rendering process.
+ *
+ *  This function will spawn a new thread, in which the window's message loop will run.
+ **/
+PUBLIC EMERALD_API bool demo_window_show(demo_window window);
+
+/** TODO
+ *
+ **/
+PUBLIC EMERALD_API bool demo_window_start_rendering(demo_window window,
+                                                    system_time rendering_start_time);
+
+/** TODO */
+PUBLIC EMERALD_API bool demo_window_stop_rendering(demo_window window);
+
 /** TODO */
 PUBLIC EMERALD_API void demo_window_set_property(demo_window          window,
                                                  demo_window_property property,
                                                  const void*          data);
+
+/** TODO */
+PUBLIC EMERALD_API bool demo_window_wait_until_closed(demo_window window);
 
 #endif /* DEMO_WINDOW_H */

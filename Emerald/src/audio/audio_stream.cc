@@ -7,11 +7,13 @@
 #include "bass.h"
 #include "audio/audio_device.h"
 #include "audio/audio_stream.h"
+#include "demo/demo_window.h"
 #include "system/system_assertions.h"
 #include "system/system_callback_manager.h"
 #include "system/system_file_serializer.h"
 #include "system/system_log.h"
 #include "system/system_time.h"
+#include "system/system_window.h"
 
 typedef enum
 {
@@ -106,7 +108,7 @@ PRIVATE void _audio_stream_release(void* stream)
 /** Please see header for spec */
 PUBLIC EMERALD_API audio_stream audio_stream_create(audio_device           device,
                                                     system_file_serializer serializer,
-                                                    system_window          window)
+                                                    demo_window            window)
 {
     bool                      is_device_activated         = false;
     _audio_stream*            new_audio_stream_ptr        = NULL;
@@ -114,6 +116,7 @@ PUBLIC EMERALD_API audio_stream audio_stream_create(audio_device           devic
     size_t                    raw_serializer_storage_size = 0;
     system_hashed_ansi_string serializer_name             = NULL;
     char                      temp_buffer[256];
+    system_window             window_private              = NULL;
 
     ASSERT_DEBUG_SYNC(device != NULL,
                       "Input audio device instance is NULL");
@@ -121,6 +124,10 @@ PUBLIC EMERALD_API audio_stream audio_stream_create(audio_device           devic
                       "Input serializer is NULL");
     ASSERT_DEBUG_SYNC(window != NULL,
                       "Input window is NULL");
+
+    demo_window_get_private_property(window,
+                                     DEMO_WINDOW_PRIVATE_PROPERTY_WINDOW,
+                                    &window_private);
 
     /* Spawn the new descriptor */
     new_audio_stream_ptr = new (std::nothrow) _audio_stream(device,
@@ -137,7 +144,7 @@ PUBLIC EMERALD_API audio_stream audio_stream_create(audio_device           devic
     if (!is_device_activated)
     {
         audio_device_activate(device,
-                              window);
+                              window_private);
     }
 
     /* The serializer is retained at this point, so carry on & open the stream handle */
@@ -179,6 +186,14 @@ PUBLIC EMERALD_API audio_stream audio_stream_create(audio_device           devic
 
         goto end_error;
     }
+
+    /* Configure the audio stream as the window's audio stream.
+     *
+     * TODO: Windows really should not have anything to do with audio streams! :C
+     */
+    system_window_set_property(window_private,
+                               SYSTEM_WINDOW_PROPERTY_AUDIO_STREAM,
+                               new_audio_stream_ptr);
 
     /* Register the instance in the object manager registry */
     snprintf(temp_buffer,

@@ -11,7 +11,7 @@
 #include "ogl/ogl_program.h"
 #include "ogl/ogl_rendering_handler.h"
 #include "ogl/ogl_shader.h"
-#include "ogl/ogl_texture.h"
+#include "ral/ral_texture.h"
 #include "system/system_hashed_ansi_string.h"
 #include "system/system_matrix4x4.h"
 #include "system/system_time.h"

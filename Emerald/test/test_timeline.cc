@@ -6,59 +6,44 @@
 #include "test_time.h"
 #include "gtest/gtest.h"
 #include "shared.h"
+#include "demo/demo_app.h"
 #include "demo/demo_timeline.h"
 #include "demo/demo_timeline_segment.h"
-#include "ogl/ogl_context.h"
-#include "ogl/ogl_rendering_handler.h"
-#include "system/system_pixel_format.h"
-#include "system/system_window.h"
+#include "demo/demo_window.h"
+#include "system/system_time.h"
+
 
 TEST(TimelineTest, FunctionalTest)
 {
-    ogl_context              context           = NULL;
-    system_time              duration          = 0;
-    ogl_rendering_handler    rendering_handler = NULL;
-    demo_timeline_segment_id segment_a_id      = -1;
-    demo_timeline_segment_id segment_b_id      = -1;
-    demo_timeline_segment_id segment_c_id      = -1;
-    const system_time        time_1s           = system_time_get_time_for_s(1);
-    const system_time        time_4s           = system_time_get_time_for_s(4);
-    const system_time        time_7s           = system_time_get_time_for_s(7);
-    const system_time        time_10s          = system_time_get_time_for_s(10);
-    const system_time        time_14s          = system_time_get_time_for_s(14);
-    demo_timeline            timeline          = NULL;
-    const int                xywh[]            = {0, 0, 1, 1};
-    system_pixel_format      window_pf         = system_pixel_format_create         (8,  /* color_buffer_red_bits   */
-                                                                                     8,  /* color_buffer_green_bits */
-                                                                                     8,  /* color_buffer_blue_bits  */
-                                                                                     0,  /* color_buffer_alpha_bits */
-                                                                                     16, /* depth_buffer_bits       */
-                                                                                     1,  /* n_samples               */
-                                                                                     0); /* stencil_buffer_bits     */
-    system_window            window_handle     = system_window_create_not_fullscreen(OGL_CONTEXT_TYPE_GL,
-                                                                                     xywh,
-                                                                                     system_hashed_ansi_string_create("Test window"),
-                                                                                     false,
-                                                                                     false, /* vsync_enabled */
-                                                                                     true,  /* visible */
-                                                                                     window_pf);
+    system_time               duration          = 0;
+    demo_timeline_segment_id  segment_a_id      = -1;
+    demo_timeline_segment_id  segment_b_id      = -1;
+    demo_timeline_segment_id  segment_c_id      = -1;
+    const system_time         time_1s           = system_time_get_time_for_s(1);
+    const system_time         time_4s           = system_time_get_time_for_s(4);
+    const system_time         time_7s           = system_time_get_time_for_s(7);
+    const system_time         time_10s          = system_time_get_time_for_s(10);
+    const system_time         time_14s          = system_time_get_time_for_s(14);
+    demo_timeline             timeline          = NULL;
+    demo_window               window            = NULL;
+    uint32_t                  window_target_fps = ~0;
+    system_hashed_ansi_string window_name       = system_hashed_ansi_string_create("Test window");
 
-    rendering_handler = ogl_rendering_handler_create_with_max_performance_policy(system_hashed_ansi_string_create("rendering handler"),
-                                                                                 NULL,
-                                                                                 0);
+    window = demo_app_create_window(window_name,
+                                    RAL_BACKEND_TYPE_GL);
 
-    system_window_get_property(window_handle,
-                               SYSTEM_WINDOW_PROPERTY_RENDERING_CONTEXT,
-                              &context);
-    system_window_set_property(window_handle,
-                               SYSTEM_WINDOW_PROPERTY_RENDERING_HANDLER,
-                              &rendering_handler);
+    ASSERT_NE(window,
+              (demo_window) NULL);
 
-    /* Create the timeline instance */
-    timeline = demo_timeline_create(system_hashed_ansi_string_create("Test timeline"),
-                                    context,
-                                    rendering_handler,
-                                    window_handle);
+    demo_window_set_property(window,
+                             DEMO_WINDOW_PROPERTY_TARGET_FRAME_RATE,
+                            &window_target_fps);
+
+    ASSERT_TRUE(demo_window_show(window) );
+
+    demo_window_get_property(window,
+                             DEMO_WINDOW_PROPERTY_TIMELINE,
+                            &timeline);
 
     /* What's the default duration? */
     ASSERT_TRUE(demo_timeline_get_property(timeline,
@@ -206,6 +191,6 @@ TEST(TimelineTest, FunctionalTest)
                 time_4s);
 
     /* Destroy the window */
-    ASSERT_TRUE(system_window_close(window_handle) );
+    ASSERT_TRUE(demo_app_destroy_window(window_name) );
 }
 

@@ -6,17 +6,17 @@
 #include "test_window.h"
 #include "gtest/gtest.h"
 #include "shared.h"
+#include "demo/demo_app.h"
 #include "demo/demo_timeline.h"
 #include "demo/demo_timeline_segment.h"
 #include "demo/demo_types.h"
+#include "demo/demo_window.h"
 #include "demo/nodes/nodes_postprocessing_video_segment.h"
 #include "demo/nodes/nodes_video_pass_renderer.h"
 #include "ogl/ogl_context.h"
 #include "ogl/ogl_pipeline.h"
-#include "ogl/ogl_rendering_handler.h"
+#include "ral/ral_context.h"
 #include "system/system_hashed_ansi_string.h"
-#include "system/system_pixel_format.h"
-#include "system/system_window.h"
 
 static void _clear_color_buffer_with_color(ogl_context context,
                                            uint32_t    frame_index,
@@ -47,60 +47,23 @@ static void _clear_color_buffer_with_color(ogl_context context,
     entrypoints->pGLDisable(GL_SCISSOR_TEST);
 }
 
-static void _mouse_move_entrypoint(system_window           window,
-                                   unsigned short          x,
-                                   unsigned short          y,
-                                   system_window_vk_status new_status)
-{
-    /* Empty on purpose */
-}
-
 TEST(WindowTest, CreationTest)
 {
+    demo_window                     window               = NULL;
+    const system_hashed_ansi_string window_name          = system_hashed_ansi_string_create("Test window");
+    const uint32_t                  window_resolution[2] = { 320, 240 };
+
     /* Create the window */
-    const int           xywh[]        = {0, 0, 320, 240};
-    system_pixel_format window_pf     = system_pixel_format_create         (8,  /* color_buffer_red_bits   */
-                                                                            8,  /* color_buffer_green_bits */
-                                                                            8,  /* color_buffer_blue_bits  */
-                                                                            0,  /* color_buffer_alpha_bits */
-                                                                            0,  /* depth_buffer_bits       */
-                                                                            1,  /* n_samples               */
-                                                                            0); /* stencil_buffer_bits     */
-    system_window       window_handle = system_window_create_not_fullscreen(OGL_CONTEXT_TYPE_GL,
-                                                                            xywh,
-                                                                            system_hashed_ansi_string_create("Test window"),
-                                                                            false,
-                                                                            true,  /* vsync_enabled */
-                                                                            true,  /* visible */
-                                                                            window_pf);
+    window = demo_app_create_window(window_name,
+                                    RAL_BACKEND_TYPE_GL);
 
-#ifdef _WIN32
-    HWND          window_sys_handle = 0;
+    demo_window_set_property(window,
+                             DEMO_WINDOW_PROPERTY_RESOLUTION,
+                             window_resolution);
 
-    ASSERT_TRUE(window_handle != NULL);
-
-    system_window_get_property(window_handle,
-                               SYSTEM_WINDOW_PROPERTY_HANDLE,
-                              &window_sys_handle);
-
-    ASSERT_EQ(::IsWindow(window_sys_handle),
-                         TRUE);
-#endif
-
-    /* Set a callback func */
-    system_window_add_callback_func(window_handle,
-                                    SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_NORMAL,
-                                    SYSTEM_WINDOW_CALLBACK_FUNC_MOUSE_MOVE,
-                                    (void*) _mouse_move_entrypoint,
-                                    NULL); /* callback_func_user_arg */
-
-    /* Destroy the window */
-    ASSERT_TRUE(system_window_close(window_handle) );
-
-#ifdef _WIN32
-    ASSERT_EQ  (::IsWindow          (window_sys_handle),
-                FALSE);
-#endif
+    demo_window_show       (window);
+    demo_window_close      (window);        /* <- this is an optional call */
+    demo_app_destroy_window(window_name);
 }
 
 /* rendering handler tests */
@@ -129,71 +92,39 @@ static void _on_render_frame_callback(ogl_context context,
 
 TEST(WindowTest, MSAAEnumerationTest)
 {
-    unsigned int*       msaa_samples_ptr = NULL;
-    unsigned int        n_msaa_samples   = 0;
-    system_pixel_format window_pf        = system_pixel_format_create(8,  /* color_buffer_red_bits   */
-                                                                      8,  /* color_buffer_green_bits */
-                                                                      8,  /* color_buffer_blue_bits  */
-                                                                      0,  /* color_buffer_alpha_bits */
-                                                                      16,  /* depth_buffer_bits       */
-                                                                      16, /* n_samples               */
-                                                                      0); /* stencil_buffer_bits     */
+    unsigned int* msaa_samples_ptr = NULL;
+    unsigned int  n_msaa_samples   = 0;
 
-    ogl_context_enumerate_msaa_samples(window_pf,
-                                      &n_msaa_samples,
-                                      &msaa_samples_ptr);
+    demo_app_enumerate_msaa_samples(RAL_BACKEND_TYPE_GL,
+                                   &n_msaa_samples,
+                                   &msaa_samples_ptr);
 
-    system_pixel_format_release(window_pf);
+    ASSERT_NE  (msaa_samples_ptr,
+                (unsigned int*) NULL);
+    ASSERT_TRUE(n_msaa_samples >= 1);
 
-    delete[] msaa_samples_ptr;
-    msaa_samples_ptr = NULL;
+    demo_app_free_msaa_samples(msaa_samples_ptr);
 }
 
 TEST(WindowTest, RenderingHandlerTest)
 {
     /* Create the window */
-    const int           xywh[]        = {0, 0, 320, 240};
-    system_pixel_format window_pf     = system_pixel_format_create         (8,  /* color_buffer_red_bits   */
-                                                                            8,  /* color_buffer_green_bits */
-                                                                            8,  /* color_buffer_blue_bits  */
-                                                                            0,  /* color_buffer_alpha_bits */
-                                                                            16, /* depth_buffer_bits       */
-                                                                            1,  /* n_samples               */
-                                                                            0); /* stencil_buffer_bits     */
-    system_window       window_handle = system_window_create_not_fullscreen(OGL_CONTEXT_TYPE_GL,
-                                                                            xywh,
-                                                                            system_hashed_ansi_string_create("Test window"),
-                                                                            false,
-                                                                            true,  /* vsync_enabled */
-                                                                            true,  /* visible */
-                                                                            window_pf);
-#ifdef _WIN32
-    HWND window_sys_handle = 0;
+    demo_window                     window              = NULL;
+    const system_hashed_ansi_string window_name         = system_hashed_ansi_string_create("Test window");
+    const uint32_t                  window_target_fps   = 0xFFFFFFFF;
+    const uint32_t                  window_resolution[] = { 320, 240 };
 
-    ASSERT_TRUE(window_handle != NULL);
+    window = demo_app_create_window(window_name,
+                                    RAL_BACKEND_TYPE_GL);
 
-    system_window_get_property(window_handle,
-                               SYSTEM_WINDOW_PROPERTY_HANDLE,
-                              &window_sys_handle);
-
-    ASSERT_EQ(::IsWindow(window_sys_handle),
-              TRUE);
-#endif
-
-    /* Create a rendering handler */
-    ogl_rendering_handler rendering_handler = ogl_rendering_handler_create_with_max_performance_policy(system_hashed_ansi_string_create("rendering handler"),
-                                                                                                       _on_render_frame_callback,
-                                                                                                       0);
-    ASSERT_TRUE(rendering_handler != NULL);
-
-    /* Bind the handler to the window */
-    system_window_set_property(window_handle,
-                               SYSTEM_WINDOW_PROPERTY_RENDERING_HANDLER,
-                              &rendering_handler);
+    demo_window_set_property(window,
+                             DEMO_WINDOW_PROPERTY_TARGET_FRAME_RATE,
+                            &window_target_fps);
+    demo_window_show        (window);
 
     /* Let's render a couple of frames. */
-    ASSERT_TRUE(ogl_rendering_handler_play(rendering_handler,
-                                           0) );
+    demo_window_start_rendering(window,
+                                0); /* rendering_start_time */
 
 #ifdef _WIN32
     ::Sleep(1000);
@@ -205,7 +136,7 @@ TEST(WindowTest, RenderingHandlerTest)
               0);
 
     /* Stop the playback and see if more frames are added along the way.*/
-    ASSERT_TRUE(ogl_rendering_handler_stop(rendering_handler) );
+    ASSERT_TRUE(demo_window_stop_rendering(window) );
 
     global_n_frames_rendered = 0;
 
@@ -219,58 +150,55 @@ TEST(WindowTest, RenderingHandlerTest)
               0);
 
     /* Start the playback and let's destroy the window in a blunt and naughty way to see if it is handled correctly */
-    ogl_rendering_handler_play(rendering_handler,
-                               0);
+    demo_window_start_rendering(window,
+                                0); /* rendering_start_time */
 
-    /* Destroy the window in a blunt way */
-    ASSERT_TRUE(system_window_close(window_handle) );
-
-#ifdef _WIN32
-    ASSERT_EQ  (::IsWindow         (window_sys_handle),
-                FALSE);
-#endif
+    ASSERT_TRUE(demo_app_destroy_window    (window_name) );
+    ASSERT_EQ  (demo_app_get_window_by_name(window_name),
+                (demo_window) NULL);
 }
 
 TEST(WindowTest, TimelineTest_ShouldRenderFourDifferentlyColoredScreensWithDifferentARs)
 {
     /* Create the window */
-    ogl_context                   context                   = NULL;
-    ral_texture_format            context_texture_format    = RAL_TEXTURE_FORMAT_UNKNOWN;
-    const float                   frame_1_ar                = 1.0f;
-    const float                   frame_1_color[]           = {0.0f, 1.0f, 0.0f, 1.0f};
-    system_time                   frame_1_end_time          =  0;
-    demo_timeline_segment         frame_1_ps                = NULL;
-    demo_timeline_segment_id      frame_1_ps_id             = -1;
-    uint32_t                      frame_1_pipeline_stage_id = -1;
-    demo_timeline_segment         frame_1_vs                = NULL;
-    demo_timeline_segment_id      frame_1_vs_id             = -1;
-    system_time                   frame_1_start_time        =  0;
-    const float                   frame_2_ar                = 1.5f;
-    const float                   frame_2_color[]           = {0.0f, 1.0f, 1.0f, 1.0f};
-    system_time                   frame_2_end_time          =  0;
-    uint32_t                      frame_2_pipeline_stage_id = -1;
-    demo_timeline_segment         frame_2_ps                = NULL;
-    demo_timeline_segment_id      frame_2_ps_id             = -1;
-    demo_timeline_segment         frame_2_vs                = NULL;
-    demo_timeline_segment_id      frame_2_vs_id             = -1;
-    demo_timeline_segment_node_id frame_2_vs_node_id        = -1;
-    system_time                   frame_2_start_time        =  0;
-    const float                   frame_3_ar                =  1.75f;
-    const float                   frame_3_color[]           = {0.0f, 0.0f, 1.0f, 1.0f};
-    system_time                   frame_3_end_time          =  0;
-    uint32_t                      frame_3_pipeline_stage_id = -1;
-    demo_timeline_segment         frame_3_ps                = NULL;
-    demo_timeline_segment_id      frame_3_ps_id             = -1;
-    demo_timeline_segment         frame_3_vs                = NULL;
-    demo_timeline_segment_id      frame_3_vs_id             = -1;
-    demo_timeline_segment_node_id frame_3_vs_node_id        = -1;
-    system_time                   frame_3_start_time        =  0;
-    bool                          result                    =  false;
-    demo_timeline                 timeline                  =  NULL;
-    ogl_pipeline                  timeline_pipeline         =  NULL;
-    const int                     xywh[]                    = {0, 0, 320, 240};
-    system_pixel_format           window_pf                 = NULL;
-    system_window                 window_handle             = NULL;
+    ral_texture_format              context_texture_format    = RAL_TEXTURE_FORMAT_UNKNOWN;
+    const float                     frame_1_ar                = 1.0f;
+    const float                     frame_1_color[]           = {0.0f, 1.0f, 0.0f, 1.0f};
+    system_time                     frame_1_end_time          =  0;
+    demo_timeline_segment           frame_1_ps                = NULL;
+    demo_timeline_segment_id        frame_1_ps_id             = -1;
+    uint32_t                        frame_1_pipeline_stage_id = -1;
+    demo_timeline_segment           frame_1_vs                = NULL;
+    demo_timeline_segment_id        frame_1_vs_id             = -1;
+    system_time                     frame_1_start_time        =  0;
+    const float                     frame_2_ar                = 1.5f;
+    const float                     frame_2_color[]           = {0.0f, 1.0f, 1.0f, 1.0f};
+    system_time                     frame_2_end_time          =  0;
+    uint32_t                        frame_2_pipeline_stage_id = -1;
+    demo_timeline_segment           frame_2_ps                = NULL;
+    demo_timeline_segment_id        frame_2_ps_id             = -1;
+    demo_timeline_segment           frame_2_vs                = NULL;
+    demo_timeline_segment_id        frame_2_vs_id             = -1;
+    demo_timeline_segment_node_id   frame_2_vs_node_id        = -1;
+    system_time                     frame_2_start_time        =  0;
+    const float                     frame_3_ar                =  1.75f;
+    const float                     frame_3_color[]           = {0.0f, 0.0f, 1.0f, 1.0f};
+    system_time                     frame_3_end_time          =  0;
+    uint32_t                        frame_3_pipeline_stage_id = -1;
+    demo_timeline_segment           frame_3_ps                = NULL;
+    demo_timeline_segment_id        frame_3_ps_id             = -1;
+    demo_timeline_segment           frame_3_vs                = NULL;
+    demo_timeline_segment_id        frame_3_vs_id             = -1;
+    demo_timeline_segment_node_id   frame_3_vs_node_id        = -1;
+    system_time                     frame_3_start_time        =  0;
+    bool                            result                    =  false;
+    demo_window                     window                    =  NULL;
+    ral_context                     window_context            =  NULL;
+    const system_hashed_ansi_string window_name               = system_hashed_ansi_string_create("Test window");
+    const uint32_t                  window_resolution[]       = { 320, 240 };
+    const uint32_t                  window_target_fps         = ~0;
+    demo_timeline                   window_timeline           =  NULL;
+    ogl_pipeline                    window_timeline_pipeline  =  NULL;
 
     demo_timeline_segment_node_id frame_1_ps_output_node_id        = -1;
     demo_timeline_segment_node_id frame_1_ps_vs_node_id            = -1;
@@ -285,53 +213,37 @@ TEST(WindowTest, TimelineTest_ShouldRenderFourDifferentlyColoredScreensWithDiffe
     demo_timeline_segment_node_id frame_3_vs_output_node_id        = -1;
     demo_timeline_segment_node_id frame_3_vs_pass_renderer_node_id = -1;
 
-    window_pf     = system_pixel_format_create         (8,  /* color_buffer_red_bits   */
-                                                        8,  /* color_buffer_green_bits */
-                                                        8,  /* color_buffer_blue_bits  */
-                                                        0,  /* color_buffer_alpha_bits */
-                                                        0,  /* depth_buffer_bits       */
-                                                        1,  /* n_samples               */
-                                                        0); /* stencil_buffer_bits     */
-    window_handle = system_window_create_not_fullscreen(OGL_CONTEXT_TYPE_GL,
-                                                        xywh,
-                                                        system_hashed_ansi_string_create("Test window"),
-                                                        false,
-                                                        true,  /* vsync_enabled */
-                                                        true,  /* visible */
-                                                        window_pf);
+    window = demo_app_create_window(window_name,
+                                    RAL_BACKEND_TYPE_GL);
 
-    /* Create a rendering handler */
-    ogl_rendering_handler rendering_handler = ogl_rendering_handler_create_with_max_performance_policy(system_hashed_ansi_string_create("rendering handler"),
-                                                                                                       _on_render_frame_callback,
-                                                                                                       0);
-    ASSERT_TRUE(rendering_handler != NULL);
+    demo_window_set_property(window,
+                             DEMO_WINDOW_PROPERTY_RESOLUTION,
+                             window_resolution);
+    demo_window_set_property(window,
+                             DEMO_WINDOW_PROPERTY_TARGET_FRAME_RATE,
+                            &window_target_fps);
 
-    /* Bind the handler to the window */
-    system_window_set_property(window_handle,
-                               SYSTEM_WINDOW_PROPERTY_RENDERING_HANDLER,
-                              &rendering_handler);
+    ASSERT_TRUE(demo_window_show(window) );
 
-    /* Create a timeline instance. Define three video segments, each clearing the color buffer with a different color. */
-    system_window_get_property(window_handle,
-                               SYSTEM_WINDOW_PROPERTY_RENDERING_CONTEXT,
-                              &context);
+    /* Retrieve the timeline instance. Define three video segments, each clearing the color buffer with a different color. */
+    demo_window_get_property(window,
+                             DEMO_WINDOW_PROPERTY_RENDERING_CONTEXT,
+                            &window_context);
+    demo_window_get_property(window,
+                            DEMO_WINDOW_PROPERTY_TIMELINE,
+                            &window_timeline);
 
-    timeline = demo_timeline_create(system_hashed_ansi_string_create("Test timeline"),
-                                    context,
-                                    rendering_handler,
-                                    window_handle);
-
-    ASSERT_NE(timeline,
+    ASSERT_NE(window_timeline,
               (demo_timeline) NULL);
 
-    ogl_context_get_property  (context,
-                               OGL_CONTEXT_PROPERTY_DEFAULT_FBO_COLOR_TEXTURE_FORMAT,
+    ral_context_get_property  (window_context,
+                               RAL_CONTEXT_PROPERTY_SYSTEM_FRAMEBUFFER_COLOR_TEXTURE_FORMAT,
                               &context_texture_format);
-    demo_timeline_get_property(timeline,
+    demo_timeline_get_property(window_timeline,
                                DEMO_TIMELINE_PROPERTY_RENDERING_PIPELINE,
-                              &timeline_pipeline);
+                              &window_timeline_pipeline);
 
-    ASSERT_NE(timeline_pipeline,
+    ASSERT_NE(window_timeline_pipeline,
               (ogl_pipeline) NULL);
 
     frame_1_start_time = system_time_get_time_for_msec(0);
@@ -367,13 +279,13 @@ TEST(WindowTest, TimelineTest_ShouldRenderFourDifferentlyColoredScreensWithDiffe
     };
 
     /* Create postprocessing & video segments for "frame" time regions */
-    ASSERT_TRUE(demo_timeline_add_postprocessing_segment(timeline,
+    ASSERT_TRUE(demo_timeline_add_postprocessing_segment(window_timeline,
                                                          system_hashed_ansi_string_create("Color 1 postprocessing segment"),
                                                          frame_1_start_time,
                                                          frame_1_end_time,
                                                          &frame_1_ps_id,
                                                          &frame_1_ps) );
-    ASSERT_TRUE(demo_timeline_add_video_segment         (timeline,
+    ASSERT_TRUE(demo_timeline_add_video_segment         (window_timeline,
                                                          system_hashed_ansi_string_create("Color 1 video segment"),
                                                          frame_1_start_time,
                                                          frame_1_end_time,
@@ -382,7 +294,7 @@ TEST(WindowTest, TimelineTest_ShouldRenderFourDifferentlyColoredScreensWithDiffe
                                                         &frame_1_vs_id,
                                                         &frame_1_vs) );
 
-    ASSERT_TRUE(demo_timeline_add_video_segment         (timeline,
+    ASSERT_TRUE(demo_timeline_add_video_segment         (window_timeline,
                                                          system_hashed_ansi_string_create("Color 2 video segment"),
                                                          frame_2_start_time,
                                                          frame_2_end_time,
@@ -390,20 +302,20 @@ TEST(WindowTest, TimelineTest_ShouldRenderFourDifferentlyColoredScreensWithDiffe
                                                          context_texture_format,
                                                         &frame_2_vs_id,
                                                         &frame_2_vs) );
-    ASSERT_TRUE(demo_timeline_add_postprocessing_segment(timeline,
+    ASSERT_TRUE(demo_timeline_add_postprocessing_segment(window_timeline,
                                                          system_hashed_ansi_string_create("Color 2 postprocessing segment"),
                                                          frame_2_start_time,
                                                          frame_2_end_time,
                                                          &frame_2_ps_id,
                                                          &frame_2_ps) );
 
-    ASSERT_TRUE(demo_timeline_add_postprocessing_segment(timeline,
+    ASSERT_TRUE(demo_timeline_add_postprocessing_segment(window_timeline,
                                                          system_hashed_ansi_string_create("Color 3 postprocessing segment"),
                                                          frame_3_start_time,
                                                          frame_3_end_time,
                                                          &frame_3_ps_id,
                                                          &frame_3_ps) );
-    ASSERT_TRUE(demo_timeline_add_video_segment         (timeline,
+    ASSERT_TRUE(demo_timeline_add_video_segment         (window_timeline,
                                                          system_hashed_ansi_string_create("Color 3 video segment"),
                                                          frame_3_start_time,
                                                          frame_3_end_time,
@@ -500,13 +412,13 @@ TEST(WindowTest, TimelineTest_ShouldRenderFourDifferentlyColoredScreensWithDiffe
                                                     0 /* input_id */) );
 
     /* Create three pipeline stages. Each stage will be assigned a different rendering handler. */
-    frame_1_pipeline_stage_id = ogl_pipeline_add_stage_with_steps(timeline_pipeline,
+    frame_1_pipeline_stage_id = ogl_pipeline_add_stage_with_steps(window_timeline_pipeline,
                                                                   1, /* n_passes */
                                                                   frame_1_segment_passes);
-    frame_2_pipeline_stage_id = ogl_pipeline_add_stage_with_steps(timeline_pipeline,
+    frame_2_pipeline_stage_id = ogl_pipeline_add_stage_with_steps(window_timeline_pipeline,
                                                                   1, /* n_passes */
                                                                   frame_2_segment_passes);
-    frame_3_pipeline_stage_id = ogl_pipeline_add_stage_with_steps(timeline_pipeline,
+    frame_3_pipeline_stage_id = ogl_pipeline_add_stage_with_steps(window_timeline_pipeline,
                                                                   1, /* n_passes */
                                                                   frame_3_segment_passes);
 
@@ -523,15 +435,9 @@ TEST(WindowTest, TimelineTest_ShouldRenderFourDifferentlyColoredScreensWithDiffe
                                             NODES_VIDEO_PASS_RENDERER_PROPERTY_RENDERING_PIPELINE_STAGE_ID,
                                            &frame_3_pipeline_stage_id);
 
-    /* Assign the timeline to the window. Note that this setter automatically takes ownership of the object,
-     * so we need not release it at the end of the test */
-    ogl_rendering_handler_set_property(rendering_handler,
-                                       OGL_RENDERING_HANDLER_PROPERTY_TIMELINE,
-                                      &timeline);
-
     /* Let's render a couple of frames. */
-    ASSERT_TRUE(ogl_rendering_handler_play(rendering_handler,
-                                           0) );
+    ASSERT_TRUE(demo_window_start_rendering(window,
+                                            0) ); /* rendering_start_time */
 
     #ifdef _WIN32
     {
@@ -544,9 +450,9 @@ TEST(WindowTest, TimelineTest_ShouldRenderFourDifferentlyColoredScreensWithDiffe
     #endif
 
     /* Stop the playback */
-    ASSERT_TRUE(ogl_rendering_handler_stop(rendering_handler) );
+    ASSERT_TRUE(demo_window_stop_rendering(window) );
 
     /* Destroy the window */
-    ASSERT_TRUE(system_window_close(window_handle) );
+    ASSERT_TRUE(demo_app_destroy_window(window_name) );
 
 }

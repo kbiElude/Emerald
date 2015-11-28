@@ -26,6 +26,18 @@ PUBLIC EMERALD_API demo_window demo_app_create_window(system_hashed_ansi_string 
 /** TODO */
 PUBLIC EMERALD_API bool demo_app_destroy_window(system_hashed_ansi_string window_name);
 
+/** TODO
+ *
+ *  @param out_supported_samples Array allocated by Emerald. Release with demo_app_free_msaa_samples()
+ *                               when no longer needed.
+ **/
+PUBLIC EMERALD_API void demo_app_enumerate_msaa_samples(ral_backend_type backend_type,
+                                                        uint32_t*        out_n_supported_samples,
+                                                        uint32_t**       out_supported_samples);
+
+/** TODO */
+PUBLIC EMERALD_API void demo_app_free_msaa_samples(uint32_t* supported_samples_array);
+
 /** TODO */
 PUBLIC EMERALD_API void demo_app_get_property(demo_app_property property,
                                               void*             out_result_ptr);

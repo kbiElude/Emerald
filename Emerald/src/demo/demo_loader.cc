@@ -8,6 +8,7 @@
 #include "audio/audio_stream.h"
 #include "demo/demo_app.h"
 #include "demo/demo_loader.h"
+#include "demo/demo_window.h"
 #include "ogl/ogl_program.h"
 #include "ogl/ogl_rendering_handler.h"
 #include "ogl/ogl_shader.h"
@@ -433,15 +434,20 @@ PUBLIC void demo_loader_release_object_by_index(demo_loader             loader,
 /** Please see header for specification */
 PUBLIC void demo_loader_run(demo_loader   loader,
                             demo_timeline timeline,
-                            system_window renderer_window)
+                            demo_window   window)
 {
     _demo_loader* loader_ptr     = (_demo_loader*) loader;
     uint32_t      n_enqueued_ops = 0;
+    system_window window_private = NULL;
 
     ASSERT_DEBUG_SYNC(!loader_ptr->has_been_launched,
                       "Loader should not be run more than once");
 
     LOG_INFO("Loader started..");
+
+    demo_window_get_private_property(window,
+                                     DEMO_WINDOW_PRIVATE_PROPERTY_WINDOW,
+                                    &window_private);
 
     /* Kick off */
     loader_ptr->has_been_launched = true;
@@ -474,7 +480,7 @@ PUBLIC void demo_loader_run(demo_loader   loader,
                 ral_context context     = NULL;
                 ogl_program new_program = NULL;
 
-                system_window_get_property(renderer_window,
+                system_window_get_property(window_private,
                                            SYSTEM_WINDOW_PROPERTY_RENDERING_CONTEXT_RAL,
                                           &context);
 
@@ -577,7 +583,7 @@ PUBLIC void demo_loader_run(demo_loader   loader,
 
                 new_audio_stream = audio_stream_create(audio_device_get_default_device(),
                                                        audio_serializer,
-                                                       renderer_window);
+                                                       window);
 
                 ASSERT_ALWAYS_SYNC(new_audio_stream != NULL,
                                    "Could not create an audio_stream instance.");
@@ -652,9 +658,9 @@ PUBLIC void demo_loader_run(demo_loader   loader,
                 system_event          playback_stopped_event     = NULL;
                 ogl_rendering_handler rendering_handler          = NULL;
 
-                system_window_get_property(renderer_window,
-                                           SYSTEM_WINDOW_PROPERTY_RENDERING_HANDLER,
-                                          &rendering_handler);
+                system_window_get_property        (window_private,
+                                                   SYSTEM_WINDOW_PROPERTY_RENDERING_HANDLER,
+                                                  &rendering_handler);
                 ogl_rendering_handler_get_property(rendering_handler,
                                                    OGL_RENDERING_HANDLER_PROPERTY_PLAYBACK_IN_PROGRESS_EVENT,
                                                   &playback_in_progress_event);
@@ -683,7 +689,7 @@ PUBLIC void demo_loader_run(demo_loader   loader,
             {
                 ogl_rendering_handler rendering_handler = NULL;
 
-                system_window_get_property(renderer_window,
+                system_window_get_property(window_private,
                                            SYSTEM_WINDOW_PROPERTY_RENDERING_HANDLER,
                                           &rendering_handler);
 
@@ -699,7 +705,7 @@ PUBLIC void demo_loader_run(demo_loader   loader,
             {
                 ogl_rendering_handler rendering_handler = NULL;
 
-                system_window_get_property(renderer_window,
+                system_window_get_property(window_private,
                                            SYSTEM_WINDOW_PROPERTY_RENDERING_HANDLER,
                                           &rendering_handler);
 

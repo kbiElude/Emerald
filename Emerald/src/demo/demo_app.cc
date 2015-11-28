@@ -167,6 +167,21 @@ end:
 }
 
 /** Please see header for specification */
+PUBLIC EMERALD_API void demo_app_enumerate_msaa_samples(ral_backend_type backend_type,
+                                                        uint32_t*        out_n_supported_samples,
+                                                        uint32_t**       out_supported_samples)
+{
+    ASSERT_DEBUG_SYNC(false,
+                      "TODO");
+}
+
+/** Please see header for specification */
+PUBLIC EMERALD_API void demo_app_free_msaa_samples(uint32_t* supported_samples_array)
+{
+    delete [] supported_samples_array;
+}
+
+/** Please see header for specification */
 PUBLIC EMERALD_API demo_window demo_app_get_window_by_name(system_hashed_ansi_string window_name)
 {
     demo_window result = NULL;

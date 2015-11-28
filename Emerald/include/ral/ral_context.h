@@ -198,9 +198,9 @@ PUBLIC bool ral_context_delete_textures(ral_context  context,
                                         ral_texture* textures);
 
 /** TODO */
-PUBLIC void ral_context_get_property(ral_context          context,
-                                     ral_context_property property,
-                                     void*                out_result_ptr);
+PUBLIC EMERALD_API void ral_context_get_property(ral_context          context,
+                                                 ral_context_property property,
+                                                 void*                out_result_ptr);
 
 /** TODO */
 PUBLIC ral_texture ral_context_get_texture_by_file_name(ral_context               context,

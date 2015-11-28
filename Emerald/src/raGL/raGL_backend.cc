@@ -1392,15 +1392,15 @@ PUBLIC ogl_context raGL_backend_get_root_context(ral_backend_type backend_type)
                           "Could not create a root window");
     } /* if (root_window == NULL) */
 
-    demo_window_get_property  (root_window,
-                               DEMO_WINDOW_PROPERTY_WINDOW,
-                              &root_window_system);
-    system_window_get_property(root_window_system,
-                               SYSTEM_WINDOW_PROPERTY_RENDERING_CONTEXT_RAL,
-                              &root_context_ral);
-    ral_context_get_property  (root_context_ral,
-                               RAL_CONTEXT_PROPERTY_BACKEND,
-                              &root_backend_ptr);
+    demo_window_get_private_property(root_window,
+                                     DEMO_WINDOW_PRIVATE_PROPERTY_WINDOW,
+                                    &root_window_system);
+    system_window_get_property      (root_window_system,
+                                     SYSTEM_WINDOW_PROPERTY_RENDERING_CONTEXT_RAL,
+                                    &root_context_ral);
+    ral_context_get_property        (root_context_ral,
+                                     RAL_CONTEXT_PROPERTY_BACKEND,
+                                    &root_backend_ptr);
 
     return root_backend_ptr->context_gl;
 }

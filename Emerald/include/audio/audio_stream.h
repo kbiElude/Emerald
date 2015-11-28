@@ -14,6 +14,7 @@
 #ifndef AUDIO_STREAM_H
 #define AUDIO_STREAM_H
 
+#include "demo/demo_types.h"
 #include "system/system_types.h"
 
 REFCOUNT_INSERT_DECLARATIONS(audio_stream,
@@ -46,7 +47,7 @@ typedef enum
 /** TODO */
 PUBLIC EMERALD_API audio_stream audio_stream_create(audio_device           device,
                                                     system_file_serializer serializer,
-                                                    system_window          window);
+                                                    demo_window            window);
 
 /** Returns an averaged frequency band data. Number of bands is specified by the user at call-time.
  *  Internally, the function will ask BASS to use 2048 samples for calculations.

@@ -1556,9 +1556,9 @@ PUBLIC ogl_context ral_context_get_gl_context(ral_context context)
 }
 
 /** Please see header for specification */
-PUBLIC void ral_context_get_property(ral_context          context,
-                                     ral_context_property property,
-                                     void*                out_result_ptr)
+PUBLIC EMERALD_API void ral_context_get_property(ral_context          context,
+                                                 ral_context_property property,
+                                                 void*                out_result_ptr)
 {
     _ral_context* context_ptr = (_ral_context*) context;
 

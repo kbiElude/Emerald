@@ -239,6 +239,6 @@ PUBLIC void demo_loader_release_object_by_index(demo_loader             loader,
 /** TODO */
 PUBLIC void demo_loader_run(demo_loader   loader,
                             demo_timeline timeline,
-                            system_window renderer_window);
+                            demo_window   window);
 
 #endif /* DEMO_LOADER_H */

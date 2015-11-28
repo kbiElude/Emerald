@@ -6,14 +6,13 @@
 #include "test_shader.h"
 #include "gtest/gtest.h"
 #include "shared.h"
-#include "system/system_hashed_ansi_string.h"
+#include "demo/demo_app.h"
+#include "demo/demo_window.h"
 #include "ogl/ogl_context.h"
-#include "ogl/ogl_rendering_handler.h"
 #include "ogl/ogl_program.h"
 #include "ogl/ogl_shader.h"
+#include "system/system_hashed_ansi_string.h"
 #include "system/system_matrix4x4.h"
-#include "system/system_pixel_format.h"
-#include "system/system_window.h"
 
 bool             triangle_test_is_first_frame             = true;
 GLuint           triangle_test_position_bo_id             = -1;
@@ -28,6 +27,7 @@ GLint            triangle_test_view_matrix_location       = -1;
 GLfloat triangle_test_position_data[] = { 0.0f,  0.5f, -1.0f, 1.0f,
                                           1.0f, -1.0f, -1.0f, 1.0f,
                                          -1.0f, -1.0f, -1.0f, 1.0f};
+
 
 static void _on_render_frame_triangle_test_callback(ogl_context context,
                                                     uint32_t    n_frames_rendered,
@@ -133,57 +133,40 @@ static void _on_render_frame_creation_test_callback(ogl_context context,
 TEST(ShaderTest, CreationTest)
 {
     /* Create the window */
-    const int           xywh[]        = {0, 0, 320, 240};
-    system_pixel_format window_pf     = system_pixel_format_create         (8,  /* color_buffer_red_bits   */
-                                                                            8,  /* color_buffer_green_bits */
-                                                                            8,  /* color_buffer_blue_bits  */
-                                                                            0,  /* color_buffer_alpha_bits */
-                                                                            0,  /* depth_buffer_bits       */
-                                                                            1,  /* n_samples               */
-                                                                            0); /* stencil_buffer_bits     */
-    system_window       window_handle = system_window_create_not_fullscreen(OGL_CONTEXT_TYPE_GL,
-                                                                            xywh,
-                                                                            system_hashed_ansi_string_create("Test window"),
-                                                                            false,
-                                                                            true,  /* vsync_enabled */
-                                                                            false, /* visible */
-                                                                            window_pf);
+    ogl_shader                      test_shader              = NULL;
+    demo_window                     window                   = NULL;
+    ral_context                     window_context           = NULL;
+    const system_hashed_ansi_string window_name              = system_hashed_ansi_string_create("Test window");
+    const uint32_t                  window_resolution[]      = {320, 240};
+    const uint32_t                  window_target_frame_rate = ~0;
+    const bool                      window_visible           = false;
 
-#ifdef _WIN32
-    HWND          window_sys_handle = 0;
-#endif
+    ASSERT_NE( (window = demo_app_create_window(window_name,
+                                                RAL_BACKEND_TYPE_GL)),
+               (demo_window) NULL);
 
-    ASSERT_TRUE(window_handle != NULL);
+    demo_window_set_property(window,
+                             DEMO_WINDOW_PROPERTY_RESOLUTION,
+                             window_resolution);
+    demo_window_set_property(window,
+                             DEMO_WINDOW_PROPERTY_TARGET_FRAME_RATE,
+                            &window_target_frame_rate);
+    demo_window_set_property(window,
+                             DEMO_WINDOW_PROPERTY_VISIBLE,
+                            &window_visible);
 
-#ifdef _WIN32
-    system_window_get_property(window_handle,
-                               SYSTEM_WINDOW_PROPERTY_HANDLE,
-                              &window_sys_handle);
-    ASSERT_EQ                (::IsWindow(window_sys_handle),
-                              TRUE);
-#endif
-
-    /* Create a rendering handler */
-    ogl_rendering_handler rendering_handler = ogl_rendering_handler_create_with_max_performance_policy(system_hashed_ansi_string_create("rendering handler"),
-                                                                                                       _on_render_frame_creation_test_callback,
-                                                                                                       0); /* argument */
-
-    ASSERT_TRUE(rendering_handler != NULL);
-
-    /* Bind the handler to the window */
-    system_window_set_property(window_handle,
-                               SYSTEM_WINDOW_PROPERTY_RENDERING_HANDLER,
-                              &rendering_handler);
+    /* Show the window */
+    ASSERT_TRUE(demo_window_show(window) );
 
     /* Create the test shader */
-    ogl_context gl_context  = NULL;
-    ogl_shader  test_shader = NULL;
+    demo_window_get_property(window,
+                             DEMO_WINDOW_PROPERTY_RENDERING_CONTEXT,
+                            &window_context);
 
-    system_window_get_property(window_handle,
-                               SYSTEM_WINDOW_PROPERTY_RENDERING_CONTEXT,
-                              &gl_context);
+    ASSERT_NE(window_context,
+              (ral_context) NULL);
 
-    test_shader = ogl_shader_create(gl_context,
+    test_shader = ogl_shader_create(window_context,
                                     RAL_SHADER_TYPE_FRAGMENT,
                                     system_hashed_ansi_string_create("test shader") );
 
@@ -199,67 +182,42 @@ TEST(ShaderTest, CreationTest)
 
     ogl_shader_release(test_shader);
 
-    /* Destroy the window in a blunt way */
-    ASSERT_TRUE(system_window_close(window_handle) );
-
-#ifdef _WIN32
-    ASSERT_EQ  (::IsWindow         (window_sys_handle),
-                FALSE);
-#endif
+    /* Destroy the window */
+    ASSERT_TRUE(demo_app_destroy_window(window_name) );
 }
 
 TEST(ShaderTest, FullViewportTriangleTest)
 {
     /* Create the window */
-    const int           xywh[]        = {0, 0, 320, 240};
-    system_pixel_format window_pf     = system_pixel_format_create         (8,  /* color_buffer_red_bits   */
-                                                                            8,  /* color_buffer_green_bits */
-                                                                            8,  /* color_buffer_blue_bits  */
-                                                                            0,  /* color_buffer_alpha_bits */
-                                                                            0,  /* depth_buffer_bits       */
-                                                                            SYSTEM_PIXEL_FORMAT_USE_MAXIMUM_NUMBER_OF_SAMPLES,
-                                                                            0); /* stencil_buffer_bits     */
-    system_window       window_handle = system_window_create_not_fullscreen(OGL_CONTEXT_TYPE_GL,
-                                                                            xywh,
-                                                                            system_hashed_ansi_string_create("Test window"),
-                                                                            false,
-                                                                            false, /* vsync_enabled */
-                                                                            true,  /* visible */
-                                                                            window_pf);
+    demo_window                     window                   = NULL;
+    ral_context                     window_context           = NULL;
+    const system_hashed_ansi_string window_name              = system_hashed_ansi_string_create("Test window");
+    const uint32_t                  window_resolution[]      = {320, 240};
+    const uint32_t                  window_target_frame_rate = ~0;
 
-#ifdef _WIN32
-    HWND          window_sys_handle = 0;
+    window = demo_app_create_window(window_name,
+                                    RAL_BACKEND_TYPE_GL);
 
-    ASSERT_TRUE(window_handle != NULL);
+    demo_window_set_property(window,
+                             DEMO_WINDOW_PROPERTY_RESOLUTION,
+                             window_resolution);
+    demo_window_set_property(window,
+                             DEMO_WINDOW_PROPERTY_TARGET_FRAME_RATE,
+                            &window_target_frame_rate);
 
-    system_window_get_property(window_handle,
-                               SYSTEM_WINDOW_PROPERTY_HANDLE,
-                              &window_sys_handle);
-    ASSERT_EQ                (::IsWindow(window_sys_handle),
-                              TRUE);
-#endif
+    ASSERT_TRUE(demo_window_show(window) );
 
-    /* Create a rendering handler */
-    ogl_rendering_handler rendering_handler = ogl_rendering_handler_create_with_max_performance_policy(system_hashed_ansi_string_create("rendering handler"),
-                                                                                                       _on_render_frame_triangle_test_callback,
-                                                                                                       0); /* argument */
+    demo_window_get_property(window,
+                             DEMO_WINDOW_PROPERTY_RENDERING_CONTEXT,
+                            &window_context);
 
-    ASSERT_TRUE(rendering_handler != NULL);
-
-    /* Bind the handler to the window */
-    system_window_set_property(window_handle,
-                               SYSTEM_WINDOW_PROPERTY_RENDERING_HANDLER,
-                              &rendering_handler);
+    ASSERT_NE(window_context,
+              (ral_context) NULL);
 
     /* Create the test vertex shader */
-    ogl_context gl_context         = NULL;
-    ogl_shader  test_vertex_shader = NULL;
+    ogl_shader test_vertex_shader = NULL;
 
-    system_window_get_property(window_handle,
-                               SYSTEM_WINDOW_PROPERTY_RENDERING_CONTEXT,
-                              &gl_context);
-
-    test_vertex_shader = ogl_shader_create(gl_context,
+    test_vertex_shader = ogl_shader_create(window_context,
                                            RAL_SHADER_TYPE_VERTEX,
                                            system_hashed_ansi_string_create("test vertex shader") );
 
@@ -283,7 +241,7 @@ TEST(ShaderTest, FullViewportTriangleTest)
     ASSERT_TRUE(ogl_shader_compile(test_vertex_shader) );
 
     /* Create the test fragment shader */
-    ogl_shader test_fragment_shader = ogl_shader_create(gl_context,
+    ogl_shader test_fragment_shader = ogl_shader_create(window_context,
                                                         RAL_SHADER_TYPE_FRAGMENT,
                                                         system_hashed_ansi_string_create("test fragment shader") );
 
@@ -299,7 +257,7 @@ TEST(ShaderTest, FullViewportTriangleTest)
     ASSERT_TRUE(ogl_shader_compile(test_fragment_shader) );
 
     /* Create the test program */
-    ogl_program test_program = ogl_program_create(gl_context,
+    ogl_program test_program = ogl_program_create(window_context,
                                                   system_hashed_ansi_string_create("test program") );
     ASSERT_TRUE(test_program != NULL);
 
@@ -359,8 +317,8 @@ TEST(ShaderTest, FullViewportTriangleTest)
     system_matrix4x4_set_to_identity(triangle_test_view_matrix);
 
     /* Let's render a couple of frames. */
-    ASSERT_TRUE(ogl_rendering_handler_play(rendering_handler,
-                                           0) );
+    ASSERT_TRUE(demo_window_start_rendering(window,
+                                            0) ); /* rendering_start_time */
 
 #ifdef _WIN32
     ::Sleep(1000);
@@ -369,7 +327,7 @@ TEST(ShaderTest, FullViewportTriangleTest)
 #endif
 
     /* Stop playing so that we can release */
-    ASSERT_TRUE(ogl_rendering_handler_stop(rendering_handler) );
+    ASSERT_TRUE(demo_window_stop_rendering(window) );
 
     /* Release */
     ogl_program_release     (test_program);
@@ -378,12 +336,7 @@ TEST(ShaderTest, FullViewportTriangleTest)
     system_matrix4x4_release(triangle_test_projection_matrix);
     system_matrix4x4_release(triangle_test_view_matrix);
 
-    /* Destroy the window in a blunt way */
-    ASSERT_TRUE(system_window_close(window_handle) );
-
-#ifdef _WIN32
-    ASSERT_EQ  (::IsWindow(window_sys_handle),
-                FALSE);
-#endif
+    /* Destroy the window */
+    ASSERT_TRUE(demo_app_destroy_window(window_name) );
 }
 
