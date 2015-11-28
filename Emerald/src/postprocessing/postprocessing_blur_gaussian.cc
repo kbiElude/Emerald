@@ -874,7 +874,7 @@ end:
 PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void postprocessing_blur_gaussian_execute(postprocessing_blur_gaussian            blur,
                                                                                     unsigned int                            n_taps,
                                                                                     float                                   n_iterations,
-                                                                                    raGL_texture                            src_texture,
+                                                                                    ral_texture                             src_texture,
                                                                                     postprocessing_blur_gaussian_resolution blur_resolution)
 {
     _postprocessing_blur_gaussian*                            blur_ptr                      = (_postprocessing_blur_gaussian*) blur;
@@ -891,7 +891,7 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void postprocessing_blur_gaussian_exec
     unsigned int                                              src_texture_height            = 0;
     GLuint                                                    src_texture_id                = 0;
     bool                                                      src_texture_is_rbo            = false;
-    ral_texture                                               src_texture_ral               = NULL;
+    raGL_texture                                              src_texture_raGL              = NULL;
     unsigned int                                              src_texture_width             = 0;
     ral_texture_type                                          src_texture_type              = RAL_TEXTURE_TYPE_UNKNOWN;
     ogl_context_state_cache                                   state_cache                   = NULL;
@@ -926,31 +926,31 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void postprocessing_blur_gaussian_exec
                                          OGL_CONTEXT_STATE_CACHE_PROPERTY_VIEWPORT,
                                          viewport_data);
 
-    raGL_texture_get_property(src_texture,
+    src_texture_raGL = ral_context_get_texture_gl(blur_ptr->context,
+                                                  src_texture);
+
+    raGL_texture_get_property(src_texture_raGL,
                               RAGL_TEXTURE_PROPERTY_ID,
                              &src_texture_id);
-    raGL_texture_get_property(src_texture,
+    raGL_texture_get_property(src_texture_raGL,
                               RAGL_TEXTURE_PROPERTY_IS_RENDERBUFFER,
                              &src_texture_is_rbo);
-    raGL_texture_get_property(src_texture,
-                              RAGL_TEXTURE_PROPERTY_RAL_TEXTURE,
-                             &src_texture_ral);
 
     ASSERT_DEBUG_SYNC(!src_texture_is_rbo,
                       "TODO");
 
-    ral_texture_get_mipmap_property    (src_texture_ral,
+    ral_texture_get_mipmap_property    (src_texture,
                                         0, /* n_layer */
                                         0, /* n_mipmap */
                                         RAL_TEXTURE_MIPMAP_PROPERTY_HEIGHT,
                                        &src_texture_height);
-    ral_texture_get_property           (src_texture_ral,
+    ral_texture_get_property           (src_texture,
                                         RAL_TEXTURE_PROPERTY_TYPE,
                                        &src_texture_type);
-    ral_texture_get_property           (src_texture_ral,
+    ral_texture_get_property           (src_texture,
                                         RAL_TEXTURE_PROPERTY_FORMAT,
                                        &src_texture_format);
-    ral_texture_get_mipmap_property    (src_texture_ral,
+    ral_texture_get_mipmap_property    (src_texture,
                                         0, /* n_layer  */
                                         0, /* n_mipmap */
                                         RAL_TEXTURE_MIPMAP_PROPERTY_WIDTH,
@@ -1186,7 +1186,7 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void postprocessing_blur_gaussian_exec
 
         case RAL_TEXTURE_TYPE_2D_ARRAY:
         {
-            ral_texture_get_property(src_texture_ral,
+            ral_texture_get_property(src_texture,
                                      RAL_TEXTURE_PROPERTY_N_LAYERS,
                                     &n_layers);
 

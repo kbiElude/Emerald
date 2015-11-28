@@ -17,6 +17,9 @@ typedef enum
 
 
 /** TODO */
+PUBLIC EMERALD_API void demo_app_close();
+
+/** TODO */
 PUBLIC EMERALD_API demo_window demo_app_create_window(system_hashed_ansi_string window_name,
                                                       ral_backend_type          backend_type);
 
@@ -32,9 +35,6 @@ PUBLIC EMERALD_API demo_window demo_app_get_window_by_name(system_hashed_ansi_st
 
 /** TODO */
 PUBLIC EMERALD_API demo_window demo_app_get_window_by_index(uint32_t n_window);
-
-/** TODO */
-PUBLIC EMERALD_API void demo_app_close();
 
 
 #endif /* DEMO_APP_H */

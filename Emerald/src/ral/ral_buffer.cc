@@ -5,11 +5,13 @@
  */
 #include "shared.h"
 #include "ral/ral_buffer.h"
+#include "system/system_callback_manager.h"
 #include "system/system_log.h"
 
 
 typedef struct _ral_buffer
 {
+    system_callback_manager     callback_manager;
     ral_buffer_mappability_bits mappability_bits;
     system_hashed_ansi_string   name;
     ral_buffer                  parent_buffer;
@@ -33,6 +35,7 @@ typedef struct _ral_buffer
     {
         ASSERT_DEBUG_SYNC(start_offset == 0, "!!");
 
+        callback_manager = system_callback_manager_create( (_callback_id) RAL_BUFFER_CALLBACK_ID_COUNT);
         mappability_bits = in_mappability_bits;
         name             = in_name;
         parent_buffer    = NULL;
@@ -45,7 +48,12 @@ typedef struct _ral_buffer
 
     ~_ral_buffer()
     {
-        // ..
+        if (callback_manager != NULL)
+        {
+            system_callback_manager_release(callback_manager);
+
+            callback_manager = NULL;
+        }
     }
 } _ral_buffer;
 
@@ -173,6 +181,13 @@ PUBLIC void ral_buffer_get_property(ral_buffer          buffer,
     /* Retrieve the requested property value */
     switch (property)
     {
+        case RAL_BUFFER_PROPERTY_CALLBACK_MANAGER:
+        {
+            *(system_callback_manager*) out_result_ptr = buffer_ptr->callback_manager;
+
+            break;
+        }
+
         case RAL_BUFFER_PROPERTY_MAPPABILITY_BITS:
         {
             *(ral_buffer_mappability_bits*) out_result_ptr = buffer_ptr->mappability_bits;
@@ -230,4 +245,54 @@ PUBLIC void ral_buffer_get_property(ral_buffer          buffer,
     } /* switch (property) */
 end:
     ;
+}
+
+/** Please see header for specification */
+PUBLIC bool ral_buffer_set_data_from_client_memory(ral_buffer                                   buffer,
+                                                   uint32_t                                     n_updates,
+                                                   const ral_buffer_client_sourced_update_info* updates)
+{
+    _ral_buffer*                                       buffer_ptr = (_ral_buffer*) buffer;
+    ral_buffer_client_sourced_update_info_callback_arg callback_arg;
+    bool                                               result     = false;
+
+    /* Sanity checks */
+    if (buffer == NULL)
+    {
+        ASSERT_DEBUG_SYNC(false,
+                          "Input ral_buffer instance is NULL");
+
+        goto end;
+    }
+
+    if (n_updates == 0)
+    {
+        result = true;
+
+        goto end;
+    }
+
+    if (updates == NULL)
+    {
+        ASSERT_DEBUG_SYNC(false,
+                          "Input update info array is NULL");
+
+        goto end;
+    }
+
+    /* Convert input data to a callback argument and send a notification, so that active rendering contexts
+     * can handle the request. */
+    callback_arg.buffer    = buffer;
+    callback_arg.n_updates = n_updates;
+    callback_arg.updates   = updates;
+
+    system_callback_manager_call_back(buffer_ptr->callback_manager,
+                                      RAL_BUFFER_CALLBACK_ID_CLIENT_MEMORY_SOURCED_UPDATES_REQUESTED,
+                                     &callback_arg);
+
+    /* All done */
+    result = true;
+
+end:
+    return result;
 }

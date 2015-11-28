@@ -43,4 +43,9 @@ PUBLIC EMERALD_API void raGL_buffer_get_property(raGL_buffer          buffer,
 /** TODO */
 PUBLIC void raGL_buffer_release(raGL_buffer buffer);
 
+/** TODO */
+PUBLIC void raGL_buffer_update_regions_with_client_memory(raGL_buffer                                  buffer,
+                                                          uint32_t                                     n_updates,
+                                                          const ral_buffer_client_sourced_update_info* updates);
+
 #endif /* RAGL_BUFFER_H */

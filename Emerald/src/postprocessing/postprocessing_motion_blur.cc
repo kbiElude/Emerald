@@ -580,7 +580,7 @@ PUBLIC EMERALD_API postprocessing_motion_blur postprocessing_motion_blur_create(
         blur_sampler_create_info.wrap_t      = RAL_TEXTURE_WRAP_MODE_CLAMP_TO_EDGE;
 
         ral_context_create_samplers(context,
-                                    1, /* n_samplers */
+                                    1, /* n_screate_info_items */
                                    &blur_sampler_create_info,
                                    &motion_blur_ptr->sampler);
 

@@ -453,7 +453,7 @@ PUBLIC void curve_editor_program_tcb_set_property(curve_editor_program_tcb      
 }
 
 /** Please see header for spec */
-PUBLIC void curve_editor_program_tcb_use(ogl_context              context,
+PUBLIC void curve_editor_program_tcb_use(ral_context              context,
                                          curve_editor_program_tcb tcb)
 {
     const ogl_context_gl_entrypoints* entry_points                    = NULL;
@@ -462,7 +462,7 @@ PUBLIC void curve_editor_program_tcb_use(ogl_context              context,
     uint32_t                          program_data_ub_bo_start_offset = -1;
     _curve_editor_program_tcb*        tcb_ptr                         = (_curve_editor_program_tcb*) tcb;
 
-    ogl_context_get_property(context,
+    ogl_context_get_property(ral_context_get_gl_context(context),
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
                             &entry_points);
 

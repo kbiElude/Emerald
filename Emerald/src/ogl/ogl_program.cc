@@ -390,7 +390,7 @@ PRIVATE void _ogl_program_init_blocks_for_context(ogl_program_block_type block_t
 
             case OGL_PROGRAM_BLOCK_TYPE_UNIFORM_BUFFER:
             {
-                ogl_program_ub new_ub = ogl_program_ub_create(context,
+                ogl_program_ub new_ub = ogl_program_ub_create(program_ptr->context,
                                                               (ogl_program) program_ptr,
                                                               n_active_block,
                                                               block_name_has,

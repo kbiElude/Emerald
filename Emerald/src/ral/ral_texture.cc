@@ -467,7 +467,8 @@ PUBLIC ral_texture ral_texture_create_from_file_name(system_hashed_ansi_string n
 
     /* Now try to set up a ogl_texture instance using the gfx_image we created. */
     result = ral_texture_create_from_gfx_image(name,
-                                               new_gfx_image);
+                                               new_gfx_image,
+                                               usage);
 
     if (result == NULL)
     {
@@ -639,6 +640,33 @@ end:
 
         mipmap_update_info_ptrs = NULL;
     }
+    return result;
+}
+
+/** Please see header for specification */
+PUBLIC EMERALD_API bool ral_texture_generate_mipmaps(ral_texture texture)
+{
+    bool          result      = false;
+    _ral_texture* texture_ptr = (_ral_texture*) texture;
+
+    /* Sanity checks */
+    if (texture == NULL)
+    {
+        ASSERT_DEBUG_SYNC(false,
+                          "Input ral_texture instance is NULL");
+
+        goto end;
+    }
+
+    /* Fire a notification, so that the backend can handle the request */
+    system_callback_manager_call_back(texture_ptr->callback_manager,
+                                      RAL_TEXTURE_CALLBACK_ID_MIPMAP_GENERATION_REQUESTED,
+                                      texture);
+
+    /* All done */
+    result = true;
+
+end:
     return result;
 }
 

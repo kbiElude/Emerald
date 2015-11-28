@@ -5,6 +5,36 @@
 
 typedef enum
 {
+    /* One or more updates are pending for a ral_buffer instance.
+     *
+     * arg: ral_buffer_client_sourced_update_info_callback_arg
+     */
+    RAL_BUFFER_CALLBACK_ID_CLIENT_MEMORY_SOURCED_UPDATES_REQUESTED,
+
+    /* Always last */
+    RAL_BUFFER_CALLBACK_ID_COUNT,
+};
+
+typedef struct ral_buffer_client_sourced_update_info_callback_arg
+{
+    ral_buffer                                   buffer;
+    uint32_t                                     n_updates;
+    const ral_buffer_client_sourced_update_info* updates;
+
+    ral_buffer_client_sourced_update_info_callback_arg()
+    {
+        buffer    = NULL;
+        n_updates = 0;
+        updates   = NULL;
+    }
+} ral_buffer_client_sourced_update_info_callback_arg;
+
+
+typedef enum
+{
+    /* not settable, system_callback_manager */
+    RAL_BUFFER_PROPERTY_CALLBACK_MANAGER,
+
     /* not settable, ral_buffer_mappability_bits */
     RAL_BUFFER_PROPERTY_MAPPABILITY_BITS,
 

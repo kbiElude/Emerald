@@ -803,16 +803,20 @@ PRIVATE bool _ral_context_create_objects(_ral_context*            context_ptr,
 
             case RAL_CONTEXT_OBJECT_TYPE_TEXTURE_FROM_FILE_NAME:
             {
+                /* NOTE: We may need the client app to specify the usage pattern in the future */
                 result_objects_ptr[n_object] = ral_texture_create_from_file_name(system_hashed_ansi_string_create(temp),
-                                                                                 (system_hashed_ansi_string) (object_create_info_ptrs + n_object) );
+                                                                                 (system_hashed_ansi_string) (object_create_info_ptrs + n_object),
+                                                                                 RAL_TEXTURE_USAGE_IMAGE_LOAD_OPS_BIT | RAL_TEXTURE_USAGE_SAMPLED_BIT);
 
                 break;
             }
 
             case RAL_CONTEXT_OBJECT_TYPE_TEXTURE_FROM_GFX_IMAGE:
             {
+                /* NOTE: We may need the client app to specify the usage pattern in the future */
                 result_objects_ptr[n_object] = ral_texture_create_from_gfx_image(system_hashed_ansi_string_create(temp),
-                                                                                 (gfx_image) (object_create_info_ptrs + n_object) );
+                                                                                 (gfx_image) (object_create_info_ptrs + n_object),
+                                                                                 RAL_TEXTURE_USAGE_IMAGE_LOAD_OPS_BIT | RAL_TEXTURE_USAGE_SAMPLED_BIT);
 
                 break;
             }
@@ -1058,49 +1062,133 @@ end:
 }
 
 /** Please see header for specification */
-PUBLIC bool ral_context_create_samplers(ral_context                    context,
-                                        uint32_t                       n_samplers,
-                                        const ral_sampler_create_info* sampler_create_info_ptr,
-                                        ral_sampler*                   out_result_samplers_ptr)
+PUBLIC bool ral_context_create_samplers(ral_context              context,
+                                        uint32_t                 n_create_info_items,
+                                        ral_sampler_create_info* create_info_ptrs,
+                                        ral_sampler*             out_result_sampler_ptrs)
 {
-    _ral_context* context_ptr = (_ral_context*) context;
     bool          result      = false;
+    _ral_context* context_ptr = (_ral_context*) context;
 
     /* Sanity checks */
     if (context == NULL)
     {
         ASSERT_DEBUG_SYNC(false,
-                          "Input context is NULL");
+                          "Input ral_context instance is NULL");
 
         goto end;
     }
 
-    if (n_samplers == 0)
+    if (n_create_info_items == 0)
     {
-        goto end;
-    }
-
-    if (sampler_create_info_ptr == NULL)
-    {
-        ASSERT_DEBUG_SYNC(false,
-                          "Input sampler create info array is NULL");
+        result = true;
 
         goto end;
     }
 
-    if (out_result_samplers_ptr == NULL)
+    if (create_info_ptrs == NULL)
     {
         ASSERT_DEBUG_SYNC(false,
-                          "Output variable is NULL");
+                          "Input create_info_ptrs is NULL");
 
         goto end;
     }
 
-    result = _ral_context_create_objects(context_ptr,
-                                         RAL_CONTEXT_OBJECT_TYPE_SAMPLER,
-                                         n_samplers,
-                                         (void**) sampler_create_info_ptr,
-                                         (void**) out_result_samplers_ptr);
+    if (out_result_sampler_ptrs == NULL)
+    {
+        ASSERT_DEBUG_SYNC(false,
+                          "Output variable out_result_sampler_ptrs is NULL");
+
+        goto end;
+    }
+
+    /* Check if the samplers we already have match the requested sampler
+     *
+     * TODO: We really need a hash-map for this!
+     * TODO: Distribute to multiple threads?
+     */
+    LOG_ERROR("Performance warning: Slow path in ral_context_get_sampler_by_create_info()");
+
+    system_critical_section_enter(context_ptr->samplers_cs);
+    {
+        for (uint32_t n_current_create_info = 0;
+                      n_current_create_info < n_create_info_items;
+                    ++n_current_create_info)
+        {
+            ral_sampler_create_info* current_create_info_ptr = create_info_ptrs + n_current_create_info;
+            uint32_t                 n_samplers              = 0;
+            ral_sampler              result_sampler          = NULL;
+
+            if (current_create_info_ptr == NULL)
+            {
+                ASSERT_DEBUG_SYNC(current_create_info_ptr != NULL,
+                                  "One of the create info items is NULL");
+
+                goto end;
+            }
+
+            system_resizable_vector_get_property(context_ptr->samplers,
+                                                 SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                                &n_samplers);
+
+            for (uint32_t n_sampler = 0;
+                          n_sampler < n_samplers;
+                        ++n_sampler)
+            {
+                ral_sampler current_sampler = NULL;
+
+                if (!system_resizable_vector_get_element_at(context_ptr->samplers,
+                                                            n_sampler,
+                                                           &current_sampler) )
+                {
+                    ASSERT_DEBUG_SYNC(false,
+                                      "Could not retrieve a ral_sampler instance at index [%d]",
+                                      n_sampler);
+
+                    continue;
+                }
+
+                if (ral_sampler_is_equal_to_create_info(current_sampler,
+                                                        current_create_info_ptr) )
+                {
+                    /* Found a match */
+                    ral_sampler_retain(current_sampler);
+
+                    result_sampler = current_sampler;
+                    break;
+                }
+            } /* for (all samplers registered) */
+
+            if (result_sampler == NULL)
+            {
+                /* No luck - we need a new instance. */
+                static int n_samplers_created = 0;
+                char       name_buffer[64];
+
+                snprintf(name_buffer,
+                         sizeof(name_buffer),
+                         "Sampler [%d]",
+                         n_samplers_created++);
+
+                result_sampler = ral_sampler_create(system_hashed_ansi_string_create(name_buffer),
+                                                    current_create_info_ptr);
+
+                system_resizable_vector_push(context_ptr->samplers,
+                                             result_sampler);
+            } /* if (result_sampler == NULL) */
+
+            if (result_sampler == NULL)
+            {
+                ASSERT_DEBUG_SYNC(false,
+                                  "Could not obtain a ral_sampler instance.");
+
+                goto end;
+            }
+
+            out_result_sampler_ptrs[n_current_create_info] = result_sampler;
+        } /* for (all create info items) */
+    }
+    system_critical_section_leave(context_ptr->samplers_cs);
 
 end:
     return result;
@@ -1440,6 +1528,33 @@ end:
     return result;
 }
 
+/** TODO */
+PUBLIC raGL_buffer ral_context_get_buffer_gl(ral_context context,
+                                             ral_buffer  buffer)
+{
+    raGL_buffer   buffer_raGL = NULL;
+    _ral_context* context_ptr = (_ral_context*) context;
+
+    raGL_backend_get_buffer(context_ptr->backend,
+                            buffer,
+                  (void**) &buffer_raGL);
+
+    return buffer_raGL;
+}
+
+/** TODO */
+PUBLIC ogl_context ral_context_get_gl_context(ral_context context)
+{
+    raGL_backend backend         = (raGL_backend) ((_ral_context*) context)->backend;
+    ogl_context  backend_context = NULL;
+
+    raGL_backend_get_property(backend,
+                              RAL_CONTEXT_PROPERTY_BACKEND_CONTEXT,
+                             &backend_context);
+
+    return backend_context;
+}
+
 /** Please see header for specification */
 PUBLIC void ral_context_get_property(ral_context          context,
                                      ral_context_property property,
@@ -1509,6 +1624,20 @@ PUBLIC void ral_context_get_property(ral_context          context,
     } /* switch (property) */
 end:
     ;
+}
+
+/** TODO */
+PUBLIC raGL_sampler ral_context_get_sampler_gl(ral_context context,
+                                               ral_sampler sampler)
+{
+    raGL_sampler  sampler_raGL = NULL;
+    _ral_context* context_ptr  = (_ral_context*) context;
+
+    raGL_backend_get_sampler(context_ptr->backend,
+                             sampler,
+                   (void**) &sampler_raGL);
+
+    return sampler_raGL;
 }
 
 /** Please see header for specification */
@@ -1583,6 +1712,20 @@ PUBLIC ral_texture ral_context_get_texture_by_name(ral_context               con
 
 end:
     return result;
+}
+
+/** TODO */
+PUBLIC raGL_texture ral_context_get_texture_gl(ral_context context,
+                                               ral_texture texture)
+{
+    _ral_context* context_ptr  = (_ral_context*) context;
+    raGL_texture  texture_raGL = NULL;
+
+    raGL_backend_get_texture(context_ptr->backend,
+                             texture,
+                   (void**) &texture_raGL);
+
+    return texture_raGL;
 }
 
 PUBLIC GLuint ral_context_get_texture_gl_id(ral_context context,

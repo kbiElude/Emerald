@@ -73,6 +73,8 @@ PRIVATE RENDERING_CONTEXT_CALL void _raGL_texture_client_memory_sourced_update_r
                                                                                                          void*          user_arg);
 PRIVATE RENDERING_CONTEXT_CALL void _raGL_texture_deinit_storage_rendering_callback                     (ogl_context    context,
                                                                                                          void*          user_arg);
+PRIVATE RENDERING_CONTEXT_CALL void _raGL_texture_generate_mipmaps_rendering_callback                   (ogl_context    context,
+                                                                                                         void*          user_arg);
 PRIVATE RENDERING_CONTEXT_CALL void _raGL_texture_init_storage_rendering_callback                       (ogl_context    context,
                                                                                                          void*          user_arg);
 PRIVATE RENDERING_CONTEXT_CALL void _raGL_texture_init_renderbuffer_storage                             (_raGL_texture* texture_ptr);
@@ -339,6 +341,25 @@ PRIVATE RENDERING_CONTEXT_CALL void _raGL_texture_deinit_storage_rendering_callb
     }
 
     texture_ptr->id = 0;
+}
+
+/** TODO */
+PRIVATE RENDERING_CONTEXT_CALL void _raGL_texture_generate_mipmaps_rendering_callback(ogl_context    context,
+                                                                                      void*          user_arg)
+{
+    const ogl_context_gl_entrypoints_ext_direct_state_access* entrypoints_dsa_ptr = NULL;
+    _raGL_texture*                                            texture_ptr         = (_raGL_texture*) user_arg;
+    ral_texture_type                                          texture_type        = RAL_TEXTURE_TYPE_UNKNOWN;
+
+    ogl_context_get_property(context,
+                             OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL_EXT_DIRECT_STATE_ACCESS,
+                            &entrypoints_dsa_ptr);
+    ral_texture_get_property(texture_ptr->texture,
+                             RAL_TEXTURE_PROPERTY_TYPE,
+                            &texture_type);
+
+    entrypoints_dsa_ptr->pGLGenerateTextureMipmapEXT(texture_ptr->id,
+                                                     raGL_utils_get_ogl_texture_target_for_ral_texture_type(texture_type) );
 }
 
 /** TODO */
@@ -879,6 +900,21 @@ PUBLIC RENDERING_CONTEXT_CALL raGL_texture raGL_texture_create(ogl_context conte
 
 end:
     return (raGL_texture) result_ptr;
+}
+
+/** Please see header for specification */
+PUBLIC void raGL_texture_generate_mipmaps(raGL_texture texture)
+{
+    _raGL_texture* texture_ptr = (_raGL_texture*) texture;
+
+    /* Sanity checks */
+    ASSERT_DEBUG_SYNC(texture != NULL,
+                      "Input raGL_texture instance is NULL");
+
+    /* Request a rendering thread call-back */
+    ogl_context_request_callback_from_context_thread(texture_ptr->context,
+                                                     _raGL_texture_generate_mipmaps_rendering_callback,
+                                                     texture);
 }
 
 /** Please see header for specification */

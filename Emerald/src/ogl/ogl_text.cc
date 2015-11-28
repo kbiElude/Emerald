@@ -1287,13 +1287,13 @@ PUBLIC EMERALD_API void ogl_text_delete_string(ogl_text           text,
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API void ogl_text_draw(ogl_context context,
+PUBLIC EMERALD_API void ogl_text_draw(ral_context context,
                                       ogl_text    text)
 {
     _ogl_text* text_ptr = (_ogl_text*) text;
 
     /* Make sure the request is handled from rendering thread */
-    ogl_context_request_callback_from_context_thread(context,
+    ogl_context_request_callback_from_context_thread(ral_context_get_gl_context(context),
                                                      _ogl_text_draw_callback_from_renderer,
                                                      text);
 }

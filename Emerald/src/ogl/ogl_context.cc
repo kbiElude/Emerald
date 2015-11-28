@@ -22,7 +22,6 @@
 #include "ogl/ogl_text.h"
 #include "raGL/raGL_buffers.h"
 #include "raGL/raGL_utils.h"
-#include "raGL/raGL_samplers.h"
 #include "ral/ral_context.h"
 #include "system/system_assertions.h"
 #include "system/system_critical_section.h"
@@ -139,7 +138,6 @@ typedef struct
     ogl_programs                    programs;
     ogl_primitive_renderer          primitive_renderer;
     ogl_context_sampler_bindings    sampler_bindings;
-    raGL_samplers                   samplers;
     ogl_shaders                     shaders;
     ogl_shadow_mapping              shadow_mapping;
     ogl_context_state_cache         state_cache;
@@ -984,7 +982,6 @@ PRIVATE void _ogl_context_init_context_after_creation(ogl_context context)
     context_ptr->programs                                   = NULL;
     context_ptr->sampler_bindings                           = NULL;
     context_ptr->state_cache                                = NULL;
-    context_ptr->samplers                                   = raGL_samplers_create( (ogl_context) context_ptr);
     context_ptr->shaders                                    = ogl_shaders_create  ();
     context_ptr->shadow_mapping                             = NULL;
     context_ptr->text_renderer                              = NULL;
@@ -3539,13 +3536,6 @@ PUBLIC EMERALD_API void ogl_context_get_property(ogl_context          context,
             break;
         }
 
-        case OGL_CONTEXT_PROPERTY_SAMPLERS_RAGL:
-        {
-            *((raGL_samplers*) out_result) = context_ptr->samplers;
-
-            break;
-        }
-
         case OGL_CONTEXT_PROPERTY_SHADERS:
         {
             *(ogl_shaders*) out_result = context_ptr->shaders;
@@ -3763,13 +3753,6 @@ PUBLIC bool ogl_context_release_managers(ogl_context context)
         ogl_programs_release(context_ptr->programs);
 
         context_ptr->programs = NULL;
-    }
-
-    if (context_ptr->samplers != NULL)
-    {
-        raGL_samplers_release(context_ptr->samplers);
-
-        context_ptr->samplers = NULL;
     }
 
     if (context_ptr->shaders != NULL)

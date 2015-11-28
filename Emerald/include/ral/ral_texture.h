@@ -23,6 +23,13 @@ typedef enum
      */
     RAL_TEXTURE_CALLBACK_ID_CLIENT_MEMORY_SOURCE_UPDATE_REQUESTED,
 
+    /* Fired whenever the app requests mipmap generation for the specified ral_texture
+     * instance.
+     *
+     * arg: ral_texture instance.
+     */
+    RAL_TEXTURE_CALLBACK_ID_MIPMAP_GENERATION_REQUESTED,
+
     /* Always last */
     RAL_TEXTURE_CALLBACK_ID_COUNT,
 };
@@ -91,14 +98,16 @@ PUBLIC ral_texture ral_texture_create(system_hashed_ansi_string      name,
  *  NOTE: Internal use only. An equivalent of this function is exposed by ral_context.
  **/
 PUBLIC ral_texture ral_texture_create_from_file_name(system_hashed_ansi_string name,
-                                                     system_hashed_ansi_string file_name);
+                                                     system_hashed_ansi_string file_name,
+                                                     ral_texture_usage_bits    usage);
 
 /** TODO.
  *
  *  NOTE: Internal use only. An equivalent of this function is exposed by ral_context.
  **/
 PUBLIC ral_texture ral_texture_create_from_gfx_image(system_hashed_ansi_string name,
-                                                     gfx_image                 image);
+                                                     gfx_image                 image,
+                                                     ral_texture_usage_bits    usage);
 
 /** TODO */
 PUBLIC EMERALD_API bool ral_texture_generate_mipmaps(ral_texture texture);

@@ -22,7 +22,7 @@ typedef struct _demo_app
         window_name_to_window_map = system_hash64map_create       (sizeof(demo_window) );
     }
 
-    ~_demo_app()
+    void close()
     {
         system_critical_section_enter(cs);
         {
@@ -57,36 +57,26 @@ typedef struct _demo_app
     }
 } _demo_app;
 
+PRIVATE _demo_app app;
+
 
 /** Please see header for specification */
-PUBLIC EMERALD_API demo_app demo_app_create()
+PUBLIC EMERALD_API void demo_app_close()
 {
-    _demo_app* new_app_ptr = new _demo_app();
+    app.close();
 
-    ASSERT_DEBUG_SYNC(new_app_ptr != NULL,
-                      "Out of memory");
-
-    return (demo_app) new_app_ptr;
+    /* Force Emerald's internal resources deinitialization. */
+    main_force_deinit();
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API demo_window demo_app_create_window(demo_app                  app,
-                                                      system_hashed_ansi_string window_name,
+PUBLIC EMERALD_API demo_window demo_app_create_window(system_hashed_ansi_string window_name,
                                                       ral_backend_type          backend_type)
 {
-    _demo_app*    app_ptr          = (_demo_app*) app;
     demo_window   result           = NULL;
     system_hash64 window_name_hash = 0;
 
     /* Sanity checks */
-    if (app == NULL)
-    {
-        ASSERT_DEBUG_SYNC(false,
-                          "Input demo_app instance is NULL");
-
-        goto end;
-    }
-
     if (window_name                                       == NULL ||
         system_hashed_ansi_string_get_length(window_name) == 0)
     {
@@ -109,44 +99,34 @@ PUBLIC EMERALD_API demo_window demo_app_create_window(demo_app                  
     }
 
     /* Store it */
-    system_critical_section_enter(app_ptr->cs);
+    system_critical_section_enter(app.cs);
     {
         window_name_hash = system_hashed_ansi_string_get_hash(window_name);
 
-        ASSERT_DEBUG_SYNC(!system_hash64map_contains(app_ptr->window_name_to_window_map,
+        ASSERT_DEBUG_SYNC(!system_hash64map_contains(app.window_name_to_window_map,
                                                      window_name_hash),
                           "The specified window name is already reserved");
 
-        system_hash64map_insert(app_ptr->window_name_to_window_map,
+        system_hash64map_insert(app.window_name_to_window_map,
                                 window_name_hash,
                                 result,
                                 NULL,  /* on_removal_callback */
                                 NULL); /* on_removal_callback_user_arg */
     }
-    system_critical_section_leave(app_ptr->cs);
+    system_critical_section_leave(app.cs);
 
 end:
     return result;
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API bool demo_app_destroy_window(demo_app                  app,
-                                                system_hashed_ansi_string window_name)
+PUBLIC EMERALD_API bool demo_app_destroy_window(system_hashed_ansi_string window_name)
 {
-    _demo_app*    app_ptr          = (_demo_app*) app;
     bool          result           = false;
     demo_window   window           = NULL;
     system_hash64 window_name_hash = 0;
 
     /* Sanity checks */
-    if (app == NULL)
-    {
-        ASSERT_DEBUG_SYNC(false,
-                          "Input demo_app instance is NULL");
-
-        goto end;
-    }
-
     if (window_name                                       == NULL ||
         system_hashed_ansi_string_get_length(window_name) == 0)
     {
@@ -159,9 +139,9 @@ PUBLIC EMERALD_API bool demo_app_destroy_window(demo_app                  app,
     /* Retrieve the window's instance */
     window_name_hash = system_hashed_ansi_string_get_hash(window_name);
 
-    system_critical_section_enter(app_ptr->cs);
+    system_critical_section_enter(app.cs);
     {
-        if (!system_hash64map_get(app_ptr->window_name_to_window_map,
+        if (!system_hash64map_get(app.window_name_to_window_map,
                                   window_name_hash,
                                  &window) )
         {
@@ -172,10 +152,10 @@ PUBLIC EMERALD_API bool demo_app_destroy_window(demo_app                  app,
             goto end;
         }
 
-        system_hash64map_remove(app_ptr->window_name_to_window_map,
+        system_hash64map_remove(app.window_name_to_window_map,
                                 window_name_hash);
     }
-    system_critical_section_leave(app_ptr->cs);
+    system_critical_section_leave(app.cs);
 
     /* Deallocate the retrieved window */
     demo_window_release(window);
@@ -187,11 +167,52 @@ end:
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API void demo_app_release(demo_app app)
+PUBLIC EMERALD_API demo_window demo_app_get_window_by_name(system_hashed_ansi_string window_name)
 {
-    /* Force Emerald's internal resources deinitialization. This call is optional. */
-    main_force_deinit();
+    demo_window result = NULL;
 
-    /* Release all stuff */
-    delete (_demo_app*) app;
+    /* Sanity checks */
+    if (window_name                                       == NULL ||
+        system_hashed_ansi_string_get_length(window_name) == 0)
+    {
+        ASSERT_DEBUG_SYNC(false,
+                          "Invalid window name specified.");
+
+        goto end;
+    }
+
+    /* Retrieve the window instance */
+    system_critical_section_enter(app.cs);
+    {
+        system_hash64map_get(app.window_name_to_window_map,
+                             system_hashed_ansi_string_get_hash(window_name),
+                            &result);
+    }
+    system_critical_section_leave(app.cs);
+
+    /* All done */
+end:
+    return result;
 }
+
+/** Please see header for specification */
+PUBLIC EMERALD_API demo_window demo_app_get_window_by_index(uint32_t n_window)
+{
+    demo_window result = NULL;
+
+    /* Retrieve the window instance */
+    system_critical_section_enter(app.cs);
+    {
+        system_hash64 temp_hash;
+
+        system_hash64map_get_element_at(app.window_name_to_window_map,
+                                        n_window,
+                                       &result,
+                                       &temp_hash);
+    }
+    system_critical_section_leave(app.cs);
+
+    /* All done */
+    return result;
+}
+

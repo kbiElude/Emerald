@@ -81,7 +81,42 @@ typedef struct _raGL_buffer
 
         /* Do not release the buffer. Object life-time is handled by raGL_buffers. */
     }
-} _raGL_sampler;
+} _raGL_buffer;
+
+typedef struct
+{
+    raGL_buffer                                  buffer;
+    uint32_t                                     n_updates;
+    const ral_buffer_client_sourced_update_info* updates;
+} _raGL_buffer_client_memory_sourced_update_request_arg;
+
+
+/** TODO */
+PRIVATE void _raGL_buffer_on_client_memory_sourced_update_request_rendering_thread(ogl_context context,
+                                                                                   void*       callback_arg)
+{
+    _raGL_buffer*                                             buffer_ptr          = NULL;
+    _raGL_buffer_client_memory_sourced_update_request_arg*    callback_arg_ptr    = (_raGL_buffer_client_memory_sourced_update_request_arg*) callback_arg;
+    const ogl_context_gl_entrypoints_ext_direct_state_access* dsa_entrypoints_ptr = NULL;
+
+    buffer_ptr = (_raGL_buffer*) callback_arg_ptr->buffer;
+
+    ogl_context_get_property(context,
+                             OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL_EXT_DIRECT_STATE_ACCESS,
+                            &dsa_entrypoints_ptr);
+
+    for (uint32_t n_update = 0;
+                  n_update < callback_arg_ptr->n_updates;
+                ++n_update)
+    {
+        const ral_buffer_client_sourced_update_info& current_update = callback_arg_ptr->updates[n_update];
+
+        dsa_entrypoints_ptr->pGLNamedBufferSubDataEXT(buffer_ptr->id,
+                                                      buffer_ptr->start_offset + current_update.start_offset,
+                                                      current_update.data_size,
+                                                      current_update.data);
+    } /* for (all updates) */
+}
 
 
 /** Please see header for specification */
@@ -240,4 +275,21 @@ PUBLIC void raGL_buffer_release(raGL_buffer buffer)
                       "Releasing a buffer object with children buffers still living!");
 
     delete (_raGL_buffer*) buffer;
+}
+
+/** Please see header for specification */
+PUBLIC void raGL_buffer_update_regions_with_client_memory(raGL_buffer                                  buffer,
+                                                          uint32_t                                     n_updates,
+                                                          const ral_buffer_client_sourced_update_info* updates)
+{
+    _raGL_buffer*                                         buffer_ptr = (_raGL_buffer*) buffer;
+    _raGL_buffer_client_memory_sourced_update_request_arg callback_arg;
+
+    callback_arg.buffer    = buffer;
+    callback_arg.n_updates = n_updates;
+    callback_arg.updates   = updates;
+
+    ogl_context_request_callback_from_context_thread(buffer_ptr->context,
+                                                     _raGL_buffer_on_client_memory_sourced_update_request_rendering_thread,
+                                                    &callback_arg);
 }

@@ -406,8 +406,7 @@ PUBLIC bool demo_window_run(demo_window window)
      * stuff */
     if (window_ptr->pfn_loader_setup_callback_proc != NULL)
     {
-        window_ptr->loader = demo_loader_create(window,
-                                                window_ptr->context);
+        window_ptr->loader = demo_loader_create(window_ptr->context);
 
         if (window_ptr->loader == NULL)
         {

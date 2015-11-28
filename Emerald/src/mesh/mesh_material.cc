@@ -1899,10 +1899,11 @@ PUBLIC EMERALD_API void mesh_material_set_shading_property_to_texture(mesh_mater
     sampler_create_info.min_filter  = min_filter_ral;
     sampler_create_info.mipmap_mode = min_mipmap_mode_ral;
 
-    material_ptr->shading_properties[property].texture_data.sampler = ral_context_get_sampler_by_create_info(material_ptr->context,
-                                                                                                            &sampler_create_info);
+    ral_context_create_samplers(material_ptr->context,
+                                1, /* n_create_info_items */
+                               &sampler_create_info,
+                               &material_ptr->shading_properties[property].texture_data.sampler);
 
-    ral_sampler_retain(material_ptr->shading_properties[property].texture_data.sampler);
     ral_texture_retain(texture);
 }
 

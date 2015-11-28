@@ -52,7 +52,7 @@ const unsigned int UB_SRC_DATA_FLAG_TRANSPOSED_MATRIX_DATA = 1 << 0;
  *
  *  @param owner_program TODO. NOT retained.
  */
-PUBLIC RENDERING_CONTEXT_CALL ogl_program_ub ogl_program_ub_create(ogl_context               context,
+PUBLIC RENDERING_CONTEXT_CALL ogl_program_ub ogl_program_ub_create(ral_context               context,
                                                                    ogl_program               owner_program,
                                                                    unsigned int              ub_index,
                                                                    system_hashed_ansi_string ub_name,

@@ -520,8 +520,12 @@ typedef enum
     /* The described texture will be used as a depth-stencil attachment */
     RAL_TEXTURE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT = 1 << 4,
 
+    /* The described texture will be read from by means of image load ops */
+    RAL_TEXTURE_USAGE_IMAGE_LOAD_OPS_BIT           = 1 << 5,
+
     /* The described texture will be sampled from in shader stages */
-    RAL_TEXTURE_USAGE_SAMPLED_BIT                  = 1 << 5,
+    RAL_TEXTURE_USAGE_SAMPLED_BIT                  = 1 << 6,
+
 };
 typedef int ral_texture_usage_bits;
 

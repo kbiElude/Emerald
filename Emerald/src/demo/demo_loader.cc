@@ -125,15 +125,12 @@ typedef struct _demo_loader
     system_resizable_vector enqueued_ops; /* each item is a _demo_loader_op instance */
     bool                    has_been_launched;
     system_resizable_vector loaded_objects[DEMO_LOADER_OBJECT_TYPE_COUNT];
-    demo_app                owner_app;    /* DO NOT retain or release */
 
-    explicit _demo_loader(demo_app    in_owner_app,
-                          ral_context in_context)
+    explicit _demo_loader(ral_context in_context)
     {
         context           = in_context;
         enqueued_ops      = system_resizable_vector_create(16 /* capacity */);
         has_been_launched = false;
-        owner_app         = in_owner_app;
 
         for (uint32_t object_type_index = 0;
                       object_type_index < (uint32_t) DEMO_LOADER_OBJECT_TYPE_COUNT;
@@ -240,11 +237,9 @@ typedef struct _demo_loader
 
 
 /** Please see header for specification */
-PUBLIC demo_loader demo_loader_create(demo_app    owner_app,
-                                      ral_context context)
+PUBLIC demo_loader demo_loader_create(ral_context context)
 {
-    _demo_loader* new_loader_ptr = new (std::nothrow) _demo_loader(owner_app,
-                                                                   context);
+    _demo_loader* new_loader_ptr = new (std::nothrow) _demo_loader(context);
 
     ASSERT_DEBUG_SYNC(new_loader_ptr != NULL,
                       "Out of memory");

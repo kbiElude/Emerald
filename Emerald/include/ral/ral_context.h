@@ -155,11 +155,11 @@ PUBLIC bool ral_context_create_framebuffers(ral_context      context,
                                             uint32_t         n_framebuffers,
                                             ral_framebuffer* out_result_framebuffers_ptr);
 
-/** TODO */
-PUBLIC bool ral_context_create_samplers(ral_context                    context,
-                                        uint32_t                       n_samplers,
-                                        const ral_sampler_create_info* sampler_create_info_ptr,
-                                        ral_sampler*                   out_result_samplers_ptr);
+/** TODO **/
+PUBLIC bool ral_context_create_samplers(ral_context              context,
+                                        uint32_t                 n_create_info_items,
+                                        ral_sampler_create_info* create_info_ptrs,
+                                        ral_sampler*             out_result_sampler_ptrs);
 
 /** TODO */
 PUBLIC bool ral_context_create_textures(ral_context                    context,
@@ -203,10 +203,6 @@ PUBLIC void ral_context_get_property(ral_context          context,
                                      void*                out_result_ptr);
 
 /** TODO */
-PUBLIC ral_sampler ral_context_get_sampler_by_create_info(ral_context              context,
-                                                          ral_sampler_create_info* create_info_ptr);
-
-/** TODO */
 PUBLIC ral_texture ral_context_get_texture_by_file_name(ral_context               context,
                                                         system_hashed_ansi_string file_name);
 
@@ -225,7 +221,7 @@ PUBLIC ogl_context ral_context_get_gl_context(ral_context context);
  *
  *  TEMPORARY. Will be removed during RAL integration */
 PUBLIC raGL_sampler ral_context_get_sampler_gl(ral_context context,
-                                               ral_sampler texture);
+                                               ral_sampler sampler);
 
 /** TODO
  *

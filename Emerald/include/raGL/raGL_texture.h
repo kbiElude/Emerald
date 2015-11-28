@@ -40,6 +40,9 @@ PUBLIC RENDERING_CONTEXT_CALL raGL_texture raGL_texture_create(ogl_context conte
                                                                ral_texture texture);
 
 /** TODO */
+PUBLIC void raGL_texture_generate_mipmaps(raGL_texture texture);
+
+/** TODO */
 PUBLIC bool raGL_texture_get_property(raGL_texture          texture,
                                       raGL_texture_property property,
                                       void*                 out_result_ptr);

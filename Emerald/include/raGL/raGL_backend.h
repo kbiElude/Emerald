@@ -31,10 +31,16 @@ PUBLIC void raGL_backend_get_property(void*                backend, /* raGL_back
                                       void*                out_result_ptr);
 
 /** TODO */
+PUBLIC bool raGL_backend_get_sampler(void*       backend, /* raGL_backend instance */
+                                     ral_sampler sampler_ral,
+                                     void**      out_sampler_raGL_ptr);
+
+/** TODO */
 PUBLIC bool raGL_backend_get_texture(void*       backend,
                                      ral_texture texture_ral,
                                      void**      out_texture_raGL_ptr);
 
+/** TODO */
 PUBLIC bool raGL_backend_get_texture_by_id(raGL_backend  backend,
                                            GLuint        texture_id,
                                            raGL_texture* out_texture_raGL_ptr);

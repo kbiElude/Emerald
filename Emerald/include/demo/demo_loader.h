@@ -202,8 +202,7 @@ typedef enum
 
 
 /** TODO */
-PUBLIC demo_loader demo_loader_create(demo_window owner_window,
-                                      ral_context context);
+PUBLIC demo_loader demo_loader_create(ral_context context);
 
 /** Enqueues an operation for execution at _run() time. The operations will be executed
  *  in the order of operation submissions.

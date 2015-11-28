@@ -235,36 +235,43 @@ end:
 }
 
 /** Please see header for specification */
-PUBLIC bool ral_sampler_is_equal(ral_sampler sampler_a,
-                                 ral_sampler sampler_b)
+PUBLIC bool ral_sampler_is_equal_to_create_info(ral_sampler                    sampler,
+                                                const ral_sampler_create_info* sampler_create_info_ptr)
 {
-    bool          result        = false;
-    _ral_sampler* sampler_a_ptr = (_ral_sampler*) sampler_a;
-    _ral_sampler* sampler_b_ptr = (_ral_sampler*) sampler_b;
+    bool          result      = false;
+    _ral_sampler* sampler_ptr = (_ral_sampler*) sampler;
 
     /* Sanity checks */
-    if (sampler_a == NULL ||
-        sampler_b == NULL)
+    if (sampler == NULL)
     {
         ASSERT_DEBUG_SYNC(false,
-                          "One or more input samplers is NULL");
+                          "Input sampler is NULL");
 
         goto end;
     }
 
-    if (sampler_a_ptr->border_color.data_type != sampler_b_ptr->border_color.data_type)
+    if (sampler_create_info_ptr == NULL)
+    {
+        ASSERT_DEBUG_SYNC(false,
+                          "Input sampler create info is NULL");
+
+        goto end;
+    }
+
+    /* Compare the provided sampler instance with the create info descriptor */
+    if (sampler_ptr->border_color.data_type != sampler_create_info_ptr->border_color.data_type)
     {
         goto end;
     }
 
-    switch (sampler_a_ptr->border_color.data_type)
+    switch (sampler_ptr->border_color.data_type)
     {
         case ral_color::RAL_COLOR_DATA_TYPE_FLOAT:
         {
-            if (fabs(sampler_a_ptr->border_color.f32[0] - sampler_b_ptr->border_color.f32[0]) > 1e-5f ||
-                fabs(sampler_a_ptr->border_color.f32[1] - sampler_b_ptr->border_color.f32[1]) > 1e-5f ||
-                fabs(sampler_a_ptr->border_color.f32[2] - sampler_b_ptr->border_color.f32[2]) > 1e-5f ||
-                fabs(sampler_a_ptr->border_color.f32[3] - sampler_b_ptr->border_color.f32[3]) > 1e-5f)
+            if (fabs(sampler_ptr->border_color.f32[0] - sampler_create_info_ptr->border_color.f32[0]) > 1e-5f ||
+                fabs(sampler_ptr->border_color.f32[1] - sampler_create_info_ptr->border_color.f32[1]) > 1e-5f ||
+                fabs(sampler_ptr->border_color.f32[2] - sampler_create_info_ptr->border_color.f32[2]) > 1e-5f ||
+                fabs(sampler_ptr->border_color.f32[3] - sampler_create_info_ptr->border_color.f32[3]) > 1e-5f)
             {
                 goto end;
             }
@@ -275,10 +282,10 @@ PUBLIC bool ral_sampler_is_equal(ral_sampler sampler_a,
         case ral_color::RAL_COLOR_DATA_TYPE_SINT:
         case ral_color::RAL_COLOR_DATA_TYPE_UINT:
         {
-            if (sampler_a_ptr->border_color.i32[0] != sampler_b_ptr->border_color.i32[0] ||
-                sampler_a_ptr->border_color.i32[1] != sampler_b_ptr->border_color.i32[1] ||
-                sampler_a_ptr->border_color.i32[2] != sampler_b_ptr->border_color.i32[2] ||
-                sampler_a_ptr->border_color.i32[3] != sampler_b_ptr->border_color.i32[3])
+            if (sampler_ptr->border_color.i32[0] != sampler_create_info_ptr->border_color.i32[0] ||
+                sampler_ptr->border_color.i32[1] != sampler_create_info_ptr->border_color.i32[1] ||
+                sampler_ptr->border_color.i32[2] != sampler_create_info_ptr->border_color.i32[2] ||
+                sampler_ptr->border_color.i32[3] != sampler_create_info_ptr->border_color.i32[3])
             {
                 goto end;
             }
@@ -295,22 +302,22 @@ PUBLIC bool ral_sampler_is_equal(ral_sampler sampler_a,
         }
     } /* switch (sampler_a_ptr->border_color.data_type) */
 
-    if (sampler_a_ptr->compare_function     != sampler_b_ptr->compare_function     ||
-        sampler_a_ptr->compare_mode_enabled != sampler_b_ptr->compare_mode_enabled ||
-        sampler_a_ptr->mag_filter           != sampler_b_ptr->mag_filter           ||
-        sampler_a_ptr->min_filter           != sampler_b_ptr->min_filter           ||
-        sampler_a_ptr->mipmap_mode          != sampler_b_ptr->mipmap_mode          ||
-        sampler_a_ptr->wrap_r               != sampler_b_ptr->wrap_r               ||
-        sampler_a_ptr->wrap_s               != sampler_b_ptr->wrap_s               ||
-        sampler_a_ptr->wrap_t               != sampler_b_ptr->wrap_t)
+    if (sampler_ptr->compare_function     != sampler_create_info_ptr->compare_function     ||
+        sampler_ptr->compare_mode_enabled != sampler_create_info_ptr->compare_mode_enabled ||
+        sampler_ptr->mag_filter           != sampler_create_info_ptr->mag_filter           ||
+        sampler_ptr->min_filter           != sampler_create_info_ptr->min_filter           ||
+        sampler_ptr->mipmap_mode          != sampler_create_info_ptr->mipmap_mode          ||
+        sampler_ptr->wrap_r               != sampler_create_info_ptr->wrap_r               ||
+        sampler_ptr->wrap_s               != sampler_create_info_ptr->wrap_s               ||
+        sampler_ptr->wrap_t               != sampler_create_info_ptr->wrap_t)
     {
         goto end;
     }
 
-    if (fabs(sampler_a_ptr->lod_bias       - sampler_b_ptr->lod_bias)       > 1e-5f ||
-        fabs(sampler_a_ptr->lod_max        - sampler_b_ptr->lod_max)        > 1e-5f ||
-        fabs(sampler_a_ptr->lod_min        - sampler_b_ptr->lod_min)        > 1e-5f ||
-        fabs(sampler_a_ptr->max_anisotropy - sampler_b_ptr->max_anisotropy) > 1e-5f)
+    if (fabs(sampler_ptr->lod_bias       - sampler_create_info_ptr->lod_bias)       > 1e-5f ||
+        fabs(sampler_ptr->lod_max        - sampler_create_info_ptr->lod_max)        > 1e-5f ||
+        fabs(sampler_ptr->lod_min        - sampler_create_info_ptr->lod_min)        > 1e-5f ||
+        fabs(sampler_ptr->max_anisotropy - sampler_create_info_ptr->max_anisotropy) > 1e-5f)
     {
         goto end;
     }
