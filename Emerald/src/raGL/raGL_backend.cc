@@ -731,7 +731,6 @@ PRIVATE void _raGL_backend_on_objects_created_rendering_callback(ogl_context con
                                                      current_object_id,
                                                      framebuffer_ral);
 
-                ral_framebuffer_retain(framebuffer_ral);
                 break;
             }
 
@@ -744,7 +743,6 @@ PRIVATE void _raGL_backend_on_objects_created_rendering_callback(ogl_context con
                                                  current_object_id,
                                                  sampler_ral);
 
-                ral_sampler_retain(sampler_ral);
                 break;
             }
 
@@ -1053,7 +1051,6 @@ PRIVATE void _raGL_backend_release_raGL_object(_raGL_backend*          backend_p
         {
             raGL_buffers_free_buffer_memory(backend_ptr->buffers,
                                             (raGL_buffer) object_raGL);
-            ral_buffer_release             ((ral_buffer&) object_ral);
 
             break;
         }
@@ -1061,7 +1058,6 @@ PRIVATE void _raGL_backend_release_raGL_object(_raGL_backend*          backend_p
         case RAL_CONTEXT_OBJECT_TYPE_FRAMEBUFFER:
         {
             raGL_framebuffer_release( (raGL_framebuffer) object_raGL);
-            ral_framebuffer_release ( (ral_framebuffer&) object_ral);
 
             break;
         }
@@ -1069,7 +1065,6 @@ PRIVATE void _raGL_backend_release_raGL_object(_raGL_backend*          backend_p
         case RAL_CONTEXT_OBJECT_TYPE_SAMPLER:
         {
             raGL_sampler_release( (raGL_sampler) object_raGL);
-            ral_sampler_release ( (ral_sampler&) object_ral);
 
             break;
         }
@@ -1077,7 +1072,6 @@ PRIVATE void _raGL_backend_release_raGL_object(_raGL_backend*          backend_p
         case RAL_CONTEXT_OBJECT_TYPE_TEXTURE:
         {
             raGL_texture_release( (raGL_texture) object_raGL);
-            ral_texture_release ( (ral_texture&) object_ral);
 
             break;
         }

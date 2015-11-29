@@ -13,6 +13,8 @@
 #include "ogl/ogl_shader.h"
 #include "system/system_hashed_ansi_string.h"
 #include "system/system_matrix4x4.h"
+#include "main.h"
+
 
 bool             triangle_test_is_first_frame             = true;
 GLuint           triangle_test_position_bo_id             = -1;

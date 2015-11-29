@@ -1171,9 +1171,8 @@ PUBLIC bool ral_context_create_samplers(ral_context              context,
                                                         current_create_info_ptr) )
                 {
                     /* Found a match */
-                    ral_sampler_retain(current_sampler);
-
                     result_sampler = current_sampler;
+
                     break;
                 }
             } /* for (all samplers registered) */

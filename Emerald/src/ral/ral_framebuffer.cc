@@ -39,8 +39,6 @@ typedef struct _ral_framebuffer
     uint32_t                     max_color_attachments;
     system_hashed_ansi_string    name;
 
-    REFCOUNT_INSERT_VARIABLES;
-
     _ral_framebuffer(system_hashed_ansi_string in_name)
     {
         callback_manager      = system_callback_manager_create( (_callback_id) RAL_FRAMEBUFFER_CALLBACK_ID_COUNT);
@@ -67,12 +65,6 @@ typedef struct _ral_framebuffer
         }
     }
 } _ral_framebuffer;
-
-
-/** Reference counter impl */
-REFCOUNT_INSERT_IMPLEMENTATION(ral_framebuffer,
-                               ral_framebuffer,
-                              _ral_framebuffer);
 
 
 /** TODO */
@@ -192,13 +184,6 @@ PUBLIC ral_framebuffer ral_framebuffer_create(ral_context               context,
 
             goto end;
         }
-
-        /* Register in the object manager */
-        REFCOUNT_INSERT_INIT_CODE_WITH_RELEASE_HANDLER(new_fb_ptr,
-                                                       _ral_framebuffer_release,
-                                                       OBJECT_TYPE_RAL_FRAMEBUFFER,
-                                                       system_hashed_ansi_string_create_by_merging_two_strings("\\RAL Framebuffers\\",
-                                                                                                               system_hashed_ansi_string_get_buffer(name)) );
     } /* if (new_fb_ptr != NULL) */
 
 end:
@@ -358,6 +343,12 @@ PUBLIC void ral_framebuffer_get_property(ral_framebuffer          framebuffer,
     } /* switch (property) */
 end:
     ;
+}
+
+/** Please see header for specification */
+PUBLIC void ral_framebuffer_release(ral_framebuffer& framebuffer)
+{
+    delete (_ral_framebuffer*) framebuffer;
 }
 
 /** Please see header for specification */

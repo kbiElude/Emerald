@@ -386,6 +386,30 @@ PUBLIC void system_hashed_ansi_string_deinit()
 
     if (_dictionary != NULL)
     {
+        uint32_t n_dictionary_items = 0;
+
+        system_hash64map_get_property(_dictionary,
+                                      SYSTEM_HASH64MAP_PROPERTY_N_ELEMENTS,
+                                     &n_dictionary_items);
+
+        for (uint32_t n_dictionary_item = 0;
+                      n_dictionary_item < n_dictionary_items;
+                    ++n_dictionary_item)
+        {
+            _system_hashed_ansi_string_descriptor* descriptor_ptr = NULL;
+            system_hash64                          temp           = 0;
+
+            if (!system_hash64map_get_element_at(_dictionary,
+                                                 n_dictionary_item,
+                                                &descriptor_ptr,
+                                                &temp) )
+            {
+                continue;
+            }
+
+            _deinit_system_hashed_ansi_string_descriptor(descriptor_ptr);
+        }
+
         system_hash64map_release(_dictionary);
 
         _dictionary = NULL;

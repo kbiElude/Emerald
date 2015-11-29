@@ -21,8 +21,6 @@ typedef struct _ral_buffer
     ral_buffer_usage_bits       usage_bits;
     ral_queue_bits              user_queue_bits;
 
-    REFCOUNT_INSERT_VARIABLES;
-
 
     _ral_buffer(system_hashed_ansi_string   in_name,
                 ral_buffer                  in_parent_buffer,
@@ -57,17 +55,6 @@ typedef struct _ral_buffer
     }
 } _ral_buffer;
 
-/** Reference counter impl */
-REFCOUNT_INSERT_IMPLEMENTATION(ral_buffer,
-                               ral_buffer,
-                              _ral_buffer);
-
-
-/** Please see header for specification */
-PRIVATE void _ral_buffer_release(void* buffer)
-{
-    /* Stub */
-}
 
 /** Please see header for specification */
 PUBLIC ral_buffer ral_buffer_create(system_hashed_ansi_string     name,
@@ -147,16 +134,6 @@ PUBLIC ral_buffer ral_buffer_create(system_hashed_ansi_string     name,
 
     ASSERT_ALWAYS_SYNC(new_buffer_ptr != NULL,
                        "Out of memory");
-
-    if (new_buffer_ptr != NULL)
-    {
-        /* Register in the object manager */
-        REFCOUNT_INSERT_INIT_CODE_WITH_RELEASE_HANDLER(new_buffer_ptr,
-                                                       _ral_buffer_release,
-                                                       OBJECT_TYPE_RAL_BUFFER,
-                                                       system_hashed_ansi_string_create_by_merging_two_strings("\\RAL Buffers\\",
-                                                                                                               system_hashed_ansi_string_get_buffer(name)) );
-    } /* if (new_buffer_ptr != NULL) */
 
 end:
     return (ral_buffer) new_buffer_ptr;
@@ -245,6 +222,12 @@ PUBLIC void ral_buffer_get_property(ral_buffer          buffer,
     } /* switch (property) */
 end:
     ;
+}
+
+/** Please see header for specification */
+PUBLIC void ral_buffer_release(ral_buffer& buffer)
+{
+    delete (_ral_buffer*) buffer;
 }
 
 /** Please see header for specification */

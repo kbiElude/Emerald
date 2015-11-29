@@ -25,9 +25,6 @@ typedef struct _ral_sampler
     ral_texture_wrap_mode     wrap_s;
     ral_texture_wrap_mode     wrap_t;
 
-    REFCOUNT_INSERT_VARIABLES;
-
-
     _ral_sampler(system_hashed_ansi_string in_name,
                  ral_color                 in_border_color,
                  ral_compare_function      in_compare_function,
@@ -65,12 +62,6 @@ typedef struct _ral_sampler
     }
 } _ral_sampler;
 
-/** Reference counter impl */
-REFCOUNT_INSERT_IMPLEMENTATION(ral_sampler,
-                               ral_sampler,
-                              _ral_sampler);
-
-
 
 /** Please see header for specification */
 PRIVATE void _ral_sampler_release(void* sampler)
@@ -100,16 +91,6 @@ PUBLIC ral_sampler ral_sampler_create(system_hashed_ansi_string      name,
 
     ASSERT_ALWAYS_SYNC(sampler_ptr != NULL,
                        "Out of memory");
-
-    if (sampler_ptr != NULL)
-    {
-        /* Register in the object manager */
-        REFCOUNT_INSERT_INIT_CODE_WITH_RELEASE_HANDLER(sampler_ptr,
-                                                       _ral_sampler_release,
-                                                       OBJECT_TYPE_RAL_SAMPLER,
-                                                       system_hashed_ansi_string_create_by_merging_two_strings("\\RAL Samplers\\",
-                                                                                                               system_hashed_ansi_string_get_buffer(name)) );
-    }
 
     return (ral_sampler) sampler_ptr;
 }
@@ -327,4 +308,10 @@ PUBLIC bool ral_sampler_is_equal_to_create_info(ral_sampler                    s
 
 end:
     return result;
+}
+
+/** Please see header for specification */
+PUBLIC void ral_sampler_release(ral_sampler& sampler)
+{
+    delete (_ral_sampler*) sampler;
 }

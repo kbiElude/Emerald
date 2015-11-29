@@ -60,9 +60,6 @@ typedef enum
     RAL_BUFFER_PROPERTY_USER_QUEUE_BITS,
 } ral_buffer_property;
 
-REFCOUNT_INSERT_DECLARATIONS(ral_buffer,
-                             ral_buffer);
-
 
 /** TODO */
 PUBLIC ral_buffer ral_buffer_create(system_hashed_ansi_string     name,
@@ -79,6 +76,9 @@ PUBLIC ral_buffer ral_buffer_create(system_hashed_ansi_string     name,
 PUBLIC void ral_buffer_get_property(ral_buffer          buffer,
                                     ral_buffer_property property,
                                     void*               out_result_ptr);
+
+/** TODO */
+PUBLIC void ral_buffer_release(ral_buffer& buffer);
 
 /** TODO */
 PUBLIC bool ral_buffer_set_data_from_client_memory(ral_buffer                                   buffer,

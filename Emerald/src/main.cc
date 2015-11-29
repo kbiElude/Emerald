@@ -80,9 +80,13 @@ void main_init()
     ::InitCommonControls();
 
     #ifdef _DEBUG
-        _CrtSetDbgFlag(_CRTDBG_CHECK_ALWAYS_DF | _CRTDBG_CHECK_CRT_DF);
+        _CrtSetDbgFlag(
+//                     _CRTDBG_ALLOC_MEM_DF    | // <- Uncomment for memory leak listing on exit. Significantly slooooowwsss down everything.
+                       _CRTDBG_CHECK_ALWAYS_DF |
+                       _CRTDBG_LEAK_CHECK_DF);
     #endif
 #endif
+
 
     _system_log_init();
 

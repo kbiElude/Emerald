@@ -46,9 +46,6 @@ typedef enum
 
 } ral_sampler_property;
 
-REFCOUNT_INSERT_DECLARATIONS(ral_sampler,
-                             ral_sampler);
-
 
 /** TODO
  *
@@ -66,5 +63,8 @@ PUBLIC void ral_sampler_get_property(ral_sampler          sampler,
 /** TODO */
 PUBLIC bool ral_sampler_is_equal_to_create_info(ral_sampler                    sampler,
                                                 const ral_sampler_create_info* sampler_create_info_ptr);
+
+/** TODO */
+PUBLIC void ral_sampler_release(ral_sampler& sampler);
 
 #endif /* RAL_SAMPLER_H */

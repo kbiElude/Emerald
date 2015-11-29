@@ -34,8 +34,6 @@ typedef struct _raGL_sampler
         sampler = in_sampler;
         id      = in_sampler_id;
 
-        ral_sampler_retain(sampler);
-
         max_anisotropy = 0.0f;
         max_lod_bias   = 0.0f;
 
@@ -66,12 +64,6 @@ typedef struct _raGL_sampler
     ~_raGL_sampler()
     {
         /* Do not release the GL object. Object life-time is handled by raGL_backend. */
-        if (sampler != NULL)
-        {
-            ral_sampler_release(sampler);
-
-            sampler = NULL;
-        } /* if (sampler != NULL) */
     }
 } _raGL_sampler;
 

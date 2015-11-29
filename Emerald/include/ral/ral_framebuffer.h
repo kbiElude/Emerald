@@ -1,12 +1,8 @@
 #ifndef RAL_FRAMEBUFFER_H
 #define RAL_FRAMEBUFFER_H
 
-#include "ogl/ogL_types.h" /* TODO: Remove OGL dep */
 #include "ral/ral_types.h"
 
-
-REFCOUNT_INSERT_DECLARATIONS(ral_framebuffer,
-                             ral_framebuffer);
 
 typedef enum
 {
@@ -124,6 +120,9 @@ PUBLIC void ral_framebuffer_get_attachment_property(ral_framebuffer             
 PUBLIC void ral_framebuffer_get_property(ral_framebuffer          framebuffer,
                                          ral_framebuffer_property property,
                                          void*                    out_result_ptr);
+
+/** TODO */
+PUBLIC void ral_framebuffer_release(ral_framebuffer& framebuffer);
 
 /** TODO */
 PUBLIC bool ral_framebuffer_set_attachment_2D(ral_framebuffer                 framebuffer,
