@@ -24,7 +24,7 @@ typedef struct _demo_window
     system_hashed_ansi_string name;
 
     ral_backend_type backend_type;
-    ral_context      context;
+    ral_context      context;       /* DO NOT release */
 
     PFNDEMOWINDOWLOADERSETUPCALLBACKPROC pfn_loader_setup_callback_proc;
     void*                                loader_setup_callback_proc_user_arg;
@@ -32,7 +32,6 @@ typedef struct _demo_window
     demo_loader   loader;
     demo_timeline timeline;
 
-    system_pixel_format   pixel_format;
     uint32_t              refresh_rate;
     ogl_rendering_handler rendering_handler;
     system_time           rendering_start_time;
@@ -50,11 +49,11 @@ typedef struct _demo_window
                           ral_backend_type          in_backend_type)
     {
         backend_type                        = in_backend_type;
+        context                             = NULL;
         loader                              = NULL;
         loader_setup_callback_proc_user_arg = NULL;
         name                                = in_name;
         pfn_loader_setup_callback_proc      = NULL;
-        pixel_format                        = NULL;
         refresh_rate                        = 60;
         rendering_handler                   = NULL;
         rendering_start_time                = -1;
@@ -75,26 +74,12 @@ typedef struct _demo_window
         ASSERT_DEBUG_SYNC(window == NULL,
                           "Rendering window is not NULL at demo_window teardown time");
 
-        if (context != NULL)
-        {
-            ral_context_release(context);
-
-            context = NULL;
-        } /* if (context != NULL) */
-
         if (loader != NULL)
         {
             demo_loader_release(loader);
 
             loader = NULL;
         } /* if (loader != NULL) */
-
-        if (pixel_format != NULL)
-        {
-            system_pixel_format_release(pixel_format);
-
-            pixel_format = NULL;
-        } /* if (pixel_format != NULL) */
 
         if (rendering_handler != NULL)
         {
@@ -211,6 +196,11 @@ PUBLIC EMERALD_API bool demo_window_close(demo_window window)
     if (window == NULL)
     {
         goto end;
+    }
+
+    if (window_ptr->rendering_handler != NULL)
+    {
+        ogl_rendering_handler_stop(window_ptr->rendering_handler);
     }
 
     if (window_ptr->rendering_handler != NULL)
@@ -424,6 +414,9 @@ PUBLIC void demo_window_release(demo_window window)
     ASSERT_DEBUG_SYNC(window != NULL,
                       "Input demo_window instance is NULL");
 
+    /* Close the window */
+    demo_window_close(window);
+
     /* Raise the "please die" event and wait till the window thread quits */
     system_event_set        (window_ptr->shut_down_event);
     system_event_wait_single(window_ptr->window_closed_event);
@@ -435,8 +428,10 @@ PUBLIC void demo_window_release(demo_window window)
 /** Please see header for specification */
 PUBLIC EMERALD_API bool demo_window_show(demo_window window)
 {
-    bool          result     = false;
-    _demo_window* window_ptr = (_demo_window*) window;
+    system_pixel_format pixel_format = NULL; /* ownership will be taken by the window */
+    char                rendering_handler_name[256];
+    bool                result       = false;
+    _demo_window*       window_ptr   = (_demo_window*) window;
 
     /* Sanity checks */
     if (window == NULL)
@@ -455,28 +450,22 @@ PUBLIC EMERALD_API bool demo_window_show(demo_window window)
         goto end;
     }
 
-    if (window_ptr->pixel_format == NULL)
-    {
-        /* Fill out a pixel format descriptor.
-         *
-         * Emerald maintains its own "default framebuffer", to which rendering handlers should render.
-         * Its attachments will be initialized, according to the descriptor we're just about to configure.
-         *
-         * Reason for this is cross-compatibility. MSAA set-up is significantly different under Linux
-         * and Windows, and it's simpler to reconcile both platforms this way. For multisampling, simply
-         * render to multisample framebuffers and then do a resolve right before the buffer swap op.
-         */
-        window_ptr->pixel_format = system_pixel_format_create(8,  /* color_buffer_red_bits   */
-                                                              8,  /* color_buffer_green_bits */
-                                                              8,  /* color_buffer_blue_bits  */
-                                                              0,  /* color_buffer_alpha_bits */
-                                                              16, /* depth_buffer_bits       */
-                                                              1,  /* n_samples               */
-                                                              0); /* stencil_buffer_bits     */
-
-        ASSERT_DEBUG_SYNC(window_ptr->pixel_format == NULL,
-                          "Could not create a system_pixel_format instance");
-    } /* if (window_ptr->pixel_format == NULL) */
+    /* Fill out a pixel format descriptor.
+     *
+     * Emerald maintains its own "default framebuffer", to which rendering handlers should render.
+     * Its attachments will be initialized, according to the descriptor we're just about to configure.
+     *
+     * Reason for this is cross-compatibility. MSAA set-up is significantly different under Linux
+     * and Windows, and it's simpler to reconcile both platforms this way. For multisampling, simply
+     * render to multisample framebuffers and then do a resolve right before the buffer swap op.
+     */
+    pixel_format = system_pixel_format_create(8,  /* color_buffer_red_bits   */
+                                              8,  /* color_buffer_green_bits */
+                                              8,  /* color_buffer_blue_bits  */
+                                              0,  /* color_buffer_alpha_bits */
+                                              16, /* depth_buffer_bits       */
+                                              1,  /* n_samples               */
+                                              0); /* stencil_buffer_bits     */
 
     if (window_ptr->should_run_fullscreen)
     {
@@ -498,7 +487,7 @@ PUBLIC EMERALD_API bool demo_window_show(demo_window window)
         window_ptr->window = system_window_create_fullscreen(window_ptr->backend_type,
                                                              screen_mode,
                                                              window_ptr->use_vsync,
-                                                             window_ptr->pixel_format);
+                                                             pixel_format);
     }
     else
     {
@@ -515,7 +504,7 @@ PUBLIC EMERALD_API bool demo_window_show(demo_window window)
                                                                  false, /* scalable */
                                                                  window_ptr->use_vsync,
                                                                  window_ptr->visible,
-                                                                 window_ptr->pixel_format);
+                                                                 pixel_format);
     }
 
     if (window_ptr->window == NULL)
@@ -526,41 +515,13 @@ PUBLIC EMERALD_API bool demo_window_show(demo_window window)
         goto end;
     }
 
-    /* Set up mouse click & window tear-down callbacks */
-    _demo_window_subscribe_for_window_notifications(window_ptr,
-                                                    true); /* should_subscribe */
+    /* Cache the rendering context */
+    system_window_get_property(window_ptr->window,
+                               SYSTEM_WINDOW_PROPERTY_RENDERING_CONTEXT_RAL,
+                              &window_ptr->context);
 
-    /* All done */
-    result = true;
-
-end:
-    return result;
-}
-
-/** Please see header for specification */
-PUBLIC EMERALD_API bool demo_window_start_rendering(demo_window window,
-                                                    system_time rendering_start_time)
-{
-    char          rendering_handler_name[256];
-    bool          result     = false;
-    _demo_window* window_ptr = (_demo_window*) window;
-
-    /* Sanity cvhecks */
-    if (window == NULL)
-    {
-        ASSERT_DEBUG_SYNC(false,
-                          "Input demo_window instance is NULL");
-
-        goto end;
-    }
-
-    if (window_ptr->window == NULL)
-    {
-        ASSERT_DEBUG_SYNC(false,
-                          "Specified window first needs to be shown, before rendering can commence");
-
-        goto end;
-    }
+    ASSERT_DEBUG_SYNC(window_ptr->context != NULL,
+                      "Rendering context is NULL");
 
     /* Set up the rendering handler.
      *
@@ -586,6 +547,7 @@ PUBLIC EMERALD_API bool demo_window_start_rendering(demo_window window,
              sizeof(rendering_handler_name),
              "Rendering handler for window [%s]",
              system_hashed_ansi_string_get_buffer(window_ptr->name) );
+
 
     if (window_ptr->target_frame_rate == 0)
     {
@@ -615,6 +577,41 @@ PUBLIC EMERALD_API bool demo_window_start_rendering(demo_window window,
     system_window_set_property(window_ptr->window,
                                SYSTEM_WINDOW_PROPERTY_RENDERING_HANDLER,
                               &window_ptr->rendering_handler);
+
+    /* Set up mouse click & window tear-down callbacks */
+    _demo_window_subscribe_for_window_notifications(window_ptr,
+                                                    true); /* should_subscribe */
+
+    /* All done */
+    result = true;
+
+end:
+    return result;
+}
+
+/** Please see header for specification */
+PUBLIC EMERALD_API bool demo_window_start_rendering(demo_window window,
+                                                    system_time rendering_start_time)
+{
+    bool          result     = false;
+    _demo_window* window_ptr = (_demo_window*) window;
+
+    /* Sanity cvhecks */
+    if (window == NULL)
+    {
+        ASSERT_DEBUG_SYNC(false,
+                          "Input demo_window instance is NULL");
+
+        goto end;
+    }
+
+    if (window_ptr->window == NULL)
+    {
+        ASSERT_DEBUG_SYNC(false,
+                          "Specified window first needs to be shown, before rendering can commence");
+
+        goto end;
+    }
 
     /* Set up a timeline object instance */
     window_ptr->timeline = demo_timeline_create(window_ptr->name,

@@ -8,6 +8,7 @@
 #include "ogl/ogl_materials.h"
 #include "ogl/ogl_shadow_mapping.h"
 #include "ogl/ogl_uber.h"
+#include "ral/ral_context.h"
 #include "ral/ral_texture.h"
 #include "scene/scene.h"
 #include "scene/scene_light.h"
@@ -48,8 +49,10 @@ typedef struct _ogl_materials_mesh_material_setting
 
                 case MESH_MATERIAL_PROPERTY_ATTACHMENT_TEXTURE:
                 {
-                    ral_texture_release( (ral_texture&) attachment_data);
-
+                    /* ral_texture instance is always owned either by a scene_texture, or by the user.
+                     *
+                     * DO NOT release the invalidated texture here.
+                     */
                     attachment_data = NULL;
                     break;
                 }

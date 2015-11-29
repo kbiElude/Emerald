@@ -725,7 +725,7 @@ PRIVATE void _ogl_text_create_font_table_to_callback_from_renderer(ogl_context c
         ral_context_create_textures(text_ptr->context,
                                     1, /* n_textures */
                                     &to_create_info,
-                                   &descriptor.to);
+                                    &descriptor.to);
 
         text_ptr->pGLBindTexture(GL_TEXTURE_2D,
                                  ral_context_get_texture_gl_id(text_ptr->context,
@@ -764,11 +764,6 @@ PRIVATE void _ogl_text_create_font_table_to_callback_from_renderer(ogl_context c
                                    GL_TEXTURE_SWIZZLE_B,
                                    GL_RED);
 
-        /* We need to retain the ogl_texture instance since we will need to manually manage
-         * the lifetime of this object.
-         */
-        ral_texture_retain(descriptor.to);
-
         _global.font_tables[text_ptr->font_table] = descriptor;
     }
 }
@@ -803,7 +798,9 @@ PRIVATE void _ogl_text_destruction_callback_from_renderer(ogl_context context,
                                    iterator != _global.font_tables.end();
                                  ++iterator)
             {
-                ral_texture_release(iterator->second.to);
+                ral_context_delete_textures(text_ptr->context,
+                                            1, /* n_textures */
+                                           &iterator->second.to);
             }
             _global.font_tables.clear();
 

@@ -82,22 +82,21 @@ typedef enum
     RAL_TEXTURE_PROPERTY_USAGE
 } ral_texture_property;
 
-REFCOUNT_INSERT_DECLARATIONS(ral_texture,
-                             ral_texture);
-
 
 /** TODO.
  *
  *  NOTE: Internal use only. An equivalent of this function is exposed by ral_context.
  **/
-PUBLIC ral_texture ral_texture_create(system_hashed_ansi_string      name,
+PUBLIC ral_texture ral_texture_create(ral_context                    context,
+                                      system_hashed_ansi_string      name,
                                       const ral_texture_create_info* create_info_ptr);
 
 /** TODO.
  *
  *  NOTE: Internal use only. An equivalent of this function is exposed by ral_context.
  **/
-PUBLIC ral_texture ral_texture_create_from_file_name(system_hashed_ansi_string name,
+PUBLIC ral_texture ral_texture_create_from_file_name(ral_context               context,
+                                                     system_hashed_ansi_string name,
                                                      system_hashed_ansi_string file_name,
                                                      ral_texture_usage_bits    usage);
 
@@ -105,7 +104,8 @@ PUBLIC ral_texture ral_texture_create_from_file_name(system_hashed_ansi_string n
  *
  *  NOTE: Internal use only. An equivalent of this function is exposed by ral_context.
  **/
-PUBLIC ral_texture ral_texture_create_from_gfx_image(system_hashed_ansi_string name,
+PUBLIC ral_texture ral_texture_create_from_gfx_image(ral_context               context,
+                                                     system_hashed_ansi_string name,
                                                      gfx_image                 image,
                                                      ral_texture_usage_bits    usage);
 
@@ -123,6 +123,12 @@ PUBLIC EMERALD_API bool ral_texture_get_mipmap_property(ral_texture             
 PUBLIC EMERALD_API bool ral_texture_get_property(ral_texture          texture,
                                                  ral_texture_property property,
                                                  void*                out_result_ptr);
+
+/** TODO
+ *
+ *  Only ral_context is allowed to call this func.
+ **/
+PUBLIC void ral_texture_release(ral_texture& texture);
 
 /** TODO */
 PUBLIC EMERALD_API bool ral_texture_set_mipmap_data_from_client_memory(ral_texture                                          texture,

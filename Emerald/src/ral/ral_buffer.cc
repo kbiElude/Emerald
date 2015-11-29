@@ -33,7 +33,7 @@ typedef struct _ral_buffer
                 ral_buffer_property_bits    in_property_bits,
                 ral_buffer_mappability_bits in_mappability_bits)
     {
-        ASSERT_DEBUG_SYNC(start_offset == 0, "!!");
+        ASSERT_DEBUG_SYNC(in_start_offset == 0, "!!");
 
         callback_manager = system_callback_manager_create( (_callback_id) RAL_BUFFER_CALLBACK_ID_COUNT);
         mappability_bits = in_mappability_bits;

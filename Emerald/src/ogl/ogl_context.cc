@@ -258,13 +258,6 @@ PRIVATE ogl_context _ogl_context_create_from_system_window_shared(system_hashed_
                                                    system_hashed_ansi_string_get_buffer(name))
                                                    );
 
-    ral_context_get_property  (context,
-                               RAL_CONTEXT_PROPERTY_BACKEND_TYPE,
-                              &new_context_ptr->backend_type);
-    system_window_get_property(window,
-                               SYSTEM_WINDOW_PROPERTY_IS_VSYNC_ENABLED,
-                              &new_context_ptr->vsync_enabled);
-
     new_context_ptr->backend                                = backend;
     new_context_ptr->context                                = context;
     new_context_ptr->context_platform                       = NULL;
@@ -299,6 +292,13 @@ PRIVATE ogl_context _ogl_context_create_from_system_window_shared(system_hashed_
         new_context_ptr->pfn_unbind_from_current_thread = ogl_context_linux_unbind_from_current_thread;
     }
     #endif
+
+    ral_context_get_property  (context,
+                               RAL_CONTEXT_PROPERTY_BACKEND_TYPE,
+                              &new_context_ptr->backend_type);
+    system_window_get_property(window,
+                               SYSTEM_WINDOW_PROPERTY_IS_VSYNC_ENABLED,
+                              &new_context_ptr->vsync_enabled);
 
     if (new_context_ptr->parent_context != NULL)
     {
@@ -959,9 +959,7 @@ PRIVATE void _ogl_context_init_context_after_creation(ogl_context context)
            0,
            sizeof(context_ptr->limits) );
 
-    context_ptr->backend                                    = NULL;
     context_ptr->bo_bindings                                = NULL;
-    context_ptr->context                                    = NULL;
     context_ptr->es_ext_texture_buffer_support              = false;
     context_ptr->fbo_color_rbo_id                           = 0;
     context_ptr->fbo_depth_stencil_rbo_id                   = 0;
@@ -1561,6 +1559,48 @@ PRIVATE void _ogl_context_release(void* ptr)
      *       so hopefully we can live with such atrocity.
      */
 
+    if (context_ptr->bo_bindings != NULL)
+    {
+        ogl_context_bo_bindings_release(context_ptr->bo_bindings);
+
+        context_ptr->bo_bindings = NULL;
+    }
+
+    if (context_ptr->sampler_bindings != NULL)
+    {
+        ogl_context_sampler_bindings_release(context_ptr->sampler_bindings);
+
+        context_ptr->sampler_bindings = NULL;
+    }
+
+    if (context_ptr->flyby != NULL)
+    {
+        ogl_flyby_release(context_ptr->flyby);
+
+        context_ptr->flyby = NULL;
+    }
+
+    if (context_ptr->state_cache != NULL)
+    {
+        ogl_context_state_cache_release(context_ptr->state_cache);
+
+        context_ptr->state_cache = NULL;
+    }
+
+    if (context_ptr->texture_compression != NULL)
+    {
+        ogl_context_texture_compression_release(context_ptr->texture_compression);
+
+        context_ptr->texture_compression = NULL;
+    }
+
+    if (context_ptr->to_bindings != NULL)
+    {
+        ogl_context_to_bindings_release(context_ptr->to_bindings);
+
+        context_ptr->to_bindings = NULL;
+    }
+
     /* Release arrays allocated for "limits" storage */
     if (context_ptr->limits.program_binary_formats != NULL)
     {
@@ -2030,6 +2070,7 @@ PRIVATE void _ogl_context_retrieve_GL_EXT_direct_state_access_function_pointers(
         {&context_ptr->entry_points_private.pGLGetTextureImageEXT,                                             "glGetTextureImageEXT"},
         {&context_ptr->entry_points_gl_ext_direct_state_access.pGLGetTextureLevelParameterfvEXT,               "glGetTextureLevelParameterfvEXT"},
         {&context_ptr->entry_points_gl_ext_direct_state_access.pGLGetTextureLevelParameterivEXT,               "glGetTextureLevelParameterivEXT"},
+        {&context_ptr->entry_points_gl_ext_direct_state_access.pGLGetTextureParameterivEXT,                    "glGetTextureParameterivEXT"},
         {&context_ptr->entry_points_private.pGLMapNamedBufferEXT,                                              "glMapNamedBufferEXT"},
         {&context_ptr->entry_points_private.pGLNamedBufferDataEXT,                                             "glNamedBufferDataEXT"},
         {&context_ptr->entry_points_gl_ext_direct_state_access.pGLNamedBufferSubDataEXT,                       "glNamedBufferSubDataEXT"},
@@ -3302,9 +3343,7 @@ PUBLIC EMERALD_API void ogl_context_get_property(ogl_context          context,
 
         case OGL_CONTEXT_PROPERTY_BACKEND_TYPE:
         {
-            raGL_backend_get_property(context_ptr->backend,
-                                      RAL_CONTEXT_PROPERTY_BACKEND_TYPE,
-                                      out_result);
+            *(ral_backend_type*) out_result = context_ptr->backend_type;
 
             break;
         }
@@ -3769,48 +3808,6 @@ PUBLIC bool ogl_context_release_managers(ogl_context context)
         context_ptr->shadow_mapping = NULL;
     }
 
-
-    if (context_ptr->bo_bindings != NULL)
-    {
-        ogl_context_bo_bindings_release(context_ptr->bo_bindings);
-
-        context_ptr->bo_bindings = NULL;
-    }
-
-    if (context_ptr->sampler_bindings != NULL)
-    {
-        ogl_context_sampler_bindings_release(context_ptr->sampler_bindings);
-
-        context_ptr->sampler_bindings = NULL;
-    }
-
-    if (context_ptr->flyby != NULL)
-    {
-        ogl_flyby_release(context_ptr->flyby);
-
-        context_ptr->flyby = NULL;
-    }
-
-    if (context_ptr->state_cache != NULL)
-    {
-        ogl_context_state_cache_release(context_ptr->state_cache);
-
-        context_ptr->state_cache = NULL;
-    }
-
-    if (context_ptr->texture_compression != NULL)
-    {
-        ogl_context_texture_compression_release(context_ptr->texture_compression);
-
-        context_ptr->texture_compression = NULL;
-    }
-
-    if (context_ptr->to_bindings != NULL)
-    {
-        ogl_context_to_bindings_release(context_ptr->to_bindings);
-
-        context_ptr->to_bindings = NULL;
-    }
 
     return true;
 }

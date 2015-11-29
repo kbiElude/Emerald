@@ -49,15 +49,18 @@ typedef struct _raGL_textures_texture_heap
 typedef struct _raGL_textures
 {
     ogl_context             context;                      /* NOT owned */
+    ral_context             context_ral;
     system_critical_section cs;
     system_hash64map        key_hash_to_texture_heap_map; /* owns the _raGL_textures_texture_heap instances */
 
 
     REFCOUNT_INSERT_VARIABLES;
 
-    _raGL_textures(ogl_context in_context)
+    _raGL_textures(ogl_context in_context,
+                   ral_context in_context_ral)
     {
         context                      = in_context;
+        context_ral                  = in_context_ral;
         cs                           = system_critical_section_create();
         key_hash_to_texture_heap_map = system_hash64map_create       (sizeof(_raGL_textures_texture_heap*) );
     }
@@ -119,15 +122,6 @@ PRIVATE void _raGL_textures_alloc_texture_rendering_thread_callback(ogl_context 
                                                                     void*       callback_arg)
 {
     _raGL_textures_alloc_texture_rendering_thread_callback_arg* callback_arg_ptr = (_raGL_textures_alloc_texture_rendering_thread_callback_arg*) callback_arg;
-    const ogl_context_gl_entrypoints*                           entrypoints_ptr  = NULL;
-    GLuint                                                      to_id            = 0;
-
-    ogl_context_get_property(context,
-                             OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
-                            &entrypoints_ptr);
-
-    entrypoints_ptr->pGLGenTextures(1,
-                                   &to_id);
 
     callback_arg_ptr->result_texture = raGL_texture_create(context,
                                                            callback_arg_ptr->texture_ral);
@@ -268,15 +262,19 @@ PRIVATE void _raGL_textures_release_rendering_thread_callback(ogl_context contex
                 current_texture = NULL;
             }
         } /* for (all maintained heaps) */
+
+        system_hash64map_clear(textures_ptr->key_hash_to_texture_heap_map);
     }
     system_critical_section_leave(textures_ptr->cs);
 }
 
 
 /** Please see header for spec */
-PUBLIC raGL_textures raGL_textures_create(ogl_context context)
+PUBLIC raGL_textures raGL_textures_create(ral_context context_ral,
+                                          ogl_context context)
 {
-    _raGL_textures* new_textures_ptr = new (std::nothrow) _raGL_textures(context);
+    _raGL_textures* new_textures_ptr = new (std::nothrow) _raGL_textures(context,
+                                                                         context_ral);
 
     if (new_textures_ptr == NULL)
     {
@@ -366,7 +364,7 @@ PUBLIC raGL_texture raGL_textures_get_texture_from_pool(raGL_textures textures,
 
             ogl_context_request_callback_from_context_thread(textures_ptr->context,
                                                              _raGL_textures_alloc_texture_rendering_thread_callback,
-                                                             textures_ptr);
+                                                            &callback_arg);
 
             if (callback_arg.result_texture == NULL)
             {
@@ -394,10 +392,12 @@ end:
 PUBLIC raGL_texture raGL_textures_get_texture_from_pool_with_create_info(raGL_textures                  textures,
                                                                          const ral_texture_create_info* info_ptr)
 {
-    raGL_texture result_texture = NULL;
-    ral_texture  temp_texture   = NULL;
+    _raGL_textures* textures_ptr   = (_raGL_textures*) textures;
+    raGL_texture    result_texture = NULL;
+    ral_texture     temp_texture   = NULL;
 
-    temp_texture = ral_texture_create(system_hashed_ansi_string_create("Temporary RAL texture"),
+    temp_texture = ral_texture_create(textures_ptr->context_ral,
+                                      system_hashed_ansi_string_create("Temporary RAL texture"),
                                       info_ptr);
 
     result_texture = raGL_textures_get_texture_from_pool(textures,

@@ -36,6 +36,7 @@ typedef struct _ral_context
      * OpenGL ES context: raGL_backend instance
      **/
     void*                              backend; 
+    ral_backend_type                   backend_type;
     PFNRALBACKENDGETFRAMEBUFFERPROC    pfn_backend_get_framebuffer_proc;
     PFNRALBACKENDGETPROPERTYPROC       pfn_backend_get_property_proc;
     PFNRALBACKENDRELEASEPROC           pfn_backend_release_proc;
@@ -71,6 +72,7 @@ typedef struct _ral_context
                  system_window             in_window)
     {
         backend                  = NULL;
+        backend_type             = RAL_BACKEND_TYPE_UNKNOWN;
         buffers                  = system_resizable_vector_create(sizeof(ral_buffer) );
         buffers_cs               = system_critical_section_create();
         callback_manager         = system_callback_manager_create((_callback_id) RAL_CONTEXT_CALLBACK_ID_COUNT);
@@ -102,8 +104,6 @@ typedef struct _ral_context
                           "Could not create a callback manager instance");
         ASSERT_DEBUG_SYNC(framebuffers != NULL,
                           "Could not create the framebuffers vector.");
-        ASSERT_DEBUG_SYNC(rendering_handler != NULL,
-                          "Rendering handler reported by the system_window instance is NULL");
         ASSERT_DEBUG_SYNC(samplers != NULL,
                           "Could not create the samplers vector.");
         ASSERT_DEBUG_SYNC(textures != NULL,
@@ -233,18 +233,6 @@ typedef struct _ral_context
     }
 } _ral_context;
 
-typedef enum
-{
-
-    RAL_CONTEXT_OBJECT_TYPE_BUFFER,
-    RAL_CONTEXT_OBJECT_TYPE_FRAMEBUFFER,
-    RAL_CONTEXT_OBJECT_TYPE_SAMPLER,
-    RAL_CONTEXT_OBJECT_TYPE_TEXTURE,
-    RAL_CONTEXT_OBJECT_TYPE_TEXTURE_FROM_FILE_NAME,
-    RAL_CONTEXT_OBJECT_TYPE_TEXTURE_FROM_GFX_IMAGE
-
-} _ral_context_object_type;
-
 
 /** Reference counter impl */
 REFCOUNT_INSERT_IMPLEMENTATION(ral_context,
@@ -315,40 +303,45 @@ PRIVATE void _ral_context_add_textures_to_texture_hashmaps(_ral_context* context
 }
 
 /** TODO */
-PRIVATE bool _ral_context_delete_objects(_ral_context*            context_ptr,
-                                         _ral_context_object_type object_type,
-                                         uint32_t                 n_objects,
-                                         void**                   object_ptrs)
+PRIVATE bool _ral_context_delete_objects(_ral_context*           context_ptr,
+                                         ral_context_object_type object_type,
+                                         uint32_t                n_objects,
+                                         void**                  object_ptrs)
 {
-    system_critical_section cs     = NULL;
-    bool                    result = false;
+    system_critical_section cs            = NULL;
+    system_resizable_vector object_vector = NULL;
+    bool                    result        = false;
 
     switch (object_type)
     {
         case RAL_CONTEXT_OBJECT_TYPE_BUFFER:
         {
-            cs = context_ptr->buffers_cs;
+            cs            = context_ptr->buffers_cs;
+            object_vector = context_ptr->buffers;
 
             break;
         }
 
         case RAL_CONTEXT_OBJECT_TYPE_FRAMEBUFFER:
         {
-            cs = context_ptr->framebuffers_cs;
+            cs            = context_ptr->framebuffers_cs;
+            object_vector = context_ptr->framebuffers;
 
             break;
         }
 
         case RAL_CONTEXT_OBJECT_TYPE_SAMPLER:
         {
-            cs = context_ptr->samplers_cs;
+            cs            = context_ptr->samplers_cs;
+            object_vector = context_ptr->samplers;
 
             break;
         }
 
         case RAL_CONTEXT_OBJECT_TYPE_TEXTURE:
         {
-            cs = context_ptr->textures_cs;
+            cs            = context_ptr->textures_cs;
+            object_vector = context_ptr->textures;
 
             break;
         }
@@ -362,12 +355,69 @@ PRIVATE bool _ral_context_delete_objects(_ral_context*            context_ptr,
         }
     } /* switch (object_type) */
 
+    /* Notify the subscribers about the event */
+    ral_context_callback_objects_deleted_callback_arg callback_arg;
+
+    callback_arg.deleted_objects = object_ptrs;
+    callback_arg.object_type     = object_type;
+    callback_arg.n_objects       = n_objects;
+
+    switch (object_type)
+    {
+        case RAL_CONTEXT_OBJECT_TYPE_BUFFER:
+        {
+            system_callback_manager_call_back(context_ptr->callback_manager,
+                                              RAL_CONTEXT_CALLBACK_ID_BUFFERS_DELETED,
+                                             &callback_arg);
+
+            break;
+        }
+
+        case RAL_CONTEXT_OBJECT_TYPE_FRAMEBUFFER:
+        {
+            system_callback_manager_call_back(context_ptr->callback_manager,
+                                              RAL_CONTEXT_CALLBACK_ID_FRAMEBUFFERS_DELETED,
+                                             &callback_arg);
+
+            break;
+        }
+
+        case RAL_CONTEXT_OBJECT_TYPE_SAMPLER:
+        {
+            system_callback_manager_call_back(context_ptr->callback_manager,
+                                              RAL_CONTEXT_CALLBACK_ID_SAMPLERS_DELETED,
+                                             &callback_arg);
+
+            break;
+        }
+
+        case RAL_CONTEXT_OBJECT_TYPE_TEXTURE:
+        {
+            system_callback_manager_call_back(context_ptr->callback_manager,
+                                              RAL_CONTEXT_CALLBACK_ID_TEXTURES_DELETED,
+                                             &callback_arg);
+
+            break;
+        }
+
+        default:
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Unrecognized RAL context object type");
+
+            goto end;
+        }
+    } /* switch (object_type) */
+
+    /* Release the objects */
     system_critical_section_enter(cs);
     {
         for (uint32_t n_object = 0;
                       n_object < n_objects;
                     ++n_object)
         {
+            uint32_t object_vector_index = ITEM_NOT_FOUND;
+
             if (object_ptrs[n_object] == NULL)
             {
                 ASSERT_DEBUG_SYNC(false,
@@ -376,6 +426,20 @@ PRIVATE bool _ral_context_delete_objects(_ral_context*            context_ptr,
 
                 continue;
             } /* if (object_ptrs[n_object] == NULL) */
+
+            object_vector_index = system_resizable_vector_find(object_vector,
+                                                               object_ptrs[n_object]);
+
+            if (object_vector_index != ITEM_NOT_FOUND)
+            {
+                system_resizable_vector_delete_element_at(object_vector,
+                                                          object_vector_index);
+            }
+            else
+            {
+                ASSERT_DEBUG_SYNC(false,
+                                  "Released object is not tracked by RAL");
+            }
 
             switch (object_type)
             {
@@ -392,77 +456,11 @@ PRIVATE bool _ral_context_delete_objects(_ral_context*            context_ptr,
                     goto end;
                 }
             } /* switch (object_type) */
+
+            object_ptrs[n_object] = NULL;
         } /* for (all specified framebuffer instances) */
     }
     system_critical_section_leave(cs);
-
-    /* Notify the subscribers about the event */
-    switch (object_type)
-    {
-        case RAL_CONTEXT_OBJECT_TYPE_BUFFER:
-        {
-            ral_context_callback_buffers_deleted_callback_arg callback_arg;
-
-            callback_arg.deleted_buffers = (ral_buffer*) object_ptrs;
-            callback_arg.n_buffers       = n_objects;
-
-            system_callback_manager_call_back(context_ptr->callback_manager,
-                                              RAL_CONTEXT_CALLBACK_ID_BUFFERS_DELETED,
-                                             &callback_arg);
-
-            break;
-        }
-
-        case RAL_CONTEXT_OBJECT_TYPE_FRAMEBUFFER:
-        {
-            ral_context_callback_framebuffers_deleted_callback_arg callback_arg;
-
-            callback_arg.deleted_framebuffers = (ral_framebuffer*) object_ptrs;
-            callback_arg.n_framebuffers       = n_objects;
-
-            system_callback_manager_call_back(context_ptr->callback_manager,
-                                              RAL_CONTEXT_CALLBACK_ID_FRAMEBUFFERS_DELETED,
-                                             &callback_arg);
-
-            break;
-        }
-
-        case RAL_CONTEXT_OBJECT_TYPE_SAMPLER:
-        {
-            ral_context_callback_samplers_deleted_callback_arg callback_arg;
-
-            callback_arg.deleted_samplers = (ral_sampler*) object_ptrs;
-            callback_arg.n_samplers       = n_objects;
-
-            system_callback_manager_call_back(context_ptr->callback_manager,
-                                              RAL_CONTEXT_CALLBACK_ID_SAMPLERS_DELETED,
-                                             &callback_arg);
-
-            break;
-        }
-
-        case RAL_CONTEXT_OBJECT_TYPE_TEXTURE:
-        {
-            ral_context_callback_textures_deleted_callback_arg callback_arg;
-
-            callback_arg.deleted_textures = (ral_texture*) object_ptrs;
-            callback_arg.n_textures       = n_objects;
-
-            system_callback_manager_call_back(context_ptr->callback_manager,
-                                              RAL_CONTEXT_CALLBACK_ID_TEXTURES_DELETED,
-                                             &callback_arg);
-
-            break;
-        }
-
-        default:
-        {
-            ASSERT_DEBUG_SYNC(false,
-                              "Unrecognized RAL context object type");
-
-            goto end;
-        }
-    } /* switch (object_type) */
 
     result = true;
 
@@ -524,6 +522,16 @@ PRIVATE void _ral_context_release(void* context)
 {
     _ral_context* context_ptr = (_ral_context*) context;
 
+    /* Release the back-end */
+    if (context_ptr->backend                  != NULL &&
+        context_ptr->pfn_backend_release_proc != NULL)
+    {
+        context_ptr->pfn_backend_release_proc(context_ptr->backend);
+
+        context_ptr->backend = NULL;
+    }
+
+#if 0
     /* Delete all buffer instances */
     {
         system_critical_section_enter(context_ptr->buffers_cs);
@@ -587,7 +595,7 @@ PRIVATE void _ral_context_release(void* context)
         system_critical_section_leave(context_ptr->samplers_cs);
     }
 
-    /* Delete all sampler instances */
+    /* Delete all texture instances */
     {
         system_critical_section_enter(context_ptr->textures_cs);
         {
@@ -607,15 +615,34 @@ PRIVATE void _ral_context_release(void* context)
         }
         system_critical_section_leave(context_ptr->textures_cs);
     }
+#else
+    uint32_t n_buffers      = 0;
+    uint32_t n_framebuffers = 0;
+    uint32_t n_samplers     = 0;
+    uint32_t n_textures     = 0;
 
-    /* Release the back-end */
-    if (context_ptr->backend                  != NULL &&
-        context_ptr->pfn_backend_release_proc != NULL)
-    {
-        context_ptr->pfn_backend_release_proc(context_ptr->backend);
+    system_resizable_vector_get_property(context_ptr->buffers,
+                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                        &n_buffers);
+    system_resizable_vector_get_property(context_ptr->framebuffers,
+                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                        &n_framebuffers);
+    system_resizable_vector_get_property(context_ptr->samplers,
+                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                        &n_samplers);
+    system_resizable_vector_get_property(context_ptr->textures,
+                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                        &n_textures);
 
-        context_ptr->backend = NULL;
-    }
+    ASSERT_DEBUG_SYNC(n_buffers == 0,
+                      "Buffer object leak detected");
+    ASSERT_DEBUG_SYNC(n_framebuffers == 0,
+                      "Framebuffer object leak detected");
+    ASSERT_DEBUG_SYNC(n_samplers == 0,
+                      "Sampler object leak detected");
+    ASSERT_DEBUG_SYNC(n_textures == 0,
+                      "Texture object leak detected");
+#endif
 }
 
 /** Please see header for specification */
@@ -641,6 +668,7 @@ PUBLIC ral_context ral_context_create(system_hashed_ansi_string name,
             case RAL_BACKEND_TYPE_ES:
             case RAL_BACKEND_TYPE_GL:
             {
+                new_context_ptr->backend_type                         = backend_type;
                 new_context_ptr->backend                              = (void*) raGL_backend_create( (ral_context) new_context_ptr,
                                                                                                     name,
                                                                                                     backend_type);
@@ -669,12 +697,12 @@ PUBLIC ral_context ral_context_create(system_hashed_ansi_string name,
     return (ral_context) new_context_ptr;
 }
 
-
-PRIVATE bool _ral_context_create_objects(_ral_context*            context_ptr,
-                                         _ral_context_object_type object_type,
-                                         uint32_t                 n_objects,
-                                         void**                   object_create_info_ptrs,
-                                         void**                   out_result_object_ptrs)
+/** TODO */
+PRIVATE bool _ral_context_create_objects(_ral_context*           context_ptr,
+                                         ral_context_object_type object_type,
+                                         uint32_t                n_objects,
+                                         void**                  object_create_info_ptrs,
+                                         void**                  out_result_object_ptrs)
 {
     uint32_t*               object_counter_ptr    = NULL;
     system_critical_section object_storage_cs     = NULL;
@@ -690,7 +718,7 @@ PRIVATE bool _ral_context_create_objects(_ral_context*            context_ptr,
             object_counter_ptr    = &context_ptr->n_buffers_created;
             object_storage_cs     =  context_ptr->buffers_cs;
             object_storage_vector =  context_ptr->buffers;
-            object_type_name      = "RAL Buffer";
+            object_type_name      = "RAL Buffer [%d]";
 
             break;
         }
@@ -700,7 +728,7 @@ PRIVATE bool _ral_context_create_objects(_ral_context*            context_ptr,
             object_counter_ptr    = &context_ptr->n_framebuffers_created;
             object_storage_cs     =  context_ptr->framebuffers_cs;
             object_storage_vector =  context_ptr->framebuffers;
-            object_type_name      = "RAL Framebuffer";
+            object_type_name      = "RAL Framebuffer [%d]";
 
             break;
         }
@@ -710,7 +738,7 @@ PRIVATE bool _ral_context_create_objects(_ral_context*            context_ptr,
             object_counter_ptr    = &context_ptr->n_framebuffers_created;
             object_storage_cs     =  context_ptr->samplers_cs;
             object_storage_vector =  context_ptr->samplers;
-            object_type_name      = "RAL Sampler";
+            object_type_name      = "RAL Sampler [%d]";
 
             break;
         }
@@ -722,7 +750,7 @@ PRIVATE bool _ral_context_create_objects(_ral_context*            context_ptr,
             object_counter_ptr    = &context_ptr->n_textures_created;
             object_storage_cs     =  context_ptr->textures_cs;
             object_storage_vector =  context_ptr->textures;
-            object_type_name      = "RAL Texture";
+            object_type_name      = "RAL Texture [%d]";
 
             break;
         }
@@ -795,7 +823,8 @@ PRIVATE bool _ral_context_create_objects(_ral_context*            context_ptr,
 
             case RAL_CONTEXT_OBJECT_TYPE_TEXTURE:
             {
-                result_objects_ptr[n_object] = ral_texture_create(system_hashed_ansi_string_create(temp),
+                result_objects_ptr[n_object] = ral_texture_create((ral_context) context_ptr,
+                                                                  system_hashed_ansi_string_create(temp),
                                                                   (const ral_texture_create_info*) (object_create_info_ptrs + n_object) );
 
                 break;
@@ -804,7 +833,8 @@ PRIVATE bool _ral_context_create_objects(_ral_context*            context_ptr,
             case RAL_CONTEXT_OBJECT_TYPE_TEXTURE_FROM_FILE_NAME:
             {
                 /* NOTE: We may need the client app to specify the usage pattern in the future */
-                result_objects_ptr[n_object] = ral_texture_create_from_file_name(system_hashed_ansi_string_create(temp),
+                result_objects_ptr[n_object] = ral_texture_create_from_file_name((ral_context) context_ptr,
+                                                                                 system_hashed_ansi_string_create(temp),
                                                                                  (system_hashed_ansi_string) (object_create_info_ptrs + n_object),
                                                                                  RAL_TEXTURE_USAGE_IMAGE_LOAD_OPS_BIT | RAL_TEXTURE_USAGE_SAMPLED_BIT);
 
@@ -814,7 +844,8 @@ PRIVATE bool _ral_context_create_objects(_ral_context*            context_ptr,
             case RAL_CONTEXT_OBJECT_TYPE_TEXTURE_FROM_GFX_IMAGE:
             {
                 /* NOTE: We may need the client app to specify the usage pattern in the future */
-                result_objects_ptr[n_object] = ral_texture_create_from_gfx_image(system_hashed_ansi_string_create(temp),
+                result_objects_ptr[n_object] = ral_texture_create_from_gfx_image((ral_context) context_ptr,
+                                                                                 system_hashed_ansi_string_create(temp),
                                                                                  (gfx_image) (object_create_info_ptrs + n_object),
                                                                                  RAL_TEXTURE_USAGE_IMAGE_LOAD_OPS_BIT | RAL_TEXTURE_USAGE_SAMPLED_BIT);
 
@@ -842,15 +873,16 @@ PRIVATE bool _ral_context_create_objects(_ral_context*            context_ptr,
     } /* for (all framebuffers to create) */
 
     /* Notify the subscribers */
+    ral_context_callback_objects_created_callback_arg callback_arg;
+
+    callback_arg.created_objects = result_objects_ptr;
+    callback_arg.object_type     = object_type;
+    callback_arg.n_objects       = n_objects;
+
     switch (object_type)
     {
         case RAL_CONTEXT_OBJECT_TYPE_BUFFER:
         {
-            ral_context_callback_buffers_created_callback_arg callback_arg;
-
-            callback_arg.created_buffers = (ral_buffer*) result_objects_ptr;
-            callback_arg.n_buffers       = n_objects;
-
             system_callback_manager_call_back(context_ptr->callback_manager,
                                               RAL_CONTEXT_CALLBACK_ID_BUFFERS_CREATED,
                                              &callback_arg);
@@ -860,11 +892,6 @@ PRIVATE bool _ral_context_create_objects(_ral_context*            context_ptr,
 
         case RAL_CONTEXT_OBJECT_TYPE_FRAMEBUFFER:
         {
-            ral_context_callback_framebuffers_created_callback_arg callback_arg;
-
-            callback_arg.created_framebuffers = (ral_framebuffer*) result_objects_ptr;
-            callback_arg.n_framebuffers       = n_objects;
-
             system_callback_manager_call_back(context_ptr->callback_manager,
                                               RAL_CONTEXT_CALLBACK_ID_FRAMEBUFFERS_CREATED,
                                              &callback_arg);
@@ -874,11 +901,6 @@ PRIVATE bool _ral_context_create_objects(_ral_context*            context_ptr,
 
         case RAL_CONTEXT_OBJECT_TYPE_SAMPLER:
         {
-            ral_context_callback_samplers_created_callback_arg callback_arg;
-
-            callback_arg.created_samplers = (ral_sampler*) result_objects_ptr;
-            callback_arg.n_samplers       = n_objects;
-
             system_callback_manager_call_back(context_ptr->callback_manager,
                                               RAL_CONTEXT_CALLBACK_ID_SAMPLERS_CREATED,
                                              &callback_arg);
@@ -890,10 +912,7 @@ PRIVATE bool _ral_context_create_objects(_ral_context*            context_ptr,
         case RAL_CONTEXT_OBJECT_TYPE_TEXTURE_FROM_FILE_NAME:
         case RAL_CONTEXT_OBJECT_TYPE_TEXTURE_FROM_GFX_IMAGE:
         {
-            ral_context_callback_textures_created_callback_arg callback_arg;
-
-            callback_arg.created_textures = (ral_texture*) result_objects_ptr;
-            callback_arg.n_textures       = n_objects;
+            callback_arg.object_type = RAL_CONTEXT_OBJECT_TYPE_TEXTURE;
 
             system_callback_manager_call_back(context_ptr->callback_manager,
                                               RAL_CONTEXT_CALLBACK_ID_TEXTURES_CREATED,
@@ -912,7 +931,7 @@ PRIVATE bool _ral_context_create_objects(_ral_context*            context_ptr,
         {
             system_resizable_vector_push(object_storage_vector,
                                          result_objects_ptr[n_object]);
-        }
+        } /* for (all objects) */
     }
     system_critical_section_leave(object_storage_cs);
 
@@ -1583,6 +1602,12 @@ PUBLIC EMERALD_API void ral_context_get_property(ral_context          context,
         }
 
         case RAL_CONTEXT_PROPERTY_BACKEND_TYPE:
+        {
+            *(ral_backend_type*) out_result_ptr = context_ptr->backend_type;
+
+            break;
+        }
+
         case RAL_CONTEXT_PROPERTY_MAX_FRAMEBUFFER_COLOR_ATTACHMENTS:
         case RAL_CONTEXT_PROPERTY_N_OF_SYSTEM_FRAMEBUFFERS:
         case RAL_CONTEXT_PROPERTY_SYSTEM_FRAMEBUFFER_COLOR_TEXTURE_FORMAT:

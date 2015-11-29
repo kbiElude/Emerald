@@ -96,7 +96,7 @@ typedef enum
     /* settable, int[2] */
     SYSTEM_WINDOW_PROPERTY_POSITION,
 
-    /* not settable, ral_context */
+    /* settable (for internal purposes only), ral_context */
     SYSTEM_WINDOW_PROPERTY_RENDERING_CONTEXT_RAL,
 
     /* settable, ogl_rendering_handler

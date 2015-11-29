@@ -671,11 +671,6 @@ PRIVATE void _collada_scene_generator_create_textures(collada_data       data,
                 }
 
                 /* We do not need to own the assets anymore */
-                if (has_created_texture)
-                {
-                    ral_texture_release(result_ral_texture);
-                }
-
                 scene_texture_release(result_texture);
             }
         }

@@ -422,20 +422,11 @@ PUBLIC bool ral_framebuffer_set_attachment_2D(ral_framebuffer                 fr
     /* Looks good. Update the internal storage. */
     target_attachment_ptr = framebuffer_ptr->color_attachments + index;
 
-    if (target_attachment_ptr->texture != NULL)
-    {
-        ral_texture_release(target_attachment_ptr->texture);
-
-        target_attachment_ptr->texture = NULL;
-    }
-
     target_attachment_ptr->is_enabled   = should_enable;
     target_attachment_ptr->n_mipmap     = n_mipmap;
     target_attachment_ptr->n_layer      = 0;
     target_attachment_ptr->texture      = texture_2d;
     target_attachment_ptr->texture_type = RAL_FRAMEBUFFER_ATTACHMENT_TEXTURE_TYPE_2D;
-
-    ral_texture_retain(texture_2d);
 
     /* Update the subscribers */
     system_callback_manager_call_back(framebuffer_ptr->callback_manager,

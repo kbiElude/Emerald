@@ -23,9 +23,8 @@ typedef struct
 
 typedef struct _raGL_texture
 {
-    ral_texture texture;
-
     ogl_context context; /* NOT owned */
+    ral_texture texture; /* DO NOT release */
 
     GLuint      id;      /* OWNED; can either be a RBO ID (if is_renderbuffer is true), or a TO ID (otherwise) */
     bool        is_renderbuffer;
@@ -41,8 +40,6 @@ typedef struct _raGL_texture
         is_renderbuffer = false;
         texture         = in_texture;
 
-        ral_texture_retain(texture);
-
         /* NOTE: Only GL is supported at the moment. */
         ral_backend_type backend_type = RAL_BACKEND_TYPE_UNKNOWN;
 
@@ -56,13 +53,6 @@ typedef struct _raGL_texture
 
     ~_raGL_texture()
     {
-        if (texture != NULL)
-        {
-            ral_texture_release(texture);
-
-            texture = NULL;
-        }
-
         ASSERT_DEBUG_SYNC(id == 0,
                           "RBO/TO should have been deleted at _release*() call time.");
     }
@@ -672,20 +662,18 @@ PRIVATE RENDERING_CONTEXT_CALL void _raGL_texture_verify_conformance_to_ral_text
                             &entrypoints_dsa_ptr);
 
     /* Do general properties match? */
-    GLint                      gl_general_fixed_sample_locations = 0;
-    ogl_texture_internalformat gl_general_format                 = OGL_TEXTURE_INTERNALFORMAT_UNKNOWN;
-    GLint                      gl_general_n_layers               = 0;
-    GLint                      gl_general_n_mipmaps              = 0;
-    GLint                      gl_general_n_samples              = 0;
+    GLint gl_general_fixed_sample_locations = 0;
+    GLint gl_general_n_layers               = 0;
+    GLint gl_general_n_mipmaps              = 0;
+    GLint gl_general_n_samples              = 0;
 
-    bool                       ral_general_fixed_sample_locations    = false;
-    ral_texture_format         ral_general_format                    = RAL_TEXTURE_FORMAT_UNKNOWN;
-    ogl_texture_internalformat ral_general_format_gl                 = OGL_TEXTURE_INTERNALFORMAT_UNKNOWN;
-    uint32_t                   ral_general_n_layers                  = 0;
-    uint32_t                   ral_general_n_mipmaps                 = 0;
-    uint32_t                   ral_general_n_samples                 = 0;
-    ral_texture_type           ral_general_type                      = RAL_TEXTURE_TYPE_UNKNOWN;
-    GLenum                     ral_general_type_gl                   = GL_NONE;
+    bool                       ral_general_fixed_sample_locations = false;
+    ral_texture_format         ral_general_format                 = RAL_TEXTURE_FORMAT_UNKNOWN;
+    uint32_t                   ral_general_n_layers               = 0;
+    uint32_t                   ral_general_n_mipmaps              = 0;
+    uint32_t                   ral_general_n_samples              = 0;
+    ral_texture_type           ral_general_type                   = RAL_TEXTURE_TYPE_UNKNOWN;
+    GLenum                     ral_general_type_gl                = GL_NONE;
 
     ral_texture_get_property(texture_ptr->texture,
                              RAL_TEXTURE_PROPERTY_FIXED_SAMPLE_LOCATIONS,
@@ -706,8 +694,7 @@ PRIVATE RENDERING_CONTEXT_CALL void _raGL_texture_verify_conformance_to_ral_text
                              RAL_TEXTURE_PROPERTY_TYPE,
                             &ral_general_type);
 
-    ral_general_format_gl = raGL_utils_get_ogl_texture_internalformat_for_ral_texture_format(ral_general_format);
-    ral_general_type_gl   = raGL_utils_get_ogl_texture_target_for_ral_texture_type          (ral_general_type);
+    ral_general_type_gl = raGL_utils_get_ogl_texture_target_for_ral_texture_type(ral_general_type);
 
     /* TODO: Cube-map textures will need some more love. */
     ASSERT_DEBUG_SYNC(ral_general_type != RAL_TEXTURE_TYPE_CUBE_MAP &&
@@ -716,9 +703,6 @@ PRIVATE RENDERING_CONTEXT_CALL void _raGL_texture_verify_conformance_to_ral_text
 
     if (texture_ptr->is_renderbuffer)
     {
-        entrypoints_dsa_ptr->pGLGetNamedRenderbufferParameterivEXT(texture_ptr->id,
-                                                                   GL_RENDERBUFFER_INTERNAL_FORMAT,
-                                                                   (GLint*) &gl_general_format);
         entrypoints_dsa_ptr->pGLGetNamedRenderbufferParameterivEXT(texture_ptr->id,
                                                                    GL_RENDERBUFFER_SAMPLES,
                                                                   &gl_general_n_samples);
@@ -729,10 +713,6 @@ PRIVATE RENDERING_CONTEXT_CALL void _raGL_texture_verify_conformance_to_ral_text
                                                          ral_general_type_gl,
                                                          GL_TEXTURE_FIXED_SAMPLE_LOCATIONS,
                                                         &gl_general_fixed_sample_locations);
-        entrypoints_dsa_ptr->pGLGetTextureParameterivEXT(texture_ptr->id,
-                                                         ral_general_type_gl,
-                                                         GL_TEXTURE_INTERNAL_FORMAT,
-                                                         (GLint*) &gl_general_format);
         entrypoints_dsa_ptr->pGLGetTextureParameterivEXT(texture_ptr->id,
                                                          ral_general_type_gl,
                                                          GL_TEXTURE_DEPTH,
@@ -747,20 +727,22 @@ PRIVATE RENDERING_CONTEXT_CALL void _raGL_texture_verify_conformance_to_ral_text
                                                         (GLint*) &gl_general_n_mipmaps);
     }
 
-    if (!texture_ptr->is_renderbuffer && (gl_general_fixed_sample_locations != 0) == ral_general_fixed_sample_locations)
+    if (gl_general_n_layers == 0)
+    {
+        gl_general_n_layers = 1;
+    }
+
+    if (gl_general_n_samples == 0)
+    {
+        gl_general_n_samples = 1;
+    }
+
+    if (!texture_ptr->is_renderbuffer && (gl_general_fixed_sample_locations == 0) == ral_general_fixed_sample_locations)
     {
         ASSERT_DEBUG_SYNC(false,
                           "GL texture object's fixedsamplelocations property value does not match RAL texture's (%d vs %s)",
                           gl_general_fixed_sample_locations,
                           ral_general_fixed_sample_locations ? 1 : 0);
-    }
-
-    if (gl_general_format != ral_general_format)
-    {
-        ASSERT_DEBUG_SYNC(false,
-                          "GL object's internalformat does not match RAL texture's format (%d vs %d)",
-                          gl_general_format,
-                          ral_general_format);
     }
 
     if (!texture_ptr->is_renderbuffer && gl_general_n_layers != ral_general_n_layers)
@@ -792,17 +774,22 @@ PRIVATE RENDERING_CONTEXT_CALL void _raGL_texture_verify_conformance_to_ral_text
                   n_mipmap < min( (uint32_t) gl_general_n_mipmaps, ral_general_n_mipmaps);
                 ++n_mipmap)
     {
-        GLint    gl_mipmap_depth   = 0;
-        GLint    gl_mipmap_height  = 0;
-        GLint    gl_mipmap_width   = 0;
-        uint32_t ral_mipmap_depth  = 0;
-        uint32_t ral_mipmap_height = 0;
-        uint32_t ral_mipmap_width  = 0;
+        GLint                      gl_mipmap_depth           = 0;
+        GLint                      gl_mipmap_height          = 0;
+        ogl_texture_internalformat gl_mipmap_internal_format = OGL_TEXTURE_INTERNALFORMAT_UNKNOWN;
+        GLint                      gl_mipmap_width           = 0;
+        uint32_t                   ral_mipmap_depth          = 0;
+        uint32_t                   ral_mipmap_height         = 0;
+        ral_texture_format         ral_mipmap_format          = RAL_TEXTURE_FORMAT_UNKNOWN;
+        uint32_t                   ral_mipmap_width          = 0;
 
         if (texture_ptr->is_renderbuffer)
         {
             gl_mipmap_depth = 1;
 
+            entrypoints_dsa_ptr->pGLGetNamedRenderbufferParameterivEXT(texture_ptr->id,
+                                                                       GL_RENDERBUFFER_INTERNAL_FORMAT,
+                                                             (GLint*) &gl_mipmap_internal_format);
             entrypoints_dsa_ptr->pGLGetNamedRenderbufferParameterivEXT(texture_ptr->id,
                                                                        GL_RENDERBUFFER_HEIGHT,
                                                                       &gl_mipmap_height);
@@ -822,6 +809,11 @@ PRIVATE RENDERING_CONTEXT_CALL void _raGL_texture_verify_conformance_to_ral_text
                                                                   n_mipmap,
                                                                   GL_TEXTURE_HEIGHT,
                                                                  &gl_mipmap_height);
+            entrypoints_dsa_ptr->pGLGetTextureLevelParameterivEXT(texture_ptr->id,
+                                                                  ral_general_type_gl,
+                                                                  n_mipmap,
+                                                                  GL_TEXTURE_INTERNAL_FORMAT,
+                                                        (GLint*) &gl_mipmap_internal_format);
             entrypoints_dsa_ptr->pGLGetTextureLevelParameterivEXT(texture_ptr->id,
                                                                   ral_general_type_gl,
                                                                   n_mipmap,
@@ -845,7 +837,15 @@ PRIVATE RENDERING_CONTEXT_CALL void _raGL_texture_verify_conformance_to_ral_text
                                         RAL_TEXTURE_MIPMAP_PROPERTY_WIDTH,
                                        &ral_mipmap_width);
 
-        if (gl_mipmap_depth  != ral_mipmap_depth   ||
+        ral_mipmap_format = raGL_utils_get_ral_texture_format_for_ogl_enum(gl_mipmap_internal_format);
+
+        if (ral_mipmap_format != ral_general_format)
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "GL/RAL mip-map format mismatch detected");
+        }
+
+        if (gl_mipmap_depth  != ral_mipmap_depth  ||
             gl_mipmap_height != ral_mipmap_height ||
             gl_mipmap_width  != ral_mipmap_width)
         {

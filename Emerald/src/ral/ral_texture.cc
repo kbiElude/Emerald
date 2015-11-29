@@ -5,6 +5,7 @@
  */
 #include "shared.h"
 #include "gfx/gfx_image.h"
+#include "ral/ral_context.h"
 #include "ral/ral_texture.h"
 #include "ral/ral_types.h"
 #include "ral/ral_utils.h"
@@ -64,9 +65,13 @@ typedef struct _ral_texture_layer
 
 typedef struct _ral_texture
 {
+    uint32_t                  base_mipmap_size[3];
     system_callback_manager   callback_manager;
+    ral_context               context;
+    system_hashed_ansi_string file_name;
     bool                      fixed_sample_locations;
     ral_texture_format        format;
+    uint32_t                  n_layers;
     uint32_t                  n_mipmaps_per_layer;
     uint32_t                  n_samples;
     system_hashed_ansi_string name;
@@ -79,10 +84,12 @@ typedef struct _ral_texture
      */
     system_resizable_vector layers;
 
-    REFCOUNT_INSERT_VARIABLES;
 
-
-    _ral_texture(bool                      in_fixed_sample_locations,
+    _ral_texture(ral_context               in_context,
+                 uint32_t                  in_base_mipmap_width,
+                 uint32_t                  in_base_mipmap_height,
+                 uint32_t                  in_base_mipmap_depth,
+                 bool                      in_fixed_sample_locations,
                  ral_texture_format        in_format,
                  uint32_t                  in_n_layers,
                  uint32_t                  in_n_mipmaps,
@@ -91,12 +98,18 @@ typedef struct _ral_texture
                  ral_texture_type          in_type,
                  ral_texture_usage_bits    in_usage)
     {
+        base_mipmap_size[0]    = in_base_mipmap_width;
+        base_mipmap_size[1]    = in_base_mipmap_height;
+        base_mipmap_size[2]    = in_base_mipmap_depth;
         callback_manager       = system_callback_manager_create( (_callback_id) RAL_TEXTURE_CALLBACK_ID_COUNT);
+        context                = in_context;
+        file_name              = NULL;
         fixed_sample_locations = in_fixed_sample_locations;
         format                 = in_format;
-        layers                 = system_resizable_vector_create(4 /* capacity */);
+        layers                 = system_resizable_vector_create(in_n_layers);
+        n_layers               = in_n_layers;
         n_mipmaps_per_layer    = in_n_mipmaps;
-        n_samples              = n_samples;
+        n_samples              = in_n_samples;
         name                   = in_name;
         type                   = in_type;
         usage                  = in_usage;
@@ -129,10 +142,79 @@ typedef struct _ral_texture
     }
 } _ral_texture;
 
-/** Reference counter impl */
-REFCOUNT_INSERT_IMPLEMENTATION(ral_texture,
-                               ral_texture,
-                              _ral_texture);
+
+/** TODO */
+PRIVATE void _ral_texture_init_mipmap_chain(_ral_texture* texture_ptr)
+{
+    uint32_t n_precall_layers = -1;
+
+    /* Sanity checks */
+    system_resizable_vector_get_property(texture_ptr->layers,
+                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                        &n_precall_layers);
+
+    ASSERT_DEBUG_SYNC(n_precall_layers == 0,
+                      "_ral_texture_init_mipmap_chain() called for a ral_texture instance with an initialized mip-map chain");
+
+    ASSERT_DEBUG_SYNC(texture_ptr->n_layers >= 1,
+                      "Invalid number of layers requested for a ral_texture instance.");
+
+    /* Spawn mipmap descriptors for all layers */
+    for (uint32_t n_layer = 0;
+                  n_layer < texture_ptr->n_layers;
+                ++n_layer)
+    {
+        uint32_t mipmap_width  = texture_ptr->base_mipmap_size[0];
+        uint32_t mipmap_height = texture_ptr->base_mipmap_size[1];
+        uint32_t mipmap_depth  = texture_ptr->base_mipmap_size[2];
+
+        _ral_texture_layer* new_texture_layer_ptr = new (std::nothrow) _ral_texture_layer();
+
+        ASSERT_ALWAYS_SYNC(new_texture_layer_ptr != NULL,
+                           "Out of memory");
+
+        system_resizable_vector_push(texture_ptr->layers,
+                                     new_texture_layer_ptr);
+
+        for (uint32_t n_mipmap = 0;
+                      n_mipmap < texture_ptr->n_mipmaps_per_layer;
+                    ++n_mipmap)
+        {
+            _ral_texture_mipmap* new_texture_mipmap_ptr = new (std::nothrow) _ral_texture_mipmap(mipmap_width,
+                                                                                                 mipmap_height,
+                                                                                                 mipmap_depth);
+
+            ASSERT_ALWAYS_SYNC(new_texture_mipmap_ptr != NULL,
+                               "Out of memory");
+
+            system_resizable_vector_push(new_texture_layer_ptr->mipmaps,
+                                         new_texture_mipmap_ptr);
+
+            /* Update the mipmap size */
+            mipmap_width  /= 2;
+            mipmap_height /= (texture_ptr->type == RAL_TEXTURE_TYPE_1D        ||
+                              texture_ptr->type == RAL_TEXTURE_TYPE_1D_ARRAY) ? 1
+                                                                              : 2;
+            mipmap_depth  /= (texture_ptr->type == RAL_TEXTURE_TYPE_3D)       ? 2
+                                                                              : 1;
+
+            if (mipmap_width < 1)
+            {
+                mipmap_width = 1;
+            } /* if (mipmap_width < 1) */
+
+            if (mipmap_height < 1)
+            {
+                mipmap_height = 1;
+            } /* if (mipmap_height < 1) */
+
+            if (mipmap_depth < 1)
+            {
+                mipmap_depth = 1;
+            }
+        }
+    } /* for (all texture layers to create) */
+}
 
 
 /** TODO */
@@ -143,7 +225,8 @@ PRIVATE void _ral_texture_release(void* texture)
 
 
 /** Please see header for specification */
-PUBLIC ral_texture ral_texture_create(system_hashed_ansi_string      name,
+PUBLIC ral_texture ral_texture_create(ral_context                    context,
+                                      system_hashed_ansi_string      name,
                                       const ral_texture_create_info* create_info_ptr)
 {
     uint32_t      n_mipmaps  = 0;
@@ -393,7 +476,11 @@ PUBLIC ral_texture ral_texture_create(system_hashed_ansi_string      name,
     } /* if (create_info_ptr->use_full_mipmap_chain) */
 
     /* Spawn the new descriptor */
-    result_ptr = new (std::nothrow) _ral_texture(create_info_ptr->fixed_sample_locations,
+    result_ptr = new (std::nothrow) _ral_texture(context,
+                                                 create_info_ptr->base_mipmap_width,
+                                                 create_info_ptr->base_mipmap_height,
+                                                 create_info_ptr->base_mipmap_depth,
+                                                 create_info_ptr->fixed_sample_locations,
                                                  create_info_ptr->format,
                                                  create_info_ptr->n_layers,
                                                  n_mipmaps,
@@ -410,12 +497,8 @@ PUBLIC ral_texture ral_texture_create(system_hashed_ansi_string      name,
         goto end;
     }
 
-    /* Register in the object manager */
-    REFCOUNT_INSERT_INIT_CODE_WITH_RELEASE_HANDLER(result_ptr,
-                                                   _ral_texture_release,
-                                                   OBJECT_TYPE_RAL_TEXTURE,
-                                                   system_hashed_ansi_string_create_by_merging_two_strings("\\RAL Textures\\",
-                                                                                                           system_hashed_ansi_string_get_buffer(name)) );
+    /* Set up the mipmap chain */
+    _ral_texture_init_mipmap_chain(result_ptr);
 
     /* All done */
     result = (ral_texture) result_ptr;
@@ -425,7 +508,8 @@ end:
 }
 
 /** Please see header for specification */
-PUBLIC ral_texture ral_texture_create_from_file_name(system_hashed_ansi_string name,
+PUBLIC ral_texture ral_texture_create_from_file_name(ral_context               context,
+                                                     system_hashed_ansi_string name,
                                                      system_hashed_ansi_string file_name,
                                                      ral_texture_usage_bits    usage)
 {
@@ -466,7 +550,8 @@ PUBLIC ral_texture ral_texture_create_from_file_name(system_hashed_ansi_string n
     }
 
     /* Now try to set up a ogl_texture instance using the gfx_image we created. */
-    result = ral_texture_create_from_gfx_image(name,
+    result = ral_texture_create_from_gfx_image(context,
+                                               name,
                                                new_gfx_image,
                                                usage);
 
@@ -479,6 +564,9 @@ PUBLIC ral_texture ral_texture_create_from_file_name(system_hashed_ansi_string n
         goto end;
     }
 
+    /* Cache the filename */
+    ((_ral_texture*) result)->file_name = file_name;
+
     /* Release the gfx_image instance - we don't need it anymore. */
     gfx_image_release(new_gfx_image);
     new_gfx_image = NULL;
@@ -489,7 +577,8 @@ end:
 }
 
 /** Please see header for specification */
-PUBLIC ral_texture ral_texture_create_from_gfx_image(system_hashed_ansi_string name,
+PUBLIC ral_texture ral_texture_create_from_gfx_image(ral_context               context,
+                                                     system_hashed_ansi_string name,
                                                      gfx_image                 image,
                                                      ral_texture_usage_bits    usage)
 {
@@ -575,7 +664,8 @@ PUBLIC ral_texture ral_texture_create_from_gfx_image(system_hashed_ansi_string n
     result_create_info.usage                  = usage;
     result_create_info.use_full_mipmap_chain  = (image_n_mipmaps > 1) ? true : false;
 
-    result = ral_texture_create(name,
+    result = ral_texture_create(context,
+                                name,
                                &result_create_info);
 
     if (result == NULL)
@@ -585,6 +675,9 @@ PUBLIC ral_texture ral_texture_create_from_gfx_image(system_hashed_ansi_string n
 
         goto end;
     }
+
+    /* Set up the mipmap chain */
+    _ral_texture_init_mipmap_chain(result_ptr);
 
     /* Upload the mipmaps */
     for (uint32_t n_mipmap = 0;
@@ -802,6 +895,13 @@ PUBLIC EMERALD_API bool ral_texture_get_property(ral_texture          texture,
             break;
         }
 
+        case RAL_TEXTURE_PROPERTY_FILENAME:
+        {
+            *(system_hashed_ansi_string*) out_result_ptr = texture_ptr->file_name;
+
+            break;
+        }
+
         case RAL_TEXTURE_PROPERTY_FIXED_SAMPLE_LOCATIONS:
         {
             *(bool*) out_result_ptr = texture_ptr->fixed_sample_locations;
@@ -871,6 +971,12 @@ PUBLIC EMERALD_API bool ral_texture_get_property(ral_texture          texture,
 
 end:
     return result;
+}
+
+/** Please see header for specification */
+PUBLIC void ral_texture_release(ral_texture& texture)
+{
+    delete (_ral_texture*) texture;
 }
 
 /** Please see header for specification */

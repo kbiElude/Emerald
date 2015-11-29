@@ -774,11 +774,6 @@ PUBLIC void* ogl_ui_texture_preview_init(ogl_ui                      instance,
         new_texture_preview->texture_initialized = false;
         new_texture_preview->visible             = true;
 
-        if (to != NULL)
-        {
-            ral_texture_retain(to);
-        }
-
         /* Set blending states */
         memset(new_texture_preview->blend_color,
                0,
@@ -974,18 +969,8 @@ PUBLIC void ogl_ui_texture_preview_set_property(void*                    texture
 
         case OGL_UI_CONTROL_PROPERTY_TEXTURE_PREVIEW_TEXTURE_RAL:
         {
-            if (texture_preview_ptr->texture != NULL)
-            {
-                ral_texture_release(texture_preview_ptr->texture);
-            }
-
             texture_preview_ptr->texture             = *(ral_texture*) data;
             texture_preview_ptr->texture_initialized = false;
-
-            if (texture_preview_ptr->texture != NULL)
-            {
-                ral_texture_retain(texture_preview_ptr->texture);
-            }
 
             break;
         }

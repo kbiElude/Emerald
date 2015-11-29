@@ -152,7 +152,6 @@ PUBLIC system_hashed_ansi_string object_manager_convert_object_manager_object_ty
         case OBJECT_TYPE_RAL_CONTEXT:                                     return _object_type_ral_context_hashed_ansi_string;
         case OBJECT_TYPE_RAL_FRAMEBUFFER:                                 return _object_type_ral_framebuffer_hashed_ansi_string;
         case OBJECT_TYPE_RAL_SAMPLER:                                     return _object_type_ral_sampler_hashed_ansi_string;
-        case OBJECT_TYPE_RAL_TEXTURE:                                     return _object_type_ral_texture_hashed_ansi_string;
         case OBJECT_TYPE_SCALAR_FIELD_METABALLS:                          return _object_type_scalar_field_metaballs_hashed_ansi_string;
         case OBJECT_TYPE_SCENE:                                           return _object_type_scene_hashed_ansi_string;
         case OBJECT_TYPE_SCENE_CAMERA:                                    return _object_type_scene_camera_hashed_ansi_string;

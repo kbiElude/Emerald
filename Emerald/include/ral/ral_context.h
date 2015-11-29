@@ -84,61 +84,36 @@ enum
     RAL_CONTEXT_CALLBACK_ID_COUNT
 };
 
-typedef struct
+typedef enum
 {
-    ral_buffer* created_buffers;
-    uint32_t    n_buffers;
+    RAL_CONTEXT_OBJECT_TYPE_BUFFER,
+    RAL_CONTEXT_OBJECT_TYPE_FRAMEBUFFER,
+    RAL_CONTEXT_OBJECT_TYPE_SAMPLER,
+    RAL_CONTEXT_OBJECT_TYPE_TEXTURE,
 
-} ral_context_callback_buffers_created_callback_arg;
+    RAL_CONTEXT_OBJECT_TYPE_COUNT,
 
-typedef struct
-{
-    ral_buffer* deleted_buffers;
-    uint32_t    n_buffers;
+    /* Only used internally by ral_context: */
+    RAL_CONTEXT_OBJECT_TYPE_TEXTURE_FROM_FILE_NAME,
+    RAL_CONTEXT_OBJECT_TYPE_TEXTURE_FROM_GFX_IMAGE,
 
-} ral_context_callback_buffers_deleted_callback_arg;
-
-typedef struct
-{
-    ral_framebuffer* created_framebuffers;
-    uint32_t         n_framebuffers;
-
-} ral_context_callback_framebuffers_created_callback_arg;
+} ral_context_object_type;
 
 typedef struct
 {
-    ral_framebuffer* deleted_framebuffers;
-    uint32_t         n_framebuffers;
+    void**                  created_objects;
+    ral_context_object_type object_type;
+    uint32_t                n_objects;
 
-} ral_context_callback_framebuffers_deleted_callback_arg;
-
-typedef struct
-{
-    ral_sampler* created_samplers;
-    uint32_t     n_samplers;
-
-} ral_context_callback_samplers_created_callback_arg;
+} ral_context_callback_objects_created_callback_arg;
 
 typedef struct
 {
-    ral_sampler* deleted_samplers;
-    uint32_t     n_samplers;
+    void**                  deleted_objects;
+    ral_context_object_type object_type;
+    uint32_t                n_objects;
 
-} ral_context_callback_samplers_deleted_callback_arg;
-
-typedef struct
-{
-    ral_texture* created_textures;
-    uint32_t     n_textures;
-
-} ral_context_callback_textures_created_callback_arg;
-
-typedef struct
-{
-    ral_texture* deleted_textures;
-    uint32_t     n_textures;
-
-} ral_context_callback_textures_deleted_callback_arg;
+} ral_context_callback_objects_deleted_callback_arg;
 
 /** TODO */
 PUBLIC ral_context ral_context_create(system_hashed_ansi_string name,

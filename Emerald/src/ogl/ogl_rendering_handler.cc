@@ -554,6 +554,7 @@ PRIVATE void _ogl_rendering_handler_thread_entrypoint(void* in_arg)
         }
 
         /* Bind the thread to GL */
+        ogl_context_retain                (context_gl);
         ogl_context_bind_to_current_thread(context_gl);
 
         /* Create a new text string which we will use to show performance info */
@@ -916,6 +917,7 @@ PRIVATE void _ogl_rendering_handler_thread_entrypoint(void* in_arg)
 
         /* Unbind the thread from GL */
         ogl_context_unbind_from_current_thread(context_gl);
+        ogl_context_release                   (context_gl);
 
         /* Let any waiters know that we're done */
         system_event_set(rendering_handler->shutdown_request_ack_event);
@@ -938,33 +940,9 @@ PRIVATE void _ogl_rendering_handler_release(void* in_arg)
         rendering_handler->timeline = NULL;
     }
 
-    /* Shut the rendering thread down */
-    system_event_set        (rendering_handler->context_set_event);
-    system_event_set        (rendering_handler->shutdown_request_event);
-    system_event_wait_single(rendering_handler->shutdown_request_ack_event);
-
-    /* Release the context */
-    ogl_context context_gl = ral_context_get_gl_context(rendering_handler->context);
-
-    ogl_context_release(context_gl);
-
-    /* Release created events */
-    system_event_release(rendering_handler->bind_context_request_event);
-    system_event_release(rendering_handler->bind_context_request_ack_event);
-    system_event_release(rendering_handler->callback_request_ack_event);
-    system_event_release(rendering_handler->callback_request_event);
-    system_event_release(rendering_handler->context_set_event);
-    system_event_release(rendering_handler->playback_in_progress_event);
-    system_event_release(rendering_handler->playback_stopped_event);
-    system_event_release(rendering_handler->playback_waiting_event);
-    system_event_release(rendering_handler->shutdown_request_event);
-    system_event_release(rendering_handler->shutdown_request_ack_event);
-    system_event_release(rendering_handler->unbind_context_request_event);
-    system_event_release(rendering_handler->unbind_context_request_ack_event);
-
-    /* Unsubscribe from the window call-backs */
     if (rendering_handler->context != NULL)
     {
+        /* Unsubscribe from the window call-backs */
         system_window window = NULL;
 
         ral_context_get_property(rendering_handler->context,
@@ -980,7 +958,31 @@ PRIVATE void _ogl_rendering_handler_release(void* in_arg)
                                            SYSTEM_WINDOW_CALLBACK_FUNC_KEY_UP,
                                            (void*) &_ogl_rendering_handler_key_up_callback,
                                            rendering_handler);
+
+        /* Release the context. Also, unbind it from the window in order to force a full release. */
+        ral_context_release(rendering_handler->context);
+
+        rendering_handler->context = NULL;
     } /* if (rendering_handler->context != NULL) */
+
+    /* Shut the rendering thread down */
+    system_event_set        (rendering_handler->context_set_event);
+    system_event_set        (rendering_handler->shutdown_request_event);
+    system_event_wait_single(rendering_handler->shutdown_request_ack_event);
+
+    /* Release created events */
+    system_event_release(rendering_handler->bind_context_request_event);
+    system_event_release(rendering_handler->bind_context_request_ack_event);
+    system_event_release(rendering_handler->callback_request_ack_event);
+    system_event_release(rendering_handler->callback_request_event);
+    system_event_release(rendering_handler->context_set_event);
+    system_event_release(rendering_handler->playback_in_progress_event);
+    system_event_release(rendering_handler->playback_stopped_event);
+    system_event_release(rendering_handler->playback_waiting_event);
+    system_event_release(rendering_handler->shutdown_request_event);
+    system_event_release(rendering_handler->shutdown_request_ack_event);
+    system_event_release(rendering_handler->unbind_context_request_event);
+    system_event_release(rendering_handler->unbind_context_request_ack_event);
 
     /* Release rendering cs */
     system_critical_section_release(rendering_handler->rendering_cs);
@@ -1536,7 +1538,7 @@ PUBLIC bool _ogl_rendering_handler_on_bound_to_context(ogl_rendering_handler ren
         rendering_handler_ptr->context = context;
         result                         = true;
 
-        ogl_context_retain(ral_context_get_gl_context(context) );
+        ral_context_retain(context);
         system_event_set  (rendering_handler_ptr->context_set_event);
 
         /* Register for key press callbacks. These are essential for the "runtime time adjustment" mode

@@ -311,17 +311,14 @@ PUBLIC EMERALD_API void scene_texture_set(scene_texture          instance,
         {
             if (texture_ptr->texture != NULL)
             {
-                ral_texture_release(texture_ptr->texture);
+                ASSERT_DEBUG_SYNC(false,
+                                  "? Verify ?");
+                // ral_texture_release(texture_ptr->texture);
 
                 texture_ptr->texture = NULL;
             }
 
             texture_ptr->texture = *((ral_texture*) value);
-
-            if (texture_ptr->texture != NULL)
-            {
-                ral_texture_retain(texture_ptr->texture);
-            }
 
             break;
         }

@@ -28,7 +28,8 @@ REFCOUNT_INSERT_DECLARATIONS(raGL_textures,
  *
  *  TODO
  **/
-PUBLIC raGL_textures raGL_textures_create(ogl_context context);
+PUBLIC raGL_textures raGL_textures_create(ral_context context_ral,
+                                          ogl_context context);
 
 /** TODO */
 PUBLIC raGL_texture raGL_textures_get_texture_from_pool(raGL_textures textures,

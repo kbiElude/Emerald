@@ -365,20 +365,16 @@ PRIVATE void _system_window_thread_entrypoint(void* in_arg)
     is_first_window = false;
 
     /* Create a rendering context for the window */
-    system_critical_section_enter(spawned_windows_cs);
+    window_ptr->rendering_context = ral_context_create(window_ptr->title,
+                                                       (system_window) window_ptr);
+
+    if (window_ptr->rendering_context == NULL)
     {
-        window_ptr->rendering_context = ral_context_create(window_ptr->title,
-                                                           (system_window) window_ptr);
+        LOG_FATAL("Could not create OGL context for window [%s]",
+                  system_hashed_ansi_string_get_buffer(window_ptr->title) );
 
-        if (window_ptr->rendering_context == NULL)
-        {
-            LOG_FATAL("Could not create OGL context for window [%s]",
-                      system_hashed_ansi_string_get_buffer(window_ptr->title) );
-
-            goto end;
-        }
+        goto end;
     }
-    system_critical_section_leave(spawned_windows_cs);
 
     /* All done, set the event so the creating thread can carry on */
     system_event_set(window_ptr->window_initialized_event);
@@ -652,9 +648,6 @@ PUBLIC EMERALD_API bool system_window_close(system_window window)
         {
             ogl_rendering_handler_stop(window_ptr->rendering_handler);
         }
-
-        /* Release the rendering handler */
-        ogl_rendering_handler_release(window_ptr->rendering_handler);
     }
 
     #ifdef INCLUDE_WEBCAM_MANAGER
@@ -693,6 +686,10 @@ PUBLIC EMERALD_API bool system_window_close(system_window window)
     }
     system_critical_section_leave(spawned_windows_cs);
 
+#if 0
+    demo_window_set_private_property(window_ptr->
+                                     DEMO_WINDOW_PRIVATE_PROPERTY_WINDOW
+#endif
     /* Release the descriptor */
     _deinit_system_window(window_ptr);
 
@@ -1820,6 +1817,20 @@ PUBLIC EMERALD_API bool system_window_set_property(system_window          window
                 break;
             }
 
+            case SYSTEM_WINDOW_PROPERTY_RENDERING_CONTEXT_RAL:
+            {
+                if (window_ptr->rendering_context != NULL)
+                {
+                    ral_context_release(window_ptr->rendering_context);
+                }
+
+                window_ptr->rendering_context = *(ral_context*) data;
+
+                ASSERT_DEBUG_SYNC(window_ptr->rendering_context == NULL,
+                                  "SYSTEM_WINDOW_PROPERTY_RENDERING_CONTEXT_RAL property should only be used for internal purposes");
+                break;
+            }
+
             case SYSTEM_WINDOW_PROPERTY_RENDERING_HANDLER:
             {
                 ogl_rendering_handler new_rendering_handler = *(ogl_rendering_handler*) data;
@@ -1832,6 +1843,8 @@ PUBLIC EMERALD_API bool system_window_set_property(system_window          window
                 {
                     window_ptr->rendering_handler = new_rendering_handler;
                     result                        = true;
+
+                    ogl_rendering_handler_retain(new_rendering_handler);
 
                     _ogl_rendering_handler_on_bound_to_context(window_ptr->rendering_handler,
                                                                ((_system_window*)window)->rendering_context);
