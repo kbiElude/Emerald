@@ -71,7 +71,8 @@ PUBLIC EMERALD_API void demo_app_close()
 
 /** Please see header for specification */
 PUBLIC EMERALD_API demo_window demo_app_create_window(system_hashed_ansi_string window_name,
-                                                      ral_backend_type          backend_type)
+                                                      ral_backend_type          backend_type,
+                                                      bool                      use_timeline)
 {
     demo_window   result           = NULL;
     system_hash64 window_name_hash = 0;
@@ -88,7 +89,8 @@ PUBLIC EMERALD_API demo_window demo_app_create_window(system_hashed_ansi_string 
 
     /* Spawn a new window instance */
     result = demo_window_create(window_name,
-                                backend_type);
+                                backend_type,
+                                use_timeline);
 
     if (result == NULL)
     {

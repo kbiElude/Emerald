@@ -90,9 +90,13 @@ PUBLIC EMERALD_API bool demo_window_close(demo_window window);
  *
  *  @param name         Demo name. This will also be used for the window title.
  *  @param backend_type Type of the rendering backend to use.
+ *  @param use_timeline True if a timeline should be instantiated for the window. This means that any
+ *                      custom rendering entry-point you assign to the rendering handler will be ignored.
+ *                      However, timeline is generally very useful for more complex demo applications.
  */
 PUBLIC demo_window demo_window_create(system_hashed_ansi_string name,
-                                      ral_backend_type          backend_type);
+                                      ral_backend_type          backend_type,
+                                      bool                      use_timeline);
 
 /** TODO */
 PUBLIC void demo_window_get_private_property(const demo_window            window,

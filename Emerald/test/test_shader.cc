@@ -10,7 +10,9 @@
 #include "demo/demo_window.h"
 #include "ogl/ogl_context.h"
 #include "ogl/ogl_program.h"
+#include "ogl/ogl_rendering_handler.h"
 #include "ogl/ogl_shader.h"
+#include "ral/ral_context.h"
 #include "system/system_hashed_ansi_string.h"
 #include "system/system_matrix4x4.h"
 #include "main.h"
@@ -46,39 +48,30 @@ static void _on_render_frame_triangle_test_callback(ogl_context context,
     /* Got to do a couple of things if this is the first frame */
     if (triangle_test_is_first_frame)
     {
-        entry_points->pGLUseProgram(triangle_test_program_id);
-
         /* Set up the uniforms */
         entry_points->pGLProgramUniformMatrix4fv(triangle_test_program_id,
                                                  triangle_test_projection_matrix_location,
                                                  1,     /* count */
                                                  false, /* transpose */
                                                  system_matrix4x4_get_row_major_data(triangle_test_projection_matrix) );
-        entry_points->pGLProgramUniformMatrix4fv(triangle_test_program_id, triangle_test_view_matrix_location,
+        entry_points->pGLProgramUniformMatrix4fv(triangle_test_program_id,
+                                                 triangle_test_view_matrix_location,
                                                  1,    /* count */
                                                  true, /* transpose */
                                                  system_matrix4x4_get_row_major_data(triangle_test_view_matrix) );
-        ASSERT_EQ                               (entry_points->pGLGetError(),
-                                                 GL_NO_ERROR);
 
         /* Set up buffer object for position data */
         entry_points->pGLGenBuffers(1,
                                    &triangle_test_position_bo_id);
         ASSERT_NE                  (triangle_test_position_bo_id,
                                     -1);
-        ASSERT_EQ                  (entry_points->pGLGetError(),
-                                    GL_NO_ERROR);
 
         entry_points->pGLBindBuffer(GL_ARRAY_BUFFER,
                                     triangle_test_position_bo_id);
-        ASSERT_EQ                  (entry_points->pGLGetError(),
-                                    GL_NO_ERROR);
         entry_points->pGLBufferData(GL_ARRAY_BUFFER,
                                     sizeof(triangle_test_position_data),
                                     triangle_test_position_data,
                                     GL_STATIC_DRAW);
-        ASSERT_EQ                  (entry_points->pGLGetError(),
-                                    GL_NO_ERROR);
 
         /* Set up VAOs */
         entry_points->pGLGenVertexArrays(1,
@@ -96,18 +89,18 @@ static void _on_render_frame_triangle_test_callback(ogl_context context,
                                                  0,        /* stride */
                                                  0);       /* pointer */
 
-        /* Set up clear color */
-        entry_points->pGLClearColor(1.0f,  /* red   */
-                                    0,     /* green */
-                                    1.0f,  /* blue  */
-                                    1);    /* alpha */
-
         /* Good. */
         triangle_test_is_first_frame = false;
     }
 
+    entry_points->pGLClearColor(1.0f,  /* red   */
+                                0,     /* green */
+                                1.0f,  /* blue  */
+                                1);    /* alpha */
+
     entry_points->pGLClear          (GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     entry_points->pGLBindVertexArray(triangle_test_position_vao_id);
+    entry_points->pGLUseProgram     (triangle_test_program_id);
     entry_points->pGLDrawArrays     (GL_TRIANGLES,
                                      0,  /* first */
                                      3); /* count */
@@ -191,14 +184,19 @@ TEST(ShaderTest, CreationTest)
 TEST(ShaderTest, FullViewportTriangleTest)
 {
     /* Create the window */
+    demo_timeline_segment           video_segment            = NULL;
+    demo_timeline_segment_id        video_segment_id         = -1;
     demo_window                     window                   = NULL;
     ral_context                     window_context           = NULL;
+    ral_texture_format              window_context_texture_format;
     const system_hashed_ansi_string window_name              = system_hashed_ansi_string_create("Test window");
+    ogl_rendering_handler           window_rendering_handler = NULL;
     const uint32_t                  window_resolution[]      = {320, 240};
     const uint32_t                  window_target_frame_rate = ~0;
 
     window = demo_app_create_window(window_name,
-                                    RAL_BACKEND_TYPE_GL);
+                                    RAL_BACKEND_TYPE_GL,
+                                    false /* use_timeline */);
 
     demo_window_set_property(window,
                              DEMO_WINDOW_PROPERTY_RESOLUTION,
@@ -212,9 +210,16 @@ TEST(ShaderTest, FullViewportTriangleTest)
     demo_window_get_property(window,
                              DEMO_WINDOW_PROPERTY_RENDERING_CONTEXT,
                             &window_context);
+    demo_window_get_property(window,
+                             DEMO_WINDOW_PROPERTY_RENDERING_HANDLER,
+                            &window_rendering_handler);
 
     ASSERT_NE(window_context,
               (ral_context) NULL);
+
+    ral_context_get_property(window_context,
+                             RAL_CONTEXT_PROPERTY_SYSTEM_FRAMEBUFFER_COLOR_ATTACHMENT_TEXTURE_FORMAT,
+                            &window_context_texture_format);
 
     /* Create the test vertex shader */
     ogl_shader test_vertex_shader = NULL;
@@ -317,6 +322,13 @@ TEST(ShaderTest, FullViewportTriangleTest)
     triangle_test_view_matrix = system_matrix4x4_create();
 
     system_matrix4x4_set_to_identity(triangle_test_view_matrix);
+
+    /* Use a little hack to re-route the rendering calls to our custom rendering handler. */
+    static const PFNOGLRENDERINGHANDLERRENDERINGCALLBACK pfn_callback_proc = _on_render_frame_triangle_test_callback;
+
+    ogl_rendering_handler_set_property(window_rendering_handler,
+                                       OGL_RENDERING_HANDLER_PROPERTY_RENDERING_CALLBACK,
+                                      &pfn_callback_proc);
 
     /* Let's render a couple of frames. */
     ASSERT_TRUE(demo_window_start_rendering(window,

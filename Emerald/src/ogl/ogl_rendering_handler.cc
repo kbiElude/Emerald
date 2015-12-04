@@ -1482,7 +1482,10 @@ PUBLIC EMERALD_API void ogl_rendering_handler_set_property(ogl_rendering_handler
             ASSERT_DEBUG_SYNC(rendering_handler_ptr->playback_status != RENDERING_HANDLER_PLAYBACK_STATUS_STARTED,
                               "OGL_RENDERING_HANDLER_PROPERTY_RENDERING_CALLBACK property set attempt while rendering play-back in progress");
 
-            rendering_handler_ptr->pfn_rendering_callback = *(PFNOGLRENDERINGHANDLERRENDERINGCALLBACK*) value;
+            if (rendering_handler_ptr->pfn_rendering_callback == NULL)
+            {
+                rendering_handler_ptr->pfn_rendering_callback = *(PFNOGLRENDERINGHANDLERRENDERINGCALLBACK*) value;
+            }
 
             break;
         }

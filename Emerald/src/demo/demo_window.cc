@@ -38,6 +38,7 @@ typedef struct _demo_window
     uint32_t              resolution[2];
     bool                  should_run_fullscreen;
     uint32_t              target_frame_rate;
+    bool                  use_timeline;
     bool                  use_vsync;
     bool                  visible;
     system_window         window;
@@ -46,7 +47,8 @@ typedef struct _demo_window
     system_event          window_closed_event;
 
     explicit _demo_window(system_hashed_ansi_string in_name,
-                          ral_backend_type          in_backend_type)
+                          ral_backend_type          in_backend_type,
+                          bool                      in_use_timeline)
     {
         backend_type                        = in_backend_type;
         context                             = NULL;
@@ -63,6 +65,7 @@ typedef struct _demo_window
         shut_down_event                     = system_event_create(true); /* manual_reset */
         target_frame_rate                   = 60;
         timeline                            = NULL;
+        use_timeline                        = in_use_timeline;
         use_vsync                           = true;
         visible                             = true;
         window                              = NULL;
@@ -205,10 +208,12 @@ end:
 
 /** Please see header for specification */
 PUBLIC demo_window demo_window_create(system_hashed_ansi_string name,
-                                      ral_backend_type          backend_type)
+                                      ral_backend_type          backend_type,
+                                      bool                      use_timeline)
 {
     _demo_window* window_ptr = new (std::nothrow) _demo_window(name,
-                                                               backend_type);
+                                                               backend_type,
+                                                               use_timeline);
 
     ASSERT_ALWAYS_SYNC(window_ptr != NULL,
                        "Out of memory");
@@ -576,6 +581,22 @@ PUBLIC EMERALD_API bool demo_window_show(demo_window window)
     ASSERT_DEBUG_SYNC(window_ptr->context != NULL,
                       "Rendering context is NULL");
 
+    /* Set up a timeline object instance */
+    if (window_ptr->use_timeline)
+    {
+        window_ptr->timeline = demo_timeline_create(window_ptr->name,
+                                                    window_ptr->context,
+                                                    window_ptr->window);
+
+        if (window_ptr->timeline == NULL)
+        {
+            ASSERT_DEBUG_SYNC(window_ptr->timeline != NULL,
+                              "Could not create a demo_timeline instance");
+
+            goto end;
+        }
+    }
+
     /* Set up mouse click & window tear-down callbacks */
     _demo_window_subscribe_for_window_notifications(window_ptr,
                                                     true); /* should_subscribe */
@@ -607,19 +628,6 @@ PUBLIC EMERALD_API bool demo_window_start_rendering(demo_window window,
     {
         ASSERT_DEBUG_SYNC(false,
                           "Specified window first needs to be shown, before rendering can commence");
-
-        goto end;
-    }
-
-    /* Set up a timeline object instance */
-    window_ptr->timeline = demo_timeline_create(window_ptr->name,
-                                                window_ptr->context,
-                                                window_ptr->window);
-
-    if (window_ptr->timeline == NULL)
-    {
-        ASSERT_DEBUG_SYNC(window_ptr->timeline != NULL,
-                          "Could not create a demo_timeline instance");
 
         goto end;
     }
@@ -688,9 +696,12 @@ PUBLIC EMERALD_API bool demo_window_start_rendering(demo_window window,
         } /* if (n_loaded_audio_streams == 1) */
     } /* if (window_ptr->pfn_loader_setup_callback_proc != NULL) */
 
-    ogl_rendering_handler_set_property(window_ptr->rendering_handler,
-                                       OGL_RENDERING_HANDLER_PROPERTY_TIMELINE,
-                                      &window_ptr->timeline);
+    if (window_ptr->use_timeline)
+    {
+        ogl_rendering_handler_set_property(window_ptr->rendering_handler,
+                                           OGL_RENDERING_HANDLER_PROPERTY_TIMELINE,
+                                          &window_ptr->timeline);
+    }
 
     /* Launch the demo playback. If the call should be non-blocking, we need to move to a new thread. */
     window_ptr->rendering_start_time = rendering_start_time;

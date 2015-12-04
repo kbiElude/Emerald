@@ -21,7 +21,8 @@ PUBLIC EMERALD_API void demo_app_close();
 
 /** TODO */
 PUBLIC EMERALD_API demo_window demo_app_create_window(system_hashed_ansi_string window_name,
-                                                      ral_backend_type          backend_type);
+                                                      ral_backend_type          backend_type,
+                                                      bool                      use_timeline = true);
 
 /** TODO */
 PUBLIC EMERALD_API bool demo_app_destroy_window(system_hashed_ansi_string window_name);
