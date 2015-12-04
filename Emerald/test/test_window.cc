@@ -237,7 +237,7 @@ TEST(WindowTest, TimelineTest_ShouldRenderFourDifferentlyColoredScreensWithDiffe
               (demo_timeline) NULL);
 
     ral_context_get_property  (window_context,
-                               RAL_CONTEXT_PROPERTY_SYSTEM_FRAMEBUFFER_COLOR_TEXTURE_FORMAT,
+                               RAL_CONTEXT_PROPERTY_SYSTEM_FRAMEBUFFER_COLOR_ATTACHMENT_TEXTURE_FORMAT,
                               &context_texture_format);
     demo_timeline_get_property(window_timeline,
                                DEMO_TIMELINE_PROPERTY_RENDERING_PIPELINE,

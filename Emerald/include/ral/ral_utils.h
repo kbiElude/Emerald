@@ -8,6 +8,11 @@ typedef enum
 {
     /* bool.
      *
+     * true if the texture format describes stencil data; false otherwise */
+    RAL_TEXTURE_FORMAT_PROPERTY_HAS_STENCIL_DATA,
+
+    /* bool.
+     *
      * true if the texture format is compressed; false otherwise */
     RAL_TEXTURE_FORMAT_PROPERTY_IS_COMPRESSED,
 
@@ -15,7 +20,13 @@ typedef enum
      *
      * Number of components that a given texture format provides data for.
      */
-    RAL_TEXTURE_FORMAT_PROPERTY_N_COMPONENTS
+    RAL_TEXTURE_FORMAT_PROPERTY_N_COMPONENTS,
+
+    /* const char*
+     *
+     * texture format name as a null-terminated string
+     */
+    RAL_TEXTURE_FORMAT_PROPERTY_NAME,
 } ral_texture_format_property;
 
 typedef enum

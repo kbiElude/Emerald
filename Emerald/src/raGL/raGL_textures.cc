@@ -123,7 +123,7 @@ PRIVATE void _raGL_textures_alloc_texture_rendering_thread_callback(ogl_context 
 {
     _raGL_textures_alloc_texture_rendering_thread_callback_arg* callback_arg_ptr = (_raGL_textures_alloc_texture_rendering_thread_callback_arg*) callback_arg;
 
-    callback_arg_ptr->result_texture = raGL_texture_create(context,
+    callback_arg_ptr->result_texture = raGL_texture_create(callback_arg_ptr->textures_ptr->context,
                                                            callback_arg_ptr->texture_ral);
 }
 

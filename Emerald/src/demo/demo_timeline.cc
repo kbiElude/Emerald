@@ -1094,7 +1094,8 @@ PUBLIC EMERALD_API bool demo_timeline_get_segment_at_time(demo_timeline         
 
     system_critical_section_enter(timeline_ptr->cs);
     {
-        if (segment_type == DEMO_TIMELINE_SEGMENT_TYPE_VIDEO)
+        if (segment_type                              == DEMO_TIMELINE_SEGMENT_TYPE_VIDEO &&
+            timeline_ptr->last_used_video_segment_ptr != NULL)
         {
             system_time last_used_segment_end_time   = 0;
             system_time last_used_segment_start_time = 0;
@@ -1108,9 +1109,8 @@ PUBLIC EMERALD_API bool demo_timeline_get_segment_at_time(demo_timeline         
 
             /* Chances are the user needs to access exactly the same video segment, as
              * the last time. Is that the case? */
-            if (timeline_ptr->last_used_video_segment_ptr != NULL &&
-                last_used_segment_start_time              >= time &&
-                last_used_segment_end_time                <= time )
+            if (last_used_segment_start_time >= time &&
+                last_used_segment_end_time   <= time )
             {
                 /* Ha */
                 *out_segment_id_ptr = timeline_ptr->last_used_video_segment_ptr->id;

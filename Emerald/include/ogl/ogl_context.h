@@ -38,25 +38,13 @@ typedef enum ogl_context_property
     /* not settable, ogl_context_bo_bindings */
     OGL_CONTEXT_PROPERTY_BO_BINDINGS,
 
-    /* not settable, GLuint */
-    OGL_CONTEXT_PROPERTY_DEFAULT_FBO_ID,
+    /* not settable, ral_framebuffer */
+    OGL_CONTEXT_PROPERTY_DEFAULT_FBO,
 
     /* not settable, ral_texture_format */
     OGL_CONTEXT_PROPERTY_DEFAULT_FBO_COLOR_TEXTURE_FORMAT,
 
-    /* not settable, ral_texture_format */
-    OGL_CONTEXT_PROPERTY_DEFAULT_FBO_DEPTH_STENCIL_TEXTURE_FORMAT,
-
-    /* not settable, unsigned int
-     *
-     * Tells the number of samples used by default framebuffer object's attachments
-     */
-    OGL_CONTEXT_PROPERTY_DEFAULT_FBO_N_SAMPLES,
-
-    /* not settable, uint32_t[2]
-     *
-     * Size of the default framebuffer object's attachments.
-     */
+    /* not settable, uint32_t[2] */
     OGL_CONTEXT_PROPERTY_DEFAULT_FBO_SIZE,
 
     /* not settable, ogl_context_es_entrypoints*.

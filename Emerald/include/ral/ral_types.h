@@ -193,8 +193,14 @@ typedef enum
     /* not settable, ral_texture_format
      *
      * NOTE: This query will be passed to the rendering back-end.
-     **/
-    RAL_CONTEXT_PROPERTY_SYSTEM_FRAMEBUFFER_COLOR_TEXTURE_FORMAT,
+     */
+    RAL_CONTEXT_PROPERTY_SYSTEM_FRAMEBUFFER_COLOR_ATTACHMENT_TEXTURE_FORMAT,
+
+    /* not settable, uint32_t[2]
+     *
+     * NOTE: This query will be passed to the rendering back-end.
+     */
+    RAL_CONTEXT_PROPERTY_SYSTEM_FRAMEBUFFER_SIZE,
 
     /* not settable, ral_framebuffer[RAL_CONTEXT_PROPERTY_N_OF_SYSTEM_FRAMEBUFFERS].
      *

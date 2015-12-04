@@ -28,9 +28,10 @@ typedef enum
 #include <stdint.h>
 
 /* General includes */
-#define REFCOUNT_INSERT_DECLARATIONS(prefix, public_handle_type)  \
-    PUBLIC EMERALD_API void prefix##_retain(public_handle_type);  \
-    PUBLIC EMERALD_API void prefix##_release(public_handle_type&);
+#define REFCOUNT_INSERT_DECLARATIONS(prefix, public_handle_type)             \
+    PUBLIC EMERALD_API uint32_t prefix##_get_refcounter(public_handle_type); \
+    PUBLIC EMERALD_API void     prefix##_retain(public_handle_type);         \
+    PUBLIC EMERALD_API void     prefix##_release(public_handle_type&);
 
 /******************* OBJECT MANAGER ***************************************/
 #ifdef INCLUDE_OBJECT_MANAGER

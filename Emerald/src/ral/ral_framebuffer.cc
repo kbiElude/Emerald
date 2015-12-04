@@ -15,7 +15,6 @@
 
 typedef struct _ral_framebuffer_attachment
 {
-    bool                                    is_enabled;
     uint32_t                                n_layer;
     uint32_t                                n_mipmap;
     ral_texture                             texture;
@@ -23,7 +22,6 @@ typedef struct _ral_framebuffer_attachment
 
     _ral_framebuffer_attachment()
     {
-        is_enabled   = false;
         n_mipmap     = 0;
         n_layer      = 0;
         texture      = NULL;
@@ -153,7 +151,7 @@ PUBLIC ral_framebuffer ral_framebuffer_create(ral_context               context,
                        "Out of memory");
     if (new_fb_ptr != NULL)
     {
-        /* Create as many color attachment descriptor as the back-end permits */
+        /* Create as many color attachment descriptor as the back-end permits. */
         uint32_t max_color_attachments = 0;
 
         ral_context_get_property(context,
@@ -271,13 +269,6 @@ PUBLIC void ral_framebuffer_get_attachment_property(ral_framebuffer             
             break;
         }
 
-        case RAL_FRAMEBUFFER_ATTACHMENT_PROPERTY_IS_ENABLED:
-        {
-            *(bool*) out_result_ptr = attachment_ptr->is_enabled;
-
-            break;
-        }
-
         case RAL_FRAMEBUFFER_ATTACHMENT_PROPERTY_N_MIPMAP:
         {
             *(uint32_t*) out_result_ptr = attachment_ptr->n_mipmap;
@@ -356,8 +347,7 @@ PUBLIC bool ral_framebuffer_set_attachment_2D(ral_framebuffer                 fr
                                               ral_framebuffer_attachment_type attachment_type,
                                               uint32_t                        index,
                                               ral_texture                     texture_2d,
-                                              uint32_t                        n_mipmap,
-                                              bool                            should_enable)
+                                              uint32_t                        n_mipmap)
 {
     _ral_framebuffer*            framebuffer_ptr       = (_ral_framebuffer*) framebuffer;
     bool                         result                = false;
@@ -411,9 +401,17 @@ PUBLIC bool ral_framebuffer_set_attachment_2D(ral_framebuffer                 fr
     }
 
     /* Looks good. Update the internal storage. */
-    target_attachment_ptr = framebuffer_ptr->color_attachments + index;
+    switch (attachment_type)
+    {
+        case RAL_FRAMEBUFFER_ATTACHMENT_TYPE_COLOR:         target_attachment_ptr =  framebuffer_ptr->color_attachments + index; break;
+        case RAL_FRAMEBUFFER_ATTACHMENT_TYPE_DEPTH_STENCIL: target_attachment_ptr = &framebuffer_ptr->depth_stencil_attachment;  break;
 
-    target_attachment_ptr->is_enabled   = should_enable;
+        default:
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Unrecognized RAL framebuffer attachment type requested.");
+        }
+    } /* switch (attachment_type) */
     target_attachment_ptr->n_mipmap     = n_mipmap;
     target_attachment_ptr->n_layer      = 0;
     target_attachment_ptr->texture      = texture_2d;
@@ -466,13 +464,6 @@ PUBLIC bool ral_framebuffer_set_attachment_property(ral_framebuffer             
     /* Update the requested property value. */
     switch (property)
     {
-        case RAL_FRAMEBUFFER_ATTACHMENT_PROPERTY_IS_ENABLED:
-        {
-            target_attachment_ptr->is_enabled = *(bool*) data;
-
-            break;
-        }
-
         default:
         {
             ASSERT_DEBUG_SYNC(false,

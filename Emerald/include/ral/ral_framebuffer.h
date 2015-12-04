@@ -9,15 +9,6 @@ typedef enum
     /* settable with ral_framebuffer_set_attachment_*(); ral_texture. */
     RAL_FRAMEBUFFER_ATTACHMENT_PROPERTY_BOUND_TEXTURE_RAL,
 
-    /* settable; bool.
-     *
-     * Tells if a given attachment should be bound to a FS output variable at location
-     * corresponding to the attachment index.
-     *
-     * Default value: true.
-     */
-    RAL_FRAMEBUFFER_ATTACHMENT_PROPERTY_IS_ENABLED,
-
     /* settable with ral_framebuffer_set_attachment_*(); uint32_t */
     RAL_FRAMEBUFFER_ATTACHMENT_PROPERTY_N_LAYER,
 
@@ -82,12 +73,6 @@ enum
      **/
     RAL_FRAMEBUFFER_CALLBACK_ID_DEPTH_STENCIL_ATTACHMENT_CONFIGURATION_CHANGED,
 
-    /* Called back whenever the framebuffer is about to be used eg. for a copy or a draw call.
-     *
-     * arg: ral_framebuffer instance.
-     **/
-    RAL_FRAMEBUFFER_CALLBACK_ID_SYNC_REQUIRED,
-
     /* Always last */
     RAL_FRAMEBUFFER_CALLBACK_ID_COUNT
 };
@@ -129,8 +114,7 @@ PUBLIC bool ral_framebuffer_set_attachment_2D(ral_framebuffer                 fr
                                               ral_framebuffer_attachment_type attachment_type,
                                               uint32_t                        index,
                                               ral_texture                     texture_2d,
-                                              uint32_t                        n_mipmap,
-                                              bool                            should_enable);
+                                              uint32_t                        n_mipmap);
 
 /** TODO */
 PUBLIC bool ral_framebuffer_set_attachment_property(ral_framebuffer                     framebuffer,

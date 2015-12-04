@@ -21,8 +21,12 @@
 #include "ogl/ogl_shadow_mapping.h"
 #include "ogl/ogl_text.h"
 #include "raGL/raGL_buffers.h"
+#include "raGL/raGL_texture.h"
 #include "raGL/raGL_utils.h"
 #include "ral/ral_context.h"
+#include "ral/ral_framebuffer.h"
+#include "ral/ral_texture.h"
+#include "ral/ral_utils.h"
 #include "system/system_assertions.h"
 #include "system/system_critical_section.h"
 #include "system/system_event.h"
@@ -86,13 +90,10 @@ typedef struct
     GLuint               vao_no_vaas_id;
 
     /* Used for off-screen rendering. */
-    ral_texture_format fbo_color_texture_format;
-    GLuint             fbo_color_rbo_id;
-    ral_texture_format fbo_depth_stencil_texture_format;
-    GLuint             fbo_depth_stencil_rbo_id;
-    GLuint             fbo_id;
-    unsigned int       fbo_n_samples_effective;
-    unsigned int       fbo_size[2];
+    ral_framebuffer fbo;
+    ral_texture     fbo_color_to;
+    ral_texture     fbo_depth_stencil_to;
+    uint32_t        fbo_to_size[2];
 
     /* Used by the root window for MSAA enumeration only */
     GLenum msaa_enumeration_color_internalformat;
@@ -187,25 +188,24 @@ PRIVATE void APIENTRY             _ogl_context_debug_message_gl_callback        
                                                                                                       const void*                  userParam);
 PRIVATE void                      _ogl_context_enumerate_msaa_samples_rendering_thread_callback      (ogl_context                  context,
                                                                                                       void*                        user_arg);
-PRIVATE bool                      _ogl_context_get_attachment_internalformats_for_system_pixel_format(const system_pixel_format    pf,
-                                                                                                      GLenum*                      out_color_attachment_internalformat_ptr,
-                                                                                                      GLenum*                      out_depth_stencil_attachment_internalformat_ptr);
-PRIVATE bool                      _ogl_context_get_color_attachment_internalformat_for_rgba_bits     (unsigned char*               n_rgba_bits,
+PRIVATE bool                      _ogl_context_get_attachment_formats_for_system_pixel_format        (const system_pixel_format    pf,
+                                                                                                      ral_texture_format*          out_color_attachment_internalformat_ptr,
+                                                                                                      ral_texture_format*          out_depth_stencil_attachment_internalformat_ptr);
+PRIVATE bool                      _ogl_context_get_color_attachment_format_for_rgba_bits             (unsigned char*               n_rgba_bits,
                                                                                                       bool                         use_srgb_color_space,
-                                                                                                      GLenum*                      out_gl_internalformat);
+                                                                                                      ral_texture_format*          out_format);
 PRIVATE system_hashed_ansi_string _ogl_context_get_compressed_filename                               (void*                        user_arg,
                                                                                                       system_hashed_ansi_string    decompressed_filename,
                                                                                                       GLenum*                      out_compressed_gl_enum,
                                                                                                       system_file_unpacker*        out_file_unpacker);
-PRIVATE bool                      _ogl_context_get_depth_attachment_internalformat_for_bits          (unsigned char                n_depth_bits,
-                                                                                                      GLenum*                      out_gl_internalformat);
-PRIVATE bool                      _ogl_context_get_depth_stencil_attachment_internalformat_for_bits  (unsigned char                n_depth_bits,
+PRIVATE bool                      _ogl_context_get_depth_attachment_format_for_bits                  (unsigned char                n_depth_bits,
+                                                                                                      ral_texture_format*          out_format_ptr);
+PRIVATE bool                      _ogl_context_get_depth_stencil_attachment_format_for_bits          (unsigned char                n_depth_bits,
                                                                                                       unsigned char                n_stencil_bits,
-                                                                                                      GLenum*                      out_gl_internalformat);
+                                                                                                      ral_texture_format*          out_format_ptr);
 PRIVATE bool                      _ogl_context_get_function_pointers                                 (_ogl_context*                context_ptr,
                                                                                                       func_ptr_table_entry*        entries,
                                                                                                       uint32_t                     n_entries);
-PRIVATE const char*               _ogl_context_get_internalformat_string                             (GLenum                       internalformat);
 PRIVATE void                      _ogl_context_gl_info_deinit                                        (ogl_context_gl_info*         info_ptr);
 PRIVATE void                      _ogl_context_gl_info_init                                          (ogl_context_gl_info*         info_ptr,
                                                                                                       const ogl_context_gl_limits* limits_ptr);
@@ -217,7 +217,6 @@ PRIVATE void                      _ogl_context_initialize_gl_arb_multi_bind_exte
 PRIVATE void                      _ogl_context_initialize_gl_arb_sparse_buffer_extension             (_ogl_context*                context_ptr);
 PRIVATE void                      _ogl_context_initialize_gl_ext_direct_state_access_extension       (_ogl_context*                context_ptr);
 PRIVATE void                      _ogl_context_initialize_gl_ext_texture_filter_anisotropic_extension(_ogl_context*                context_ptr);
-PRIVATE bool                      _ogl_context_is_stencil_data_included_in_internalformat            (GLenum                       internalformat);
 PRIVATE void                      _ogl_context_release                                               (void*                        ptr);
 PRIVATE void                      _ogl_context_retrieve_ES_function_pointers                         (_ogl_context*                context_ptr);
 PRIVATE void                      _ogl_context_retrieve_GL_ARB_buffer_storage_function_pointers      (_ogl_context*                context_ptr);
@@ -261,8 +260,7 @@ PRIVATE ogl_context _ogl_context_create_from_system_window_shared(system_hashed_
     new_context_ptr->backend                                = backend;
     new_context_ptr->context                                = context;
     new_context_ptr->context_platform                       = NULL;
-    new_context_ptr->fbo_color_texture_format               = RAL_TEXTURE_FORMAT_UNKNOWN;
-    new_context_ptr->fbo_depth_stencil_texture_format       = RAL_TEXTURE_FORMAT_UNKNOWN;
+    new_context_ptr->fbo                                    = NULL;
     new_context_ptr->msaa_enumeration_color_samples         = NULL;
     new_context_ptr->msaa_enumeration_depth_stencil_samples = NULL;
     new_context_ptr->parent_context                         = parent_context;
@@ -317,6 +315,10 @@ PRIVATE ogl_context _ogl_context_create_from_system_window_shared(system_hashed_
     }
 
     /* The first stage of context creation process is platform-specific. */
+    raGL_backend_set_private_property(backend,
+                                      RAGL_BACKEND_PRIVATE_PROPERTY_RENDERING_CONTEXT,
+                                     &new_context_ptr);
+
     new_context_ptr->pfn_init( (ogl_context) new_context_ptr,
                                _ogl_context_init_context_after_creation);
 
@@ -482,16 +484,16 @@ PRIVATE void _ogl_context_enumerate_msaa_samples_rendering_thread_callback(ogl_c
 }
 
 /** TODO */
-PRIVATE bool _ogl_context_get_attachment_internalformats_for_system_pixel_format(const system_pixel_format pf,
-                                                                                 GLenum*                   out_color_attachment_internalformat_ptr,
-                                                                                 GLenum*                   out_depth_stencil_attachment_internalformat_ptr)
+PRIVATE bool _ogl_context_get_attachment_formats_for_system_pixel_format(const system_pixel_format pf,
+                                                                         ral_texture_format*       out_color_attachment_internalformat_ptr,
+                                                                         ral_texture_format*       out_depth_stencil_attachment_internalformat_ptr)
 {
-    GLenum        internalformat_color          = GL_NONE;
-    GLenum        internalformat_depth_stencil  = GL_NONE;
-    unsigned char n_color_rgba_bits[4]          = {0};
-    unsigned char n_depth_bits                  = 0;
-    unsigned char n_stencil_bits                = 0;
-    bool          result                        = true;
+    ral_texture_format format_color         = RAL_TEXTURE_FORMAT_UNKNOWN;
+    ral_texture_format format_depth_stencil = RAL_TEXTURE_FORMAT_UNKNOWN;
+    unsigned char      n_color_rgba_bits[4] = {0};
+    unsigned char      n_depth_bits         = 0;
+    unsigned char      n_stencil_bits       = 0;
+    bool               result               = true;
 
     /* Retrieve the number of bits for all three attachments */
     system_pixel_format_get_property(pf,
@@ -514,9 +516,9 @@ PRIVATE bool _ogl_context_get_attachment_internalformats_for_system_pixel_format
                                     &n_stencil_bits);
 
     /* Convert the pixel format into a set of GL internalformats */
-    if (!_ogl_context_get_color_attachment_internalformat_for_rgba_bits(n_color_rgba_bits,
-                                                                        true, /* use_srgb_color_space */
-                                                                       &internalformat_color) )
+    if (!_ogl_context_get_color_attachment_format_for_rgba_bits(n_color_rgba_bits,
+                                                                true, /* use_srgb_color_space */
+                                                               &format_color) )
     {
         ASSERT_DEBUG_SYNC(false,
                           "Cannot convert user-specified pixel format to color internalformat");
@@ -529,11 +531,11 @@ PRIVATE bool _ogl_context_get_attachment_internalformats_for_system_pixel_format
     {
         if (n_stencil_bits == 0)
         {
-            if (!_ogl_context_get_depth_attachment_internalformat_for_bits(n_depth_bits,
-                                                                          &internalformat_depth_stencil) )
+            if (!_ogl_context_get_depth_attachment_format_for_bits(n_depth_bits,
+                                                                  &format_depth_stencil) )
             {
                 ASSERT_DEBUG_SYNC(false,
-                                "Cannot convert user-specified pixel format to depth internalformat");
+                                "Cannot convert user-specified pixel format to a depth texture format");
 
                 result = false;
                 goto end;
@@ -541,12 +543,12 @@ PRIVATE bool _ogl_context_get_attachment_internalformats_for_system_pixel_format
         }
         else
         {
-            if (!_ogl_context_get_depth_stencil_attachment_internalformat_for_bits(n_depth_bits,
-                                                                                n_stencil_bits,
-                                                                                &internalformat_depth_stencil) )
+            if (!_ogl_context_get_depth_stencil_attachment_format_for_bits(n_depth_bits,
+                                                                           n_stencil_bits,
+                                                                          &format_depth_stencil) )
             {
                 ASSERT_DEBUG_SYNC(false,
-                                "Cannot convert user-specified pixel format to depth+stencil internalformat");
+                                "Cannot convert user-specified pixel format to a depth+stencil format");
 
                 result = false;
                 goto end;
@@ -557,13 +559,13 @@ PRIVATE bool _ogl_context_get_attachment_internalformats_for_system_pixel_format
 end:
     if (result)
     {
-        *out_color_attachment_internalformat_ptr         = internalformat_color;
-        *out_depth_stencil_attachment_internalformat_ptr = internalformat_depth_stencil;
+        *out_color_attachment_internalformat_ptr         = format_color;
+        *out_depth_stencil_attachment_internalformat_ptr = format_depth_stencil;
     }
     else
     {
-        *out_color_attachment_internalformat_ptr         = GL_NONE;
-        *out_depth_stencil_attachment_internalformat_ptr = GL_NONE;
+        *out_color_attachment_internalformat_ptr         = RAL_TEXTURE_FORMAT_UNKNOWN;
+        *out_depth_stencil_attachment_internalformat_ptr = RAL_TEXTURE_FORMAT_UNKNOWN;
     }
 
     return result;
@@ -744,21 +746,21 @@ end:
 }
 
 /** TODO */
-PRIVATE bool _ogl_context_get_color_attachment_internalformat_for_rgba_bits(unsigned char* n_rgba_bits,
-                                                                            bool           use_srgb_color_space,
-                                                                            GLenum*        out_gl_internalformat)
+PRIVATE bool _ogl_context_get_color_attachment_format_for_rgba_bits(unsigned char*      n_rgba_bits,
+                                                                    bool                use_srgb_color_space,
+                                                                    ral_texture_format* out_format)
 {
     bool result = true;
 
     if (n_rgba_bits[0] == 0 && n_rgba_bits[1] == 0 && n_rgba_bits[2] == 0 && n_rgba_bits[3] == 0)
     {
-        *out_gl_internalformat = GL_NONE;
+        *out_format = RAL_TEXTURE_FORMAT_UNKNOWN;
     }
     else
     if (use_srgb_color_space)
     {
-        if (n_rgba_bits[0] == 8 && n_rgba_bits[1] == 8 && n_rgba_bits[2] == 8 && n_rgba_bits[3] == 0) *out_gl_internalformat = GL_SRGB8;       else
-        if (n_rgba_bits[0] == 8 && n_rgba_bits[1] == 8 && n_rgba_bits[2] == 8 && n_rgba_bits[3] == 8) *out_gl_internalformat = GL_SRGB8_ALPHA8;else
+        if (n_rgba_bits[0] == 8 && n_rgba_bits[1] == 8 && n_rgba_bits[2] == 8 && n_rgba_bits[3] == 0) *out_format = RAL_TEXTURE_FORMAT_SRGB8_UNORM; else
+        if (n_rgba_bits[0] == 8 && n_rgba_bits[1] == 8 && n_rgba_bits[2] == 8 && n_rgba_bits[3] == 8) *out_format = RAL_TEXTURE_FORMAT_SRGBA8_UNORM;else
         {
             ASSERT_DEBUG_SYNC(false,
                               "Unsupported number of RGBA bits requested");
@@ -768,8 +770,8 @@ PRIVATE bool _ogl_context_get_color_attachment_internalformat_for_rgba_bits(unsi
     } /* if (use_srgb_color_space) */
     else
     {
-        if (n_rgba_bits[0] == 8 && n_rgba_bits[1] == 8 && n_rgba_bits[2] == 8 && n_rgba_bits[3] == 0) *out_gl_internalformat = GL_RGB8; else
-        if (n_rgba_bits[0] == 8 && n_rgba_bits[1] == 8 && n_rgba_bits[2] == 8 && n_rgba_bits[3] == 8) *out_gl_internalformat = GL_RGBA8;else
+        if (n_rgba_bits[0] == 8 && n_rgba_bits[1] == 8 && n_rgba_bits[2] == 8 && n_rgba_bits[3] == 0) *out_format = RAL_TEXTURE_FORMAT_RGB8_UNORM; else
+        if (n_rgba_bits[0] == 8 && n_rgba_bits[1] == 8 && n_rgba_bits[2] == 8 && n_rgba_bits[3] == 8) *out_format = RAL_TEXTURE_FORMAT_RGBA8_UNORM;else
         {
             ASSERT_DEBUG_SYNC(false,
                               "Unsupported number of RGBA bits requested");
@@ -782,8 +784,8 @@ PRIVATE bool _ogl_context_get_color_attachment_internalformat_for_rgba_bits(unsi
 }
 
 /** TODO */
-PRIVATE bool _ogl_context_get_depth_attachment_internalformat_for_bits(unsigned char n_depth_bits,
-                                                                       GLenum*       out_gl_internalformat)
+PRIVATE bool _ogl_context_get_depth_attachment_format_for_bits(unsigned char       n_depth_bits,
+                                                               ral_texture_format* out_format_ptr)
 {
     bool result = true;
 
@@ -791,28 +793,28 @@ PRIVATE bool _ogl_context_get_depth_attachment_internalformat_for_bits(unsigned 
     {
         case 0:
         {
-            *out_gl_internalformat = GL_NONE;
+            *out_format_ptr = RAL_TEXTURE_FORMAT_UNKNOWN;
 
             break;
         }
 
         case 16:
         {
-            *out_gl_internalformat = GL_DEPTH_COMPONENT16;
+            *out_format_ptr = RAL_TEXTURE_FORMAT_DEPTH16_SNORM;
 
             break;
         }
 
         case 24:
         {
-            *out_gl_internalformat = GL_DEPTH_COMPONENT24;
+            *out_format_ptr = RAL_TEXTURE_FORMAT_DEPTH24_SNORM;
 
             break;
         }
 
         case 32:
         {
-            *out_gl_internalformat = GL_DEPTH_COMPONENT32;
+            *out_format_ptr = RAL_TEXTURE_FORMAT_DEPTH32_SNORM;
 
             break;
         }
@@ -830,20 +832,20 @@ PRIVATE bool _ogl_context_get_depth_attachment_internalformat_for_bits(unsigned 
 }
 
 /** TODO */
-PRIVATE bool _ogl_context_get_depth_stencil_attachment_internalformat_for_bits(unsigned char n_depth_bits,
-                                                                               unsigned char n_stencil_bits,
-                                                                               GLenum*       out_gl_internalformat)
+PRIVATE bool _ogl_context_get_depth_stencil_attachment_format_for_bits(unsigned char       n_depth_bits,
+                                                                       unsigned char       n_stencil_bits,
+                                                                       ral_texture_format* out_format_ptr)
 {
     bool result = true;
 
     if (n_depth_bits == 24 && n_stencil_bits == 8)
     {
-        *out_gl_internalformat = GL_DEPTH24_STENCIL8;
+        *out_format_ptr = RAL_TEXTURE_FORMAT_DEPTH24_STENCIL8;
     }
     else
     if (n_depth_bits == 32 && n_stencil_bits == 8)
     {
-        *out_gl_internalformat = GL_DEPTH32F_STENCIL8;
+        *out_format_ptr = RAL_TEXTURE_FORMAT_DEPTH32F_STENCIL8;
     }
     else
     {
@@ -884,28 +886,6 @@ PRIVATE bool _ogl_context_get_function_pointers(_ogl_context*         context_pt
             result = false;
         }
     }
-
-    return result;
-}
-
-/** TODO */
-PRIVATE const char* _ogl_context_get_internalformat_string(GLenum internalformat)
-{
-    const char* result = "?!";
-
-    switch (internalformat)
-    {
-        case GL_DEPTH_COMPONENT16: result = "GL_DEPTH_COMPONENT16"; break;
-        case GL_DEPTH_COMPONENT24: result = "GL_DEPTH_COMPONENT24"; break;
-        case GL_DEPTH_COMPONENT32: result = "GL_DEPTH_COMPONENT32"; break;
-        case GL_DEPTH24_STENCIL8:  result = "GL_DEPTH24_STENCIL8";  break;
-        case GL_DEPTH32F_STENCIL8: result = "GL_DEPTH32F_STENCIL8"; break;
-        case GL_NONE:              result = "GL_NONE";              break;
-        case GL_RGB8:              result = "GL_RGB8";              break;
-        case GL_RGBA8:             result = "GL_RGBA8";             break;
-        case GL_SRGB8:             result = "GL_SRGB8";             break;
-        case GL_SRGB8_ALPHA8:      result = "GL_SRGB8_ALPHA8";      break;
-    } /* switch (internalformat) */
 
     return result;
 }
@@ -958,13 +938,15 @@ PRIVATE void _ogl_context_init_context_after_creation(ogl_context context)
     memset(&context_ptr->limits,
            0,
            sizeof(context_ptr->limits) );
+    memset(context_ptr->fbo_to_size,
+           0,
+           sizeof(context_ptr->fbo_to_size) );
 
     context_ptr->bo_bindings                                = NULL;
     context_ptr->es_ext_texture_buffer_support              = false;
-    context_ptr->fbo_color_rbo_id                           = 0;
-    context_ptr->fbo_depth_stencil_rbo_id                   = 0;
-    context_ptr->fbo_id                                     = 0;
-    context_ptr->fbo_n_samples_effective                    = 0;
+    context_ptr->fbo                                        = NULL;
+    context_ptr->fbo_color_to                               = NULL;
+    context_ptr->fbo_depth_stencil_to                       = NULL;
     context_ptr->flyby                                      = NULL;
     context_ptr->gl_arb_buffer_storage_support              = false;
     context_ptr->gl_arb_multi_bind_support                  = false;
@@ -1187,8 +1169,30 @@ PRIVATE void _ogl_context_init_context_after_creation(ogl_context context)
         context_ptr->is_nv_driver = true;
     }
 
-    /* Initialize the FBO we will use to render contents, to be later blitted into the back buffer */
-    _ogl_context_initialize_fbo(context_ptr);
+    /* Initialize the FBO we will use to render contents, to be later blitted into the back buffer.
+     *
+     * NOTE: We need to be a little filthy here and put the rendering handler into a special mode,
+     *       where it will always assume the current thread can be used for dispatching GL calls.
+     *       The rendering thread is blocked at the time of this call so we need to use this thread
+     *       temporarily to set up everything.
+     */
+    static const bool     call_passthrough_mode_disabled = false;
+    static const bool     call_passthrough_mode_enabled  = true;
+    ogl_rendering_handler rendering_handler              = NULL;
+
+    system_window_get_property(context_ptr->window,
+                               SYSTEM_WINDOW_PROPERTY_RENDERING_HANDLER,
+                              &rendering_handler);
+
+    ogl_rendering_handler_set_private_property(rendering_handler,
+                                               OGL_RENDERING_HANDLER_PRIVATE_PROPERTY_CALL_PASSTHROUGH_MODE,
+                                              &call_passthrough_mode_enabled);
+    {
+        _ogl_context_initialize_fbo(context_ptr);
+    }
+    ogl_rendering_handler_set_private_property(rendering_handler,
+                                               OGL_RENDERING_HANDLER_PRIVATE_PROPERTY_CALL_PASSTHROUGH_MODE,
+                                              &call_passthrough_mode_disabled);
 
     #ifdef __linux
     {
@@ -1224,60 +1228,14 @@ PRIVATE void _ogl_context_initialize_es_ext_texture_buffer_extension(_ogl_contex
 /** TODO */
 PRIVATE void _ogl_context_initialize_fbo(_ogl_context* context_ptr)
 {
-    GLenum                                  fbo_completeness_status                       = GL_NONE;
-    GLenum                                  internalformat_color                          = GL_NONE;
-    GLenum                                  internalformat_depth_stencil                  = GL_NONE;
-    bool                                    internalformat_depth_stencil_includes_stencil = false;
-    unsigned int                            n_samples                                     = 0;
-    unsigned int                            n_samples_effective                           = 0;
-    system_pixel_format                     pixel_format                                  = NULL;
-    PFNGLBINDFRAMEBUFFERPROC                pGLBindFramebuffer                            = NULL;
-    PFNGLBINDRENDERBUFFERPROC               pGLBindRenderbuffer                           = NULL;
-    PFNGLCHECKFRAMEBUFFERSTATUSPROC         pGLCheckFramebufferStatus                     = NULL;
-    PFNGLFRAMEBUFFERRENDERBUFFERPROC        pGLFramebufferRenderbuffer                    = NULL;
-    PFNGLGENFRAMEBUFFERSPROC                pGLGenFramebuffers                            = NULL;
-    PFNGLGENRENDERBUFFERSPROC               pGLGenRenderbuffers                           = NULL;
-    PFNGLGETRENDERBUFFERPARAMETERIVPROC     pGLGetRenderbufferParameteriv                 = NULL;
-    PFNGLRENDERBUFFERSTORAGEPROC            pGLRenderbufferStorage                        = NULL;
-    PFNGLRENDERBUFFERSTORAGEMULTISAMPLEPROC pGLRenderbufferStorageMultisample             = NULL;
-    int                                     window_dimensions[2]                          = {0};
-
-    struct _rbo
-    {
-        GLenum internalformat;
-        bool   is_color_attachment;
-        bool   is_depth_attachment;
-        bool   is_stencil_attachment;
-        GLuint rbo_id;
-    } rbos[2];
-
-    if (context_ptr->backend_type == RAL_BACKEND_TYPE_ES)
-    {
-        pGLBindFramebuffer                = context_ptr->entry_points_es.pGLBindFramebuffer;
-        pGLBindRenderbuffer               = context_ptr->entry_points_es.pGLBindRenderbuffer;
-        pGLCheckFramebufferStatus         = context_ptr->entry_points_es.pGLCheckFramebufferStatus;
-        pGLFramebufferRenderbuffer        = context_ptr->entry_points_es.pGLFramebufferRenderbuffer;
-        pGLGenFramebuffers                = context_ptr->entry_points_es.pGLGenFramebuffers;
-        pGLGenRenderbuffers               = context_ptr->entry_points_es.pGLGenRenderbuffers;
-        pGLGetRenderbufferParameteriv     = context_ptr->entry_points_es.pGLGetRenderbufferParameteriv;
-        pGLRenderbufferStorage            = context_ptr->entry_points_es.pGLRenderbufferStorage;
-        pGLRenderbufferStorageMultisample = context_ptr->entry_points_es.pGLRenderbufferStorageMultisample;
-    }
-    else
-    {
-        ASSERT_DEBUG_SYNC(context_ptr->backend_type == RAL_BACKEND_TYPE_GL,
-                          "Unrecognized context type");
-
-        pGLBindFramebuffer                = context_ptr->entry_points_gl.pGLBindFramebuffer;
-        pGLBindRenderbuffer               = context_ptr->entry_points_gl.pGLBindRenderbuffer;
-        pGLCheckFramebufferStatus         = context_ptr->entry_points_gl.pGLCheckFramebufferStatus;
-        pGLFramebufferRenderbuffer        = context_ptr->entry_points_gl.pGLFramebufferRenderbuffer;
-        pGLGenFramebuffers                = context_ptr->entry_points_gl.pGLGenFramebuffers;
-        pGLGenRenderbuffers               = context_ptr->entry_points_gl.pGLGenRenderbuffers;
-        pGLGetRenderbufferParameteriv     = context_ptr->entry_points_gl.pGLGetRenderbufferParameteriv;
-        pGLRenderbufferStorage            = context_ptr->entry_points_gl.pGLRenderbufferStorage;
-        pGLRenderbufferStorageMultisample = context_ptr->entry_points_gl.pGLRenderbufferStorageMultisample;
-    }
+    GLenum              fbo_completeness_status               = GL_NONE;
+    ral_texture_format  format_color                          = RAL_TEXTURE_FORMAT_UNKNOWN;
+    ral_texture_format  format_depth_stencil                  = RAL_TEXTURE_FORMAT_UNKNOWN;
+    bool                format_depth_stencil_includes_stencil = false;
+    unsigned int        n_samples                             = 0;
+    unsigned int        n_samples_effective                   = 0;
+    system_pixel_format pixel_format                          = NULL;
+    int                 window_dimensions[2]                  = {0};
 
     /* Determine what internalformats we need to use for the color, depth and stencil attachments.
      * While on it, also extract the number of samples the caller wants us to use.
@@ -1338,168 +1296,146 @@ PRIVATE void _ogl_context_initialize_fbo(_ogl_context* context_ptr)
         }
     } /* if (n_samples == SYSTEM_PIXEL_FORMAT_USE_MAXIMUM_NUMBER_OF_SAMPLES) */
 
-    if (!_ogl_context_get_attachment_internalformats_for_system_pixel_format(pixel_format,
-                                                                            &internalformat_color,
-                                                                            &internalformat_depth_stencil) )
+    if (!_ogl_context_get_attachment_formats_for_system_pixel_format(pixel_format,
+                                                                    &format_color,
+                                                                    &format_depth_stencil) )
     {
         ASSERT_DEBUG_SYNC(false,
-                         "Cannot determine color/depth/stencil attachment internalformats for the window's pixel format");
+                         "Cannot determine color/depth/stencil attachment formats for the window's pixel format");
 
         goto end;
     }
 
-    if (internalformat_color         != GL_NONE ||
-        internalformat_depth_stencil != GL_NONE)
+    if (format_color         != RAL_TEXTURE_FORMAT_UNKNOWN ||
+        format_depth_stencil != RAL_TEXTURE_FORMAT_UNKNOWN)
     {
         ASSERT_DEBUG_SYNC(n_samples >= 1,
                         "Invalid number of samples requested");
 
-        internalformat_depth_stencil_includes_stencil = _ogl_context_is_stencil_data_included_in_internalformat(internalformat_depth_stencil);
+        ral_utils_get_texture_format_property(format_depth_stencil,
+                                              RAL_TEXTURE_FORMAT_PROPERTY_HAS_STENCIL_DATA,
+                                             &format_depth_stencil_includes_stencil);
 
         /* Generate the GL objects */
-        pGLGenFramebuffers(1,
-                          &context_ptr->fbo_id);
-        pGLBindFramebuffer(GL_DRAW_FRAMEBUFFER,
-                          context_ptr->fbo_id);
+        ral_context_create_framebuffers(context_ptr->context,
+                                        1, /* n_framebuffers */
+                                       &context_ptr->fbo);
 
-        if (internalformat_color != GL_NONE)
+        if (format_color != RAL_TEXTURE_FORMAT_UNKNOWN)
         {
-            pGLGenRenderbuffers(1,
-                               &context_ptr->fbo_color_rbo_id);
+            ral_texture_create_info color_to_create_info;
+            bool                    color_to_is_rb       = false;
+            raGL_texture            color_to_raGL        = NULL;
+            bool                    result;
+
+            color_to_create_info.base_mipmap_depth      = 1;
+            color_to_create_info.base_mipmap_height     = window_dimensions[1];
+            color_to_create_info.base_mipmap_width      = window_dimensions[0];
+            color_to_create_info.fixed_sample_locations = false;
+            color_to_create_info.format                 = format_color;
+            color_to_create_info.n_layers               = 1;
+            color_to_create_info.n_samples              = n_samples;
+            color_to_create_info.type                   = RAL_TEXTURE_TYPE_2D;
+            color_to_create_info.usage                  = RAL_TEXTURE_USAGE_COLOR_ATTACHMENT_BIT;
+            color_to_create_info.use_full_mipmap_chain  = false;
+
+            result = ral_context_create_textures(context_ptr->context,
+                                                 1, /* n_textures */
+                                                &color_to_create_info,
+                                                &context_ptr->fbo_color_to);
+
+            ASSERT_DEBUG_SYNC(result,
+                              "Could not create default FBO's color texture");
+
+            /* Make sure this is actually a renderbuffer. */
+            color_to_raGL = ral_context_get_texture_gl(context_ptr->context,
+                                                       context_ptr->fbo_color_to);
+
+            raGL_texture_get_property(color_to_raGL,
+                                      RAGL_TEXTURE_PROPERTY_IS_RENDERBUFFER,
+                                     &color_to_is_rb);
+
+            ASSERT_DEBUG_SYNC(color_to_is_rb,
+                              "Default FB's color texture is not a RB");
         }
 
-        if (internalformat_depth_stencil != GL_NONE)
+        if (format_depth_stencil != RAL_TEXTURE_FORMAT_UNKNOWN)
         {
-            pGLGenRenderbuffers(1,
-                               &context_ptr->fbo_depth_stencil_rbo_id);
+            ral_texture_create_info depth_stencil_to_create_info;
+            bool                    depth_stencil_to_is_rb = false;
+            raGL_texture            depth_stencil_to_raGL  = NULL;
+            bool                    result;
+
+            depth_stencil_to_create_info.base_mipmap_depth      = 1;
+            depth_stencil_to_create_info.base_mipmap_height     = window_dimensions[1];
+            depth_stencil_to_create_info.base_mipmap_width      = window_dimensions[0];
+            depth_stencil_to_create_info.fixed_sample_locations = false;
+            depth_stencil_to_create_info.format                 = format_depth_stencil;
+            depth_stencil_to_create_info.n_layers               = 1;
+            depth_stencil_to_create_info.n_samples              = n_samples;
+            depth_stencil_to_create_info.type                   = RAL_TEXTURE_TYPE_2D;
+            depth_stencil_to_create_info.usage                  = RAL_TEXTURE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
+            depth_stencil_to_create_info.use_full_mipmap_chain  = false;
+
+            result = ral_context_create_textures(context_ptr->context,
+                                                 1, /* n_textures */
+                                                &depth_stencil_to_create_info,
+                                                &context_ptr->fbo_depth_stencil_to);
+
+            ASSERT_DEBUG_SYNC(result,
+                              "Could not create default FBO's depth+stencil texture");
+
+            /* Make sure this is actually a renderbuffer. */
+            depth_stencil_to_raGL = ral_context_get_texture_gl(context_ptr->context,
+                                                               context_ptr->fbo_depth_stencil_to);
+
+            raGL_texture_get_property(depth_stencil_to_raGL,
+                                      RAGL_TEXTURE_PROPERTY_IS_RENDERBUFFER,
+                                      &depth_stencil_to_is_rb);
+
+            ASSERT_DEBUG_SYNC(depth_stencil_to_is_rb,
+                              "Default FB's depth/stencil texture is not a RB");
         }
 
-        /* Set up the framebuffer object attachments */
-        rbos[0].internalformat        = internalformat_color;
-        rbos[0].is_color_attachment   = true;
-        rbos[0].is_depth_attachment   = false;
-        rbos[0].is_stencil_attachment = false;
-        rbos[0].rbo_id                = context_ptr->fbo_color_rbo_id;
+        /* Configure the framebuffer */
+        ral_framebuffer_set_attachment_2D(context_ptr->fbo,
+                                          RAL_FRAMEBUFFER_ATTACHMENT_TYPE_COLOR,
+                                          0, /* index */
+                                          context_ptr->fbo_color_to,
+                                          0); /* n_mipmap */
 
-        rbos[1].internalformat        = internalformat_depth_stencil;
-        rbos[1].is_color_attachment   = false;
-        rbos[1].is_depth_attachment   = true;
-        rbos[1].is_stencil_attachment = internalformat_depth_stencil_includes_stencil;
-        rbos[1].rbo_id                = context_ptr->fbo_depth_stencil_rbo_id;
-
-        for (unsigned int n_rbo = 0;
-                          n_rbo < sizeof(rbos) / sizeof(rbos[0]);
-                        ++n_rbo)
+        if (context_ptr->fbo_depth_stencil_to != NULL)
         {
-            const _rbo& current_rbo           = rbos[n_rbo];
-            GLint       current_rbo_n_samples = 0;
-
-            if (current_rbo.rbo_id != 0)
-            {
-                pGLBindRenderbuffer(GL_RENDERBUFFER,
-                                    current_rbo.rbo_id);
-
-                /* Apparently NV driver does not re-route *Multisample() calls to the
-                * single-sample entry-point if n_samples == 1, so we need to fork manually.
-                */
-                if (n_samples == 1)
-                {
-                    pGLRenderbufferStorage(GL_RENDERBUFFER,
-                                          current_rbo.internalformat,
-                                          window_dimensions[0],
-                                          window_dimensions[1]);
-                }
-                else
-                {
-                    pGLRenderbufferStorageMultisample(GL_RENDERBUFFER,
-                                                      n_samples,
-                                                      current_rbo.internalformat,
-                                                      window_dimensions[0],
-                                                      window_dimensions[1]);
-                }
-
-                /* Make sure the effective number of samples used for the renderbuffer
-                 * matches the other attachments we're using.
-                 *
-                 * TODO: The whole process should be more intelligent and query impl's caps
-                 *       with glGetInternalformativ() or something before firing glRenderbufferStorage*()
-                 *       calls. Might backfire one day but until then!
-                 */
-                pGLGetRenderbufferParameteriv(GL_RENDERBUFFER,
-                                              GL_RENDERBUFFER_SAMPLES,
-                                             &current_rbo_n_samples);
-
-                if (n_samples_effective != 0)
-                {
-                    ASSERT_ALWAYS_SYNC(n_samples_effective == current_rbo_n_samples,
-                                      "Default FBO attachment's n_samples mismatch detected!");
-                }
-                else
-                {
-                    n_samples_effective = current_rbo_n_samples;
-                }
-                /* Bind the RBO to relevant FBO attachments */
-                if (current_rbo.is_color_attachment)
-                {
-                    /* Default FBO only uses zeroth color attachment */
-                    pGLFramebufferRenderbuffer(GL_DRAW_FRAMEBUFFER,
-                                               GL_COLOR_ATTACHMENT0,
-                                               GL_RENDERBUFFER,
-                                               current_rbo.rbo_id);
-                }
-
-                if (current_rbo.is_depth_attachment)
-                {
-                    pGLFramebufferRenderbuffer(GL_DRAW_FRAMEBUFFER,
-                                               GL_DEPTH_ATTACHMENT,
-                                               GL_RENDERBUFFER,
-                                               current_rbo.rbo_id);
-                }
-
-                if (current_rbo.is_stencil_attachment)
-                {
-                    pGLFramebufferRenderbuffer(GL_DRAW_FRAMEBUFFER,
-                                               GL_STENCIL_ATTACHMENT,
-                                               GL_RENDERBUFFER,
-                                               current_rbo.rbo_id);
-                }
-            } /* if (current_rbo.rbo_id != 0) */
-        } /* for (all RBOs) */
-
-        context_ptr->fbo_n_samples_effective = n_samples_effective;
-
-        /* Make sure the FBO is complete. Since this is a platform-specific property,
-        * we need to terminate if the driver reports it cannot support the requested
-        * configuration.
-        */
-        fbo_completeness_status = pGLCheckFramebufferStatus(GL_DRAW_FRAMEBUFFER);
-
-        if (fbo_completeness_status != GL_FRAMEBUFFER_COMPLETE)
-        {
-            LOG_FATAL("Video driver does not support rendering context's target FBO. Cannot proceed.");
-
-            ASSERT_ALWAYS_SYNC(false,
-                               "No hardware support for requested renderer's configuration");
+            ral_framebuffer_set_attachment_2D(context_ptr->fbo,
+                                              RAL_FRAMEBUFFER_ATTACHMENT_TYPE_DEPTH_STENCIL,
+                                              0, /* index */
+                                              context_ptr->fbo_depth_stencil_to,
+                                              0); /* n_mipmap */
         }
     } /* if (any of the attachments need to have a physical backing) */
 
     /* Store the framebuffer size */
-    context_ptr->fbo_size[0] = window_dimensions[0];
-    context_ptr->fbo_size[1] = window_dimensions[1];
-
-    /* Store the attachment texture formats. */
-    context_ptr->fbo_color_texture_format         = raGL_utils_get_ral_texture_format_for_ogl_enum(internalformat_color);
-    context_ptr->fbo_depth_stencil_texture_format = raGL_utils_get_ral_texture_format_for_ogl_enum(internalformat_depth_stencil);
+    context_ptr->fbo_to_size[0] = window_dimensions[0];
+    context_ptr->fbo_to_size[1] = window_dimensions[1];
 
     /* Log the context's FBO configuration. Could be useful for debugging in the future. */
+    const char* format_color_string         = NULL;
+    const char* format_depth_stencil_string = NULL;
+
+    ral_utils_get_texture_format_property(format_color,
+                                          RAL_TEXTURE_FORMAT_PROPERTY_NAME,
+                                         &format_color_string);
+    ral_utils_get_texture_format_property(format_depth_stencil,
+                                          RAL_TEXTURE_FORMAT_PROPERTY_NAME,
+                                         &format_depth_stencil_string);
+
     LOG_INFO("Using the following FBO configuration for the rendering context:\n"
              "* Color RBO:         [%s]\n"
              "* Depth RBO:         [%s]\n"
-             "* Number of samples: [%u] (effective:[%u])\n",
-             _ogl_context_get_internalformat_string(internalformat_color),
-             _ogl_context_get_internalformat_string(internalformat_depth_stencil),
-             n_samples,
-             n_samples_effective);
+             "* Number of samples: [%u]\n",
+             format_color_string,
+             format_depth_stencil_string,
+             n_samples);
 end:
     ;
 }
@@ -1535,13 +1471,6 @@ PRIVATE void _ogl_context_initialize_gl_ext_texture_filter_anisotropic_extension
     _ogl_context_retrieve_GL_EXT_texture_filter_anisotropic_limits(context_ptr);
 }
 
-/** TODO */
-PRIVATE bool _ogl_context_is_stencil_data_included_in_internalformat(GLenum internalformat)
-{
-    return (internalformat == GL_DEPTH24_STENCIL8  ||
-            internalformat == GL_DEPTH32F_STENCIL8);
-}
-
 /** Function called back when reference counter drops to zero. Releases WGL rendering context.
  *
  *  @param ptr Pointer to _ogl_context instance.
@@ -1554,11 +1483,7 @@ PRIVATE void _ogl_context_release(void* ptr)
      *       a rendering context from this method could be tricky under some
      *       circumstances.
      *
-     * NOTE: We also leak the context's render-target and the FBO itself. Still, GL
-     *       requires the driver release these assets at context termination time,
-     *       so hopefully we can live with such atrocity.
      */
-
     if (context_ptr->bo_bindings != NULL)
     {
         ogl_context_bo_bindings_release(context_ptr->bo_bindings);
@@ -1571,6 +1496,33 @@ PRIVATE void _ogl_context_release(void* ptr)
         ogl_context_sampler_bindings_release(context_ptr->sampler_bindings);
 
         context_ptr->sampler_bindings = NULL;
+    }
+
+    if (context_ptr->fbo != NULL)
+    {
+        ral_context_delete_framebuffers(context_ptr->context,
+                                        1, /* n_framebuffers */
+                                       &context_ptr->fbo);
+
+        context_ptr->fbo = NULL;
+    }
+
+    if (context_ptr->fbo_color_to         != NULL ||
+        context_ptr->fbo_depth_stencil_to != NULL)
+    {
+        ral_texture fbo_tos[] =
+        {
+            context_ptr->fbo_color_to,
+            context_ptr->fbo_depth_stencil_to
+        };
+        const uint32_t n_fbo_tos = sizeof(fbo_tos) / sizeof(fbo_tos[0]);
+
+        ral_context_delete_textures(context_ptr->context,
+                                    n_fbo_tos,
+                                    fbo_tos);
+
+        context_ptr->fbo_color_to         = NULL;
+        context_ptr->fbo_depth_stencil_to = NULL;
     }
 
     if (context_ptr->flyby != NULL)
@@ -3143,21 +3095,21 @@ PUBLIC EMERALD_API void ogl_context_enumerate_msaa_samples(ral_backend_type    b
     bool                    consider_color_internalformats         = false;
     bool                    consider_depth_stencil_internalformats = false;
     system_resizable_vector depth_stencil_samples_vector           = NULL;
-    GLenum                  internalformat_color                   = GL_NONE;
-    GLenum                  internalformat_depth_stencil           = GL_NONE;
+    ral_texture_format      format_color                           = RAL_TEXTURE_FORMAT_UNKNOWN;
+    ral_texture_format      format_depth_stencil                   = RAL_TEXTURE_FORMAT_UNKNOWN;
     bool                    result                                 = true;
     system_resizable_vector result_vector                          = NULL;
     ogl_context             root_context                           = NULL;
     _ogl_context*           root_context_ptr                       = NULL;
 
-    result = _ogl_context_get_attachment_internalformats_for_system_pixel_format(pf,
-                                                                                &internalformat_color,
-                                                                                &internalformat_depth_stencil);
+    result = _ogl_context_get_attachment_formats_for_system_pixel_format(pf,
+                                                                        &format_color,
+                                                                        &format_depth_stencil);
 
     if (!result)
     {
         ASSERT_DEBUG_SYNC(false,
-                          "Could not determine color/depth/stencil attachment internalformats for user-specified PF");
+                          "Could not determine color/depth/stencil attachment formats for the user-specified PF");
 
         goto end;
     }
@@ -3176,8 +3128,8 @@ PUBLIC EMERALD_API void ogl_context_enumerate_msaa_samples(ral_backend_type    b
 
     root_context_ptr = (_ogl_context*) root_context;
 
-    root_context_ptr->msaa_enumeration_color_internalformat         = internalformat_color;
-    root_context_ptr->msaa_enumeration_depth_stencil_internalformat = internalformat_depth_stencil;
+    root_context_ptr->msaa_enumeration_color_internalformat         = raGL_utils_get_ogl_texture_internalformat_for_ral_texture_format(format_color);
+    root_context_ptr->msaa_enumeration_depth_stencil_internalformat = raGL_utils_get_ogl_texture_internalformat_for_ral_texture_format(format_depth_stencil);
 
     ogl_context_request_callback_from_context_thread(root_context,
                                                      _ogl_context_enumerate_msaa_samples_rendering_thread_callback,
@@ -3355,43 +3307,31 @@ PUBLIC EMERALD_API void ogl_context_get_property(ogl_context          context,
             break;
         }
 
+        case OGL_CONTEXT_PROPERTY_DEFAULT_FBO:
+        {
+            *(ral_framebuffer*) out_result = context_ptr->fbo;
+
+            break;
+        }
+
         case OGL_CONTEXT_PROPERTY_DEFAULT_FBO_COLOR_TEXTURE_FORMAT:
         {
-            *(ral_texture_format*) out_result = context_ptr->fbo_color_texture_format;
-
-            break;
-        }
-
-        case OGL_CONTEXT_PROPERTY_DEFAULT_FBO_DEPTH_STENCIL_TEXTURE_FORMAT:
-        {
-            *(ral_texture_format*) out_result = context_ptr->fbo_depth_stencil_texture_format;
-
-            break;
-        }
-
-        case OGL_CONTEXT_PROPERTY_DEFAULT_FBO_ID:
-        {
-            *((GLuint*) out_result) = context_ptr->fbo_id;
-
-            break;
-        }
-
-        case OGL_CONTEXT_PROPERTY_DEFAULT_FBO_N_SAMPLES:
-        {
-            *(unsigned int*) out_result = context_ptr->fbo_n_samples_effective;
+            ral_texture_get_property(context_ptr->fbo_color_to,
+                                     RAL_TEXTURE_PROPERTY_FORMAT,
+                                     out_result);
 
             break;
         }
 
         case OGL_CONTEXT_PROPERTY_DEFAULT_FBO_SIZE:
         {
-            ASSERT_DEBUG_SYNC(context_ptr->fbo_size[0] > 0 &&
-                              context_ptr->fbo_size[1] > 0,
+            ASSERT_DEBUG_SYNC(context_ptr->fbo_to_size[0] > 0 &&
+                              context_ptr->fbo_to_size[1] > 0,
                               "Invalid default FB's size detected.");
 
             memcpy(out_result,
-                   context_ptr->fbo_size,
-                   sizeof(context_ptr->fbo_size) );
+                   context_ptr->fbo_to_size,
+                   sizeof(context_ptr->fbo_to_size) );
 
             break;
 

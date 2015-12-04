@@ -12,6 +12,7 @@
 #include "ogl/ogl_shaders.h"
 #include "postprocessing/postprocessing_blur_gaussian.h"
 #include "raGL/raGL_buffer.h"
+#include "raGL/raGL_framebuffer.h"
 #include "raGL/raGL_sampler.h"
 #include "raGL/raGL_texture.h"
 #include "ral/ral_buffer.h"
@@ -881,7 +882,9 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void postprocessing_blur_gaussian_exec
     GLuint                                                    coeff_bo_id                   = 0;
     raGL_buffer                                               coeff_bo_raGL                 = NULL;
     uint32_t                                                  coeff_bo_start_offset         = -1;
-    GLuint                                                    context_default_fbo_id        = -1;
+    ral_framebuffer                                           context_default_fb            = NULL;
+    raGL_framebuffer                                          context_default_fb_raGL       = NULL;
+    GLuint                                                    context_default_fb_raGL_id    = -1;
     const ogl_context_gl_entrypoints_ext_direct_state_access* dsa_entrypoints_ptr           = NULL;
     const ogl_context_gl_entrypoints*                         entrypoints_ptr               = NULL;
     GLuint                                                    other_data_bo_id              = 0;
@@ -908,8 +911,8 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void postprocessing_blur_gaussian_exec
                       "Invalid number of taps requested");
 
     ogl_context_get_property            (ral_context_get_gl_context(blur_ptr->context),
-                                         OGL_CONTEXT_PROPERTY_DEFAULT_FBO_ID,
-                                        &context_default_fbo_id);
+                                         OGL_CONTEXT_PROPERTY_DEFAULT_FBO,
+                                        &context_default_fb);
     ogl_context_get_property            (ral_context_get_gl_context(blur_ptr->context),
                                          OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL_EXT_DIRECT_STATE_ACCESS,
                                         &dsa_entrypoints_ptr);
@@ -926,8 +929,14 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void postprocessing_blur_gaussian_exec
                                          OGL_CONTEXT_STATE_CACHE_PROPERTY_VIEWPORT,
                                          viewport_data);
 
-    src_texture_raGL = ral_context_get_texture_gl(blur_ptr->context,
-                                                  src_texture);
+    context_default_fb_raGL = ral_context_get_framebuffer_gl(blur_ptr->context,
+                                                             context_default_fb);
+    src_texture_raGL       = ral_context_get_texture_gl     (blur_ptr->context,
+                                                             src_texture);
+
+    raGL_framebuffer_get_property(context_default_fb_raGL,
+                                  RAGL_FRAMEBUFFER_PROPERTY_ID,
+                                  &context_default_fb_raGL_id);
 
     raGL_texture_get_property(src_texture_raGL,
                               RAGL_TEXTURE_PROPERTY_ID,
@@ -1342,7 +1351,7 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void postprocessing_blur_gaussian_exec
             entrypoints_ptr->pGLBindFramebuffer(GL_DRAW_FRAMEBUFFER,
                                                 ping_fbo_id);
             entrypoints_ptr->pGLBindFramebuffer(GL_READ_FRAMEBUFFER,
-                                                context_default_fbo_id);
+                                                context_default_fb_raGL_id);
 
             entrypoints_ptr->pGLEnable       (GL_BLEND);
             entrypoints_ptr->pGLBlendColor   (0.0f, /* red */
@@ -1414,7 +1423,7 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void postprocessing_blur_gaussian_exec
                                            0); /* level */
 
     entrypoints_ptr->pGLBindFramebuffer(GL_DRAW_FRAMEBUFFER,
-                                        context_default_fbo_id);
+                                        context_default_fb_raGL_id);
     entrypoints_ptr->pGLBindSampler    (DATA_SAMPLER_TEXTURE_UNIT_INDEX,
                                         0);
     entrypoints_ptr->pGLViewport       (viewport_data[0],

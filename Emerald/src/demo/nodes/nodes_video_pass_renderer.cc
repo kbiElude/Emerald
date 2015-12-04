@@ -163,7 +163,7 @@ PUBLIC bool nodes_video_pass_renderer_get_texture_memory_allocation_details(demo
             ral_texture_format fb_color_format = RAL_TEXTURE_FORMAT_UNKNOWN;
 
             ral_context_get_property(node_data_ptr->context,
-                                     RAL_CONTEXT_PROPERTY_SYSTEM_FRAMEBUFFER_COLOR_TEXTURE_FORMAT,
+                                     RAL_CONTEXT_PROPERTY_SYSTEM_FRAMEBUFFER_COLOR_ATTACHMENT_TEXTURE_FORMAT,
                                     &fb_color_format);
 
             out_memory_allocation_data_ptr->bound_texture             = node_data_ptr->output_texture;
@@ -226,7 +226,7 @@ PUBLIC RENDERING_CONTEXT_CALL demo_timeline_segment_node_private nodes_video_pas
         demo_texture_io_declaration texture_output_info;
 
         ral_context_get_property(new_node_ptr->context,
-                                 RAL_CONTEXT_PROPERTY_SYSTEM_FRAMEBUFFER_COLOR_TEXTURE_FORMAT,
+                                 RAL_CONTEXT_PROPERTY_SYSTEM_FRAMEBUFFER_COLOR_ATTACHMENT_TEXTURE_FORMAT,
                                 &fb_color_format);
 
         texture_output_info.name              = system_hashed_ansi_string_create("Output");
@@ -367,8 +367,7 @@ PUBLIC void nodes_video_pass_renderer_set_texture_memory_allocation(demo_timelin
                                               RAL_FRAMEBUFFER_ATTACHMENT_TYPE_COLOR,
                                               0,  /* index */
                                               node_ptr->output_texture,
-                                              0,     /* n_mipmap */
-                                              true); /* should_enable */
+                                              0); /* n_mipmap */
 
             break;
         }

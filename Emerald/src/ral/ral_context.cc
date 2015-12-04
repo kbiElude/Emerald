@@ -531,91 +531,7 @@ PRIVATE void _ral_context_release(void* context)
         context_ptr->backend = NULL;
     }
 
-#if 0
-    /* Delete all buffer instances */
-    {
-        system_critical_section_enter(context_ptr->buffers_cs);
-        {
-            ral_buffer* buffers   = NULL;
-            uint32_t    n_buffers = 0;
-
-            system_resizable_vector_get_property(context_ptr->buffers,
-                                                 SYSTEM_RESIZABLE_VECTOR_PROPERTY_ARRAY,
-                                                &buffers);
-            system_resizable_vector_get_property(context_ptr->buffers,
-                                                 SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
-                                                &n_buffers);
-
-            ral_context_delete_buffers((ral_context) context,
-                                       n_buffers,
-                                       buffers);
-        }
-        system_critical_section_leave(context_ptr->buffers_cs);
-    }
-
-    /* Delete all framebuffer instances */
-    {
-        system_critical_section_enter(context_ptr->framebuffers_cs);
-        {
-            ral_framebuffer* framebuffers   = NULL;
-            uint32_t         n_framebuffers = 0;
-
-            system_resizable_vector_get_property(context_ptr->framebuffers,
-                                                 SYSTEM_RESIZABLE_VECTOR_PROPERTY_ARRAY,
-                                                &framebuffers);
-            system_resizable_vector_get_property(context_ptr->framebuffers,
-                                                 SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
-                                                &n_framebuffers);
-
-            ral_context_delete_framebuffers((ral_context) context,
-                                            n_framebuffers,
-                                            framebuffers);
-        }
-        system_critical_section_leave(context_ptr->framebuffers_cs);
-    }
-
-    /* Delete all sampler instances */
-    {
-        system_critical_section_enter(context_ptr->samplers_cs);
-        {
-            ral_sampler* samplers   = NULL;
-            uint32_t     n_samplers = 0;
-
-            system_resizable_vector_get_property(context_ptr->samplers,
-                                                 SYSTEM_RESIZABLE_VECTOR_PROPERTY_ARRAY,
-                                                &samplers);
-            system_resizable_vector_get_property(context_ptr->samplers,
-                                                 SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
-                                                &n_samplers);
-
-            ral_context_delete_samplers((ral_context) context,
-                                        n_samplers,
-                                        samplers);
-        }
-        system_critical_section_leave(context_ptr->samplers_cs);
-    }
-
-    /* Delete all texture instances */
-    {
-        system_critical_section_enter(context_ptr->textures_cs);
-        {
-            ral_texture* textures   = NULL;
-            uint32_t     n_textures = 0;
-
-            system_resizable_vector_get_property(context_ptr->textures,
-                                                 SYSTEM_RESIZABLE_VECTOR_PROPERTY_ARRAY,
-                                                &textures);
-            system_resizable_vector_get_property(context_ptr->textures,
-                                                 SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
-                                                &n_textures);
-
-            ral_context_delete_textures((ral_context) context,
-                                        n_textures,
-                                        textures);
-        }
-        system_critical_section_leave(context_ptr->textures_cs);
-    }
-#else
+    /* Detect any leaking objects */
     uint32_t n_buffers      = 0;
     uint32_t n_framebuffers = 0;
     uint32_t n_samplers     = 0;
@@ -642,7 +558,6 @@ PRIVATE void _ral_context_release(void* context)
                       "Sampler object leak detected");
     ASSERT_DEBUG_SYNC(n_textures == 0,
                       "Texture object leak detected");
-#endif
 }
 
 /** Please see header for specification */
@@ -1561,6 +1476,20 @@ PUBLIC raGL_buffer ral_context_get_buffer_gl(ral_context context,
 }
 
 /** TODO */
+PUBLIC raGL_framebuffer ral_context_get_framebuffer_gl(ral_context     context,
+                                                       ral_framebuffer framebuffer)
+{
+    _ral_context*    context_ptr      = (_ral_context*) context;
+    raGL_framebuffer framebuffer_raGL = NULL;
+
+    raGL_backend_get_framebuffer(context_ptr->backend,
+                                 framebuffer,
+                       (void**) &framebuffer_raGL);
+
+    return framebuffer_raGL;
+}
+
+/** TODO */
 PUBLIC ogl_context ral_context_get_gl_context(ral_context context)
 {
     raGL_backend backend         = (raGL_backend) ((_ral_context*) context)->backend;
@@ -1609,8 +1538,9 @@ PUBLIC EMERALD_API void ral_context_get_property(ral_context          context,
 
         case RAL_CONTEXT_PROPERTY_MAX_FRAMEBUFFER_COLOR_ATTACHMENTS:
         case RAL_CONTEXT_PROPERTY_N_OF_SYSTEM_FRAMEBUFFERS:
-        case RAL_CONTEXT_PROPERTY_SYSTEM_FRAMEBUFFER_COLOR_TEXTURE_FORMAT:
         case RAL_CONTEXT_PROPERTY_SYSTEM_FRAMEBUFFERS:
+        case RAL_CONTEXT_PROPERTY_SYSTEM_FRAMEBUFFER_COLOR_ATTACHMENT_TEXTURE_FORMAT:
+        case RAL_CONTEXT_PROPERTY_SYSTEM_FRAMEBUFFER_SIZE:
         {
             context_ptr->pfn_backend_get_property_proc(context_ptr->backend,
                                                        property,
@@ -1767,4 +1697,54 @@ PUBLIC GLuint ral_context_get_texture_gl_id(ral_context context,
                              &result);
 
     return result;
+}
+
+/** Please see header for specification */
+PUBLIC void ral_context_init(ral_context context)
+{
+    _ral_context* context_ptr = (_ral_context*) context;
+
+    switch (context_ptr->backend_type)
+    {
+        case RAL_BACKEND_TYPE_ES:
+        case RAL_BACKEND_TYPE_GL:
+        {
+            raGL_backend_init( (raGL_backend) context_ptr->backend);
+
+            break;
+        }
+
+        default:
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Unsupported backend type.");
+        }
+    } /* switch (context_ptr->backend_type) */
+}
+
+/** TODO */
+PUBLIC void ral_context_set_property(ral_context          context,
+                                     ral_context_property property,
+                                     const void*          data)
+{
+    _ral_context* context_ptr = (_ral_context*) context;
+
+    switch (property)
+    {
+        case RAL_CONTEXT_PROPERTY_BACKEND:
+        {
+            ASSERT_DEBUG_SYNC(context_ptr->backend == NULL,
+                              "Backend is not NULL");
+
+            context_ptr->backend = *(void**) data;
+
+            break;
+        }
+
+        default:
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Unrecognized ral_context_property value.");
+        }
+    } /* switch (property) */
 }

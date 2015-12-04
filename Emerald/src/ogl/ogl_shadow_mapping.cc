@@ -15,6 +15,7 @@
 #include "ogl/ogl_shader_constructor.h"
 #include "ogl/ogl_uber.h"
 #include "postprocessing/postprocessing_blur_gaussian.h"
+#include "raGL/raGL_framebuffer.h"
 #include "raGL/raGL_texture.h"
 #include "raGL/raGL_textures.h"
 #include "raGL/raGL_utils.h"
@@ -3614,9 +3615,11 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_shadow_mapping_toggle(ogl_shadow_mapping 
     } /* if (should_enable) */
     else
     {
-        GLuint        context_default_fbo_id = -1;
-        system_window context_window         = NULL;
-        int32_t       context_window_size[2] = {0};
+        system_window    context_window         = NULL;
+        int32_t          context_window_size[2] = {0};
+        ral_framebuffer  system_fb              = NULL;
+        raGL_framebuffer system_fb_raGL         = NULL;
+        GLuint           system_fb_raGL_id      = 0;
 
         entry_points->pGLColorMask(GL_TRUE,
                                    GL_TRUE,
@@ -3626,11 +3629,22 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_shadow_mapping_toggle(ogl_shadow_mapping 
         entry_points->pGLDisable  (GL_DEPTH_TEST);
 
         /* Bring back the face culling setting */
+        ral_context_get_property(handler_ptr->context,
+                                 RAL_CONTEXT_PROPERTY_SYSTEM_FRAMEBUFFERS,
+                                &system_fb);
+
+        system_fb_raGL = ral_context_get_framebuffer_gl(handler_ptr->context,
+                                                        system_fb);
+
+        raGL_framebuffer_get_property(system_fb_raGL,
+                                      RAGL_FRAMEBUFFER_PROPERTY_ID,
+                                     &system_fb_raGL_id);
+        ogl_context_get_property     (ral_context_get_gl_context(handler_ptr->context),
+                                      OGL_CONTEXT_PROPERTY_DEFAULT_FBO,
+                                     &system_fb_raGL_id);
+
         entry_points->pGLCullFace(GL_BACK);
 
-        ogl_context_get_property    (ral_context_get_gl_context(handler_ptr->context),
-                                     OGL_CONTEXT_PROPERTY_DEFAULT_FBO_ID,
-                                    &context_default_fbo_id);
         ral_context_get_property    (handler_ptr->context,
                                      RAL_CONTEXT_PROPERTY_WINDOW,
                                     &context_window);
@@ -3646,7 +3660,7 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_shadow_mapping_toggle(ogl_shadow_mapping 
 
         /* Unbind the SM FBO */
         entry_points->pGLBindFramebuffer(GL_DRAW_FRAMEBUFFER,
-                                         context_default_fbo_id);
+                                         system_fb_raGL_id);
 
         /* Blur the SM if it makes sense */
         scene_light_shadow_map_algorithm light_shadow_map_algorithm = SCENE_LIGHT_SHADOW_MAP_ALGORITHM_UNKNOWN;

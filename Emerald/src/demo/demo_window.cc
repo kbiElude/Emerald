@@ -74,33 +74,12 @@ typedef struct _demo_window
         ASSERT_DEBUG_SYNC(window == NULL,
                           "Rendering window is not NULL at demo_window teardown time");
 
-        if (loader != NULL)
-        {
-            demo_loader_release(loader);
-
-            loader = NULL;
-        } /* if (loader != NULL) */
-
-        if (rendering_handler != NULL)
-        {
-            ogl_rendering_handler_release(rendering_handler);
-
-            rendering_handler = NULL;
-        } /* if (rendering_handler != NULL) */
-
         if (shut_down_event != NULL)
         {
             system_event_release(shut_down_event);
 
             shut_down_event = NULL;
         } /* if (shut_down_event != NULL) */
-
-        if (timeline != NULL)
-        {
-            demo_timeline_release(timeline);
-
-            timeline = NULL;
-        } /* if (timeline != NULL) */
 
         if (window_closed_event != NULL)
         {
@@ -414,6 +393,27 @@ PUBLIC void demo_window_release(demo_window window)
     ASSERT_DEBUG_SYNC(window != NULL,
                       "Input demo_window instance is NULL");
 
+    if (window_ptr->loader != NULL)
+    {
+        demo_loader_release(window_ptr->loader);
+
+        window_ptr->loader = NULL;
+    } /* if (window_ptr->loader != NULL) */
+
+    if (window_ptr->timeline != NULL)
+    {
+        demo_timeline_release(window_ptr->timeline);
+
+        window_ptr->timeline = NULL;
+    } /* if (window_ptr->timeline != NULL) */
+
+    if (window_ptr->rendering_handler != NULL)
+    {
+        ogl_rendering_handler_release(window_ptr->rendering_handler);
+
+        window_ptr->rendering_handler = NULL;
+    } /* if (window_ptr->rendering_handler != NULL) */
+
     /* Close the window */
     demo_window_close(window);
 
@@ -515,14 +515,6 @@ PUBLIC EMERALD_API bool demo_window_show(demo_window window)
         goto end;
     }
 
-    /* Cache the rendering context */
-    system_window_get_property(window_ptr->window,
-                               SYSTEM_WINDOW_PROPERTY_RENDERING_CONTEXT_RAL,
-                              &window_ptr->context);
-
-    ASSERT_DEBUG_SYNC(window_ptr->context != NULL,
-                      "Rendering context is NULL");
-
     /* Set up the rendering handler.
      *
      * The object does a few important things:
@@ -570,13 +562,19 @@ PUBLIC EMERALD_API bool demo_window_show(demo_window window)
                                                                                      NULL); /* user_arg               */
     }
 
-    /* Bind the rendering handler to the renderer window. */
-    system_window_get_property(window_ptr->window,
-                               SYSTEM_WINDOW_PROPERTY_RENDERING_CONTEXT_RAL,
-                              &window_ptr->context);
+    /* Bind the rendering handler to the renderer window. Note that this also implicitly
+     * creates a RAL context for the window. */
     system_window_set_property(window_ptr->window,
                                SYSTEM_WINDOW_PROPERTY_RENDERING_HANDLER,
                               &window_ptr->rendering_handler);
+
+    /* Cache the rendering context */
+    system_window_get_property(window_ptr->window,
+                               SYSTEM_WINDOW_PROPERTY_RENDERING_CONTEXT_RAL,
+                              &window_ptr->context);
+
+    ASSERT_DEBUG_SYNC(window_ptr->context != NULL,
+                      "Rendering context is NULL");
 
     /* Set up mouse click & window tear-down callbacks */
     _demo_window_subscribe_for_window_notifications(window_ptr,

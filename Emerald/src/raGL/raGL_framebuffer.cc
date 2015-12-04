@@ -25,10 +25,6 @@ typedef struct _raGL_framebuffer_attachment
     ral_texture bound_texture_gl;
     ral_texture bound_texture_local;
 
-    /* Is the draw buffer enabled for this attachment? */
-    bool is_enabled_gl;
-    bool is_enabled_local;
-
     /* Which layer is bound to the attachment? */
     GLint n_texture_layer_gl;
     GLint n_texture_layer_local;
@@ -48,8 +44,6 @@ typedef struct _raGL_framebuffer_attachment
         bound_texture_gl             = NULL;
         bound_texture_local          = NULL;
         dirty                        = false;
-        is_enabled_gl                = false;
-        is_enabled_local             = false;
         n_texture_layer_gl           = 0;
         n_texture_layer_local        = 0;
         n_texture_mipmap_level_gl    = 0;
@@ -137,10 +131,9 @@ PRIVATE void _raGL_framebuffer_on_color_attachment_configuration_changed        
                                                                                  void*                           user_arg);
 PRIVATE void _raGL_framebuffer_on_depth_stencil_attachment_configuration_changed(const void*                     callback_data,
                                                                                  void*                           user_arg);
-PRIVATE void _raGL_framebuffer_on_sync_required                                 (const void*                     callback_data,
-                                                                                 void*                           user_arg);
 PRIVATE void _raGL_framebuffer_subscribe_for_notifications                      (_raGL_framebuffer*              fb_ptr,
                                                                                  bool                            should_subscribe);
+PRIVATE void _raGL_framebuffer_sync                                             (_raGL_framebuffer*              framebuffer_raGL_ptr);
 PRIVATE void _raGL_framebuffer_update_attachment_configuration                  (_raGL_framebuffer*              fb_ptr,
                                                                                  ral_framebuffer_attachment_type attachment_type,
                                                                                  uint32_t                        attachment_index);
@@ -236,24 +229,49 @@ PRIVATE void _raGL_framebuffer_on_depth_stencil_attachment_configuration_changed
 }
 
 /** TODO */
-PRIVATE void _raGL_framebuffer_on_sync_required(const void* callback_data,
-                                                void*       user_arg)
+PRIVATE void _raGL_framebuffer_subscribe_for_notifications(_raGL_framebuffer* fb_ptr,
+                                                           bool               should_subscribe)
 {
-    _raGL_framebuffer* framebuffer_raGL_ptr = (_raGL_framebuffer*) user_arg;
-    ral_framebuffer    framebuffer_ral      = (ral_framebuffer) callback_data;
+    system_callback_manager fb_callback_manager = NULL;
 
+    ral_framebuffer_get_property(fb_ptr->fb,
+                                 RAL_FRAMEBUFFER_PROPERTY_CALLBACK_MANAGER,
+                                &fb_callback_manager);
+
+    if (should_subscribe)
+    {
+        system_callback_manager_subscribe_for_callbacks(fb_callback_manager,
+                                                        RAL_FRAMEBUFFER_CALLBACK_ID_COLOR_ATTACHMENT_CONFIGURATION_CHANGED,
+                                                        CALLBACK_SYNCHRONICITY_SYNCHRONOUS,
+                                                        _raGL_framebuffer_on_color_attachment_configuration_changed,
+                                                        fb_ptr);
+        system_callback_manager_subscribe_for_callbacks(fb_callback_manager,
+                                                        RAL_FRAMEBUFFER_CALLBACK_ID_DEPTH_STENCIL_ATTACHMENT_CONFIGURATION_CHANGED,
+                                                        CALLBACK_SYNCHRONICITY_SYNCHRONOUS,
+                                                        _raGL_framebuffer_on_depth_stencil_attachment_configuration_changed,
+                                                        fb_ptr);
+    } /* if (should_subscribe) */
+    else
+    {
+        system_callback_manager_unsubscribe_from_callbacks(fb_callback_manager,
+                                                           RAL_FRAMEBUFFER_CALLBACK_ID_COLOR_ATTACHMENT_CONFIGURATION_CHANGED,
+                                                           _raGL_framebuffer_on_color_attachment_configuration_changed,
+                                                           fb_ptr);
+        system_callback_manager_unsubscribe_from_callbacks(fb_callback_manager,
+                                                           RAL_FRAMEBUFFER_CALLBACK_ID_DEPTH_STENCIL_ATTACHMENT_CONFIGURATION_CHANGED,
+                                                           _raGL_framebuffer_on_depth_stencil_attachment_configuration_changed,
+                                                           fb_ptr);
+    }
+}
+
+/** TODO */
+PRIVATE void _raGL_framebuffer_sync(_raGL_framebuffer* framebuffer_raGL_ptr)
+{
     LOG_ERROR("Performance warning: raGL_framebuffer sync request.");
-
 
     /* Sanity checks */
     ASSERT_DEBUG_SYNC(framebuffer_raGL_ptr != NULL,
                       "Input raGL_framebuffer instance is NULL");
-    ASSERT_DEBUG_SYNC(framebuffer_ral != NULL,
-                      "Input RAL framebuffer is NULL");
-
-    /* For performance reasons, sync requests should always come from a rendering thread. */
-    ASSERT_DEBUG_SYNC(ogl_context_get_current_context() == framebuffer_raGL_ptr->context,
-                      "Rendering context mismatch");
 
     /* Iterate over all attachments and sync the dirty ones. */
     for (uint32_t n_iteration = 0;
@@ -272,13 +290,14 @@ PRIVATE void _raGL_framebuffer_on_sync_required(const void* callback_data,
                     ++n_attachment)
         {
             GLenum                        attachment_gl          = (n_iteration == 0) ? (GL_COLOR_ATTACHMENT0 + n_attachment)
-                                                                                      : GL_DEPTH_STENCIL_ATTACHMENT;
+                                                                                      :  GL_DEPTH_ATTACHMENT;
             _raGL_framebuffer_attachment* current_attachment_ptr = attachments + n_attachment;
+
+            framebuffer_raGL_ptr->draw_buffers[n_attachment] = (current_attachment_ptr->texture_type_local != RAL_FRAMEBUFFER_ATTACHMENT_TYPE_UNKNOWN) ? (GL_COLOR_ATTACHMENT0 + n_attachment)
+                                                                                                                                                       :  GL_NONE;
 
             if (!current_attachment_ptr->dirty)
             {
-                framebuffer_raGL_ptr->draw_buffers[n_attachment] = GL_NONE;
-
                 continue;
             } /* if (current_attachment_ptr->dirty) */
 
@@ -333,25 +352,15 @@ PRIVATE void _raGL_framebuffer_on_sync_required(const void* callback_data,
                 }
             } /* switch (current_attachment_ptr->texture_type_local) */
 
-            /* ..and cache as a draw buffer if needed */
-            if (current_attachment_ptr->is_enabled_local)
-            {
-                framebuffer_raGL_ptr->draw_buffers[n_attachment] = GL_DRAW_BUFFER0 + n_attachment;
-                current_attachment_ptr->is_enabled_gl            = true;
-
-                n_max_draw_buffer_used = n_attachment;
-            }
-            else
-            {
-                framebuffer_raGL_ptr->draw_buffers[n_attachment] = GL_NONE;
-                current_attachment_ptr->is_enabled_gl            = false;
-            }
+            /* ..and cache as a draw buffer */
+            framebuffer_raGL_ptr->draw_buffers[n_attachment] = GL_DRAW_BUFFER0 + n_attachment;
+            n_max_draw_buffer_used                           = n_attachment;
 
             current_attachment_ptr->dirty = false;
         } /* for (all attachments) */
 
         /* Also update the draw buffer array */
-        if (n_iteration == 0)
+        if (n_iteration == 0 && any_attachment_synced)
         {
             framebuffer_raGL_ptr->entrypoints_dsa_ptr->pGLFramebufferDrawBuffersEXT(framebuffer_raGL_ptr->id,
                                                                                     n_max_draw_buffer_used + 1,
@@ -361,57 +370,11 @@ PRIVATE void _raGL_framebuffer_on_sync_required(const void* callback_data,
 }
 
 /** TODO */
-PRIVATE void _raGL_framebuffer_subscribe_for_notifications(_raGL_framebuffer* fb_ptr,
-                                                           bool               should_subscribe)
-{
-    system_callback_manager fb_callback_manager = NULL;
-
-    ral_framebuffer_get_property(fb_ptr->fb,
-                                 RAL_FRAMEBUFFER_PROPERTY_CALLBACK_MANAGER,
-                                &fb_callback_manager);
-
-    if (should_subscribe)
-    {
-        system_callback_manager_subscribe_for_callbacks(fb_callback_manager,
-                                                        RAL_FRAMEBUFFER_CALLBACK_ID_COLOR_ATTACHMENT_CONFIGURATION_CHANGED,
-                                                        CALLBACK_SYNCHRONICITY_SYNCHRONOUS,
-                                                        _raGL_framebuffer_on_color_attachment_configuration_changed,
-                                                        fb_ptr);
-        system_callback_manager_subscribe_for_callbacks(fb_callback_manager,
-                                                        RAL_FRAMEBUFFER_CALLBACK_ID_DEPTH_STENCIL_ATTACHMENT_CONFIGURATION_CHANGED,
-                                                        CALLBACK_SYNCHRONICITY_SYNCHRONOUS,
-                                                        _raGL_framebuffer_on_depth_stencil_attachment_configuration_changed,
-                                                        fb_ptr);
-        system_callback_manager_subscribe_for_callbacks(fb_callback_manager,
-                                                        RAL_FRAMEBUFFER_CALLBACK_ID_SYNC_REQUIRED,
-                                                        CALLBACK_SYNCHRONICITY_SYNCHRONOUS,
-                                                        _raGL_framebuffer_on_sync_required,
-                                                        fb_ptr);
-    } /* if (should_subscribe) */
-    else
-    {
-        system_callback_manager_unsubscribe_from_callbacks(fb_callback_manager,
-                                                           RAL_FRAMEBUFFER_CALLBACK_ID_COLOR_ATTACHMENT_CONFIGURATION_CHANGED,
-                                                           _raGL_framebuffer_on_color_attachment_configuration_changed,
-                                                           fb_ptr);
-        system_callback_manager_unsubscribe_from_callbacks(fb_callback_manager,
-                                                           RAL_FRAMEBUFFER_CALLBACK_ID_DEPTH_STENCIL_ATTACHMENT_CONFIGURATION_CHANGED,
-                                                           _raGL_framebuffer_on_depth_stencil_attachment_configuration_changed,
-                                                           fb_ptr);
-        system_callback_manager_unsubscribe_from_callbacks(fb_callback_manager,
-                                                           RAL_FRAMEBUFFER_CALLBACK_ID_SYNC_REQUIRED,
-                                                           _raGL_framebuffer_on_sync_required,
-                                                           fb_ptr);
-    }
-}
-
-/** TODO */
 PRIVATE void _raGL_framebuffer_update_attachment_configuration(_raGL_framebuffer*              fb_ptr,
                                                                ral_framebuffer_attachment_type attachment_type,
                                                                uint32_t                        attachment_index)
 {
     ral_texture                             attachment_bound_texture = NULL;
-    bool                                    attachment_enabled       = false;
     uint32_t                                attachment_n_layer       = -1;
     uint32_t                                attachment_n_mipmap      = -1;
     _raGL_framebuffer_attachment*           attachment_ptr           = NULL;
@@ -434,11 +397,6 @@ PRIVATE void _raGL_framebuffer_update_attachment_configuration(_raGL_framebuffer
                                             attachment_index,
                                             RAL_FRAMEBUFFER_ATTACHMENT_PROPERTY_BOUND_TEXTURE_RAL,
                                           &attachment_bound_texture);
-    ral_framebuffer_get_attachment_property(fb_ptr->fb,
-                                            attachment_type,
-                                            attachment_index,
-                                            RAL_FRAMEBUFFER_ATTACHMENT_PROPERTY_IS_ENABLED,
-                                          &attachment_enabled);
     ral_framebuffer_get_attachment_property(fb_ptr->fb,
                                             attachment_type,
                                             attachment_index,
@@ -480,12 +438,6 @@ PRIVATE void _raGL_framebuffer_update_attachment_configuration(_raGL_framebuffer
         dirty                               = true;
     }
 
-    if (attachment_ptr->is_enabled_gl != attachment_enabled)
-    {
-        attachment_ptr->is_enabled_local = attachment_enabled;
-        dirty                            = true;
-    }
-
     if (is_n_layer_important                                             &&
         attachment_ptr->n_texture_layer_gl != attachment_n_layer)
     {
@@ -509,7 +461,10 @@ PRIVATE void _raGL_framebuffer_update_attachment_configuration(_raGL_framebuffer
     attachment_ptr->dirty = dirty;
 
 end:
-    ;
+    if (attachment_ptr->dirty)
+    {
+        _raGL_framebuffer_sync(fb_ptr);
+    }
 }
 
 
@@ -542,16 +497,51 @@ PUBLIC raGL_framebuffer raGL_framebuffer_create(ogl_context     context,
         ASSERT_ALWAYS_SYNC(new_fb_ptr->draw_buffers != NULL,
                            "Out of memory");
 
-        /* In GL, first draw buffer is always enabled. */
-        new_fb_ptr->color_attachments[0].is_enabled_gl    = true;
-        new_fb_ptr->color_attachments[0].is_enabled_local = true;
-
         /* Sign up for notifications */
         _raGL_framebuffer_subscribe_for_notifications(new_fb_ptr,
                                                       true); /* should_subscribe */
     } /* if (new_fb_ptr != NULL) */
 
     return (raGL_framebuffer) new_fb_ptr;
+}
+
+/** Please see header for specification */
+PUBLIC void raGL_framebuffer_get_property(raGL_framebuffer          fb,
+                                          raGL_framebuffer_property property,
+                                          void*                     out_result_ptr)
+{
+    _raGL_framebuffer* fb_ptr = (_raGL_framebuffer*) fb;
+
+    /* Sanity checks */
+    if (fb_ptr == NULL)
+    {
+        ASSERT_DEBUG_SYNC(fb_ptr != NULL,
+                          "Input raGL_framebuffer instance is NULL");
+
+        goto end;
+    }
+
+    /* Retrieve the requested value */
+    switch (property)
+    {
+        case RAGL_FRAMEBUFFER_PROPERTY_ID:
+        {
+            *(GLuint*) out_result_ptr = fb_ptr->id;
+
+            break;
+        }
+
+        default:
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Unrecognized raGL_framebuffer_property value.");
+
+            goto end;
+        }
+    } /* switch (property) */
+
+end:
+    ;
 }
 
 /** Please see header for specification */

@@ -364,19 +364,11 @@ PRIVATE void _system_window_thread_entrypoint(void* in_arg)
 
     is_first_window = false;
 
-    /* Create a rendering context for the window */
-    window_ptr->rendering_context = ral_context_create(window_ptr->title,
-                                                       (system_window) window_ptr);
-
-    if (window_ptr->rendering_context == NULL)
-    {
-        LOG_FATAL("Could not create OGL context for window [%s]",
-                  system_hashed_ansi_string_get_buffer(window_ptr->title) );
-
-        goto end;
-    }
-
-    /* All done, set the event so the creating thread can carry on */
+    /* Do NOT initialize a rendering context here. There's no rendering handler associated with the window
+     * at this point, and the back-end may require rendering thread call-backs.
+     *
+     * Instead, we delay the initialization until the rendering handler is assigned to the window.
+     */
     system_event_set(window_ptr->window_initialized_event);
 
     /* Use this thread to handle the window until it is closed or closes
@@ -686,10 +678,6 @@ PUBLIC EMERALD_API bool system_window_close(system_window window)
     }
     system_critical_section_leave(spawned_windows_cs);
 
-#if 0
-    demo_window_set_private_property(window_ptr->
-                                     DEMO_WINDOW_PRIVATE_PROPERTY_WINDOW
-#endif
     /* Release the descriptor */
     _deinit_system_window(window_ptr);
 
@@ -1846,6 +1834,22 @@ PUBLIC EMERALD_API bool system_window_set_property(system_window          window
 
                     ogl_rendering_handler_retain(new_rendering_handler);
 
+                    /* With a rendering handle in place, we can now create a rendering context for the window */
+                    ASSERT_DEBUG_SYNC(window_ptr->rendering_context == NULL,
+                                      "Rendering context already assigned to the window");
+
+                    window_ptr->rendering_context = ral_context_create(window_ptr->title,
+                                                                       (system_window) window_ptr);
+
+                    if (window_ptr->rendering_context == NULL)
+                    {
+                        LOG_FATAL("Could not create OGL context for window [%s]",
+                                  system_hashed_ansi_string_get_buffer(window_ptr->title) );
+                    }
+
+                    ral_context_init(window_ptr->rendering_context);
+
+                    /* Resume the rendering thread - everything is now set up. */
                     _ogl_rendering_handler_on_bound_to_context(window_ptr->rendering_handler,
                                                                ((_system_window*)window)->rendering_context);
                 }

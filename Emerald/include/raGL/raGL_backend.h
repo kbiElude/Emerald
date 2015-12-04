@@ -7,6 +7,13 @@
 #include "system/system_types.h"
 
 
+typedef enum
+{
+    /* settable; ogl_context. */
+    RAGL_BACKEND_PRIVATE_PROPERTY_RENDERING_CONTEXT
+
+} raGL_backend_private_property;
+
 /** TODO */
 PUBLIC raGL_backend raGL_backend_create(ral_context               context,
                                         system_hashed_ansi_string name,
@@ -45,8 +52,15 @@ PUBLIC bool raGL_backend_get_texture_by_id(raGL_backend  backend,
                                            GLuint        texture_id,
                                            raGL_texture* out_texture_raGL_ptr);
 
+/** TODO */ 
+PUBLIC void raGL_backend_init(raGL_backend backend);
+
 /** TODO */
 PUBLIC void raGL_backend_release(void* backend); /* raGL_backend instance */
 
+/** TODO */
+PUBLIC void raGL_backend_set_private_property(raGL_backend                  backend,
+                                              raGL_backend_private_property property,
+                                              const void*                   data_ptr);
 
 #endif /* RAGL_BACKEND_H */

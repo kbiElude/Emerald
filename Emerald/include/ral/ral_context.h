@@ -190,6 +190,12 @@ PUBLIC raGL_buffer ral_context_get_buffer_gl(ral_context context,
 /** TODO
  *
  *  TEMPORARY. Will be removed during RAL integration */
+PUBLIC raGL_framebuffer ral_context_get_framebuffer_gl(ral_context     context,
+                                                       ral_framebuffer framebuffer);
+
+/** TODO
+ *
+ *  TEMPORARY. Will be removed during RAL integration */
 PUBLIC ogl_context ral_context_get_gl_context(ral_context context);
 
 /** TODO
@@ -213,5 +219,18 @@ PUBLIC GLuint ral_context_get_texture_gl_id(ral_context context,
 /** TODO */
 PUBLIC ral_texture ral_context_get_texture_by_name(ral_context               context,
                                                    system_hashed_ansi_string name);
+
+/** Initializes a RAL context.
+ *
+ *  It is expected rendering thread call-backs are available at the call time.
+ *
+ *  TODO
+ **/
+PUBLIC void ral_context_init(ral_context context);
+
+/** TODO */
+PUBLIC void ral_context_set_property(ral_context          context,
+                                     ral_context_property property,
+                                     const void*          data);
 
 #endif /* RAL_CONTEXT_H */

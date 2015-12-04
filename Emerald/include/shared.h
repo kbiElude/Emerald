@@ -140,6 +140,10 @@
 #endif
 
 #define REFCOUNT_INSERT_IMPLEMENTATION(prefix, public_handle_type, private_handle_type) \
+    PUBLIC EMERALD_API uint32_t prefix##_get_refcounter(public_handle_type handle)      \
+    {                                                                                   \
+    return ((private_handle_type*)handle)->refcount_counter;                            \
+    }                                                                                   \
     PUBLIC EMERALD_API void prefix##_retain(public_handle_type handle)                  \
     {                                                                                   \
         system_atomics_increment(&((private_handle_type*)handle)->refcount_counter);    \

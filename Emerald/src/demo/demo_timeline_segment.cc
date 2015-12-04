@@ -9,8 +9,9 @@
 #include "demo/demo_timeline.h"
 #include "demo/demo_timeline_segment.h"
 #include "demo/demo_timeline_segment_node.h"
-#include "ogl/ogl_context.h"                 /* TODO: Remove OpenGL dependency ! */
+#include "ogl/ogl_context.h"
 #include "ral/ral_context.h"
+#include "ral/ral_framebuffer.h"
 #include "ral/ral_texture.h"
 #include "ral/ral_types.h"
 #include "ral/ral_utils.h"
@@ -1246,8 +1247,8 @@ PRIVATE void _demo_timeline_segment_update_node_texture_memory_allocations(_demo
             {
                 uint32_t context_fb_size[2] = {0};
 
-                ogl_context_get_property(ral_context_get_gl_context(node_ptr->parent_segment_ptr->context),
-                                         OGL_CONTEXT_PROPERTY_DEFAULT_FBO_SIZE,
+                ral_context_get_property(node_ptr->parent_segment_ptr->context,
+                                         RAL_CONTEXT_PROPERTY_SYSTEM_FRAMEBUFFER_SIZE,
                                          context_fb_size);
 
                 requested_texture_depth  = 1;
@@ -1872,8 +1873,10 @@ PUBLIC demo_timeline_segment demo_timeline_segment_create_postprocessing(ral_con
                                                                          system_time               end_time,
                                                                          demo_timeline_segment_id  id)
 {
-    ral_texture_format      context_fbo_color_format = RAL_TEXTURE_FORMAT_UNKNOWN;
-    _demo_timeline_segment* new_segment_ptr          = NULL;
+    ral_framebuffer*        context_fbs             = NULL;
+    ral_texture_format      context_fb_color_format = RAL_TEXTURE_FORMAT_UNKNOWN;
+    _demo_timeline_segment* new_segment_ptr         = NULL;
+    uint32_t                n_system_fbs            = 0;
 
     /* Sanity checks */
     ASSERT_DEBUG_SYNC(context != NULL,
@@ -1884,15 +1887,39 @@ PUBLIC demo_timeline_segment demo_timeline_segment_create_postprocessing(ral_con
                       system_hashed_ansi_string_get_length(name) > 0,
                       "Invalid postprocessing segment name specified");
 
+    /* Retrieve format of the system FB's color attachment */
+    {
+        ral_context_get_property(context,
+                                 RAL_CONTEXT_PROPERTY_N_OF_SYSTEM_FRAMEBUFFERS,
+                                &n_system_fbs);
+
+        ASSERT_DEBUG_SYNC(n_system_fbs > 0,
+                          "Zero system framebuffers reported");
+
+        context_fbs = new (std::nothrow) ral_framebuffer[n_system_fbs];
+
+        ASSERT_ALWAYS_SYNC(context_fbs != NULL,
+                           "Out of memory");
+
+        ral_context_get_property    (context,
+                                     RAL_CONTEXT_PROPERTY_SYSTEM_FRAMEBUFFERS,
+                                    &context_fbs);
+        ral_framebuffer_get_attachment_property(context_fbs[0],
+                                                RAL_FRAMEBUFFER_ATTACHMENT_TYPE_COLOR,
+                                                0, /* index */
+                                                RAL_FRAMEBUFFER_ATTACHMENT_PROPERTY_TEXTURE_TYPE,
+                                               &context_fb_color_format);
+
+        delete [] context_fbs;
+        context_fbs = NULL;
+    }
+
     /* Create a new instance */
-    ogl_context_get_property(ral_context_get_gl_context(context),
-                             OGL_CONTEXT_PROPERTY_DEFAULT_FBO_COLOR_TEXTURE_FORMAT,
-                            &context_fbo_color_format);
 
     new_segment_ptr = new (std::nothrow) _demo_timeline_segment(context,
                                                                 name,
                                                                 owner_timeline,
-                                                                context_fbo_color_format,
+                                                                context_fb_color_format,
                                                                 start_time,
                                                                 end_time,
                                                                 DEMO_TIMELINE_SEGMENT_TYPE_POSTPROCESSING,

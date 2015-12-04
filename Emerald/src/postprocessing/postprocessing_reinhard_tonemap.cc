@@ -10,6 +10,7 @@
 #include "ogl/ogl_shader.h"
 #include "postprocessing/postprocessing_reinhard_tonemap.h"
 #include "raGL/raGL_buffer.h"
+#include "raGL/raGL_framebuffer.h"
 #include "raGL/raGL_texture.h"
 #include "ral/ral_context.h"
 #include "ral/ral_texture.h"
@@ -446,7 +447,9 @@ PUBLIC EMERALD_API void postprocessing_reinhard_tonemap_execute(postprocessing_r
                                                                 float                           white_level,
                                                                 ral_texture                     out_texture)
 {
-    GLuint                            context_default_fbo_id         = -1;
+    ral_framebuffer                   context_default_fb             = NULL;
+    raGL_framebuffer                  context_default_fb_raGL        = NULL;
+    GLuint                            context_default_fb_raGL_id     = -1;
     GLuint                            downsampled_yxy_texture_id     = 0;
     bool                              downsampled_yxy_texture_is_rbo = false;
     const ogl_context_gl_entrypoints* entry_points                   = NULL;
@@ -499,14 +502,21 @@ PUBLIC EMERALD_API void postprocessing_reinhard_tonemap_execute(postprocessing_r
                       "TODO");
 
     ogl_context_get_property(ral_context_get_gl_context(tonemapper_ptr->context),
-                             OGL_CONTEXT_PROPERTY_DEFAULT_FBO_ID,
-                            &context_default_fbo_id);
+                             OGL_CONTEXT_PROPERTY_DEFAULT_FBO,
+                            &context_default_fb);
     ogl_context_get_property(ral_context_get_gl_context(tonemapper_ptr->context),
                              OGL_CONTEXT_PROPERTY_VAO_NO_VAAS,
                             &vao_id);
     ogl_context_get_property(ral_context_get_gl_context(tonemapper_ptr->context),
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
                             &entry_points);
+
+    context_default_fb_raGL = ral_context_get_framebuffer_gl(tonemapper_ptr->context,
+                                                             context_default_fb);
+
+    raGL_framebuffer_get_property(context_default_fb_raGL,
+                                  RAGL_FRAMEBUFFER_PROPERTY_ID,
+                                 &context_default_fb_raGL_id);
 
     entry_points->pGLViewport(0, /* x */
                               0, /* y */
@@ -629,7 +639,7 @@ PUBLIC EMERALD_API void postprocessing_reinhard_tonemap_execute(postprocessing_r
     else
     {
         entry_points->pGLBindFramebuffer(GL_FRAMEBUFFER,
-                                         context_default_fbo_id);
+                                         context_default_fb_raGL_id);
     }
 
     entry_points->pGLViewport(0, /* x */

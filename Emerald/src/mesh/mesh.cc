@@ -1377,7 +1377,6 @@ PRIVATE void _mesh_release(void* arg)
                                                          _mesh_release_renderer_callback,
                                                          mesh_ptr);
 
-        ogl_context_release(mesh_ptr->gl_context);
         mesh_ptr->gl_context = NULL;
     }
 
@@ -2768,8 +2767,6 @@ PUBLIC EMERALD_API bool mesh_fill_gl_buffers(mesh        instance,
     {
         mesh_ptr->ral_context = context;
         mesh_ptr->gl_context  = ral_context_get_gl_context(context);
-
-        ogl_context_retain(mesh_ptr->gl_context);
     }
     else
     {
@@ -4319,7 +4316,6 @@ PUBLIC EMERALD_API mesh mesh_load_with_serializer(ral_context            context
     mesh_ptr = (_mesh*) result;
 
     mesh_ptr->gl_context = ral_context_get_gl_context(context_ral);
-    ogl_context_retain(mesh_ptr->gl_context);
 
     /* Fork, depending on whether we're dealing with an instantiated mesh,
      * or a parent instance */

@@ -474,6 +474,10 @@ PUBLIC ral_texture ral_texture_create(ral_context                    context,
             n_mipmaps = 1;
         }
     } /* if (create_info_ptr->use_full_mipmap_chain) */
+    else
+    {
+        n_mipmaps = 1;
+    }
 
     /* Spawn the new descriptor */
     result_ptr = new (std::nothrow) _ral_texture(context,

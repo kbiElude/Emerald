@@ -14,6 +14,12 @@ REFCOUNT_INSERT_DECLARATIONS(ogl_rendering_handler,
 
 typedef enum
 {
+    /* bool; settable. */
+    OGL_RENDERING_HANDLER_PRIVATE_PROPERTY_CALL_PASSTHROUGH_MODE
+} ogl_rendering_handler_private_property;
+
+typedef enum
+{
     /* settable, float.
      *
      * The aspect ratio property value will be used if no timeline instance has been
@@ -125,6 +131,11 @@ PUBLIC EMERALD_API bool ogl_rendering_handler_request_callback_from_context_thre
                                                                                    void*                                      user_arg,
                                                                                    bool                                       swap_buffers_afterward = false,
                                                                                    bool                                       block_until_available  = true);
+
+/** TODO */
+PUBLIC void ogl_rendering_handler_set_private_property(ogl_rendering_handler                  handler,
+                                                       ogl_rendering_handler_private_property property,
+                                                       const void*                            data_ptr);
 
 /** TODO */
 PUBLIC EMERALD_API void ogl_rendering_handler_set_property(ogl_rendering_handler          rendering_handler,
