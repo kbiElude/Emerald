@@ -50,7 +50,6 @@ typedef struct _raGL_backend
     ogl_context               context_gl;
     ral_context               context_ral;
     system_hashed_ansi_string name;
-    ral_framebuffer           system_framebuffer;
 
     uint32_t max_framebuffer_color_attachments;
 
@@ -70,7 +69,6 @@ typedef struct _raGL_backend
         name                              = in_name;
         samplers_map                      = system_hash64map_create       (sizeof(raGL_sampler) );
         samplers_map_cs                   = system_critical_section_create();
-        system_framebuffer                = NULL;
         textures                          = NULL;
         texture_id_to_raGL_texture_map    = system_hash64map_create       (sizeof(raGL_texture) );
         textures_map                      = system_hash64map_create       (sizeof(raGL_texture) );
@@ -102,16 +100,6 @@ typedef struct _raGL_backend
 
             textures = NULL;
         }
-
-        /* Delete the system framebuffer and then proceed with release of other dangling objects. */
-        if (system_framebuffer != NULL)
-        {
-            ral_context_delete_framebuffers(context_ral,
-                                            1, /* n_framebuffers */
-                                           &system_framebuffer);
-
-            system_framebuffer = NULL;
-        } /* if (system_framebuffer != NULL) */
 
         for (uint32_t n_object_type = 0;
                       n_object_type < RAL_CONTEXT_OBJECT_TYPE_COUNT;
@@ -1515,10 +1503,9 @@ PUBLIC void raGL_backend_get_property(void*                backend,
 
         case RAL_CONTEXT_PROPERTY_SYSTEM_FRAMEBUFFERS:
         {
-            ASSERT_DEBUG_SYNC(false,
-                              "system_framebuffer is NULL at the moment, TODO");
-
-            *(ral_framebuffer*) out_result_ptr = backend_ptr->system_framebuffer;
+            ogl_context_get_property(backend_ptr->context_gl,
+                                     OGL_CONTEXT_PROPERTY_DEFAULT_FBO,
+                                     out_result_ptr);
 
             break;
         }

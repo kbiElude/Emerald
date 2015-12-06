@@ -15,19 +15,22 @@
 #include "demo/nodes/nodes_video_pass_renderer.h"
 #include "ogl/ogl_context.h"
 #include "ogl/ogl_pipeline.h"
+#include "ogl/ogl_rendering_handler.h"
+#include "raGL/raGL_framebuffer.h"
 #include "ral/ral_context.h"
 #include "system/system_hashed_ansi_string.h"
 
-static void _clear_color_buffer_with_color(ogl_context context,
+static void _clear_color_buffer_with_color(ral_context context,
                                            uint32_t    frame_index,
                                            system_time unused,
                                            const int*  rendering_area_px_topdown,
                                            void*       clear_color_arg)
 {
     const float*                clear_color = (const float*) clear_color_arg;
+    ogl_context                 context_gl  = ral_context_get_gl_context(context);
     ogl_context_gl_entrypoints* entrypoints = NULL;
 
-    ogl_context_get_property(context,
+    ogl_context_get_property(context_gl,
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
                             &entrypoints);
 
@@ -62,7 +65,6 @@ TEST(WindowTest, CreationTest)
                              window_resolution);
 
     demo_window_show       (window);
-    demo_window_close      (window);        /* <- this is an optional call */
     demo_app_destroy_window(window_name);
 }
 
@@ -90,37 +92,32 @@ static void _on_render_frame_callback(ogl_context context,
     global_n_frames_rendered = n_frames_rendered;
 }
 
-TEST(WindowTest, MSAAEnumerationTest)
-{
-    unsigned int* msaa_samples_ptr = NULL;
-    unsigned int  n_msaa_samples   = 0;
-
-    demo_app_enumerate_msaa_samples(RAL_BACKEND_TYPE_GL,
-                                   &n_msaa_samples,
-                                   &msaa_samples_ptr);
-
-    ASSERT_NE  (msaa_samples_ptr,
-                (unsigned int*) NULL);
-    ASSERT_TRUE(n_msaa_samples >= 1);
-
-    demo_app_free_msaa_samples(msaa_samples_ptr);
-}
-
 TEST(WindowTest, RenderingHandlerTest)
 {
     /* Create the window */
-    demo_window                     window              = NULL;
-    const system_hashed_ansi_string window_name         = system_hashed_ansi_string_create("Test window");
-    const uint32_t                  window_target_fps   = 0xFFFFFFFF;
-    const uint32_t                  window_resolution[] = { 320, 240 };
+    static const PFNOGLRENDERINGHANDLERRENDERINGCALLBACK pfn_rendering_callback_func_ptr = _on_render_frame_callback;
+    demo_window                                          window                          = NULL;
+    const system_hashed_ansi_string                      window_name                     = system_hashed_ansi_string_create("Test window");
+    ogl_rendering_handler                                window_rendering_handler        = NULL;
+    const uint32_t                                       window_target_fps               = 0xFFFFFFFF;
+    const uint32_t                                       window_resolution[]             = { 320, 240 };
 
     window = demo_app_create_window(window_name,
-                                    RAL_BACKEND_TYPE_GL);
+                                    RAL_BACKEND_TYPE_GL,
+                                    false /* use_timeline */);
 
     demo_window_set_property(window,
                              DEMO_WINDOW_PROPERTY_TARGET_FRAME_RATE,
                             &window_target_fps);
-    demo_window_show        (window);
+    demo_window_show(window);
+
+    demo_window_get_property(window,
+                             DEMO_WINDOW_PROPERTY_RENDERING_HANDLER,
+                            &window_rendering_handler);
+
+    ogl_rendering_handler_set_property(window_rendering_handler,
+                                       OGL_RENDERING_HANDLER_PROPERTY_RENDERING_CALLBACK,
+                                      &pfn_rendering_callback_func_ptr);
 
     /* Let's render a couple of frames. */
     demo_window_start_rendering(window,

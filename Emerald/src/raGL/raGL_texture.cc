@@ -321,11 +321,17 @@ PRIVATE RENDERING_CONTEXT_CALL void _raGL_texture_deinit_storage_rendering_callb
 
     if (texture_ptr->is_renderbuffer)
     {
+        LOG_INFO("[GL back-end]: Deleting texture storage (GL renderbuffer ID [%d])",
+             texture_ptr->id);
+
         entrypoints_ptr->pGLDeleteRenderbuffers(1,
                                                &texture_ptr->id);
     } /* if (texture_ptr->is_renderbuffer) */
     else
     {
+        LOG_INFO("[GL back-end]: Deleting texture storage (GL texture ID [%d])",
+                 texture_ptr->id);
+
         entrypoints_ptr->pGLDeleteTextures(1,
                                           &texture_ptr->id);
     }
@@ -409,8 +415,6 @@ PRIVATE RENDERING_CONTEXT_CALL void _raGL_texture_init_renderbuffer_storage(_raG
     ogl_texture_internalformat                                texture_format_gl   = OGL_TEXTURE_INTERNALFORMAT_UNKNOWN;
     uint32_t                                                  texture_n_samples   = 0;
 
-    LOG_INFO("raGL_texture instance is going to use a renderbuffer storage.");
-
     ogl_context_get_property(texture_ptr->context,
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL_EXT_DIRECT_STATE_ACCESS,
                             &entrypoints_dsa_ptr);
@@ -438,6 +442,9 @@ PRIVATE RENDERING_CONTEXT_CALL void _raGL_texture_init_renderbuffer_storage(_raG
 
     entrypoints_ptr->pGLGenRenderbuffers(1,
                                         &texture_ptr->id);
+
+    LOG_INFO("[GL back-end]: Allocating new renderbuffer storage for GL renderbuffer ID [%d]",
+             texture_ptr->id);
 
     texture_format_gl = raGL_utils_get_ogl_texture_internalformat_for_ral_texture_format(texture_format);
 
@@ -522,6 +529,9 @@ PRIVATE RENDERING_CONTEXT_CALL void _raGL_texture_init_texture_storage(_raGL_tex
 
     entrypoints_ptr->pGLGenTextures(1,
                                    &texture_ptr->id);
+
+    LOG_INFO("[GL back-end]: Allocating new texture storage for GL texture ID [%d]",
+             texture_ptr->id);
 
     switch (texture_type)
     {

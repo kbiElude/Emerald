@@ -8,6 +8,7 @@
 
 #include "ogl/gl3.h"
 #include "raGL/raGL_types.h"
+#include "ral/ral_types.h"
 #include "system/system_time.h"
 #include "system/system_types.h"
 
@@ -1718,7 +1719,7 @@ DECLARE_HANDLE(ogl_pipeline);
  *                                   [3]: y2 of the rendering area (in pixels)
  *  @param callback_user_arg TODO
  */
-typedef void (*PFNOGLPIPELINECALLBACKPROC)(ogl_context context,
+typedef void (*PFNOGLPIPELINECALLBACKPROC)(ral_context context,
                                            uint32_t    n_frame,
                                            system_time frame_time,
                                            const int*  rendering_area_px_topdown,

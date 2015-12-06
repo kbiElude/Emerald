@@ -184,31 +184,31 @@ PUBLIC ral_texture ral_context_get_texture_by_file_name(ral_context             
 /** TODO
  *
  *  TEMPORARY. Will be removed during RAL integration */
-PUBLIC raGL_buffer ral_context_get_buffer_gl(ral_context context,
-                                             ral_buffer  buffer);
+PUBLIC EMERALD_API raGL_buffer ral_context_get_buffer_gl(ral_context context,
+                                                         ral_buffer  buffer);
 
 /** TODO
  *
  *  TEMPORARY. Will be removed during RAL integration */
-PUBLIC raGL_framebuffer ral_context_get_framebuffer_gl(ral_context     context,
-                                                       ral_framebuffer framebuffer);
+PUBLIC EMERALD_API raGL_framebuffer ral_context_get_framebuffer_gl(ral_context     context,
+                                                                   ral_framebuffer framebuffer);
 
 /** TODO
  *
  *  TEMPORARY. Will be removed during RAL integration */
-PUBLIC ogl_context ral_context_get_gl_context(ral_context context);
+PUBLIC EMERALD_API ogl_context ral_context_get_gl_context(ral_context context);
 
 /** TODO
  *
  *  TEMPORARY. Will be removed during RAL integration */
-PUBLIC raGL_sampler ral_context_get_sampler_gl(ral_context context,
-                                               ral_sampler sampler);
+PUBLIC EMERALD_API raGL_sampler ral_context_get_sampler_gl(ral_context context,
+                                                           ral_sampler sampler);
 
 /** TODO
  *
  *  TEMPORARY. Will be removed during RAL integration */
-PUBLIC raGL_texture ral_context_get_texture_gl(ral_context context,
-                                               ral_texture texture);
+PUBLIC EMERALD_API raGL_texture ral_context_get_texture_gl(ral_context context,
+                                                           ral_texture texture);
 
 /** TODO
  *

@@ -101,7 +101,7 @@ PRIVATE void _raGL_buffer_on_client_memory_sourced_update_request_rendering_thre
 
     buffer_ptr = (_raGL_buffer*) callback_arg_ptr->buffer;
 
-    ogl_context_get_property(context,
+    ogl_context_get_property(buffer_ptr->context,
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL_EXT_DIRECT_STATE_ACCESS,
                             &dsa_entrypoints_ptr);
 

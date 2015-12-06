@@ -197,7 +197,7 @@ PRIVATE volatile void _system_callback_manager_call_back_handler(void* descripto
 /** Please see header for spec */
 PUBLIC void system_callback_manager_call_back(system_callback_manager callback_manager,
                                               int                     callback_id,
-                                              void*                   callback_proc_data)
+                                              const void*             callback_proc_data)
 {
     _system_callback_manager* callback_manager_ptr = (_system_callback_manager*) callback_manager;
 

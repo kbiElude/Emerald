@@ -471,6 +471,11 @@ PRIVATE void _ogl_text_construction_callback_from_renderer(ogl_context context,
 {
     _ogl_text* text_ptr = (_ogl_text*) text;
 
+    if (context == NULL)
+    {
+        context = ral_context_get_gl_context(text_ptr->context);
+    }
+
     /* If this is the first text object instance we are dealing with, we need to create all the shaders and programs to do
      * the dirty work
      */

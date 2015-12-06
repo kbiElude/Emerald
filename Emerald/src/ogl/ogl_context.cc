@@ -1117,9 +1117,6 @@ PRIVATE void _ogl_context_init_context_after_creation(ogl_context context)
         /* Set up the zero-VAA VAO */
         context_ptr->entry_points_gl.pGLGenVertexArrays(1,
                                                        &context_ptr->vao_no_vaas_id);
-
-        /* Set up the context-wide flyby */
-        context_ptr->flyby = ogl_flyby_create( (ogl_context) context_ptr);
     } /* if (type == OGL_CONTEXT_TYPE_GL) */
 
     /* Set up the buffer object manager */
@@ -1189,6 +1186,37 @@ PRIVATE void _ogl_context_init_context_after_creation(ogl_context context)
                                               &call_passthrough_mode_enabled);
     {
         _ogl_context_initialize_fbo(context_ptr);
+
+        /* Set up text renderer */
+        const  float              text_default_size = 0.75f;
+        static float              text_color[3]     = {1.0f, 1.0f, 1.0f};
+        system_hashed_ansi_string window_name       = NULL;
+        int                       window_size[2];
+
+        system_window_get_property(context_ptr->window,
+                                   SYSTEM_WINDOW_PROPERTY_DIMENSIONS,
+                                   window_size);
+        system_window_get_property(context_ptr->window,
+                                   SYSTEM_WINDOW_PROPERTY_NAME,
+                                  &window_name);
+
+        context_ptr->text_renderer = ogl_text_create(window_name,
+                                                     context_ptr->context,
+                                                     system_resources_get_meiryo_font_table(),
+                                                     window_size[0],
+                                                     window_size[1]);
+
+        ogl_text_set_text_string_property(context_ptr->text_renderer,
+                                          TEXT_STRING_ID_DEFAULT,
+                                          OGL_TEXT_STRING_PROPERTY_SCALE,
+                                         &text_default_size);
+        ogl_text_set_text_string_property(context_ptr->text_renderer,
+                                          TEXT_STRING_ID_DEFAULT,
+                                          OGL_TEXT_STRING_PROPERTY_COLOR,
+                                          text_color);
+
+        /* Set up the context-wide flyby */
+        context_ptr->flyby = ogl_flyby_create( (ogl_context) context_ptr);
     }
     ogl_rendering_handler_set_private_property(rendering_handler,
                                                OGL_RENDERING_HANDLER_PRIVATE_PROPERTY_CALL_PASSTHROUGH_MODE,
@@ -3579,39 +3607,8 @@ PUBLIC EMERALD_API void ogl_context_get_property(ogl_context          context,
 
         case OGL_CONTEXT_PROPERTY_TEXT_RENDERER:
         {
-            /* Text renderer is not created at context creation time. If requested for the first time,
-             * make sure to instantiate it, before returning the handle.
-             */
-            if (context_ptr->text_renderer == NULL)
-            {
-                /* Set up text renderer */
-                const  float              text_default_size = 0.75f;
-                static float              text_color[3]     = {1.0f, 1.0f, 1.0f};
-                system_hashed_ansi_string window_name       = NULL;
-                int                       window_size[2];
-
-                system_window_get_property(context_ptr->window,
-                                           SYSTEM_WINDOW_PROPERTY_DIMENSIONS,
-                                           window_size);
-                system_window_get_property(context_ptr->window,
-                                           SYSTEM_WINDOW_PROPERTY_NAME,
-                                          &window_name);
-
-                context_ptr->text_renderer = ogl_text_create(window_name,
-                                                             context_ptr->context,
-                                                             system_resources_get_meiryo_font_table(),
-                                                             window_size[0],
-                                                             window_size[1]);
-
-                ogl_text_set_text_string_property(context_ptr->text_renderer,
-                                                  TEXT_STRING_ID_DEFAULT,
-                                                  OGL_TEXT_STRING_PROPERTY_SCALE,
-                                                 &text_default_size);
-                ogl_text_set_text_string_property(context_ptr->text_renderer,
-                                                  TEXT_STRING_ID_DEFAULT,
-                                                  OGL_TEXT_STRING_PROPERTY_COLOR,
-                                                  text_color);
-            } /* if (context_ptr->text_renderer == NULL) */
+            ASSERT_DEBUG_SYNC(context_ptr->text_renderer != NULL,
+                              "Text renderer is NULL");
 
             *((ogl_text*) out_result) = context_ptr->text_renderer;
 

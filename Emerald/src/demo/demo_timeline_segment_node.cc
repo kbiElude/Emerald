@@ -390,10 +390,15 @@ PUBLIC bool demo_timeline_segment_node_add_texture_output(demo_timeline_segment_
         system_resizable_vector_push(node_ptr->texture_outputs,
                                      new_texture_output_ptr);
 
-        /* Ping the subscribers about the fact a new texture input has arrived */
+        /* Ping the subscribers about the fact a new texture output has arrived */
+        demo_timeline_segment_node_callback_texture_output_added_callback_argument callback_arg;
+
+        callback_arg.node      = node;
+        callback_arg.output_id = new_output_id;
+
         system_callback_manager_call_back(node_ptr->callback_manager,
                                           DEMO_TIMELINE_SEGMENT_NODE_CALLBACK_ID_TEXTURE_OUTPUT_ADDED,
-                                          (void*) new_output_id);
+                                         &callback_arg);
     } /* if (new_texture_output_ptr != NULL) */
 
     return result;
@@ -405,10 +410,9 @@ PUBLIC bool demo_timeline_segment_node_attach_texture_to_texture_io(demo_timelin
                                                                     uint32_t                                   id,
                                                                     const demo_texture_attachment_declaration* texture_attachment_ptr)
 {
-    _demo_timeline_segment_node*            node_ptr              = (_demo_timeline_segment_node*) node;
-    bool                                    result                = false;
-    _demo_timeline_segment_node_texture_io* texture_io_ptr        = NULL;
-    ral_texture*                            texture_to_detach_ptr = NULL;
+    _demo_timeline_segment_node*            node_ptr       = (_demo_timeline_segment_node*) node;
+    bool                                    result         = false;
+    _demo_timeline_segment_node_texture_io* texture_io_ptr = NULL;
 
     ASSERT_DEBUG_SYNC(node_ptr != NULL,
                       "Input node is NULL");
@@ -510,24 +514,36 @@ PUBLIC bool demo_timeline_segment_node_attach_texture_to_texture_io(demo_timelin
     } /* if (texture_attachment_ptr != NULL) */
 
     /* If there's an existing texture attachment, detach it before continuing */
-    texture_to_detach_ptr = &texture_io_ptr->bound_texture;
-
-    if (*texture_to_detach_ptr != NULL)
+    if (texture_io_ptr->bound_texture != NULL)
     {
+        demo_timeline_segment_node_callback_texture_detached_callback_argument callback_arg;
+
+        callback_arg.id          = id;
+        callback_arg.is_input_id = is_input_id;
+        callback_arg.node        = node;
+        callback_arg.texture     = texture_io_ptr->bound_texture;
+
         system_callback_manager_call_back(node_ptr->callback_manager,
                                           DEMO_TIMELINE_SEGMENT_NODE_CALLBACK_ID_TEXTURE_DETACHED,
-                                          *texture_to_detach_ptr);
+                                         &callback_arg);
 
-        *texture_to_detach_ptr = NULL;
-    } /* if (*texture_to_detach_ptr != NULL) */
+        texture_io_ptr->bound_texture = NULL;
+    } /* if (texture_io_ptr->bound_texture != NULL) */
 
     /* Looks like this texture can be bound to the specified IO! */
     texture_io_ptr->bound_texture = texture_attachment_ptr->texture_ral;
 
     /* Notify subscribers */
+    demo_timeline_segment_node_callback_texture_attached_callback_argument callback_arg;
+
+    callback_arg.id          = id;
+    callback_arg.is_input_id = is_input_id;
+    callback_arg.node        = node;
+    callback_arg.texture     = texture_attachment_ptr->texture_ral;
+
     system_callback_manager_call_back(texture_io_ptr->parent_node_ptr->callback_manager,
                                       DEMO_TIMELINE_SEGMENT_NODE_CALLBACK_ID_TEXTURE_ATTACHED,
-                                      texture_attachment_ptr->texture_ral);
+                                     &callback_arg);
 
     /* All done */
     result = true;
@@ -622,6 +638,13 @@ PUBLIC bool demo_timeline_segment_node_delete_texture_input(demo_timeline_segmen
     /* If there's any texture bound to the input, release it */
     if (texture_io_ptr->bound_texture != NULL)
     {
+        demo_timeline_segment_node_callback_texture_detached_callback_argument callback_arg;
+
+        callback_arg.id          = input_id;
+        callback_arg.is_input_id = true;
+        callback_arg.node        = node;
+        callback_arg.texture     = texture_io_ptr->bound_texture;
+
         system_callback_manager_call_back(texture_io_ptr->parent_node_ptr->callback_manager,
                                           DEMO_TIMELINE_SEGMENT_NODE_CALLBACK_ID_TEXTURE_DETACHED,
                                           texture_io_ptr->bound_texture);
@@ -700,9 +723,16 @@ PUBLIC bool demo_timeline_segment_node_delete_texture_output(demo_timeline_segme
     /* If there's any texture bound to the output, release it */
     if (texture_io_ptr->bound_texture != NULL)
     {
+        demo_timeline_segment_node_callback_texture_detached_callback_argument callback_arg;
+
+        callback_arg.id          = output_id;
+        callback_arg.is_input_id = false;
+        callback_arg.node        = node;
+        callback_arg.texture     = texture_io_ptr->bound_texture;
+
         system_callback_manager_call_back(texture_io_ptr->parent_node_ptr->callback_manager,
                                           DEMO_TIMELINE_SEGMENT_NODE_CALLBACK_ID_TEXTURE_DETACHED,
-                                          texture_io_ptr->bound_texture);
+                                         &callback_arg);
 
         texture_io_ptr->bound_texture = NULL;
     } /* if (texture_output_ptr->bound_texture != NULL) */
@@ -711,9 +741,14 @@ PUBLIC bool demo_timeline_segment_node_delete_texture_output(demo_timeline_segme
     delete texture_io_ptr;
 
     /* Notify subscribers about the fact the node no longer offers a texture output. */
+    demo_timeline_segment_node_callback_texture_output_deleted_callback_argument callback_arg;
+
+    callback_arg.node      = node;
+    callback_arg.output_id = output_id;
+
     system_callback_manager_call_back(node_ptr->callback_manager,
                                       DEMO_TIMELINE_SEGMENT_NODE_CALLBACK_ID_TEXTURE_OUTPUT_DELETED,
-                                      (void*) output_id);
+                                     &callback_arg);
 
     /* All done */
     result = true;

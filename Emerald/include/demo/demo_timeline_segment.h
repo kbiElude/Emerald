@@ -75,6 +75,38 @@ typedef enum
      */
     DEMO_TIMELINE_SEGMENT_CALLBACK_ID_NEW_OUTPUT_EXPOSED,
 
+    /* A texture attachment has been added to one of the owned nodes.
+     *
+     * Synchronous call-backs only.
+     *
+     * @param arg demo_timeline_segment_node_callback_texture_attached_callback_argument instance
+     */
+    DEMO_TIMELINE_SEGMENT_CALLBACK_ID_TEXTURE_ATTACHED_TO_NODE,
+
+    /* A texture attachment has been removed from one of the owned nodes.
+     *
+     * Synchronous call-backs only.
+     *
+     * @param arg demo_timeline_segment_node_callback_texture_attached_callback_argument instance
+     */
+     DEMO_TIMELINE_SEGMENT_CALLBACK_ID_TEXTURE_DETACHED_FROM_NODE,
+
+    /* A new texture output has been added to one of the segment nodes
+     *
+     * Synchronous call-back only.
+     *
+     * @param arg demo_timeline_segment_node_callback_texture_output_added_callback_argument instance.
+     **/
+     DEMO_TIMELINE_SEGMENT_CALLBACK_ID_TEXTURE_OUTPUT_ADDED_TO_NODE,
+
+     /* A texture output has been removed from one of the segment nodes
+     *
+     * Synchronous call-back only.
+     *
+     * @param arg demo_timeline_segment_node_callback_texture_output_deleted_callback_argument instance.
+     **/
+     DEMO_TIMELINE_SEGMENT_CALLBACK_ID_TEXTURE_OUTPUT_DELETED_FROM_NODE,
+
     /* Always last */
     DEMO_TIMELINE_SEGMENT_CALLBACK_ID_COUNT
 } demo_timeline_video_segment_callback_id;
@@ -242,8 +274,6 @@ PUBLIC bool demo_timeline_segment_disconnect_nodes(demo_timeline_segment        
  *  @param node_io_id                ID of the segment node IO which should either be exposed (true) on the segment-level
  *                                   or hidden (false).
  *  @param should_expose             TODO
- *  @param should_expose_as_vs_input true if @param node_io_id should be exposed as video segment's input. Otherwise, the IO
- *                                   will be exposed as video segment's output.
  *
  *  @return true if the function succeeded, false otherwise.
  *

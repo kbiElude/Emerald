@@ -1462,8 +1462,8 @@ end:
 }
 
 /** TODO */
-PUBLIC raGL_buffer ral_context_get_buffer_gl(ral_context context,
-                                             ral_buffer  buffer)
+PUBLIC EMERALD_API raGL_buffer ral_context_get_buffer_gl(ral_context context,
+                                                         ral_buffer  buffer)
 {
     raGL_buffer   buffer_raGL = NULL;
     _ral_context* context_ptr = (_ral_context*) context;
@@ -1476,8 +1476,8 @@ PUBLIC raGL_buffer ral_context_get_buffer_gl(ral_context context,
 }
 
 /** TODO */
-PUBLIC raGL_framebuffer ral_context_get_framebuffer_gl(ral_context     context,
-                                                       ral_framebuffer framebuffer)
+PUBLIC EMERALD_API raGL_framebuffer ral_context_get_framebuffer_gl(ral_context     context,
+                                                                   ral_framebuffer framebuffer)
 {
     _ral_context*    context_ptr      = (_ral_context*) context;
     raGL_framebuffer framebuffer_raGL = NULL;
@@ -1490,7 +1490,7 @@ PUBLIC raGL_framebuffer ral_context_get_framebuffer_gl(ral_context     context,
 }
 
 /** TODO */
-PUBLIC ogl_context ral_context_get_gl_context(ral_context context)
+PUBLIC EMERALD_API ogl_context ral_context_get_gl_context(ral_context context)
 {
     raGL_backend backend         = (raGL_backend) ((_ral_context*) context)->backend;
     ogl_context  backend_context = NULL;
@@ -1581,8 +1581,8 @@ end:
 }
 
 /** TODO */
-PUBLIC raGL_sampler ral_context_get_sampler_gl(ral_context context,
-                                               ral_sampler sampler)
+PUBLIC EMERALD_API raGL_sampler ral_context_get_sampler_gl(ral_context context,
+                                                           ral_sampler sampler)
 {
     raGL_sampler  sampler_raGL = NULL;
     _ral_context* context_ptr  = (_ral_context*) context;
@@ -1669,8 +1669,8 @@ end:
 }
 
 /** TODO */
-PUBLIC raGL_texture ral_context_get_texture_gl(ral_context context,
-                                               ral_texture texture)
+PUBLIC EMERALD_API raGL_texture ral_context_get_texture_gl(ral_context context,
+                                                           ral_texture texture)
 {
     _ral_context* context_ptr  = (_ral_context*) context;
     raGL_texture  texture_raGL = NULL;

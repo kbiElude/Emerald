@@ -133,7 +133,7 @@ PRIVATE void _raGL_framebuffer_on_depth_stencil_attachment_configuration_changed
                                                                                  void*                           user_arg);
 PRIVATE void _raGL_framebuffer_subscribe_for_notifications                      (_raGL_framebuffer*              fb_ptr,
                                                                                  bool                            should_subscribe);
-PRIVATE void _raGL_framebuffer_sync                                             (_raGL_framebuffer*              framebuffer_raGL_ptr);
+PRIVATE void _raGL_framebuffer_sync_rendering_thread_calback                    (_raGL_framebuffer*              framebuffer_raGL_ptr);
 PRIVATE void _raGL_framebuffer_update_attachment_configuration                  (_raGL_framebuffer*              fb_ptr,
                                                                                  ral_framebuffer_attachment_type attachment_type,
                                                                                  uint32_t                        attachment_index);
@@ -265,8 +265,11 @@ PRIVATE void _raGL_framebuffer_subscribe_for_notifications(_raGL_framebuffer* fb
 }
 
 /** TODO */
-PRIVATE void _raGL_framebuffer_sync(_raGL_framebuffer* framebuffer_raGL_ptr)
+PRIVATE RENDERING_CONTEXT_CALL void _raGL_framebuffer_sync_rendering_thread_calback(ogl_context context,
+                                                                                    void*       user_arg)
 {
+    _raGL_framebuffer* framebuffer_raGL_ptr = (_raGL_framebuffer*) user_arg;
+
     LOG_ERROR("Performance warning: raGL_framebuffer sync request.");
 
     /* Sanity checks */
@@ -463,7 +466,9 @@ PRIVATE void _raGL_framebuffer_update_attachment_configuration(_raGL_framebuffer
 end:
     if (attachment_ptr->dirty)
     {
-        _raGL_framebuffer_sync(fb_ptr);
+        ogl_context_request_callback_from_context_thread(fb_ptr->context,
+                                                         _raGL_framebuffer_sync_rendering_thread_calback,
+                                                         fb_ptr);
     }
 }
 
@@ -506,9 +511,9 @@ PUBLIC raGL_framebuffer raGL_framebuffer_create(ogl_context     context,
 }
 
 /** Please see header for specification */
-PUBLIC void raGL_framebuffer_get_property(raGL_framebuffer          fb,
-                                          raGL_framebuffer_property property,
-                                          void*                     out_result_ptr)
+PUBLIC EMERALD_API void raGL_framebuffer_get_property(raGL_framebuffer          fb,
+                                                      raGL_framebuffer_property property,
+                                                      void*                     out_result_ptr)
 {
     _raGL_framebuffer* fb_ptr = (_raGL_framebuffer*) fb;
 

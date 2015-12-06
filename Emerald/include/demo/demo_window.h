@@ -65,8 +65,9 @@ typedef void (*PFNDEMOWINDOWLOADERSETUPCALLBACKPROC)(demo_window window,
  *  Releases the underlying rendering handler, as well as the system window instance.
  *  It is OK to call demo_window_show() for the same demo_window instance afterward.
  *
+ *  This call should only be issued by demo_app.
  */
-PUBLIC EMERALD_API bool demo_window_close(demo_window window);
+PUBLIC bool demo_window_close(demo_window window);
 
 /** TODO.
  *

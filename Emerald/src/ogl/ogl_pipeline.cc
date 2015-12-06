@@ -662,7 +662,7 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API bool ogl_pipeline_draw_stage(ogl_pipel
                     ogl_query_begin(step_ptr->timestamp_qo);
                 }
                 {
-                    step_ptr->pfn_step_callback(ral_context_get_gl_context(step_ptr->context),
+                    step_ptr->pfn_step_callback(step_ptr->context,
                                                 frame_index,
                                                 time,
                                                 rendering_area_px_topdown,

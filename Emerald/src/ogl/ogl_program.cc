@@ -1098,9 +1098,6 @@ PRIVATE void _ogl_program_release_active_uniform_blocks(_ogl_program* program_pt
 
                     system_resizable_vector_release(active_ubs);
                     active_ubs = NULL;
-
-                    system_hash64map_remove(program_ptr->context_to_active_ubs_map,
-                                            current_owner_context_hash);
                 }
             }
         } /* for (all recognized contexts) */

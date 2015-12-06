@@ -31,13 +31,17 @@ typedef enum
 
     /* A texture has been attached to a node input or output.
      *
-     * @param arg Texture instance.
+     * Synchronous call-backs only.
+     *
+     * @param arg demo_timeline_segment_node_callback_texture_attached_callback_argument instance.
      */
     DEMO_TIMELINE_SEGMENT_NODE_CALLBACK_ID_TEXTURE_ATTACHED,
 
     /* A texture is about to be detached from node input or output.
      *
-     * @param arg Texture instance.
+     * Synchronous call-backs only.
+     *
+     * @param arg demo_timeline_segment_node_callback_texture_detached_callback_argument instance.
      */
     DEMO_TIMELINE_SEGMENT_NODE_CALLBACK_ID_TEXTURE_DETACHED,
 
@@ -55,19 +59,44 @@ typedef enum
 
     /* A new texture output has been added to the node.
      *
-     * @param arg New output's ID
+     * Only supports synchronous call-backs.
+     *
+     * @param arg demo_timeline_segment_node_callback_texture_output_added_callback_argument instance.
      */
     DEMO_TIMELINE_SEGMENT_NODE_CALLBACK_ID_TEXTURE_OUTPUT_ADDED,
 
     /* An existing texture input has just been deleted.
      *
-     * @param arg Former input ID.
+     * Only supports synchronous call-backs.
+     *
+     * @param arg demo_timeline_segment_node_callback_texture_output_deleted_callback_argument instance.
      */
     DEMO_TIMELINE_SEGMENT_NODE_CALLBACK_ID_TEXTURE_OUTPUT_DELETED,
 
     /* Always last */
     DEMO_TIMELINE_SEGMENT_NODE_CALLBACK_ID_COUNT
 } demo_timeline_segment_node_callback_id;
+
+typedef struct
+{
+
+    demo_timeline_segment_node           node;
+    demo_timeline_segment_node_output_id output_id;
+
+} demo_timeline_segment_node_callback_texture_output_added_callback_argument;
+
+typedef struct
+{
+
+    uint32_t                   id;
+    bool                       is_input_id;
+    demo_timeline_segment_node node;
+    ral_texture                texture;
+
+} demo_timeline_segment_node_callback_texture_attached_callback_argument;
+
+typedef demo_timeline_segment_node_callback_texture_output_added_callback_argument demo_timeline_segment_node_callback_texture_output_deleted_callback_argument;
+typedef demo_timeline_segment_node_callback_texture_attached_callback_argument     demo_timeline_segment_node_callback_texture_detached_callback_argument;
 
 typedef enum
 {

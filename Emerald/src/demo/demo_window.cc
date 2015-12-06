@@ -5,6 +5,7 @@
  */
 #include "shared.h"
 #include "audio/audio_stream.h"
+#include "demo/demo_app.h"
 #include "demo/demo_loader.h"
 #include "demo/demo_window.h"
 #include "ogl/ogl_rendering_handler.h"
@@ -170,7 +171,7 @@ PRIVATE void _demo_window_subscribe_for_window_notifications(_demo_window* windo
 
 
 /** TODO */
-PUBLIC EMERALD_API bool demo_window_close(demo_window window)
+PUBLIC bool demo_window_close(demo_window window)
 {
     bool          result     = false;
     _demo_window* window_ptr = (_demo_window*) window;

@@ -8,7 +8,9 @@
 #include "demo/demo_timeline.h"
 #include "demo/demo_timeline_segment.h"
 #include "demo/demo_timeline_segment_node.h"
+#include "ogl/ogl_context.h"  /* TODO: Remove OGL dep */
 #include "ogl/ogl_pipeline.h" /* TODO: Remove OGL dep */
+#include "raGL/raGL_framebuffer.h"
 #include "ral/ral_context.h"
 #include "ral/ral_framebuffer.h"
 #include "ral/ral_texture.h"
@@ -246,6 +248,22 @@ PUBLIC RENDERING_CONTEXT_CALL demo_timeline_segment_node_private nodes_video_pas
             ASSERT_ALWAYS_SYNC(false,
                                "Could not add a new texture output to the pass renderer video segment node.");
         }
+
+        /* Expose the output.
+         *
+         * TODO: This is temporary. Ultimately, outputs should be only exposed when requested by the user. */
+        demo_timeline_segment_node_id node_id = -1;
+
+        demo_timeline_segment_node_get_property(node,
+                                                DEMO_TIMELINE_SEGMENT_NODE_PROPERTY_ID,
+                                               &node_id);
+
+        demo_timeline_segment_expose_node_io(segment,
+                                             false, /* is_input_io */
+                                             node_id,
+                                             new_node_ptr->output_id,
+                                             true,   /* should_expose */
+                                             false); /* should_expose_as_vs_input */
     } /* if (new_node_ptr != NULL) */
 
     return (demo_timeline_segment_node_private) new_node_ptr;
@@ -274,6 +292,26 @@ PUBLIC RENDERING_CONTEXT_CALL bool nodes_video_pass_renderer_render(demo_timelin
 
     if (node_ptr->rendering_pipeline_stage_id != -1)
     {
+        ASSERT_DEBUG_SYNC(node_ptr->rendering_framebuffer != NULL,
+                          "Rendering framebuffer is NULL");
+
+        /* TODO: This will be made API-agnostic once we have command buffers support in RAL */
+        ogl_context                       context_gl      = ral_context_get_gl_context(node_ptr->context);
+        const ogl_context_gl_entrypoints* entrypoints_ptr = NULL;
+        raGL_framebuffer                  fb_raGL         = ral_context_get_framebuffer_gl(node_ptr->context,
+                                                                                           node_ptr->rendering_framebuffer);
+        uint32_t                          fb_raGL_id      = 0;
+
+        ogl_context_get_property     (context_gl,
+                                      OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
+                                     &entrypoints_ptr);
+        raGL_framebuffer_get_property(fb_raGL,
+                                      RAGL_FRAMEBUFFER_PROPERTY_ID,
+                                     &fb_raGL_id);
+
+        entrypoints_ptr->pGLBindFramebuffer(GL_DRAW_FRAMEBUFFER,
+                                            fb_raGL_id);
+
         result = ogl_pipeline_draw_stage(node_ptr->pipeline,
                                          node_ptr->rendering_pipeline_stage_id,
                                          frame_index,
@@ -361,6 +399,9 @@ PUBLIC void nodes_video_pass_renderer_set_texture_memory_allocation(demo_timelin
     {
         case NODES_VIDEO_PASS_RENDERER_TEXTURE_OUTPUT:
         {
+            demo_texture_attachment_declaration new_attachment;
+
+            /* We're going to render stuff to this texture. */
             node_ptr->output_texture = texture;
 
             ral_framebuffer_set_attachment_2D(node_ptr->rendering_framebuffer,
@@ -369,6 +410,13 @@ PUBLIC void nodes_video_pass_renderer_set_texture_memory_allocation(demo_timelin
                                               node_ptr->output_texture,
                                               0); /* n_mipmap */
 
+            /* Attach the texture to the node's output, so that node users can access the texture. */
+            new_attachment.texture_ral = texture;
+
+            demo_timeline_segment_node_attach_texture_to_texture_io(node_ptr->node,
+                                                                    false, /* is_input_id */
+                                                                    node_ptr->output_id,
+                                                                   &new_attachment);
             break;
         }
     } /* switch (n_allocation) */
