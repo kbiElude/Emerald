@@ -4,6 +4,7 @@
  *
  */
 #include "shared.h"
+#include "demo/nodes/nodes_postprocessing_output.h"
 #include "demo/nodes/nodes_postprocessing_video_segment.h"
 #include "demo/nodes/nodes_video_pass_renderer.h"
 #include "demo/demo_timeline.h"
@@ -343,14 +344,14 @@ typedef struct
 static const _node_data postprocessing_node_data[] =
 {
     {
-        "Post-processing segment output node",
+        "Output node",
         DEMO_TIMELINE_POSTPROCESSING_SEGMENT_NODE_TYPE_OUTPUT,
 
-        nodes_postprocessing_output_segment_deinit,
+        nodes_postprocessing_output_deinit,
         NULL, /* pfn_get_property_proc                          */
         NULL, /* pfn_get_texture_memory_allocation_details_proc */
-        nodes_postprocessing_output_segment_init,
-        nodes_postprocessing_output_segment_render,
+        nodes_postprocessing_output_init,
+        nodes_postprocessing_output_render,
         NULL, /* pfn_set_property_proc                  */
         NULL, /* pfn_set_texture_memory_allocation_proc */
     },
