@@ -187,12 +187,6 @@ PUBLIC EMERALD_API bool demo_timeline_get_property(demo_timeline          timeli
                                                    void*                  out_result_ptr);
 
 /** TODO */
-PUBLIC EMERALD_API bool demo_timeline_get_segment_at_time(demo_timeline               timeline,
-                                                          demo_timeline_segment_type  segment_type,
-                                                          system_time                 time,
-                                                          demo_timeline_segment_id*   out_segment_id_ptr);
-
-/** TODO */
 PUBLIC EMERALD_API bool demo_timeline_get_segment_by_id(demo_timeline              timeline,
                                                         demo_timeline_segment_type segment_type,
                                                         demo_timeline_segment_id   segment_id,

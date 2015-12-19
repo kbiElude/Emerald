@@ -19,6 +19,7 @@ typedef struct _system_callback_manager_callback_subscription
 {
     PFNSYSTEMCALLBACKPROC              callback_proc;
     _system_callback_manager_callback* owner_ptr;
+    uint32_t                           ref_counter;
     _callback_synchronicity            synchronicity;
     void*                              user_arg;
 
@@ -26,8 +27,15 @@ typedef struct _system_callback_manager_callback_subscription
     {
         callback_proc = NULL;
         owner_ptr     = NULL;
+        ref_counter   = 1;
         synchronicity = CALLBACK_SYNCHRONICITY_UNKNOWN;
         user_arg      = NULL;
+    }
+
+    ~_system_callback_manager_callback_subscription()
+    {
+        ASSERT_DEBUG_SYNC(ref_counter == 0,
+                          "Removing a subscription descriptor even though reference counter is not 0");
     }
 } _system_callback_manager_callback_subscription;
 
@@ -101,7 +109,7 @@ PRIVATE          void _deinit_system_callback_manager_callback  (_system_callbac
 PRIVATE volatile void _system_callback_manager_call_back_handler(void*                              descriptor);
 
 
-/** Please see header for spec */
+/** TODO */
 PRIVATE void _add_callback_support(system_callback_manager callback_manager,
                                    _callback_id            callback_id,
                                    uint32_t                callback_proc_data_size)
@@ -303,7 +311,7 @@ PUBLIC system_callback_manager system_callback_manager_create(_callback_id max_c
 
         /* Initialize all call-back descriptors */
         for (unsigned int n_callback_id  = 0;
-                          n_callback_id <= max_callback_id;
+                          n_callback_id <= (unsigned int) max_callback_id;
                         ++n_callback_id)
         {
             _add_callback_support( (system_callback_manager) manager_ptr,
@@ -381,25 +389,65 @@ PUBLIC EMERALD_API void system_callback_manager_subscribe_for_callbacks(system_c
     ASSERT_DEBUG_SYNC(callback_manager_ptr->max_callback_id >= callback_id,
                       "Requested callback ID is invalid");
 
-    /* Create a new descriptor */
-    _system_callback_manager_callback_subscription* subscription_ptr = new (std::nothrow) _system_callback_manager_callback_subscription;
-
-    ASSERT_ALWAYS_SYNC(subscription_ptr != NULL,
-                       "Out of memory");
-    if (subscription_ptr != NULL)
+    /* Check if the requested subscription is already stored. If so, bump up its ref counter and leave.
+     * Otherwise, we'll spawn a new descriptor and insert it into the map. */
+    system_critical_section_enter(callback_manager_ptr->callbacks[callback_id].callback_in_progress_cs);
     {
-        subscription_ptr->callback_proc = pfn_callback_proc;
-        subscription_ptr->owner_ptr     = callback_manager_ptr->callbacks + callback_id;
-        subscription_ptr->synchronicity = callback_synchronicity;
-        subscription_ptr->user_arg      = callback_proc_user_arg;
+        uint32_t n_subscriptions = 0;
 
-        system_critical_section_enter(callback_manager_ptr->callbacks[callback_id].callback_in_progress_cs);
+        system_resizable_vector_get_property(callback_manager_ptr->callbacks[callback_id].subscriptions,
+                                             SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                            &n_subscriptions);
+
+        for (uint32_t n_subscription = 0;
+                      n_subscription < n_subscriptions;
+                    ++n_subscription)
         {
+            _system_callback_manager_callback_subscription* subscription_ptr = NULL;
+
+            if (!system_resizable_vector_get_element_at(callback_manager_ptr->callbacks[callback_id].subscriptions,
+                                                        n_subscription,
+                                                       &subscription_ptr) )
+            {
+                ASSERT_DEBUG_SYNC(false,
+                                  "Could not retrieve subscription descriptor at index [%d]",
+                                  n_subscription);
+
+                continue;
+            }
+
+            if (subscription_ptr->callback_proc == pfn_callback_proc                               &&
+                subscription_ptr->owner_ptr     == (callback_manager_ptr->callbacks + callback_id) &&
+                /* ignore synchronicity setting */
+                subscription_ptr->user_arg      == callback_proc_user_arg)
+            {
+                /* We have a match */
+                subscription_ptr->ref_counter++;
+
+                goto end;
+            }
+        } /* for (all added subscriptions) */
+    
+        /* Create a new descriptor */
+        _system_callback_manager_callback_subscription* subscription_ptr = new (std::nothrow) _system_callback_manager_callback_subscription;
+
+        ASSERT_ALWAYS_SYNC(subscription_ptr != NULL,
+                           "Out of memory");
+
+        if (subscription_ptr != NULL)
+        {
+            subscription_ptr->callback_proc = pfn_callback_proc;
+            subscription_ptr->owner_ptr     = callback_manager_ptr->callbacks + callback_id;
+            subscription_ptr->synchronicity = callback_synchronicity;
+            subscription_ptr->user_arg      = callback_proc_user_arg;
+
             system_resizable_vector_push(callback_manager_ptr->callbacks[callback_id].subscriptions,
                                          subscription_ptr);
-        }
-        system_critical_section_leave(callback_manager_ptr->callbacks[callback_id].callback_in_progress_cs);
+        } /* if (subscription_ptr != NULL) */
+end:
+        ;
     }
+    system_critical_section_leave(callback_manager_ptr->callbacks[callback_id].callback_in_progress_cs);
 }
 
 /** Please see header for spec */
@@ -429,14 +477,19 @@ PUBLIC EMERALD_API void system_callback_manager_unsubscribe_from_callbacks(syste
                                                        n_callback,
                                                       &subscription_ptr) )
             {
-                if (subscription_ptr->callback_proc == pfn_callback_proc &&
+                if (subscription_ptr->callback_proc == pfn_callback_proc      &&
                     subscription_ptr->user_arg      == callback_proc_user_arg)
                 {
-                    system_resizable_vector_delete_element_at(callback_manager_ptr->callbacks[callback_id].subscriptions,
-                                                              n_callback);
+                    --subscription_ptr->ref_counter;
 
-                    delete subscription_ptr;
-                    subscription_ptr = NULL;
+                    if (subscription_ptr->ref_counter == 0)
+                    {
+                        system_resizable_vector_delete_element_at(callback_manager_ptr->callbacks[callback_id].subscriptions,
+                                                                  n_callback);
+
+                        delete subscription_ptr;
+                        subscription_ptr = NULL;
+                    }
 
                     break;
                 }

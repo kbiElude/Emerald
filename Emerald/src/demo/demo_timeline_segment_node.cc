@@ -70,7 +70,7 @@ typedef struct _demo_timeline_segment_node
     PFNSEGMENTNODESETPROPERTYCALLBACKPROC               pfn_set_property_proc;
     PFNSEGMENTNODESETTEXTUREMEMORYALLOCATIONPROC        pfn_set_texture_memory_allocation_proc;
     demo_timeline_segment_type                          segment_type;
-    int                                                 type;
+    demo_timeline_segment_node_type                     type;
 
     system_resizable_vector   texture_inputs;   /* Own the stored _demo_timeline_video_segment_texture_input instances.
                                                  * NOT sorted relative to the ID; use texture_input_id_to_texture_input_descriptor map for this.
@@ -91,7 +91,7 @@ typedef struct _demo_timeline_segment_node
                                 PFNSEGMENTNODERENDERCALLBACKPROC                    in_pfn_render_proc,
                                 PFNSEGMENTNODESETPROPERTYCALLBACKPROC               in_pfn_set_property_proc,
                                 PFNSEGMENTNODESETTEXTUREMEMORYALLOCATIONPROC        in_pfn_set_texture_memory_allocation_proc,
-                                int                                                 in_type)
+                                demo_timeline_segment_node_type                     in_type)
     {
         callback_manager                               = system_callback_manager_create( (_callback_id) DEMO_TIMELINE_SEGMENT_NODE_CALLBACK_ID_COUNT);
         id                                             = in_id;
@@ -554,7 +554,7 @@ end:
 
 /** Please see header for spec */
 PUBLIC demo_timeline_segment_node demo_timeline_segment_node_create(demo_timeline_segment_type                          segment_type,
-                                                                    int                                                 node_type,
+                                                                    demo_timeline_segment_node_type                     node_type,
                                                                     demo_timeline_segment_node_id                       node_id,
                                                                     PFNSEGMENTNODEDEINITCALLBACKPROC                    pfn_deinit_proc,
                                                                     PFNSEGMENTNODEGETPROPERTYCALLBACKPROC               pfn_get_property_proc,

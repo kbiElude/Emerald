@@ -20,9 +20,20 @@
 #include "ral/ral_context.h"
 #include "system/system_hashed_ansi_string.h"
 
+static const float frame_1_color[]    = {0.0f, 1.0f, 0.0f, 1.0f};
+static system_time frame_1_end_time   =  0;
+static system_time frame_1_start_time =  0;
+static const float frame_2_color[]    = {0.0f, 1.0f, 1.0f, 1.0f};
+static system_time frame_2_end_time   =  0;
+static system_time frame_2_start_time =  0;
+static const float frame_3_color[]    = {0.0f, 0.0f, 1.0f, 1.0f};
+static system_time frame_3_end_time   =  0;
+static system_time frame_3_start_time =  0;
+
+
 static void _clear_color_buffer_with_color(ral_context context,
                                            uint32_t    frame_index,
-                                           system_time unused,
+                                           system_time frame_time,
                                            const int*  rendering_area_px_topdown,
                                            void*       clear_color_arg)
 {
@@ -33,6 +44,31 @@ static void _clear_color_buffer_with_color(ral_context context,
     ogl_context_get_property(context_gl,
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
                             &entrypoints);
+
+    /* This function should only be called with valid clear color requests */
+    if (frame_time >= frame_1_start_time &&
+        frame_time <  frame_1_end_time)
+    {
+        ASSERT_TRUE(memcmp(clear_color,
+                           frame_1_color,
+                           sizeof(frame_1_color) ) == 0);
+    }
+    else
+    if (frame_time >= frame_2_start_time &&
+        frame_time <  frame_2_end_time)
+    {
+        ASSERT_TRUE(memcmp(clear_color,
+                           frame_2_color,
+                           sizeof(frame_2_color) ) == 0);
+    }
+    else
+    if (frame_time >= frame_3_start_time &&
+        frame_time <  frame_3_end_time)
+    {
+        ASSERT_TRUE(memcmp(clear_color,
+                           frame_3_color,
+                           sizeof(frame_3_color) ) == 0);
+    }
 
     entrypoints->pGLClearColor(clear_color[0],
                                clear_color[1],
@@ -160,34 +196,25 @@ TEST(WindowTest, TimelineTest_ShouldRenderFourDifferentlyColoredScreensWithDiffe
     /* Create the window */
     ral_texture_format              context_texture_format    = RAL_TEXTURE_FORMAT_UNKNOWN;
     const float                     frame_1_ar                = 1.0f;
-    const float                     frame_1_color[]           = {0.0f, 1.0f, 0.0f, 1.0f};
-    system_time                     frame_1_end_time          =  0;
     demo_timeline_segment           frame_1_ps                = NULL;
     demo_timeline_segment_id        frame_1_ps_id             = -1;
     uint32_t                        frame_1_pipeline_stage_id = -1;
     demo_timeline_segment           frame_1_vs                = NULL;
     demo_timeline_segment_id        frame_1_vs_id             = -1;
-    system_time                     frame_1_start_time        =  0;
     const float                     frame_2_ar                = 1.5f;
-    const float                     frame_2_color[]           = {0.0f, 1.0f, 1.0f, 1.0f};
-    system_time                     frame_2_end_time          =  0;
     uint32_t                        frame_2_pipeline_stage_id = -1;
     demo_timeline_segment           frame_2_ps                = NULL;
     demo_timeline_segment_id        frame_2_ps_id             = -1;
     demo_timeline_segment           frame_2_vs                = NULL;
     demo_timeline_segment_id        frame_2_vs_id             = -1;
     demo_timeline_segment_node_id   frame_2_vs_node_id        = -1;
-    system_time                     frame_2_start_time        =  0;
     const float                     frame_3_ar                =  1.75f;
-    const float                     frame_3_color[]           = {0.0f, 0.0f, 1.0f, 1.0f};
-    system_time                     frame_3_end_time          =  0;
     uint32_t                        frame_3_pipeline_stage_id = -1;
     demo_timeline_segment           frame_3_ps                = NULL;
     demo_timeline_segment_id        frame_3_ps_id             = -1;
     demo_timeline_segment           frame_3_vs                = NULL;
     demo_timeline_segment_id        frame_3_vs_id             = -1;
     demo_timeline_segment_node_id   frame_3_vs_node_id        = -1;
-    system_time                     frame_3_start_time        =  0;
     bool                            result                    =  false;
     demo_window                     window                    =  NULL;
     ral_context                     window_context            =  NULL;
@@ -199,15 +226,12 @@ TEST(WindowTest, TimelineTest_ShouldRenderFourDifferentlyColoredScreensWithDiffe
 
     demo_timeline_segment_node_id frame_1_ps_output_node_id        = -1;
     demo_timeline_segment_node_id frame_1_ps_vs_node_id            = -1;
-    demo_timeline_segment_node_id frame_1_vs_output_node_id        = -1;
     demo_timeline_segment_node_id frame_1_vs_pass_renderer_node_id = -1;
     demo_timeline_segment_node_id frame_2_ps_output_node_id        = -1;
     demo_timeline_segment_node_id frame_2_ps_vs_node_id            = -1;
-    demo_timeline_segment_node_id frame_2_vs_output_node_id        = -1;
     demo_timeline_segment_node_id frame_2_vs_pass_renderer_node_id = -1;
     demo_timeline_segment_node_id frame_3_ps_output_node_id        = -1;
     demo_timeline_segment_node_id frame_3_ps_vs_node_id            = -1;
-    demo_timeline_segment_node_id frame_3_vs_output_node_id        = -1;
     demo_timeline_segment_node_id frame_3_vs_pass_renderer_node_id = -1;
 
     window = demo_app_create_window(window_name,
@@ -338,23 +362,12 @@ TEST(WindowTest, TimelineTest_ShouldRenderFourDifferentlyColoredScreensWithDiffe
     demo_timeline_segment_get_property(frame_1_ps,
                                        DEMO_TIMELINE_SEGMENT_PROPERTY_OUTPUT_NODE_ID,
                                       &frame_1_ps_output_node_id);
-    demo_timeline_segment_get_property(frame_1_vs,
-                                       DEMO_TIMELINE_SEGMENT_PROPERTY_OUTPUT_NODE_ID,
-                                      &frame_1_vs_output_node_id);
-
     demo_timeline_segment_get_property(frame_2_ps,
                                        DEMO_TIMELINE_SEGMENT_PROPERTY_OUTPUT_NODE_ID,
                                       &frame_2_ps_output_node_id);
-    demo_timeline_segment_get_property(frame_2_vs,
-                                       DEMO_TIMELINE_SEGMENT_PROPERTY_OUTPUT_NODE_ID,
-                                      &frame_2_vs_output_node_id);
-
     demo_timeline_segment_get_property(frame_3_ps,
                                        DEMO_TIMELINE_SEGMENT_PROPERTY_OUTPUT_NODE_ID,
                                       &frame_3_ps_output_node_id);
-    demo_timeline_segment_get_property(frame_3_vs,
-                                       DEMO_TIMELINE_SEGMENT_PROPERTY_OUTPUT_NODE_ID,
-                                      &frame_3_vs_output_node_id);
 
     /* Create pass renderer nodes in video segments */
     ASSERT_TRUE(demo_timeline_segment_add_node(frame_1_vs,
@@ -362,35 +375,35 @@ TEST(WindowTest, TimelineTest_ShouldRenderFourDifferentlyColoredScreensWithDiffe
                                                system_hashed_ansi_string_create("Pass renderer"),
                                                &frame_1_vs_pass_renderer_node_id,
                                                NULL) ); /* out_opt_node_ptr */
-
     ASSERT_TRUE(demo_timeline_segment_add_node(frame_2_vs,
                                                DEMO_TIMELINE_VIDEO_SEGMENT_NODE_TYPE_PASS_RENDERER,
                                                system_hashed_ansi_string_create("Pass renderer"),
                                                &frame_2_vs_pass_renderer_node_id,
                                                NULL) ); /* out_opt_node_ptr */
-
     ASSERT_TRUE(demo_timeline_segment_add_node(frame_3_vs,
                                                DEMO_TIMELINE_VIDEO_SEGMENT_NODE_TYPE_PASS_RENDERER,
                                                system_hashed_ansi_string_create("Pass renderer"),
                                                &frame_3_vs_pass_renderer_node_id,
                                                NULL) ); /* out_opt_node_ptr */
 
-    /* Connect the nodes */
-    ASSERT_TRUE(demo_timeline_segment_connect_nodes(frame_1_vs,
-                                                    frame_1_vs_pass_renderer_node_id,
-                                                    0, /* output_id */
-                                                    frame_1_vs_output_node_id,
-                                                    0 /* input_id */) );
-    ASSERT_TRUE(demo_timeline_segment_connect_nodes(frame_2_vs,
-                                                    frame_2_vs_pass_renderer_node_id,
-                                                    0, /* output_id */
-                                                    frame_2_vs_output_node_id,
-                                                    0 /* input_id */) );
-    ASSERT_TRUE(demo_timeline_segment_connect_nodes(frame_3_vs,
-                                                    frame_3_vs_pass_renderer_node_id,
-                                                    0, /* output_id */
-                                                    frame_3_vs_output_node_id,
-                                                    0 /* input_id */) );
+    demo_timeline_segment_expose_node_io(frame_1_vs,
+                                         false, /* is_input_io */
+                                         frame_1_vs_pass_renderer_node_id,
+                                         0,      /* node_io_id                */
+                                         true,   /* should_expose             */
+                                         false); /* should_expose_as_vs_input */
+    demo_timeline_segment_expose_node_io(frame_2_vs,
+                                         false, /* is_input_io */
+                                         frame_2_vs_pass_renderer_node_id,
+                                         0,      /* node_io_id                */
+                                         true,   /* should_expose             */
+                                         false); /* should_expose_as_vs_input */
+    demo_timeline_segment_expose_node_io(frame_3_vs,
+                                         false, /* is_input_io */
+                                         frame_3_vs_pass_renderer_node_id,
+                                         0,      /* node_io_id                */
+                                         true,   /* should_expose             */
+                                         false); /* should_expose_as_vs_input */
 
     ASSERT_TRUE(demo_timeline_segment_connect_nodes(frame_1_ps,
                                                     frame_1_ps_vs_node_id,

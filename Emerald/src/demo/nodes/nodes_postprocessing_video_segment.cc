@@ -23,23 +23,38 @@
 typedef struct _exposed_vs_node_io
 {
     uint32_t                      ps_vs_io_id;
-    uint32_t                      vs_io_id;
+    demo_timeline_segment_node_id ps_vs_node_id;
+    bool                          vs_io_is_input;
+
+    union
+    {
+        demo_timeline_segment_node_input_id  vs_io_input_id;
+        demo_timeline_segment_node_output_id vs_io_output_id;
+    };
+
     demo_timeline_segment_node_id vs_node_id;
 
-    explicit _exposed_vs_node_io(uint32_t                      in_ps_vs_io_id,
+
+    explicit _exposed_vs_node_io(demo_timeline_segment_node_id in_ps_vs_node_id,
+                                 uint32_t                      in_ps_vs_io_id,
                                  demo_timeline_segment_node_id in_vs_node_id,
+                                 bool                          in_vs_io_is_input,
                                  uint32_t                      in_vs_io_id)
     {
-        ps_vs_io_id = in_ps_vs_io_id;
-        vs_io_id    = in_vs_io_id;
-        vs_node_id  = in_vs_node_id;
+        ps_vs_node_id  = in_ps_vs_node_id;
+        ps_vs_io_id    = in_ps_vs_io_id;
+        vs_io_input_id = in_vs_io_id;
+        vs_io_is_input = in_vs_io_is_input;
+        vs_node_id     = in_vs_node_id;
     }
 
     bool operator==(const _exposed_vs_node_io& in)
     {
-        return (ps_vs_io_id   == in.ps_vs_io_id   && 
-                vs_io_id      == in.vs_io_id      &&
-                vs_node_id    == in.vs_node_id);
+        return (ps_vs_io_id    == in.ps_vs_io_id    &&
+                ps_vs_node_id  == in.ps_vs_node_id  &&
+                vs_io_is_input == in.vs_io_is_input &&
+                vs_io_input_id == in.vs_io_input_id &&
+                vs_node_id     == in.vs_node_id);
     }
 } _exposed_vs_node_io;
 
@@ -246,10 +261,10 @@ PRIVATE void _nodes_postprocessing_video_segment_on_video_segment_releasing(cons
 PRIVATE void _nodes_postprocessing_video_segment_sync_io(_nodes_postprocessing_video_segment_node_data* node_data_ptr,
                                                          bool                                           should_process_inputs)
 {
-    demo_timeline_segment_node_id* video_segment_node_ids_ptr      = NULL;
-    uint32_t*                      video_segment_node_io_ids_ptr   = NULL;
     uint32_t                       n_precall_node_ios              = 0;
     uint32_t                       n_video_segment_result_node_ios = 0;
+    demo_timeline_segment_node_id  node_id                         = -1;
+    demo_timeline_segment_node_io* video_segment_node_ios_ptr      = NULL;
 
     /* NOTE: Buffers, textures, etc. connected to the inputs of a video segment's output node deliver data,
      *       so we need to expose these as video segment's *outputs*. */
@@ -290,12 +305,10 @@ PRIVATE void _nodes_postprocessing_video_segment_sync_io(_nodes_postprocessing_v
     /* Iterate over all segment IOs and add them to the node */
     if ( should_process_inputs && !demo_timeline_segment_get_exposed_inputs (node_data_ptr->video_segment,
                                                                             &n_video_segment_result_node_ios,
-                                                                            &video_segment_node_ids_ptr,
-                                                                            &video_segment_node_io_ids_ptr) ||
+                                                                            &video_segment_node_ios_ptr) ||
         !should_process_inputs && !demo_timeline_segment_get_exposed_outputs(node_data_ptr->video_segment,
                                                                             &n_video_segment_result_node_ios,
-                                                                            &video_segment_node_ids_ptr,
-                                                                            &video_segment_node_io_ids_ptr) )
+                                                                            &video_segment_node_ios_ptr) )
     {
         ASSERT_DEBUG_SYNC(false,
                           "Could not retrieve exposed IO data from the owned video segment.");
@@ -307,6 +320,7 @@ PRIVATE void _nodes_postprocessing_video_segment_sync_io(_nodes_postprocessing_v
                   n_video_segment_io < n_video_segment_result_node_ios;
                 ++n_video_segment_io)
     {
+        ral_texture                               io_bound_texture        = NULL;
         demo_timeline_segment_node_interface_type io_interface_type       = DEMO_TIMELINE_SEGMENT_NODE_INTERFACE_TYPE_UNKNOWN;
         bool                                      io_is_required          = false;
         system_hashed_ansi_string                 io_name                 = NULL;
@@ -317,11 +331,11 @@ PRIVATE void _nodes_postprocessing_video_segment_sync_io(_nodes_postprocessing_v
         ral_texture_type                          io_texture_type         = RAL_TEXTURE_TYPE_UNKNOWN;
 
         demo_timeline_segment_get_node_io_property_by_node_id(node_data_ptr->video_segment,
-                                                              video_segment_node_ids_ptr[n_video_segment_io],
-                                                              should_process_inputs, /* is_input_io */
-                                                              video_segment_node_io_ids_ptr[n_video_segment_io],
+                                                              video_segment_node_ios_ptr[n_video_segment_io].node_id,
+                                                              video_segment_node_ios_ptr[n_video_segment_io].is_input,
+                                                              video_segment_node_ios_ptr[n_video_segment_io].node_io_id,
                                                               DEMO_TIMELINE_SEGMENT_NODE_IO_PROPERTY_INTERFACE_TYPE,
-                                                              &io_interface_type);
+                                                             &io_interface_type);
 
         if (io_interface_type != DEMO_TIMELINE_SEGMENT_NODE_INTERFACE_TYPE_TEXTURE)
         {
@@ -338,6 +352,7 @@ PRIVATE void _nodes_postprocessing_video_segment_sync_io(_nodes_postprocessing_v
             void*                                  result_ptr;
         } properties[] =
         {
+            {DEMO_TIMELINE_SEGMENT_NODE_IO_PROPERTY_BOUND_TEXTURE_RAL,    &io_bound_texture},
             {DEMO_TIMELINE_SEGMENT_NODE_IO_PROPERTY_IS_REQUIRED,          &io_is_required},
             {DEMO_TIMELINE_SEGMENT_NODE_IO_PROPERTY_TEXTURE_FORMAT,       &io_texture_format},
             {DEMO_TIMELINE_SEGMENT_NODE_IO_PROPERTY_TEXTURE_N_COMPONENTS, &io_texture_n_components},
@@ -352,9 +367,9 @@ PRIVATE void _nodes_postprocessing_video_segment_sync_io(_nodes_postprocessing_v
                     ++n_property)
         {
             demo_timeline_segment_get_node_io_property_by_node_id(node_data_ptr->video_segment,
-                                                                  video_segment_node_ids_ptr[n_video_segment_io],
-                                                                  should_process_inputs, /* is_input_io */
-                                                                  video_segment_node_io_ids_ptr[n_video_segment_io],
+                                                                  video_segment_node_ios_ptr[n_video_segment_io].node_id,
+                                                                  video_segment_node_ios_ptr[n_video_segment_io].is_input,
+                                                                  video_segment_node_ios_ptr[n_video_segment_io].node_io_id,
                                                                   properties[n_property].property,
                                                                   properties[n_property].result_ptr);
         }
@@ -391,10 +406,33 @@ PRIVATE void _nodes_postprocessing_video_segment_sync_io(_nodes_postprocessing_v
                               "Could not create a new node texture output");
         }
 
+        /* Attach the currently bound texture to the new IO */
+        if (io_bound_texture != NULL)
+        {
+            demo_texture_attachment_declaration bound_texture_attachment_declaration;
+
+            bound_texture_attachment_declaration.texture_ral = io_bound_texture;
+
+            if (!demo_timeline_segment_node_attach_texture_to_texture_io(node_data_ptr->node,
+                                                                         should_process_inputs,
+                                                                         new_texture_io_id,
+                                                                        &bound_texture_attachment_declaration) )
+            {
+                ASSERT_DEBUG_SYNC(false,
+                                  "Could not attach the exposed node IO texture to a video segment node IO.");
+            }
+        } /* if (io_bound_texture != NULL) */
+
         /* Store node IO data. */
-        _exposed_vs_node_io* new_io_ptr = new _exposed_vs_node_io(new_texture_io_id,
-                                                                  video_segment_node_ids_ptr   [n_video_segment_io],
-                                                                  video_segment_node_io_ids_ptr[n_video_segment_io]);
+        demo_timeline_segment_node_get_property(node_data_ptr->node,
+                                                DEMO_TIMELINE_SEGMENT_NODE_PROPERTY_ID,
+                                               &node_id);
+
+        _exposed_vs_node_io* new_io_ptr = new _exposed_vs_node_io(node_id,
+                                                                  new_texture_io_id,
+                                                                  video_segment_node_ios_ptr[n_video_segment_io].node_id,
+                                                                  video_segment_node_ios_ptr[n_video_segment_io].is_input,
+                                                                  video_segment_node_ios_ptr[n_video_segment_io].node_io_id);
 
         ASSERT_ALWAYS_SYNC(new_io_ptr != NULL,
                            "Out of memory");
@@ -406,14 +444,11 @@ PRIVATE void _nodes_postprocessing_video_segment_sync_io(_nodes_postprocessing_v
 
     /* All done */
 end:
-    if (video_segment_node_ids_ptr    != NULL ||
-        video_segment_node_io_ids_ptr != NULL)
+    if (video_segment_node_ios_ptr != NULL)
     {
-        demo_timeline_segment_free_exposed_io_result(video_segment_node_ids_ptr,
-                                                     video_segment_node_io_ids_ptr);
+        demo_timeline_segment_free_exposed_io_result(video_segment_node_ios_ptr);
 
-        video_segment_node_ids_ptr    = NULL;
-        video_segment_node_io_ids_ptr = NULL;
+        video_segment_node_ios_ptr = NULL;
     }
 }
 
@@ -446,8 +481,8 @@ PRIVATE void _nodes_postprocessing_video_segment_sync_output_attachments(_nodes_
             continue;
         }
 
-        if (ps_vs_node_io_ptr->vs_node_id == node_id        &&
-            ps_vs_node_io_ptr->vs_io_id   == node_output_id)
+        if (ps_vs_node_io_ptr->ps_vs_node_id == node_id        &&
+            ps_vs_node_io_ptr->ps_vs_io_id   == node_output_id)
         {
             break;
         }
@@ -459,9 +494,9 @@ PRIVATE void _nodes_postprocessing_video_segment_sync_output_attachments(_nodes_
 
     if (ps_vs_node_io_ptr == NULL)
     {
-        ASSERT_DEBUG_SYNC(false,
-                          "No PS VS node IO descriptor found for the corresponding VS node IO");
-
+        /* The notification is coming from an exposed IO this video segment post-processing node
+         * does not watch. Ignore.
+         */
         goto end;
     }
 

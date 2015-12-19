@@ -569,6 +569,7 @@ PUBLIC EMERALD_API bool system_dag_solve(system_dag dag)
 
     /* 3. Store all nodes in a vector that we'll be modifying as we go */
     system_resizable_vector_empty(dag_ptr->nodes_to_process);
+    system_resizable_vector_empty(dag_ptr->sorted_nodes);
 
     for (unsigned int n_node = 0;
                       n_node < n_nodes;

@@ -170,7 +170,7 @@ PUBLIC bool demo_timeline_segment_node_attach_texture_to_texture_io(demo_timelin
 
 /** TODO */
 PUBLIC demo_timeline_segment_node demo_timeline_segment_node_create(demo_timeline_segment_type                          segment_type,
-                                                                    int                                                 node_type,
+                                                                    demo_timeline_segment_node_type                     node_type,
                                                                     demo_timeline_segment_node_id                       node_id,
                                                                     PFNSEGMENTNODEDEINITCALLBACKPROC                    pfn_deinit_proc,
                                                                     PFNSEGMENTNODEGETPROPERTYCALLBACKPROC               pfn_get_property_proc,

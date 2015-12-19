@@ -248,22 +248,6 @@ PUBLIC RENDERING_CONTEXT_CALL demo_timeline_segment_node_private nodes_video_pas
             ASSERT_ALWAYS_SYNC(false,
                                "Could not add a new texture output to the pass renderer video segment node.");
         }
-
-        /* Expose the output.
-         *
-         * TODO: This is temporary. Ultimately, outputs should be only exposed when requested by the user. */
-        demo_timeline_segment_node_id node_id = -1;
-
-        demo_timeline_segment_node_get_property(node,
-                                                DEMO_TIMELINE_SEGMENT_NODE_PROPERTY_ID,
-                                               &node_id);
-
-        demo_timeline_segment_expose_node_io(segment,
-                                             false, /* is_input_io */
-                                             node_id,
-                                             new_node_ptr->output_id,
-                                             true,   /* should_expose */
-                                             false); /* should_expose_as_vs_input */
     } /* if (new_node_ptr != NULL) */
 
     return (demo_timeline_segment_node_private) new_node_ptr;

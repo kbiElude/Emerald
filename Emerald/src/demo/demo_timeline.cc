@@ -52,7 +52,6 @@ typedef struct _demo_timeline
     ral_context                  context;
     system_critical_section      cs;
     system_time                  duration;
-    _demo_timeline_segment_item* last_used_video_segment_ptr;
     ogl_pipeline                 rendering_pipeline;
     system_hash64map             segment_id_to_postprocessing_segment_map; /* maps system_timeline_segment_id to _demo_timeline_segment_item instance */
     system_hash64map             segment_id_to_video_segment_map;          /* maps system_timeline_segment_id to _demo_timeline_segment_item instance */
@@ -68,6 +67,7 @@ typedef struct _demo_timeline
                                                               * DOES NOT own the segment instances;
                                                               * DOES NOT store the segments ordered by IDs; */
 
+    system_resizable_vector segment_cache_vector; /* used internally for segment enumeration  */
 
     REFCOUNT_INSERT_VARIABLES;
 
@@ -82,7 +82,6 @@ typedef struct _demo_timeline
         context                                  = in_context;
         cs                                       = system_critical_section_create();
         duration                                 = 0;
-        last_used_video_segment_ptr              = NULL;
         rendering_pipeline                       = ogl_pipeline_create(in_context,
 #ifdef _DEBUG
                                                                        true, /* should_overlay_performance_info */
@@ -91,8 +90,9 @@ typedef struct _demo_timeline
 #endif
                                                                        system_hashed_ansi_string_create("Demo timeline rendering pipeline") );
 
-        postprocessing_segments                  = system_resizable_vector_create(sizeof(_demo_timeline_segment_item*) );
-        video_segments                           = system_resizable_vector_create(sizeof(_demo_timeline_segment_item*) );
+        postprocessing_segments                  = system_resizable_vector_create(4  /* capacity */);
+        segment_cache_vector                     = system_resizable_vector_create(16 /* capacity */);
+        video_segments                           = system_resizable_vector_create(4  /* capacity */);
 
         segment_id_to_postprocessing_segment_map = system_hash64map_create(sizeof(_demo_timeline_segment_item*) );
         segment_id_to_video_segment_map          = system_hash64map_create(sizeof(_demo_timeline_segment_item*) );
@@ -142,6 +142,13 @@ typedef struct _demo_timeline
 
             postprocessing_segments = NULL;
         } /* if (postprocessing_segments != NULL) */
+
+        if (segment_cache_vector != NULL)
+        {
+            system_resizable_vector_release(segment_cache_vector);
+
+            segment_cache_vector = NULL;
+        }
 
         /* Release segment maps .. */
         system_hash64map* segment_map_ptrs[] =
@@ -540,6 +547,96 @@ PRIVATE bool _demo_timeline_change_segment_start_end_times(_demo_timeline*      
     result = true;
 
 end:
+    return result;
+}
+
+/** TODO */
+PRIVATE bool demo_timeline_get_segments_at_time(_demo_timeline*             timeline_ptr,
+                                                demo_timeline_segment_type  segment_type,
+                                                system_time                 time,
+                                                system_resizable_vector     result_vector)
+{
+    /* TODO: Optimize! */
+    _demo_timeline_segment_item* found_segment_ptr = NULL;
+    unsigned int                 n_segments        = 0;
+    bool                         result            = false;
+    system_resizable_vector      segments          = NULL;
+
+    ASSERT_DEBUG_SYNC(result_vector != NULL,
+                      "Result vector is NULL");
+    ASSERT_DEBUG_SYNC(timeline_ptr != NULL,
+                      "Input timeline instance is NULL");
+
+    system_resizable_vector_clear(result_vector);
+
+    system_critical_section_enter(timeline_ptr->cs);
+    {
+        if (!_demo_timeline_get_segment_containers(timeline_ptr,
+                                                   segment_type,
+                                                   NULL, /* out_segment_id_counter_ptr_ptr*/
+                                                   &segments,
+                                                   NULL) ) /* out_segment_hash64map_ptr */
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Could not retrieve resizable vector for the requested segment type");
+
+            goto end;
+        }
+
+        system_resizable_vector_get_property(segments,
+                                             SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                            &n_segments);
+
+        for (unsigned int n_segment = 0;
+                          n_segment < n_segments;
+                        ++n_segment)
+        {
+            system_time found_segment_end_time   = 0;
+            system_time found_segment_start_time = 0;
+
+            if (!system_resizable_vector_get_element_at(segments,
+                                                        n_segment,
+                                                       &found_segment_ptr) )
+            {
+                ASSERT_DEBUG_SYNC(false,
+                                  "Could not retrieve segment descriptor at index [%d]",
+                                  n_segment);
+
+                continue;
+            }
+
+            demo_timeline_segment_get_property(found_segment_ptr->segment,
+                                               DEMO_TIMELINE_SEGMENT_PROPERTY_END_TIME,
+                                              &found_segment_end_time);
+            demo_timeline_segment_get_property(found_segment_ptr->segment,
+                                               DEMO_TIMELINE_SEGMENT_PROPERTY_START_TIME,
+                                              &found_segment_start_time);
+
+            if (found_segment_start_time <= time &&
+                found_segment_end_time   >= time)
+            {
+                /* Found a match */
+                result = true;
+
+                system_resizable_vector_push(result_vector,
+                                             found_segment_ptr->segment);
+
+                /* Only one post-processing segment can be defined for a given time region. This means
+                 * we can break at this point if that's the segment type the user was looking for */
+                if (segment_type == DEMO_TIMELINE_SEGMENT_TYPE_POSTPROCESSING)
+                {
+                    break;
+                }
+            }
+
+            /* Move on */
+            found_segment_ptr = NULL;
+        } /* for (all segments of the requested type) */
+    }
+
+end:
+    system_critical_section_leave(timeline_ptr->cs);
+
     return result;
 }
 
@@ -955,54 +1052,34 @@ PUBLIC EMERALD_API void demo_timeline_free_segment_ids(demo_timeline_segment_id*
 PUBLIC EMERALD_API float demo_timeline_get_aspect_ratio(demo_timeline timeline,
                                                         system_time   frame_time)
 {
-    demo_timeline_segment_id     postprocessing_segment_id   = 0;
-    _demo_timeline_segment_item* postprocessing_segment_ptr  = NULL;
-    system_hash64map             postprocessing_segments_map = NULL;
-    float                        result                      = 0.0f;
-    _demo_timeline*              timeline_ptr                = (_demo_timeline*) timeline;
+    demo_timeline_segment postprocessing_segment = NULL;
+    float                 result                 = 0.0f;
+    _demo_timeline*       timeline_ptr           = (_demo_timeline*) timeline;
 
     ASSERT_DEBUG_SYNC(timeline != NULL,
                       "Input timeline instance is NULL");
 
-    if (!demo_timeline_get_segment_at_time(timeline,
-                                           DEMO_TIMELINE_SEGMENT_TYPE_POSTPROCESSING,
-                                           frame_time,
-                                          &postprocessing_segment_id) )
+    system_resizable_vector_clear(timeline_ptr->segment_cache_vector);
+
+    if (!demo_timeline_get_segments_at_time(timeline_ptr,
+                                            DEMO_TIMELINE_SEGMENT_TYPE_POSTPROCESSING,
+                                            frame_time,
+                                            timeline_ptr->segment_cache_vector) )
     {
         /* No post-processing segment defined for the requested time frame */
         result = timeline_ptr->aspect_ratio;
     }
     else
     {
-        if (!_demo_timeline_get_segment_containers(timeline_ptr,
-                                                   DEMO_TIMELINE_SEGMENT_TYPE_POSTPROCESSING,
-                                                   NULL, /* out_segment_id_counter_ptr_ptr */
-                                                   NULL, /* out_segment_vector_ptr */
-                                                  &postprocessing_segments_map) )
-        {
-            ASSERT_DEBUG_SYNC(false,
-                              "Could not retrieve video segments hash-map.");
+        system_resizable_vector_get_element_at(timeline_ptr->segment_cache_vector,
+                                               0, /* index */
+                                              &postprocessing_segment);
 
-            goto end;
-        }
-
-        if (!system_hash64map_get(postprocessing_segments_map,
-                                  (system_hash64) postprocessing_segment_id,
-                                 &postprocessing_segment_ptr) )
-        {
-            ASSERT_DEBUG_SYNC(false,
-                              "Could not retrieve post-processing segment descriptor for segment id [%d]",
-                              postprocessing_segment_id);
-
-            goto end;
-        }
-
-        demo_timeline_segment_get_property(postprocessing_segment_ptr->segment,
+        demo_timeline_segment_get_property(postprocessing_segment,
                                            DEMO_TIMELINE_SEGMENT_PROPERTY_ASPECT_RATIO,
                                           &result);
     }
 
-end:
     return result;
 }
 
@@ -1072,121 +1149,6 @@ PUBLIC EMERALD_API bool demo_timeline_get_property(demo_timeline          timeli
             result = false;
         }
     } /* switch (property) */
-
-    return result;
-}
-
-/** Please see header for spec */
-PUBLIC EMERALD_API bool demo_timeline_get_segment_at_time(demo_timeline               timeline,
-                                                          demo_timeline_segment_type  segment_type,
-                                                          system_time                 time,
-                                                          demo_timeline_segment_id*   out_segment_id_ptr)
-{
-    /* TODO: Optimize! */
-    _demo_timeline_segment_item* found_segment_ptr = NULL;
-    unsigned int                 n_segments        = 0;
-    bool                         result            = false;
-    system_resizable_vector      segments          = NULL;
-    _demo_timeline*              timeline_ptr      = (_demo_timeline*) timeline;
-
-    ASSERT_DEBUG_SYNC(timeline_ptr != NULL,
-                      "Input timeline instance is NULL");
-
-    system_critical_section_enter(timeline_ptr->cs);
-    {
-        if (segment_type                              == DEMO_TIMELINE_SEGMENT_TYPE_VIDEO &&
-            timeline_ptr->last_used_video_segment_ptr != NULL)
-        {
-            system_time last_used_segment_end_time   = 0;
-            system_time last_used_segment_start_time = 0;
-
-            demo_timeline_segment_get_property(timeline_ptr->last_used_video_segment_ptr->segment,
-                                               DEMO_TIMELINE_SEGMENT_PROPERTY_END_TIME,
-                                              &last_used_segment_end_time);
-            demo_timeline_segment_get_property(timeline_ptr->last_used_video_segment_ptr->segment,
-                                               DEMO_TIMELINE_SEGMENT_PROPERTY_START_TIME,
-                                              &last_used_segment_start_time);
-
-            /* Chances are the user needs to access exactly the same video segment, as
-             * the last time. Is that the case? */
-            if (last_used_segment_start_time >= time &&
-                last_used_segment_end_time   <= time )
-            {
-                /* Ha */
-                *out_segment_id_ptr = timeline_ptr->last_used_video_segment_ptr->id;
-                 result             = true;
-
-                 goto end;
-            }
-        } /* if (segment_type == DEMO_TIMELINE_SEGMENT_TYPE_VIDEO) */
-
-        if (!_demo_timeline_get_segment_containers(timeline_ptr,
-                                                   segment_type,
-                                                   NULL, /* out_segment_id_counter_ptr_ptr*/
-                                                   &segments,
-                                                   NULL) ) /* out_segment_hash64map_ptr */
-        {
-            ASSERT_DEBUG_SYNC(false,
-                              "Could not retrieve resizable vector for the requested segment type");
-
-            goto end;
-        }
-
-        system_resizable_vector_get_property(segments,
-                                             SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
-                                            &n_segments);
-
-        for (unsigned int n_segment = 0;
-                          n_segment < n_segments;
-                        ++n_segment)
-        {
-            system_time found_segment_end_time   = 0;
-            system_time found_segment_start_time = 0;
-
-            if (!system_resizable_vector_get_element_at(segments,
-                                                        n_segment,
-                                                       &found_segment_ptr) )
-            {
-                ASSERT_DEBUG_SYNC(false,
-                                  "Could not retrieve segment descriptor at index [%d]",
-                                  n_segment);
-
-                continue;
-            }
-
-            demo_timeline_segment_get_property(found_segment_ptr->segment,
-                                               DEMO_TIMELINE_SEGMENT_PROPERTY_END_TIME,
-                                              &found_segment_end_time);
-            demo_timeline_segment_get_property(found_segment_ptr->segment,
-                                               DEMO_TIMELINE_SEGMENT_PROPERTY_START_TIME,
-                                              &found_segment_start_time);
-
-            if (found_segment_start_time <= time &&
-                found_segment_end_time   >= time)
-            {
-                /* Found the match */
-                result = true;
-
-                break;
-            }
-
-            /* Move on */
-            found_segment_ptr = NULL;
-        } /* for (all segments of the requested type) */
-
-        if (result)
-        {
-            timeline_ptr->last_used_video_segment_ptr = found_segment_ptr;
-
-            if (out_segment_id_ptr != NULL)
-            {
-                *out_segment_id_ptr = found_segment_ptr->id;
-            } /* if (out_segment_id_ptr != NULL) */
-        } /* if (result) */
-    }
-
-end:
-    system_critical_section_leave(timeline_ptr->cs);
 
     return result;
 }
@@ -1578,38 +1540,44 @@ PUBLIC EMERALD_API RENDERING_CONTEXT_CALL bool demo_timeline_render(demo_timelin
                                                                     system_time   frame_time,
                                                                     const int*    rendering_area_px_topdown)
 {
-    bool                            result           = false;
+    demo_timeline_segment           postprocessing_segment    = NULL;
+    uint32_t                        n_postprocessing_segments = 0;
+    bool                            result                    = false;
     demo_timeline_segment_time_mode time_mode;
-    _demo_timeline*                 timeline_ptr     = (_demo_timeline*) timeline;
-    demo_timeline_segment_id        video_segment_id = 0;
+    _demo_timeline*                 timeline_ptr              = (_demo_timeline*) timeline;
+    demo_timeline_segment_id        video_segment_id          = 0;
 
     system_critical_section_enter(timeline_ptr->cs);
     {
-        system_time                  rendering_pipeline_time = frame_time;
-        _demo_timeline_segment_item* video_segment_ptr       = NULL;
+        system_time rendering_pipeline_time = frame_time;
 
-        if (!demo_timeline_get_segment_at_time(timeline,
-                                              DEMO_TIMELINE_SEGMENT_TYPE_VIDEO,
-                                              frame_time,
-                                             &video_segment_id) )
+        /* Get post-processing segment for specified frame time */
+        system_resizable_vector_clear(timeline_ptr->segment_cache_vector);
+
+        if (!demo_timeline_get_segments_at_time(timeline_ptr,
+                                                DEMO_TIMELINE_SEGMENT_TYPE_POSTPROCESSING,
+                                                frame_time,
+                                                timeline_ptr->segment_cache_vector) )
         {
-            /* No video segment at specified range - nothing to do. */
+            /* No post-processing segment at specified frame time - nothing to do. */
             goto end;
         }
 
-        if (!system_hash64map_get(timeline_ptr->segment_id_to_video_segment_map,
-                                  (system_hash64) video_segment_id,
-                                 &video_segment_ptr) )
-        {
-            ASSERT_DEBUG_SYNC(false,
-                              "Video segment with ID [%d] was not found",
-                              video_segment_id);
+        system_resizable_vector_get_property(timeline_ptr->segment_cache_vector,
+                                             SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                             &n_postprocessing_segments);
 
+        if (n_postprocessing_segments == 0)
+        {
             goto end;
         }
+
+        system_resizable_vector_get_element_at(timeline_ptr->segment_cache_vector,
+                                               0, /* index */
+                                              &postprocessing_segment);
 
         /* Calculate frame time we should use for calling back the rendering pipeline object */
-        demo_timeline_segment_get_property(video_segment_ptr->segment,
+        demo_timeline_segment_get_property(postprocessing_segment,
                                            DEMO_TIMELINE_SEGMENT_PROPERTY_TIME_MODE,
                                           &time_mode);
 
@@ -1619,7 +1587,7 @@ PUBLIC EMERALD_API RENDERING_CONTEXT_CALL bool demo_timeline_render(demo_timelin
             {
                 system_time segment_start_time = 0;
 
-                demo_timeline_segment_get_property(video_segment_ptr->segment,
+                demo_timeline_segment_get_property(postprocessing_segment,
                                                    DEMO_TIMELINE_SEGMENT_PROPERTY_START_TIME,
                                                   &segment_start_time);
 
@@ -1643,8 +1611,8 @@ PUBLIC EMERALD_API RENDERING_CONTEXT_CALL bool demo_timeline_render(demo_timelin
             }
         } /* switch (video_segment_ptr->pipeline_time_mode) */
 
-        /* OK, render the video segment contents */
-        result = demo_timeline_segment_render(video_segment_ptr->segment,
+        /* Render the segment */
+        result = demo_timeline_segment_render(postprocessing_segment,
                                               frame_index,
                                               rendering_pipeline_time,
                                               rendering_area_px_topdown);

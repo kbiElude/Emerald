@@ -137,7 +137,9 @@ typedef enum
     /* demo_timeline_segment_node; not settable. **/
     DEMO_TIMELINE_SEGMENT_PROPERTY_OUTPUT_NODE,
 
-    /* demo_timeline_segment_node_id; not settable. **/
+    /* demo_timeline_segment_node_id; not settable.
+     *
+     * Query only valid for post-processing segments. **/
     DEMO_TIMELINE_SEGMENT_PROPERTY_OUTPUT_NODE_ID,
 
     /* system_time; not settable. */
@@ -278,46 +280,41 @@ PUBLIC bool demo_timeline_segment_disconnect_nodes(demo_timeline_segment        
  *  @return true if the function succeeded, false otherwise.
  *
  **/
-PUBLIC bool demo_timeline_segment_expose_node_io(demo_timeline_segment         segment,
-                                                 bool                          is_input_io,
-                                                 demo_timeline_segment_node_id node_id,
-                                                 uint32_t                      node_io_id,
-                                                 bool                          should_expose,
-                                                 bool                          should_expose_as_vs_input);
+PUBLIC EMERALD_API bool demo_timeline_segment_expose_node_io(demo_timeline_segment         segment,
+                                                             bool                          is_input_io,
+                                                             demo_timeline_segment_node_id node_id,
+                                                             uint32_t                      node_io_id,
+                                                             bool                          should_expose,
+                                                             bool                          should_expose_as_vs_input);
 
 /** TODO */
-PUBLIC void demo_timeline_segment_free_exposed_io_result(demo_timeline_segment_node_id* segment_ids,
-                                                         uint32_t*                      segment_node_io_ids);
+PUBLIC void demo_timeline_segment_free_exposed_io_result(demo_timeline_segment_node_io* segment_node_ios_ptr);
 
 /** TODO
  *
  *  Retrieved arrays must be freed with a demo_timeline_segment_free_exposed_io_result() call, when no longer
  *  needed.
  *
- *  @param segment                        TODO
- *  @param out_n_inputs_ptr               TODO
- *  @param out_segment_ids_ptr            TODO
- *  @param out_segment_node_input_ids_ptr TODO
+ *  @param segment                  TODO
+ *  @param out_n_inputs_ptr         TODO
+ *  @param out_segment_node_ios_ptr TODO
  **/
-PUBLIC bool demo_timeline_segment_get_exposed_inputs(demo_timeline_segment                 segment,
-                                                     uint32_t*                             out_n_inputs_ptr,
-                                                     demo_timeline_segment_node_id**       out_segment_ids_ptr,
-                                                     demo_timeline_segment_node_input_id** out_segment_node_input_ids_ptr);
+PUBLIC bool demo_timeline_segment_get_exposed_inputs(demo_timeline_segment           segment,
+                                                     uint32_t*                       out_n_inputs_ptr,
+                                                     demo_timeline_segment_node_io** out_segment_node_ios_ptr);
 
 /** TODO
  *
  *  Retrieved arrays must be freed with a demo_timeline_segment_free_exposed_io_result() call, when no longer
  *  needed.
  *
- *  @param segment                         TODO
- *  @param out_n_outputs_ptr               TODO
- *  @param out_segment_ids_ptr             TODO
- *  @param out_segment_node_output_ids_ptr TODO
+ *  @param segment                  TODO
+ *  @param out_n_outputs_ptr        TODO
+ *  @param out_segment_node_ios_ptr TODO
  **/
-PUBLIC bool demo_timeline_segment_get_exposed_outputs(demo_timeline_segment                 segment,
-                                                      uint32_t*                             out_n_outputs_ptr,
-                                                      demo_timeline_segment_node_id**       out_segment_ids_ptr,
-                                                      demo_timeline_segment_node_input_id** out_segment_node_output_ids_ptr);
+PUBLIC bool demo_timeline_segment_get_exposed_outputs(demo_timeline_segment           segment,
+                                                      uint32_t*                       out_n_outputs_ptr,
+                                                      demo_timeline_segment_node_io** out_segment_node_ios_ptr);
 
 /** TODO
  *

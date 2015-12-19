@@ -112,6 +112,14 @@ typedef unsigned int demo_timeline_segment_node_id;
 typedef unsigned int demo_timeline_segment_node_input_id;
 typedef unsigned int demo_timeline_segment_node_output_id;
 
+typedef struct
+{
+    bool                          is_input;
+    demo_timeline_segment_node_id node_id;
+    uint32_t                      node_io_id;
+} demo_timeline_segment_node_io;
+
+
 typedef enum
 {
     /* not settable; ral_texture.
@@ -204,17 +212,13 @@ typedef enum
 {
     /*** VIDEO SEGMENT NODES: ***/
 
-    /* NOTE: Update the _video_node_data array in demo_timeline_video_segment.cc, if you move/add/remove any entries
+    /* NOTE: Update the node_data array in demo_timeline_video_segment.cc, if you move/add/remove any entries
      *       defined by this enum. */
-    DEMO_TIMELINE_VIDEO_SEGMENT_NODE_TYPE_OUTPUT,
     DEMO_TIMELINE_VIDEO_SEGMENT_NODE_TYPE_PASS_RENDERER,
-
-    /* Always last */
-    DEMO_TIMELINE_VIDEO_SEGMENT_NODE_TYPE_COUNT,
 
 
     /*** VIDEO SEGMENT NODES: ***/
-    DEMO_TIMELINE_POSTPROCESSING_SEGMENT_NODE_TYPE_OUTPUT = 0,
+    DEMO_TIMELINE_POSTPROCESSING_SEGMENT_NODE_TYPE_OUTPUT,
     DEMO_TIMELINE_POSTPROCESSING_SEGMENT_NODE_TYPE_VIDEO_SEGMENT,
 
     /* Always last */
