@@ -38,12 +38,13 @@ typedef struct _audio_stream
     explicit _audio_stream(audio_device           in_device,
                            system_file_serializer in_serializer)
     {
-        callback_manager = system_callback_manager_create( (_callback_id) AUDIO_STREAM_CALLBACK_ID_COUNT);
-        device           = in_device;
-        is_playing       = false;
-        playback_status  = AUDIO_STREAM_PLAYBACK_STATUS_STOPPED;
-        serializer       = in_serializer;
-        stream           = (HSTREAM) NULL;
+        callback_manager            = system_callback_manager_create( (_callback_id) AUDIO_STREAM_CALLBACK_ID_COUNT);
+        device                      = in_device;
+        finished_playing_sync_event = NULL;
+        is_playing                  = false;
+        playback_status             = AUDIO_STREAM_PLAYBACK_STATUS_STOPPED;
+        serializer                  = in_serializer;
+        stream                      = (HSTREAM) NULL;
 
         system_file_serializer_retain(in_serializer);
     }
@@ -187,14 +188,6 @@ PUBLIC EMERALD_API audio_stream audio_stream_create(audio_device           devic
         goto end_error;
     }
 
-    /* Configure the audio stream as the window's audio stream.
-     *
-     * TODO: Windows really should not have anything to do with audio streams! :C
-     */
-    system_window_set_property(window_private,
-                               SYSTEM_WINDOW_PROPERTY_AUDIO_STREAM,
-                               new_audio_stream_ptr);
-
     /* Register the instance in the object manager registry */
     snprintf(temp_buffer,
              sizeof(temp_buffer),
@@ -206,6 +199,14 @@ PUBLIC EMERALD_API audio_stream audio_stream_create(audio_device           devic
                                                    OBJECT_TYPE_AUDIO_STREAM,
                                                    system_hashed_ansi_string_create_by_merging_two_strings("\\Audio Streams\\",
                                                                                                            temp_buffer) );
+
+    /* Configure the audio stream as the window's audio stream.
+     *
+     * TODO: Windows really should not have anything to do with audio streams! :C
+     */
+    system_window_set_property(window_private,
+                               SYSTEM_WINDOW_PROPERTY_AUDIO_STREAM,
+                              &new_audio_stream_ptr);
 
     return (audio_stream) new_audio_stream_ptr;
 

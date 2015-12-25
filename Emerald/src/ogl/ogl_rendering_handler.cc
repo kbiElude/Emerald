@@ -1509,12 +1509,17 @@ PUBLIC EMERALD_API void ogl_rendering_handler_set_property(ogl_rendering_handler
 
         case OGL_RENDERING_HANDLER_PROPERTY_TIMELINE:
         {
-            ASSERT_DEBUG_SYNC(rendering_handler_ptr->timeline == NULL,
+            ASSERT_DEBUG_SYNC(rendering_handler_ptr->timeline == NULL                    ||
+                              rendering_handler_ptr->timeline == *(demo_timeline*) value,
                               "Another timeline instance is already assigned to the rendering handler!");
 
-            rendering_handler_ptr->timeline = *(demo_timeline*) value;
+            if (rendering_handler_ptr->timeline != *(demo_timeline*) value)
+            {
+                rendering_handler_ptr->timeline = *(demo_timeline*) value;
 
-            demo_timeline_retain(rendering_handler_ptr->timeline);
+                demo_timeline_retain(rendering_handler_ptr->timeline);
+            }
+
             break;
         }
 
