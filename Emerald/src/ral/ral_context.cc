@@ -907,10 +907,10 @@ end:
 }
 
 /** Please see header for specification */
-PUBLIC bool ral_context_create_buffers(ral_context                   context,
-                                       uint32_t                      n_buffers,
-                                       const ral_buffer_create_info* buffer_create_info_ptr,
-                                       ral_buffer*                   out_result_buffers_ptr)
+PUBLIC EMERALD_API bool ral_context_create_buffers(ral_context                   context,
+                                                   uint32_t                      n_buffers,
+                                                   const ral_buffer_create_info* buffer_create_info_ptr,
+                                                   ral_buffer*                   out_result_buffers_ptr)
 {
     _ral_context* context_ptr = (_ral_context*) context;
     bool          result      = false;
@@ -956,9 +956,9 @@ end:
 }
 
 /** Please see header for specification */
-PUBLIC bool ral_context_create_framebuffers(ral_context      context,
-                                            uint32_t         n_framebuffers,
-                                            ral_framebuffer* out_result_framebuffers_ptr)
+PUBLIC EMERALD_API bool ral_context_create_framebuffers(ral_context      context,
+                                                        uint32_t         n_framebuffers,
+                                                        ral_framebuffer* out_result_framebuffers_ptr)
 {
     _ral_context* context_ptr = (_ral_context*) context;
     bool          result      = false;
@@ -996,10 +996,10 @@ end:
 }
 
 /** Please see header for specification */
-PUBLIC bool ral_context_create_samplers(ral_context              context,
-                                        uint32_t                 n_create_info_items,
-                                        ral_sampler_create_info* create_info_ptrs,
-                                        ral_sampler*             out_result_sampler_ptrs)
+PUBLIC EMERALD_API bool ral_context_create_samplers(ral_context              context,
+                                                    uint32_t                 n_create_info_items,
+                                                    ral_sampler_create_info* create_info_ptrs,
+                                                    ral_sampler*             out_result_sampler_ptrs)
 {
     bool          result      = false;
     _ral_context* context_ptr = (_ral_context*) context;
@@ -1128,10 +1128,10 @@ end:
 }
 
 /** Please see header for specification */
-PUBLIC bool ral_context_create_textures(ral_context                    context,
-                                        uint32_t                       n_textures,
-                                        const ral_texture_create_info* texture_create_info_ptr,
-                                        ral_texture*                   out_result_textures_ptr)
+PUBLIC EMERALD_API bool ral_context_create_textures(ral_context                    context,
+                                                    uint32_t                       n_textures,
+                                                    const ral_texture_create_info* texture_create_info_ptr,
+                                                    ral_texture*                   out_result_textures_ptr)
 {
     _ral_context* context_ptr = (_ral_context*) context;
     bool          result      = false;
@@ -1183,10 +1183,10 @@ end:
 }
 
 /** TODO */
-PUBLIC bool ral_context_create_textures_from_file_names(ral_context                      context,
-                                                        uint32_t                         n_file_names,
-                                                        const system_hashed_ansi_string* file_names_ptr,
-                                                        ral_texture*                     out_result_textures_ptr)
+PUBLIC EMERALD_API bool ral_context_create_textures_from_file_names(ral_context                      context,
+                                                                    uint32_t                         n_file_names,
+                                                                    const system_hashed_ansi_string* file_names_ptr,
+                                                                    ral_texture*                     out_result_textures_ptr)
 {
     _ral_context* context_ptr = (_ral_context*) context;
     bool          result      = false;
@@ -1239,10 +1239,10 @@ end:
 }
 
 /** Please see header for specification */
-PUBLIC bool ral_context_create_textures_from_gfx_images(ral_context      context,
-                                                        uint32_t         n_images,
-                                                        const gfx_image* images,
-                                                        ral_texture*     out_result_textures_ptr)
+PUBLIC EMERALD_API bool ral_context_create_textures_from_gfx_images(ral_context      context,
+                                                                    uint32_t         n_images,
+                                                                    const gfx_image* images,
+                                                                    ral_texture*     out_result_textures_ptr)
 {
     _ral_context* context_ptr = (_ral_context*) context;
     bool          result      = false;
@@ -1295,9 +1295,9 @@ end:
 }
 
 /** Please see header for specification */
-PUBLIC bool ral_context_delete_buffers(ral_context context,
-                                       uint32_t    n_buffers,
-                                       ral_buffer* buffers)
+PUBLIC EMERALD_API bool ral_context_delete_buffers(ral_context context,
+                                                   uint32_t    n_buffers,
+                                                   ral_buffer* buffers)
 {
     _ral_context* context_ptr = (_ral_context*) context;
     bool          result      = false;
@@ -1335,9 +1335,9 @@ end:
 }
 
 /** Please see header for specification */
-PUBLIC bool ral_context_delete_framebuffers(ral_context      context,
-                                            uint32_t         n_framebuffers,
-                                            ral_framebuffer* framebuffers)
+PUBLIC EMERALD_API bool ral_context_delete_framebuffers(ral_context      context,
+                                                        uint32_t         n_framebuffers,
+                                                        ral_framebuffer* framebuffers)
 {
     _ral_context* context_ptr = (_ral_context*) context;
     bool          result      = false;
@@ -1375,9 +1375,9 @@ end:
 }
 
 /** Please see header for specification */
-PUBLIC bool ral_context_delete_samplers(ral_context  context,
-                                        uint32_t     n_samplers,
-                                        ral_sampler* samplers)
+PUBLIC EMERALD_API bool ral_context_delete_samplers(ral_context  context,
+                                                    uint32_t     n_samplers,
+                                                    ral_sampler* samplers)
 {
     _ral_context* context_ptr = (_ral_context*) context;
     bool          result      = false;
@@ -1415,9 +1415,9 @@ end:
 }
 
 /** Please see header for specification */
-PUBLIC bool ral_context_delete_textures(ral_context  context,
-                                        uint32_t     n_textures,
-                                        ral_texture* textures)
+PUBLIC EMERALD_API bool ral_context_delete_textures(ral_context  context,
+                                                    uint32_t     n_textures,
+                                                    ral_texture* textures)
 {
     _ral_context* context_ptr = (_ral_context*) context;
     bool          result      = false;
@@ -1591,8 +1591,8 @@ PUBLIC EMERALD_API raGL_sampler ral_context_get_sampler_gl(ral_context context,
 }
 
 /** Please see header for specification */
-PUBLIC ral_texture ral_context_get_texture_by_file_name(ral_context               context,
-                                                        system_hashed_ansi_string file_name)
+PUBLIC EMERALD_API ral_texture ral_context_get_texture_by_file_name(ral_context               context,
+                                                                    system_hashed_ansi_string file_name)
 {
     _ral_context* context_ptr = (_ral_context*) context;
     ral_texture   result      = NULL;
@@ -1628,8 +1628,8 @@ end:
 }
 
 /** Please see header for specification */
-PUBLIC ral_texture ral_context_get_texture_by_name(ral_context               context,
-                                                   system_hashed_ansi_string name)
+PUBLIC EMERALD_API ral_texture ral_context_get_texture_by_name(ral_context               context,
+                                                               system_hashed_ansi_string name)
 {
     _ral_context* context_ptr = (_ral_context*) context;
     ral_texture   result      = NULL;

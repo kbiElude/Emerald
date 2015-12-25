@@ -33,7 +33,7 @@ typedef enum
     /* not settable; ral_context */
     DEMO_WINDOW_PROPERTY_RENDERING_CONTEXT,
 
-    /* not settable; available after run() call; demo_rendering_handler */
+    /* not settable; available after show() call; ogl_rendering_handler */
     DEMO_WINDOW_PROPERTY_RENDERING_HANDLER,
 
     /* settable (before run() call); uint32_t[2] */
@@ -49,7 +49,7 @@ typedef enum
     /* not settable; demo_timeline. Available after the window is shown. */
     DEMO_WINDOW_PROPERTY_TIMELINE,
 
-    /* settable (before run() call); bool */
+    /* settable (before show() call); bool */
     DEMO_WINDOW_PROPERTY_USE_VSYNC,
 
     /* settable; bool */
@@ -59,6 +59,13 @@ typedef enum
 typedef void (*PFNDEMOWINDOWLOADERSETUPCALLBACKPROC)(demo_window window,
                                                      demo_loader loader,
                                                      void*       user_arg);
+
+/** TODO */
+PUBLIC EMERALD_API bool demo_window_add_callback_func(demo_window                          window,
+                                                      system_window_callback_func_priority priority,
+                                                      system_window_callback_func          callback_func,
+                                                      void*                                pfn_callback_func,
+                                                      void*                                callback_func_user_arg);
 
 /** TODO
  *

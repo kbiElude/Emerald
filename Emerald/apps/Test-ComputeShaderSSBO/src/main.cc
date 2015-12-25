@@ -4,16 +4,23 @@
  *
  */
 #include "shared.h"
+#include "demo/demo_app.h"
+#include "demo/demo_window.h"
 #include "ogl/ogl_context.h"
 #include "ogl/ogl_program.h"
 #include "ogl/ogl_program_ssb.h"
 #include "ogl/ogl_rendering_handler.h"
 #include "ogl/ogl_shader.h"
-#include "ogl/ogl_texture.h"
+#include "raGL/raGL_buffer.h"
+#include "raGL/raGL_framebuffer.h"
+#include "raGL/raGL_texture.h"
+#include "ral/ral_buffer.h"
+#include "ral/ral_context.h"
+#include "ral/ral_framebuffer.h"
+#include "ral/ral_texture.h"
 #include "system/system_assertions.h"
 #include "system/system_event.h"
 #include "system/system_hashed_ansi_string.h"
-#include "system/system_pixel_format.h"
 #include "system/system_screen_mode.h"
 #include "system/system_window.h"
 #include <algorithm>
@@ -22,14 +29,14 @@
     #undef min
 #endif
 
-GLuint       _bo_id                = 0;
-ogl_context  _context              = NULL;
-GLuint       _read_fbo_id          = 0;
-int          _local_workgroup_size = 0;
-ogl_program  _program              = NULL;
-ogl_texture  _texture              = NULL;
-system_event _window_closed_event  = system_event_create(true); /* manual_reset */
-int          _window_size[2]       = {1280, 720};
+ral_buffer      _bo                   = NULL;
+ral_context     _context              = NULL;
+ral_framebuffer _read_fbo             = NULL;
+int             _local_workgroup_size = 0;
+ogl_program     _program              = NULL;
+ral_texture     _texture              = NULL;
+system_event    _window_closed_event  = system_event_create(true); /* manual_reset */
+int             _window_size[2]       = {1280, 720};
 
 const char* _cs_body_preamble = "#version 430 core\n"
                                 "\n"
@@ -59,14 +66,14 @@ const char* _cs_body_core     = "layout (local_size_x = LOCAL_SIZE, local_size_y
                                 "}";
 
 /** TODO */
-system_hashed_ansi_string _get_cs_body()
+system_hashed_ansi_string _get_cs_body(ogl_context context_gl)
 {
     const ogl_context_gl_limits*    limits_ptr                       = NULL;
     const GLint*                    max_local_work_group_dimensions  = NULL;
           GLint                     max_local_work_group_invocations = 0;
           system_hashed_ansi_string result                           = NULL;
 
-    ogl_context_get_property(_context,
+    ogl_context_get_property(context_gl,
                              OGL_CONTEXT_PROPERTY_LIMITS,
                             &limits_ptr);
 
@@ -116,35 +123,39 @@ void _rendering_handler(ogl_context context,
     const  ogl_context_gl_entrypoints* entry_points    = NULL;
     static bool                        has_initialized = false;
 
-    ogl_context_get_property(_context,
+    ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
                              &entry_points);
 
     if (!has_initialized)
     {
         /* Set up the data buffer object */
-        const int data_bo_contents = 0;
+        ral_buffer_create_info bo_create_info;
+        const int              data_bo_contents = 0;
 
-        entry_points->pGLGenBuffers(1,
-                                   &_bo_id);
-        entry_points->pGLBindBuffer(GL_SHADER_STORAGE_BUFFER,
-                                    _bo_id);
+        bo_create_info.mappability_bits = 0;
+        bo_create_info.parent_buffer    = NULL;
+        bo_create_info.property_bits    = 0;
+        bo_create_info.size             = sizeof(data_bo_contents);
+        bo_create_info.start_offset     = 0;
+        bo_create_info.usage_bits       = RAL_BUFFER_USAGE_SHADER_STORAGE_BUFFER_BIT;
+        bo_create_info.user_queue_bits  = RAL_QUEUE_COMPUTE_BIT | RAL_QUEUE_GRAPHICS_BIT;
 
-        entry_points->pGLBufferData(GL_SHADER_STORAGE_BUFFER,
-                                    sizeof(data_bo_contents),
-                                   &data_bo_contents,
-                                    GL_DYNAMIC_DRAW);
+        ral_context_create_buffers(_context,
+                                   1, /* n_buffers */
+                                  &bo_create_info,
+                                  &_bo);
 
         /* Set up the compute shader object */
-        ogl_shader cs = ogl_shader_create(context,
+        ogl_shader cs = ogl_shader_create(_context,
                                           RAL_SHADER_TYPE_COMPUTE,
                                           system_hashed_ansi_string_create("Compute shader object") );
 
         ogl_shader_set_body(cs,
-                            _get_cs_body() );
+                            _get_cs_body(context) );
 
         /* Set up the compute program object */
-        _program = ogl_program_create(context,
+        _program = ogl_program_create(_context,
                                       system_hashed_ansi_string_create("Program object") );
 
         ogl_program_attach_shader(_program,
@@ -162,19 +173,36 @@ void _rendering_handler(ogl_context context,
         /* Set up the texture object we will have the CS write to. The texture mip-map will later be
          * used as a source for the blit operation which is going to fill the back buffer with data.
          */
-        _texture = ogl_texture_create_and_initialize(_context,
-                                                     system_hashed_ansi_string_create("Test texture"),
-                                                     RAL_TEXTURE_TYPE_2D,
-                                                     RAL_TEXTURE_FORMAT_RGBA8_UNORM,
-                                                     false,  /* use_full_mipmap_chain */
-                                                     _window_size[0],
-                                                     _window_size[1],
-                                                     1,      /* base_mipmap_depth */
-                                                     1,      /* n_samples */
-                                                     false); /* fixed_sample_locations */
+        ral_texture_create_info texture_create_info;
+        raGL_texture            texture_gl    = NULL;
+        GLuint                  texture_gl_id = 0;
+
+        texture_create_info.base_mipmap_depth      = 1;
+        texture_create_info.base_mipmap_height     = _window_size[1];
+        texture_create_info.base_mipmap_width      = _window_size[0];
+        texture_create_info.fixed_sample_locations = true;
+        texture_create_info.format                 = RAL_TEXTURE_FORMAT_RGBA8_UNORM;
+        texture_create_info.n_layers               = 1;
+        texture_create_info.n_samples              = 1;
+        texture_create_info.type                   = RAL_TEXTURE_TYPE_2D;
+        texture_create_info.usage                  = RAL_TEXTURE_USAGE_BLIT_SRC_BIT |
+                                                     RAL_TEXTURE_USAGE_IMAGE_STORE_OPS_BIT;
+        texture_create_info.use_full_mipmap_chain  = false;
+
+        ral_context_create_textures(_context,
+                                    1, /* n_textures */
+                                   &texture_create_info,
+                                   &_texture);
+
+        texture_gl = ral_context_get_texture_gl(_context,
+                                                _texture);
+
+        raGL_texture_get_property(texture_gl,
+                                  RAGL_TEXTURE_PROPERTY_ID,
+                                 &texture_gl_id);
 
         entry_points->pGLBindImageTexture(0, /* index */
-                                          _texture,
+                                          texture_gl_id,
                                           0,        /* level */
                                           GL_FALSE, /* layered */
                                           0,        /* layer */
@@ -182,16 +210,14 @@ void _rendering_handler(ogl_context context,
                                           GL_RGBA8);
 
         /* Set up the read FBO we are going to use for the blit ops. */
-        entry_points->pGLGenFramebuffers(1,
-                                        &_read_fbo_id);
-        entry_points->pGLBindFramebuffer(GL_READ_FRAMEBUFFER,
-                                        _read_fbo_id);
-
-        entry_points->pGLFramebufferTexture2D(GL_READ_FRAMEBUFFER,
-                                              GL_COLOR_ATTACHMENT0,
-                                              GL_TEXTURE_2D,
-                                              _texture,
-                                              0); /* level */
+        ral_context_create_framebuffers  (_context,
+                                          1, /* n_framebuffers */
+                                         &_read_fbo);
+        ral_framebuffer_set_attachment_2D(_read_fbo,
+                                          RAL_FRAMEBUFFER_ATTACHMENT_TYPE_COLOR,
+                                          0, /* index */
+                                          _texture,
+                                          0 /* n_mipmap */);
 
         has_initialized = true;
     } /* if (!has_initialized) */
@@ -212,17 +238,37 @@ void _rendering_handler(ogl_context context,
                                      1); /* num_groups_z */
 
     /* Update the test counter value */
+    raGL_buffer bo_gl    = NULL;
+    GLuint      bo_gl_id = 0;
+
+    bo_gl = ral_context_get_buffer_gl(_context,
+                                      _bo);
+
+    raGL_buffer_get_property(bo_gl,
+                             RAGL_BUFFER_PROPERTY_ID,
+                            &bo_gl_id);
+
     entry_points->pGLBindBufferBase(GL_SHADER_STORAGE_BUFFER,
                                     0,
-                                    _bo_id);
+                                    bo_gl_id);
     entry_points->pGLBufferSubData(GL_SHADER_STORAGE_BUFFER,
                                    0, /* offset */
                                    sizeof(n_frames_rendered),
                                   &n_frames_rendered);
 
     /* Copy the result data to the back buffer */
+    raGL_framebuffer read_fbo_gl    = NULL;
+    GLuint           read_fbo_gl_id = 0;
+
+    read_fbo_gl = ral_context_get_framebuffer_gl(_context,
+                                                 _read_fbo);
+
+    raGL_framebuffer_get_property(read_fbo_gl,
+                                  RAGL_FRAMEBUFFER_PROPERTY_ID,
+                                 &read_fbo_gl_id);
+
     entry_points->pGLBindFramebuffer(GL_READ_FRAMEBUFFER,
-                                     _read_fbo_id);
+                                     read_fbo_gl_id);
 
     entry_points->pGLMemoryBarrier  (GL_FRAMEBUFFER_BARRIER_BIT);
     entry_points->pGLBlitFramebuffer(0,
@@ -258,18 +304,13 @@ PRIVATE void _window_closed_callback_handler(system_window window,
 PRIVATE void _window_closing_callback_handler(system_window window,
                                               void*         unused)
 {
-    const ogl_context_gl_entrypoints* entry_points = NULL;
-
-    ogl_context_get_property(_context,
-                             OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
-                            &entry_points);
-
-    if (_bo_id != 0)
+    if (_bo != NULL)
     {
-        entry_points->pGLDeleteBuffers(1,
-                                      &_bo_id);
+        ral_context_delete_buffers(_context,
+                                   1, /* n_buffers */
+                                  &_bo);
 
-        _bo_id = 0;
+        _bo = NULL;
     }
 
     if (_program != NULL)
@@ -279,17 +320,20 @@ PRIVATE void _window_closing_callback_handler(system_window window,
         _program = NULL;
     }
 
-    if (_read_fbo_id != 0)
+    if (_read_fbo != NULL)
     {
-        entry_points->pGLDeleteFramebuffers(1,
-                                           &_read_fbo_id);
+        ral_context_delete_framebuffers(_context,
+                                        1, /* n_framebuffers */
+                                       &_read_fbo);
 
-        _read_fbo_id = 0;
+        _read_fbo = NULL;
     }
 
     if (_texture != NULL)
     {
-        ogl_texture_release(_texture);
+        ral_context_delete_textures(_context,
+                                    1, /* n_textures */
+                                   &_texture);
 
         _texture = NULL;
     }
@@ -308,11 +352,16 @@ PRIVATE void _window_closing_callback_handler(system_window window,
     int main()
 #endif
 {
-    system_screen_mode    screen_mode              = NULL;
-    system_window         window                   = NULL;
-    system_pixel_format   window_pf                = NULL;
-    ogl_rendering_handler window_rendering_handler = NULL;
-    int                   window_x1y1x2y2[4]       = {0};
+    PFNOGLRENDERINGHANDLERRENDERINGCALLBACK pfn_callback_proc  = _rendering_handler;
+    ogl_rendering_handler                   rendering_handler  = NULL;
+    system_screen_mode                      screen_mode        = NULL;
+    demo_window                             window             = NULL;
+    const system_hashed_ansi_string         window_name        = system_hashed_ansi_string_create("Compute shader SSBO test app");
+    int                                     window_x1y1x2y2[4] = {0};
+
+    window = demo_app_create_window(window_name,
+                                    RAL_BACKEND_TYPE_GL,
+                                    false /* use_timeline */);
 
     system_screen_mode_get         (0,
                                    &screen_mode);
@@ -323,73 +372,51 @@ PRIVATE void _window_closing_callback_handler(system_window window,
                                     SYSTEM_SCREEN_MODE_PROPERTY_HEIGHT,
                                     _window_size + 1);
 
-    window_pf = system_pixel_format_create(8,  /* color_buffer_red_bits   */
-                                           8,  /* color_buffer_green_bits */
-                                           8,  /* color_buffer_blue_bits  */
-                                           0,  /* color_buffer_alpha_bits */
-                                           16, /* depth_buffer_bits       */
-                                           SYSTEM_PIXEL_FORMAT_USE_MAXIMUM_NUMBER_OF_SAMPLES,
-                                           0); /* stencil_buffer_bits     */
-
-#if 0
-    window = system_window_create_fullscreen(OGL_CONTEXT_TYPE_GL,
-                                             screen_mode,
-                                             true, /* vsync_enabled */
-                                             window_pf);
-#else
     _window_size[0] /= 2;
     _window_size[1] /= 2;
 
-    system_window_get_centered_window_position_for_primary_monitor(_window_size,
-                                                                   window_x1y1x2y2);
+    demo_window_set_property(window,
+                             DEMO_WINDOW_PROPERTY_RESOLUTION,
+                             _window_size);
 
-    window = system_window_create_not_fullscreen(OGL_CONTEXT_TYPE_GL,
-                                                 window_x1y1x2y2,
-                                                 system_hashed_ansi_string_create("Test window"),
-                                                 false, /* scalable */
-                                                 true,  /* vsync_enabled */
-                                                 true,  /* visible */
-                                                 window_pf);
-#endif
+    demo_window_show(window);
 
-    window_rendering_handler = ogl_rendering_handler_create_with_fps_policy(system_hashed_ansi_string_create("Default rendering handler"),
-                                                                            60,
-                                                                            _rendering_handler,
-                                                                            NULL);
+    demo_window_get_property(window,
+                             DEMO_WINDOW_PROPERTY_RENDERING_CONTEXT,
+                            &_context);
+    demo_window_get_property(window,
+                             DEMO_WINDOW_PROPERTY_RENDERING_HANDLER,
+                            &rendering_handler);
 
-    system_window_get_property(window,
-                               SYSTEM_WINDOW_PROPERTY_RENDERING_CONTEXT,
-                              &_context);
-    system_window_set_property(window,
-                               SYSTEM_WINDOW_PROPERTY_RENDERING_HANDLER,
-                              &window_rendering_handler);
+    ogl_rendering_handler_set_property(rendering_handler,
+                                       OGL_RENDERING_HANDLER_PROPERTY_RENDERING_CALLBACK,
+                                      &pfn_callback_proc);
 
-    system_window_add_callback_func    (window,
-                                        SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_NORMAL,
-                                        SYSTEM_WINDOW_CALLBACK_FUNC_LEFT_BUTTON_DOWN,
-                                        (void*) _rendering_lbm_callback_handler,
-                                        NULL);
-    system_window_add_callback_func    (window,
-                                        SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_NORMAL,
-                                        SYSTEM_WINDOW_CALLBACK_FUNC_WINDOW_CLOSED,
-                                        (void*) _window_closed_callback_handler,
-                                        NULL);
-    system_window_add_callback_func    (window,
-                                        SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_NORMAL,
-                                        SYSTEM_WINDOW_CALLBACK_FUNC_WINDOW_CLOSING,
-                                        (void*) _window_closing_callback_handler,
-                                        NULL);
+    demo_window_add_callback_func(window,
+                                  SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_NORMAL,
+                                  SYSTEM_WINDOW_CALLBACK_FUNC_LEFT_BUTTON_DOWN,
+                                  (void*) _rendering_lbm_callback_handler,
+                                  NULL);
+    demo_window_add_callback_func(window,
+                                  SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_NORMAL,
+                                  SYSTEM_WINDOW_CALLBACK_FUNC_WINDOW_CLOSED,
+                                  (void*) _window_closed_callback_handler,
+                                  NULL);
+    demo_window_add_callback_func(window,
+                                  SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_NORMAL,
+                                  SYSTEM_WINDOW_CALLBACK_FUNC_WINDOW_CLOSING,
+                                  (void*) _window_closing_callback_handler,
+                                  NULL);
 
-    ogl_rendering_handler_play(window_rendering_handler,
-                               0);
-
-    system_event_wait_single(_window_closed_event);
+    demo_window_start_rendering(window,
+                                0 /* rendering_start_time */);
+    system_event_wait_single   (_window_closed_event);
 
     /* Clean up - DO NOT release any GL objects here, no rendering context is bound
      * to the main thread!
      */
-    system_window_close (window);
-    system_event_release(_window_closed_event);
+    demo_app_destroy_window(window_name);
 
+    system_event_release(_window_closed_event);
     return 0;
 }

@@ -406,7 +406,8 @@ PUBLIC EMERALD_API bool system_window_add_callback_func(system_window           
                                                         system_window_callback_func_priority priority,
                                                         system_window_callback_func          callback_func,
                                                         void*                                pfn_callback_func,
-                                                        void*                                user_arg)
+                                                        void*                                user_arg,
+                                                        bool                                 should_use_priority)
 {
     _callback_descriptor* new_descriptor_ptr = new (std::nothrow) _callback_descriptor;
     bool                  result             = false;
@@ -593,7 +594,7 @@ PUBLIC EMERALD_API bool system_window_add_callback_func(system_window           
                                                                n_element,
                                                               &existing_descriptor_ptr) )
                     {
-                        if (existing_descriptor_ptr->priority > priority)
+                        if (existing_descriptor_ptr->priority < priority)
                         {
                             insertion_index = n_element;
 
@@ -603,11 +604,18 @@ PUBLIC EMERALD_API bool system_window_add_callback_func(system_window           
                 } /* for (uint32_t n_element = 0; n_element < n_elements; ++n_element) */
 
                 /* Insert */
-                if (insertion_index == -1)
+                if ( should_use_priority && insertion_index == -1)
                 {
                     system_resizable_vector_push(callback_container,
                                                  new_descriptor_ptr);
-                } /* if (insertion_index == -1) */
+                } /* if (should_use_priority && insertion_index == -1) */
+                else
+                if (!should_use_priority)
+                {
+                    system_resizable_vector_insert_element_at(callback_container,
+                                                              0, /* index */
+                                                              new_descriptor_ptr);
+                }
                 else
                 {
                     system_resizable_vector_insert_element_at(callback_container,

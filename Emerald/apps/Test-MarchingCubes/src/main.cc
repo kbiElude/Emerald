@@ -5,6 +5,8 @@
  */
 #include "shared.h"
 #include "curve/curve_container.h"
+#include "demo/demo_app.h"
+#include "demo/demo_window.h"
 #include "mesh/mesh.h"
 #include "mesh/mesh_marchingcubes.h"
 #include "ogl/ogl_context.h"
@@ -15,6 +17,8 @@
 #include "ogl/ogl_ui.h"
 #include "ogl/ogl_ui_scrollbar.h"
 #include "procedural/procedural_uv_generator.h"
+#include "ral/ral_buffer.h"
+#include "ral/ral_context.h"
 #include "scalar_field/scalar_field_metaballs.h"
 #include "scene/scene.h"
 #include "scene/scene_camera.h"
@@ -28,16 +32,14 @@
 #include "system/system_log.h"
 #include "system/system_math_vector.h"
 #include "system/system_matrix4x4.h"
-#include "system/system_pixel_format.h"
 #include "system/system_screen_mode.h"
 #include "system/system_variant.h"
-#include "system/system_window.h"
 #include <algorithm>
 #include "main.h"
 
 PRIVATE const unsigned int _blob_size[] = {50, 50, 50};
 
-PRIVATE ogl_context                       _context                = NULL;
+PRIVATE ral_context                       _context                = NULL;
 PRIVATE ogl_flyby                         _context_flyby          = NULL;
 PRIVATE mesh_marchingcubes                _marching_cubes         = NULL;
 PRIVATE scene_material                    _material               = NULL;
@@ -55,6 +57,7 @@ PRIVATE scene_graph                       _scene_graph            = NULL; /* do 
 PRIVATE ogl_scene_renderer                _scene_renderer         = NULL;
 PRIVATE procedural_uv_generator           _uv_generator           = NULL;
 PRIVATE procedural_uv_generator_object_id _uv_generator_object_id = -1;
+PRIVATE demo_window                       _window                 = NULL;
 PRIVATE system_event                      _window_closed_event    = system_event_create(true); /* manual_reset */
 PRIVATE int                               _window_size[2]         = {1280, 720};
 PRIVATE system_matrix4x4                  _view_matrix            = NULL;
@@ -76,7 +79,7 @@ PRIVATE void _get_isolevel_value             (void*                   user_arg,
                                               system_variant          result);
 PRIVATE void _init_pipeline                  ();
 PRIVATE void _init_scene                     ();
-PRIVATE void _render                         (ogl_context             context,
+PRIVATE void _render                         (ral_context             context,
                                               uint32_t                frame_index,
                                               system_time             frame_time,
                                               const int*              rendering_area_px_topdown,
@@ -180,7 +183,7 @@ PRIVATE void _init_scene()
 
     /* Set up the metaballs mesh instance */
     mesh         marching_cubes_mesh_gpu = NULL;
-    raGL_buffer  scalar_field_bo         = NULL;
+    ral_buffer   scalar_field_bo         = NULL;
     GLuint       scalar_field_bo_id      = 0;
     unsigned int scalar_field_bo_size    = 0;
 
@@ -189,10 +192,10 @@ PRIVATE void _init_scene()
                                                system_hashed_ansi_string_create("Metaballs"));
 
     scalar_field_metaballs_get_property(_metaballs,
-                                        SCALAR_FIELD_METABALLS_PROPERTY_DATA_BO,
+                                        SCALAR_FIELD_METABALLS_PROPERTY_DATA_BO_RAL,
                                        &scalar_field_bo);
-    scalar_field_metaballs_get_property(_metaballs,
-                                        SCALAR_FIELD_METABALLS_PROPERTY_DATA_BO_SIZE,
+    ral_buffer_get_property            (scalar_field_bo,
+                                        RAL_BUFFER_PROPERTY_SIZE,
                                        &scalar_field_bo_size);
 
     scalar_field_metaballs_set_property(_metaballs,
@@ -216,7 +219,6 @@ PRIVATE void _init_scene()
     _marching_cubes = mesh_marchingcubes_create(_context,
                                                 _blob_size,
                                                 scalar_field_bo,
-                                                scalar_field_bo_size,
                                                 _isolevel,
                                                 material,
                                                 system_hashed_ansi_string_create("Marching cubes") );
@@ -294,7 +296,7 @@ PRIVATE void _init_scene()
 }
 
 /** TODO */
-PRIVATE void _render(ogl_context context,
+PRIVATE void _render(ral_context context,
                      uint32_t    frame_index,
                      system_time frame_time,
                      const int*  rendering_area_px_topdown,
@@ -413,9 +415,13 @@ PRIVATE void _rendering_handler(ogl_context context,
         system_matrix4x4_set_to_identity(_view_matrix);
 
         /* Initialize the flyby */
+        ogl_context       context_gl      = NULL;
         static const bool is_flyby_active = true;
 
-        ogl_context_get_property(_context,
+        ral_context_get_property(_context,
+                                 RAL_CONTEXT_PROPERTY_BACKEND_CONTEXT,
+                                &context_gl);
+        ogl_context_get_property(context_gl,
                                  OGL_CONTEXT_PROPERTY_FLYBY,
                                 &_context_flyby);
         ogl_flyby_set_property  (_context_flyby,
@@ -536,11 +542,16 @@ PRIVATE void _window_closing_callback_handler(system_window window,
     int main()
 #endif
 {
-    system_screen_mode    screen_mode              = NULL;
-    system_window         window                   = NULL;
-    system_pixel_format   window_pf                = NULL;
-    ogl_rendering_handler window_rendering_handler = NULL;
-    int                   window_x1y1x2y2[4]       = {0};
+    PFNOGLRENDERINGHANDLERRENDERINGCALLBACK pfn_callback_proc  = _rendering_handler;
+    ogl_rendering_handler                   rendering_handler  = NULL;
+    system_screen_mode                      screen_mode        = NULL;
+    system_window                           window             = NULL;
+    const system_hashed_ansi_string         window_name        = system_hashed_ansi_string_create("Marching cubes demo");
+    int                                     window_x1y1x2y2[4] = {0};
+
+    _window = demo_app_create_window(window_name,
+                                     RAL_BACKEND_TYPE_GL,
+                                     false /* use_timeline */);
 
     system_screen_mode_get         (0,
                                    &screen_mode);
@@ -551,79 +562,54 @@ PRIVATE void _window_closing_callback_handler(system_window window,
                                     SYSTEM_SCREEN_MODE_PROPERTY_HEIGHT,
                                     _window_size + 1);
 
-    window_pf = system_pixel_format_create(8,  /* color_buffer_red_bits   */
-                                           8,  /* color_buffer_green_bits */
-                                           8,  /* color_buffer_blue_bits  */
-                                           0,  /* color_buffer_alpha_bits */
-                                           16, /* depth_buffer_bits       */
-                                           SYSTEM_PIXEL_FORMAT_USE_MAXIMUM_NUMBER_OF_SAMPLES,
-                                           0); /* stencil_buffer_bits     */
-
-#if 0
-    window = system_window_create_fullscreen(OGL_CONTEXT_TYPE_GL,
-                                             screen_mode,
-                                             true, /* vsync_enabled */
-                                             window_pf);
-#else
     _window_size[0] /= 2;
     _window_size[1] /= 2;
 
-    system_window_get_centered_window_position_for_primary_monitor(_window_size,
-                                                                   window_x1y1x2y2);
+    demo_window_set_property(_window,
+                             DEMO_WINDOW_PROPERTY_RESOLUTION,
+                             _window_size);
 
-    window = system_window_create_not_fullscreen(OGL_CONTEXT_TYPE_GL,
-                                                 window_x1y1x2y2,
-                                                 system_hashed_ansi_string_create("Test window"),
-                                                 false, /* scalable */
-                                                 true,  /* vsync_enabled */
-                                                 true,  /* visible */
-                                                 window_pf);
-#endif
+    demo_window_show(_window);
 
-    /* Set up the rendering contxt */
-    window_rendering_handler = ogl_rendering_handler_create_with_fps_policy(system_hashed_ansi_string_create("Default rendering handler"),
-                                                                            60,
-                                                                            _rendering_handler,
-                                                                            NULL); /* user_arg */
+    demo_window_get_property(_window,
+                             DEMO_WINDOW_PROPERTY_RENDERING_CONTEXT,
+                            &_context);
+    demo_window_get_property(_window,
+                             DEMO_WINDOW_PROPERTY_RENDERING_HANDLER,
+                            &rendering_handler);
 
-    /* Kick off the rendering process */
-    system_window_get_property(window,
-                               SYSTEM_WINDOW_PROPERTY_RENDERING_CONTEXT,
-                              &_context);
-    system_window_set_property(window,
-                               SYSTEM_WINDOW_PROPERTY_RENDERING_HANDLER,
-                              &window_rendering_handler);
+    ogl_rendering_handler_set_property(rendering_handler,
+                                       OGL_RENDERING_HANDLER_PROPERTY_RENDERING_CALLBACK,
+                                      &pfn_callback_proc);
 
     /* Set up mouse click & window tear-down callbacks */
-    system_window_add_callback_func    (window,
-                                        SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_NORMAL,
-                                        SYSTEM_WINDOW_CALLBACK_FUNC_RIGHT_BUTTON_DOWN,
-                                        (void*) _rendering_rbm_callback_handler,
-                                        NULL);
-    system_window_add_callback_func    (window,
-                                        SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_NORMAL,
-                                        SYSTEM_WINDOW_CALLBACK_FUNC_WINDOW_CLOSED,
-                                        (void*) _window_closed_callback_handler,
-                                        NULL);
-    system_window_add_callback_func    (window,
-                                        SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_NORMAL,
-                                        SYSTEM_WINDOW_CALLBACK_FUNC_WINDOW_CLOSING,
-                                        (void*) _window_closing_callback_handler,
-                                        NULL);
+    demo_window_add_callback_func(_window,
+                                  SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_NORMAL,
+                                  SYSTEM_WINDOW_CALLBACK_FUNC_RIGHT_BUTTON_DOWN,
+                                  (void*) _rendering_rbm_callback_handler,
+                                  NULL);
+    demo_window_add_callback_func(_window,
+                                  SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_NORMAL,
+                                  SYSTEM_WINDOW_CALLBACK_FUNC_WINDOW_CLOSED,
+                                  (void*) _window_closed_callback_handler,
+                                  NULL);
+    demo_window_add_callback_func(_window,
+                                  SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_NORMAL,
+                                  SYSTEM_WINDOW_CALLBACK_FUNC_WINDOW_CLOSING,
+                                  (void*) _window_closing_callback_handler,
+                                  NULL);
 
     /* Launch the rendering process and wait until the window is closed. */
-    ogl_rendering_handler_play(window_rendering_handler,
-                               0);
+    demo_window_start_rendering(_window,
+                                0 /* rendering_start_time */);
 
     system_event_wait_single(_window_closed_event);
 
     /* Clean up - DO NOT release any GL objects here, no rendering context is bound
      * to the main thread!
      */
-    system_window_close (window);
-    system_event_release(_window_closed_event);
+    demo_app_destroy_window(window_name);
 
     main_force_deinit();
-
     return 0;
 }

@@ -36,7 +36,7 @@ typedef struct _ral_buffer
         callback_manager = system_callback_manager_create( (_callback_id) RAL_BUFFER_CALLBACK_ID_COUNT);
         mappability_bits = in_mappability_bits;
         name             = in_name;
-        parent_buffer    = NULL;
+        parent_buffer    = in_parent_buffer;
         property_bits    = in_property_bits;
         size             = in_size;
         start_offset     = in_start_offset;
@@ -140,9 +140,9 @@ end:
 }
 
 /** Please see header for specification */
-PUBLIC void ral_buffer_get_property(ral_buffer          buffer,
-                                    ral_buffer_property property,
-                                    void*               out_result_ptr)
+PUBLIC EMERALD_API void ral_buffer_get_property(ral_buffer          buffer,
+                                                ral_buffer_property property,
+                                                void*               out_result_ptr)
 {
     _ral_buffer* buffer_ptr = (_ral_buffer*) buffer;
 

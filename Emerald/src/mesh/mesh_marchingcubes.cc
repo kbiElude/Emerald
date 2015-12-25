@@ -710,10 +710,14 @@ PRIVATE void _mesh_marchingcubes_init_mesh_instance(_mesh_marchingcubes* mesh_pt
     vertices_subregion_bo_create_info.size          = max_vertices_data_stream_size;
     vertices_subregion_bo_create_info.start_offset  = 0;
 
-    mesh_ptr->polygonized_data_normals_subregion_bo  = ral_buffer_create(system_hashed_ansi_string_create("Marching cubes normals sub-region BO"),
-                                                                        &normals_subregion_bo_create_info);
-    mesh_ptr->polygonized_data_vertices_subregion_bo = ral_buffer_create(system_hashed_ansi_string_create("Marching cubes vertices sub-region BO"),
-                                                                        &vertices_subregion_bo_create_info);
+    ral_context_create_buffers(mesh_ptr->context,
+                               1, /* n_buffers */
+                              &normals_subregion_bo_create_info,
+                              &mesh_ptr->polygonized_data_normals_subregion_bo);
+    ral_context_create_buffers(mesh_ptr->context,
+                               1, /* n_buffers */
+                              &vertices_subregion_bo_create_info,
+                              &mesh_ptr->polygonized_data_vertices_subregion_bo);
 
     mesh_add_layer_data_stream_from_buffer_memory(mesh_ptr->mesh_instance,
                                                   new_layer_id,

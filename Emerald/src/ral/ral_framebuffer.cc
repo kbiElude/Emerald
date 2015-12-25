@@ -189,11 +189,11 @@ end:
 }
 
 /** Please see header for specification */
-PUBLIC void ral_framebuffer_get_attachment_property(ral_framebuffer                     framebuffer,
-                                                    ral_framebuffer_attachment_type     attachment_type,
-                                                    uint32_t                            index,
-                                                    ral_framebuffer_attachment_property property,
-                                                    void*                               out_result_ptr)
+PUBLIC EMERALD_API void ral_framebuffer_get_attachment_property(ral_framebuffer                     framebuffer,
+                                                                ral_framebuffer_attachment_type     attachment_type,
+                                                                uint32_t                            index,
+                                                                ral_framebuffer_attachment_property property,
+                                                                void*                               out_result_ptr)
 {
     _ral_framebuffer_attachment* attachment_ptr  = NULL;
     _ral_framebuffer*            framebuffer_ptr = (_ral_framebuffer*) framebuffer;
@@ -301,9 +301,9 @@ end:
 }
 
 /** Please see header for specification */
-PUBLIC void ral_framebuffer_get_property(ral_framebuffer          framebuffer,
-                                         ral_framebuffer_property property,
-                                         void*                    out_result_ptr)
+PUBLIC EMERALD_API void ral_framebuffer_get_property(ral_framebuffer          framebuffer,
+                                                     ral_framebuffer_property property,
+                                                     void*                    out_result_ptr)
 {
     _ral_framebuffer* framebuffer_ptr = (_ral_framebuffer*) framebuffer;
 
@@ -343,11 +343,11 @@ PUBLIC void ral_framebuffer_release(ral_framebuffer& framebuffer)
 }
 
 /** Please see header for specification */
-PUBLIC bool ral_framebuffer_set_attachment_2D(ral_framebuffer                 framebuffer,
-                                              ral_framebuffer_attachment_type attachment_type,
-                                              uint32_t                        index,
-                                              ral_texture                     texture_2d,
-                                              uint32_t                        n_mipmap)
+PUBLIC EMERALD_API bool ral_framebuffer_set_attachment_2D(ral_framebuffer                 framebuffer,
+                                                          ral_framebuffer_attachment_type attachment_type,
+                                                          uint32_t                        index,
+                                                          ral_texture                     texture_2d,
+                                                          uint32_t                        n_mipmap)
 {
     _ral_framebuffer*            framebuffer_ptr       = (_ral_framebuffer*) framebuffer;
     bool                         result                = false;
@@ -435,11 +435,11 @@ end:
 }
 
 /** Please see header for specification */
-PUBLIC bool ral_framebuffer_set_attachment_property(ral_framebuffer                     framebuffer,
-                                                    ral_framebuffer_attachment_type     attachment_type,
-                                                    uint32_t                            index,
-                                                    ral_framebuffer_attachment_property property,
-                                                    const void*                         data)
+PUBLIC EMERALD_API bool ral_framebuffer_set_attachment_property(ral_framebuffer                     framebuffer,
+                                                                ral_framebuffer_attachment_type     attachment_type,
+                                                                uint32_t                            index,
+                                                                ral_framebuffer_attachment_property property,
+                                                                const void*                         data)
 {
     _ral_framebuffer*            framebuffer_ptr       = (_ral_framebuffer*) framebuffer;
     bool                         result                = false;

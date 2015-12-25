@@ -529,8 +529,11 @@ typedef enum
     /* The described texture will be read from by means of image load ops */
     RAL_TEXTURE_USAGE_IMAGE_LOAD_OPS_BIT           = 1 << 5,
 
+    /* The described texture will be modified by means of image store ops */
+    RAL_TEXTURE_USAGE_IMAGE_STORE_OPS_BIT          = 1 << 6,
+
     /* The described texture will be sampled from in shader stages */
-    RAL_TEXTURE_USAGE_SAMPLED_BIT                  = 1 << 6,
+    RAL_TEXTURE_USAGE_SAMPLED_BIT                  = 1 << 7,
 
 };
 typedef int ral_texture_usage_bits;

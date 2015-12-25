@@ -95,32 +95,32 @@ PUBLIC ral_framebuffer ral_framebuffer_create(ral_context               context,
                                               system_hashed_ansi_string name);
 
 /** TODO */
-PUBLIC void ral_framebuffer_get_attachment_property(ral_framebuffer                     framebuffer,
-                                                    ral_framebuffer_attachment_type     attachment_type,
-                                                    uint32_t                            index,
-                                                    ral_framebuffer_attachment_property property,
-                                                    void*                               out_result_ptr);
+PUBLIC EMERALD_API void ral_framebuffer_get_attachment_property(ral_framebuffer                     framebuffer,
+                                                                ral_framebuffer_attachment_type     attachment_type,
+                                                                uint32_t                            index,
+                                                                ral_framebuffer_attachment_property property,
+                                                                void*                               out_result_ptr);
 
 /** TODO */
-PUBLIC void ral_framebuffer_get_property(ral_framebuffer          framebuffer,
-                                         ral_framebuffer_property property,
-                                         void*                    out_result_ptr);
+PUBLIC EMERALD_API void ral_framebuffer_get_property(ral_framebuffer          framebuffer,
+                                                     ral_framebuffer_property property,
+                                                     void*                    out_result_ptr);
 
 /** TODO */
 PUBLIC void ral_framebuffer_release(ral_framebuffer& framebuffer);
 
 /** TODO */
-PUBLIC bool ral_framebuffer_set_attachment_2D(ral_framebuffer                 framebuffer,
-                                              ral_framebuffer_attachment_type attachment_type,
-                                              uint32_t                        index,
-                                              ral_texture                     texture_2d,
-                                              uint32_t                        n_mipmap);
+PUBLIC EMERALD_API bool ral_framebuffer_set_attachment_2D(ral_framebuffer                 framebuffer,
+                                                          ral_framebuffer_attachment_type attachment_type,
+                                                          uint32_t                        index,
+                                                          ral_texture                     texture_2d,
+                                                          uint32_t                        n_mipmap);
 
 /** TODO */
-PUBLIC bool ral_framebuffer_set_attachment_property(ral_framebuffer                     framebuffer,
-                                                    ral_framebuffer_attachment_type     attachment_type,
-                                                    uint32_t                            index,
-                                                    ral_framebuffer_attachment_property property,
-                                                    const void*                         data);
+PUBLIC EMERALD_API bool ral_framebuffer_set_attachment_property(ral_framebuffer                     framebuffer,
+                                                                ral_framebuffer_attachment_type     attachment_type,
+                                                                uint32_t                            index,
+                                                                ral_framebuffer_attachment_property property,
+                                                                const void*                         data);
 
 #endif /* RAL_FRAMEBUFFER_H */

@@ -12,16 +12,6 @@
 
 typedef enum
 {
-    /* Used by UI for event capturing. Do not use unless. */
-    SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_SYSTEM,
-
-    /* Application levels follow */
-    SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_NORMAL,
-    SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_LOW
-} system_window_callback_func_priority;
-
-typedef enum
-{
     /* settable, audio_stream
      *
      * Can only be set once. Further set attempts will throw an assertion failure. (TODO: remove this limitation?)
@@ -131,12 +121,18 @@ typedef enum
 #endif
 
 
-/** TODO */
+/** TODO
+ *
+ *  @param should_use_priority true if the position of the callback func in the list of registered callbacks
+ *                             should be determined by using the supplied priority information. false, if the
+ *                             new callback should be prepended instead.
+ **/
 PUBLIC EMERALD_API bool system_window_add_callback_func(system_window                        window,
                                                         system_window_callback_func_priority priority,
                                                         system_window_callback_func          callback_func,
                                                         void*                                pfn_callback_func,
-                                                        void*                                callback_func_user_arg);
+                                                        void*                                callback_func_user_arg,
+                                                        bool                                 should_use_priority = true);
 
 /** TODO. Releases rendering handler, as well as the window instance! */
 PUBLIC EMERALD_API bool system_window_close(system_window window);

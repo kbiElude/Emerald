@@ -73,9 +73,9 @@ PUBLIC ral_buffer ral_buffer_create(system_hashed_ansi_string     name,
 #endif
 
 /** TODO */
-PUBLIC void ral_buffer_get_property(ral_buffer          buffer,
-                                    ral_buffer_property property,
-                                    void*               out_result_ptr);
+PUBLIC EMERALD_API void ral_buffer_get_property(ral_buffer          buffer,
+                                                ral_buffer_property property,
+                                                void*               out_result_ptr);
 
 /** TODO */
 PUBLIC void ral_buffer_release(ral_buffer& buffer);

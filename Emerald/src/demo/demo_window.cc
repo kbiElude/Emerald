@@ -151,7 +151,7 @@ PRIVATE void _demo_window_subscribe_for_window_notifications(_demo_window* windo
                                         (void*) _demo_window_window_closed_callback_handler,
                                         window_ptr);
         system_window_add_callback_func(window_ptr->window,
-                                        SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_NORMAL,
+                                        SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_SYSTEM,
                                         SYSTEM_WINDOW_CALLBACK_FUNC_WINDOW_CLOSING,
                                         (void*) _demo_window_window_closing_callback_handler,
                                         window_ptr);
@@ -170,7 +170,58 @@ PRIVATE void _demo_window_subscribe_for_window_notifications(_demo_window* windo
 }
 
 
-/** TODO */
+/** Please see header for specification */
+PUBLIC EMERALD_API bool demo_window_add_callback_func(demo_window                          window,
+                                                      system_window_callback_func_priority priority,
+                                                      system_window_callback_func          callback_func,
+                                                      void*                                pfn_callback_func,
+                                                      void*                                callback_func_user_arg)
+{
+    bool          result     = false;
+    _demo_window* window_ptr = (_demo_window*) window;
+
+    /* Sanity checks */
+    if (window_ptr == NULL)
+    {
+        ASSERT_DEBUG_SYNC(window_ptr != NULL,
+                          "Input demo_window instance is NULL");
+
+        goto end;
+    }
+
+    if (window_ptr->window == NULL)
+    {
+        ASSERT_DEBUG_SYNC(window_ptr->window != NULL,
+                          "No system_window instance associated with the specified demo_window object.");
+
+        goto end;
+    }
+
+    if (pfn_callback_func == NULL)
+    {
+        ASSERT_DEBUG_SYNC(pfn_callback_func != NULL,
+                          "Input call-back function pointer is NULL");
+
+        goto end;
+    }
+
+    /* Pass the request to the underlying system_window handler ..
+     *
+     * For "window closing" callbacks, we need to make sure our call-back handler gets called as the last one */
+    result = system_window_add_callback_func(window_ptr->window,
+                                             (callback_func != SYSTEM_WINDOW_CALLBACK_FUNC_WINDOW_CLOSING) ? priority
+                                                                                                           : SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_LOW,
+                                             callback_func,
+                                             pfn_callback_func,
+                                             callback_func_user_arg,
+                                             true); /* should_use_priority */
+
+    /* All done */
+end:
+    return result;
+}
+
+/** Please see header for specification */
 PUBLIC bool demo_window_close(demo_window window)
 {
     bool          result     = false;

@@ -747,7 +747,9 @@ PRIVATE RENDERING_CONTEXT_CALL void _raGL_texture_verify_conformance_to_ral_text
         gl_general_n_samples = 1;
     }
 
-    if (!texture_ptr->is_renderbuffer && (gl_general_fixed_sample_locations == 0) == ral_general_fixed_sample_locations)
+    if (!texture_ptr->is_renderbuffer                                                  &&
+        gl_general_n_samples > 1                                                       &&
+        (gl_general_fixed_sample_locations != 0) == ral_general_fixed_sample_locations)
     {
         ASSERT_DEBUG_SYNC(false,
                           "GL texture object's fixedsamplelocations property value does not match RAL texture's (%d vs %s)",
@@ -928,9 +930,9 @@ PUBLIC void raGL_texture_generate_mipmaps(raGL_texture texture)
 }
 
 /** Please see header for specification */
-PUBLIC bool raGL_texture_get_property(raGL_texture          texture,
-                                      raGL_texture_property property,
-                                      void*                 out_result_ptr)
+PUBLIC EMERALD_API bool raGL_texture_get_property(raGL_texture          texture,
+                                                  raGL_texture_property property,
+                                                  void*                 out_result_ptr)
 {
     bool           result      = false;
     _raGL_texture* texture_ptr = (_raGL_texture*) texture;

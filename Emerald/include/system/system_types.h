@@ -239,6 +239,17 @@ typedef enum
     SYSTEM_WINDOW_CALLBACK_FUNC_WINDOW_CLOSING,
 } system_window_callback_func;
 
+/** TODO */
+typedef enum
+{
+    /* Used by UI for event capturing. Do not use unless. */
+    SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_SYSTEM,
+
+    /* Application levels follow */
+    SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_NORMAL,
+    SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_LOW
+} system_window_callback_func_priority;
+
 /** TODO.
  *
  *  Under Windows, the call-back is made directly from the window message loop thread.
