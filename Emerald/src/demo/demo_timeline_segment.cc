@@ -70,6 +70,7 @@ typedef struct _demo_timeline_segment_io_connection
 
 typedef struct _demo_timeline_segment_node_item
 {
+    system_resizable_vector            cached_texture_memory_allocations;
     system_dag_node                    dag_node;
     uint32_t                           id;
     demo_timeline_segment_node         node;               /* owned */
@@ -83,17 +84,33 @@ typedef struct _demo_timeline_segment_node_item
                                      _demo_timeline_segment*         in_parent_segment_ptr,
                                      demo_timeline_segment_node_type in_type)
     {
-        dag_node                = NULL;
-        id                      = in_id;
-        node                    = in_node;
-        node_internal           = NULL;
-        outgoing_connections    = system_resizable_vector_create(sizeof(_demo_timeline_segment_io_connection*));
-        parent_segment_ptr      = in_parent_segment_ptr;
-        type                    = in_type;
+        cached_texture_memory_allocations = system_resizable_vector_create(sizeof(ral_texture) );
+        dag_node                          = NULL;
+        id                                = in_id;
+        node                              = in_node;
+        node_internal                     = NULL;
+        outgoing_connections              = system_resizable_vector_create(sizeof(_demo_timeline_segment_io_connection*));
+        parent_segment_ptr                = in_parent_segment_ptr;
+        type                              = in_type;
     }
 
     ~_demo_timeline_segment_node_item()
     {
+        if (cached_texture_memory_allocations != NULL)
+        {
+            uint32_t n_cached_items = 0;
+
+            system_resizable_vector_get_property(cached_texture_memory_allocations,
+                                                 SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                                &n_cached_items);
+
+            ASSERT_DEBUG_SYNC(n_cached_items == 0,
+                              "RAL textures not cached prior to destruction");
+
+            system_resizable_vector_release(cached_texture_memory_allocations);
+            cached_texture_memory_allocations = NULL;
+        }
+
         if (node != NULL)
         {
             demo_timeline_segment_node_release(node);
@@ -211,64 +228,50 @@ typedef struct _demo_timeline_segment
         {
             /* Release all nodes. Since each node may have signed up for callbacks, use the public
              * delete function. */
-
-            _demo_timeline_segment_node_item* current_node_ptr    = NULL;
-            uint32_t                          n_nodes             = 0;
-            demo_timeline_segment_node_id*    node_ids_cached_ptr = NULL;
-            demo_timeline_segment_node*       nodes_ptr           = NULL;
+            _demo_timeline_segment_node_item*  current_node_ptr    = NULL;
+            uint32_t                           n_node_items        = 0;
+            demo_timeline_segment_node_id*     node_ids_cached_ptr = NULL;
+            _demo_timeline_segment_node_item** node_items_ptr      = NULL;
 
             system_resizable_vector_get_property(nodes,
                                                  SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
-                                                &n_nodes);
+                                                &n_node_items);
 
             system_resizable_vector_get_property(nodes,
                                                  SYSTEM_RESIZABLE_VECTOR_PROPERTY_ARRAY,
-                                                &nodes_ptr);
+                                                &node_items_ptr);
 
-            if (n_nodes > 0)
+            if (n_node_items > 0)
             {
-                node_ids_cached_ptr = new demo_timeline_segment_node_id[n_nodes];
+                node_ids_cached_ptr = new demo_timeline_segment_node_id[n_node_items];
 
                 ASSERT_DEBUG_SYNC(node_ids_cached_ptr != NULL,
                                   "Out of memory");
                 if (node_ids_cached_ptr != NULL)
                 {
-                    for (uint32_t n_node = 0;
-                                  n_node < n_nodes;
-                                ++n_node)
+                    for (uint32_t n_node_item = 0;
+                                  n_node_item < n_node_items;
+                                ++n_node_item)
                     {
-                        demo_timeline_segment_node_get_property(nodes_ptr[n_node],
+                        demo_timeline_segment_node_get_property(node_items_ptr[n_node_item]->node,
                                                                 DEMO_TIMELINE_SEGMENT_NODE_PROPERTY_ID,
-                                                                node_ids_cached_ptr + n_node);
+                                                                node_ids_cached_ptr + n_node_item);
                     }
 
                     demo_timeline_segment_delete_nodes( (demo_timeline_segment) this,
-                                                        n_nodes,
+                                                        n_node_items,
                                                         node_ids_cached_ptr);
 
                     delete [] node_ids_cached_ptr;
                     node_ids_cached_ptr = NULL;
                 }
-            } /* if (n_nodes > 0) */
-
-            system_resizable_vector_get_property(nodes,
-                                                 SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
-                                                &n_nodes);
-            ASSERT_DEBUG_SYNC(n_nodes == 0,
-                              "Node release process failed.");
+            } /* if (n_node_items > 0) */
 
             system_resizable_vector_release(nodes);
             nodes = NULL;
         } /* if (nodes != NULL) */
 
         /* Release the owned objects */
-        if (callback_manager != NULL)
-        {
-            system_callback_manager_release(callback_manager);
-
-            callback_manager = NULL;
-        } /* if (callback_manager != NULL) */
-
         if (dag != NULL)
         {
             system_dag_release(dag);
@@ -323,6 +326,13 @@ typedef struct _demo_timeline_segment
 
             node_id_to_node_descriptor_map = NULL;
         } /* if (node_id_to_node_descriptor_map != NULL) */
+
+        if (callback_manager != NULL)
+        {
+            system_callback_manager_release(callback_manager);
+
+            callback_manager = NULL;
+        } /* if (callback_manager != NULL) */
     }
 } _demo_timeline_segment;
 
@@ -404,6 +414,8 @@ PRIVATE void                      _demo_timeline_segment_on_postprocessing_segme
                                                                                                              void*                       timeline);
 PRIVATE void                      _demo_timeline_segment_on_texture_attached_to_node                  (const void*                       callback_arg_ptr,
                                                                                                              void*                       segment);
+PRIVATE void                      _demo_timeline_segment_on_texture_deleted                           (const void*                       callback_arg_ptr,
+                                                                                                             void*                       segment);
 PRIVATE void                      _demo_timeline_segment_on_texture_detached_from_node                (const void*                       callback_arg_ptr,
                                                                                                              void*                       segment);
 PRIVATE void                      _demo_timeline_segment_on_texture_output_added_to_node              (const void*                       segment_void_ptr,
@@ -419,6 +431,8 @@ PRIVATE void                      _demo_timeline_segment_on_video_segment_moved 
 PRIVATE void                      _demo_timeline_segment_on_video_segment_resized                     (const void*                       video_segment,
                                                                                                              void*                       timeline);
 PRIVATE void                      _demo_timeline_segment_release                                      (void*                             segment);
+PRIVATE void                      _demo_timeline_segment_update_global_subscriptions                  (_demo_timeline_segment*           segment_ptr,
+                                                                                                       bool                              should_subscribe);
 PRIVATE void                      _demo_timeline_segment_update_node_input_texture_attachments        (_demo_timeline_segment_node_item* node_ptr);
 PRIVATE void                      _demo_timeline_segment_update_node_output_texture_attachments       (_demo_timeline_segment_node_item* node_ptr);
 PRIVATE void                      _demo_timeline_segment_update_node_subscriptions                    (_demo_timeline_segment*           segment_ptr,
@@ -856,11 +870,75 @@ PRIVATE void _demo_timeline_segment_on_texture_attached_to_node(const void* call
 }
 
 /** TODO */
+PRIVATE void _demo_timeline_segment_on_texture_deleted(const void* callback_arg,
+                                                             void* segment)
+{
+    ral_context_callback_objects_deleted_callback_arg* callback_arg_ptr = (ral_context_callback_objects_deleted_callback_arg*) callback_arg;
+    uint32_t                                           n_node_items     = 0;
+    _demo_timeline_segment*                            segment_ptr      = (_demo_timeline_segment*)                            segment;
+
+    ASSERT_DEBUG_SYNC(callback_arg_ptr->object_type == RAL_CONTEXT_OBJECT_TYPE_TEXTURE,
+                      "Invalid callback object type");
+
+    /* Iterate over all node descriptors and wipe the specified texture instance out of maintained
+     * node texture caches. */
+    system_resizable_vector_get_property(segment_ptr->nodes,
+                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                        &n_node_items);
+
+    for (uint32_t n_node_item = 0;
+                  n_node_item < n_node_items;
+                ++n_node_item)
+    {
+        size_t                            deleted_texture_index = ITEM_NOT_FOUND;
+        uint32_t                          n_cached_textures     = 0;
+        _demo_timeline_segment_node_item* current_node_item_ptr = NULL;
+
+        if (!system_resizable_vector_get_element_at(segment_ptr->nodes,
+                                                    n_node_item,
+                                                   &current_node_item_ptr) )
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Could not retrieve node item descriptor at index [%d]",
+                              n_node_item);
+
+            continue;
+        }
+
+        for (uint32_t n_deleted_texture = 0;
+                      n_deleted_texture < callback_arg_ptr->n_objects;
+                    ++n_deleted_texture)
+        {
+            deleted_texture_index = system_resizable_vector_find(current_node_item_ptr->cached_texture_memory_allocations,
+                                                                 callback_arg_ptr->deleted_objects[n_deleted_texture]);
+
+            if (deleted_texture_index != ITEM_NOT_FOUND)
+            {
+                system_hashed_ansi_string segment_name = segment_ptr->name;
+                system_hashed_ansi_string texture_name = NULL;
+
+                ral_texture_get_property((ral_texture) callback_arg_ptr->deleted_objects[n_deleted_texture],
+                                         RAL_TEXTURE_PROPERTY_NAME,
+                                        &texture_name);
+
+                LOG_INFO("Removed texture [%s] from cached texture memory allocations for segment [%s]",
+                         system_hashed_ansi_string_get_buffer(texture_name) ,
+                         system_hashed_ansi_string_get_buffer(segment_name) );
+
+                system_resizable_vector_delete_element_at(current_node_item_ptr->cached_texture_memory_allocations,
+                                                          deleted_texture_index);
+            }
+        } /* for (all deleted textures) */
+    } /* for (all node items) */
+}
+
+/** TODO */
 PRIVATE void _demo_timeline_segment_on_texture_detached_from_node(const void* callback_arg,
                                                                         void* segment)
 {
     demo_timeline_segment_node_callback_texture_detached_callback_argument* callback_arg_ptr = (demo_timeline_segment_node_callback_texture_detached_callback_argument*) callback_arg;
     uint32_t                                                                n_nodes          = 0;
+    _demo_timeline_segment_node_item*                                       node_item_ptr    = NULL;
     _demo_timeline_segment*                                                 segment_ptr      = (_demo_timeline_segment*) segment;
 
     /* TODO: We now have all info in the callback arg to perform this action much more efficiently */
@@ -880,7 +958,7 @@ PRIVATE void _demo_timeline_segment_on_texture_detached_from_node(const void* ca
      * 2) A texture formerly attached to a segment node input was detached. We need to specifically
      *    *ignore* this scenario, because otherwise we would have entered an endless loop.
      *
-     * Iterate over all node outputs, identify the one, to which the texture used to be attached, and detach
+     * Iterate over all node inputs, identify the one, to which the texture used to be attached, and detach
      * that texture from any node inputs that that output was connected to.
      */
     system_resizable_vector_get_property(segment_ptr->nodes,
@@ -982,7 +1060,42 @@ PRIVATE void _demo_timeline_segment_on_texture_detached_from_node(const void* ca
         } /* for (all node output IDs) */
     } /* for (all defined nodes) */
 
-    /* The texture attachment was provided by the segment. We use the rendering-wide texture pool to
+    /* If the detached texture was part of the texture cache associated with the node, remove it from there. */
+    uint32_t n_current_node_item = -1;
+    uint32_t n_total_nodes       = 0;
+
+    system_resizable_vector_get_property(segment_ptr->nodes,
+                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                        &n_total_nodes);
+
+    for (  n_current_node_item = 0;
+           n_current_node_item < n_total_nodes;
+         ++n_current_node_item)
+    {
+        _demo_timeline_segment_node_item* current_node_item_ptr = NULL;
+
+        system_resizable_vector_get_element_at(segment_ptr->nodes,
+                                               n_current_node_item,
+                                              &current_node_item_ptr);
+
+        if (current_node_item_ptr->node == callback_arg_ptr->node)
+        {
+            size_t find_result;
+
+            find_result = system_resizable_vector_find(current_node_item_ptr->cached_texture_memory_allocations,
+                                                       callback_arg_ptr->texture);
+
+            if (find_result != ITEM_NOT_FOUND)
+            {
+                system_resizable_vector_delete_element_at(current_node_item_ptr->cached_texture_memory_allocations,
+                                                          find_result);
+            } /* if (find_result != ITEM_NOT_FOUND) */
+
+            break;
+        }
+    } /* for (all node items) */
+
+    /* The texture attachment was provided by the segment. We use the rendering context-wide texture pool to
      * ensure textures are reused whenever possible.
      *
      * Since the texture is no longer needed, return it back to the pool.
@@ -1155,6 +1268,9 @@ PRIVATE void _demo_timeline_segment_release(void* segment)
 {
     _demo_timeline_segment* segment_ptr = (_demo_timeline_segment*) segment;
 
+    _demo_timeline_segment_update_global_subscriptions(segment_ptr,
+                                                       false /* should_subscribe */);
+
     /* Ping any interested parties about the fact we're winding up */
     system_callback_manager_call_back(segment_ptr->callback_manager,
                                       DEMO_TIMELINE_SEGMENT_CALLBACK_ID_ABOUT_TO_RELEASE,
@@ -1164,16 +1280,20 @@ PRIVATE void _demo_timeline_segment_release(void* segment)
 }
 
 /** TODO */
-PRIVATE void _demo_timeline_segment_update_global_subscriptions(demo_timeline timeline,
-                                                                bool          should_subscribe)
+PRIVATE void _demo_timeline_segment_update_global_subscriptions(_demo_timeline_segment* segment_ptr,
+                                                                bool                    should_subscribe)
 {
     /* NOTE: This function is called every time a segment is created or deleted, even though we're adjusting global
      *       subscriptions. In order to support this, subscriptions are now ref-counted to avoid duplicate registrations
      *       or problems with signing out of notifications in cases like this.
      */
+    system_callback_manager context_callback_manager  = NULL;
     system_callback_manager timeline_callback_manager = NULL;
 
-    demo_timeline_get_property(timeline,
+    ral_context_get_property  (segment_ptr->context,
+                               RAL_CONTEXT_PROPERTY_CALLBACK_MANAGER,
+                              &context_callback_manager);
+    demo_timeline_get_property(segment_ptr->timeline,
                                DEMO_TIMELINE_PROPERTY_CALLBACK_MANAGER,
                               &timeline_callback_manager);
 
@@ -1186,38 +1306,45 @@ PRIVATE void _demo_timeline_segment_update_global_subscriptions(demo_timeline ti
                                                         DEMO_TIMELINE_CALLBACK_ID_VIDEO_SEGMENT_WAS_ADDED,
                                                         CALLBACK_SYNCHRONICITY_SYNCHRONOUS,
                                                         _demo_timeline_segment_on_video_segment_added,
-                                                        timeline);
+                                                        segment_ptr->timeline);
 
         system_callback_manager_subscribe_for_callbacks(timeline_callback_manager,
                                                         DEMO_TIMELINE_CALLBACK_ID_VIDEO_SEGMENT_WAS_DELETED,
                                                         CALLBACK_SYNCHRONICITY_SYNCHRONOUS,
                                                         _demo_timeline_segment_on_video_segment_deleted,
-                                                        timeline);
+                                                        segment_ptr->timeline);
 
         system_callback_manager_subscribe_for_callbacks(timeline_callback_manager,
                                                         DEMO_TIMELINE_CALLBACK_ID_VIDEO_SEGMENT_WAS_MOVED,
                                                         CALLBACK_SYNCHRONICITY_SYNCHRONOUS,
                                                         _demo_timeline_segment_on_video_segment_moved,
-                                                        timeline);
+                                                        segment_ptr->timeline);
 
         system_callback_manager_subscribe_for_callbacks(timeline_callback_manager,
                                                         DEMO_TIMELINE_CALLBACK_ID_VIDEO_SEGMENT_WAS_RESIZED,
                                                         CALLBACK_SYNCHRONICITY_SYNCHRONOUS,
                                                         _demo_timeline_segment_on_video_segment_resized,
-                                                        timeline);
+                                                        segment_ptr->timeline);
 
         /* Don't forget about notifications realted to postprocessing segments */
         system_callback_manager_subscribe_for_callbacks(timeline_callback_manager,
                                                         DEMO_TIMELINE_CALLBACK_ID_POSTPROCESSING_SEGMENT_WAS_ADDED,
                                                         CALLBACK_SYNCHRONICITY_SYNCHRONOUS,
                                                         _demo_timeline_segment_on_postprocessing_segment_added,
-                                                        timeline);
+                                                        segment_ptr->timeline);
 
         system_callback_manager_subscribe_for_callbacks(timeline_callback_manager,
                                                         DEMO_TIMELINE_CALLBACK_ID_POSTPROCESSING_SEGMENT_WAS_DELETED,
                                                         CALLBACK_SYNCHRONICITY_SYNCHRONOUS,
                                                         _demo_timeline_segment_on_postprocessing_segment_deleted,
-                                                        timeline);
+                                                        segment_ptr->timeline);
+
+        /* Hook up to context notifications, so that we know when context objects go out of scope. */
+        system_callback_manager_subscribe_for_callbacks(context_callback_manager,
+                                                        RAL_CONTEXT_CALLBACK_ID_TEXTURES_DELETED,
+                                                        CALLBACK_SYNCHRONICITY_SYNCHRONOUS,
+                                                        _demo_timeline_segment_on_texture_deleted,
+                                                        segment_ptr);
     } /* if (should_subscribe) */
     else
     {
@@ -1225,32 +1352,37 @@ PRIVATE void _demo_timeline_segment_update_global_subscriptions(demo_timeline ti
         system_callback_manager_unsubscribe_from_callbacks(timeline_callback_manager,
                                                            DEMO_TIMELINE_CALLBACK_ID_VIDEO_SEGMENT_WAS_ADDED,
                                                            _demo_timeline_segment_on_video_segment_added,
-                                                           timeline);
+                                                           segment_ptr->timeline);
 
         system_callback_manager_unsubscribe_from_callbacks(timeline_callback_manager,
                                                            DEMO_TIMELINE_CALLBACK_ID_VIDEO_SEGMENT_WAS_DELETED,
                                                            _demo_timeline_segment_on_video_segment_deleted,
-                                                           timeline);
+                                                           segment_ptr->timeline);
 
         system_callback_manager_unsubscribe_from_callbacks(timeline_callback_manager,
                                                            DEMO_TIMELINE_CALLBACK_ID_VIDEO_SEGMENT_WAS_MOVED,
                                                            _demo_timeline_segment_on_video_segment_moved,
-                                                           timeline);
+                                                           segment_ptr->timeline);
 
         system_callback_manager_unsubscribe_from_callbacks(timeline_callback_manager,
                                                            DEMO_TIMELINE_CALLBACK_ID_VIDEO_SEGMENT_WAS_RESIZED,
                                                            _demo_timeline_segment_on_video_segment_resized,
-                                                           timeline);
+                                                           segment_ptr->timeline);
 
         system_callback_manager_unsubscribe_from_callbacks(timeline_callback_manager,
                                                            DEMO_TIMELINE_CALLBACK_ID_POSTPROCESSING_SEGMENT_WAS_ADDED,
                                                            _demo_timeline_segment_on_postprocessing_segment_added,
-                                                           timeline);
+                                                           segment_ptr->timeline);
 
         system_callback_manager_unsubscribe_from_callbacks(timeline_callback_manager,
                                                            DEMO_TIMELINE_CALLBACK_ID_POSTPROCESSING_SEGMENT_WAS_DELETED,
                                                            _demo_timeline_segment_on_postprocessing_segment_deleted,
-                                                           timeline);
+                                                           segment_ptr->timeline);
+
+        system_callback_manager_unsubscribe_from_callbacks(context_callback_manager,
+                                                          RAL_CONTEXT_CALLBACK_ID_TEXTURES_DELETED,
+                                                          _demo_timeline_segment_on_texture_deleted,
+                                                          segment_ptr);
     }
 }
 
@@ -1472,7 +1604,12 @@ PRIVATE void _demo_timeline_segment_update_node_texture_memory_allocations(_demo
         pfn_set_texture_memory_allocation_ptr(node_ptr->node_internal,
                                               n_current_alloc - 1,
                                               new_texture);
-    } /* for (all node output IDs) */
+
+        /* Cache the texture allocated to the node. We need this to automatically release all textures
+         * the moment the node goes out of scope and needs to be destroyed. */
+        system_resizable_vector_push(node_ptr->cached_texture_memory_allocations,
+                                     new_texture);
+    } /* for (all texture memory allocations requested by the node) */
 
 end:
     ;
@@ -1527,7 +1664,8 @@ PUBLIC EMERALD_API bool demo_timeline_segment_add_node(demo_timeline_segment    
     ASSERT_DEBUG_SYNC(node_data[node_type].type == node_type,
                       "Node data array corruption");
 
-    new_segment_node = demo_timeline_segment_node_create(segment_ptr->type,
+    new_segment_node = demo_timeline_segment_node_create(segment_ptr->context,
+                                                         segment_ptr->type,
                                                          node_type,
                                                          new_node_id,
                                                          node_data[node_type].pfn_deinit_proc,
@@ -2048,7 +2186,7 @@ PUBLIC demo_timeline_segment demo_timeline_segment_create_postprocessing(ral_con
                           "Could not add the output node to the post-processing segment.");
 
         /* Subscribe for notifications */
-        _demo_timeline_segment_update_global_subscriptions(owner_timeline,
+        _demo_timeline_segment_update_global_subscriptions(new_segment_ptr,
                                                            true); /* should_subscribe */
 
         /* Finally, register the object */
@@ -2100,7 +2238,7 @@ PUBLIC demo_timeline_segment demo_timeline_segment_create_video(ral_context     
     if (new_segment_ptr != NULL)
     {
         /* Subscribe for notifications */
-        _demo_timeline_segment_update_global_subscriptions(owner_timeline,
+        _demo_timeline_segment_update_global_subscriptions(new_segment_ptr,
                                                            true); /* should_subscribe */
 
         REFCOUNT_INSERT_INIT_CODE_WITH_RELEASE_HANDLER(new_segment_ptr,
@@ -2150,7 +2288,10 @@ PUBLIC bool demo_timeline_segment_delete_nodes(demo_timeline_segment            
                   n_node < n_nodes;
                 ++n_node)
     {
-        _demo_timeline_segment_node_item* node_ptr  = NULL;
+        ral_texture*                      cached_texture_attachments   = NULL;
+        uint32_t                          n_cached_texture_attachments = 0;
+        uint32_t                          n_node_output_ids            = 0;
+        _demo_timeline_segment_node_item* node_ptr                     = NULL;
 
         if (!system_hash64map_get(segment_ptr->node_id_to_node_descriptor_map,
                                   (system_hash64) node_ids[n_node],
@@ -2174,20 +2315,91 @@ PUBLIC bool demo_timeline_segment_delete_nodes(demo_timeline_segment            
             goto end;
         } /* if (output node removal was requested without tear-down mode enabled) */
 
-        /* The node must not be a part of any existing DAG connections */
-        if (system_dag_is_connection_defined(segment_ptr->dag,
-                                             node_ptr->dag_node,
-                                             NULL) ||             /* dst */
-            system_dag_is_connection_defined(segment_ptr->dag,
-                                             NULL,                /* src */
-                                             node_ptr->dag_node) )
+        /* If the node is a part of any existing DAG connections, we need to:
+         *
+         * 1. Detach any output attachments of the about-to-be-removed node from
+         *    any node inputs this node is connected to. This is done by 
+         * 2. Release these textures.
+         * 3. Remove the connection.
+         */
+        demo_timeline_segment_node_get_outputs(node_ptr->node,
+                                               0, /* n_output_ids */
+                                               &n_node_output_ids,
+                                               NULL /* out_opt_output_ids_ptr */);
+
+        if (n_node_output_ids > 0)
+        {
+            demo_timeline_segment_output_id* node_output_ids = new (std::nothrow) demo_timeline_segment_output_id[n_node_output_ids];
+
+            ASSERT_ALWAYS_SYNC(node_output_ids != NULL,
+                               "Out of memory");
+
+            demo_timeline_segment_node_get_outputs(node_ptr->node,
+                                                   n_node_output_ids,
+                                                   NULL, /* out_opt_n_output_ids */
+                                                   node_output_ids);
+
+            for (uint32_t n_node_output_id = 0;
+                          n_node_output_id < n_node_output_ids;
+                        ++n_node_output_id)
+            {
+                if (!demo_timeline_segment_node_attach_texture_to_texture_io(node_ptr->node,
+                                                                             false, /* is_input_id */
+                                                                             node_output_ids[n_node_output_id],
+                                                                             NULL /* texture_attachment_ptr */) )
+                {
+                    ASSERT_DEBUG_SYNC(false,
+                                      "Could not detach a texture attachment");
+                }
+            } /* for (all node output IDs) */
+
+            delete [] node_output_ids;
+            node_output_ids = NULL;
+        } /* if (n_node_output_ids > 0) */
+
+        system_dag_delete_connections(segment_ptr->dag,
+                                      node_ptr->dag_node, /* src */
+                                      NULL);              /* dst */
+        system_dag_delete_connections(segment_ptr->dag,
+                                      NULL,                /* dst */
+                                      node_ptr->dag_node); /* src */
+
+        /* Release texture attachments assigned to the node */
+        system_resizable_vector_get_property(node_ptr->cached_texture_memory_allocations,
+                                             SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                            &n_cached_texture_attachments);
+        system_resizable_vector_get_property(node_ptr->cached_texture_memory_allocations,
+                                             SYSTEM_RESIZABLE_VECTOR_PROPERTY_ARRAY,
+                                            &cached_texture_attachments);
+
+        if (n_cached_texture_attachments > 0 && !ral_context_delete_textures(node_ptr->parent_segment_ptr->context,
+                                                                             n_cached_texture_attachments,
+                                                                             cached_texture_attachments) )
         {
             ASSERT_DEBUG_SYNC(false,
-                              "Node ID [%d] forms one or more DAG connections.",
-                              node_ids[n_node]);
-
-            goto end;
+                              "Texture attachment release process failed.");
         }
+
+        system_resizable_vector_clear(node_ptr->cached_texture_memory_allocations);
+
+        #ifdef _DEBUG
+        {
+            /* At this point, the node must not be a part of any existing DAG connections */
+            if (system_dag_is_connection_defined(segment_ptr->dag,
+                                                 node_ptr->dag_node,
+                                                 NULL) ||             /* dst */
+                system_dag_is_connection_defined(segment_ptr->dag,
+                                                 NULL,                /* src */
+                                                 node_ptr->dag_node) )
+            {
+                ASSERT_DEBUG_SYNC(false,
+                                  "Node ID [%d] forms one or more DAG connections.",
+                                  node_ids[n_node]);
+
+                goto end;
+            }
+        }
+        #endif /* _DEBUG */
     } /* for (all node IDs) */
 
     /* Good to delete the nodes */
@@ -2896,8 +3108,19 @@ PUBLIC EMERALD_API RENDERING_CONTEXT_CALL bool demo_timeline_segment_render(demo
         goto end;
     }
 
-    /* 2. Perform the rendering process. For each node, before calling the render call-back, make sure all inputs that require a bound texture
-     *    actually have one attached. If not, the render func ptr should not be called and we should signal a problem.
+    /* 2. Perform the rendering process. For each node, before calling the render call-back, make sure that:
+     *
+     *    a) all inputs that require a bound texture actually have one attached. If not, the render func
+     *       ptr should not be called and we should signal a problem.
+     *    b) if the node offers one or more outputs, make sure at least one output is connected to another
+     *       node. Otherwise, do not render the node if we're dealing with a post-processing segment; for video
+     *       segments, this case is skipped since there's no output node there and all nodes are assumed to be
+     *       important.
+     *    c) if the node does not offer any outputs and it's not an output node, skip it.
+     *
+     *       This case is especially important for post-processing segment's video segment nodes.
+     *
+     *  TODO: The result of the checks below could be cached and only re-done whenever the graph changes.
      */
     system_resizable_vector_get_property(segment_ptr->dag_sorted_nodes,
                                          SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
@@ -2907,10 +3130,12 @@ PUBLIC EMERALD_API RENDERING_CONTEXT_CALL bool demo_timeline_segment_render(demo
                   n_sorted_node < n_sorted_nodes;
                 ++n_sorted_node)
     {
-        bool                                can_render       = true;
-        uint32_t                            n_node_input_ids = 0;
-        demo_timeline_segment_node_input_id node_input_ids[32]; /* TODO: we may need something more fancy.. */
-        _demo_timeline_segment_node_item*   node_ptr = NULL;
+        bool                                 can_render          = true;
+        uint32_t                             n_node_input_ids    = 0;
+        uint32_t                             n_node_output_ids   = 0;
+        demo_timeline_segment_node_input_id  node_input_ids [32]; /* TODO: we may need something more fancy.. */
+        demo_timeline_segment_node_output_id node_output_ids[32]; /* TODO: we may need something more fancy.. */
+        _demo_timeline_segment_node_item*    node_ptr            = NULL;
 
         if (!system_resizable_vector_get_element_at(segment_ptr->dag_sorted_nodes,
                                                     n_sorted_node,
@@ -2966,8 +3191,43 @@ PUBLIC EMERALD_API RENDERING_CONTEXT_CALL bool demo_timeline_segment_render(demo
 
                 /* This node cannot be rendered. */
                 can_render = false;
+
+                break;
             }
         } /* for (all node input IDs) */
+
+        /* If the node offers outputs, is any of them actually used? */
+        demo_timeline_segment_node_get_outputs(node_ptr->node,
+                                               sizeof(node_output_ids),
+                                              &n_node_output_ids,
+                                               node_output_ids);
+
+        ASSERT_DEBUG_SYNC(n_node_output_ids < sizeof(node_output_ids) / sizeof(node_output_ids[0]),
+                          "TODO");
+
+        if (n_node_output_ids >  0                                         &&
+            segment_ptr->type == DEMO_TIMELINE_SEGMENT_TYPE_POSTPROCESSING)
+        {
+            uint32_t n_node_outgoing_connections = 0;
+
+            system_dag_get_connections(segment_ptr->dag,
+                                       node_ptr->dag_node, /* src */
+                                       NULL,               /* dst */
+                                       &n_node_outgoing_connections,
+                                       NULL);              /* out_opt_connections_ptr */
+
+            if (n_node_outgoing_connections == 0)
+            {
+                can_render = false;
+            }
+        } /* if (n_node_output_ids > 0 and this is a post-processing segment) */
+        else
+        if (n_node_output_ids == 0                                                     &&
+            segment_ptr->type == DEMO_TIMELINE_SEGMENT_TYPE_POSTPROCESSING             &&
+            node_ptr->type    != DEMO_TIMELINE_POSTPROCESSING_SEGMENT_NODE_TYPE_OUTPUT)
+        {
+            can_render = false;
+        }
 
         if (can_render)
         {

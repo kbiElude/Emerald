@@ -88,6 +88,16 @@ PUBLIC RENDERING_CONTEXT_CALL void nodes_video_pass_renderer_deinit(demo_timelin
                       "Input node is NULL");
 
     system_critical_section_enter(node_ptr->cs);
+    {
+        if (node_ptr->rendering_framebuffer != NULL)
+        {
+            ral_context_delete_framebuffers(node_ptr->context,
+                                            1, /* n_framebuffers */
+                                           &node_ptr->rendering_framebuffer);
+
+            node_ptr->rendering_framebuffer = NULL;
+        }
+    }
     system_critical_section_leave(node_ptr->cs);
 
     delete (_nodes_video_pass_renderer*) node;

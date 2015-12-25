@@ -352,8 +352,6 @@ PUBLIC bool ral_framebuffer_set_attachment_2D(ral_framebuffer                 fr
     _ral_framebuffer*            framebuffer_ptr       = (_ral_framebuffer*) framebuffer;
     bool                         result                = false;
     _ral_framebuffer_attachment* target_attachment_ptr = NULL;
-    uint32_t                     texture_n_mipmaps     = 0;
-    ral_texture_type             texture_type          = RAL_TEXTURE_TYPE_UNKNOWN;
 
     /* Sanity checks */
     if (framebuffer == NULL)
@@ -376,28 +374,34 @@ PUBLIC bool ral_framebuffer_set_attachment_2D(ral_framebuffer                 fr
     }
 
     /* Verify the specified texture is valid.. */
-    ral_texture_get_property(texture_2d,
-                             RAL_TEXTURE_PROPERTY_N_MIPMAPS,
-                            &texture_n_mipmaps);
-    ral_texture_get_property(texture_2d,
-                             RAL_TEXTURE_PROPERTY_TYPE,
-                            &texture_type);
-
-    if (texture_type != RAL_TEXTURE_TYPE_2D)
+    if (texture_2d != NULL)
     {
-        ASSERT_DEBUG_SYNC(false,
-                          "Specified texture instance is not a 2D texture");
+        uint32_t         texture_n_mipmaps = 0;
+        ral_texture_type texture_type      = RAL_TEXTURE_TYPE_UNKNOWN;
 
-        goto end;
-    }
+        ral_texture_get_property(texture_2d,
+                                 RAL_TEXTURE_PROPERTY_N_MIPMAPS,
+                                &texture_n_mipmaps);
+        ral_texture_get_property(texture_2d,
+                                 RAL_TEXTURE_PROPERTY_TYPE,
+                                &texture_type);
 
-    if (texture_n_mipmaps <= n_mipmap)
-    {
-        ASSERT_DEBUG_SYNC(false,
-                          "Specified 2D texture does not define the specified mipmap level [%d]",
-                          n_mipmap);
+        if (texture_type != RAL_TEXTURE_TYPE_2D)
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Specified texture instance is not a 2D texture");
 
-        goto end;
+            goto end;
+        }
+
+        if (texture_n_mipmaps <= n_mipmap)
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Specified 2D texture does not define the specified mipmap level [%d]",
+                              n_mipmap);
+
+            goto end;
+        }
     }
 
     /* Looks good. Update the internal storage. */

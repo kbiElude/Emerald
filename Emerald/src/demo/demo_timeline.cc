@@ -108,13 +108,6 @@ typedef struct _demo_timeline
 
     ~_demo_timeline()
     {
-        if (callback_manager != NULL)
-        {
-            system_callback_manager_release(callback_manager);
-
-            callback_manager = NULL;
-        } /* if (callback_manager != NULL) */
-
         if (context != NULL)
         {
             ral_context_release(context);
@@ -205,6 +198,15 @@ typedef struct _demo_timeline
 
             video_segments = NULL;
         } /* if (video_segments != NULL) */
+
+
+        /* Callback manager needs to be released at the end */
+        if (callback_manager != NULL)
+        {
+            system_callback_manager_release(callback_manager);
+
+            callback_manager = NULL;
+        } /* if (callback_manager != NULL) */
     }
 } _demo_timeline;
 
@@ -613,7 +615,7 @@ PRIVATE bool demo_timeline_get_segments_at_time(_demo_timeline*             time
                                               &found_segment_start_time);
 
             if (found_segment_start_time <= time &&
-                found_segment_end_time   >= time)
+                found_segment_end_time   >  time)
             {
                 /* Found a match */
                 result = true;

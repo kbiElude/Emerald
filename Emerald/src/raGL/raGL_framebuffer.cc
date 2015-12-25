@@ -319,15 +319,15 @@ PRIVATE RENDERING_CONTEXT_CALL void _raGL_framebuffer_sync_rendering_thread_calb
                                              current_attachment_ptr->bound_texture_local,
                                    (void**) &bound_texture_local_gl);
 
-                    ASSERT_DEBUG_SYNC(bound_texture_local_gl != NULL,
-                                      "No raGL_texture instance associated with a ral_texture FB attachment?");
-
-                    raGL_texture_get_property(bound_texture_local_gl,
-                                              RAGL_TEXTURE_PROPERTY_ID,
-                                             &attachment_object_id);
-                    raGL_texture_get_property(bound_texture_local_gl,
-                                              RAGL_TEXTURE_PROPERTY_IS_RENDERBUFFER,
-                                             &is_renderbuffer);
+                    if (bound_texture_local_gl != NULL)
+                    {
+                        raGL_texture_get_property(bound_texture_local_gl,
+                                                  RAGL_TEXTURE_PROPERTY_ID,
+                                                 &attachment_object_id);
+                        raGL_texture_get_property(bound_texture_local_gl,
+                                                  RAGL_TEXTURE_PROPERTY_IS_RENDERBUFFER,
+                                                 &is_renderbuffer);
+                    }
 
                     if (is_renderbuffer)
                     {
@@ -345,6 +345,7 @@ PRIVATE RENDERING_CONTEXT_CALL void _raGL_framebuffer_sync_rendering_thread_calb
                                                                                                    current_attachment_ptr->n_texture_mipmap_level_local);
                     }
 
+                    current_attachment_ptr->bound_texture_gl = current_attachment_ptr->bound_texture_local;
                     break;
                 }
 

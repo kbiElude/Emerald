@@ -416,6 +416,7 @@ PRIVATE bool _ral_context_delete_objects(_ral_context*           context_ptr,
                       n_object < n_objects;
                     ++n_object)
         {
+            void*    object_ptr          = object_ptrs[n_object];
             uint32_t object_vector_index = ITEM_NOT_FOUND;
 
             if (object_ptrs[n_object] == NULL)
@@ -443,10 +444,10 @@ PRIVATE bool _ral_context_delete_objects(_ral_context*           context_ptr,
 
             switch (object_type)
             {
-                case RAL_CONTEXT_OBJECT_TYPE_BUFFER:      ral_buffer_release     ( (ral_buffer&)      object_ptrs[n_object]); break;
-                case RAL_CONTEXT_OBJECT_TYPE_FRAMEBUFFER: ral_framebuffer_release( (ral_framebuffer&) object_ptrs[n_object]); break;
-                case RAL_CONTEXT_OBJECT_TYPE_SAMPLER:     ral_sampler_release    ( (ral_sampler&)     object_ptrs[n_object]); break;
-                case RAL_CONTEXT_OBJECT_TYPE_TEXTURE:     ral_texture_release    ( (ral_texture&)     object_ptrs[n_object]); break;
+                case RAL_CONTEXT_OBJECT_TYPE_BUFFER:      ral_buffer_release     ( (ral_buffer&)      object_ptr); break;
+                case RAL_CONTEXT_OBJECT_TYPE_FRAMEBUFFER: ral_framebuffer_release( (ral_framebuffer&) object_ptr); break;
+                case RAL_CONTEXT_OBJECT_TYPE_SAMPLER:     ral_sampler_release    ( (ral_sampler&)     object_ptr); break;
+                case RAL_CONTEXT_OBJECT_TYPE_TEXTURE:     ral_texture_release    ( (ral_texture&)     object_ptr); break;
 
                 default:
                 {
@@ -456,8 +457,6 @@ PRIVATE bool _ral_context_delete_objects(_ral_context*           context_ptr,
                     goto end;
                 }
             } /* switch (object_type) */
-
-            object_ptrs[n_object] = NULL;
         } /* for (all specified framebuffer instances) */
     }
     system_critical_section_leave(cs);
@@ -491,11 +490,10 @@ PRIVATE void _ral_context_delete_textures_from_texture_hashmaps(_ral_context* co
                                      RAL_TEXTURE_PROPERTY_NAME,
                                     &texture_name);
 
-            texture_filename_hash = system_hashed_ansi_string_get_hash(texture_filename);
-            texture_name_hash     = system_hashed_ansi_string_get_hash(texture_name);
-
             if (texture_filename != NULL)
             {
+                texture_filename_hash = system_hashed_ansi_string_get_hash(texture_filename);
+
                 ASSERT_DEBUG_SYNC(system_hash64map_contains(context_ptr->textures_by_filename_map,
                                                             texture_filename_hash),
                                   "Texture with filename [%s] is not stored in the filename->texture hashmap.",
@@ -504,6 +502,8 @@ PRIVATE void _ral_context_delete_textures_from_texture_hashmaps(_ral_context* co
                 system_hash64map_remove(context_ptr->textures_by_filename_map,
                                         texture_filename_hash);
             } /* if (texture_filename != NULL) */
+
+            texture_name_hash = system_hashed_ansi_string_get_hash(texture_name);
 
             ASSERT_DEBUG_SYNC(system_hash64map_contains(context_ptr->textures_by_name_map,
                                                         texture_name_hash),
@@ -1444,13 +1444,9 @@ PUBLIC bool ral_context_delete_textures(ral_context  context,
         goto end;
     }
 
-    /* Release the textures */
-    if (result)
-    {
-        _ral_context_delete_textures_from_texture_hashmaps(context_ptr,
-                                                           n_textures,
-                                                           textures);
-    } /* if (result) */
+    _ral_context_delete_textures_from_texture_hashmaps(context_ptr,
+                                                       n_textures,
+                                                       textures);
 
     result = _ral_context_delete_objects(context_ptr,
                                          RAL_CONTEXT_OBJECT_TYPE_TEXTURE,

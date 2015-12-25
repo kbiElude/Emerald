@@ -159,7 +159,7 @@ PUBLIC bool demo_timeline_segment_node_add_texture_output(demo_timeline_segment_
  *  @param id                     ID of an input or output (depending on @param is_inpout_id), whose attachment should be
  *                                updated.
  *  @param texture_attachment_ptr Pointer to demo_texture_attachment_declaration instance, describing the new attachment, OR
- *                                NULL if existing attachment should be dropped.
+ *                                NULL if existing attachment should just be dropped.
  *
  *  @return TODO.
  */
@@ -169,7 +169,8 @@ PUBLIC bool demo_timeline_segment_node_attach_texture_to_texture_io(demo_timelin
                                                                     const demo_texture_attachment_declaration* texture_attachment_ptr);
 
 /** TODO */
-PUBLIC demo_timeline_segment_node demo_timeline_segment_node_create(demo_timeline_segment_type                          segment_type,
+PUBLIC demo_timeline_segment_node demo_timeline_segment_node_create(ral_context                                         context,
+                                                                    demo_timeline_segment_type                          segment_type,
                                                                     demo_timeline_segment_node_type                     node_type,
                                                                     demo_timeline_segment_node_id                       node_id,
                                                                     PFNSEGMENTNODEDEINITCALLBACKPROC                    pfn_deinit_proc,

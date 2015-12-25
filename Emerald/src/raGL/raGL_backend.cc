@@ -82,153 +82,7 @@ typedef struct _raGL_backend
                           "Could not create the samplers map");
     }
 
-    ~_raGL_backend()
-    {
-        /* Release object managers */
-        ogl_context_release_managers(context_gl);
-
-        if (buffers != NULL)
-        {
-            raGL_buffers_release(buffers);
-
-            buffers = NULL;
-        }
-
-        if (textures != NULL)
-        {
-            raGL_textures_release(textures);
-
-            textures = NULL;
-        }
-
-        for (uint32_t n_object_type = 0;
-                      n_object_type < RAL_CONTEXT_OBJECT_TYPE_COUNT;
-                    ++n_object_type)
-        {
-            system_critical_section cs              = NULL;
-            system_hash64map*       objects_map_ptr = NULL;
-
-            switch (n_object_type)
-            {
-                case RAL_CONTEXT_OBJECT_TYPE_BUFFER:
-                {
-                    cs              =  buffers_map_cs;
-                    objects_map_ptr = &buffers_map;
-
-                    break;
-                }
-
-                case RAL_CONTEXT_OBJECT_TYPE_FRAMEBUFFER:
-                {
-                    cs              =  framebuffers_map_cs;
-                    objects_map_ptr = &framebuffers_map;
-
-                    break;
-                }
-
-                case RAL_CONTEXT_OBJECT_TYPE_SAMPLER:
-                {
-                    cs              =  samplers_map_cs;
-                    objects_map_ptr = &samplers_map;
-
-                    break;
-                }
-
-                case RAL_CONTEXT_OBJECT_TYPE_TEXTURE:
-                {
-                    cs              =  textures_map_cs;
-                    objects_map_ptr = &textures_map;
-
-                    break;
-                }
-
-                default:
-                {
-                    ASSERT_DEBUG_SYNC(false,
-                                      "Unrecognized raGL_backend_object_type value.");
-
-                    continue;
-                }
-            } /* switch (n_object_type) */
-
-            system_critical_section_enter(cs);
-            {
-                if (*objects_map_ptr != NULL)
-                {
-                    uint32_t n_objects = 0;
-
-                    system_hash64map_get_property(*objects_map_ptr,
-                                                  SYSTEM_HASH64MAP_PROPERTY_N_ELEMENTS,
-                                                 &n_objects);
-
-                    for (uint32_t n_object = 0;
-                                  n_object < n_objects;
-                                ++n_object)
-                    {
-                        void* current_object = NULL;
-
-                        if (!system_hash64map_get_element_at(*objects_map_ptr,
-                                                             n_object,
-                                                            &current_object,
-                                                             NULL) ) /* result_hash_ptr */
-                        {
-                            ASSERT_DEBUG_SYNC(false,
-                                              "Could not retrieve raGL object instance");
-
-                            continue;
-                        }
-
-                        switch (n_object_type)
-                        {
-                            case RAL_CONTEXT_OBJECT_TYPE_BUFFER:      raGL_buffer_release     ( (raGL_buffer&)      current_object); break;
-                            case RAL_CONTEXT_OBJECT_TYPE_FRAMEBUFFER: raGL_framebuffer_release( (raGL_framebuffer&) current_object); break;
-                            case RAL_CONTEXT_OBJECT_TYPE_SAMPLER:     raGL_sampler_release    ( (raGL_sampler&)     current_object); break;
-                            case RAL_CONTEXT_OBJECT_TYPE_TEXTURE:     raGL_texture_release    ( (raGL_texture&)     current_object); break;
-
-                            default:
-                            {
-                                ASSERT_DEBUG_SYNC(false,
-                                                  "Unrecognized raGL_backend_object_type value.");
-                            }
-                        } /* switch (n_object_type) */
-
-                        current_object = NULL;
-                    } /* for (all object map items) */
-
-                    system_hash64map_release(*objects_map_ptr);
-                    *objects_map_ptr = NULL;
-                } /* if (objects_map != NULL) */
-
-                system_critical_section_leave(cs);
-            } /* for (all raGL object types) */
-        }
-
-        if (context_gl != NULL)
-        {
-            ogl_context_release(context_gl);
-
-            context_gl = NULL;
-        } /* if (context_gl != NULL) */
-
-        if (texture_id_to_raGL_texture_map != NULL)
-        {
-            system_hash64map_release(texture_id_to_raGL_texture_map);
-
-            texture_id_to_raGL_texture_map = NULL;
-        } /* if (texture_id_to_raGL_texture_map != NULL) */
-
-        system_critical_section_release(buffers_map_cs);
-        buffers_map_cs = NULL;
-
-        system_critical_section_release(framebuffers_map_cs);
-        framebuffers_map_cs = NULL;
-
-        system_critical_section_release(samplers_map_cs);
-        samplers_map_cs = NULL;
-
-        system_critical_section_release(textures_map_cs);
-        textures_map_cs = NULL;
-    }
+    ~_raGL_backend();
 } _raGL_backend;
 
 typedef struct
@@ -280,6 +134,160 @@ PRIVATE void _raGL_backend_subscribe_for_texture_notifications            (_raGL
                                                                            ral_texture             texture,
                                                                            bool                    should_subscribe);
 
+
+/** TODO */
+_raGL_backend::~_raGL_backend()
+{
+    /* Release object managers */
+    ogl_context_release_managers(context_gl);
+
+    if (buffers != NULL)
+    {
+        raGL_buffers_release(buffers);
+
+        buffers = NULL;
+    }
+
+    if (textures != NULL)
+    {
+        raGL_textures_release(textures);
+
+        textures = NULL;
+    }
+
+    for (uint32_t n_object_type = 0;
+                  n_object_type < RAL_CONTEXT_OBJECT_TYPE_COUNT;
+                ++n_object_type)
+    {
+        system_critical_section cs              = NULL;
+        system_hash64map*       objects_map_ptr = NULL;
+
+        switch (n_object_type)
+        {
+            case RAL_CONTEXT_OBJECT_TYPE_BUFFER:
+            {
+                cs              =  buffers_map_cs;
+                objects_map_ptr = &buffers_map;
+
+                break;
+            }
+
+            case RAL_CONTEXT_OBJECT_TYPE_FRAMEBUFFER:
+            {
+                cs              =  framebuffers_map_cs;
+                objects_map_ptr = &framebuffers_map;
+
+                break;
+            }
+
+            case RAL_CONTEXT_OBJECT_TYPE_SAMPLER:
+            {
+                cs              =  samplers_map_cs;
+                objects_map_ptr = &samplers_map;
+
+                break;
+            }
+
+            case RAL_CONTEXT_OBJECT_TYPE_TEXTURE:
+            {
+                cs              =  textures_map_cs;
+                objects_map_ptr = &textures_map;
+
+                break;
+            }
+
+            default:
+            {
+                ASSERT_DEBUG_SYNC(false,
+                                  "Unrecognized raGL_backend_object_type value.");
+
+                continue;
+            }
+        } /* switch (n_object_type) */
+
+        system_critical_section_enter(cs);
+        {
+            if (*objects_map_ptr != NULL)
+            {
+                uint32_t n_objects = 0;
+
+                system_hash64map_get_property(*objects_map_ptr,
+                                              SYSTEM_HASH64MAP_PROPERTY_N_ELEMENTS,
+                                             &n_objects);
+
+                for (uint32_t n_object = 0;
+                              n_object < n_objects;
+                            ++n_object)
+                {
+                    void* current_object = NULL;
+
+                    if (!system_hash64map_get_element_at(*objects_map_ptr,
+                                                         n_object,
+                                                        &current_object,
+                                                         NULL) ) /* result_hash_ptr */
+                    {
+                        ASSERT_DEBUG_SYNC(false,
+                                          "Could not retrieve raGL object instance");
+
+                        continue;
+                    }
+
+                    switch (n_object_type)
+                    {
+                        case RAL_CONTEXT_OBJECT_TYPE_BUFFER:      raGL_buffer_release     ( (raGL_buffer&)      current_object); break;
+                        case RAL_CONTEXT_OBJECT_TYPE_FRAMEBUFFER: raGL_framebuffer_release( (raGL_framebuffer&) current_object); break;
+                        case RAL_CONTEXT_OBJECT_TYPE_SAMPLER:     raGL_sampler_release    ( (raGL_sampler&)     current_object); break;
+                        case RAL_CONTEXT_OBJECT_TYPE_TEXTURE:     raGL_texture_release    ( (raGL_texture&)     current_object); break;
+
+                        default:
+                        {
+                            ASSERT_DEBUG_SYNC(false,
+                                              "Unrecognized raGL_backend_object_type value.");
+                        }
+                    } /* switch (n_object_type) */
+
+                    current_object = NULL;
+                } /* for (all object map items) */
+
+                system_hash64map_release(*objects_map_ptr);
+                *objects_map_ptr = NULL;
+            } /* if (objects_map != NULL) */
+
+            system_critical_section_leave(cs);
+        } /* for (all raGL object types) */
+    }
+
+    if (context_gl != NULL)
+    {
+        ogl_context_release(context_gl);
+
+        context_gl = NULL;
+    } /* if (context_gl != NULL) */
+
+    if (texture_id_to_raGL_texture_map != NULL)
+    {
+        system_hash64map_release(texture_id_to_raGL_texture_map);
+
+        texture_id_to_raGL_texture_map = NULL;
+    } /* if (texture_id_to_raGL_texture_map != NULL) */
+
+    /* Unsubscribe from notifications */
+    _raGL_backend_subscribe_for_notifications(this,
+                                              false); /* should_subscribe */
+
+    /* Release the critical sections */
+    system_critical_section_release(buffers_map_cs);
+    buffers_map_cs = NULL;
+
+    system_critical_section_release(framebuffers_map_cs);
+    framebuffers_map_cs = NULL;
+
+    system_critical_section_release(samplers_map_cs);
+    samplers_map_cs = NULL;
+
+    system_critical_section_release(textures_map_cs);
+    textures_map_cs = NULL;
+}
 
 /** TODO */
 PRIVATE void _raGL_backend_create_root_window(ral_backend_type backend_type)
@@ -359,6 +367,15 @@ PRIVATE bool _raGL_backend_get_object(void*                   backend,
     {
         ASSERT_DEBUG_SYNC(false,
                           "Input backend is NULL");
+
+        goto end;
+    }
+
+    /* If objecty_ral is NULL, return a NULL RAL equivalent */
+    if (object_ral == NULL)
+    {
+        *out_result_ptr = NULL;
+        result          = true;
 
         goto end;
     }
@@ -909,6 +926,12 @@ PRIVATE void _raGL_backend_on_objects_deleted_rendering_callback(ogl_context con
                                  &object_map_cs,
                                  &object_map);
 
+    if (object_map == NULL)
+    {
+        /* raGL objects have already been released, ignore the request. */
+        goto end;
+    }
+
     system_critical_section_enter(object_map_cs);
     {
         /* Retrieve raGL object instances for the specified RAL objects */
@@ -953,6 +976,9 @@ PRIVATE void _raGL_backend_on_objects_deleted_rendering_callback(ogl_context con
         } /* for (all deleted objects) */
     }
     system_critical_section_leave(object_map_cs);
+
+end:
+    ;
 }
 
 /** TODO */
@@ -1531,10 +1557,6 @@ PUBLIC void raGL_backend_release(void* backend)
 
     if (backend != NULL)
     {
-        /* Sign out from notifications */
-        _raGL_backend_subscribe_for_notifications(backend_ptr,
-                                                  false); /* should_subscribe */
-
         /* Request a rendering context call-back to release backend's assets */
         ogl_context_request_callback_from_context_thread(backend_ptr->context_gl,
                                                          _raGL_backend_release_rendering_callback,

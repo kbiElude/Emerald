@@ -153,6 +153,9 @@ PUBLIC RENDERING_CONTEXT_CALL void nodes_postprocessing_output_deinit(demo_timel
         node_ptr->blit_src_fb = NULL;
     }
 
+    _nodes_postprocessing_output_update_subscriptions(node_ptr,
+                                                      false /* should_subscribe */);
+
     delete node_ptr;
     node_ptr = NULL;
 }

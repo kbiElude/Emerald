@@ -574,7 +574,7 @@ PRIVATE void _nodes_postprocessing_video_segment_update_callbacks(_nodes_postpro
                                                            node_data_ptr);
         system_callback_manager_unsubscribe_from_callbacks(video_segment_callback_manager,
                                                            DEMO_TIMELINE_SEGMENT_CALLBACK_ID_NEW_INPUT_EXPOSED,
-                                                           _nodes_postprocessing_video_segment_on_output_exposed,
+                                                           _nodes_postprocessing_video_segment_on_input_exposed,
                                                            node_data_ptr);
         system_callback_manager_unsubscribe_from_callbacks(video_segment_callback_manager,
                                                            DEMO_TIMELINE_SEGMENT_CALLBACK_ID_NEW_OUTPUT_EXPOSED,

@@ -24,6 +24,28 @@ PUBLIC EMERALD_API system_dag system_dag_create();
 PUBLIC EMERALD_API void system_dag_delete_connection(system_dag            dag,
                                                      system_dag_connection connection);
 
+/** Deletes:
+ *
+ *  1) Outgoing connections whose source node is      @param src, if @param dst is NULL.
+ *  2) Incoming connections whose destination node is @param dst, if @param src is NULL.
+ *
+ *  It is an error to specify both @param src and @param dst as non-NULL values or both
+ *  as NULL values.
+ *
+ *  @param dag DAG instance.
+ *  @param src DAG node, used as a source for the seeked connection(s). Must be NULL if @param
+ *             dst is not NULL. Must not be NULL if @param dst is also NULL.
+ *  @param dst DAG node, used as a destination for the seeked connection(s). Must be NULL if @param
+ *             src is not NULL. Must not be NULL if @param src is also NULL.
+ *
+ *  @return true if at least one connection was found, whose source or destiation matched the
+ *          specified node handles; false if input arguments were invalid or no such connection
+ *          was identified.
+ **/
+PUBLIC EMERALD_API bool system_dag_delete_connections(system_dag      dag,
+                                                      system_dag_node src,
+                                                      system_dag_node dst);
+
 /** Returns an array of defined connections, matching user-specified requirements.
  *
  *  @param dag DAG instance.

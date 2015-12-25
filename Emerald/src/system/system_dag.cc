@@ -262,6 +262,79 @@ end:
 }
 
 /** TODO */
+PUBLIC EMERALD_API bool system_dag_delete_connections(system_dag      dag,
+                                                      system_dag_node src,
+                                                      system_dag_node dst)
+{
+    _system_dag_connection* connection_ptr        = NULL;
+    _system_dag*            dag_ptr               = (_system_dag*) dag;
+    uint32_t                n_connections_defined = 0;
+    bool                    result                = false;
+
+    /* Sanity checks */
+    if (dag == NULL)
+    {
+        ASSERT_DEBUG_SYNC(false,
+                          "Input DAG instance is NULL");
+
+        goto end;
+    }
+
+    if (src == NULL && dst == NULL ||
+        src != NULL && dst != NULL)
+    {
+        ASSERT_DEBUG_SYNC(false,
+                          "Invalid dst / src nodes specified.");
+
+        goto end;
+    }
+
+    /* Walk through all connections and try to find any matches. */
+    system_resizable_vector_get_property(dag_ptr->connections,
+                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                        &n_connections_defined);
+
+    for (uint32_t n_connection = 0;
+                  n_connection < n_connections_defined;
+                  )
+    {
+        if (!system_resizable_vector_get_element_at(dag_ptr->connections,
+                                                    n_connection,
+                                                   &connection_ptr) )
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Could not retrieve connection descriptor at index [%d]",
+                              n_connection);
+
+            ++n_connection;
+            continue;
+        }
+
+        if ((dst == NULL                                ||
+             dst != NULL && connection_ptr->dst == dst) &&
+            (src == NULL                                ||
+             src != NULL && connection_ptr->src == src) )
+        {
+            /* This is a match */
+            system_resizable_vector_delete_element_at(dag_ptr->connections,
+                                                      n_connection);
+
+            --n_connections_defined;
+
+            result = true;
+        }
+        else
+        {
+            ++n_connection;
+        }
+    } /* for (all defined connections) */
+
+    /* All done */
+end:
+    return result;
+}
+
+/** TODO */
 PUBLIC EMERALD_API bool system_dag_get_connections(system_dag             dag,
                                                    system_dag_node        src,
                                                    system_dag_node        dst,
@@ -341,10 +414,6 @@ PUBLIC EMERALD_API bool system_dag_get_topologically_sorted_node_values(system_d
     unsigned int n_result_nodes = 0;
     bool         result_bool    = false;
 
-    system_resizable_vector_get_property(dag_ptr->sorted_nodes,
-                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
-                                        &n_result_nodes);
-
     if (dag_ptr->dirty)
     {
         if (!system_dag_solve(dag) )
@@ -354,6 +423,10 @@ PUBLIC EMERALD_API bool system_dag_get_topologically_sorted_node_values(system_d
             goto end;
         }
     }
+
+    system_resizable_vector_get_property(dag_ptr->sorted_nodes,
+                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                        &n_result_nodes);
 
     /* Copy the sorted nodes to the result vector */
     system_resizable_vector_empty(result);
