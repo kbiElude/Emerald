@@ -731,7 +731,7 @@ PRIVATE bool _ral_context_create_objects(_ral_context*           context_ptr,
             case RAL_CONTEXT_OBJECT_TYPE_SAMPLER:
             {
                 result_objects_ptr[n_object] = ral_sampler_create(system_hashed_ansi_string_create(temp),
-                                                                  (const ral_sampler_create_info*) (object_create_info_ptrs + n_object) );
+                                                                  (const ral_sampler_create_info*) (object_create_info_ptrs) + n_object);
 
                 break;
             }
@@ -740,7 +740,7 @@ PRIVATE bool _ral_context_create_objects(_ral_context*           context_ptr,
             {
                 result_objects_ptr[n_object] = ral_texture_create((ral_context) context_ptr,
                                                                   system_hashed_ansi_string_create(temp),
-                                                                  (const ral_texture_create_info*) (object_create_info_ptrs + n_object) );
+                                                                  (const ral_texture_create_info*) (object_create_info_ptrs) + n_object);
 
                 break;
             }
@@ -750,7 +750,7 @@ PRIVATE bool _ral_context_create_objects(_ral_context*           context_ptr,
                 /* NOTE: We may need the client app to specify the usage pattern in the future */
                 result_objects_ptr[n_object] = ral_texture_create_from_file_name((ral_context) context_ptr,
                                                                                  system_hashed_ansi_string_create(temp),
-                                                                                 (system_hashed_ansi_string) (object_create_info_ptrs + n_object),
+                                                                                 *(system_hashed_ansi_string*) (object_create_info_ptrs + n_object),
                                                                                  RAL_TEXTURE_USAGE_IMAGE_LOAD_OPS_BIT | RAL_TEXTURE_USAGE_SAMPLED_BIT);
 
                 break;
@@ -761,7 +761,7 @@ PRIVATE bool _ral_context_create_objects(_ral_context*           context_ptr,
                 /* NOTE: We may need the client app to specify the usage pattern in the future */
                 result_objects_ptr[n_object] = ral_texture_create_from_gfx_image((ral_context) context_ptr,
                                                                                  system_hashed_ansi_string_create(temp),
-                                                                                 (gfx_image) (object_create_info_ptrs + n_object),
+                                                                                 *(gfx_image*) (object_create_info_ptrs + n_object),
                                                                                  RAL_TEXTURE_USAGE_IMAGE_LOAD_OPS_BIT | RAL_TEXTURE_USAGE_SAMPLED_BIT);
 
                 break;
@@ -1278,7 +1278,7 @@ PUBLIC EMERALD_API bool ral_context_create_textures_from_gfx_images(ral_context 
     }
 
     result = _ral_context_create_objects(context_ptr,
-                                         RAL_CONTEXT_OBJECT_TYPE_TEXTURE_FROM_FILE_NAME,
+                                         RAL_CONTEXT_OBJECT_TYPE_TEXTURE_FROM_GFX_IMAGE,
                                          n_images,
                                          (void**) images,
                                          (void**) out_result_textures_ptr);
@@ -1532,6 +1532,7 @@ PUBLIC EMERALD_API void ral_context_get_property(ral_context          context,
             break;
         }
 
+        case RAL_CONTEXT_PROPERTY_BACKEND_CONTEXT:
         case RAL_CONTEXT_PROPERTY_MAX_FRAMEBUFFER_COLOR_ATTACHMENTS:
         case RAL_CONTEXT_PROPERTY_N_OF_SYSTEM_FRAMEBUFFERS:
         case RAL_CONTEXT_PROPERTY_SYSTEM_FRAMEBUFFERS:

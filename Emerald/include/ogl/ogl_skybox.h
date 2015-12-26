@@ -32,7 +32,7 @@ typedef enum
 #endif
 
 /** TODO */
-PUBLIC EMERALD_API ogl_skybox ogl_skybox_create_spherical_projection_texture(ogl_context               context,
+PUBLIC EMERALD_API ogl_skybox ogl_skybox_create_spherical_projection_texture(ral_context               context,
                                                                              ral_texture               texture,
                                                                              system_hashed_ansi_string name);
 

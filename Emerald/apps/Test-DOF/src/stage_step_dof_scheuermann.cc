@@ -16,28 +16,31 @@
 #include "ogl/ogl_program.h"
 #include "ogl/ogl_program_ub.h"
 #include "ogl/ogl_shader.h"
-#include "ogl/ogl_texture.h"
 #include "raGL/raGL_buffer.h"
-
+#include "raGL/raGL_framebuffer.h"
+#include "raGL/raGL_texture.h"
+#include "ral/ral_buffer.h"
+#include "ral/ral_context.h"
+#include "ral/ral_framebuffer.h"
+#include "ral/ral_texture.h"
 
 #define DOWNSAMPLE_FACTOR (8)
 
 /* General stuff */
 postprocessing_blur_poisson _dof_scheuermann_blur_poisson           = NULL;
-GLuint                      _dof_scheuermann_combination_fbo_id     = 0;
-ogl_texture                 _dof_scheuermann_combination_to         = 0;
-GLuint                      _dof_scheuermann_downsample_dst_fbo_id  = 0;
-GLuint                      _dof_scheuermann_downsample_src_fbo_id  = 0;
-ogl_texture                 _dof_scheuermann_downsampled_blurred_to = NULL;
-ogl_texture                 _dof_scheuermann_downsampled_to         = NULL;
+ral_framebuffer             _dof_scheuermann_combination_fbo        = NULL;
+ral_texture                 _dof_scheuermann_combination_to         = NULL;
+ral_framebuffer             _dof_scheuermann_downsample_dst_fbo     = NULL;
+ral_framebuffer             _dof_scheuermann_downsample_src_fbo     = NULL;
+ral_texture                 _dof_scheuermann_downsampled_blurred_to = NULL;
+ral_texture                 _dof_scheuermann_downsampled_to         = NULL;
 GLuint                      _dof_scheuermann_vao_id                 = -1;
 
 /* Combination program */
 ogl_program                 _dof_scheuermann_combination_po                             = NULL;
 ogl_program_ub              _dof_scheuermann_combination_po_ub                          = NULL;
-raGL_buffer                 _dof_scheuermann_combination_po_ub_bo                       = NULL;
+ral_buffer                  _dof_scheuermann_combination_po_ub_bo                       = NULL;
 GLuint                      _dof_scheuermann_combination_po_ub_max_coc_px_ub_offset     = -1;
-GLuint                      _dof_scheuermann_combination_po_ub_bo_size                  =  0;
 GLuint                      _dof_scheuermann_combination_po_bg_uniform_location         = -1;
 GLuint                      _dof_scheuermann_combination_po_data_high_uniform_location  = -1;
 GLuint                      _dof_scheuermann_combination_po_data_low_uniform_location   = -1;
@@ -93,39 +96,85 @@ static const char* _dof_scheuermann_combination_fragment_shader_main = "void mai
                                                                        "}\n";
 
 /** TODO */
-static void _stage_step_dof_scheuermann_combine_execute(ogl_context context,
+static void _stage_step_dof_scheuermann_combine_execute(ral_context context,
                                                         uint32_t    frame_index,
                                                         system_time time,
                                                         const int*  rendering_area_px_topdown,
                                                         void*       not_used)
 {
-    const ogl_context_gl_entrypoints_ext_direct_state_access* dsa_entrypoints   = NULL;
-    const ogl_context_gl_entrypoints*                         entrypoints       = NULL;
-    const int*                                                output_resolution = main_get_output_resolution();
+    ral_texture                                               background_result_texture               = NULL;
+    raGL_texture                                              background_result_texture_raGL          = NULL;
+    GLuint                                                    background_result_texture_raGL_id       = 0;
+    ogl_context                                               context_gl                              = NULL;
+    raGL_framebuffer                                          dof_scheuermann_combination_fbo_raGL    = NULL;
+    GLuint                                                    dof_scheuermann_combination_fbo_raGL_id = 0;
+    raGL_texture                                              downsampled_blurred_to_raGL             = NULL;
+    GLuint                                                    downsampled_blurred_to_raGL_id          = 0;
+    const ogl_context_gl_entrypoints_ext_direct_state_access* dsa_entrypoints                         = NULL;
+    const ogl_context_gl_entrypoints*                         entrypoints                             = NULL;
+    raGL_texture                                              julia_color_texture_raGL                = NULL;
+    GLuint                                                    julia_color_texture_raGL_id             = 0;
+    ral_texture                                               julia_depth_texture                     = NULL;
+    raGL_texture                                              julia_depth_texture_raGL                = NULL;
+    GLuint                                                    julia_depth_texture_raGL_id             = 0;
+    const int*                                                output_resolution                       = main_get_output_resolution();
 
-    ogl_context_get_property(context,
+    ral_context_get_property(context,
+                             RAL_CONTEXT_PROPERTY_BACKEND_CONTEXT,
+                            &context_gl);
+    ogl_context_get_property(context_gl,
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL_EXT_DIRECT_STATE_ACCESS,
                             &dsa_entrypoints);
-    ogl_context_get_property(context,
+    ogl_context_get_property(context_gl,
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
                             &entrypoints);
 
     /* Bind required textures */
+    background_result_texture_raGL = ral_context_get_texture_gl(context,
+                                                                stage_step_background_get_result_texture() );
+    downsampled_blurred_to_raGL    = ral_context_get_texture_gl(context,
+                                                                _dof_scheuermann_downsampled_blurred_to);
+    julia_color_texture_raGL       = ral_context_get_texture_gl(context,
+                                                                stage_step_julia_get_color_texture() );
+    julia_depth_texture_raGL       = ral_context_get_texture_gl(context,
+                                                                stage_step_julia_get_depth_texture() );
+
+    dof_scheuermann_combination_fbo_raGL = ral_context_get_framebuffer_gl(context,
+                                                                          _dof_scheuermann_combination_fbo);
+
+    raGL_texture_get_property(background_result_texture_raGL,
+                              RAGL_TEXTURE_PROPERTY_ID,
+                             &background_result_texture_raGL_id);
+    raGL_texture_get_property(downsampled_blurred_to_raGL,
+                              RAGL_TEXTURE_PROPERTY_ID,
+                             &downsampled_blurred_to_raGL_id);
+    raGL_texture_get_property(julia_color_texture_raGL,
+                              RAGL_TEXTURE_PROPERTY_ID,
+                             &julia_color_texture_raGL_id);
+    raGL_texture_get_property(julia_depth_texture_raGL,
+                              RAGL_TEXTURE_PROPERTY_ID,
+                             &julia_depth_texture_raGL_id);
+
+    raGL_framebuffer_get_property(dof_scheuermann_combination_fbo_raGL,
+                                  RAGL_FRAMEBUFFER_PROPERTY_ID,
+                                 &dof_scheuermann_combination_fbo_raGL_id);
+
     dsa_entrypoints->pGLBindMultiTextureEXT(GL_TEXTURE0,
                                             GL_TEXTURE_2D,
-                                            stage_step_julia_get_color_texture());
+                                            julia_color_texture_raGL_id);
     dsa_entrypoints->pGLBindMultiTextureEXT(GL_TEXTURE1,
                                             GL_TEXTURE_2D,
-                                            _dof_scheuermann_downsampled_blurred_to);
+                                            downsampled_blurred_to_raGL_id);
     dsa_entrypoints->pGLBindMultiTextureEXT(GL_TEXTURE2,
                                             GL_TEXTURE_2D,
-                                            stage_step_background_get_result_texture() );
+                                            background_result_texture_raGL_id);
     dsa_entrypoints->pGLBindMultiTextureEXT(GL_TEXTURE3,
                                             GL_TEXTURE_2D,
-                                            stage_step_julia_get_depth_texture() );
+                                            julia_depth_texture_raGL_id);
+
 
     entrypoints->pGLBindFramebuffer(GL_FRAMEBUFFER,
-                                    _dof_scheuermann_combination_fbo_id);
+                                    dof_scheuermann_combination_fbo_raGL_id);
     entrypoints->pGLBindVertexArray(_dof_scheuermann_vao_id);
 
     /* Uniforms! */
@@ -140,21 +189,33 @@ static void _stage_step_dof_scheuermann_combine_execute(ogl_context context,
     ogl_program_ub_sync(_dof_scheuermann_combination_po_ub);
 
     /* Go on */
-    GLuint   dof_scheuermann_combination_po_ub_bo_id           = 0;
-    uint32_t dof_scheuermann_combination_po_ub_bo_start_offset = -1;
+    raGL_buffer dof_scheuermann_combination_po_ub_bo_raGL              = NULL;
+    GLuint      dof_scheuermann_combination_po_ub_bo_raGL_id           = 0;
+    uint32_t    dof_scheuermann_combination_po_ub_bo_raGL_start_offset = -1;
+    uint32_t    dof_scheuermann_combination_po_ub_bo_ral_start_offset  = -1;
+    uint32_t    dof_scheuermann_combination_po_ub_bo_size              = 0;
 
-    raGL_buffer_get_property(_dof_scheuermann_combination_po_ub_bo,
+    dof_scheuermann_combination_po_ub_bo_raGL = ral_context_get_buffer_gl(context,
+                                                                          _dof_scheuermann_combination_po_ub_bo);
+
+    ral_buffer_get_property (_dof_scheuermann_combination_po_ub_bo,
+                             RAL_BUFFER_PROPERTY_SIZE,
+                            &dof_scheuermann_combination_po_ub_bo_size);
+    ral_buffer_get_property (_dof_scheuermann_combination_po_ub_bo,
+                             RAL_BUFFER_PROPERTY_START_OFFSET,
+                            &dof_scheuermann_combination_po_ub_bo_ral_start_offset);
+    raGL_buffer_get_property(dof_scheuermann_combination_po_ub_bo_raGL,
                              RAGL_BUFFER_PROPERTY_ID,
-                             &dof_scheuermann_combination_po_ub_bo_id);
-    raGL_buffer_get_property(_dof_scheuermann_combination_po_ub_bo,
+                             &dof_scheuermann_combination_po_ub_bo_raGL_id);
+    raGL_buffer_get_property(dof_scheuermann_combination_po_ub_bo_raGL,
                              RAGL_BUFFER_PROPERTY_START_OFFSET,
-                             &dof_scheuermann_combination_po_ub_bo_start_offset);
+                             &dof_scheuermann_combination_po_ub_bo_raGL_start_offset);
 
     entrypoints->pGLBindBufferRange(GL_UNIFORM_BUFFER,
                                     0, /* index */
-                                     dof_scheuermann_combination_po_ub_bo_id,
-                                     dof_scheuermann_combination_po_ub_bo_start_offset,
-                                    _dof_scheuermann_combination_po_ub_bo_size);
+                                    dof_scheuermann_combination_po_ub_bo_raGL_id,
+                                    dof_scheuermann_combination_po_ub_bo_raGL_start_offset + dof_scheuermann_combination_po_ub_bo_ral_start_offset,
+                                    dof_scheuermann_combination_po_ub_bo_size);
 
     entrypoints->pGLUseProgram(ogl_program_get_id(_dof_scheuermann_combination_po) );
     entrypoints->pGLDrawArrays(GL_TRIANGLE_FAN,
@@ -163,29 +224,50 @@ static void _stage_step_dof_scheuermann_combine_execute(ogl_context context,
 }
 
 /** TODO */
-static void _stage_step_dof_scheuermann_downsample_execute(ogl_context context,
+static void _stage_step_dof_scheuermann_downsample_execute(ral_context context,
                                                            uint32_t    frame_index,
                                                            system_time time,
                                                            const int*  rendering_area_px_topdown,
                                                            void*       not_used)
 {
+    ogl_context                       context_gl                      = NULL;
+    raGL_framebuffer                  downsample_dst_fbo_raGL         = NULL;
+    GLuint                            downsample_dst_fbo_raGL_id      = 0;
+    raGL_framebuffer                  downsample_src_fbo_raGL         = NULL;
+    GLuint                            downsample_src_fbo_raGL_id      = 0;
     const ogl_context_gl_entrypoints* entrypoints                     = NULL;
     const int*                        output_resolution               = main_get_output_resolution();
+
     const int                         downsampled_output_resolution[] =
     {
         output_resolution[0] / DOWNSAMPLE_FACTOR,
         output_resolution[1] / DOWNSAMPLE_FACTOR
     };
 
-    ogl_context_get_property(context,
+    ral_context_get_property(context,
+                             RAL_CONTEXT_PROPERTY_BACKEND_CONTEXT,
+                            &context_gl);
+    ogl_context_get_property(context_gl,
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
                             &entrypoints);
 
     /* Downsample the texture */
+    downsample_dst_fbo_raGL = ral_context_get_framebuffer_gl(context,
+                                                             _dof_scheuermann_downsample_dst_fbo);
+    downsample_src_fbo_raGL = ral_context_get_framebuffer_gl(context,
+                                                             _dof_scheuermann_downsample_src_fbo);
+
+    raGL_framebuffer_get_property(downsample_dst_fbo_raGL,
+                                  RAGL_FRAMEBUFFER_PROPERTY_ID,
+                                 &downsample_dst_fbo_raGL_id);
+    raGL_framebuffer_get_property(downsample_src_fbo_raGL,
+                                  RAGL_FRAMEBUFFER_PROPERTY_ID,
+                                 &downsample_src_fbo_raGL_id);
+
     entrypoints->pGLBindFramebuffer(GL_READ_FRAMEBUFFER,
-                                    _dof_scheuermann_downsample_src_fbo_id);
+                                    downsample_src_fbo_raGL_id);
     entrypoints->pGLBindFramebuffer(GL_DRAW_FRAMEBUFFER,
-                                    _dof_scheuermann_downsample_dst_fbo_id);
+                                    downsample_dst_fbo_raGL_id);
     entrypoints->pGLBlitFramebuffer(0, /* srcX0 */
                                     0, /* srcY0 */
                                     output_resolution[0],
@@ -199,7 +281,7 @@ static void _stage_step_dof_scheuermann_downsample_execute(ogl_context context,
 }
 
 /** TODO */
-static void _stage_step_dof_scheuermann_preblur_execute(ogl_context context,
+static void _stage_step_dof_scheuermann_preblur_execute(ral_context context,
                                                         uint32_t    frame_index,
                                                         system_time time,
                                                         const int*  rendering_area_px_topdown,
@@ -212,46 +294,67 @@ static void _stage_step_dof_scheuermann_preblur_execute(ogl_context context,
 }
 
 /* Please see header for specification */
-PUBLIC void stage_step_dof_scheuermann_deinit(ogl_context context)
+PUBLIC void stage_step_dof_scheuermann_deinit(ral_context context)
 {
-    ogl_program_release                (_dof_scheuermann_combination_po);
-    ogl_texture_release                (_dof_scheuermann_combination_to);
-    ogl_texture_release                (_dof_scheuermann_downsampled_to);
-    ogl_texture_release                (_dof_scheuermann_downsampled_blurred_to);
+    ral_framebuffer framebuffers_to_release[] =
+    {
+        _dof_scheuermann_combination_fbo,
+        _dof_scheuermann_downsample_dst_fbo,
+        _dof_scheuermann_downsample_src_fbo
+    };
+    ral_texture textures_to_release[] = 
+    {
+        _dof_scheuermann_combination_to,
+        _dof_scheuermann_downsampled_to,
+        _dof_scheuermann_downsampled_blurred_to
+    };
+    const uint32_t n_framebuffers_to_release = sizeof(framebuffers_to_release) / sizeof(framebuffers_to_release[0]);
+    const uint32_t n_textures_to_release     = sizeof(textures_to_release)     / sizeof(textures_to_release    [0]);
+
+    ogl_program_release(_dof_scheuermann_combination_po);
+
+    ral_context_delete_framebuffers(context,
+                                    n_framebuffers_to_release,
+                                    framebuffers_to_release);
+    ral_context_delete_textures    (context,
+                                    n_textures_to_release,
+                                    textures_to_release);
+
     postprocessing_blur_poisson_release(_dof_scheuermann_blur_poisson);
 }
 
 /* Please see header for specification */
-PUBLIC GLuint stage_step_dof_scheuermann_get_combination_fbo_id()
+PUBLIC ral_framebuffer stage_step_dof_scheuermann_get_combination_fbo()
 {
-    return _dof_scheuermann_combination_fbo_id;
+    return _dof_scheuermann_combination_fbo;
 }
 
 /* Please see header for specification */
-PUBLIC ogl_texture stage_step_dof_scheuermann_get_combined_texture()
+PUBLIC ral_texture stage_step_dof_scheuermann_get_combined_texture()
 {
     return _dof_scheuermann_combination_to;
 }
 
 /* Please see header for specification */
-PUBLIC ogl_texture stage_step_dof_scheuermann_get_downsampled_texture()
+PUBLIC ral_texture stage_step_dof_scheuermann_get_downsampled_texture()
 {
     return _dof_scheuermann_downsampled_to;
 }
 
 /* Please see header for specification */
-PUBLIC ogl_texture stage_step_dof_scheuermann_get_downsampled_blurred_texture()
+PUBLIC ral_texture stage_step_dof_scheuermann_get_downsampled_blurred_texture()
 {
     return _dof_scheuermann_downsampled_blurred_to;
 }
 
 /* Please see header for specification */
-PUBLIC void stage_step_dof_scheuermann_init(ogl_context  context,
+PUBLIC void stage_step_dof_scheuermann_init(ral_context  context,
                                             ogl_pipeline pipeline,
                                             uint32_t     stage_id)
 {
-    const ogl_context_gl_entrypoints_ext_direct_state_access* dsa_entrypoints                 = NULL;
-    const ogl_context_gl_entrypoints*                         entrypoints                     = NULL;
+    ogl_context                                               context_gl                      = NULL;
+    const ogl_context_gl_entrypoints*                         entrypoints_ptr                 = NULL;
+    const ogl_context_gl_entrypoints_ext_direct_state_access* entrypoints_dsa_ptr             = NULL;
     const int*                                                output_resolution               = main_get_output_resolution();
     const int                                                 downsampled_output_resolution[] =
     {
@@ -259,108 +362,170 @@ PUBLIC void stage_step_dof_scheuermann_init(ogl_context  context,
         output_resolution[1] / DOWNSAMPLE_FACTOR
     };
 
-    ogl_context_get_property(context,
-                             OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL_EXT_DIRECT_STATE_ACCESS,
-                            &dsa_entrypoints);
-    ogl_context_get_property(context,
-                             OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
-                            &entrypoints);
-
     /* Set up VAO */
-    entrypoints->pGLGenVertexArrays(1, /* n */
-                                   &_dof_scheuermann_vao_id);
+    ral_context_get_property(context,
+                             RAL_CONTEXT_PROPERTY_BACKEND_CONTEXT,
+                            &context_gl);
+    ogl_context_get_property(context_gl,
+                             OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
+                            &entrypoints_ptr);
+    ogl_context_get_property(context_gl,
+                             OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL_EXT_DIRECT_STATE_ACCESS,
+                            &entrypoints_dsa_ptr);
+
+    entrypoints_ptr->pGLGenVertexArrays(1, /* n */
+                                       &_dof_scheuermann_vao_id);
 
     /* Set up FBOs */
-    entrypoints->pGLGenFramebuffers(1, /* n */
-                                   &_dof_scheuermann_combination_fbo_id);
-    entrypoints->pGLGenFramebuffers(1, /* n */
-                                   &_dof_scheuermann_downsample_dst_fbo_id);
-    entrypoints->pGLGenFramebuffers(1, /* n */
-                                   &_dof_scheuermann_downsample_src_fbo_id);
+    ral_framebuffer result_fbos[3];
 
-    _dof_scheuermann_combination_to         = ogl_texture_create_and_initialize(context,
-                                                                                system_hashed_ansi_string_create("DOF Scheuermann combination TO"),
-                                                                                RAL_TEXTURE_TYPE_2D,
-                                                                                RAL_TEXTURE_FORMAT_RGBA16_FLOAT,
-                                                                                false,  /* use_full_mipmap_chain */
-                                                                                output_resolution[0],
-                                                                                output_resolution[1],
-                                                                                1,      /* base_mipmap_depth    */
-                                                                                1,      /* n_samples            */
-                                                                                false); /* fixedsamplelocations */
-    _dof_scheuermann_downsampled_to         = ogl_texture_create_and_initialize(context,
-                                                                                system_hashed_ansi_string_create("DOF Scheuermann downsampled TO"),
-                                                                                RAL_TEXTURE_TYPE_2D,
-                                                                                RAL_TEXTURE_FORMAT_RGBA16_FLOAT,
-                                                                                false,  /* use_full_mipmap_chain */
-                                                                                downsampled_output_resolution[0],
-                                                                                downsampled_output_resolution[1],
-                                                                                1,      /* base_mipmap_depth    */
-                                                                                1,      /* n_samples            */
-                                                                                false); /* fixedsamplelocations */
-    _dof_scheuermann_downsampled_blurred_to = ogl_texture_create_and_initialize(context,
-                                                                                system_hashed_ansi_string_create("DOF Scheuermann downsampled blurred TO"),
-                                                                                RAL_TEXTURE_TYPE_2D,
-                                                                                RAL_TEXTURE_FORMAT_RGBA16_FLOAT,
-                                                                                false,  /* use_full_mipmap_chain */
-                                                                                downsampled_output_resolution[0],
-                                                                                downsampled_output_resolution[1],
-                                                                                1,      /* base_mipmap_depth    */
-                                                                                1,      /* n_samples            */
-                                                                                false); /* fixedsamplelocations */
+    ral_context_create_framebuffers(context,
+                                    sizeof(result_fbos) / sizeof(result_fbos[0]),
+                                    result_fbos);
 
-    dsa_entrypoints->pGLTextureParameteriEXT(_dof_scheuermann_combination_to,
-                                             GL_TEXTURE_2D,
-                                             GL_TEXTURE_MIN_FILTER,
-                                             GL_LINEAR);
-    dsa_entrypoints->pGLTextureParameteriEXT(_dof_scheuermann_combination_to,
-                                             GL_TEXTURE_2D,
-                                             GL_TEXTURE_WRAP_S,
-                                             GL_CLAMP_TO_EDGE);
-    dsa_entrypoints->pGLTextureParameteriEXT(_dof_scheuermann_combination_to,
-                                             GL_TEXTURE_2D,
-                                             GL_TEXTURE_WRAP_T,
-                                             GL_CLAMP_TO_EDGE);
-    dsa_entrypoints->pGLTextureParameteriEXT(_dof_scheuermann_downsampled_to,
-                                             GL_TEXTURE_2D,
-                                             GL_TEXTURE_MIN_FILTER,
-                                             GL_LINEAR);
-    dsa_entrypoints->pGLTextureParameteriEXT(_dof_scheuermann_downsampled_to,
-                                             GL_TEXTURE_2D,
-                                             GL_TEXTURE_WRAP_S,
-                                             GL_CLAMP_TO_EDGE);
-    dsa_entrypoints->pGLTextureParameteriEXT(_dof_scheuermann_downsampled_to,
-                                             GL_TEXTURE_2D,
-                                             GL_TEXTURE_WRAP_T,
-                                             GL_CLAMP_TO_EDGE);
-    dsa_entrypoints->pGLTextureParameteriEXT(_dof_scheuermann_downsampled_blurred_to,
-                                             GL_TEXTURE_2D,
-                                             GL_TEXTURE_MIN_FILTER,
-                                             GL_LINEAR);
-    dsa_entrypoints->pGLTextureParameteriEXT(_dof_scheuermann_downsampled_blurred_to,
-                                             GL_TEXTURE_2D,
-                                             GL_TEXTURE_WRAP_S,
-                                             GL_CLAMP_TO_EDGE);
-    dsa_entrypoints->pGLTextureParameteriEXT(_dof_scheuermann_downsampled_blurred_to,
-                                             GL_TEXTURE_2D,
-                                             GL_TEXTURE_WRAP_T,
-                                             GL_CLAMP_TO_EDGE);
+    _dof_scheuermann_combination_fbo    = result_fbos[0];
+    _dof_scheuermann_downsample_dst_fbo = result_fbos[1];
+    _dof_scheuermann_downsample_src_fbo = result_fbos[2];
 
-    dsa_entrypoints->pGLNamedFramebufferTexture2DEXT(_dof_scheuermann_combination_fbo_id,
-                                                     GL_COLOR_ATTACHMENT0,
-                                                     GL_TEXTURE_2D,
-                                                     _dof_scheuermann_combination_to,
-                                                     0); /* level */
-    dsa_entrypoints->pGLNamedFramebufferTexture2DEXT(_dof_scheuermann_downsample_dst_fbo_id,
-                                                     GL_COLOR_ATTACHMENT0,
-                                                     GL_TEXTURE_2D,
-                                                     _dof_scheuermann_downsampled_to,
-                                                     0); /* level */
-    dsa_entrypoints->pGLNamedFramebufferTexture2DEXT(_dof_scheuermann_downsample_src_fbo_id,
-                                                     GL_COLOR_ATTACHMENT0,
-                                                     GL_TEXTURE_2D,
-                                                     stage_step_julia_get_color_texture(),
-                                                     0); /* level */
+    /* Set up TOs */
+    ral_texture_create_info combination_to_create_info;
+    ral_texture_create_info downsampled_blurred_to_create_info;
+    ral_texture_create_info downsampled_to_create_info;
+
+    combination_to_create_info.base_mipmap_depth      = 1;
+    combination_to_create_info.base_mipmap_height     = output_resolution[1];
+    combination_to_create_info.base_mipmap_width      = output_resolution[0];
+    combination_to_create_info.fixed_sample_locations = true;
+    combination_to_create_info.format                 = RAL_TEXTURE_FORMAT_RGBA16_FLOAT;
+    combination_to_create_info.name                   = system_hashed_ansi_string_create("DOF Scheuermann combination TO");
+    combination_to_create_info.n_layers               = 1;
+    combination_to_create_info.n_samples              = 1;
+    combination_to_create_info.type                   = RAL_TEXTURE_TYPE_2D;
+    combination_to_create_info.usage                  = RAL_TEXTURE_USAGE_COLOR_ATTACHMENT_BIT;
+    combination_to_create_info.use_full_mipmap_chain  = false;
+
+    downsampled_blurred_to_create_info.base_mipmap_depth      = 1;
+    downsampled_blurred_to_create_info.base_mipmap_height     = downsampled_output_resolution[1];
+    downsampled_blurred_to_create_info.base_mipmap_width      = downsampled_output_resolution[0];
+    downsampled_blurred_to_create_info.fixed_sample_locations = true;
+    downsampled_blurred_to_create_info.format                 = RAL_TEXTURE_FORMAT_RGBA16_FLOAT;
+    downsampled_blurred_to_create_info.name                   = system_hashed_ansi_string_create("DOF Scheuermann downsampled TO");
+    downsampled_blurred_to_create_info.n_layers               = 1;
+    downsampled_blurred_to_create_info.n_samples              = 1;
+    downsampled_blurred_to_create_info.type                   = RAL_TEXTURE_TYPE_2D;
+    downsampled_blurred_to_create_info.usage                  = RAL_TEXTURE_USAGE_SAMPLED_BIT;
+    downsampled_blurred_to_create_info.use_full_mipmap_chain  = false;
+
+    downsampled_to_create_info.base_mipmap_depth      = 1;
+    downsampled_to_create_info.base_mipmap_height     = downsampled_output_resolution[1];
+    downsampled_to_create_info.base_mipmap_width      = downsampled_output_resolution[0];
+    downsampled_to_create_info.fixed_sample_locations = true;
+    downsampled_to_create_info.format                 = RAL_TEXTURE_FORMAT_RGBA16_FLOAT;
+    downsampled_to_create_info.name                   = system_hashed_ansi_string_create("DOF Scheuermann downsampled blurred TO");
+    downsampled_to_create_info.n_layers               = 1;
+    downsampled_to_create_info.n_samples              = 1;
+    downsampled_to_create_info.type                   = RAL_TEXTURE_TYPE_2D;
+    downsampled_to_create_info.usage                  = RAL_TEXTURE_USAGE_BLIT_DST_BIT |
+                                                        RAL_TEXTURE_USAGE_SAMPLED_BIT;
+    downsampled_to_create_info.use_full_mipmap_chain  = false;
+
+
+    ral_texture_create_info to_create_info_items[] =
+    {
+        combination_to_create_info,
+        downsampled_blurred_to_create_info,
+        downsampled_to_create_info
+    };
+    const uint32_t n_to_create_info_items = sizeof(to_create_info_items) / sizeof(to_create_info_items[0]);
+    ral_texture    result_tos[n_to_create_info_items];
+
+    ral_context_create_textures(context,
+                                n_to_create_info_items,
+                                to_create_info_items,
+                                result_tos);
+
+    _dof_scheuermann_combination_to         = result_tos[0];
+    _dof_scheuermann_downsampled_blurred_to = result_tos[1];
+    _dof_scheuermann_downsampled_to         = result_tos[2];
+
+
+    raGL_texture combination_to_raGL            = NULL;
+    GLuint       combination_to_raGL_id         = 0;
+    raGL_texture downsampled_blurred_to_raGL    = NULL;
+    GLuint       downsampled_blurred_to_raGL_id = 0;
+    raGL_texture downsampled_to_raGL            = NULL;
+    GLuint       downsampled_to_raGL_id         = 0;
+
+    combination_to_raGL         = ral_context_get_texture_gl(context,
+                                                             _dof_scheuermann_combination_to);
+    downsampled_blurred_to_raGL = ral_context_get_texture_gl(context,
+                                                             _dof_scheuermann_downsampled_blurred_to);
+    downsampled_to_raGL         = ral_context_get_texture_gl(context,
+                                                             _dof_scheuermann_downsampled_to);
+
+    raGL_texture_get_property(combination_to_raGL,
+                              RAGL_TEXTURE_PROPERTY_ID,
+                             &combination_to_raGL_id);
+    raGL_texture_get_property(downsampled_blurred_to_raGL,
+                              RAGL_TEXTURE_PROPERTY_ID,
+                             &downsampled_blurred_to_raGL_id);
+    raGL_texture_get_property(downsampled_to_raGL,
+                              RAGL_TEXTURE_PROPERTY_ID,
+                              &downsampled_to_raGL_id);
+
+
+    entrypoints_dsa_ptr->pGLTextureParameteriEXT(combination_to_raGL_id,
+                                                 GL_TEXTURE_2D,
+                                                 GL_TEXTURE_MIN_FILTER,
+                                                 GL_LINEAR);
+    entrypoints_dsa_ptr->pGLTextureParameteriEXT(combination_to_raGL_id,
+                                                 GL_TEXTURE_2D,
+                                                 GL_TEXTURE_WRAP_S,
+                                                 GL_CLAMP_TO_EDGE);
+    entrypoints_dsa_ptr->pGLTextureParameteriEXT(combination_to_raGL_id,
+                                                 GL_TEXTURE_2D,
+                                                 GL_TEXTURE_WRAP_T,
+                                                 GL_CLAMP_TO_EDGE);
+    entrypoints_dsa_ptr->pGLTextureParameteriEXT(downsampled_to_raGL_id,
+                                                 GL_TEXTURE_2D,
+                                                 GL_TEXTURE_MIN_FILTER,
+                                                 GL_LINEAR);
+    entrypoints_dsa_ptr->pGLTextureParameteriEXT(downsampled_to_raGL_id,
+                                                 GL_TEXTURE_2D,
+                                                 GL_TEXTURE_WRAP_S,
+                                                 GL_CLAMP_TO_EDGE);
+    entrypoints_dsa_ptr->pGLTextureParameteriEXT(downsampled_to_raGL_id,
+                                                 GL_TEXTURE_2D,
+                                                 GL_TEXTURE_WRAP_T,
+                                                 GL_CLAMP_TO_EDGE);
+    entrypoints_dsa_ptr->pGLTextureParameteriEXT(downsampled_blurred_to_raGL_id,
+                                                 GL_TEXTURE_2D,
+                                                 GL_TEXTURE_MIN_FILTER,
+                                                 GL_LINEAR);
+    entrypoints_dsa_ptr->pGLTextureParameteriEXT(downsampled_blurred_to_raGL_id,
+                                                 GL_TEXTURE_2D,
+                                                 GL_TEXTURE_WRAP_S,
+                                                 GL_CLAMP_TO_EDGE);
+    entrypoints_dsa_ptr->pGLTextureParameteriEXT(downsampled_blurred_to_raGL_id,
+                                                 GL_TEXTURE_2D,
+                                                 GL_TEXTURE_WRAP_T,
+                                                 GL_CLAMP_TO_EDGE);
+
+    ral_framebuffer_set_attachment_2D(_dof_scheuermann_combination_fbo,
+                                      RAL_FRAMEBUFFER_ATTACHMENT_TYPE_COLOR,
+                                      0 /* index */,
+                                      _dof_scheuermann_combination_to,
+                                      0 /* n_mipmap */);
+    ral_framebuffer_set_attachment_2D(_dof_scheuermann_downsample_dst_fbo,
+                                      RAL_FRAMEBUFFER_ATTACHMENT_TYPE_COLOR,
+                                      0, /* index */
+                                      _dof_scheuermann_downsampled_to,
+                                      0 /* n_mipmap */);
+    ral_framebuffer_set_attachment_2D(_dof_scheuermann_downsample_src_fbo,
+                                      RAL_FRAMEBUFFER_ATTACHMENT_TYPE_COLOR,
+                                      0, /* index */
+                                      stage_step_julia_get_color_texture(),
+                                      0 /* n_mipmap */);
 
     /* Set up postprocessor */
     _dof_scheuermann_blur_poisson = postprocessing_blur_poisson_create(context,
@@ -409,10 +574,7 @@ PUBLIC void stage_step_dof_scheuermann_init(ogl_context  context,
                                          &_dof_scheuermann_combination_po_ub);
 
     ogl_program_ub_get_property(_dof_scheuermann_combination_po_ub,
-                                OGL_PROGRAM_UB_PROPERTY_BLOCK_DATA_SIZE,
-                               &_dof_scheuermann_combination_po_ub_bo_size);
-    ogl_program_ub_get_property(_dof_scheuermann_combination_po_ub,
-                                OGL_PROGRAM_UB_PROPERTY_BO,
+                                OGL_PROGRAM_UB_PROPERTY_BUFFER_RAL,
                                &_dof_scheuermann_combination_po_ub_bo);
 
     /* Retrieve combination program uniform locations */
@@ -444,18 +606,18 @@ PUBLIC void stage_step_dof_scheuermann_init(ogl_context  context,
     _dof_scheuermann_combination_po_depth_high_uniform_location = (depth_high_uniform_descriptor != NULL) ? depth_high_uniform_descriptor->location     : -1;
     _dof_scheuermann_combination_po_ub_max_coc_px_ub_offset     = (max_coc_px_uniform_descriptor != NULL) ? max_coc_px_uniform_descriptor->block_offset : -1;
 
-    entrypoints->pGLProgramUniform1i(ogl_program_get_id(_dof_scheuermann_combination_po),
-                                     data_high_uniform_descriptor->location,
-                                     0);
-    entrypoints->pGLProgramUniform1i(ogl_program_get_id(_dof_scheuermann_combination_po),
-                                     data_low_uniform_descriptor->location,
-                                     1);
-    entrypoints->pGLProgramUniform1i(ogl_program_get_id(_dof_scheuermann_combination_po),
-                                     bg_uniform_descriptor->location,
-                                     2);
-    entrypoints->pGLProgramUniform1i(ogl_program_get_id(_dof_scheuermann_combination_po),
-                                     depth_high_uniform_descriptor->location,
-                                     3);
+    entrypoints_ptr->pGLProgramUniform1i(ogl_program_get_id(_dof_scheuermann_combination_po),
+                                         data_high_uniform_descriptor->location,
+                                         0);
+    entrypoints_ptr->pGLProgramUniform1i(ogl_program_get_id(_dof_scheuermann_combination_po),
+                                         data_low_uniform_descriptor->location,
+                                         1);
+    entrypoints_ptr->pGLProgramUniform1i(ogl_program_get_id(_dof_scheuermann_combination_po),
+                                         bg_uniform_descriptor->location,
+                                         2);
+    entrypoints_ptr->pGLProgramUniform1i(ogl_program_get_id(_dof_scheuermann_combination_po),
+                                         depth_high_uniform_descriptor->location,
+                                         3);
 
     ogl_shader_release               (combination_fs);
     shaders_vertex_fullscreen_release(combination_vs);

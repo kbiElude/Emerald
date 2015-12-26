@@ -662,6 +662,7 @@ PUBLIC ral_texture ral_texture_create_from_gfx_image(ral_context               c
     result_create_info.base_mipmap_width      = base_image_width;
     result_create_info.fixed_sample_locations = false;
     result_create_info.format                 = image_format;
+    result_create_info.name                   = name;
     result_create_info.n_layers               = 1;
     result_create_info.n_samples              = 1;
     result_create_info.type                   = RAL_TEXTURE_TYPE_2D;
@@ -679,24 +680,31 @@ PUBLIC ral_texture ral_texture_create_from_gfx_image(ral_context               c
 
         goto end;
     }
-
-    /* Set up the mipmap chain */
-    _ral_texture_init_mipmap_chain(result_ptr);
+    else
+    {
+        result_ptr = (_ral_texture*) result;
+    }
 
     /* Upload the mipmaps */
     for (uint32_t n_mipmap = 0;
                   n_mipmap < image_n_mipmaps;
                 ++n_mipmap)
     {
+        uint32_t              mipmap_data_height        = 0;
         void*                 mipmap_data_ptr           = NULL;
         uint32_t              mipmap_data_row_alignment = 0;
         uint32_t              mipmap_data_size          = 0;
         ral_texture_data_type mipmap_data_type          = RAL_TEXTURE_DATA_TYPE_UNKNOWN;
+        uint32_t              mipmap_data_width         = 0;
 
         gfx_image_get_mipmap_property(image,
                                       n_mipmap,
                                       GFX_IMAGE_MIPMAP_PROPERTY_DATA_POINTER,
                                      &mipmap_data_ptr);
+        gfx_image_get_mipmap_property(image,
+                                      n_mipmap,
+                                      GFX_IMAGE_MIPMAP_PROPERTY_HEIGHT,
+                                     &mipmap_data_height);
         gfx_image_get_mipmap_property(image,
                                       n_mipmap,
                                       GFX_IMAGE_MIPMAP_PROPERTY_ROW_ALIGNMENT,
@@ -709,13 +717,23 @@ PUBLIC ral_texture ral_texture_create_from_gfx_image(ral_context               c
                                       n_mipmap,
                                       GFX_IMAGE_MIPMAP_PROPERTY_DATA_TYPE,
                                      &mipmap_data_type);
+        gfx_image_get_mipmap_property(image,
+                                      n_mipmap,
+                                      GFX_IMAGE_MIPMAP_PROPERTY_WIDTH,
+                                     &mipmap_data_width);
 
-        mipmap_update_info_ptrs[n_mipmap].data               = mipmap_data_ptr;
-        mipmap_update_info_ptrs[n_mipmap].data_row_alignment = mipmap_data_row_alignment;
-        mipmap_update_info_ptrs[n_mipmap].data_size          = mipmap_data_size;
-        mipmap_update_info_ptrs[n_mipmap].data_type          = mipmap_data_type;
-        mipmap_update_info_ptrs[n_mipmap].n_layer            = 0;
-        mipmap_update_info_ptrs[n_mipmap].n_mipmap           = n_mipmap;
+        mipmap_update_info_ptrs[n_mipmap].data                   = mipmap_data_ptr;
+        mipmap_update_info_ptrs[n_mipmap].data_row_alignment     = mipmap_data_row_alignment;
+        mipmap_update_info_ptrs[n_mipmap].data_size              = mipmap_data_size;
+        mipmap_update_info_ptrs[n_mipmap].data_type              = mipmap_data_type;
+        mipmap_update_info_ptrs[n_mipmap].n_layer                = 0;
+        mipmap_update_info_ptrs[n_mipmap].n_mipmap               = n_mipmap;
+        mipmap_update_info_ptrs[n_mipmap].region_size[0]         = mipmap_data_width;
+        mipmap_update_info_ptrs[n_mipmap].region_size[1]         = mipmap_data_height;
+        mipmap_update_info_ptrs[n_mipmap].region_size[2]         = 0;
+        mipmap_update_info_ptrs[n_mipmap].region_start_offset[0] = 0;
+        mipmap_update_info_ptrs[n_mipmap].region_start_offset[1] = 0;
+        mipmap_update_info_ptrs[n_mipmap].region_start_offset[2] = 0;
     } /* for (all mipmap descriptors) */
 
     if (!ral_texture_set_mipmap_data_from_client_memory(result,

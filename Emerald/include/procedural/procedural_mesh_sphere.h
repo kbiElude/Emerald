@@ -28,7 +28,7 @@ typedef enum
 /** TODO. Does NOT support 
  *
  **/
-PUBLIC EMERALD_API procedural_mesh_sphere procedural_mesh_sphere_create(ogl_context                   context,
+PUBLIC EMERALD_API procedural_mesh_sphere procedural_mesh_sphere_create(ral_context                   context_ral,
                                                                         _procedural_mesh_data_bitmask data_bitmask,
                                                                         uint32_t                      n_latitude_splices, /* number of latitude splices */
                                                                         uint32_t                      n_longitude_splices, /* number of longitude splices */

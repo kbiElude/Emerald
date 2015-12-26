@@ -14,9 +14,14 @@
 #include "ogl/ogl_program.h"
 #include "ogl/ogl_program_ub.h"
 #include "ogl/ogl_shader.h"
-#include "ogl/ogl_texture.h"
 #include "procedural/procedural_mesh_sphere.h"
 #include "raGL/raGL_buffer.h"
+#include "raGL/raGL_framebuffer.h"
+#include "raGL/raGL_texture.h"
+#include "ral/ral_buffer.h"
+#include "ral/ral_context.h"
+#include "ral/ral_framebuffer.h"
+#include "ral/ral_texture.h"
 #include "system/system_matrix4x4.h"
 
 GLuint                 _julia_data_ub_offset                      = -1;
@@ -27,9 +32,9 @@ GLuint                 _julia_dof_near_plane_depth_ub_offset      = -1;
 GLuint                 _julia_epsilon_ub_offset                   = -1;
 GLuint                 _julia_escape_ub_offset                    = -1;
 GLuint                 _julia_eye_ub_offset                       = -1;
-GLuint                 _julia_fbo_id                              = 0;
-ogl_texture            _julia_fbo_color_to                        = 0;
-ogl_texture            _julia_fbo_depth_to                        = 0;
+ral_framebuffer        _julia_fbo                                 = NULL;
+ral_texture            _julia_fbo_color_to                        = 0;
+ral_texture            _julia_fbo_depth_to                        = 0;
 GLuint                 _julia_fresnel_reflectance_ub_offset       = -1;
 GLuint                 _julia_light_color_ub_offset               = -1;
 GLuint                 _julia_light_position_ub_offset            = -1;
@@ -38,8 +43,7 @@ GLuint                 _julia_mv_ub_offset                        = -1;
 GLuint                 _julia_mvp_ub_offset                       = -1;
 ogl_program            _julia_program                             = NULL;
 ogl_program_ub         _julia_program_ub                          = NULL;
-raGL_buffer            _julia_program_ub_bo                       = NULL;
-GLuint                 _julia_program_ub_bo_size                  = 0;
+ral_buffer             _julia_program_ub_bo                       = NULL;
 GLuint                 _julia_raycast_radius_multiplier_ub_offset = -1;
 GLuint                 _julia_reflectivity_ub_offset              = -1;
 GLuint                 _julia_sph_texture_uniform_location        = -1;
@@ -308,19 +312,23 @@ const char* julia_vertex_shader_code = "#version 430 core\n"
                                        "}\n";
 
 /** TODO */
-static void _stage_step_julia_execute(ogl_context context,
+static void _stage_step_julia_execute(ral_context context,
                                       uint32_t    frame_index,
                                       system_time time,
                                       const int*  rendering_area_px_topdown,
                                       void*       not_used)
 {
+    ogl_context                                               context_gl      = NULL;
     const ogl_context_gl_entrypoints_ext_direct_state_access* dsa_entrypoints = NULL;
     const ogl_context_gl_entrypoints*                         entrypoints     = NULL;
 
-    ogl_context_get_property(context,
+    ral_context_get_property(context,
+                             RAL_CONTEXT_PROPERTY_BACKEND_CONTEXT,
+                            &context_gl);
+    ogl_context_get_property(context_gl,
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL_EXT_DIRECT_STATE_ACCESS,
                             &dsa_entrypoints);
-    ogl_context_get_property(context,
+    ogl_context_get_property(context_gl,
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
                             &entrypoints);
 
@@ -347,7 +355,7 @@ static void _stage_step_julia_execute(ogl_context context,
     const float             specularity               = main_get_specularity();
            system_matrix4x4 mvp                       = NULL;
 
-    ogl_context_get_property(context,
+    ogl_context_get_property(context_gl,
                              OGL_CONTEXT_PROPERTY_FLYBY,
                             &flyby);
     ogl_flyby_get_property  (flyby,
@@ -455,26 +463,64 @@ static void _stage_step_julia_execute(ogl_context context,
 
     system_matrix4x4_release(mvp);
 
+
+    ral_texture  background_texture         = stage_step_background_get_background_texture();
+    raGL_texture background_texture_raGL    = NULL;
+    GLuint       background_texture_raGL_id = 0;
+
+    background_texture_raGL = ral_context_get_texture_gl(context,
+                                                         background_texture);
+
+    raGL_texture_get_property(background_texture_raGL,
+                              RAGL_TEXTURE_PROPERTY_ID,
+                             &background_texture_raGL_id);
+
+
     dsa_entrypoints->pGLBindMultiTextureEXT(GL_TEXTURE0,
                                             GL_TEXTURE_2D,
-                                            stage_step_background_get_background_texture() );
+                                            background_texture_raGL_id);
 
     /* Draw the fractal */
-    GLuint   julia_program_ub_bo_id           = 0;
-    uint32_t julia_program_ub_bo_start_offset = -1;
+    raGL_framebuffer julia_fbo_raGL                        = NULL;
+    GLuint           julia_fbo_raGL_id                     = 0;
+    raGL_buffer      julia_program_ub_bo_raGL              = NULL;
+    GLuint           julia_program_ub_bo_raGL_id           = 0;
+    uint32_t         julia_program_ub_bo_raGL_start_offset = -1;
+    uint32_t         julia_program_ub_bo_ral_size          = 0;
+    uint32_t         julia_program_ub_bo_ral_start_offset  = 0;
 
-    raGL_buffer_get_property(_julia_program_ub_bo,
+    julia_fbo_raGL = ral_context_get_framebuffer_gl(context,
+                                                    _julia_fbo);
+
+    raGL_framebuffer_get_property(julia_fbo_raGL,
+                                  RAGL_FRAMEBUFFER_PROPERTY_ID,
+                                 &julia_fbo_raGL_id);
+
+
+    julia_program_ub_bo_raGL = ral_context_get_buffer_gl(context,
+                                                         _julia_program_ub_bo);
+
+    raGL_buffer_get_property(julia_program_ub_bo_raGL,
                              RAGL_BUFFER_PROPERTY_ID,
-                            &julia_program_ub_bo_id);
-    raGL_buffer_get_property(_julia_program_ub_bo,
+                            &julia_program_ub_bo_raGL_id);
+    raGL_buffer_get_property(julia_program_ub_bo_raGL,
+                             RAGL_BUFFER_PROPERTY_ID,
+                            &julia_program_ub_bo_raGL_id);
+    raGL_buffer_get_property(julia_program_ub_bo_raGL,
                              RAGL_BUFFER_PROPERTY_START_OFFSET,
-                            &julia_program_ub_bo_start_offset);
+                            &julia_program_ub_bo_raGL_start_offset);
+    ral_buffer_get_property (_julia_program_ub_bo,
+                             RAL_BUFFER_PROPERTY_SIZE,
+                            &julia_program_ub_bo_ral_size);
+    ral_buffer_get_property (_julia_program_ub_bo,
+                             RAL_BUFFER_PROPERTY_START_OFFSET,
+                            &julia_program_ub_bo_ral_start_offset);
 
     entrypoints->pGLBindBufferRange(GL_UNIFORM_BUFFER,
                                     0, /* index */
-                                     julia_program_ub_bo_id,
-                                     julia_program_ub_bo_start_offset,
-                                    _julia_program_ub_bo_size);
+                                    julia_program_ub_bo_raGL_id,
+                                    julia_program_ub_bo_raGL_start_offset + julia_program_ub_bo_ral_start_offset,
+                                    julia_program_ub_bo_ral_size);
 
     entrypoints->pGLClearColor     (0.0f,  /* red */
                                     0.0f,  /* green */
@@ -482,7 +528,7 @@ static void _stage_step_julia_execute(ogl_context context,
                                     0.0f); /* alpha */
     entrypoints->pGLClearDepth     (1.0f);
     entrypoints->pGLBindFramebuffer(GL_DRAW_FRAMEBUFFER,
-                                    _julia_fbo_id);
+                                    julia_fbo_raGL_id);
     entrypoints->pGLClear          (GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     entrypoints->pGLEnable         (GL_DEPTH_TEST);
     entrypoints->pGLDepthFunc      (GL_LESS);
@@ -506,19 +552,21 @@ static void _stage_step_julia_execute(ogl_context context,
 }
 
 /* Please see header for specification */
-PUBLIC void stage_step_julia_deinit(ogl_context context)
+PUBLIC void stage_step_julia_deinit(ral_context context)
 {
-    const ogl_context_gl_entrypoints* entrypoints = NULL;
+    ral_texture textures_to_release[] =
+    {
+        _julia_fbo_color_to,
+        _julia_fbo_depth_to
+    };
+    const uint32_t n_textures_to_release = sizeof(textures_to_release) / sizeof(textures_to_release[0]);
 
-    ogl_context_get_property(context,
-                             OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
-                            &entrypoints);
-
-    entrypoints->pGLDeleteFramebuffers(1, /* n */
-                                      &_julia_fbo_id);
-
-    ogl_texture_release(_julia_fbo_color_to);
-    ogl_texture_release(_julia_fbo_depth_to);
+    ral_context_delete_framebuffers(context,
+                                    1, /* n_framebuffers */
+                                   &_julia_fbo);
+    ral_context_delete_textures    (context,
+                                    n_textures_to_release,
+                                    textures_to_release);
 
     ogl_program_release           (_julia_program);
     procedural_mesh_sphere_release(_julia_sphere);
@@ -526,28 +574,34 @@ PUBLIC void stage_step_julia_deinit(ogl_context context)
 }
 
 /* Please see header for specification */
-PUBLIC ogl_texture stage_step_julia_get_color_texture()
+PUBLIC ral_texture stage_step_julia_get_color_texture()
 {
     return _julia_fbo_color_to;
 }
 
 /* Please see header for specification */
-PUBLIC ogl_texture stage_step_julia_get_depth_texture()
+PUBLIC ral_texture stage_step_julia_get_depth_texture()
 {
     return _julia_fbo_depth_to;
 }
 
 /* Please see header for specification */
-PUBLIC GLuint stage_step_julia_get_fbo_id()
+PUBLIC ral_framebuffer stage_step_julia_get_fbo()
 {
-    return _julia_fbo_id;
+    return _julia_fbo;
 }
 
 /* Please see header for specification */
-PUBLIC void stage_step_julia_init(ogl_context  context,
+PUBLIC void stage_step_julia_init(ral_context  context,
                                   ogl_pipeline pipeline,
                                   uint32_t     stage_id)
 {
+    ogl_context context_gl = NULL;
+
+    ral_context_get_property(context,
+                             RAL_CONTEXT_PROPERTY_BACKEND_CONTEXT,
+                            &context_gl);
+
     /* Instantiate sphere we will use for raytracing */
     uint32_t normals_data_offset  = 0;
     uint32_t vertex_data_offset   = 0;
@@ -603,10 +657,7 @@ PUBLIC void stage_step_julia_init(ogl_context  context,
                                          &_julia_program_ub);
 
     ogl_program_ub_get_property(_julia_program_ub,
-                                OGL_PROGRAM_UB_PROPERTY_BLOCK_DATA_SIZE,
-                               &_julia_program_ub_bo_size);
-    ogl_program_ub_get_property(_julia_program_ub,
-                                OGL_PROGRAM_UB_PROPERTY_BO,
+                                OGL_PROGRAM_UB_PROPERTY_BUFFER_RAL,
                                &_julia_program_ub_bo);
 
     /* Retrieve attribute/uniform locations */
@@ -714,27 +765,32 @@ PUBLIC void stage_step_julia_init(ogl_context  context,
     _julia_vertex_attribute_location           = (vertex_attribute_data                  != NULL) ? vertex_attribute_data->location                      : -1;
 
     /* Generate & set VAO up */
-    const ogl_context_gl_entrypoints_ext_direct_state_access* dsa_entrypoints = NULL;
-    const ogl_context_gl_entrypoints*                         entrypoints     = NULL;
-    unsigned int                                              sphere_bo_id    = 0;
+    const ogl_context_gl_entrypoints* entrypoints       = NULL;
+    ral_buffer                        sphere_bo         = NULL;
+    raGL_buffer                       sphere_bo_raGL    = NULL;
+    GLuint                            sphere_bo_raGL_id = 0;
 
-    ogl_context_get_property(context,
-                             OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL_EXT_DIRECT_STATE_ACCESS,
-                            &dsa_entrypoints);
-    ogl_context_get_property(context,
+    ogl_context_get_property(context_gl,
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
                             &entrypoints);
 
     procedural_mesh_sphere_get_property(_julia_sphere,
-                                        PROCEDURAL_MESH_SPHERE_PROPERTY_ARRAYS_BO_ID,
-                                       &sphere_bo_id);
+                                        PROCEDURAL_MESH_SPHERE_PROPERTY_ARRAYS_BO_RAL,
+                                       &sphere_bo);
+
+    sphere_bo_raGL = ral_context_get_buffer_gl(context,
+                                               sphere_bo);
+
+    raGL_buffer_get_property(sphere_bo_raGL,
+                             RAGL_BUFFER_PROPERTY_ID,
+                            &sphere_bo_raGL_id);
 
     entrypoints->pGLGenVertexArrays(1, /* n */
                                    &_julia_vao_id);
     entrypoints->pGLBindVertexArray(_julia_vao_id);
 
     entrypoints->pGLBindBuffer             (GL_ARRAY_BUFFER,
-                                            sphere_bo_id);
+                                            sphere_bo_raGL_id);
     entrypoints->pGLVertexAttribPointer    (_julia_vertex_attribute_location,
                                             3, /* size */
                                             GL_FLOAT,
@@ -748,40 +804,66 @@ PUBLIC void stage_step_julia_init(ogl_context  context,
                                      0);
 
     /* Generate & set FBO up */
-    entrypoints->pGLGenFramebuffers(1, /* n */
-                                   &_julia_fbo_id);
+    ral_texture_create_info color_to_create_info;
+    ral_texture_create_info depth_to_create_info;
 
-    _julia_fbo_color_to = ogl_texture_create_and_initialize(context,
-                                                            system_hashed_ansi_string_create("Julia FBO color texture"),
-                                                            RAL_TEXTURE_TYPE_2D,
-                                                            RAL_TEXTURE_FORMAT_RGBA32_FLOAT,
-                                                            false,  /* use_full_mipmap_chain */
-                                                            main_get_window_width(),
-                                                            main_get_window_height(),
-                                                            1,      /* base_mipmap_depth    */
-                                                            1,      /* n_samples            */
-                                                            false); /* fixedsamplelocations */
-    _julia_fbo_depth_to = ogl_texture_create_and_initialize(context,
-                                                            system_hashed_ansi_string_create("Julia FBO depth texture"),
-                                                            RAL_TEXTURE_TYPE_2D,
-                                                            RAL_TEXTURE_FORMAT_DEPTH32_FLOAT,
-                                                            false,  /* use_full_mipmap_chain */
-                                                            main_get_window_width(),
-                                                            main_get_window_height(),
-                                                            1,      /* base_mipmap_depth    */
-                                                            1,      /* n_samples            */
-                                                            false); /* fixedsamplelocations */
+    ral_context_create_framebuffers(context,
+                                    1, /* n_framebuffers */
+                                    &_julia_fbo);
 
-    dsa_entrypoints->pGLNamedFramebufferTexture2DEXT(_julia_fbo_id,
-                                                     GL_COLOR_ATTACHMENT0,
-                                                     GL_TEXTURE_2D,
-                                                     _julia_fbo_color_to,
-                                                     0); /* level */
-    dsa_entrypoints->pGLNamedFramebufferTexture2DEXT(_julia_fbo_id,
-                                                     GL_DEPTH_ATTACHMENT,
-                                                     GL_TEXTURE_2D,
-                                                     _julia_fbo_depth_to,
-                                                     0); /* level */
+    color_to_create_info.base_mipmap_depth      = 1;
+    color_to_create_info.base_mipmap_height     = main_get_window_height();
+    color_to_create_info.base_mipmap_width      = main_get_window_width();
+    color_to_create_info.fixed_sample_locations = true;
+    color_to_create_info.format                 = RAL_TEXTURE_FORMAT_RGBA32_FLOAT;
+    color_to_create_info.name                   = system_hashed_ansi_string_create("Julia FBO color texture");
+    color_to_create_info.n_layers               = 1;
+    color_to_create_info.n_samples              = 1;
+    color_to_create_info.type                   = RAL_TEXTURE_TYPE_2D;
+    color_to_create_info.usage                  = RAL_TEXTURE_USAGE_COLOR_ATTACHMENT_BIT |
+                                                  RAL_TEXTURE_USAGE_SAMPLED_BIT;
+
+    depth_to_create_info.base_mipmap_depth      = 1;
+    depth_to_create_info.base_mipmap_height     = main_get_window_height();
+    depth_to_create_info.base_mipmap_width      = main_get_window_width ();
+    depth_to_create_info.fixed_sample_locations = true;
+    depth_to_create_info.format                 = RAL_TEXTURE_FORMAT_DEPTH32_FLOAT;
+    depth_to_create_info.name                   = system_hashed_ansi_string_create("Julia FBO depth texture");
+    depth_to_create_info.n_layers               = 1;
+    depth_to_create_info.n_samples              = 1;
+    depth_to_create_info.type                   = RAL_TEXTURE_TYPE_2D;
+    depth_to_create_info.usage                  = RAL_TEXTURE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT |
+                                                  RAL_TEXTURE_USAGE_SAMPLED_BIT;
+
+#pragma pack(push)
+#pragma pack(1)
+    const ral_texture_create_info texture_create_info_items[] =
+    {
+        color_to_create_info,
+        depth_to_create_info
+    };
+#pragma pack(pop)
+    const uint32_t n_texture_create_info_items = sizeof(texture_create_info_items) / sizeof(texture_create_info_items[0]);
+    ral_texture    result_textures[n_texture_create_info_items];
+
+    ral_context_create_textures(context,
+                                n_texture_create_info_items,
+                                texture_create_info_items,
+                                result_textures);
+
+    _julia_fbo_color_to = result_textures[0];
+    _julia_fbo_depth_to = result_textures[1];
+
+    ral_framebuffer_set_attachment_2D(_julia_fbo,
+                                      RAL_FRAMEBUFFER_ATTACHMENT_TYPE_COLOR,
+                                      0, /* index */
+                                      _julia_fbo_color_to,
+                                      0 /* n_mipmap */);
+    ral_framebuffer_set_attachment_2D(_julia_fbo,
+                                      RAL_FRAMEBUFFER_ATTACHMENT_TYPE_DEPTH_STENCIL,
+                                      0, /* index */
+                                      _julia_fbo_depth_to,
+                                      0 /* n_mipmap */);
 
     /* Add ourselves to the pipeline */
     ogl_pipeline_stage_step_declaration raytracing_stage_step;

@@ -3305,11 +3305,12 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_shadow_mapping_toggle(ogl_shadow_mapping 
                               handler_ptr->current_sm_depth_texture  == NULL,
                               "SM texture(s) are already active");
 
-            sm_depth_texture_create_info.base_mipmap_depth = 1;
-            sm_depth_texture_create_info.base_mipmap_height = light_shadow_map_size[1];
-            sm_depth_texture_create_info.base_mipmap_width  = light_shadow_map_size[0];
+            sm_depth_texture_create_info.base_mipmap_depth      = 1;
+            sm_depth_texture_create_info.base_mipmap_height     = light_shadow_map_size[1];
+            sm_depth_texture_create_info.base_mipmap_width      = light_shadow_map_size[0];
             sm_depth_texture_create_info.fixed_sample_locations = false;
             sm_depth_texture_create_info.format                 = light_shadow_map_format_depth;
+            sm_depth_texture_create_info.name                   = NULL;
             sm_depth_texture_create_info.n_layers               = light_shadow_map_size[2];
             sm_depth_texture_create_info.n_samples              = 1;
             sm_depth_texture_create_info.type                   = light_shadow_map_type;
@@ -3331,11 +3332,12 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_shadow_mapping_toggle(ogl_shadow_mapping 
                                   light_shadow_map_type == RAL_TEXTURE_TYPE_CUBE_MAP && light_shadow_map_size[2] == 1,
                                   "Sanity check failed");
 
-                sm_color_texture_create_info.base_mipmap_depth = 1;
-                sm_color_texture_create_info.base_mipmap_height = light_shadow_map_size[1];
-                sm_color_texture_create_info.base_mipmap_width  = light_shadow_map_size[0];
+                sm_color_texture_create_info.base_mipmap_depth      = 1;
+                sm_color_texture_create_info.base_mipmap_height     = light_shadow_map_size[1];
+                sm_color_texture_create_info.base_mipmap_width      = light_shadow_map_size[0];
                 sm_color_texture_create_info.fixed_sample_locations = false;
                 sm_color_texture_create_info.format                 = light_shadow_map_format_color;
+                sm_color_texture_create_info.name                   = NULL;
                 sm_color_texture_create_info.n_layers               = light_shadow_map_size[2];
                 sm_color_texture_create_info.n_samples              = 1;
                 sm_color_texture_create_info.type                   = light_shadow_map_type;

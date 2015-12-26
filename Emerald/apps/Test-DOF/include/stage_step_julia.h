@@ -7,21 +7,23 @@
 #define STAGE_STEP_JULIA_H
 
 #include "system/system_types.h"
-#include "ogl/ogl_types.h"
+#include "ral/ral_types.h"
 
 /** TODO */
-PUBLIC void stage_step_julia_deinit(ogl_context context);
+PUBLIC void stage_step_julia_deinit(ral_context context);
 
 /** TODO */
-PUBLIC ogl_texture stage_step_julia_get_color_texture();
+PUBLIC ral_texture stage_step_julia_get_color_texture();
 
 /** TODO */
-PUBLIC ogl_texture stage_step_julia_get_depth_texture();
+PUBLIC ral_texture stage_step_julia_get_depth_texture();
 
 /** TODO */
-PUBLIC GLuint stage_step_julia_get_fbo_id();
+PUBLIC ral_framebuffer stage_step_julia_get_fbo();
 
 /** TODO */
-PUBLIC void stage_step_julia_init(ogl_context context, ogl_pipeline pipeline, uint32_t stage_id);
+PUBLIC void stage_step_julia_init(ral_context  context,
+                                  ogl_pipeline pipeline,
+                                  uint32_t     stage_id);
 
 #endif /* STAGE_STEP_JULIA_H */

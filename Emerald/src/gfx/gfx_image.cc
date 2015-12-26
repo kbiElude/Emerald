@@ -84,6 +84,11 @@ const _gfx_image_format supported_image_formats[] =
     },
 
     {
+        system_hashed_ansi_string_create("hdr"),
+        gfx_rgbe_load_from_file
+    },
+
+    {
         system_hashed_ansi_string_create("jpg"),
         gfx_jpg_load_from_file
     },

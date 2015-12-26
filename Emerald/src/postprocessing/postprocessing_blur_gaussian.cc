@@ -1096,6 +1096,8 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void postprocessing_blur_gaussian_exec
     temp_2d_array_texture_create_info.base_mipmap_width      = target_width;
     temp_2d_array_texture_create_info.fixed_sample_locations = false;
     temp_2d_array_texture_create_info.format                 = src_texture_format;
+    temp_2d_array_texture_create_info.name                   = system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(blur_ptr->name),
+                                                                                                                       " temp 2D array texture");
     temp_2d_array_texture_create_info.n_layers               = 3;
     temp_2d_array_texture_create_info.n_samples              = 1;
     temp_2d_array_texture_create_info.type                   = RAL_TEXTURE_TYPE_2D_ARRAY;

@@ -1361,6 +1361,7 @@ PRIVATE void _ogl_context_initialize_fbo(_ogl_context* context_ptr)
             color_to_create_info.base_mipmap_width      = window_dimensions[0];
             color_to_create_info.fixed_sample_locations = false;
             color_to_create_info.format                 = format_color;
+            color_to_create_info.name                   = system_hashed_ansi_string_create("System framebuffer color texture");
             color_to_create_info.n_layers               = 1;
             color_to_create_info.n_samples              = n_samples;
             color_to_create_info.type                   = RAL_TEXTURE_TYPE_2D;
@@ -1399,6 +1400,7 @@ PRIVATE void _ogl_context_initialize_fbo(_ogl_context* context_ptr)
             depth_stencil_to_create_info.base_mipmap_width      = window_dimensions[0];
             depth_stencil_to_create_info.fixed_sample_locations = false;
             depth_stencil_to_create_info.format                 = format_depth_stencil;
+            depth_stencil_to_create_info.name                   = system_hashed_ansi_string_create("System framebuffer depth+stencil texture");
             depth_stencil_to_create_info.n_layers               = 1;
             depth_stencil_to_create_info.n_samples              = n_samples;
             depth_stencil_to_create_info.type                   = RAL_TEXTURE_TYPE_2D;

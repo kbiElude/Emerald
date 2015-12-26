@@ -541,16 +541,17 @@ typedef int ral_texture_usage_bits;
 /** All info required to create a single texture instance */
 typedef struct
 {
-    unsigned int           base_mipmap_depth;
-    unsigned int           base_mipmap_height;
-    unsigned int           base_mipmap_width;
-    bool                   fixed_sample_locations;
-    ral_texture_format     format;
-    unsigned int           n_layers;
-    unsigned int           n_samples;
-    ral_texture_type       type;
-    ral_texture_usage_bits usage;
-    bool                   use_full_mipmap_chain;
+    unsigned int              base_mipmap_depth;
+    unsigned int              base_mipmap_height;
+    unsigned int              base_mipmap_width;
+    bool                      fixed_sample_locations;
+    ral_texture_format        format;
+    system_hashed_ansi_string name;
+    unsigned int              n_layers;
+    unsigned int              n_samples;
+    ral_texture_type          type;
+    ral_texture_usage_bits    usage;
+    bool                      use_full_mipmap_chain;
 } ral_texture_create_info;
 
 /** All info required to update a single texture mip-map */

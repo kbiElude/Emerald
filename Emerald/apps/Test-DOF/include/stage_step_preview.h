@@ -10,9 +10,11 @@
 #include "ogl/ogl_types.h"
 
 /** TODO */
-PUBLIC void stage_step_preview_deinit(ogl_context context);
+PUBLIC void stage_step_preview_deinit(ral_context context);
 
 /** TODO */
-PUBLIC void stage_step_preview_init(ogl_context context, ogl_pipeline pipeline, uint32_t stage_id);
+PUBLIC void stage_step_preview_init(ral_context  context,
+                                    ogl_pipeline pipeline,
+                                    uint32_t     stage_id);
 
 #endif /* STAGE_STEP_PREVIEW_H */

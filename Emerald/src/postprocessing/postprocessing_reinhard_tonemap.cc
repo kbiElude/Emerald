@@ -135,11 +135,12 @@ PRIVATE void _create_callback(ogl_context context,
     const system_hashed_ansi_string yxy_texture_name   = system_hashed_ansi_string_create_by_merging_two_strings("Reinhard tonemap [YXY texture] ",
                                                                                                                  system_hashed_ansi_string_get_buffer(data->name) );
 
-    yxy_texture_create_info.base_mipmap_depth = 1;
-    yxy_texture_create_info.base_mipmap_height = data->data_ptr->texture_height;
-    yxy_texture_create_info.base_mipmap_width  = data->data_ptr->texture_width;
+    yxy_texture_create_info.base_mipmap_depth      = 1;
+    yxy_texture_create_info.base_mipmap_height     = data->data_ptr->texture_height;
+    yxy_texture_create_info.base_mipmap_width      = data->data_ptr->texture_width;
     yxy_texture_create_info.fixed_sample_locations = false;
     yxy_texture_create_info.format                 = RAL_TEXTURE_FORMAT_RGB32_FLOAT;
+    yxy_texture_create_info.name                   = yxy_texture_name;
     yxy_texture_create_info.n_layers               = 1;
     yxy_texture_create_info.n_samples              = 1;
     yxy_texture_create_info.type                   = RAL_TEXTURE_TYPE_2D;
@@ -190,11 +191,12 @@ PRIVATE void _create_callback(ogl_context context,
         const system_hashed_ansi_string downsampled_yxy_texture_name   = system_hashed_ansi_string_create_by_merging_two_strings("Reinhard tonemap [downsampled YXY texture] ",
                                                                                                                                  system_hashed_ansi_string_get_buffer(data->name) );
 
-        downsampled_yxy_texture_create_info.base_mipmap_depth = 1;
-        downsampled_yxy_texture_create_info.base_mipmap_height = 64;
-        downsampled_yxy_texture_create_info.base_mipmap_width  = 64;
+        downsampled_yxy_texture_create_info.base_mipmap_depth      = 1;
+        downsampled_yxy_texture_create_info.base_mipmap_height     = 64;
+        downsampled_yxy_texture_create_info.base_mipmap_width      = 64;
         downsampled_yxy_texture_create_info.fixed_sample_locations = false;
         downsampled_yxy_texture_create_info.format                 = RAL_TEXTURE_FORMAT_RGB32_FLOAT;
+        downsampled_yxy_texture_create_info.name                   = downsampled_yxy_texture_name;
         downsampled_yxy_texture_create_info.n_layers               = 1;
         downsampled_yxy_texture_create_info.n_samples              = 1;
         downsampled_yxy_texture_create_info.type                   = RAL_TEXTURE_TYPE_2D;

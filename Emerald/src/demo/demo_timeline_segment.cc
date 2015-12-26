@@ -1578,6 +1578,7 @@ PRIVATE void _demo_timeline_segment_update_node_texture_memory_allocations(_demo
         new_texture_create_info.base_mipmap_width      = requested_texture_width;
         new_texture_create_info.fixed_sample_locations = false;
         new_texture_create_info.format                 = current_alloc_details.format;
+        new_texture_create_info.name                   = current_alloc_details.name;
         new_texture_create_info.n_layers               = current_alloc_details.n_layers;
         new_texture_create_info.n_samples              = current_alloc_details.n_samples;
         new_texture_create_info.type                   = current_alloc_details.type;

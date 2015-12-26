@@ -11,29 +11,55 @@
 #include "stage_step_preview.h"
 #include "ogl/ogl_context.h"
 #include "ogl/ogl_pipeline.h"
+#include "raGL/raGL_framebuffer.h"
+#include "ral/ral_context.h"
+#include "ral/ral_framebuffer.h"
 
 /** TODO */
-static void _stage_step_preview_execute(ogl_context context,
+static void _stage_step_preview_execute(ral_context context,
                                         uint32_t    frame_index,
                                         system_time time,
                                         const int*  rendering_area_px_topdown,
                                         void*       not_used)
 {
-    GLuint                            draw_fbo_id = 0;
-    const ogl_context_gl_entrypoints* entrypoints = NULL;
+    ral_framebuffer                   combination_fbo         = stage_step_dof_scheuermann_get_combination_fbo();
+    raGL_framebuffer                  combination_fbo_raGL    = NULL;
+    GLuint                            combination_fbo_raGL_id = 0;
+    ogl_context                       context_gl              = NULL;
+    ral_framebuffer                   draw_fbo                = NULL;
+    raGL_framebuffer                  draw_fbo_raGL           = NULL;
+    GLuint                            draw_fbo_raGL_id        = 0;
+    const ogl_context_gl_entrypoints* entrypoints             = NULL;
 
-    ogl_context_get_property(context,
-                             OGL_CONTEXT_PROPERTY_DEFAULT_FBO_ID,
-                            &draw_fbo_id);
-    ogl_context_get_property(context,
+    ral_context_get_property(context,
+                             RAL_CONTEXT_PROPERTY_BACKEND_CONTEXT,
+                            &context_gl);
+
+    ogl_context_get_property(context_gl,
+                             OGL_CONTEXT_PROPERTY_DEFAULT_FBO,
+                            &draw_fbo);
+    ogl_context_get_property(context_gl,
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
                             &entrypoints);
 
+
+    combination_fbo_raGL = ral_context_get_framebuffer_gl(context,
+                                                          combination_fbo);
+    draw_fbo_raGL        = ral_context_get_framebuffer_gl(context,
+                                                          draw_fbo);
+
+    raGL_framebuffer_get_property(combination_fbo_raGL,
+                                  RAGL_FRAMEBUFFER_PROPERTY_ID,
+                                  &combination_fbo_raGL_id);
+    raGL_framebuffer_get_property(draw_fbo_raGL,
+                                  RAGL_FRAMEBUFFER_PROPERTY_ID,
+                                 &draw_fbo_raGL_id);
+
     /* Blit our custom framebuffer's contents to the system one */
     entrypoints->pGLBindFramebuffer(GL_READ_FRAMEBUFFER,
-                                    stage_step_dof_scheuermann_get_combination_fbo_id() );
+                                    combination_fbo_raGL_id);
     entrypoints->pGLBindFramebuffer(GL_DRAW_FRAMEBUFFER,
-                                    draw_fbo_id);
+                                    draw_fbo_raGL_id);
     entrypoints->pGLBlitFramebuffer(0,    /* srcX0 */
                                     0,    /* srcY0 */
                                     main_get_window_width(),  /* srcX1 */
@@ -47,13 +73,13 @@ static void _stage_step_preview_execute(ogl_context context,
 }
 
 /* Please see header for specification */
-PUBLIC void stage_step_preview_deinit(ogl_context context)
+PUBLIC void stage_step_preview_deinit(ral_context context)
 {
     // Nothing to do 
 }
 
 /* Please see header for specification */
-PUBLIC void stage_step_preview_init(ogl_context  context,
+PUBLIC void stage_step_preview_init(ral_context  context,
                                     ogl_pipeline pipeline,
                                     uint32_t     stage_id)
 {
