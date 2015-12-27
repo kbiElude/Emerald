@@ -1303,6 +1303,7 @@ typedef struct
     PFNGLCULLFACEPROC                                    pGLCullFace;
     PFNGLDELETEBUFFERSPROC                               pGLDeleteBuffers;
     PFNGLDELETERENDERBUFFERSPROC                         pGLDeleteRenderbuffers;
+    PFNGLDELETETEXTURESPROC                              pGLDeleteTextures;
     PFNGLDELETEVERTEXARRAYSPROC                          pGLDeleteVertexArrays;
     PFNGLDEPTHFUNCPROC                                   pGLDepthFunc;
     PFNGLDEPTHMASKPROC                                   pGLDepthMask;
@@ -1337,6 +1338,7 @@ typedef struct
     PFNGLFRAMEBUFFERTEXTURELAYERPROC                     pGLFramebufferTextureLayer;
     PFNGLFRONTFACEPROC                                   pGLFrontFace;
     PFNGLGENERATEMIPMAPPROC                              pGLGenerateMipmap;
+    PFNGLGENTEXTURESPROC                                 pGLGenTextures;
     PFNGLGENVERTEXARRAYSPROC                             pGLGenVertexArrays;
     PFNGLGETACTIVEATOMICCOUNTERBUFFERIVPROC              pGLGetActiveAtomicCounterBufferiv;
     PFNGLGETBOOLEANI_VPROC                               pGLGetBooleani_v;

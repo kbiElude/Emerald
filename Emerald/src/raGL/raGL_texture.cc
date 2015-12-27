@@ -5,6 +5,7 @@
  */
 #include "shared.h"
 #include "ogl/ogl_context.h"
+#include "ogl/ogl_context_to_bindings.h"
 #include "raGL/raGL_texture.h"
 #include "raGL/raGL_utils.h"
 #include "ral/ral_texture.h"
@@ -79,9 +80,10 @@ PRIVATE RENDERING_CONTEXT_CALL void _raGL_texture_client_memory_sourced_update_r
     _raGL_texture_client_memory_sourced_update_rendering_thread_callback_arg* callback_arg_ptr          = (_raGL_texture_client_memory_sourced_update_rendering_thread_callback_arg*) user_arg;
     const ogl_context_gl_entrypoints_ext_direct_state_access*                 entrypoints_dsa_ptr       = NULL;
     const ogl_context_gl_entrypoints*                                         entrypoints_ptr           = NULL;
+    ogl_texture_data_format                                                   texture_data_format_gl    = OGL_TEXTURE_DATA_FORMAT_UNDEFINED;
     ral_texture_format                                                        texture_format            = RAL_TEXTURE_FORMAT_UNKNOWN;
     bool                                                                      texture_format_compressed = false;
-    GLenum                                                                    texture_format_gl         = GL_NONE;
+    ogl_texture_internalformat                                                texture_format_gl         = OGL_TEXTURE_INTERNALFORMAT_UNKNOWN;
     ral_texture_type                                                          texture_type              = RAL_TEXTURE_TYPE_UNKNOWN;
 
     ASSERT_DEBUG_SYNC(!callback_arg_ptr->texture_ptr->is_renderbuffer,
@@ -101,8 +103,8 @@ PRIVATE RENDERING_CONTEXT_CALL void _raGL_texture_client_memory_sourced_update_r
                             RAL_TEXTURE_PROPERTY_TYPE,
                            &texture_type);
 
-
-    texture_format_gl = raGL_utils_get_ogl_texture_internalformat_for_ral_texture_format(texture_format);
+    texture_data_format_gl = raGL_utils_get_ogl_data_format_for_ral_texture_format           (texture_format);
+    texture_format_gl      = raGL_utils_get_ogl_texture_internalformat_for_ral_texture_format(texture_format);
 
     ral_utils_get_texture_format_property(texture_format,
                                           RAL_TEXTURE_FORMAT_PROPERTY_IS_COMPRESSED,
@@ -133,6 +135,11 @@ PRIVATE RENDERING_CONTEXT_CALL void _raGL_texture_client_memory_sourced_update_r
                               update_info.data_row_alignment);
 
             continue;
+        }
+        else
+        {
+            entrypoints_ptr->pGLPixelStorei(GL_UNPACK_ALIGNMENT,
+                                            update_info.data_row_alignment);
         }
 
         /* Determine the texture target for the update operation */
@@ -195,7 +202,7 @@ PRIVATE RENDERING_CONTEXT_CALL void _raGL_texture_client_memory_sourced_update_r
                                                                  update_info.n_mipmap,
                                                                  update_info.region_start_offset[0],
                                                                  update_info.region_start_offset[1],
-                                                                 texture_format_gl,
+                                                                 texture_data_format_gl,
                                                                  texture_data_type_gl,
                                                                  update_info.data);
 
@@ -211,10 +218,9 @@ PRIVATE RENDERING_CONTEXT_CALL void _raGL_texture_client_memory_sourced_update_r
                                                                  update_info.n_layer,
                                                                  update_info.region_size[0],
                                                                  1, /* height */
-                                                                 texture_format_gl,
+                                                                 texture_data_format_gl,
                                                                  texture_data_type_gl,
                                                                  update_info.data);
-
                     break;
                 }
 
@@ -228,9 +234,20 @@ PRIVATE RENDERING_CONTEXT_CALL void _raGL_texture_client_memory_sourced_update_r
                                                                  update_info.region_start_offset[1],
                                                                  update_info.region_size[0],
                                                                  update_info.region_size[1],
-                                                                 texture_format_gl,
+                                                                 texture_data_format_gl,
                                                                  texture_data_type_gl,
                                                                  update_info.data);
+
+#if 0
+                    entrypoints_dsa_ptr->pGLTextureParameteriEXT(callback_arg_ptr->texture_ptr->id,
+                                                                 texture_target_gl,
+                                                                 GL_TEXTURE_MAG_FILTER,
+                                                                 GL_NEAREST);
+                    entrypoints_dsa_ptr->pGLTextureParameteriEXT(callback_arg_ptr->texture_ptr->id,
+                                                                 texture_target_gl,
+                                                                 GL_TEXTURE_MIN_FILTER,
+                                                                 GL_NEAREST);
+#endif
 
                     break;
                 }
@@ -246,7 +263,7 @@ PRIVATE RENDERING_CONTEXT_CALL void _raGL_texture_client_memory_sourced_update_r
                                                                  update_info.region_size[0],
                                                                  update_info.region_size[1],
                                                                  1, /* depth */
-                                                                 texture_format_gl,
+                                                                 texture_data_format_gl,
                                                                  texture_data_type_gl,
                                                                  update_info.data);
 
@@ -264,7 +281,7 @@ PRIVATE RENDERING_CONTEXT_CALL void _raGL_texture_client_memory_sourced_update_r
                                                                  update_info.region_size[0],
                                                                  update_info.region_size[1],
                                                                  update_info.region_size[2],
-                                                                 texture_format_gl,
+                                                                 texture_data_format_gl,
                                                                  texture_data_type_gl,
                                                                  update_info.data);
 
@@ -282,7 +299,7 @@ PRIVATE RENDERING_CONTEXT_CALL void _raGL_texture_client_memory_sourced_update_r
                                                                  update_info.region_size[0],
                                                                  update_info.region_size[1],
                                                                  1, /* depth */
-                                                                 texture_format_gl,
+                                                                 texture_data_format_gl,
                                                                  texture_data_type_gl,
                                                                  update_info.data);
 
@@ -321,7 +338,7 @@ PRIVATE RENDERING_CONTEXT_CALL void _raGL_texture_deinit_storage_rendering_callb
 
     if (texture_ptr->is_renderbuffer)
     {
-        LOG_INFO("[GL back-end]: Deleting texture storage (GL renderbuffer ID [%d])",
+        LOG_INFO("[GL back-end]: Deleting texture storage (GL renderbuffer ID [%u])",
              texture_ptr->id);
 
         entrypoints_ptr->pGLDeleteRenderbuffers(1,
@@ -329,7 +346,7 @@ PRIVATE RENDERING_CONTEXT_CALL void _raGL_texture_deinit_storage_rendering_callb
     } /* if (texture_ptr->is_renderbuffer) */
     else
     {
-        LOG_INFO("[GL back-end]: Deleting texture storage (GL texture ID [%d])",
+        LOG_INFO("[GL back-end]: Deleting texture storage (GL texture ID [%u])",
                  texture_ptr->id);
 
         entrypoints_ptr->pGLDeleteTextures(1,
@@ -443,7 +460,7 @@ PRIVATE RENDERING_CONTEXT_CALL void _raGL_texture_init_renderbuffer_storage(_raG
     entrypoints_ptr->pGLGenRenderbuffers(1,
                                         &texture_ptr->id);
 
-    LOG_INFO("[GL back-end]: Allocating new renderbuffer storage for GL renderbuffer ID [%d]",
+    LOG_INFO("[GL back-end]: Allocating new renderbuffer storage for GL renderbuffer ID [%u]",
              texture_ptr->id);
 
     texture_format_gl = raGL_utils_get_ogl_texture_internalformat_for_ral_texture_format(texture_format);
@@ -472,6 +489,7 @@ PRIVATE RENDERING_CONTEXT_CALL void _raGL_texture_init_texture_storage(_raGL_tex
 {
     const ogl_context_gl_entrypoints_ext_direct_state_access* entrypoints_dsa_ptr            = NULL;
     const ogl_context_gl_entrypoints*                         entrypoints_ptr                = NULL;
+    GLuint                                                    precall_bound_to_id            = 0;
     uint32_t                                                  texture_base_depth             = 0;
     uint32_t                                                  texture_base_height            = 0;
     uint32_t                                                  texture_base_width             = 0;
@@ -481,7 +499,9 @@ PRIVATE RENDERING_CONTEXT_CALL void _raGL_texture_init_texture_storage(_raGL_tex
     uint32_t                                                  texture_n_layers               = 0;
     uint32_t                                                  texture_n_mipmaps              = 0;
     uint32_t                                                  texture_n_samples              = 0;
+    GLenum                                                    texture_target                 = GL_NONE;
     ral_texture_type                                          texture_type                   = RAL_TEXTURE_TYPE_UNKNOWN;
+    ogl_context_to_bindings                                   to_bindings_cache              = NULL;
 
     ogl_context_get_property(texture_ptr->context,
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL_EXT_DIRECT_STATE_ACCESS,
@@ -489,7 +509,9 @@ PRIVATE RENDERING_CONTEXT_CALL void _raGL_texture_init_texture_storage(_raGL_tex
     ogl_context_get_property(texture_ptr->context,
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
                             &entrypoints_ptr);
-
+    ogl_context_get_property(texture_ptr->context,
+                             OGL_CONTEXT_PROPERTY_TO_BINDINGS,
+                            &to_bindings_cache);
     ral_texture_get_property(texture_ptr->texture,
                              RAL_TEXTURE_PROPERTY_FIXED_SAMPLE_LOCATIONS,
                             &texture_fixed_sample_locations);
@@ -530,7 +552,7 @@ PRIVATE RENDERING_CONTEXT_CALL void _raGL_texture_init_texture_storage(_raGL_tex
     entrypoints_ptr->pGLGenTextures(1,
                                    &texture_ptr->id);
 
-    LOG_INFO("[GL back-end]: Allocating new texture storage for GL texture ID [%d]",
+    LOG_INFO("[GL back-end]: Allocating new texture storage for GL texture ID [%u]",
              texture_ptr->id);
 
     switch (texture_type)

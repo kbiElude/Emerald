@@ -518,6 +518,62 @@ PRIVATE void _ral_context_delete_textures_from_texture_hashmaps(_ral_context* co
 }
 
 /** TODO */
+PRIVATE void _ral_context_notify_backend_about_new_object(ral_context             context,
+                                                          void*                   result_object,
+                                                          ral_context_object_type object_type)
+{
+    ral_context_callback_objects_created_callback_arg callback_arg;
+    _ral_context*                                     context_ptr  = (_ral_context*) context;
+
+    callback_arg.created_objects = &result_object;
+    callback_arg.object_type     = object_type;
+    callback_arg.n_objects       = 1;
+
+    switch (object_type)
+    {
+        case RAL_CONTEXT_OBJECT_TYPE_BUFFER:
+        {
+            system_callback_manager_call_back(context_ptr->callback_manager,
+                                              RAL_CONTEXT_CALLBACK_ID_BUFFERS_CREATED,
+                                             &callback_arg);
+
+            break;
+        }
+
+        case RAL_CONTEXT_OBJECT_TYPE_FRAMEBUFFER:
+        {
+            system_callback_manager_call_back(context_ptr->callback_manager,
+                                              RAL_CONTEXT_CALLBACK_ID_FRAMEBUFFERS_CREATED,
+                                             &callback_arg);
+
+            break;
+        }
+
+        case RAL_CONTEXT_OBJECT_TYPE_SAMPLER:
+        {
+            system_callback_manager_call_back(context_ptr->callback_manager,
+                                              RAL_CONTEXT_CALLBACK_ID_SAMPLERS_CREATED,
+                                             &callback_arg);
+
+            break;
+        }
+
+        case RAL_CONTEXT_OBJECT_TYPE_TEXTURE:
+        case RAL_CONTEXT_OBJECT_TYPE_TEXTURE_FROM_FILE_NAME:
+        case RAL_CONTEXT_OBJECT_TYPE_TEXTURE_FROM_GFX_IMAGE:
+        {
+            callback_arg.object_type = RAL_CONTEXT_OBJECT_TYPE_TEXTURE;
+
+            system_callback_manager_call_back(context_ptr->callback_manager,
+                                              RAL_CONTEXT_CALLBACK_ID_TEXTURES_CREATED,
+                                             &callback_arg);
+
+            break;
+        }
+    } /* switch (object_type) */
+}
+
+/** TODO */
 PRIVATE void _ral_context_release(void* context)
 {
     _ral_context* context_ptr = (_ral_context*) context;
@@ -751,7 +807,8 @@ PRIVATE bool _ral_context_create_objects(_ral_context*           context_ptr,
                 result_objects_ptr[n_object] = ral_texture_create_from_file_name((ral_context) context_ptr,
                                                                                  system_hashed_ansi_string_create(temp),
                                                                                  *(system_hashed_ansi_string*) (object_create_info_ptrs + n_object),
-                                                                                 RAL_TEXTURE_USAGE_IMAGE_LOAD_OPS_BIT | RAL_TEXTURE_USAGE_SAMPLED_BIT);
+                                                                                 RAL_TEXTURE_USAGE_IMAGE_LOAD_OPS_BIT | RAL_TEXTURE_USAGE_SAMPLED_BIT,
+                                                                                 _ral_context_notify_backend_about_new_object);
 
                 break;
             }
@@ -762,7 +819,8 @@ PRIVATE bool _ral_context_create_objects(_ral_context*           context_ptr,
                 result_objects_ptr[n_object] = ral_texture_create_from_gfx_image((ral_context) context_ptr,
                                                                                  system_hashed_ansi_string_create(temp),
                                                                                  *(gfx_image*) (object_create_info_ptrs + n_object),
-                                                                                 RAL_TEXTURE_USAGE_IMAGE_LOAD_OPS_BIT | RAL_TEXTURE_USAGE_SAMPLED_BIT);
+                                                                                 RAL_TEXTURE_USAGE_IMAGE_LOAD_OPS_BIT | RAL_TEXTURE_USAGE_SAMPLED_BIT,
+                                                                                 _ral_context_notify_backend_about_new_object);
 
                 break;
             }
@@ -785,57 +843,16 @@ PRIVATE bool _ral_context_create_objects(_ral_context*           context_ptr,
 
             goto end;
         }
-    } /* for (all framebuffers to create) */
 
-    /* Notify the subscribers */
-    ral_context_callback_objects_created_callback_arg callback_arg;
-
-    callback_arg.created_objects = result_objects_ptr;
-    callback_arg.object_type     = object_type;
-    callback_arg.n_objects       = n_objects;
-
-    switch (object_type)
-    {
-        case RAL_CONTEXT_OBJECT_TYPE_BUFFER:
+        /* Notify the subscribers, if needed */
+        if (object_type != RAL_CONTEXT_OBJECT_TYPE_TEXTURE_FROM_FILE_NAME &&
+            object_type != RAL_CONTEXT_OBJECT_TYPE_TEXTURE_FROM_GFX_IMAGE)
         {
-            system_callback_manager_call_back(context_ptr->callback_manager,
-                                              RAL_CONTEXT_CALLBACK_ID_BUFFERS_CREATED,
-                                             &callback_arg);
-
-            break;
+            _ral_context_notify_backend_about_new_object((ral_context) context_ptr,
+                                                         result_objects_ptr[n_object],
+                                                         object_type);
         }
-
-        case RAL_CONTEXT_OBJECT_TYPE_FRAMEBUFFER:
-        {
-            system_callback_manager_call_back(context_ptr->callback_manager,
-                                              RAL_CONTEXT_CALLBACK_ID_FRAMEBUFFERS_CREATED,
-                                             &callback_arg);
-
-            break;
-        }
-
-        case RAL_CONTEXT_OBJECT_TYPE_SAMPLER:
-        {
-            system_callback_manager_call_back(context_ptr->callback_manager,
-                                              RAL_CONTEXT_CALLBACK_ID_SAMPLERS_CREATED,
-                                             &callback_arg);
-
-            break;
-        }
-
-        case RAL_CONTEXT_OBJECT_TYPE_TEXTURE:
-        case RAL_CONTEXT_OBJECT_TYPE_TEXTURE_FROM_FILE_NAME:
-        case RAL_CONTEXT_OBJECT_TYPE_TEXTURE_FROM_GFX_IMAGE:
-        {
-            callback_arg.object_type = RAL_CONTEXT_OBJECT_TYPE_TEXTURE;
-
-            system_callback_manager_call_back(context_ptr->callback_manager,
-                                              RAL_CONTEXT_CALLBACK_ID_TEXTURES_CREATED,
-                                             &callback_arg);
-
-            break;
-        }
-    } /* switch (object_type) */
+    } /* for (all objects to create) */
 
     /* Store the new objects */
     system_critical_section_enter(object_storage_cs);

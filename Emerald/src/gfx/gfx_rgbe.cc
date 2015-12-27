@@ -196,7 +196,6 @@ PRIVATE gfx_image _gfx_rgbe_shared_load_handler(system_hashed_ansi_string name,
     uint32_t         data_buffer_size   = 0;
     unsigned char*   data_ptr           = NULL;
     char*            data_ptr_traveller = NULL;
-    fpos_t           file_size;
     int              height             = 0;
     const char*      magic_header       = "#?RADIANCE";
     gfx_image        result             = NULL;

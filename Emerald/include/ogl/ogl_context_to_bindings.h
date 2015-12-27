@@ -47,6 +47,16 @@ PUBLIC void ogl_context_to_bindings_init(ogl_context_to_bindings                
                                          const ogl_context_gl_entrypoints_private* entrypoints_private_ptr);
 
 /** TODO */
+PUBLIC void ogl_context_to_bindings_on_textures_created(ogl_context_to_bindings bindings,
+                                                        uint32_t                n_texture_ids,
+                                                        GLuint*                 texture_ids);
+
+/** TODO */
+PUBLIC void ogl_context_to_bindings_on_textures_deleted(ogl_context_to_bindings bindings,
+                                                        uint32_t                n_texture_ids,
+                                                        const GLuint*           texture_ids);
+
+/** TODO */
 PUBLIC void ogl_context_to_bindings_release(ogl_context_to_bindings bindings);
 
 /** TODO */

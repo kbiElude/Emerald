@@ -29,23 +29,34 @@ typedef enum
 } _ogl_context_to_binding_target;
 
 /** TODO */
-typedef struct _ogl_context_to_bindings_to_info
+typedef struct _ogl_context_to_bindings_binding_info
 {
     GLuint texture_context;
     GLuint texture_local;
 
-    _ogl_context_to_bindings_to_info()
+    _ogl_context_to_bindings_binding_info()
     {
         texture_context = 0;
         texture_local   = 0;
     }
-} _ogl_context_to_bindings_to_info;
+} _ogl_context_to_bindings_binding_info;
+
+/** TODO */
+typedef struct _ogl_context_to_bindings_texture_metadata
+{
+    bool has_been_bound;
+
+    _ogl_context_to_bindings_texture_metadata()
+    {
+        has_been_bound = false;
+    }
+} _ogl_context_to_bindings_texture_metadata;
 
 /** TODO */
 typedef struct _ogl_context_to_bindings_texture_unit
 {
-    _ogl_context_to_bindings_to_info bindings[BINDING_TARGET_COUNT];
-    bool                             dirty   [BINDING_TARGET_COUNT];
+    _ogl_context_to_bindings_binding_info bindings[BINDING_TARGET_COUNT];
+    bool                                  dirty   [BINDING_TARGET_COUNT];
 
     _ogl_context_to_bindings_texture_unit()
     {
@@ -58,6 +69,8 @@ typedef struct _ogl_context_to_bindings_texture_unit
 /** TODO */
 typedef struct _ogl_context_to_bindings
 {
+    system_hash64map texture_id_to_texture_metadata_map;
+
     /* Contains exactly GL_MAX_TEXTURE_IMAGE_UNITS items */
     _ogl_context_to_bindings_texture_unit* texture_units;
 
@@ -72,6 +85,51 @@ typedef struct _ogl_context_to_bindings
     bool        is_arb_multi_bind_supported;
 
     const ogl_context_gl_entrypoints_private* entrypoints_private_ptr;
+
+    _ogl_context_to_bindings()
+    {
+        context                            = NULL;
+        entrypoints_private_ptr            = NULL;
+        gl_max_texture_image_units_value   = 0;
+        is_arb_multi_bind_supported        = false;
+        sync_data_textures                 = NULL;
+        texture_id_to_texture_metadata_map = NULL;
+        texture_units                      = NULL;
+    }
+
+    ~_ogl_context_to_bindings()
+    {
+        if (texture_id_to_texture_metadata_map != NULL)
+        {
+            uint32_t n_map_items = 0;
+
+            system_hash64map_get_property(texture_id_to_texture_metadata_map,
+                                          SYSTEM_HASH64MAP_PROPERTY_N_ELEMENTS,
+                                         &n_map_items);
+
+            for (uint32_t n_map_item = 0;
+                          n_map_item < n_map_items;
+                        ++n_map_item)
+            {
+                system_hash64                              item_hash            = 0;
+                _ogl_context_to_bindings_texture_metadata* texture_metadata_ptr = NULL;
+
+                if (!system_hash64map_get_element_at(texture_id_to_texture_metadata_map,
+                                                     n_map_item,
+                                                    &texture_metadata_ptr,
+                                                    &item_hash) )
+                {
+                    continue;
+                }
+
+                delete texture_metadata_ptr;
+                texture_metadata_ptr = NULL;
+            }
+
+            system_hash64map_release(texture_id_to_texture_metadata_map);
+            texture_id_to_texture_metadata_map = NULL;
+        }
+    }
 } _ogl_context_to_bindings;
 
 
@@ -168,7 +226,7 @@ PRIVATE void _ogl_context_to_bindings_sync_multi_bind_process(ogl_context_to_bin
 
             if (texture_unit_ptr->dirty[binding_target])
             {
-                _ogl_context_to_bindings_to_info* binding_ptr = texture_unit_ptr->bindings + binding_target;
+                _ogl_context_to_bindings_binding_info* binding_ptr = texture_unit_ptr->bindings + binding_target;
 
                 if (binding_ptr->texture_context != binding_ptr->texture_local)
                 {
@@ -228,7 +286,7 @@ PRIVATE void _ogl_context_to_bindings_sync_non_multi_bind_process(ogl_context_to
 
             if (texture_unit_ptr->dirty[binding_target])
             {
-                _ogl_context_to_bindings_to_info* binding_ptr = texture_unit_ptr->bindings + binding_target;
+                _ogl_context_to_bindings_binding_info* binding_ptr = texture_unit_ptr->bindings + binding_target;
 
                 if (binding_ptr->texture_context != binding_ptr->texture_local)
                 {
@@ -258,16 +316,17 @@ PUBLIC ogl_context_to_bindings ogl_context_to_bindings_create(ogl_context contex
 
     if (new_bindings != NULL)
     {
-        new_bindings->context = context;
+        new_bindings->context                            = context;
+        new_bindings->texture_id_to_texture_metadata_map = system_hash64map_create(sizeof(_ogl_context_to_bindings_texture_metadata*) );
     } /* if (new_bindings != NULL) */
 
     return (ogl_context_to_bindings) new_bindings;
 }
 
 /** Please see header for spec */
-PUBLIC GLuint ogl_context_to_bindings_get_bound_texture(const ogl_context_to_bindings to_bindings,
-                                                        GLuint                        texture_unit,
-                                                        GLenum                        target)
+PUBLIC GLuint ogl_context_to_bindings_get_bound_texture_id(const ogl_context_to_bindings to_bindings,
+                                                           GLuint                        texture_unit,
+                                                           GLenum                        target)
 {
     GLuint                          result          = 0;
     const _ogl_context_to_bindings* to_bindings_ptr = (const _ogl_context_to_bindings*) to_bindings;
@@ -386,6 +445,77 @@ PUBLIC void ogl_context_to_bindings_init(ogl_context_to_bindings                
 }
 
 /** Please see header for spec */
+PUBLIC void ogl_context_to_bindings_on_textures_created(ogl_context_to_bindings bindings,
+                                                        uint32_t                n_texture_ids,
+                                                        GLuint*                 texture_ids)
+{
+    _ogl_context_to_bindings* to_bindings_ptr = (_ogl_context_to_bindings*) bindings;
+
+    for (uint32_t n_texture_id = 0;
+                  n_texture_id < n_texture_ids;
+                ++n_texture_id)
+    {
+        _ogl_context_to_bindings_texture_metadata* new_metadata_ptr = NULL;
+
+        ASSERT_DEBUG_SYNC(!system_hash64map_contains(to_bindings_ptr->texture_id_to_texture_metadata_map,
+                                                     (system_hash64) texture_ids[n_texture_id]),
+                          "Specified texture ID is already associated with a metadata descriptor");
+
+        new_metadata_ptr = new (std::nothrow) _ogl_context_to_bindings_texture_metadata;
+
+        ASSERT_ALWAYS_SYNC(new_metadata_ptr != NULL,
+                           "Out of memory");
+
+        system_hash64map_insert(to_bindings_ptr->texture_id_to_texture_metadata_map,
+                                (system_hash64) texture_ids[n_texture_id],
+                                new_metadata_ptr,
+                                NULL, /* callback */
+                                NULL  /* callback_argument */);
+    } /* for (all specified texture IDs) */
+}
+
+/** Please see header for spec */
+PUBLIC void ogl_context_to_bindings_on_textures_deleted(ogl_context_to_bindings bindings,
+                                                        uint32_t                n_texture_ids,
+                                                        const GLuint*           texture_ids)
+{
+    _ogl_context_to_bindings* to_bindings_ptr = (_ogl_context_to_bindings*) bindings;
+
+    for (uint32_t n_texture_id = 0;
+                  n_texture_id < n_texture_ids;
+                ++n_texture_id)
+    {
+        _ogl_context_to_bindings_texture_metadata* texture_metadata_ptr = NULL;
+
+        if (texture_ids[n_texture_id] == 0)
+        {
+            continue;
+        }
+
+        ASSERT_DEBUG_SYNC(system_hash64map_contains(to_bindings_ptr->texture_id_to_texture_metadata_map,
+                                                    (system_hash64) texture_ids[n_texture_id]),
+                          "Specified texture ID does not have an associated metadata descriptor");
+
+        if (!system_hash64map_get(to_bindings_ptr->texture_id_to_texture_metadata_map,
+                                  (system_hash64) texture_ids[n_texture_id],
+                                 &texture_metadata_ptr) )
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Could not retrieve texture metadata descriptor for texture ID [%u]",
+                              texture_ids[n_texture_id])
+
+            continue;
+        }
+
+        system_hash64map_remove(to_bindings_ptr->texture_id_to_texture_metadata_map,
+                                (system_hash64) texture_ids[n_texture_id]);
+
+        delete texture_metadata_ptr;
+        texture_metadata_ptr = NULL;
+    } /* for (all specified texture IDs) */
+}
+
+/** Please see header for spec */
 PUBLIC void ogl_context_to_bindings_release(ogl_context_to_bindings bindings)
 {
     _ogl_context_to_bindings* bindings_ptr = (_ogl_context_to_bindings*) bindings;
@@ -447,52 +577,47 @@ PUBLIC void ogl_context_to_bindings_set_binding(ogl_context_to_bindings bindings
 
     if (texture_unit < bindings_ptr->gl_max_texture_image_units_value)
     {
-        _ogl_context_to_binding_target    local_target = _ogl_context_to_bindings_get_ogl_context_to_binding_target_from_glenum(target);
-        _ogl_context_to_bindings_to_info* to_ptr       = bindings_ptr->texture_units[texture_unit].bindings + local_target;
+        _ogl_context_to_binding_target         local_target     = _ogl_context_to_bindings_get_ogl_context_to_binding_target_from_glenum(target);
+        _ogl_context_to_bindings_binding_info* binding_info_ptr = bindings_ptr->texture_units[texture_unit].bindings + local_target;
 
-        if (to_ptr->texture_local != texture)
+        if (binding_info_ptr->texture_local != texture)
         {
             bindings_ptr->texture_units[texture_unit].dirty[local_target] = true;
-            to_ptr->texture_local                                         = texture;
+            binding_info_ptr->texture_local                               = texture;
 
             /* NOTE: GL_ARB_multi_bind cannot be used against texture objects, to which data storage has
              *       not been configured. Verify the object has been bound to a texture target - if not,
              *       bind it *now*
              */
-#if 0
-            TODO: is this still important????
-
             if (texture != NULL)
             {
-                bool texture_bound = false;
+                _ogl_context_to_bindings_texture_metadata* texture_metadata_ptr = NULL;
 
-                ogl_texture_get_property(texture,
-                                         OGL_TEXTURE_PROPERTY_HAS_BEEN_BOUND,
-                                        &texture_bound);
-
-                if (!texture_bound)
+                if (!system_hash64map_get(bindings_ptr->texture_id_to_texture_metadata_map,
+                                          (system_hash64) texture,
+                                         &texture_metadata_ptr) )
                 {
-                    GLuint texture_id = 0;
+                    ASSERT_DEBUG_SYNC(false,
+                                      "No texture metadata associated with texture id [%u]",
+                                      texture);
 
-                    ogl_texture_get_property(texture,
-                                             OGL_TEXTURE_PROPERTY_ID,
-                                            &texture_id);
+                    goto end;
+                }
 
+                if (!texture_metadata_ptr->has_been_bound)
+                {
                     bindings_ptr->entrypoints_private_ptr->pGLBindMultiTextureEXT(GL_TEXTURE0 + texture_unit,
                                                                                   target,
-                                                                                  texture_id);
+                                                                                  texture);
 
-                    to_ptr->texture_context = texture;
-                    texture_bound           = true;
-
-                    ogl_texture_set_property(texture,
-                                             OGL_TEXTURE_PROPERTY_HAS_BEEN_BOUND,
-                                            &texture_bound);
+                    texture_metadata_ptr->has_been_bound = true;
                 }
             } /* if (texture != NULL) */
-#endif
-        }
+        } /* if (binding_info_ptr->texture_local != texture) */
     } /* if (texture_unit < bindings_ptr->gl_max_texture_image_units_value) */
+
+end:
+    ;
 }
 
 /** Please see header for spec */

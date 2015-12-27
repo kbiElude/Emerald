@@ -2254,7 +2254,7 @@ PRIVATE void _ogl_context_retrieve_GL_function_pointers(_ogl_context* context_pt
         {&context_ptr->entry_points_private.pGLDeleteRenderbuffers,                         "glDeleteRenderbuffers"},
         {&context_ptr->entry_points_gl.pGLDeleteSamplers,                                   "glDeleteSamplers"},
         {&context_ptr->entry_points_gl.pGLDeleteShader,                                     "glDeleteShader"},
-        {&context_ptr->entry_points_gl.pGLDeleteTextures,                                   "glDeleteTextures"},
+        {&context_ptr->entry_points_private.pGLDeleteTextures,                              "glDeleteTextures"},
         {&context_ptr->entry_points_gl.pGLDeleteTransformFeedbacks,                         "glDeleteTransformFeedbacks"},
         {&context_ptr->entry_points_gl.pGLDeleteQueries,                                    "glDeleteQueries"},
         {&context_ptr->entry_points_private.pGLDeleteVertexArrays,                          "glDeleteVertexArrays"},
@@ -2303,7 +2303,7 @@ PRIVATE void _ogl_context_retrieve_GL_function_pointers(_ogl_context* context_pt
         {&context_ptr->entry_points_gl.pGLGenProgramPipelines,                              "glGenProgramPipelines"},
         {&context_ptr->entry_points_gl.pGLGenRenderbuffers,                                 "glGenRenderbuffers"},
         {&context_ptr->entry_points_gl.pGLGenSamplers,                                      "glGenSamplers"},
-        {&context_ptr->entry_points_gl.pGLGenTextures,                                      "glGenTextures"},
+        {&context_ptr->entry_points_private.pGLGenTextures,                                 "glGenTextures"},
         {&context_ptr->entry_points_gl.pGLGenTransformFeedbacks,                            "glGenTransformFeedbacks"},
         {&context_ptr->entry_points_gl.pGLGenQueries,                                       "glGenQueries"},
         {&context_ptr->entry_points_private.pGLGenVertexArrays,                             "glGenVertexArrays"},
@@ -2608,6 +2608,7 @@ PRIVATE void _ogl_context_retrieve_GL_function_pointers(_ogl_context* context_pt
     context_ptr->entry_points_gl.pGLCullFace                                    = ogl_context_wrappers_glCullFace;
     context_ptr->entry_points_gl.pGLDeleteBuffers                               = ogl_context_wrappers_glDeleteBuffers;
     context_ptr->entry_points_gl.pGLDeleteRenderbuffers                         = ogl_context_wrappers_glDeleteRenderbuffers;
+    context_ptr->entry_points_gl.pGLDeleteTextures                              = ogl_context_wrappers_glDeleteTextures;
     context_ptr->entry_points_gl.pGLDeleteVertexArrays                          = ogl_context_wrappers_glDeleteVertexArrays;
     context_ptr->entry_points_gl.pGLDepthFunc                                   = ogl_context_wrappers_glDepthFunc;
     context_ptr->entry_points_gl.pGLDepthMask                                   = ogl_context_wrappers_glDepthMask;
@@ -2642,6 +2643,7 @@ PRIVATE void _ogl_context_retrieve_GL_function_pointers(_ogl_context* context_pt
     context_ptr->entry_points_gl.pGLFramebufferTextureLayer                     = ogl_context_wrappers_glFramebufferTextureLayer;
     context_ptr->entry_points_gl.pGLFrontFace                                   = ogl_context_wrappers_glFrontFace;
     context_ptr->entry_points_gl.pGLGenerateMipmap                              = ogl_context_wrappers_glGenerateMipmap;
+    context_ptr->entry_points_gl.pGLGenTextures                                 = ogl_context_wrappers_glGenTextures;
     context_ptr->entry_points_gl.pGLGenVertexArrays                             = ogl_context_wrappers_glGenVertexArrays;
     context_ptr->entry_points_gl.pGLGetActiveAtomicCounterBufferiv              = ogl_context_wrappers_glGetActiveAtomicCounterBufferiv;
     context_ptr->entry_points_gl.pGLGetBooleani_v                               = ogl_context_wrappers_glGetBooleani_v;

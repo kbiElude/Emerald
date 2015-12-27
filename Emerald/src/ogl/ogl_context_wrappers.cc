@@ -1472,7 +1472,27 @@ PUBLIC void APIENTRY ogl_context_wrappers_glDeleteRenderbuffers(GLsizei       n,
         }
     }
 
-    _private_entrypoints_ptr->pGLDeleteRenderbuffers(n, renderbuffers);
+    _private_entrypoints_ptr->pGLDeleteRenderbuffers(n,
+                                                     renderbuffers);
+}
+
+/** Please see header for spec */
+PUBLIC void APIENTRY ogl_context_wrappers_glDeleteTextures(GLsizei       n,
+                                                           const GLuint* textures)
+{
+    ogl_context             context             = ogl_context_get_current_context();
+    ogl_context_to_bindings context_to_bindings = NULL;
+
+    ogl_context_get_property(context,
+                             OGL_CONTEXT_PROPERTY_TO_BINDINGS,
+                            &context_to_bindings);
+
+    ogl_context_to_bindings_on_textures_deleted(context_to_bindings,
+                                                n,
+                                                textures);
+
+    _private_entrypoints_ptr->pGLDeleteTextures(n,
+                                                textures);
 }
 
 /** Please see header for spec */
@@ -2869,6 +2889,26 @@ PUBLIC void APIENTRY ogl_context_wrappers_glGenerateTextureMipmapEXT(GLuint text
 
     _private_entrypoints_ptr->pGLGenerateTextureMipmapEXT(texture,
                                                           target);
+}
+
+/** Please see header for spec */
+PUBLIC void APIENTRY ogl_context_wrappers_glGenTextures(GLsizei n,
+                                                        GLuint* textures)
+{
+    ogl_context             context             = ogl_context_get_current_context();
+    ogl_context_to_bindings context_to_bindings = NULL;
+
+    ogl_context_get_property(context,
+                             OGL_CONTEXT_PROPERTY_TO_BINDINGS,
+                            &context_to_bindings);
+
+    _private_entrypoints_ptr->pGLGenTextures(n,
+                                             textures);
+
+    ogl_context_to_bindings_on_textures_created(context_to_bindings,
+                                                n,
+                                                textures);
+
 }
 
 /** Please see header for spec */

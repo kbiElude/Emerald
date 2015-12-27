@@ -594,7 +594,7 @@ PUBLIC EMERALD_API bool system_window_add_callback_func(system_window           
                                                                n_element,
                                                               &existing_descriptor_ptr) )
                     {
-                        if (existing_descriptor_ptr->priority < priority)
+                        if (existing_descriptor_ptr->priority > priority)
                         {
                             insertion_index = n_element;
 

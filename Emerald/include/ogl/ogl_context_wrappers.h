@@ -310,6 +310,10 @@ PUBLIC void APIENTRY ogl_context_wrappers_glDeleteRenderbuffers(GLsizei       n,
                                                                 const GLuint* renderbuffers);
 
 /** TODO */
+PUBLIC void APIENTRY ogl_context_wrappers_glDeleteTextures(GLsizei       n,
+                                                           const GLuint* textures);
+
+/** TODO */
 PUBLIC void APIENTRY ogl_context_wrappers_glDeleteVertexArrays(GLsizei       n,
                                                                const GLuint* arrays);
 
@@ -492,6 +496,10 @@ PUBLIC void APIENTRY ogl_context_wrappers_glFrontFace(GLenum mode);
 
 /** TODO */
 PUBLIC void APIENTRY ogl_context_wrappers_glGenerateMipmap(GLenum target);
+
+/** TODO */
+PUBLIC void APIENTRY ogl_context_wrappers_glGenTextures(GLsizei n,
+                                                        GLuint* textures);
 
 /** TODO */
 PUBLIC void APIENTRY ogl_context_wrappers_glGenVertexArrays(GLsizei n,

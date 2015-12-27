@@ -418,17 +418,17 @@ PUBLIC ogl_flyby ogl_flyby_create(ogl_context context)
                                         (void*) _ogl_flyby_key_up_callback,
                                         new_flyby_ptr);
         system_window_add_callback_func(context_window,
-                                        SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_NORMAL,
+                                        SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_LOW,
                                         SYSTEM_WINDOW_CALLBACK_FUNC_LEFT_BUTTON_DOWN,
                                         (void*) _ogl_flyby_lbd,
                                         new_flyby_ptr);
         system_window_add_callback_func(context_window,
-                                        SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_NORMAL,
+                                        SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_LOW,
                                         SYSTEM_WINDOW_CALLBACK_FUNC_LEFT_BUTTON_UP,
                                         (void*) _ogl_flyby_lbu,
                                         new_flyby_ptr);
         system_window_add_callback_func(context_window,
-                                        SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_NORMAL,
+                                        SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_LOW,
                                         SYSTEM_WINDOW_CALLBACK_FUNC_MOUSE_MOVE,
                                         (void*) _ogl_flyby_mouse_move,
                                         new_flyby_ptr);

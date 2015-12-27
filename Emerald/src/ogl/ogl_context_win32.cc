@@ -393,11 +393,12 @@ PUBLIC void ogl_context_win32_init(ogl_context                     context,
                                        WGL_CONTEXT_MINOR_VERSION_ARB, context_minor_version,
                                        WGL_CONTEXT_FLAGS_ARB,
     #ifdef _DEBUG
-                                                                      WGL_CONTEXT_DEBUG_BIT_ARB,
+                                                                      WGL_CONTEXT_DEBUG_BIT_ARB
     #else
-                                                                      0,
+                                                                      0
     #endif
-                                      WGL_CONTEXT_FLAGS_ARB,          WGL_CONTEXT_CORE_PROFILE_BIT_ARB,
+                                                                    | WGL_CONTEXT_FORWARD_COMPATIBLE_BIT_ARB,
+                                      WGL_CONTEXT_PROFILE_MASK_ARB,   WGL_CONTEXT_CORE_PROFILE_BIT_ARB,
                                       context_profile_mask_key,       context_profile_mask_value,
                                       0
                                       };

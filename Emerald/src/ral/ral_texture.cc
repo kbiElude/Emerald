@@ -512,10 +512,11 @@ end:
 }
 
 /** Please see header for specification */
-PUBLIC ral_texture ral_texture_create_from_file_name(ral_context               context,
-                                                     system_hashed_ansi_string name,
-                                                     system_hashed_ansi_string file_name,
-                                                     ral_texture_usage_bits    usage)
+PUBLIC ral_texture ral_texture_create_from_file_name(ral_context                                  context,
+                                                     system_hashed_ansi_string                    name,
+                                                     system_hashed_ansi_string                    file_name,
+                                                     ral_texture_usage_bits                       usage,
+                                                     PFNRALCONTEXTNOTIFYBACKENDABOUTNEWOBJECTPROC pfn_notify_backend_about_new_object_proc)
 {
     gfx_image   new_gfx_image = NULL;
     ral_texture result        = NULL;
@@ -557,7 +558,8 @@ PUBLIC ral_texture ral_texture_create_from_file_name(ral_context               c
     result = ral_texture_create_from_gfx_image(context,
                                                name,
                                                new_gfx_image,
-                                               usage);
+                                               usage,
+                                               pfn_notify_backend_about_new_object_proc);
 
     if (result == NULL)
     {
@@ -581,10 +583,11 @@ end:
 }
 
 /** Please see header for specification */
-PUBLIC ral_texture ral_texture_create_from_gfx_image(ral_context               context,
-                                                     system_hashed_ansi_string name,
-                                                     gfx_image                 image,
-                                                     ral_texture_usage_bits    usage)
+PUBLIC ral_texture ral_texture_create_from_gfx_image(ral_context                                  context,
+                                                     system_hashed_ansi_string                    name,
+                                                     gfx_image                                    image,
+                                                     ral_texture_usage_bits                       usage,
+                                                     PFNRALCONTEXTNOTIFYBACKENDABOUTNEWOBJECTPROC pfn_notify_backend_about_new_object_proc)
 {
     system_hashed_ansi_string                      base_image_file_name    = NULL;
     unsigned int                                   base_image_height       = 0;
@@ -735,6 +738,10 @@ PUBLIC ral_texture ral_texture_create_from_gfx_image(ral_context               c
         mipmap_update_info_ptrs[n_mipmap].region_start_offset[1] = 0;
         mipmap_update_info_ptrs[n_mipmap].region_start_offset[2] = 0;
     } /* for (all mipmap descriptors) */
+
+    pfn_notify_backend_about_new_object_proc(context,
+                                             result,
+                                             RAL_CONTEXT_OBJECT_TYPE_TEXTURE);
 
     if (!ral_texture_set_mipmap_data_from_client_memory(result,
                                                         image_n_mipmaps,

@@ -115,6 +115,12 @@ typedef struct
 
 } ral_context_callback_objects_deleted_callback_arg;
 
+
+typedef void (*PFNRALCONTEXTNOTIFYBACKENDABOUTNEWOBJECTPROC)(ral_context             context,
+                                                             void*                   result_object,
+                                                             ral_context_object_type object_type);
+
+
 /** TODO */
 PUBLIC ral_context ral_context_create(system_hashed_ansi_string name,
                                       system_window             window);

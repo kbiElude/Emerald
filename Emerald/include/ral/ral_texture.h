@@ -3,6 +3,7 @@
 
 #include "gfx/gfx_image.h"
 #include "gfx/gfx_types.h"
+#include "ral/ral_context.h"
 #include "ral/ral_types.h"
 #include "system/system_types.h"
 
@@ -95,19 +96,21 @@ PUBLIC ral_texture ral_texture_create(ral_context                    context,
  *
  *  NOTE: Internal use only. An equivalent of this function is exposed by ral_context.
  **/
-PUBLIC ral_texture ral_texture_create_from_file_name(ral_context               context,
-                                                     system_hashed_ansi_string name,
-                                                     system_hashed_ansi_string file_name,
-                                                     ral_texture_usage_bits    usage);
+PUBLIC ral_texture ral_texture_create_from_file_name(ral_context                                  context,
+                                                     system_hashed_ansi_string                    name,
+                                                     system_hashed_ansi_string                    file_name,
+                                                     ral_texture_usage_bits                       usage,
+                                                     PFNRALCONTEXTNOTIFYBACKENDABOUTNEWOBJECTPROC pfn_notify_backend_about_new_object_proc);
 
 /** TODO.
  *
  *  NOTE: Internal use only. An equivalent of this function is exposed by ral_context.
  **/
-PUBLIC ral_texture ral_texture_create_from_gfx_image(ral_context               context,
-                                                     system_hashed_ansi_string name,
-                                                     gfx_image                 image,
-                                                     ral_texture_usage_bits    usage);
+PUBLIC ral_texture ral_texture_create_from_gfx_image(ral_context                                  context,
+                                                     system_hashed_ansi_string                    name,
+                                                     gfx_image                                    image,
+                                                     ral_texture_usage_bits                       usage,
+                                                     PFNRALCONTEXTNOTIFYBACKENDABOUTNEWOBJECTPROC pfn_notify_backend_about_new_object_proc);
 
 /** TODO */
 PUBLIC EMERALD_API bool ral_texture_generate_mipmaps(ral_texture texture);

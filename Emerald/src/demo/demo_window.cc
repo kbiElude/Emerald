@@ -151,7 +151,7 @@ PRIVATE void _demo_window_subscribe_for_window_notifications(_demo_window* windo
                                         (void*) _demo_window_window_closed_callback_handler,
                                         window_ptr);
         system_window_add_callback_func(window_ptr->window,
-                                        SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_SYSTEM,
+                                        SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_LOW,
                                         SYSTEM_WINDOW_CALLBACK_FUNC_WINDOW_CLOSING,
                                         (void*) _demo_window_window_closing_callback_handler,
                                         window_ptr);
@@ -210,7 +210,7 @@ PUBLIC EMERALD_API bool demo_window_add_callback_func(demo_window               
      * For "window closing" callbacks, we need to make sure our call-back handler gets called as the last one */
     result = system_window_add_callback_func(window_ptr->window,
                                              (callback_func != SYSTEM_WINDOW_CALLBACK_FUNC_WINDOW_CLOSING) ? priority
-                                                                                                           : SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_LOW,
+                                                                                                           : SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_NORMAL,
                                              callback_func,
                                              pfn_callback_func,
                                              callback_func_user_arg,

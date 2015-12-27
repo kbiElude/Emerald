@@ -11,6 +11,7 @@
 #include "ogl/ogl_skybox.h"
 #include "object_manager/object_manager_general.h"
 #include "raGL/raGL_buffer.h"
+#include "ral/ral_buffer.h"
 #include "ral/ral_context.h"
 #include "ral/ral_texture.h"
 #include "shaders/shaders_embeddable_sh.h"
@@ -78,7 +79,10 @@ const char* fragment_shader_spherical_texture_preview = "#version 430 core\n"
                                                         "    vec3  view_vector_n = normalize(view_vector);\n"
                                                         "    float radius        = 2 * sqrt(view_vector_n.x*view_vector_n.x + view_vector_n.y*view_vector_n.y + (view_vector_n.z+1)*(view_vector_n.z+1) );\r\n"
                                                         "\r\n"
-                                                        "    result = texture(skybox, asin(view_vector_n.xy) / 3.1415265 + 0.5).xyz;\r\n"
+                                                        "    vec2  texture_uv = asin(view_vector_n.xy) / 3.1415265 + 0.5;\n"
+                                                        "\n"
+                                                        "    texture_uv.y = 1.0 - texture_uv.y;\n"
+                                                        "    result       = texture(skybox, texture_uv).xyz;\r\n"
                                                         "}\n";
 
 const char* vertex_shader_preview = "#version 430 core\n"
@@ -519,15 +523,18 @@ PUBLIC EMERALD_API void ogl_skybox_draw(ogl_skybox       skybox,
         GLuint texture_id = ral_context_get_texture_gl_id(skybox_ptr->context,
                                                           skybox_ptr->texture);
 
+        entry_points->pGLBindSampler            (0, /* unit */
+                                                 0  /* sampler */);
         dsa_entry_points->pGLBindMultiTextureEXT(GL_TEXTURE0,
                                                  GL_TEXTURE_2D,
                                                  texture_id);
     } /* if (skybox_ptr->type == OGL_SKYBOX_SPHERICAL_PROJECTION_TEXTURE) */
 
     /* Draw. Do not modify depth information */
-    GLuint      program_ub_bo_id           = 0;
-    raGL_buffer program_ub_bo_raGL         = NULL;
-    uint32_t    program_ub_bo_start_offset = -1;
+    GLuint      program_ub_bo_id                = 0;
+    raGL_buffer program_ub_bo_raGL              = NULL;
+    uint32_t    program_ub_bo_raGL_start_offset = -1;
+    uint32_t    program_ub_bo_ral_start_offset  = -1;
 
     program_ub_bo_raGL = ral_context_get_buffer_gl(skybox_ptr->context,
                                                    skybox_ptr->program_ub_bo);
@@ -537,14 +544,17 @@ PUBLIC EMERALD_API void ogl_skybox_draw(ogl_skybox       skybox,
                             &program_ub_bo_id);
     raGL_buffer_get_property(program_ub_bo_raGL,
                              RAGL_BUFFER_PROPERTY_START_OFFSET,
-                            &program_ub_bo_start_offset);
+                            &program_ub_bo_raGL_start_offset);
+    ral_buffer_get_property (skybox_ptr->program_ub_bo,
+                             RAL_BUFFER_PROPERTY_START_OFFSET,
+                            &program_ub_bo_ral_start_offset);
 
     ogl_program_ub_sync(skybox_ptr->program_ub);
 
     entry_points->pGLBindBufferRange(GL_UNIFORM_BUFFER,
                                      0, /* index */
                                      program_ub_bo_id,
-                                     program_ub_bo_start_offset,
+                                     program_ub_bo_raGL_start_offset + program_ub_bo_ral_start_offset,
                                      skybox_ptr->program_ub_bo_size);
     entry_points->pGLDepthMask      (GL_FALSE);
     {
