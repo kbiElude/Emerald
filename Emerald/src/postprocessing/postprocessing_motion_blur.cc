@@ -542,6 +542,15 @@ PRIVATE void _postprocessing_motion_blur_release(void* ptr)
 
         motion_blur_ptr->po = NULL;
     }
+
+    if (motion_blur_ptr->sampler != NULL)
+    {
+        ral_context_delete_samplers(motion_blur_ptr->context,
+                                    1, /* n_samplers */
+                                   &motion_blur_ptr->sampler);
+
+        motion_blur_ptr->sampler = NULL;
+    }
 }
 
 
@@ -628,6 +637,8 @@ PUBLIC EMERALD_API RENDERING_CONTEXT_CALL void postprocessing_motion_blur_execut
                                                              input_color_texture);
     input_velocity_texture_raGL = ral_context_get_texture_gl(motion_blur_ptr->context,
                                                              input_velocity_texture);
+    output_texture_raGL         = ral_context_get_texture_gl(motion_blur_ptr->context,
+                                                             output_texture);
 
     raGL_texture_get_property(input_color_texture_raGL,
                               RAGL_TEXTURE_PROPERTY_ID,

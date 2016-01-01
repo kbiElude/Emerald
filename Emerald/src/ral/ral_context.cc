@@ -1018,127 +1018,36 @@ PUBLIC EMERALD_API bool ral_context_create_samplers(ral_context              con
                                                     ral_sampler_create_info* create_info_ptrs,
                                                     ral_sampler*             out_result_sampler_ptrs)
 {
-    bool          result      = false;
     _ral_context* context_ptr = (_ral_context*) context;
+    bool          result      = false;
 
     /* Sanity checks */
     if (context == NULL)
     {
         ASSERT_DEBUG_SYNC(false,
-                          "Input ral_context instance is NULL");
+                          "Input context is NULL");
 
         goto end;
     }
 
     if (n_create_info_items == 0)
     {
-        result = true;
-
-        goto end;
-    }
-
-    if (create_info_ptrs == NULL)
-    {
-        ASSERT_DEBUG_SYNC(false,
-                          "Input create_info_ptrs is NULL");
-
         goto end;
     }
 
     if (out_result_sampler_ptrs == NULL)
     {
         ASSERT_DEBUG_SYNC(false,
-                          "Output variable out_result_sampler_ptrs is NULL");
+                          "Output variable is NULL");
 
         goto end;
     }
 
-    /* Check if the samplers we already have match the requested sampler
-     *
-     * TODO: We really need a hash-map for this!
-     * TODO: Distribute to multiple threads?
-     */
-    LOG_ERROR("Performance warning: Slow path in ral_context_get_sampler_by_create_info()");
-
-    system_critical_section_enter(context_ptr->samplers_cs);
-    {
-        for (uint32_t n_current_create_info = 0;
-                      n_current_create_info < n_create_info_items;
-                    ++n_current_create_info)
-        {
-            ral_sampler_create_info* current_create_info_ptr = create_info_ptrs + n_current_create_info;
-            uint32_t                 n_samplers              = 0;
-            ral_sampler              result_sampler          = NULL;
-
-            if (current_create_info_ptr == NULL)
-            {
-                ASSERT_DEBUG_SYNC(current_create_info_ptr != NULL,
-                                  "One of the create info items is NULL");
-
-                goto end;
-            }
-
-            system_resizable_vector_get_property(context_ptr->samplers,
-                                                 SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
-                                                &n_samplers);
-
-            for (uint32_t n_sampler = 0;
-                          n_sampler < n_samplers;
-                        ++n_sampler)
-            {
-                ral_sampler current_sampler = NULL;
-
-                if (!system_resizable_vector_get_element_at(context_ptr->samplers,
-                                                            n_sampler,
-                                                           &current_sampler) )
-                {
-                    ASSERT_DEBUG_SYNC(false,
-                                      "Could not retrieve a ral_sampler instance at index [%d]",
-                                      n_sampler);
-
-                    continue;
-                }
-
-                if (ral_sampler_is_equal_to_create_info(current_sampler,
-                                                        current_create_info_ptr) )
-                {
-                    /* Found a match */
-                    result_sampler = current_sampler;
-
-                    break;
-                }
-            } /* for (all samplers registered) */
-
-            if (result_sampler == NULL)
-            {
-                /* No luck - we need a new instance. */
-                static int n_samplers_created = 0;
-                char       name_buffer[64];
-
-                snprintf(name_buffer,
-                         sizeof(name_buffer),
-                         "Sampler [%d]",
-                         n_samplers_created++);
-
-                result_sampler = ral_sampler_create(system_hashed_ansi_string_create(name_buffer),
-                                                    current_create_info_ptr);
-
-                system_resizable_vector_push(context_ptr->samplers,
-                                             result_sampler);
-            } /* if (result_sampler == NULL) */
-
-            if (result_sampler == NULL)
-            {
-                ASSERT_DEBUG_SYNC(false,
-                                  "Could not obtain a ral_sampler instance.");
-
-                goto end;
-            }
-
-            out_result_sampler_ptrs[n_current_create_info] = result_sampler;
-        } /* for (all create info items) */
-    }
-    system_critical_section_leave(context_ptr->samplers_cs);
+    result = _ral_context_create_objects(context_ptr,
+                                         RAL_CONTEXT_OBJECT_TYPE_SAMPLER,
+                                         n_create_info_items,
+                                         (void**) create_info_ptrs,
+                                         (void**) out_result_sampler_ptrs);
 
 end:
     return result;
