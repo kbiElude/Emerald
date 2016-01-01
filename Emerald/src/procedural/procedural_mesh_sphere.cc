@@ -6,6 +6,7 @@
 #include "shared.h"
 #include "ogl/ogl_context.h"
 #include "procedural/procedural_mesh_sphere.h"
+#include "raGL/raGL_buffer.h"
 #include "ral/ral_buffer.h"
 #include "ral/ral_context.h"
 #include "system/system_log.h"
@@ -310,13 +311,12 @@ PUBLIC EMERALD_API void procedural_mesh_sphere_get_property(procedural_mesh_sphe
         case PROCEDURAL_MESH_SPHERE_PROPERTY_ARRAYS_BO_NORMALS_DATA_OFFSET:
         case PROCEDURAL_MESH_SPHERE_PROPERTY_ARRAYS_BO_VERTEX_DATA_OFFSET:
         {
-            *(uint32_t*) out_result = 0;
+            raGL_buffer arrays_bo_raGL = ral_context_get_buffer_gl(sphere_ptr->context,
+                                                                   sphere_ptr->arrays_bo);
 
-#if 0
-            raGL_buffer_get_property(sphere_ptr->arrays_bo,
+            raGL_buffer_get_property(arrays_bo_raGL,
                                      RAGL_BUFFER_PROPERTY_START_OFFSET,
                                      out_result);
-#endif
 
             break;
         }

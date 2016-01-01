@@ -14,6 +14,8 @@
 #include "ogl/ogl_program_ub.h"
 #include "ogl/ogl_shader.h"
 #include "raGL/raGL_buffer.h"
+#include "ral/ral_buffer.h"
+#include "ral/ral_context.h"
 #include "shaders/shaders_fragment_static.h"
 #include "shaders/shaders_vertex_combinedmvp_generic.h"
 #include "system/system_matrix4x4.h"
@@ -21,11 +23,11 @@
 
 ogl_program      _light_program                        =  0;
 ogl_program_ub   _light_program_datafs_ub              = NULL;
-raGL_buffer      _light_program_datafs_ub_bo           =  0;
+ral_buffer       _light_program_datafs_ub_bo           =  0;
 GLuint           _light_program_datafs_ub_bo_size      =  0;
 GLuint           _light_program_datafs_ub_bp           = -1;
 ogl_program_ub   _light_program_datavs_ub              = NULL;
-raGL_buffer      _light_program_datavs_ub_bo           =  0;
+ral_buffer       _light_program_datavs_ub_bo           =  0;
 GLuint           _light_program_datavs_ub_bo_size      =  0;
 GLuint           _light_program_datavs_ub_bp           = -1;
 GLuint           _light_color_ub_offset                = -1;
@@ -36,19 +38,20 @@ GLuint           _light_vertex_attribute_location      = -1;
 system_matrix4x4 _light_view_matrix                    = NULL;
 
 /** TODO */
-static void _stage_step_light_execute(ogl_context context,
+static void _stage_step_light_execute(ral_context context,
                                       uint32_t    frame_index,
                                       system_time time,
                                       const int*  rendering_area_px_topdown,
                                       void*       not_used)
 {
+    ogl_context                       context_gl  = ral_context_get_gl_context(context);
     const ogl_context_gl_entrypoints* entrypoints = NULL;
     ogl_flyby                         flyby       = NULL;
 
-    ogl_context_get_property(context,
+    ogl_context_get_property(context_gl,
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
                             &entrypoints);
-    ogl_context_get_property(context,
+    ogl_context_get_property(context_gl,
                              OGL_CONTEXT_PROPERTY_FLYBY,
                             &flyby);
 
@@ -108,33 +111,49 @@ static void _stage_step_light_execute(ogl_context context,
     ogl_program_ub_sync(_light_program_datafs_ub);
     ogl_program_ub_sync(_light_program_datavs_ub);
 
-    GLuint   light_program_datafs_ub_bo_id           = 0;
-    uint32_t light_program_datafs_ub_bo_start_offset = -1;
-    GLuint   light_program_datavs_ub_bo_id           = 0;
-    uint32_t light_program_datavs_ub_bo_start_offset = -1;
+    raGL_buffer light_program_datafs_ub_bo_raGL              = NULL;
+    GLuint      light_program_datafs_ub_bo_raGL_id           = 0;
+    uint32_t    light_program_datafs_ub_bo_raGL_start_offset = -1;
+    uint32_t    light_program_datafs_ub_bo_ral_start_offset  = -1;
+    raGL_buffer light_program_datavs_ub_bo_raGL              = NULL;
+    GLuint      light_program_datavs_ub_bo_raGL_id           = 0;
+    uint32_t    light_program_datavs_ub_bo_raGL_start_offset = -1;
+    uint32_t    light_program_datavs_ub_bo_ral_start_offset  = -1;
 
-    raGL_buffer_get_property(_light_program_datafs_ub_bo,
+    light_program_datafs_ub_bo_raGL = ral_context_get_buffer_gl(context,
+                                                                _light_program_datafs_ub_bo);
+    light_program_datavs_ub_bo_raGL = ral_context_get_buffer_gl(context,
+                                                                _light_program_datavs_ub_bo);
+
+    ral_buffer_get_property(_light_program_datafs_ub_bo,
+                            RAL_BUFFER_PROPERTY_START_OFFSET,
+                           &light_program_datafs_ub_bo_ral_start_offset);
+    ral_buffer_get_property(_light_program_datavs_ub_bo,
+                            RAL_BUFFER_PROPERTY_START_OFFSET,
+                           &light_program_datavs_ub_bo_ral_start_offset);
+
+    raGL_buffer_get_property(light_program_datafs_ub_bo_raGL,
                              RAGL_BUFFER_PROPERTY_ID,
-                            &light_program_datafs_ub_bo_id);
-    raGL_buffer_get_property(_light_program_datafs_ub_bo,
+                            &light_program_datafs_ub_bo_raGL_id);
+    raGL_buffer_get_property(light_program_datafs_ub_bo_raGL,
                              RAGL_BUFFER_PROPERTY_START_OFFSET,
-                            &light_program_datafs_ub_bo_start_offset);
-    raGL_buffer_get_property(_light_program_datavs_ub_bo,
+                            &light_program_datafs_ub_bo_raGL_start_offset);
+    raGL_buffer_get_property(light_program_datavs_ub_bo_raGL,
                              RAGL_BUFFER_PROPERTY_ID,
-                            &light_program_datavs_ub_bo_id);
-    raGL_buffer_get_property(_light_program_datavs_ub_bo,
+                            &light_program_datavs_ub_bo_raGL_id);
+    raGL_buffer_get_property(light_program_datavs_ub_bo_raGL,
                              RAGL_BUFFER_PROPERTY_START_OFFSET,
-                            &light_program_datavs_ub_bo_start_offset);
+                            &light_program_datavs_ub_bo_raGL_start_offset);
 
     entrypoints->pGLBindBufferRange(GL_UNIFORM_BUFFER,
                                     _light_program_datafs_ub_bp,
-                                     light_program_datafs_ub_bo_id,
-                                     light_program_datafs_ub_bo_start_offset,
+                                     light_program_datafs_ub_bo_raGL_id,
+                                     light_program_datafs_ub_bo_raGL_start_offset + light_program_datafs_ub_bo_ral_start_offset,
                                     _light_program_datafs_ub_bo_size);
     entrypoints->pGLBindBufferRange(GL_UNIFORM_BUFFER,
                                     _light_program_datavs_ub_bp,
-                                     light_program_datavs_ub_bo_id,
-                                     light_program_datavs_ub_bo_start_offset,
+                                     light_program_datavs_ub_bo_raGL_id,
+                                     light_program_datavs_ub_bo_raGL_start_offset + light_program_datavs_ub_bo_ral_start_offset,
                                     _light_program_datavs_ub_bo_size);
 
     /* Draw light representation*/
@@ -150,14 +169,14 @@ static void _stage_step_light_execute(ogl_context context,
 }
 
 /* Please see header for specification */
-PUBLIC void stage_step_light_deinit(ogl_context context)
+PUBLIC void stage_step_light_deinit(ral_context context)
 {
     ogl_program_release     (_light_program);
     system_matrix4x4_release(_light_view_matrix);
 }
 
 /* Please see header for specification */
-PUBLIC void stage_step_light_init(ogl_context  context,
+PUBLIC void stage_step_light_init(ral_context  context,
                                   ogl_pipeline pipeline,
                                   uint32_t     stage_id)
 {
@@ -214,7 +233,7 @@ PUBLIC void stage_step_light_init(ogl_context  context,
                                 OGL_PROGRAM_UB_PROPERTY_BLOCK_DATA_SIZE,
                                &_light_program_datafs_ub_bo_size);
     ogl_program_ub_get_property(_light_program_datafs_ub,
-                                OGL_PROGRAM_UB_PROPERTY_BO,
+                                OGL_PROGRAM_UB_PROPERTY_BUFFER_RAL,
                                &_light_program_datafs_ub_bo);
     ogl_program_ub_get_property(_light_program_datafs_ub,
                                 OGL_PROGRAM_UB_PROPERTY_INDEXED_BP,
@@ -224,7 +243,7 @@ PUBLIC void stage_step_light_init(ogl_context  context,
                                 OGL_PROGRAM_UB_PROPERTY_BLOCK_DATA_SIZE,
                                &_light_program_datavs_ub_bo_size);
     ogl_program_ub_get_property(_light_program_datavs_ub,
-                                OGL_PROGRAM_UB_PROPERTY_BO,
+                                OGL_PROGRAM_UB_PROPERTY_BUFFER_RAL,
                                &_light_program_datavs_ub_bo);
     ogl_program_ub_get_property(_light_program_datavs_ub,
                                 OGL_PROGRAM_UB_PROPERTY_INDEXED_BP,
@@ -233,7 +252,7 @@ PUBLIC void stage_step_light_init(ogl_context  context,
     /* Generate VAO */
     const ogl_context_gl_entrypoints* entrypoints = NULL;
 
-    ogl_context_get_property(context,
+    ogl_context_get_property(ral_context_get_gl_context(context),
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
                             &entrypoints);
 

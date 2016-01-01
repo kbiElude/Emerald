@@ -15,6 +15,8 @@
 #include "ogl/ogl_shader.h"
 #include "procedural/procedural_mesh_sphere.h"
 #include "raGL/raGL_buffer.h"
+#include "ral/ral_buffer.h"
+#include "ral/ral_context.h"
 #include "system/system_matrix4x4.h"
 
 GLuint                 _julia_data_ub_offset                      = -1;
@@ -27,8 +29,7 @@ GLuint                 _julia_max_iterations_ub_offset            = -1;
 GLuint                 _julia_mvp_ub_offset                       = -1;
 ogl_program            _julia_program                             = 0;
 ogl_program_ub         _julia_program_ub                          = NULL;
-raGL_buffer            _julia_program_ub_bo                       = NULL;
-GLuint                 _julia_program_ub_bo_size                  = 0;
+ral_buffer             _julia_program_ub_bo                       = NULL;
 GLuint                 _julia_raycast_radius_multiplier_ub_offset = -1;
 GLuint                 _julia_shadows_ub_offset                   = -1;
 GLuint                 _julia_specularity_ub_offset               = -1;
@@ -246,19 +247,20 @@ const char* julia_vertex_shader_code = "#version 430 core\n"
                                        "}\n";
 
 /** TODO */
-static void _stage_step_julia_execute(ogl_context context,
+static void _stage_step_julia_execute(ral_context context,
                                       uint32_t    frame_index,
                                       system_time time,
                                       const int*  rendering_area_px_topdown,
                                       void*       not_used)
 {
+    ogl_context                       context_gl  = ral_context_get_gl_context(context);
     const ogl_context_gl_entrypoints* entrypoints = NULL;
     ogl_flyby                         flyby       = NULL;
 
-    ogl_context_get_property(context,
+    ogl_context_get_property(context_gl,
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
                             &entrypoints);
-    ogl_context_get_property(context,
+    ogl_context_get_property(context_gl,
                              OGL_CONTEXT_PROPERTY_FLYBY,
                             &flyby);
 
@@ -354,15 +356,29 @@ static void _stage_step_julia_execute(ogl_context context,
     system_matrix4x4_release(mvp);
 
     /* Draw the fractal */
-    GLuint   julia_program_ub_bo_id           = 0;
-    uint32_t julia_program_ub_bo_start_offset = -1;
+    raGL_buffer julia_program_ub_bo_raGL              = NULL;
+    GLuint      julia_program_ub_bo_raGL_id           = 0;
+    uint32_t    julia_program_ub_bo_raGL_start_offset = -1;
+    uint32_t    julia_program_ub_bo_ral_size          = 0;
+    uint32_t    julia_program_ub_bo_ral_start_offset  = 0;
 
-    raGL_buffer_get_property(_julia_program_ub_bo,
+    ral_buffer_get_property(_julia_program_ub_bo,
+                            RAL_BUFFER_PROPERTY_SIZE,
+                            &julia_program_ub_bo_ral_size);
+    ral_buffer_get_property(_julia_program_ub_bo,
+                            RAL_BUFFER_PROPERTY_START_OFFSET,
+                            &julia_program_ub_bo_ral_start_offset);
+
+    julia_program_ub_bo_raGL = ral_context_get_buffer_gl(context,
+                                                         _julia_program_ub_bo);
+
+
+    raGL_buffer_get_property(julia_program_ub_bo_raGL,
                              RAGL_BUFFER_PROPERTY_ID,
-                            &julia_program_ub_bo_id);
-    raGL_buffer_get_property(_julia_program_ub_bo,
+                            &julia_program_ub_bo_raGL_id);
+    raGL_buffer_get_property(julia_program_ub_bo_raGL,
                              RAGL_BUFFER_PROPERTY_START_OFFSET,
-                            &julia_program_ub_bo_start_offset);
+                            &julia_program_ub_bo_raGL_start_offset);
 
     entrypoints->pGLClearColor     (0,
                                     0.3f,
@@ -375,9 +391,9 @@ static void _stage_step_julia_execute(ogl_context context,
     entrypoints->pGLFrontFace      (GL_CW);
     entrypoints->pGLBindBufferRange(GL_UNIFORM_BUFFER,
                                     0, /* index */
-                                     julia_program_ub_bo_id,
-                                     julia_program_ub_bo_start_offset,
-                                    _julia_program_ub_bo_size);
+                                     julia_program_ub_bo_raGL_id,
+                                     julia_program_ub_bo_raGL_start_offset + julia_program_ub_bo_ral_start_offset,
+                                     julia_program_ub_bo_ral_size);
     {
         unsigned int n_triangles = 0;
 
@@ -393,7 +409,7 @@ static void _stage_step_julia_execute(ogl_context context,
 }
 
 /* Please see header for specification */
-PUBLIC void stage_step_julia_deinit(ogl_context context)
+PUBLIC void stage_step_julia_deinit(ral_context context)
 {
     ogl_program_release           (_julia_program);
     procedural_mesh_sphere_release(_julia_sphere);
@@ -401,7 +417,7 @@ PUBLIC void stage_step_julia_deinit(ogl_context context)
 }
 
 /* Please see header for specification */
-PUBLIC void stage_step_julia_init(ogl_context  context,
+PUBLIC void stage_step_julia_init(ral_context  context,
                                   ogl_pipeline pipeline,
                                   uint32_t     stage_id)
 {
@@ -524,30 +540,39 @@ PUBLIC void stage_step_julia_init(ogl_context  context,
                                          &_julia_program_ub);
 
     ogl_program_ub_get_property(_julia_program_ub,
-                                OGL_PROGRAM_UB_PROPERTY_BLOCK_DATA_SIZE,
-                               &_julia_program_ub_bo_size);
-    ogl_program_ub_get_property(_julia_program_ub,
-                                OGL_PROGRAM_UB_PROPERTY_BO,
+                                OGL_PROGRAM_UB_PROPERTY_BUFFER_RAL,
                                &_julia_program_ub_bo);
 
     /* Generate & set VAO up */
-    GLuint                            data_bo_id  = 0;
-    const ogl_context_gl_entrypoints* entrypoints = NULL;
+    ogl_context                       context_gl      = NULL;
+    ral_buffer                        data_bo         = NULL;
+    raGL_buffer                       data_bo_raGL    = NULL;
+    GLuint                            data_bo_raGL_id = 0;
+    const ogl_context_gl_entrypoints* entrypoints     = NULL;
 
-    ogl_context_get_property(context,
+    context_gl = ral_context_get_gl_context(context);
+
+    ogl_context_get_property(context_gl,
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
                             &entrypoints);
 
     procedural_mesh_sphere_get_property(_julia_sphere,
-                                        PROCEDURAL_MESH_SPHERE_PROPERTY_ARRAYS_BO_ID,
-                                       &data_bo_id);
+                                        PROCEDURAL_MESH_SPHERE_PROPERTY_ARRAYS_BO_RAL,
+                                       &data_bo);
+
+    data_bo_raGL = ral_context_get_buffer_gl(context,
+                                             data_bo);
+
+    raGL_buffer_get_property(data_bo_raGL,
+                             RAGL_BUFFER_PROPERTY_ID,
+                            &data_bo_raGL_id);
 
     entrypoints->pGLGenVertexArrays(1,
                                    &_julia_vao_id);
     entrypoints->pGLBindVertexArray(_julia_vao_id);
 
     entrypoints->pGLBindBuffer             (GL_ARRAY_BUFFER,
-                                            data_bo_id);
+                                            data_bo_raGL_id);
     entrypoints->pGLVertexAttribPointer    (_julia_vertex_attribute_location,
                                             3,        /* size */
                                             GL_FLOAT,
