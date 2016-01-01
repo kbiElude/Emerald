@@ -15,7 +15,6 @@ IF(MSVC)
     ADD_SUBDIRECTORY(SceneViewer)
     ADD_SUBDIRECTORY(Test-HDR)
     ADD_SUBDIRECTORY(Test-ObjectBrowser)
-    ADD_SUBDIRECTORY(TextureCompressor)
 ENDIF(MSVC)
 
 ADD_SUBDIRECTORY(Demo-Deadline2015)
