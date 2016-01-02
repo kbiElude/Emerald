@@ -156,6 +156,11 @@ REFCOUNT_INSERT_IMPLEMENTATION(mesh_material,
                               _mesh_material);
 
 
+/** Forward declarations */
+PRIVATE void _mesh_material_subscribe_for_notifications(_mesh_material* material_ptr,
+                                                        bool            should_subscribe);
+
+
 /** TODO */
 _mesh_material_property_texture::~_mesh_material_property_texture()
 {
@@ -279,6 +284,10 @@ PRIVATE void _mesh_material_release(void* data_ptr)
         }
     } /* if (material_ptr->type == MESH_MATERIAL_TYPE_PROGRAM) */
 
+    /* Unsubscribe from notifications */
+    _mesh_material_subscribe_for_notifications(material_ptr,
+                                               false /* should_subscribe */);
+
     /* Release callback manager */
     if (material_ptr->callback_manager != NULL)
     {
@@ -288,7 +297,102 @@ PRIVATE void _mesh_material_release(void* data_ptr)
     }
 }
 
-/* Please see header for specification */
+/** TODO */
+PRIVATE void _mesh_material_subscribe_for_notifications(_mesh_material* material_ptr,
+                                                        bool            should_subscribe)
+{
+    unsigned int            n_scene_lights         = 0;
+    system_callback_manager scene_callback_manager = NULL;
+
+    scene_get_property(material_ptr->owner_scene,
+                       SCENE_PROPERTY_CALLBACK_MANAGER,
+                      &scene_callback_manager);
+    scene_get_property(material_ptr->owner_scene,
+                       SCENE_PROPERTY_N_LIGHTS,
+                      &n_scene_lights);
+
+    if (should_subscribe)
+    {
+        system_callback_manager_subscribe_for_callbacks(scene_callback_manager,
+                                                        SCENE_CALLBACK_ID_LIGHT_ADDED,
+                                                        CALLBACK_SYNCHRONICITY_SYNCHRONOUS,
+                                                        _mesh_material_on_material_invalidation_needed,
+                                                        material_ptr);
+
+        for (unsigned int n_scene_light = 0;
+                          n_scene_light < n_scene_lights;
+                        ++n_scene_light)
+        {
+            scene_light             current_light                  = scene_get_light_by_index(material_ptr->owner_scene,
+                                                                                              n_scene_light);
+            system_callback_manager current_light_callback_manager = NULL;
+
+            scene_light_get_property(current_light,
+                                     SCENE_LIGHT_PROPERTY_CALLBACK_MANAGER,
+                                    &current_light_callback_manager);
+
+            system_callback_manager_subscribe_for_callbacks(current_light_callback_manager,
+                                                            SCENE_LIGHT_CALLBACK_ID_SHADOW_MAP_ALGORITHM_CHANGED,
+                                                            CALLBACK_SYNCHRONICITY_SYNCHRONOUS,
+                                                            _mesh_material_on_material_invalidation_needed,
+                                                            material_ptr);
+            system_callback_manager_subscribe_for_callbacks(current_light_callback_manager,
+                                                            SCENE_LIGHT_CALLBACK_ID_SHADOW_MAP_BIAS_CHANGED,
+                                                            CALLBACK_SYNCHRONICITY_SYNCHRONOUS,
+                                                            _mesh_material_on_material_invalidation_needed,
+                                                            material_ptr);
+            system_callback_manager_subscribe_for_callbacks(current_light_callback_manager,
+                                                            SCENE_LIGHT_CALLBACK_ID_SHADOW_MAP_FILTERING_CHANGED,
+                                                            CALLBACK_SYNCHRONICITY_SYNCHRONOUS,
+                                                            _mesh_material_on_material_invalidation_needed,
+                                                            material_ptr);
+            system_callback_manager_subscribe_for_callbacks(current_light_callback_manager,
+                                                            SCENE_LIGHT_CALLBACK_ID_SHADOW_MAP_POINTLIGHT_ALGORITHM_CHANGED,
+                                                            CALLBACK_SYNCHRONICITY_SYNCHRONOUS,
+                                                            _mesh_material_on_material_invalidation_needed,
+                                                            material_ptr);
+        } /* for (all lights) */
+    } /* if (should_subscribe) */
+    else
+    {
+        system_callback_manager_unsubscribe_from_callbacks(scene_callback_manager,
+                                                           SCENE_CALLBACK_ID_LIGHT_ADDED,
+                                                           _mesh_material_on_material_invalidation_needed,
+                                                           material_ptr);
+
+        for (unsigned int n_scene_light = 0;
+                          n_scene_light < n_scene_lights;
+                        ++n_scene_light)
+        {
+            scene_light             current_light                  = scene_get_light_by_index(material_ptr->owner_scene,
+                                                                                              n_scene_light);
+            system_callback_manager current_light_callback_manager = NULL;
+
+            scene_light_get_property(current_light,
+                                     SCENE_LIGHT_PROPERTY_CALLBACK_MANAGER,
+                                    &current_light_callback_manager);
+
+            system_callback_manager_unsubscribe_from_callbacks(current_light_callback_manager,
+                                                               SCENE_LIGHT_CALLBACK_ID_SHADOW_MAP_ALGORITHM_CHANGED,
+                                                               _mesh_material_on_material_invalidation_needed,
+                                                               material_ptr);
+            system_callback_manager_unsubscribe_from_callbacks(current_light_callback_manager,
+                                                               SCENE_LIGHT_CALLBACK_ID_SHADOW_MAP_BIAS_CHANGED,
+                                                               _mesh_material_on_material_invalidation_needed,
+                                                               material_ptr);
+            system_callback_manager_unsubscribe_from_callbacks(current_light_callback_manager,
+                                                               SCENE_LIGHT_CALLBACK_ID_SHADOW_MAP_FILTERING_CHANGED,
+                                                               _mesh_material_on_material_invalidation_needed,
+                                                               material_ptr);
+            system_callback_manager_unsubscribe_from_callbacks(current_light_callback_manager,
+                                                               SCENE_LIGHT_CALLBACK_ID_SHADOW_MAP_POINTLIGHT_ALGORITHM_CHANGED,
+                                                               _mesh_material_on_material_invalidation_needed,
+                                                               material_ptr);
+        } /* for (all lights) */
+    }
+}
+
+/** TODO */
 PRIVATE void _mesh_material_get_ral_enums_for_mesh_material_texture_filtering(mesh_material_texture_filtering filtering,
                                                                               ral_texture_filter*             out_texture_filter_ptr,
                                                                               ral_texture_mipmap_mode*        out_texture_mipmap_mode_ptr)
@@ -1239,57 +1343,10 @@ PUBLIC EMERALD_API ogl_uber mesh_material_get_ogl_uber(mesh_material material,
         {
             /* The material needs to be marked as dirty every time a light is added, or
              * when a significant scene_light property is changed */
-            unsigned int            n_scene_lights         = 0;
-            system_callback_manager scene_callback_manager = NULL;
-
-            scene_get_property(scene,
-                               SCENE_PROPERTY_CALLBACK_MANAGER,
-                              &scene_callback_manager);
-            scene_get_property(scene,
-                               SCENE_PROPERTY_N_LIGHTS,
-                              &n_scene_lights);
-
-            system_callback_manager_subscribe_for_callbacks(scene_callback_manager,
-                                                            SCENE_CALLBACK_ID_LIGHT_ADDED,
-                                                            CALLBACK_SYNCHRONICITY_SYNCHRONOUS,
-                                                            _mesh_material_on_material_invalidation_needed,
-                                                            material_ptr);
-
-            for (unsigned int n_scene_light = 0;
-                              n_scene_light < n_scene_lights;
-                            ++n_scene_light)
-            {
-                scene_light             current_light                  = scene_get_light_by_index(scene,
-                                                                                                  n_scene_light);
-                system_callback_manager current_light_callback_manager = NULL;
-
-                scene_light_get_property(current_light,
-                                         SCENE_LIGHT_PROPERTY_CALLBACK_MANAGER,
-                                        &current_light_callback_manager);
-
-                system_callback_manager_subscribe_for_callbacks(current_light_callback_manager,
-                                                                SCENE_LIGHT_CALLBACK_ID_SHADOW_MAP_ALGORITHM_CHANGED,
-                                                                CALLBACK_SYNCHRONICITY_SYNCHRONOUS,
-                                                                _mesh_material_on_material_invalidation_needed,
-                                                                material_ptr);
-                system_callback_manager_subscribe_for_callbacks(current_light_callback_manager,
-                                                                SCENE_LIGHT_CALLBACK_ID_SHADOW_MAP_BIAS_CHANGED,
-                                                                CALLBACK_SYNCHRONICITY_SYNCHRONOUS,
-                                                                _mesh_material_on_material_invalidation_needed,
-                                                                material_ptr);
-                system_callback_manager_subscribe_for_callbacks(current_light_callback_manager,
-                                                                SCENE_LIGHT_CALLBACK_ID_SHADOW_MAP_FILTERING_CHANGED,
-                                                                CALLBACK_SYNCHRONICITY_SYNCHRONOUS,
-                                                                _mesh_material_on_material_invalidation_needed,
-                                                                material_ptr);
-                system_callback_manager_subscribe_for_callbacks(current_light_callback_manager,
-                                                                SCENE_LIGHT_CALLBACK_ID_SHADOW_MAP_POINTLIGHT_ALGORITHM_CHANGED,
-                                                                CALLBACK_SYNCHRONICITY_SYNCHRONOUS,
-                                                                _mesh_material_on_material_invalidation_needed,
-                                                                material_ptr);
-            } /* for (all lights) */
-
             material_ptr->owner_scene = scene;
+
+            _mesh_material_subscribe_for_notifications(material_ptr,
+                                                       true /* should_subscribe */);
         } /* if (uber requested for the first time for this material) */
 
         material_ptr->dirty = false;

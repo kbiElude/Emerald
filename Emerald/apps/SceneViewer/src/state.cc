@@ -10,6 +10,7 @@
 #include "ogl/ogl_pipeline.h"
 #include "ogl/ogl_rendering_handler.h"
 #include "ogl/ogl_scene_renderer.h"
+#include "ral/ral_context.h"
 #include "scene/scene.h"
 #include "scene/scene_camera.h"
 #include "scene/scene_graph.h"
@@ -449,7 +450,7 @@ PUBLIC bool state_init(system_hashed_ansi_string scene_filename)
     }
 
     /* Retrieve flyby instance */
-    ogl_context_get_property(_context,
+    ogl_context_get_property(ral_context_get_gl_context(_context),
                              OGL_CONTEXT_PROPERTY_FLYBY,
                             &_flyby);
 
@@ -501,7 +502,7 @@ PUBLIC bool state_init(system_hashed_ansi_string scene_filename)
                                &scene_rendering_stage_step);
 
     /* Spawn curve renderer */
-    _curve_renderer = ogl_curve_renderer_create(_context,
+    _curve_renderer = ogl_curve_renderer_create(ral_context_get_gl_context(_context),
                                                 system_hashed_ansi_string_create("Curve renderer") );
 
 end:

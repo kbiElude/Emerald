@@ -215,6 +215,11 @@ PRIVATE void _ogl_scene_renderer_render_helper_visualization              (_ogl_
 PRIVATE void _ogl_scene_renderer_render_mesh_helper_visualization         (_ogl_scene_renderer*            renderer_ptr,
                                                                            _ogl_scene_renderer_uber*       uber_details_ptr);
 PRIVATE void _ogl_scene_renderer_return_shadow_maps_to_pool               (ogl_scene_renderer              renderer);
+PRIVATE void _ogl_scene_renderer_subscribe_for_general_notifications      (_ogl_scene_renderer*            scene_renderer_ptr,
+                                                                           bool                            should_subscribe);
+PRIVATE void _ogl_scene_renderer_subscribe_for_mesh_material_notifications(_ogl_scene_renderer*            scene_renderer_ptr,
+                                                                           mesh_material                   material,
+                                                                           bool                            should_subscribe);
 PRIVATE void _ogl_scene_renderer_update_frustum_preview_assigned_cameras  (struct _ogl_scene_renderer*     renderer_ptr);
 PRIVATE void _ogl_scene_renderer_update_ogl_uber_light_properties         (ogl_uber                        material_uber,
                                                                            scene                           scene,
@@ -259,7 +264,56 @@ _ogl_scene_renderer::_ogl_scene_renderer(ral_context in_context,
 /** TODO */
 _ogl_scene_renderer::~_ogl_scene_renderer()
 {
+    uint32_t n_scene_unique_meshes = 0;
+
     LOG_INFO("Scene renderer deallocating..");
+
+    _ogl_scene_renderer_subscribe_for_general_notifications(this,
+                                                            false /* should_subscribe */);
+
+    scene_get_property(owned_scene,
+                       SCENE_PROPERTY_N_UNIQUE_MESHES,
+                      &n_scene_unique_meshes);
+
+    for (uint32_t n_scene_unique_mesh = 0;
+                  n_scene_unique_mesh < n_scene_unique_meshes;
+                ++n_scene_unique_mesh)
+    {
+        mesh                    current_mesh             = scene_get_unique_mesh_by_index(owned_scene,
+                                                                                          n_scene_unique_mesh);
+        system_resizable_vector current_mesh_materials   = NULL;
+        uint32_t                n_current_mesh_materials = 0;
+
+        ASSERT_DEBUG_SYNC(current_mesh != NULL,
+                          "Could not retrieve unique mesh at index [%d]",
+                          n_scene_unique_mesh);
+
+        mesh_get_property(current_mesh,
+                          MESH_PROPERTY_MATERIALS,
+                         &current_mesh_materials);
+
+        ASSERT_DEBUG_SYNC(current_mesh_materials != NULL,
+                          "Could not retrieve unique mesh materials.");
+
+        system_resizable_vector_get_property(current_mesh_materials,
+                                             SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                            &n_current_mesh_materials);
+
+        for (uint32_t n_current_mesh_material = 0;
+                      n_current_mesh_material < n_current_mesh_materials;
+                    ++n_current_mesh_material)
+        {
+            mesh_material current_mesh_material = NULL;
+
+            system_resizable_vector_get_element_at(current_mesh_materials,
+                                                   n_current_mesh_material,
+                                                  &current_mesh_material);
+
+            _ogl_scene_renderer_subscribe_for_mesh_material_notifications(this,
+                                                                          current_mesh_material,
+                                                                          false /* should_subscribe */);
+        } /* for (all current mesh materials) */
+    } /* for (all unique meshes) */
 
     if (bbox_preview != NULL)
     {
@@ -317,19 +371,19 @@ _ogl_scene_renderer::~_ogl_scene_renderer()
         normals_preview = NULL;
     }
 
-    if (owned_scene != NULL)
-    {
-        scene_release(owned_scene);
-
-        owned_scene = NULL;
-    }
-
     if (regular_mesh_ubers_map != NULL)
     {
         _ogl_scene_renderer_deinit_cached_ubers_map_contents(regular_mesh_ubers_map);
 
         system_hash64map_release(regular_mesh_ubers_map);
         regular_mesh_ubers_map = NULL;
+    }
+
+    if (owned_scene != NULL)
+    {
+        scene_release(owned_scene);
+
+        owned_scene = NULL;
     }
 
     if (temp_variant_float != NULL)
@@ -1366,6 +1420,112 @@ PRIVATE void _ogl_scene_renderer_return_shadow_maps_to_pool(ogl_scene_renderer r
 }
 
 /** TODO */
+PRIVATE void _ogl_scene_renderer_subscribe_for_general_notifications(_ogl_scene_renderer* scene_renderer_ptr,
+                                                                     bool                 should_subscribe)
+{
+    uint32_t                n_scene_cameras        = 0;
+    system_callback_manager scene_callback_manager = NULL;
+
+    scene_get_property(scene_renderer_ptr->owned_scene,
+                       SCENE_PROPERTY_CALLBACK_MANAGER,
+                      &scene_callback_manager);
+    scene_get_property(scene_renderer_ptr->owned_scene,
+                       SCENE_PROPERTY_N_CAMERAS,
+                      &n_scene_cameras);
+
+    if (should_subscribe)
+    {
+        /* Sign up for "show frustum" state changes for cameras & lights. This is needed to properly
+         * re-route the events to the scene renderer */
+        for (uint32_t n_scene_camera = 0;
+                      n_scene_camera < n_scene_cameras;
+                    ++n_scene_camera)
+        {
+            system_callback_manager current_camera_callback_manager = NULL;
+            scene_camera            current_camera                  = scene_get_camera_by_index(scene_renderer_ptr->owned_scene,
+                                                                                                n_scene_camera);
+
+            scene_camera_get_property(current_camera,
+                                      SCENE_CAMERA_PROPERTY_CALLBACK_MANAGER,
+                                      0, /* time - irrelevant */
+                                     &current_camera_callback_manager);
+
+            system_callback_manager_subscribe_for_callbacks(current_camera_callback_manager,
+                                                            SCENE_CAMERA_CALLBACK_ID_SHOW_FRUSTUM_CHANGED,
+                                                            CALLBACK_SYNCHRONICITY_SYNCHRONOUS,
+                                                            _ogl_scene_renderer_on_camera_show_frustum_setting_changed,
+                                                            scene_renderer_ptr);
+        } /* for (all scene cameras) */
+
+        /* Since ogl_scene_renderer caches ogl_uber instances, given current scene configuration,
+         * we need to register for various scene call-backs in order to ensure these instances
+         * are reset, if the scene configuration ever changes.
+         */
+        system_callback_manager_subscribe_for_callbacks(scene_callback_manager,
+                                                        SCENE_CALLBACK_ID_LIGHT_ADDED,
+                                                        CALLBACK_SYNCHRONICITY_SYNCHRONOUS,
+                                                        _ogl_scene_renderer_on_ubers_map_invalidated,
+                                                        scene_renderer_ptr);  /* callback_proc_user_arg */
+    }
+    else
+    {
+        for (uint32_t n_scene_camera = 0;
+                      n_scene_camera < n_scene_cameras;
+                    ++n_scene_camera)
+        {
+            system_callback_manager current_camera_callback_manager = NULL;
+            scene_camera            current_camera                  = scene_get_camera_by_index(scene_renderer_ptr->owned_scene,
+                                                                                                n_scene_camera);
+
+            scene_camera_get_property(current_camera,
+                                      SCENE_CAMERA_PROPERTY_CALLBACK_MANAGER,
+                                      0, /* time - irrelevant */
+                                     &current_camera_callback_manager);
+
+            system_callback_manager_unsubscribe_from_callbacks(current_camera_callback_manager,
+                                                               SCENE_CAMERA_CALLBACK_ID_SHOW_FRUSTUM_CHANGED,
+                                                               _ogl_scene_renderer_on_camera_show_frustum_setting_changed,
+                                                               scene_renderer_ptr);
+        } /* for (all scene cameras) */
+
+        system_callback_manager_unsubscribe_from_callbacks(scene_callback_manager,
+                                                           SCENE_CALLBACK_ID_LIGHT_ADDED,
+                                                           _ogl_scene_renderer_on_ubers_map_invalidated,
+                                                           scene_renderer_ptr);
+    }
+}
+
+/** TODO */
+PRIVATE void _ogl_scene_renderer_subscribe_for_mesh_material_notifications(_ogl_scene_renderer* scene_renderer_ptr,
+                                                                           mesh_material        material,
+                                                                           bool                 should_subscribe)
+{
+    system_callback_manager material_callback_manager = NULL;
+
+    mesh_material_get_property(material,
+                               MESH_MATERIAL_PROPERTY_CALLBACK_MANAGER,
+                              &material_callback_manager);
+
+    ASSERT_DEBUG_SYNC(material_callback_manager != NULL,
+                      "Could not retrieve callback manager from a mesh_material instance.");
+
+    if (should_subscribe)
+    {
+        system_callback_manager_subscribe_for_callbacks(material_callback_manager,
+                                                        MESH_MATERIAL_CALLBACK_ID_OGL_UBER_UPDATED,
+                                                        CALLBACK_SYNCHRONICITY_SYNCHRONOUS,
+                                                        _ogl_scene_renderer_on_mesh_material_ogl_uber_invalidated,
+                                                        scene_renderer_ptr);
+    }
+    else
+    {
+        system_callback_manager_unsubscribe_from_callbacks(material_callback_manager,
+                                                           MESH_MATERIAL_CALLBACK_ID_OGL_UBER_UPDATED,
+                                                           _ogl_scene_renderer_on_mesh_material_ogl_uber_invalidated,
+                                                           scene_renderer_ptr);
+    }
+}
+/** TODO */
 PRIVATE void _ogl_scene_renderer_update_frustum_preview_assigned_cameras(_ogl_scene_renderer* renderer_ptr)
 {
     /* This function may be called via a call-back. Make sure the frustum preview handler is instantiated
@@ -1853,47 +2013,9 @@ PUBLIC EMERALD_API ogl_scene_renderer ogl_scene_renderer_create(ral_context cont
                                  OGL_CONTEXT_PROPERTY_MATERIALS,
                                 &scene_renderer_ptr->material_manager);
 
-        /* Sign up for "show frustum" state changes for cameras & lights. This is needed to properly
-         * re-route the events to the scene renderer */
-        uint32_t                n_scene_cameras        = 0;
-        system_callback_manager scene_callback_manager = NULL;
-
-        scene_get_property(scene,
-                           SCENE_PROPERTY_CALLBACK_MANAGER,
-                          &scene_callback_manager);
-        scene_get_property(scene,
-                           SCENE_PROPERTY_N_CAMERAS,
-                          &n_scene_cameras);
-
-        for (uint32_t n_scene_camera = 0;
-                      n_scene_camera < n_scene_cameras;
-                    ++n_scene_camera)
-        {
-            system_callback_manager current_camera_callback_manager = NULL;
-            scene_camera            current_camera                  = scene_get_camera_by_index(scene,
-                                                                                                n_scene_camera);
-
-            scene_camera_get_property(current_camera,
-                                      SCENE_CAMERA_PROPERTY_CALLBACK_MANAGER,
-                                      0, /* time - irrelevant */
-                                     &current_camera_callback_manager);
-
-            system_callback_manager_subscribe_for_callbacks(current_camera_callback_manager,
-                                                            SCENE_CAMERA_CALLBACK_ID_SHOW_FRUSTUM_CHANGED,
-                                                            CALLBACK_SYNCHRONICITY_SYNCHRONOUS,
-                                                            _ogl_scene_renderer_on_camera_show_frustum_setting_changed,
-                                                            scene_renderer_ptr);
-        } /* for (all scene cameras) */
-
-        /* Since ogl_scene_renderer caches ogl_uber instances, given current scene configuration,
-         * we need to register for various scene call-backs in order to ensure these instances
-         * are reset, if the scene configuration ever changes.
-         */
-        system_callback_manager_subscribe_for_callbacks(scene_callback_manager,
-                                                        SCENE_CALLBACK_ID_LIGHT_ADDED,
-                                                        CALLBACK_SYNCHRONICITY_SYNCHRONOUS,
-                                                        _ogl_scene_renderer_on_ubers_map_invalidated,
-                                                        scene_renderer_ptr);                /* callback_proc_user_arg */
+        /* Subscribe for scene notifications */
+        _ogl_scene_renderer_subscribe_for_general_notifications(scene_renderer_ptr,
+                                                                true /* should_subscribe */);
 
         /* Sign up for mesh_material callbacks. In case the material becomes outdated, we need
          * to re-create the entry for mesh_uber */
@@ -1931,8 +2053,7 @@ PUBLIC EMERALD_API ogl_scene_renderer ogl_scene_renderer_create(ral_context cont
                           n_current_mesh_material < n_current_mesh_materials;
                         ++n_current_mesh_material)
             {
-                mesh_material           current_mesh_material                  = NULL;
-                system_callback_manager current_mesh_material_callback_manager = NULL;
+                mesh_material current_mesh_material = NULL;
 
                 system_resizable_vector_get_element_at(current_mesh_materials,
                                                        n_current_mesh_material,
@@ -1942,18 +2063,9 @@ PUBLIC EMERALD_API ogl_scene_renderer ogl_scene_renderer_create(ral_context cont
                                   "Could not retrieve mesh_material instance.");
 
                 /* Finally, time to sign up! */
-                mesh_material_get_property(current_mesh_material,
-                                           MESH_MATERIAL_PROPERTY_CALLBACK_MANAGER,
-                                          &current_mesh_material_callback_manager);
-
-                ASSERT_DEBUG_SYNC(current_mesh_material_callback_manager != NULL,
-                                  "Could not retrieve callback manager from a mesh_material instance.");
-
-                system_callback_manager_subscribe_for_callbacks(current_mesh_material_callback_manager,
-                                                                MESH_MATERIAL_CALLBACK_ID_OGL_UBER_UPDATED,
-                                                                CALLBACK_SYNCHRONICITY_SYNCHRONOUS,
-                                                                _ogl_scene_renderer_on_mesh_material_ogl_uber_invalidated,
-                                                                scene_renderer_ptr);
+                _ogl_scene_renderer_subscribe_for_mesh_material_notifications(scene_renderer_ptr,
+                                                                              current_mesh_material,
+                                                                              true /* should_subscribe */);
             } /* for (all current mesh materials) */
         } /* for (all unique meshes) */
     } /* if (scene_renderer_ptr != NULL) */

@@ -1028,7 +1028,7 @@ PRIVATE void _raGL_backend_on_texture_mipmap_generation_request(const void* call
      * the request. */
     system_critical_section_enter(backend_ptr->textures_map_cs);
     {
-        if (!system_hash64map_get(backend_ptr->buffers_map,
+        if (!system_hash64map_get(backend_ptr->textures_map,
                                   (system_hash64) texture,
                                  &texture_raGL) )
         {

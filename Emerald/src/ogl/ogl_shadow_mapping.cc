@@ -1920,8 +1920,13 @@ PUBLIC void ogl_shadow_mapping_get_matrices_for_light(ogl_shadow_mapping        
      * Once we have the data, we output both the view and projection matrices, so they can be used to render the
      * shadow maps for the light.
      */
-    scene_light_type light_type = SCENE_LIGHT_TYPE_UNKNOWN;
+    uint32_t              light_sm_size[2];
+    scene_light_type      light_type      = SCENE_LIGHT_TYPE_UNKNOWN;
+    static const uint32_t zero_sm_size[2] = {0, 0};
 
+    scene_light_get_property(light,
+                             SCENE_LIGHT_PROPERTY_SHADOW_MAP_SIZE,
+                             light_sm_size);
     scene_light_get_property(light,
                              SCENE_LIGHT_PROPERTY_TYPE,
                             &light_type);
@@ -2115,6 +2120,10 @@ PUBLIC void ogl_shadow_mapping_get_matrices_for_light(ogl_shadow_mapping        
             float result_max[3];
             float result_min[3];
 
+            scene_camera_set_property(current_camera,
+                                      SCENE_CAMERA_PROPERTY_VIEWPORT,
+                                      light_sm_size);
+
             _ogl_shadow_mapping_get_aabb_for_camera_frustum_and_scene_aabb(current_camera,
                                                                            time,
                                                                            aabb_min_world,
@@ -2122,6 +2131,10 @@ PUBLIC void ogl_shadow_mapping_get_matrices_for_light(ogl_shadow_mapping        
                                                                            *out_view_matrix,
                                                                            result_min,
                                                                            result_max);
+
+            scene_camera_set_property(current_camera,
+                                      SCENE_CAMERA_PROPERTY_VIEWPORT,
+                                      zero_sm_size);
 
             /* Use the AABB data to compute the reuslt projection matrix.
              *

@@ -61,13 +61,6 @@ PRIVATE void _scene_release(void* arg)
 {
     _scene* scene_ptr = (_scene*) arg;
 
-    if (scene_ptr->callback_manager != NULL)
-    {
-        system_callback_manager_release(scene_ptr->callback_manager);
-
-        scene_ptr->callback_manager = NULL;
-    }
-
     if (scene_ptr->cameras != NULL)
     {
         scene_camera camera = NULL;
@@ -122,22 +115,6 @@ PRIVATE void _scene_release(void* arg)
         scene_ptr->graph = NULL;
     }
 
-    if (scene_ptr->lights != NULL)
-    {
-        scene_light light = NULL;
-
-        while (system_resizable_vector_pop(scene_ptr->lights,
-                                          &light) )
-        {
-            scene_light_release(light);
-
-            light = NULL;
-        }
-        system_resizable_vector_release(scene_ptr->lights);
-
-        scene_ptr->lights = NULL;
-    }
-
     if (scene_ptr->materials != NULL)
     {
         scene_material material = NULL;
@@ -154,6 +131,22 @@ PRIVATE void _scene_release(void* arg)
         scene_ptr->materials = NULL;
     }
 
+    if (scene_ptr->unique_meshes != NULL)
+    {
+        mesh mesh_gpu = NULL;
+
+        while (system_resizable_vector_pop(scene_ptr->unique_meshes,
+                                          &mesh_gpu) )
+        {
+            mesh_release(mesh_gpu);
+
+            mesh_gpu = NULL;
+        }
+        system_resizable_vector_release(scene_ptr->unique_meshes);
+
+        scene_ptr->unique_meshes = NULL;
+    }
+
     if (scene_ptr->mesh_instances != NULL)
     {
         scene_mesh mesh_instance_ptr = NULL;
@@ -166,6 +159,22 @@ PRIVATE void _scene_release(void* arg)
         system_resizable_vector_release(scene_ptr->mesh_instances);
 
         scene_ptr->mesh_instances = NULL;
+    }
+
+    if (scene_ptr->lights != NULL)
+    {
+        scene_light light = NULL;
+
+        while (system_resizable_vector_pop(scene_ptr->lights,
+                                          &light) )
+        {
+            scene_light_release(light);
+
+            light = NULL;
+        }
+        system_resizable_vector_release(scene_ptr->lights);
+
+        scene_ptr->lights = NULL;
     }
 
     if (scene_ptr->textures != NULL)
@@ -182,20 +191,11 @@ PRIVATE void _scene_release(void* arg)
         scene_ptr->textures = NULL;
     }
 
-    if (scene_ptr->unique_meshes != NULL)
+    if (scene_ptr->callback_manager != NULL)
     {
-        mesh mesh_gpu = NULL;
+        system_callback_manager_release(scene_ptr->callback_manager);
 
-        while (system_resizable_vector_pop(scene_ptr->unique_meshes,
-                                          &mesh_gpu) )
-        {
-            mesh_release(mesh_gpu);
-
-            mesh_gpu = NULL;
-        }
-        system_resizable_vector_release(scene_ptr->unique_meshes);
-
-        scene_ptr->unique_meshes = NULL;
+        scene_ptr->callback_manager = NULL;
     }
 
     if (scene_ptr->context != NULL)

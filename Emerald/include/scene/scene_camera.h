@@ -21,7 +21,11 @@ typedef enum
 
 enum scene_camera_property
 {
-    /* settable, float */
+    /* settable, float.
+     *
+     * NOTE: If 0.0 is returned for this property, it is caller's responsibility to calculate the AR
+     *       using current viewport's size.
+     */
     SCENE_CAMERA_PROPERTY_ASPECT_RATIO,
 
     /* not settable, system_callback_manager */
@@ -106,6 +110,13 @@ enum scene_camera_property
      * is true.
      */
     SCENE_CAMERA_PROPERTY_VERTICAL_FOV_FROM_ZOOM_FACTOR,
+
+    /* settable, uint32_t[2]
+     *
+     * Viewport size information is used to calculate the returned aspect
+     * ratio, if camera's internal AR is set to 0.0.
+     */
+    SCENE_CAMERA_PROPERTY_VIEWPORT,
 
     /* not settable, curve_container */
     SCENE_CAMERA_PROPERTY_ZOOM_FACTOR

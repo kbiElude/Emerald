@@ -10,6 +10,7 @@
 #include "ogl/ogl_rendering_handler.h"
 #include "ogl/ogl_text.h"
 #include "ogl/ogl_ui_texture_preview.h"
+#include "ral/ral_context.h"
 #include "scene/scene_camera.h"
 #include "system/system_critical_section.h"
 #include "system/system_resources.h"
@@ -44,9 +45,9 @@ PRIVATE void _callback_on_dropdown_switch(ogl_ui_control control,
 {
     ogl_rendering_handler rendering_handler = NULL;
 
-    system_window_get_property(_window,
-                               SYSTEM_WINDOW_PROPERTY_RENDERING_HANDLER,
-                              &rendering_handler);
+    demo_window_get_property(_window,
+                             DEMO_WINDOW_PROPERTY_RENDERING_HANDLER,
+                            &rendering_handler);
 
     ogl_rendering_handler_lock_bound_context(rendering_handler);
     {
@@ -141,11 +142,11 @@ PUBLIC void ui_init()
     int          window_size[2]                 = {0};
 
     /* Initialize components required to power UI */
-    system_window_get_property(_window,
-                               SYSTEM_WINDOW_PROPERTY_DIMENSIONS,
-                               window_size);
+    demo_window_get_property(_window,
+                             DEMO_WINDOW_PROPERTY_RESOLUTION,
+                             window_size);
 
-    ogl_context_get_property(_context,
+    ogl_context_get_property(ral_context_get_gl_context(_context),
                              OGL_CONTEXT_PROPERTY_TEXT_RENDERER,
                             &_text_renderer);
     ogl_text_retain         (_text_renderer);

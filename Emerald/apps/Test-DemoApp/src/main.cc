@@ -83,7 +83,7 @@ void _rendering_handler_entrypoint(ogl_context context,
                             rendering_area_px_topdown);
 }
 
-PUBLIC void _render_scene(ogl_context context,
+PUBLIC void _render_scene(ral_context context,
                           uint32_t    frame_index,
                           system_time time,
                           const int*  rendering_area_px_topdown,

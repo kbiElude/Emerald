@@ -779,7 +779,9 @@ PRIVATE RENDERING_CONTEXT_CALL void _raGL_texture_verify_conformance_to_ral_text
                           ral_general_fixed_sample_locations ? 1 : 0);
     }
 
-    if (!texture_ptr->is_renderbuffer && gl_general_n_layers != ral_general_n_layers)
+    if (!texture_ptr->is_renderbuffer               &&
+         ral_general_type    == RAL_TEXTURE_TYPE_3D &&
+         gl_general_n_layers != ral_general_n_layers)
     {
         ASSERT_DEBUG_SYNC(false,
                           "GL texture object's number of layers does not match RAL texture's (%d vs %d)",
@@ -879,9 +881,9 @@ PRIVATE RENDERING_CONTEXT_CALL void _raGL_texture_verify_conformance_to_ral_text
                               "GL/RAL mip-map format mismatch detected");
         }
 
-        if (gl_mipmap_depth  != ral_mipmap_depth  ||
-            gl_mipmap_height != ral_mipmap_height ||
-            gl_mipmap_width  != ral_mipmap_width)
+        if (ral_general_type == RAL_TEXTURE_TYPE_3D && gl_mipmap_depth  != ral_mipmap_depth  ||
+                                                       gl_mipmap_height != ral_mipmap_height ||
+                                                       gl_mipmap_width  != ral_mipmap_width)
         {
             ASSERT_DEBUG_SYNC(false,
                               "GL/RAL mip-map size detected at mip-map level [%d]",

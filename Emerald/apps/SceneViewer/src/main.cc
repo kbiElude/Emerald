@@ -7,6 +7,8 @@
 #include <stdlib.h>
 #include "main.h"
 #include "curve/curve_container.h"
+#include "demo/demo_app.h"
+#include "demo/demo_window.h"
 #include "mesh/mesh.h"
 #include "mesh/mesh_material.h"
 #include "ogl/ogl_context.h"
@@ -22,6 +24,7 @@
 #include "ogl/ogl_ui.h"
 #include "ogl/ogl_ui_dropdown.h"
 #include "ogl/ogl_ui_texture_preview.h"
+#include "ral/ral_context.h"
 #include "scene/scene.h"
 #include "scene/scene_camera.h"
 #include "scene/scene_graph.h"
@@ -40,16 +43,15 @@
 #include "system/system_resizable_vector.h"
 #include "system/system_screen_mode.h"
 #include "system/system_variant.h"
-#include "system/system_window.h"
 #include <string>
 #include <sstream>
 #include "app_config.h"
 #include "state.h"
 #include "ui.h"
 
-ogl_context           _context             = NULL;
+ral_context           _context             = NULL;
 ogl_rendering_handler _rendering_handler   = NULL;
-system_window         _window              = NULL;
+demo_window           _window              = NULL;
 system_event          _window_closed_event = system_event_create(true); /* manual_reset */
 GLuint                _vao_id              = 0;
 
@@ -84,7 +86,7 @@ void _rendering_handler_callback(ogl_context context,
                             rendering_area_px_topdown);
 }
 
-PUBLIC void _render_scene(ogl_context context,
+PUBLIC void _render_scene(ral_context context,
                           uint32_t    frame_index,
                           system_time time,
                           const int*  rendering_area_px_topdown,
@@ -237,7 +239,7 @@ PUBLIC void _render_scene(ogl_context context,
     /* Traverse the scene graph */
     const ogl_context_gl_entrypoints* entry_points = NULL;
 
-    ogl_context_get_property(_context,
+    ogl_context_get_property(ral_context_get_gl_context(_context),
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
                             &entry_points);
 
@@ -270,7 +272,7 @@ PUBLIC void _render_scene(ogl_context context,
         system_matrix4x4                  vp           = system_matrix4x4_create_by_mul(projection,
                                                                                         view);
 
-        ogl_context_get_property(context,
+        ogl_context_get_property(ral_context_get_gl_context(context),
                                  OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
                                 &entry_points);
 
@@ -287,17 +289,17 @@ PUBLIC void _render_scene(ogl_context context,
      */
     scene_light    light              = scene_get_light_by_index(state_get_scene(),
                                                                  0);
-    ogl_texture    light_sm           = NULL;
+    ral_texture    light_sm           = NULL;
     ogl_ui_control ui_texture_preview = ui_get_texture_preview_control();
 
     scene_light_get_property(light,
-                             SCENE_LIGHT_PROPERTY_SHADOW_MAP_TEXTURE_COLOR,
+                             SCENE_LIGHT_PROPERTY_SHADOW_MAP_TEXTURE_COLOR_RAL,
                             &light_sm);
 
     if (ui_texture_preview != NULL)
     {
         ogl_ui_set_control_property(ui_texture_preview,
-                                    OGL_UI_CONTROL_PROPERTY_TEXTURE_PREVIEW_TEXTURE,
+                                    OGL_UI_CONTROL_PROPERTY_TEXTURE_PREVIEW_TEXTURE_RAL,
                                    &light_sm);
     }
 
@@ -358,9 +360,10 @@ void _rendering_window_closing_callback_handler(system_window window,
     int main()
 #endif
 {
-    system_screen_mode screen_mode        = NULL;
-    int                window_size[2]     = {WINDOW_WIDTH, WINDOW_HEIGHT};
-    int                window_x1y1x2y2[4] = {0};
+    PFNOGLRENDERINGHANDLERRENDERINGCALLBACK pfn_callback_proc  = _rendering_handler_callback;
+    ogl_rendering_handler                   rendering_handler  = NULL;
+    const system_hashed_ansi_string         window_name        = system_hashed_ansi_string_create("Scene viewer");
+    int                                     window_x1y1x2y2[4] = {0};
 
     /* Let the user select the scene file */
     const system_hashed_ansi_string filters[] =
@@ -386,15 +389,9 @@ void _rendering_window_closing_callback_handler(system_window window,
     }
 
     /* Carry on */
-    system_pixel_format window_pf = system_pixel_format_create(8,  /* color_buffer_red_bits   */
-                                                               8,  /* color_buffer_green_bits */
-                                                               8,  /* color_buffer_blue_bits  */
-                                                               0,  /* color_buffer_alpha_bits */
-                                                               16, /* depth_buffer_bits       */
-                                                               SYSTEM_PIXEL_FORMAT_USE_MAXIMUM_NUMBER_OF_SAMPLES,
-                                                               0); /* stencil_buffer_bits     */
+    system_screen_mode screen_mode = NULL;
+    uint32_t           window_size[2];
 
-#if 0
     system_screen_mode_get         (0,
                                    &screen_mode);
     system_screen_mode_get_property(screen_mode,
@@ -404,63 +401,54 @@ void _rendering_window_closing_callback_handler(system_window window,
                                     SYSTEM_SCREEN_MODE_PROPERTY_HEIGHT,
                                     window_size + 1);
 
-    _window = system_window_create_fullscreen(OGL_CONTEXT_TYPE_GL,
-                                              screen_mode,
-                                              true, /* vsync_enabled */
-                                              window_pf);
-#else
     window_size[0] /= 2;
     window_size[1] /= 2;
 
-    system_window_get_centered_window_position_for_primary_monitor(window_size,
-                                                                   window_x1y1x2y2);
 
-    _window = system_window_create_not_fullscreen(OGL_CONTEXT_TYPE_GL,
-                                                  window_x1y1x2y2,
-                                                  system_hashed_ansi_string_create("Test window"),
-                                                  false, /* scalable */
-                                                  false, /* vsync_enabled */
-                                                  true,  /* visible */
-                                                  window_pf);
-#endif
+   _window = demo_app_create_window(window_name,
+                                     RAL_BACKEND_TYPE_GL,
+                                     false /* use_timeline */);
 
-    _rendering_handler = ogl_rendering_handler_create_with_fps_policy(system_hashed_ansi_string_create("Default rendering handler"),
-                                                                      60,
-                                                                      _rendering_handler_callback,
-                                                                      NULL);
+    demo_window_set_property(_window,
+                             DEMO_WINDOW_PROPERTY_RESOLUTION,
+                             window_size);
 
-    system_window_get_property(_window,
-                               SYSTEM_WINDOW_PROPERTY_RENDERING_CONTEXT,
-                              &_context);
-    ogl_context_get_property  (_context,
-                               OGL_CONTEXT_PROPERTY_FLYBY,
-                              &_flyby);
+    demo_window_show(_window);
 
-    system_window_set_property(_window,
-                               SYSTEM_WINDOW_PROPERTY_RENDERING_HANDLER,
-                              &_rendering_handler);
+    demo_window_get_property(_window,
+                             DEMO_WINDOW_PROPERTY_RENDERING_CONTEXT,
+                            &_context);
+    ogl_context_get_property(ral_context_get_gl_context(_context),
+                             OGL_CONTEXT_PROPERTY_FLYBY,
+                            &_flyby);
+    demo_window_get_property(_window,
+                             DEMO_WINDOW_PROPERTY_RENDERING_HANDLER,
+                            &rendering_handler);
 
+    ogl_rendering_handler_set_property(rendering_handler,
+                                       OGL_RENDERING_HANDLER_PROPERTY_RENDERING_CALLBACK,
+                                      &pfn_callback_proc);
 
-    system_window_add_callback_func    (_window,
-                                        SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_NORMAL,
-                                        SYSTEM_WINDOW_CALLBACK_FUNC_RIGHT_BUTTON_DOWN,
-                                        (void*) _rendering_rbm_callback_handler,
-                                        NULL);
-    system_window_add_callback_func    (_window,
-                                        SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_NORMAL,
-                                        SYSTEM_WINDOW_CALLBACK_FUNC_KEY_DOWN,
-                                        (void*) _rendering_key_down_callback_handler,
-                                        NULL);
-    system_window_add_callback_func    (_window,
-                                        SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_NORMAL,
-                                        SYSTEM_WINDOW_CALLBACK_FUNC_WINDOW_CLOSED,
-                                        (void*) _rendering_window_closed_callback_handler,
-                                        NULL);
-    system_window_add_callback_func    (_window,
-                                        SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_NORMAL,
-                                        SYSTEM_WINDOW_CALLBACK_FUNC_WINDOW_CLOSING,
-                                        (void*) _rendering_window_closing_callback_handler,
-                                        NULL);
+    demo_window_add_callback_func(_window,
+                                  SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_NORMAL,
+                                  SYSTEM_WINDOW_CALLBACK_FUNC_RIGHT_BUTTON_DOWN,
+                                  (void*) _rendering_rbm_callback_handler,
+                                  NULL);
+    demo_window_add_callback_func(_window,
+                                  SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_NORMAL,
+                                  SYSTEM_WINDOW_CALLBACK_FUNC_KEY_DOWN,
+                                  (void*) _rendering_key_down_callback_handler,
+                                  NULL);
+    demo_window_add_callback_func(_window,
+                                  SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_NORMAL,
+                                  SYSTEM_WINDOW_CALLBACK_FUNC_WINDOW_CLOSED,
+                                  (void*) _rendering_window_closed_callback_handler,
+                                  NULL);
+    demo_window_add_callback_func(_window,
+                                  SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_NORMAL,
+                                  SYSTEM_WINDOW_CALLBACK_FUNC_WINDOW_CLOSING,
+                                  (void*) _rendering_window_closing_callback_handler,
+                                  NULL);
 
     /* Initialize various states required to run the demo */
     if (!state_init(scene_filename) )
@@ -472,23 +460,17 @@ void _rendering_window_closing_callback_handler(system_window window,
     ui_init();
 
     /* Carry on */
-    ogl_rendering_handler_play(_rendering_handler,
-                               0); /* time */
+    demo_window_start_rendering(_window,
+                                0 /* time */);
 
     system_event_wait_single(_window_closed_event);
 
     /* Clean up */
-    ogl_rendering_handler_stop(_rendering_handler);
+    demo_window_stop_rendering(_window);
 
 end:
-    if (_window != NULL)
-    {
-        system_window_close(_window);
-
-        _window = NULL;
-    }
-
-    system_event_release(_window_closed_event);
+    demo_app_destroy_window(window_name);
+    system_event_release   (_window_closed_event);
 
     main_force_deinit();
 

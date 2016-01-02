@@ -37,6 +37,7 @@ typedef struct
     _scene_camera_type        type;
     bool                      use_camera_physical_properties;
     bool                      use_custom_vertical_fov;
+    uint32_t                  viewport[2];
     curve_container           yfov_custom;
     float                     zfar;
     float                     znear;
@@ -115,15 +116,26 @@ PRIVATE void _scene_camera_calculate_frustum(_scene_camera* camera_ptr,
     }
 
     /* Calculate far/near plane properties */
-    ASSERT_DEBUG_SYNC(camera_ptr->ar != 0.0f,
-                      "AR for the camera is 0");
+    float ar = camera_ptr->ar;
+
+    if (fabs(ar) < 1e-5f)
+    {
+        ASSERT_DEBUG_SYNC(camera_ptr->viewport[0] != 0 &&
+                          camera_ptr->viewport[1] != 0,
+                          "Camera's AR is 0.0 but no viewport has been defined.");
+
+        ar = float(camera_ptr->viewport[0]) / float(camera_ptr->viewport[1]);
+    }
+
+    ASSERT_DEBUG_SYNC(fabs(ar) >= 1e-5f,
+                      "Aspect ratio is 0");
     ASSERT_DEBUG_SYNC(yfov_value != 0.0f,
                       "YFov for the camera is 0");
 
     float far_plane_height  = 2.0f * tan(yfov_value * 0.5f) * camera_ptr->zfar;
-    float far_plane_width   = far_plane_height              * camera_ptr->ar;
+    float far_plane_width   = far_plane_height              * ar;
     float near_plane_height = 2.0f * tan(yfov_value * 0.5f) * camera_ptr->znear;
-    float near_plane_width  = near_plane_height             * camera_ptr->ar;
+    float near_plane_width  = near_plane_height             * ar;
 
     /* We need forward, right & up vectors for the camera. We will calculate those, using
      * the inversed camera matrix.
@@ -415,6 +427,10 @@ PRIVATE void _scene_camera_init(_scene_camera*            camera_ptr,
     camera_ptr->use_camera_physical_properties = false;
     camera_ptr->use_custom_vertical_fov        = true;
     camera_ptr->zfar_znear_last_recalc_time    = -1;
+
+    memset(camera_ptr->viewport,
+           0,
+           sizeof(camera_ptr->viewport) );
 }
 
 /** TODO */
@@ -991,44 +1007,11 @@ PUBLIC scene_camera scene_camera_load(system_file_serializer    serializer,
         goto end_error;
     }
 
-    /* If camera AR is 0, try to retrieve current viewport's size.
-     *
-     * This will not work if we're not in a rendering context, in
-     * which case throw an assertion failure.
-     */
+    /* If camera AR is 0, aspect ratio should be determined in run-time, using
+     * viewport size. */
     if (fabs(camera_ar) < 1e-5f)
     {
-#if 0
-        ogl_context_state_cache state_cache = NULL;
-
-        ASSERT_DEBUG_SYNC(context != NULL,
-                          "No active rendering context but camera AR is set at 0.0!");
-        if (context != NULL)
-        {
-            float current_viewport_height;
-            GLint current_viewport_size[4];
-            float current_viewport_width;
-
-            ogl_context_get_property            (context,
-                                                 OGL_CONTEXT_PROPERTY_STATE_CACHE,
-                                                &state_cache);
-            ogl_context_state_cache_get_property(state_cache,
-                                                 OGL_CONTEXT_STATE_CACHE_PROPERTY_VIEWPORT,
-                                                 current_viewport_size);
-
-            current_viewport_height = (float) current_viewport_size[3];
-            current_viewport_width  = (float) current_viewport_size[2];
-
-            ASSERT_DEBUG_SYNC(current_viewport_height > 0 &&
-                              current_viewport_width  > 0,
-                              "Invalid viewport's dimensions");
-
-            camera_ar = current_viewport_width / current_viewport_height;
-        } /* if (context != NULL) */
-#else
-        ASSERT_DEBUG_SYNC(false,
-                          "TODO");
-#endif
+        camera_ar = 0.0f;
     } /* if (fabs(camera_ar) < 1e-5f) */
 
     /* Set the float properties */
@@ -1266,6 +1249,14 @@ PUBLIC EMERALD_API void scene_camera_set_property(scene_camera          camera,
             break;
         }
 
+        case SCENE_CAMERA_PROPERTY_VIEWPORT:
+        {
+            memcpy(camera_ptr->viewport,
+                   data,
+                   sizeof(camera_ptr->viewport) );
+
+            break;
+        }
         case SCENE_CAMERA_PROPERTY_ZOOM_FACTOR:
         {
             /* TODO: This is bad and can/will backfire in gazillion ways in indeterministic

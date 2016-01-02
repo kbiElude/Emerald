@@ -8,6 +8,7 @@
 #include "mesh/mesh.h"
 #include "mesh/mesh_material.h"
 #include "ogl/ogl_context.h"
+#include "raGL/raGL_buffer.h"
 #include "ral/ral_buffer.h"
 #include "ral/ral_context.h"
 #include "ral/ral_sampler.h"
@@ -3591,13 +3592,22 @@ PUBLIC EMERALD_API bool mesh_get_layer_data_stream_property(mesh                
         if  (mesh_ptr->type == MESH_TYPE_REGULAR                            &&
              property       == MESH_LAYER_DATA_STREAM_PROPERTY_START_OFFSET)
         {
-            uint32_t bo_start_offset = 0;
+            raGL_buffer bo_raGL              = ral_context_get_buffer_gl(mesh_ptr->ral_context,
+                                                                         mesh_ptr->gl_bo);
+            uint32_t    bo_raGL_start_offset = 0;
+            uint32_t    bo_ral_start_offset  = 0;
+
+            raGL_buffer_get_property(bo_raGL,
+                                     RAGL_BUFFER_PROPERTY_START_OFFSET,
+                                    &bo_raGL_start_offset);
 
             ral_buffer_get_property(mesh_ptr->gl_bo,
                                     RAL_BUFFER_PROPERTY_START_OFFSET,
-                                   &bo_start_offset);
+                                   &bo_ral_start_offset);
 
-            *((uint32_t*) out_result_ptr) = bo_start_offset + mesh_ptr->gl_processed_data_stream_start_offset[type];
+            *((uint32_t*) out_result_ptr) = bo_raGL_start_offset                                   +
+                                            bo_ral_start_offset                                    +
+                                            mesh_ptr->gl_processed_data_stream_start_offset[type];
             result                        = true;
         }
         else
@@ -4129,16 +4139,24 @@ PUBLIC EMERALD_API bool mesh_get_layer_pass_property(mesh                instanc
 
                 case MESH_LAYER_PROPERTY_GL_BO_ELEMENTS_OFFSET:
                 {
-                    uint32_t gl_bo_start_offset = 0;
+                    raGL_buffer bo_raGL              = ral_context_get_buffer_gl(mesh_ptr->ral_context,
+                                                                                 mesh_ptr->gl_bo);
+                    uint32_t    bo_raGL_start_offset = 0;
+                    uint32_t    bo_ral_start_offset  = 0;
 
                     ASSERT_DEBUG_SYNC(mesh_ptr->type == MESH_TYPE_REGULAR,
                                       "MESH_LAYER_PROPERTY_GL_BO_ELEMENTS_OFFSET query is only valid for regular meshes.");
 
-                    ral_buffer_get_property(mesh_ptr->gl_bo,
-                                            RAL_BUFFER_PROPERTY_START_OFFSET,
-                                           &gl_bo_start_offset);
+                    raGL_buffer_get_property(bo_raGL,
+                                             RAGL_BUFFER_PROPERTY_START_OFFSET,
+                                            &bo_raGL_start_offset);
+                    ral_buffer_get_property (mesh_ptr->gl_bo,
+                                             RAL_BUFFER_PROPERTY_START_OFFSET,
+                                            &bo_ral_start_offset);
 
-                    *((uint32_t*) out_result_ptr) = gl_bo_start_offset + mesh_layer_pass_ptr->gl_bo_elements_offset;
+                    *((uint32_t*) out_result_ptr) = bo_ral_start_offset                        +
+                                                    bo_raGL_start_offset                       +
+                                                    mesh_layer_pass_ptr->gl_bo_elements_offset;
 
                     break;
                 }
@@ -4315,7 +4333,8 @@ PUBLIC EMERALD_API mesh mesh_load_with_serializer(ral_context            context
     /* Set GL context */
     mesh_ptr = (_mesh*) result;
 
-    mesh_ptr->gl_context = ral_context_get_gl_context(context_ral);
+    mesh_ptr->gl_context  = ral_context_get_gl_context(context_ral);
+    mesh_ptr->ral_context = context_ral;
 
     /* Fork, depending on whether we're dealing with an instantiated mesh,
      * or a parent instance */
