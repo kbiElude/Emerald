@@ -1076,13 +1076,6 @@ PRIVATE void _ogl_program_release_active_uniform_blocks(_ogl_program* program_pt
 
             current_owner_context = (ogl_context) current_owner_context_hash;
 
-#if 0
-            TODO: pending fix for hash map container
-
-            ASSERT_DEBUG_SYNC(active_ubs != NULL,
-                              "Sanity check failed");
-#endif
-
             if (active_ubs != NULL)
             {
                 if (owner_context == NULL ||
@@ -1098,6 +1091,12 @@ PRIVATE void _ogl_program_release_active_uniform_blocks(_ogl_program* program_pt
 
                     system_resizable_vector_release(active_ubs);
                     active_ubs = NULL;
+
+                    system_hash64map_remove(program_ptr->context_to_active_ubs_map,
+                                            current_owner_context_hash);
+
+                    --n_context;
+                    --n_contexts;
                 }
             }
         } /* for (all recognized contexts) */

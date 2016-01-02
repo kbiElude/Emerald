@@ -1182,6 +1182,9 @@ PRIVATE void _ogl_context_init_context_after_creation(ogl_context context)
                               &rendering_handler);
 
     ogl_rendering_handler_set_private_property(rendering_handler,
+                                               OGL_RENDERING_HANDLER_PRIVATE_PROPERTY_CALL_PASSTHROUGH_CONTEXT,
+                                              &context_ptr);
+    ogl_rendering_handler_set_private_property(rendering_handler,
                                                OGL_RENDERING_HANDLER_PRIVATE_PROPERTY_CALL_PASSTHROUGH_MODE,
                                               &call_passthrough_mode_enabled);
     {

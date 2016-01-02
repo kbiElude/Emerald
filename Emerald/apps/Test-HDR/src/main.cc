@@ -8,6 +8,8 @@
 #include "main.h"
 #include "curve/curve_container.h"
 #include "curve_editor/curve_editor_general.h"
+#include "demo/demo_app.h"
+#include "demo/demo_window.h"
 #include "gfx/gfx_image.h"
 #include "gfx/gfx_rgbe.h"
 #include "ogl/ogl_context.h"
@@ -15,9 +17,13 @@
 #include "ogl/ogl_program_ub.h"
 #include "ogl/ogl_rendering_handler.h"
 #include "ogl/ogl_text.h"
-#include "ogl/ogl_texture.h"
 #include "postprocessing/postprocessing_reinhard_tonemap.h"
 #include "raGL/raGL_buffer.h"
+#include "raGL/raGL_framebuffer.h"
+#include "raGL/raGL_texture.h"
+#include "ral/ral_buffer.h"
+#include "ral/ral_framebuffer.h"
+#include "ral/ral_texture.h"
 #include "shaders/shaders_vertex_fullscreen.h"
 #include "shaders/shaders_fragment_texture2D_filmic_customizable.h"
 #include "shaders/shaders_fragment_texture2D_filmic.h"
@@ -46,7 +52,7 @@ typedef enum
     MAPPING_FIRST = MAPPING_LINEAR
 } _mapping_type;
 
-ogl_context                                    _context                                           = NULL;
+ral_context                                    _context                                           = NULL;
 curve_container                                _filmic_customizable_exposure_bias_curve           = NULL;
 shaders_fragment_texture2D_filmic_customizable _filmic_customizable_fp                            = NULL;
 ogl_program                                    _filmic_customizable_program                       = NULL;
@@ -61,8 +67,8 @@ const ogl_program_variable*                    _filmic_customizable_program_f_un
 const ogl_program_variable*                    _filmic_customizable_program_w_uniform             = NULL;
 const ogl_program_variable*                    _filmic_customizable_program_tex_uniform           = NULL;
 ogl_program_ub                                 _filmic_customizable_program_ub                    = NULL;
-raGL_buffer                                    _filmic_customizable_program_ub_bo                 = NULL;
-GLuint                                         _filmic_customizable_program_ub_bo_size            = 0;
+ral_buffer                                     _filmic_customizable_program_ub_bo                 = NULL;
+uint32_t                                       _filmic_customizable_program_ub_bo_size            = 0;
 curve_container                                _filmic_customizable_a_curve                       = NULL;
 curve_container                                _filmic_customizable_b_curve                       = NULL;
 curve_container                                _filmic_customizable_c_curve                       = NULL;
@@ -81,16 +87,16 @@ ogl_program                           _filmic_program                           
 const ogl_program_variable*           _filmic_program_exposure_uniform          = NULL;
 const ogl_program_variable*           _filmic_program_tex_uniform               = NULL;
 ogl_program_ub                        _filmic_program_ub                        = NULL;
-raGL_buffer                           _filmic_program_ub_bo                     = NULL;
-GLuint                                _filmic_program_ub_bo_size                = 0;
+ral_buffer                            _filmic_program_ub_bo                     = NULL;
+uint32_t                              _filmic_program_ub_bo_size                = 0;
 system_variant                        _float_variant                            = NULL;
 shaders_fragment_texture2D_linear     _linear_fp                                = NULL;
 ogl_program                           _linear_program                           = NULL;
 const ogl_program_variable*           _linear_program_exposure_uniform          = NULL;
 const ogl_program_variable*           _linear_program_tex_uniform               = NULL;
 ogl_program_ub                        _linear_program_ub                        = NULL;
-raGL_buffer                           _linear_program_ub_bo                     = NULL;
-GLuint                                _linear_program_ub_bo_size                = 0;
+ral_buffer                            _linear_program_ub_bo                     = NULL;
+uint32_t                              _linear_program_ub_bo_size                = 0;
 postprocessing_reinhard_tonemap       _postprocessing_reinhard_tonemapper       = NULL;
 postprocessing_reinhard_tonemap       _postprocessing_reinhard_tonemapper_crude = NULL;
 shaders_fragment_texture2D_reinhardt  _reinhardt_fp                             = NULL;
@@ -98,14 +104,14 @@ ogl_program                           _reinhardt_program                        
 const ogl_program_variable*           _reinhardt_program_exposure_uniform       = NULL;
 const ogl_program_variable*           _reinhardt_program_tex_uniform            = NULL;
 ogl_program_ub                        _reinhardt_program_ub                     = NULL;
-raGL_buffer                           _reinhardt_program_ub_bo                  = 0;
-GLuint                                _reinhardt_program_ub_bo_size             = 0;
+ral_buffer                            _reinhardt_program_ub_bo                  = 0;
+uint32_t                              _reinhardt_program_ub_bo_size             = 0;
 ogl_text                              _text_renderer                            = NULL;
-GLuint                                _texture_height                           = -1;
-ogl_texture                           _texture                                  = NULL;
+uint32_t                              _texture_height                           = -1;
+ral_texture                           _texture                                  = NULL;
 gfx_image                             _texture_image                            = NULL;
-GLuint                                _texture_width                            = -1;
-system_window                         _window                                   = NULL;
+uint32_t                              _texture_width                            = -1;
+demo_window                           _window                                   = NULL;
 system_event                          _window_closed_event                      = system_event_create(true); /* manual_reset */
 shaders_vertex_fullscreen             _vp                                       = NULL;
 GLuint                                _vaa_id                                   = 0;
@@ -172,7 +178,7 @@ void _update_text_renderer()
     }
 }
 
-void _rendering_handler(ogl_context context,
+void _rendering_handler(ogl_context context_gl,
                         uint32_t    n_frames_rendered,
                         system_time frame_time,
                         const int*  rendering_area_px_topdown,
@@ -180,7 +186,7 @@ void _rendering_handler(ogl_context context,
 {
     const ogl_context_gl_entrypoints* entry_points = NULL;
 
-    ogl_context_get_property(context,
+    ogl_context_get_property(context_gl,
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
                             &entry_points);
 
@@ -212,7 +218,9 @@ void _rendering_handler(ogl_context context,
 
     if (_texture == NULL)
     {
-        const void* texture_image_data_ptr = NULL;
+        const void*  texture_image_data_ptr = NULL;
+        raGL_texture texture_raGL           = NULL;
+        GLuint       texture_raGL_id        = 0;
 
         gfx_image_get_mipmap_property(_texture_image,
                                       0, /* n_mipmap */
@@ -222,19 +230,20 @@ void _rendering_handler(ogl_context context,
         entry_points->pGLGenVertexArrays(1,
                                         &_vaa_id);
 
-        _texture = ogl_texture_create_and_initialize(context,
-                                                     system_hashed_ansi_string_create("Photo"),
-                                                     RAL_TEXTURE_TYPE_2D,
-                                                     RAL_TEXTURE_FORMAT_RGBA32_FLOAT,
-                                                     false,  /* use_full_mipmap_chain */
-                                                     _texture_width,
-                                                     _texture_height,
-                                                     1,      /* base_mipmap_depth    */
-                                                     1,      /* n_samples            */
-                                                     false); /* fixedsamplelocations */
+        ral_context_create_textures_from_gfx_images(_context,
+                                                    1, /* n_textures */
+                                                    &_texture_image,
+                                                    &_texture);
+
+        texture_raGL = ral_context_get_texture_gl(_context,
+                                                  _texture);
+
+        raGL_texture_get_property(texture_raGL,
+                                  RAGL_TEXTURE_PROPERTY_ID,
+                                 &texture_raGL_id);
 
         entry_points->pGLBindTexture  (GL_TEXTURE_2D,
-                                       _texture);
+                                       texture_raGL_id);
         entry_points->pGLTexParameteri(GL_TEXTURE_2D,
                                        GL_TEXTURE_WRAP_S,
                                        GL_CLAMP_TO_BORDER);
@@ -280,25 +289,40 @@ void _rendering_handler(ogl_context context,
     }
 
     /* Set up uniforms */
+    raGL_texture texture_raGL    = ral_context_get_texture_gl(_context,
+                                                              _texture);
+    GLuint       texture_raGL_id = 0;
+
+    raGL_texture_get_property(texture_raGL,
+                              RAGL_TEXTURE_PROPERTY_ID,
+                             &texture_raGL_id);
+
     switch(_active_mapping)
     {
         case MAPPING_LINEAR:
         {
-            GLuint       linear_program_ub_bo_id           = 0;
-            uint32_t     linear_program_ub_bo_start_offset = -1;
-            const GLuint po_id                             = ogl_program_get_id(_linear_program);
+            raGL_buffer  linear_program_ub_bo_raGL              = ral_context_get_buffer_gl(_context,
+                                                                                            _linear_program_ub_bo);
+            GLuint       linear_program_ub_bo_raGL_id           = 0;
+            uint32_t     linear_program_ub_bo_raGL_start_offset = -1;
+            uint32_t     linear_program_ub_bo_ral_start_offset  = -1;
+            const GLuint po_id                                  = ogl_program_get_id        (_linear_program);
 
-            raGL_buffer_get_property(_linear_program_ub_bo,
+            ral_buffer_get_property (_linear_program_ub_bo,
+                                     RAL_BUFFER_PROPERTY_START_OFFSET,
+                                    &linear_program_ub_bo_ral_start_offset);
+            raGL_buffer_get_property(linear_program_ub_bo_raGL,
                                      RAGL_BUFFER_PROPERTY_ID,
-                                    &linear_program_ub_bo_id);
-            raGL_buffer_get_property(_linear_program_ub_bo,
+                                    &linear_program_ub_bo_raGL_id);
+            raGL_buffer_get_property(linear_program_ub_bo_raGL,
                                      RAGL_BUFFER_PROPERTY_START_OFFSET,
-                                    &linear_program_ub_bo_start_offset);
+                                    &linear_program_ub_bo_raGL_start_offset);
 
             entry_points->pGLUseProgram      (po_id);
             entry_points->pGLActiveTexture   (GL_TEXTURE0);
             entry_points->pGLBindTexture     (GL_TEXTURE_2D,
-                                              _texture);
+                                              texture_raGL_id);
+
             entry_points->pGLProgramUniform1i(po_id,
                                               _linear_program_tex_uniform->location,
                                               0);
@@ -313,8 +337,8 @@ void _rendering_handler(ogl_context context,
 
             entry_points->pGLBindBufferRange(GL_UNIFORM_BUFFER,
                                              0, /* index */
-                                             linear_program_ub_bo_id,
-                                             linear_program_ub_bo_start_offset,
+                                             linear_program_ub_bo_raGL_id,
+                                             linear_program_ub_bo_raGL_start_offset + linear_program_ub_bo_ral_start_offset,
                                              _linear_program_ub_bo_size);
 
             break;
@@ -322,21 +346,28 @@ void _rendering_handler(ogl_context context,
 
         case MAPPING_REINHARDT:
         {
-            const GLuint po_id                                = ogl_program_get_id(_reinhardt_program);
-            GLuint       reinhardt_program_ub_bo_id           = 0;
-            uint32_t     reinhardt_program_ub_bo_start_offset = -1;
+            const GLuint po_id                                     = ogl_program_get_id       (_reinhardt_program);
+            raGL_buffer  reinhardt_program_ub_bo_raGL              = ral_context_get_buffer_gl(_context,
+                                                                                               _reinhardt_program_ub_bo);
+            GLuint       reinhardt_program_ub_bo_raGL_id           = 0;
+            uint32_t     reinhardt_program_ub_bo_raGL_start_offset = -1;
+            uint32_t     reinhardt_program_ub_bo_ral_start_offset  = -1;
 
-            raGL_buffer_get_property(_reinhardt_program_ub_bo,
+            ral_buffer_get_property (_reinhardt_program_ub_bo,
+                                     RAL_BUFFER_PROPERTY_START_OFFSET,
+                                    &reinhardt_program_ub_bo_ral_start_offset);
+            raGL_buffer_get_property(reinhardt_program_ub_bo_raGL,
                                      RAGL_BUFFER_PROPERTY_ID,
-                                    &reinhardt_program_ub_bo_id);
-            raGL_buffer_get_property(_reinhardt_program_ub_bo,
+                                    &reinhardt_program_ub_bo_raGL_id);
+            raGL_buffer_get_property(reinhardt_program_ub_bo_raGL,
                                      RAGL_BUFFER_PROPERTY_START_OFFSET,
-                                    &reinhardt_program_ub_bo_start_offset);
+                                    &reinhardt_program_ub_bo_raGL_start_offset);
 
             entry_points->pGLUseProgram      (po_id);
             entry_points->pGLActiveTexture   (GL_TEXTURE0);
             entry_points->pGLBindTexture     (GL_TEXTURE_2D,
-                                              _texture);
+                                              texture_raGL_id);
+
             entry_points->pGLProgramUniform1i(po_id,
                                               _reinhardt_program_tex_uniform->location,
                                               0);
@@ -351,8 +382,8 @@ void _rendering_handler(ogl_context context,
 
             entry_points->pGLBindBufferRange(GL_UNIFORM_BUFFER,
                                              0, /* index */
-                                             reinhardt_program_ub_bo_id,
-                                             reinhardt_program_ub_bo_start_offset,
+                                             reinhardt_program_ub_bo_raGL_id,
+                                             reinhardt_program_ub_bo_raGL_start_offset + reinhardt_program_ub_bo_ral_start_offset,
                                              _reinhardt_program_ub_bo_size);
 
             break;
@@ -380,21 +411,27 @@ void _rendering_handler(ogl_context context,
 
         case MAPPING_FILMIC:
         {
-            GLuint       filmic_program_ub_bo_id           = 0;
-            uint32_t     filmic_program_ub_bo_start_offset = -1;
-            const GLuint po_id                             = ogl_program_get_id(_filmic_program);
+            raGL_buffer  filmic_program_ub_bo_raGL              = ral_context_get_buffer_gl(_context,
+                                                                                            _filmic_program_ub_bo);
+            GLuint       filmic_program_ub_bo_raGL_id           = 0;
+            uint32_t     filmic_program_ub_bo_raGL_start_offset = -1;
+            uint32_t     filmic_program_ub_bo_ral_start_offset  = -1;
+            const GLuint po_id                                  = ogl_program_get_id(_filmic_program);
 
-            raGL_buffer_get_property(_filmic_program_ub_bo,
+            raGL_buffer_get_property(filmic_program_ub_bo_raGL,
                                      RAGL_BUFFER_PROPERTY_ID,
-                                    &filmic_program_ub_bo_id);
-            raGL_buffer_get_property(_filmic_program_ub_bo,
+                                    &filmic_program_ub_bo_raGL_id);
+            raGL_buffer_get_property(filmic_program_ub_bo_raGL,
                                      RAGL_BUFFER_PROPERTY_START_OFFSET,
-                                    &filmic_program_ub_bo_start_offset);
+                                    &filmic_program_ub_bo_raGL_start_offset);
+            ral_buffer_get_property (_filmic_program_ub_bo,
+                                     RAL_BUFFER_PROPERTY_START_OFFSET,
+                                    &filmic_program_ub_bo_ral_start_offset);
 
             entry_points->pGLUseProgram      (po_id);
             entry_points->pGLActiveTexture   (GL_TEXTURE0);
             entry_points->pGLBindTexture     (GL_TEXTURE_2D,
-                                              _texture);
+                                              texture_raGL_id);
 
             entry_points->pGLProgramUniform1i(po_id,
                                               _filmic_program_tex_uniform->location,
@@ -410,8 +447,8 @@ void _rendering_handler(ogl_context context,
 
             entry_points->pGLBindBufferRange(GL_UNIFORM_BUFFER,
                                              0, /* index */
-                                             filmic_program_ub_bo_id,
-                                             filmic_program_ub_bo_start_offset,
+                                             filmic_program_ub_bo_raGL_id,
+                                             filmic_program_ub_bo_raGL_start_offset + filmic_program_ub_bo_ral_start_offset,
                                              _filmic_program_ub_bo_size);
 
             break;
@@ -420,16 +457,22 @@ void _rendering_handler(ogl_context context,
         case MAPPING_FILMIC_CUSTOMIZABLE:
         {
             float        a, b, c, d, e, exposure_bias, f, w;
-            GLuint       filmic_customizable_program_ub_bo_id           = 0;
-            uint32_t     filmic_customizable_program_ub_bo_start_offset = -1;
-            const GLuint po_id                                          = ogl_program_get_id(_filmic_customizable_program);
+            raGL_buffer  filmic_customizable_program_ub_bo_raGL              = ral_context_get_buffer_gl(_context,
+                                                                                                         _filmic_customizable_program_ub_bo);
+            GLuint       filmic_customizable_program_ub_bo_raGL_id           = 0;
+            uint32_t     filmic_customizable_program_ub_bo_raGL_start_offset = -1;
+            uint32_t     filmic_customizable_program_ub_bo_ral_start_offset  = -1;
+            const GLuint po_id                                               = ogl_program_get_id(_filmic_customizable_program);
 
-            raGL_buffer_get_property(_filmic_customizable_program_ub_bo,
+            raGL_buffer_get_property(filmic_customizable_program_ub_bo_raGL,
                                      RAGL_BUFFER_PROPERTY_ID,
-                                    &filmic_customizable_program_ub_bo_id);
-            raGL_buffer_get_property(_filmic_customizable_program_ub_bo,
+                                    &filmic_customizable_program_ub_bo_raGL_id);
+            raGL_buffer_get_property(filmic_customizable_program_ub_bo_raGL,
                                      RAGL_BUFFER_PROPERTY_START_OFFSET,
-                                    &filmic_customizable_program_ub_bo_start_offset);
+                                    &filmic_customizable_program_ub_bo_raGL_start_offset);
+            ral_buffer_get_property (_filmic_customizable_program_ub_bo,
+                                     RAL_BUFFER_PROPERTY_START_OFFSET,
+                                    &filmic_customizable_program_ub_bo_ral_start_offset);
 
             curve_container_get_default_value(_filmic_customizable_exposure_bias_curve,
                                               true,
@@ -475,7 +518,7 @@ void _rendering_handler(ogl_context context,
             entry_points->pGLUseProgram      (po_id);
             entry_points->pGLActiveTexture   (GL_TEXTURE0);
             entry_points->pGLBindTexture     (GL_TEXTURE_2D,
-                                              _texture);
+                                              texture_raGL_id);
 
             ogl_program_ub_set_nonarrayed_uniform_value( _filmic_customizable_program_ub,
                                                          _filmic_customizable_program_a_uniform->block_offset,
@@ -531,8 +574,8 @@ void _rendering_handler(ogl_context context,
 
             entry_points->pGLBindBufferRange(GL_UNIFORM_BUFFER,
                                              0, /* index */
-                                             filmic_customizable_program_ub_bo_id,
-                                             filmic_customizable_program_ub_bo_start_offset,
+                                             filmic_customizable_program_ub_bo_raGL_id,
+                                             filmic_customizable_program_ub_bo_raGL_start_offset + filmic_customizable_program_ub_bo_ral_start_offset,
                                              _filmic_customizable_program_ub_bo_size);
 
             break;
@@ -585,12 +628,17 @@ void _window_closed_callback_handler(system_window window,
 void _window_closing_callback_handler(system_window window,
                                       void*         unused)
 {
+    curve_editor_hide();
+
+    ral_context_delete_textures(_context,
+                                1, /* n_textures */
+                                &_texture);
+
     ogl_program_release                                   (_filmic_program);
     ogl_program_release                                   (_filmic_customizable_program);
     ogl_program_release                                   (_linear_program);
     ogl_program_release                                   (_reinhardt_program);
     ogl_text_release                                      (_text_renderer);
-    ogl_texture_release                                   (_texture);
     shaders_fragment_texture2D_filmic_customizable_release(_filmic_customizable_fp);
     shaders_fragment_texture2D_filmic_release             (_filmic_fp);
     shaders_fragment_texture2D_reinhardt_release          (_reinhardt_fp);
@@ -724,57 +772,52 @@ void _window_closing_callback_handler(system_window window,
     _texture_width  = window_size[0];
 
     /* Carry on */
-    system_pixel_format window_pf = system_pixel_format_create(8,  /* color_buffer_red_bits   */
-                                                               8,  /* color_buffer_green_bits */
-                                                               8,  /* color_buffer_blue_bits  */
-                                                               0,  /* color_buffer_alpha_bits */
-                                                               16, /* depth_buffer_bits       */
-                                                               1,  /* n_samples               */
-                                                               0); /* stencil_buffer_bits     */
+    PFNOGLRENDERINGHANDLERRENDERINGCALLBACK pfn_callback_proc  = _rendering_handler;
+    ogl_rendering_handler                   rendering_handler  = NULL;
+    system_screen_mode                      screen_mode        = NULL;
+    const system_hashed_ansi_string         window_name        = system_hashed_ansi_string_create("HDR test app");
 
-    system_window_get_centered_window_position_for_primary_monitor(window_size,
-                                                                   window_x1y1x2y2);
+    _window = demo_app_create_window(window_name,
+                                     RAL_BACKEND_TYPE_GL,
+                                     false /* use_timeline */);
 
-    _window = system_window_create_not_fullscreen(OGL_CONTEXT_TYPE_GL,
-                                                  window_x1y1x2y2,
-                                                  system_hashed_ansi_string_create("Test window"),
-                                                  false,
-                                                  false, /* vsync_enabled */
-                                                  true,  /* visible */
-                                                  window_pf);
+    demo_window_set_property(_window,
+                             DEMO_WINDOW_PROPERTY_RESOLUTION,
+                             window_size);
 
-    ogl_rendering_handler window_rendering_handler = ogl_rendering_handler_create_with_fps_policy(system_hashed_ansi_string_create("Default rendering handler"),
-                                                                                                  30, /* desired_fps */
-                                                                                                  _rendering_handler,
-                                                                                                  NULL); /* user_arg */
+    demo_window_show(_window);
 
-    system_window_get_property(_window,
-                               SYSTEM_WINDOW_PROPERTY_RENDERING_CONTEXT,
-                              &_context);
-    system_window_set_property(_window,
-                               SYSTEM_WINDOW_PROPERTY_RENDERING_HANDLER,
-                              &window_rendering_handler);
+    demo_window_get_property(_window,
+                             DEMO_WINDOW_PROPERTY_RENDERING_CONTEXT,
+                            &_context);
+    demo_window_get_property(_window,
+                             DEMO_WINDOW_PROPERTY_RENDERING_HANDLER,
+                            &rendering_handler);
 
-    system_window_add_callback_func     (_window,
-                                         SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_NORMAL,
-                                         SYSTEM_WINDOW_CALLBACK_FUNC_LEFT_BUTTON_DOWN,
-                                         (void*) _rendering_lbm_callback_handler,
-                                         NULL);
-    system_window_add_callback_func     (_window,
-                                         SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_NORMAL,
-                                         SYSTEM_WINDOW_CALLBACK_FUNC_RIGHT_BUTTON_DOWN,
-                                         (void*) _rendering_rbm_callback_handler,
-                                         NULL);
-    system_window_add_callback_func     (_window,
-                                         SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_NORMAL,
-                                         SYSTEM_WINDOW_CALLBACK_FUNC_WINDOW_CLOSED,
-                                         (void*) _window_closed_callback_handler,
-                                         NULL);
-    system_window_add_callback_func     (_window,
-                                         SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_NORMAL,
-                                         SYSTEM_WINDOW_CALLBACK_FUNC_WINDOW_CLOSING,
-                                         (void*) _window_closing_callback_handler,
-                                         NULL);
+    ogl_rendering_handler_set_property(rendering_handler,
+                                       OGL_RENDERING_HANDLER_PROPERTY_RENDERING_CALLBACK,
+                                      &pfn_callback_proc);
+
+    demo_window_add_callback_func(_window,
+                                  SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_NORMAL,
+                                  SYSTEM_WINDOW_CALLBACK_FUNC_LEFT_BUTTON_DOWN,
+                                  (void*) _rendering_lbm_callback_handler,
+                                  NULL);
+    demo_window_add_callback_func(_window,
+                                  SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_NORMAL,
+                                  SYSTEM_WINDOW_CALLBACK_FUNC_RIGHT_BUTTON_DOWN,
+                                  (void*) _rendering_rbm_callback_handler,
+                                  NULL);
+    demo_window_add_callback_func(_window,
+                                  SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_NORMAL,
+                                  SYSTEM_WINDOW_CALLBACK_FUNC_WINDOW_CLOSED,
+                                  (void*) _window_closed_callback_handler,
+                                  NULL);
+    demo_window_add_callback_func(_window,
+                                  SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_NORMAL,
+                                  SYSTEM_WINDOW_CALLBACK_FUNC_WINDOW_CLOSING,
+                                  (void*) _window_closing_callback_handler,
+                                  NULL);
 
     /* Create shared VP */
     _vp = shaders_vertex_fullscreen_create(_context,
@@ -809,7 +852,7 @@ void _window_closing_callback_handler(system_window window,
                                           OGL_PROGRAM_UB_PROPERTY_BLOCK_DATA_SIZE,
                                          &_linear_program_ub_bo_size);
     ogl_program_ub_get_property          (_linear_program_ub,
-                                          OGL_PROGRAM_UB_PROPERTY_BO,
+                                          OGL_PROGRAM_UB_PROPERTY_BUFFER_RAL,
                                          &_linear_program_ub_bo);
 
     /* Create Reinhardt texture program */
@@ -840,7 +883,7 @@ void _window_closing_callback_handler(system_window window,
                                           OGL_PROGRAM_UB_PROPERTY_BLOCK_DATA_SIZE,
                                          &_reinhardt_program_ub_bo_size);
     ogl_program_ub_get_property          (_reinhardt_program_ub,
-                                          OGL_PROGRAM_UB_PROPERTY_BO,
+                                          OGL_PROGRAM_UB_PROPERTY_BUFFER_RAL,
                                          &_reinhardt_program_ub_bo);
 
     /* Create global Reinhardt post-processors */
@@ -887,7 +930,7 @@ void _window_closing_callback_handler(system_window window,
                                           OGL_PROGRAM_UB_PROPERTY_BLOCK_DATA_SIZE,
                                          &_filmic_program_ub_bo_size);
     ogl_program_ub_get_property          (_filmic_program_ub,
-                                          OGL_PROGRAM_UB_PROPERTY_BO,
+                                          OGL_PROGRAM_UB_PROPERTY_BUFFER_RAL,
                                          &_filmic_program_ub_bo);
 
     /* Create Filmic Customizable texture program */
@@ -942,22 +985,21 @@ void _window_closing_callback_handler(system_window window,
                                           OGL_PROGRAM_UB_PROPERTY_BLOCK_DATA_SIZE,
                                          &_filmic_customizable_program_ub_bo_size);
     ogl_program_ub_get_property          (_filmic_customizable_program_ub,
-                                          OGL_PROGRAM_UB_PROPERTY_BO,
+                                          OGL_PROGRAM_UB_PROPERTY_BUFFER_RAL,
                                          &_filmic_customizable_program_ub_bo);
 
     /* Open curve editor */
     curve_editor_show(_context);
 
     /* Carry on */
-    ogl_rendering_handler_play(window_rendering_handler,
-                               0);
+    demo_window_start_rendering(_window,
+                                0 /* rendering_start_time */);
 
     system_event_wait_single(_window_closed_event);
 
     /* Clean up */
-    ogl_rendering_handler_stop(window_rendering_handler);
+    demo_app_destroy_window(window_name);
 
-    curve_editor_hide      ();
     curve_container_release(_alpha_curve);
     curve_container_release(_exposure_curve);
     curve_container_release(_filmic_customizable_a_curve);
@@ -969,7 +1011,6 @@ void _window_closing_callback_handler(system_window window,
     curve_container_release(_filmic_customizable_f_curve);
     curve_container_release(_filmic_customizable_w_curve);
     curve_container_release(_white_level_curve);
-    system_window_close    (_window);
     gfx_image_release      (_texture_image);
     system_event_release   (_window_closed_event);
     system_variant_release (_float_variant);

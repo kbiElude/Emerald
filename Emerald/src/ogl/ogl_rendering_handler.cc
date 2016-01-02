@@ -33,6 +33,7 @@ typedef struct
 {
     audio_stream                          active_audio_stream;
     float                                 aspect_ratio;
+    ogl_context                           call_passthrough_context;
     bool                                  call_passthrough_mode;
     ral_context                           context;
     system_event                          context_set_event;
@@ -1397,7 +1398,7 @@ PUBLIC EMERALD_API bool ogl_rendering_handler_request_callback_from_context_thre
     else
     if (rendering_handler_ptr->call_passthrough_mode)
     {
-        pfn_callback_proc(NULL, /* contet */
+        pfn_callback_proc(rendering_handler_ptr->call_passthrough_context,
                           user_arg);
     }
     else
@@ -1442,6 +1443,13 @@ PUBLIC void ogl_rendering_handler_set_private_property(ogl_rendering_handler    
 
     switch (property)
     {
+        case OGL_RENDERING_HANDLER_PRIVATE_PROPERTY_CALL_PASSTHROUGH_CONTEXT:
+        {
+            handler_ptr->call_passthrough_context = *(ogl_context*) data_ptr;
+
+            break;
+        }
+
         case OGL_RENDERING_HANDLER_PRIVATE_PROPERTY_CALL_PASSTHROUGH_MODE:
         {
             handler_ptr->call_passthrough_mode = *(bool*) data_ptr;

@@ -471,28 +471,16 @@ PUBLIC EMERALD_API void postprocessing_reinhard_tonemap_execute(postprocessing_r
     out_texture_gl = ral_context_get_texture_gl(tonemapper_ptr->context,
                                                 out_texture);
 
-    raGL_texture_get_property(tonemapper_ptr->downsampled_yxy_texture_gl,
-                              RAGL_TEXTURE_PROPERTY_ID,
-                             &in_texture_id);
     raGL_texture_get_property(in_texture_gl,
                               RAGL_TEXTURE_PROPERTY_ID,
                              &in_texture_id);
-    raGL_texture_get_property(out_texture_gl,
-                              RAGL_TEXTURE_PROPERTY_ID,
-                             &out_texture_id);
     raGL_texture_get_property(tonemapper_ptr->yxy_texture_gl,
                               RAGL_TEXTURE_PROPERTY_ID,
                              &yxy_texture_id);
 
-    raGL_texture_get_property(tonemapper_ptr->downsampled_yxy_texture_gl,
-                              RAGL_TEXTURE_PROPERTY_IS_RENDERBUFFER,
-                             &downsampled_yxy_texture_is_rbo);
     raGL_texture_get_property(in_texture_gl,
                               RAGL_TEXTURE_PROPERTY_IS_RENDERBUFFER,
                              &in_texture_is_rbo);
-    raGL_texture_get_property(out_texture_gl,
-                              RAGL_TEXTURE_PROPERTY_IS_RENDERBUFFER,
-                             &out_texture_is_rbo);
     raGL_texture_get_property(tonemapper_ptr->yxy_texture_gl,
                               RAGL_TEXTURE_PROPERTY_IS_RENDERBUFFER,
                              &yxy_texture_is_rbo);
@@ -554,6 +542,13 @@ PUBLIC EMERALD_API void postprocessing_reinhard_tonemap_execute(postprocessing_r
 
     if (tonemapper_ptr->use_crude_downsampled_lum_average_calculation)
     {
+        raGL_texture_get_property(tonemapper_ptr->downsampled_yxy_texture_gl,
+                                  RAGL_TEXTURE_PROPERTY_ID,
+                                 &downsampled_yxy_texture_id);
+        raGL_texture_get_property(tonemapper_ptr->downsampled_yxy_texture_gl,
+                                  RAGL_TEXTURE_PROPERTY_IS_RENDERBUFFER,
+                                 &downsampled_yxy_texture_is_rbo);
+
         entry_points->pGLBindFramebuffer     (GL_READ_FRAMEBUFFER,
                                               tonemapper_ptr->src_framebuffer_id);  /* TODO: as above */
         entry_points->pGLReadBuffer          (GL_COLOR_ATTACHMENT0);
@@ -632,6 +627,13 @@ PUBLIC EMERALD_API void postprocessing_reinhard_tonemap_execute(postprocessing_r
 
     if (out_texture != NULL)
     {
+        raGL_texture_get_property(out_texture_gl,
+                                  RAGL_TEXTURE_PROPERTY_ID,
+                                 &out_texture_id);
+        raGL_texture_get_property(out_texture_gl,
+                                  RAGL_TEXTURE_PROPERTY_IS_RENDERBUFFER,
+                                 &out_texture_is_rbo);
+
         entry_points->pGLFramebufferTexture2D(GL_DRAW_FRAMEBUFFER,
                                               GL_COLOR_ATTACHMENT0,
                                               GL_TEXTURE_2D,

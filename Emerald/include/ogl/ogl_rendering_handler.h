@@ -14,6 +14,9 @@ REFCOUNT_INSERT_DECLARATIONS(ogl_rendering_handler,
 
 typedef enum
 {
+    /* ogl_context; settable. */
+    OGL_RENDERING_HANDLER_PRIVATE_PROPERTY_CALL_PASSTHROUGH_CONTEXT,
+
     /* bool; settable. */
     OGL_RENDERING_HANDLER_PRIVATE_PROPERTY_CALL_PASSTHROUGH_MODE
 } ogl_rendering_handler_private_property;
