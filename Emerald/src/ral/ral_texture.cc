@@ -924,6 +924,25 @@ PUBLIC EMERALD_API bool ral_texture_get_property(ral_texture          texture,
             break;
         }
 
+        case RAL_TEXTURE_PROPERTY_CREATE_INFO:
+        {
+            ral_texture_create_info* create_info_ptr = (ral_texture_create_info*) out_result_ptr;
+
+            create_info_ptr->base_mipmap_depth      = texture_ptr->base_mipmap_size[2];
+            create_info_ptr->base_mipmap_height     = texture_ptr->base_mipmap_size[1];
+            create_info_ptr->base_mipmap_width      = texture_ptr->base_mipmap_size[0];
+            create_info_ptr->fixed_sample_locations = texture_ptr->fixed_sample_locations;
+            create_info_ptr->format                 = texture_ptr->format;
+            create_info_ptr->name                   = texture_ptr->name;
+            create_info_ptr->n_layers               = texture_ptr->n_layers;
+            create_info_ptr->n_samples              = texture_ptr->n_samples;
+            create_info_ptr->type                   = texture_ptr->type;
+            create_info_ptr->usage                  = texture_ptr->usage;
+            create_info_ptr->use_full_mipmap_chain  = (texture_ptr->n_mipmaps_per_layer > 1);
+
+            break;
+        }
+
         case RAL_TEXTURE_PROPERTY_FILENAME:
         {
             *(system_hashed_ansi_string*) out_result_ptr = texture_ptr->file_name;
@@ -1176,4 +1195,45 @@ PUBLIC EMERALD_API bool ral_texture_set_mipmap_data_from_client_memory(ral_textu
 
 end:
     return result;
+}
+
+/** Please see header for specification */
+PUBLIC void ral_texture_set_property(ral_texture          texture,
+                                     ral_texture_property property,
+                                     const void*          data)
+{
+    _ral_texture* texture_ptr = (_ral_texture*) texture;
+
+    if (texture == NULL)
+    {
+        ASSERT_DEBUG_SYNC(texture != NULL,
+                          "Input ral_texture instance is NULL");
+
+        goto end;
+    }
+
+    switch (property)
+    {
+        case RAL_TEXTURE_PROPERTY_FILENAME:
+        {
+            texture_ptr->file_name = *(system_hashed_ansi_string*) data;
+
+            break;
+        }
+
+        case RAL_TEXTURE_PROPERTY_NAME:
+        {
+            texture_ptr->name = *(system_hashed_ansi_string*) data;
+
+            break;
+        }
+
+        default:
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Unsupported ral_texture_property value requested.");
+        }
+    } /* switch (property) */
+end:
+    ;
 }

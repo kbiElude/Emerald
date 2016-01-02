@@ -12,6 +12,7 @@
 #include "ral/ral_framebuffer.h"
 #include "ral/ral_sampler.h"
 #include "ral/ral_texture.h"
+#include "ral/ral_texture_pool.h"
 #include "system/system_callback_manager.h"
 #include "system/system_critical_section.h"
 #include "system/system_hash64map.h"
@@ -55,7 +56,7 @@ typedef struct _ral_context
     system_critical_section samplers_cs;
     uint32_t                n_samplers_created;
 
-    system_resizable_vector textures;                 /* owns ral_texture instances */
+    ral_texture_pool        texture_pool;
     system_hash64map        textures_by_filename_map; /* does NOT own the ral_texture values */
     system_hash64map        textures_by_name_map;     /* does NOT own the ral_texture values */
     system_critical_section textures_cs;
@@ -86,7 +87,7 @@ typedef struct _ral_context
         rendering_handler        = NULL;
         samplers                 = system_resizable_vector_create(sizeof(ral_sampler) );
         samplers_cs              = system_critical_section_create();
-        textures                 = system_resizable_vector_create(sizeof(ral_texture) );
+        texture_pool             = ral_texture_pool_create       ();
         textures_by_filename_map = system_hash64map_create       (sizeof(ral_texture) );
         textures_by_name_map     = system_hash64map_create       (sizeof(ral_texture) );
         textures_cs              = system_critical_section_create();
@@ -106,8 +107,8 @@ typedef struct _ral_context
                           "Could not create the framebuffers vector.");
         ASSERT_DEBUG_SYNC(samplers != NULL,
                           "Could not create the samplers vector.");
-        ASSERT_DEBUG_SYNC(textures != NULL,
-                          "Could not create the textures vector.");
+        ASSERT_DEBUG_SYNC(texture_pool != NULL,
+                          "Could not create the texture pool.");
         ASSERT_DEBUG_SYNC(textures_by_filename_map != NULL,
                           "Could not create the filename->texture map");
         ASSERT_DEBUG_SYNC(textures_by_name_map != NULL,
@@ -185,21 +186,12 @@ typedef struct _ral_context
             samplers_cs = NULL;
         } /* if (samplers_cs != NULL) */
 
-        if (textures != NULL)
+        if (texture_pool != NULL)
         {
-            /* Texture instances should have been released by _ral_context_release().. */
-            uint32_t n_textures = 0;
+            ral_texture_pool_release(texture_pool);
 
-            system_resizable_vector_get_property(textures,
-                                                 SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
-                                                &n_textures);
-
-            ASSERT_DEBUG_SYNC(n_textures == 0,
-                              "Memory leak detected");
-
-            system_resizable_vector_release(textures);
-            textures = NULL;
-        } /* if (textures != NULL) */
+            texture_pool = NULL;
+        } /* if (texture_pool != NULL) */
 
         if (textures_by_filename_map != NULL)
         {
@@ -262,11 +254,9 @@ PRIVATE void _ral_context_add_textures_to_texture_hashmaps(_ral_context* context
                                      RAL_TEXTURE_PROPERTY_NAME,
                                     &image_name);
 
-            if (image_filename != NULL)
+            if (image_filename                                       != NULL &&
+                system_hashed_ansi_string_get_length(image_filename) >  0)
             {
-                ASSERT_DEBUG_SYNC(system_hashed_ansi_string_get_length(image_filename) > 0,
-                                  "Invalid gfx_image filename property value.");
-
                 image_filename_hash = system_hashed_ansi_string_get_hash(image_filename);
 
                 ASSERT_DEBUG_SYNC(!system_hash64map_contains(context_ptr->textures_by_filename_map,
@@ -340,9 +330,7 @@ PRIVATE bool _ral_context_delete_objects(_ral_context*           context_ptr,
 
         case RAL_CONTEXT_OBJECT_TYPE_TEXTURE:
         {
-            cs            = context_ptr->textures_cs;
-            object_vector = context_ptr->textures;
-
+            /* Textures are stored in the texture pool. */
             break;
         }
 
@@ -428,19 +416,22 @@ PRIVATE bool _ral_context_delete_objects(_ral_context*           context_ptr,
                 continue;
             } /* if (object_ptrs[n_object] == NULL) */
 
-            object_vector_index = system_resizable_vector_find(object_vector,
-                                                               object_ptrs[n_object]);
+            if (object_vector != NULL)
+            {
+                object_vector_index = system_resizable_vector_find(object_vector,
+                                                                   object_ptrs[n_object]);
 
-            if (object_vector_index != ITEM_NOT_FOUND)
-            {
-                system_resizable_vector_delete_element_at(object_vector,
-                                                          object_vector_index);
-            }
-            else
-            {
-                ASSERT_DEBUG_SYNC(false,
-                                  "Released object is not tracked by RAL");
-            }
+                if (object_vector_index != ITEM_NOT_FOUND)
+                {
+                    system_resizable_vector_delete_element_at(object_vector,
+                                                              object_vector_index);
+                }
+                else
+                {
+                    ASSERT_DEBUG_SYNC(false,
+                                      "Released object is not tracked by RAL");
+                }
+            } /* if (object_vector != NULL) */
 
             switch (object_type)
             {
@@ -490,7 +481,8 @@ PRIVATE void _ral_context_delete_textures_from_texture_hashmaps(_ral_context* co
                                      RAL_TEXTURE_PROPERTY_NAME,
                                     &texture_name);
 
-            if (texture_filename != NULL)
+            if (texture_filename                                       != NULL &&
+                system_hashed_ansi_string_get_length(texture_filename) >  0)
             {
                 texture_filename_hash = system_hashed_ansi_string_get_hash(texture_filename);
 
@@ -574,9 +566,34 @@ PRIVATE void _ral_context_notify_backend_about_new_object(ral_context           
 }
 
 /** TODO */
+PRIVATE void _ral_context_on_texture_dropped_from_texture_pool(const void* callback_arg,
+                                                                     void* context)
+{
+    _ral_texture_pool_callback_texture_dropped_arg* callback_arg_ptr = (_ral_texture_pool_callback_texture_dropped_arg*) callback_arg;
+    _ral_context*                                   context_ptr      = (_ral_context*)                                   context;
+    bool                                            result;
+
+    result = _ral_context_delete_objects(context_ptr,
+                                         RAL_CONTEXT_OBJECT_TYPE_TEXTURE,
+                                         callback_arg_ptr->n_textures,
+                                         (void**) callback_arg_ptr->textures);
+
+    ASSERT_DEBUG_SYNC(result,
+                      "Could not physically delete texture objects.");
+}
+
+/** TODO */
 PRIVATE void _ral_context_release(void* context)
 {
     _ral_context* context_ptr = (_ral_context*) context;
+
+    /* Release the texture pool */
+    if (context_ptr->texture_pool != NULL)
+    {
+        ral_texture_pool_release(context_ptr->texture_pool);
+
+        context_ptr->texture_pool = NULL;
+    }
 
     /* Release the back-end */
     if (context_ptr->backend                  != NULL &&
@@ -591,7 +608,6 @@ PRIVATE void _ral_context_release(void* context)
     uint32_t n_buffers      = 0;
     uint32_t n_framebuffers = 0;
     uint32_t n_samplers     = 0;
-    uint32_t n_textures     = 0;
 
     system_resizable_vector_get_property(context_ptr->buffers,
                                          SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
@@ -602,9 +618,6 @@ PRIVATE void _ral_context_release(void* context)
     system_resizable_vector_get_property(context_ptr->samplers,
                                          SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
                                         &n_samplers);
-    system_resizable_vector_get_property(context_ptr->textures,
-                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
-                                        &n_textures);
 
     ASSERT_DEBUG_SYNC(n_buffers == 0,
                       "Buffer object leak detected");
@@ -612,8 +625,33 @@ PRIVATE void _ral_context_release(void* context)
                       "Framebuffer object leak detected");
     ASSERT_DEBUG_SYNC(n_samplers == 0,
                       "Sampler object leak detected");
-    ASSERT_DEBUG_SYNC(n_textures == 0,
-                      "Texture object leak detected");
+}
+
+/** TODO */
+PRIVATE void _ral_context_subscribe_for_notifications(_ral_context* context_ptr,
+                                                      bool          should_subscribe)
+{
+    system_callback_manager texture_pool_callback_manager = NULL;
+
+    ral_texture_pool_get_property(context_ptr->texture_pool,
+                                  RAL_TEXTURE_POOL_PROPERTY_CALLBACK_MANAGER,
+                                 &texture_pool_callback_manager);
+
+    if (should_subscribe)
+    {
+        system_callback_manager_subscribe_for_callbacks(texture_pool_callback_manager,
+                                                        RAL_TEXTURE_POOL_CALLBACK_ID_TEXTURE_DROPPED,
+                                                        CALLBACK_SYNCHRONICITY_SYNCHRONOUS,
+                                                        _ral_context_on_texture_dropped_from_texture_pool,
+                                                        context_ptr);
+    } /* if (should_subscribe) */
+    else
+    {
+        system_callback_manager_unsubscribe_from_callbacks(texture_pool_callback_manager,
+                                                           RAL_TEXTURE_POOL_CALLBACK_ID_TEXTURE_DROPPED,
+                                                           _ral_context_on_texture_dropped_from_texture_pool,
+                                                           context_ptr);
+    }
 }
 
 /** Please see header for specification */
@@ -675,12 +713,13 @@ PRIVATE bool _ral_context_create_objects(_ral_context*           context_ptr,
                                          void**                  object_create_info_ptrs,
                                          void**                  out_result_object_ptrs)
 {
-    uint32_t*               object_counter_ptr    = NULL;
-    system_critical_section object_storage_cs     = NULL;
-    system_resizable_vector object_storage_vector = NULL;
-    const char*             object_type_name      = NULL;
-    bool                    result                = false;
-    void**                  result_objects_ptr    = NULL;
+    bool                    backend_texture_callback_used = false;
+    uint32_t*               object_counter_ptr            = NULL;
+    system_critical_section object_storage_cs             = NULL;
+    system_resizable_vector object_storage_vector         = NULL;
+    const char*             object_type_name              = NULL;
+    bool                    result                        = false;
+    void**                  result_objects_ptr            = NULL;
 
     switch (object_type)
     {
@@ -720,7 +759,7 @@ PRIVATE bool _ral_context_create_objects(_ral_context*           context_ptr,
         {
             object_counter_ptr    = &context_ptr->n_textures_created;
             object_storage_cs     =  context_ptr->textures_cs;
-            object_storage_vector =  context_ptr->textures;
+            object_storage_vector = NULL; /* textures are maintained by the texture pool */
             object_type_name      = "RAL Texture [%d]";
 
             break;
@@ -794,9 +833,30 @@ PRIVATE bool _ral_context_create_objects(_ral_context*           context_ptr,
 
             case RAL_CONTEXT_OBJECT_TYPE_TEXTURE:
             {
-                result_objects_ptr[n_object] = ral_texture_create((ral_context) context_ptr,
-                                                                  system_hashed_ansi_string_create(temp),
-                                                                  (const ral_texture_create_info*) (object_create_info_ptrs) + n_object);
+                const ral_texture_create_info* texture_create_info_ptr = (const ral_texture_create_info*) (object_create_info_ptrs) + n_object;
+
+                if (!ral_texture_pool_get(context_ptr->texture_pool,
+                                          texture_create_info_ptr,
+                                          (ral_texture*) (result_objects_ptr + n_object) ))
+                {
+                    backend_texture_callback_used = true;
+                    result_objects_ptr[n_object]  = ral_texture_create((ral_context) context_ptr,
+                                                                       system_hashed_ansi_string_create(temp),
+                                                                       texture_create_info_ptr);
+                }
+                else
+                {
+                    /* The new texture instance comes from the texture pool, so make sure the filename & name is synced
+                     * to what's been requested */
+                    const system_hashed_ansi_string empty_string = system_hashed_ansi_string_get_default_empty_string();
+
+                    ral_texture_set_property((ral_texture) result_objects_ptr[n_object],
+                                             RAL_TEXTURE_PROPERTY_FILENAME,
+                                            &empty_string);
+                    ral_texture_set_property((ral_texture) result_objects_ptr[n_object],
+                                             RAL_TEXTURE_PROPERTY_NAME,
+                                            &texture_create_info_ptr->name);
+                }
 
                 break;
             }
@@ -848,24 +908,31 @@ PRIVATE bool _ral_context_create_objects(_ral_context*           context_ptr,
         if (object_type != RAL_CONTEXT_OBJECT_TYPE_TEXTURE_FROM_FILE_NAME &&
             object_type != RAL_CONTEXT_OBJECT_TYPE_TEXTURE_FROM_GFX_IMAGE)
         {
-            _ral_context_notify_backend_about_new_object((ral_context) context_ptr,
-                                                         result_objects_ptr[n_object],
-                                                         object_type);
+            if (object_type == RAL_CONTEXT_OBJECT_TYPE_TEXTURE && backend_texture_callback_used ||
+                object_type != RAL_CONTEXT_OBJECT_TYPE_TEXTURE)
+            {
+                _ral_context_notify_backend_about_new_object((ral_context) context_ptr,
+                                                             result_objects_ptr[n_object],
+                                                             object_type);
+            }
         }
     } /* for (all objects to create) */
 
     /* Store the new objects */
-    system_critical_section_enter(object_storage_cs);
+    if (object_storage_vector != NULL)
     {
-        for (uint32_t n_object = 0;
-                      n_object < n_objects;
-                    ++n_object)
+        system_critical_section_enter(object_storage_cs);
         {
-            system_resizable_vector_push(object_storage_vector,
-                                         result_objects_ptr[n_object]);
-        } /* for (all objects) */
-    }
-    system_critical_section_leave(object_storage_cs);
+            for (uint32_t n_object = 0;
+                          n_object < n_objects;
+                        ++n_object)
+            {
+                system_resizable_vector_push(object_storage_vector,
+                                             result_objects_ptr[n_object]);
+            } /* for (all objects) */
+        }
+        system_critical_section_leave(object_storage_cs);
+    } /* if (object_storage_vector != NULL) */
 
     /* Configure the output variables */
     memcpy(out_result_object_ptrs,
@@ -1374,11 +1441,29 @@ PUBLIC EMERALD_API bool ral_context_delete_textures(ral_context  context,
                                                        n_textures,
                                                        textures);
 
-    result = _ral_context_delete_objects(context_ptr,
-                                         RAL_CONTEXT_OBJECT_TYPE_TEXTURE,
-                                         n_textures,
-                                         (void**) textures);
+    /* Note: Instead of deleting the textures, we stash them back in the texture pool so that
+     *       they can be re-used.. unless the texture pool is no longer available, in which
+     *       case we actually do release them. :) */
+    if (context_ptr->texture_pool != NULL)
+    {
+        for (uint32_t n_texture = 0;
+                      n_texture < n_textures;
+                    ++n_texture)
+        {
+            ral_texture_pool_add(context_ptr->texture_pool,
+                                 textures[n_texture]);
+        }
+    }
+    else
+    {
+        _ral_texture_pool_callback_texture_dropped_arg fake_callback_arg;
 
+        fake_callback_arg.n_textures = n_textures;
+        fake_callback_arg.textures   = textures;
+
+        _ral_context_on_texture_dropped_from_texture_pool(&fake_callback_arg,
+                                                          context_ptr);
+    }
 end:
     return result;
 }

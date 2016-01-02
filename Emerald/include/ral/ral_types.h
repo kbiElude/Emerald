@@ -10,6 +10,8 @@ DECLARE_HANDLE(ral_framebuffer);
 DECLARE_HANDLE(ral_graphics_state);
 DECLARE_HANDLE(ral_sampler);
 DECLARE_HANDLE(ral_texture);
+DECLARE_HANDLE(ral_texture_pool);
+
 
 typedef enum
 {
@@ -535,6 +537,7 @@ typedef enum
     /* The described texture will be sampled from in shader stages */
     RAL_TEXTURE_USAGE_SAMPLED_BIT                  = 1 << 7,
 
+    RAL_TEXTURE_MAX_BIT_USED = 7
 };
 typedef int ral_texture_usage_bits;
 

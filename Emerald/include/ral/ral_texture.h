@@ -55,16 +55,19 @@ typedef enum
     /* not settable, system_callback_manager */
     RAL_TEXTURE_PROPERTY_CALLBACK_MANAGER,
 
+    /* not settable, ral_texture_create_info. */
+    RAL_TEXTURE_PROPERTY_CREATE_INFO,
+
     /* not settable, bool */
     RAL_TEXTURE_PROPERTY_FIXED_SAMPLE_LOCATIONS,
 
-    /* not settable, system_hashed_ansi_string */
+    /* settable, system_hashed_ansi_string */
     RAL_TEXTURE_PROPERTY_FILENAME,
 
     /* not settable, ral_texture_format */
     RAL_TEXTURE_PROPERTY_FORMAT,
 
-    /* not settable, system_hashed_ansi_string */
+    /* settable, system_hashed_ansi_string */
     RAL_TEXTURE_PROPERTY_NAME,
 
     /* not settable, uint32_t */
@@ -137,5 +140,10 @@ PUBLIC void ral_texture_release(ral_texture& texture);
 PUBLIC EMERALD_API bool ral_texture_set_mipmap_data_from_client_memory(ral_texture                                          texture,
                                                                        uint32_t                                             n_updates,
                                                                        const ral_texture_mipmap_client_sourced_update_info* updates);
+
+/** TODO */
+PUBLIC void ral_texture_set_property(ral_texture          texture,
+                                     ral_texture_property property,
+                                     const void*          data);
 
 #endif /* RAL_TEXTURE_H */
