@@ -845,6 +845,7 @@ PUBLIC void* ogl_ui_texture_preview_init(ogl_ui                      instance,
             new_texture_preview->pGLActiveTexture           = entry_points->pGLActiveTexture;
             new_texture_preview->pGLBindBufferRange         = entry_points->pGLBindBufferRange;
             new_texture_preview->pGLBindSampler             = entry_points->pGLBindSampler;
+            new_texture_preview->pGLBindTexture             = entry_points->pGLBindTexture;
             new_texture_preview->pGLBlendColor              = entry_points->pGLBlendColor;
             new_texture_preview->pGLBlendEquationSeparate   = entry_points->pGLBlendEquationSeparate;
             new_texture_preview->pGLBlendFuncSeparate       = entry_points->pGLBlendFuncSeparate;
