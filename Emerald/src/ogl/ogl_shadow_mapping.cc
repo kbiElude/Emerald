@@ -3226,10 +3226,14 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_shadow_mapping_toggle(ogl_shadow_mapping 
          * It will serve as storage for the shadow map. After the SM is rendered, the ownership
          * is assumed to be passed to the caller.
          */
-        GLenum           light_shadow_map_texture_target_detailed_gl = GL_ZERO;
-        GLenum           light_shadow_map_texture_target_general_gl  = GL_ZERO;
-        scene_light_type light_type                                  = SCENE_LIGHT_TYPE_UNKNOWN;
+        system_hashed_ansi_string light_name                                  = NULL;
+        GLenum                    light_shadow_map_texture_target_detailed_gl = GL_ZERO;
+        GLenum                    light_shadow_map_texture_target_general_gl  = GL_ZERO;
+        scene_light_type          light_type                                  = SCENE_LIGHT_TYPE_UNKNOWN;
 
+        scene_light_get_property                                (light,
+                                                                 SCENE_LIGHT_PROPERTY_NAME,
+                                                                &light_name);
         scene_light_get_property                                (light,
                                                                  SCENE_LIGHT_PROPERTY_TYPE,
                                                                 &light_type);
@@ -3323,7 +3327,8 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_shadow_mapping_toggle(ogl_shadow_mapping 
             sm_depth_texture_create_info.base_mipmap_width      = light_shadow_map_size[0];
             sm_depth_texture_create_info.fixed_sample_locations = false;
             sm_depth_texture_create_info.format                 = light_shadow_map_format_depth;
-            sm_depth_texture_create_info.name                   = system_hashed_ansi_string_create("Shadow map depth texture");
+            sm_depth_texture_create_info.name                   = system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(light_name),
+                                                                                                                          " [shadow map depth texture]");
             sm_depth_texture_create_info.n_layers               = light_shadow_map_size[2];
             sm_depth_texture_create_info.n_samples              = 1;
             sm_depth_texture_create_info.type                   = light_shadow_map_type;
@@ -3350,7 +3355,8 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_shadow_mapping_toggle(ogl_shadow_mapping 
                 sm_color_texture_create_info.base_mipmap_width      = light_shadow_map_size[0];
                 sm_color_texture_create_info.fixed_sample_locations = false;
                 sm_color_texture_create_info.format                 = light_shadow_map_format_color;
-                sm_color_texture_create_info.name                   = system_hashed_ansi_string_create("Shadow map color texture");
+                sm_color_texture_create_info.name                   = system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(light_name),
+                                                                                                                              " [shadow map color texture]");
                 sm_color_texture_create_info.n_layers               = light_shadow_map_size[2];
                 sm_color_texture_create_info.n_samples              = 1;
                 sm_color_texture_create_info.type                   = light_shadow_map_type;
