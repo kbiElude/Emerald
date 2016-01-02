@@ -2113,16 +2113,16 @@ PUBLIC void ogl_shadow_mapping_get_matrices_for_light(ogl_shadow_mapping        
     } /* switch (light_type) */
 
     /* Set up the light's projection matrix */
+    scene_camera_set_property(current_camera,
+                              SCENE_CAMERA_PROPERTY_VIEWPORT,
+                              light_sm_size);
+
     switch (light_type)
     {
         case SCENE_LIGHT_TYPE_DIRECTIONAL:
         {
             float result_max[3];
             float result_min[3];
-
-            scene_camera_set_property(current_camera,
-                                      SCENE_CAMERA_PROPERTY_VIEWPORT,
-                                      light_sm_size);
 
             _ogl_shadow_mapping_get_aabb_for_camera_frustum_and_scene_aabb(current_camera,
                                                                            time,
