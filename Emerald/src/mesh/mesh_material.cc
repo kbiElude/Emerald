@@ -304,6 +304,11 @@ PRIVATE void _mesh_material_subscribe_for_notifications(_mesh_material* material
     unsigned int            n_scene_lights         = 0;
     system_callback_manager scene_callback_manager = NULL;
 
+    if (material_ptr->owner_scene == NULL)
+    {
+        goto end;
+    }
+
     scene_get_property(material_ptr->owner_scene,
                        SCENE_PROPERTY_CALLBACK_MANAGER,
                       &scene_callback_manager);
@@ -390,6 +395,9 @@ PRIVATE void _mesh_material_subscribe_for_notifications(_mesh_material* material
                                                                material_ptr);
         } /* for (all lights) */
     }
+
+end:
+    ;
 }
 
 /** TODO */
