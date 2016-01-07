@@ -4,6 +4,8 @@
  *
  */
 #include "shared.h"
+#include "demo/demo_app.h"
+#include "demo/demo_window.h"
 #include "ogl/ogl_context.h"
 #include "ogl/ogl_rendering_handler.h"
 #include "system/system_assertions.h"
@@ -14,7 +16,7 @@
 #include "system/system_window.h"
 
 ogl_context   _context             = NULL;
-system_window _window              = NULL;
+demo_window   _window              = NULL;
 system_event  _window_closed_event = system_event_create(true); /* manual_reset */
 
 
@@ -57,82 +59,55 @@ int WINAPI WinMain(HINSTANCE instance_handle, HINSTANCE, LPTSTR, int)
 int main()
 #endif
 {
-    bool                  context_result           = false;
-    ogl_rendering_handler window_rendering_handler = NULL;
-    system_screen_mode    window_screen_mode       = NULL;
-    int                   window_size    [2]       = {640, 480};
-    int                   window_x1y1x2y2[4]       = {0};
+    PFNOGLRENDERINGHANDLERRENDERINGCALLBACK pfn_callback_proc  = _rendering_handler;
+    ogl_rendering_handler                   rendering_handler  = NULL;
+    demo_window                             window             = NULL;
+    const system_hashed_ansi_string         window_name        = system_hashed_ansi_string_create("ES context test app");
+    const uint32_t                          window_size[2]     = {320, 240};
+    int                                     window_x1y1x2y2[4] = {0};
+
+    window = demo_app_create_window(window_name,
+                                    RAL_BACKEND_TYPE_ES,
+                                    false /* use_timeline */);
+
+    demo_window_set_property(window,
+                             DEMO_WINDOW_PROPERTY_RESOLUTION,
+                             window_size);
+
+    demo_window_show(window);
+
+    demo_window_get_property(window,
+                             DEMO_WINDOW_PROPERTY_RENDERING_CONTEXT,
+                            &_context);
+    demo_window_get_property(window,
+                             DEMO_WINDOW_PROPERTY_RENDERING_HANDLER,
+                            &rendering_handler);
+
+    ogl_rendering_handler_set_property(rendering_handler,
+                                       OGL_RENDERING_HANDLER_PROPERTY_RENDERING_CALLBACK,
+                                      &pfn_callback_proc);
+
+
+    demo_window_add_callback_func(_window,
+                                  SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_NORMAL,
+                                  SYSTEM_WINDOW_CALLBACK_FUNC_LEFT_BUTTON_DOWN,
+                                  (void*) _rendering_lbm_callback_handler,
+                                  NULL);
+    demo_window_add_callback_func(_window,
+                                  SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_NORMAL,
+                                  SYSTEM_WINDOW_CALLBACK_FUNC_WINDOW_CLOSED,
+                                  (void*) _window_closed_callback_handler,
+                                  NULL);
 
     /* Carry on */
-    system_pixel_format window_pf = system_pixel_format_create(8,  /* color_buffer_red_bits   */
-                                                               8,  /* color_buffer_green_bits */
-                                                               8,  /* color_buffer_blue_bits  */
-                                                               0,  /* color_buffer_alpha_bits */
-                                                               24, /* depth_buffer_bits       */
-                                                               SYSTEM_PIXEL_FORMAT_USE_MAXIMUM_NUMBER_OF_SAMPLES,
-                                                               0); /* stencil_buffer_bits     */
-
-#if 1
-    system_window_get_centered_window_position_for_primary_monitor(window_size,
-                                                                   window_x1y1x2y2);
-
-    _window = system_window_create_not_fullscreen(OGL_CONTEXT_TYPE_ES,
-                                                  window_x1y1x2y2,
-                                                  system_hashed_ansi_string_create("Test window"),
-                                                  false,
-                                                  false, /* vsync_enabled */
-                                                  true,  /* visible */
-                                                  window_pf);
-#else
-    system_screen_mode_get         (0,
-                                   &window_screen_mode);
-    system_screen_mode_get_property(window_screen_mode,
-                                    SYSTEM_SCREEN_MODE_PROPERTY_WIDTH,
-                                    window_size + 0);
-    system_screen_mode_get_property(window_screen_mode,
-                                    SYSTEM_SCREEN_MODE_PROPERTY_HEIGHT,
-                                    window_size + 1);
-
-    _window = system_window_create_fullscreen(OGL_CONTEXT_TYPE_ES,
-                                              window_screen_mode,
-                                              false, /* vsync_enabled */
-                                              window_pf);
-#endif
-
-    window_rendering_handler = ogl_rendering_handler_create_with_fps_policy(system_hashed_ansi_string_create("Default rendering handler"),
-                                                                            60,                 /* desired_fps */
-                                                                            _rendering_handler,
-                                                                            NULL);              /* user_arg */
-
-    system_window_get_property(_window,
-                               SYSTEM_WINDOW_PROPERTY_RENDERING_CONTEXT,
-                              &_context);
-    system_window_set_property(_window,
-                               SYSTEM_WINDOW_PROPERTY_RENDERING_HANDLER,
-                              &window_rendering_handler);
-
-    system_window_add_callback_func    (_window,
-                                        SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_NORMAL,
-                                        SYSTEM_WINDOW_CALLBACK_FUNC_LEFT_BUTTON_DOWN,
-                                        (void*) _rendering_lbm_callback_handler,
-                                        NULL);
-    system_window_add_callback_func    (_window,
-                                        SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_NORMAL,
-                                        SYSTEM_WINDOW_CALLBACK_FUNC_WINDOW_CLOSED,
-                                        (void*) _window_closed_callback_handler,
-                                        NULL);
-
-    /* Carry on */
-    ogl_rendering_handler_play(window_rendering_handler,
-                               0);
+    demo_window_start_rendering(_window,
+                                0 /* rendering_start_time */);
 
     system_event_wait_single(_window_closed_event);
 
     /* Clean up */
-    ogl_rendering_handler_stop(window_rendering_handler);
-
-    system_window_close (_window);
-    system_event_release(_window_closed_event);
+    demo_app_destroy_window(window_name);
+    system_event_release   (_window_closed_event);
 
     return 0;
 }
