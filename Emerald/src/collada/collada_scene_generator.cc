@@ -635,7 +635,8 @@ PRIVATE void _collada_scene_generator_create_textures(collada_data       data,
             /* Spawn scene_texture instance */
             scene_texture result_texture = scene_texture_create(name,
                                                                 NULL, /* scene_name */
-                                                                image_file_name_with_path);
+                                                                image_file_name_with_path,
+                                                                context);
 
             if (result_texture == NULL)
             {

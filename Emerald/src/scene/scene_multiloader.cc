@@ -920,7 +920,7 @@ PRIVATE bool _scene_multiloader_load_scene_internal_get_texture_data(_scene_mult
 
     system_barrier_wait_until_signalled(scene_ptr->loader_ptr->barrier_all_scene_gfx_images_loaded);
 
-    /* Create ogl_texture for each loaded gfx_image.
+    /* Create ral_texture for each loaded gfx_image.
      *
      * TODO: This is currently handled by a single rendering thread, but helper contexts will
      *       be introduced shortly to distribute this load off to four helper threads.
@@ -967,7 +967,7 @@ PRIVATE bool _scene_multiloader_load_scene_internal_get_texture_data(_scene_mult
     }
     system_critical_section_leave(scene_ptr->loader_ptr->cs);
 
-    /* Assign ogl_texture instances to scene_texture instances */
+    /* Assign ral_texture instances to scene_texture instances */
     system_critical_section_enter(scene_ptr->loader_ptr->cs);
     {
         _scene_multiloader_deferred_gfx_image_to_scene_texture_assignment_op* op_ptr = NULL;
@@ -975,12 +975,8 @@ PRIVATE bool _scene_multiloader_load_scene_internal_get_texture_data(_scene_mult
         while (system_resizable_vector_pop(scene_ptr->enqueued_gfx_image_to_scene_texture_assignment_ops,
                                           &op_ptr) )
         {
-            ral_texture texture = NULL;
-
-            ral_context_create_textures_from_file_names(context,
-                                                        1, /* n_filenames */
-                                                       &op_ptr->filename,
-                                                       &texture);
+            ral_texture texture = ral_context_get_texture_by_file_name(context,
+                                                                       op_ptr->filename);
 
             ASSERT_DEBUG_SYNC(texture != NULL,
                               "Could not retrieve an ogl_texture instance for filename [%s]",

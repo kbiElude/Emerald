@@ -798,6 +798,7 @@ PRIVATE bool _ral_context_create_objects(_ral_context*           context_ptr,
                   n_object < n_objects;
                 ++n_object)
     {
+        system_hashed_ansi_string name_has = NULL;
         char temp[128];
 
         snprintf(temp,
@@ -805,11 +806,13 @@ PRIVATE bool _ral_context_create_objects(_ral_context*           context_ptr,
                  object_type_name,
                  (*object_counter_ptr)++);
 
+        name_has = system_hashed_ansi_string_create(temp);
+
         switch (object_type)
         {
             case RAL_CONTEXT_OBJECT_TYPE_BUFFER:
             {
-                result_objects_ptr[n_object] = ral_buffer_create(system_hashed_ansi_string_create(temp),
+                result_objects_ptr[n_object] = ral_buffer_create(name_has,
                                                                  (const ral_buffer_create_info*) (object_create_info_ptrs + n_object) );
 
                 break;
@@ -818,14 +821,14 @@ PRIVATE bool _ral_context_create_objects(_ral_context*           context_ptr,
             case RAL_CONTEXT_OBJECT_TYPE_FRAMEBUFFER:
             {
                 result_objects_ptr[n_object] = ral_framebuffer_create( (ral_context) context_ptr,
-                                                                      system_hashed_ansi_string_create(temp) );
+                                                                      name_has);
 
                 break;
             }
 
             case RAL_CONTEXT_OBJECT_TYPE_SAMPLER:
             {
-                result_objects_ptr[n_object] = ral_sampler_create(system_hashed_ansi_string_create(temp),
+                result_objects_ptr[n_object] = ral_sampler_create(name_has,
                                                                   (const ral_sampler_create_info*) (object_create_info_ptrs) + n_object);
 
                 break;
@@ -841,7 +844,7 @@ PRIVATE bool _ral_context_create_objects(_ral_context*           context_ptr,
                 {
                     backend_texture_callback_used = true;
                     result_objects_ptr[n_object]  = ral_texture_create((ral_context) context_ptr,
-                                                                       system_hashed_ansi_string_create(temp),
+                                                                       name_has,
                                                                        texture_create_info_ptr);
                 }
                 else
@@ -865,7 +868,7 @@ PRIVATE bool _ral_context_create_objects(_ral_context*           context_ptr,
             {
                 /* NOTE: We may need the client app to specify the usage pattern in the future */
                 result_objects_ptr[n_object] = ral_texture_create_from_file_name((ral_context) context_ptr,
-                                                                                 system_hashed_ansi_string_create(temp),
+                                                                                 name_has,
                                                                                  *(system_hashed_ansi_string*) (object_create_info_ptrs + n_object),
                                                                                  RAL_TEXTURE_USAGE_IMAGE_LOAD_OPS_BIT | RAL_TEXTURE_USAGE_SAMPLED_BIT,
                                                                                  _ral_context_notify_backend_about_new_object);
@@ -876,11 +879,24 @@ PRIVATE bool _ral_context_create_objects(_ral_context*           context_ptr,
             case RAL_CONTEXT_OBJECT_TYPE_TEXTURE_FROM_GFX_IMAGE:
             {
                 /* NOTE: We may need the client app to specify the usage pattern in the future */
+                system_hashed_ansi_string file_name_has = NULL;
+
+                gfx_image_get_property(*(gfx_image*) (object_create_info_ptrs + n_object),
+                                       GFX_IMAGE_PROPERTY_FILENAME,
+                                      &file_name_has);
+                gfx_image_get_property(*(gfx_image*) (object_create_info_ptrs + n_object),
+                                       GFX_IMAGE_PROPERTY_NAME,
+                                      &name_has);
+
                 result_objects_ptr[n_object] = ral_texture_create_from_gfx_image((ral_context) context_ptr,
-                                                                                 system_hashed_ansi_string_create(temp),
+                                                                                 name_has,
                                                                                  *(gfx_image*) (object_create_info_ptrs + n_object),
                                                                                  RAL_TEXTURE_USAGE_IMAGE_LOAD_OPS_BIT | RAL_TEXTURE_USAGE_SAMPLED_BIT,
                                                                                  _ral_context_notify_backend_about_new_object);
+
+                ral_texture_set_property((ral_texture) result_objects_ptr[n_object],
+                                         RAL_TEXTURE_PROPERTY_FILENAME,
+                                        &file_name_has);
 
                 break;
             }
@@ -1214,19 +1230,96 @@ PUBLIC EMERALD_API bool ral_context_create_textures_from_file_names(ral_context 
         goto end;
     }
 
-    result = _ral_context_create_objects(context_ptr,
-                                         RAL_CONTEXT_OBJECT_TYPE_TEXTURE_FROM_FILE_NAME,
-                                         n_file_names,
-                                         (void**) file_names_ptr,
-                                         (void**) out_result_textures_ptr);
-
-    if (result)
+    /* Check if we already have a texture for each specified file name. If any of them is
+     * recognized, we can skip them */
+    system_critical_section_enter(context_ptr->textures_cs);
     {
-        _ral_context_add_textures_to_texture_hashmaps(context_ptr,
-                                                      n_file_names,
-                                                      out_result_textures_ptr);
+        system_resizable_vector file_names_to_handle_vector = system_resizable_vector_create(n_file_names);
+        uint32_t                n_current_file_name         = 0;
+        uint32_t                n_file_names_to_handle      = 0;
 
-    } /* if (result != NULL) */
+        while (n_current_file_name != n_file_names)
+        {
+            const system_hash64 file_name_hash = system_hashed_ansi_string_get_hash(file_names_ptr[n_current_file_name]);
+
+            if (!system_hash64map_contains(context_ptr->textures_by_filename_map,
+                                           file_name_hash))
+            {
+                system_resizable_vector_push(file_names_to_handle_vector,
+                                             file_names_ptr[n_current_file_name]);
+
+                ++n_file_names_to_handle;
+            }
+            else
+            {
+                system_hash64map_get(context_ptr->textures_by_filename_map,
+                                     file_name_hash,
+                                     out_result_textures_ptr + n_current_file_name);
+            }
+
+            ++n_current_file_name;
+        } /* while (n_current_file_name != n_file_names) */
+
+        if (n_file_names_to_handle > 0)
+        {
+            system_hashed_ansi_string* file_names_to_handle = NULL;
+            ral_texture*               result_textures      = new (std::nothrow) ral_texture[n_file_names_to_handle];
+
+            ASSERT_ALWAYS_SYNC(result_textures != NULL,
+                               "Out of memory");
+
+            system_resizable_vector_get_property(file_names_to_handle_vector,
+                                                 SYSTEM_RESIZABLE_VECTOR_PROPERTY_ARRAY,
+                                                &file_names_to_handle);
+
+            result = _ral_context_create_objects(context_ptr,
+                                                 RAL_CONTEXT_OBJECT_TYPE_TEXTURE_FROM_FILE_NAME,
+                                                 n_file_names_to_handle,
+                                                 (void**) file_names_to_handle,
+                                                 (void**) result_textures);
+
+            if (!result)
+            {
+                ASSERT_DEBUG_SYNC(result,
+                                  "Texture creation process failed.");
+            }
+            else
+            {
+                uint32_t n_returned_textures = 0;
+
+                for (n_current_file_name = 0;
+                     n_current_file_name < n_file_names;
+                   ++n_current_file_name)
+                {
+                    const system_hash64 file_name_hash = system_hashed_ansi_string_get_hash(file_names_ptr[n_current_file_name]);
+
+                    if (!system_hash64map_contains(context_ptr->textures_by_filename_map,
+                                                   file_name_hash))
+                    {
+                        out_result_textures_ptr[n_current_file_name] = result_textures[n_returned_textures++];
+                    }
+                } /* for (all file names specified on input) */
+
+                ASSERT_DEBUG_SYNC(n_returned_textures == n_file_names_to_handle,
+                                  "Internal error");
+
+                _ral_context_add_textures_to_texture_hashmaps(context_ptr,
+                                                              n_file_names_to_handle,
+                                                              result_textures);
+            } /* if (result != NULL) */
+
+            delete [] result_textures;
+            result_textures = NULL;
+        } /* if (n_file_names_to_handle > 0) */
+        else
+        {
+            result = true;
+        }
+
+        system_resizable_vector_release(file_names_to_handle_vector);
+    }
+    system_critical_section_leave(context_ptr->textures_cs);
+
 end:
     return result;
 }

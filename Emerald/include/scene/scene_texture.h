@@ -28,10 +28,11 @@ REFCOUNT_INSERT_DECLARATIONS(scene_texture,
 
 /** TODO.
  *
- *  NOTE: Texture ID is configured exclusively by scene instance which owns the texture. */
+ *  NOTE: RAL texture instance is owned exclusively by scene instanc. */
 PUBLIC EMERALD_API scene_texture scene_texture_create(system_hashed_ansi_string name,
                                                       system_hashed_ansi_string object_manager_path,
-                                                      system_hashed_ansi_string filename);
+                                                      system_hashed_ansi_string filename,
+                                                      ral_context               context);
 
 /** TODO */
 PUBLIC EMERALD_API void scene_texture_get(scene_texture          instance,

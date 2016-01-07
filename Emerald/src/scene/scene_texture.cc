@@ -17,6 +17,7 @@
 /* Private declarations */
 typedef struct
 {
+    ral_context               context;
     system_hashed_ansi_string filename;
     system_hashed_ansi_string name;
     ral_texture               texture;
@@ -32,8 +33,10 @@ REFCOUNT_INSERT_IMPLEMENTATION(scene_texture,
 /** TODO */
 PRIVATE void _scene_texture_init(_scene_texture*           data_ptr,
                                  system_hashed_ansi_string name,
-                                 system_hashed_ansi_string filename)
+                                 system_hashed_ansi_string filename,
+                                 ral_context               context)
 {
+    data_ptr->context  = context;
     data_ptr->filename = filename;
     data_ptr->name     = name;
     data_ptr->texture  = NULL;
@@ -46,7 +49,9 @@ PRIVATE void _scene_texture_release(void* data_ptr)
 
     if (texture_ptr->texture != NULL)
     {
-        ral_texture_release(texture_ptr->texture);
+        ral_context_delete_textures(texture_ptr->context,
+                                    1, /* n_textures */
+                                   &texture_ptr->texture);
 
         texture_ptr->texture = NULL;
     }
@@ -56,7 +61,8 @@ PRIVATE void _scene_texture_release(void* data_ptr)
 /* Please see header for specification */
 PUBLIC EMERALD_API scene_texture scene_texture_create(system_hashed_ansi_string name,
                                                       system_hashed_ansi_string object_manager_path,
-                                                      system_hashed_ansi_string filename)
+                                                      system_hashed_ansi_string filename,
+                                                      ral_context               context)
 {
     _scene_texture* new_scene_texture = new (std::nothrow) _scene_texture;
 
@@ -67,7 +73,8 @@ PUBLIC EMERALD_API scene_texture scene_texture_create(system_hashed_ansi_string 
     {
         _scene_texture_init(new_scene_texture,
                             name,
-                            filename);
+                            filename,
+                            context);
 
         REFCOUNT_INSERT_INIT_CODE_WITH_RELEASE_HANDLER(new_scene_texture,
                                                        _scene_texture_release,
@@ -140,7 +147,8 @@ PUBLIC EMERALD_API scene_texture scene_texture_load_with_serializer(system_file_
     {
         result = scene_texture_create(name,
                                       object_manager_path,
-                                      filename);
+                                      filename,
+                                      context);
 
         ASSERT_ALWAYS_SYNC(result != NULL,
                           "Could not create scene texture instance");
@@ -158,9 +166,6 @@ PUBLIC EMERALD_API scene_texture scene_texture_load_with_serializer(system_file_
             {
                 if (pGLSetOGLTextureBacking_callback != NULL)
                 {
-                    ASSERT_DEBUG_SYNC(false,
-                                      "TODO");
-
                     /* Let the caller take care of setting up the ogl_texture instance
                      * behind this scene_texture.
                      */

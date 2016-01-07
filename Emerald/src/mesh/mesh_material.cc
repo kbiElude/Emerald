@@ -548,10 +548,7 @@ PUBLIC EMERALD_API mesh_material mesh_material_create_copy(system_hashed_ansi_st
                 else
                 if (shading_property.attachment == MESH_MATERIAL_PROPERTY_ATTACHMENT_TEXTURE)
                 {
-                    ral_context_delete_samplers(new_material_ptr->context,
-                                                1, /* n_samplers */
-                                               &shading_property.texture_data.sampler);
-
+                    shading_property.texture_data.sampler = NULL;
                     shading_property.texture_data.texture = NULL;
                 }
             }
@@ -1731,16 +1728,26 @@ PUBLIC bool mesh_material_is_a_match_to_mesh_material(mesh_material material_a,
                                                                  NULL, /* out_mipmap_level - irrelevant */
                                                                  NULL);/* out_sampler - irrelevant */
 
-                ral_texture_get_property(material_a_texture,
-                                         RAL_TEXTURE_PROPERTY_TYPE,
-                                        &material_a_texture_type);
-                ral_texture_get_property(material_b_texture,
-                                         RAL_TEXTURE_PROPERTY_TYPE,
-                                        &material_b_texture_type);
-
-                if (material_a_texture_type != material_b_texture_type)
+                if (material_a_texture == NULL && material_b_texture != NULL ||
+                    material_a_texture != NULL && material_b_texture == NULL)
                 {
                     goto end;
+                }
+
+                if (material_a_texture != NULL &&
+                    material_b_texture != NULL)
+                {
+                    ral_texture_get_property(material_a_texture,
+                                             RAL_TEXTURE_PROPERTY_TYPE,
+                                            &material_a_texture_type);
+                    ral_texture_get_property(material_b_texture,
+                                             RAL_TEXTURE_PROPERTY_TYPE,
+                                            &material_b_texture_type);
+
+                    if (material_a_texture_type != material_b_texture_type)
+                    {
+                        goto end;
+                    }
                 }
 
                 break;
