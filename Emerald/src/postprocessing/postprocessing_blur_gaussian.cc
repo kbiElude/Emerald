@@ -124,7 +124,7 @@ typedef struct _postprocessing_blur_gaussian
     ral_buffer                coeff_bo;
     unsigned int              coeff_buffer_offset_for_value_1; /* holds offset to where 1.0 is stored in BO with id coeff_bo_id */
     unsigned int*             coeff_buffer_offsets; // [0] for n_min_taps, [1] for n_min_taps+1, etc..
-    ral_context               context;
+    ral_context               context;    /* DO NOT retain */
     GLuint                    fbo_ids[2]; /* ping/pong FBO */
     system_hashed_ansi_string name;
     unsigned int              n_max_data_coeffs;
@@ -168,8 +168,6 @@ typedef struct _postprocessing_blur_gaussian
         memset(fbo_ids,
                0,
                sizeof(fbo_ids) );
-
-        ral_context_retain(context);
     }
 
     ~_postprocessing_blur_gaussian()
@@ -190,13 +188,6 @@ typedef struct _postprocessing_blur_gaussian
             ogl_program_release(po);
 
             po = NULL;
-        }
-
-        if (context != NULL)
-        {
-            ral_context_release(context);
-
-            context = NULL;
         }
     }
 
@@ -252,6 +243,15 @@ PRIVATE void _postprocessing_blur_gaussian_deinit_rendering_thread_callback(ogl_
 
         instance_ptr->other_data_bo = NULL;
     } /* if (instance_ptr->other_data_bo != NULL) */
+
+    if (instance_ptr->sampler != NULL)
+    {
+        ral_context_delete_samplers(instance_ptr->context,
+                                    1, /* n_samplers */
+                                   &instance_ptr->sampler);
+
+        instance_ptr->sampler = NULL;
+    }
 }
 
 /** TODO */

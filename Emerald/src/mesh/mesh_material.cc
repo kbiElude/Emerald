@@ -242,9 +242,12 @@ PRIVATE void _mesh_material_release(void* data_ptr)
 
                 case MESH_MATERIAL_PROPERTY_ATTACHMENT_TEXTURE:
                 {
-                    ral_context_delete_samplers(material_ptr->context,
-                                                1, /* n_samplers */
-                                               &material_ptr->shading_properties[current_property].texture_data.sampler);
+                    if (material_ptr->shading_properties[current_property].texture_data.sampler != NULL)
+                    {
+                        ral_context_delete_samplers(material_ptr->context,
+                                                    1, /* n_samplers */
+                                                   &material_ptr->shading_properties[current_property].texture_data.sampler);
+                    }
 
                     material_ptr->shading_properties[current_property].texture_data.sampler = NULL;
                     material_ptr->shading_properties[current_property].texture_data.texture = NULL;

@@ -960,6 +960,8 @@ PRIVATE bool _scene_multiloader_load_scene_internal_get_texture_data(_scene_mult
 
             ASSERT_DEBUG_SYNC(gfx_image_texture != NULL,
                               "ogl_texture_create_from_gfx_image() call failed.");
+
+            gfx_image_release(gfx_image_instance);
         } /* for (all map entries) */
 
         /* All entries processed! */
