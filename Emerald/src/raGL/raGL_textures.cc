@@ -176,8 +176,8 @@ PRIVATE system_hash64 _raGL_textures_get_texture_hash(ral_texture texture)
     /* Make sure these properties fit within the key constraints:
      *
      * base_mipmap_depth:  0-255  (8  bits)
-     * base_mipmap_height: 0-4095 (12 bits)
-     * base_mipmap_width:  0-4095 (12 bits)
+     * base_mipmap_height: 0-4095 (13 bits)
+     * base_mipmap_width:  0-4095 (13 bits)
      * texture_format:     0-127  (7  bits)
      * texture_type:       0-15   (4  bits)
      * n_layers:           0-15   (4  bits)
@@ -192,18 +192,18 @@ PRIVATE system_hash64 _raGL_textures_get_texture_hash(ral_texture texture)
                       texture_n_samples          < (1 << 5)  &&
                       texture_type               < (1 << 4)  &&
                       texture_base_mipmap_depth  < (1 << 8)  &&
-                      texture_base_mipmap_height < (1 << 12) &&
-                      texture_base_mipmap_width  < (1 << 12),
+                      texture_base_mipmap_height < (1 << 13) &&
+                      texture_base_mipmap_width  < (1 << 13),
                       "RAL texture properties overflow the texture key");
 
     result = ( ((int64_t)texture_base_mipmap_depth)  & ((1 << 8)  - 1)) << 0  |
-             ( ((int64_t)texture_base_mipmap_height) & ((1 << 12) - 1)) << 8  |
-             ( ((int64_t)texture_base_mipmap_width)  & ((1 << 12) - 1)) << 20 |
-             ( ((int64_t)texture_format)             & ((1 << 7)  - 1)) << 32 |
-             ( ((int64_t)texture_type)               & ((1 << 4)  - 1)) << 39 |
-             ( ((int64_t)texture_n_layers)           & ((1 << 4)  - 1)) << 43 |
-             ( ((int64_t)texture_n_mipmaps)          & ((1 << 4)  - 1)) << 47 |
-             ( ((int64_t)texture_n_samples)          & ((1 << 5)  - 1)) << 51;
+             ( ((int64_t)texture_base_mipmap_height) & ((1 << 13) - 1)) << 8  |
+             ( ((int64_t)texture_base_mipmap_width)  & ((1 << 13) - 1)) << 21 |
+             ( ((int64_t)texture_format)             & ((1 << 7)  - 1)) << 34 |
+             ( ((int64_t)texture_type)               & ((1 << 4)  - 1)) << 41 |
+             ( ((int64_t)texture_n_layers)           & ((1 << 4)  - 1)) << 45 |
+             ( ((int64_t)texture_n_mipmaps)          & ((1 << 4)  - 1)) << 49 |
+             ( ((int64_t)texture_n_samples)          & ((1 << 5)  - 1)) << 53;
 
     return result;
 }

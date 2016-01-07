@@ -2671,7 +2671,7 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void ogl_uber_rendering_start(ogl_uber
                         ASSERT_DEBUG_SYNC(item_ptr->fragment_shader_item.current_light_shadow_map_texture_depth != NULL,
                                           "No depth shadow map assigned to a light which casts shadows");
 
-                        ral_texture_get_property(item_ptr->fragment_shader_item.current_light_shadow_map_texture_color,
+                        ral_texture_get_property(item_ptr->fragment_shader_item.current_light_shadow_map_texture_depth,
                                                  RAL_TEXTURE_PROPERTY_TYPE,
                                                 &shadow_map_texture_type);
 

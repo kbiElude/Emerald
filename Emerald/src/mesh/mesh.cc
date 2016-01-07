@@ -3845,13 +3845,8 @@ PUBLIC EMERALD_API bool mesh_get_property(mesh          instance,
             {
                 if (!mesh_ptr->gl_storage_initialized)
                 {
-                    ASSERT_DEBUG_SYNC(false,
-                                      "TODO");
-
-#if 0
                     mesh_fill_gl_buffers(instance,
-                                         ogl_context_get_current_context() );
-#endif
+                                         mesh_ptr->ral_context);
                 }
 
                 ASSERT_DEBUG_SYNC(mesh_ptr->gl_storage_initialized,

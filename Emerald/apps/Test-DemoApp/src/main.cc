@@ -4,6 +4,8 @@
  *
  */
 #include "shared.h"
+#include "demo/demo_app.h"
+#include "demo/demo_window.h"
 #include "ogl/ogl_context.h"
 #include "ogl/ogl_materials.h"
 #include "ogl/ogl_pipeline.h"
@@ -12,6 +14,8 @@
 #include "ogl/ogl_scene_renderer.h"
 #include "ogl/ogl_shader.h"
 #include "postprocessing/postprocessing_blur_gaussian.h"
+#include "raGL/raGL_framebuffer.h"
+#include "ral/ral_context.h"
 #include "scene/scene.h"
 #include "scene/scene_camera.h"
 #include "scene/scene_graph.h"
@@ -29,9 +33,9 @@
 #include "state.h"
 #include "ui.h"
 
-ogl_context           _context             = NULL;
+ral_context           _context             = NULL;
 ogl_rendering_handler _rendering_handler   = NULL;
-system_window         _window              = NULL;
+demo_window           _window              = NULL;
 system_event          _window_closed_event = system_event_create(true); /* manual_reset */
 GLuint                _vao_id              = 0;
 
@@ -43,9 +47,11 @@ void _rendering_handler_entrypoint(ogl_context context,
                                    const int*  rendering_area_px_topdown,
                                    void*       unused)
 {
-    GLuint                            default_fbo_id = 0;
-    const ogl_context_gl_entrypoints* entry_points   = NULL;
-    static bool                       ui_initialized = false;
+    ral_framebuffer                   default_fb         = NULL;
+    raGL_framebuffer                  default_fb_raGL    = NULL;
+    GLuint                            default_fb_raGL_id = -1;
+    const ogl_context_gl_entrypoints* entry_points       = NULL;
+    static bool                       ui_initialized     = false;
 
     state_set_current_frame_time(frame_time);
 
@@ -61,12 +67,19 @@ void _rendering_handler_entrypoint(ogl_context context,
         ui_initialized = true;
     }
 
-    ogl_context_get_property(context,
-                             OGL_CONTEXT_PROPERTY_DEFAULT_FBO_ID,
-                            &default_fbo_id);
+    ral_context_get_property(_context,
+                             RAL_CONTEXT_PROPERTY_SYSTEM_FRAMEBUFFERS,
+                            &default_fb);
+
+    default_fb_raGL = ral_context_get_framebuffer_gl(_context,
+                                                     default_fb);
+
+    raGL_framebuffer_get_property(default_fb_raGL,
+                                  RAGL_FRAMEBUFFER_PROPERTY_ID,
+                                 &default_fb_raGL_id);
 
     entry_points->pGLBindFramebuffer(GL_DRAW_FRAMEBUFFER,
-                                     default_fbo_id);
+                                     default_fb_raGL_id);
     entry_points->pGLClearColor     (0.0f,
                                      0.0f,
                                      0.5f,
@@ -162,7 +175,7 @@ PUBLIC void _render_scene(ral_context context,
     /* Render the scene graph */
     const ogl_context_gl_entrypoints* entry_points = NULL;
 
-    ogl_context_get_property(_context,
+    ogl_context_get_property(ral_context_get_gl_context(context),
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
                             &entry_points);
 
@@ -215,63 +228,44 @@ void _rendering_window_closing_callback_handler(system_window window,
     int main()
 #endif
 {
-    bool               context_result     = false;
-    system_screen_mode screen_mode        = NULL;
-    int                window_size    [2] = {WINDOW_WIDTH, WINDOW_HEIGHT};
-    int                window_x1y1x2y2[4] = {0};
+    PFNOGLRENDERINGHANDLERRENDERINGCALLBACK pfn_callback_proc  = _rendering_handler_entrypoint;
+    system_screen_mode                      screen_mode        = NULL;
+    const system_hashed_ansi_string         window_name        = system_hashed_ansi_string_create("Demo test app");
+    const uint32_t                          window_size[2]     = {1280, 720};
+    int                                     window_x1y1x2y2[4] = {0};
 
-    /* Carry on */
-    system_pixel_format window_pf = system_pixel_format_create(8,  /* color_buffer_red_bits   */
-                                                               8,  /* color_buffer_green_bits */
-                                                               8,  /* color_buffer_blue_bits  */
-                                                               0,  /* color_buffer_alpha_bits */
-                                                               24, /* depth_buffer_bits       */
-                                                               SYSTEM_PIXEL_FORMAT_USE_MAXIMUM_NUMBER_OF_SAMPLES,
-                                                               0); /* stencil_buffer_bits     */
+    _window = demo_app_create_window(window_name,
+                                     RAL_BACKEND_TYPE_GL,
+                                     false /* use_timeline */);
 
-#if 0
-    system_screen_mode_get(0,
-                          &screen_mode);
+    demo_window_set_property(_window,
+                             DEMO_WINDOW_PROPERTY_RESOLUTION,
+                             window_size);
 
-    _window = system_window_create_fullscreen(OGL_CONTEXT_TYPE_GL,
-                                              screen_mode,
-                                              true, /* vsync_enabled */
-                                              window_pf);
-#else
-    system_window_get_centered_window_position_for_primary_monitor(window_size,
-                                                                   window_x1y1x2y2);
+    demo_window_show(_window);
 
-    _window = system_window_create_not_fullscreen(OGL_CONTEXT_TYPE_GL,
-                                                  window_x1y1x2y2,
-                                                  system_hashed_ansi_string_create("Test window"),
-                                                  false, /* scalable */
-                                                  true,  /* vsync_enabled */
-                                                  true,  /* visible */
-                                                  window_pf);
-#endif
+    demo_window_get_property(_window,
+                             DEMO_WINDOW_PROPERTY_RENDERING_CONTEXT,
+                            &_context);
+    demo_window_get_property(_window,
+                             DEMO_WINDOW_PROPERTY_RENDERING_HANDLER,
+                            &_rendering_handler);
 
-    _rendering_handler = ogl_rendering_handler_create_with_fps_policy(system_hashed_ansi_string_create("Default rendering handler"),
-                                                                      TARGET_FPS,
-                                                                      _rendering_handler_entrypoint,
-                                                                      NULL);
+    ogl_rendering_handler_set_property(_rendering_handler,
+                                       OGL_RENDERING_HANDLER_PROPERTY_RENDERING_CALLBACK,
+                                      &pfn_callback_proc);
 
-    system_window_get_property         (_window,
-                                        SYSTEM_WINDOW_PROPERTY_RENDERING_CONTEXT,
-                                       &_context);
-    system_window_set_property         (_window,
-                                        SYSTEM_WINDOW_PROPERTY_RENDERING_HANDLER,
-                                       &_rendering_handler);
-    system_window_add_callback_func    (_window,
+    demo_window_add_callback_func      (_window,
                                         SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_NORMAL,
                                         SYSTEM_WINDOW_CALLBACK_FUNC_RIGHT_BUTTON_DOWN,
                                         (void*) _rendering_rbm_callback_handler,
                                         NULL);
-    system_window_add_callback_func    (_window,
+    demo_window_add_callback_func      (_window,
                                         SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_NORMAL,
                                         SYSTEM_WINDOW_CALLBACK_FUNC_WINDOW_CLOSED,
                                         (void*) _rendering_window_closed_callback_handler,
                                         NULL);
-    system_window_add_callback_func    (_window,
+    demo_window_add_callback_func      (_window,
                                         SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_NORMAL,
                                         SYSTEM_WINDOW_CALLBACK_FUNC_WINDOW_CLOSING,
                                         (void*) _rendering_window_closing_callback_handler,
@@ -281,16 +275,14 @@ void _rendering_window_closing_callback_handler(system_window window,
     state_init();
 
     /* Carry on */
-    ogl_rendering_handler_play(_rendering_handler,
-                               0); /* time */
+    demo_window_start_rendering(_window,
+                                0 /* start_time */);
 
     system_event_wait_single(_window_closed_event);
 
     /* Clean up */
-    ogl_rendering_handler_stop(_rendering_handler);
-
-    system_window_close (_window);
-    system_event_release(_window_closed_event);
+    demo_app_destroy_window(window_name);
+    system_event_release   (_window_closed_event);
 
     return 0;
 }

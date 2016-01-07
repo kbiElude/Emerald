@@ -4,6 +4,7 @@
  *
  */
 #include "shared.h"
+#include "demo/demo_window.h"
 #include "ogl/ogl_context.h"
 #include "ogl/ogl_rendering_handler.h"
 #include "ogl/ogl_text.h"
@@ -11,6 +12,7 @@
 #include "ogl/ogl_ui_bag.h"
 #include "ogl/ogl_ui_dropdown.h"
 #include "ogl/ogl_shadow_mapping.h"
+#include "ral/ral_context.h"
 #include "postprocessing/postprocessing_blur_gaussian.h"
 #include "scene/scene_camera.h"
 #include "scene/scene_light.h"
@@ -540,9 +542,9 @@ PUBLIC void ui_init()
     int         window_size[2]    = {0};
 
     /* Initialize components required to power UI */
-    system_window_get_property(_window,
-                               SYSTEM_WINDOW_PROPERTY_DIMENSIONS,
-                               window_size);
+    demo_window_get_property(_window,
+                             DEMO_WINDOW_PROPERTY_RESOLUTION,
+                             window_size);
 
     _text_renderer = ogl_text_create(system_hashed_ansi_string_create("Text renderer"),
                                      _context,
@@ -592,7 +594,7 @@ PUBLIC void ui_init()
     unsigned int       max_n_taps             = 0;
     unsigned int       min_n_taps             = 0;
 
-    ogl_context_get_property(_context,
+    ogl_context_get_property(ral_context_get_gl_context(_context),
                              OGL_CONTEXT_PROPERTY_SHADOW_MAPPING,
                             &context_shadow_mapping);
 

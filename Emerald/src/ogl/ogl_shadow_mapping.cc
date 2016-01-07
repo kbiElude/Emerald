@@ -3563,8 +3563,9 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_shadow_mapping_toggle(ogl_shadow_mapping 
             entry_points->pGLFramebufferTexture2D(GL_DRAW_FRAMEBUFFER,
                                                   GL_COLOR_ATTACHMENT0,
                                                   light_shadow_map_texture_target_detailed_gl,
-                                                  ral_context_get_texture_gl_id(handler_ptr->context,
-                                                                                handler_ptr->current_sm_color0_texture),
+                                                  (handler_ptr->current_sm_color0_texture == NULL) ? 0
+                                                                                                   : ral_context_get_texture_gl_id(handler_ptr->context,
+                                                                                                                                   handler_ptr->current_sm_color0_texture),
                                                   0); /* level */
             entry_points->pGLFramebufferTexture2D(GL_DRAW_FRAMEBUFFER,
                                                   GL_DEPTH_ATTACHMENT,
@@ -3659,9 +3660,6 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_shadow_mapping_toggle(ogl_shadow_mapping 
 
         raGL_framebuffer_get_property(system_fb_raGL,
                                       RAGL_FRAMEBUFFER_PROPERTY_ID,
-                                     &system_fb_raGL_id);
-        ogl_context_get_property     (ral_context_get_gl_context(handler_ptr->context),
-                                      OGL_CONTEXT_PROPERTY_DEFAULT_FBO,
                                      &system_fb_raGL_id);
 
         entry_points->pGLCullFace(GL_BACK);
