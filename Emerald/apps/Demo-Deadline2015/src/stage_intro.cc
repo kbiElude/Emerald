@@ -2,12 +2,12 @@
 #include "demo/demo_app.h"
 #include "demo/demo_loader.h"
 #include "demo/demo_timeline.h"
-#include "demo/demo_timeline_video_segment.h"
+#include "demo/nodes/nodes_postprocessing_video_segment.h"
 #include "ogl/ogl_context.h"
 #include "ogl/ogl_program.h"
 #include "ogl/ogl_program_ub.h"
 #include "ogl/ogl_shader.h"
-#include "ogl/ogl_texture.h"
+#include "ral/ral_texture.h"
 #include "postprocessing/postprocessing_motion_blur.h"
 #include "procedural/procedural_mesh_circle.h"
 #include "system/system_math_other.h"
@@ -50,7 +50,7 @@ PRIVATE unsigned int                _overlay_circle_n_vertices = 0;
 PRIVATE ogl_program                 _overlay_po                = NULL;
 PRIVATE GLuint                      _overlay_vao_id            = 0;
 PRIVATE unsigned int                _resolution[2] = { 0 };
-PRIVATE ogl_texture                 _spinner_blurred_to        = NULL;
+PRIVATE ral_texture                 _spinner_blurred_to        = NULL;
 PRIVATE demo_timeline_video_segment _video_segment             = NULL;
 
 
@@ -61,8 +61,8 @@ PRIVATE RENDERING_CONTEXT_CALL void _stage_intro_blur_spinner(ogl_context contex
                                                               const int*  rendering_area_px_topdown,
                                                               void*       unused)
 {
-    ogl_texture color_to = NULL;
-    ogl_texture velocity_to = NULL;
+    ral_texture color_to    = NULL;
+    ral_texture velocity_to = NULL;
 
     spinner_get_property(SPINNER_PROPERTY_RESULT_COLOR_TO,
                         &color_to);

@@ -5,7 +5,8 @@
  */
 #include "shared.h"
 #include <stdlib.h>
-#include "curve_editor/curve_editor_general.h"
+#include "demo/demo_app.h"
+#include "demo/demo_window.h"
 #include "mesh/mesh.h"
 #include "mesh/mesh_material.h"
 #include "ogl/ogl_context.h"
@@ -20,6 +21,7 @@
 #include "ogl/ogl_text.h"
 #include "ogl/ogl_uber.h"
 #include "ogl/ogl_ui.h"
+#include "ral/ral_context.h"
 #include "scene/scene.h"
 #include "scene/scene_camera.h"
 #include "scene/scene_graph.h"
@@ -41,7 +43,7 @@
 
 float                     _animation_duration_float   = 0.0f;
 system_time               _animation_duration_time    = 0;
-ogl_context               _context                    = NULL;
+ral_context               _context                    = NULL;
 system_matrix4x4          _current_matrix             = NULL;
 ogl_flyby                 _flyby                      = NULL;
 ogl_pipeline              _pipeline                   = NULL;
@@ -53,7 +55,7 @@ scene                     _test_scene                 = NULL;
 ogl_text                  _text_renderer              = NULL;
 ogl_ui                    _ui                         = NULL;
 ogl_ui_control            _ui_convert_button          = NULL;
-system_window             _window                     = NULL;
+demo_window               _window                     = NULL;
 system_event              _window_closed_event        = system_event_create(true); /* manual_reset */
 ogl_rendering_handler     _window_rendering_handler   = NULL;
 
@@ -143,7 +145,7 @@ void _rendering_handler(ogl_context context,
                             rendering_area_px_topdown);
 }
 
-void _render_scene(ogl_context context,
+void _render_scene(ral_context context,
                    uint32_t    frame_index,
                    system_time time,
                    const int*  rendering_area_px_topdown,
@@ -151,10 +153,11 @@ void _render_scene(ogl_context context,
 {
     /* Update view matrix */
     float            camera_location[4] = {0, 0, 0, 0};
+    ogl_context      context_gl         = ral_context_get_gl_context(context);
     ogl_flyby        flyby              = NULL;
     system_matrix4x4 view               = system_matrix4x4_create();
 
-    ogl_context_get_property(context,
+    ogl_context_get_property(context_gl,
                              OGL_CONTEXT_PROPERTY_FLYBY,
                             &flyby);
 
@@ -179,7 +182,7 @@ void _render_scene(ogl_context context,
     /* Traverse the scene graph */
     const ogl_context_gl_entrypoints* entry_points = NULL;
 
-    ogl_context_get_property(_context,
+    ogl_context_get_property(context_gl,
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
                             &entry_points);
 
@@ -218,9 +221,9 @@ void _setup_ui()
     const float  text_default_size                 = 0.5f;
     int          window_dimensions[2]              = {0};
 
-    system_window_get_property(_window,
-                               SYSTEM_WINDOW_PROPERTY_DIMENSIONS,
-                               window_dimensions);
+    demo_window_get_property(_window,
+                             DEMO_WINDOW_PROPERTY_RESOLUTION,
+                             window_dimensions);
 
     _text_renderer = ogl_text_create(system_hashed_ansi_string_create("Text renderer"),
                                      _context,
@@ -278,7 +281,6 @@ int main()
     const bool  flyby_active         = true;
     const float flyby_movement_delta = 10.25f;
     int         window_size    [2]   = {1280, 720};
-    int         window_x1y1x2y2[4]   = {0};
 
     const system_hashed_ansi_string filter_descriptions[] =
     {
@@ -290,55 +292,54 @@ int main()
     };
 
     /* Carry on */
-    system_pixel_format window_pf = system_pixel_format_create(8,  /* color_buffer_red_bits   */
-                                                               8,  /* color_buffer_green_bits */
-                                                               8,  /* color_buffer_blue_bits  */
-                                                               0,  /* color_buffer_alpha_bits */
-                                                               8,  /* depth_buffer_bits       */
-                                                               1,  /* n_samples               */
-                                                               0); /* stencil_buffer_bits     */
+    ogl_context                             context_gl         = NULL;
+    PFNOGLRENDERINGHANDLERRENDERINGCALLBACK pfn_callback_proc  = _rendering_handler;
+    ogl_rendering_handler                   rendering_handler  = NULL;
+    demo_window                             window             = NULL;
+    const system_hashed_ansi_string         window_name        = system_hashed_ansi_string_create("COLLADA converter");
 
-    system_window_get_centered_window_position_for_primary_monitor(window_size,
-                                                                   window_x1y1x2y2);
+    window = demo_app_create_window(window_name,
+                                    RAL_BACKEND_TYPE_GL,
+                                    false /* use_timeline */);
 
-    _window                   = system_window_create_not_fullscreen         (OGL_CONTEXT_TYPE_GL,
-                                                                             window_x1y1x2y2,
-                                                                             system_hashed_ansi_string_create("Test window"),
-                                                                             false,
-                                                                             false, /* vsync_enabled */
-                                                                             true,  /* visible */
-                                                                             window_pf);
-    _window_rendering_handler = ogl_rendering_handler_create_with_fps_policy(system_hashed_ansi_string_create("Default rendering handler"),
-                                                                             60,
-                                                                             _rendering_handler,
-                                                                             NULL);
+    demo_window_set_property(window,
+                             DEMO_WINDOW_PROPERTY_RESOLUTION,
+                             window_size);
 
-    system_window_get_property(_window,
-                               SYSTEM_WINDOW_PROPERTY_RENDERING_CONTEXT,
-                              &_context);
-    ogl_context_get_property  (_context,
-                               OGL_CONTEXT_PROPERTY_FLYBY,
-                              &_flyby);
+    demo_window_show(window);
 
-    system_window_set_property         (_window,
-                                        SYSTEM_WINDOW_PROPERTY_RENDERING_HANDLER,
-                                       &_window_rendering_handler);
+    demo_window_get_property(window,
+                             DEMO_WINDOW_PROPERTY_RENDERING_CONTEXT,
+                            &_context);
+    demo_window_get_property(window,
+                             DEMO_WINDOW_PROPERTY_RENDERING_HANDLER,
+                            &rendering_handler);
 
-    system_window_add_callback_func    (_window,
-                                        SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_NORMAL,
-                                        SYSTEM_WINDOW_CALLBACK_FUNC_RIGHT_BUTTON_DOWN,
-                                        (void*) _rendering_rbm_callback_handler,
-                                        NULL);
-    system_window_add_callback_func    (_window,
-                                        SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_NORMAL,
-                                        SYSTEM_WINDOW_CALLBACK_FUNC_WINDOW_CLOSED,
-                                        (void*) _window_closed_callback_handler,
-                                        NULL);
-    system_window_add_callback_func    (_window,
-                                        SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_NORMAL,
-                                        SYSTEM_WINDOW_CALLBACK_FUNC_WINDOW_CLOSING,
-                                        (void*) _window_closing_callback_handler,
-                                        NULL);
+    ogl_rendering_handler_set_property(rendering_handler,
+                                       OGL_RENDERING_HANDLER_PROPERTY_RENDERING_CALLBACK,
+                                      &pfn_callback_proc);
+
+    context_gl = ral_context_get_gl_context(_context);
+
+    ogl_context_get_property(context_gl,
+                             OGL_CONTEXT_PROPERTY_FLYBY,
+                            &_flyby);
+
+    demo_window_add_callback_func(_window,
+                                  SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_NORMAL,
+                                  SYSTEM_WINDOW_CALLBACK_FUNC_RIGHT_BUTTON_DOWN,
+                                  (void*) _rendering_rbm_callback_handler,
+                                  NULL);
+    demo_window_add_callback_func(_window,
+                                  SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_NORMAL,
+                                  SYSTEM_WINDOW_CALLBACK_FUNC_WINDOW_CLOSED,
+                                  (void*) _window_closed_callback_handler,
+                                  NULL);
+    demo_window_add_callback_func(_window,
+                                  SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_NORMAL,
+                                  SYSTEM_WINDOW_CALLBACK_FUNC_WINDOW_CLOSING,
+                                  (void*) _window_closing_callback_handler,
+                                  NULL);
 
     /* Let the user select the DAE file */
     _selected_collada_data_file = system_file_enumerator_choose_file_via_ui(SYSTEM_FILE_ENUMERATOR_FILE_OPERATION_LOAD,
@@ -388,14 +389,6 @@ int main()
                            OGL_FLYBY_PROPERTY_MOVEMENT_DELTA,
                           &flyby_movement_delta);
 
-    /* Show the curve editor */
-#if 0
-    curve_editor_show        (_context);
-    curve_editor_set_property(_context,
-                              CURVE_EDITOR_PROPERTY_MAX_VISIBLE_TIMELINE_WIDTH,
-                              &_animation_duration_float);
-#endif
-
     /* Construct the pipeline object */
     ogl_pipeline_stage_step_declaration scene_rendering_stage_step;
 
@@ -417,13 +410,12 @@ int main()
     _setup_ui();
 
     /* Carry on */
-    ogl_rendering_handler_play(_window_rendering_handler,
-                               0);
+    demo_window_start_rendering(_window,
+                                0);
 
     system_event_wait_single(_window_closed_event);
 
     /* Clean up */
-    ogl_rendering_handler_stop(_window_rendering_handler);
 
 end:
     if (_test_collada_data != NULL)
@@ -431,8 +423,8 @@ end:
         collada_data_release(_test_collada_data);
     }
 
-    system_window_close (_window);
-    system_event_release(_window_closed_event);
+    demo_app_destroy_window(window_name);
+    system_event_release   (_window_closed_event);
 
     return 0;
 }

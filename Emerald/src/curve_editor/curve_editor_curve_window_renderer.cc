@@ -1687,7 +1687,7 @@ PRIVATE bool _curve_editor_curve_window_renderer_init(_curve_editor_curve_window
                                                                                               8,  /* color_buffer_green_bits */
                                                                                               8,  /* color_buffer_blue_bits  */
                                                                                               0,  /* color_buffer_alpha_bits */
-                                                                                              8,  /* color_buffer_depth_bits */
+                                                                                              16, /* color_buffer_depth_bits */
                                                                                               1,  /* n_samples */
                                                                                               0); /* stencil_buffer_bits */
 

@@ -7,6 +7,8 @@
 #include <stdlib.h>
 #include "curve/curve_container.h"
 #include "curve_editor/curve_editor_general.h"
+#include "demo/demo_app.h"
+#include "demo/demo_window.h"
 #include "ogl/ogl_context.h"
 #include "ogl/ogl_rendering_handler.h"
 #include "system/system_assertions.h"
@@ -15,7 +17,7 @@
 #include "system/system_pixel_format.h"
 #include "system/system_window.h"
 
-ogl_context  _context             = NULL;
+ral_context  _context             = NULL;
 system_event _window_closed_event = system_event_create(true); /* manual_reset */
 
 /** Rendering handler */
@@ -93,8 +95,7 @@ PRIVATE void _window_closed_callback_handler(system_window window,
     int main()
 #endif
 {
-    int window_size    [2] = {640, 480};
-    int window_x1y1x2y2[4] = {0};
+    int window_size[2] = {640, 480};
 
     /* Add some test curves */
     curve_container curve_float  = curve_container_create(system_hashed_ansi_string_create("Test1\\zxcv 2d float"),
@@ -117,67 +118,63 @@ PRIVATE void _window_closed_callback_handler(system_window window,
                                                           SYSTEM_VARIANT_INTEGER);
 
     /* Carry on */
-    system_pixel_format window_pf = system_pixel_format_create(8,  /* color_buffer_red_bits   */
-                                                               8,  /* color_buffer_green_bits */
-                                                               8,  /* color_buffer_blue_bits  */
-                                                               0,  /* color_buffer_alpha_bits */
-                                                               16, /* depth_buffer_bits       */
-                                                               1,  /* n_samples               */
-                                                               0); /* stencil_buffer_bits     */
+    PFNOGLRENDERINGHANDLERRENDERINGCALLBACK pfn_callback_proc  = _rendering_handler;
+    ogl_rendering_handler                   rendering_handler  = NULL;
+    demo_window                             window             = NULL;
+    const system_hashed_ansi_string         window_name        = system_hashed_ansi_string_create("Object browser test app");
 
-    system_window_get_centered_window_position_for_primary_monitor(window_size,
-                                                                   window_x1y1x2y2);
+    window = demo_app_create_window(window_name,
+                                    RAL_BACKEND_TYPE_GL,
+                                    false /* use_timeline */);
 
-    system_window         window                   = system_window_create_not_fullscreen         (OGL_CONTEXT_TYPE_GL,
-                                                                                                  window_x1y1x2y2,
-                                                                                                  system_hashed_ansi_string_create("Test window"),
-                                                                                                  false,
-                                                                                                  false, /* vsync_enabled */
-                                                                                                  true,  /* visible */
-                                                                                                  window_pf);
-    ogl_rendering_handler window_rendering_handler = ogl_rendering_handler_create_with_fps_policy(system_hashed_ansi_string_create("Default rendering handler"),
-                                                                                                  10,
-                                                                                                  _rendering_handler,
-                                                                                                  NULL);
+    demo_window_set_property(window,
+                             DEMO_WINDOW_PROPERTY_RESOLUTION,
+                             window_size);
 
-    system_window_get_property(window,
-                               SYSTEM_WINDOW_PROPERTY_RENDERING_CONTEXT,
-                              &_context);
-    system_window_set_property(window,
-                               SYSTEM_WINDOW_PROPERTY_RENDERING_HANDLER,
-                              &window_rendering_handler);
+    demo_window_show(window);
 
-    system_window_add_callback_func    (window,
-                                        SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_NORMAL,
-                                        SYSTEM_WINDOW_CALLBACK_FUNC_CHAR,
-                                        (void*) _rendering_key_callback_handler,
-                                        NULL);
-    system_window_add_callback_func    (window,
-                                        SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_NORMAL,
-                                        SYSTEM_WINDOW_CALLBACK_FUNC_LEFT_BUTTON_DOWN,
-                                        (void*) _rendering_lbm_callback_handler,
-                                        NULL);
-    system_window_add_callback_func    (window,
-                                        SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_NORMAL,
-                                        SYSTEM_WINDOW_CALLBACK_FUNC_RIGHT_BUTTON_DOWN,
-                                        (void*) _rendering_rbm_callback_handler,
-                                        NULL);
-    system_window_add_callback_func    (window,
-                                        SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_NORMAL,
-                                        SYSTEM_WINDOW_CALLBACK_FUNC_WINDOW_CLOSED,
-                                        (void*) _window_closed_callback_handler,
-                                        NULL);
+    demo_window_get_property(window,
+                             DEMO_WINDOW_PROPERTY_RENDERING_CONTEXT,
+                            &_context);
+    demo_window_get_property(window,
+                             DEMO_WINDOW_PROPERTY_RENDERING_HANDLER,
+                            &rendering_handler);
 
-    ogl_rendering_handler_play(window_rendering_handler,
-                               0);
+    ogl_rendering_handler_set_property(rendering_handler,
+                                       OGL_RENDERING_HANDLER_PROPERTY_RENDERING_CALLBACK,
+                                      &pfn_callback_proc);
+
+    demo_window_add_callback_func(window,
+                                  SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_NORMAL,
+                                  SYSTEM_WINDOW_CALLBACK_FUNC_CHAR,
+                                  (void*) _rendering_key_callback_handler,
+                                  NULL);
+    demo_window_add_callback_func(window,
+                                  SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_NORMAL,
+                                  SYSTEM_WINDOW_CALLBACK_FUNC_LEFT_BUTTON_DOWN,
+                                  (void*) _rendering_lbm_callback_handler,
+                                  NULL);
+    demo_window_add_callback_func(window,
+                                  SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_NORMAL,
+                                  SYSTEM_WINDOW_CALLBACK_FUNC_RIGHT_BUTTON_DOWN,
+                                  (void*) _rendering_rbm_callback_handler,
+                                  NULL);
+    demo_window_add_callback_func(window,
+                                  SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_NORMAL,
+                                  SYSTEM_WINDOW_CALLBACK_FUNC_WINDOW_CLOSED,
+                                  (void*) _window_closed_callback_handler,
+                                  NULL);
+
+    demo_window_start_rendering(window,
+                                0 /* rendering_start_time */);
 
     system_event_wait_single(_window_closed_event);
 
     /* Clean up */
     curve_editor_hide();
 
-    system_window_close (window);
-    system_event_release(_window_closed_event);
+    demo_app_destroy_window(window_name);
+    system_event_release   (_window_closed_event);
 
     curve_container_release(curve_float);
     curve_container_release(curve_float2);
