@@ -509,6 +509,30 @@ PRIVATE void _ral_context_delete_textures_from_texture_hashmaps(_ral_context* co
     system_critical_section_leave(context_ptr->textures_cs);
 }
 
+/** Initializes a RAL context.
+ *
+ *  TODO
+ **/
+PUBLIC void _ral_context_init(_ral_context* context_ptr)
+{
+    switch (context_ptr->backend_type)
+    {
+        case RAL_BACKEND_TYPE_ES:
+        case RAL_BACKEND_TYPE_GL:
+        {
+            raGL_backend_init( (raGL_backend) context_ptr->backend);
+
+            break;
+        }
+
+        default:
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Unsupported backend type.");
+        }
+    } /* switch (context_ptr->backend_type) */
+}
+
 /** TODO */
 PRIVATE void _ral_context_notify_backend_about_new_object(ral_context             context,
                                                           void*                   result_object,
@@ -701,6 +725,9 @@ PUBLIC ral_context ral_context_create(system_hashed_ansi_string name,
                                                        OBJECT_TYPE_RAL_CONTEXT,
                                                        system_hashed_ansi_string_create_by_merging_two_strings("\\RAL Contexts\\",
                                                                                                                system_hashed_ansi_string_get_buffer(name)) );
+
+        /* Initialize the context */
+        _ral_context_init(new_context_ptr);
     } /* if (new_context_ptr != NULL) */
 
     return (ral_context) new_context_ptr;
@@ -1798,29 +1825,6 @@ PUBLIC GLuint ral_context_get_texture_gl_id(ral_context context,
                              &result);
 
     return result;
-}
-
-/** Please see header for specification */
-PUBLIC void ral_context_init(ral_context context)
-{
-    _ral_context* context_ptr = (_ral_context*) context;
-
-    switch (context_ptr->backend_type)
-    {
-        case RAL_BACKEND_TYPE_ES:
-        case RAL_BACKEND_TYPE_GL:
-        {
-            raGL_backend_init( (raGL_backend) context_ptr->backend);
-
-            break;
-        }
-
-        default:
-        {
-            ASSERT_DEBUG_SYNC(false,
-                              "Unsupported backend type.");
-        }
-    } /* switch (context_ptr->backend_type) */
 }
 
 /** TODO */

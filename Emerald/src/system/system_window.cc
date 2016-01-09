@@ -402,12 +402,12 @@ end:
 
 
 /** Please see header for specification */
-PUBLIC EMERALD_API bool system_window_add_callback_func(system_window                        window,
-                                                        system_window_callback_func_priority priority,
-                                                        system_window_callback_func          callback_func,
-                                                        void*                                pfn_callback_func,
-                                                        void*                                user_arg,
-                                                        bool                                 should_use_priority)
+PUBLIC bool system_window_add_callback_func(system_window                        window,
+                                            system_window_callback_func_priority priority,
+                                            system_window_callback_func          callback_func,
+                                            void*                                pfn_callback_func,
+                                            void*                                user_arg,
+                                            bool                                 should_use_priority)
 {
     _callback_descriptor* new_descriptor_ptr = new (std::nothrow) _callback_descriptor;
     bool                  result             = false;
@@ -631,7 +631,7 @@ PUBLIC EMERALD_API bool system_window_add_callback_func(system_window           
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API bool system_window_close(system_window window)
+PUBLIC bool system_window_close(system_window window)
 {
     _system_window* window_ptr = (_system_window*) window;
 
@@ -846,11 +846,11 @@ PRIVATE system_window _system_window_create_shared(ral_backend_type          bac
 
 
 /** Please see header for specification */
-PUBLIC EMERALD_API system_window system_window_create_by_replacing_window(system_hashed_ansi_string name,
-                                                                          ral_backend_type          backend_type,
-                                                                          bool                      vsync_enabled,
-                                                                          system_window_handle      parent_window_handle,
-                                                                          system_pixel_format       pf)
+PUBLIC system_window system_window_create_by_replacing_window(system_hashed_ansi_string name,
+                                                              ral_backend_type          backend_type,
+                                                              bool                      vsync_enabled,
+                                                              system_window_handle      parent_window_handle,
+                                                              system_pixel_format       pf)
 {
     system_window result = NULL;
 
@@ -900,13 +900,13 @@ PUBLIC EMERALD_API system_window system_window_create_by_replacing_window(system
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API system_window system_window_create_not_fullscreen(ral_backend_type          backend_type,
-                                                                     const int*                x1y1x2y2,
-                                                                     system_hashed_ansi_string title,
-                                                                     bool                      scalable,
-                                                                     bool                      vsync_enabled,
-                                                                     bool                      visible,
-                                                                     system_pixel_format       pf)
+PUBLIC system_window system_window_create_not_fullscreen(ral_backend_type          backend_type,
+                                                         const int*                x1y1x2y2,
+                                                         system_hashed_ansi_string title,
+                                                         bool                      scalable,
+                                                         bool                      vsync_enabled,
+                                                         bool                      visible,
+                                                         system_pixel_format       pf)
 {
     return _system_window_create_shared(backend_type,
                                         false,
@@ -921,10 +921,10 @@ PUBLIC EMERALD_API system_window system_window_create_not_fullscreen(ral_backend
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API system_window system_window_create_fullscreen(ral_backend_type    backend_type,
-                                                                 system_screen_mode  mode,
-                                                                 bool                vsync_enabled,
-                                                                 system_pixel_format pf)
+PUBLIC system_window system_window_create_fullscreen(ral_backend_type    backend_type,
+                                                     system_screen_mode  mode,
+                                                     bool                vsync_enabled,
+                                                     system_pixel_format pf)
 {
     int x1y1x2y2[4] = {0, 0};
 
@@ -941,10 +941,10 @@ PUBLIC EMERALD_API system_window system_window_create_fullscreen(ral_backend_typ
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API bool system_window_delete_callback_func(system_window               window_instance,
-                                                           system_window_callback_func callback_func,
-                                                           void*                       pfn_callback_func,
-                                                           void*                       user_arg)
+PUBLIC bool system_window_delete_callback_func(system_window               window_instance,
+                                               system_window_callback_func callback_func,
+                                               void*                       pfn_callback_func,
+                                               void*                       user_arg)
 {
     bool            result     = false;
     _system_window* window_ptr = (_system_window*) window_instance;
@@ -1499,8 +1499,8 @@ PUBLIC void system_window_execute_callback_funcs(system_window               win
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API bool system_window_get_centered_window_position_for_primary_monitor(const int* dimensions,
-                                                                                       int*       result_dimensions)
+PUBLIC bool system_window_get_centered_window_position_for_primary_monitor(const int* dimensions,
+                                                                           int*       result_dimensions)
 {
     int fullscreen_x = 0;
     int fullscreen_y = 0;
@@ -1692,8 +1692,8 @@ end:
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API bool system_window_set_cursor(system_window              window,
-                                                 system_window_mouse_cursor cursor)
+PUBLIC bool system_window_set_cursor(system_window              window,
+                                     system_window_mouse_cursor cursor)
 {
     _system_window* window_ptr = (_system_window*) window;
     bool            result     = true;
@@ -1712,9 +1712,9 @@ PUBLIC EMERALD_API bool system_window_set_cursor(system_window              wind
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API bool system_window_set_property(system_window          window,
-                                                   system_window_property property,
-                                                   const void*            data)
+PUBLIC bool system_window_set_property(system_window          window,
+                                       system_window_property property,
+                                       const void*            data)
 {
     bool            result     = false;
     _system_window* window_ptr = (_system_window*) window;
@@ -1854,8 +1854,6 @@ PUBLIC EMERALD_API bool system_window_set_property(system_window          window
                         LOG_FATAL("Could not create OGL context for window [%s]",
                                   system_hashed_ansi_string_get_buffer(window_ptr->title) );
                     }
-
-                    ral_context_init(window_ptr->rendering_context);
 
                     /* Resume the rendering thread - everything is now set up. */
                     _ogl_rendering_handler_on_bound_to_context(window_ptr->rendering_handler,

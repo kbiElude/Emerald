@@ -227,14 +227,6 @@ PUBLIC GLuint ral_context_get_texture_gl_id(ral_context context,
 PUBLIC EMERALD_API ral_texture ral_context_get_texture_by_name(ral_context               context,
                                                                system_hashed_ansi_string name);
 
-/** Initializes a RAL context.
- *
- *  It is expected rendering thread call-backs are available at the call time.
- *
- *  TODO
- **/
-PUBLIC void ral_context_init(ral_context context);
-
 /** TODO */
 PUBLIC void ral_context_set_property(ral_context          context,
                                      ral_context_property property,
