@@ -158,7 +158,7 @@ PRIVATE void _ogl_ui_button_init_renderer_callback(ogl_context context, void* bu
     system_window   window      = NULL;
 
     ral_context_get_property  (button_ptr->context,
-                               RAL_CONTEXT_PROPERTY_WINDOW,
+                               RAL_CONTEXT_PROPERTY_WINDOW_SYSTEM,
                               &window);
 
     /* Retrieve uniform UB offsets */
@@ -268,7 +268,7 @@ PRIVATE void _ogl_ui_button_update_text_location(_ogl_ui_button* button_ptr)
                                      &text_width);
 
     ral_context_get_property  (button_ptr->context,
-                               RAL_CONTEXT_PROPERTY_WINDOW,
+                               RAL_CONTEXT_PROPERTY_WINDOW_SYSTEM,
                               &window);
     system_window_get_property(window,
                                SYSTEM_WINDOW_PROPERTY_DIMENSIONS,
@@ -393,7 +393,7 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_ui_button_draw(void* internal_instance)
         int           window_size[2];
 
         ral_context_get_property    (button_ptr->context,
-                                     RAL_CONTEXT_PROPERTY_WINDOW,
+                                     RAL_CONTEXT_PROPERTY_WINDOW_SYSTEM,
                                     &window);
         system_window_get_property  (window,
                                      SYSTEM_WINDOW_PROPERTY_DIMENSIONS,

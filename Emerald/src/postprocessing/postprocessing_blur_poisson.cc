@@ -274,7 +274,7 @@ PUBLIC EMERALD_API void postprocessing_blur_poisson_execute(postprocessing_blur_
                              OGL_CONTEXT_PROPERTY_VAO_NO_VAAS,
                             &vao_id);
     ral_context_get_property(poisson_ptr->context,
-                             RAL_CONTEXT_PROPERTY_WINDOW,
+                             RAL_CONTEXT_PROPERTY_WINDOW_SYSTEM,
                             &window);
 
     input_texture_raGL  = ral_context_get_texture_gl(poisson_ptr->context,

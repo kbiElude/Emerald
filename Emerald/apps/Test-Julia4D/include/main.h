@@ -6,6 +6,9 @@
 #ifndef MAIN_H
 #define MAIN_H
 
+#include "demo/demo_types.h"
+
+
 /** TODO */
 const float* main_get_data_vector();
 
@@ -35,5 +38,9 @@ bool main_get_shadows_status();
 
 /** TODO */
 float main_get_specularity();
+
+
+extern demo_flyby _flyby;
+
 
 #endif /* MAIN_H */

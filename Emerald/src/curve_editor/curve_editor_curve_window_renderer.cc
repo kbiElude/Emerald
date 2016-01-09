@@ -1691,7 +1691,8 @@ PRIVATE bool _curve_editor_curve_window_renderer_init(_curve_editor_curve_window
                                                                                               1,  /* n_samples */
                                                                                               0); /* stencil_buffer_bits */
 
-    descriptor->window = system_window_create_by_replacing_window(full_name,
+    descriptor->window = system_window_create_by_replacing_window(NULL, /* owner_window */
+                                                                  full_name,
                                                                   RAL_BACKEND_TYPE_GL,
                                                                   true, /* vsync_enabled */
                                                                   descriptor->view_window_handle,

@@ -6,11 +6,11 @@
 #include "shared.h"
 #include "curve/curve_container.h"
 #include "demo/demo_app.h"
+#include "demo/demo_flyby.h"
 #include "demo/demo_window.h"
 #include "mesh/mesh.h"
 #include "mesh/mesh_marchingcubes.h"
 #include "ogl/ogl_context.h"
-#include "ogl/ogl_flyby.h"
 #include "ogl/ogl_pipeline.h"
 #include "ogl/ogl_rendering_handler.h"
 #include "ogl/ogl_scene_renderer.h"
@@ -40,7 +40,7 @@
 PRIVATE const unsigned int _blob_size[] = {50, 50, 50};
 
 PRIVATE ral_context                       _context                = NULL;
-PRIVATE ogl_flyby                         _context_flyby          = NULL;
+PRIVATE demo_flyby                        _flyby                  = NULL;
 PRIVATE mesh_marchingcubes                _marching_cubes         = NULL;
 PRIVATE scene_material                    _material               = NULL;
 PRIVATE scalar_field_metaballs            _metaballs              = NULL;
@@ -354,8 +354,8 @@ PRIVATE void _render(ral_context context,
     /* Update the light node's transformation matrix to reflect the camera position */
     system_matrix4x4 light_node_transformation_matrix = NULL;
 
-    ogl_flyby_get_property          (_context_flyby,
-                                     OGL_FLYBY_PROPERTY_VIEW_MATRIX,
+    demo_flyby_get_property         (_flyby,
+                                     DEMO_FLYBY_PROPERTY_VIEW_MATRIX,
                                     &_view_matrix);
     scene_graph_node_get_property   (_scene_light_node,
                                      SCENE_GRAPH_NODE_PROPERTY_TRANSFORMATION_MATRIX,
@@ -415,17 +415,13 @@ PRIVATE void _rendering_handler(ogl_context context,
         system_matrix4x4_set_to_identity(_view_matrix);
 
         /* Initialize the flyby */
-        ogl_context       context_gl      = NULL;
         static const bool is_flyby_active = true;
 
-        ral_context_get_property(_context,
-                                 RAL_CONTEXT_PROPERTY_BACKEND_CONTEXT,
-                                &context_gl);
-        ogl_context_get_property(context_gl,
-                                 OGL_CONTEXT_PROPERTY_FLYBY,
-                                &_context_flyby);
-        ogl_flyby_set_property  (_context_flyby,
-                                 OGL_FLYBY_PROPERTY_IS_ACTIVE,
+        demo_window_get_property(_window,
+                                 DEMO_WINDOW_PROPERTY_FLYBY,
+                                &_flyby);
+        demo_flyby_set_property (_flyby,
+                                 DEMO_FLYBY_PROPERTY_IS_ACTIVE,
                                 &is_flyby_active);
 
         /* All done */
@@ -433,7 +429,7 @@ PRIVATE void _rendering_handler(ogl_context context,
     } /* if (!is_initialized) */
 
     /* Update the flyby */
-    ogl_flyby_update(_context_flyby);
+    demo_flyby_update(_flyby);
 
     ogl_pipeline_draw_stage(_pipeline,
                             _pipeline_stage_id,

@@ -4,6 +4,7 @@
  *
  */
 #include "shared.h"
+#include "demo/demo_window.h"
 #include "ogl/ogl_context.h"
 #include "raGL/raGL_backend.h"
 #include "raGL/raGL_texture.h" /* TEMP TEMP TEMP */
@@ -64,13 +65,14 @@ typedef struct _ral_context
 
     system_hashed_ansi_string name;
     ogl_rendering_handler     rendering_handler;
-    system_window             window;
+    demo_window               window_demo;
+    system_window             window_system;
 
     REFCOUNT_INSERT_VARIABLES;
 
 
     _ral_context(system_hashed_ansi_string in_name,
-                 system_window             in_window)
+                 demo_window               in_window)
     {
         backend                  = NULL;
         backend_type             = RAL_BACKEND_TYPE_UNKNOWN;
@@ -91,13 +93,17 @@ typedef struct _ral_context
         textures_by_filename_map = system_hash64map_create       (sizeof(ral_texture) );
         textures_by_name_map     = system_hash64map_create       (sizeof(ral_texture) );
         textures_cs              = system_critical_section_create();
-        window                   = in_window;
+        window_demo              = in_window;
+        window_system            = NULL;
 
         pfn_backend_get_property_proc = NULL;
 
-        system_window_get_property(in_window,
-                                   SYSTEM_WINDOW_PROPERTY_RENDERING_HANDLER,
-                                  &rendering_handler);
+        demo_window_get_private_property(in_window,
+                                         DEMO_WINDOW_PRIVATE_PROPERTY_WINDOW,
+                                        &window_system);
+        system_window_get_property      (window_system,
+                                         SYSTEM_WINDOW_PROPERTY_RENDERING_HANDLER,
+                                        &rendering_handler);
 
         ASSERT_DEBUG_SYNC(buffers != NULL,
                           "Could not create the buffers vector.");
@@ -680,7 +686,7 @@ PRIVATE void _ral_context_subscribe_for_notifications(_ral_context* context_ptr,
 
 /** Please see header for specification */
 PUBLIC ral_context ral_context_create(system_hashed_ansi_string name,
-                                      system_window             window)
+                                      demo_window               window)
 {
     _ral_context* new_context_ptr = new (std::nothrow) _ral_context(name,
                                                                     window);
@@ -692,9 +698,9 @@ PUBLIC ral_context ral_context_create(system_hashed_ansi_string name,
         /* Instantiate the rendering back-end */
         ral_backend_type backend_type = RAL_BACKEND_TYPE_UNKNOWN;
 
-        system_window_get_property(window,
-                                   SYSTEM_WINDOW_PROPERTY_BACKEND_TYPE,
-                                  &backend_type);
+        demo_window_get_property(window,
+                                 DEMO_WINDOW_PROPERTY_BACKEND_TYPE,
+                                &backend_type);
 
         switch (backend_type)
         {
@@ -1691,9 +1697,16 @@ PUBLIC EMERALD_API void ral_context_get_property(ral_context          context,
             break;
         }
 
-        case RAL_CONTEXT_PROPERTY_WINDOW:
+        case RAL_CONTEXT_PROPERTY_WINDOW_DEMO:
         {
-            *(system_window*) out_result_ptr = context_ptr->window;
+            *(demo_window*) out_result_ptr = context_ptr->window_demo;
+
+            break;
+        }
+
+        case RAL_CONTEXT_PROPERTY_WINDOW_SYSTEM:
+        {
+            *(system_window*) out_result_ptr = context_ptr->window_system;
 
             break;
         }

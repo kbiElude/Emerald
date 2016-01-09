@@ -7,8 +7,9 @@
 #include "shared.h"
 #include "include/main.h"
 #include "stage_step_light.h"
+#include "demo/demo_flyby.h"
+#include "demo/demo_window.h"
 #include "ogl/ogl_context.h"
-#include "ogl/ogl_flyby.h"
 #include "ogl/ogl_pipeline.h"
 #include "ogl/ogl_program.h"
 #include "ogl/ogl_program_ub.h"
@@ -46,14 +47,10 @@ static void _stage_step_light_execute(ral_context context,
 {
     ogl_context                       context_gl  = ral_context_get_gl_context(context);
     const ogl_context_gl_entrypoints* entrypoints = NULL;
-    ogl_flyby                         flyby       = NULL;
 
     ogl_context_get_property(context_gl,
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
                             &entrypoints);
-    ogl_context_get_property(context_gl,
-                             OGL_CONTEXT_PROPERTY_FLYBY,
-                            &flyby);
 
     entrypoints->pGLUseProgram     (ogl_program_get_id(_light_program) );
     entrypoints->pGLBindVertexArray(_light_vao_id);
@@ -67,12 +64,12 @@ static void _stage_step_light_execute(ral_context context,
         _light_view_matrix = system_matrix4x4_create();
     }
 
-    ogl_flyby_get_property(flyby,
-                           OGL_FLYBY_PROPERTY_CAMERA_LOCATION,
-                           camera_location);
-    ogl_flyby_get_property(flyby,
-                           OGL_FLYBY_PROPERTY_VIEW_MATRIX,
-                          &_light_view_matrix);
+    demo_flyby_get_property(_flyby,
+                            DEMO_FLYBY_PROPERTY_CAMERA_LOCATION,
+                            camera_location);
+    demo_flyby_get_property(_flyby,
+                            DEMO_FLYBY_PROPERTY_VIEW_MATRIX,
+                           &_light_view_matrix);
 
     mvp = system_matrix4x4_create_by_mul(main_get_projection_matrix(),
                                          _light_view_matrix);

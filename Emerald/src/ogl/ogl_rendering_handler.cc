@@ -486,7 +486,7 @@ PRIVATE void _ogl_rendering_handler_thread_entrypoint(void* in_arg)
                                    RAL_CONTEXT_PROPERTY_BACKEND_TYPE,
                                   &backend_type);
         ral_context_get_property  (rendering_handler->context,
-                                   RAL_CONTEXT_PROPERTY_WINDOW,
+                                   RAL_CONTEXT_PROPERTY_WINDOW_SYSTEM,
                                   &context_window);
         system_window_get_property(context_window,
                                    SYSTEM_WINDOW_PROPERTY_DIMENSIONS,
@@ -970,7 +970,7 @@ PRIVATE void _ogl_rendering_handler_release(void* in_arg)
         system_window window = NULL;
 
         ral_context_get_property(rendering_handler->context,
-                                 RAL_CONTEXT_PROPERTY_WINDOW,
+                                 RAL_CONTEXT_PROPERTY_WINDOW_SYSTEM,
                                 &window);
 
         system_window_delete_callback_func(window,
@@ -1287,7 +1287,7 @@ PUBLIC EMERALD_API bool ogl_rendering_handler_play(ogl_rendering_handler renderi
                     bool          use_audio_playback          = false;
 
                     ral_context_get_property(rendering_handler_ptr->context,
-                                             RAL_CONTEXT_PROPERTY_WINDOW,
+                                             RAL_CONTEXT_PROPERTY_WINDOW_SYSTEM,
                                             &context_window);
 
                     ASSERT_DEBUG_SYNC(context_window != NULL,
@@ -1599,7 +1599,7 @@ PUBLIC bool _ogl_rendering_handler_on_bound_to_context(ogl_rendering_handler ren
         int           window_size[2];
 
         ral_context_get_property(context,
-                                 RAL_CONTEXT_PROPERTY_WINDOW,
+                                 RAL_CONTEXT_PROPERTY_WINDOW_SYSTEM,
                                 &context_window);
 
         ASSERT_DEBUG_SYNC(context_window != NULL,

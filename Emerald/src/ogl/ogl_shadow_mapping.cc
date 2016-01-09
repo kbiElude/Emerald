@@ -3665,7 +3665,7 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_shadow_mapping_toggle(ogl_shadow_mapping 
         entry_points->pGLCullFace(GL_BACK);
 
         ral_context_get_property    (handler_ptr->context,
-                                     RAL_CONTEXT_PROPERTY_WINDOW,
+                                     RAL_CONTEXT_PROPERTY_WINDOW_SYSTEM,
                                     &context_window);
         system_window_get_property  (context_window,
                                      SYSTEM_WINDOW_PROPERTY_DIMENSIONS,

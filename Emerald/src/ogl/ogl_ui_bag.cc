@@ -72,7 +72,7 @@ PRIVATE void _ogl_ui_bag_position_controls(_ogl_ui_bag* bag_ptr)
     int           window_dimensions[2] = {0};
 
     ral_context_get_property  (context,
-                               RAL_CONTEXT_PROPERTY_WINDOW,
+                               RAL_CONTEXT_PROPERTY_WINDOW_SYSTEM,
                               &window);
     system_window_get_property(window,
                                SYSTEM_WINDOW_PROPERTY_DIMENSIONS,

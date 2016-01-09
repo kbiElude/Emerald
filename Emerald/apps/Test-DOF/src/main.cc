@@ -7,9 +7,9 @@
 #include <stdlib.h>
 #include "main.h"
 #include "demo/demo_app.h"
+#include "demo/demo_flyby.h"
 #include "demo/demo_window.h"
 #include "ogl/ogl_context.h"
-#include "ogl/ogl_flyby.h"
 #include "ogl/ogl_pipeline.h"
 #include "ogl/ogl_program.h"
 #include "ogl/ogl_rendering_handler.h"
@@ -42,7 +42,7 @@ float            _dof_focal_plane_depth     = 3.79f;
 float            _dof_near_plane_depth      = 4.0f;
 float            _epsilon                   = 0.001f;
 float            _escape                    = 1.2f * 1.5f;
-ogl_flyby        _flyby                     = NULL;
+demo_flyby       _flyby                     = NULL;
 float            _fresnel_reflectance       = 0.028f;
 float            _light_color[3]            = {1.0f,  1.0f,   1.0f};
 float            _light_position[3]         = {2.76f, 1.619f, 0.0f};
@@ -208,25 +208,25 @@ void _init_gl(ogl_context context,
     const float camera_yaw            =  0.024f;
     const bool  flyby_active          = true;
 
-    ogl_context_get_property(context,
-                             OGL_CONTEXT_PROPERTY_FLYBY,
+    demo_window_get_property(_window,
+                             DEMO_WINDOW_PROPERTY_FLYBY,
                             &_flyby);
-    ogl_flyby_set_property  (_flyby,
-                             OGL_FLYBY_PROPERTY_CAMERA_LOCATION,
-                             camera_pos);
-    ogl_flyby_set_property  (_flyby,
-                             OGL_FLYBY_PROPERTY_IS_ACTIVE,
-                            &flyby_active);
 
-    ogl_flyby_set_property(_flyby,
-                           OGL_FLYBY_PROPERTY_MOVEMENT_DELTA,
-                          &camera_movement_delta);
-    ogl_flyby_set_property(_flyby,
-                           OGL_FLYBY_PROPERTY_PITCH,
-                          &camera_pitch);
-    ogl_flyby_set_property(_flyby,
-                           OGL_FLYBY_PROPERTY_YAW,
-                          &camera_yaw);
+    demo_flyby_set_property(_flyby,
+                            DEMO_FLYBY_PROPERTY_CAMERA_LOCATION,
+                            camera_pos);
+    demo_flyby_set_property(_flyby,
+                            DEMO_FLYBY_PROPERTY_IS_ACTIVE,
+                           &flyby_active);
+    demo_flyby_set_property(_flyby,
+                            DEMO_FLYBY_PROPERTY_MOVEMENT_DELTA,
+                           &camera_movement_delta);
+    demo_flyby_set_property(_flyby,
+                            DEMO_FLYBY_PROPERTY_PITCH,
+                           &camera_pitch);
+    demo_flyby_set_property(_flyby,
+                            DEMO_FLYBY_PROPERTY_YAW,
+                           &camera_yaw);
 
     /* Initialize UI */
     const float scrollbar_1_x1y1[]         = {0.8f, 0.0f};

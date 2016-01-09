@@ -4,9 +4,8 @@
  *
  */
 #include "shared.h"
-#include "ogl/ogl_context.h"
-#include "ogl/ogl_context_state_cache.h"
-#include "ogl/ogl_flyby.h"
+#include "demo/demo_flyby.h"
+#include "ral/ral_context.h"
 #include "scene/scene_camera.h"
 #include "scene/scene_graph.h"
 #include "system/system_assertions.h"
@@ -32,7 +31,7 @@ typedef enum
     KEY_DOWN_BIT  = 8
 } _key_bits;
 
-typedef struct _ogl_flyby
+typedef struct _demo_flyby
 {
     system_critical_section cs;
 
@@ -47,7 +46,7 @@ typedef struct _ogl_flyby
     float right  [3];
     float up     [3];
 
-    ogl_context      context; /* DO NOT retain/release - object is owned by the parent context. */
+    ral_context      context; /* DO NOT retain/release */
     scene_graph_node fake_graph_node;
     scene_camera     fake_scene_camera;
 
@@ -65,7 +64,7 @@ typedef struct _ogl_flyby
     REFCOUNT_INSERT_VARIABLES
 
 
-    ~_ogl_flyby()
+    ~_demo_flyby()
     {
         if (cs != NULL)
         {
@@ -88,26 +87,26 @@ typedef struct _ogl_flyby
             fake_scene_camera = NULL;
         }
     }
-} _ogl_flyby;
+} _demo_flyby;
 
 /** Reference counter impl */
-REFCOUNT_INSERT_IMPLEMENTATION(ogl_flyby,
-                               ogl_flyby,
-                              _ogl_flyby)
+REFCOUNT_INSERT_IMPLEMENTATION(demo_flyby,
+                               demo_flyby,
+                              _demo_flyby)
 
 
 /** TODO */
-PRIVATE bool _ogl_flyby_key_down_callback(system_window window,
-                                          unsigned int  key_char,
-                                          void*         arg)
+PRIVATE bool _demo_flyby_key_down_callback(system_window window,
+                                           unsigned int  key_char,
+                                           void*         arg)
 {
-    _ogl_flyby* descriptor = (_ogl_flyby*) arg;
+    _demo_flyby* flyby_ptr = (_demo_flyby*) arg;
 
-    system_critical_section_enter(descriptor->cs);
+    system_critical_section_enter(flyby_ptr->cs);
     {
-        if (descriptor->key_bits == 0)
+        if (flyby_ptr->key_bits == 0)
         {
-            descriptor->key_down_time = system_time_now();
+            flyby_ptr->key_down_time = system_time_now();
         }
 
         switch (key_char)
@@ -115,7 +114,7 @@ PRIVATE bool _ogl_flyby_key_down_callback(system_window window,
             case 'D':
             case 'd':
             {
-                descriptor->key_bits = (_key_bits) (((int) descriptor->key_bits) | KEY_RIGHT_BIT);
+                flyby_ptr->key_bits = (_key_bits) (((int) flyby_ptr->key_bits) | KEY_RIGHT_BIT);
 
                 break;
             }
@@ -123,7 +122,7 @@ PRIVATE bool _ogl_flyby_key_down_callback(system_window window,
             case 'A':
             case 'a':
             {
-                descriptor->key_bits = (_key_bits) (((int) descriptor->key_bits) | KEY_LEFT_BIT);
+                flyby_ptr->key_bits = (_key_bits) (((int) flyby_ptr->key_bits) | KEY_LEFT_BIT);
 
                 break;
             }
@@ -131,7 +130,7 @@ PRIVATE bool _ogl_flyby_key_down_callback(system_window window,
             case 'W':
             case 'w':
             {
-                descriptor->key_bits = (_key_bits) (((int) descriptor->key_bits) | KEY_UP_BIT);
+                flyby_ptr->key_bits = (_key_bits) (((int) flyby_ptr->key_bits) | KEY_UP_BIT);
 
                 break;
             }
@@ -139,32 +138,32 @@ PRIVATE bool _ogl_flyby_key_down_callback(system_window window,
             case 'S':
             case 's':
             {
-                descriptor->key_bits = (_key_bits) (((int) descriptor->key_bits) | KEY_DOWN_BIT);
+                flyby_ptr->key_bits = (_key_bits) (((int) flyby_ptr->key_bits) | KEY_DOWN_BIT);
 
                 break;
             }
         }
     }
-    system_critical_section_leave(descriptor->cs);
+    system_critical_section_leave(flyby_ptr->cs);
 
     return true;
 }
 
 /** TODO */
-PRIVATE bool _ogl_flyby_key_up_callback(system_window window,
-                                        unsigned int  key_char,
-                                        void*         arg)
+PRIVATE bool _demo_flyby_key_up_callback(system_window window,
+                                         unsigned int  key_char,
+                                         void*         arg)
 {
-    _ogl_flyby* descriptor = (_ogl_flyby*) arg;
+    _demo_flyby* flyby_ptr = (_demo_flyby*) arg;
 
-    system_critical_section_enter(descriptor->cs);
+    system_critical_section_enter(flyby_ptr->cs);
     {
         switch (key_char)
         {
             case 'D':
             case 'd':
             {
-                descriptor->key_bits = (_key_bits) (((int) descriptor->key_bits) & ~KEY_RIGHT_BIT);
+                flyby_ptr->key_bits = (_key_bits) (((int) flyby_ptr->key_bits) & ~KEY_RIGHT_BIT);
 
                 break;
             }
@@ -172,7 +171,7 @@ PRIVATE bool _ogl_flyby_key_up_callback(system_window window,
             case 'A':
             case 'a':
             {
-                descriptor->key_bits = (_key_bits) (((int) descriptor->key_bits) & ~KEY_LEFT_BIT);
+                flyby_ptr->key_bits = (_key_bits) (((int) flyby_ptr->key_bits) & ~KEY_LEFT_BIT);
 
                 break;
             }
@@ -180,7 +179,7 @@ PRIVATE bool _ogl_flyby_key_up_callback(system_window window,
             case 'W':
             case 'w':
             {
-                descriptor->key_bits = (_key_bits) (((int) descriptor->key_bits) & ~KEY_UP_BIT);
+                flyby_ptr->key_bits = (_key_bits) (((int) flyby_ptr->key_bits) & ~KEY_UP_BIT);
 
                 break;
             }
@@ -188,7 +187,7 @@ PRIVATE bool _ogl_flyby_key_up_callback(system_window window,
             case 'S':
             case 's':
             {
-                descriptor->key_bits = (_key_bits) (((int) descriptor->key_bits) & ~KEY_DOWN_BIT);
+                flyby_ptr->key_bits = (_key_bits) (((int) flyby_ptr->key_bits) & ~KEY_DOWN_BIT);
 
                 break;
             }
@@ -198,106 +197,106 @@ PRIVATE bool _ogl_flyby_key_up_callback(system_window window,
             {
                 /* Log camera info */
                 LOG_INFO("Camera pitch:    [%.4f]",
-                         descriptor->pitch);
+                         flyby_ptr->pitch);
                 LOG_INFO("Camera position: [%.4f, %.4f, %.4f]",
-                         descriptor->position[0],
-                         descriptor->position[1],
-                         descriptor->position[2]);
+                         flyby_ptr->position[0],
+                         flyby_ptr->position[1],
+                         flyby_ptr->position[2]);
                 LOG_INFO("Camera yaw:      [%.4f]",
-                         descriptor->yaw);
+                         flyby_ptr->yaw);
 
                 break;
             }
         }
 
-        if (descriptor->key_bits == 0)
+        if (flyby_ptr->key_bits == 0)
         {
-            descriptor->key_down_time = 0;
+            flyby_ptr->key_down_time = 0;
         }
     }
-    system_critical_section_leave(descriptor->cs);
+    system_critical_section_leave(flyby_ptr->cs);
 
     return true;
 }
 
 /* todo */
-PRIVATE bool _ogl_flyby_lbd(system_window           window,
-                            unsigned short          x,
-                            unsigned short          y,
-                            system_window_vk_status new_status,
-                            void*                   arg)
+PRIVATE bool _demo_flyby_lbd(system_window           window,
+                             unsigned short          x,
+                             unsigned short          y,
+                             system_window_vk_status new_status,
+                             void*                   arg)
 {
-    _ogl_flyby* flyby = (_ogl_flyby*) arg;
+    _demo_flyby* flyby_ptr = (_demo_flyby*) arg;
 
-    system_critical_section_enter(flyby->cs);
+    system_critical_section_enter(flyby_ptr->cs);
     {
-        flyby->is_lbm_down = true;
+        flyby_ptr->is_lbm_down = true;
 
-        flyby->lbm_xy[0]   = x;
-        flyby->lbm_xy[1]   = y;
+        flyby_ptr->lbm_xy[0]   = x;
+        flyby_ptr->lbm_xy[1]   = y;
 
-        flyby->lbm_pitch = flyby->pitch;
-        flyby->lbm_yaw   = flyby->yaw;
+        flyby_ptr->lbm_pitch = flyby_ptr->pitch;
+        flyby_ptr->lbm_yaw   = flyby_ptr->yaw;
     }
-    system_critical_section_leave(flyby->cs);
+    system_critical_section_leave(flyby_ptr->cs);
 
     return true;
 }
 
 /* todo */
-PRIVATE bool _ogl_flyby_lbu(system_window           window,
-                            unsigned short          x,
-                            unsigned short          y,
-                            system_window_vk_status new_status,
-                            void*                   arg)
+PRIVATE bool _demo_flyby_lbu(system_window           window,
+                             unsigned short          x,
+                             unsigned short          y,
+                             system_window_vk_status new_status,
+                             void*                   arg)
 {
-    _ogl_flyby* flyby = (_ogl_flyby*) arg;
+    _demo_flyby* flyby_ptr = (_demo_flyby*) arg;
 
-    system_critical_section_enter(flyby->cs);
+    system_critical_section_enter(flyby_ptr->cs);
     {
-        flyby->is_lbm_down = false;
+        flyby_ptr->is_lbm_down = false;
     }
-    system_critical_section_leave(flyby->cs);
+    system_critical_section_leave(flyby_ptr->cs);
 
     return true;
 }
 
 /* todo */
-PRIVATE bool _ogl_flyby_mouse_move(system_window           window,
-                                   unsigned short          x,
-                                   unsigned short          y,
-                                   system_window_vk_status new_status,
-                                   void*                   arg)
+PRIVATE bool _demo_flyby_mouse_move(system_window           window,
+                                    unsigned short          x,
+                                    unsigned short          y,
+                                    system_window_vk_status new_status,
+                                    void*                   arg)
 {
-    _ogl_flyby* flyby = (_ogl_flyby*) arg;
+    _demo_flyby* flyby_ptr = (_demo_flyby*) arg;
 
-    system_critical_section_enter(flyby->cs);
+    system_critical_section_enter(flyby_ptr->cs);
     {
-        if (flyby->is_lbm_down)
+        if (flyby_ptr->is_lbm_down)
         {
-            int   x_delta    = int(x) - int(flyby->lbm_xy[0]);
-            int   y_delta    = int(y) - int(flyby->lbm_xy[1]);
-            float x_delta_ss = float(x_delta) * 0.2f * flyby->rotation_delta;
-            float y_delta_ss = float(y_delta) * 0.2f * flyby->rotation_delta;
+            int   x_delta    = int(x) - int(flyby_ptr->lbm_xy[0]);
+            int   y_delta    = int(y) - int(flyby_ptr->lbm_xy[1]);
+            float x_delta_ss = float(x_delta) * 0.2f * flyby_ptr->rotation_delta;
+            float y_delta_ss = float(y_delta) * 0.2f * flyby_ptr->rotation_delta;
 
-            flyby->yaw   = flyby->lbm_yaw   - x_delta_ss;
-            flyby->pitch = flyby->lbm_pitch - y_delta_ss;
+            flyby_ptr->yaw   = flyby_ptr->lbm_yaw   - x_delta_ss;
+            flyby_ptr->pitch = flyby_ptr->lbm_pitch - y_delta_ss;
 
-            if (fabs(flyby->pitch) >= DEG_TO_RAD(89) )
+            if (fabs(flyby_ptr->pitch) >= DEG_TO_RAD(89) )
             {
-                flyby->pitch = (flyby->pitch < 0 ? -1 : 1) * DEG_TO_RAD(89);
+                flyby_ptr->pitch = (flyby_ptr->pitch < 0 ? -1 : 1) * DEG_TO_RAD(89);
             }
         }
     }
-    system_critical_section_leave(flyby->cs);
+    system_critical_section_leave(flyby_ptr->cs);
 
     return true;
 }
 
 /** TODO */
-PRIVATE void _ogl_flyby_release(void* arg)
+PRIVATE void _demo_flyby_release(void* arg)
 {
-    _ogl_flyby* flyby_ptr = (_ogl_flyby*) arg;
+    _demo_flyby* flyby_ptr = (_demo_flyby*) arg;
 
     /* Sanity checks */
     ASSERT_DEBUG_SYNC(arg != NULL,
@@ -314,10 +313,10 @@ PRIVATE void _ogl_flyby_release(void* arg)
 
 
 /** Please see header for specification */
-PUBLIC ogl_flyby ogl_flyby_create(ogl_context context)
+PUBLIC demo_flyby demo_flyby_create(ral_context context)
 {
     /* Instantiate new descriptor */
-    _ogl_flyby* new_flyby_ptr = new (std::nothrow) _ogl_flyby;
+    _demo_flyby* new_flyby_ptr = new (std::nothrow) _demo_flyby;
 
     ASSERT_DEBUG_SYNC(new_flyby_ptr != NULL,
                       "Out of memory");
@@ -369,8 +368,8 @@ PUBLIC ogl_flyby ogl_flyby_create(ogl_context context)
         new_flyby_ptr->up[2] = 1;
 
         REFCOUNT_INSERT_INIT_CODE_WITH_RELEASE_HANDLER(new_flyby_ptr,
-                                                       _ogl_flyby_release,
-                                                       OBJECT_TYPE_OGL_FLYBY,
+                                                       _demo_flyby_release,
+                                                       OBJECT_TYPE_DEMO_FLYBY,
                                                        system_hashed_ansi_string_create_by_merging_two_strings("\\Fly-by instances\\",
                                                                                                                temp_flyby_name) );
 
@@ -403,50 +402,50 @@ PUBLIC ogl_flyby ogl_flyby_create(ogl_context context)
         /* Register for callbacks */
         system_window context_window = NULL;
 
-        ogl_context_get_property(context,
-                                 OGL_CONTEXT_PROPERTY_WINDOW,
+        ral_context_get_property(context,
+                                 RAL_CONTEXT_PROPERTY_WINDOW_SYSTEM,
                                 &context_window);
 
         system_window_add_callback_func(context_window,
                                         SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_NORMAL,
                                         SYSTEM_WINDOW_CALLBACK_FUNC_KEY_DOWN,
-                                        (void*) _ogl_flyby_key_down_callback,
+                                        (void*) _demo_flyby_key_down_callback,
                                         new_flyby_ptr);
         system_window_add_callback_func(context_window,
                                         SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_NORMAL,
                                         SYSTEM_WINDOW_CALLBACK_FUNC_KEY_UP,
-                                        (void*) _ogl_flyby_key_up_callback,
+                                        (void*) _demo_flyby_key_up_callback,
                                         new_flyby_ptr);
         system_window_add_callback_func(context_window,
                                         SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_LOW,
                                         SYSTEM_WINDOW_CALLBACK_FUNC_LEFT_BUTTON_DOWN,
-                                        (void*) _ogl_flyby_lbd,
+                                        (void*) _demo_flyby_lbd,
                                         new_flyby_ptr);
         system_window_add_callback_func(context_window,
                                         SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_LOW,
                                         SYSTEM_WINDOW_CALLBACK_FUNC_LEFT_BUTTON_UP,
-                                        (void*) _ogl_flyby_lbu,
+                                        (void*) _demo_flyby_lbu,
                                         new_flyby_ptr);
         system_window_add_callback_func(context_window,
                                         SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_LOW,
                                         SYSTEM_WINDOW_CALLBACK_FUNC_MOUSE_MOVE,
-                                        (void*) _ogl_flyby_mouse_move,
+                                        (void*) _demo_flyby_mouse_move,
                                         new_flyby_ptr);
 
         /* Issue a manual update - useful for pipeline object */
-        ogl_flyby_update( (ogl_flyby) new_flyby_ptr);
+        demo_flyby_update( (demo_flyby) new_flyby_ptr);
     }
 
-    return (ogl_flyby) new_flyby_ptr;
+    return (demo_flyby) new_flyby_ptr;
 }
 
 
 /* Please see header for specification */
-PUBLIC EMERALD_API void ogl_flyby_get_property(ogl_flyby          flyby,
-                                               ogl_flyby_property property,
-                                               void*              out_result)
+PUBLIC EMERALD_API void demo_flyby_get_property(demo_flyby          flyby,
+                                                demo_flyby_property property,
+                                                void*               out_result)
 {
-    _ogl_flyby* flyby_ptr = (_ogl_flyby*) flyby;
+    _demo_flyby* flyby_ptr = (_demo_flyby*) flyby;
 
     /* Sanity checks */
     ASSERT_DEBUG_SYNC(flyby != NULL,
@@ -457,7 +456,7 @@ PUBLIC EMERALD_API void ogl_flyby_get_property(ogl_flyby          flyby,
     {
         switch (property)
         {
-            case OGL_FLYBY_PROPERTY_CAMERA_LOCATION:
+            case DEMO_FLYBY_PROPERTY_CAMERA_LOCATION:
             {
                 memcpy(out_result,
                        flyby_ptr->position,
@@ -466,49 +465,49 @@ PUBLIC EMERALD_API void ogl_flyby_get_property(ogl_flyby          flyby,
                 break;
             }
 
-            case OGL_FLYBY_PROPERTY_FAKE_SCENE_CAMERA:
+            case DEMO_FLYBY_PROPERTY_FAKE_SCENE_CAMERA:
             {
                 *(scene_camera*) out_result = flyby_ptr->fake_scene_camera;
 
                 break;
             }
 
-            case OGL_FLYBY_PROPERTY_IS_ACTIVE:
+            case DEMO_FLYBY_PROPERTY_IS_ACTIVE:
             {
                 *(bool*) out_result = flyby_ptr->is_active;
 
                 break;
             }
 
-            case OGL_FLYBY_PROPERTY_MOVEMENT_DELTA:
+            case DEMO_FLYBY_PROPERTY_MOVEMENT_DELTA:
             {
                 *(float*) out_result = flyby_ptr->movement_delta;
 
                 break;
             }
 
-            case OGL_FLYBY_PROPERTY_PITCH:
+            case DEMO_FLYBY_PROPERTY_PITCH:
             {
                 *(float*) out_result = flyby_ptr->pitch;
 
                 break;
             }
 
-            case OGL_FLYBY_PROPERTY_ROTATION_DELTA:
+            case DEMO_FLYBY_PROPERTY_ROTATION_DELTA:
             {
                 *(float*) out_result = flyby_ptr->rotation_delta;
 
                 break;
             }
 
-            case OGL_FLYBY_PROPERTY_YAW:
+            case DEMO_FLYBY_PROPERTY_YAW:
             {
                 *(float*) out_result = flyby_ptr->yaw;
 
                 break;
             }
 
-            case OGL_FLYBY_PROPERTY_VIEW_MATRIX:
+            case DEMO_FLYBY_PROPERTY_VIEW_MATRIX:
             {
                 system_matrix4x4_set_from_matrix4x4(*(system_matrix4x4*) out_result,
                                                     flyby_ptr->view_matrix);
@@ -527,17 +526,17 @@ PUBLIC EMERALD_API void ogl_flyby_get_property(ogl_flyby          flyby,
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API void ogl_flyby_lock(ogl_flyby flyby)
+PUBLIC EMERALD_API void demo_flyby_lock(demo_flyby flyby)
 {
-    system_critical_section_enter( ((_ogl_flyby*) flyby)->cs);
+    system_critical_section_enter( ((_demo_flyby*) flyby)->cs);
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API void ogl_flyby_set_property(ogl_flyby          flyby,
-                                               ogl_flyby_property property,
-                                               const void*        data)
+PUBLIC EMERALD_API void demo_flyby_set_property(demo_flyby          flyby,
+                                                demo_flyby_property property,
+                                                const void*         data)
 {
-    _ogl_flyby* flyby_ptr = (_ogl_flyby*) flyby;
+    _demo_flyby* flyby_ptr = (_demo_flyby*) flyby;
 
     /* Sanity checks */
     ASSERT_DEBUG_SYNC(flyby != NULL,
@@ -548,7 +547,7 @@ PUBLIC EMERALD_API void ogl_flyby_set_property(ogl_flyby          flyby,
     {
         switch (property)
         {
-            case OGL_FLYBY_PROPERTY_CAMERA_LOCATION:
+            case DEMO_FLYBY_PROPERTY_CAMERA_LOCATION:
             {
                 memcpy(flyby_ptr->position,
                        data,
@@ -557,7 +556,7 @@ PUBLIC EMERALD_API void ogl_flyby_set_property(ogl_flyby          flyby,
                 break;
             }
 
-            case OGL_FLYBY_PROPERTY_FAKE_SCENE_CAMERA_Z_FAR:
+            case DEMO_FLYBY_PROPERTY_FAKE_SCENE_CAMERA_Z_FAR:
             {
                 scene_camera_set_property(flyby_ptr->fake_scene_camera,
                                           SCENE_CAMERA_PROPERTY_FAR_PLANE_DISTANCE,
@@ -566,7 +565,7 @@ PUBLIC EMERALD_API void ogl_flyby_set_property(ogl_flyby          flyby,
                 break;
             }
 
-            case OGL_FLYBY_PROPERTY_FAKE_SCENE_CAMERA_Z_NEAR:
+            case DEMO_FLYBY_PROPERTY_FAKE_SCENE_CAMERA_Z_NEAR:
             {
                 scene_camera_set_property(flyby_ptr->fake_scene_camera,
                                           SCENE_CAMERA_PROPERTY_NEAR_PLANE_DISTANCE,
@@ -575,35 +574,35 @@ PUBLIC EMERALD_API void ogl_flyby_set_property(ogl_flyby          flyby,
                 break;
             }
 
-            case OGL_FLYBY_PROPERTY_IS_ACTIVE:
+            case DEMO_FLYBY_PROPERTY_IS_ACTIVE:
             {
                 flyby_ptr->is_active = *(bool*) data;
 
                 break;
             }
 
-            case OGL_FLYBY_PROPERTY_MOVEMENT_DELTA:
+            case DEMO_FLYBY_PROPERTY_MOVEMENT_DELTA:
             {
                 flyby_ptr->movement_delta = *(float*) data;
 
                 break;
             }
 
-            case OGL_FLYBY_PROPERTY_PITCH:
+            case DEMO_FLYBY_PROPERTY_PITCH:
             {
                 flyby_ptr->pitch = *(float*) data;
 
                 break;
             }
 
-            case OGL_FLYBY_PROPERTY_ROTATION_DELTA:
+            case DEMO_FLYBY_PROPERTY_ROTATION_DELTA:
             {
                 flyby_ptr->rotation_delta = *(float *) data;
 
                 break;
             }
 
-            case OGL_FLYBY_PROPERTY_YAW:
+            case DEMO_FLYBY_PROPERTY_YAW:
             {
                 flyby_ptr->yaw = *(float *) data;
 
@@ -613,7 +612,7 @@ PUBLIC EMERALD_API void ogl_flyby_set_property(ogl_flyby          flyby,
             default:
             {
                 ASSERT_DEBUG_SYNC(false,
-                                  "Unrecognized ogl_flyby_property value");
+                                  "Unrecognized demo_flyby_property value");
             }
         } /* switch (property) */
     }
@@ -621,19 +620,19 @@ PUBLIC EMERALD_API void ogl_flyby_set_property(ogl_flyby          flyby,
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API void ogl_flyby_unlock(ogl_flyby flyby)
+PUBLIC EMERALD_API void demo_flyby_unlock(demo_flyby flyby)
 {
-    system_critical_section_leave( ((_ogl_flyby*) flyby)->cs);
+    system_critical_section_leave( ((_demo_flyby*) flyby)->cs);
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API void ogl_flyby_update(ogl_flyby flyby)
+PUBLIC EMERALD_API void demo_flyby_update(demo_flyby flyby)
 {
-    _ogl_flyby* flyby_ptr = (_ogl_flyby*) flyby;
+    _demo_flyby* flyby_ptr = (_demo_flyby*) flyby;
 
     /* Sanity checks */
     ASSERT_DEBUG_SYNC(flyby != NULL,
-                      "Input ogl_flyby instance is NULL");
+                      "Input demo_flyby instance is NULL");
 
     /* Calculate current time */
     system_critical_section_enter(flyby_ptr->cs);
@@ -727,24 +726,24 @@ PUBLIC EMERALD_API void ogl_flyby_update(ogl_flyby flyby)
                                             target,
                                             up);
 
-        /* Update fake scene camera */
-        float                   camera_ar;
-        system_matrix4x4        node_transformation_matrix = NULL;
-        ogl_context_state_cache state_cache                = NULL;
-        GLint                   viewport[4];
+        /* Update the fake scene camera */
+        float            camera_ar;
+        system_matrix4x4 node_transformation_matrix = NULL;
+        system_window    window                     = NULL;
+        uint32_t         viewport[2];
 
-        ogl_context_get_property            (flyby_ptr->context,
-                                             OGL_CONTEXT_PROPERTY_STATE_CACHE,
-                                            &state_cache);
-        ogl_context_state_cache_get_property(state_cache,
-                                             OGL_CONTEXT_STATE_CACHE_PROPERTY_VIEWPORT,
-                                             viewport);
+        ral_context_get_property  (flyby_ptr->context,
+                                   RAL_CONTEXT_PROPERTY_WINDOW_SYSTEM,
+                                  &window);
+        system_window_get_property(window,
+                                   SYSTEM_WINDOW_PROPERTY_DIMENSIONS,
+                                   viewport);
 
-        camera_ar = float(viewport[2]) / float(viewport[3]);
+        camera_ar = float(viewport[1]) / float(viewport[0]);
 
-        scene_camera_set_property         (flyby_ptr->fake_scene_camera,
-                                           SCENE_CAMERA_PROPERTY_ASPECT_RATIO,
-                                          &camera_ar);
+        scene_camera_set_property(flyby_ptr->fake_scene_camera,
+                                  SCENE_CAMERA_PROPERTY_ASPECT_RATIO,
+                                 &camera_ar);
 
         scene_graph_node_get_property      (flyby_ptr->fake_graph_node,
                                             SCENE_GRAPH_NODE_PROPERTY_TRANSFORMATION_MATRIX,

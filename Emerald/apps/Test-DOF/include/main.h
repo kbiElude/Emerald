@@ -6,6 +6,9 @@
 #ifndef MAIN_H
 #define MAIN_H
 
+#include "demo/demo_types.h"
+
+
 /** TODO */
 float main_get_blur_radius();
 
@@ -68,5 +71,7 @@ unsigned int main_get_window_height();
 
 /** TODO */
 unsigned int main_get_window_width();
+
+extern demo_flyby _flyby;
 
 #endif /* MAIN_H */

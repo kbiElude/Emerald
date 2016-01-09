@@ -6,7 +6,8 @@
 #include "shared.h"
 #include "gfx/gfx_bfg_font_table.h"
 #include "ogl/ogl_context.h"
-#include "ogl/ogl_flyby.h"
+#include "demo/demo_flyby.h"
+#include "demo/demo_window.h"
 #include "ogl/ogl_pipeline.h"
 #include "ogl/ogl_query.h"
 #include "ogl/ogl_rendering_handler.h"
@@ -203,7 +204,7 @@ PRIVATE void _ogl_pipeline_init_pipeline(_ogl_pipeline*            pipeline_ptr,
     ogl_rendering_handler rendering_handler     = NULL;
 
     ral_context_get_property(context,
-                             RAL_CONTEXT_PROPERTY_WINDOW,
+                             RAL_CONTEXT_PROPERTY_WINDOW_SYSTEM,
                             &context_window);
 
     system_window_get_property(context_window,
@@ -547,17 +548,21 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API bool ogl_pipeline_draw_stage(ogl_pipel
                                                                        system_time  time,
                                                                        const int*   rendering_area_px_topdown)
 {
-    ogl_flyby                                                 flyby              = NULL;
+    const ogl_context_gl_entrypoints_ext_direct_state_access* dsa_entry_points   = NULL;
+    const ogl_context_gl_entrypoints*                         entry_points       = NULL;
+    demo_flyby                                                flyby              = NULL;
     bool                                                      is_stage_dirty     = false;
     uint32_t                                                  n_stages           = 0;
     _ogl_pipeline*                                            pipeline_ptr       = (_ogl_pipeline*) instance;
     _ogl_pipeline_stage*                                      pipeline_stage_ptr = NULL;
     bool                                                      result             = false;
-    const ogl_context_gl_entrypoints_ext_direct_state_access* dsa_entry_points   = NULL;
-    const ogl_context_gl_entrypoints*                         entry_points       = NULL;
+    demo_window                                               window             = NULL;
 
-    ogl_context_get_property(ral_context_get_gl_context(pipeline_ptr->context),
-                             OGL_CONTEXT_PROPERTY_FLYBY,
+    ral_context_get_property(pipeline_ptr->context,
+                             RAL_CONTEXT_PROPERTY_WINDOW_DEMO,
+                            &window);
+    demo_window_get_property(window,
+                             DEMO_WINDOW_PROPERTY_FLYBY,
                             &flyby);
     ogl_context_get_property(ral_context_get_gl_context(pipeline_ptr->context),
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
@@ -634,14 +639,14 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API bool ogl_pipeline_draw_stage(ogl_pipel
         /* If the flyby is activated for the context the pipeline owns, update it now */
         bool is_flyby_active = false;
 
-        ogl_flyby_get_property(flyby,
-                               OGL_FLYBY_PROPERTY_IS_ACTIVE,
-                              &is_flyby_active);
+        demo_flyby_get_property(flyby,
+                                DEMO_FLYBY_PROPERTY_IS_ACTIVE,
+                               &is_flyby_active);
 
         if (is_flyby_active)
         {
-            ogl_flyby_update(flyby);
-        } /* if (ogl_flyby_is_active(pipeline_ptr->context) ) */
+            demo_flyby_update(flyby);
+        } /* if (demo_flyby_is_active(pipeline_ptr->context) ) */
 
         /* Execute one step at a time. Launch a query for every step, so that we can gather execution times
          * after all steps finish running and show the times */

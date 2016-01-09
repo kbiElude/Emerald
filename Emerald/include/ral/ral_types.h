@@ -212,8 +212,11 @@ typedef enum
      * */
     RAL_CONTEXT_PROPERTY_SYSTEM_FRAMEBUFFERS,
 
+    /* not settable; demo_window */
+    RAL_CONTEXT_PROPERTY_WINDOW_DEMO,
+
     /* not settable; system_window */
-    RAL_CONTEXT_PROPERTY_WINDOW
+    RAL_CONTEXT_PROPERTY_WINDOW_SYSTEM
 } ral_context_property;
 
 /* Primitive types supported by RAL */

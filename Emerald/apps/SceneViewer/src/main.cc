@@ -8,12 +8,12 @@
 #include "main.h"
 #include "curve/curve_container.h"
 #include "demo/demo_app.h"
+#include "demo/demo_flyby.h"
 #include "demo/demo_window.h"
 #include "mesh/mesh.h"
 #include "mesh/mesh_material.h"
 #include "ogl/ogl_context.h"
 #include "ogl/ogl_curve_renderer.h"
-#include "ogl/ogl_flyby.h"
 #include "ogl/ogl_materials.h"
 #include "ogl/ogl_pipeline.h"
 #include "ogl/ogl_program.h"
@@ -55,7 +55,7 @@ demo_window           _window              = NULL;
 system_event          _window_closed_event = system_event_create(true); /* manual_reset */
 GLuint                _vao_id              = 0;
 
-extern ogl_flyby      _flyby;
+extern demo_flyby     _flyby;
 
 /** Rendering handler */
 void _rendering_handler_callback(ogl_context context,
@@ -172,29 +172,29 @@ PUBLIC void _render_scene(ral_context context,
                                            &new_visibility);
             }
 
-            ogl_flyby_get_property(_flyby,
-                                   OGL_FLYBY_PROPERTY_FAKE_SCENE_CAMERA,
-                                  &camera);
-            ogl_flyby_set_property(_flyby,
-                                   OGL_FLYBY_PROPERTY_FAKE_SCENE_CAMERA_Z_FAR,
-                                  &new_zfar);
-            ogl_flyby_set_property(_flyby,
-                                   OGL_FLYBY_PROPERTY_FAKE_SCENE_CAMERA_Z_NEAR,
-                                  &new_znear);
+            demo_flyby_get_property(_flyby,
+                                    DEMO_FLYBY_PROPERTY_FAKE_SCENE_CAMERA,
+                                   &camera);
+            demo_flyby_set_property(_flyby,
+                                    DEMO_FLYBY_PROPERTY_FAKE_SCENE_CAMERA_Z_FAR,
+                                   &new_zfar);
+            demo_flyby_set_property(_flyby,
+                                    DEMO_FLYBY_PROPERTY_FAKE_SCENE_CAMERA_Z_NEAR,
+                                   &new_znear);
         }
 
         if (camera_is_flyby_active)
         {
-            ogl_flyby_lock(_flyby);
+            demo_flyby_lock(_flyby);
             {
-                ogl_flyby_update(_flyby);
+                demo_flyby_update(_flyby);
 
                 /* Retrieve flyby view matrix */
-                ogl_flyby_get_property(_flyby,
-                                       OGL_FLYBY_PROPERTY_VIEW_MATRIX,
-                                      &view);
+                demo_flyby_get_property(_flyby,
+                                        DEMO_FLYBY_PROPERTY_VIEW_MATRIX,
+                                       &view);
             }
-            ogl_flyby_unlock(_flyby);
+            demo_flyby_unlock(_flyby);
         } /* if (camera_ptr->is_flyby) */
         else
         {
@@ -418,8 +418,8 @@ void _rendering_window_closing_callback_handler(system_window window,
     demo_window_get_property(_window,
                              DEMO_WINDOW_PROPERTY_RENDERING_CONTEXT,
                             &_context);
-    ogl_context_get_property(ral_context_get_gl_context(_context),
-                             OGL_CONTEXT_PROPERTY_FLYBY,
+    demo_window_get_property(_window,
+                             DEMO_WINDOW_PROPERTY_FLYBY,
                             &_flyby);
     demo_window_get_property(_window,
                              DEMO_WINDOW_PROPERTY_RENDERING_HANDLER,

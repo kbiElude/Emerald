@@ -5,7 +5,7 @@
 
 typedef enum
 {
-    /* not settable; available after run() call; system_window */
+    /* not settable; available after show() call; system_window */
     DEMO_WINDOW_PRIVATE_PROPERTY_WINDOW,
 
 } demo_window_private_property;
@@ -17,6 +17,9 @@ typedef enum
 
     /* settable (before run() call); bool */
     DEMO_WINDOW_PROPERTY_FULLSCREEN,
+
+    /* not settable; demo_flyby */
+    DEMO_WINDOW_PROPERTY_FLYBY,
 
     /* settable (before run() call); PFNDEMOWINDOWLOADERSETUPCALLBACKPROC */
     DEMO_WINDOW_PROPERTY_LOADER_CALLBACK_FUNC_PTR,
@@ -122,6 +125,11 @@ PUBLIC EMERALD_API void demo_window_get_property(const demo_window    window,
  **/
 PUBLIC void demo_window_release(demo_window window);
 
+/** TODO */
+PUBLIC EMERALD_API void demo_window_set_property(demo_window          window,
+                                                 demo_window_property property,
+                                                 const void*          data);
+
 /** TODO
  *
  *  Shows the window but does not start the rendering process.
@@ -138,11 +146,6 @@ PUBLIC EMERALD_API bool demo_window_start_rendering(demo_window window,
 
 /** TODO */
 PUBLIC EMERALD_API bool demo_window_stop_rendering(demo_window window);
-
-/** TODO */
-PUBLIC EMERALD_API void demo_window_set_property(demo_window          window,
-                                                 demo_window_property property,
-                                                 const void*          data);
 
 /** TODO */
 PUBLIC EMERALD_API bool demo_window_wait_until_closed(demo_window window);

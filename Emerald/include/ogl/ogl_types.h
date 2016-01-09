@@ -1570,9 +1570,6 @@ typedef struct
 } ogl_context_gl_entrypoints_ext_direct_state_access;
 
 
-/** Flyby support handle */
-DECLARE_HANDLE(ogl_flyby);
-
 /** Shader variable types */
 typedef enum
 {

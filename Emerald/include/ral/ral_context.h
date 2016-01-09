@@ -1,6 +1,7 @@
 #ifndef RAL_CONTEXT_H
 #define RAL_CONTEXT_H
 
+#include "demo/demo_types.h"
 #include "gfx/gfx_types.h"
 #include "ogl/ogl_types.h" /* TODO: Remove OGL dep */
 #include "ral/ral_types.h"
@@ -123,7 +124,7 @@ typedef void (*PFNRALCONTEXTNOTIFYBACKENDABOUTNEWOBJECTPROC)(ral_context        
 
 /** TODO */
 PUBLIC ral_context ral_context_create(system_hashed_ansi_string name,
-                                      system_window             window);
+                                      demo_window               window);
 
 /** TODO */
 PUBLIC EMERALD_API bool ral_context_create_buffers(ral_context                   context,

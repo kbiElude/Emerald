@@ -8,8 +8,9 @@
 #include "include/main.h"
 #include "stage_step_background.h"
 #include "stage_step_julia.h"
+#include "demo/demo_flyby.h"
+#include "demo/demo_window.h"
 #include "ogl/ogl_context.h"
-#include "ogl/ogl_flyby.h"
 #include "ogl/ogl_pipeline.h"
 #include "ogl/ogl_program.h"
 #include "ogl/ogl_program_ub.h"
@@ -344,7 +345,6 @@ static void _stage_step_julia_execute(ral_context context,
     const float             dof_near_plane_depth      = main_get_dof_near_plane_depth();
     const float             epsilon                   = main_get_epsilon();
     const float             escape                    = main_get_escape_threshold();
-          ogl_flyby         flyby                     = NULL;
     const float             fresnel_reflectance       = main_get_fresnel_reflectance();
     const float             reflectivity              = main_get_reflectivity();
     const float*            light_color               = main_get_light_color();
@@ -355,15 +355,12 @@ static void _stage_step_julia_execute(ral_context context,
     const float             specularity               = main_get_specularity();
            system_matrix4x4 mvp                       = NULL;
 
-    ogl_context_get_property(context_gl,
-                             OGL_CONTEXT_PROPERTY_FLYBY,
-                            &flyby);
-    ogl_flyby_get_property  (flyby,
-                             OGL_FLYBY_PROPERTY_CAMERA_LOCATION,
-                             camera_location);
-    ogl_flyby_get_property  (flyby,
-                             OGL_FLYBY_PROPERTY_VIEW_MATRIX,
-                            &_julia_view_matrix);
+    demo_flyby_get_property(_flyby,
+                            DEMO_FLYBY_PROPERTY_CAMERA_LOCATION,
+                            camera_location);
+    demo_flyby_get_property(_flyby,
+                            DEMO_FLYBY_PROPERTY_VIEW_MATRIX,
+                           &_julia_view_matrix);
 
     mvp = system_matrix4x4_create_by_mul(main_get_projection_matrix(),
                                          _julia_view_matrix);

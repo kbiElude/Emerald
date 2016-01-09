@@ -4,6 +4,7 @@
  *
  */
 #include "shared.h"
+#include "demo/demo_flyby.h"
 #include "gfx/gfx_image.h"
 #include "ogl/ogl_context.h"
 #include "ogl/ogl_context_bo_bindings.h"
@@ -12,7 +13,6 @@
 #include "ogl/ogl_context_to_bindings.h"
 #include "ogl/ogl_context_vaos.h"
 #include "ogl/ogl_context_wrappers.h"
-#include "ogl/ogl_flyby.h"
 #include "ogl/ogl_materials.h"
 #include "ogl/ogl_primitive_renderer.h"
 #include "ogl/ogl_programs.h"
@@ -134,7 +134,6 @@ typedef struct
     ral_context   context;
 
     ogl_context_bo_bindings         bo_bindings;
-    ogl_flyby                       flyby;
     ogl_materials                   materials;
     ogl_programs                    programs;
     ogl_primitive_renderer          primitive_renderer;
@@ -947,7 +946,6 @@ PRIVATE void _ogl_context_init_context_after_creation(ogl_context context)
     context_ptr->fbo                                        = NULL;
     context_ptr->fbo_color_to                               = NULL;
     context_ptr->fbo_depth_stencil_to                       = NULL;
-    context_ptr->flyby                                      = NULL;
     context_ptr->gl_arb_buffer_storage_support              = false;
     context_ptr->gl_arb_multi_bind_support                  = false;
     context_ptr->gl_arb_sparse_buffer_support               = false;
@@ -1217,9 +1215,6 @@ PRIVATE void _ogl_context_init_context_after_creation(ogl_context context)
                                           TEXT_STRING_ID_DEFAULT,
                                           OGL_TEXT_STRING_PROPERTY_COLOR,
                                           text_color);
-
-        /* Set up the context-wide flyby */
-        context_ptr->flyby = ogl_flyby_create( (ogl_context) context_ptr);
     }
     ogl_rendering_handler_set_private_property(rendering_handler,
                                                OGL_RENDERING_HANDLER_PRIVATE_PROPERTY_CALL_PASSTHROUGH_MODE,
@@ -1556,13 +1551,6 @@ PRIVATE void _ogl_context_release(void* ptr)
 
         context_ptr->fbo_color_to         = NULL;
         context_ptr->fbo_depth_stencil_to = NULL;
-    }
-
-    if (context_ptr->flyby != NULL)
-    {
-        ogl_flyby_release(context_ptr->flyby);
-
-        context_ptr->flyby = NULL;
     }
 
     if (context_ptr->state_cache != NULL)
@@ -3428,13 +3416,6 @@ PUBLIC EMERALD_API void ogl_context_get_property(ogl_context          context,
                               "OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL_EXT_DIRECT_STATE_ACCESS property requested for a non-GL context");
 
             *((const ogl_context_gl_entrypoints_ext_direct_state_access**) out_result) = &context_ptr->entry_points_gl_ext_direct_state_access;
-
-            break;
-        }
-
-        case OGL_CONTEXT_PROPERTY_FLYBY:
-        {
-            *(ogl_flyby*) out_result = context_ptr->flyby;
 
             break;
         }

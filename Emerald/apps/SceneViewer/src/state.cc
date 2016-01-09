@@ -4,9 +4,9 @@
  *
  */
 #include "shared.h"
+#include "demo/demo_flyby.h"
 #include "ogl/ogl_context.h"
 #include "ogl/ogl_curve_renderer.h"
-#include "ogl/ogl_flyby.h"
 #include "ogl/ogl_pipeline.h"
 #include "ogl/ogl_rendering_handler.h"
 #include "ogl/ogl_scene_renderer.h"
@@ -35,7 +35,7 @@ system_hashed_ansi_string* _camera_names                 = NULL;
 system_resizable_vector    _cameras                      = NULL;
 ogl_curve_renderer         _curve_renderer               = NULL;
 ogl_curve_item_id          _curve_renderer_item_id       = -1;
-ogl_flyby                  _flyby                        = NULL;
+demo_flyby                 _flyby                        = NULL;
 system_time                _last_frame_time              = 0;
 ogl_pipeline               _pipeline                     = NULL;
 uint32_t                   _pipeline_stage_id            = -1;
@@ -450,8 +450,8 @@ PUBLIC bool state_init(system_hashed_ansi_string scene_filename)
     }
 
     /* Retrieve flyby instance */
-    ogl_context_get_property(ral_context_get_gl_context(_context),
-                             OGL_CONTEXT_PROPERTY_FLYBY,
+    demo_window_get_property(_window,
+                             DEMO_WINDOW_PROPERTY_FLYBY,
                             &_flyby);
 
     /* Enumerate all cameras */
@@ -477,12 +477,12 @@ PUBLIC bool state_init(system_hashed_ansi_string scene_filename)
     _scene_renderer = ogl_scene_renderer_create(_context,
                                                 _scene);
 
-    ogl_flyby_set_property(_flyby,
-                           OGL_FLYBY_PROPERTY_CAMERA_LOCATION,
-                           camera_start_position);
-    ogl_flyby_set_property(_flyby,
-                           OGL_FLYBY_PROPERTY_MOVEMENT_DELTA,
-                          &movement_delta);
+    demo_flyby_set_property(_flyby,
+                            DEMO_FLYBY_PROPERTY_CAMERA_LOCATION,
+                            camera_start_position);
+    demo_flyby_set_property(_flyby,
+                            DEMO_FLYBY_PROPERTY_MOVEMENT_DELTA,
+                           &movement_delta);
 
     /* Construct the pipeline object */
     ogl_pipeline_stage_step_declaration scene_rendering_stage_step;

@@ -323,7 +323,8 @@ PRIVATE void _raGL_backend_create_root_window(ral_backend_type backend_type)
                                                 1,  /* n_samples    */
                                                 0); /* stencil_bits */
 
-    root_window = system_window_create_not_fullscreen(backend_type,
+    root_window = system_window_create_not_fullscreen(NULL, /* owner_window */
+                                                      backend_type,
                                                       root_window_x1y1x2y2,
                                                       root_window_name,
                                                       false, /* scalable      */
@@ -1309,7 +1310,7 @@ PUBLIC void raGL_backend_init(raGL_backend backend)
 
     /* Create a GL context  */
     ral_context_get_property(backend_ptr->context_ral,
-                             RAL_CONTEXT_PROPERTY_WINDOW,
+                             RAL_CONTEXT_PROPERTY_WINDOW_SYSTEM,
                             &window);
 
     backend_ptr->context_gl = ogl_context_create_from_system_window(backend_ptr->name,

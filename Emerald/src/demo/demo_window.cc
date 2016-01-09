@@ -6,6 +6,7 @@
 #include "shared.h"
 #include "audio/audio_stream.h"
 #include "demo/demo_app.h"
+#include "demo/demo_flyby.h"
 #include "demo/demo_loader.h"
 #include "demo/demo_window.h"
 #include "ogl/ogl_rendering_handler.h"
@@ -26,6 +27,7 @@ typedef struct _demo_window
 
     ral_backend_type backend_type;
     ral_context      context;       /* DO NOT release */
+    demo_flyby       flyby;
 
     PFNDEMOWINDOWLOADERSETUPCALLBACKPROC pfn_loader_setup_callback_proc;
     void*                                loader_setup_callback_proc_user_arg;
@@ -53,6 +55,7 @@ typedef struct _demo_window
     {
         backend_type                        = in_backend_type;
         context                             = NULL;
+        flyby                               = NULL;
         loader                              = NULL;
         loader_setup_callback_proc_user_arg = NULL;
         name                                = in_name;
@@ -77,6 +80,13 @@ typedef struct _demo_window
     {
         ASSERT_DEBUG_SYNC(window == NULL,
                           "Rendering window is not NULL at demo_window teardown time");
+
+        if (flyby != NULL)
+        {
+            demo_flyby_release(flyby);
+
+            flyby = NULL;
+        }
 
         if (shut_down_event != NULL)
         {
@@ -313,6 +323,13 @@ PUBLIC EMERALD_API void demo_window_get_property(const demo_window    window,
             break;
         }
 
+        case DEMO_WINDOW_PROPERTY_FLYBY:
+        {
+            *(demo_flyby*) out_result_ptr = window_ptr->flyby;
+
+            break;
+        }
+
         case DEMO_WINDOW_PROPERTY_FULLSCREEN:
         {
             *(bool*) out_result_ptr = window_ptr->should_run_fullscreen;
@@ -541,7 +558,8 @@ PUBLIC EMERALD_API bool demo_window_show(demo_window window)
             goto end;
         }
 
-        window_ptr->window = system_window_create_fullscreen(window_ptr->backend_type,
+        window_ptr->window = system_window_create_fullscreen((demo_window) window_ptr,
+                                                             window_ptr->backend_type,
                                                              screen_mode,
                                                              window_ptr->use_vsync,
                                                              pixel_format);
@@ -555,7 +573,8 @@ PUBLIC EMERALD_API bool demo_window_show(demo_window window)
                                                                         window_x1y1x2y2);
 
         /* Spawn the window. */
-        window_ptr->window = system_window_create_not_fullscreen(window_ptr->backend_type,
+        window_ptr->window = system_window_create_not_fullscreen((demo_window) window_ptr,
+                                                                 window_ptr->backend_type,
                                                                  window_x1y1x2y2,
                                                                  window_ptr->name,
                                                                  false, /* scalable */
@@ -632,6 +651,12 @@ PUBLIC EMERALD_API bool demo_window_show(demo_window window)
 
     ASSERT_DEBUG_SYNC(window_ptr->context != NULL,
                       "Rendering context is NULL");
+
+    /* Create a flyby instance */
+    window_ptr->flyby = demo_flyby_create(window_ptr->context);
+
+    ASSERT_DEBUG_SYNC(window_ptr->flyby != NULL,
+                      "Could not create a flyby instance");
 
     /* Set up a timeline object instance */
     if (window_ptr->use_timeline)

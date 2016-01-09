@@ -317,7 +317,7 @@ PRIVATE void _ogl_ui_scrollbar_update_text_position(_ogl_ui_scrollbar* scrollbar
     int           window_size[2] = {0};
 
     ral_context_get_property  (scrollbar_ptr->context,
-                               RAL_CONTEXT_PROPERTY_WINDOW,
+                               RAL_CONTEXT_PROPERTY_WINDOW_SYSTEM,
                               &window);
     system_window_get_property(window,
                                SYSTEM_WINDOW_PROPERTY_DIMENSIONS,
@@ -741,7 +741,7 @@ PUBLIC void* ogl_ui_scrollbar_init(ogl_ui                         instance,
                                          &text_height);
 
         ral_context_get_property  (new_scrollbar->context,
-                                   RAL_CONTEXT_PROPERTY_WINDOW,
+                                   RAL_CONTEXT_PROPERTY_WINDOW_SYSTEM,
                                   &window);
         system_window_get_property(window,
                                    SYSTEM_WINDOW_PROPERTY_DIMENSIONS,

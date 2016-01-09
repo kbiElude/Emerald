@@ -72,6 +72,7 @@ typedef struct
     bool                       is_cursor_visible;
     bool                       is_fullscreen;
     bool                       is_scalable;
+    demo_window                owner_window; /* do NOT release/retain */
     system_window_handle       parent_window_handle;
     system_screen_mode         screen_mode;
     system_hashed_ansi_string  title;
@@ -375,7 +376,6 @@ PRIVATE void _system_window_thread_entrypoint(void* in_arg)
      * by itself */
     window_ptr->pfn_window_handle_window(window_ptr->window_platform);
 
-end:
     if (window_ptr->rendering_context != NULL)
     {
         ral_context_release(window_ptr->rendering_context);
@@ -695,7 +695,8 @@ PUBLIC bool system_window_close(system_window window)
 }
 
 /** TODO */
-PRIVATE system_window _system_window_create_shared(ral_backend_type          backend_type,
+PRIVATE system_window _system_window_create_shared(demo_window               owner_window,
+                                                   ral_backend_type          backend_type,
                                                    bool                      is_fullscreen,
                                                    const int*                x1y1x2y2,
                                                    system_screen_mode        screen_mode,
@@ -721,6 +722,7 @@ PRIVATE system_window _system_window_create_shared(ral_backend_type          bac
         new_window->is_cursor_visible    = false;
         new_window->is_fullscreen        = is_fullscreen;
         new_window->is_scalable          = is_scalable;
+        new_window->owner_window         = owner_window;
         new_window->parent_window_handle = parent_window_handle;
         new_window->pf                   = pf;
         new_window->screen_mode          = screen_mode;
@@ -846,7 +848,8 @@ PRIVATE system_window _system_window_create_shared(ral_backend_type          bac
 
 
 /** Please see header for specification */
-PUBLIC system_window system_window_create_by_replacing_window(system_hashed_ansi_string name,
+PUBLIC system_window system_window_create_by_replacing_window(demo_window               owner_window,
+                                                              system_hashed_ansi_string name,
                                                               ral_backend_type          backend_type,
                                                               bool                      vsync_enabled,
                                                               system_window_handle      parent_window_handle,
@@ -877,7 +880,8 @@ PUBLIC system_window system_window_create_by_replacing_window(system_hashed_ansi
             x1y1x2y2[2] = parent_window_rect.right  - grandparent_window_rect.left;
             x1y1x2y2[3] = parent_window_rect.bottom - grandparent_window_rect.top;
 
-            result = _system_window_create_shared(backend_type,
+            result = _system_window_create_shared(owner_window,
+                                                  backend_type,
                                                   false,  /* not fullscreen */
                                                   x1y1x2y2,
                                                   NULL,  /* screen_mode */
@@ -900,7 +904,8 @@ PUBLIC system_window system_window_create_by_replacing_window(system_hashed_ansi
 }
 
 /** Please see header for specification */
-PUBLIC system_window system_window_create_not_fullscreen(ral_backend_type          backend_type,
+PUBLIC system_window system_window_create_not_fullscreen(demo_window               owner_window,
+                                                         ral_backend_type          backend_type,
                                                          const int*                x1y1x2y2,
                                                          system_hashed_ansi_string title,
                                                          bool                      scalable,
@@ -908,7 +913,8 @@ PUBLIC system_window system_window_create_not_fullscreen(ral_backend_type       
                                                          bool                      visible,
                                                          system_pixel_format       pf)
 {
-    return _system_window_create_shared(backend_type,
+    return _system_window_create_shared(owner_window,
+                                        backend_type,
                                         false,
                                         x1y1x2y2,
                                         NULL, /* screen_mode */
@@ -921,14 +927,16 @@ PUBLIC system_window system_window_create_not_fullscreen(ral_backend_type       
 }
 
 /** Please see header for specification */
-PUBLIC system_window system_window_create_fullscreen(ral_backend_type    backend_type,
+PUBLIC system_window system_window_create_fullscreen(demo_window         owner_window,
+                                                     ral_backend_type    backend_type,
                                                      system_screen_mode  mode,
                                                      bool                vsync_enabled,
                                                      system_pixel_format pf)
 {
     int x1y1x2y2[4] = {0, 0};
 
-    return _system_window_create_shared(backend_type,
+    return _system_window_create_shared(owner_window,
+                                        backend_type,
                                         true,
                                         NULL, /* x1y1x2y2 */
                                         mode,
@@ -1847,7 +1855,7 @@ PUBLIC bool system_window_set_property(system_window          window,
                                       "Rendering context already assigned to the window");
 
                     window_ptr->rendering_context = ral_context_create(window_ptr->title,
-                                                                       (system_window) window_ptr);
+                                                                       window_ptr->owner_window);
 
                     if (window_ptr->rendering_context == NULL)
                     {

@@ -19,6 +19,7 @@ static system_hashed_ansi_string _object_type_audio_stream_hashed_ansi_string   
 static system_hashed_ansi_string _object_type_collada_data_hashed_ansi_string                          = NULL;
 static system_hashed_ansi_string _object_type_context_menu_hashed_ansi_string                          = NULL;
 static system_hashed_ansi_string _object_type_curve_container_hashed_ansi_string                       = NULL;
+static system_hashed_ansi_string _object_type_demo_flyby_hashed_ansi_string                            = NULL;
 static system_hashed_ansi_string _object_type_demo_timeline_hashed_ansi_string                         = NULL;
 static system_hashed_ansi_string _object_type_demo_timeline_segment_hashed_ansi_string                 = NULL;
 static system_hashed_ansi_string _object_type_gfx_bfg_font_table_hashed_ansi_string                    = NULL;
@@ -32,7 +33,6 @@ static system_hashed_ansi_string _object_type_ocl_kernel_hashed_ansi_string     
 static system_hashed_ansi_string _object_type_ocl_program_hashed_ansi_string                           = NULL;
 static system_hashed_ansi_string _object_type_ogl_context_hashed_ansi_string                           = NULL;
 static system_hashed_ansi_string _object_type_ogl_curve_renderer_hashed_ansi_string                    = NULL;
-static system_hashed_ansi_string _object_type_ogl_flyby_hashed_ansi_string                             = NULL;
 static system_hashed_ansi_string _object_type_ogl_pipeline_hashed_ansi_string                          = NULL;
 static system_hashed_ansi_string _object_type_ogl_primitive_renderer_hashed_ansi_string                = NULL;
 static system_hashed_ansi_string _object_type_ogl_program_hashed_ansi_string                           = NULL;
@@ -103,6 +103,7 @@ PUBLIC system_hashed_ansi_string object_manager_convert_object_manager_object_ty
         case OBJECT_TYPE_COLLADA_DATA:                                    return _object_type_collada_data_hashed_ansi_string;
         case OBJECT_TYPE_CONTEXT_MENU:                                    return _object_type_context_menu_hashed_ansi_string;
         case OBJECT_TYPE_CURVE_CONTAINER:                                 return _object_type_curve_container_hashed_ansi_string;
+        case OBJECT_TYPE_DEMO_FLYBY:                                      return _object_type_demo_flyby_hashed_ansi_string;
         case OBJECT_TYPE_DEMO_TIMELINE:                                   return _object_type_demo_timeline_hashed_ansi_string;
         case OBJECT_TYPE_DEMO_TIMELINE_SEGMENT:                           return _object_type_demo_timeline_segment_hashed_ansi_string;
         case OBJECT_TYPE_GFX_BFG_FONT_TABLE:                              return _object_type_gfx_bfg_font_table_hashed_ansi_string;
@@ -116,7 +117,6 @@ PUBLIC system_hashed_ansi_string object_manager_convert_object_manager_object_ty
         case OBJECT_TYPE_OCL_PROGRAM:                                     return _object_type_ocl_program_hashed_ansi_string;
         case OBJECT_TYPE_OGL_CONTEXT:                                     return _object_type_ogl_context_hashed_ansi_string;
         case OBJECT_TYPE_OGL_CURVE_RENDERER:                              return _object_type_ogl_curve_renderer_hashed_ansi_string;
-        case OBJECT_TYPE_OGL_FLYBY:                                       return _object_type_ogl_flyby_hashed_ansi_string;
         case OBJECT_TYPE_OGL_PIPELINE:                                    return _object_type_ogl_pipeline_hashed_ansi_string;
         case OBJECT_TYPE_OGL_PRIMITIVE_RENDERER:                          return _object_type_ogl_primitive_renderer_hashed_ansi_string;
         case OBJECT_TYPE_OGL_PROGRAM:                                     return _object_type_ogl_program_hashed_ansi_string;
@@ -359,6 +359,7 @@ PUBLIC void _object_manager_init()
     _object_type_collada_data_hashed_ansi_string                          = system_hashed_ansi_string_create("COLLADA Data");
     _object_type_context_menu_hashed_ansi_string                          = system_hashed_ansi_string_create("Context Menus");
     _object_type_curve_container_hashed_ansi_string                       = system_hashed_ansi_string_create("Curves");
+    _object_type_demo_flyby_hashed_ansi_string                            = system_hashed_ansi_string_create("Fly-by instances");
     _object_type_demo_timeline_hashed_ansi_string                         = system_hashed_ansi_string_create("Demo Timelines");
     _object_type_demo_timeline_segment_hashed_ansi_string                 = system_hashed_ansi_string_create("Demo Timeline Segment");
     _object_type_gfx_bfg_font_table_hashed_ansi_string                    = system_hashed_ansi_string_create("GFX BFG Font Tables");
@@ -372,7 +373,6 @@ PUBLIC void _object_manager_init()
     _object_type_ocl_program_hashed_ansi_string                           = system_hashed_ansi_string_create("OpenCL Programs");
     _object_type_ogl_context_hashed_ansi_string                           = system_hashed_ansi_string_create("OpenGL Contexts");
     _object_type_ogl_curve_renderer_hashed_ansi_string                    = system_hashed_ansi_string_create("Curve Renderers");
-    _object_type_ogl_flyby_hashed_ansi_string                             = system_hashed_ansi_string_create("Fly-by instances");
     _object_type_ogl_pipeline_hashed_ansi_string                          = system_hashed_ansi_string_create("OpenGL Pipelines");
     _object_type_ogl_primitive_renderer_hashed_ansi_string                = system_hashed_ansi_string_create("Primitive Renderers");
     _object_type_ogl_program_hashed_ansi_string                           = system_hashed_ansi_string_create("OpenGL Programs");

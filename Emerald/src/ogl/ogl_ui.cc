@@ -440,7 +440,7 @@ PRIVATE void _ogl_ui_init(_ogl_ui*                  ui_ptr,
     ogl_text_retain(text_renderer);
 
     ral_context_get_property(context,
-                             RAL_CONTEXT_PROPERTY_WINDOW,
+                             RAL_CONTEXT_PROPERTY_WINDOW_SYSTEM,
                             &ui_ptr->window);
 
     /* Cache GL func ptrs that will be used by the draw routine */

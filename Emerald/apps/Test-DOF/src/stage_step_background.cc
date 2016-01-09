@@ -8,10 +8,10 @@
 #include "include/main.h"
 #include "stage_step_background.h"
 #include "stage_step_julia.h"
+#include "demo/demo_flyby.h"
 #include "gfx/gfx_image.h"
 #include "gfx/gfx_rgbe.h"
 #include "ogl/ogl_context.h"
-#include "ogl/ogl_flyby.h"
 #include "ogl/ogl_pipeline.h"
 #include "ogl/ogl_skybox.h"
 #include "raGL/raGL_framebuffer.h"
@@ -40,7 +40,6 @@ static void _stage_step_background_execute(ral_context context,
     ogl_context_gl_entrypoints* entrypoints_ptr   = NULL;
     raGL_framebuffer            fbo_raGL          = NULL;
     GLuint                      fbo_raGL_id       = 0;
-    ogl_flyby                   flyby             = NULL;
     system_matrix4x4            projection_matrix = main_get_projection_matrix();
 
     ral_context_get_property(context,
@@ -66,12 +65,9 @@ static void _stage_step_background_execute(ral_context context,
     entrypoints_ptr->pGLBindFramebuffer(GL_DRAW_FRAMEBUFFER,
                                         fbo_raGL_id);
 
-    ogl_context_get_property(context_gl,
-                             OGL_CONTEXT_PROPERTY_FLYBY,
-                            &flyby);
-    ogl_flyby_get_property  (flyby,
-                             OGL_FLYBY_PROPERTY_VIEW_MATRIX,
-                            &_mv);
+    demo_flyby_get_property(_flyby,
+                            DEMO_FLYBY_PROPERTY_VIEW_MATRIX,
+                           &_mv);
 
     ogl_skybox_draw(_skybox,
                     _mv,

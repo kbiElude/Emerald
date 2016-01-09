@@ -81,9 +81,6 @@ typedef enum ogl_context_property
      */
     OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL_EXT_DIRECT_STATE_ACCESS,
 
-    /* not settable, ogl_flyby */
-    OGL_CONTEXT_PROPERTY_FLYBY,
-
     /* not settable, ogl_context_info* */
     OGL_CONTEXT_PROPERTY_INFO,
 

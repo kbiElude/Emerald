@@ -8,6 +8,7 @@
 #ifndef SYSTEM_WINDOW_H
 #define SYSTEM_WINDOW_H
 
+#include "demo/demo_types.h"
 #include "ral/ral_types.h"
 #include "system/system_types.h"
 
@@ -141,6 +142,7 @@ PUBLIC bool system_window_close(system_window window);
 
 /** TODO
  *
+ *  @param owner_window         TODO.
  *  @param name                 TODO.
  *  @param backend_type         TODO.
  *  @param vsync_enabled        TODO.
@@ -149,7 +151,8 @@ PUBLIC bool system_window_close(system_window window);
  *
  *  @return TODO
  */
-PUBLIC system_window system_window_create_by_replacing_window(system_hashed_ansi_string name,
+PUBLIC system_window system_window_create_by_replacing_window(demo_window               owner_window,
+                                                              system_hashed_ansi_string name,
                                                               ral_backend_type          backend_type,
                                                               bool                      vsync_enabled,
                                                               system_window_handle      parent_window_handle,
@@ -157,6 +160,7 @@ PUBLIC system_window system_window_create_by_replacing_window(system_hashed_ansi
 
 /** TODO
  *
+ *  @param owner_window  TODO.
  *  @param backend_type  TODO
  *  @param x1y1x2y2      TODO
  *  @param title         TODO
@@ -167,7 +171,8 @@ PUBLIC system_window system_window_create_by_replacing_window(system_hashed_ansi
  *
  *  @return TODO
  */
-PUBLIC system_window system_window_create_not_fullscreen(ral_backend_type          backend_type,
+PUBLIC system_window system_window_create_not_fullscreen(demo_window               owner_window,
+                                                         ral_backend_type          backend_type,
                                                          const int*                x1y1x2y2,
                                                          system_hashed_ansi_string title,
                                                          bool                      scalable,
@@ -178,6 +183,7 @@ PUBLIC system_window system_window_create_not_fullscreen(ral_backend_type       
 
 /** TODO
  *
+ *  @param owner_window  TODO
  *  @param backend_type  TODO
  *  @param mode          TODO
  *  @param vsync_enabled TODO
@@ -185,7 +191,8 @@ PUBLIC system_window system_window_create_not_fullscreen(ral_backend_type       
  *
  *  @return TODO
  */
-PUBLIC system_window system_window_create_fullscreen(ral_backend_type    backend_type,
+PUBLIC system_window system_window_create_fullscreen(demo_window         owner_window,
+                                                     ral_backend_type    backend_type,
                                                      system_screen_mode  mode,
                                                      bool                vsync_enabled,
                                                      system_pixel_format pixel_format);

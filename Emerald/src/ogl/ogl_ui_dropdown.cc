@@ -572,7 +572,7 @@ PRIVATE void _ogl_ui_dropdown_init_renderer_callback(ogl_context context, void* 
     int               window_size[2]       = {0};
 
     ral_context_get_property  (dropdown_ptr->context,
-                               RAL_CONTEXT_PROPERTY_WINDOW,
+                               RAL_CONTEXT_PROPERTY_WINDOW_SYSTEM,
                               &window);
     system_window_get_property(window,
                                SYSTEM_WINDOW_PROPERTY_DIMENSIONS,
@@ -865,7 +865,7 @@ PRIVATE void _ogl_ui_dropdown_update_entry_positions(_ogl_ui_dropdown* dropdown_
                                         &n_entries);
 
     ral_context_get_property  (dropdown_ptr->context,
-                               RAL_CONTEXT_PROPERTY_WINDOW,
+                               RAL_CONTEXT_PROPERTY_WINDOW_SYSTEM,
                               &context_window);
     system_window_get_property(context_window,
                                SYSTEM_WINDOW_PROPERTY_DIMENSIONS,
@@ -923,7 +923,7 @@ PRIVATE void _ogl_ui_dropdown_update_entry_strings(_ogl_ui_dropdown* dropdown_pt
     };
 
     ral_context_get_property  (dropdown_ptr->context,
-                               RAL_CONTEXT_PROPERTY_WINDOW,
+                               RAL_CONTEXT_PROPERTY_WINDOW_SYSTEM,
                               &window);
     system_window_get_property(window,
                                SYSTEM_WINDOW_PROPERTY_DIMENSIONS,
@@ -1083,7 +1083,7 @@ PRIVATE void _ogl_ui_dropdown_update_position(_ogl_ui_dropdown* dropdown_ptr,
     int           window_size[2] = {0};
 
     ral_context_get_property  (dropdown_ptr->context,
-                               RAL_CONTEXT_PROPERTY_WINDOW,
+                               RAL_CONTEXT_PROPERTY_WINDOW_SYSTEM,
                               &window);
     system_window_get_property(window,
                                SYSTEM_WINDOW_PROPERTY_DIMENSIONS,
@@ -1278,7 +1278,7 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_ui_dropdown_draw(void* internal_instance)
     int               window_size[2];
 
     ral_context_get_property  (dropdown_ptr->context,
-                               RAL_CONTEXT_PROPERTY_WINDOW,
+                               RAL_CONTEXT_PROPERTY_WINDOW_SYSTEM,
                               &window);
     system_window_get_property(window,
                                SYSTEM_WINDOW_PROPERTY_DIMENSIONS,
@@ -1879,7 +1879,7 @@ PUBLIC void* ogl_ui_dropdown_init(ogl_ui                     instance,
         int           window_size[2] = {0};
 
         ral_context_get_property  (new_dropdown->context,
-                                   RAL_CONTEXT_PROPERTY_WINDOW,
+                                   RAL_CONTEXT_PROPERTY_WINDOW_SYSTEM,
                                   &window);
         system_window_get_property(window,
                                    SYSTEM_WINDOW_PROPERTY_DIMENSIONS,

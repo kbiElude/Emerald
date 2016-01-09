@@ -280,7 +280,7 @@ PRIVATE void _ogl_ui_texture_preview_init_texture_renderer_callback(ogl_context 
                       "TO already initialized");
 
     ral_context_get_property  (texture_preview_ptr->context,
-                               RAL_CONTEXT_PROPERTY_WINDOW,
+                               RAL_CONTEXT_PROPERTY_WINDOW_SYSTEM,
                               &window);
     system_window_get_property(window,
                                SYSTEM_WINDOW_PROPERTY_DIMENSIONS,

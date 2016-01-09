@@ -310,7 +310,7 @@ PRIVATE void _ogl_ui_checkbox_update_text_location(_ogl_ui_checkbox* checkbox_pt
                                      &text_width);
 
     ral_context_get_property(checkbox_ptr->context,
-                             RAL_CONTEXT_PROPERTY_WINDOW,
+                             RAL_CONTEXT_PROPERTY_WINDOW_SYSTEM,
                             &window);
 
     system_window_get_property(window,
@@ -344,7 +344,7 @@ PRIVATE void _ogl_ui_checkbox_update_x1y1x2y2(_ogl_ui_checkbox* checkbox_ptr)
                                      &text_width);
 
     ral_context_get_property   (checkbox_ptr->context,
-                                RAL_CONTEXT_PROPERTY_WINDOW,
+                                RAL_CONTEXT_PROPERTY_WINDOW_SYSTEM,
                                &window);
     system_window_get_property(window,
                                SYSTEM_WINDOW_PROPERTY_DIMENSIONS,
