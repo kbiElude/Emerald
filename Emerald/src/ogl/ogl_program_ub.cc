@@ -70,7 +70,7 @@ PRIVATE ogl_program_block_property _ogl_program_ub_get_block_property_for_ub_pro
 
 /** Please see header for spec */
 PUBLIC ogl_program_ub ogl_program_ub_create(ral_context               context,
-                                            ogl_program               owner_program,
+                                            raGL_program              owner_program,
                                             unsigned int              ub_index,
                                             system_hashed_ansi_string ub_name,
                                             bool                      support_sync_behavior)
@@ -96,7 +96,7 @@ PUBLIC EMERALD_API void ogl_program_ub_get_property(const ogl_program_ub    ub,
 /** Please see header for spec */
 PUBLIC EMERALD_API void ogl_program_ub_get_variable_by_name(ogl_program_ub               ub,
                                                             system_hashed_ansi_string    name,
-                                                            const ogl_program_variable** out_variable_ptr)
+                                                            const ral_program_variable** out_variable_ptr)
 {
     ogl_program_block_get_block_variable_by_name((ogl_program_block) ub,
                                                  name,

@@ -4,8 +4,8 @@
  *
  */
 #include "shared.h"
-#include "ogl/ogl_context.h"
-#include "ogl/ogl_shader.h"
+#include "ral/ral_context.h"
+#include "ral/ral_shader.h"
 #include "shaders/shaders_fragment_texture2D_linear.h"
 #include "system/system_assertions.h"
 #include "system/system_hashed_ansi_string.h"
@@ -52,7 +52,8 @@ const char* tex2D_fragment_linear_shader_body_reverted = "#version 430 core\n"
 /** Internal type definition */
 typedef struct
 {
-    ogl_shader shader;
+    ral_context context;
+    ral_shader  shader;
 
     REFCOUNT_INSERT_VARIABLES
 } _shaders_fragment_texture2D_linear;
@@ -73,7 +74,10 @@ PRIVATE void _shaders_fragment_texture2D_linear_release(void* ptr)
 
     if (data_ptr->shader != NULL)
     {
-        ogl_shader_release(data_ptr->shader);
+        ral_context_delete_objects(data_ptr->context,
+                                   RAL_CONTEXT_OBJECT_TYPE_SHADER,
+                                   1, /* n_objects */
+                                  &data_ptr->shader);
 
         data_ptr->shader = NULL;
     }
@@ -85,81 +89,76 @@ PUBLIC EMERALD_API shaders_fragment_texture2D_linear shaders_fragment_texture2D_
                                                                                               bool                      should_revert_y,
                                                                                               system_hashed_ansi_string name)
 {
-    _shaders_fragment_texture2D_linear* result_object = NULL;
-    shaders_fragment_texture2D_linear   result_shader = NULL;
+    _shaders_fragment_texture2D_linear* result_object_ptr = NULL;
+    ral_shader                          shader            = NULL;
 
     /* Create the shader */
-    ogl_shader shader = ogl_shader_create(context,
-                                          RAL_SHADER_TYPE_FRAGMENT,
-                                          name);
+    system_hashed_ansi_string shader_body       (system_hashed_ansi_string_create(should_revert_y ? tex2D_fragment_linear_shader_body_reverted
+                                                                                                  : tex2D_fragment_linear_shader_body_not_reverted) );
+    ral_shader_create_info    shader_create_info(name,
+                                                 RAL_SHADER_TYPE_FRAGMENT);
 
-    ASSERT_DEBUG_SYNC(shader != NULL,
-                      "Could not create a fragment shader.");
-
-    if (shader == NULL)
+    if (!ral_context_create_shaders(context,
+                                    1, /* n_create_info_items */
+                                   &shader_create_info,
+                                   &shader) )
     {
-        LOG_ERROR("Could not create a fragment shader for linear Texture2D shader object.");
-
-        goto end;
-    }
-
-    /* Attach body to the shader */
-    if (!ogl_shader_set_body(shader,
-                             system_hashed_ansi_string_create(should_revert_y ? tex2D_fragment_linear_shader_body_reverted
-                                                                              : tex2D_fragment_linear_shader_body_not_reverted) ))
-    {
-        LOG_ERROR("Could not set body of linear Texture2D fragment shader.");
-
         ASSERT_DEBUG_SYNC(false,
-                          "");
+                          "Could not create a new RAL instance");
 
         goto end;
     }
+
+    ral_shader_set_property(shader,
+                            RAL_SHADER_PROPERTY_GLSL_BODY,
+                           &shader_body);
 
     /* Everything went okay. Instantiate the object */
-    result_object = new (std::nothrow) _shaders_fragment_texture2D_linear;
+    result_object_ptr = new (std::nothrow) _shaders_fragment_texture2D_linear;
 
-    ASSERT_DEBUG_SYNC(result_object != NULL,
-                      "Out of memory while instantiating _shaders_fragment_texture2D_linear object.");
-
-    if (result_object == NULL)
+    if (result_object_ptr == NULL)
     {
-        LOG_ERROR("Out of memory while creating linear Texture2D object instance.");
+        ASSERT_DEBUG_SYNC(result_object_ptr != NULL,
+                          "Out of memory while instantiating _shaders_fragment_texture2D_linear object.");
 
         goto end;
     }
 
-    result_object->shader = shader;
+    result_object_ptr->context = context;
+    result_object_ptr->shader  = shader;
 
-    REFCOUNT_INSERT_INIT_CODE_WITH_RELEASE_HANDLER(result_object,
+    REFCOUNT_INSERT_INIT_CODE_WITH_RELEASE_HANDLER(result_object_ptr,
                                                    _shaders_fragment_texture2D_linear_release,
                                                    OBJECT_TYPE_SHADERS_FRAGMENT_TEXTURE2D_LINEAR,
                                                    system_hashed_ansi_string_create_by_merging_two_strings("\\Texture2D Linear Fragment Shaders\\",
                                                                                                            system_hashed_ansi_string_get_buffer(name)) );
 
     /* Return the object */
-    return (shaders_fragment_texture2D_linear) result_object;
+    return (shaders_fragment_texture2D_linear) result_object_ptr;
 
 end:
     if (shader != NULL)
     {
-        ogl_shader_release(shader);
+        ral_context_delete_objects(context,
+                                   RAL_CONTEXT_OBJECT_TYPE_SHADER,
+                                   1, /* n_objects */
+                                  &shader);
 
         shader = NULL;
     }
 
-    if (result_object != NULL)
+    if (result_object_ptr != NULL)
     {
-        delete result_object;
+        delete result_object_ptr;
 
-        result_object = NULL;
+        result_object_ptr = NULL;
     }
 
     return NULL;
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API ogl_shader shaders_fragment_texture2D_linear_get_shader(shaders_fragment_texture2D_linear shader)
+PUBLIC EMERALD_API ral_shader shaders_fragment_texture2D_linear_get_shader(shaders_fragment_texture2D_linear shader)
 {
     return (((_shaders_fragment_texture2D_linear*)shader)->shader);
 }

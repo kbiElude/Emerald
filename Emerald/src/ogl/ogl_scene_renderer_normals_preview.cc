@@ -6,14 +6,16 @@
 #include "shared.h"
 #include "mesh/mesh.h"
 #include "ogl/ogl_context.h"
-#include "ogl/ogl_program.h"
 #include "ogl/ogl_program_ub.h"
 #include "ogl/ogl_scene_renderer.h"
 #include "ogl/ogl_scene_renderer_normals_preview.h"
-#include "ogl/ogl_shader.h"
 #include "raGL/raGL_buffer.h"
+#include "raGL/raGL_program.h"
+#include "raGL/raGL_shader.h"
 #include "ral/ral_buffer.h"
 #include "ral/ral_context.h"
+#include "ral/ral_program.h"
+#include "ral/ral_shader.h"
 #include "scene/scene.h"
 #include "scene/scene_mesh.h"
 #include "system/system_matrix4x4.h"
@@ -96,7 +98,7 @@ typedef struct _ogl_scene_renderer_normals_preview
 
     scene              owned_scene;
     ogl_scene_renderer owner;
-    ogl_program        preview_program;
+    ral_program        preview_program;
     GLint              preview_program_normal_matrix_ub_offset;
     GLint              preview_program_start_offsets_ub_offset;
     GLint              preview_program_stride_ub_offset;
@@ -125,126 +127,172 @@ PRIVATE void _ogl_context_scene_renderer_normals_preview_init_preview_program(_o
     ASSERT_DEBUG_SYNC(preview_ptr->preview_program == NULL,
                       "Preview program has already been initialized");
 
-    const ogl_context_gl_entrypoints* entrypoints_ptr                      = NULL;
-    const ogl_program_variable*       normal_matrix_uniform_descriptor_ptr = NULL;
-    const ogl_program_variable*       start_offsets_uniform_descriptor_ptr = NULL;
-    const ogl_program_variable*       stride_uniform_descriptor_ptr        = NULL;
-    const ogl_program_variable*       vp_uniform_descriptor_ptr            = NULL;
+    const ogl_context_gl_entrypoints* entrypoints_ptr           = NULL;
+    const ral_program_variable*       normal_matrix_uniform_ptr = NULL;
+    const ral_program_variable*       start_offsets_uniform_ptr = NULL;
+    const ral_program_variable*       stride_uniform_ptr        = NULL;
+    const ral_program_variable*       vp_uniform_ptr            = NULL;
 
     /* Create shaders and set their bodies */
-    ogl_shader                fs_shader  = NULL;
-    ogl_shader                gs_shader  = NULL;
+    ral_shader                fs         = NULL;
+    ral_shader                gs         = NULL;
     system_hashed_ansi_string scene_name = NULL;
-    ogl_shader                vs_shader  = NULL;
+    ral_shader                vs         = NULL;
+
+    const system_hashed_ansi_string fs_body_has    = system_hashed_ansi_string_create(preview_fragment_shader);
+    const ral_shader_create_info    fs_create_info =
+    {
+        system_hashed_ansi_string_create_by_merging_two_strings("Scene Renderer normals preview FS shader ",
+                                                                system_hashed_ansi_string_get_buffer(scene_name)),
+        RAL_SHADER_TYPE_FRAGMENT
+    };
+    const system_hashed_ansi_string gs_body_has    = system_hashed_ansi_string_create(preview_geometry_shader);
+    const ral_shader_create_info    gs_create_info =
+    {
+        system_hashed_ansi_string_create_by_merging_two_strings("Scene Renderer normals preview GS shader ",
+                                                                system_hashed_ansi_string_get_buffer(scene_name)),
+        RAL_SHADER_TYPE_GEOMETRY
+    };
+    const system_hashed_ansi_string vs_body_has    = system_hashed_ansi_string_create(preview_vertex_shader);
+    const ral_shader_create_info    vs_create_info =
+    {
+        system_hashed_ansi_string_create_by_merging_two_strings("Scene Renderer normals preview VS shader ",
+                                                                system_hashed_ansi_string_get_buffer(scene_name)),
+        RAL_SHADER_TYPE_VERTEX
+    };
+
+    const ral_shader_create_info shader_create_info_items[] =
+    {
+        fs_create_info,
+        gs_create_info,
+        vs_create_info
+    };
+    const uint32_t               n_shader_create_info_items = sizeof(shader_create_info_items) / sizeof(shader_create_info_items[0]);
+
+    ral_shader                   result_shaders[n_shader_create_info_items];
+
 
     scene_get_property(preview_ptr->owned_scene,
                        SCENE_PROPERTY_NAME,
                       &scene_name);
 
-    fs_shader = ogl_shader_create(preview_ptr->context,
-                                  RAL_SHADER_TYPE_FRAGMENT,
-                                  system_hashed_ansi_string_create_by_merging_two_strings("Scene Renderer normals preview FS shader ",
-                                                                                          system_hashed_ansi_string_get_buffer(scene_name)) );
-    gs_shader = ogl_shader_create(preview_ptr->context,
-                                  RAL_SHADER_TYPE_GEOMETRY,
-                                  system_hashed_ansi_string_create_by_merging_two_strings("Scene Renderer normals preview GS shader ",
-                                                                                          system_hashed_ansi_string_get_buffer(scene_name)) );
-    vs_shader = ogl_shader_create(preview_ptr->context,
-                                  RAL_SHADER_TYPE_VERTEX,
-                                  system_hashed_ansi_string_create_by_merging_two_strings("Scene Renderer normals preview VS shader ",
-                                                                                          system_hashed_ansi_string_get_buffer(scene_name)) );
 
-    ogl_shader_set_body(fs_shader,
-                        system_hashed_ansi_string_create(preview_fragment_shader) );
-    ogl_shader_set_body(gs_shader,
-                        system_hashed_ansi_string_create(preview_geometry_shader) );
-    ogl_shader_set_body(vs_shader,
-                        system_hashed_ansi_string_create(preview_vertex_shader) );
+    const ral_program_create_info program_create_info =
+    {
+        system_hashed_ansi_string_create_by_merging_two_strings("Scene Renderer normals preview program ",
+                                                                system_hashed_ansi_string_get_buffer(scene_name) )
+    };
 
-    if (!ogl_shader_compile(fs_shader) ||
-        !ogl_shader_compile(gs_shader) ||
-        !ogl_shader_compile(vs_shader) )
+
+    if (!ral_context_create_shaders(preview_ptr->context,
+                                    n_shader_create_info_items,
+                                    shader_create_info_items,
+                                    result_shaders) )
     {
         ASSERT_DEBUG_SYNC(false,
-                          "Failed to compile at least one of the shader used by normals preview renderer");
+                          "RAL shader creation failed");
 
         goto end_fail;
     }
 
+    fs = result_shaders[0];
+    gs = result_shaders[1];
+    vs = result_shaders[2];
+
+    ral_shader_set_property(fs,
+                            RAL_SHADER_PROPERTY_GLSL_BODY,
+                           &fs_body_has);
+    ral_shader_set_property(gs,
+                            RAL_SHADER_PROPERTY_GLSL_BODY,
+                           &gs_body_has);
+    ral_shader_set_property(vs,
+                            RAL_SHADER_PROPERTY_GLSL_BODY,
+                           &vs_body_has);
+
     /* Initialize the program object */
-    preview_ptr->preview_program = ogl_program_create(preview_ptr->context,
-                                                      system_hashed_ansi_string_create_by_merging_two_strings("Scene Renderer normals preview program ",
-                                                                                                              system_hashed_ansi_string_get_buffer(scene_name)),
-                                                      OGL_PROGRAM_SYNCABLE_UBS_MODE_ENABLE_GLOBAL);
-
-    ogl_program_attach_shader(preview_ptr->preview_program,
-                              fs_shader);
-    ogl_program_attach_shader(preview_ptr->preview_program,
-                              gs_shader);
-    ogl_program_attach_shader(preview_ptr->preview_program,
-                              vs_shader);
-
-    if (!ogl_program_link(preview_ptr->preview_program) )
+    if (!ral_context_create_programs(preview_ptr->context,
+                                     1, /* n_create_info_items */
+                                    &program_create_info,
+                                    &preview_ptr->preview_program) )
     {
         ASSERT_DEBUG_SYNC(false,
-                          "Failed to link the program object used by normals preview renderer");
+                          "RAL program creation failed.");
+
+        goto end_fail;
+    }
+
+    if (!ral_program_attach_shader(preview_ptr->preview_program,
+                                   fs,
+                                   false /* relink_needed */) ||
+        !ral_program_attach_shader(preview_ptr->preview_program,
+                                   gs,
+                                   false /* relink_needed */) ||
+        !ral_program_attach_shader(preview_ptr->preview_program,
+                                   vs,
+                                   true /* relink_needed */) )
+    {
+        ASSERT_DEBUG_SYNC(false,
+                          "RAL program configuration failed.");
 
         goto end_fail;
     }
 
     /* Retrieve uniform locations */
-    ogl_program_get_uniform_by_name(preview_ptr->preview_program,
-                                    system_hashed_ansi_string_create("normal_matrix"),
-                                   &normal_matrix_uniform_descriptor_ptr);
-    ogl_program_get_uniform_by_name(preview_ptr->preview_program,
-                                    system_hashed_ansi_string_create("start_offsets"),
-                                   &start_offsets_uniform_descriptor_ptr);
-    ogl_program_get_uniform_by_name(preview_ptr->preview_program,
-                                    system_hashed_ansi_string_create("stride"),
-                                   &stride_uniform_descriptor_ptr);
-    ogl_program_get_uniform_by_name(preview_ptr->preview_program,
-                                    system_hashed_ansi_string_create("vp"),
-                                   &vp_uniform_descriptor_ptr);
+    const raGL_program preview_program_raGL = ral_context_get_program_gl(preview_ptr->context,
+                                                                         preview_ptr->preview_program);
 
-    ASSERT_DEBUG_SYNC(normal_matrix_uniform_descriptor_ptr != NULL,
+    raGL_program_get_uniform_by_name(preview_program_raGL,
+                                     system_hashed_ansi_string_create("normal_matrix"),
+                                    &normal_matrix_uniform_ptr);
+    raGL_program_get_uniform_by_name(preview_program_raGL,
+                                     system_hashed_ansi_string_create("start_offsets"),
+                                    &start_offsets_uniform_ptr);
+    raGL_program_get_uniform_by_name(preview_program_raGL,
+                                     system_hashed_ansi_string_create("stride"),
+                                    &stride_uniform_ptr);
+    raGL_program_get_uniform_by_name(preview_program_raGL,
+                                     system_hashed_ansi_string_create("vp"),
+                                    &vp_uniform_ptr);
+
+    ASSERT_DEBUG_SYNC(normal_matrix_uniform_ptr != NULL,
                       "Normal matrix uniform not recognized");
-    ASSERT_DEBUG_SYNC(start_offsets_uniform_descriptor_ptr != NULL,
+    ASSERT_DEBUG_SYNC(start_offsets_uniform_ptr != NULL,
                       "Start offsets uniform not recognized");
-    ASSERT_DEBUG_SYNC(stride_uniform_descriptor_ptr != NULL,
+    ASSERT_DEBUG_SYNC(stride_uniform_ptr != NULL,
                       "Stride uniform not recognized");
-    ASSERT_DEBUG_SYNC(vp_uniform_descriptor_ptr != NULL,
+    ASSERT_DEBUG_SYNC(vp_uniform_ptr != NULL,
                       "VP uniform not recognized");
 
-    if (normal_matrix_uniform_descriptor_ptr != NULL)
+    if (normal_matrix_uniform_ptr != NULL)
     {
-        preview_ptr->preview_program_normal_matrix_ub_offset = normal_matrix_uniform_descriptor_ptr->block_offset;
+        preview_ptr->preview_program_normal_matrix_ub_offset = normal_matrix_uniform_ptr->block_offset;
     }
 
-    if (start_offsets_uniform_descriptor_ptr != NULL)
+    if (start_offsets_uniform_ptr != NULL)
     {
-        preview_ptr->preview_program_start_offsets_ub_offset = start_offsets_uniform_descriptor_ptr->block_offset;
+        preview_ptr->preview_program_start_offsets_ub_offset = start_offsets_uniform_ptr->block_offset;
     }
 
-    if (stride_uniform_descriptor_ptr != NULL)
+    if (stride_uniform_ptr != NULL)
     {
-        preview_ptr->preview_program_stride_ub_offset = stride_uniform_descriptor_ptr->block_offset;
+        preview_ptr->preview_program_stride_ub_offset = stride_uniform_ptr->block_offset;
     }
 
-    if (vp_uniform_descriptor_ptr != NULL)
+    if (vp_uniform_ptr != NULL)
     {
-        preview_ptr->preview_program_vp_ub_offset = vp_uniform_descriptor_ptr->block_offset;
+        preview_ptr->preview_program_vp_ub_offset = vp_uniform_ptr->block_offset;
     }
 
     /* Retrieve UB properties */
     preview_ptr->preview_program_ub_gs = NULL;
     preview_ptr->preview_program_ub_vs = NULL;
 
-    ogl_program_get_uniform_block_by_name(preview_ptr->preview_program,
-                                          system_hashed_ansi_string_create("dataGS"),
-                                         &preview_ptr->preview_program_ub_gs);
-    ogl_program_get_uniform_block_by_name(preview_ptr->preview_program,
-                                          system_hashed_ansi_string_create("dataVS"),
-                                         &preview_ptr->preview_program_ub_vs);
+    raGL_program_get_uniform_block_by_name(preview_program_raGL,
+                                           system_hashed_ansi_string_create("dataGS"),
+                                          &preview_ptr->preview_program_ub_gs);
+    raGL_program_get_uniform_block_by_name(preview_program_raGL,
+                                           system_hashed_ansi_string_create("dataVS"),
+                                          &preview_ptr->preview_program_ub_vs);
 
     ASSERT_DEBUG_SYNC(preview_ptr->preview_program_ub_gs != NULL &&
                       preview_ptr->preview_program_ub_vs != NULL,
@@ -277,26 +325,27 @@ PRIVATE void _ogl_context_scene_renderer_normals_preview_init_preview_program(_o
 end_fail:
     if (preview_ptr->preview_program != NULL)
     {
-        ogl_program_release(preview_ptr->preview_program);
+        ral_context_delete_objects(preview_ptr->context,
+                                   RAL_CONTEXT_OBJECT_TYPE_PROGRAM,
+                                   1, /* n_objects */
+                                  &preview_ptr->preview_program);
 
         preview_ptr->preview_program = NULL;
     }
 
 end:
-    if (fs_shader != NULL)
+    ral_shader shaders_to_release[] =
     {
-        ogl_shader_release(fs_shader);
-    }
+        fs,
+        gs,
+        vs
+    };
+    const uint32_t n_shaders_to_release = sizeof(shaders_to_release) / sizeof(shaders_to_release[0]);
 
-    if (gs_shader != NULL)
-    {
-        ogl_shader_release(gs_shader);
-    }
-
-    if (vs_shader != NULL)
-    {
-        ogl_shader_release(vs_shader);
-    }
+    ral_context_delete_objects(preview_ptr->context,
+                               RAL_CONTEXT_OBJECT_TYPE_SHADER,
+                               n_shaders_to_release,
+                               shaders_to_release);
 }
 
 /** Please see header for spec */
@@ -304,29 +353,29 @@ PUBLIC ogl_scene_renderer_normals_preview ogl_scene_renderer_normals_preview_cre
                                                                                     scene              scene,
                                                                                     ogl_scene_renderer owner)
 {
-    _ogl_scene_renderer_normals_preview* new_instance = new (std::nothrow) _ogl_scene_renderer_normals_preview;
+    _ogl_scene_renderer_normals_preview* new_instance_ptr = new (std::nothrow) _ogl_scene_renderer_normals_preview;
 
-    ASSERT_ALWAYS_SYNC(new_instance != NULL,
+    ASSERT_ALWAYS_SYNC(new_instance_ptr != NULL,
                        "Out of memory");
 
-    if (new_instance != NULL)
+    if (new_instance_ptr != NULL)
     {
         /* Do not allocate any GL objects at this point. We will only create GL objects if we
          * are asked to render the preview.
          */
-        new_instance->context                                 = context;
-        new_instance->owned_scene                             = scene;
-        new_instance->owner                                   = owner;
-        new_instance->preview_program                         = NULL;
-        new_instance->preview_program_normal_matrix_ub_offset = -1;
-        new_instance->preview_program_start_offsets_ub_offset = -1;
-        new_instance->preview_program_stride_ub_offset        = -1;
-        new_instance->preview_program_vp_ub_offset            = -1;
+        new_instance_ptr->context                                 = context;
+        new_instance_ptr->owned_scene                             = scene;
+        new_instance_ptr->owner                                   = owner;
+        new_instance_ptr->preview_program                         = NULL;
+        new_instance_ptr->preview_program_normal_matrix_ub_offset = -1;
+        new_instance_ptr->preview_program_start_offsets_ub_offset = -1;
+        new_instance_ptr->preview_program_stride_ub_offset        = -1;
+        new_instance_ptr->preview_program_vp_ub_offset            = -1;
 
         scene_retain(scene);
     } /* if (new_instance != NULL) */
 
-    return (ogl_scene_renderer_normals_preview) new_instance;
+    return (ogl_scene_renderer_normals_preview) new_instance_ptr;
 }
 
 /** Please see header for spec */
@@ -341,7 +390,10 @@ PUBLIC void ogl_scene_renderer_normals_preview_release(ogl_scene_renderer_normal
 
     if (preview_ptr->preview_program != NULL)
     {
-        ogl_program_release(preview_ptr->preview_program);
+        ral_context_delete_objects(preview_ptr->context,
+                                   RAL_CONTEXT_OBJECT_TYPE_PROGRAM,
+                                   1, /* n_objects */
+                                  &preview_ptr->preview_program);
 
         preview_ptr->preview_program = NULL;
     }
@@ -368,7 +420,6 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_scene_renderer_normals_preview_render(ogl
     uint32_t                             mesh_total_elements      = 0;
     system_matrix4x4                     normal_matrix            = NULL;
     _ogl_scene_renderer_normals_preview* preview_ptr              = (_ogl_scene_renderer_normals_preview*) preview;
-    const GLint                          program_id               = ogl_program_get_id(preview_ptr->preview_program);
 
     /* Retrieve mesh properties */
     ogl_context_get_property               (ral_context_get_gl_context(preview_ptr->context),
@@ -491,14 +542,19 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_scene_renderer_normals_preview_start(ogl_
     }
 
     /* Set up uniforms that will be shared across subsequent draw calls */
-    const GLint program_id = ogl_program_get_id(preview_ptr->preview_program);
-    GLuint      vao_id     = 0;
+    raGL_program program_raGL    = ral_context_get_program_gl(preview_ptr->context,
+                                                              preview_ptr->preview_program);
+    GLuint       program_raGL_id = 0;
+    GLuint       vao_id          = 0;
 
-    ogl_context_get_property(ral_context_get_gl_context(preview_ptr->context),
-                             OGL_CONTEXT_PROPERTY_VAO_NO_VAAS,
-                            &vao_id);
+    raGL_program_get_property(program_raGL,
+                              RAGL_PROGRAM_PROPERTY_ID,
+                             &program_raGL_id);
+    ogl_context_get_property (ral_context_get_gl_context(preview_ptr->context),
+                              OGL_CONTEXT_PROPERTY_VAO_NO_VAAS,
+                             &vao_id);
 
-    entrypoints_ptr->pGLUseProgram             (program_id);
+    entrypoints_ptr->pGLUseProgram             (program_raGL_id);
     ogl_program_ub_set_nonarrayed_uniform_value(preview_ptr->preview_program_ub_gs,
                                                 preview_ptr->preview_program_vp_ub_offset,
                                                 system_matrix4x4_get_column_major_data(vp),

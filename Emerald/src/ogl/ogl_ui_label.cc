@@ -5,8 +5,6 @@
  */
 #include "shared.h"
 #include "ogl/ogl_context.h"
-#include "ogl/ogl_program.h"
-#include "ogl/ogl_shader.h"
 #include "ogl/ogl_text.h"
 #include "ogl/ogl_ui.h"
 #include "ogl/ogl_ui_label.h"
@@ -83,41 +81,41 @@ PUBLIC void* ogl_ui_label_init(ogl_ui                    instance,
                                system_hashed_ansi_string name,
                                const float*              x1y1)
 {
-    _ogl_ui_label* new_label = new (std::nothrow) _ogl_ui_label;
+    _ogl_ui_label* new_label_ptr = new (std::nothrow) _ogl_ui_label;
 
-    ASSERT_ALWAYS_SYNC(new_label != NULL,
+    ASSERT_ALWAYS_SYNC(new_label_ptr != NULL,
                        "Out of memory");
 
-    if (new_label != NULL)
+    if (new_label_ptr != NULL)
     {
         /* Initialize fields */
-        memset(new_label,
+        memset(new_label_ptr,
                0,
                sizeof(_ogl_ui_label) );
 
-        new_label->x1y1[0] =     x1y1[0];
-        new_label->x1y1[1] = 1 - x1y1[1];
+        new_label_ptr->x1y1[0] =     x1y1[0];
+        new_label_ptr->x1y1[1] = 1 - x1y1[1];
 
-        new_label->text_renderer = text_renderer;
-        new_label->text_id       = ogl_text_add_string(text_renderer);
-        new_label->visible       = true;
+        new_label_ptr->text_renderer = text_renderer;
+        new_label_ptr->text_id       = ogl_text_add_string(text_renderer);
+        new_label_ptr->visible       = true;
 
         /* Configure the text to be shown on the button */
-        ogl_text_set(new_label->text_renderer,
-                     new_label->text_id,
+        ogl_text_set(new_label_ptr->text_renderer,
+                     new_label_ptr->text_id,
                      system_hashed_ansi_string_get_buffer(name) );
 
-        ogl_text_set_text_string_property(new_label->text_renderer,
-                                          new_label->text_id,
+        ogl_text_set_text_string_property(new_label_ptr->text_renderer,
+                                          new_label_ptr->text_id,
                                           OGL_TEXT_STRING_PROPERTY_COLOR,
                                           _ui_button_text_color);
-        ogl_text_set_text_string_property(new_label->text_renderer,
-                                          new_label->text_id,
+        ogl_text_set_text_string_property(new_label_ptr->text_renderer,
+                                          new_label_ptr->text_id,
                                           OGL_TEXT_STRING_PROPERTY_POSITION_SS,
                                           x1y1);
     } /* if (new_label != NULL) */
 
-    return (void*) new_label;
+    return (void*) new_label_ptr;
 }
 
 /** Please see header for specification */

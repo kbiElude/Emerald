@@ -35,11 +35,8 @@ static system_hashed_ansi_string _object_type_ogl_context_hashed_ansi_string    
 static system_hashed_ansi_string _object_type_ogl_curve_renderer_hashed_ansi_string                    = NULL;
 static system_hashed_ansi_string _object_type_ogl_pipeline_hashed_ansi_string                          = NULL;
 static system_hashed_ansi_string _object_type_ogl_primitive_renderer_hashed_ansi_string                = NULL;
-static system_hashed_ansi_string _object_type_ogl_program_hashed_ansi_string                           = NULL;
-static system_hashed_ansi_string _object_type_ogl_programs_hashed_ansi_string                          = NULL;
 static system_hashed_ansi_string _object_type_ogl_rendering_handler_hashed_ansi_string                 = NULL;
 static system_hashed_ansi_string _object_type_ogl_shader_constructor_hashed_ansi_string                = NULL;
-static system_hashed_ansi_string _object_type_ogl_shader_hashed_ansi_string                            = NULL;
 static system_hashed_ansi_string _object_type_ogl_skybox_hashed_ansi_string                            = NULL;
 static system_hashed_ansi_string _object_type_ogl_text_hashed_ansi_string                              = NULL;
 static system_hashed_ansi_string _object_type_ogl_textures_hashed_ansi_string                          = NULL;
@@ -119,10 +116,7 @@ PUBLIC system_hashed_ansi_string object_manager_convert_object_manager_object_ty
         case OBJECT_TYPE_OGL_CURVE_RENDERER:                              return _object_type_ogl_curve_renderer_hashed_ansi_string;
         case OBJECT_TYPE_OGL_PIPELINE:                                    return _object_type_ogl_pipeline_hashed_ansi_string;
         case OBJECT_TYPE_OGL_PRIMITIVE_RENDERER:                          return _object_type_ogl_primitive_renderer_hashed_ansi_string;
-        case OBJECT_TYPE_OGL_PROGRAM:                                     return _object_type_ogl_program_hashed_ansi_string;
-        case OBJECT_TYPE_OGL_PROGRAMS:                                    return _object_type_ogl_programs_hashed_ansi_string;
         case OBJECT_TYPE_OGL_RENDERING_HANDLER:                           return _object_type_ogl_rendering_handler_hashed_ansi_string;
-        case OBJECT_TYPE_OGL_SHADER:                                      return _object_type_ogl_shader_hashed_ansi_string;
         case OBJECT_TYPE_OGL_SHADER_CONSTRUCTOR:                          return _object_type_ogl_shader_constructor_hashed_ansi_string;
         case OBJECT_TYPE_OGL_SKYBOX:                                      return _object_type_ogl_skybox_hashed_ansi_string;
         case OBJECT_TYPE_OGL_TEXT:                                        return _object_type_ogl_text_hashed_ansi_string;
@@ -274,7 +268,7 @@ PUBLIC void _object_manager_deinit()
 
     if (n_elements != 0)
     {
-        LOG_ERROR("Resource leak detected upon exiting! %d elements are still there!",
+        LOG_ERROR("Resource leak detected upon exiting! %u elements are still there!",
                   n_elements);
     }
 
@@ -375,11 +369,8 @@ PUBLIC void _object_manager_init()
     _object_type_ogl_curve_renderer_hashed_ansi_string                    = system_hashed_ansi_string_create("Curve Renderers");
     _object_type_ogl_pipeline_hashed_ansi_string                          = system_hashed_ansi_string_create("OpenGL Pipelines");
     _object_type_ogl_primitive_renderer_hashed_ansi_string                = system_hashed_ansi_string_create("Primitive Renderers");
-    _object_type_ogl_program_hashed_ansi_string                           = system_hashed_ansi_string_create("OpenGL Programs");
-    _object_type_ogl_programs_hashed_ansi_string                          = system_hashed_ansi_string_create("OpenGL Program Managers");
     _object_type_ogl_rendering_handler_hashed_ansi_string                 = system_hashed_ansi_string_create("OpenGL Rendering Handlers");
     _object_type_ogl_shader_constructor_hashed_ansi_string                = system_hashed_ansi_string_create("OpenGL Shader Constructors");
-    _object_type_ogl_shader_hashed_ansi_string                            = system_hashed_ansi_string_create("OpenGL Shaders");
     _object_type_ogl_skybox_hashed_ansi_string                            = system_hashed_ansi_string_create("OpenGL Skyboxes");
     _object_type_ogl_text_hashed_ansi_string                              = system_hashed_ansi_string_create("OpenGL Text Renderers");
     _object_type_ogl_textures_hashed_ansi_string                          = system_hashed_ansi_string_create("OpenGL Textures");

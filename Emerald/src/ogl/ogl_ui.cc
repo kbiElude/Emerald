@@ -9,7 +9,6 @@
 #include "shared.h"
 #include "ogl/ogl_context.h"
 #include "ogl/ogl_pipeline.h"
-#include "ogl/ogl_program.h"
 #include "ogl/ogl_text.h"
 #include "ogl/ogl_ui.h"
 #include "ogl/ogl_ui_button.h"
@@ -21,6 +20,7 @@
 #include "ogl/ogl_ui_scrollbar.h"
 #include "ogl/ogl_ui_texture_preview.h"
 #include "ral/ral_context.h"
+#include "ral/ral_program.h"
 #include "system/system_assertions.h"
 #include "system/system_critical_section.h"
 #include "system/system_hash64map.h"
@@ -349,7 +349,7 @@ PRIVATE void _ogl_ui_deinit(_ogl_ui* ui_ptr)
         {
             uint32_t      n_programs                   = 0;
             bool          result                       = false;
-            ogl_program   ui_control_program           = NULL;
+            ral_program   ui_control_program           = NULL;
             system_hash64 ui_control_program_name_hash = 0;
 
             system_hash64map_get_property(ui_ptr->registered_ui_control_programs,
@@ -366,7 +366,10 @@ PRIVATE void _ogl_ui_deinit(_ogl_ui* ui_ptr)
                                                &ui_control_program,
                                                &ui_control_program_name_hash) )
             {
-                ogl_program_release(ui_control_program);
+                ral_context_delete_objects(ogl_text_get_context(ui_ptr->text_renderer),
+                                           RAL_CONTEXT_OBJECT_TYPE_PROGRAM,
+                                           1, /* n_objects */
+                                          &ui_control_program);
 
                 result = system_hash64map_remove(ui_ptr->registered_ui_control_programs,
                                                  ui_control_program_name_hash);
@@ -1250,7 +1253,9 @@ PUBLIC EMERALD_API ogl_ui ogl_ui_create(ogl_text                  text_renderer,
 {
     _ogl_ui* ui_ptr = new (std::nothrow) _ogl_ui;
 
-    ASSERT_ALWAYS_SYNC(ui_ptr != NULL, "Out of memory");
+    ASSERT_ALWAYS_SYNC(ui_ptr != NULL,
+                       "Out of memory");
+
     if (ui_ptr != NULL)
     {
         _ogl_ui_init(ui_ptr,
@@ -1362,10 +1367,10 @@ PUBLIC ral_context ogl_ui_get_context(ogl_ui ui)
 }
 
 /** Please see header for specification */
-PUBLIC ogl_program ogl_ui_get_registered_program(ogl_ui                    ui,
+PUBLIC ral_program ogl_ui_get_registered_program(ogl_ui                    ui,
                                                  system_hashed_ansi_string name)
 {
-    ogl_program result = NULL;
+    ral_program result = NULL;
     _ogl_ui*    ui_ptr = (_ogl_ui*) ui;
 
     system_hash64map_get(ui_ptr->registered_ui_control_programs,
@@ -1374,7 +1379,9 @@ PUBLIC ogl_program ogl_ui_get_registered_program(ogl_ui                    ui,
 
     if (result != NULL)
     {
-        ogl_program_retain(result);
+        ral_context_retain_object(ogl_text_get_context(ui_ptr->text_renderer),
+                                  RAL_CONTEXT_OBJECT_TYPE_PROGRAM,
+                                 &result);
     }
 
     return result;
@@ -1459,26 +1466,26 @@ PUBLIC EMERALD_API void ogl_ui_register_control_callback(ogl_ui                 
     }
 
     /* Spawn the callback descriptor */
-    _ogl_ui_callback* new_callback = new (std::nothrow) _ogl_ui_callback;
+    _ogl_ui_callback* new_callback_ptr = new (std::nothrow) _ogl_ui_callback;
 
-    ASSERT_ALWAYS_SYNC(new_callback != NULL,
+    ASSERT_ALWAYS_SYNC(new_callback_ptr != NULL,
                        "Out of memory");
-    if (new_callback != NULL)
+    if (new_callback_ptr != NULL)
     {
-        new_callback->callback_id            = callback_id;
-        new_callback->callback_proc_ptr      = callback_proc_ptr;
-        new_callback->callback_proc_user_arg = callback_proc_user_arg;
+        new_callback_ptr->callback_id            = callback_id;
+        new_callback_ptr->callback_proc_ptr      = callback_proc_ptr;
+        new_callback_ptr->callback_proc_user_arg = callback_proc_user_arg;
 
         /* Store it */
         system_resizable_vector_push(callback_vector,
-                                     new_callback);
+                                     new_callback_ptr);
     }
 }
 
 /** Please see header for specification */
 PUBLIC bool ogl_ui_register_program(ogl_ui                    ui,
                                     system_hashed_ansi_string program_name,
-                                    ogl_program               program)
+                                    ral_program               program)
 {
     const system_hash64 program_name_hash = system_hashed_ansi_string_get_hash(program_name);
     bool                result            = false;
@@ -1493,13 +1500,16 @@ PUBLIC bool ogl_ui_register_program(ogl_ui                    ui,
                                 NULL,
                                 NULL);
 
-        ogl_program_retain(program);
+        ral_context_retain_object(ogl_text_get_context(ui_ptr->text_renderer),
+                                  RAL_CONTEXT_OBJECT_TYPE_PROGRAM,
+                                 &program);
+
         result = true;
     } /* if (!system_hash64map_contains(ui_ptr->registered_ui_control_programs, program_name_hash) ) */
     else
     {
         LOG_ERROR("UI program [%s] will not be registered - already stored",
-                  system_hashed_ansi_string_get_buffer(ogl_program_get_name(program) ) );
+                  system_hashed_ansi_string_get_buffer(program_name) );
     }
 
     return result;

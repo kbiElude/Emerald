@@ -18,9 +18,9 @@ REFCOUNT_INSERT_DECLARATIONS(shaders_fragment_texture2D_reinhardt,
 
 /** Creates a shaders_fragment_texture2D_reinhardt object instance.
  *
- *  @param ogl_context               Context to create the shader in.
- *  @param bool                      TODO
- *  @param system_hashed_ansi_string TODO
+ *  @param context         Context to create the shader in.
+ *  @param should_revert_y TODO
+ *  @param name            TODO
  * 
  *  @return shaders_fragment_texture2D_reinhardt instance if successful, NULL otherwise.
  */
@@ -28,12 +28,12 @@ PUBLIC EMERALD_API shaders_fragment_texture2D_reinhardt shaders_fragment_texture
                                                                                                     bool                      should_revert_y,
                                                                                                     system_hashed_ansi_string name);
 
-/** Retrieves ogl_shader object associated with the instance. Do not release the object or modify it in any way.
+/** Retrieves ralo_shader object associated with the instance. Do not release the object or modify it in any way.
  *
- *  @param shaders_fragment_texture2D_reinhardt Shader instance to retrieve the shader from. Cannot be NULL.
+ *  @param shader Shader instance to retrieve the shader from. Cannot be NULL.
  *
- *  @return ogl_shader instance.
+ *  @return ral_shader instance.
  **/
-PUBLIC EMERALD_API ogl_shader shaders_fragment_texture2D_reinhardt_get_shader(shaders_fragment_texture2D_reinhardt);
+PUBLIC EMERALD_API ral_shader shaders_fragment_texture2D_reinhardt_get_shader(shaders_fragment_texture2D_reinhardt shader);
 
 #endif /* SHADERS_FRAGMENT_TEXTURE2D_REINHARDT_H */

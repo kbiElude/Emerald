@@ -791,10 +791,10 @@ PUBLIC EMERALD_API bool ogl_shader_constructor_add_function(ogl_shader_construct
                                                             _shader_variable_type     returned_value_type,
                                                             _function_id*             out_new_function_id_ptr)
 {
-    _ogl_shader_constructor*          constructor_ptr    = (_ogl_shader_constructor*) constructor;
-    _ogl_shader_constructor_function* new_descriptor_ptr = NULL;
-    bool                              result             = false;
-    _function_id                      result_id          = 0;
+    _ogl_shader_constructor*          constructor_ptr  = (_ogl_shader_constructor*) constructor;
+    _ogl_shader_constructor_function* new_function_ptr = NULL;
+    bool                              result           = false;
+    _function_id                      result_id        = 0;
 
     system_resizable_vector_get_property(constructor_ptr->functions,
                                          SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
@@ -829,19 +829,19 @@ PUBLIC EMERALD_API bool ogl_shader_constructor_add_function(ogl_shader_construct
     } /* for (all function descriptors) */
 
     /* Form the new descriptor */
-    new_descriptor_ptr = new (std::nothrow) _ogl_shader_constructor_function;
+    new_function_ptr = new (std::nothrow) _ogl_shader_constructor_function;
 
-    ASSERT_ALWAYS_SYNC(new_descriptor_ptr != NULL,
+    ASSERT_ALWAYS_SYNC(new_function_ptr != NULL,
                        "Out of memory");
 
-    if (new_descriptor_ptr != NULL)
+    if (new_function_ptr != NULL)
     {
-        new_descriptor_ptr->name                = name;
-        new_descriptor_ptr->returned_value_type = returned_value_type;
+        new_function_ptr->name                = name;
+        new_function_ptr->returned_value_type = returned_value_type;
 
         /* Store the descriptor */
         system_resizable_vector_push(constructor_ptr->functions,
-                                     new_descriptor_ptr);
+                                     new_function_ptr);
 
         /* All good */
         *out_new_function_id_ptr = result_id;
@@ -862,9 +862,9 @@ PUBLIC EMERALD_API void ogl_shader_constructor_add_function_argument(ogl_shader_
                                                                      _shader_variable_type      argument_type,
                                                                      system_hashed_ansi_string  argument_name)
 {
-    _ogl_shader_constructor*                   constructor_ptr    = (_ogl_shader_constructor*) constructor;
-    unsigned int                               n_arguments        = 0;
-    _ogl_shader_constructor_function_argument* new_descriptor_ptr = NULL;
+    _ogl_shader_constructor*                   constructor_ptr  = (_ogl_shader_constructor*) constructor;
+    unsigned int                               n_arguments      = 0;
+    _ogl_shader_constructor_function_argument* new_func_arg_ptr = NULL;
 
     /* Identify the function descriptor */
     _ogl_shader_constructor_function* function_ptr = NULL;
@@ -912,21 +912,22 @@ PUBLIC EMERALD_API void ogl_shader_constructor_add_function_argument(ogl_shader_
     } /* for (all arguments) */
 
     /* Form the new descriptor */
-    new_descriptor_ptr = new (std::nothrow) _ogl_shader_constructor_function_argument;
+    new_func_arg_ptr = new (std::nothrow) _ogl_shader_constructor_function_argument;
 
-    ASSERT_ALWAYS_SYNC(new_descriptor_ptr != NULL,
+    ASSERT_ALWAYS_SYNC(new_func_arg_ptr != NULL,
                        "Out of memory");
 
-    if (new_descriptor_ptr != NULL)
+    if (new_func_arg_ptr != NULL)
     {
-        new_descriptor_ptr->qualifier                 = qualifier;
-        new_descriptor_ptr->properties->array_size    = 0;
-        new_descriptor_ptr->properties->name          = argument_name;
-        new_descriptor_ptr->properties->type          = argument_type;
-        new_descriptor_ptr->properties->variable_type = VARIABLE_TYPE_NONE;
+        new_func_arg_ptr->qualifier                 = qualifier;
+        new_func_arg_ptr->properties->array_size    = 0;
+        new_func_arg_ptr->properties->name          = argument_name;
+        new_func_arg_ptr->properties->type          = argument_type;
+        new_func_arg_ptr->properties->variable_type = VARIABLE_TYPE_NONE;
 
         /* Store the descriptor */
-        system_resizable_vector_push(function_ptr->arguments, new_descriptor_ptr);
+        system_resizable_vector_push(function_ptr->arguments,
+                                     new_func_arg_ptr);
     }
 
     /* Mark the constructor as dirty */
@@ -1385,22 +1386,22 @@ end:
 PUBLIC EMERALD_API ogl_shader_constructor ogl_shader_constructor_create(ral_shader_type           shader_type,
                                                                         system_hashed_ansi_string name)
 {
-    _ogl_shader_constructor* result = new (std::nothrow) _ogl_shader_constructor;
+    _ogl_shader_constructor* constructor_ptr = new (std::nothrow) _ogl_shader_constructor;
 
-    if (result != NULL)
+    if (constructor_ptr != NULL)
     {
         /* Store the properties */
-        result->shader_type = shader_type;
+        constructor_ptr->shader_type = shader_type;
 
         /* Create the default uniform block's descriptor */
-        ogl_shader_constructor_add_uniform_block( (ogl_shader_constructor) result,
+        ogl_shader_constructor_add_uniform_block( (ogl_shader_constructor) constructor_ptr,
                                                   (_layout_qualifier)      0, /* no layout qualifiers */
                                                   system_hashed_ansi_string_get_default_empty_string() );
 
         /* Create main() function descriptor */
         _function_id main_function_id = (_function_id) 0xFFFFFFFF;
 
-        ogl_shader_constructor_add_function( (ogl_shader_constructor) result,
+        ogl_shader_constructor_add_function( (ogl_shader_constructor) constructor_ptr,
                                              system_hashed_ansi_string_create("main"),
                                              TYPE_VOID,
                                              &main_function_id);
@@ -1409,14 +1410,14 @@ PUBLIC EMERALD_API ogl_shader_constructor ogl_shader_constructor_create(ral_shad
                           "main() function ID is not 0!");
 
         /* Initialize reference counting */
-        REFCOUNT_INSERT_INIT_CODE_WITH_RELEASE_HANDLER(result,
+        REFCOUNT_INSERT_INIT_CODE_WITH_RELEASE_HANDLER(constructor_ptr,
                                                        _ogl_shader_constructor_release,
                                                        OBJECT_TYPE_OGL_SHADER_CONSTRUCTOR,
                                                        system_hashed_ansi_string_create_by_merging_two_strings("\\OpenGL Shader Constructors\\",
                                                                                                                system_hashed_ansi_string_get_buffer(name)) );
     }
 
-    return (ogl_shader_constructor) result;
+    return (ogl_shader_constructor) constructor_ptr;
 }
 
 /** Please see header for specification */

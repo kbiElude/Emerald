@@ -5,7 +5,8 @@
  */
 #include "shared.h"
 #include "ogl/ogl_context.h"
-#include "ogl/ogl_shader.h"
+#include "ral/ral_context.h"
+#include "ral/ral_shader.h"
 #include "shaders/shaders_fragment_saturate.h"
 #include "system/system_assertions.h"
 #include "system/system_hashed_ansi_string.h"
@@ -33,7 +34,8 @@ const char* saturate_fragment_shader_body = "#version 430 core\n"
 /** Internal type definition */
 typedef struct
 {
-    ogl_shader shader;
+    ral_context context;
+    ral_shader  shader;
 
     REFCOUNT_INSERT_VARIABLES
 } _shaders_fragment_saturate;
@@ -44,9 +46,9 @@ REFCOUNT_INSERT_IMPLEMENTATION(shaders_fragment_saturate,
                               _shaders_fragment_saturate);
 
 
-/** Function called back when reference counter drops to zero. Releases the laplacian shader object.
+/** Function called back when reference counter drops to zero. Releases the shader object.
  *
- *  @param ptr Pointer to _shaders_fragment_sobel instance.
+ *  @param ptr Pointer to _shaders_fragment_saturate instance.
  **/
 PRIVATE void _shaders_fragment_saturate_release(void* ptr)
 {
@@ -54,7 +56,10 @@ PRIVATE void _shaders_fragment_saturate_release(void* ptr)
 
     if (data_ptr->shader != NULL)
     {
-        ogl_shader_release(data_ptr->shader);
+        ral_context_delete_objects(data_ptr->context,
+                                   RAL_CONTEXT_OBJECT_TYPE_SHADER,
+                                   1, /* n_objects */
+                                  &data_ptr->shader);
 
         data_ptr->shader = NULL;
     }
@@ -65,73 +70,62 @@ PRIVATE void _shaders_fragment_saturate_release(void* ptr)
 PUBLIC EMERALD_API shaders_fragment_saturate shaders_fragment_saturate_create(ral_context               context,
                                                                               system_hashed_ansi_string name)
 {
-    _shaders_fragment_saturate* result_object = NULL;
-    shaders_fragment_saturate   result_shader = NULL;
+    _shaders_fragment_saturate* result_object_ptr = NULL;
+    ral_shader                  shader            = NULL;
 
     /* Create the shader */
-    ogl_shader shader = ogl_shader_create(context,
-                                          RAL_SHADER_TYPE_FRAGMENT,
-                                          name);
+    system_hashed_ansi_string shader_body       (system_hashed_ansi_string_create(saturate_fragment_shader_body) );
+    ral_shader_create_info    shader_create_info(name,
+                                                 RAL_SHADER_TYPE_FRAGMENT);
 
-    ASSERT_DEBUG_SYNC(shader != NULL,
-                      "Could not create a fragment shader.");
-
-    if (shader == NULL)
+    if (!ral_context_create_shaders(context,
+                                    1, /* n_create_info_items */
+                                   &shader_create_info,
+                                   &shader) )
     {
-        LOG_ERROR("Could not create a fragment shader for Saturate shader object.");
-
-        goto end;
-    }
-
-    /* Attach body to the shader */
-    if (!ogl_shader_set_body(shader,
-                             system_hashed_ansi_string_create(saturate_fragment_shader_body) ))
-    {
-        LOG_ERROR        ("Could not set body of saturation fragment shader.");
         ASSERT_DEBUG_SYNC(false,
-                          "");
+                          "Could not create a RAL shader instance");
 
         goto end;
     }
+
+    ral_shader_set_property(shader,
+                            RAL_SHADER_PROPERTY_GLSL_BODY,
+                           &shader_body);
 
     /* Everything went okay. Instantiate the object */
-    result_object = new (std::nothrow) _shaders_fragment_saturate;
+    result_object_ptr = new (std::nothrow) _shaders_fragment_saturate;
 
-    ASSERT_DEBUG_SYNC(result_object != NULL,
+    ASSERT_DEBUG_SYNC(result_object_ptr != NULL,
                       "Out of memory while instantiating _shaders_fragment_saturate object.");
 
-    if (result_object == NULL)
+    if (result_object_ptr == NULL)
     {
-        LOG_ERROR("Out of memory while creating Laplacian object instance.");
-
         goto end;
     }
 
-    result_object->shader = shader;
+    result_object_ptr->context = context;
+    result_object_ptr->shader  = shader;
 
     /* Return the object */
-    return (shaders_fragment_saturate) result_object;
+    return (shaders_fragment_saturate) result_object_ptr;
 
 end:
     if (shader != NULL)
     {
-        ogl_shader_release(shader);
+        ral_context_delete_objects(context,
+                                   RAL_CONTEXT_OBJECT_TYPE_SHADER,
+                                   1, /* n_objects */
+                                  &shader);
 
         shader = NULL;
-    }
-
-    if (result_object != NULL)
-    {
-        delete result_object;
-
-        result_object = NULL;
     }
 
     return NULL;
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API ogl_shader shaders_fragment_saturate_get_shader(shaders_fragment_saturate shader)
+PUBLIC EMERALD_API ral_shader shaders_fragment_saturate_get_shader(shaders_fragment_saturate shader)
 {
     return (((_shaders_fragment_saturate*)shader)->shader);
 }

@@ -8,7 +8,9 @@ DECLARE_HANDLE(ral_command_buffer);
 DECLARE_HANDLE(ral_context);
 DECLARE_HANDLE(ral_framebuffer);
 DECLARE_HANDLE(ral_graphics_state);
+DECLARE_HANDLE(ral_program);
 DECLARE_HANDLE(ral_sampler);
+DECLARE_HANDLE(ral_shader);
 DECLARE_HANDLE(ral_texture);
 DECLARE_HANDLE(ral_texture_pool);
 
@@ -69,6 +71,142 @@ typedef enum
     RAL_BUFFER_USAGE_LAST_USED_BIT = 7
 };
 typedef int ral_buffer_usage_bits;
+
+/** Enumerator that describes allowed types for a program attribute */
+typedef enum
+{
+    RAL_PROGRAM_ATTRIBUTE_TYPE_FLOAT             = GL_FLOAT,
+    RAL_PROGRAM_ATTRIBUTE_TYPE_FLOAT_VEC2        = GL_FLOAT_VEC2,
+    RAL_PROGRAM_ATTRIBUTE_TYPE_FLOAT_VEC3        = GL_FLOAT_VEC3,
+    RAL_PROGRAM_ATTRIBUTE_TYPE_FLOAT_VEC4        = GL_FLOAT_VEC4,
+    RAL_PROGRAM_ATTRIBUTE_TYPE_FLOAT_MAT2        = GL_FLOAT_MAT2,
+    RAL_PROGRAM_ATTRIBUTE_TYPE_FLOAT_MAT3        = GL_FLOAT_MAT3,
+    RAL_PROGRAM_ATTRIBUTE_TYPE_FLOAT_MAT4        = GL_FLOAT_MAT4,
+    RAL_PROGRAM_ATTRIBUTE_TYPE_FLOAT_MAT2x3      = GL_FLOAT_MAT2x3,
+    RAL_PROGRAM_ATTRIBUTE_TYPE_FLOAT_MAT2x4      = GL_FLOAT_MAT2x4,
+    RAL_PROGRAM_ATTRIBUTE_TYPE_FLOAT_MAT3x2      = GL_FLOAT_MAT3x2,
+    RAL_PROGRAM_ATTRIBUTE_TYPE_FLOAT_MAT3x4      = GL_FLOAT_MAT3x4,
+    RAL_PROGRAM_ATTRIBUTE_TYPE_FLOAT_MAT4x2      = GL_FLOAT_MAT4x2,
+    RAL_PROGRAM_ATTRIBUTE_TYPE_FLOAT_MAT4x3      = GL_FLOAT_MAT4x3,
+    RAL_PROGRAM_ATTRIBUTE_TYPE_INT               = GL_INT, 
+    RAL_PROGRAM_ATTRIBUTE_TYPE_INT_VEC2          = GL_INT_VEC2,
+    RAL_PROGRAM_ATTRIBUTE_TYPE_INT_VEC3          = GL_INT_VEC3,
+    RAL_PROGRAM_ATTRIBUTE_TYPE_INT_VEC4          = GL_INT_VEC4,
+    RAL_PROGRAM_ATTRIBUTE_TYPE_UNSIGNED_INT      = GL_UNSIGNED_INT,
+    RAL_PROGRAM_ATTRIBUTE_TYPE_UNSIGNED_INT_VEC2 = GL_UNSIGNED_INT_VEC2,
+    RAL_PROGRAM_ATTRIBUTE_TYPE_UNSIGNED_INT_VEC3 = GL_UNSIGNED_INT_VEC3,
+    RAL_PROGRAM_ATTRIBUTE_TYPE_UNSIGNED_INT_VEC4 = GL_UNSIGNED_INT_VEC4,
+
+    RAL_PROGRAM_ATTRIBUTE_TYPE_UNDEFINED
+} ral_program_attribute_type;
+
+/** Structure that describes properties of a program attribute */
+typedef struct 
+{
+    system_hashed_ansi_string  name;
+    int32_t                    length;
+    int32_t                    location;
+    int32_t                    size;
+    ral_program_attribute_type type;
+
+} ral_program_attribute;
+
+/** Enumerator that describes allowed types for a program uniform */
+typedef enum
+{
+    /* NOTE: If you need to modify this array, make sure to update raGL_utils_get_ogl_enum_for_ral_program_uniform_type() */
+    RAL_PROGRAM_UNIFORM_TYPE_FLOAT,
+    RAL_PROGRAM_UNIFORM_TYPE_FLOAT_VEC2,
+    RAL_PROGRAM_UNIFORM_TYPE_FLOAT_VEC3,
+    RAL_PROGRAM_UNIFORM_TYPE_FLOAT_VEC4,
+    RAL_PROGRAM_UNIFORM_TYPE_INT,
+    RAL_PROGRAM_UNIFORM_TYPE_INT_VEC2,
+    RAL_PROGRAM_UNIFORM_TYPE_INT_VEC3,
+    RAL_PROGRAM_UNIFORM_TYPE_INT_VEC4,
+    RAL_PROGRAM_UNIFORM_TYPE_UNSIGNED_INT,
+    RAL_PROGRAM_UNIFORM_TYPE_UNSIGNED_INT_VEC2,
+    RAL_PROGRAM_UNIFORM_TYPE_UNSIGNED_INT_VEC3,
+    RAL_PROGRAM_UNIFORM_TYPE_UNSIGNED_INT_VEC4,
+    RAL_PROGRAM_UNIFORM_TYPE_BOOL,
+    RAL_PROGRAM_UNIFORM_TYPE_BOOL_VEC2,
+    RAL_PROGRAM_UNIFORM_TYPE_BOOL_VEC3,
+    RAL_PROGRAM_UNIFORM_TYPE_BOOL_VEC4,
+    RAL_PROGRAM_UNIFORM_TYPE_FLOAT_MAT2,
+    RAL_PROGRAM_UNIFORM_TYPE_FLOAT_MAT3,
+    RAL_PROGRAM_UNIFORM_TYPE_FLOAT_MAT4,
+    RAL_PROGRAM_UNIFORM_TYPE_FLOAT_MAT2x3,
+    RAL_PROGRAM_UNIFORM_TYPE_FLOAT_MAT2x4,
+    RAL_PROGRAM_UNIFORM_TYPE_FLOAT_MAT3x2,
+    RAL_PROGRAM_UNIFORM_TYPE_FLOAT_MAT3x4,
+    RAL_PROGRAM_UNIFORM_TYPE_FLOAT_MAT4x2,
+    RAL_PROGRAM_UNIFORM_TYPE_FLOAT_MAT4x3,
+    RAL_PROGRAM_UNIFORM_TYPE_SAMPLER_1D,
+    RAL_PROGRAM_UNIFORM_TYPE_SAMPLER_2D,
+    RAL_PROGRAM_UNIFORM_TYPE_SAMPLER_3D,
+    RAL_PROGRAM_UNIFORM_TYPE_SAMPLER_CUBE,
+    RAL_PROGRAM_UNIFORM_TYPE_SAMPLER_1D_SHADOW,
+    RAL_PROGRAM_UNIFORM_TYPE_SAMPLER_2D_SHADOW,
+    RAL_PROGRAM_UNIFORM_TYPE_SAMPLER_1D_ARRAY,
+    RAL_PROGRAM_UNIFORM_TYPE_SAMPLER_2D_ARRAY,
+    RAL_PROGRAM_UNIFORM_TYPE_SAMPLER_1D_ARRAY_SHADOW,
+    RAL_PROGRAM_UNIFORM_TYPE_SAMPLER_2D_ARRAY_SHADOW,
+    RAL_PROGRAM_UNIFORM_TYPE_SAMPLER_2D_MULTISAMPLE,
+    RAL_PROGRAM_UNIFORM_TYPE_SAMPLER_2D_MULTISAMPLE_ARRAY,
+    RAL_PROGRAM_UNIFORM_TYPE_SAMPLER_CUBE_SHADOW,
+    RAL_PROGRAM_UNIFORM_TYPE_SAMPLER_BUFFER,
+    RAL_PROGRAM_UNIFORM_TYPE_SAMPLER_2D_RECT,
+    RAL_PROGRAM_UNIFORM_TYPE_SAMPLER_2D_RECT_SHADOW,
+    RAL_PROGRAM_UNIFORM_TYPE_INT_SAMPLER_1D,
+    RAL_PROGRAM_UNIFORM_TYPE_INT_SAMPLER_2D,
+    RAL_PROGRAM_UNIFORM_TYPE_INT_SAMPLER_3D,
+    RAL_PROGRAM_UNIFORM_TYPE_INT_SAMPLER_CUBE,
+    RAL_PROGRAM_UNIFORM_TYPE_INT_SAMPLER_1D_ARRAY,
+    RAL_PROGRAM_UNIFORM_TYPE_INT_SAMPLER_2D_ARRAY,
+    RAL_PROGRAM_UNIFORM_TYPE_INT_SAMPLER_2D_MULTISAMPLE,
+    RAL_PROGRAM_UNIFORM_TYPE_INT_SAMPLER_2D_MULTISAMPLE_ARRAY,
+    RAL_PROGRAM_UNIFORM_TYPE_INT_SAMPLER_BUFFER,
+    RAL_PROGRAM_UNIFORM_TYPE_INT_SAMPLER_2D_RECT,
+    RAL_PROGRAM_UNIFORM_TYPE_UNSIGNED_INT_SAMPLER_1D,
+    RAL_PROGRAM_UNIFORM_TYPE_UNSIGNED_INT_SAMPLER_2D,
+    RAL_PROGRAM_UNIFORM_TYPE_UNSIGNED_INT_SAMPLER_3D,
+    RAL_PROGRAM_UNIFORM_TYPE_UNSIGNED_INT_SAMPLER_CUBE,
+    RAL_PROGRAM_UNIFORM_TYPE_UNSIGNED_INT_SAMPLER_1D_ARRAY,
+    RAL_PROGRAM_UNIFORM_TYPE_UNSIGNED_INT_SAMPLER_2D_ARRAY,
+    RAL_PROGRAM_UNIFORM_TYPE_UNSIGNED_INT_SAMPLER_2D_MULTISAMPLE,
+    RAL_PROGRAM_UNIFORM_TYPE_UNSIGNED_INT_SAMPLER_2D_MULTISAMPLE_ARRAY,
+    RAL_PROGRAM_UNIFORM_TYPE_UNSIGNED_INT_SAMPLER_BUFFER,
+    RAL_PROGRAM_UNIFORM_TYPE_UNSIGNED_INT_SAMPLER_2D_RECT,
+
+    RAL_PROGRAM_UNIFORM_TYPE_UNDEFINED,
+    RAL_PROGRAM_UNIFORM_TYPE_COUNT = RAL_PROGRAM_UNIFORM_TYPE_UNDEFINED
+
+} ral_program_uniform_type;
+
+/** Structure that describes properties of a program uniform, or a shader storage block member, or the like.
+ *
+ *  For uniforms, this structure is used to describe both uniforms coming from the default uniform block,
+ *  and regular uniform blocks.
+ */
+typedef struct
+{
+    /* Buffer variables */
+    uint32_t top_level_array_size;
+    uint32_t top_level_array_stride;
+
+    /* Buffer variables, uniforms (default & regular uniform block): */
+    uint32_t                      array_stride;
+    uint32_t                      block_index;
+    uint32_t                      block_offset;
+    uint32_t                      is_row_major_matrix; /* 1 = row-major, 0 = column-major OR not a matrix */
+    uint32_t                      matrix_stride;
+    system_hashed_ansi_string     name;
+    int32_t                       length;
+    int32_t                       size;             /* array size for arrayed uniforms or 1 otherwise */
+    ral_program_uniform_type      type;
+
+    /* Uniforms (default & regular uniform block): */
+    int32_t                       location;
+} ral_program_variable;
 
 typedef enum
 {
@@ -241,6 +379,12 @@ typedef enum
     RAL_PRIMITIVE_TYPE_COUNT = RAL_PRIMITIVE_TYPE_UNKNOWN
 } ral_primitive_type;
 
+/* Information required to create a new RAL program instance */
+typedef struct
+{
+    system_hashed_ansi_string name;
+} ral_program_create_info;
+
 /* RAL texture filter modes */
 typedef enum
 {
@@ -314,6 +458,14 @@ typedef struct ral_sampler_create_info
     }
 } ral_sampler_create_info;
 
+/* RAL shader source */
+typedef enum
+{
+    RAL_SHADER_SOURCE_GLSL,
+
+    RAL_SHADER_SOURCE_UNKNOWN
+} ral_shader_source;
+
 /* RAL shader stages */
 typedef enum
 {
@@ -328,6 +480,32 @@ typedef enum
     RAL_SHADER_TYPE_UNKNOWN,
     RAL_SHADER_TYPE_COUNT = RAL_SHADER_TYPE_UNKNOWN
 } ral_shader_type;
+
+typedef struct ral_shader_create_info
+{
+    /* NOTE: This structure does not take GLSL body, as RAL context needs to sign up for RAL shader notifications
+     *       and that happens right after the object is constructed. */
+    system_hashed_ansi_string name;
+    ral_shader_source         source;
+    ral_shader_type           type;
+
+    /** Dummy constructor */
+    ral_shader_create_info()
+    {
+        name      = NULL;
+        source    = RAL_SHADER_SOURCE_UNKNOWN;
+        type      = RAL_SHADER_TYPE_UNKNOWN;
+    }
+
+    /** TODO. Use to initialize the structure for GLSL-backed shader creation */
+    ral_shader_create_info(system_hashed_ansi_string in_name,
+                           ral_shader_type           in_type)
+    {
+        name      = in_name;
+        source    = RAL_SHADER_SOURCE_GLSL;
+        type      = in_type;
+    }
+} ral_shader_create_info;
 
 /* RAL texture component. This is used eg. for texture swizzling. */
 typedef enum

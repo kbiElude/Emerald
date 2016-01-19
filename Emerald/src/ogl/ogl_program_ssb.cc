@@ -63,7 +63,7 @@ PRIVATE ogl_program_block_property _ogl_program_ssb_get_block_property_for_ssb_p
 
 /** Please see header for spec */
 PUBLIC ogl_program_ssb ogl_program_ssb_create(ral_context               context,
-                                              ogl_program               owner_program,
+                                              raGL_program              owner_program,
                                               unsigned int              ssb_index,
                                               system_hashed_ansi_string ssb_name)
 {
@@ -88,7 +88,7 @@ PUBLIC EMERALD_API void ogl_program_ssb_get_property(const ogl_program_ssb    ss
 /** Please see header for spec */
 PUBLIC EMERALD_API bool ogl_program_ssb_get_variable_by_index(const ogl_program_ssb        ssb,
                                                               unsigned int                 n_variable,
-                                                              const ogl_program_variable** out_variable_ptr)
+                                                              const ral_program_variable** out_variable_ptr)
 {
     return ogl_program_block_get_block_variable((ogl_program_block) ssb,
                                                 n_variable,

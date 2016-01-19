@@ -16,6 +16,8 @@
 #include "ogl/ogl_shadow_mapping.h"
 #include "ogl/ogl_uber.h"
 #include "ral/ral_context.h"
+#include "ral/ral_program.h"
+#include "ral/ral_shader.h"
 #include "ral/ral_texture.h"
 #include "scene/scene.h"
 #include "scene/scene_camera.h"
@@ -1037,7 +1039,7 @@ PRIVATE void _ogl_scene_renderer_render_mesh_helper_visualizations(_ogl_scene_re
 /** TODO */
 PRIVATE void _ogl_scene_renderer_render_traversed_scene_graph(_ogl_scene_renderer*                   renderer_ptr,
                                                               const _ogl_scene_renderer_render_mode& render_mode,
-                                                              const ogl_context_gl_entrypoints*      entry_points,
+                                                              const ogl_context_gl_entrypoints*      entry_points_ptr,
                                                               system_time                            frame_time)
 {
     float         camera_location[4];
@@ -1107,24 +1109,24 @@ PRIVATE void _ogl_scene_renderer_render_traversed_scene_graph(_ogl_scene_rendere
         {
             if (n_pass == 0)
             {
-                entry_points->pGLColorMask(GL_FALSE,  /* red   */
-                                           GL_FALSE,  /* green */
-                                           GL_FALSE,  /* blue  */
-                                           GL_FALSE); /* alpha */
-                entry_points->pGLDepthFunc(GL_LESS);  /* func  */
-                entry_points->pGLDepthMask(GL_TRUE);  /* flag  */
+                entry_points_ptr->pGLColorMask(GL_FALSE,  /* red   */
+                                               GL_FALSE,  /* green */
+                                               GL_FALSE,  /* blue  */
+                                               GL_FALSE); /* alpha */
+                entry_points_ptr->pGLDepthFunc(GL_LESS);  /* func  */
+                entry_points_ptr->pGLDepthMask(GL_TRUE);  /* flag  */
             }
             else
             {
                 ASSERT_DEBUG_SYNC(n_pass == 1,
                                   "Sanity check failed");
 
-                entry_points->pGLColorMask(GL_TRUE,  /* red   */
-                                           GL_TRUE,  /* green */
-                                           GL_TRUE,  /* blue  */
-                                           GL_TRUE); /* alpha */
-                entry_points->pGLDepthFunc(GL_EQUAL);
-                entry_points->pGLDepthMask(GL_FALSE);
+                entry_points_ptr->pGLColorMask(GL_TRUE,  /* red   */
+                                               GL_TRUE,  /* green */
+                                               GL_TRUE,  /* blue  */
+                                               GL_TRUE); /* alpha */
+                entry_points_ptr->pGLDepthFunc(GL_EQUAL);
+                entry_points_ptr->pGLDepthMask(GL_FALSE);
             }
         } /* if (render_mode == RENDER_MODE_FORWARD_WITH_DEPTH_PREPASS) */
 
@@ -1405,16 +1407,18 @@ PRIVATE void _ogl_scene_renderer_return_shadow_maps_to_pool(ogl_scene_renderer r
 
         if (current_light_sm_texture_color != NULL)
         {
-            ral_context_delete_textures(renderer_ptr->context,
-                                        1, /* n_textures */
-                                       &current_light_sm_texture_color);
+            ral_context_delete_objects(renderer_ptr->context,
+                                       RAL_CONTEXT_OBJECT_TYPE_TEXTURE,
+                                       1, /* n_objects */
+                                      &current_light_sm_texture_color);
         } /* if (current_light_sm_texture_color != NULL) */
 
         if (current_light_sm_texture_depth != NULL)
         {
-            ral_context_delete_textures(renderer_ptr->context,
-                                        1, /* n_textures */
-                                       &current_light_sm_texture_depth);
+            ral_context_delete_objects(renderer_ptr->context,
+                                       RAL_CONTEXT_OBJECT_TYPE_TEXTURE,
+                                       1, /* n_objects */
+                                      &current_light_sm_texture_depth);
         } /* if (current_light_sm_texture_depth != NULL) */
     } /* for (all scene lights) */
 }

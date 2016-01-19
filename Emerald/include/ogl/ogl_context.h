@@ -124,17 +124,11 @@ typedef enum ogl_context_property
     /* not settable, ogl_primitive_renderer */
     OGL_CONTEXT_PROPERTY_PRIMITIVE_RENDERER,
 
-    /* not settable, ogl_programs */
-    OGL_CONTEXT_PROPERTY_PROGRAMS,
-
     /* not settable, ogl_context_handle */
     OGL_CONTEXT_PROPERTY_RENDERING_CONTEXT,
 
     /* not settable, ogl_context_sampler_bindings */
     OGL_CONTEXT_PROPERTY_SAMPLER_BINDINGS,
-
-    /* not settable, ogl_shaders */
-    OGL_CONTEXT_PROPERTY_SHADERS,
 
     /* not settable, ogl_shadow_mapping */
     OGL_CONTEXT_PROPERTY_SHADOW_MAPPING,

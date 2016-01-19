@@ -11,13 +11,13 @@
 #include "ogl/ogl_context_to_bindings.h"
 #include "ogl/ogl_context_wrappers.h"
 #include "ogl/ogl_context_vaos.h"
-#include "ogl/ogl_program.h"
 #include "ogl/ogl_program_ssb.h"
 #include "ogl/ogl_program_ub.h"
-#include "ogl/ogl_programs.h"
 #include "ogl/ogl_vao.h"
+#include "raGL/raGL_program.h"
 #include "raGL/raGL_texture.h"
 #include "raGL/raGL_utils.h"
+#include "ral/ral_program.h"
 #include "ral/ral_texture.h"
 #include "system/system_log.h"
 #include <math.h>
@@ -4478,32 +4478,33 @@ PUBLIC void APIENTRY ogl_context_wrappers_glShaderStorageBlockBinding(GLuint pro
                                                                       GLuint shaderStorageBlockIndex,
                                                                       GLuint shaderStorageBlockBinding)
 {
-    ogl_context             context     = ogl_context_get_current_context();
-    ogl_programs            programs    = NULL;
-    ogl_context_state_cache state_cache = NULL;
+    raGL_backend            context_backend = NULL;
+    ogl_context             context         = ogl_context_get_current_context();
+    raGL_program            program_raGL    = NULL;
+    ogl_context_state_cache state_cache     = NULL;
 
-    ogl_context_get_property(context,
-                             OGL_CONTEXT_PROPERTY_PROGRAMS,
-                            &programs);
-    ogl_context_get_property(context,
-                             OGL_CONTEXT_PROPERTY_STATE_CACHE,
-                            &state_cache);
-
+    ogl_context_get_property    (context,
+                                 OGL_CONTEXT_PROPERTY_BACKEND,
+                                &context_backend);
+    ogl_context_get_property    (context,
+                                 OGL_CONTEXT_PROPERTY_STATE_CACHE,
+                                &state_cache);
     ogl_context_state_cache_sync(state_cache,
                                  STATE_CACHE_SYNC_BIT_ACTIVE_PROGRAM_OBJECT);
 
     /* Does it make sense to try to make the call? */
-    ogl_program program_instance = ogl_programs_get_program_by_id(programs,
-                                                                  program);
+    raGL_backend_get_program_by_id(context_backend,
+                                   program,
+                                  &program_raGL);
 
-    ASSERT_DEBUG_SYNC(program_instance != NULL,
-                      "The ogl_program for requested PO was not found.");
+    ASSERT_DEBUG_SYNC(program_raGL != NULL,
+                      "The raGL_program instance for requested PO was not found.");
 
-    if (program_instance != NULL)
+    if (program_raGL != NULL)
     {
         ogl_program_ssb requested_ssb = NULL;
 
-        ogl_program_get_shader_storage_block_by_sb_index(program_instance,
+        raGL_program_get_shader_storage_block_by_sb_index(program_raGL,
                                                          shaderStorageBlockIndex,
                                                         &requested_ssb);
 
@@ -5057,13 +5058,14 @@ PUBLIC void APIENTRY ogl_context_wrappers_glUniformBlockBinding(GLuint program,
                                                                 GLuint uniformBlockIndex,
                                                                 GLuint uniformBlockBinding)
 {
-    ogl_context             context     = ogl_context_get_current_context();
-    ogl_programs            programs    = NULL;
-    ogl_context_state_cache state_cache = NULL;
+    ogl_context             context         = ogl_context_get_current_context();
+    raGL_backend            context_backend = NULL;
+    raGL_program            program_raGL    = NULL;
+    ogl_context_state_cache state_cache     = NULL;
 
     ogl_context_get_property(context,
-                             OGL_CONTEXT_PROPERTY_PROGRAMS,
-                            &programs);
+                             OGL_CONTEXT_PROPERTY_BACKEND,
+                            &context_backend);
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_STATE_CACHE,
                             &state_cache);
@@ -5072,19 +5074,20 @@ PUBLIC void APIENTRY ogl_context_wrappers_glUniformBlockBinding(GLuint program,
                                  STATE_CACHE_SYNC_BIT_ACTIVE_PROGRAM_OBJECT);
 
     /* Does it make sense to try to make the call? */
-    ogl_program program_instance = ogl_programs_get_program_by_id(programs,
-                                                                  program);
+    raGL_backend_get_program_by_id(context_backend,
+                                   program,
+                                  &program_raGL);
 
-    ASSERT_DEBUG_SYNC(program_instance != NULL,
-                      "The ogl_program for requested PO was not found.");
+    ASSERT_DEBUG_SYNC(program_raGL != NULL,
+                      "The raGL_program instance for requested PO was not found.");
 
-    if (program_instance != NULL)
+    if (program_raGL != NULL)
     {
         ogl_program_ub requested_ub = NULL;
 
-        ogl_program_get_uniform_block_by_ub_index(program_instance,
-                                                  uniformBlockIndex,
-                                                 &requested_ub);
+        raGL_program_get_uniform_block_by_ub_index(program_raGL,
+                                                   uniformBlockIndex,
+                                                  &requested_ub);
 
         ASSERT_DEBUG_SYNC(requested_ub != NULL,
                           "ogl_program_ub instance for requested uniform block index was not found.");

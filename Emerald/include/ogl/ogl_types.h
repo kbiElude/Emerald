@@ -104,138 +104,6 @@ typedef void (APIENTRY *PFNGLENABLEVERTEXARRAYATTRIBEXTPROC)       (GLuint vaobj
 typedef void (APIENTRY *PFNGLVERTEXARRAYVERTEXATTRIBIOFFSETEXTPROC)(GLuint vaobj, GLuint buffer, GLuint index, GLint size, GLenum type, GLsizei stride,       GLintptr offset);
 typedef void (APIENTRY *PFNGLVERTEXARRAYVERTEXATTRIBOFFSETEXTPROC) (GLuint vaobj, GLuint buffer, GLuint index, GLint size, GLenum type, GLboolean normalized, GLsizei stride, GLintptr offset);
 
-/** Enumerator that describes allowed types for a program attribute */
-typedef enum
-{
-    PROGRAM_ATTRIBUTE_TYPE_FLOAT             = GL_FLOAT,
-    PROGRAM_ATTRIBUTE_TYPE_FLOAT_VEC2        = GL_FLOAT_VEC2,
-    PROGRAM_ATTRIBUTE_TYPE_FLOAT_VEC3        = GL_FLOAT_VEC3,
-    PROGRAM_ATTRIBUTE_TYPE_FLOAT_VEC4        = GL_FLOAT_VEC4,
-    PROGRAM_ATTRIBUTE_TYPE_FLOAT_MAT2        = GL_FLOAT_MAT2,
-    PROGRAM_ATTRIBUTE_TYPE_FLOAT_MAT3        = GL_FLOAT_MAT3,
-    PROGRAM_ATTRIBUTE_TYPE_FLOAT_MAT4        = GL_FLOAT_MAT4,
-    PROGRAM_ATTRIBUTE_TYPE_FLOAT_MAT2x3      = GL_FLOAT_MAT2x3,
-    PROGRAM_ATTRIBUTE_TYPE_FLOAT_MAT2x4      = GL_FLOAT_MAT2x4,
-    PROGRAM_ATTRIBUTE_TYPE_FLOAT_MAT3x2      = GL_FLOAT_MAT3x2,
-    PROGRAM_ATTRIBUTE_TYPE_FLOAT_MAT3x4      = GL_FLOAT_MAT3x4,
-    PROGRAM_ATTRIBUTE_TYPE_FLOAT_MAT4x2      = GL_FLOAT_MAT4x2,
-    PROGRAM_ATTRIBUTE_TYPE_FLOAT_MAT4x3      = GL_FLOAT_MAT4x3,
-    PROGRAM_ATTRIBUTE_TYPE_INT               = GL_INT, 
-    PROGRAM_ATTRIBUTE_TYPE_INT_VEC2          = GL_INT_VEC2,
-    PROGRAM_ATTRIBUTE_TYPE_INT_VEC3          = GL_INT_VEC3,
-    PROGRAM_ATTRIBUTE_TYPE_INT_VEC4          = GL_INT_VEC4,
-    PROGRAM_ATTRIBUTE_TYPE_UNSIGNED_INT      = GL_UNSIGNED_INT,
-    PROGRAM_ATTRIBUTE_TYPE_UNSIGNED_INT_VEC2 = GL_UNSIGNED_INT_VEC2,
-    PROGRAM_ATTRIBUTE_TYPE_UNSIGNED_INT_VEC3 = GL_UNSIGNED_INT_VEC3,
-    PROGRAM_ATTRIBUTE_TYPE_UNSIGNED_INT_VEC4 = GL_UNSIGNED_INT_VEC4,
-
-    PROGRAM_ATTRIBUTE_TYPE_UNDEFINED
-} ogl_program_attribute_type;
-
-/** Enumerator that describes allowed types for a program uniform */
-typedef enum
-{
-    PROGRAM_UNIFORM_TYPE_FLOAT                                     = GL_FLOAT,
-    PROGRAM_UNIFORM_TYPE_FLOAT_VEC2                                = GL_FLOAT_VEC2,
-    PROGRAM_UNIFORM_TYPE_FLOAT_VEC3                                = GL_FLOAT_VEC3,
-    PROGRAM_UNIFORM_TYPE_FLOAT_VEC4                                = GL_FLOAT_VEC4,
-    PROGRAM_UNIFORM_TYPE_INT                                       = GL_INT,
-    PROGRAM_UNIFORM_TYPE_INT_VEC2                                  = GL_INT_VEC2,
-    PROGRAM_UNIFORM_TYPE_INT_VEC3                                  = GL_INT_VEC3,
-    PROGRAM_UNIFORM_TYPE_INT_VEC4                                  = GL_INT_VEC4,
-    PROGRAM_UNIFORM_TYPE_UNSIGNED_INT                              = GL_UNSIGNED_INT,
-    PROGRAM_UNIFORM_TYPE_UNSIGNED_INT_VEC2                         = GL_UNSIGNED_INT_VEC2,
-    PROGRAM_UNIFORM_TYPE_UNSIGNED_INT_VEC3                         = GL_UNSIGNED_INT_VEC3,
-    PROGRAM_UNIFORM_TYPE_UNSIGNED_INT_VEC4                         = GL_UNSIGNED_INT_VEC4,
-    PROGRAM_UNIFORM_TYPE_BOOL                                      = GL_BOOL,
-    PROGRAM_UNIFORM_TYPE_BOOL_VEC2                                 = GL_BOOL_VEC2,
-    PROGRAM_UNIFORM_TYPE_BOOL_VEC3                                 = GL_BOOL_VEC3,
-    PROGRAM_UNIFORM_TYPE_BOOL_VEC4                                 = GL_BOOL_VEC4,
-    PROGRAM_UNIFORM_TYPE_FLOAT_MAT2                                = GL_FLOAT_MAT2,
-    PROGRAM_UNIFORM_TYPE_FLOAT_MAT3                                = GL_FLOAT_MAT3,
-    PROGRAM_UNIFORM_TYPE_FLOAT_MAT4                                = GL_FLOAT_MAT4,
-    PROGRAM_UNIFORM_TYPE_FLOAT_MAT2x3                              = GL_FLOAT_MAT2x3,
-    PROGRAM_UNIFORM_TYPE_FLOAT_MAT2x4                              = GL_FLOAT_MAT2x4,
-    PROGRAM_UNIFORM_TYPE_FLOAT_MAT3x2                              = GL_FLOAT_MAT3x2,
-    PROGRAM_UNIFORM_TYPE_FLOAT_MAT3x4                              = GL_FLOAT_MAT3x4,
-    PROGRAM_UNIFORM_TYPE_FLOAT_MAT4x2                              = GL_FLOAT_MAT4x2,
-    PROGRAM_UNIFORM_TYPE_FLOAT_MAT4x3                              = GL_FLOAT_MAT4x3,
-    PROGRAM_UNIFORM_TYPE_SAMPLER_1D                                = GL_SAMPLER_1D,
-    PROGRAM_UNIFORM_TYPE_SAMPLER_2D                                = GL_SAMPLER_2D,
-    PROGRAM_UNIFORM_TYPE_SAMPLER_3D                                = GL_SAMPLER_3D,
-    PROGRAM_UNIFORM_TYPE_SAMPLER_CUBE                              = GL_SAMPLER_CUBE,
-    PROGRAM_UNIFORM_TYPE_SAMPLER_1D_SHADOW                         = GL_SAMPLER_1D_SHADOW,
-    PROGRAM_UNIFORM_TYPE_SAMPLER_2D_SHADOW                         = GL_SAMPLER_2D_SHADOW,
-    PROGRAM_UNIFORM_TYPE_SAMPLER_1D_ARRAY                          = GL_SAMPLER_1D_ARRAY,
-    PROGRAM_UNIFORM_TYPE_SAMPLER_2D_ARRAY                          = GL_SAMPLER_2D_ARRAY,
-    PROGRAM_UNIFORM_TYPE_SAMPLER_1D_ARRAY_SHADOW                   = GL_SAMPLER_1D_ARRAY_SHADOW,
-    PROGRAM_UNIFORM_TYPE_SAMPLER_2D_ARRAY_SHADOW                   = GL_SAMPLER_2D_ARRAY_SHADOW,
-    PROGRAM_UNIFORM_TYPE_SAMPLER_2D_MULTISAMPLE                    = GL_SAMPLER_2D_MULTISAMPLE,
-    PROGRAM_UNIFORM_TYPE_SAMPLER_2D_MULTISAMPLE_ARRAY              = GL_SAMPLER_2D_MULTISAMPLE_ARRAY,
-    PROGRAM_UNIFORM_TYPE_SAMPLER_CUBE_SHADOW                       = GL_SAMPLER_CUBE_SHADOW,
-    PROGRAM_UNIFORM_TYPE_SAMPLER_BUFFER                            = GL_SAMPLER_BUFFER,
-    PROGRAM_UNIFORM_TYPE_SAMPLER_2D_RECT                           = GL_SAMPLER_2D_RECT,
-    PROGRAM_UNIFORM_TYPE_SAMPLER_2D_RECT_SHADOW                    = GL_SAMPLER_2D_RECT_SHADOW,
-    PROGRAM_UNIFORM_TYPE_INT_SAMPLER_1D                            = GL_INT_SAMPLER_1D,
-    PROGRAM_UNIFORM_TYPE_INT_SAMPLER_2D                            = GL_INT_SAMPLER_2D,
-    PROGRAM_UNIFORM_TYPE_INT_SAMPLER_3D                            = GL_INT_SAMPLER_3D,
-    PROGRAM_UNIFORM_TYPE_INT_SAMPLER_CUBE                          = GL_INT_SAMPLER_CUBE,
-    PROGRAM_UNIFORM_TYPE_INT_SAMPLER_1D_ARRAY                      = GL_INT_SAMPLER_1D_ARRAY,
-    PROGRAM_UNIFORM_TYPE_INT_SAMPLER_2D_ARRAY                      = GL_INT_SAMPLER_2D_ARRAY,
-    PROGRAM_UNIFORM_TYPE_INT_SAMPLER_2D_MULTISAMPLE                = GL_INT_SAMPLER_2D_MULTISAMPLE,
-    PROGRAM_UNIFORM_TYPE_INT_SAMPLER_2D_MULTISAMPLE_ARRAY          = GL_INT_SAMPLER_2D_MULTISAMPLE_ARRAY,
-    PROGRAM_UNIFORM_TYPE_INT_SAMPLER_BUFFER                        = GL_INT_SAMPLER_BUFFER,
-    PROGRAM_UNIFORM_TYPE_INT_SAMPLER_2D_RECT                       = GL_INT_SAMPLER_2D_RECT,
-    PROGRAM_UNIFORM_TYPE_UNSIGNED_INT_SAMPLER_1D                   = GL_UNSIGNED_INT_SAMPLER_1D,
-    PROGRAM_UNIFORM_TYPE_UNSIGNED_INT_SAMPLER_2D                   = GL_UNSIGNED_INT_SAMPLER_2D,
-    PROGRAM_UNIFORM_TYPE_UNSIGNED_INT_SAMPLER_3D                   = GL_UNSIGNED_INT_SAMPLER_3D,
-    PROGRAM_UNIFORM_TYPE_UNSIGNED_INT_SAMPLER_CUBE                 = GL_UNSIGNED_INT_SAMPLER_CUBE,
-    PROGRAM_UNIFORM_TYPE_UNSIGNED_INT_SAMPLER_1D_ARRAY             = GL_UNSIGNED_INT_SAMPLER_1D_ARRAY,
-    PROGRAM_UNIFORM_TYPE_UNSIGNED_INT_SAMPLER_2D_ARRAY             = GL_UNSIGNED_INT_SAMPLER_2D_ARRAY,
-    PROGRAM_UNIFORM_TYPE_UNSIGNED_INT_SAMPLER_2D_MULTISAMPLE       = GL_UNSIGNED_INT_SAMPLER_2D_MULTISAMPLE,
-    PROGRAM_UNIFORM_TYPE_UNSIGNED_INT_SAMPLER_2D_MULTISAMPLE_ARRAY = GL_UNSIGNED_INT_SAMPLER_2D_MULTISAMPLE_ARRAY,
-    PROGRAM_UNIFORM_TYPE_UNSIGNED_INT_SAMPLER_BUFFER               = GL_UNSIGNED_INT_SAMPLER_BUFFER,
-    PROGRAM_UNIFORM_TYPE_UNSIGNED_INT_SAMPLER_2D_RECT              = GL_UNSIGNED_INT_SAMPLER_2D_RECT,
-
-    PROGRAM_UNIFORM_TYPE_UNDEFINED
-
-} ogl_program_uniform_type;
-
-/** Structure that describes properties of a program attribute */
-typedef struct 
-{
-    system_hashed_ansi_string  name;
-    GLsizei                    length;
-    GLint                      location;
-    GLint                      size;
-    ogl_program_attribute_type type;
-} ogl_program_attribute_descriptor;
-
-/** Structure that describes properties of a program uniform, or a shader storage block member, or the like.
- *
- *  For uniforms, this structure is used to describe both uniforms coming from the default uniform block,
- *  and regular uniform blocks.
- */
-typedef struct
-{
-    /* Buffer variables */
-    GLint top_level_array_size;
-    GLint top_level_array_stride;
-
-    /* Buffer variables, uniforms (default & regular uniform block): */
-    GLint                      array_stride;
-    GLint                      block_index;
-    GLint                      block_offset;
-    GLint                      is_row_major_matrix; /* 1 = row-major, 0 = column-major OR not a matrix */
-    GLint                      matrix_stride;
-    system_hashed_ansi_string  name;
-    GLsizei                    length;
-    GLint                      size;             /* array size for arrayed uniforms or 1 otherwise */
-    ogl_program_uniform_type   type;
-
-    /* Uniforms (default & regular uniform block): */
-    GLint                      location;
-} ogl_program_variable;
 
 /** Enumerator that describes type of a given shader.
  *
@@ -1657,15 +1525,11 @@ typedef enum
 } _shader_variable_type;
 
 /** Program handle */
-DECLARE_HANDLE(ogl_program);
 DECLARE_HANDLE(ogl_program_block);
 DECLARE_HANDLE(ogl_program_ssb);
 DECLARE_HANDLE(ogl_program_ub);
-DECLARE_HANDLE(ogl_programs);
 
 /** Shader handle & various related types from shaders module. */
-DECLARE_HANDLE(ogl_shader);
-DECLARE_HANDLE(ogl_shaders);
 DECLARE_HANDLE(ogl_shader_constructor);
 DECLARE_HANDLE(ogl_uber);
 DECLARE_HANDLE(shaders_fragment_convolution3x3);

@@ -6,11 +6,10 @@
 #include "shared.h"
 #include "mesh/mesh_material.h"
 #include "ogl/ogl_context.h"
-#include "ogl/ogl_shader.h"
-#include "ogl/ogl_shaders.h"
 #include "ogl/ogl_shader_constructor.h"
 #include "ogl/ogl_shadow_mapping.h"
 #include "ral/ral_context.h"
+#include "ral/ral_shader.h"
 #include "scene/scene_light.h"
 #include "shaders/shaders_fragment_uber.h"
 #include "system/system_assertions.h"
@@ -59,7 +58,8 @@ typedef struct _shaders_fragment_uber_item
 
 typedef struct
 {
-    ogl_shader shader;
+    ral_context context;
+    ral_shader  shader;
 
     system_resizable_vector added_items;
     bool                    dirty;
@@ -653,7 +653,10 @@ PRIVATE void _shaders_fragment_uber_release(void* ptr)
 
     if (data_ptr->shader != NULL)
     {
-        ogl_shader_release(data_ptr->shader);
+        ral_context_delete_objects(data_ptr->context,
+                                   RAL_CONTEXT_OBJECT_TYPE_SHADER,
+                                   1, /* n_objects */
+                                  &data_ptr->shader);
 
         data_ptr->shader = NULL;
     }
@@ -674,8 +677,13 @@ PUBLIC EMERALD_API shaders_fragment_uber_item_id shaders_fragment_uber_add_input
                                                                                                         PFNSHADERSFRAGMENTUBERPARENTCALLBACKPROC   pCallbackProc,
                                                                                                         void*                                      user_arg)
 {
-    _shaders_fragment_uber* uber_ptr = (_shaders_fragment_uber*) uber;
-    unsigned int            n_items  = 0;
+    std::stringstream         body_sstream;
+    system_hashed_ansi_string fs_attribute_name_has;
+    std::stringstream         fs_attribute_name_sstream;
+    _shader_variable_type     fs_attribute_type;
+    unsigned int              n_items  = 0;
+    _shaders_fragment_uber*   uber_ptr = (_shaders_fragment_uber*) uber;
+    system_hashed_ansi_string vs_attribute_name_has;
 
     system_resizable_vector_get_property(uber_ptr->added_items,
                                          SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
@@ -684,18 +692,18 @@ PUBLIC EMERALD_API shaders_fragment_uber_item_id shaders_fragment_uber_add_input
     /* Spawn an attribute item descriptor */
     _shaders_fragment_uber_item* new_item_ptr = new (std::nothrow) _shaders_fragment_uber_item;
 
-    ASSERT_ALWAYS_SYNC(new_item_ptr != NULL,
-                       "Out of memory");
+    if (new_item_ptr == NULL)
+    {
+        ASSERT_ALWAYS_SYNC(new_item_ptr != NULL,
+                           "Out of memory");
+
+        goto end;
+    }
 
     new_item_ptr->data = (void*) attribute_type;
     new_item_ptr->type = SHADERS_FRAGMENT_UBER_ITEM_INPUT_ATTRIBUTE;
 
     /* Determine attribute properties */
-    system_hashed_ansi_string fs_attribute_name_has;
-    std::stringstream         fs_attribute_name_sstream;
-    _shader_variable_type     fs_attribute_type;
-    system_hashed_ansi_string vs_attribute_name_has;
-
     switch (attribute_type)
     {
         case UBER_INPUT_ATTRIBUTE_NORMAL:
@@ -735,8 +743,6 @@ PUBLIC EMERALD_API shaders_fragment_uber_item_id shaders_fragment_uber_add_input
                                                       NULL /* out_variable_id */);
 
     /* Form new line */
-    std::stringstream body_sstream;
-
     body_sstream << "result_fragment += vec4(";
 
     switch (fs_attribute_type)
@@ -791,6 +797,7 @@ PUBLIC EMERALD_API shaders_fragment_uber_item_id shaders_fragment_uber_add_input
 
     uber_ptr->dirty = true;
 
+end:
     return n_items;
 }
 
@@ -1288,44 +1295,25 @@ PUBLIC EMERALD_API shaders_fragment_uber_item_id shaders_fragment_uber_add_light
 PUBLIC EMERALD_API shaders_fragment_uber shaders_fragment_uber_create(ral_context                context,
                                                                       system_hashed_ansi_string  name)
 {
-    ogl_shader              embedded_shader               = NULL;
-    _uniform_block_id       fragment_shader_properties_ub = 0;
-    _shaders_fragment_uber* result_object                 = NULL;
-    shaders_fragment_uber   result_shader                 = NULL;
-    ogl_shader_constructor  shader_constructor            = NULL;
+    ral_shader                embedded_shader               = NULL;
+    _uniform_block_id         fragment_shader_properties_ub = 0;
+    system_hashed_ansi_string ral_shader_instance_name      = system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(name),
+                                                                                                                      " fragment uber");
+    _shaders_fragment_uber*   result_object_ptr             = NULL;
+    shaders_fragment_uber     result_shader                 = NULL;
+    ogl_shader_constructor    shader_constructor            = NULL;
+    ral_shader_create_info    shader_create_info;
 
-    /* Create a new ogl_shader instance only if one is not already registered
-     * in context-wide shaders manager.
-     */
-    system_hashed_ansi_string ogl_shader_instance_name = system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(name),
-                                                                                                                 " fragment uber");
-    ogl_shaders               shaders                  = NULL;
-
-    ogl_context_get_property(ral_context_get_gl_context(context),
-                             OGL_CONTEXT_PROPERTY_SHADERS,
-                            &shaders);
-
-    if ((embedded_shader = ogl_shaders_get_shader_by_name(shaders,
-                                                          ogl_shader_instance_name)) != NULL)
+    /* Create a new ral_shader instance only if one is not already registered */
+    if ((ral_context_get_shader_by_name(context,
+                                        ral_shader_instance_name)) != NULL)
     {
-        ogl_shader_retain(embedded_shader);
-    }
-    else
-    {
-        /* Not a recognized shader name. Create one */
-        embedded_shader = ogl_shader_create(context,
-                                            RAL_SHADER_TYPE_FRAGMENT,
-                                            ogl_shader_instance_name);
+        /* It is an error if a shader with the same name already exists. */
+        ASSERT_DEBUG_SYNC(false,
+                          "A RAL shader named [%s] already exists!",
+                          system_hashed_ansi_string_get_buffer(ral_shader_instance_name) );
 
-        ASSERT_DEBUG_SYNC(embedded_shader != NULL,
-                          "Could not create a fragment shader.");
-
-        if (embedded_shader == NULL)
-        {
-            LOG_ERROR("Could not create a fragment shader for uber shader object.");
-
-            goto end;
-        }
+        goto end;
     }
 
     /* Initialize the shader constructor */
@@ -1392,64 +1380,60 @@ PUBLIC EMERALD_API shaders_fragment_uber shaders_fragment_uber_create(ral_contex
                                              system_hashed_ansi_string_create("vec3 normal     = normalize(out_vs_normal);\n"
                                                                               "result_fragment = vec4(0, 0, 0, 1);\n") );
 
-    /* Attach body to the shader */
-    if (!ogl_shader_set_body(embedded_shader,
-                             ogl_shader_constructor_get_shader_body(shader_constructor) ))
+    /* Spawn a new RAL shader instance */
+    system_hashed_ansi_string shader_body = ogl_shader_constructor_get_shader_body(shader_constructor);
+
+    shader_create_info.name   = ral_shader_instance_name;
+    shader_create_info.source = RAL_SHADER_SOURCE_GLSL;
+    shader_create_info.type   = RAL_SHADER_TYPE_FRAGMENT;
+
+    if (!ral_context_create_shaders(context,
+                                    1, /* n_create_info_items */
+                                   &shader_create_info,
+                                   &embedded_shader) )
     {
-        LOG_ERROR        ("Could not set body of uber shader.");
         ASSERT_DEBUG_SYNC(false,
-                          "");
+                          "Could not create a new ral_shader instance for a uber fragment shader.");
 
         goto end;
     }
 
-    /* Everything went okay. Instantiate the object */
-    result_object = new (std::nothrow) _shaders_fragment_uber;
+    ral_shader_set_property(embedded_shader,
+                            RAL_SHADER_PROPERTY_GLSL_BODY,
+                           &shader_body);
 
-    ASSERT_DEBUG_SYNC(result_object != NULL,
+    /* Everything went okay. Instantiate the object */
+    result_object_ptr = new (std::nothrow) _shaders_fragment_uber;
+
+    ASSERT_DEBUG_SYNC(result_object_ptr != NULL,
                       "Out of memory while instantiating _shaders_fragment_uber object.");
 
-    if (result_object == NULL)
+    if (result_object_ptr == NULL)
     {
         LOG_ERROR("Out of memory while creating uber object instance.");
 
         goto end;
     }
 
-    result_object->added_items                   = system_resizable_vector_create(4 /* capacity */);
-    result_object->dirty                         = true;
-    result_object->fragment_shader_properties_ub = fragment_shader_properties_ub;
-    result_object->shader                        = embedded_shader;
-    result_object->shader_constructor            = shader_constructor;
+    result_object_ptr->added_items                   = system_resizable_vector_create(4 /* capacity */);
+    result_object_ptr->context                       = context;
+    result_object_ptr->dirty                         = true;
+    result_object_ptr->fragment_shader_properties_ub = fragment_shader_properties_ub;
+    result_object_ptr->shader                        = embedded_shader;
+    result_object_ptr->shader_constructor            = shader_constructor;
 
-    ASSERT_ALWAYS_SYNC(result_object->added_items != NULL,
+    ASSERT_ALWAYS_SYNC(result_object_ptr->added_items != NULL,
                        "Out of memory");
 
-    REFCOUNT_INSERT_INIT_CODE_WITH_RELEASE_HANDLER(result_object,
+    REFCOUNT_INSERT_INIT_CODE_WITH_RELEASE_HANDLER(result_object_ptr,
                                                    _shaders_fragment_uber_release,
                                                    OBJECT_TYPE_SHADERS_FRAGMENT_UBER,
                                                    system_hashed_ansi_string_create_by_merging_two_strings("\\Uber Fragment Shaders\\",
                                                                                                            system_hashed_ansi_string_get_buffer(name)) );
 
     /* Return the object */
-    return (shaders_fragment_uber) result_object;
-
 end:
-    if (embedded_shader != NULL)
-    {
-        ogl_shader_release(embedded_shader);
-
-        embedded_shader = NULL;
-    }
-
-    if (result_object != NULL)
-    {
-        delete result_object;
-
-        result_object = NULL;
-    }
-
-    return NULL;
+    return (shaders_fragment_uber) result_object_ptr;
 }
 
 /** Please see header for specification */
@@ -1465,7 +1449,7 @@ PUBLIC EMERALD_API bool shaders_fragment_uber_get_item_type(shaders_fragment_ube
                                                 item_id,
                                                &item_ptr) )
     {
-        LOG_ERROR("Could not retrieve uber vertex shader item type at index [%d]",
+        LOG_ERROR("Could not retrieve uber vertex shader item type at index [%u]",
                   item_id);
 
         goto end;
@@ -1522,7 +1506,7 @@ PUBLIC EMERALD_API uint32_t shaders_fragment_uber_get_n_items(shaders_fragment_u
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API ogl_shader shaders_fragment_uber_get_shader(shaders_fragment_uber shader)
+PUBLIC EMERALD_API ral_shader shaders_fragment_uber_get_shader(shaders_fragment_uber shader)
 {
     _shaders_fragment_uber* shader_ptr = (_shaders_fragment_uber*) shader;
 
@@ -1551,31 +1535,14 @@ PUBLIC EMERALD_API void shaders_fragment_uber_recompile(shaders_fragment_uber ub
     ASSERT_DEBUG_SYNC(uber_ptr->dirty,
                       "shaders_fragment_uber_recompile() failed for non-dirty object");
 
-    /* Set the shader's body */
+    /* Set the shader's body. The back-end will decide whether it makes sense to compile the shader now
+     * or later. **/
     system_hashed_ansi_string shader_body = ogl_shader_constructor_get_shader_body(uber_ptr->shader_constructor);
-    bool                      result      = ogl_shader_set_body                   (uber_ptr->shader,
-                                                                                   shader_body);
 
-    ASSERT_DEBUG_SYNC(result,
-                      "ogl_shader_set_body() failed");
-
-    if (!result)
-    {
-        LOG_ERROR("Could not set uber fragment shader body.");
-
-        goto end;
-    }
-
-    if (!ogl_shader_compile(uber_ptr->shader) )
-    {
-        LOG_ERROR("Uber fragment shader failed to compile.");
-
-        goto end;
-    }
+    ral_shader_set_property(uber_ptr->shader,
+                            RAL_SHADER_PROPERTY_GLSL_BODY,
+                           &shader_body);
 
     /* All done */
     uber_ptr->dirty = false;
-
-end:
-    ;
 }

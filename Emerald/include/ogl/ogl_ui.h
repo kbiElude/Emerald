@@ -152,7 +152,7 @@ PUBLIC EMERALD_API ogl_ui ogl_ui_create(ogl_text                  text_renderer,
                                         system_hashed_ansi_string name);
 
 /** TODO */
-PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void ogl_ui_draw(ogl_ui);
+PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void ogl_ui_draw(ogl_ui ui_instance);
 
 /** TODO */
 PUBLIC EMERALD_API void ogl_ui_get_control_property(ogl_ui_control           control,
@@ -163,17 +163,17 @@ PUBLIC EMERALD_API void ogl_ui_get_control_property(ogl_ui_control           con
  *
  *  TODO
  **/
-PUBLIC ral_context ogl_ui_get_context(ogl_ui);
+PUBLIC ral_context ogl_ui_get_context(ogl_ui ui_instance);
 
 /** INTERNAL USAGE ONLY.
  *
- *  TODO
+ *  TODO: REMOVE
  **/
-PUBLIC ogl_program ogl_ui_get_registered_program(ogl_ui,
-                                                 system_hashed_ansi_string);
+PUBLIC ral_program ogl_ui_get_registered_program(ogl_ui                    ui_instance,
+                                                 system_hashed_ansi_string name);
 
 /** TODO */
-PUBLIC EMERALD_API void ogl_ui_lock(ogl_ui                              ui,
+PUBLIC EMERALD_API void ogl_ui_lock(ogl_ui                              ui_instance,
                                     system_read_write_mutex_access_type access_type);
 
 /** INTERNAL USAGE ONLY.
@@ -181,13 +181,13 @@ PUBLIC EMERALD_API void ogl_ui_lock(ogl_ui                              ui,
  *  Call-back entry-point to be used by UI control implementations. Will dispatch call-backs
  *  to subscribers by using engine thread pool.
  **/
-PUBLIC void ogl_ui_receive_control_callback(ogl_ui         ui,
+PUBLIC void ogl_ui_receive_control_callback(ogl_ui         ui_instance,
                                             ogl_ui_control control,
                                             int            callback_id,
                                             void*          callback_user_arg);
 
 /** TODO */
-PUBLIC EMERALD_API void ogl_ui_register_control_callback(ogl_ui                       ui,
+PUBLIC EMERALD_API void ogl_ui_register_control_callback(ogl_ui                       ui_instance,
                                                          ogl_ui_control               control,
                                                          int                          callback_id,
                                                          PFNOGLUIEVENTCALLBACKPROCPTR callback_proc_ptr,
@@ -197,9 +197,9 @@ PUBLIC EMERALD_API void ogl_ui_register_control_callback(ogl_ui                 
  *
  *  TODO
  **/
-PUBLIC bool ogl_ui_register_program(ogl_ui,
-                                    system_hashed_ansi_string,
-                                    ogl_program);
+PUBLIC bool ogl_ui_register_program(ogl_ui                    ui_instance,
+                                    system_hashed_ansi_string name,
+                                    ral_program               program);
 
 /** TODO */
 PUBLIC EMERALD_API void ogl_ui_reposition_control(ogl_ui_control control,

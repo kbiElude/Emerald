@@ -19,28 +19,28 @@ REFCOUNT_INSERT_DECLARATIONS(shaders_fragment_sobel,
 
 /** Creates a shaders_fragment_sobel object instance.
  *
- *  @param ogl_context               Context to create the shader in.
- *  @param system_hashed_ansi_string TODO
+ *  @param context Context to create the shader in.
+ *  @param name    TODO
  * 
  *  @return Shaders_fragment_convolution3x3 instance if successful, NULL otherwise.
  */
-PUBLIC EMERALD_API shaders_fragment_sobel shaders_fragment_sobel_create(ogl_context,
+PUBLIC EMERALD_API shaders_fragment_sobel shaders_fragment_sobel_create(ral_context               context,
                                                                         system_hashed_ansi_string name);
 
-/** Retrieves ogl_shader object for calculating horizontal derivatives associated with the instance. Do not release the object or modify it in any way.
+/** Retrieves ral_shader object for calculating horizontal derivatives associated with the instance. Do not release the object or modify it in any way.
  *
  *  @param shaders_fragment_convolution3x3 Shader instance to retrieve the object from. Cannot be NULL.
  *
- *  @return ogl_shader instance.
+ *  @return ral_shader instance.
  **/
-PUBLIC EMERALD_API ogl_shader shaders_fragment_sobel_get_dx_shader(shaders_fragment_sobel);
+PUBLIC EMERALD_API ral_shader shaders_fragment_sobel_get_dx_shader(shaders_fragment_sobel shader);
 
-/** Retrieves ogl_shader object for calculating vertical derivatives associated with the instance. Do not release the object or modify it in any way.
+/** Retrieves ral_shader object for calculating vertical derivatives associated with the instance. Do not release the object or modify it in any way.
  *
  *  @param shaders_fragment_convolution3x3 Shader instance to retrieve the object from. Cannot be NULL.
  *
- *  @return ogl_shader instance.
+ *  @return ral_shader instance.
  **/
-PUBLIC EMERALD_API ogl_shader shaders_fragment_sobel_get_dy_shader(shaders_fragment_sobel);
+PUBLIC EMERALD_API ral_shader shaders_fragment_sobel_get_dy_shader(shaders_fragment_sobel shader);
 
 #endif /* SHADERS_FRAGMENT_SOBEL_H */

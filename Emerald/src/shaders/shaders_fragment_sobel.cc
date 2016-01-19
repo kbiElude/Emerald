@@ -4,8 +4,8 @@
  *
  */
 #include "shared.h"
-#include "ogl/ogl_context.h"
-#include "ogl/ogl_shader.h"
+#include "ral/ral_context.h"
+#include "ral/ral_shader.h"
 #include "shaders/shaders_fragment_convolution3x3.h"
 #include "shaders/shaders_fragment_sobel.h"
 #include "system/system_assertions.h"
@@ -67,23 +67,21 @@ PRIVATE void _shaders_fragment_sobel_release(void* ptr)
 PUBLIC EMERALD_API shaders_fragment_sobel shaders_fragment_sobel_create(ral_context               context,
                                                                         system_hashed_ansi_string name)
 {
-    shaders_fragment_convolution3x3 dy_shader     = NULL;
-    _shaders_fragment_sobel*        result_object = NULL;
-    shaders_fragment_sobel          result_shader = NULL;
+    shaders_fragment_convolution3x3 dx_shader         = NULL;
+    shaders_fragment_convolution3x3 dy_shader         = NULL;
+    _shaders_fragment_sobel*        result_object_ptr = NULL;
 
     /* Create the shaders */
-    shaders_fragment_convolution3x3 dx_shader = shaders_fragment_convolution3x3_create(context,
-                                                                                       sobel_dx,
-                                                                                       system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(name),
-                                                                                                                                               " DX")
-                                                                                      );
-
-    ASSERT_DEBUG_SYNC(dx_shader != NULL,
-                      "shaders_fragment_convolution3x3_create() failed");
+    dx_shader = shaders_fragment_convolution3x3_create(context,
+                                                       sobel_dx,
+                                                       system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(name),
+                                                                                                               " DX")
+                                                      );
 
     if (dx_shader == NULL)
     {
-        LOG_ERROR("Could not create DX sobel object.");
+        ASSERT_DEBUG_SYNC(false,
+                          "Could not create DX sobel object.");
 
         goto end;
     }
@@ -94,34 +92,32 @@ PUBLIC EMERALD_API shaders_fragment_sobel shaders_fragment_sobel_create(ral_cont
                                                                                                                " DY")
                                                       );
 
-    ASSERT_DEBUG_SYNC(dy_shader != NULL,
-                      "shaders_fragment_convolution3x3_create() failed");
-
     if (dy_shader == NULL)
     {
-        LOG_ERROR("Could not create DY sobel object.");
+        ASSERT_DEBUG_SYNC(false,
+                          "Could not create DY sobel object.");
 
         goto end;
     }
 
     /* Everything went okay. Instantiate the object */
-    result_object = new (std::nothrow) _shaders_fragment_sobel;
+    result_object_ptr = new (std::nothrow) _shaders_fragment_sobel;
 
-    ASSERT_DEBUG_SYNC(result_object != NULL,
+    ASSERT_DEBUG_SYNC(result_object_ptr != NULL,
                       "Out of memory while instantiating _shaders_fragment_sobel object.");
 
-    if (result_object == NULL)
+    if (result_object_ptr == NULL)
     {
         LOG_ERROR("Out of memory while creating Sobel object instance.");
 
         goto end;
     }
 
-    result_object->dx_shader = dx_shader;
-    result_object->dy_shader = dy_shader;
+    result_object_ptr->dx_shader = dx_shader;
+    result_object_ptr->dy_shader = dy_shader;
 
     /* Return the object */
-    return (shaders_fragment_sobel) result_object;
+    return (shaders_fragment_sobel) result_object_ptr;
 
 end:
     if (dx_shader != NULL)
@@ -138,24 +134,24 @@ end:
         dy_shader = NULL;
     }
 
-    if (result_object != NULL)
+    if (result_object_ptr != NULL)
     {
-        delete result_object;
+        delete result_object_ptr;
 
-        result_object = NULL;
+        result_object_ptr = NULL;
     }
 
     return NULL;
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API ogl_shader shaders_fragment_sobel_get_dx_shader(shaders_fragment_sobel shader)
+PUBLIC EMERALD_API ral_shader shaders_fragment_sobel_get_dx_shader(shaders_fragment_sobel shader)
 {
     return shaders_fragment_convolution3x3_get_shader(((_shaders_fragment_sobel*)shader)->dx_shader);
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API ogl_shader shaders_fragment_sobel_get_dy_shader(shaders_fragment_sobel shader)
+PUBLIC EMERALD_API ral_shader shaders_fragment_sobel_get_dy_shader(shaders_fragment_sobel shader)
 {
     return shaders_fragment_convolution3x3_get_shader(((_shaders_fragment_sobel*)shader)->dy_shader);
 }

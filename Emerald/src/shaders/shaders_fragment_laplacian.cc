@@ -5,7 +5,6 @@
  */
 #include "shared.h"
 #include "ogl/ogl_context.h"
-#include "ogl/ogl_shader.h"
 #include "shaders/shaders_fragment_convolution3x3.h"
 #include "shaders/shaders_fragment_laplacian.h"
 #include "system/system_assertions.h"
@@ -28,10 +27,10 @@ REFCOUNT_INSERT_IMPLEMENTATION(shaders_fragment_laplacian,
 
 
 /* Internal variables */
-const float laplacian[9] = {1,  1, 1,
-                            1, -8, 1,
-                            1,  1, 1};
-                           
+static const float laplacian[9] = {1,  1, 1,
+                                   1, -8, 1,
+                                   1,  1, 1};
+
 
 /** Function called back when reference counter drops to zero. Releases the laplacian shader object.
  *
@@ -109,7 +108,7 @@ end:
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API ogl_shader shaders_fragment_laplacian_get_shader(shaders_fragment_laplacian shader)
+PUBLIC EMERALD_API ral_shader shaders_fragment_laplacian_get_shader(shaders_fragment_laplacian shader)
 {
     return shaders_fragment_convolution3x3_get_shader(((_shaders_fragment_laplacian*)shader)->shader);
 }

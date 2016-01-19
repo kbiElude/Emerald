@@ -133,8 +133,8 @@ PUBLIC EMERALD_API shaders_fragment_uber_item_id shaders_fragment_uber_add_light
 
 /** Creates a shaders_fragment_uber object instance.
  *
- *  @param ogl_context               Context to create the shader in.
- *  @param system_hashed_ansi_string TODO
+ *  @param context Context to create the shader in.
+ *  @param name    TODO
  * 
  *  @return shaders_fragment_static instance if successful, NULL otherwise.
  */
@@ -152,20 +152,20 @@ PUBLIC EMERALD_API bool shaders_fragment_uber_get_light_item_properties(const sh
                                                                         shaders_fragment_uber_light_type* out_light_type);
 
 /** TODO */
-PUBLIC EMERALD_API uint32_t shaders_fragment_uber_get_n_items(shaders_fragment_uber);
+PUBLIC EMERALD_API uint32_t shaders_fragment_uber_get_n_items(shaders_fragment_uber uber);
 
-/** Retrieves ogl_shader object associated with the instance. Do not release the object or modify it in any way.
+/** Retrieves ral_shader object associated with the instance. Do not release the object or modify it in any way.
  *
- *  @param shaders_fragment_static Shader instance to retrieve the shader from. Cannot be NULL.
+ *  @param uber Shader instance to retrieve the shader from. Cannot be NULL.
  *
- *  @return ogl_shader instance.
+ *  @return ral_shader instance.
  **/
-PUBLIC EMERALD_API ogl_shader shaders_fragment_uber_get_shader(shaders_fragment_uber);
+PUBLIC EMERALD_API ral_shader shaders_fragment_uber_get_shader(shaders_fragment_uber uber);
 
 /** TODO */
-PUBLIC EMERALD_API bool shaders_fragment_uber_is_dirty(shaders_fragment_uber);
+PUBLIC EMERALD_API bool shaders_fragment_uber_is_dirty(shaders_fragment_uber uber);
 
 /** TODO */
-PUBLIC EMERALD_API void shaders_fragment_uber_recompile(shaders_fragment_uber);
+PUBLIC EMERALD_API void shaders_fragment_uber_recompile(shaders_fragment_uber uber);
 
 #endif /* SHADERS_FRAGMENT_UBER_H */

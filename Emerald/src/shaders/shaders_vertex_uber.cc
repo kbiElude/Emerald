@@ -6,9 +6,10 @@
 #include "shared.h"
 #include "mesh/mesh_material.h"
 #include "ogl/ogl_context.h"
-#include "ogl/ogl_shader.h"
 #include "ogl/ogl_shader_constructor.h"
 #include "ogl/ogl_shadow_mapping.h"
+#include "ral/ral_context.h"
+#include "ral/ral_shader.h"
 #include "shaders/shaders_vertex_uber.h"
 #include "system/system_assertions.h"
 #include "system/system_hashed_ansi_string.h"
@@ -31,9 +32,10 @@ typedef struct _shaders_vertex_uber_item
 
 typedef struct
 {
-    bool                     dirty;
-    ogl_shader_constructor   shader_constructor;
-    ogl_shader               vertex_shader;
+    ral_context            context;
+    bool                   dirty;
+    ogl_shader_constructor shader_constructor;
+    ral_shader             vertex_shader;
 
     /** Holds _shaders_vertex_uber_item* instances. */
     system_resizable_vector added_items;
@@ -230,7 +232,10 @@ PRIVATE void _shaders_vertex_uber_release(void* ptr)
 
     if (data_ptr->vertex_shader != NULL)
     {
-        ogl_shader_release(data_ptr->vertex_shader);
+        ral_context_delete_objects(data_ptr->context,
+                                   RAL_CONTEXT_OBJECT_TYPE_SHADER,
+                                   1, /* n_objects */
+                                  &data_ptr->vertex_shader);
 
         data_ptr->vertex_shader = NULL;
     }
@@ -381,15 +386,29 @@ end:
 PUBLIC EMERALD_API shaders_vertex_uber shaders_vertex_uber_create(ral_context               context,
                                                                   system_hashed_ansi_string name)
 {
-    std::stringstream     body_stream;
-    _shaders_vertex_uber* result_object = NULL;
-    shaders_vertex_uber   result_shader = NULL;
-    _uniform_block_id     ub_id         = -1;
-    ogl_shader            vertex_shader = NULL;
+    std::stringstream         body_stream;
+    system_hashed_ansi_string ral_shader_instance_name = system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(name),
+                                                                                                                 " vertex uber");
+    _shaders_vertex_uber*     result_object_ptr        = NULL;
+    shaders_vertex_uber       result_shader            = NULL;
+    ogl_shader_constructor    shader_constructor       = NULL;
+    ral_shader_create_info    shader_create_info;
+    _uniform_block_id         ub_id                    = -1;
+    ral_shader                vertex_shader            = NULL;
+
+    /* Make sure no other RAL shader instance lives under the name we're about to use */
+    if ((ral_context_get_shader_by_name(context,
+                                        ral_shader_instance_name)) != NULL)
+    {
+        /* It is an error if a shader with the same name already exists. */
+        ASSERT_DEBUG_SYNC(false,
+                          "A RAL shader named [%s] already exists!",
+                          system_hashed_ansi_string_get_buffer(ral_shader_instance_name) );
+
+        goto end;
+    }
 
     /* Spawn the shader constructor */
-    ogl_shader_constructor shader_constructor = NULL;
-
     shader_constructor = ogl_shader_constructor_create(RAL_SHADER_TYPE_VERTEX,
                                                        system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(name),
                                                                                                                " vertex uber"));
@@ -507,29 +526,13 @@ PUBLIC EMERALD_API shaders_vertex_uber shaders_vertex_uber_create(ral_context   
                                                                               "view_vector   = world_camera.xyz - world_vertex.xyz;\n"
                                                                               "\n"));
 
-    /* Create the shader */
-    vertex_shader = ogl_shader_create(context,
-                                      RAL_SHADER_TYPE_VERTEX,
-                                      system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(name),
-                                                                                              " vertex uber"));
-
-    ASSERT_DEBUG_SYNC(vertex_shader != NULL,
-                      "ogl_shader_create() failed");
-
-    if (vertex_shader == NULL)
-    {
-        LOG_ERROR("Could not create uber vertex shader.");
-
-        goto end;
-    }
-
     /* Everything went okay. Instantiate the object */
-    result_object = new (std::nothrow) _shaders_vertex_uber;
+    result_object_ptr = new (std::nothrow) _shaders_vertex_uber;
 
-    ASSERT_DEBUG_SYNC(result_object != NULL,
+    ASSERT_DEBUG_SYNC(result_object_ptr != NULL,
                       "Out of memory while instantiating _shaders_vertex_uber object.");
 
-    if (result_object == NULL)
+    if (result_object_ptr == NULL)
     {
         LOG_ERROR("Out of memory while creating uber vertex shader object instance.");
 
@@ -537,23 +540,47 @@ PUBLIC EMERALD_API shaders_vertex_uber shaders_vertex_uber_create(ral_context   
     }
 
     /* Fill other fields */
-    memset(result_object,
+    memset(result_object_ptr,
            0,
            sizeof(_shaders_vertex_uber) );
 
-    result_object->added_items        = system_resizable_vector_create(4 /* capacity */);
-    result_object->dirty              = true;
-    result_object->shader_constructor = shader_constructor;
-    result_object->vertex_shader      = vertex_shader;
-    result_object->vs_ub_id           = ub_id;
+    result_object_ptr->added_items        = system_resizable_vector_create(4 /* capacity */);
+    result_object_ptr->context            = context;
+    result_object_ptr->dirty              = true;
+    result_object_ptr->shader_constructor = shader_constructor;
+    result_object_ptr->vertex_shader      = vertex_shader;
+    result_object_ptr->vs_ub_id           = ub_id;
 
-    REFCOUNT_INSERT_INIT_CODE_WITH_RELEASE_HANDLER(result_object,
+    /* Create the shader */
+    system_hashed_ansi_string shader_body(ogl_shader_constructor_get_shader_body(shader_constructor) );
+
+    shader_create_info.name   = ral_shader_instance_name;
+    shader_create_info.source = RAL_SHADER_SOURCE_GLSL;
+    shader_create_info.type   = RAL_SHADER_TYPE_VERTEX;
+
+    if (!ral_context_create_shaders(result_object_ptr->context,
+                                    1, /* n_create_info_items */
+                                   &shader_create_info,
+                                   &vertex_shader) )
+    {
+        ASSERT_DEBUG_SYNC(false,
+                          "Could not create a new RAL shader instance");
+
+        goto end;
+    }
+
+    ral_shader_set_property(vertex_shader,
+                            RAL_SHADER_PROPERTY_GLSL_BODY,
+                           &shader_body);
+
+    REFCOUNT_INSERT_INIT_CODE_WITH_RELEASE_HANDLER(result_object_ptr,
                                                    _shaders_vertex_uber_release,
                                                    OBJECT_TYPE_SHADERS_VERTEX_UBER,
-                                                   system_hashed_ansi_string_create_by_merging_two_strings("\\Uber Vertex Shaders\\", system_hashed_ansi_string_get_buffer(name)) );
+                                                   system_hashed_ansi_string_create_by_merging_two_strings("\\Uber Vertex Shaders\\",
+                                                                                                           system_hashed_ansi_string_get_buffer(name)) );
 
     /* Return the object */
-    return (shaders_vertex_uber) result_object;
+    return (shaders_vertex_uber) result_object_ptr;
 
 end:
     if (shader_constructor != NULL)
@@ -561,20 +588,6 @@ end:
         ogl_shader_constructor_release(shader_constructor);
 
         shader_constructor = NULL;
-    }
-
-    if (vertex_shader != NULL)
-    {
-        ogl_shader_release(vertex_shader);
-
-        vertex_shader = NULL;
-    }
-
-    if (result_object != NULL)
-    {
-        delete result_object;
-
-        result_object = NULL;
     }
 
     return NULL;
@@ -650,7 +663,7 @@ PUBLIC EMERALD_API uint32_t shaders_vertex_uber_get_n_items(shaders_vertex_uber 
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API ogl_shader shaders_vertex_uber_get_shader(shaders_vertex_uber shader)
+PUBLIC EMERALD_API ral_shader shaders_vertex_uber_get_shader(shaders_vertex_uber shader)
 {
     _shaders_vertex_uber* shader_ptr = (_shaders_vertex_uber*) shader;
 
@@ -681,28 +694,11 @@ PUBLIC EMERALD_API void shaders_vertex_uber_recompile(shaders_vertex_uber uber)
 
     /* Set the shader's body */
     system_hashed_ansi_string shader_body = ogl_shader_constructor_get_shader_body(uber_ptr->shader_constructor);
-    bool                      result      = ogl_shader_set_body                   (uber_ptr->vertex_shader,
-                                                                                   shader_body);
 
-    ASSERT_DEBUG_SYNC(result,
-                      "ogl_shader_set_body() failed");
-    if (!result)
-    {
-        LOG_ERROR("Could not set uber vertex shader body.");
-
-        goto end;
-    }
-
-    if (!ogl_shader_compile(uber_ptr->vertex_shader) )
-    {
-        LOG_ERROR("Could not compile uber vertex shader body.");
-
-        goto end;
-    }
+    ral_shader_set_property(uber_ptr->vertex_shader,
+                            RAL_SHADER_PROPERTY_GLSL_BODY,
+                           &shader_body);
 
     /* All done */
     uber_ptr->dirty = false;
-
-end:
-    ;
 }

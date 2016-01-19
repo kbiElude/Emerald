@@ -177,9 +177,9 @@ PUBLIC EMERALD_API ogl_uber ogl_uber_create(ral_context                context,
                                             system_hashed_ansi_string  name);
 
 /** TODO */
-PUBLIC EMERALD_API ogl_uber ogl_uber_create_from_ogl_program(ral_context               context,
+PUBLIC EMERALD_API ogl_uber ogl_uber_create_from_ral_program(ral_context               context,
                                                              system_hashed_ansi_string name,
-                                                             ogl_program               program);
+                                                             ral_program               program);
 
 /** TODO */
 PUBLIC EMERALD_API void ogl_uber_get_shader_general_property(const ogl_uber             uber,

@@ -19,20 +19,20 @@ REFCOUNT_INSERT_DECLARATIONS(shaders_fragment_laplacian,
 
 /** Creates a shaders_fragment_laplacian object instance.
  *
- *  @param ogl_context               Context to create the shader in.
- *  @param system_hashed_ansi_string TODO
+ *  @param context Context to create the shader in.
+ *  @param name    Name to use for the new object.
  * 
  *  @return shaders_fragment_laplacian instance if successful, NULL otherwise.
  */
-PUBLIC EMERALD_API shaders_fragment_laplacian shaders_fragment_laplacian_create(ral_context,
+PUBLIC EMERALD_API shaders_fragment_laplacian shaders_fragment_laplacian_create(ral_context               context,
                                                                                 system_hashed_ansi_string name);
 
-/** Retrieves ogl_shader object associated with the instance. Do not release the object or modify it in any way.
+/** Retrieves ral_shader object associated with the instance.
  *
- *  @param shaders_fragment_laplacian Shader instance to retrieve the object from. Cannot be NULL.
+ *  @param shader Shader instance to retrieve the object from. Cannot be NULL.
  *
- *  @return ogl_shader instance.
+ *  @return ral_shader instance.
  **/
-PUBLIC EMERALD_API ogl_shader shaders_fragment_laplacian_get_shader(shaders_fragment_laplacian);
+PUBLIC EMERALD_API ral_shader shaders_fragment_laplacian_get_shader(shaders_fragment_laplacian shader);
 
 #endif /* SHADERS_FRAGMENT_LAPLACIAN_H */

@@ -53,7 +53,7 @@ const unsigned int UB_SRC_DATA_FLAG_TRANSPOSED_MATRIX_DATA = 1 << 0;
  *  @param owner_program TODO. NOT retained.
  */
 PUBLIC RENDERING_CONTEXT_CALL ogl_program_ub ogl_program_ub_create(ral_context               context,
-                                                                   ogl_program               owner_program,
+                                                                   raGL_program              owner_program,
                                                                    unsigned int              ub_index,
                                                                    system_hashed_ansi_string ub_name,
                                                                    bool                      support_sync_behavior);
@@ -66,7 +66,7 @@ PUBLIC EMERALD_API void ogl_program_ub_get_property(const ogl_program_ub    ub,
 /** TODO */
 PUBLIC EMERALD_API void ogl_program_ub_get_variable_by_name(ogl_program_ub               ub,
                                                             system_hashed_ansi_string    name,
-                                                            const ogl_program_variable** out_variable_ptr);
+                                                            const ral_program_variable** out_variable_ptr);
 
 /** TODO
  *

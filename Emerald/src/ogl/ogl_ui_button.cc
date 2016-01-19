@@ -5,15 +5,16 @@
  */
 #include "shared.h"
 #include "ogl/ogl_context.h"
-#include "ogl/ogl_program.h"
 #include "ogl/ogl_program_ub.h"
-#include "ogl/ogl_shader.h"
 #include "ogl/ogl_text.h"
 #include "ogl/ogl_ui.h"
 #include "ogl/ogl_ui_button.h"
 #include "ogl/ogl_ui_shared.h"
 #include "raGL/raGL_buffer.h"
+#include "raGL/raGL_program.h"
 #include "ral/ral_context.h"
+#include "ral/ral_program.h"
+#include "ral/ral_shader.h"
 #include "system/system_assertions.h"
 #include "system/system_hashed_ansi_string.h"
 #include "system/system_log.h"
@@ -53,7 +54,7 @@ typedef struct
     bool        visible;
 
     ral_context    context;
-    ogl_program    program;
+    ral_program    program;
     GLint          program_border_width_ub_offset;
     GLint          program_brightness_ub_offset;
     GLint          program_stop_data_ub_offset;
@@ -104,37 +105,77 @@ PRIVATE void _ogl_ui_button_init_program(ogl_ui          ui,
                                          _ogl_ui_button* button_ptr)
 {
     /* Create all objects */
-    ral_context context         = ogl_ui_get_context(ui);
-    ogl_shader  fragment_shader = NULL;
-    ogl_shader  vertex_shader   = NULL;
+    ral_context context = ogl_ui_get_context(ui);
+    ral_shader  fs      = NULL;
+    ral_program program = NULL;
+    ral_shader  vs      = NULL;
 
-    fragment_shader = ogl_shader_create (context,
-                                         RAL_SHADER_TYPE_FRAGMENT,
-                                         system_hashed_ansi_string_create("UI button fragment shader") );
-    vertex_shader   = ogl_shader_create (context,
-                                         RAL_SHADER_TYPE_VERTEX,
-                                         system_hashed_ansi_string_create("UI button vertex shader") );
+    ral_shader_create_info  fs_create_info;
+    ral_program_create_info program_create_info;
+    ral_shader_create_info  vs_create_info;
 
-    button_ptr->program = ogl_program_create(context,
-                                             system_hashed_ansi_string_create("UI button program"),
-                                             OGL_PROGRAM_SYNCABLE_UBS_MODE_ENABLE_GLOBAL);
+    fs_create_info.name   = system_hashed_ansi_string_create("UI button fragment shader");
+    fs_create_info.source = RAL_SHADER_SOURCE_GLSL;
+    fs_create_info.type   = RAL_SHADER_TYPE_FRAGMENT;
+
+    program_create_info.name = system_hashed_ansi_string_create("UI button program");
+
+    vs_create_info.name   = system_hashed_ansi_string_create("UI button vertex shader");
+    vs_create_info.source = RAL_SHADER_SOURCE_GLSL;
+    vs_create_info.type   = RAL_SHADER_TYPE_VERTEX;
+
+    ral_shader_create_info shader_create_info_items[2] =
+    {
+        fs_create_info,
+        vs_create_info
+    };
+    const uint32_t         n_shader_create_info_items = sizeof(shader_create_info_items) / sizeof(shader_create_info_items[0]);
+    ral_shader             result_shaders[n_shader_create_info_items];
+
+    if (!ral_context_create_shaders(button_ptr->context,
+                                    n_shader_create_info_items,
+                                    shader_create_info_items,
+                                    result_shaders) )
+    {
+        ASSERT_DEBUG_SYNC(false,
+                          "RAL shader creation failed.");
+    }
+
+    fs = result_shaders[0];
+    vs = result_shaders[1];
+
+    if (!ral_context_create_programs(button_ptr->context,
+                                     1, /* n_create_info_items */
+                                    &program_create_info,
+                                    &program) )
+    {
+        ASSERT_DEBUG_SYNC(false,
+                          "RAL program creation failed.");
+    }
 
     /* Set up shaders */
-    ogl_shader_set_body(fragment_shader,
-                        system_hashed_ansi_string_create(ui_button_fragment_shader_body) );
-    ogl_shader_set_body(vertex_shader,
-                        system_hashed_ansi_string_create(ui_general_vertex_shader_body) );
+    const system_hashed_ansi_string fs_body_has = system_hashed_ansi_string_create(ui_button_fragment_shader_body);
+    const system_hashed_ansi_string vs_body_has = system_hashed_ansi_string_create(ui_general_vertex_shader_body);
 
-    ogl_shader_compile(fragment_shader);
-    ogl_shader_compile(vertex_shader);
+
+    ral_shader_set_property(fs,
+                            RAL_SHADER_PROPERTY_GLSL_BODY,
+                           &fs_body_has);
+    ral_shader_set_property(vs,
+                            RAL_SHADER_PROPERTY_GLSL_BODY,
+                           &vs_body_has);
 
     /* Set up program object */
-    ogl_program_attach_shader(button_ptr->program,
-                              fragment_shader);
-    ogl_program_attach_shader(button_ptr->program,
-                              vertex_shader);
-
-    ogl_program_link(button_ptr->program);
+    if (!ral_program_attach_shader(program,
+                                   fs,
+                                   false /* relink_needed */) ||
+        !ral_program_attach_shader(program,
+                                   vs,
+                                   true /* relink_needed */) )
+    {
+        ASSERT_DEBUG_SYNC(false,
+                          "Could not configure RAL program");
+    }
 
     /* Register the prgoram with UI so following button instances will reuse the program */
     ogl_ui_register_program(ui,
@@ -142,48 +183,66 @@ PRIVATE void _ogl_ui_button_init_program(ogl_ui          ui,
                             button_ptr->program);
 
     /* Release shaders we will no longer need */
-    ogl_shader_release(fragment_shader);
-    ogl_shader_release(vertex_shader);
+    ral_shader shaders_to_delete[] =
+    {
+        fs,
+        vs
+    };
+    const uint32_t n_shaders_to_delete = sizeof(shaders_to_delete) / sizeof(shaders_to_delete[0]);
+
+    ral_context_delete_objects(button_ptr->context,
+                               RAL_CONTEXT_OBJECT_TYPE_SHADER,
+                               n_shaders_to_delete,
+                               shaders_to_delete);
 }
 
 /** TODO */
-PRIVATE void _ogl_ui_button_init_renderer_callback(ogl_context context, void* button)
+PRIVATE void _ogl_ui_button_init_renderer_callback(ogl_context context,
+                                                   void*       button)
 {
-    _ogl_ui_button* button_ptr  = (_ogl_ui_button*) button;
-    const GLuint    program_id  = ogl_program_get_id(button_ptr->program);
-    const GLfloat   stop_data[] = {0,     174.0f / 255.0f * 0.5f, 188.0f / 255.0f * 0.5f, 191.0f / 255.0f * 0.5f,
-                                   0.5f,  110.0f / 255.0f * 0.5f, 119.0f / 255.0f * 0.5f, 116.0f / 255.0f * 0.5f,
-                                   0.51f, 10.0f  / 255.0f * 0.5f, 14.0f  / 255.0f * 0.5f, 10.0f  / 255.0f * 0.5f,
-                                   1.0f,  10.0f  / 255.0f * 0.5f, 8.0f   / 255.0f * 0.5f, 9.0f   / 255.0f * 0.5f};
-    system_window   window      = NULL;
+    _ogl_ui_button* button_ptr      = (_ogl_ui_button*) button;
+    raGL_program    program_raGL    = NULL;
+    GLuint          program_raGL_id = 0;
+    const GLfloat   stop_data[]     = {0,     174.0f / 255.0f * 0.5f, 188.0f / 255.0f * 0.5f, 191.0f / 255.0f * 0.5f,
+                                       0.5f,  110.0f / 255.0f * 0.5f, 119.0f / 255.0f * 0.5f, 116.0f / 255.0f * 0.5f,
+                                       0.51f, 10.0f  / 255.0f * 0.5f, 14.0f  / 255.0f * 0.5f, 10.0f  / 255.0f * 0.5f,
+                                       1.0f,  10.0f  / 255.0f * 0.5f, 8.0f   / 255.0f * 0.5f, 9.0f   / 255.0f * 0.5f};
+    system_window   window          = NULL;
 
-    ral_context_get_property  (button_ptr->context,
-                               RAL_CONTEXT_PROPERTY_WINDOW_SYSTEM,
-                              &window);
+    ral_context_get_property(button_ptr->context,
+                             RAL_CONTEXT_PROPERTY_WINDOW_SYSTEM,
+                            &window);
+
+    program_raGL = ral_context_get_program_gl(button_ptr->context,
+                                              button_ptr->program);
+
+    raGL_program_get_property(program_raGL,
+                              RAGL_PROGRAM_PROPERTY_ID,
+                             &program_raGL_id);
 
     /* Retrieve uniform UB offsets */
-    const ogl_program_variable* border_width_uniform = NULL;
-    const ogl_program_variable* brightness_uniform   = NULL;
-    const ogl_program_variable* stop_data_uniform    = NULL;
-    const ogl_program_variable* x1y1x2y2_uniform     = NULL;
+    const ral_program_variable* border_width_uniform_ptr = NULL;
+    const ral_program_variable* brightness_uniform_ptr   = NULL;
+    const ral_program_variable* stop_data_uniform_ptr    = NULL;
+    const ral_program_variable* x1y1x2y2_uniform_ptr     = NULL;
 
-    ogl_program_get_uniform_by_name(button_ptr->program,
-                                    system_hashed_ansi_string_create("border_width"),
-                                   &border_width_uniform);
-    ogl_program_get_uniform_by_name(button_ptr->program,
-                                    system_hashed_ansi_string_create("brightness"),
-                                   &brightness_uniform);
-    ogl_program_get_uniform_by_name(button_ptr->program,
-                                    system_hashed_ansi_string_create("stop_data[0]"),
-                                   &stop_data_uniform);
-    ogl_program_get_uniform_by_name(button_ptr->program,
-                                    system_hashed_ansi_string_create("x1y1x2y2"),
-                                   &x1y1x2y2_uniform);
+    raGL_program_get_uniform_by_name(program_raGL,
+                                     system_hashed_ansi_string_create("border_width"),
+                                    &border_width_uniform_ptr);
+    raGL_program_get_uniform_by_name(program_raGL,
+                                     system_hashed_ansi_string_create("brightness"),
+                                    &brightness_uniform_ptr);
+    raGL_program_get_uniform_by_name(program_raGL,
+                                     system_hashed_ansi_string_create("stop_data[0]"),
+                                    &stop_data_uniform_ptr);
+    raGL_program_get_uniform_by_name(program_raGL,
+                                     system_hashed_ansi_string_create("x1y1x2y2"),
+                                    &x1y1x2y2_uniform_ptr);
 
-    button_ptr->program_border_width_ub_offset = border_width_uniform->block_offset;
-    button_ptr->program_brightness_ub_offset   = brightness_uniform->block_offset;
-    button_ptr->program_stop_data_ub_offset    = stop_data_uniform->block_offset;
-    button_ptr->program_x1y1x2y2_ub_offset     = x1y1x2y2_uniform->block_offset;
+    button_ptr->program_border_width_ub_offset = border_width_uniform_ptr->block_offset;
+    button_ptr->program_brightness_ub_offset   = brightness_uniform_ptr->block_offset;
+    button_ptr->program_stop_data_ub_offset    = stop_data_uniform_ptr->block_offset;
+    button_ptr->program_x1y1x2y2_ub_offset     = x1y1x2y2_uniform_ptr->block_offset;
 
     /* Retrieve uniform block data */
     unsigned int ub_fs_index = -1;
@@ -192,10 +251,10 @@ PRIVATE void _ogl_ui_button_init_renderer_callback(ogl_context context, void* bu
     button_ptr->program_ub_fs = NULL;
     button_ptr->program_ub_vs = NULL;
 
-    ogl_program_get_uniform_block_by_name(button_ptr->program,
-                                          system_hashed_ansi_string_create("dataFS"),
-                                         &button_ptr->program_ub_fs);
-    ogl_program_get_uniform_block_by_name(button_ptr->program,
+    raGL_program_get_uniform_block_by_name(program_raGL,
+                                           system_hashed_ansi_string_create("dataFS"),
+                                          &button_ptr->program_ub_fs);
+    raGL_program_get_uniform_block_by_name(program_raGL,
                                           system_hashed_ansi_string_create("dataVS"),
                                          &button_ptr->program_ub_vs);
 
@@ -220,16 +279,16 @@ PRIVATE void _ogl_ui_button_init_renderer_callback(ogl_context context, void* bu
                                 OGL_PROGRAM_UB_PROPERTY_INDEX,
                                &ub_vs_index);
 
-    button_ptr->pGLUniformBlockBinding(ogl_program_get_id(button_ptr->program),
+    button_ptr->pGLUniformBlockBinding(program_raGL_id,
                                        ub_fs_index,         /* uniformBlockIndex */
                                        UB_DATAFS_BP_INDEX); /* uniformBlockBinding */
-    button_ptr->pGLUniformBlockBinding(ogl_program_get_id(button_ptr->program),
+    button_ptr->pGLUniformBlockBinding(program_raGL_id,
                                        ub_vs_index,         /* uniformBlockIndex */
                                        UB_DATAVS_BP_INDEX); /* uniformBlockBinding */
 
     /* Set them up */
     ogl_program_ub_set_arrayed_uniform_value(button_ptr->program_ub_fs,
-                                             stop_data_uniform->block_offset,
+                                             stop_data_uniform_ptr->block_offset,
                                              stop_data,
                                              0, /* src_data_flags */
                                              sizeof(stop_data),
@@ -289,11 +348,14 @@ PUBLIC void ogl_ui_button_deinit(void* internal_instance)
 {
     _ogl_ui_button* ui_button_ptr = (_ogl_ui_button*) internal_instance;
 
-    ral_context_release(ui_button_ptr->context);
-    ogl_program_release(ui_button_ptr->program);
-    ogl_text_set       (ui_button_ptr->text_renderer,
-                        ui_button_ptr->text_index,
-                        "");
+    ogl_text_set(ui_button_ptr->text_renderer,
+                 ui_button_ptr->text_index,
+                 "");
+
+    ral_context_delete_objects(ui_button_ptr->context,
+                               RAL_CONTEXT_OBJECT_TYPE_PROGRAM,
+                               1, /* n_objects */
+                              &ui_button_ptr->program);
 
     delete ui_button_ptr;
 }
@@ -364,9 +426,14 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_ui_button_draw(void* internal_instance)
     }
 
     /* Update uniforms */
-    const float new_brightness = brightness * (button_ptr->is_lbm_on ? CLICK_BRIGHTNESS_MODIFIER : 1);
+    const float  new_brightness  = brightness * (button_ptr->is_lbm_on ? CLICK_BRIGHTNESS_MODIFIER : 1);
+    raGL_program program_raGL    = ral_context_get_program_gl(button_ptr->context,
+                                                              button_ptr->program);
+    uint32_t     program_raGL_id = 0;
 
-    GLuint program_id = ogl_program_get_id(button_ptr->program);
+    raGL_program_get_property(program_raGL,
+                              RAGL_PROGRAM_PROPERTY_ID,
+                             &program_raGL_id);
 
     if (button_ptr->current_gpu_brightness_level != brightness ||
         button_ptr->force_gpu_brightness_update)
@@ -451,7 +518,7 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_ui_button_draw(void* internal_instance)
     ogl_program_ub_sync(button_ptr->program_ub_fs);
     ogl_program_ub_sync(button_ptr->program_ub_vs);
 
-    button_ptr->pGLUseProgram(ogl_program_get_id(button_ptr->program) );
+    button_ptr->pGLUseProgram(program_raGL_id);
     button_ptr->pGLDrawArrays(GL_TRIANGLE_FAN,
                               0,
                               4);
@@ -505,37 +572,35 @@ PUBLIC void* ogl_ui_button_init(ogl_ui                    instance,
                                 PFNOGLUIFIREPROCPTR       pfn_fire_proc_ptr,
                                 void*                     fire_proc_user_arg)
 {
-    _ogl_ui_button* new_button = new (std::nothrow) _ogl_ui_button;
+    _ogl_ui_button* new_button_ptr = new (std::nothrow) _ogl_ui_button;
 
-    ASSERT_ALWAYS_SYNC(new_button != NULL,
+    ASSERT_ALWAYS_SYNC(new_button_ptr != NULL,
                        "Out of memory");
 
-    if (new_button != NULL)
+    if (new_button_ptr != NULL)
     {
         /* Initialize fields */
-        memset(new_button,
+        memset(new_button_ptr,
                0,
                sizeof(_ogl_ui_button) );
 
-        new_button->should_update_border_width = true;
-        new_button->x1y1x2y2[0]                =     x1y1[0];
-        new_button->x1y1x2y2[1]                = 1 - x2y2[1];
-        new_button->x1y1x2y2[2]                =     x2y2[0];
-        new_button->x1y1x2y2[3]                = 1 - x1y1[1];
+        new_button_ptr->should_update_border_width = true;
+        new_button_ptr->x1y1x2y2[0]                =     x1y1[0];
+        new_button_ptr->x1y1x2y2[1]                = 1 - x2y2[1];
+        new_button_ptr->x1y1x2y2[2]                =     x2y2[0];
+        new_button_ptr->x1y1x2y2[3]                = 1 - x1y1[1];
 
-        new_button->context            = ogl_ui_get_context(instance);
-        new_button->fire_proc_user_arg = fire_proc_user_arg;
-        new_button->pfn_fire_proc_ptr  = pfn_fire_proc_ptr;
-        new_button->text_renderer      = text_renderer;
-        new_button->text_index         = ogl_text_add_string(text_renderer);
-        new_button->visible            = true;
-
-        ral_context_retain(new_button->context);
+        new_button_ptr->context            = ogl_ui_get_context(instance);
+        new_button_ptr->fire_proc_user_arg = fire_proc_user_arg;
+        new_button_ptr->pfn_fire_proc_ptr  = pfn_fire_proc_ptr;
+        new_button_ptr->text_renderer      = text_renderer;
+        new_button_ptr->text_index         = ogl_text_add_string(text_renderer);
+        new_button_ptr->visible            = true;
 
         /* Cache GL func pointers */
         ral_backend_type backend_type = RAL_BACKEND_TYPE_UNKNOWN;
 
-        ral_context_get_property(new_button->context,
+        ral_context_get_property(new_button_ptr->context,
                                  RAL_CONTEXT_PROPERTY_BACKEND_TYPE,
                                 &backend_type);
 
@@ -543,14 +608,14 @@ PUBLIC void* ogl_ui_button_init(ogl_ui                    instance,
         {
             const ogl_context_es_entrypoints* entry_points = NULL;
 
-            ogl_context_get_property(ral_context_get_gl_context(new_button->context),
+            ogl_context_get_property(ral_context_get_gl_context(new_button_ptr->context),
                                      OGL_CONTEXT_PROPERTY_ENTRYPOINTS_ES,
                                     &entry_points);
 
-            new_button->pGLBindBufferRange     = entry_points->pGLBindBufferRange;
-            new_button->pGLDrawArrays          = entry_points->pGLDrawArrays;
-            new_button->pGLUniformBlockBinding = entry_points->pGLUniformBlockBinding;
-            new_button->pGLUseProgram          = entry_points->pGLUseProgram;
+            new_button_ptr->pGLBindBufferRange     = entry_points->pGLBindBufferRange;
+            new_button_ptr->pGLDrawArrays          = entry_points->pGLDrawArrays;
+            new_button_ptr->pGLUniformBlockBinding = entry_points->pGLUniformBlockBinding;
+            new_button_ptr->pGLUseProgram          = entry_points->pGLUseProgram;
         }
         else
         {
@@ -559,48 +624,48 @@ PUBLIC void* ogl_ui_button_init(ogl_ui                    instance,
 
             const ogl_context_gl_entrypoints* entry_points = NULL;
 
-            ogl_context_get_property(ral_context_get_gl_context(new_button->context),
+            ogl_context_get_property(ral_context_get_gl_context(new_button_ptr->context),
                                      OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
                                     &entry_points);
 
-            new_button->pGLBindBufferRange     = entry_points->pGLBindBufferRange;
-            new_button->pGLDrawArrays          = entry_points->pGLDrawArrays;
-            new_button->pGLUniformBlockBinding = entry_points->pGLUniformBlockBinding;
-            new_button->pGLUseProgram          = entry_points->pGLUseProgram;
+            new_button_ptr->pGLBindBufferRange     = entry_points->pGLBindBufferRange;
+            new_button_ptr->pGLDrawArrays          = entry_points->pGLDrawArrays;
+            new_button_ptr->pGLUniformBlockBinding = entry_points->pGLUniformBlockBinding;
+            new_button_ptr->pGLUseProgram          = entry_points->pGLUseProgram;
         }
 
         /* Configure the text to be shown on the button */
-        ogl_text_set(new_button->text_renderer,
-                     new_button->text_index,
+        ogl_text_set(new_button_ptr->text_renderer,
+                     new_button_ptr->text_index,
                      system_hashed_ansi_string_get_buffer(name) );
 
-        _ogl_ui_button_update_text_location(new_button);
+        _ogl_ui_button_update_text_location(new_button_ptr);
 
-        ogl_text_set_text_string_property(new_button->text_renderer,
-                                          new_button->text_index,
+        ogl_text_set_text_string_property(new_button_ptr->text_renderer,
+                                          new_button_ptr->text_index,
                                           OGL_TEXT_STRING_PROPERTY_COLOR,
                                           _ui_button_text_color);
 
         /* Retrieve the rendering program */
-        new_button->program = ogl_ui_get_registered_program(instance,
-                                                            ui_button_program_name);
+        new_button_ptr->program = ogl_ui_get_registered_program(instance,
+                                                                ui_button_program_name);
 
-        if (new_button->program == NULL)
+        if (new_button_ptr->program == NULL)
         {
             _ogl_ui_button_init_program(instance,
-                                        new_button);
+                                        new_button_ptr);
 
-            ASSERT_DEBUG_SYNC(new_button->program != NULL,
+            ASSERT_DEBUG_SYNC(new_button_ptr->program != NULL,
                               "Could not initialize button UI program");
         } /* if (new_button->program == NULL) */
 
         /* Set up predefined values */
-        ogl_context_request_callback_from_context_thread(ral_context_get_gl_context(new_button->context),
+        ogl_context_request_callback_from_context_thread(ral_context_get_gl_context(new_button_ptr->context),
                                                          _ogl_ui_button_init_renderer_callback,
-                                                         new_button);
+                                                         new_button_ptr);
     } /* if (new_button != NULL) */
 
-    return (void*) new_button;
+    return (void*) new_button_ptr;
 }
 
 /** Please see header for specification */

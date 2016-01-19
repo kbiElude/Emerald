@@ -5,16 +5,17 @@
  */
 #include "shared.h"
 #include "ogl/ogl_context.h"
-#include "ogl/ogl_program.h"
 #include "ogl/ogl_program_ub.h"
-#include "ogl/ogl_programs.h"
 #include "ogl/ogl_scene_renderer.h"
 #include "ogl/ogl_scene_renderer_frustum_preview.h"
-#include "ogl/ogl_shader.h"
 #include "ogl/ogl_text.h"
 #include "raGL/raGL_buffer.h"
+#include "raGL/raGL_program.h"
+#include "raGL/raGL_shader.h"
 #include "ral/ral_buffer.h"
 #include "ral/ral_context.h"
+#include "ral/ral_program.h"
+#include "ral/ral_shader.h"
 #include "scene/scene.h"
 #include "scene/scene_camera.h"
 #include "scene/scene_graph.h"
@@ -128,7 +129,7 @@ typedef struct _ogl_scene_renderer_frustum_preview
     ral_buffer              data_bo;
     unsigned int            data_bo_size;
     scene                   owned_scene;
-    ogl_program             po;
+    ral_program             po;
     ogl_program_ub          po_ub;
     ral_buffer              po_ub_bo;
     unsigned int            po_ub_bo_size;
@@ -218,7 +219,10 @@ typedef struct _ogl_scene_renderer_frustum_preview
 
         if (po != NULL)
         {
-            ogl_program_release(po);
+            ral_context_delete_objects(context,
+                                       RAL_CONTEXT_OBJECT_TYPE_PROGRAM,
+                                       1, /* n_objects */
+                                      &po);
 
             po = NULL;
         }
@@ -275,18 +279,19 @@ PRIVATE void _ogl_scene_renderer_frustum_preview_update_data_bo_buffer          
 PRIVATE void _ogl_scene_renderer_frustum_preview_deinit_rendering_thread_callback(ogl_context context,
                                                                                   void*       preview)
 {
-    const ogl_context_gl_entrypoints*    entry_points = NULL;
-    _ogl_scene_renderer_frustum_preview* preview_ptr  = (_ogl_scene_renderer_frustum_preview*) preview;
+    const ogl_context_gl_entrypoints*    entry_points_ptr = NULL;
+    _ogl_scene_renderer_frustum_preview* preview_ptr      = (_ogl_scene_renderer_frustum_preview*) preview;
 
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
-                            &entry_points);
+                            &entry_points_ptr);
 
     /* Release data BO */
     if (preview_ptr->data_bo != NULL)
     {
-        ral_context_delete_buffers(preview_ptr->context,
-                                   1, /* n_buffers */
+        ral_context_delete_objects(preview_ptr->context,
+                                   RAL_CONTEXT_OBJECT_TYPE_BUFFER,
+                                   1, /* n_objects */
                                   &preview_ptr->data_bo);
 
         preview_ptr->data_bo = NULL;
@@ -295,7 +300,10 @@ PRIVATE void _ogl_scene_renderer_frustum_preview_deinit_rendering_thread_callbac
     /* Release PO */
     if (preview_ptr->po != NULL)
     {
-        ogl_program_release(preview_ptr->po);
+        ral_context_delete_objects(preview_ptr->context,
+                                   RAL_CONTEXT_OBJECT_TYPE_PROGRAM,
+                                   1, /* n_objects */
+                                  &preview_ptr->po);
 
         preview_ptr->po = NULL;
     }
@@ -303,8 +311,8 @@ PRIVATE void _ogl_scene_renderer_frustum_preview_deinit_rendering_thread_callbac
     /* Release VAO */
     if (preview_ptr->vao_id != 0)
     {
-        entry_points->pGLDeleteVertexArrays(1,
-                                           &preview_ptr->vao_id);
+        entry_points_ptr->pGLDeleteVertexArrays(1,
+                                               &preview_ptr->vao_id);
 
         preview_ptr->vao_id = 0;
     }
@@ -314,16 +322,16 @@ PRIVATE void _ogl_scene_renderer_frustum_preview_deinit_rendering_thread_callbac
 PRIVATE void _ogl_scene_renderer_frustum_preview_init_rendering_thread_callback(ogl_context context,
                                                                                 void*       preview)
 {
-    const ogl_context_gl_entrypoints*    entry_points = NULL;
-    _ogl_scene_renderer_frustum_preview* preview_ptr  = (_ogl_scene_renderer_frustum_preview*) preview;
+    const ogl_context_gl_entrypoints*    entry_points_ptr = NULL;
+    _ogl_scene_renderer_frustum_preview* preview_ptr      = (_ogl_scene_renderer_frustum_preview*) preview;
 
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
-                            &entry_points);
+                            &entry_points_ptr);
 
     /* Instantiate the VAO */
-    entry_points->pGLGenVertexArrays(1,
-                                    &preview_ptr->vao_id);
+    entry_points_ptr->pGLGenVertexArrays(1,
+                                        &preview_ptr->vao_id);
 
     /* Create text renderer instance name */
     const char*               limiter    = "/";
@@ -352,8 +360,8 @@ PRIVATE void _ogl_scene_renderer_frustum_preview_init_rendering_thread_callback(
     const float text_scale    = 0.5f;
     GLint       viewport[4];
 
-    entry_points->pGLGetIntegerv(GL_VIEWPORT,
-                                 viewport);
+    entry_points_ptr->pGLGetIntegerv(GL_VIEWPORT,
+                                     viewport);
 
     preview_ptr->text_renderer = ogl_text_create(final_renderer_name,
                                                  preview_ptr->context,
@@ -371,69 +379,112 @@ PRIVATE void _ogl_scene_renderer_frustum_preview_init_rendering_thread_callback(
                                      &text_scale);
 
     /* Is the PO already registered? */
-    static const char*  po_name  = "Frustum preview renderer program";
-           ogl_programs programs = NULL;
+    static const char* po_name = "Frustum preview renderer program";
 
-    ogl_context_get_property(context,
-                             OGL_CONTEXT_PROPERTY_PROGRAMS,
-                            &programs);
-
-    preview_ptr->po = ogl_programs_get_program_by_name(programs,
-                                                       system_hashed_ansi_string_create(po_name));
+    preview_ptr->po = ral_context_get_program_by_name(preview_ptr->context,
+                                                      system_hashed_ansi_string_create(po_name));
 
     if (preview_ptr->po != NULL)
     {
-        ogl_program_retain(preview_ptr->po);
+        ral_context_retain_object(preview_ptr->context,
+                                  RAL_CONTEXT_OBJECT_TYPE_PROGRAM,
+                                 &preview_ptr->po);
     }
     else
     {
         /* Set up the PO */
-        ogl_shader fs = NULL;
-        ogl_shader vs = NULL;
+        ral_shader                      fs      = NULL;
+        const system_hashed_ansi_string fs_body = system_hashed_ansi_string_create(po_fs);
+        ral_shader                      vs      = NULL;
+        const system_hashed_ansi_string vs_body = system_hashed_ansi_string_create(po_vs);
 
-        fs = ogl_shader_create(preview_ptr->context,
-                               RAL_SHADER_TYPE_FRAGMENT,
-                               system_hashed_ansi_string_create("Frustum preview renderer FS") );
-        vs = ogl_shader_create(preview_ptr->context,
-                               RAL_SHADER_TYPE_VERTEX,
-                               system_hashed_ansi_string_create("Frustum preview renderer VS") );
+        const ral_shader_create_info fs_create_info =
+        {
+            system_hashed_ansi_string_create("Frustum preview renderer FS"),
+            RAL_SHADER_TYPE_FRAGMENT
+        };
+        const ral_shader_create_info vs_create_info =
+        {
+            system_hashed_ansi_string_create("Frustum preview renderer VS"),
+            RAL_SHADER_TYPE_VERTEX
+        };
 
-        preview_ptr->po = ogl_program_create(preview_ptr->context,
-                                             system_hashed_ansi_string_create(po_name),
-                                             OGL_PROGRAM_SYNCABLE_UBS_MODE_ENABLE_GLOBAL);
+        const ral_program_create_info program_create_info =
+        {
+            system_hashed_ansi_string_create(po_name)
+        };
 
-        if (!ogl_shader_set_body(fs,
-                                 system_hashed_ansi_string_create(po_fs)) ||
-            !ogl_shader_set_body(vs,
-                                 system_hashed_ansi_string_create(po_vs)) )
+        const ral_shader_create_info shader_create_info_items[] =
+        {
+            fs_create_info,
+            vs_create_info
+        };
+        const uint32_t n_shader_create_info_items = sizeof(shader_create_info_items) / sizeof(shader_create_info_items[0]);
+
+        ral_shader result_shaders[n_shader_create_info_items];
+
+
+        if (!ral_context_create_shaders(preview_ptr->context,
+                                        n_shader_create_info_items,
+                                        shader_create_info_items,
+                                        result_shaders) )
         {
             ASSERT_DEBUG_SYNC(false,
-                              "ogl_shader_set_body() call(s) failed.");
+                              "RAL shader creation failed");
         }
 
-        if (!ogl_program_attach_shader(preview_ptr->po,
-                                       fs)              ||
-            !ogl_program_attach_shader(preview_ptr->po,
-                                       vs) )
+        fs = result_shaders[0];
+        vs = result_shaders[1];
+
+        if (!ral_context_create_programs(preview_ptr->context,
+                                         1, /* n_create_info_items */
+                                        &program_create_info,
+                                        &preview_ptr->po) )
         {
             ASSERT_DEBUG_SYNC(false,
-                              "ogl_program_attach_shader() call(s) failed.");
+                              "RAL program creation failed");
         }
 
-        if (!ogl_program_link(preview_ptr->po) )
+
+        ral_shader_set_property(fs,
+                                RAL_SHADER_PROPERTY_GLSL_BODY,
+                               &fs_body);
+        ral_shader_set_property(vs,
+                                RAL_SHADER_PROPERTY_GLSL_BODY,
+                               &vs_body);
+
+        if (!ral_program_attach_shader(preview_ptr->po,
+                                       fs,
+                                       false /* relink_needed */) ||
+            !ral_program_attach_shader(preview_ptr->po,
+                                       vs,
+                                       true /* relink_needed */) )
         {
             ASSERT_DEBUG_SYNC(false,
-                              "ogl_program_link() failed.");
+                              "RAL program configuration failed.");
         }
 
-        ogl_shader_release(fs);
-        ogl_shader_release(vs);
+
+        ral_shader shaders_to_release[] =
+        {
+            fs,
+            vs
+        };
+        const uint32_t n_shaders_to_release = sizeof(shaders_to_release) / sizeof(shaders_to_release[0]);
+
+        ral_context_delete_objects(preview_ptr->context,
+                                   RAL_CONTEXT_OBJECT_TYPE_SHADER,
+                                   n_shaders_to_release,
+                                   shaders_to_release);
     }
 
     /* Retrieve PO UB details */
-    ogl_program_get_uniform_block_by_name(preview_ptr->po,
-                                          system_hashed_ansi_string_create("dataVS"),
-                                         &preview_ptr->po_ub);
+    raGL_program po_raGL = ral_context_get_program_gl(preview_ptr->context,
+                                                      preview_ptr->po);
+
+    raGL_program_get_uniform_block_by_name(po_raGL,
+                                           system_hashed_ansi_string_create("dataVS"),
+                                          &preview_ptr->po_ub);
 
     ASSERT_DEBUG_SYNC(preview_ptr->po_ub != NULL,
                       "dataVS UB uniform descriptor is NULL");
@@ -446,11 +497,11 @@ PRIVATE void _ogl_scene_renderer_frustum_preview_init_rendering_thread_callback(
                                &preview_ptr->po_ub_bo);
 
     /* Retrieve PO uniform locations */
-    const ogl_program_variable* po_vp_descriptor = NULL;
+    const ral_program_variable* po_vp_descriptor = NULL;
 
-    if (!ogl_program_get_uniform_by_name(preview_ptr->po,
-                                         system_hashed_ansi_string_create("vp"),
-                                        &po_vp_descriptor) )
+    if (!raGL_program_get_uniform_by_name(po_raGL,
+                                          system_hashed_ansi_string_create("vp"),
+                                         &po_vp_descriptor) )
     {
         ASSERT_DEBUG_SYNC(false,
                           "ogl_program_get_uniform_by_name() failed.");
@@ -715,8 +766,9 @@ PRIVATE void _ogl_scene_renderer_frustum_preview_update_data_bo_buffer(_ogl_scen
 
         if (preview_ptr->data_bo != NULL)
         {
-            ral_context_delete_buffers(preview_ptr->context,
-                                       1, /* n_buffers */
+            ral_context_delete_objects(preview_ptr->context,
+                                       RAL_CONTEXT_OBJECT_TYPE_BUFFER,
+                                       1, /* n_objects */
                                       &preview_ptr->data_bo);
 
             preview_ptr->data_bo = NULL;
@@ -865,24 +917,24 @@ PUBLIC void ogl_scene_renderer_frustum_preview_assign_cameras(ogl_scene_renderer
 PUBLIC ogl_scene_renderer_frustum_preview ogl_scene_renderer_frustum_preview_create(ral_context context,
                                                                                     scene       scene)
 {
-    _ogl_scene_renderer_frustum_preview* new_instance = new (std::nothrow) _ogl_scene_renderer_frustum_preview;
+    _ogl_scene_renderer_frustum_preview* new_instance_ptr = new (std::nothrow) _ogl_scene_renderer_frustum_preview;
 
-    ASSERT_ALWAYS_SYNC(new_instance != NULL,
+    ASSERT_ALWAYS_SYNC(new_instance_ptr != NULL,
                        "Out of memory");
 
-    if (new_instance != NULL)
+    if (new_instance_ptr != NULL)
     {
         ogl_context context_gl = ral_context_get_gl_context(context);
 
-        new_instance->context     = context;
-        new_instance->owned_scene = scene;
+        new_instance_ptr->context     = context;
+        new_instance_ptr->owned_scene = scene;
 
         ogl_context_request_callback_from_context_thread(context_gl,
                                                          _ogl_scene_renderer_frustum_preview_init_rendering_thread_callback,
-                                                         new_instance);
+                                                         new_instance_ptr);
     } /* if (new_instance != NULL) */
 
-    return (ogl_scene_renderer_frustum_preview) new_instance;
+    return (ogl_scene_renderer_frustum_preview) new_instance_ptr;
 }
 
 /** Please see header for spec */
@@ -935,9 +987,15 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_scene_renderer_frustum_preview_render(ogl
     entrypoints_ptr->pGLLineWidth(2.0f);
 
     /* Update VP before we kick off */
-    const GLuint po_id = ogl_program_get_id(preview_ptr->po);
+    const raGL_program po_raGL    = ral_context_get_program_gl(preview_ptr->context,
+                                                               preview_ptr->po);
+    GLuint             po_raGL_id = 0;
 
-    entrypoints_ptr->pGLUseProgram(po_id);
+    raGL_program_get_property(po_raGL,
+                              RAGL_PROGRAM_PROPERTY_ID,
+                             &po_raGL_id);
+
+    entrypoints_ptr->pGLUseProgram(po_raGL_id);
 
     ogl_program_ub_set_nonarrayed_uniform_value(preview_ptr->po_ub,
                                                 preview_ptr->po_vp_ub_offset,

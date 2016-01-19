@@ -28,13 +28,13 @@ PUBLIC EMERALD_API shaders_vertex_fullscreen shaders_vertex_fullscreen_create(ra
                                                                               bool                      export_uv,
                                                                               system_hashed_ansi_string name);
 
-/** Retrieves ogl_shader object associated with the instance. Do not release the object or modify it in any way.
+/** Retrieves ral_shader object associated with the instance. Do not release the object or modify it in any way.
  *
- *  @param shaders_vertex_fullscreen Shader instance to retrieve the object from. Cannot be NULL.
+ *  @param shader Shader instance to retrieve the object from. Cannot be NULL.
  *
- *  @return ogl_shader instance.
+ *  @return ral_shader instance.
  **/
-PUBLIC EMERALD_API ogl_shader shaders_vertex_fullscreen_get_shader(shaders_vertex_fullscreen fullscreen);
+PUBLIC EMERALD_API ral_shader shaders_vertex_fullscreen_get_shader(shaders_vertex_fullscreen shader);
 
 
 #endif /* SHADERS_VERTEX_FULLSCREEN_H */

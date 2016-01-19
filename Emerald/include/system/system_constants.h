@@ -34,9 +34,6 @@
 /* Defines amount of precached entries for active uniform storage per program */
 #define BASE_PROGRAM_ACTIVE_UNIFORMS_NUMBER (4)
 
-/* Defines amount of precached entries for storage of shader handles per program */
-#define BASE_PROGRAM_ATTACHED_SHADERS_NUMBER (2)
-
 /* Defines amount of precached entries for threads info storage */
 #define BASE_THREADS_CAPACITY (8)
 

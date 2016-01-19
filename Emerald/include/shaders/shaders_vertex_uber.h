@@ -62,18 +62,18 @@ PUBLIC EMERALD_API bool shaders_vertex_uber_get_light_type(shaders_vertex_uber  
                                                            shaders_vertex_uber_light*  out_light_type);
 
 /** TODO */
-PUBLIC EMERALD_API uint32_t shaders_vertex_uber_get_n_items(shaders_vertex_uber);
+PUBLIC EMERALD_API uint32_t shaders_vertex_uber_get_n_items(shaders_vertex_uber uber);
 
 /** Retrieves ogl_shader object associated with the instance. Do not release the object or modify it in any way.
  *
- *  @param shaders_vertex_uber Shader instance to retrieve the object from. Cannot be NULL.
+ *  @param uber Shader instance to retrieve the object from. Cannot be NULL.
  *
- *  @return ogl_shader instance.
+ *  @return ral_shader instance.
  **/
-PUBLIC EMERALD_API ogl_shader shaders_vertex_uber_get_shader(shaders_vertex_uber);
+PUBLIC EMERALD_API ral_shader shaders_vertex_uber_get_shader(shaders_vertex_uber uber);
 
 /** TODO */
-PUBLIC EMERALD_API bool shaders_vertex_uber_is_dirty(shaders_vertex_uber);
+PUBLIC EMERALD_API bool shaders_vertex_uber_is_dirty(shaders_vertex_uber uber);
 
 /** TODO */
 PUBLIC EMERALD_API void shaders_vertex_uber_recompile(shaders_vertex_uber uber);

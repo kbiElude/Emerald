@@ -18,14 +18,16 @@
 #include "shared.h"
 #include "gfx/gfx_bfg_font_table.h"
 #include "ogl/ogl_context.h"
-#include "ogl/ogl_program.h"
 #include "ogl/ogl_program_ssb.h"
 #include "ogl/ogl_program_ub.h"
 #include "ogl/ogl_rendering_handler.h"
-#include "ogl/ogl_shader.h"
 #include "ogl/ogl_text.h"
 #include "raGL/raGL_buffer.h"
+#include "raGL/raGL_program.h"
+#include "raGL/raGL_shader.h"
 #include "ral/ral_context.h"
+#include "ral/ral_program.h"
+#include "ral/ral_shader.h"
 #include "ral/ral_texture.h"
 #include "system/system_assertions.h"
 #include "system/system_critical_section.h"
@@ -76,32 +78,32 @@ typedef struct
     ral_context  context;
 
     /* GL function pointers cache */
-    PFNGLNAMEDBUFFERSUBDATAEXTPROC        gl_pGLNamedBufferSubDataEXT;
-    PFNGLPOLYGONMODEPROC                  gl_pGLPolygonMode;
-    PFNGLTEXTUREPARAMETERIEXTPROC         gl_pGLTextureParameteriEXT;
-    PFNGLTEXTURESTORAGE2DEXTPROC          gl_pGLTextureStorage2DEXT;
-    PFNGLTEXTURESUBIMAGE2DEXTPROC         gl_pGLTextureSubImage2DEXT;
-    PFNGLACTIVETEXTUREPROC                pGLActiveTexture;
-    PFNGLBINDBUFFERPROC                   pGLBindBuffer;
-    PFNGLBINDBUFFERRANGEPROC              pGLBindBufferRange;
-    PFNGLBINDTEXTUREPROC                  pGLBindTexture;
-    PFNGLBINDVERTEXARRAYPROC              pGLBindVertexArray;
-    PFNGLBLENDEQUATIONPROC                pGLBlendEquation;
-    PFNGLBLENDFUNCPROC                    pGLBlendFunc;
-    PFNGLBUFFERSUBDATAPROC                pGLBufferSubData;
-    PFNGLDELETEVERTEXARRAYSPROC           pGLDeleteVertexArrays;
-    PFNGLDISABLEPROC                      pGLDisable;
-    PFNGLDRAWARRAYSPROC                   pGLDrawArrays;
-    PFNGLENABLEPROC                       pGLEnable;
-    PFNGLGENVERTEXARRAYSPROC              pGLGenVertexArrays;
-    PFNGLGENERATEMIPMAPPROC               pGLGenerateMipmap;
-    PFNGLPROGRAMUNIFORM1IPROC             pGLProgramUniform1i;
-    PFNGLSCISSORPROC                      pGLScissor;
-    PFNGLTEXBUFFERRANGEPROC               pGLTexBufferRange;
-    PFNGLTEXPARAMETERIPROC                pGLTexParameteri;
-    PFNGLTEXSUBIMAGE2DPROC                pGLTexSubImage2D;
-    PFNGLUNIFORMBLOCKBINDINGPROC          pGLUniformBlockBinding;
-    PFNGLUSEPROGRAMPROC                   pGLUseProgram;
+    PFNGLNAMEDBUFFERSUBDATAEXTPROC gl_pGLNamedBufferSubDataEXT;
+    PFNGLPOLYGONMODEPROC           gl_pGLPolygonMode;
+    PFNGLTEXTUREPARAMETERIEXTPROC  gl_pGLTextureParameteriEXT;
+    PFNGLTEXTURESTORAGE2DEXTPROC   gl_pGLTextureStorage2DEXT;
+    PFNGLTEXTURESUBIMAGE2DEXTPROC  gl_pGLTextureSubImage2DEXT;
+    PFNGLACTIVETEXTUREPROC         pGLActiveTexture;
+    PFNGLBINDBUFFERPROC            pGLBindBuffer;
+    PFNGLBINDBUFFERRANGEPROC       pGLBindBufferRange;
+    PFNGLBINDTEXTUREPROC           pGLBindTexture;
+    PFNGLBINDVERTEXARRAYPROC       pGLBindVertexArray;
+    PFNGLBLENDEQUATIONPROC         pGLBlendEquation;
+    PFNGLBLENDFUNCPROC             pGLBlendFunc;
+    PFNGLBUFFERSUBDATAPROC         pGLBufferSubData;
+    PFNGLDELETEVERTEXARRAYSPROC    pGLDeleteVertexArrays;
+    PFNGLDISABLEPROC               pGLDisable;
+    PFNGLDRAWARRAYSPROC            pGLDrawArrays;
+    PFNGLENABLEPROC                pGLEnable;
+    PFNGLGENVERTEXARRAYSPROC       pGLGenVertexArrays;
+    PFNGLGENERATEMIPMAPPROC        pGLGenerateMipmap;
+    PFNGLPROGRAMUNIFORM1IPROC      pGLProgramUniform1i;
+    PFNGLSCISSORPROC               pGLScissor;
+    PFNGLTEXBUFFERRANGEPROC        pGLTexBufferRange;
+    PFNGLTEXPARAMETERIPROC         pGLTexParameteri;
+    PFNGLTEXSUBIMAGE2DPROC         pGLTexSubImage2D;
+    PFNGLUNIFORMBLOCKBINDINGPROC   pGLUniformBlockBinding;
+    PFNGLUSEPROGRAMPROC            pGLUseProgram;
 
     REFCOUNT_INSERT_VARIABLES
 } _ogl_text;
@@ -147,16 +149,13 @@ typedef struct _global_per_context_variables
 
 typedef struct
 {
-    ogl_program     draw_text_program;          /* ogl_program_ub instances are PER-CONTEXT */
+    ral_program     draw_text_program;          /* ogl_program_ub instances are PER-CONTEXT */
     ogl_program_ssb draw_text_program_data_ssb; /* NOT per-context */
 
-    ogl_shader     draw_text_fragment_shader;
-    ogl_shader     draw_text_vertex_shader;
-
-    GLuint      draw_text_fragment_shader_color_ub_offset;
-    GLuint      draw_text_fragment_shader_font_table_location;
-    GLuint      draw_text_vertex_shader_n_origin_character_ub_offset;
-    GLuint      draw_text_vertex_shader_scale_ub_offset;
+    GLuint draw_text_fragment_shader_color_ub_offset;
+    GLuint draw_text_fragment_shader_font_table_location;
+    GLuint draw_text_vertex_shader_n_origin_character_ub_offset;
+    GLuint draw_text_vertex_shader_scale_ub_offset;
 
     FontTable   font_tables;
 } _global_variables;
@@ -360,7 +359,8 @@ PRIVATE void _ogl_text_update_vram_data_storage(ogl_context context,
         if (text_ptr->data_buffer != NULL)
         {
             /* Since we're using raGL_buffers, we need to free the region first */
-            ral_context_delete_buffers(text_ptr->context,
+            ral_context_delete_objects(text_ptr->context,
+                                       RAL_CONTEXT_OBJECT_TYPE_BUFFER,
                                        1, /* n_buffers */
                                       &text_ptr->data_buffer);
 
@@ -481,19 +481,52 @@ PRIVATE void _ogl_text_construction_callback_from_renderer(ogl_context context,
      */
     system_critical_section_enter(_global_cs);
     {
+        raGL_program draw_text_program_raGL    = NULL;
+        GLuint       draw_text_program_raGL_id = -1;
+
         if (_n_global_owners == 0)
         {
-            ogl_context context_gl = ral_context_get_gl_context(text_ptr->context);
+            const ral_shader_create_info draw_text_fs_create_info =
+            {
+                system_hashed_ansi_string_create("ogl_text fragment shader"),
+                RAL_SHADER_TYPE_FRAGMENT
+            };
+            const ral_shader_create_info draw_text_vs_create_info =
+            {
+                system_hashed_ansi_string_create("ogl_text vertex shader"),
+                RAL_SHADER_TYPE_VERTEX
+            };
+            const ral_shader_create_info shader_create_info_items[] =
+            {
+                draw_text_fs_create_info,
+                draw_text_vs_create_info
+            };
+            const uint32_t n_shader_create_info_items                 = sizeof(shader_create_info_items) / sizeof(shader_create_info_items[0]);
+            ral_shader     result_shaders[n_shader_create_info_items] = { NULL };
+            
+            const ral_program_create_info draw_text_program_create_info =
+            {
+                system_hashed_ansi_string_create("ogl_text program")
+            };
 
-            _global.draw_text_fragment_shader = ogl_shader_create (text_ptr->context,
-                                                                   RAL_SHADER_TYPE_FRAGMENT,
-                                                                   system_hashed_ansi_string_create("ogl_text fragment shader"));
-            _global.draw_text_program         = ogl_program_create(text_ptr->context,
-                                                                   system_hashed_ansi_string_create("ogl_text program"),
-                                                                   OGL_PROGRAM_SYNCABLE_UBS_MODE_ENABLE_PER_CONTEXT);
-            _global.draw_text_vertex_shader   = ogl_shader_create (text_ptr->context,
-                                                                   RAL_SHADER_TYPE_VERTEX,
-                                                                   system_hashed_ansi_string_create("ogl_text vertex shader") );
+
+            if (!ral_context_create_shaders(text_ptr->context,
+                                            n_shader_create_info_items,
+                                            shader_create_info_items,
+                                            result_shaders) )
+            {
+                ASSERT_DEBUG_SYNC(false,
+                                  "RAL shader creation failed.");
+            }
+
+            if (!ral_context_create_programs(text_ptr->context,
+                                             1, /* n_create_info_items */
+                                            &draw_text_program_create_info,
+                                            &_global.draw_text_program) )
+            {
+                ASSERT_DEBUG_SYNC(false,
+                                  "RAL program creation failed.");
+            }
 
             /* Prepare the bodies */
             ral_backend_type  backend_type = RAL_BACKEND_TYPE_UNKNOWN;
@@ -529,72 +562,76 @@ PRIVATE void _ogl_text_construction_callback_from_renderer(ogl_context context,
             }
 
             /* Assign the bodies to the shaders */
-            ogl_shader_set_body(_global.draw_text_fragment_shader,
-                                system_hashed_ansi_string_create(fs_sstream.str().c_str() ));
-            ogl_shader_set_body(_global.draw_text_vertex_shader,
-                                system_hashed_ansi_string_create(vs_sstream.str().c_str() ));
+            const system_hashed_ansi_string fs_body_has = system_hashed_ansi_string_create(fs_sstream.str().c_str() );
+            const system_hashed_ansi_string vs_body_has = system_hashed_ansi_string_create(vs_sstream.str().c_str() );
 
-            ogl_program_attach_shader(_global.draw_text_program,
-                                      _global.draw_text_fragment_shader);
-            ogl_program_attach_shader(_global.draw_text_program,
-                                      _global.draw_text_vertex_shader);
+            ral_shader_set_property(result_shaders[0],
+                                    RAL_SHADER_PROPERTY_GLSL_BODY,
+                                   &fs_body_has);
+            ral_shader_set_property(result_shaders[1],
+                                    RAL_SHADER_PROPERTY_GLSL_BODY,
+                                   &vs_body_has);
 
-            ogl_shader_compile(_global.draw_text_fragment_shader);
-            ogl_shader_compile(_global.draw_text_vertex_shader);
-
-            if (!ogl_program_link(_global.draw_text_program) )
+            if (!ral_program_attach_shader(_global.draw_text_program,
+                                           result_shaders[0],
+                                           false /* relink_needed */) ||
+                !ral_program_attach_shader(_global.draw_text_program,
+                                           result_shaders[1],
+                                           true /* relink_needed */) )
             {
-                LOG_ERROR        ("Could not link text drawing program.");
-                ASSERT_DEBUG_SYNC(false, 
-                                  "");
+                ASSERT_DEBUG_SYNC(false,
+                                  "Could not link text drawing program.");
             }
 
             /* Retrieve uniform locations */
-            const ogl_program_variable* fragment_shader_color_descriptor            = NULL;
-            const ogl_program_variable* fragment_shader_font_table_descriptor       = NULL;
-            const ogl_program_variable* vertex_shader_data_descriptor               = NULL;
-            const ogl_program_variable* vertex_shader_n_origin_character_descriptor = NULL;
-            const ogl_program_variable* vertex_shader_scale_descriptor              = NULL;
+            const ral_program_variable* fragment_shader_color_ptr            = NULL;
+            const ral_program_variable* fragment_shader_font_table_ptr       = NULL;
+            const ral_program_variable* vertex_shader_data_ptr               = NULL;
+            const ral_program_variable* vertex_shader_n_origin_character_ptr = NULL;
+            const ral_program_variable* vertex_shader_scale_ptr              = NULL;
 
-            if (!ogl_program_get_uniform_by_name(_global.draw_text_program,
-                                                 system_hashed_ansi_string_create("color"),
-                                                &fragment_shader_color_descriptor) )
+            draw_text_program_raGL = ral_context_get_program_gl(text_ptr->context,
+                                                                _global.draw_text_program);
+
+            raGL_program_get_property(draw_text_program_raGL,
+                                      RAGL_PROGRAM_PROPERTY_ID,
+                                     &draw_text_program_raGL_id);
+
+            if (!raGL_program_get_uniform_by_name(draw_text_program_raGL,
+                                                  system_hashed_ansi_string_create("color"),
+                                                 &fragment_shader_color_ptr) )
             {
-                LOG_ERROR        ("Could not retrieve color uniform descriptor.");
                 ASSERT_DEBUG_SYNC(false,
-                                  "");
+                                  "Could not retrieve color uniform descriptor.");
             }
             else
-            if (!ogl_program_get_uniform_by_name(_global.draw_text_program,
-                                                 system_hashed_ansi_string_create("font_table"),
-                                                &fragment_shader_font_table_descriptor) )
+            if (!raGL_program_get_uniform_by_name(draw_text_program_raGL,
+                                                  system_hashed_ansi_string_create("font_table"),
+                                                 &fragment_shader_font_table_ptr) )
             {
-                LOG_ERROR        ("Could not retrieve font table uniform descriptor.");
                 ASSERT_DEBUG_SYNC(false,
-                                  "");
+                                  "Could not retrieve font table uniform descriptor.");
             }
             else
-            if (!ogl_program_get_uniform_by_name(_global.draw_text_program,
-                                                 system_hashed_ansi_string_create("n_origin_character"),
-                                                &vertex_shader_n_origin_character_descriptor))
+            if (!raGL_program_get_uniform_by_name(draw_text_program_raGL,
+                                                  system_hashed_ansi_string_create("n_origin_character"),
+                                                 &vertex_shader_n_origin_character_ptr))
             {
-                LOG_ERROR        ("Could not retrieve n origin character uniform descriptor.");
                 ASSERT_DEBUG_SYNC(false,
-                                  "");
+                                  "Could not retrieve n origin character uniform descriptor.");
             }
             else
-            if (!ogl_program_get_uniform_by_name(_global.draw_text_program,
-                                                 system_hashed_ansi_string_create("scale"),
-                                                &vertex_shader_scale_descriptor) )
+            if (!raGL_program_get_uniform_by_name(draw_text_program_raGL,
+                                                  system_hashed_ansi_string_create("scale"),
+                                                 &vertex_shader_scale_ptr) )
             {
-                LOG_ERROR        ("Could not retrieve scale uniform descriptor.");
                 ASSERT_DEBUG_SYNC(false,
-                                  "");
+                                  "Could not retrieve scale uniform descriptor.");
             }
             else
-            if (!ogl_program_get_shader_storage_block_by_name(_global.draw_text_program,
-                                                              system_hashed_ansi_string_create("dataSSB"),
-                                                             &_global.draw_text_program_data_ssb))
+            if (!raGL_program_get_shader_storage_block_by_name(draw_text_program_raGL,
+                                                               system_hashed_ansi_string_create("dataSSB"),
+                                                              &_global.draw_text_program_data_ssb))
             {
                 LOG_ERROR        ("Could not retrieve dataSSB shader storage block descriptor.");
                 ASSERT_DEBUG_SYNC(false,
@@ -602,10 +639,10 @@ PRIVATE void _ogl_text_construction_callback_from_renderer(ogl_context context,
             }
             else
             {
-                _global.draw_text_fragment_shader_color_ub_offset            = fragment_shader_color_descriptor->block_offset;
-                _global.draw_text_fragment_shader_font_table_location        = fragment_shader_font_table_descriptor->location;
-                _global.draw_text_vertex_shader_n_origin_character_ub_offset = vertex_shader_n_origin_character_descriptor->block_offset;
-                _global.draw_text_vertex_shader_scale_ub_offset              = vertex_shader_scale_descriptor->block_offset;
+                _global.draw_text_fragment_shader_color_ub_offset            = fragment_shader_color_ptr->block_offset;
+                _global.draw_text_fragment_shader_font_table_location        = fragment_shader_font_table_ptr->location;
+                _global.draw_text_vertex_shader_n_origin_character_ub_offset = vertex_shader_n_origin_character_ptr->block_offset;
+                _global.draw_text_vertex_shader_scale_ub_offset              = vertex_shader_scale_ptr->block_offset;
 
                 ASSERT_DEBUG_SYNC(_global.draw_text_fragment_shader_color_ub_offset != -1,
                                   "FSData color uniform UB offset is -1");
@@ -616,9 +653,24 @@ PRIVATE void _ogl_text_construction_callback_from_renderer(ogl_context context,
             }
 
             /* Set up samplers */
-            text_ptr->pGLProgramUniform1i(ogl_program_get_id(_global.draw_text_program),
+            text_ptr->pGLProgramUniform1i(draw_text_program_raGL_id,
                                           _global.draw_text_fragment_shader_font_table_location,
                                           1);
+
+            /* Delete the shader objects */
+            ral_context_delete_objects(text_ptr->context,
+                                       RAL_CONTEXT_OBJECT_TYPE_SHADER,
+                                       n_shader_create_info_items,
+                                       result_shaders);
+        }
+        else
+        {
+            draw_text_program_raGL = ral_context_get_program_gl(text_ptr->context,
+                                                                _global.draw_text_program);
+
+            raGL_program_get_property(draw_text_program_raGL,
+                                      RAGL_PROGRAM_PROPERTY_ID,
+                                     &draw_text_program_raGL_id);
         }
 
         /* Retrieve uniform block instances.
@@ -634,12 +686,12 @@ PRIVATE void _ogl_text_construction_callback_from_renderer(ogl_context context,
             ASSERT_DEBUG_SYNC(per_context_data_ptr != NULL,
                               "Out of memory");
 
-            ogl_program_get_uniform_block_by_name(_global.draw_text_program,
-                                                  system_hashed_ansi_string_create("FSData"),
-                                                 &per_context_data_ptr->draw_text_program_ub_fsdata);
-            ogl_program_get_uniform_block_by_name(_global.draw_text_program,
-                                                  system_hashed_ansi_string_create("VSData"),
-                                                 &per_context_data_ptr->draw_text_program_ub_vsdata);
+            raGL_program_get_uniform_block_by_name(draw_text_program_raGL,
+                                                   system_hashed_ansi_string_create("FSData"),
+                                                  &per_context_data_ptr->draw_text_program_ub_fsdata);
+            raGL_program_get_uniform_block_by_name(draw_text_program_raGL,
+                                                   system_hashed_ansi_string_create("VSData"),
+                                                  &per_context_data_ptr->draw_text_program_ub_vsdata);
 
             ASSERT_DEBUG_SYNC(per_context_data_ptr->draw_text_program_ub_fsdata != NULL,
                               "FSData uniform block descriptor is NULL");
@@ -668,10 +720,10 @@ PRIVATE void _ogl_text_construction_callback_from_renderer(ogl_context context,
                                         OGL_PROGRAM_UB_PROPERTY_BUFFER_RAL,
                                        &per_context_data_ptr->draw_text_program_ub_vsdata_bo);
 
-            text_ptr->pGLUniformBlockBinding(ogl_program_get_id(_global.draw_text_program),
+            text_ptr->pGLUniformBlockBinding(draw_text_program_raGL_id,
                                              per_context_data_ptr->draw_text_program_ub_fsdata_index,
                                              per_context_data_ptr->draw_text_program_ub_fsdata_index);
-            text_ptr->pGLUniformBlockBinding(ogl_program_get_id(_global.draw_text_program),
+            text_ptr->pGLUniformBlockBinding(draw_text_program_raGL_id,
                                              per_context_data_ptr->draw_text_program_ub_vsdata_index,
                                              per_context_data_ptr->draw_text_program_ub_vsdata_index);
 
@@ -782,7 +834,8 @@ PRIVATE void _ogl_text_destruction_callback_from_renderer(ogl_context context,
     /* First, free all objects that are not global */
     if (text_ptr->data_buffer != NULL)
     {
-        ral_context_delete_buffers(text_ptr->context,
+        ral_context_delete_objects(text_ptr->context,
+                                   RAL_CONTEXT_OBJECT_TYPE_BUFFER,
                                    1, /* n_buffers */
                                   &text_ptr->data_buffer);
 
@@ -795,24 +848,24 @@ PRIVATE void _ogl_text_destruction_callback_from_renderer(ogl_context context,
         if (_n_global_owners == 1)
         {
             /* It's time. Get rid of all the shaders and programs */
-            ogl_program_release(_global.draw_text_program);
-            ogl_shader_release (_global.draw_text_fragment_shader);
-            ogl_shader_release (_global.draw_text_vertex_shader);
+            ral_context_delete_objects(text_ptr->context,
+                                       RAL_CONTEXT_OBJECT_TYPE_PROGRAM,
+                                       1, /* n_objects */
+                                      &_global.draw_text_program);
 
             for (FontTableIterator iterator  = _global.font_tables.begin();
                                    iterator != _global.font_tables.end();
                                  ++iterator)
             {
-                ral_context_delete_textures(text_ptr->context,
-                                            1, /* n_textures */
-                                           &iterator->second.to);
+                ral_context_delete_objects(text_ptr->context,
+                                           RAL_CONTEXT_OBJECT_TYPE_TEXTURE,
+                                           1, /* n_textures */
+                                          &iterator->second.to);
             }
             _global.font_tables.clear();
 
-            _global.draw_text_fragment_shader  = NULL;
             _global.draw_text_program          = NULL;
             _global.draw_text_program_data_ssb = NULL;
-            _global.draw_text_vertex_shader    = NULL;
 
             _global.draw_text_fragment_shader_color_ub_offset            = -1;
             _global.draw_text_fragment_shader_font_table_location        = -1;
@@ -821,8 +874,11 @@ PRIVATE void _ogl_text_destruction_callback_from_renderer(ogl_context context,
         }
         else
         {
-            ogl_program_release_context_objects(_global.draw_text_program,
-                                                context);
+            raGL_program draw_text_program_raGL = ral_context_get_program_gl(text_ptr->context,
+                                                                             _global.draw_text_program);
+
+            raGL_program_release_context_objects(draw_text_program_raGL,
+                                                 context);
         }
 
         --_n_global_owners;
@@ -853,9 +909,16 @@ PRIVATE void _ogl_text_draw_callback_from_renderer(ogl_context context,
                                                    void*       text)
 {
     ral_backend_type backend_type = RAL_BACKEND_TYPE_UNKNOWN;
-    GLuint           program_id   = ogl_program_get_id(_global.draw_text_program);
     _ogl_text*       text_ptr     = (_ogl_text*) text;
     uint32_t         n_strings    = 0;
+
+    const raGL_program program_raGL    = ral_context_get_program_gl(text_ptr->context,
+                                                                    _global.draw_text_program);
+    GLuint             program_raGL_id = 0;
+
+    raGL_program_get_property(program_raGL,
+                              RAGL_PROGRAM_PROPERTY_ID,
+                             &program_raGL_id);
 
     ral_context_get_property            (text_ptr->context,
                                          RAL_CONTEXT_PROPERTY_BACKEND,
@@ -902,7 +965,7 @@ PRIVATE void _ogl_text_draw_callback_from_renderer(ogl_context context,
                                                 GL_FILL);
                 }
 
-                text_ptr->pGLUseProgram (program_id);
+                text_ptr->pGLUseProgram (program_raGL_id);
 
                 /* Bind data BO to the 0-th SSBO BP */
                 GLuint      data_buffer_id           = 0;
@@ -1113,7 +1176,7 @@ PUBLIC EMERALD_API ogl_text ogl_text_create(system_hashed_ansi_string name,
                                             uint32_t                  screen_width,
                                             uint32_t                  screen_height)
 {
-    _ogl_text* result = NULL;
+    _ogl_text* result_ptr = NULL;
 
     /* Sanity checks */
     ASSERT_DEBUG_SYNC(context != NULL,
@@ -1127,12 +1190,12 @@ PUBLIC EMERALD_API ogl_text ogl_text_create(system_hashed_ansi_string name,
     }
 
     /* Instantiate the new object */
-    result = new (std::nothrow) _ogl_text;
+    result_ptr = new (std::nothrow) _ogl_text;
 
-    ASSERT_ALWAYS_SYNC(result != NULL,
+    ASSERT_ALWAYS_SYNC(result_ptr != NULL,
                        "Could not allocate memory for text instance.");
 
-    if (result == NULL)
+    if (result_ptr == NULL)
     {
         LOG_FATAL("Could not allocate memory for text instance.");
 
@@ -1144,22 +1207,22 @@ PUBLIC EMERALD_API ogl_text ogl_text_create(system_hashed_ansi_string name,
          * Before that, however, fill the structure with data that is necessary for that to happen. */
         ogl_context context_gl = ral_context_get_gl_context(context);
 
-        memset(result,
+        memset(result_ptr,
                0,
                sizeof(_ogl_text) );
 
-        result->context          = context;
-        result->default_color[0] = DEFAULT_COLOR_R;
-        result->default_color[1] = DEFAULT_COLOR_G;
-        result->default_color[2] = DEFAULT_COLOR_B;
-        result->default_scale    = DEFAULT_SCALE;
-        result->draw_cs          = system_critical_section_create();
-        result->font_table       = font_table;
-        result->name             = name;
-        result->owner_context    = context;
-        result->screen_width     = screen_width;
-        result->screen_height    = screen_height;
-        result->strings          = system_resizable_vector_create(4 /* default capacity */);
+        result_ptr->context          = context;
+        result_ptr->default_color[0] = DEFAULT_COLOR_R;
+        result_ptr->default_color[1] = DEFAULT_COLOR_G;
+        result_ptr->default_color[2] = DEFAULT_COLOR_B;
+        result_ptr->default_scale    = DEFAULT_SCALE;
+        result_ptr->draw_cs          = system_critical_section_create();
+        result_ptr->font_table       = font_table;
+        result_ptr->name             = name;
+        result_ptr->owner_context    = context;
+        result_ptr->screen_width     = screen_width;
+        result_ptr->screen_height    = screen_height;
+        result_ptr->strings          = system_resizable_vector_create(4 /* default capacity */);
 
         /* Retrieve TBO alignment requirement */
         const ogl_context_gl_limits* limits_ptr = NULL;
@@ -1168,7 +1231,7 @@ PUBLIC EMERALD_API ogl_text ogl_text_create(system_hashed_ansi_string name,
                                  OGL_CONTEXT_PROPERTY_LIMITS,
                                 &limits_ptr);
 
-        result->shader_storage_buffer_offset_alignment = limits_ptr->shader_storage_buffer_offset_alignment;
+        result_ptr->shader_storage_buffer_offset_alignment = limits_ptr->shader_storage_buffer_offset_alignment;
 
         /* Initialize GL func pointers */
         ral_backend_type backend_type = RAL_BACKEND_TYPE_UNKNOWN;
@@ -1189,27 +1252,27 @@ PUBLIC EMERALD_API ogl_text ogl_text_create(system_hashed_ansi_string name,
                                      OGL_CONTEXT_PROPERTY_ENTRYPOINTS_ES_EXT_TEXTURE_BUFFER,
                                     &ts_entry_points);
 
-            result->pGLActiveTexture       = entry_points->pGLActiveTexture;
-            result->pGLBindBuffer          = entry_points->pGLBindBuffer;
-            result->pGLBindBufferRange     = entry_points->pGLBindBufferRange;
-            result->pGLBindTexture         = entry_points->pGLBindTexture;
-            result->pGLBindVertexArray     = entry_points->pGLBindVertexArray;
-            result->pGLBlendEquation       = entry_points->pGLBlendEquation;
-            result->pGLBlendFunc           = entry_points->pGLBlendFunc;
-            result->pGLBufferSubData       = entry_points->pGLBufferSubData;
-            result->pGLDeleteVertexArrays  = entry_points->pGLDeleteVertexArrays;
-            result->pGLDisable             = entry_points->pGLDisable;
-            result->pGLDrawArrays          = entry_points->pGLDrawArrays;
-            result->pGLEnable              = entry_points->pGLEnable;
-            result->pGLGenVertexArrays     = entry_points->pGLGenVertexArrays;
-            result->pGLGenerateMipmap      = entry_points->pGLGenerateMipmap;
-            result->pGLProgramUniform1i    = entry_points->pGLProgramUniform1i;
-            result->pGLScissor             = entry_points->pGLScissor;
-            result->pGLTexBufferRange      = ts_entry_points->pGLTexBufferRangeEXT;
-            result->pGLTexParameteri       = entry_points->pGLTexParameteri;
-            result->pGLTexSubImage2D       = entry_points->pGLTexSubImage2D;
-            result->pGLUniformBlockBinding = entry_points->pGLUniformBlockBinding;
-            result->pGLUseProgram          = entry_points->pGLUseProgram;
+            result_ptr->pGLActiveTexture       = entry_points->pGLActiveTexture;
+            result_ptr->pGLBindBuffer          = entry_points->pGLBindBuffer;
+            result_ptr->pGLBindBufferRange     = entry_points->pGLBindBufferRange;
+            result_ptr->pGLBindTexture         = entry_points->pGLBindTexture;
+            result_ptr->pGLBindVertexArray     = entry_points->pGLBindVertexArray;
+            result_ptr->pGLBlendEquation       = entry_points->pGLBlendEquation;
+            result_ptr->pGLBlendFunc           = entry_points->pGLBlendFunc;
+            result_ptr->pGLBufferSubData       = entry_points->pGLBufferSubData;
+            result_ptr->pGLDeleteVertexArrays  = entry_points->pGLDeleteVertexArrays;
+            result_ptr->pGLDisable             = entry_points->pGLDisable;
+            result_ptr->pGLDrawArrays          = entry_points->pGLDrawArrays;
+            result_ptr->pGLEnable              = entry_points->pGLEnable;
+            result_ptr->pGLGenVertexArrays     = entry_points->pGLGenVertexArrays;
+            result_ptr->pGLGenerateMipmap      = entry_points->pGLGenerateMipmap;
+            result_ptr->pGLProgramUniform1i    = entry_points->pGLProgramUniform1i;
+            result_ptr->pGLScissor             = entry_points->pGLScissor;
+            result_ptr->pGLTexBufferRange      = ts_entry_points->pGLTexBufferRangeEXT;
+            result_ptr->pGLTexParameteri       = entry_points->pGLTexParameteri;
+            result_ptr->pGLTexSubImage2D       = entry_points->pGLTexSubImage2D;
+            result_ptr->pGLUniformBlockBinding = entry_points->pGLUniformBlockBinding;
+            result_ptr->pGLUseProgram          = entry_points->pGLUseProgram;
         }
         else
         {
@@ -1226,32 +1289,32 @@ PUBLIC EMERALD_API ogl_text ogl_text_create(system_hashed_ansi_string name,
                                      OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL_EXT_DIRECT_STATE_ACCESS,
                                     &dsa_entry_points);
 
-            result->gl_pGLNamedBufferSubDataEXT = dsa_entry_points->pGLNamedBufferSubDataEXT;
-            result->gl_pGLPolygonMode           = entry_points->pGLPolygonMode;
-            result->gl_pGLTextureParameteriEXT  = dsa_entry_points->pGLTextureParameteriEXT;
-            result->gl_pGLTextureStorage2DEXT   = dsa_entry_points->pGLTextureStorage2DEXT;
-            result->gl_pGLTextureSubImage2DEXT  = dsa_entry_points->pGLTextureSubImage2DEXT;
-            result->pGLActiveTexture            = entry_points->pGLActiveTexture;
-            result->pGLBindBuffer               = entry_points->pGLBindBuffer;
-            result->pGLBindBufferRange          = entry_points->pGLBindBufferRange;
-            result->pGLBindTexture              = entry_points->pGLBindTexture;
-            result->pGLBindVertexArray          = entry_points->pGLBindVertexArray;
-            result->pGLBlendEquation            = entry_points->pGLBlendEquation;
-            result->pGLBlendFunc                = entry_points->pGLBlendFunc;
-            result->pGLBufferSubData            = entry_points->pGLBufferSubData;
-            result->pGLDeleteVertexArrays       = entry_points->pGLDeleteVertexArrays;
-            result->pGLDisable                  = entry_points->pGLDisable;
-            result->pGLDrawArrays               = entry_points->pGLDrawArrays;
-            result->pGLEnable                   = entry_points->pGLEnable;
-            result->pGLGenVertexArrays          = entry_points->pGLGenVertexArrays;
-            result->pGLGenerateMipmap           = entry_points->pGLGenerateMipmap;
-            result->pGLProgramUniform1i         = entry_points->pGLProgramUniform1i;
-            result->pGLScissor                  = entry_points->pGLScissor;
-            result->pGLTexBufferRange           = entry_points->pGLTexBufferRange;
-            result->pGLTexParameteri            = entry_points->pGLTexParameteri;
-            result->pGLTexSubImage2D            = entry_points->pGLTexSubImage2D;
-            result->pGLUniformBlockBinding      = entry_points->pGLUniformBlockBinding;
-            result->pGLUseProgram               = entry_points->pGLUseProgram;
+            result_ptr->gl_pGLNamedBufferSubDataEXT = dsa_entry_points->pGLNamedBufferSubDataEXT;
+            result_ptr->gl_pGLPolygonMode           = entry_points->pGLPolygonMode;
+            result_ptr->gl_pGLTextureParameteriEXT  = dsa_entry_points->pGLTextureParameteriEXT;
+            result_ptr->gl_pGLTextureStorage2DEXT   = dsa_entry_points->pGLTextureStorage2DEXT;
+            result_ptr->gl_pGLTextureSubImage2DEXT  = dsa_entry_points->pGLTextureSubImage2DEXT;
+            result_ptr->pGLActiveTexture            = entry_points->pGLActiveTexture;
+            result_ptr->pGLBindBuffer               = entry_points->pGLBindBuffer;
+            result_ptr->pGLBindBufferRange          = entry_points->pGLBindBufferRange;
+            result_ptr->pGLBindTexture              = entry_points->pGLBindTexture;
+            result_ptr->pGLBindVertexArray          = entry_points->pGLBindVertexArray;
+            result_ptr->pGLBlendEquation            = entry_points->pGLBlendEquation;
+            result_ptr->pGLBlendFunc                = entry_points->pGLBlendFunc;
+            result_ptr->pGLBufferSubData            = entry_points->pGLBufferSubData;
+            result_ptr->pGLDeleteVertexArrays       = entry_points->pGLDeleteVertexArrays;
+            result_ptr->pGLDisable                  = entry_points->pGLDisable;
+            result_ptr->pGLDrawArrays               = entry_points->pGLDrawArrays;
+            result_ptr->pGLEnable                   = entry_points->pGLEnable;
+            result_ptr->pGLGenVertexArrays          = entry_points->pGLGenVertexArrays;
+            result_ptr->pGLGenerateMipmap           = entry_points->pGLGenerateMipmap;
+            result_ptr->pGLProgramUniform1i         = entry_points->pGLProgramUniform1i;
+            result_ptr->pGLScissor                  = entry_points->pGLScissor;
+            result_ptr->pGLTexBufferRange           = entry_points->pGLTexBufferRange;
+            result_ptr->pGLTexParameteri            = entry_points->pGLTexParameteri;
+            result_ptr->pGLTexSubImage2D            = entry_points->pGLTexSubImage2D;
+            result_ptr->pGLUniformBlockBinding      = entry_points->pGLUniformBlockBinding;
+            result_ptr->pGLUseProgram               = entry_points->pGLUseProgram;
         }
 
         /* Make sure the font table has been assigned a texture object */
@@ -1259,15 +1322,15 @@ PUBLIC EMERALD_API ogl_text ogl_text_create(system_hashed_ansi_string name,
         {
             ogl_context_request_callback_from_context_thread(context_gl,
                                                              _ogl_text_create_font_table_to_callback_from_renderer,
-                                                             result);
+                                                             result_ptr);
         }
 
         /* We need a call-back, now */
         ogl_context_request_callback_from_context_thread(context_gl,
                                                          _ogl_text_construction_callback_from_renderer,
-                                                         result);
+                                                         result_ptr);
 
-        REFCOUNT_INSERT_INIT_CODE_WITH_RELEASE_HANDLER(result,
+        REFCOUNT_INSERT_INIT_CODE_WITH_RELEASE_HANDLER(result_ptr,
                                                        _ogl_text_release,
                                                        OBJECT_TYPE_OGL_TEXT,
                                                        system_hashed_ansi_string_create_by_merging_two_strings("\\OpenGL Text Renderers\\",
@@ -1277,7 +1340,7 @@ PUBLIC EMERALD_API ogl_text ogl_text_create(system_hashed_ansi_string name,
     }
 
 end:
-    return (ogl_text) result;
+    return (ogl_text) result_ptr;
 }
 
 /** Please see header for specification */

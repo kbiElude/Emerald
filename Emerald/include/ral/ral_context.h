@@ -17,7 +17,7 @@ enum
      *
      * NOTE: This callback ID only supports synchronous call-backs.
      *
-     * arg: ral_context_callback_buffers_created_callback_arg
+     * arg: ral_context_callback_objects_created_callback_arg
      */
     RAL_CONTEXT_CALLBACK_ID_BUFFERS_CREATED,
 
@@ -25,7 +25,7 @@ enum
      *
      * NOTE: This callback ID only supports synchronous call-backs.
      *
-     * arg: ral_context_callback_buffers_deleted_callback_arg instance.
+     * arg: ral_context_callback_objects_deleted_callback_arg instance.
      */
     RAL_CONTEXT_CALLBACK_ID_BUFFERS_DELETED,
 
@@ -34,7 +34,7 @@ enum
      *
      * NOTE: This callback ID only supports synchronous call-backs.
      *
-     * arg: ral_context_callback_framebuffers_created_callback_arg
+     * arg: ral_context_callback_objects_created_callback_arg
      */
     RAL_CONTEXT_CALLBACK_ID_FRAMEBUFFERS_CREATED,
 
@@ -42,16 +42,33 @@ enum
      *
      * NOTE: This callback ID only supports synchronous call-backs.
      *
-     * arg: ral_context_callback_framebuffers_deleted_callback_arg instance.
+     * arg: ral_context_callback_objects_deleted_callback_arg instance.
      */
     RAL_CONTEXT_CALLBACK_ID_FRAMEBUFFERS_DELETED,
+
+
+    /* One or more ral_program instances were created.
+     *
+     * NOTE: This callbacK ID only supports synchronous call-backs.
+     *
+     * arg: ral_context_callback_objects_created_callback_arg
+     **/
+    RAL_CONTEXT_CALLBACK_ID_PROGRAMS_CREATED,
+
+    /* One or more existing ral_program instances were deleted.
+     *
+     * NOTE: This callback ID only supports synchronous call-backs.
+     *
+     * arg: ral_context_callback_objects_deleted_callback_arg instance.
+     */
+    RAL_CONTEXT_CALLBACK_ID_PROGRAMS_DELETED,
 
 
     /* One or more ral_sampler instances were created.
      *
      * NOTE: This callbacK ID only supports synchronous call-backs.
      *
-     * arg: ral_context_callback_samplers_created_callback_arg
+     * arg: ral_context_callback_objects_created_callback_arg
      **/
     RAL_CONTEXT_CALLBACK_ID_SAMPLERS_CREATED,
 
@@ -59,16 +76,33 @@ enum
      *
      * NOTE: This callback ID only supports synchronous call-backs.
      *
-     * arg: ral_context_callback_samplers_deleted_callback_arg instance.
+     * arg: ral_context_callback_objects_deleted_callback_arg instance.
      */
     RAL_CONTEXT_CALLBACK_ID_SAMPLERS_DELETED,
+
+
+    /* One or more ral_shader instances were created.
+     *
+     * NOTE: This callback ID only supports synchronous call-backs.
+     *
+     * arg: ral_context_callback_objects_created_callback_arg
+     **/
+    RAL_CONTEXT_CALLBACK_ID_SHADERS_CREATED,
+
+    /* One or more existing ral_shader instances were deleted.
+     *
+     * NOTE: This callback ID only supports synchronous call-backs.
+     *
+     * arg: ral_context_callback_objects_deleted_callback_arg instance.
+     */
+    RAL_CONTEXT_CALLBACK_ID_SHADERS_DELETED,
 
 
     /* One or more ral_texture instances were created.
      *
      * NOTE: This callback ID only supports synchronous call-backs.
      *
-     * arg: ral_context_callback_textures_created_callback_arg
+     * arg: ral_context_callback_objects_created_callback_arg
      **/
     RAL_CONTEXT_CALLBACK_ID_TEXTURES_CREATED,
 
@@ -76,7 +110,7 @@ enum
      *
      * NOTE: This callback ID only supports synchronous call-backs.
      *
-     * arg: ral_context_callback_textures_deleted_callback_arg instance.
+     * arg: ral_context_callback_objects_deleted_callback_arg instance.
      */
     RAL_CONTEXT_CALLBACK_ID_TEXTURES_DELETED,
 
@@ -89,7 +123,9 @@ typedef enum
 {
     RAL_CONTEXT_OBJECT_TYPE_BUFFER,
     RAL_CONTEXT_OBJECT_TYPE_FRAMEBUFFER,
+    RAL_CONTEXT_OBJECT_TYPE_PROGRAM,
     RAL_CONTEXT_OBJECT_TYPE_SAMPLER,
+    RAL_CONTEXT_OBJECT_TYPE_SHADER,
     RAL_CONTEXT_OBJECT_TYPE_TEXTURE,
 
     RAL_CONTEXT_OBJECT_TYPE_COUNT,
@@ -137,11 +173,23 @@ PUBLIC EMERALD_API bool ral_context_create_framebuffers(ral_context      context
                                                         uint32_t         n_framebuffers,
                                                         ral_framebuffer* out_result_framebuffers_ptr);
 
+/** TODO */
+PUBLIC EMERALD_API bool ral_context_create_programs(ral_context                    context,
+                                                    uint32_t                       n_create_info_items,
+                                                    const ral_program_create_info* create_info_ptrs,
+                                                    ral_program*                   out_result_program_ptrs);
+
 /** TODO **/
-PUBLIC EMERALD_API bool ral_context_create_samplers(ral_context              context,
-                                                    uint32_t                 n_create_info_items,
-                                                    ral_sampler_create_info* create_info_ptrs,
-                                                    ral_sampler*             out_result_sampler_ptrs);
+PUBLIC EMERALD_API bool ral_context_create_samplers(ral_context                    context,
+                                                    uint32_t                       n_create_info_items,
+                                                    const ral_sampler_create_info* create_info_ptrs,
+                                                    ral_sampler*                   out_result_sampler_ptrs);
+
+/** TODO */
+PUBLIC EMERALD_API bool ral_context_create_shaders(ral_context                   context,
+                                                   uint32_t                      n_create_info_items,
+                                                   const ral_shader_create_info* create_info_ptrs,
+                                                   ral_shader*                   out_result_shader_ptrs);
 
 /** TODO */
 PUBLIC EMERALD_API bool ral_context_create_textures(ral_context                    context,
@@ -161,29 +209,19 @@ PUBLIC EMERALD_API bool ral_context_create_textures_from_gfx_images(ral_context 
                                                                     const gfx_image* images,
                                                                     ral_texture*     out_result_textures_ptr);
 /** TODO */
-PUBLIC EMERALD_API bool ral_context_delete_buffers(ral_context context,
-                                                   uint32_t    n_buffers,
-                                                   ral_buffer* buffers);
-
-/** TODO */
-PUBLIC EMERALD_API bool ral_context_delete_framebuffers(ral_context      context,
-                                                        uint32_t         n_framebuffers,
-                                                        ral_framebuffer* framebuffers);
-
-/** TODO */
-PUBLIC EMERALD_API bool ral_context_delete_samplers(ral_context  context,
-                                                    uint32_t     n_samplers,
-                                                    ral_sampler* samplers);
-
-/** TODO */
-PUBLIC EMERALD_API bool ral_context_delete_textures(ral_context  context,
-                                                    uint32_t     n_textures,
-                                                    ral_texture* textures);
+PUBLIC EMERALD_API bool ral_context_delete_objects(ral_context             context,
+                                                   ral_context_object_type object_type,
+                                                   uint32_t                n_objects,
+                                                   const void*             objects);
 
 /** TODO */
 PUBLIC EMERALD_API void ral_context_get_property(ral_context          context,
                                                  ral_context_property property,
                                                  void*                out_result_ptr);
+
+/** TODO */
+PUBLIC EMERALD_API ral_shader ral_context_get_shader_by_name(ral_context               context,
+                                                             system_hashed_ansi_string name);
 
 /** TODO */
 PUBLIC EMERALD_API ral_texture ral_context_get_texture_by_file_name(ral_context               context,
@@ -206,11 +244,27 @@ PUBLIC EMERALD_API raGL_framebuffer ral_context_get_framebuffer_gl(ral_context  
  *  TEMPORARY. Will be removed during RAL integration */
 PUBLIC EMERALD_API ogl_context ral_context_get_gl_context(ral_context context);
 
+/** TODO */
+PUBLIC EMERALD_API ral_program ral_context_get_program_by_name(ral_context               context,
+                                                               system_hashed_ansi_string name);
+
+/** TODO
+ *
+ *  TEMPORARY. Will be removed during RAL integration */
+PUBLIC EMERALD_API raGL_program ral_context_get_program_gl(ral_context context,
+                                                           ral_program program);
+
 /** TODO
  *
  *  TEMPORARY. Will be removed during RAL integration */
 PUBLIC EMERALD_API raGL_sampler ral_context_get_sampler_gl(ral_context context,
                                                            ral_sampler sampler);
+
+/** TODO
+ *
+ *  TEMPORARY. Will be removed during RAL integration */
+PUBLIC EMERALD_API raGL_shader ral_context_get_shader_gl(ral_context context,
+                                                         ral_shader  shader);
 
 /** TODO
  *
@@ -227,6 +281,11 @@ PUBLIC GLuint ral_context_get_texture_gl_id(ral_context context,
 /** TODO */
 PUBLIC EMERALD_API ral_texture ral_context_get_texture_by_name(ral_context               context,
                                                                system_hashed_ansi_string name);
+
+/** TODO */
+PUBLIC EMERALD_API void ral_context_retain_object(ral_context             context,
+                                                  ral_context_object_type object_type,
+                                                  void*                   object);
 
 /** TODO */
 PUBLIC void ral_context_set_property(ral_context          context,

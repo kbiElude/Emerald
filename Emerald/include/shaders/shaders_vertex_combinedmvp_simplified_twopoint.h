@@ -23,21 +23,21 @@ REFCOUNT_INSERT_DECLARATIONS(shaders_vertex_combinedmvp_simplified_twopoint,
 
 /** Creates a new combined mvp (simplified, two-point) vertex shader object instance.
  *
- *  @param ogl_context               OGL context to create the shader in.
- *  @param system_hashed_ansi_string Name to use for the object.
+ *  @param context OGL context to create the shader in.
+ *  @param name    Name to use for the object.
  * 
  *  @return shaders_vertex_combinedmvp_simplified_twopoint instance if successful, NULL otherwise.
  */
-PUBLIC EMERALD_API shaders_vertex_combinedmvp_simplified_twopoint shaders_vertex_combinedmvp_simplified_twopoint_create(ral_context,
-                                                                                                                        system_hashed_ansi_string);
+PUBLIC EMERALD_API shaders_vertex_combinedmvp_simplified_twopoint shaders_vertex_combinedmvp_simplified_twopoint_create(ral_context               context,
+                                                                                                                        system_hashed_ansi_string name);
 
-/** Retrieves ogl_shader object associated with the instance. Do not release the object or modify it in any way.
+/** Retrieves ral_shader object associated with the instance. Do not release the object or modify it in any way.
  *
- *  @param shaders_vertex_combinedmvp_simplified_twopoint Shader instance to retrieve the object from. Cannot be NULL.
+ *  @param shader Shader instance to retrieve the object from. Cannot be NULL.
  *
- *  @return ogl_shader instance.
+ *  @return ral_shader instance.
  **/
-PUBLIC EMERALD_API ogl_shader shaders_vertex_combinedmvp_simplified_twopoint_get_shader(shaders_vertex_combinedmvp_simplified_twopoint);
+PUBLIC EMERALD_API ral_shader shaders_vertex_combinedmvp_simplified_twopoint_get_shader(shaders_vertex_combinedmvp_simplified_twopoint shader);
 
 
 #endif /* SHADERS_VERTEX_COMBINEDMVP_SIMPLIFIED_TWOPOINT_H */

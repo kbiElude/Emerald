@@ -6,13 +6,15 @@
 #include "shared.h"
 #include "ogl/ogl_context.h"
 #include "ogl/ogl_primitive_renderer.h"
-#include "ogl/ogl_program.h"
-#include "ogl/ogl_shader.h"
 #include "raGL/raGL_backend.h"
 #include "raGL/raGL_buffer.h"
+#include "raGL/raGL_program.h"
+#include "raGL/raGL_shader.h"
 #include "raGL/raGL_utils.h"
 #include "ral/ral_buffer.h"
 #include "ral/ral_context.h"
+#include "ral/ral_program.h"
+#include "ral/ral_shader.h"
 #include "system/system_assertions.h"
 #include "system/system_critical_section.h"
 #include "system/system_hashed_ansi_string.h"
@@ -129,7 +131,7 @@ typedef struct
     system_resizable_vector datasets;
 
     /* Rendering program */
-    ogl_program program;
+    ral_program program;
 
     /* Rendering context */
     raGL_backend backend;
@@ -211,9 +213,16 @@ PRIVATE void _ogl_primitive_renderer_draw_rendering_thread_callback(ogl_context 
     }
 
     /* Draw line strips as requested */
-    GLuint      bo_id           = 0;
-    raGL_buffer bo_raGL         = NULL;
-    GLuint      bo_start_offset = 0;
+    GLuint             bo_id           = 0;
+    raGL_buffer        bo_raGL         = NULL;
+    GLuint             bo_start_offset = 0;
+    const raGL_program program_raGL    = ral_context_get_program_gl(renderer_ptr->context,
+                                                                    renderer_ptr->program);
+    GLuint             program_raGL_id = 0;
+
+    raGL_program_get_property(program_raGL,
+                              RAGL_PROGRAM_PROPERTY_ID,
+                             &program_raGL_id);
 
     raGL_backend_get_buffer(renderer_ptr->backend,
                             renderer_ptr->bo,
@@ -232,7 +241,7 @@ PRIVATE void _ogl_primitive_renderer_draw_rendering_thread_callback(ogl_context 
                                      bo_start_offset,
                                      renderer_ptr->bo_storage_size);
     entry_points->pGLBindVertexArray(renderer_ptr->vao_id);
-    entry_points->pGLUseProgram     (ogl_program_get_id(renderer_ptr->program) );
+    entry_points->pGLUseProgram     (program_raGL_id);
 
     /* TODO: Add support for indirect draw calls? */
     for (unsigned int n = 0;
@@ -274,42 +283,91 @@ PRIVATE void _ogl_primitive_renderer_init_program(_ogl_primitive_renderer* rende
     const unsigned int n_vs_parts = sizeof(vs_parts) / sizeof(vs_parts[0]);
 
     /* Prepare the objects */
-    ogl_shader fs = NULL;
-    ogl_shader vs = NULL;
+    ral_shader fs = NULL;
+    ral_shader vs = NULL;
 
-    fs = ogl_shader_create(renderer_ptr->context,
-                           RAL_SHADER_TYPE_FRAGMENT,
-                           system_hashed_ansi_string_create_by_merging_two_strings("Line strip renderer FS ",
-                                                                                   system_hashed_ansi_string_get_buffer(renderer_ptr->name) ));
-    vs = ogl_shader_create(renderer_ptr->context,
-                           RAL_SHADER_TYPE_VERTEX,
-                           system_hashed_ansi_string_create_by_merging_two_strings("Line strip renderer VS ",
-                                                                                   system_hashed_ansi_string_get_buffer(renderer_ptr->name) ));
-
-    renderer_ptr->program = ogl_program_create(renderer_ptr->context,
-                                               system_hashed_ansi_string_create_by_merging_two_strings("Line strip renderer program ",
-                                                                                                       system_hashed_ansi_string_get_buffer(renderer_ptr->name) ));
-
-    ogl_shader_set_body(fs,
-                        system_hashed_ansi_string_create(fs_body) );
-    ogl_shader_set_body(vs,
-                        system_hashed_ansi_string_create_by_merging_strings(n_vs_parts,
-                                                                            vs_parts) );
-
-    ogl_program_attach_shader(renderer_ptr->program,
-                              fs);
-    ogl_program_attach_shader(renderer_ptr->program,
-                              vs);
-
-    if (!ogl_program_link(renderer_ptr->program) )
+    const ral_shader_create_info fs_create_info =
     {
-        ASSERT_ALWAYS_SYNC(false,
-                           "Could not link line strip renderer program");
+        system_hashed_ansi_string_create_by_merging_two_strings("Line strip renderer FS ",
+                                                                system_hashed_ansi_string_get_buffer(renderer_ptr->name) ),
+        RAL_SHADER_TYPE_FRAGMENT
+    };
+    const ral_shader_create_info vs_create_info =
+    {
+        system_hashed_ansi_string_create_by_merging_two_strings("Line strip renderer VS ",
+                                                                system_hashed_ansi_string_get_buffer(renderer_ptr->name) ),
+        RAL_SHADER_TYPE_VERTEX
+    };
+
+    const ral_program_create_info program_create_info =
+    {
+        system_hashed_ansi_string_create_by_merging_two_strings("Line strip renderer program ",
+                                                                system_hashed_ansi_string_get_buffer(renderer_ptr->name) )
+    };
+
+    const ral_shader_create_info shader_create_info_items[] =
+    {
+        fs_create_info,
+        vs_create_info
+    };
+    const uint32_t n_shader_create_info_items = sizeof(shader_create_info_items) / sizeof(shader_create_info_items[0]);
+
+    ral_shader result_shaders[n_shader_create_info_items];
+
+
+    if (!ral_context_create_shaders(renderer_ptr->context,
+                                    n_shader_create_info_items,
+                                    shader_create_info_items,
+                                    result_shaders) )
+    {
+        ASSERT_DEBUG_SYNC(false,
+                          "RAL shader creation failed.");
+    }
+
+    if (!ral_context_create_programs(renderer_ptr->context,
+                                     1, /* n_create_info_items */
+                                     &program_create_info,
+                                    &renderer_ptr->program) )
+    {
+        ASSERT_DEBUG_SYNC(false,
+                          "RAL program creation failed.");
+    }
+
+
+    const system_hashed_ansi_string fs_body_has = system_hashed_ansi_string_create                   (fs_body);
+    const system_hashed_ansi_string vs_body_has = system_hashed_ansi_string_create_by_merging_strings(n_vs_parts,
+                                                                                                      vs_parts);
+
+    ral_shader_set_property(fs,
+                            RAL_SHADER_PROPERTY_GLSL_BODY,
+                           &fs_body_has);
+    ral_shader_set_property(vs,
+                            RAL_SHADER_PROPERTY_GLSL_BODY,
+                           &vs_body_has);
+
+    if (!ral_program_attach_shader(renderer_ptr->program,
+                                   fs,
+                                   false /* relink_needed */) ||
+        !ral_program_attach_shader(renderer_ptr->program,
+                                   vs,
+                                   true /* relink_needed */) )
+    {
+        ASSERT_DEBUG_SYNC(false,
+                          "RAL program configuration failed.");
     }
 
     /* Good to release the shaders at this point */
-    ogl_shader_release(fs);
-    ogl_shader_release(vs);
+    const ral_shader shaders_to_release[] =
+    {
+        fs,
+        vs
+    };
+    const uint32_t n_shaders_to_release = sizeof(shaders_to_release) / sizeof(shaders_to_release[0]);
+
+    ral_context_delete_objects(renderer_ptr->context,
+                               RAL_CONTEXT_OBJECT_TYPE_SHADER,
+                               n_shaders_to_release,
+                               shaders_to_release);
 }
 
 /** TODO */
@@ -352,8 +410,9 @@ PRIVATE void _ogl_primitive_renderer_release_rendering_thread_callback(ogl_conte
 
     if (instance_ptr->bo != NULL)
     {
-        ral_context_delete_buffers(instance_ptr->context,
-                                   1, /* n_buffers */
+        ral_context_delete_objects(instance_ptr->context,
+                                   RAL_CONTEXT_OBJECT_TYPE_BUFFER,
+                                   1, /* n_objects */
                                   &instance_ptr->bo);
 
         instance_ptr->bo = NULL;
@@ -361,7 +420,10 @@ PRIVATE void _ogl_primitive_renderer_release_rendering_thread_callback(ogl_conte
 
     if (instance_ptr->program != NULL)
     {
-        ogl_program_release(instance_ptr->program);
+        ral_context_delete_objects(instance_ptr->context,
+                                   RAL_CONTEXT_OBJECT_TYPE_PROGRAM,
+                                   1, /* n_objects */
+                                  &instance_ptr->program);
 
         instance_ptr->program = NULL;
     }
@@ -443,8 +505,9 @@ PRIVATE void _ogl_primitive_renderer_update_bo_storage(ogl_context              
     if (renderer_ptr->bo              != NULL &&
         renderer_ptr->bo_storage_size <  renderer_ptr->bo_data_size)
     {
-        ral_context_delete_buffers(renderer_ptr->context,
-                                   1, /* n_buffers */
+        ral_context_delete_objects(renderer_ptr->context,
+                                   RAL_CONTEXT_OBJECT_TYPE_BUFFER,
+                                   1, /* n_objects */
                                   &renderer_ptr->bo);
 
         renderer_ptr->bo = NULL;

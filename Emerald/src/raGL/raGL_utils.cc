@@ -197,6 +197,81 @@ PUBLIC EMERALD_API ogl_texture_data_type raGL_utils_get_ogl_data_type_for_ral_te
 }
 
 /** Please see header for specification */
+PUBLIC EMERALD_API GLenum raGL_utils_get_ogl_enum_for_ral_program_uniform_type(ral_program_uniform_type in_uniform_type)
+{
+    static const GLenum result_array[] =
+    {
+        GL_FLOAT,
+        GL_FLOAT_VEC2,
+        GL_FLOAT_VEC3,
+        GL_FLOAT_VEC4,
+        GL_INT,
+        GL_INT_VEC2,
+        GL_INT_VEC3,
+        GL_INT_VEC4,
+        GL_UNSIGNED_INT,
+        GL_UNSIGNED_INT_VEC2,
+        GL_UNSIGNED_INT_VEC3,
+        GL_UNSIGNED_INT_VEC4,
+        GL_BOOL,
+        GL_BOOL_VEC2,
+        GL_BOOL_VEC3,
+        GL_BOOL_VEC4,
+        GL_FLOAT_MAT2,
+        GL_FLOAT_MAT3,
+        GL_FLOAT_MAT4,
+        GL_FLOAT_MAT2x3,
+        GL_FLOAT_MAT2x4,
+        GL_FLOAT_MAT3x2,
+        GL_FLOAT_MAT3x4,
+        GL_FLOAT_MAT4x2,
+        GL_FLOAT_MAT4x3,
+        GL_SAMPLER_1D,
+        GL_SAMPLER_2D,
+        GL_SAMPLER_3D,
+        GL_SAMPLER_CUBE,
+        GL_SAMPLER_1D_SHADOW,
+        GL_SAMPLER_2D_SHADOW,
+        GL_SAMPLER_1D_ARRAY,
+        GL_SAMPLER_2D_ARRAY,
+        GL_SAMPLER_1D_ARRAY_SHADOW,
+        GL_SAMPLER_2D_ARRAY_SHADOW,
+        GL_SAMPLER_2D_MULTISAMPLE,
+        GL_SAMPLER_2D_MULTISAMPLE_ARRAY,
+        GL_SAMPLER_CUBE_SHADOW,
+        GL_SAMPLER_BUFFER,
+        GL_SAMPLER_2D_RECT,
+        GL_SAMPLER_2D_RECT_SHADOW,
+        GL_INT_SAMPLER_1D,
+        GL_INT_SAMPLER_2D,
+        GL_INT_SAMPLER_3D,
+        GL_INT_SAMPLER_CUBE,
+        GL_INT_SAMPLER_1D_ARRAY,
+        GL_INT_SAMPLER_2D_ARRAY,
+        GL_INT_SAMPLER_2D_MULTISAMPLE,
+        GL_INT_SAMPLER_2D_MULTISAMPLE_ARRAY,
+        GL_INT_SAMPLER_BUFFER,
+        GL_INT_SAMPLER_2D_RECT,
+        GL_UNSIGNED_INT_SAMPLER_1D,
+        GL_UNSIGNED_INT_SAMPLER_2D,
+        GL_UNSIGNED_INT_SAMPLER_3D,
+        GL_UNSIGNED_INT_SAMPLER_CUBE,
+        GL_UNSIGNED_INT_SAMPLER_1D_ARRAY,
+        GL_UNSIGNED_INT_SAMPLER_2D_ARRAY,
+        GL_UNSIGNED_INT_SAMPLER_2D_MULTISAMPLE,
+        GL_UNSIGNED_INT_SAMPLER_2D_MULTISAMPLE_ARRAY,
+        GL_UNSIGNED_INT_SAMPLER_BUFFER,
+        GL_UNSIGNED_INT_SAMPLER_2D_RECT
+    };
+    static const uint32_t n_result_array_entries = sizeof(result_array) / sizeof(result_array[0]);
+
+    ASSERT_DEBUG_SYNC(in_uniform_type < n_result_array_entries,
+                      "Invalid ral_uniform_type value.");
+
+    return result_array[in_uniform_type];
+};
+
+/** Please see header for specification */
 PUBLIC EMERALD_API ogl_texture_filter raGL_utils_get_ogl_texture_filter_for_ral_mag_texture_filter(ral_texture_filter in_texture_filter)
 {
     ogl_texture_filter              result         = OGL_TEXTURE_FILTER_UNKNOWN;

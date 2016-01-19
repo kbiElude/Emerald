@@ -5,15 +5,17 @@
  */
 #include "shared.h"
 #include "ogl/ogl_context.h"
-#include "ogl/ogl_program.h"
 #include "ogl/ogl_program_ub.h"
-#include "ogl/ogl_shader.h"
 #include "ogl/ogl_text.h"
 #include "ogl/ogl_ui.h"
 #include "ogl/ogl_ui_scrollbar.h"
 #include "ogl/ogl_ui_shared.h"
 #include "raGL/raGL_buffer.h"
+#include "raGL/raGL_program.h"
+#include "raGL/raGL_shader.h"
 #include "ral/ral_context.h"
+#include "ral/ral_program.h"
+#include "ral/ral_shader.h"
 #include "system/system_assertions.h"
 #include "system/system_hashed_ansi_string.h"
 #include "system/system_log.h"
@@ -82,7 +84,7 @@ typedef struct
     ogl_text                       text_renderer;
     ogl_ui                         ui;
 
-    ogl_program                    program_slider;
+    ral_program                    program_slider;
     GLint                          program_slider_border_width_ub_offset;
     GLint                          program_slider_brightness_ub_offset;
     GLint                          program_slider_is_handle_ub_offset;
@@ -139,37 +141,79 @@ PRIVATE void _ogl_ui_scrollbar_init_program(ogl_ui             ui,
                                             _ogl_ui_scrollbar* scrollbar_ptr)
 {
     /* Create all objects */
-    ral_context context         = ogl_ui_get_context(ui);
-    ogl_shader  fragment_shader = NULL;
-    ogl_shader  vertex_shader   = NULL;
+    ral_context context = ogl_ui_get_context(ui);
+    ral_shader  fs      = NULL;
+    ral_shader  vs      = NULL;
 
-    fragment_shader = ogl_shader_create (context,
-                                         RAL_SHADER_TYPE_FRAGMENT,
-                                         system_hashed_ansi_string_create("UI scrollbar slider fragment shader") );
-    vertex_shader   = ogl_shader_create (context,
-                                         RAL_SHADER_TYPE_VERTEX,
-                                         system_hashed_ansi_string_create("UI scrollbar slider vertex shader") );
+    const ral_shader_create_info fs_create_info =
+    {
+        system_hashed_ansi_string_create("UI scrollbar slider fragment shader"),
+        RAL_SHADER_TYPE_FRAGMENT
+    };
+    const ral_shader_create_info vs_create_info =
+    {
+        system_hashed_ansi_string_create("UI scrollbar slider vertex shader"),
+        RAL_SHADER_TYPE_VERTEX
+    };
 
-    scrollbar_ptr->program_slider = ogl_program_create(context,
-                                                       system_hashed_ansi_string_create("UI scrollbar program"),
-                                                       OGL_PROGRAM_SYNCABLE_UBS_MODE_ENABLE_GLOBAL);
+    const ral_program_create_info program_create_info =
+    {
+        system_hashed_ansi_string_create("UI scrollbar program")
+    };
+
+    const ral_shader_create_info shader_create_info_items[] =
+    {
+        fs_create_info,
+        vs_create_info
+    };
+    const uint32_t n_shader_create_info_items = sizeof(shader_create_info_items) / sizeof(shader_create_info_items[0]);
+
+    ral_shader result_shaders[n_shader_create_info_items];
+
+    
+    if (!ral_context_create_programs(context,
+                                     1, /* n_create_info_items */
+                                    &program_create_info,
+                                    &scrollbar_ptr->program_slider) )
+    {
+        ASSERT_DEBUG_SYNC(false,
+                          "RAL program creation failed.");
+    }
+
+    if (!ral_context_create_shaders(context,
+                                    n_shader_create_info_items,
+                                    shader_create_info_items,
+                                    result_shaders) )
+    {
+        ASSERT_DEBUG_SYNC(false,
+                          "RAL shader creation failed.");
+    }
+
+    fs = result_shaders[0];
+    vs = result_shaders[1];
 
     /* Set up shaders */
-    ogl_shader_set_body(fragment_shader,
-                        system_hashed_ansi_string_create(ui_scrollbar_fragment_shader_body) );
-    ogl_shader_set_body(vertex_shader,
-                        system_hashed_ansi_string_create(ui_general_vertex_shader_body) );
+    const system_hashed_ansi_string fs_body = system_hashed_ansi_string_create(ui_scrollbar_fragment_shader_body);
+    const system_hashed_ansi_string vs_body = system_hashed_ansi_string_create(ui_general_vertex_shader_body);
 
-    ogl_shader_compile(fragment_shader);
-    ogl_shader_compile(vertex_shader);
+    ral_shader_set_property(fs,
+                            RAL_SHADER_PROPERTY_GLSL_BODY,
+                           &fs_body);
+    ral_shader_set_property(vs,
+                            RAL_SHADER_PROPERTY_GLSL_BODY,
+                           &vs_body);
 
     /* Set up program object */
-    ogl_program_attach_shader(scrollbar_ptr->program_slider,
-                              fragment_shader);
-    ogl_program_attach_shader(scrollbar_ptr->program_slider,
-                              vertex_shader);
-
-    ogl_program_link(scrollbar_ptr->program_slider);
+    if (!ral_program_attach_shader(scrollbar_ptr->program_slider,
+                                   fs,
+                                   false /* relink_needed */) ||
+        !ral_program_attach_shader(scrollbar_ptr->program_slider,
+                                   vs,
+                                   true /* relink_needed */))
+    {
+        ASSERT_DEBUG_SYNC(false,
+                          "RAL program configuration failed.");
+    }
 
     /* Register the prgoram with UI so following button instances will reuse the program */
     ogl_ui_register_program(ui,
@@ -177,18 +221,35 @@ PRIVATE void _ogl_ui_scrollbar_init_program(ogl_ui             ui,
                             scrollbar_ptr->program_slider);
 
     /* Release shaders we will no longer need */
-    ogl_shader_release(fragment_shader);
-    ogl_shader_release(vertex_shader);
+    ral_shader shaders_to_release[] =
+    {
+        fs,
+        vs
+    };
+    const uint32_t n_shaders_to_release = sizeof(shaders_to_release) / sizeof(shaders_to_release[0]);
+
+    ral_context_delete_objects(scrollbar_ptr->context,
+                               RAL_CONTEXT_OBJECT_TYPE_SHADER,
+                               n_shaders_to_release,
+                               shaders_to_release);
 }
 
 /** TODO */
-PRIVATE void _ogl_ui_scrollbar_init_renderer_callback(ogl_context context, void* scrollbar)
+PRIVATE void _ogl_ui_scrollbar_init_renderer_callback(ogl_context context,
+                                                      void*       scrollbar)
 {
     float              border_width[2] = {0};
     _ogl_ui_scrollbar* scrollbar_ptr   = (_ogl_ui_scrollbar*) scrollbar;
-    const GLuint       program_id      = ogl_program_get_id(scrollbar_ptr->program_slider);
     system_window      window          = NULL;
     int                window_size[2]  = {0};
+
+    const raGL_program program_raGL    = ral_context_get_program_gl(scrollbar_ptr->context,
+                                                                    scrollbar_ptr->program_slider);
+    GLuint             program_raGL_id = 0;
+    
+    raGL_program_get_property(program_raGL,
+                              RAGL_PROGRAM_PROPERTY_ID,
+                             &program_raGL_id);
 
     ogl_context_get_property  (context,
                                OGL_CONTEXT_PROPERTY_WINDOW,
@@ -201,12 +262,12 @@ PRIVATE void _ogl_ui_scrollbar_init_renderer_callback(ogl_context context, void*
     unsigned int datafs_ub_index = -1;
     unsigned int datavs_ub_index = -1;
 
-    ogl_program_get_uniform_block_by_name(scrollbar_ptr->program_slider,
-                                          system_hashed_ansi_string_create("dataFS"),
-                                         &scrollbar_ptr->program_slider_ub_fs);
-    ogl_program_get_uniform_block_by_name(scrollbar_ptr->program_slider,
-                                          system_hashed_ansi_string_create("dataVS"),
-                                         &scrollbar_ptr->program_slider_ub_vs);
+    raGL_program_get_uniform_block_by_name(program_raGL,
+                                           system_hashed_ansi_string_create("dataFS"),
+                                          &scrollbar_ptr->program_slider_ub_fs);
+    raGL_program_get_uniform_block_by_name(program_raGL,
+                                           system_hashed_ansi_string_create("dataVS"),
+                                          &scrollbar_ptr->program_slider_ub_vs);
 
     ASSERT_DEBUG_SYNC(scrollbar_ptr->program_slider_ub_fs != NULL &&
                       scrollbar_ptr->program_slider_ub_vs != NULL,
@@ -236,36 +297,36 @@ PRIVATE void _ogl_ui_scrollbar_init_renderer_callback(ogl_context context, void*
     /* Set up uniform block bindings.
      *
      * This should actually be done once but the additional cost is negligible */
-    scrollbar_ptr->pGLUniformBlockBinding(ogl_program_get_id(scrollbar_ptr->program_slider),
+    scrollbar_ptr->pGLUniformBlockBinding(program_raGL_id,
                                           datafs_ub_index,
                                           UB_DATAFS_BP);
-    scrollbar_ptr->pGLUniformBlockBinding(ogl_program_get_id(scrollbar_ptr->program_slider),
+    scrollbar_ptr->pGLUniformBlockBinding(program_raGL_id,
                                           datavs_ub_index,
                                           UB_DATAVS_BP);
 
     /* Retrieve uniform locations */
-    const ogl_program_variable* border_width_uniform = NULL;
-    const ogl_program_variable* brightness_uniform   = NULL;
-    const ogl_program_variable* is_handle_uniform    = NULL;
-    const ogl_program_variable* x1y1x2y2_uniform     = NULL;
+    const ral_program_variable* border_width_uniform_ptr = NULL;
+    const ral_program_variable* brightness_uniform_ptr   = NULL;
+    const ral_program_variable* is_handle_uniform_ptr    = NULL;
+    const ral_program_variable* x1y1x2y2_uniform_ptr     = NULL;
 
-    ogl_program_get_uniform_by_name(scrollbar_ptr->program_slider,
-                                    system_hashed_ansi_string_create("border_width"),
-                                   &border_width_uniform);
-    ogl_program_get_uniform_by_name(scrollbar_ptr->program_slider,
-                                    system_hashed_ansi_string_create("brightness"),
-                                   &brightness_uniform);
-    ogl_program_get_uniform_by_name(scrollbar_ptr->program_slider,
-                                    system_hashed_ansi_string_create("is_handle"),
-                                   &is_handle_uniform);
-    ogl_program_get_uniform_by_name(scrollbar_ptr->program_slider,
-                                    system_hashed_ansi_string_create("x1y1x2y2"),
-                                   &x1y1x2y2_uniform);
+    raGL_program_get_uniform_by_name(program_raGL,
+                                     system_hashed_ansi_string_create("border_width"),
+                                    &border_width_uniform_ptr);
+    raGL_program_get_uniform_by_name(program_raGL,
+                                     system_hashed_ansi_string_create("brightness"),
+                                    &brightness_uniform_ptr);
+    raGL_program_get_uniform_by_name(program_raGL,
+                                     system_hashed_ansi_string_create("is_handle"),
+                                    &is_handle_uniform_ptr);
+    raGL_program_get_uniform_by_name(program_raGL,
+                                     system_hashed_ansi_string_create("x1y1x2y2"),
+                                    &x1y1x2y2_uniform_ptr);
 
-    scrollbar_ptr->program_slider_border_width_ub_offset = (border_width_uniform != NULL ? border_width_uniform->block_offset : -1);
-    scrollbar_ptr->program_slider_brightness_ub_offset   = (brightness_uniform   != NULL ? brightness_uniform->block_offset   : -1);
-    scrollbar_ptr->program_slider_is_handle_ub_offset    = (is_handle_uniform    != NULL ? is_handle_uniform->block_offset    : -1);
-    scrollbar_ptr->program_slider_x1y1x2y2_ub_offset     = (x1y1x2y2_uniform     != NULL ? x1y1x2y2_uniform->block_offset     : -1);
+    scrollbar_ptr->program_slider_border_width_ub_offset = (border_width_uniform_ptr != NULL ? border_width_uniform_ptr->block_offset : -1);
+    scrollbar_ptr->program_slider_brightness_ub_offset   = (brightness_uniform_ptr   != NULL ? brightness_uniform_ptr->block_offset   : -1);
+    scrollbar_ptr->program_slider_is_handle_ub_offset    = (is_handle_uniform_ptr    != NULL ? is_handle_uniform_ptr->block_offset    : -1);
+    scrollbar_ptr->program_slider_x1y1x2y2_ub_offset     = (x1y1x2y2_uniform_ptr     != NULL ? x1y1x2y2_uniform_ptr->block_offset     : -1);
 
     /* Set general uniforms */
     ogl_program_ub_set_nonarrayed_uniform_value(scrollbar_ptr->program_slider_ub_fs,
@@ -355,15 +416,15 @@ PUBLIC void ogl_ui_scrollbar_deinit(void* internal_instance)
     _ogl_ui_scrollbar* scrollbar_ptr = (_ogl_ui_scrollbar*) internal_instance;
 
     /* Release program */
-    ogl_program_release(scrollbar_ptr->program_slider);
+    ral_context_delete_objects(scrollbar_ptr->context,
+                               RAL_CONTEXT_OBJECT_TYPE_PROGRAM,
+                               1, /* n_objects */
+                               &scrollbar_ptr->program_slider);
 
     /* Release variants */
     system_variant_release(scrollbar_ptr->max_value_variant);
     system_variant_release(scrollbar_ptr->min_value_variant);
     system_variant_release(scrollbar_ptr->temp_variant);
-
-    /* Release context */
-    ral_context_release(scrollbar_ptr->context);
 }
 
 /** TODO */
@@ -371,8 +432,14 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_ui_scrollbar_draw(void* internal_instance
 {
     float                brightness;
     _ogl_ui_scrollbar*   scrollbar_ptr   = (_ogl_ui_scrollbar*) internal_instance;
-    GLuint               program_id      = ogl_program_get_id(scrollbar_ptr->program_slider);
+    const raGL_program   program_raGL    = ral_context_get_program_gl(scrollbar_ptr->context,
+                                                                      scrollbar_ptr->program_slider);
+    GLuint               program_raGL_id = 0;
     system_time          time_now        = system_time_now();
+
+    raGL_program_get_property(program_raGL,
+                              RAGL_PROGRAM_PROPERTY_ID,
+                             &program_raGL_id);
 
     /* Bail out if invisible */
     if (!scrollbar_ptr->is_visible)
@@ -490,7 +557,7 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_ui_scrollbar_draw(void* internal_instance
                                       scrollbar_ptr->program_slider_ub_vs_bo_size);
 
     {
-        scrollbar_ptr->pGLUseProgram(ogl_program_get_id(scrollbar_ptr->program_slider) );
+        scrollbar_ptr->pGLUseProgram(program_raGL_id);
 
         /* Draw the slider area */
         static const bool bool_false = 0;
@@ -636,162 +703,160 @@ PUBLIC void* ogl_ui_scrollbar_init(ogl_ui                         instance,
                                    PFNOGLUISETCURRENTVALUEPROCPTR pfn_set_current_value_ptr,
                                    void*                          set_current_value_ptr_user_arg)
 {
-    _ogl_ui_scrollbar* new_scrollbar = new (std::nothrow) _ogl_ui_scrollbar;
+    _ogl_ui_scrollbar* new_scrollbar_ptr = new (std::nothrow) _ogl_ui_scrollbar;
 
-    ASSERT_ALWAYS_SYNC(new_scrollbar != NULL,
+    ASSERT_ALWAYS_SYNC(new_scrollbar_ptr != NULL,
                        "Out of memory");
 
-    if (new_scrollbar != NULL)
+    if (new_scrollbar_ptr != NULL)
     {
         /* Initialize fields */
-        memset(new_scrollbar,
+        memset(new_scrollbar_ptr,
                0,
                sizeof(_ogl_ui_scrollbar) );
 
-        new_scrollbar->gpu_slider_handle_position = 0;
-        new_scrollbar->is_visible                 = true;
+        new_scrollbar_ptr->gpu_slider_handle_position = 0;
+        new_scrollbar_ptr->is_visible                 = true;
 
-        new_scrollbar->slider_x1y1x2y2[0] =     x1y1[0];
-        new_scrollbar->slider_x1y1x2y2[1] = 1 - x2y2[1];
-        new_scrollbar->slider_x1y1x2y2[2] =     x2y2[0];
-        new_scrollbar->slider_x1y1x2y2[3] = 1 - x1y1[1];
+        new_scrollbar_ptr->slider_x1y1x2y2[0] =     x1y1[0];
+        new_scrollbar_ptr->slider_x1y1x2y2[1] = 1 - x2y2[1];
+        new_scrollbar_ptr->slider_x1y1x2y2[2] =     x2y2[0];
+        new_scrollbar_ptr->slider_x1y1x2y2[3] = 1 - x1y1[1];
 
-        new_scrollbar->current_gpu_brightness_level   = NONFOCUSED_BRIGHTNESS;
-        new_scrollbar->context                        = ogl_ui_get_context(instance);
-        new_scrollbar->pfn_get_current_value_ptr      = pfn_get_current_value_ptr;
-        new_scrollbar->get_current_value_ptr_user_arg = get_current_value_ptr_user_arg;
-        new_scrollbar->pfn_set_current_value_ptr      = pfn_set_current_value_ptr;
-        new_scrollbar->set_current_value_ptr_user_arg = set_current_value_ptr_user_arg;
+        new_scrollbar_ptr->current_gpu_brightness_level   = NONFOCUSED_BRIGHTNESS;
+        new_scrollbar_ptr->context                        = ogl_ui_get_context(instance);
+        new_scrollbar_ptr->pfn_get_current_value_ptr      = pfn_get_current_value_ptr;
+        new_scrollbar_ptr->get_current_value_ptr_user_arg = get_current_value_ptr_user_arg;
+        new_scrollbar_ptr->pfn_set_current_value_ptr      = pfn_set_current_value_ptr;
+        new_scrollbar_ptr->set_current_value_ptr_user_arg = set_current_value_ptr_user_arg;
 
-        new_scrollbar->text_renderer                  = text_renderer;
-        new_scrollbar->text_index                     = ogl_text_add_string(text_renderer);
-        new_scrollbar->text_location                  = text_location;
-        new_scrollbar->ui                             = instance;
+        new_scrollbar_ptr->text_renderer                  = text_renderer;
+        new_scrollbar_ptr->text_index                     = ogl_text_add_string(text_renderer);
+        new_scrollbar_ptr->text_location                  = text_location;
+        new_scrollbar_ptr->ui                             = instance;
 
-        new_scrollbar->max_value_variant              = system_variant_create(system_variant_get_type(max_value) );
-        new_scrollbar->min_value_variant              = system_variant_create(system_variant_get_type(min_value) );
-        new_scrollbar->temp_variant                   = system_variant_create(system_variant_get_type(max_value) );
+        new_scrollbar_ptr->max_value_variant              = system_variant_create(system_variant_get_type(max_value) );
+        new_scrollbar_ptr->min_value_variant              = system_variant_create(system_variant_get_type(min_value) );
+        new_scrollbar_ptr->temp_variant                   = system_variant_create(system_variant_get_type(max_value) );
 
-        system_variant_set(new_scrollbar->max_value_variant,
+        system_variant_set(new_scrollbar_ptr->max_value_variant,
                            max_value,
                            false);
-        system_variant_set(new_scrollbar->min_value_variant,
+        system_variant_set(new_scrollbar_ptr->min_value_variant,
                            min_value,
                            false);
-
-        ral_context_retain(new_scrollbar->context);
 
         /* Cache GL func pointers */
         ral_backend_type backend_type = RAL_BACKEND_TYPE_UNKNOWN;
 
-        ral_context_get_property(new_scrollbar->context,
+        ral_context_get_property(new_scrollbar_ptr->context,
                                  RAL_CONTEXT_PROPERTY_BACKEND_TYPE,
                                 &backend_type);
 
         if (backend_type == RAL_BACKEND_TYPE_ES)
         {
-            const ogl_context_es_entrypoints* entry_points = NULL;
+            const ogl_context_es_entrypoints* entry_points_ptr = NULL;
 
-            ogl_context_get_property(ral_context_get_gl_context(new_scrollbar->context),
+            ogl_context_get_property(ral_context_get_gl_context(new_scrollbar_ptr->context),
                                      OGL_CONTEXT_PROPERTY_ENTRYPOINTS_ES,
-                                    &entry_points);
+                                    &entry_points_ptr);
 
-            new_scrollbar->pGLBindBufferRange     = entry_points->pGLBindBufferRange;
-            new_scrollbar->pGLBlendEquation       = entry_points->pGLBlendEquation;
-            new_scrollbar->pGLBlendFunc           = entry_points->pGLBlendFunc;
-            new_scrollbar->pGLDisable             = entry_points->pGLDisable;
-            new_scrollbar->pGLDrawArrays          = entry_points->pGLDrawArrays;
-            new_scrollbar->pGLEnable              = entry_points->pGLEnable;
-            new_scrollbar->pGLUniformBlockBinding = entry_points->pGLUniformBlockBinding;
-            new_scrollbar->pGLUseProgram          = entry_points->pGLUseProgram;
+            new_scrollbar_ptr->pGLBindBufferRange     = entry_points_ptr->pGLBindBufferRange;
+            new_scrollbar_ptr->pGLBlendEquation       = entry_points_ptr->pGLBlendEquation;
+            new_scrollbar_ptr->pGLBlendFunc           = entry_points_ptr->pGLBlendFunc;
+            new_scrollbar_ptr->pGLDisable             = entry_points_ptr->pGLDisable;
+            new_scrollbar_ptr->pGLDrawArrays          = entry_points_ptr->pGLDrawArrays;
+            new_scrollbar_ptr->pGLEnable              = entry_points_ptr->pGLEnable;
+            new_scrollbar_ptr->pGLUniformBlockBinding = entry_points_ptr->pGLUniformBlockBinding;
+            new_scrollbar_ptr->pGLUseProgram          = entry_points_ptr->pGLUseProgram;
         }
         else
         {
             ASSERT_DEBUG_SYNC(backend_type == RAL_BACKEND_TYPE_GL,
                               "Unrecognized backend type");
 
-            const ogl_context_gl_entrypoints* entry_points = NULL;
+            const ogl_context_gl_entrypoints* entry_points_ptr = NULL;
 
-            ogl_context_get_property(ral_context_get_gl_context(new_scrollbar->context),
+            ogl_context_get_property(ral_context_get_gl_context(new_scrollbar_ptr->context),
                                      OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
-                                    &entry_points);
+                                    &entry_points_ptr);
 
-            new_scrollbar->pGLBindBufferRange     = entry_points->pGLBindBufferRange;
-            new_scrollbar->pGLBlendEquation       = entry_points->pGLBlendEquation;
-            new_scrollbar->pGLBlendFunc           = entry_points->pGLBlendFunc;
-            new_scrollbar->pGLDisable             = entry_points->pGLDisable;
-            new_scrollbar->pGLDrawArrays          = entry_points->pGLDrawArrays;
-            new_scrollbar->pGLEnable              = entry_points->pGLEnable;
-            new_scrollbar->pGLUniformBlockBinding = entry_points->pGLUniformBlockBinding;
-            new_scrollbar->pGLUseProgram          = entry_points->pGLUseProgram;
+            new_scrollbar_ptr->pGLBindBufferRange     = entry_points_ptr->pGLBindBufferRange;
+            new_scrollbar_ptr->pGLBlendEquation       = entry_points_ptr->pGLBlendEquation;
+            new_scrollbar_ptr->pGLBlendFunc           = entry_points_ptr->pGLBlendFunc;
+            new_scrollbar_ptr->pGLDisable             = entry_points_ptr->pGLDisable;
+            new_scrollbar_ptr->pGLDrawArrays          = entry_points_ptr->pGLDrawArrays;
+            new_scrollbar_ptr->pGLEnable              = entry_points_ptr->pGLEnable;
+            new_scrollbar_ptr->pGLUniformBlockBinding = entry_points_ptr->pGLUniformBlockBinding;
+            new_scrollbar_ptr->pGLUseProgram          = entry_points_ptr->pGLUseProgram;
         }
 
         /* Configure the text to be shown on the button */
-        ogl_text_set(new_scrollbar->text_renderer,
-                     new_scrollbar->text_index,
+        ogl_text_set(new_scrollbar_ptr->text_renderer,
+                     new_scrollbar_ptr->text_index,
                      system_hashed_ansi_string_get_buffer(name) );
 
         int           text_height    = 0;
         system_window window         = NULL;
         int           window_size[2] = {0};
 
-        ogl_text_get_text_string_property(new_scrollbar->text_renderer,
+        ogl_text_get_text_string_property(new_scrollbar_ptr->text_renderer,
                                           OGL_TEXT_STRING_PROPERTY_TEXT_HEIGHT_PX,
-                                          new_scrollbar->text_index,
+                                          new_scrollbar_ptr->text_index,
                                          &text_height);
 
-        ral_context_get_property  (new_scrollbar->context,
+        ral_context_get_property  (new_scrollbar_ptr->context,
                                    RAL_CONTEXT_PROPERTY_WINDOW_SYSTEM,
                                   &window);
         system_window_get_property(window,
                                    SYSTEM_WINDOW_PROPERTY_DIMENSIONS,
                                    window_size);
 
-        new_scrollbar->slider_x1y1x2y2[3] -= float(text_height + TEXT_SCROLLBAR_SEPARATION_PX) / window_size[1];
+        new_scrollbar_ptr->slider_x1y1x2y2[3] -= float(text_height + TEXT_SCROLLBAR_SEPARATION_PX) / window_size[1];
 
-        ASSERT_DEBUG_SYNC(new_scrollbar->slider_x1y1x2y2[1] < new_scrollbar->slider_x1y1x2y2[3],
+        ASSERT_DEBUG_SYNC(new_scrollbar_ptr->slider_x1y1x2y2[1] < new_scrollbar_ptr->slider_x1y1x2y2[3],
                           "Scrollbar has illegal height");
 
-        ogl_text_set_text_string_property(new_scrollbar->text_renderer,
-                                          new_scrollbar->text_index,
+        ogl_text_set_text_string_property(new_scrollbar_ptr->text_renderer,
+                                          new_scrollbar_ptr->text_index,
                                           OGL_TEXT_STRING_PROPERTY_COLOR,
                                           _ui_scrollbar_text_color);
 
-        _ogl_ui_scrollbar_update_text_position(new_scrollbar);
+        _ogl_ui_scrollbar_update_text_position(new_scrollbar_ptr);
 
         /* Calculate slider sizes */
-        new_scrollbar->slider_border_width       [0] = 1.0f / (float)((new_scrollbar->slider_x1y1x2y2[2] - new_scrollbar->slider_x1y1x2y2[0]) * window_size[0]);
-        new_scrollbar->slider_border_width       [1] = 1.0f / (float)((new_scrollbar->slider_x1y1x2y2[3] - new_scrollbar->slider_x1y1x2y2[1]) * window_size[1]);
-        new_scrollbar->slider_handle_border_width[0] = 1.0f / (float)(SLIDER_SIZE_PX);
-        new_scrollbar->slider_handle_border_width[1] = 1.0f / (float)(SLIDER_SIZE_PX);
+        new_scrollbar_ptr->slider_border_width       [0] = 1.0f / (float)((new_scrollbar_ptr->slider_x1y1x2y2[2] - new_scrollbar_ptr->slider_x1y1x2y2[0]) * window_size[0]);
+        new_scrollbar_ptr->slider_border_width       [1] = 1.0f / (float)((new_scrollbar_ptr->slider_x1y1x2y2[3] - new_scrollbar_ptr->slider_x1y1x2y2[1]) * window_size[1]);
+        new_scrollbar_ptr->slider_handle_border_width[0] = 1.0f / (float)(SLIDER_SIZE_PX);
+        new_scrollbar_ptr->slider_handle_border_width[1] = 1.0f / (float)(SLIDER_SIZE_PX);
 
         /* Calculate slider handle size */
-        new_scrollbar->slider_handle_size[0] = float(SLIDER_SIZE_PX) / float(window_size[0]);
-        new_scrollbar->slider_handle_size[1] = float(SLIDER_SIZE_PX) / float(window_size[1]);
+        new_scrollbar_ptr->slider_handle_size[0] = float(SLIDER_SIZE_PX) / float(window_size[0]);
+        new_scrollbar_ptr->slider_handle_size[1] = float(SLIDER_SIZE_PX) / float(window_size[1]);
 
         /* Update slider handle position */
-        _ogl_ui_scrollbar_update_slider_handle_position(new_scrollbar);
+        _ogl_ui_scrollbar_update_slider_handle_position(new_scrollbar_ptr);
 
         /* Retrieve the rendering program */
-        new_scrollbar->program_slider = ogl_ui_get_registered_program(instance,
-                                                                      _ui_scrollbar_slider_program_name);
+        new_scrollbar_ptr->program_slider = ogl_ui_get_registered_program(instance,
+                                                                          _ui_scrollbar_slider_program_name);
 
-        if (new_scrollbar->program_slider == NULL)
+        if (new_scrollbar_ptr->program_slider == NULL)
         {
             _ogl_ui_scrollbar_init_program(instance,
-                                           new_scrollbar);
+                                           new_scrollbar_ptr);
 
-            ASSERT_DEBUG_SYNC(new_scrollbar->program_slider != NULL,
+            ASSERT_DEBUG_SYNC(new_scrollbar_ptr->program_slider != NULL,
                               "Could not initialize scrollbar slider UI program");
         } /* if (new_scrollbar->program == NULL) */
 
         /* Set up predefined values */
-        ogl_context_request_callback_from_context_thread(ral_context_get_gl_context(new_scrollbar->context),
+        ogl_context_request_callback_from_context_thread(ral_context_get_gl_context(new_scrollbar_ptr->context),
                                                          _ogl_ui_scrollbar_init_renderer_callback,
-                                                         new_scrollbar);
-    } /* if (new_button != NULL) */
+                                                         new_scrollbar_ptr);
+    } /* if (new_scrollbar_ptr != NULL) */
 
-    return (void*) new_scrollbar;
+    return (void*) new_scrollbar_ptr;
 }
 
 /** TODO */

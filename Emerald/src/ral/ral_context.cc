@@ -8,10 +8,13 @@
 #include "ogl/ogl_context.h"
 #include "raGL/raGL_backend.h"
 #include "raGL/raGL_texture.h" /* TEMP TEMP TEMP */
+#include "raGL/raGL_types.h"
 #include "ral/ral_buffer.h"
 #include "ral/ral_context.h"
 #include "ral/ral_framebuffer.h"
+#include "ral/ral_program.h"
 #include "ral/ral_sampler.h"
+#include "ral/ral_shader.h"
 #include "ral/ral_texture.h"
 #include "ral/ral_texture_pool.h"
 #include "system/system_callback_manager.h"
@@ -53,9 +56,18 @@ typedef struct _ral_context
     system_critical_section framebuffers_cs;
     uint32_t                n_framebuffers_created;
 
+    system_resizable_vector programs; /* owns ral_framebuffer instances */
+    system_critical_section programs_cs;
+    uint32_t                n_programs_created;
+
     system_resizable_vector samplers; /* owns ral_sampler instances */
     system_critical_section samplers_cs;
     uint32_t                n_samplers_created;
+
+    system_resizable_vector shaders;             /* owns ral_shader instances          */
+    system_hash64map        shaders_by_name_map; /* does NOT own the ral_shader values */
+    system_critical_section shaders_cs;
+    uint32_t                n_shaders_created;
 
     ral_texture_pool        texture_pool;
     system_hash64map        textures_by_filename_map; /* does NOT own the ral_texture values */
@@ -87,8 +99,13 @@ typedef struct _ral_context
         n_textures_created       = 0;
         name                     = in_name;
         rendering_handler        = NULL;
+        programs                 = system_resizable_vector_create(sizeof(ral_program) );
+        programs_cs              = system_critical_section_create();
         samplers                 = system_resizable_vector_create(sizeof(ral_sampler) );
         samplers_cs              = system_critical_section_create();
+        shaders                  = system_resizable_vector_create(sizeof(ral_shader) );
+        shaders_by_name_map      = system_hash64map_create       (sizeof(ral_shader) );
+        shaders_cs               = system_critical_section_create();
         texture_pool             = ral_texture_pool_create       ();
         textures_by_filename_map = system_hash64map_create       (sizeof(ral_texture) );
         textures_by_name_map     = system_hash64map_create       (sizeof(ral_texture) );
@@ -111,8 +128,14 @@ typedef struct _ral_context
                           "Could not create a callback manager instance");
         ASSERT_DEBUG_SYNC(framebuffers != NULL,
                           "Could not create the framebuffers vector.");
+        ASSERT_DEBUG_SYNC(programs != NULL,
+                          "Could not create the programs vector.");
         ASSERT_DEBUG_SYNC(samplers != NULL,
                           "Could not create the samplers vector.");
+        ASSERT_DEBUG_SYNC(shaders != NULL,
+                          "Could not create the shaders vector.");
+        ASSERT_DEBUG_SYNC(shaders_by_name_map != NULL,
+                          "Could not create the name->shader map.");
         ASSERT_DEBUG_SYNC(texture_pool != NULL,
                           "Could not create the texture pool.");
         ASSERT_DEBUG_SYNC(textures_by_filename_map != NULL,
@@ -123,74 +146,81 @@ typedef struct _ral_context
 
     ~_ral_context()
     {
-        if (buffers != NULL)
+        system_critical_section* cses_to_release[] =
         {
-            /* Buffer instances should have been released by _ral_context_release().. */
-            uint32_t n_buffers = 0;
-
-            system_resizable_vector_get_property(buffers,
-                                                 SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
-                                                &n_buffers);
-
-            ASSERT_DEBUG_SYNC(n_buffers == 0,
-                              "Memory leak detected");
-
-            system_resizable_vector_release(buffers);
-            buffers = NULL;
-        } /* if (buffers != NULL) */
-
-        if (buffers_cs != NULL)
+            &buffers_cs,
+            &framebuffers_cs,
+            &programs_cs,
+            &samplers_cs,
+            &shaders_cs
+        };
+        system_hash64map* hashmaps_to_release[] =
         {
-            system_critical_section_release(buffers_cs);
-
-            buffers_cs = NULL;
-        } /* if (buffers_cs != NULL) */
-
-        if (framebuffers != NULL)
+            &shaders_by_name_map,
+            &textures_by_filename_map,
+            &textures_by_name_map
+        };
+        system_resizable_vector* vectors_to_release[] =
         {
-            /* Framebuffer instances should have been released by _ral_context_release().. */
-            uint32_t n_framebuffers = 0;
+            &buffers,
+            &framebuffers,
+            &programs,
+            &samplers,
+            &shaders
+        };
 
-            system_resizable_vector_get_property(framebuffers,
-                                                 SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
-                                                &n_framebuffers);
+        const uint32_t n_cses_to_release     = sizeof(cses_to_release)     / sizeof(cses_to_release    [0]);
+        const uint32_t n_hashmaps_to_release = sizeof(hashmaps_to_release) / sizeof(hashmaps_to_release[0]);
+        const uint32_t n_vectors_to_release  = sizeof(vectors_to_release)  / sizeof(vectors_to_release [0]);
 
-            ASSERT_DEBUG_SYNC(n_framebuffers == 0,
-                              "Memory leak detected");
-
-            system_resizable_vector_release(framebuffers);
-            framebuffers = NULL;
-        } /* if (framebuffers != NULL) */
-
-        if (framebuffers_cs != NULL)
+        for (uint32_t n_cs_to_release = 0;
+                      n_cs_to_release < n_cses_to_release;
+                    ++n_cs_to_release)
         {
-            system_critical_section_release(framebuffers_cs);
+            system_critical_section* current_cs_ptr = cses_to_release[n_cs_to_release];
 
-            framebuffers_cs = NULL;
-        } /* if (framebuffers_cs != NULL) */
+            if (*current_cs_ptr != NULL)
+            {
+                system_critical_section_release(*current_cs_ptr);
 
-        if (samplers != NULL)
+                *current_cs_ptr = NULL;
+            }
+        }
+
+        for (uint32_t n_hashmap_to_release = 0;
+                      n_hashmap_to_release < n_hashmaps_to_release;
+                    ++n_hashmap_to_release)
         {
-            /* Sampler instances should have been released by _ral_context_release().. */
-            uint32_t n_samplers = 0;
+            system_hash64map* current_hashmap_ptr = hashmaps_to_release[n_hashmap_to_release];
 
-            system_resizable_vector_get_property(samplers,
-                                                 SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
-                                                &n_samplers);
+            if (*current_hashmap_ptr != NULL)
+            {
+                system_hash64map_release(*current_hashmap_ptr);
 
-            ASSERT_DEBUG_SYNC(n_samplers == 0,
-                              "Memory leak detected");
+                *current_hashmap_ptr = NULL;
+            }
+        }
 
-            system_resizable_vector_release(samplers);
-            samplers = NULL;
-        } /* if (samplers != NULL) */
-
-        if (samplers_cs != NULL)
+        for (uint32_t n_vector_to_release = 0;
+                      n_vector_to_release < n_vectors_to_release;
+                    ++n_vector_to_release)
         {
-            system_critical_section_release(samplers_cs);
+            system_resizable_vector* current_vector_ptr = vectors_to_release[n_vector_to_release];
+            uint32_t                 n_objects          = 0;
 
-            samplers_cs = NULL;
-        } /* if (samplers_cs != NULL) */
+            if (*current_vector_ptr != NULL)
+            {
+                system_resizable_vector_get_property(*current_vector_ptr,
+                                                     SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                                    &n_objects);
+
+                ASSERT_DEBUG_SYNC(n_objects == 0,
+                                  "Memory leak detected");
+
+                system_resizable_vector_release(*current_vector_ptr);
+                *current_vector_ptr = NULL;
+            }
+        }
 
         if (texture_pool != NULL)
         {
@@ -198,28 +228,6 @@ typedef struct _ral_context
 
             texture_pool = NULL;
         } /* if (texture_pool != NULL) */
-
-        if (textures_by_filename_map != NULL)
-        {
-            system_hash64map_release(textures_by_filename_map);
-
-            textures_by_filename_map = NULL;
-        } /* if (textures_by_filename_map != NULL) */
-
-        if (textures_by_name_map != NULL)
-        {
-            system_hash64map_release(textures_by_name_map);
-
-            textures_by_name_map = NULL;
-        } /* if (textures_by_name_map != NULL) */
-
-        if (textures_cs != NULL)
-        {
-            system_critical_section_release(textures_cs);
-
-            textures_cs = NULL;
-        } /* if (textures_cs != NULL) */
-
 
         /* Callback manager needs to be deleted at the end. */
         if (callback_manager != NULL)
@@ -236,6 +244,45 @@ typedef struct _ral_context
 REFCOUNT_INSERT_IMPLEMENTATION(ral_context,
                                ral_context,
                               _ral_context);
+
+/* TODO */
+PRIVATE void _ral_context_add_shaders_to_shader_hashmap(_ral_context* context_ptr,
+                                                        uint32_t      n_shaders,
+                                                        ral_shader*   new_shaders)
+{
+    system_critical_section_enter(context_ptr->shaders_cs);
+    {
+        for (uint32_t n_shader = 0;
+                      n_shader < n_shaders;
+                    ++n_shader)
+        {
+            system_hashed_ansi_string shader_name      = NULL;
+            system_hash64             shader_name_hash = -1;
+
+            ral_shader_get_property(new_shaders[n_shader],
+                                    RAL_SHADER_PROPERTY_NAME,
+                                   &shader_name);
+
+            ASSERT_DEBUG_SYNC(shader_name                                       != NULL &&
+                              system_hashed_ansi_string_get_length(shader_name) > 0,
+                              "Invalid ral_shader name property value.");
+
+            shader_name_hash = system_hashed_ansi_string_get_hash(shader_name);
+
+            ASSERT_DEBUG_SYNC(!system_hash64map_contains(context_ptr->shaders_by_name_map,
+                                                         shader_name_hash),
+                              "A ral_shader instance already exists for name [%s]",
+                              system_hashed_ansi_string_get_buffer(shader_name) );
+
+            system_hash64map_insert(context_ptr->shaders_by_name_map,
+                                    shader_name_hash,
+                                    new_shaders[n_shader],
+                                    NULL,  /* on_remove_callback          */
+                                    NULL); /* on_remove_callback_user_arg */
+        } /* for (all shaders) */
+    }
+    system_critical_section_leave(context_ptr->shaders_cs);
+}
 
 /* TODO */
 PRIVATE void _ral_context_add_textures_to_texture_hashmaps(_ral_context* context_ptr,
@@ -326,10 +373,26 @@ PRIVATE bool _ral_context_delete_objects(_ral_context*           context_ptr,
             break;
         }
 
+        case RAL_CONTEXT_OBJECT_TYPE_PROGRAM:
+        {
+            cs            = context_ptr->programs_cs;
+            object_vector = context_ptr->programs;
+
+            break;
+        }
+
         case RAL_CONTEXT_OBJECT_TYPE_SAMPLER:
         {
             cs            = context_ptr->samplers_cs;
             object_vector = context_ptr->samplers;
+
+            break;
+        }
+
+        case RAL_CONTEXT_OBJECT_TYPE_SHADER:
+        {
+            cs            = context_ptr->shaders_cs;
+            object_vector = context_ptr->shaders;
 
             break;
         }
@@ -376,10 +439,28 @@ PRIVATE bool _ral_context_delete_objects(_ral_context*           context_ptr,
             break;
         }
 
+        case RAL_CONTEXT_OBJECT_TYPE_PROGRAM:
+        {
+            system_callback_manager_call_back(context_ptr->callback_manager,
+                                              RAL_CONTEXT_CALLBACK_ID_PROGRAMS_DELETED,
+                                             &callback_arg);
+
+            break;
+        }
+
         case RAL_CONTEXT_OBJECT_TYPE_SAMPLER:
         {
             system_callback_manager_call_back(context_ptr->callback_manager,
                                               RAL_CONTEXT_CALLBACK_ID_SAMPLERS_DELETED,
+                                             &callback_arg);
+
+            break;
+        }
+
+        case RAL_CONTEXT_OBJECT_TYPE_SHADER:
+        {
+            system_callback_manager_call_back(context_ptr->callback_manager,
+                                              RAL_CONTEXT_CALLBACK_ID_SHADERS_DELETED,
                                              &callback_arg);
 
             break;
@@ -443,7 +524,9 @@ PRIVATE bool _ral_context_delete_objects(_ral_context*           context_ptr,
             {
                 case RAL_CONTEXT_OBJECT_TYPE_BUFFER:      ral_buffer_release     ( (ral_buffer&)      object_ptr); break;
                 case RAL_CONTEXT_OBJECT_TYPE_FRAMEBUFFER: ral_framebuffer_release( (ral_framebuffer&) object_ptr); break;
+                case RAL_CONTEXT_OBJECT_TYPE_PROGRAM:     ral_program_release    ( (ral_program&)     object_ptr); break;
                 case RAL_CONTEXT_OBJECT_TYPE_SAMPLER:     ral_sampler_release    ( (ral_sampler&)     object_ptr); break;
+                case RAL_CONTEXT_OBJECT_TYPE_SHADER:      ral_shader_release     ( (ral_shader&)      object_ptr); break;
                 case RAL_CONTEXT_OBJECT_TYPE_TEXTURE:     ral_texture_release    ( (ral_texture&)     object_ptr); break;
 
                 default:
@@ -462,6 +545,38 @@ PRIVATE bool _ral_context_delete_objects(_ral_context*           context_ptr,
 
 end:
     return result;
+}
+
+/** TODO */
+PRIVATE void _ral_context_delete_shaders_from_shader_hashmap(_ral_context* context_ptr,
+                                                             uint32_t      n_shaders,
+                                                             ral_shader*   shaders)
+{
+    system_critical_section_enter(context_ptr->shaders_cs);
+    {
+        for (uint32_t n_shader  = 0;
+                      n_shader  < n_shaders;
+                    ++n_shader)
+        {
+            system_hashed_ansi_string shader_name      = NULL;
+            system_hash64             shader_name_hash = -1;
+
+            ral_shader_get_property(shaders[n_shader],
+                                    RAL_SHADER_PROPERTY_NAME,
+                                   &shader_name);
+
+            shader_name_hash = system_hashed_ansi_string_get_hash(shader_name);
+
+            ASSERT_DEBUG_SYNC(system_hash64map_contains(context_ptr->shaders_by_name_map,
+                                                        shader_name_hash),
+                              "Shader [%s] is not stored in the name->shader hashmap.",
+                              system_hashed_ansi_string_get_buffer(shader_name) );
+
+            system_hash64map_remove(context_ptr->shaders_by_name_map,
+                                    shader_name_hash);
+        } /* for (all specified shaders) */
+    }
+    system_critical_section_leave(context_ptr->textures_cs);
 }
 
 /** TODO */
@@ -571,10 +686,28 @@ PRIVATE void _ral_context_notify_backend_about_new_object(ral_context           
             break;
         }
 
+        case RAL_CONTEXT_OBJECT_TYPE_PROGRAM:
+        {
+            system_callback_manager_call_back(context_ptr->callback_manager,
+                                              RAL_CONTEXT_CALLBACK_ID_PROGRAMS_CREATED,
+                                             &callback_arg);
+
+            break;
+        }
+
         case RAL_CONTEXT_OBJECT_TYPE_SAMPLER:
         {
             system_callback_manager_call_back(context_ptr->callback_manager,
                                               RAL_CONTEXT_CALLBACK_ID_SAMPLERS_CREATED,
+                                             &callback_arg);
+
+            break;
+        }
+
+        case RAL_CONTEXT_OBJECT_TYPE_SHADER:
+        {
+            system_callback_manager_call_back(context_ptr->callback_manager,
+                                              RAL_CONTEXT_CALLBACK_ID_SHADERS_CREATED,
                                              &callback_arg);
 
             break;
@@ -637,7 +770,9 @@ PRIVATE void _ral_context_release(void* context)
     /* Detect any leaking objects */
     uint32_t n_buffers      = 0;
     uint32_t n_framebuffers = 0;
+    uint32_t n_programs     = 0;
     uint32_t n_samplers     = 0;
+    uint32_t n_shaders      = 0;
 
     system_resizable_vector_get_property(context_ptr->buffers,
                                          SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
@@ -645,16 +780,26 @@ PRIVATE void _ral_context_release(void* context)
     system_resizable_vector_get_property(context_ptr->framebuffers,
                                          SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
                                         &n_framebuffers);
+    system_resizable_vector_get_property(context_ptr->programs,
+                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                        &n_programs);
     system_resizable_vector_get_property(context_ptr->samplers,
                                          SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
                                         &n_samplers);
+    system_resizable_vector_get_property(context_ptr->shaders,
+                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                        &n_shaders);
 
     ASSERT_DEBUG_SYNC(n_buffers == 0,
                       "Buffer object leak detected");
     ASSERT_DEBUG_SYNC(n_framebuffers == 0,
                       "Framebuffer object leak detected");
+    ASSERT_DEBUG_SYNC(n_programs == 0,
+                      "Program object leak detected");
     ASSERT_DEBUG_SYNC(n_samplers == 0,
                       "Sampler object leak detected");
+    ASSERT_DEBUG_SYNC(n_shaders == 0,
+                      "Shader object leak detected");
 }
 
 /** TODO */
@@ -776,12 +921,32 @@ PRIVATE bool _ral_context_create_objects(_ral_context*           context_ptr,
             break;
         }
 
+        case RAL_CONTEXT_OBJECT_TYPE_PROGRAM:
+        {
+            object_counter_ptr    = &context_ptr->n_programs_created;
+            object_storage_cs     =  context_ptr->programs_cs;
+            object_storage_vector =  context_ptr->programs;
+            object_type_name      = "RAL Program [%d]";
+
+            break;
+        }
+
         case RAL_CONTEXT_OBJECT_TYPE_SAMPLER:
         {
             object_counter_ptr    = &context_ptr->n_framebuffers_created;
             object_storage_cs     =  context_ptr->samplers_cs;
             object_storage_vector =  context_ptr->samplers;
             object_type_name      = "RAL Sampler [%d]";
+
+            break;
+        }
+
+        case RAL_CONTEXT_OBJECT_TYPE_SHADER:
+        {
+            object_counter_ptr    = &context_ptr->n_shaders_created;
+            object_storage_cs     =  context_ptr->shaders_cs;
+            object_storage_vector =  context_ptr->shaders;
+            object_type_name      = "RAL Shader [%d]";
 
             break;
         }
@@ -859,10 +1024,25 @@ PRIVATE bool _ral_context_create_objects(_ral_context*           context_ptr,
                 break;
             }
 
+            case RAL_CONTEXT_OBJECT_TYPE_PROGRAM:
+            {
+                result_objects_ptr[n_object] = ral_program_create((ral_context) context_ptr,
+                                                                  (const ral_program_create_info*) (object_create_info_ptrs) + n_object);
+
+                break;
+            }
+
             case RAL_CONTEXT_OBJECT_TYPE_SAMPLER:
             {
                 result_objects_ptr[n_object] = ral_sampler_create(name_has,
                                                                   (const ral_sampler_create_info*) (object_create_info_ptrs) + n_object);
+
+                break;
+            }
+
+            case RAL_CONTEXT_OBJECT_TYPE_SHADER:
+            {
+                result_objects_ptr[n_object] = ral_shader_create( (const ral_shader_create_info*) (object_create_info_ptrs) + n_object);
 
                 break;
             }
@@ -1005,7 +1185,9 @@ end:
                     {
                         case RAL_CONTEXT_OBJECT_TYPE_BUFFER:      ral_buffer_release     ( (ral_buffer&)      result_objects_ptr[n_object]); break;
                         case RAL_CONTEXT_OBJECT_TYPE_FRAMEBUFFER: ral_framebuffer_release( (ral_framebuffer&) result_objects_ptr[n_object]); break;
+                        case RAL_CONTEXT_OBJECT_TYPE_PROGRAM:     ral_program_release    ( (ral_program&)     result_objects_ptr[n_object]); break;
                         case RAL_CONTEXT_OBJECT_TYPE_SAMPLER:     ral_sampler_release    ( (ral_sampler&)     result_objects_ptr[n_object]); break;
+                        case RAL_CONTEXT_OBJECT_TYPE_SHADER:      ral_shader_release     ( (ral_shader&)      result_objects_ptr[n_object]); break;
 
                         case RAL_CONTEXT_OBJECT_TYPE_TEXTURE:
                         case RAL_CONTEXT_OBJECT_TYPE_TEXTURE_FROM_FILE_NAME:
@@ -1129,6 +1311,47 @@ end:
 }
 
 /** Please see header for specification */
+PUBLIC EMERALD_API bool ral_context_create_programs(ral_context              context,
+                                                    uint32_t                 n_create_info_items,
+                                                    ral_program_create_info* create_info_ptrs,
+                                                    ral_program*             out_result_program_ptrs)
+{
+    _ral_context* context_ptr = (_ral_context*) context;
+    bool          result      = false;
+
+    /* Sanity checks */
+    if (context == NULL)
+    {
+        ASSERT_DEBUG_SYNC(false,
+                          "Input context is NULL");
+
+        goto end;
+    }
+
+    if (n_create_info_items == 0)
+    {
+        goto end;
+    }
+
+    if (out_result_program_ptrs == NULL)
+    {
+        ASSERT_DEBUG_SYNC(false,
+                          "Output variable is NULL");
+
+        goto end;
+    }
+
+    result = _ral_context_create_objects(context_ptr,
+                                         RAL_CONTEXT_OBJECT_TYPE_PROGRAM,
+                                         n_create_info_items,
+                                         (void**) create_info_ptrs,
+                                         (void**) out_result_program_ptrs);
+
+end:
+    return result;
+}
+
+/** Please see header for specification */
 PUBLIC EMERALD_API bool ral_context_create_samplers(ral_context              context,
                                                     uint32_t                 n_create_info_items,
                                                     ral_sampler_create_info* create_info_ptrs,
@@ -1165,6 +1388,61 @@ PUBLIC EMERALD_API bool ral_context_create_samplers(ral_context              con
                                          (void**) create_info_ptrs,
                                          (void**) out_result_sampler_ptrs);
 
+end:
+    return result;
+}
+
+/** Please see header for specification */
+PUBLIC EMERALD_API bool ral_context_create_shaders(ral_context             context,
+                                                   uint32_t                n_create_info_items,
+                                                   ral_shader_create_info* create_info_ptrs,
+                                                   ral_shader*             out_result_shader_ptrs)
+{
+    _ral_context* context_ptr = (_ral_context*) context;
+    bool          result      = false;
+
+    /* Sanity checks */
+    if (context == NULL)
+    {
+        ASSERT_DEBUG_SYNC(false,
+                          "Input context is NULL");
+
+        goto end;
+    }
+
+    if (n_create_info_items == 0)
+    {
+        goto end;
+    }
+
+    if (create_info_ptrs == NULL)
+    {
+        ASSERT_DEBUG_SYNC(false,
+                          "Input shader create info array is NULL");
+
+        goto end;
+    }
+
+    if (out_result_shader_ptrs == NULL)
+    {
+        ASSERT_DEBUG_SYNC(false,
+                          "Output variable is NULL");
+
+        goto end;
+    }
+
+    result = _ral_context_create_objects(context_ptr,
+                                         RAL_CONTEXT_OBJECT_TYPE_SHADER,
+                                         n_create_info_items,
+                                         (void**) create_info_ptrs,
+                                         (void**) out_result_shader_ptrs);
+
+    if (result)
+    {
+        _ral_context_add_shaders_to_shader_hashmap(context_ptr,
+                                                   n_create_info_items,
+                                                   out_result_shader_ptrs);
+    } /* if (result != NULL) */
 end:
     return result;
 }
@@ -1414,9 +1692,10 @@ end:
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API bool ral_context_delete_buffers(ral_context context,
-                                                   uint32_t    n_buffers,
-                                                   ral_buffer* buffers)
+PUBLIC EMERALD_API bool ral_context_delete_objects(ral_context             context,
+                                                   ral_context_object_type object_type,
+                                                   uint32_t                n_objects,
+                                                   void**                  objects)
 {
     _ral_context* context_ptr = (_ral_context*) context;
     bool          result      = false;
@@ -1430,166 +1709,86 @@ PUBLIC EMERALD_API bool ral_context_delete_buffers(ral_context context,
         goto end;
     } /* if (context == NULL) */
 
-    if (n_buffers == 0)
+    if (n_objects == 0)
     {
         goto end;
     }
 
-    if (buffers == NULL)
+    if (objects == NULL)
     {
         ASSERT_DEBUG_SYNC(false,
-                          "Input uffers instance is NULL");
+                          "Input object array is NULL");
 
         goto end;
     }
 
-    /* Release the buffers */
-    result = _ral_context_delete_objects(context_ptr,
-                                         RAL_CONTEXT_OBJECT_TYPE_BUFFER,
-                                         n_buffers,
-                                         (void**) buffers);
-
-end:
-    return result;
-}
-
-/** Please see header for specification */
-PUBLIC EMERALD_API bool ral_context_delete_framebuffers(ral_context      context,
-                                                        uint32_t         n_framebuffers,
-                                                        ral_framebuffer* framebuffers)
-{
-    _ral_context* context_ptr = (_ral_context*) context;
-    bool          result      = false;
-
-    /* Sanity checks */
-    if (context == NULL)
+    /* A few object types need extra care before we can proceed with calling the actual handler.. */
+    switch (object_type)
     {
-        ASSERT_DEBUG_SYNC(false,
-                          "Input context is NULL");
-
-        goto end;
-    } /* if (context == NULL) */
-
-    if (n_framebuffers == 0)
-    {
-        goto end;
-    }
-
-    if (framebuffers == NULL)
-    {
-        ASSERT_DEBUG_SYNC(false,
-                          "Input framebuffers instance is NULL");
-
-        goto end;
-    }
-
-    /* Release the framebuffers */
-    result = _ral_context_delete_objects(context_ptr,
-                                         RAL_CONTEXT_OBJECT_TYPE_FRAMEBUFFER,
-                                         n_framebuffers,
-                                         (void**) framebuffers);
-
-end:
-    return result;
-}
-
-/** Please see header for specification */
-PUBLIC EMERALD_API bool ral_context_delete_samplers(ral_context  context,
-                                                    uint32_t     n_samplers,
-                                                    ral_sampler* samplers)
-{
-    _ral_context* context_ptr = (_ral_context*) context;
-    bool          result      = false;
-
-    /* Sanity checks */
-    if (context == NULL)
-    {
-        ASSERT_DEBUG_SYNC(false,
-                          "Input context is NULL");
-
-        goto end;
-    } /* if (context == NULL) */
-
-    if (n_samplers == 0)
-    {
-        goto end;
-    }
-
-    if (samplers == NULL)
-    {
-        ASSERT_DEBUG_SYNC(false,
-                          "Input samplers instance is NULL");
-
-        goto end;
-    }
-
-    /* Release the framebuffers */
-    result = _ral_context_delete_objects(context_ptr,
-                                         RAL_CONTEXT_OBJECT_TYPE_SAMPLER,
-                                         n_samplers,
-                                         (void**) samplers);
-
-end:
-    return result;
-}
-
-/** Please see header for specification */
-PUBLIC EMERALD_API bool ral_context_delete_textures(ral_context  context,
-                                                    uint32_t     n_textures,
-                                                    ral_texture* textures)
-{
-    _ral_context* context_ptr = (_ral_context*) context;
-    bool          result      = false;
-
-    /* Sanity checks */
-    if (context == NULL)
-    {
-        ASSERT_DEBUG_SYNC(false,
-                          "Input context is NULL");
-
-        goto end;
-    } /* if (context == NULL) */
-
-    if (n_textures == 0)
-    {
-        goto end;
-    }
-
-    if (textures == NULL)
-    {
-        ASSERT_DEBUG_SYNC(false,
-                          "Input texture array is NULL");
-
-        goto end;
-    }
-
-    _ral_context_delete_textures_from_texture_hashmaps(context_ptr,
-                                                       n_textures,
-                                                       textures);
-
-    /* Note: Instead of deleting the textures, we stash them back in the texture pool so that
-     *       they can be re-used.. unless the texture pool is no longer available, in which
-     *       case we actually do release them. :) */
-    if (context_ptr->texture_pool != NULL)
-    {
-        for (uint32_t n_texture = 0;
-                      n_texture < n_textures;
-                    ++n_texture)
+        case RAL_CONTEXT_OBJECT_TYPE_BUFFER:
+        case RAL_CONTEXT_OBJECT_TYPE_FRAMEBUFFER:
+        case RAL_CONTEXT_OBJECT_TYPE_SAMPLER:
         {
-            ral_texture_pool_add(context_ptr->texture_pool,
-                                 textures[n_texture]);
+            /* Nothing to do for these object types */
+            break;
         }
-    }
-    else
-    {
-        _ral_texture_pool_callback_texture_dropped_arg fake_callback_arg;
 
-        fake_callback_arg.n_textures = n_textures;
-        fake_callback_arg.textures   = textures;
+        case RAL_CONTEXT_OBJECT_TYPE_SHADER:
+        {
+            _ral_context_delete_shaders_from_shader_hashmap(context_ptr,
+                                                            n_objects,
+                                                            (ral_shader*) objects);
 
-        _ral_context_on_texture_dropped_from_texture_pool(&fake_callback_arg,
-                                                          context_ptr);
-    }
+            break;
+        }
+
+        case RAL_CONTEXT_OBJECT_TYPE_TEXTURE:
+        {
+            _ral_context_delete_textures_from_texture_hashmaps(context_ptr,
+                                                               n_objects,
+                                                               (ral_texture*) objects);
+
+            /* Note: Instead of deleting the textures, we stash them back in the texture pool so that
+             *       they can be re-used.. unless the texture pool is no longer available, in which
+             *       case we actually do release them. :) */
+            if (context_ptr->texture_pool != NULL)
+            {
+                for (uint32_t n_texture = 0;
+                              n_texture < n_objects;
+                            ++n_texture)
+                {
+                    ral_texture_pool_add(context_ptr->texture_pool,
+                                         (ral_texture) objects[n_texture]);
+                }
+            }
+            else
+            {
+                _ral_texture_pool_callback_texture_dropped_arg fake_callback_arg;
+
+                fake_callback_arg.n_textures = n_objects;
+                fake_callback_arg.textures   = (ral_texture*) objects;
+
+                _ral_context_on_texture_dropped_from_texture_pool(&fake_callback_arg,
+                                                                  context_ptr);
+            }
+
+            result = true;
+            goto end;
+        }
+
+        default:
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Unrecognized RAL object type");
+        }
+    } /* switch (object_type) */
+
+    /* Release the objects */
+    result = _ral_context_delete_objects(context_ptr,
+                                         object_type,
+                                         n_objects,
+                                         objects);
+
 end:
     return result;
 }
@@ -1634,6 +1833,21 @@ PUBLIC EMERALD_API ogl_context ral_context_get_gl_context(ral_context context)
 
     return backend_context;
 }
+
+/** Please see header for specification */
+PUBLIC EMERALD_API raGL_program ral_context_get_program_gl(ral_context context,
+                                                           ral_program program)
+{
+    _ral_context* context_ptr  = (_ral_context*) context;
+    raGL_program  program_raGL = NULL;
+
+    raGL_backend_get_program(context_ptr->backend,
+                             program,
+                   (void**) &program_raGL);
+
+    return program_raGL;
+}
+
 
 /** Please see header for specification */
 PUBLIC EMERALD_API void ral_context_get_property(ral_context          context,
@@ -1733,6 +1947,57 @@ PUBLIC EMERALD_API raGL_sampler ral_context_get_sampler_gl(ral_context context,
                    (void**) &sampler_raGL);
 
     return sampler_raGL;
+}
+
+/** TODO */
+PUBLIC EMERALD_API raGL_shader ral_context_get_shader_gl(ral_context context,
+                                                         ral_shader  shader)
+{
+    _ral_context* context_ptr = (_ral_context*) context;
+    raGL_shader   shader_raGL = NULL;
+
+    raGL_backend_get_shader(context_ptr->backend,
+                            shader,
+                  (void**) &shader_raGL);
+
+    return shader_raGL;
+}
+
+/** Please see header for specification */
+PUBLIC EMERALD_API ral_shader ral_context_get_shader_by_name(ral_context               context,
+                                                             system_hashed_ansi_string name)
+{
+    _ral_context* context_ptr = (_ral_context*) context;
+    ral_shader    result      = NULL;
+
+    /* Sanity checks..*/
+    if (context == NULL)
+    {
+        ASSERT_DEBUG_SYNC(false,
+                          "Input ral_context instance is NULL");
+
+        goto end;
+    }
+
+    if (name == NULL)
+    {
+        ASSERT_DEBUG_SYNC(false,
+                          "Input shader name is NULL");
+
+        goto end;
+    }
+
+    /* Is there a shader associated with the specified name? */
+    system_critical_section_enter(context_ptr->shaders_cs);
+    {
+        system_hash64map_get(context_ptr->shaders_by_name_map,
+                             system_hashed_ansi_string_get_hash(name),
+                            &result);
+    }
+    system_critical_section_leave(context_ptr->shaders_cs);
+
+end:
+    return result;
 }
 
 /** Please see header for specification */

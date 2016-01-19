@@ -5,13 +5,14 @@
  */
 #include "shared.h"
 #include "ogl/ogl_context.h"
-#include "ogl/ogl_program.h"
 #include "ogl/ogl_program_block.h"
 #include "ogl/ogl_program_ssb.h"
 #include "ogl/ogl_program_ub.h"
-#include "ogl/ogl_programs.h"
-#include "ogl/ogl_shader.h"
+#include "raGL/raGL_program.h"
+#include "raGL/raGL_shader.h"
 #include "ral/ral_context.h"
+#include "ral/ral_program.h"
+#include "ral/ral_shader.h"
 #include "system/system_assertions.h"
 #include "system/system_file_serializer.h"
 #include "system/system_hash64.h"
@@ -28,15 +29,14 @@ const char* file_sourcecode_prefix = "temp_shader_sourcecode_";
 /** Internal type definitions */
 typedef struct
 {
-    system_resizable_vector       active_attributes;
-    system_resizable_vector       active_uniforms;
-    system_resizable_vector       attached_shaders;
-    ral_context                   context; /* DO NOT retain - context owns the instance! */
-    GLuint                        id;
-    bool                          link_status;
-    system_hashed_ansi_string     name;
-    system_hashed_ansi_string     program_info_log;
-    ogl_program_syncable_ubs_mode syncable_ubs_mode;
+    system_resizable_vector        active_attributes;
+    system_resizable_vector        active_uniforms;
+    ral_context                    context; /* DO NOT retain - context owns the instance! */
+    GLuint                         id;
+    bool                           link_status;
+    system_hashed_ansi_string      program_info_log;
+    ral_program                    program_ral;
+    raGL_program_syncable_ubs_mode syncable_ubs_mode;
 
     /* Stores ogl_program_ssb instances.
      *
@@ -69,10 +69,6 @@ typedef struct
      * maps uniform block names (represented as system_hash64) to ogl_program_ub instances */
     system_hash64map context_to_ub_name_to_ub_map; /* do NOT release the stored items */
 
-    GLenum                    tf_mode;
-    GLchar**                  tf_varyings;
-    unsigned int              n_tf_varyings;
-
     /* GL entry-point cache */
     PFNGLATTACHSHADERPROC               pGLAttachShader;
     PFNGLCREATEPROGRAMPROC              pGLCreateProgram;
@@ -96,119 +92,118 @@ typedef struct
     PFNGLUNIFORMBLOCKBINDINGPROC        pGLUniformBlockBinding;
 
     REFCOUNT_INSERT_VARIABLES
-} _ogl_program;
+} _raGL_program;
 
 typedef struct
 {
-    _ogl_program* program_ptr;
-    ogl_shader    shader;
-} _ogl_attach_shader_callback_argument;
-
-typedef _ogl_attach_shader_callback_argument _ogl_detach_shader_callback_argument;
-
-
-/** Reference counter impl */
-REFCOUNT_INSERT_IMPLEMENTATION(ogl_program,
-                               ogl_program,
-                              _ogl_program);
+    _raGL_program* program_ptr;
+    ral_shader     shader;
+} _raGL_attach_shader_callback_argument;
 
 
 /** Internal variables */
 
 /* Forward declarations */
-PRIVATE void _ogl_program_attach_shader_callback              (ogl_context             context,
-                                                               void*                   in_arg);
-PRIVATE void _ogl_program_create_callback                     (ogl_context             context,
-                                                               void*                   in_arg);
-PRIVATE void _ogl_program_detach_shader_callback              (ogl_context             context,
-                                                               void*                   in_arg);
-PRIVATE char*_ogl_program_get_binary_blob_file_name           (_ogl_program*           program_ptr);
-PRIVATE char*_ogl_program_get_source_code_file_name           (_ogl_program*           program_ptr);
-PRIVATE void _ogl_program_link_callback                       (ogl_context             context,
-                                                               void*                   in_arg);
-PRIVATE bool _ogl_program_load_binary_blob                    (ogl_context,
-                                                               _ogl_program*           program_ptr);
-PRIVATE void _ogl_program_release                             (void*                   program);
-PRIVATE void _ogl_program_release_active_attributes           (system_resizable_vector active_attributes);
-PRIVATE void _ogl_program_release_active_shader_storage_blocks(_ogl_program*           program_ptr);
-PRIVATE void _ogl_program_release_active_uniform_blocks       (_ogl_program*           program_ptr,
-                                                               ogl_context             owner_context = NULL);
-PRIVATE void _ogl_program_release_active_uniforms             (system_resizable_vector active_uniforms);
-PRIVATE void _ogl_program_release_callback                    (ogl_context             context,
-                                                               void*                   in_arg);
-PRIVATE void _ogl_program_save_binary_blob                    (ogl_context,
-                                                               _ogl_program*           program_ptr);
-PRIVATE void _ogl_program_save_shader_sources                 (_ogl_program*           program_ptr);
+PRIVATE void _raGL_program_attach_shader_callback              (ogl_context             context,
+                                                               void*                    in_arg);
+PRIVATE void _raGL_program_create_callback                     (ogl_context             context,
+                                                               void*                    in_arg);
+PRIVATE void _raGL_program_detach_shader_callback              (ogl_context             context,
+                                                               void*                    in_arg);
+PRIVATE char*_raGL_program_get_binary_blob_file_name           (_raGL_program*          program_ptr);
+PRIVATE char*_raGL_program_get_source_code_file_name           (_raGL_program*          program_ptr);
+PRIVATE void _raGL_program_link_callback                       (ogl_context             context,
+                                                                void*                   in_arg);
+PRIVATE bool _raGL_program_load_binary_blob                    (ogl_context,
+                                                                _raGL_program*          program_ptr);
+PRIVATE void _raGL_program_release                             (void*                   program);
+PRIVATE void _raGL_program_release_active_attributes           (system_resizable_vector active_attributes);
+PRIVATE void _raGL_program_release_active_shader_storage_blocks(_raGL_program*          program_ptr);
+PRIVATE void _raGL_program_release_active_uniform_blocks       (_raGL_program*          program_ptr,
+                                                                ogl_context             owner_context = NULL);
+PRIVATE void _raGL_program_release_active_uniforms             (system_resizable_vector active_uniforms);
+PRIVATE void _raGL_program_release_callback                    (ogl_context             context,
+                                                                void*                   in_arg);
+PRIVATE void _raGL_program_save_binary_blob                    (ogl_context,
+                                                                _raGL_program*          program_ptr);
+PRIVATE void _raGL_program_save_shader_sources                 (_raGL_program*          program_ptr);
 
 
 /** TODO */
-PRIVATE void _ogl_program_attach_shader_callback(ogl_context context,
-                                                 void*       in_arg)
+PRIVATE void _raGL_program_create_callback(ogl_context context,
+                                           void*       in_arg)
 {
-    _ogl_attach_shader_callback_argument* in_data = (_ogl_attach_shader_callback_argument*) in_arg;
+    _raGL_program* program_ptr = (_raGL_program*) in_arg;
 
-    in_data->program_ptr->pGLAttachShader(in_data->program_ptr->id,
-                                          ogl_shader_get_id(in_data->shader) );
-
-    /* Retain the shader object. */
-    ogl_shader_retain(in_data->shader);
-
-    /* Store the handle */
-    system_resizable_vector_push(in_data->program_ptr->attached_shaders,
-                                 in_data->shader);
-}
-
-/** TODO */
-PRIVATE void _ogl_program_create_callback(ogl_context context,
-                                          void*       in_arg)
-{
-    _ogl_program* program_ptr = (_ogl_program*) in_arg;
-
-    program_ptr->id                    = program_ptr->pGLCreateProgram();
-    program_ptr->active_attributes     = system_resizable_vector_create(BASE_PROGRAM_ACTIVE_ATTRIBUTES_NUMBER);
-    program_ptr->active_uniforms       = system_resizable_vector_create(BASE_PROGRAM_ACTIVE_UNIFORMS_NUMBER);
-    program_ptr->attached_shaders      = system_resizable_vector_create(BASE_PROGRAM_ATTACHED_SHADERS_NUMBER);
+    program_ptr->id                = program_ptr->pGLCreateProgram();
+    program_ptr->active_attributes = system_resizable_vector_create(BASE_PROGRAM_ACTIVE_ATTRIBUTES_NUMBER);
+    program_ptr->active_uniforms   = system_resizable_vector_create(BASE_PROGRAM_ACTIVE_UNIFORMS_NUMBER);
 
     ASSERT_ALWAYS_SYNC(program_ptr->active_attributes != NULL,
                        "Out of memory while allocating active attributes resizable vector");
     ASSERT_ALWAYS_SYNC(program_ptr->active_uniforms != NULL,
                        "Out of memory while allocating active uniforms resizable vector");
-    ASSERT_ALWAYS_SYNC(program_ptr->attached_shaders != NULL,
-                       "Out of memory while allocating attached shaders resizable vector");
 
     /* Let the impl know that we will be interested in extracting the blob */
     program_ptr->pGLProgramParameteri(program_ptr->id,
                                       GL_PROGRAM_BINARY_RETRIEVABLE_HINT,
                                       GL_TRUE);
+
+    /* Attach all shaders */
+    uint32_t n_program_shaders = 0;
+
+    ral_program_get_property(program_ptr->program_ral,
+                             RAL_PROGRAM_PROPERTY_N_ATTACHED_SHADERS,
+                            &n_program_shaders);
+
+    for (uint32_t n_shader = 0;
+                  n_shader < n_program_shaders;
+                ++n_shader)
+    {
+        ral_shader  current_shader         = NULL;
+        raGL_shader current_shader_raGL    = NULL;
+        GLuint      current_shader_raGL_id = 0;
+
+        if (!ral_program_get_attached_shader_at_index(program_ptr->program_ral,
+                                                      n_shader,
+                                                     &current_shader) )
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Could not retrieve shader at index [%d], attached to the ral_program instance.",
+                              n_shader);
+
+            continue;
+        }
+
+        current_shader_raGL = ral_context_get_shader_gl(program_ptr->context,
+                                                        current_shader);
+
+        ASSERT_DEBUG_SYNC(current_shader_raGL != NULL,
+                          "No raGL_shader instance associated with current ral_shader instance.");
+
+        raGL_shader_get_property(current_shader_raGL,
+                                 RAGL_SHADER_PROPERTY_ID,
+                                &current_shader_raGL_id);
+
+        program_ptr->pGLAttachShader(program_ptr->id,
+                                     current_shader_raGL_id);
+    }
 }
 
 /** TODO */
-PRIVATE void _ogl_program_detach_shader_callback(ogl_context context,
-                                                 void*       in_arg)
-{
-    _ogl_detach_shader_callback_argument* in_data = (_ogl_detach_shader_callback_argument*) in_arg;
-
-    in_data->program_ptr->pGLDetachShader(in_data->program_ptr->id,
-                                          ogl_shader_get_id(in_data->shader) );
-
-    /* Release the shader object. */
-    ogl_shader_release(in_data->shader);
-
-    /* Remove the handle */
-    system_resizable_vector_delete_element_at(in_data->program_ptr->attached_shaders,
-                                              system_resizable_vector_find(in_data->program_ptr->attached_shaders,
-                                                                           in_data->shader) );
-}
-
-/** TODO */
-PRIVATE char*_ogl_program_get_binary_blob_file_name(_ogl_program* program_ptr)
+PRIVATE char* _raGL_program_get_binary_blob_file_name(_raGL_program* program_ptr)
 {
     /* Form the hash-based file name */
-    std::stringstream file_name_sstream;
-    std::string       file_name_string;
+    std::stringstream         file_name_sstream;
+    std::string               file_name_string;
+    system_hashed_ansi_string program_name      = NULL;
+
+    ral_program_get_property(program_ptr->program_ral,
+                             RAL_PROGRAM_PROPERTY_NAME,
+                            &program_name);
 
     file_name_sstream << file_blob_prefix
-                      << system_hashed_ansi_string_get_hash(program_ptr->name);
+                      << system_hashed_ansi_string_get_hash(program_name);
 
     file_name_string  = file_name_sstream.str();
 
@@ -223,14 +218,19 @@ PRIVATE char*_ogl_program_get_binary_blob_file_name(_ogl_program* program_ptr)
 }
 
 /** TODO */
-PRIVATE char*_ogl_program_get_source_code_file_name(_ogl_program* program_ptr)
+PRIVATE char*_ogl_program_get_source_code_file_name(_raGL_program* program_ptr)
 {
     /* Form the hash-based file name */
-    std::stringstream file_name_sstream;
-    std::string       file_name_string;
+    std::stringstream         file_name_sstream;
+    std::string               file_name_string;
+    system_hashed_ansi_string program_name      = NULL;
+
+    ral_program_get_property(program_ptr->program_ral,
+                             RAL_PROGRAM_PROPERTY_NAME,
+                            &program_name);
 
     file_name_sstream << file_sourcecode_prefix
-                      << system_hashed_ansi_string_get_hash(program_ptr->name);
+                      << system_hashed_ansi_string_get_hash(program_name);
 
     file_name_string  = file_name_sstream.str();
 
@@ -246,7 +246,7 @@ PRIVATE char*_ogl_program_get_source_code_file_name(_ogl_program* program_ptr)
 
 /** TODO */
 PRIVATE void _ogl_program_init_blocks_for_context(ogl_program_block_type block_type,
-                                                  _ogl_program*          program_ptr,
+                                                  _raGL_program*         program_ptr,
                                                   ogl_context            context_map_key,
                                                   ogl_context            context)
 {
@@ -340,7 +340,7 @@ PRIVATE void _ogl_program_init_blocks_for_context(ogl_program_block_type block_t
             case OGL_PROGRAM_BLOCK_TYPE_SHADER_STORAGE_BUFFER:
             {
                 ogl_program_ssb new_ssb = ogl_program_ssb_create(program_ptr->context,
-                                                                 (ogl_program) program_ptr,
+                                                                 (raGL_program) program_ptr,
                                                                  n_active_block,
                                                                  block_name_has);
 
@@ -391,10 +391,10 @@ PRIVATE void _ogl_program_init_blocks_for_context(ogl_program_block_type block_t
             case OGL_PROGRAM_BLOCK_TYPE_UNIFORM_BUFFER:
             {
                 ogl_program_ub new_ub = ogl_program_ub_create(program_ptr->context,
-                                                              (ogl_program) program_ptr,
+                                                              (raGL_program) program_ptr,
                                                               n_active_block,
                                                               block_name_has,
-                                                              program_ptr->syncable_ubs_mode != OGL_PROGRAM_SYNCABLE_UBS_MODE_DISABLE);
+                                                              program_ptr->syncable_ubs_mode != RAGL_PROGRAM_SYNCABLE_UBS_MODE_DISABLE);
 
                 ASSERT_ALWAYS_SYNC(new_ub != NULL,
                                    "ogl_program_ub_create() returned NULL.");
@@ -514,11 +514,11 @@ PRIVATE void _ogl_program_init_blocks_for_context(ogl_program_block_type block_t
 }
 
 /** TODO */
-PRIVATE void _ogl_program_link_callback(ogl_context context,
-                                        void*       in_arg)
+PRIVATE void _raGL_program_link_callback(ogl_context context,
+                                         void*       in_arg)
 {
-    _ogl_program* program_ptr     = (_ogl_program*) in_arg;
-    bool          has_used_binary = false;
+    _raGL_program* program_ptr     = (_raGL_program*) in_arg;
+    bool           has_used_binary = false;
 
     system_time start_time = system_time_now();
 
@@ -528,15 +528,6 @@ PRIVATE void _ogl_program_link_callback(ogl_context context,
 
     if (!has_used_binary)
     {
-        /* Declare TF varyings, if these were provided earlier */
-        if (program_ptr->tf_varyings != NULL)
-        {
-            program_ptr->pGLTransformFeedbackVaryings(program_ptr->id,
-                                                      program_ptr->n_tf_varyings,
-                                                      program_ptr->tf_varyings,
-                                                      program_ptr->tf_mode);
-        }
-
         /* Okay, let's link */
         program_ptr->pGLLinkProgram(program_ptr->id);
     }
@@ -554,14 +545,16 @@ PRIVATE void _ogl_program_link_callback(ogl_context context,
         if (!has_used_binary)
         {
             /* Stash the binary to local storage! */
-            _ogl_program_save_binary_blob(context,
-                                          program_ptr);
+            _raGL_program_save_binary_blob(context,
+                                           program_ptr);
 
             /* On debug builds, also stash source code of the shaders that were used
              * to create the program */
-#ifdef _DEBUG
-            _ogl_program_save_shader_sources(program_ptr);
-#endif
+            #ifdef _DEBUG
+            {
+                _raGL_program_save_shader_sources(program_ptr);
+            }
+            #endif
         }
 
         /* Retrieve attibute & uniform data for the program */
@@ -604,64 +597,65 @@ PRIVATE void _ogl_program_link_callback(ogl_context context,
                        n_active_attribute < n_active_attributes;
                      ++n_active_attribute)
             {
-                ogl_program_attribute_descriptor* new_attribute = new ogl_program_attribute_descriptor;
+                ral_program_attribute* new_attribute_ptr = new ral_program_attribute;
 
-                ASSERT_ALWAYS_SYNC(new_attribute != NULL,
+                ASSERT_ALWAYS_SYNC(new_attribute_ptr != NULL,
                                    "Out of memory while allocating new attribute descriptor.");
-                if (new_attribute != NULL)
+
+                if (new_attribute_ptr != NULL)
                 {
-                    new_attribute->length = 0;
-                    new_attribute->name   = NULL;
-                    new_attribute->size   = 0;
-                    new_attribute->type   = PROGRAM_ATTRIBUTE_TYPE_UNDEFINED;
+                    new_attribute_ptr->length = 0;
+                    new_attribute_ptr->name   = NULL;
+                    new_attribute_ptr->size   = 0;
+                    new_attribute_ptr->type   = RAL_PROGRAM_ATTRIBUTE_TYPE_UNDEFINED;
 
                     memset(attribute_name,
                            0,
-                           new_attribute->length + 1);
+                           new_attribute_ptr->length + 1);
 
                     program_ptr->pGLGetActiveAttrib(program_ptr->id,
                                                     n_active_attribute,
                                                     n_active_attribute_max_length+1,
-                                                    &new_attribute->length,
-                                                    &new_attribute->size,
-                                                    (GLenum*) &new_attribute->type,
+                                                    &new_attribute_ptr->length,
+                                                    &new_attribute_ptr->size,
+                                                    (GLenum*) &new_attribute_ptr->type,
                                                     attribute_name);
 
-                    new_attribute->name     = system_hashed_ansi_string_create (attribute_name);
-                    new_attribute->location = program_ptr->pGLGetAttribLocation(program_ptr->id,
-                                                                                attribute_name);
+                    new_attribute_ptr->name     = system_hashed_ansi_string_create (attribute_name);
+                    new_attribute_ptr->location = program_ptr->pGLGetAttribLocation(program_ptr->id,
+                                                                                    attribute_name);
                 }
 
                 system_resizable_vector_push(program_ptr->active_attributes,
-                                             new_attribute);
-            } /* for (GLint n_active_attribute = 0; n_active_attribute < n_active_attributes; ++n_active_attribute)*/
+                                             new_attribute_ptr);
+            } /* for (all active attributes) */
 
             /* Now for the uniforms */
             for (GLint n_active_uniform = 0;
                        n_active_uniform < n_active_uniforms;
                      ++n_active_uniform)
             {
-                ogl_program_variable* new_uniform = new (std::nothrow) ogl_program_variable;
+                ral_program_variable* new_uniform_ptr = new (std::nothrow) ral_program_variable;
 
-                ASSERT_ALWAYS_SYNC(new_uniform != NULL,
+                ASSERT_ALWAYS_SYNC(new_uniform_ptr != NULL,
                                    "Out of memory while allocating new uniform descriptor.");
-                if (new_uniform != NULL)
+                if (new_uniform_ptr != NULL)
                 {
-                    ogl_program_fill_ogl_program_variable( (ogl_program) program_ptr,
-                                                          uniform_name_length,
-                                                          uniform_name,
-                                                          new_uniform,
-                                                          GL_UNIFORM,
-                                                          n_active_uniform);
+                    raGL_program_fill_ral_program_variable( (raGL_program) program_ptr,
+                                                           uniform_name_length,
+                                                           uniform_name,
+                                                           new_uniform_ptr,
+                                                           GL_UNIFORM,
+                                                           n_active_uniform);
                 }
 
                 system_resizable_vector_push(program_ptr->active_uniforms,
-                                             new_uniform);
+                                             new_uniform_ptr);
             }
 
             /* Continue with uniform blocks. */
-            ogl_context context_map_key = (program_ptr->syncable_ubs_mode == OGL_PROGRAM_SYNCABLE_UBS_MODE_ENABLE_GLOBAL) ? 0
-                                                                                                                          : context;
+            ogl_context context_map_key = (program_ptr->syncable_ubs_mode == RAGL_PROGRAM_SYNCABLE_UBS_MODE_ENABLE_GLOBAL) ? 0
+                                                                                                                           : context;
 
             _ogl_program_init_blocks_for_context(OGL_PROGRAM_BLOCK_TYPE_UNIFORM_BUFFER,
                                                  program_ptr,
@@ -733,11 +727,11 @@ PRIVATE void _ogl_program_link_callback(ogl_context context,
 }
 
 /** TODO */
-PRIVATE bool _ogl_program_load_binary_blob( ogl_context  context,
-                                           _ogl_program* program_ptr)
+PRIVATE bool _ogl_program_load_binary_blob(ogl_context    context,
+                                           _raGL_program* program_ptr)
 {
     /* Form the name */
-    char* file_name = _ogl_program_get_binary_blob_file_name(program_ptr);
+    char* file_name = _raGL_program_get_binary_blob_file_name(program_ptr);
     bool  result    = false;
 
     if (file_name != NULL)
@@ -752,9 +746,9 @@ PRIVATE bool _ogl_program_load_binary_blob( ogl_context  context,
             uint32_t n_shaders_attached_read = 0;
             uint32_t n_shaders_attached      = 0;
 
-            system_resizable_vector_get_property(program_ptr->attached_shaders,
-                                                 SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
-                                                &n_shaders_attached);
+            ral_program_get_property(program_ptr->program_ral,
+                                     RAL_PROGRAM_PROPERTY_N_ATTACHED_SHADERS,
+                                    &n_shaders_attached);
 
             ASSERT_ALWAYS_SYNC(::fread(&n_shaders_attached_read,
                                        sizeof(n_shaders_attached),
@@ -771,7 +765,7 @@ PRIVATE bool _ogl_program_load_binary_blob( ogl_context  context,
                               n < n_shaders_attached;
                             ++n)
                 {
-                    ogl_shader    shader           = NULL;
+                    ral_shader    shader           = NULL;
                     system_hash64 shader_hash_read = 0;
 
                     ASSERT_ALWAYS_SYNC(::fread(&shader_hash_read,
@@ -781,15 +775,31 @@ PRIVATE bool _ogl_program_load_binary_blob( ogl_context  context,
                                        "Could not read %dth shader hash.",
                                        n);
 
-                    if (system_resizable_vector_get_element_at(program_ptr->attached_shaders,
-                                                               n,
-                                                              &shader) )
+                    if (ral_program_get_attached_shader_at_index(program_ptr->program_ral,
+                                                                 n,
+                                                                &shader) )
                     {
-                        if (system_hashed_ansi_string_get_hash(ogl_shader_get_body(shader) ) != shader_hash_read)
+                        system_hashed_ansi_string shader_body = NULL;
+
+                        ral_shader_get_property(shader,
+                                                RAL_SHADER_PROPERTY_GLSL_BODY,
+                                               &shader_body);
+
+                        if (system_hashed_ansi_string_get_hash(shader_body) != shader_hash_read)
                         {
+                            system_hashed_ansi_string program_name = NULL;
+                            system_hashed_ansi_string shader_name  = NULL;
+
+                            ral_program_get_property(program_ptr->program_ral,
+                                                     RAL_PROGRAM_PROPERTY_NAME,
+                                                    &program_name);
+                            ral_shader_get_property (shader,
+                                                     RAL_SHADER_PROPERTY_NAME,
+                                                    &shader_name);
+
                             LOG_INFO("Blob file for program [%s] was found but shader [%s]'s hash does not match the blob's one",
-                                     system_hashed_ansi_string_get_buffer(program_ptr->name),
-                                     system_hashed_ansi_string_get_buffer(ogl_shader_get_name(shader)) );
+                                     system_hashed_ansi_string_get_buffer(program_name),
+                                     system_hashed_ansi_string_get_buffer(shader_name));
 
                             hashes_ok = false;
                             break;
@@ -797,7 +807,8 @@ PRIVATE bool _ogl_program_load_binary_blob( ogl_context  context,
                     }
                     else
                     {
-                        LOG_ERROR("Could not retrieve %uth element from attached_shaders", n);
+                        LOG_ERROR("Could not retrieve %uth shader attached to the RAL program",
+                                  n);
 
                         hashes_ok = false;
                         break;
@@ -862,8 +873,14 @@ PRIVATE bool _ogl_program_load_binary_blob( ogl_context  context,
             }
             else
             {
+                system_hashed_ansi_string program_name;
+
+                ral_program_get_property(program_ptr->program_ral,
+                                         RAL_PROGRAM_PROPERTY_NAME,
+                                        &program_name);
+
                 LOG_INFO("Blob file for program [%s] was found but header does not match the program instance's.",
-                         system_hashed_ansi_string_get_buffer(program_ptr->name) );
+                         system_hashed_ansi_string_get_buffer(program_name) );
             }
 
             /* Done interacting with the file */
@@ -871,8 +888,14 @@ PRIVATE bool _ogl_program_load_binary_blob( ogl_context  context,
         }
         else
         {
+            system_hashed_ansi_string program_name;
+
+            ral_program_get_property(program_ptr->program_ral,
+                                     RAL_PROGRAM_PROPERTY_NAME,
+                                    &program_name);
+
             LOG_INFO("Blob file for program [%s] was not found.",
-                     system_hashed_ansi_string_get_buffer(program_ptr->name) );
+                     system_hashed_ansi_string_get_buffer(program_name) );
         }
 
         delete [] file_name;
@@ -885,67 +908,23 @@ PRIVATE bool _ogl_program_load_binary_blob( ogl_context  context,
 }
 
 /** TODO */
-PRIVATE void _ogl_program_release(void* program)
+PRIVATE void _raGL_program_release(void* program)
 {
-    _ogl_program* program_ptr = (_ogl_program*) program;
+    _raGL_program* program_ptr = (_raGL_program*) program;
 
-    /* Unregister the PO from the registry */
-    ogl_programs programs = NULL;
-
-    ogl_context_get_property(ral_context_get_gl_context(program_ptr->context),
-                             OGL_CONTEXT_PROPERTY_PROGRAMS,
-                            &programs);
-
-    if (programs == NULL)
-    {
-        /* We may end up here if the user explicitly killed the window (eg. with ALT+F4).
-         *
-         * In this case, the whole context will have been wiped out at this point, so there's
-         * no sense in trying to release ogl_shader and ogl_program instances.
-         */
-        LOG_FATAL("Program manager is NULL. An ogl_program instance will not be unregistered.")
-    }
-    else
-    {
-        ogl_programs_unregister_program(programs,
-                                        (ogl_program)program);
-    }
-
-    /* Do releasing stuff in GL context first */
     ogl_context_request_callback_from_context_thread(ral_context_get_gl_context(program_ptr->context),
-                                                     _ogl_program_release_callback,
+                                                     _raGL_program_release_callback,
                                                      program_ptr);
 
-    /* Release all attached shaders */
-    if (program_ptr->attached_shaders != NULL)
-    {
-        while (true)
-        {
-            ogl_shader shader     = NULL;
-            bool       result_get = system_resizable_vector_pop(program_ptr->attached_shaders,
-                                                               &shader);
-
-            if (!result_get)
-            {
-                break;
-            }
-
-            ogl_shader_release(shader);
-        }
-
-        system_resizable_vector_release(program_ptr->attached_shaders);
-        program_ptr->attached_shaders = NULL;
-    }
-
     /* Release resizable vectors */
-    ogl_program_attribute_descriptor* attribute_ptr = NULL;
-    ogl_program_variable*             uniform_ptr   = NULL;
-    ogl_program_ub                    uniform_block = NULL;
+    ral_program_attribute* attribute_ptr = NULL;
+    ral_program_variable*  uniform_ptr   = NULL;
+    ogl_program_ub         uniform_block = NULL;
 
-    _ogl_program_release_active_attributes           (program_ptr->active_attributes);
-    _ogl_program_release_active_shader_storage_blocks(program_ptr);
-    _ogl_program_release_active_uniforms             (program_ptr->active_uniforms);
-    _ogl_program_release_active_uniform_blocks       (program_ptr);
+    _raGL_program_release_active_attributes           (program_ptr->active_attributes);
+    _raGL_program_release_active_shader_storage_blocks(program_ptr);
+    _raGL_program_release_active_uniforms             (program_ptr->active_uniforms);
+    _raGL_program_release_active_uniform_blocks       (program_ptr);
 
     if (program_ptr->active_attributes != NULL)
     {
@@ -976,34 +955,16 @@ PRIVATE void _ogl_program_release(void* program)
         system_hash64map_release(program_ptr->context_to_ub_name_to_ub_map);
         program_ptr->context_to_ub_name_to_ub_map = NULL;
     }
-
-    /* Release TF varying name array, if one was allocated */
-    if (program_ptr->tf_varyings != NULL)
-    {
-        for (unsigned int n_varying = 0;
-                          n_varying < program_ptr->n_tf_varyings;
-                        ++n_varying)
-        {
-            delete program_ptr->tf_varyings[n_varying];
-
-            program_ptr->tf_varyings[n_varying] = NULL;
-        }
-
-        delete [] program_ptr->tf_varyings;
-
-        program_ptr->n_tf_varyings = 0;
-        program_ptr->tf_varyings   = NULL;
-    }
 }
 
 /** TODO */
-PRIVATE void _ogl_program_release_active_attributes(system_resizable_vector active_attributes)
+PRIVATE void _raGL_program_release_active_attributes(system_resizable_vector active_attributes)
 {
     while (true)
     {
-        ogl_program_attribute_descriptor* program_attribute_ptr = NULL;
-        bool                              result_get            = system_resizable_vector_pop(active_attributes,
-                                                                                             &program_attribute_ptr);
+        ral_program_attribute* program_attribute_ptr = NULL;
+        bool                   result_get            = system_resizable_vector_pop(active_attributes,
+                                                                                  &program_attribute_ptr);
 
         if (!result_get)
         {
@@ -1015,7 +976,7 @@ PRIVATE void _ogl_program_release_active_attributes(system_resizable_vector acti
 }
 
 /** TODO */
-PRIVATE void _ogl_program_release_active_shader_storage_blocks(_ogl_program* program_ptr)
+PRIVATE void _raGL_program_release_active_shader_storage_blocks(_raGL_program* program_ptr)
 {
     if (program_ptr->active_ssbs != NULL)
     {
@@ -1049,8 +1010,8 @@ PRIVATE void _ogl_program_release_active_shader_storage_blocks(_ogl_program* pro
 }
 
 /** TODO */
-PRIVATE void _ogl_program_release_active_uniform_blocks(_ogl_program* program_ptr,
-                                                        ogl_context   owner_context)
+PRIVATE void _raGL_program_release_active_uniform_blocks(_raGL_program* program_ptr,
+                                                         ogl_context    owner_context)
 {
     if (program_ptr->context_to_active_ubs_map != NULL)
     {
@@ -1198,11 +1159,11 @@ PRIVATE void _ogl_program_release_active_uniform_blocks(_ogl_program* program_pt
 }
 
 /** TODO */
-PRIVATE void _ogl_program_release_active_uniforms(system_resizable_vector active_uniforms)
+PRIVATE void _raGL_program_release_active_uniforms(system_resizable_vector active_uniforms)
 {
     while (true)
     {
-        ogl_program_variable* program_uniform_ptr = NULL;
+        ral_program_variable* program_uniform_ptr = NULL;
         bool                  result_get          = system_resizable_vector_pop(active_uniforms,
                                                                                &program_uniform_ptr);
 
@@ -1217,10 +1178,10 @@ PRIVATE void _ogl_program_release_active_uniforms(system_resizable_vector active
 }
 
 /** TODO */
-PRIVATE void _ogl_program_release_callback(ogl_context context,
-                                           void*       in_arg)
+PRIVATE void _raGL_program_release_callback(ogl_context context,
+                                            void*       in_arg)
 {
-    _ogl_program* program_ptr = (_ogl_program*) in_arg;
+    _raGL_program* program_ptr = (_raGL_program*) in_arg;
 
     program_ptr->pGLDeleteProgram(program_ptr->id);
 
@@ -1228,14 +1189,14 @@ PRIVATE void _ogl_program_release_callback(ogl_context context,
 }
 
 /** TODO */
-PRIVATE void _ogl_program_save_binary_blob(ogl_context   context_ptr,
-                                           _ogl_program* program_ptr)
+PRIVATE void _raGL_program_save_binary_blob(ogl_context   context_ptr,
+                                            _raGL_program* program_ptr)
 {
     /* Program file names tend to be length and often exceed Windows ANSI API limits.
      * Therefore, we use HAS' hash as actual blob file name, and store the actual
      * program file name at the beginning of the source code file. (implemented elsewhere)
      */
-    char* file_name_src = _ogl_program_get_binary_blob_file_name(program_ptr);
+    char* file_name_src = _raGL_program_get_binary_blob_file_name(program_ptr);
 
     if (file_name_src != NULL)
     {
@@ -1278,9 +1239,9 @@ PRIVATE void _ogl_program_save_binary_blob(ogl_context   context_ptr,
                     /* We have the blob now. Proceed and write to the file */
                     unsigned int n_attached_shaders = 0;
 
-                    system_resizable_vector_get_property(program_ptr->attached_shaders,
-                                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
-                                                        &n_attached_shaders);
+                    ral_program_get_property(program_ptr->program_ral,
+                                             RAL_PROGRAM_PROPERTY_N_ATTACHED_SHADERS,
+                                            &n_attached_shaders);
 
                     system_file_serializer_write(blob_file_serializer,
                                                  sizeof(n_attached_shaders),
@@ -1290,14 +1251,18 @@ PRIVATE void _ogl_program_save_binary_blob(ogl_context   context_ptr,
                                       n_shader < n_attached_shaders;
                                     ++n_shader)
                     {
-                        ogl_shader    shader      = NULL;
-                        system_hash64 shader_hash = 0;
+                        ral_shader                shader      = NULL;
+                        system_hashed_ansi_string shader_body = NULL;
+                        system_hash64             shader_hash = 0;
 
-                        system_resizable_vector_get_element_at(program_ptr->attached_shaders,
-                                                               n_shader,
-                                                              &shader);
+                        ral_program_get_attached_shader_at_index(program_ptr->program_ral,
+                                                                 n_shader,
+                                                                &shader);
+                        ral_shader_get_property                 (shader,
+                                                                 RAL_SHADER_PROPERTY_GLSL_BODY,
+                                                                &shader_body);
 
-                        shader_hash = system_hashed_ansi_string_get_hash(ogl_shader_get_body(shader) );
+                        shader_hash = system_hashed_ansi_string_get_hash(shader_body);
 
                         system_file_serializer_write(blob_file_serializer,
                                                      sizeof(shader_hash),
@@ -1333,15 +1298,19 @@ PRIVATE void _ogl_program_save_binary_blob(ogl_context   context_ptr,
 }
 
 /** TODO */
-PRIVATE void _ogl_program_save_shader_sources(_ogl_program* program_ptr)
+PRIVATE void _raGL_program_save_shader_sources(_raGL_program* program_ptr)
 {
-    char*                  file_name  = _ogl_program_get_source_code_file_name   (program_ptr);
-    uint32_t               n_shaders  = 0;
-    system_file_serializer serializer = system_file_serializer_create_for_writing(system_hashed_ansi_string_create(file_name) );
+    char*                     file_name    = _ogl_program_get_source_code_file_name   (program_ptr);
+    uint32_t                  n_shaders    = 0;
+    system_hashed_ansi_string program_name = NULL;
+    system_file_serializer    serializer   = system_file_serializer_create_for_writing(system_hashed_ansi_string_create(file_name) );
 
-    system_resizable_vector_get_property(program_ptr->attached_shaders,
-                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
-                                        &n_shaders);
+    ral_program_get_property(program_ptr->program_ral,
+                             RAL_PROGRAM_PROPERTY_NAME,
+                            &program_name);
+    ral_program_get_property(program_ptr->program_ral,
+                             RAL_PROGRAM_PROPERTY_N_ATTACHED_SHADERS,
+                            &n_shaders);
 
     /* Store full program name */
     static const char* full_program_name = "Full program name: ";
@@ -1351,8 +1320,8 @@ PRIVATE void _ogl_program_save_shader_sources(_ogl_program* program_ptr)
                                  strlen(full_program_name),
                                  full_program_name);
     system_file_serializer_write(serializer,
-                                 system_hashed_ansi_string_get_length(program_ptr->name),
-                                 system_hashed_ansi_string_get_buffer(program_ptr->name) );
+                                 system_hashed_ansi_string_get_length(program_name),
+                                 system_hashed_ansi_string_get_buffer(program_name) );
     system_file_serializer_write(serializer,
                                  1, /* size */
                                  newline);
@@ -1365,13 +1334,13 @@ PRIVATE void _ogl_program_save_shader_sources(_ogl_program* program_ptr)
                   n_shader < n_shaders;
                 ++n_shader)
     {
-        ogl_shader                current_shader = NULL;
+        ral_shader                current_shader = NULL;
         system_hashed_ansi_string shader_body    = NULL;
         ral_shader_type           shader_type    = RAL_SHADER_TYPE_UNKNOWN;
 
-        if (!system_resizable_vector_get_element_at(program_ptr->attached_shaders,
-                                                    n_shader,
-                                                   &current_shader) )
+        if (!ral_program_get_attached_shader_at_index(program_ptr->program_ral,
+                                                      n_shader,
+                                                     &current_shader) )
         {
             ASSERT_DEBUG_SYNC(false,
                               "Could not retrieve shader at index [%d]",
@@ -1380,8 +1349,12 @@ PRIVATE void _ogl_program_save_shader_sources(_ogl_program* program_ptr)
             continue;
         }
 
-        shader_body = ogl_shader_get_body(current_shader);
-        shader_type = ogl_shader_get_type(current_shader);
+        ral_shader_get_property(current_shader,
+                                RAL_SHADER_PROPERTY_GLSL_BODY,
+                               &shader_body);
+        ral_shader_get_property(current_shader,
+                                RAL_SHADER_PROPERTY_TYPE,
+                               &shader_type);
 
         /* Store information about the shader type */
         static const char* marker_pre        = "--- ";
@@ -1465,72 +1438,62 @@ PRIVATE void _ogl_program_save_shader_sources(_ogl_program* program_ptr)
 
 
 /** Please see header for specification */
-PUBLIC EMERALD_API bool ogl_program_attach_shader(ogl_program program,
-                                                  ogl_shader  shader)
+PUBLIC EMERALD_API bool raGL_program_attach_shader(raGL_program program,
+                                                   ral_shader   shader)
 {
-    _ogl_program* program_ptr = (_ogl_program*) program;
-    bool          result      = false;
+    _raGL_program* program_ptr = (_raGL_program*) program;
+    bool           result      = false;
 
-    ASSERT_DEBUG_SYNC(program != NULL, "Program is NULL - crash ahead.");
-    ASSERT_DEBUG_SYNC(shader  != NULL, "Shader is NULL.");
+    ASSERT_DEBUG_SYNC(program != NULL,
+                      "Program is NULL - crash ahead.");
+    ASSERT_DEBUG_SYNC(shader != NULL,
+                      "Shader is NULL.");
 
     if (program_ptr->id != 0)
     {
-        _ogl_attach_shader_callback_argument callback_argument;
+        _raGL_attach_shader_callback_argument callback_argument;
 
         callback_argument.program_ptr = program_ptr;
         callback_argument.shader      = shader;
 
         ogl_context_request_callback_from_context_thread(ral_context_get_gl_context(program_ptr->context),
-                                                         _ogl_program_attach_shader_callback,
+                                                         _raGL_program_attach_shader_callback,
                                                         &callback_argument);
-
-        result = (system_resizable_vector_find(program_ptr->attached_shaders,
-                                               shader) != ITEM_NOT_FOUND);
     }
     else
     {
-        LOG_ERROR("Program has zero id! Cannot attach shader.");
+        ASSERT_DEBUG_SYNC(false,
+                          "Program has a zero id! Cannot attach the specified shader.");
     }
 
     return result;
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API ogl_program ogl_program_create(ral_context                   context,
-                                                  system_hashed_ansi_string     name,
-                                                  ogl_program_syncable_ubs_mode syncable_ubs_mode)
+PUBLIC EMERALD_API raGL_program raGL_program_create(ral_context                    context,
+                                                    ral_program                    program_ral,
+                                                    raGL_program_syncable_ubs_mode syncable_ubs_mode)
 {
-    _ogl_program* result = new (std::nothrow) _ogl_program;
+    _raGL_program* new_program_ptr = new (std::nothrow) _raGL_program;
 
-    if (result != NULL)
+    if (new_program_ptr != NULL)
     {
-        REFCOUNT_INSERT_INIT_CODE_WITH_RELEASE_HANDLER(result,
-                                                       _ogl_program_release,
-                                                       OBJECT_TYPE_OGL_PROGRAM,
-                                                       system_hashed_ansi_string_create_by_merging_two_strings("\\OpenGL Programs\\",
-                                                                                                               system_hashed_ansi_string_get_buffer(name)) );
-
-        result->active_attributes             = NULL;
-        result->active_ssbs                   = NULL;
-        result->active_uniforms               = NULL;
-        result->attached_shaders              = NULL;
-        result->context                       = context;
-        result->context_to_active_ubs_map     = system_hash64map_create(sizeof(system_hash64map),
-                                                                        true); /* should_be_thread_safe */
-        result->context_to_ub_index_to_ub_map = system_hash64map_create(sizeof(system_hash64map),
-                                                                        true); /* should_be_thread_safe */
-        result->context_to_ub_name_to_ub_map  = system_hash64map_create(sizeof(system_hash64map),
-                                                                        true); /* should_be_thread_safe */
-        result->id                            = 0;
-        result->link_status                   = false;
-        result->name                          = name;
-        result->n_tf_varyings                 = 0;
-        result->ssb_index_to_ssb_map          = NULL;
-        result->ssb_name_to_ssb_map           = NULL;
-        result->syncable_ubs_mode             = syncable_ubs_mode;
-        result->tf_mode                       = GL_NONE;
-        result->tf_varyings                   = NULL;
+        new_program_ptr->active_attributes             = NULL;
+        new_program_ptr->active_ssbs                   = NULL;
+        new_program_ptr->active_uniforms               = NULL;
+        new_program_ptr->context                       = context;
+        new_program_ptr->context_to_active_ubs_map     = system_hash64map_create(sizeof(system_hash64map),
+                                                                                 true); /* should_be_thread_safe */
+        new_program_ptr->context_to_ub_index_to_ub_map = system_hash64map_create(sizeof(system_hash64map),
+                                                                                 true); /* should_be_thread_safe */
+        new_program_ptr->context_to_ub_name_to_ub_map  = system_hash64map_create(sizeof(system_hash64map),
+                                                                                 true); /* should_be_thread_safe */
+        new_program_ptr->id                            = 0;
+        new_program_ptr->link_status                   = false;
+        new_program_ptr->program_ral                   = program_ral;
+        new_program_ptr->ssb_index_to_ssb_map          = NULL;
+        new_program_ptr->ssb_name_to_ssb_map           = NULL;
+        new_program_ptr->syncable_ubs_mode             = syncable_ubs_mode;
 
         /* Init GL entry-point cache */
         ral_backend_type backend_type = RAL_BACKEND_TYPE_UNKNOWN;
@@ -1547,27 +1510,27 @@ PUBLIC EMERALD_API ogl_program ogl_program_create(ral_context                   
                                      OGL_CONTEXT_PROPERTY_ENTRYPOINTS_ES,
                                     &entry_points);
 
-            result->pGLAttachShader               = entry_points->pGLAttachShader;
-            result->pGLCreateProgram              = entry_points->pGLCreateProgram;
-            result->pGLDeleteProgram              = entry_points->pGLDeleteProgram;
-            result->pGLDetachShader               = entry_points->pGLDetachShader;
-            result->pGLGetActiveAttrib            = entry_points->pGLGetActiveAttrib;
-            result->pGLGetProgramResourceiv       = entry_points->pGLGetProgramResourceiv;
-            result->pGLGetAttribLocation          = entry_points->pGLGetAttribLocation;
-            result->pGLGetError                   = entry_points->pGLGetError;
-            result->pGLGetProgramBinary           = entry_points->pGLGetProgramBinary;
-            result->pGLGetProgramInfoLog          = entry_points->pGLGetProgramInfoLog;
-            result->pGLGetProgramInterfaceiv      = entry_points->pGLGetProgramInterfaceiv;
-            result->pGLGetProgramiv               = entry_points->pGLGetProgramiv;
-            result->pGLGetProgramResourceiv       = entry_points->pGLGetProgramResourceiv;
-            result->pGLGetProgramResourceLocation = entry_points->pGLGetProgramResourceLocation;
-            result->pGLGetProgramResourceName     = entry_points->pGLGetProgramResourceName;
-            result->pGLLinkProgram                = entry_points->pGLLinkProgram;
-            result->pGLProgramBinary              = entry_points->pGLProgramBinary;
-            result->pGLProgramParameteri          = entry_points->pGLProgramParameteri;
-            result->pGLShaderStorageBlockBinding  = entry_points->pGLShaderStorageBlockBinding;
-            result->pGLTransformFeedbackVaryings  = entry_points->pGLTransformFeedbackVaryings;
-            result->pGLUniformBlockBinding        = entry_points->pGLUniformBlockBinding;
+            new_program_ptr->pGLAttachShader               = entry_points->pGLAttachShader;
+            new_program_ptr->pGLCreateProgram              = entry_points->pGLCreateProgram;
+            new_program_ptr->pGLDeleteProgram              = entry_points->pGLDeleteProgram;
+            new_program_ptr->pGLDetachShader               = entry_points->pGLDetachShader;
+            new_program_ptr->pGLGetActiveAttrib            = entry_points->pGLGetActiveAttrib;
+            new_program_ptr->pGLGetProgramResourceiv       = entry_points->pGLGetProgramResourceiv;
+            new_program_ptr->pGLGetAttribLocation          = entry_points->pGLGetAttribLocation;
+            new_program_ptr->pGLGetError                   = entry_points->pGLGetError;
+            new_program_ptr->pGLGetProgramBinary           = entry_points->pGLGetProgramBinary;
+            new_program_ptr->pGLGetProgramInfoLog          = entry_points->pGLGetProgramInfoLog;
+            new_program_ptr->pGLGetProgramInterfaceiv      = entry_points->pGLGetProgramInterfaceiv;
+            new_program_ptr->pGLGetProgramiv               = entry_points->pGLGetProgramiv;
+            new_program_ptr->pGLGetProgramResourceiv       = entry_points->pGLGetProgramResourceiv;
+            new_program_ptr->pGLGetProgramResourceLocation = entry_points->pGLGetProgramResourceLocation;
+            new_program_ptr->pGLGetProgramResourceName     = entry_points->pGLGetProgramResourceName;
+            new_program_ptr->pGLLinkProgram                = entry_points->pGLLinkProgram;
+            new_program_ptr->pGLProgramBinary              = entry_points->pGLProgramBinary;
+            new_program_ptr->pGLProgramParameteri          = entry_points->pGLProgramParameteri;
+            new_program_ptr->pGLShaderStorageBlockBinding  = entry_points->pGLShaderStorageBlockBinding;
+            new_program_ptr->pGLTransformFeedbackVaryings  = entry_points->pGLTransformFeedbackVaryings;
+            new_program_ptr->pGLUniformBlockBinding        = entry_points->pGLUniformBlockBinding;
         }
         else
         {
@@ -1580,99 +1543,45 @@ PUBLIC EMERALD_API ogl_program ogl_program_create(ral_context                   
                                      OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
                                     &entry_points);
 
-            result->pGLAttachShader               = entry_points->pGLAttachShader;
-            result->pGLCreateProgram              = entry_points->pGLCreateProgram;
-            result->pGLDeleteProgram              = entry_points->pGLDeleteProgram;
-            result->pGLDetachShader               = entry_points->pGLDetachShader;
-            result->pGLGetActiveAttrib            = entry_points->pGLGetActiveAttrib;
-            result->pGLGetProgramResourceiv       = entry_points->pGLGetProgramResourceiv;
-            result->pGLGetAttribLocation          = entry_points->pGLGetAttribLocation;
-            result->pGLGetError                   = entry_points->pGLGetError;
-            result->pGLGetProgramBinary           = entry_points->pGLGetProgramBinary;
-            result->pGLGetProgramInfoLog          = entry_points->pGLGetProgramInfoLog;
-            result->pGLGetProgramInterfaceiv      = entry_points->pGLGetProgramInterfaceiv;
-            result->pGLGetProgramiv               = entry_points->pGLGetProgramiv;
-            result->pGLGetProgramResourceiv       = entry_points->pGLGetProgramResourceiv;
-            result->pGLGetProgramResourceLocation = entry_points->pGLGetProgramResourceLocation;
-            result->pGLGetProgramResourceName     = entry_points->pGLGetProgramResourceName;
-            result->pGLLinkProgram                = entry_points->pGLLinkProgram;
-            result->pGLProgramBinary              = entry_points->pGLProgramBinary;
-            result->pGLProgramParameteri          = entry_points->pGLProgramParameteri;
-            result->pGLShaderStorageBlockBinding  = entry_points->pGLShaderStorageBlockBinding;
-            result->pGLTransformFeedbackVaryings  = entry_points->pGLTransformFeedbackVaryings;
-            result->pGLUniformBlockBinding        = entry_points->pGLUniformBlockBinding;
+            new_program_ptr->pGLAttachShader               = entry_points->pGLAttachShader;
+            new_program_ptr->pGLCreateProgram              = entry_points->pGLCreateProgram;
+            new_program_ptr->pGLDeleteProgram              = entry_points->pGLDeleteProgram;
+            new_program_ptr->pGLDetachShader               = entry_points->pGLDetachShader;
+            new_program_ptr->pGLGetActiveAttrib            = entry_points->pGLGetActiveAttrib;
+            new_program_ptr->pGLGetProgramResourceiv       = entry_points->pGLGetProgramResourceiv;
+            new_program_ptr->pGLGetAttribLocation          = entry_points->pGLGetAttribLocation;
+            new_program_ptr->pGLGetError                   = entry_points->pGLGetError;
+            new_program_ptr->pGLGetProgramBinary           = entry_points->pGLGetProgramBinary;
+            new_program_ptr->pGLGetProgramInfoLog          = entry_points->pGLGetProgramInfoLog;
+            new_program_ptr->pGLGetProgramInterfaceiv      = entry_points->pGLGetProgramInterfaceiv;
+            new_program_ptr->pGLGetProgramiv               = entry_points->pGLGetProgramiv;
+            new_program_ptr->pGLGetProgramResourceiv       = entry_points->pGLGetProgramResourceiv;
+            new_program_ptr->pGLGetProgramResourceLocation = entry_points->pGLGetProgramResourceLocation;
+            new_program_ptr->pGLGetProgramResourceName     = entry_points->pGLGetProgramResourceName;
+            new_program_ptr->pGLLinkProgram                = entry_points->pGLLinkProgram;
+            new_program_ptr->pGLProgramBinary              = entry_points->pGLProgramBinary;
+            new_program_ptr->pGLProgramParameteri          = entry_points->pGLProgramParameteri;
+            new_program_ptr->pGLShaderStorageBlockBinding  = entry_points->pGLShaderStorageBlockBinding;
+            new_program_ptr->pGLTransformFeedbackVaryings  = entry_points->pGLTransformFeedbackVaryings;
+            new_program_ptr->pGLUniformBlockBinding        = entry_points->pGLUniformBlockBinding;
         }
 
         /* Carry on */
         ogl_context_request_callback_from_context_thread(ral_context_get_gl_context(context),
-                                                         _ogl_program_create_callback,
-                                                         result);
-
-        /* Register the program object. This will give us a nifty assertion failure
-         * if the caller attempts to register a PO under an already taken name.
-         */
-        ogl_programs context_programs = NULL;
-
-        ogl_context_get_property(ral_context_get_gl_context(context),
-                                 OGL_CONTEXT_PROPERTY_PROGRAMS,
-                                &context_programs);
-
-        ogl_programs_register_program(context_programs,
-                                      (ogl_program) result);
+                                                         _raGL_program_create_callback,
+                                                         new_program_ptr);
     }
 
-    return (ogl_program) result;
-}
-
-/** Please see header for specification */
-PUBLIC EMERALD_API bool ogl_program_detach_shader(ogl_program program,
-                                                  ogl_shader  shader)
-{
-    _ogl_program* program_ptr = (_ogl_program*) program;
-    bool          result      = false;
-
-    ASSERT_DEBUG_SYNC(program != NULL, "Program is NULL - crash ahead.");
-    ASSERT_DEBUG_SYNC(shader  != NULL, "Shader is NULL.");
-
-    if (program_ptr->id != 0)
-    {
-        /* Make sure the shader is attached to the program */
-        if (system_resizable_vector_find(program_ptr->attached_shaders,
-                                         shader) != ITEM_NOT_FOUND)
-        {
-            _ogl_detach_shader_callback_argument callback_argument;
-
-            callback_argument.program_ptr = program_ptr;
-            callback_argument.shader      = shader;
-
-            ogl_context_request_callback_from_context_thread(ral_context_get_gl_context(program_ptr->context),
-                                                             _ogl_program_detach_shader_callback,
-                                                            &callback_argument);
-
-            result = (system_resizable_vector_find(program_ptr->attached_shaders, shader) == ITEM_NOT_FOUND);
-        }
-        else
-        {
-            LOG_ERROR("Could not detach shader [%u] from program [%u] - not attached.",
-                      ogl_shader_get_id(shader),
-                      program_ptr->id);
-        }
-    }
-    else
-    {
-        LOG_ERROR("Program has zero id! Cannot detach shader.");
-    }
-
-    return result;
+    return (raGL_program) new_program_ptr;
 }
 
 /** TODO */
-PUBLIC void ogl_program_fill_ogl_program_variable(ogl_program           program,
-                                                  unsigned int          temp_variable_name_storage_size,
-                                                  char*                 temp_variable_name_storage,
-                                                  ogl_program_variable* variable_ptr,
-                                                  GLenum                variable_interface_type,
-                                                  unsigned int          n_variable)
+PUBLIC void raGL_program_fill_ogl_program_variable(raGL_program          program,
+                                                   unsigned int          temp_variable_name_storage_size,
+                                                   char*                 temp_variable_name_storage,
+                                                   ral_program_variable* variable_ptr,
+                                                   GLenum                variable_interface_type,
+                                                   unsigned int          n_variable)
 {
     bool                is_temp_variable_defined            = (temp_variable_name_storage != NULL) ? true
                                                                                                    : false;
@@ -1686,7 +1595,7 @@ PUBLIC void ogl_program_fill_ogl_program_variable(ogl_program           program,
     static const GLenum piq_property_top_level_array_size   = GL_TOP_LEVEL_ARRAY_SIZE;
     static const GLenum piq_property_top_level_array_stride = GL_TOP_LEVEL_ARRAY_STRIDE;
     static const GLenum piq_property_type                   = GL_TYPE;
-    _ogl_program*       program_ptr                         = (_ogl_program*) program;
+    _raGL_program*      program_ptr                         = (_raGL_program*) program;
 
     variable_ptr->array_stride           = 0;
     variable_ptr->block_index            = -1;
@@ -1699,7 +1608,7 @@ PUBLIC void ogl_program_fill_ogl_program_variable(ogl_program           program,
     variable_ptr->size                   = 0;
     variable_ptr->top_level_array_size   = 0;
     variable_ptr->top_level_array_stride = 0;
-    variable_ptr->type                   = PROGRAM_UNIFORM_TYPE_UNDEFINED;
+    variable_ptr->type                   = RAL_PROGRAM_UNIFORM_TYPE_UNDEFINED;
 
     ASSERT_DEBUG_SYNC(variable_interface_type == GL_BUFFER_VARIABLE ||
                       variable_interface_type == GL_UNIFORM,
@@ -1721,56 +1630,56 @@ PUBLIC void ogl_program_fill_ogl_program_variable(ogl_program           program,
                                              n_variable,
                                              1, /* propCount */
                                             &piq_property_array_stride,
-                                             1, /* bufSize */
-                                             NULL, /* length */
-                                            &variable_ptr->array_stride);
+                                             1,    /* bufSize */
+                                             NULL, /* length  */
+                                             (GLint*) &variable_ptr->array_stride);
         program_ptr->pGLGetProgramResourceiv(program_ptr->id,
                                              variable_interface_type,
                                              n_variable,
                                              1, /* propCount */
                                             &piq_property_block_index,
-                                             1, /* bufSize */
-                                             NULL, /* length */
-                                            &variable_ptr->block_index);
+                                             1,    /* bufSize */
+                                             NULL, /* length  */
+                                             (GLint*) &variable_ptr->block_index);
         program_ptr->pGLGetProgramResourceiv(program_ptr->id,
                                              variable_interface_type,
                                              n_variable,
                                              1, /* propCount */
                                             &piq_property_is_row_major,
-                                             1, /* bufSize */
-                                             NULL, /* length */
-                                            &variable_ptr->is_row_major_matrix);
+                                             1,    /* bufSize */
+                                             NULL, /* length  */
+                                            (GLint*) &variable_ptr->is_row_major_matrix);
         program_ptr->pGLGetProgramResourceiv(program_ptr->id,
                                              variable_interface_type,
                                              n_variable,
                                              1, /* propCount */
                                             &piq_property_matrix_stride,
-                                             1, /* bufSize */
-                                             NULL, /* length */
-                                            &variable_ptr->matrix_stride);
+                                             1,    /* bufSize */
+                                             NULL, /* length  */
+                                             (GLint*) &variable_ptr->matrix_stride);
         program_ptr->pGLGetProgramResourceiv(program_ptr->id,
                                              variable_interface_type,
                                              n_variable,
                                              1, /* propCount */
                                             &piq_property_offset,
-                                             1, /* bufSize */
-                                             NULL, /* length */
-                                            &variable_ptr->block_offset);
+                                             1,    /* bufSize */
+                                             NULL, /* length  */
+                                             (GLint*) &variable_ptr->block_offset);
         program_ptr->pGLGetProgramResourceiv(program_ptr->id,
                                              variable_interface_type,
                                              n_variable,
                                              1, /* propCount */
                                             &piq_property_name_length,
-                                             1, /* bufSize */
-                                             NULL, /* length */
-                                             &variable_ptr->length);
+                                             1,    /* bufSize */
+                                             NULL, /* length  */
+                                            &variable_ptr->length);
         program_ptr->pGLGetProgramResourceiv(program_ptr->id,
                                              variable_interface_type,
                                              n_variable,
                                              1, /* propCount */
                                             &piq_property_type,
-                                             1, /* bufSize */
-                                             NULL, /* length */
+                                             1,    /* bufSize */
+                                             NULL, /* length  */
                                    (GLint*) &variable_ptr->type);
     }
 
@@ -1781,17 +1690,17 @@ PUBLIC void ogl_program_fill_ogl_program_variable(ogl_program           program,
                                              n_variable,
                                              1, /* propCount */
                                             &piq_property_top_level_array_size,
-                                             1, /* bufSize */
-                                             NULL, /* length */
-                                            &variable_ptr->top_level_array_size);
+                                             1,    /* bufSize */
+                                             NULL, /* length  */
+                                             (GLint*) &variable_ptr->top_level_array_size);
         program_ptr->pGLGetProgramResourceiv(program_ptr->id,
                                              variable_interface_type,
                                              n_variable,
                                              1, /* propCount */
                                             &piq_property_top_level_array_stride,
-                                             1, /* bufSize */
-                                             NULL, /* length */
-                                            &variable_ptr->top_level_array_stride);
+                                             1,    /* bufSize */
+                                             NULL, /* length  */
+                                             (GLint*) &variable_ptr->top_level_array_stride);
     }
 
     if (!is_temp_variable_defined)
@@ -1828,128 +1737,70 @@ PUBLIC void ogl_program_fill_ogl_program_variable(ogl_program           program,
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API bool ogl_program_get_attached_shader(ogl_program program,
-                                                        uint32_t    n_attached_shader,
-                                                        ogl_shader* out_shader)
+PUBLIC void raGL_program_get_property(raGL_program          program,
+                                      raGL_program_property property,
+                                      void*                 out_result_ptr)
 {
-    _ogl_program* program_ptr = (_ogl_program*) program;
+    _raGL_program* program_ptr = (_raGL_program*) program;
 
-    return system_resizable_vector_get_element_at(program_ptr->attached_shaders,
-                                                  n_attached_shader,
-                                                 *out_shader);
-}
-
-/** Please see header for specification */
-PUBLIC EMERALD_API bool ogl_program_get_attribute_by_index(ogl_program                              program,
-                                                           size_t                                   n_attribute,
-                                                           const ogl_program_attribute_descriptor** out_attribute)
-{
-    _ogl_program* program_ptr = (_ogl_program*) program;
-    bool          result      = false;
-
-    ASSERT_DEBUG_SYNC(program_ptr->link_status,
-                      "You cannot retrieve an attribute descriptor without linking the program beforehand.");
-
-    if (program_ptr->link_status)
+    if (program_ptr == NULL)
     {
-        result = system_resizable_vector_get_element_at(program_ptr->active_attributes,
-                                                        n_attribute,
-                                                        (void*) *out_attribute);
+        ASSERT_DEBUG_SYNC(program_ptr != NULL,
+                          "Input raGL_program instance is NULL");
+
+        goto end;
     }
 
-    return result;
-}
-
-/** Please see header for specification */
-PUBLIC EMERALD_API bool ogl_program_get_attribute_by_name(ogl_program                              program,
-                                                          system_hashed_ansi_string                name,
-                                                          const ogl_program_attribute_descriptor** out_attribute)
-{
-    _ogl_program* program_ptr = (_ogl_program*) program;
-    bool          result      = false;
-
-    ASSERT_DEBUG_SYNC(program_ptr->link_status,
-                      "You cannot retrieve an attribute descriptor without linking the program beforehand.");
-
-    if (program_ptr->link_status)
+    if (out_result_ptr == NULL)
     {
-        unsigned int n_attributes = 0;
+        ASSERT_DEBUG_SYNC(out_result_ptr != NULL,
+                          "Output variable is NULL");
 
-        system_resizable_vector_get_property(program_ptr->active_attributes,
-                                             SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
-                                            &n_attributes);
+        goto end;
+    }
 
-        for (unsigned int n_attribute = 0;
-                          n_attribute < n_attributes;
-                        ++n_attribute)
+    switch (property)
+    {
+        case RAGL_PROGRAM_PROPERTY_ID:
         {
-            ogl_program_attribute_descriptor* descriptor = NULL;
+            *(GLuint*) out_result_ptr = program_ptr->id;
 
-            result = system_resizable_vector_get_element_at(program_ptr->active_attributes,
-                                                            n_attribute,
-                                                           &descriptor);
-
-            if (result                                                             &&
-                system_hashed_ansi_string_is_equal_to_hash_string(descriptor->name,
-                                                                  name) )
-            {
-                *out_attribute = descriptor;
-                result         = true;
-
-                break;
-            }
-            else
-            {
-                result = false;
-            }
+            break;
         }
-    }
 
-    return result;
+        case RAGL_PROGRAM_PROPERTY_INFO_LOG:
+        {
+            ASSERT_DEBUG_SYNC(program_ptr->link_status,
+                              "You cannot retrieve program info log without linking the program beforehand.");
+
+             *(system_hashed_ansi_string*) out_result_ptr = program_ptr->program_info_log;
+
+             break;
+        }
+
+        default:
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Unrecognized raGL_program_property value.");
+        }
+    } /* switch (property) */
+end:
+    ;
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API GLuint ogl_program_get_id(ogl_program program)
+PUBLIC EMERALD_API bool raGL_program_get_shader_storage_block_by_sb_index(raGL_program     program,
+                                                                          unsigned int     index,
+                                                                          ogl_program_ssb* out_ssb_ptr)
 {
-    return ((_ogl_program*)program)->id;
-}
-
-/** Please see header for specification */
-PUBLIC EMERALD_API system_hashed_ansi_string ogl_program_get_name(ogl_program program)
-{
-    return ((_ogl_program*) program)->name;
-}
-
-/** Please see header for specification */
-PUBLIC EMERALD_API system_hashed_ansi_string ogl_program_get_program_info_log(ogl_program program)
-{
-    _ogl_program*             program_ptr = (_ogl_program*) program;
-    system_hashed_ansi_string result      = system_hashed_ansi_string_get_default_empty_string();
-
-    ASSERT_DEBUG_SYNC(program_ptr->link_status,
-                      "You cannot retrieve program info log without linking the program beforehand.");
-
-    if (program_ptr->link_status)
-    {
-        result = program_ptr->program_info_log;
-    }
-
-    return result;
-}
-
-/** Please see header for specification */
-PUBLIC EMERALD_API bool ogl_program_get_shader_storage_block_by_sb_index(ogl_program      program,
-                                                                         unsigned int     index,
-                                                                         ogl_program_ssb* out_ssb_ptr)
-{
-    _ogl_program*   program_ptr = (_ogl_program*) program;
+    _raGL_program*  program_ptr = (_raGL_program*) program;
     bool            result      = false;
     ogl_program_ssb result_ssb  = NULL;
 
     result = system_hash64map_get_element_at(program_ptr->ssb_index_to_ssb_map,
-                                  index,
-                                 &result_ssb,
-                                  NULL); /* pOutHash */
+                                             index,
+                                            &result_ssb,
+                                             NULL); /* pOutHash */
 
     if (result)
     {
@@ -1960,12 +1811,12 @@ PUBLIC EMERALD_API bool ogl_program_get_shader_storage_block_by_sb_index(ogl_pro
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API bool ogl_program_get_shader_storage_block_by_name(ogl_program               program,
-                                                                     system_hashed_ansi_string name,
-                                                                     ogl_program_ssb*          out_ssb_ptr)
+PUBLIC EMERALD_API bool raGL_program_get_shader_storage_block_by_name(raGL_program              program,
+                                                                      system_hashed_ansi_string name,
+                                                                      ogl_program_ssb*          out_ssb_ptr)
 {
-    _ogl_program* program_ptr = (_ogl_program*) program;
-    bool          result      = false;
+    _raGL_program* program_ptr = (_raGL_program*) program;
+    bool           result      = false;
 
     result = system_hash64map_get(program_ptr->ssb_name_to_ssb_map,
                                   system_hashed_ansi_string_get_hash(name),
@@ -1975,27 +1826,27 @@ PUBLIC EMERALD_API bool ogl_program_get_shader_storage_block_by_name(ogl_program
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API bool ogl_program_get_uniform_by_index(ogl_program                  program,
-                                                         size_t                       n_uniform,
-                                                         const ogl_program_variable** out_uniform)
+PUBLIC EMERALD_API bool raGL_program_get_uniform_by_index(raGL_program                 program,
+                                                          size_t                       n_uniform,
+                                                          const ral_program_variable** out_uniform)
 {
-    _ogl_program* program_ptr = (_ogl_program*) program;
-    bool          result      = false;
+    _raGL_program* program_ptr = (_raGL_program*) program;
+    bool           result      = false;
 
     ASSERT_DEBUG_SYNC(program_ptr->link_status,
                       "You cannot retrieve an uniform descriptor without linking the program beforehand.");
 
     if (program_ptr->link_status)
     {
-        ogl_program_variable* descriptor = NULL;
+        ral_program_variable* uniform_ptr = NULL;
 
         result = system_resizable_vector_get_element_at(program_ptr->active_uniforms,
                                                         n_uniform,
-                                                        &descriptor);
+                                                        &uniform_ptr);
 
         if (result)
         {
-            *out_uniform = descriptor;
+            *out_uniform = uniform_ptr;
              result      = true;
         }
     } /* if (program_ptr->link_status) */
@@ -2004,12 +1855,12 @@ PUBLIC EMERALD_API bool ogl_program_get_uniform_by_index(ogl_program            
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API bool ogl_program_get_uniform_by_name(ogl_program                  program,
-                                                        system_hashed_ansi_string    name,
-                                                        const ogl_program_variable** out_uniform)
+PUBLIC EMERALD_API bool raGL_program_get_uniform_by_name(raGL_program                 program,
+                                                         system_hashed_ansi_string    name,
+                                                         const ral_program_variable** out_uniform_ptr)
 {
-    _ogl_program* program_ptr = (_ogl_program*) program;
-    bool          result      = false;
+    _raGL_program* program_ptr = (_raGL_program*) program;
+    bool           result      = false;
 
     ASSERT_DEBUG_SYNC(program_ptr->link_status,
                       "You cannot retrieve an uniform descriptor without linking the program beforehand.");
@@ -2026,18 +1877,18 @@ PUBLIC EMERALD_API bool ogl_program_get_uniform_by_name(ogl_program             
                           n_uniform < n_uniforms;
                         ++n_uniform)
         {
-            ogl_program_variable* descriptor = NULL;
+            ral_program_variable* uniform_ptr = NULL;
 
             result = system_resizable_vector_get_element_at(program_ptr->active_uniforms,
                                                             n_uniform,
-                                                            &descriptor);
+                                                           &uniform_ptr);
 
             if (result                                                              &&
-                system_hashed_ansi_string_is_equal_to_hash_string(descriptor->name,
+                system_hashed_ansi_string_is_equal_to_hash_string(uniform_ptr->name,
                                                                   name) )
             {
-                *out_uniform = descriptor;
-                result       = true;
+                *out_uniform_ptr = uniform_ptr;
+                result           = true;
 
                 break;
             }
@@ -2052,20 +1903,20 @@ PUBLIC EMERALD_API bool ogl_program_get_uniform_by_name(ogl_program             
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API bool ogl_program_get_uniform_block_by_ub_index(ogl_program     program,
+PUBLIC EMERALD_API bool ogl_program_get_uniform_block_by_ub_index(raGL_program    program,
                                                                   unsigned int    index,
                                                                   ogl_program_ub* out_ub_ptr)
 {
     ogl_context      current_context    = NULL;
-    _ogl_program*    program_ptr        = (_ogl_program*) program;
+    _raGL_program*   program_ptr        = (_raGL_program*) program;
     bool             result             = false;
     ogl_program_ub   result_ub          = NULL;
     system_hash64map ub_index_to_ub_map = NULL;
 
-    if (program_ptr->syncable_ubs_mode == OGL_PROGRAM_SYNCABLE_UBS_MODE_ENABLE_PER_CONTEXT)
+    if (program_ptr->syncable_ubs_mode == RAGL_PROGRAM_SYNCABLE_UBS_MODE_ENABLE_PER_CONTEXT)
     {
         current_context = ogl_context_get_current_context();
-    } /* if (program_ptr->syncable_ubs_mode == OGL_PROGRAM_SYNCABLE_UBS_MODE_ENABLE_PER_CONTEXT) */
+    } /* if (program_ptr->syncable_ubs_mode == RAGL_PROGRAM_SYNCABLE_UBS_MODE_ENABLE_PER_CONTEXT) */
 
     if (!system_hash64map_contains(program_ptr->context_to_ub_name_to_ub_map,
                                    (system_hash64) current_context) )
@@ -2098,16 +1949,16 @@ PUBLIC EMERALD_API bool ogl_program_get_uniform_block_by_ub_index(ogl_program   
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API bool ogl_program_get_uniform_block_by_name(ogl_program               program,
+PUBLIC EMERALD_API bool ogl_program_get_uniform_block_by_name(raGL_program              program,
                                                               system_hashed_ansi_string name,
                                                               ogl_program_ub*           out_ub_ptr)
 {
     ogl_context      current_context   = NULL;
-    _ogl_program*    program_ptr       = (_ogl_program*) program;
+    _raGL_program*   program_ptr       = (_raGL_program*) program;
     bool             result            = false;
     system_hash64map ub_name_to_ub_map = NULL;
 
-    if (program_ptr->syncable_ubs_mode == OGL_PROGRAM_SYNCABLE_UBS_MODE_ENABLE_PER_CONTEXT)
+    if (program_ptr->syncable_ubs_mode == RAGL_PROGRAM_SYNCABLE_UBS_MODE_ENABLE_PER_CONTEXT)
     {
         current_context = ogl_context_get_current_context();
     }
@@ -2138,15 +1989,84 @@ PUBLIC EMERALD_API bool ogl_program_get_uniform_block_by_name(ogl_program       
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API bool ogl_program_link(ogl_program program)
+PUBLIC bool raGL_program_get_vertex_attribute_by_index(raGL_program                  program,
+                                                       size_t                        n_attribute,
+                                                       const ral_program_attribute** out_attribute_ptr)
 {
-    _ogl_program* program_ptr        = (_ogl_program*) program;
-    unsigned int  n_attached_shaders = 0;
-    bool          result             = false;
+    _raGL_program* program_ptr = (_raGL_program*) program;
+    bool           result      = false;
 
-    system_resizable_vector_get_property(program_ptr->attached_shaders,
-                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
-                                        &n_attached_shaders);
+    ASSERT_DEBUG_SYNC(program_ptr->link_status,
+                      "You cannot retrieve an attribute descriptor without linking the program beforehand.");
+
+    if (program_ptr->link_status)
+    {
+        result = system_resizable_vector_get_element_at(program_ptr->active_attributes,
+                                                        n_attribute,
+                                                        (void*) *out_attribute_ptr);
+    }
+
+    return result;
+}
+
+/** Please see header for specification */
+PUBLIC bool raGL_program_get_vertex_attribute_by_name(raGL_program                  program,
+                                                      system_hashed_ansi_string     name,
+                                                      const ral_program_attribute** out_attribute_ptr)
+{
+    _raGL_program* program_ptr = (_raGL_program*) program;
+    bool           result      = false;
+
+    ASSERT_DEBUG_SYNC(program_ptr->link_status,
+                      "You cannot retrieve an attribute descriptor without linking the program beforehand.");
+
+    if (program_ptr->link_status)
+    {
+        unsigned int n_attributes = 0;
+
+        system_resizable_vector_get_property(program_ptr->active_attributes,
+                                             SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                            &n_attributes);
+
+        for (unsigned int n_attribute = 0;
+                          n_attribute < n_attributes;
+                        ++n_attribute)
+        {
+            ral_program_attribute* attribute_ptr = NULL;
+
+            result = system_resizable_vector_get_element_at(program_ptr->active_attributes,
+                                                            n_attribute,
+                                                           &attribute_ptr);
+
+            if (result                                                                &&
+                system_hashed_ansi_string_is_equal_to_hash_string(attribute_ptr->name,
+                                                                  name) )
+            {
+                *out_attribute_ptr = attribute_ptr;
+                result             = true;
+
+                break;
+            }
+            else
+            {
+                result = false;
+            }
+        }
+    }
+
+    return result;
+}
+
+/** Please see header for specification */
+PUBLIC bool raGL_program_link(raGL_program program)
+{
+    _raGL_program* program_ptr        = (_raGL_program*) program;
+    unsigned int   n_attached_shaders = 0;
+    bool           result             = false;
+
+    ral_program_get_property(program_ptr->program_ral,
+                             RAL_PROGRAM_PROPERTY_N_ATTACHED_SHADERS,
+                            &n_attached_shaders);
 
     ASSERT_DEBUG_SYNC(n_attached_shaders > 0,
                       "Linking will fail - no shaders attached.");
@@ -2154,10 +2074,10 @@ PUBLIC EMERALD_API bool ogl_program_link(ogl_program program)
     if (n_attached_shaders > 0)
     {
         /* Clean up */
-        _ogl_program_release_active_attributes           (program_ptr->active_attributes);
-        _ogl_program_release_active_shader_storage_blocks(program_ptr);
-        _ogl_program_release_active_uniform_blocks       (program_ptr);
-        _ogl_program_release_active_uniforms             (program_ptr->active_uniforms);
+        _raGL_program_release_active_attributes           (program_ptr->active_attributes);
+        _raGL_program_release_active_shader_storage_blocks(program_ptr);
+        _raGL_program_release_active_uniform_blocks       (program_ptr);
+        _raGL_program_release_active_uniforms             (program_ptr->active_uniforms);
 
         /* Run through all the attached shaders and make sure these are compiled.
         *
@@ -2169,13 +2089,14 @@ PUBLIC EMERALD_API bool ogl_program_link(ogl_program program)
                           n_shader < n_attached_shaders;
                         ++n_shader)
         {
-            ogl_shader current_shader           = NULL;
-            GLuint     current_shader_gl_id     = 0;
-            bool       is_compiled_successfully = false;
+            ral_shader  current_shader           = NULL;
+            raGL_shader current_shader_raGL      = NULL;
+            GLuint      current_shader_raGL_id   = 0;
+            bool        is_compiled_successfully = false;
 
-            if (!system_resizable_vector_get_element_at(program_ptr->attached_shaders,
-                                                        n_shader,
-                                                       &current_shader) )
+            if (!ral_program_get_attached_shader_at_index(program_ptr->program_ral,
+                                                          n_shader,
+                                                         &current_shader) )
             {
                 ASSERT_DEBUG_SYNC(false,
                                   "Could not retrieve attached shader object at index [%d]",
@@ -2184,18 +2105,26 @@ PUBLIC EMERALD_API bool ogl_program_link(ogl_program program)
                 continue;
             }
 
-            current_shader_gl_id     = ogl_shader_get_id            (current_shader);
-            is_compiled_successfully = ogl_shader_get_compile_status(current_shader);
+            current_shader_raGL = ral_context_get_shader_gl(program_ptr->context,
+                                                            current_shader);
+
+            raGL_shader_get_property(current_shader_raGL,
+                                     RAGL_SHADER_PROPERTY_ID,
+                                    &current_shader_raGL_id);
+            raGL_shader_get_property(current_shader_raGL,
+                                     RAGL_SHADER_PROPERTY_COMPILE_STATUS,
+                                    &is_compiled_successfully);
 
             if (!is_compiled_successfully)
             {
                 LOG_ERROR("Shader object [%u] has not been compiled successfully prior to linking. Attempting to compile.",
-                          current_shader_gl_id
-                );
+                          current_shader_raGL_id);
 
-                ogl_shader_compile(current_shader);
+                raGL_shader_compile(current_shader_raGL);
 
-                is_compiled_successfully = ogl_shader_get_compile_status(current_shader);
+                raGL_shader_get_property(current_shader_raGL,
+                                         RAGL_SHADER_PROPERTY_COMPILE_STATUS,
+                                        &is_compiled_successfully);
             }
 
             if (!is_compiled_successfully)
@@ -2212,7 +2141,7 @@ PUBLIC EMERALD_API bool ogl_program_link(ogl_program program)
         {
             /* Let's go. */
             ogl_context_request_callback_from_context_thread(ral_context_get_gl_context(program_ptr->context),
-                                                             _ogl_program_link_callback,
+                                                             _raGL_program_link_callback,
                                                              program);
 
             result = program_ptr->link_status;
@@ -2223,77 +2152,17 @@ PUBLIC EMERALD_API bool ogl_program_link(ogl_program program)
 }
 
 /** Please see header for specification */
-PUBLIC RENDERING_CONTEXT_CALL void ogl_program_release_context_objects(ogl_program program,
-                                                                       ogl_context context)
+PUBLIC RENDERING_CONTEXT_CALL void raGL_program_release_context_objects(raGL_program program,
+                                                                        ogl_context  context)
 {
-    _ogl_program* program_ptr = (_ogl_program*) program;
+    _raGL_program* program_ptr = (_raGL_program*) program;
 
     ASSERT_DEBUG_SYNC(context != NULL,
                       "Sanity check failed");
 
     if (context != NULL)
     {
-        _ogl_program_release_active_uniform_blocks(program_ptr,
-                                                   context);
-    }
-}
-
-/** Please see header for specification */
-PUBLIC EMERALD_API void ogl_program_set_tf_varyings(ogl_program    program,
-                                                    unsigned int   n_varyings,
-                                                    const GLchar** varying_names,
-                                                    GLenum         tf_mode)
-{
-    _ogl_program* program_ptr = (_ogl_program*) program;
-
-    ASSERT_DEBUG_SYNC(n_varyings != 0,
-                      "Invalid n_varyings value");
-    ASSERT_DEBUG_SYNC(tf_mode == GL_INTERLEAVED_ATTRIBS ||
-                      tf_mode == GL_SEPARATE_ATTRIBS,
-                      "Invalid tf_mode value");
-
-    if (program_ptr->tf_varyings != NULL)
-    {
-        for (unsigned int n_varying = 0;
-                          n_varying < program_ptr->n_tf_varyings;
-                        ++n_varying)
-        {
-            delete [] program_ptr->tf_varyings[n_varying];
-
-            program_ptr->tf_varyings[n_varying] = NULL;
-        }
-
-        delete [] program_ptr->tf_varyings;
-
-        program_ptr->n_tf_varyings = 0;
-        program_ptr->tf_varyings   = NULL;
-    }
-
-    program_ptr->tf_mode     = tf_mode;
-    program_ptr->tf_varyings = new (std::nothrow) GLchar*[n_varyings];
-
-    ASSERT_ALWAYS_SYNC(program_ptr->tf_varyings != NULL,
-                       "Out of memory");
-
-    if (program_ptr->tf_varyings != NULL)
-    {
-        for (unsigned int n_varying = 0;
-                          n_varying < n_varyings;
-                        ++n_varying)
-        {
-            const GLchar*      varying_name   = varying_names[n_varying];
-            const unsigned int varying_length = strlen( (const char*) varying_name) + 1;
-
-            program_ptr->tf_varyings[n_varying] = new (std::nothrow) GLchar[varying_length];
-
-            ASSERT_ALWAYS_SYNC(program_ptr->tf_varyings[n_varying] != NULL,
-                               "Out of memory");
-
-            memcpy(program_ptr->tf_varyings[n_varying],
-                   varying_name,
-                   varying_length);
-        } /* for (all varyings) */
-
-        program_ptr->n_tf_varyings = n_varyings;
+        _raGL_program_release_active_uniform_blocks(program_ptr,
+                                                    context);
     }
 }

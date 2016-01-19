@@ -38,9 +38,24 @@ PUBLIC void raGL_backend_get_property(void*                backend, /* raGL_back
                                       void*                out_result_ptr);
 
 /** TODO */
+PUBLIC bool raGL_backend_get_program(void*       backend, /* raGL_backend instance */
+                                     ral_program program_ral,
+                                     void**      out_program_raGL_ptr);
+
+/* TODO */
+PUBLIC bool raGL_backend_get_program_by_id(raGL_backend  backend,
+                                           GLuint        program_id,
+                                           raGL_program* out_program_raGL_ptr);
+
+/** TODO */
 PUBLIC bool raGL_backend_get_sampler(void*       backend, /* raGL_backend instance */
                                      ral_sampler sampler_ral,
                                      void**      out_sampler_raGL_ptr);
+
+/** TODO */
+PUBLIC bool raGL_backend_get_shader(void*      backend, /* raGL_backend instance */
+                                    ral_shader shader_ral,
+                                    void**     out_shader_raGL_ptr);
 
 /** TODO */
 PUBLIC bool raGL_backend_get_texture(void*       backend,

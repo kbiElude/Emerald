@@ -15,9 +15,7 @@
 #include "ogl/ogl_context_wrappers.h"
 #include "ogl/ogl_materials.h"
 #include "ogl/ogl_primitive_renderer.h"
-#include "ogl/ogl_programs.h"
 #include "ogl/ogl_rendering_handler.h"
-#include "ogl/ogl_shaders.h"
 #include "ogl/ogl_shadow_mapping.h"
 #include "ogl/ogl_text.h"
 #include "raGL/raGL_buffers.h"
@@ -135,10 +133,8 @@ typedef struct
 
     ogl_context_bo_bindings         bo_bindings;
     ogl_materials                   materials;
-    ogl_programs                    programs;
     ogl_primitive_renderer          primitive_renderer;
     ogl_context_sampler_bindings    sampler_bindings;
-    ogl_shaders                     shaders;
     ogl_shadow_mapping              shadow_mapping;
     ogl_context_state_cache         state_cache;
     ogl_text                        text_renderer;
@@ -957,30 +953,13 @@ PRIVATE void _ogl_context_init_context_after_creation(ogl_context context)
     context_ptr->primitive_renderer                         = NULL;
     context_ptr->materials                                  = NULL; /* deferred till first query time */
     context_ptr->multisampling_samples                      = 0;
-    context_ptr->programs                                   = NULL;
     context_ptr->sampler_bindings                           = NULL;
     context_ptr->state_cache                                = NULL;
-    context_ptr->shaders                                    = ogl_shaders_create  ();
     context_ptr->shadow_mapping                             = NULL;
     context_ptr->text_renderer                              = NULL;
     context_ptr->texture_compression                        = NULL;
     context_ptr->to_bindings                                = NULL;
     context_ptr->vao_no_vaas_id                             = 0;
-
-    /* Set up program manager. If there is a parent context, use its manager instance.
-     * Otherwise, spawn a new one */
-    if (context_ptr->parent_context != NULL)
-    {
-        ogl_context_get_property(context_ptr->parent_context,
-                                 OGL_CONTEXT_PROPERTY_PROGRAMS,
-                                &context_ptr->programs);
-
-        ogl_programs_retain(context_ptr->programs);
-    }
-    else
-    {
-        context_ptr->programs = ogl_programs_create();
-    }
 
     #ifdef _WIN32
     {
@@ -1528,9 +1507,10 @@ PRIVATE void _ogl_context_release(void* ptr)
 
     if (context_ptr->fbo != NULL)
     {
-        ral_context_delete_framebuffers(context_ptr->context,
-                                        1, /* n_framebuffers */
-                                       &context_ptr->fbo);
+        ral_context_delete_objects(context_ptr->context,
+                                   RAL_CONTEXT_OBJECT_TYPE_FRAMEBUFFER,
+                                   1, /* n_framebuffers */
+                                  &context_ptr->fbo);
 
         context_ptr->fbo = NULL;
     }
@@ -1545,9 +1525,10 @@ PRIVATE void _ogl_context_release(void* ptr)
         };
         const uint32_t n_fbo_tos = sizeof(fbo_tos) / sizeof(fbo_tos[0]);
 
-        ral_context_delete_textures(context_ptr->context,
-                                    n_fbo_tos,
-                                    fbo_tos);
+        ral_context_delete_objects(context_ptr->context,
+                                   RAL_CONTEXT_OBJECT_TYPE_TEXTURE,
+                                   n_fbo_tos,
+                                   fbo_tos);
 
         context_ptr->fbo_color_to         = NULL;
         context_ptr->fbo_depth_stencil_to = NULL;
@@ -3517,23 +3498,9 @@ PUBLIC EMERALD_API void ogl_context_get_property(ogl_context          context,
             break;
         }
 
-        case OGL_CONTEXT_PROPERTY_PROGRAMS:
-        {
-            *(ogl_programs*) out_result = context_ptr->programs;
-
-            break;
-        }
-
         case OGL_CONTEXT_PROPERTY_SAMPLER_BINDINGS:
         {
             *((ogl_context_sampler_bindings*) out_result) = context_ptr->sampler_bindings;
-
-            break;
-        }
-
-        case OGL_CONTEXT_PROPERTY_SHADERS:
-        {
-            *(ogl_shaders*) out_result = context_ptr->shaders;
 
             break;
         }
@@ -3710,20 +3677,6 @@ PUBLIC bool ogl_context_release_managers(ogl_context context)
         ogl_text_release(context_ptr->text_renderer);
 
         context_ptr->text_renderer = NULL;
-    }
-
-    if (context_ptr->programs != NULL)
-    {
-        ogl_programs_release(context_ptr->programs);
-
-        context_ptr->programs = NULL;
-    }
-
-    if (context_ptr->shaders != NULL)
-    {
-        ogl_shaders_release(context_ptr->shaders);
-
-        context_ptr->shaders = NULL;
     }
 
     if (context_ptr->shadow_mapping != NULL)

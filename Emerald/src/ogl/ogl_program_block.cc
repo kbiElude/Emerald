@@ -7,10 +7,11 @@
  */
 #include "shared.h"
 #include "ogl/ogl_context.h"
-#include "ogl/ogl_program.h"
 #include "ogl/ogl_program_block.h"
+#include "raGL/raGL_program.h"
 #include "ral/ral_buffer.h"
 #include "ral/ral_context.h"
+#include "ral/ral_program.h"
 #include "system/system_assertions.h"
 #include "system/system_hashed_ansi_string.h"
 #include "system/system_hash64map.h"
@@ -26,7 +27,7 @@ typedef struct _ogl_program_block
 {
     ral_context  context; /* NOT retained */
     unsigned int index;
-    ogl_program  owner;
+    raGL_program owner;
 
     /* block_data holds a local cache of variable data. This helps us avoid all the complex logic
      * that would otherwise have to be used to store uniform values AND is pretty cache-friendly. */
@@ -65,7 +66,7 @@ typedef struct _ogl_program_block
     unsigned int dirty_offset_start;
 
     explicit _ogl_program_block(ral_context               in_context,
-                                ogl_program               in_owner,
+                                raGL_program              in_owner,
                                 unsigned int              in_index,
                                 system_hashed_ansi_string in_name,
                                 bool                      in_syncable,
@@ -91,7 +92,7 @@ typedef struct _ogl_program_block
         indexed_bp                       = 0; /* default GL state value */
         is_intel_driver                  = false; /* updated later */
         name                             = in_name;
-        members_by_name                  = system_hash64map_create       (sizeof(const ogl_program_variable*) );
+        members_by_name                  = system_hash64map_create       (sizeof(const ral_program_variable*) );
         members                          = system_resizable_vector_create(4 /* capacity */);
         offset_to_uniform_descriptor_map = NULL;
         owner                            = in_owner;
@@ -103,7 +104,7 @@ typedef struct _ogl_program_block
 
         if (in_type == OGL_PROGRAM_BLOCK_TYPE_UNIFORM_BUFFER)
         {
-            offset_to_uniform_descriptor_map = system_hash64map_create(sizeof(ogl_program_variable*) );
+            offset_to_uniform_descriptor_map = system_hash64map_create(sizeof(ral_program_variable*) );
 
             ASSERT_DEBUG_SYNC(members                          != NULL &&
                               offset_to_uniform_descriptor_map != NULL,
@@ -115,7 +116,8 @@ typedef struct _ogl_program_block
     {
         if (block_bo != NULL)
         {
-            ral_context_delete_buffers(context,
+            ral_context_delete_objects(context,
+                                       RAL_CONTEXT_OBJECT_TYPE_BUFFER,
                                        1, /* n_buffers */
                                       &block_bo);
 
@@ -157,38 +159,38 @@ typedef struct _ogl_program_block
 
 
 /** TODO */
-PRIVATE unsigned int _ogl_program_block_get_expected_src_data_size(const ogl_program_variable* uniform_ptr,
+PRIVATE unsigned int _ogl_program_block_get_expected_src_data_size(const ral_program_variable* uniform_ptr,
                                                                    unsigned int                n_array_items)
 {
     unsigned int result = 0;
 
     switch (uniform_ptr->type)
     {
-        case PROGRAM_UNIFORM_TYPE_FLOAT:             result = sizeof(float)         * 1;  break;
-        case PROGRAM_UNIFORM_TYPE_FLOAT_VEC2:        result = sizeof(float)         * 2;  break;
-        case PROGRAM_UNIFORM_TYPE_FLOAT_VEC3:        result = sizeof(float)         * 3;  break;
-        case PROGRAM_UNIFORM_TYPE_FLOAT_VEC4:        result = sizeof(float)         * 4;  break;
-        case PROGRAM_UNIFORM_TYPE_INT:               result = sizeof(int)           * 1;  break;
-        case PROGRAM_UNIFORM_TYPE_INT_VEC2:          result = sizeof(int)           * 2;  break;
-        case PROGRAM_UNIFORM_TYPE_INT_VEC3:          result = sizeof(int)           * 3;  break;
-        case PROGRAM_UNIFORM_TYPE_INT_VEC4:          result = sizeof(int)           * 4;  break;
-        case PROGRAM_UNIFORM_TYPE_UNSIGNED_INT:      result = sizeof(int)           * 1;  break;
-        case PROGRAM_UNIFORM_TYPE_UNSIGNED_INT_VEC2: result = sizeof(int)           * 2;  break;
-        case PROGRAM_UNIFORM_TYPE_UNSIGNED_INT_VEC3: result = sizeof(int)           * 3;  break;
-        case PROGRAM_UNIFORM_TYPE_UNSIGNED_INT_VEC4: result = sizeof(int)           * 4;  break;
-        case PROGRAM_UNIFORM_TYPE_BOOL:              result = sizeof(unsigned char) * 1;  break;
-        case PROGRAM_UNIFORM_TYPE_BOOL_VEC2:         result = sizeof(unsigned char) * 2;  break;
-        case PROGRAM_UNIFORM_TYPE_BOOL_VEC3:         result = sizeof(unsigned char) * 3;  break;
-        case PROGRAM_UNIFORM_TYPE_BOOL_VEC4:         result = sizeof(unsigned char) * 4;  break;
-        case PROGRAM_UNIFORM_TYPE_FLOAT_MAT2:        result = sizeof(float)         * 4;  break;
-        case PROGRAM_UNIFORM_TYPE_FLOAT_MAT3:        result = sizeof(float)         * 9;  break;
-        case PROGRAM_UNIFORM_TYPE_FLOAT_MAT4:        result = sizeof(float)         * 16; break;
-        case PROGRAM_UNIFORM_TYPE_FLOAT_MAT2x3:      result = sizeof(float)         * 6;  break;
-        case PROGRAM_UNIFORM_TYPE_FLOAT_MAT2x4:      result = sizeof(float)         * 8;  break;
-        case PROGRAM_UNIFORM_TYPE_FLOAT_MAT3x2:      result = sizeof(float)         * 6;  break;
-        case PROGRAM_UNIFORM_TYPE_FLOAT_MAT3x4:      result = sizeof(float)         * 12; break;
-        case PROGRAM_UNIFORM_TYPE_FLOAT_MAT4x2:      result = sizeof(float)         * 8;  break;
-        case PROGRAM_UNIFORM_TYPE_FLOAT_MAT4x3:      result = sizeof(float)         * 12; break;
+        case RAL_PROGRAM_UNIFORM_TYPE_FLOAT:             result = sizeof(float)         * 1;  break;
+        case RAL_PROGRAM_UNIFORM_TYPE_FLOAT_VEC2:        result = sizeof(float)         * 2;  break;
+        case RAL_PROGRAM_UNIFORM_TYPE_FLOAT_VEC3:        result = sizeof(float)         * 3;  break;
+        case RAL_PROGRAM_UNIFORM_TYPE_FLOAT_VEC4:        result = sizeof(float)         * 4;  break;
+        case RAL_PROGRAM_UNIFORM_TYPE_INT:               result = sizeof(int)           * 1;  break;
+        case RAL_PROGRAM_UNIFORM_TYPE_INT_VEC2:          result = sizeof(int)           * 2;  break;
+        case RAL_PROGRAM_UNIFORM_TYPE_INT_VEC3:          result = sizeof(int)           * 3;  break;
+        case RAL_PROGRAM_UNIFORM_TYPE_INT_VEC4:          result = sizeof(int)           * 4;  break;
+        case RAL_PROGRAM_UNIFORM_TYPE_UNSIGNED_INT:      result = sizeof(int)           * 1;  break;
+        case RAL_PROGRAM_UNIFORM_TYPE_UNSIGNED_INT_VEC2: result = sizeof(int)           * 2;  break;
+        case RAL_PROGRAM_UNIFORM_TYPE_UNSIGNED_INT_VEC3: result = sizeof(int)           * 3;  break;
+        case RAL_PROGRAM_UNIFORM_TYPE_UNSIGNED_INT_VEC4: result = sizeof(int)           * 4;  break;
+        case RAL_PROGRAM_UNIFORM_TYPE_BOOL:              result = sizeof(unsigned char) * 1;  break;
+        case RAL_PROGRAM_UNIFORM_TYPE_BOOL_VEC2:         result = sizeof(unsigned char) * 2;  break;
+        case RAL_PROGRAM_UNIFORM_TYPE_BOOL_VEC3:         result = sizeof(unsigned char) * 3;  break;
+        case RAL_PROGRAM_UNIFORM_TYPE_BOOL_VEC4:         result = sizeof(unsigned char) * 4;  break;
+        case RAL_PROGRAM_UNIFORM_TYPE_FLOAT_MAT2:        result = sizeof(float)         * 4;  break;
+        case RAL_PROGRAM_UNIFORM_TYPE_FLOAT_MAT3:        result = sizeof(float)         * 9;  break;
+        case RAL_PROGRAM_UNIFORM_TYPE_FLOAT_MAT4:        result = sizeof(float)         * 16; break;
+        case RAL_PROGRAM_UNIFORM_TYPE_FLOAT_MAT2x3:      result = sizeof(float)         * 6;  break;
+        case RAL_PROGRAM_UNIFORM_TYPE_FLOAT_MAT2x4:      result = sizeof(float)         * 8;  break;
+        case RAL_PROGRAM_UNIFORM_TYPE_FLOAT_MAT3x2:      result = sizeof(float)         * 6;  break;
+        case RAL_PROGRAM_UNIFORM_TYPE_FLOAT_MAT3x4:      result = sizeof(float)         * 12; break;
+        case RAL_PROGRAM_UNIFORM_TYPE_FLOAT_MAT4x2:      result = sizeof(float)         * 8;  break;
+        case RAL_PROGRAM_UNIFORM_TYPE_FLOAT_MAT4x3:      result = sizeof(float)         * 12; break;
 
         default:
         {
@@ -205,19 +207,19 @@ PRIVATE unsigned int _ogl_program_block_get_expected_src_data_size(const ogl_pro
 }
 
 /** TODO */
-PRIVATE unsigned int _ogl_program_block_get_memcpy_friendly_matrix_stride(const ogl_program_variable* uniform_ptr)
+PRIVATE unsigned int _ogl_program_block_get_memcpy_friendly_matrix_stride(const ral_program_variable* uniform_ptr)
 {
     unsigned int result = 0;
 
     switch (uniform_ptr->type)
     {
         /* Square matrices */
-        case PROGRAM_UNIFORM_TYPE_FLOAT_MAT2: result = sizeof(float) * 2; break;
-        case PROGRAM_UNIFORM_TYPE_FLOAT_MAT3: result = sizeof(float) * 3; break;
-        case PROGRAM_UNIFORM_TYPE_FLOAT_MAT4: result = sizeof(float) * 4; break;
+        case RAL_PROGRAM_UNIFORM_TYPE_FLOAT_MAT2: result = sizeof(float) * 2; break;
+        case RAL_PROGRAM_UNIFORM_TYPE_FLOAT_MAT3: result = sizeof(float) * 3; break;
+        case RAL_PROGRAM_UNIFORM_TYPE_FLOAT_MAT4: result = sizeof(float) * 4; break;
 
         /* Non-square matrices */
-        case PROGRAM_UNIFORM_TYPE_FLOAT_MAT2x3:
+        case RAL_PROGRAM_UNIFORM_TYPE_FLOAT_MAT2x3:
         {
             result = (uniform_ptr->is_row_major_matrix) ? sizeof(float) * 3
                                                         : sizeof(float) * 2;
@@ -225,7 +227,7 @@ PRIVATE unsigned int _ogl_program_block_get_memcpy_friendly_matrix_stride(const 
             break;
         }
 
-        case PROGRAM_UNIFORM_TYPE_FLOAT_MAT2x4:
+        case RAL_PROGRAM_UNIFORM_TYPE_FLOAT_MAT2x4:
         {
             result = (uniform_ptr->is_row_major_matrix) ? sizeof(float) * 4
                                                         : sizeof(float) * 2;
@@ -233,7 +235,7 @@ PRIVATE unsigned int _ogl_program_block_get_memcpy_friendly_matrix_stride(const 
             break;
         }
 
-        case PROGRAM_UNIFORM_TYPE_FLOAT_MAT3x2:
+        case RAL_PROGRAM_UNIFORM_TYPE_FLOAT_MAT3x2:
         {
             result = (uniform_ptr->is_row_major_matrix) ? sizeof(float) * 2
                                                         : sizeof(float) * 3;
@@ -241,7 +243,7 @@ PRIVATE unsigned int _ogl_program_block_get_memcpy_friendly_matrix_stride(const 
             break;
         }
 
-        case PROGRAM_UNIFORM_TYPE_FLOAT_MAT3x4:
+        case RAL_PROGRAM_UNIFORM_TYPE_FLOAT_MAT3x4:
         {
             result = (uniform_ptr->is_row_major_matrix) ? sizeof(float) * 4
                                                         : sizeof(float) * 3;
@@ -249,7 +251,7 @@ PRIVATE unsigned int _ogl_program_block_get_memcpy_friendly_matrix_stride(const 
             break;
         }
 
-        case PROGRAM_UNIFORM_TYPE_FLOAT_MAT4x2:
+        case RAL_PROGRAM_UNIFORM_TYPE_FLOAT_MAT4x2:
         {
             result = (uniform_ptr->is_row_major_matrix) ? sizeof(float) * 2
                                                         : sizeof(float) * 4;
@@ -257,7 +259,7 @@ PRIVATE unsigned int _ogl_program_block_get_memcpy_friendly_matrix_stride(const 
             break;
         }
 
-        case PROGRAM_UNIFORM_TYPE_FLOAT_MAT4x3:
+        case RAL_PROGRAM_UNIFORM_TYPE_FLOAT_MAT4x3:
         {
             result = (uniform_ptr->is_row_major_matrix) ? sizeof(float) * 3
                                                         : sizeof(float) * 4;
@@ -277,21 +279,21 @@ PRIVATE unsigned int _ogl_program_block_get_memcpy_friendly_matrix_stride(const 
 }
 
 /** TODO */
-PRIVATE unsigned int _ogl_program_block_get_n_matrix_columns(const ogl_program_variable* uniform_ptr)
+PRIVATE unsigned int _ogl_program_block_get_n_matrix_columns(const ral_program_variable* uniform_ptr)
 {
     unsigned int result = 0;
 
     switch (uniform_ptr->type)
     {
-        case PROGRAM_UNIFORM_TYPE_FLOAT_MAT2:   result = 2; break;
-        case PROGRAM_UNIFORM_TYPE_FLOAT_MAT3:   result = 3; break;
-        case PROGRAM_UNIFORM_TYPE_FLOAT_MAT4:   result = 4; break;
-        case PROGRAM_UNIFORM_TYPE_FLOAT_MAT2x3: result = 2; break;
-        case PROGRAM_UNIFORM_TYPE_FLOAT_MAT2x4: result = 2; break;
-        case PROGRAM_UNIFORM_TYPE_FLOAT_MAT3x2: result = 3; break;
-        case PROGRAM_UNIFORM_TYPE_FLOAT_MAT3x4: result = 3; break;
-        case PROGRAM_UNIFORM_TYPE_FLOAT_MAT4x2: result = 4; break;
-        case PROGRAM_UNIFORM_TYPE_FLOAT_MAT4x3: result = 4; break;
+        case RAL_PROGRAM_UNIFORM_TYPE_FLOAT_MAT2:   result = 2; break;
+        case RAL_PROGRAM_UNIFORM_TYPE_FLOAT_MAT3:   result = 3; break;
+        case RAL_PROGRAM_UNIFORM_TYPE_FLOAT_MAT4:   result = 4; break;
+        case RAL_PROGRAM_UNIFORM_TYPE_FLOAT_MAT2x3: result = 2; break;
+        case RAL_PROGRAM_UNIFORM_TYPE_FLOAT_MAT2x4: result = 2; break;
+        case RAL_PROGRAM_UNIFORM_TYPE_FLOAT_MAT3x2: result = 3; break;
+        case RAL_PROGRAM_UNIFORM_TYPE_FLOAT_MAT3x4: result = 3; break;
+        case RAL_PROGRAM_UNIFORM_TYPE_FLOAT_MAT4x2: result = 4; break;
+        case RAL_PROGRAM_UNIFORM_TYPE_FLOAT_MAT4x3: result = 4; break;
 
         default:
         {
@@ -305,21 +307,21 @@ PRIVATE unsigned int _ogl_program_block_get_n_matrix_columns(const ogl_program_v
 }
 
 /** TODO */
-PRIVATE unsigned int _ogl_program_block_get_n_matrix_rows(const ogl_program_variable* uniform_ptr)
+PRIVATE unsigned int _ogl_program_block_get_n_matrix_rows(const ral_program_variable* uniform_ptr)
 {
     unsigned int result = 0;
 
     switch (uniform_ptr->type)
     {
-        case PROGRAM_UNIFORM_TYPE_FLOAT_MAT2:   result = 2; break;
-        case PROGRAM_UNIFORM_TYPE_FLOAT_MAT3:   result = 3; break;
-        case PROGRAM_UNIFORM_TYPE_FLOAT_MAT4:   result = 4; break;
-        case PROGRAM_UNIFORM_TYPE_FLOAT_MAT2x3: result = 3; break;
-        case PROGRAM_UNIFORM_TYPE_FLOAT_MAT2x4: result = 4; break;
-        case PROGRAM_UNIFORM_TYPE_FLOAT_MAT3x2: result = 2; break;
-        case PROGRAM_UNIFORM_TYPE_FLOAT_MAT3x4: result = 4; break;
-        case PROGRAM_UNIFORM_TYPE_FLOAT_MAT4x2: result = 2; break;
-        case PROGRAM_UNIFORM_TYPE_FLOAT_MAT4x3: result = 3; break;
+        case RAL_PROGRAM_UNIFORM_TYPE_FLOAT_MAT2:   result = 2; break;
+        case RAL_PROGRAM_UNIFORM_TYPE_FLOAT_MAT3:   result = 3; break;
+        case RAL_PROGRAM_UNIFORM_TYPE_FLOAT_MAT4:   result = 4; break;
+        case RAL_PROGRAM_UNIFORM_TYPE_FLOAT_MAT2x3: result = 3; break;
+        case RAL_PROGRAM_UNIFORM_TYPE_FLOAT_MAT2x4: result = 4; break;
+        case RAL_PROGRAM_UNIFORM_TYPE_FLOAT_MAT3x2: result = 2; break;
+        case RAL_PROGRAM_UNIFORM_TYPE_FLOAT_MAT3x4: result = 4; break;
+        case RAL_PROGRAM_UNIFORM_TYPE_FLOAT_MAT4x2: result = 2; break;
+        case RAL_PROGRAM_UNIFORM_TYPE_FLOAT_MAT4x3: result = 3; break;
 
         default:
         {
@@ -344,11 +346,15 @@ PRIVATE bool _ogl_program_block_init(_ogl_program_block* block_ptr)
 {
     GLint* active_variable_indices = NULL;
     GLint  n_active_variables      = 0;
-    GLuint po_id                   = ogl_program_get_id(block_ptr->owner);
+    GLuint po_id                   = 0;
     bool   result                  = true;
 
     ASSERT_DEBUG_SYNC(block_ptr != NULL,
                       "Input argument is NULL");
+
+    raGL_program_get_property(block_ptr->owner,
+                              RAGL_PROGRAM_PROPERTY_ID,
+                             &po_id);
 
     /* Retrieve entry-points & platform-specific UB alignment requirement */
     ral_backend_type backend_type = RAL_BACKEND_TYPE_UNKNOWN;
@@ -505,7 +511,7 @@ PRIVATE bool _ogl_program_block_init(_ogl_program_block* block_ptr)
                      n_active_variable < n_active_variables;
                    ++n_active_variable)
             {
-                ogl_program_variable* variable_ptr = NULL;
+                ral_program_variable* variable_ptr = NULL;
 
                 /* Descriptors for uniforms coming from both default and general uniform blocks are
                  * stored in ogl_program.
@@ -514,14 +520,14 @@ PRIVATE bool _ogl_program_block_init(_ogl_program_block* block_ptr)
                  */
                 if (block_ptr->block_type == OGL_PROGRAM_BLOCK_TYPE_SHADER_STORAGE_BUFFER)
                 {
-                    variable_ptr = new (std::nothrow) ogl_program_variable;
+                    variable_ptr = new (std::nothrow) ral_program_variable;
 
-                    ogl_program_fill_ogl_program_variable(block_ptr->owner,
-                                                          0,    /* temp_variable_name_storage */
-                                                          NULL, /* temp_variable_name */
-                                                          variable_ptr,
-                                                          GL_BUFFER_VARIABLE,
-                                                          active_variable_indices[n_active_variable]);
+                    raGL_program_fill_ral_program_variable(block_ptr->owner,
+                                                           0,    /* temp_variable_name_storage */
+                                                           NULL, /* temp_variable_name */
+                                                           variable_ptr,
+                                                           GL_BUFFER_VARIABLE,
+                                                           active_variable_indices[n_active_variable]);
 
                     ASSERT_DEBUG_SYNC(system_hashed_ansi_string_get_length(variable_ptr->name) > 0,
                                       "SSBO variable name length is 0");
@@ -539,9 +545,9 @@ PRIVATE bool _ogl_program_block_init(_ogl_program_block* block_ptr)
                     ASSERT_DEBUG_SYNC(block_ptr->block_type == OGL_PROGRAM_BLOCK_TYPE_UNIFORM_BUFFER,
                                       "Sanity check failed");
 
-                    if (!ogl_program_get_uniform_by_index(block_ptr->owner,
-                                                          active_variable_indices[n_active_variable],
-                                                          (const ogl_program_variable**) &variable_ptr) )
+                    if (!raGL_program_get_uniform_by_index(block_ptr->owner,
+                                                           active_variable_indices[n_active_variable],
+                                                           (const ral_program_variable**) &variable_ptr) )
                     {
                         ASSERT_DEBUG_SYNC(false,
                                           "Could not retrieve variable descriptor for index [%d]",
@@ -601,21 +607,21 @@ end:
 }
 
 /** TODO */
-PRIVATE bool _ogl_program_block_is_matrix_uniform(const ogl_program_variable* uniform_ptr)
+PRIVATE bool _ogl_program_block_is_matrix_uniform(const ral_program_variable* uniform_ptr)
 {
     bool result = false;
 
     switch (uniform_ptr->type)
     {
-        case PROGRAM_UNIFORM_TYPE_FLOAT_MAT2:
-        case PROGRAM_UNIFORM_TYPE_FLOAT_MAT3:
-        case PROGRAM_UNIFORM_TYPE_FLOAT_MAT4:
-        case PROGRAM_UNIFORM_TYPE_FLOAT_MAT2x3:
-        case PROGRAM_UNIFORM_TYPE_FLOAT_MAT2x4:
-        case PROGRAM_UNIFORM_TYPE_FLOAT_MAT3x2:
-        case PROGRAM_UNIFORM_TYPE_FLOAT_MAT3x4:
-        case PROGRAM_UNIFORM_TYPE_FLOAT_MAT4x2:
-        case PROGRAM_UNIFORM_TYPE_FLOAT_MAT4x3:
+        case RAL_PROGRAM_UNIFORM_TYPE_FLOAT_MAT2:
+        case RAL_PROGRAM_UNIFORM_TYPE_FLOAT_MAT3:
+        case RAL_PROGRAM_UNIFORM_TYPE_FLOAT_MAT4:
+        case RAL_PROGRAM_UNIFORM_TYPE_FLOAT_MAT2x3:
+        case RAL_PROGRAM_UNIFORM_TYPE_FLOAT_MAT2x4:
+        case RAL_PROGRAM_UNIFORM_TYPE_FLOAT_MAT3x2:
+        case RAL_PROGRAM_UNIFORM_TYPE_FLOAT_MAT3x4:
+        case RAL_PROGRAM_UNIFORM_TYPE_FLOAT_MAT4x2:
+        case RAL_PROGRAM_UNIFORM_TYPE_FLOAT_MAT4x3:
         {
             result = true;
         }
@@ -638,7 +644,7 @@ PRIVATE void _ogl_program_block_set_uniform_value(ogl_program_block block,
     unsigned int          modified_region_end   = DIRTY_OFFSET_UNUSED;
     unsigned int          modified_region_start = DIRTY_OFFSET_UNUSED;
     const unsigned char*  src_traveller_ptr     = NULL;
-    ogl_program_variable* uniform_ptr           = NULL;
+    ral_program_variable* uniform_ptr           = NULL;
 
     /* Sanity checks */
     ASSERT_DEBUG_SYNC(block_ptr != NULL,
@@ -886,7 +892,7 @@ end:
 
 /** Please see header for spec */
 PUBLIC ogl_program_block ogl_program_block_create(ral_context               context,
-                                                  ogl_program               owner_program,
+                                                  raGL_program              owner_program,
                                                   ogl_program_block_type    block_type,
                                                   unsigned int              block_index,
                                                   system_hashed_ansi_string block_name,
@@ -913,7 +919,7 @@ PUBLIC ogl_program_block ogl_program_block_create(ral_context               cont
 /** Please see header for spec */
 PUBLIC bool ogl_program_block_get_block_variable(ogl_program_block            block,
                                                  unsigned int                 index,
-                                                 const ogl_program_variable** out_variable_ptr)
+                                                 const ral_program_variable** out_variable_ptr)
 {
     _ogl_program_block* block_ptr = (_ogl_program_block*) block;
     bool                result    = false;
@@ -928,7 +934,7 @@ PUBLIC bool ogl_program_block_get_block_variable(ogl_program_block            bl
 /** Please see header for spec */
 PUBLIC bool ogl_program_block_get_block_variable_by_name(ogl_program_block            block,
                                                          system_hashed_ansi_string    name,
-                                                         const ogl_program_variable** out_variable_ptr)
+                                                         const ral_program_variable** out_variable_ptr)
 {
     const _ogl_program_block* block_ptr = (const _ogl_program_block*) block;
     bool                      result    = true;

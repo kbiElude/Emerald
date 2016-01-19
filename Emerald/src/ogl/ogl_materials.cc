@@ -546,13 +546,13 @@ PRIVATE ogl_uber _ogl_materials_bake_uber(ogl_materials materials,
 
         case MESH_MATERIAL_TYPE_PROGRAM:
         {
-            ogl_program material_program = NULL;
+            ral_program material_program = NULL;
 
             mesh_material_get_property(material,
                                        MESH_MATERIAL_PROPERTY_SOURCE_OGL_PROGRAM,
                                       &material_program);
 
-            new_uber = ogl_uber_create_from_ogl_program(context,
+            new_uber = ogl_uber_create_from_ral_program(context,
                                                         uber_name,
                                                         material_program);
 
@@ -1234,12 +1234,12 @@ PUBLIC ogl_uber ogl_materials_get_uber(ogl_materials materials,
 
         if (new_uber != NULL)
         {
-            _ogl_materials_uber* new_uber_descriptor = new (std::nothrow) _ogl_materials_uber;
+            _ogl_materials_uber* new_uber_ptr = new (std::nothrow) _ogl_materials_uber;
 
-            ASSERT_ALWAYS_SYNC(new_uber_descriptor != NULL,
+            ASSERT_ALWAYS_SYNC(new_uber_ptr != NULL,
                                "Out of memory");
 
-            if (new_uber_descriptor != NULL)
+            if (new_uber_ptr != NULL)
             {
                 const char*               name_suffix   = (use_shadow_maps) ? " copy with SM" : " copy without SM";
                 const char*               uber_name     = NULL;
@@ -1249,16 +1249,16 @@ PUBLIC ogl_uber ogl_materials_get_uber(ogl_materials materials,
                                                      OGL_UBER_GENERAL_PROPERTY_NAME,
                                                     &uber_name_has);
 
-                uber_name                            = system_hashed_ansi_string_get_buffer(uber_name_has);
-                new_uber_descriptor->material        = mesh_material_create_copy           (system_hashed_ansi_string_create_by_merging_two_strings(uber_name,
-                                                                                                                                                    name_suffix),
-                                                                                            material);
-                new_uber_descriptor->uber            = new_uber;
-                new_uber_descriptor->use_shadow_maps = use_shadow_maps;
-                result                               = new_uber;
+                uber_name                     = system_hashed_ansi_string_get_buffer(uber_name_has);
+                new_uber_ptr->material        = mesh_material_create_copy           (system_hashed_ansi_string_create_by_merging_two_strings(uber_name,
+                                                                                                                                             name_suffix),
+                                                                                     material);
+                new_uber_ptr->uber            = new_uber;
+                new_uber_ptr->use_shadow_maps = use_shadow_maps;
+                result                        = new_uber;
 
                 system_resizable_vector_push(materials_ptr->ubers,
-                                             new_uber_descriptor);
+                                             new_uber_ptr);
             }
         }
     }

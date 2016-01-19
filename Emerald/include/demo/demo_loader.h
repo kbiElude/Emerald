@@ -10,7 +10,7 @@
 #include "ogl/ogl_types.h"
 #include "system/system_types.h"
 
-typedef void (*PFNBUILDPROGRAMCALLBACKPROC)     (ogl_program   result_program,
+typedef void (*PFNBUILDPROGRAMCALLBACKPROC)     (ral_program   result_program,
                                                  void*         user_arg);
 typedef void (*PFNCONFIGURETIMELINECALLBACKPROC)(demo_timeline timeline,
                                                  void*         user_arg);
