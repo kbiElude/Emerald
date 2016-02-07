@@ -6,17 +6,18 @@
 #include "shared.h"
 #include "ogl/ogl_context.h"
 #include "ogl/ogl_context_state_cache.h"
-#include "ogl/ogl_program.h"
-#include "ogl/ogl_programs.h"
-#include "ogl/ogl_shader.h"
-#include "ogl/ogl_shaders.h"
 #include "postprocessing/postprocessing_blur_gaussian.h"
 #include "raGL/raGL_buffer.h"
 #include "raGL/raGL_framebuffer.h"
+#include "raGL/raGL_program.h"
 #include "raGL/raGL_sampler.h"
+#include "raGL/raGL_shader.h"
 #include "raGL/raGL_texture.h"
 #include "ral/ral_buffer.h"
 #include "ral/ral_context.h"
+#include "ral/ral_framebuffer.h"
+#include "ral/ral_program.h"
+#include "ral/ral_shader.h"
 #include "ral/ral_texture.h"
 #include "system/system_assertions.h"
 #include "system/system_hashed_ansi_string.h"
@@ -125,12 +126,12 @@ typedef struct _postprocessing_blur_gaussian
     unsigned int              coeff_buffer_offset_for_value_1; /* holds offset to where 1.0 is stored in BO with id coeff_bo_id */
     unsigned int*             coeff_buffer_offsets; // [0] for n_min_taps, [1] for n_min_taps+1, etc..
     ral_context               context;    /* DO NOT retain */
-    GLuint                    fbo_ids[2]; /* ping/pong FBO */
+    ral_framebuffer           fbos[2];    /* ping/pong FBO */
     system_hashed_ansi_string name;
     unsigned int              n_max_data_coeffs;
     unsigned int              n_max_taps;
     unsigned int              n_min_taps;
-    ogl_program               po;
+    ral_program               po;
     ral_sampler               sampler;
 
     /* other data BO holds:
@@ -165,15 +166,15 @@ typedef struct _postprocessing_blur_gaussian
         po                              = NULL;
         sampler                         = NULL;
 
-        memset(fbo_ids,
+        memset(fbos,
                0,
-               sizeof(fbo_ids) );
+               sizeof(fbos) );
     }
 
     ~_postprocessing_blur_gaussian()
     {
-        ASSERT_DEBUG_SYNC(fbo_ids[0] == 0 &&
-                          fbo_ids[1] == 0,
+        ASSERT_DEBUG_SYNC(fbos[0] == NULL &&
+                          fbos[1] == NULL,
                           "Ping/pong FBOs not released");
 
         if (coeff_buffer_offsets != NULL)
@@ -185,7 +186,10 @@ typedef struct _postprocessing_blur_gaussian
 
         if (po != NULL)
         {
-            ogl_program_release(po);
+            ral_context_delete_objects(context,
+                                       RAL_CONTEXT_OBJECT_TYPE_PROGRAM,
+                                       1, /* n_objects */
+                                       (const void**) &po);
 
             po = NULL;
         }
@@ -216,39 +220,44 @@ PRIVATE void _postprocessing_blur_gaussian_deinit_rendering_thread_callback(ogl_
 
     if (instance_ptr->coeff_bo != NULL)
     {
-        ral_context_delete_buffers(instance_ptr->context,
-                                   1, /* n_buffers */
-                                  &instance_ptr->coeff_bo);
+        ral_context_delete_objects(instance_ptr->context,
+                                   RAL_CONTEXT_OBJECT_TYPE_BUFFER,
+                                   1, /* n_objects */
+                                   (const void**) &instance_ptr->coeff_bo);
 
         instance_ptr->coeff_bo = NULL;
     } /* if (instance_ptr->coeff_bo != NULL) */
 
-    if (instance_ptr->fbo_ids[0] != 0 ||
-        instance_ptr->fbo_ids[1] != 0)
+    if (instance_ptr->fbos[0] != NULL ||
+        instance_ptr->fbos[1] != NULL)
     {
         /* Invalid FBO ids will be released */
-        entrypoints_ptr->pGLDeleteFramebuffers(sizeof(instance_ptr->fbo_ids) / sizeof(instance_ptr->fbo_ids[0]),
-                                               instance_ptr->fbo_ids);
+        ral_context_delete_objects(instance_ptr->context,
+                                   RAL_CONTEXT_OBJECT_TYPE_FRAMEBUFFER,
+                                   sizeof(instance_ptr->fbos) / sizeof(instance_ptr->fbos[0]),
+                                   (const void**) instance_ptr->fbos);
 
-        memset(instance_ptr->fbo_ids,
+        memset(instance_ptr->fbos,
                0,
-               sizeof(instance_ptr->fbo_ids) );
+               sizeof(instance_ptr->fbos) );
     }
 
     if (instance_ptr->other_data_bo != NULL)
     {
-        ral_context_delete_buffers(instance_ptr->context,
-                                   1, /* n_buffers */
-                                   &instance_ptr->other_data_bo);
+        ral_context_delete_objects(instance_ptr->context,
+                                   RAL_CONTEXT_OBJECT_TYPE_BUFFER,
+                                   1, /* n_objects */
+                                   (const void**) &instance_ptr->other_data_bo);
 
         instance_ptr->other_data_bo = NULL;
     } /* if (instance_ptr->other_data_bo != NULL) */
 
     if (instance_ptr->sampler != NULL)
     {
-        ral_context_delete_samplers(instance_ptr->context,
-                                    1, /* n_samplers */
-                                   &instance_ptr->sampler);
+        ral_context_delete_objects(instance_ptr->context,
+                                   RAL_CONTEXT_OBJECT_TYPE_SAMPLER,
+                                   1, /* n_objects */
+                                   (const void**) &instance_ptr->sampler);
 
         instance_ptr->sampler = NULL;
     }
@@ -637,77 +646,82 @@ PRIVATE void _postprocessing_blur_gaussian_init_rendering_thread_callback(ogl_co
                                           &coeff_bo_update);
 
     /* Set up the PO */
-    ogl_shader                      fs       = NULL;
-    const system_hashed_ansi_string fs_name  = _postprocessing_blur_gaussian_get_fs_name(n_max_data_coeffs);
-    const system_hashed_ansi_string po_name  = _postprocessing_blur_gaussian_get_po_name(n_max_data_coeffs);
-    ogl_programs                    programs = NULL;
-    ogl_shaders                     shaders  = NULL;
-    ogl_shader                      vs       = NULL;
-    const system_hashed_ansi_string vs_name  = system_hashed_ansi_string_create("Postprocessing blur Gaussian VS");
+    ral_shader result_shaders[2];
 
-    ogl_context_get_property(ral_context_get_gl_context(instance_ptr->context),
-                             OGL_CONTEXT_PROPERTY_PROGRAMS,
-                            &programs);
-    ogl_context_get_property(ral_context_get_gl_context(instance_ptr->context),
-                             OGL_CONTEXT_PROPERTY_SHADERS,
-                            &shaders);
-
-    if ( (instance_ptr->po = ogl_programs_get_program_by_name(programs,
-                                                              po_name)) == NULL)
+    const ral_program_create_info program_create_info =
     {
-        instance_ptr->po = ogl_program_create(instance_ptr->context,
-                                              po_name);
+        RAL_PROGRAM_SHADER_STAGE_BIT_FRAGMENT | RAL_PROGRAM_SHADER_STAGE_BIT_VERTEX,
+        _postprocessing_blur_gaussian_get_po_name(n_max_data_coeffs)
+    };
 
-        if ( (fs = ogl_shaders_get_shader_by_name(shaders,
-                                                  fs_name)) == NULL)
+    const ral_shader_create_info shader_create_info_items[] =
+    {
+        {
+            _postprocessing_blur_gaussian_get_fs_name(n_max_data_coeffs),
+            RAL_SHADER_TYPE_FRAGMENT
+        },
+        {
+            system_hashed_ansi_string_create("Postprocessing blur Gaussian VS"),
+            RAL_SHADER_TYPE_VERTEX
+        }
+    };
+
+    if ( (instance_ptr->po = ral_context_get_program_by_name(instance_ptr->context,
+                                                             program_create_info.name)) == NULL)
+    {
+        if (!ral_context_create_programs(instance_ptr->context,
+                                         1, /* n_create_info_items */
+                                        &program_create_info,
+                                        &instance_ptr->po) )
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "RAL program creation failed");
+        }
+
+        if ( (result_shaders[0] = ral_context_get_shader_by_name(instance_ptr->context,
+                                                                 shader_create_info_items[0].name) ) == NULL)
         {
             /* Create the FS body */
-            std::stringstream fs_body_sstream;
+            std::stringstream         fs_body_sstream;
+            system_hashed_ansi_string fs_body_has;
 
             fs_body_sstream << fs_preamble
                             << "#define N_MAX_COEFFS (" << n_max_data_coeffs << ")\n"
                             << fs_body;
 
             /* Create the fragment shader */
-            fs = ogl_shader_create(instance_ptr->context,
-                                   RAL_SHADER_TYPE_FRAGMENT,
-                                   fs_name);
+            ral_context_create_shaders(instance_ptr->context,
+                                       1, /* n_create_info_items */
+                                       shader_create_info_items + 0,
+                                       result_shaders + 0);
 
-            ogl_shader_set_body(fs,
-                                system_hashed_ansi_string_create(fs_body_sstream.str().c_str() ) );
+            fs_body_has = system_hashed_ansi_string_create(fs_body_sstream.str().c_str() );
 
-            if (!ogl_shader_compile(fs) )
-            {
-                ASSERT_DEBUG_SYNC(false,
-                                  "Could not link postprocessing blur gaussian fragment shader");
-            }
+            ral_shader_set_property(result_shaders[0],
+                                    RAL_SHADER_PROPERTY_GLSL_BODY,
+                                   &fs_body_has);
         } /* if (no compiled FS is available) */
 
-        if ( (vs = ogl_shaders_get_shader_by_name(shaders,
-                                                  vs_name)) == NULL)
+        if ( (result_shaders[1] = ral_context_get_shader_by_name(instance_ptr->context,
+                                                                 shader_create_info_items[1].name) ) == NULL)
         {
+            const system_hashed_ansi_string vs_body_has = system_hashed_ansi_string_create(vs_body);
+
             /* Create the vertex shader */
-            vs = ogl_shader_create(instance_ptr->context,
-                                   RAL_SHADER_TYPE_VERTEX,
-                                   vs_name);
+            ral_context_create_shaders(instance_ptr->context,
+                                       1, /* n_create_info_items */
+                                       shader_create_info_items + 1,
+                                       result_shaders + 1);
 
-            ogl_shader_set_body(vs,
-                                system_hashed_ansi_string_create(vs_body) );
-
-            if (!ogl_shader_compile(vs) )
-            {
-                ASSERT_DEBUG_SYNC(false,
-                                  "Could not link postprocessing blur gaussian vertex shader");
-            }
+            ral_shader_set_property(result_shaders[1],
+                                    RAL_SHADER_PROPERTY_GLSL_BODY,
+                                   &vs_body_has);
         } /* if (no compiled VS is available) */
 
-        ogl_program_attach_shader(instance_ptr->po,
-                                  fs);
-
-        ogl_program_attach_shader(instance_ptr->po,
-                                  vs);
-
-        if (!ogl_program_link(instance_ptr->po) )
+        if (!ral_program_attach_shader(instance_ptr->po,
+                                       result_shaders[0]) ||
+            !ral_program_attach_shader(instance_ptr->po,
+                                       result_shaders[1]) )
         {
             ASSERT_DEBUG_SYNC(false,
                               "Could not link postprocessing blur gaussian program object");
@@ -715,13 +729,15 @@ PRIVATE void _postprocessing_blur_gaussian_init_rendering_thread_callback(ogl_co
     }
     else
     {
-        ogl_program_retain(instance_ptr->po);
+        ral_context_retain_object(instance_ptr->context,
+                                  RAL_CONTEXT_OBJECT_TYPE_PROGRAM,
+                                  instance_ptr->po);
     }
 
     /* Retrieve the sampler object we will use to perform the blur operation */
     ral_sampler_create_info blur_sampler_create_info;
 
-    blur_sampler_create_info.mipmap_mode = RAL_TEXTURE_MIPMAP_MODE_BASE;
+    blur_sampler_create_info.mipmap_mode = RAL_TEXTURE_MIPMAP_MODE_NEAREST;
     blur_sampler_create_info.wrap_s      = RAL_TEXTURE_WRAP_MODE_CLAMP_TO_EDGE;
     blur_sampler_create_info.wrap_t      = RAL_TEXTURE_WRAP_MODE_CLAMP_TO_EDGE;
 
@@ -733,9 +749,10 @@ PRIVATE void _postprocessing_blur_gaussian_init_rendering_thread_callback(ogl_co
     ASSERT_DEBUG_SYNC(instance_ptr->sampler != NULL,
                       "Could not retrieve a sampler object from ogl_samplers");
 
-    /* Reserve FBO ids */
-    entrypoints_ptr->pGLGenFramebuffers(sizeof(instance_ptr->fbo_ids) / sizeof(instance_ptr->fbo_ids[0]),
-                                        instance_ptr->fbo_ids);
+    /* Create framebuffer objects */
+    ral_context_create_framebuffers(instance_ptr->context,
+                                    sizeof(instance_ptr->fbos) / sizeof(instance_ptr->fbos[0]),
+                                    instance_ptr->fbos);
 
     /* Clean up */
     if (binomial_values != NULL)
@@ -773,19 +790,10 @@ PRIVATE void _postprocessing_blur_gaussian_init_rendering_thread_callback(ogl_co
         misaligned_coeff_buffer_offsets = NULL;
     }
 
-    if (fs != NULL)
-    {
-        ogl_shader_release(fs);
-
-        fs = NULL;
-    }
-
-    if (vs != NULL)
-    {
-        ogl_shader_release(vs);
-
-        vs = NULL;
-    }
+    ral_context_delete_objects(instance_ptr->context,
+                               RAL_CONTEXT_OBJECT_TYPE_SHADER,
+                               sizeof(result_shaders) / sizeof(result_shaders[0]),
+                               (const void**) result_shaders);
 }
 
 /** TODO */
@@ -1032,9 +1040,22 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void postprocessing_blur_gaussian_exec
      *    Draw (pong) FBO is attached the source texture.
      *    Read (ping) FBO is attached the ping (0th) texture layer.
      */
-    bool         is_culling_enabled = false;
-    const GLuint ping_fbo_id        = blur_ptr->fbo_ids[0];
-    const GLuint pong_fbo_id        = blur_ptr->fbo_ids[1];
+    bool                   is_culling_enabled = false;
+    const ral_framebuffer  ping_fbo           = blur_ptr->fbos[0];
+    const raGL_framebuffer ping_fbo_raGL      = ral_context_get_framebuffer_gl(blur_ptr->context,
+                                                                               ping_fbo);
+    GLuint                 ping_fbo_raGL_id   = 0;
+    const ral_framebuffer  pong_fbo           = blur_ptr->fbos[1];
+    const raGL_framebuffer pong_fbo_raGL      = ral_context_get_framebuffer_gl(blur_ptr->context,
+                                                                               pong_fbo);
+    GLuint                 pong_fbo_raGL_id   = 0;
+
+    raGL_framebuffer_get_property(ping_fbo_raGL,
+                                  RAGL_FRAMEBUFFER_PROPERTY_ID,
+                                 &ping_fbo_raGL_id);
+    raGL_framebuffer_get_property(pong_fbo_raGL,
+                                  RAGL_FRAMEBUFFER_PROPERTY_ID,
+                                 &pong_fbo_raGL_id);
 
     ogl_context_state_cache_get_property(state_cache,
                                          OGL_CONTEXT_STATE_CACHE_PROPERTY_RENDERING_MODE_CULL_FACE,
@@ -1143,9 +1164,15 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void postprocessing_blur_gaussian_exec
      * there are more interesting things to be looking at ATM!
      *
      */
-    const GLuint po_id        = ogl_program_get_id(blur_ptr->po);
+    raGL_program po_raGL      = ral_context_get_program_gl(blur_ptr->context,
+                                                           blur_ptr->po);
+    GLuint       po_raGL_id   = 0;
     GLuint       sampler_id   = 0;
     raGL_sampler sampler_raGL = NULL;
+
+    raGL_program_get_property(po_raGL,
+                              RAGL_PROGRAM_PROPERTY_ID,
+                             &po_raGL_id);
 
     sampler_raGL = ral_context_get_sampler_gl(blur_ptr->context,
                                               blur_ptr->sampler);
@@ -1155,7 +1182,7 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void postprocessing_blur_gaussian_exec
                              &sampler_id);
 
     entrypoints_ptr->pGLBindVertexArray(vao_id);
-    entrypoints_ptr->pGLUseProgram     (po_id);
+    entrypoints_ptr->pGLUseProgram     (po_raGL_id);
     entrypoints_ptr->pGLViewport       (0, /* x */
                                         0, /* y */
                                         target_width,
@@ -1246,11 +1273,11 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void postprocessing_blur_gaussian_exec
 
         /* Copy the layer to blur */
         entrypoints_ptr->pGLBindFramebuffer(GL_DRAW_FRAMEBUFFER,
-                                            ping_fbo_id);
+                                            ping_fbo_raGL_id);
         entrypoints_ptr->pGLBindFramebuffer(GL_READ_FRAMEBUFFER,
-                                            pong_fbo_id);
+                                            pong_fbo_raGL_id);
 
-        dsa_entrypoints_ptr->pGLNamedFramebufferTextureLayerEXT(ping_fbo_id,
+        dsa_entrypoints_ptr->pGLNamedFramebufferTextureLayerEXT(ping_fbo_raGL_id,
                                                                 GL_COLOR_ATTACHMENT0,
                                                                 temp_2d_array_texture_id,
                                                                 0,  /* level */
@@ -1258,7 +1285,7 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void postprocessing_blur_gaussian_exec
 
         if (src_texture_type == RAL_TEXTURE_TYPE_2D)
         {
-            dsa_entrypoints_ptr->pGLNamedFramebufferTexture2DEXT(pong_fbo_id,
+            dsa_entrypoints_ptr->pGLNamedFramebufferTexture2DEXT(pong_fbo_raGL_id,
                                                                  GL_COLOR_ATTACHMENT0,
                                                                  GL_TEXTURE_2D,
                                                                  src_texture_id,
@@ -1266,7 +1293,7 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void postprocessing_blur_gaussian_exec
         }
         else
         {
-            dsa_entrypoints_ptr->pGLNamedFramebufferTextureLayerEXT(pong_fbo_id,
+            dsa_entrypoints_ptr->pGLNamedFramebufferTextureLayerEXT(pong_fbo_raGL_id,
                                                                     GL_COLOR_ATTACHMENT0,
                                                                     src_texture_id,
                                                                     0, /* level */
@@ -1284,12 +1311,12 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void postprocessing_blur_gaussian_exec
                                             GL_COLOR_BUFFER_BIT,
                                             target_interpolation);
 
-        dsa_entrypoints_ptr->pGLNamedFramebufferTextureLayerEXT(ping_fbo_id,
+        dsa_entrypoints_ptr->pGLNamedFramebufferTextureLayerEXT(ping_fbo_raGL_id,
                                                                 GL_COLOR_ATTACHMENT0,
                                                                 temp_2d_array_texture_id,
                                                                 0,  /* level */
                                                                 0); /* layer */
-        dsa_entrypoints_ptr->pGLNamedFramebufferTextureLayerEXT(pong_fbo_id,
+        dsa_entrypoints_ptr->pGLNamedFramebufferTextureLayerEXT(pong_fbo_raGL_id,
                                                                 GL_COLOR_ATTACHMENT0,
                                                                 temp_2d_array_texture_id,
                                                                 0,  /* level */
@@ -1304,7 +1331,7 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void postprocessing_blur_gaussian_exec
         {
             /* Horizontal pass */
             entrypoints_ptr->pGLBindFramebuffer(GL_DRAW_FRAMEBUFFER,
-                                                pong_fbo_id);
+                                                pong_fbo_raGL_id);
 
             entrypoints_ptr->pGLDrawArrays(GL_TRIANGLE_STRIP,
                                            0,  /* first - 0 will cause FS to read from layer 0 */
@@ -1312,7 +1339,7 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void postprocessing_blur_gaussian_exec
 
             /* Vertical pass */
             entrypoints_ptr->pGLBindFramebuffer(GL_DRAW_FRAMEBUFFER,
-                                                ping_fbo_id);
+                                                ping_fbo_raGL_id);
 
             entrypoints_ptr->pGLDrawArrays(GL_TRIANGLE_STRIP,
                                            4,  /* first - 4 will cause FS to read from layer 1 */
@@ -1326,9 +1353,9 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void postprocessing_blur_gaussian_exec
 
             /* Horizontal pass */
             entrypoints_ptr->pGLBindFramebuffer(GL_DRAW_FRAMEBUFFER,
-                                                pong_fbo_id);
+                                                pong_fbo_raGL_id);
 
-            dsa_entrypoints_ptr->pGLNamedFramebufferTextureLayerEXT(pong_fbo_id,
+            dsa_entrypoints_ptr->pGLNamedFramebufferTextureLayerEXT(pong_fbo_raGL_id,
                                                                     GL_COLOR_ATTACHMENT0,
                                                                     temp_2d_array_texture_id,
                                                                     0,  /* level */
@@ -1339,7 +1366,7 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void postprocessing_blur_gaussian_exec
                                            4); /* count */
 
             /* Vertical pass */
-            dsa_entrypoints_ptr->pGLNamedFramebufferTextureLayerEXT(pong_fbo_id,
+            dsa_entrypoints_ptr->pGLNamedFramebufferTextureLayerEXT(pong_fbo_raGL_id,
                                                                     GL_COLOR_ATTACHMENT0,
                                                                     temp_2d_array_texture_id,
                                                                     0,  /* level */
@@ -1351,7 +1378,7 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void postprocessing_blur_gaussian_exec
 
             /* Step 3): Blend the (n_iterations + 1) texture layer over the (n_iterations) texture layer*/
             entrypoints_ptr->pGLBindFramebuffer(GL_DRAW_FRAMEBUFFER,
-                                                ping_fbo_id);
+                                                ping_fbo_raGL_id);
             entrypoints_ptr->pGLBindFramebuffer(GL_READ_FRAMEBUFFER,
                                                 context_default_fb_raGL_id);
 
@@ -1387,13 +1414,13 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void postprocessing_blur_gaussian_exec
 
         /* Step 4): Store the result in the user-specified texture */
         entrypoints_ptr->pGLBindFramebuffer(GL_DRAW_FRAMEBUFFER,
-                                            pong_fbo_id);
+                                            pong_fbo_raGL_id);
         entrypoints_ptr->pGLBindFramebuffer(GL_READ_FRAMEBUFFER,
-                                            ping_fbo_id);
+                                            ping_fbo_raGL_id);
 
         if (src_texture_type == RAL_TEXTURE_TYPE_2D)
         {
-            dsa_entrypoints_ptr->pGLNamedFramebufferTexture2DEXT(pong_fbo_id,
+            dsa_entrypoints_ptr->pGLNamedFramebufferTexture2DEXT(pong_fbo_raGL_id,
                                                                  GL_COLOR_ATTACHMENT0,
                                                                  GL_TEXTURE_2D,
                                                                  src_texture_id,
@@ -1401,7 +1428,7 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void postprocessing_blur_gaussian_exec
         }
         else
         {
-            dsa_entrypoints_ptr->pGLNamedFramebufferTextureLayerEXT(pong_fbo_id,
+            dsa_entrypoints_ptr->pGLNamedFramebufferTextureLayerEXT(pong_fbo_raGL_id,
                                                                     GL_COLOR_ATTACHMENT0,
                                                                     src_texture_id,
                                                                     0, /* level */
@@ -1438,7 +1465,8 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void postprocessing_blur_gaussian_exec
         entrypoints_ptr->pGLEnable(GL_CULL_FACE);
     }
 
-    ral_context_delete_textures(blur_ptr->context,
-                                1, /* n_textures */
-                               &temp_2d_array_texture);
+    ral_context_delete_objects(blur_ptr->context,
+                               RAL_CONTEXT_OBJECT_TYPE_TEXTURE,
+                               1, /* n_textures */
+                               (const void**) &temp_2d_array_texture);
 }

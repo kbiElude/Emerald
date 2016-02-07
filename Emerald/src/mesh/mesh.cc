@@ -557,9 +557,10 @@ PRIVATE void _mesh_fill_gl_buffers_renderer_callback(ogl_context context,
     /* Retrieve BO region to hold the data */
     if (mesh_ptr->gl_bo != NULL)
     {
-        ral_context_delete_buffers(mesh_ptr->ral_context,
-                                   1, /* n_buffers */
-                                  &mesh_ptr->gl_bo);
+        ral_context_delete_objects(mesh_ptr->ral_context,
+                                   RAL_CONTEXT_OBJECT_TYPE_BUFFER,
+                                   1, /* n_objects */
+                                   (const void**) &mesh_ptr->gl_bo);
 
         mesh_ptr->gl_bo = NULL;
     }
@@ -1519,9 +1520,10 @@ PRIVATE void _mesh_release_renderer_callback(ogl_context context,
 
     if (mesh_ptr->gl_bo != NULL)
     {
-        ral_context_delete_buffers(mesh_ptr->ral_context,
-                                   1, /* n_buffers */
-                                  &mesh_ptr->gl_bo);
+        ral_context_delete_objects(mesh_ptr->ral_context,
+                                   RAL_CONTEXT_OBJECT_TYPE_BUFFER,
+                                   1, /* n_objects */
+                                   (const void**) &mesh_ptr->gl_bo);
 
         mesh_ptr->gl_bo = NULL;
     } /* if (mesh->gl_bo != NULL) */

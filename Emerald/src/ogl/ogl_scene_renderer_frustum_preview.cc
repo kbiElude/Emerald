@@ -222,7 +222,7 @@ typedef struct _ogl_scene_renderer_frustum_preview
             ral_context_delete_objects(context,
                                        RAL_CONTEXT_OBJECT_TYPE_PROGRAM,
                                        1, /* n_objects */
-                                      &po);
+                                       (const void**) &po);
 
             po = NULL;
         }
@@ -292,7 +292,7 @@ PRIVATE void _ogl_scene_renderer_frustum_preview_deinit_rendering_thread_callbac
         ral_context_delete_objects(preview_ptr->context,
                                    RAL_CONTEXT_OBJECT_TYPE_BUFFER,
                                    1, /* n_objects */
-                                  &preview_ptr->data_bo);
+                                   (const void**) &preview_ptr->data_bo);
 
         preview_ptr->data_bo = NULL;
     }
@@ -303,7 +303,7 @@ PRIVATE void _ogl_scene_renderer_frustum_preview_deinit_rendering_thread_callbac
         ral_context_delete_objects(preview_ptr->context,
                                    RAL_CONTEXT_OBJECT_TYPE_PROGRAM,
                                    1, /* n_objects */
-                                  &preview_ptr->po);
+                                   (const void**) &preview_ptr->po);
 
         preview_ptr->po = NULL;
     }
@@ -388,7 +388,7 @@ PRIVATE void _ogl_scene_renderer_frustum_preview_init_rendering_thread_callback(
     {
         ral_context_retain_object(preview_ptr->context,
                                   RAL_CONTEXT_OBJECT_TYPE_PROGRAM,
-                                 &preview_ptr->po);
+                                  preview_ptr->po);
     }
     else
     {
@@ -411,6 +411,7 @@ PRIVATE void _ogl_scene_renderer_frustum_preview_init_rendering_thread_callback(
 
         const ral_program_create_info program_create_info =
         {
+            RAL_PROGRAM_SHADER_STAGE_BIT_FRAGMENT | RAL_PROGRAM_SHADER_STAGE_BIT_VERTEX,
             system_hashed_ansi_string_create(po_name)
         };
 
@@ -454,11 +455,9 @@ PRIVATE void _ogl_scene_renderer_frustum_preview_init_rendering_thread_callback(
                                &vs_body);
 
         if (!ral_program_attach_shader(preview_ptr->po,
-                                       fs,
-                                       false /* relink_needed */) ||
+                                       fs) ||
             !ral_program_attach_shader(preview_ptr->po,
-                                       vs,
-                                       true /* relink_needed */) )
+                                       vs) )
         {
             ASSERT_DEBUG_SYNC(false,
                               "RAL program configuration failed.");
@@ -475,7 +474,7 @@ PRIVATE void _ogl_scene_renderer_frustum_preview_init_rendering_thread_callback(
         ral_context_delete_objects(preview_ptr->context,
                                    RAL_CONTEXT_OBJECT_TYPE_SHADER,
                                    n_shaders_to_release,
-                                   shaders_to_release);
+                                   (const void**) shaders_to_release);
     }
 
     /* Retrieve PO UB details */
@@ -769,7 +768,7 @@ PRIVATE void _ogl_scene_renderer_frustum_preview_update_data_bo_buffer(_ogl_scen
             ral_context_delete_objects(preview_ptr->context,
                                        RAL_CONTEXT_OBJECT_TYPE_BUFFER,
                                        1, /* n_objects */
-                                      &preview_ptr->data_bo);
+                                       (const void**) &preview_ptr->data_bo);
 
             preview_ptr->data_bo = NULL;
         } /* if (preview_ptr->data_bo != NULL) */

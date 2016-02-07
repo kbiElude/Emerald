@@ -12,16 +12,18 @@
 #include "demo/demo_window.h"
 #include "ogl/ogl_context.h"
 #include "ogl/ogl_pipeline.h"
-#include "ogl/ogl_program.h"
 #include "ogl/ogl_program_ub.h"
-#include "ogl/ogl_shader.h"
 #include "procedural/procedural_mesh_sphere.h"
 #include "raGL/raGL_buffer.h"
 #include "raGL/raGL_framebuffer.h"
+#include "raGL/raGL_program.h"
+#include "raGL/raGL_shader.h"
 #include "raGL/raGL_texture.h"
 #include "ral/ral_buffer.h"
 #include "ral/ral_context.h"
 #include "ral/ral_framebuffer.h"
+#include "ral/ral_program.h"
+#include "ral/ral_shader.h"
 #include "ral/ral_texture.h"
 #include "system/system_matrix4x4.h"
 
@@ -42,7 +44,7 @@ GLuint                 _julia_light_position_ub_offset            = -1;
 GLuint                 _julia_max_iterations_ub_offset            = -1;
 GLuint                 _julia_mv_ub_offset                        = -1;
 GLuint                 _julia_mvp_ub_offset                       = -1;
-ogl_program            _julia_program                             = NULL;
+ral_program            _julia_program                             = NULL;
 ogl_program_ub         _julia_program_ub                          = NULL;
 ral_buffer             _julia_program_ub_bo                       = NULL;
 GLuint                 _julia_raycast_radius_multiplier_ub_offset = -1;
@@ -319,9 +321,16 @@ static void _stage_step_julia_execute(ral_context context,
                                       const int*  rendering_area_px_topdown,
                                       void*       not_used)
 {
-    ogl_context                                               context_gl      = NULL;
-    const ogl_context_gl_entrypoints_ext_direct_state_access* dsa_entrypoints = NULL;
-    const ogl_context_gl_entrypoints*                         entrypoints     = NULL;
+    ogl_context                                               context_gl       = NULL;
+    const ogl_context_gl_entrypoints_ext_direct_state_access* dsa_entrypoints  = NULL;
+    const ogl_context_gl_entrypoints*                         entrypoints      = NULL;
+    const raGL_program                                        julia_po_raGL    = ral_context_get_program_gl(context,
+                                                                                                            _julia_program);
+    GLuint                                                    julia_po_raGL_id = 0;
+
+    raGL_program_get_property(julia_po_raGL,
+                              RAGL_PROGRAM_PROPERTY_ID,
+                             &julia_po_raGL_id);
 
     ral_context_get_property(context,
                              RAL_CONTEXT_PROPERTY_BACKEND_CONTEXT,
@@ -333,7 +342,7 @@ static void _stage_step_julia_execute(ral_context context,
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
                             &entrypoints);
 
-    entrypoints->pGLUseProgram     (ogl_program_get_id(_julia_program) );
+    entrypoints->pGLUseProgram     (julia_po_raGL_id);
     entrypoints->pGLBindVertexArray(_julia_vao_id);
 
     /* Calculate MVP matrix */
@@ -558,14 +567,19 @@ PUBLIC void stage_step_julia_deinit(ral_context context)
     };
     const uint32_t n_textures_to_release = sizeof(textures_to_release) / sizeof(textures_to_release[0]);
 
-    ral_context_delete_framebuffers(context,
-                                    1, /* n_framebuffers */
-                                   &_julia_fbo);
-    ral_context_delete_textures    (context,
-                                    n_textures_to_release,
-                                    textures_to_release);
+    ral_context_delete_objects(context,
+                               RAL_CONTEXT_OBJECT_TYPE_FRAMEBUFFER,
+                               1, /* n_objects */
+                               (const void**) &_julia_fbo);
+    ral_context_delete_objects(context,
+                               RAL_CONTEXT_OBJECT_TYPE_PROGRAM,
+                               1, /* n_objects */
+                               (const void**) &_julia_program);
+    ral_context_delete_objects(context,
+                               RAL_CONTEXT_OBJECT_TYPE_TEXTURE,
+                               n_textures_to_release,
+                               (const void**) textures_to_release);
 
-    ogl_program_release           (_julia_program);
     procedural_mesh_sphere_release(_julia_sphere);
     system_matrix4x4_release      (_julia_view_matrix);
 }
@@ -617,149 +631,174 @@ PUBLIC void stage_step_julia_init(ral_context  context,
                                        &vertex_data_offset);
 
     /* Link Julia program */
-    ogl_shader fragment_shader = NULL;
-    ogl_shader vertex_shader   = NULL;
+    const system_hashed_ansi_string julia_fs_body = system_hashed_ansi_string_create(julia_fragment_shader_code);
+    const system_hashed_ansi_string julia_vs_body = system_hashed_ansi_string_create(julia_vertex_shader_code);
 
-    _julia_program  = ogl_program_create(context,
-                                         system_hashed_ansi_string_create("julia program"),
-                                         OGL_PROGRAM_SYNCABLE_UBS_MODE_ENABLE_GLOBAL);
-    fragment_shader = ogl_shader_create (context,
-                                         RAL_SHADER_TYPE_FRAGMENT,
-                                         system_hashed_ansi_string_create("julia fragment") );
-    vertex_shader   = ogl_shader_create (context,
-                                         RAL_SHADER_TYPE_VERTEX,
-                                         system_hashed_ansi_string_create("julia vertex") );
+    const ral_program_create_info program_create_info =
+    {
+        RAL_PROGRAM_SHADER_STAGE_BIT_FRAGMENT | RAL_PROGRAM_SHADER_STAGE_BIT_VERTEX,
+        system_hashed_ansi_string_create("julia program")
+    };
+    const ral_shader_create_info shader_create_info_items[] =
+    {
+        {
+            system_hashed_ansi_string_create("julia fragment"),
+            RAL_SHADER_TYPE_FRAGMENT
+        },
+        {
+            system_hashed_ansi_string_create("julia vertex"),
+            RAL_SHADER_TYPE_VERTEX
+        }
+    };
+    const uint32_t n_shader_create_info_items = sizeof(shader_create_info_items) / sizeof(shader_create_info_items[0]);
+    ral_shader     result_shaders[n_shader_create_info_items];
 
-    ogl_shader_set_body(fragment_shader,
-                        system_hashed_ansi_string_create(julia_fragment_shader_code));
-    ogl_shader_set_body(vertex_shader,
-                        system_hashed_ansi_string_create(julia_vertex_shader_code) );
+    ral_context_create_programs(context,
+                                1, /* n_create_info_items */
+                               &program_create_info,
+                               &_julia_program);
+    ral_context_create_shaders (context,
+                                n_shader_create_info_items,
+                                shader_create_info_items,
+                                result_shaders);
 
-    ogl_shader_compile (fragment_shader);
-    ogl_shader_compile (vertex_shader);
+    ral_shader_set_property(result_shaders[0],
+                            RAL_SHADER_PROPERTY_GLSL_BODY,
+                           &julia_fs_body);
+    ral_shader_set_property(result_shaders[1],
+                            RAL_SHADER_PROPERTY_GLSL_BODY,
+                           &julia_vs_body);
 
-    ogl_program_attach_shader(_julia_program,
-                              fragment_shader);
-    ogl_program_attach_shader(_julia_program,
-                              vertex_shader);
+    ral_program_attach_shader(_julia_program,
+                              result_shaders[0]);
+    ral_program_attach_shader(_julia_program,
+                              result_shaders[1]);
 
-    ogl_program_link(_julia_program);
-
-    ogl_shader_release(fragment_shader);
-    ogl_shader_release(vertex_shader);
+    ral_context_delete_objects(context,
+                               RAL_CONTEXT_OBJECT_TYPE_SHADER,
+                               n_shader_create_info_items,
+                               (const void**) result_shaders);
 
     /* Retrieve data uniform block properties */
-    ogl_program_get_uniform_block_by_name(_julia_program,
-                                          system_hashed_ansi_string_create("dataUB"),
-                                         &_julia_program_ub);
+    const raGL_program julia_program_raGL    = ral_context_get_program_gl(context,
+                                                                          _julia_program);
+    GLuint             julia_program_raGL_id = 0;
+
+    raGL_program_get_property             (julia_program_raGL,
+                                           RAGL_PROGRAM_PROPERTY_ID,
+                                          &julia_program_raGL_id);
+    raGL_program_get_uniform_block_by_name(julia_program_raGL,
+                                           system_hashed_ansi_string_create("dataUB"),
+                                          &_julia_program_ub);
 
     ogl_program_ub_get_property(_julia_program_ub,
                                 OGL_PROGRAM_UB_PROPERTY_BUFFER_RAL,
                                &_julia_program_ub_bo);
 
     /* Retrieve attribute/uniform locations */
-    const ogl_program_variable*             data_uniform_data                      = NULL;
-    const ogl_program_variable*             dof_cutoff_uniform_data                = NULL;
-    const ogl_program_variable*             dof_far_plane_depth_uniform_data       = NULL;
-    const ogl_program_variable*             dof_focal_plane_depth_uniform_data     = NULL;
-    const ogl_program_variable*             dof_near_plane_depth_uniform_data      = NULL;
-    const ogl_program_variable*             epsilon_uniform_data                   = NULL;
-    const ogl_program_variable*             escape_uniform_data                    = NULL;
-    const ogl_program_variable*             eye_uniform_data                       = NULL;
-    const ogl_program_variable*             fresnel_reflectance_uniform_data       = NULL;
-    const ogl_program_variable*             light_color_uniform_data               = NULL;
-    const ogl_program_variable*             light_position_uniform_data            = NULL;
-    const ogl_program_variable*             max_iterations_uniform_data            = NULL;
-    const ogl_program_variable*             mv_uniform_data                        = NULL;
-    const ogl_program_variable*             mvp_uniform_data                       = NULL;
-    const ogl_program_variable*             raycast_radius_multiplier_uniform_data = NULL;
-    const ogl_program_variable*             reflectivity_uniform_data              = NULL;
-    const ogl_program_variable*             shadows_uniform_data                   = NULL;
-    const ogl_program_variable*             specularity_uniform_data               = NULL;
-    const ogl_program_variable*             sph_texture_uniform_data               = NULL;
-    const ogl_program_attribute_descriptor* vertex_attribute_data                  = NULL;
+    const ral_program_variable*  data_uniform_ptr                      = NULL;
+    const ral_program_variable*  dof_cutoff_uniform_ptr                = NULL;
+    const ral_program_variable*  dof_far_plane_depth_uniform_ptr       = NULL;
+    const ral_program_variable*  dof_focal_plane_depth_uniform_ptr     = NULL;
+    const ral_program_variable*  dof_near_plane_depth_uniform_ptr      = NULL;
+    const ral_program_variable*  epsilon_uniform_ptr                   = NULL;
+    const ral_program_variable*  escape_uniform_ptr                    = NULL;
+    const ral_program_variable*  eye_uniform_ptr                       = NULL;
+    const ral_program_variable*  fresnel_reflectance_uniform_ptr       = NULL;
+    const ral_program_variable*  light_color_uniform_ptr               = NULL;
+    const ral_program_variable*  light_position_uniform_ptr            = NULL;
+    const ral_program_variable*  max_iterations_uniform_ptr            = NULL;
+    const ral_program_variable*  mv_uniform_ptr                        = NULL;
+    const ral_program_variable*  mvp_uniform_ptr                       = NULL;
+    const ral_program_variable*  raycast_radius_multiplier_uniform_ptr = NULL;
+    const ral_program_variable*  reflectivity_uniform_ptr              = NULL;
+    const ral_program_variable*  shadows_uniform_ptr                   = NULL;
+    const ral_program_variable*  specularity_uniform_ptr               = NULL;
+    const ral_program_variable*  sph_texture_uniform_ptr               = NULL;
+    const ral_program_attribute* vertex_attribute_ptr                  = NULL;
 
-    ogl_program_get_attribute_by_name(_julia_program,
-                                      system_hashed_ansi_string_create("vertex"),
-                                     &vertex_attribute_data);
-    ogl_program_get_uniform_by_name  (_julia_program,
+    raGL_program_get_vertex_attribute_by_name(julia_program_raGL,
+                                              system_hashed_ansi_string_create("vertex"),
+                                             &vertex_attribute_ptr);
+
+    raGL_program_get_uniform_by_name  (julia_program_raGL,
                                       system_hashed_ansi_string_create("data"),
-                                     &data_uniform_data);
-    ogl_program_get_uniform_by_name  (_julia_program,
+                                     &data_uniform_ptr);
+    raGL_program_get_uniform_by_name  (julia_program_raGL,
                                       system_hashed_ansi_string_create("dof_cutoff"),
-                                     &dof_cutoff_uniform_data);
-    ogl_program_get_uniform_by_name  (_julia_program,
+                                     &dof_cutoff_uniform_ptr);
+    raGL_program_get_uniform_by_name  (julia_program_raGL,
                                       system_hashed_ansi_string_create("dof_far_plane_depth"),
-                                     &dof_far_plane_depth_uniform_data);
-    ogl_program_get_uniform_by_name  (_julia_program,
+                                     &dof_far_plane_depth_uniform_ptr);
+    raGL_program_get_uniform_by_name  (julia_program_raGL,
                                       system_hashed_ansi_string_create("dof_focal_plane_depth"),
-                                     &dof_focal_plane_depth_uniform_data);
-    ogl_program_get_uniform_by_name  (_julia_program,
+                                     &dof_focal_plane_depth_uniform_ptr);
+    raGL_program_get_uniform_by_name  (julia_program_raGL,
                                       system_hashed_ansi_string_create("dof_near_plane_depth"),
-                                     &dof_near_plane_depth_uniform_data);
-    ogl_program_get_uniform_by_name  (_julia_program,
+                                     &dof_near_plane_depth_uniform_ptr);
+    raGL_program_get_uniform_by_name  (julia_program_raGL,
                                       system_hashed_ansi_string_create("epsilon"),
-                                     &epsilon_uniform_data);
-    ogl_program_get_uniform_by_name  (_julia_program,
+                                     &epsilon_uniform_ptr);
+    raGL_program_get_uniform_by_name  (julia_program_raGL,
                                       system_hashed_ansi_string_create("escape"),
-                                     &escape_uniform_data);
-    ogl_program_get_uniform_by_name  (_julia_program,
+                                     &escape_uniform_ptr);
+    raGL_program_get_uniform_by_name  (julia_program_raGL,
                                       system_hashed_ansi_string_create("eye"),
-                                     &eye_uniform_data);
-    ogl_program_get_uniform_by_name  (_julia_program,
+                                     &eye_uniform_ptr);
+    raGL_program_get_uniform_by_name  (julia_program_raGL,
                                       system_hashed_ansi_string_create("fresnel_reflectance"),
-                                     &fresnel_reflectance_uniform_data);
-    ogl_program_get_uniform_by_name  (_julia_program,
+                                     &fresnel_reflectance_uniform_ptr);
+    raGL_program_get_uniform_by_name  (julia_program_raGL,
                                       system_hashed_ansi_string_create("light_color"),
-                                     &light_color_uniform_data);
-    ogl_program_get_uniform_by_name  (_julia_program,
+                                     &light_color_uniform_ptr);
+    raGL_program_get_uniform_by_name  (julia_program_raGL,
                                       system_hashed_ansi_string_create("light_position"),
-                                     &light_position_uniform_data);
-    ogl_program_get_uniform_by_name  (_julia_program,
+                                     &light_position_uniform_ptr);
+    raGL_program_get_uniform_by_name  (julia_program_raGL,
                                       system_hashed_ansi_string_create("max_iterations"),
-                                     &max_iterations_uniform_data);
-    ogl_program_get_uniform_by_name  (_julia_program,
+                                     &max_iterations_uniform_ptr);
+    raGL_program_get_uniform_by_name  (julia_program_raGL,
                                       system_hashed_ansi_string_create("mv"),
-                                     &mv_uniform_data);
-    ogl_program_get_uniform_by_name  (_julia_program,
+                                     &mv_uniform_ptr);
+    raGL_program_get_uniform_by_name  (julia_program_raGL,
                                       system_hashed_ansi_string_create("mvp"),
-                                     &mvp_uniform_data);
-    ogl_program_get_uniform_by_name  (_julia_program,
+                                     &mvp_uniform_ptr);
+    raGL_program_get_uniform_by_name  (julia_program_raGL,
                                       system_hashed_ansi_string_create("raycast_radius_multiplier"),
-                                     &raycast_radius_multiplier_uniform_data);
-    ogl_program_get_uniform_by_name  (_julia_program,
+                                     &raycast_radius_multiplier_uniform_ptr);
+    raGL_program_get_uniform_by_name  (julia_program_raGL,
                                       system_hashed_ansi_string_create("reflectivity"),
-                                     &reflectivity_uniform_data);
-    ogl_program_get_uniform_by_name  (_julia_program,
+                                     &reflectivity_uniform_ptr);
+    raGL_program_get_uniform_by_name  (julia_program_raGL,
                                       system_hashed_ansi_string_create("shadows"),
-                                     &shadows_uniform_data);
-    ogl_program_get_uniform_by_name  (_julia_program,
+                                     &shadows_uniform_ptr);
+    raGL_program_get_uniform_by_name  (julia_program_raGL,
                                       system_hashed_ansi_string_create("specularity"),
-                                     &specularity_uniform_data);
-    ogl_program_get_uniform_by_name  (_julia_program,
+                                     &specularity_uniform_ptr);
+    raGL_program_get_uniform_by_name  (julia_program_raGL,
                                       system_hashed_ansi_string_create("sph_texture"),
-                                     &sph_texture_uniform_data);
+                                     &sph_texture_uniform_ptr);
 
-    _julia_data_ub_offset                      = (data_uniform_data                      != NULL) ? data_uniform_data->block_offset                      : -1;
-    _julia_dof_cutoff_ub_offset                = (dof_cutoff_uniform_data                != NULL) ? dof_cutoff_uniform_data->block_offset                : -1;
-    _julia_dof_far_plane_depth_ub_offset       = (dof_far_plane_depth_uniform_data       != NULL) ? dof_far_plane_depth_uniform_data->block_offset       : -1;
-    _julia_dof_focal_plane_depth_ub_offset     = (dof_focal_plane_depth_uniform_data     != NULL) ? dof_focal_plane_depth_uniform_data->block_offset     : -1;
-    _julia_dof_near_plane_depth_ub_offset      = (dof_near_plane_depth_uniform_data      != NULL) ? dof_near_plane_depth_uniform_data->block_offset      : -1;
-    _julia_epsilon_ub_offset                   = (epsilon_uniform_data                   != NULL) ? epsilon_uniform_data->block_offset                   : -1;
-    _julia_escape_ub_offset                    = (escape_uniform_data                    != NULL) ? escape_uniform_data->block_offset                    : -1;
-    _julia_eye_ub_offset                       = (eye_uniform_data                       != NULL) ? eye_uniform_data->block_offset                       : -1;
-    _julia_fresnel_reflectance_ub_offset       = (fresnel_reflectance_uniform_data       != NULL) ? fresnel_reflectance_uniform_data->block_offset       : -1;
-    _julia_light_color_ub_offset               = (light_color_uniform_data               != NULL) ? light_color_uniform_data->block_offset               : -1;
-    _julia_light_position_ub_offset            = (light_position_uniform_data            != NULL) ? light_position_uniform_data->block_offset            : -1;
-    _julia_max_iterations_ub_offset            = (max_iterations_uniform_data            != NULL) ? max_iterations_uniform_data->block_offset            : -1;
-    _julia_mv_ub_offset                        = (mv_uniform_data                        != NULL) ? mv_uniform_data->block_offset                        : -1;
-    _julia_mvp_ub_offset                       = (mvp_uniform_data                       != NULL) ? mvp_uniform_data->block_offset                       : -1;
-    _julia_raycast_radius_multiplier_ub_offset = (raycast_radius_multiplier_uniform_data != NULL) ? raycast_radius_multiplier_uniform_data->block_offset : -1;
-    _julia_reflectivity_ub_offset              = (reflectivity_uniform_data              != NULL) ? reflectivity_uniform_data->block_offset              : -1;
-    _julia_shadows_ub_offset                   = (shadows_uniform_data                   != NULL) ? shadows_uniform_data->block_offset                   : -1;
-    _julia_specularity_ub_offset               = (specularity_uniform_data               != NULL) ? specularity_uniform_data->block_offset               : -1;
-    _julia_sph_texture_uniform_location        = (sph_texture_uniform_data               != NULL) ? sph_texture_uniform_data->location                   : -1;
-    _julia_vertex_attribute_location           = (vertex_attribute_data                  != NULL) ? vertex_attribute_data->location                      : -1;
+    _julia_data_ub_offset                      = (data_uniform_ptr                      != NULL) ? data_uniform_ptr->block_offset                      : -1;
+    _julia_dof_cutoff_ub_offset                = (dof_cutoff_uniform_ptr                != NULL) ? dof_cutoff_uniform_ptr->block_offset                : -1;
+    _julia_dof_far_plane_depth_ub_offset       = (dof_far_plane_depth_uniform_ptr       != NULL) ? dof_far_plane_depth_uniform_ptr->block_offset       : -1;
+    _julia_dof_focal_plane_depth_ub_offset     = (dof_focal_plane_depth_uniform_ptr     != NULL) ? dof_focal_plane_depth_uniform_ptr->block_offset     : -1;
+    _julia_dof_near_plane_depth_ub_offset      = (dof_near_plane_depth_uniform_ptr      != NULL) ? dof_near_plane_depth_uniform_ptr->block_offset      : -1;
+    _julia_epsilon_ub_offset                   = (epsilon_uniform_ptr                   != NULL) ? epsilon_uniform_ptr->block_offset                   : -1;
+    _julia_escape_ub_offset                    = (escape_uniform_ptr                    != NULL) ? escape_uniform_ptr->block_offset                    : -1;
+    _julia_eye_ub_offset                       = (eye_uniform_ptr                       != NULL) ? eye_uniform_ptr->block_offset                       : -1;
+    _julia_fresnel_reflectance_ub_offset       = (fresnel_reflectance_uniform_ptr       != NULL) ? fresnel_reflectance_uniform_ptr->block_offset       : -1;
+    _julia_light_color_ub_offset               = (light_color_uniform_ptr               != NULL) ? light_color_uniform_ptr->block_offset               : -1;
+    _julia_light_position_ub_offset            = (light_position_uniform_ptr            != NULL) ? light_position_uniform_ptr->block_offset            : -1;
+    _julia_max_iterations_ub_offset            = (max_iterations_uniform_ptr            != NULL) ? max_iterations_uniform_ptr->block_offset            : -1;
+    _julia_mv_ub_offset                        = (mv_uniform_ptr                        != NULL) ? mv_uniform_ptr->block_offset                        : -1;
+    _julia_mvp_ub_offset                       = (mvp_uniform_ptr                       != NULL) ? mvp_uniform_ptr->block_offset                       : -1;
+    _julia_raycast_radius_multiplier_ub_offset = (raycast_radius_multiplier_uniform_ptr != NULL) ? raycast_radius_multiplier_uniform_ptr->block_offset : -1;
+    _julia_reflectivity_ub_offset              = (reflectivity_uniform_ptr              != NULL) ? reflectivity_uniform_ptr->block_offset              : -1;
+    _julia_shadows_ub_offset                   = (shadows_uniform_ptr                   != NULL) ? shadows_uniform_ptr->block_offset                   : -1;
+    _julia_specularity_ub_offset               = (specularity_uniform_ptr               != NULL) ? specularity_uniform_ptr->block_offset               : -1;
+    _julia_sph_texture_uniform_location        = (sph_texture_uniform_ptr               != NULL) ? sph_texture_uniform_ptr->location                   : -1;
+    _julia_vertex_attribute_location           = (vertex_attribute_ptr                  != NULL) ? vertex_attribute_ptr->location                      : -1;
 
     /* Generate & set VAO up */
     const ogl_context_gl_entrypoints* entrypoints       = NULL;
@@ -796,7 +835,7 @@ PUBLIC void stage_step_julia_init(ral_context  context,
                                             (void*) (intptr_t) vertex_data_offset);
     entrypoints->pGLEnableVertexAttribArray(_julia_vertex_attribute_location);
 
-    entrypoints->pGLProgramUniform1i(ogl_program_get_id(_julia_program),
+    entrypoints->pGLProgramUniform1i(julia_program_raGL_id,
                                      _julia_sph_texture_uniform_location,
                                      0);
 

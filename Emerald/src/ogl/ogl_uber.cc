@@ -854,7 +854,7 @@ PRIVATE void _ogl_uber_release(void* uber)
             ral_context_delete_objects(uber_ptr->context,
                                        RAL_CONTEXT_OBJECT_TYPE_PROGRAM,
                                        1, /* n_objects */
-                                      &uber_ptr->program);
+                                       (const void**) &uber_ptr->program);
 
             uber_ptr->program = NULL;
         }
@@ -1187,7 +1187,8 @@ PUBLIC EMERALD_API ogl_uber ogl_uber_create(ral_context                context,
         /* Create a program with the shaders we were provided */
         ral_program_create_info program_create_info;
 
-        program_create_info.name = name;
+        program_create_info.active_shader_stages = RAL_PROGRAM_SHADER_STAGE_BIT_FRAGMENT | RAL_PROGRAM_SHADER_STAGE_BIT_VERTEX;
+        program_create_info.name                 = name;
 
         ral_context_create_programs(context,
                                     1, /* n_create_info_items */
@@ -1200,11 +1201,9 @@ PUBLIC EMERALD_API ogl_uber ogl_uber_create(ral_context                context,
         if (result_ptr->program != NULL)
         {
             if (!ral_program_attach_shader(result_ptr->program,
-                                           shaders_fragment_uber_get_shader(result_ptr->shader_fragment),
-                                           false /* relink_needed */)                                    ||
+                                           shaders_fragment_uber_get_shader(result_ptr->shader_fragment) ) ||
                 !ral_program_attach_shader(result_ptr->program,
-                                           shaders_vertex_uber_get_shader(result_ptr->shader_vertex),
-                                           true /* relink_needed */) )
+                                           shaders_vertex_uber_get_shader(result_ptr->shader_vertex)) )
             {
                 ASSERT_ALWAYS_SYNC(false,
                                    "Cannot attach shader(s) to uber program");
@@ -1238,7 +1237,7 @@ PUBLIC EMERALD_API ogl_uber ogl_uber_create_from_ral_program(ral_context        
 
         ral_context_retain_object(context,
                                   RAL_CONTEXT_OBJECT_TYPE_PROGRAM,
-                                 &program);
+                                  program);
 
         REFCOUNT_INSERT_INIT_CODE_WITH_RELEASE_HANDLER(result_ptr,
                                                        _ogl_uber_release,
@@ -1440,12 +1439,6 @@ PUBLIC EMERALD_API void ogl_uber_link(ogl_uber uber)
         if (shaders_vertex_uber_is_dirty(uber_ptr->shader_vertex) )
         {
             shaders_vertex_uber_recompile(uber_ptr->shader_vertex);
-        }
-
-        /* Link the program object */
-        if (!ral_program_link(uber_ptr->program) )
-        {
-            ASSERT_ALWAYS_SYNC(false, "Cannot link uber program");
         }
     } /* if (uber_ptr->type == OGL_UBER_TYPE_REGULAR) */
 
@@ -1722,6 +1715,11 @@ PUBLIC EMERALD_API void ogl_uber_link(ogl_uber uber)
                                     OGL_PROGRAM_UB_PROPERTY_BUFFER_RAL,
                                    &uber_ptr->ub_fs_bo);
     }
+    else
+    {
+        uber_ptr->ub_fs_bo      = NULL;
+        uber_ptr->ub_fs_bo_size = 0;
+    }
 
     if (uber_ptr->ub_vs != NULL)
     {
@@ -1731,6 +1729,11 @@ PUBLIC EMERALD_API void ogl_uber_link(ogl_uber uber)
         ogl_program_ub_get_property(uber_ptr->ub_vs,
                                     OGL_PROGRAM_UB_PROPERTY_BUFFER_RAL,
                                    &uber_ptr->ub_vs_bo);
+    }
+    else
+    {
+        uber_ptr->ub_vs_bo      = NULL;
+        uber_ptr->ub_vs_bo_size = 0;
     }
 
     /* Create internal representation of uber shader items */
@@ -1989,6 +1992,10 @@ PUBLIC EMERALD_API void ogl_uber_link(ogl_uber uber)
                 if (light_depth_vb_uniform_ptr != NULL)
                 {
                     item_ptr->vertex_shader_item.current_light_depth_vp_ub_offset = light_depth_vb_uniform_ptr->block_offset;
+                }
+                else
+                {
+                    item_ptr->vertex_shader_item.current_light_depth_vp_ub_offset = -1;
                 }
 
                 /* Outdated SH stuff */

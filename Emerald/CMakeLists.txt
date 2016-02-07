@@ -6,7 +6,7 @@ project (EMERALD C CXX)
 
 # Options
 IF (MSVC)
-     OPTION(INCLUDE_CURVE_EDITOR    "Should include curve editor code"    ON)
+     OPTION(INCLUDE_CURVE_EDITOR    "Should include curve editor code"    OFF)
      OPTION(INCLUDE_OPENCL          "Should include OpenCL code"          OFF)
      OPTION(INCLUDE_SH_LIGHT_EDITOR "Should include SH light editor code" OFF)
      OPTION(INCLUDE_WEBCAM_MANAGER  "Should include webcam manager code"  OFF)

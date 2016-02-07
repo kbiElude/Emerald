@@ -366,10 +366,16 @@ PRIVATE void _ogl_ui_deinit(_ogl_ui* ui_ptr)
                                                &ui_control_program,
                                                &ui_control_program_name_hash) )
             {
-                ral_context_delete_objects(ogl_text_get_context(ui_ptr->text_renderer),
+                ral_context context = NULL;
+
+                system_window_get_property(ui_ptr->window,
+                                           SYSTEM_WINDOW_PROPERTY_RENDERING_CONTEXT_RAL,
+                                          &context);
+
+                ral_context_delete_objects(context,
                                            RAL_CONTEXT_OBJECT_TYPE_PROGRAM,
                                            1, /* n_objects */
-                                          &ui_control_program);
+                                           (const void**) &ui_control_program);
 
                 result = system_hash64map_remove(ui_ptr->registered_ui_control_programs,
                                                  ui_control_program_name_hash);
@@ -1381,7 +1387,7 @@ PUBLIC ral_program ogl_ui_get_registered_program(ogl_ui                    ui,
     {
         ral_context_retain_object(ogl_text_get_context(ui_ptr->text_renderer),
                                   RAL_CONTEXT_OBJECT_TYPE_PROGRAM,
-                                 &result);
+                                  result);
     }
 
     return result;
@@ -1502,7 +1508,7 @@ PUBLIC bool ogl_ui_register_program(ogl_ui                    ui,
 
         ral_context_retain_object(ogl_text_get_context(ui_ptr->text_renderer),
                                   RAL_CONTEXT_OBJECT_TYPE_PROGRAM,
-                                 &program);
+                                  program);
 
         result = true;
     } /* if (!system_hash64map_contains(ui_ptr->registered_ui_control_programs, program_name_hash) ) */

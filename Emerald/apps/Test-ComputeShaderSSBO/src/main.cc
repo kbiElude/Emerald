@@ -7,16 +7,17 @@
 #include "demo/demo_app.h"
 #include "demo/demo_window.h"
 #include "ogl/ogl_context.h"
-#include "ogl/ogl_program.h"
 #include "ogl/ogl_program_ssb.h"
 #include "ogl/ogl_rendering_handler.h"
-#include "ogl/ogl_shader.h"
 #include "raGL/raGL_buffer.h"
 #include "raGL/raGL_framebuffer.h"
+#include "raGL/raGL_program.h"
 #include "raGL/raGL_texture.h"
 #include "ral/ral_buffer.h"
 #include "ral/ral_context.h"
 #include "ral/ral_framebuffer.h"
+#include "ral/ral_program.h"
+#include "ral/ral_shader.h"
 #include "ral/ral_texture.h"
 #include "system/system_assertions.h"
 #include "system/system_event.h"
@@ -33,7 +34,7 @@ ral_buffer      _bo                   = NULL;
 ral_context     _context              = NULL;
 ral_framebuffer _read_fbo             = NULL;
 int             _local_workgroup_size = 0;
-ogl_program     _program              = NULL;
+ral_program     _program              = NULL;
 ral_texture     _texture              = NULL;
 system_event    _window_closed_event  = system_event_create(true); /* manual_reset */
 int             _window_size[2]       = {1280, 720};
@@ -147,28 +148,42 @@ void _rendering_handler(ogl_context context,
                                   &_bo);
 
         /* Set up the compute shader object */
-        ogl_shader cs = ogl_shader_create(_context,
-                                          RAL_SHADER_TYPE_COMPUTE,
-                                          system_hashed_ansi_string_create("Compute shader object") );
+        ral_shader                      cs             = NULL;
+        const system_hashed_ansi_string cs_body        = _get_cs_body(context);
+        const ral_shader_create_info    cs_create_info =
+        {
+            system_hashed_ansi_string_create("Compute shader object"),
+            RAL_SHADER_TYPE_COMPUTE
+        };
 
-        ogl_shader_set_body(cs,
-                            _get_cs_body(context) );
+        ral_context_create_shaders(_context,
+                                   1, /* n_create_info_items */
+                                  &cs_create_info,
+                                  &cs);
+
+        ral_shader_set_property(cs,
+                                RAL_SHADER_PROPERTY_GLSL_BODY,
+                               &cs_body);
 
         /* Set up the compute program object */
-        _program = ogl_program_create(_context,
-                                      system_hashed_ansi_string_create("Program object") );
+        const ral_program_create_info po_create_info =
+        {
+            RAL_PROGRAM_SHADER_STAGE_BIT_COMPUTE,
+            system_hashed_ansi_string_create("Program object")
+        };
 
-        ogl_program_attach_shader(_program,
+        ral_context_create_programs(_context,
+                                    1, /* n_create_info_items */
+                                   &po_create_info,
+                                   &_program);
+
+        ral_program_attach_shader(_program,
                                   cs);
 
-        ogl_shader_release(cs);
-        cs = NULL;
-
-        if (!ogl_program_link(_program))
-        {
-            ASSERT_DEBUG_SYNC(false,
-                              "Test program object failed to link");
-        }
+        ral_context_delete_objects(_context,
+                                   RAL_CONTEXT_OBJECT_TYPE_SHADER,
+                                   1, /* n_objects */
+                                   (const void**) &cs);
 
         /* Set up the texture object we will have the CS write to. The texture mip-map will later be
          * used as a source for the blit operation which is going to fill the back buffer with data.
@@ -226,13 +241,20 @@ void _rendering_handler(ogl_context context,
      *
      * NOTE: We're doing a ceiling division here to ensure the whole texture mipmap
      *       is filled with data. */
-    unsigned int n_global_invocations[] =
+    const raGL_program program_raGL           = ral_context_get_program_gl(_context,
+                                                                           _program);
+    GLuint             program_raGL_id        = 0;
+    unsigned int       n_global_invocations[] =
     {
         (_window_size[0] + _local_workgroup_size - 1) / _local_workgroup_size,
         (_window_size[1] + _local_workgroup_size - 1) / _local_workgroup_size
     };
 
-    entry_points->pGLUseProgram     (ogl_program_get_id(_program) );
+    raGL_program_get_property(program_raGL,
+                              RAGL_PROGRAM_PROPERTY_ID,
+                             &program_raGL_id);
+
+    entry_points->pGLUseProgram     (program_raGL_id);
     entry_points->pGLDispatchCompute(n_global_invocations[0],
                                      n_global_invocations[1],
                                      1); /* num_groups_z */
@@ -306,34 +328,40 @@ PRIVATE void _window_closing_callback_handler(system_window window,
 {
     if (_bo != NULL)
     {
-        ral_context_delete_buffers(_context,
+        ral_context_delete_objects(_context,
+                                   RAL_CONTEXT_OBJECT_TYPE_BUFFER,
                                    1, /* n_buffers */
-                                  &_bo);
+                                   (const void**) &_bo);
 
         _bo = NULL;
     }
 
     if (_program != NULL)
     {
-        ogl_program_release(_program);
+        ral_context_delete_objects(_context,
+                                   RAL_CONTEXT_OBJECT_TYPE_PROGRAM,
+                                   1, /* n_objects */
+                                   (const void**) &_program);
 
         _program = NULL;
     }
 
     if (_read_fbo != NULL)
     {
-        ral_context_delete_framebuffers(_context,
-                                        1, /* n_framebuffers */
-                                       &_read_fbo);
+        ral_context_delete_objects(_context,
+                                   RAL_CONTEXT_OBJECT_TYPE_FRAMEBUFFER,
+                                   1, /* n_objects */
+                                   (const void**) &_read_fbo);
 
         _read_fbo = NULL;
     }
 
     if (_texture != NULL)
     {
-        ral_context_delete_textures(_context,
-                                    1, /* n_textures */
-                                   &_texture);
+        ral_context_delete_objects(_context,
+                                   RAL_CONTEXT_OBJECT_TYPE_TEXTURE,
+                                   1, /* n_textures */
+                                   (const void**) &_texture);
 
         _texture = NULL;
     }

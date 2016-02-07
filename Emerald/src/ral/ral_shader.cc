@@ -57,9 +57,9 @@ PUBLIC ral_shader ral_shader_create(const ral_shader_create_info* shader_create_
 }
 
 /** Please see header for specification */
-PUBLIC void ral_shader_get_property(ral_shader          shader,
-                                    ral_shader_property property,
-                                    void*               out_result_ptr)
+PUBLIC EMERALD_API void ral_shader_get_property(ral_shader          shader,
+                                                ral_shader_property property,
+                                                void*               out_result_ptr)
 {
     const _ral_shader* shader_ptr = (_ral_shader*) shader;
 
@@ -75,6 +75,13 @@ PUBLIC void ral_shader_get_property(ral_shader          shader,
     /* Retrieve the requested value */
     switch (property)
     {
+        case RAL_SHADER_PROPERTY_CALLBACK_MANAGER:
+        {
+            *(system_callback_manager*) out_result_ptr = shader_ptr->callback_manager;
+
+            break;
+        }
+
         case RAL_SHADER_PROPERTY_GLSL_BODY:
         {
             ASSERT_DEBUG_SYNC(shader_ptr->source == RAL_SHADER_SOURCE_GLSL,
@@ -85,7 +92,6 @@ PUBLIC void ral_shader_get_property(ral_shader          shader,
             break;
         }
 
-        /* not settable; system_hashed_ansi_string */
         case RAL_SHADER_PROPERTY_NAME:
         {
             *(system_hashed_ansi_string*) out_result_ptr = shader_ptr->name;
@@ -93,7 +99,6 @@ PUBLIC void ral_shader_get_property(ral_shader          shader,
             break;
         }
 
-        /* not settable; ral_shader_source */
         case RAL_SHADER_PROPERTY_SOURCE:
         {
             *(ral_shader_source*) out_result_ptr = shader_ptr->source;
@@ -101,7 +106,6 @@ PUBLIC void ral_shader_get_property(ral_shader          shader,
             break;
         }
 
-        /* not settable; ral_shader_type */
         case RAL_SHADER_PROPERTY_TYPE:
         {
             *(ral_shader_type*) out_result_ptr = shader_ptr->type;
@@ -126,9 +130,9 @@ PUBLIC void ral_shader_release(ral_shader& shader)
 }
 
 /** Please see header for specification */
-PUBLIC void ral_shader_set_property(ral_shader          shader,
-                                    ral_shader_property property,
-                                    const void*         data)
+PUBLIC EMERALD_API void ral_shader_set_property(ral_shader          shader,
+                                                ral_shader_property property,
+                                                const void*         data)
 {
     _ral_shader* shader_ptr = (_ral_shader*) shader;
 
@@ -162,7 +166,7 @@ PUBLIC void ral_shader_set_property(ral_shader          shader,
                 shader_ptr->glsl_body = in_body;
 
                 system_callback_manager_call_back(shader_ptr->callback_manager,
-                                                  RAL_SHADER_CALLBACK_ID_COMPILATION_NEEDED,
+                                                  RAL_SHADER_CALLBACK_ID_GLSL_BODY_UPDATED,
                                                   shader_ptr);
             }
 

@@ -10,6 +10,7 @@
 #include "ral/ral_context.h"
 #include "ral/ral_shader.h"
 #include "system/system_assertions.h"
+#include "system/system_callback_manager.h"
 #include "system/system_hashed_ansi_string.h"
 #include "system/system_log.h"
 
@@ -17,12 +18,14 @@
 /** Internal type definitions */
 typedef struct
 {
-    bool        compile_status;
-    ogl_context context; /* DO NOT retain - context owns the instance */
-    bool        has_been_compiled;
-    GLuint      id;
-    char*       shader_info_log;
-    ral_shader  shader_ral; /* DO NOT retain/release */
+    system_callback_manager   callback_manager;
+    bool                      compile_status;
+    ogl_context               context; /* DO NOT retain - context owns the instance */
+    bool                      has_been_compiled;
+    GLuint                    id;
+    system_hashed_ansi_string last_compiled_body;
+    char*                     shader_info_log;
+    ral_shader                shader_ral; /* DO NOT retain/release */
 
     /* GL entry-point cache */
     PFNGLCOMPILESHADERPROC    pGLCompileShader;
@@ -39,8 +42,13 @@ typedef struct
 PRIVATE void _raGL_shader_compile_callback(ogl_context context,
                                            void*       in_arg)
 {
-    _raGL_shader* shader_ptr = (_raGL_shader*) in_arg;
+    _raGL_shader* shader_ptr          = (_raGL_shader*) in_arg;
+    const char*   shader_body_raw_ptr = system_hashed_ansi_string_get_buffer(shader_ptr->last_compiled_body);
 
+    shader_ptr->pGLShaderSource (shader_ptr->id,
+                                 1, /* count */
+                                &shader_body_raw_ptr,
+                                 NULL);
     shader_ptr->pGLCompileShader(shader_ptr->id);
 
     /* Retrieve compile status and shader info log */
@@ -91,36 +99,21 @@ PRIVATE void _raGL_shader_compile_callback(ogl_context context,
 PRIVATE void _raGL_shader_create_callback(ogl_context context,
                                           void*       in_arg)
 {
-    system_hashed_ansi_string shader_body          = NULL;
-    uint32_t                  shader_body_length   = 0;
-    const char*               shader_body_raw_ptr  = NULL;
-    _raGL_shader*             shader_ptr           = (_raGL_shader*) in_arg;
-    ral_shader_source         shader_source        = RAL_SHADER_SOURCE_UNKNOWN;
-    ral_shader_type           shader_type          = RAL_SHADER_TYPE_UNKNOWN;
+    _raGL_shader*     shader_ptr    = (_raGL_shader*) in_arg;
+    ral_shader_source shader_source = RAL_SHADER_SOURCE_UNKNOWN;
+    ral_shader_type   shader_type   = RAL_SHADER_TYPE_UNKNOWN;
 
     ral_shader_get_property(shader_ptr->shader_ral,
                             RAL_SHADER_PROPERTY_SOURCE,
                            &shader_source);
-
-    ASSERT_DEBUG_SYNC(shader_source == RAL_SHADER_SOURCE_GLSL,
-                      "Unsupported shader source");
-
-    ral_shader_get_property(shader_ptr->shader_ral,
-                            RAL_SHADER_PROPERTY_GLSL_BODY,
-                           &shader_body);
     ral_shader_get_property(shader_ptr->shader_ral,
                             RAL_SHADER_PROPERTY_TYPE,
                            &shader_type);
 
-    shader_body_raw_ptr = system_hashed_ansi_string_get_buffer(shader_body);
-    shader_body_length  = system_hashed_ansi_string_get_length(shader_body);
+    ASSERT_DEBUG_SYNC(shader_source == RAL_SHADER_SOURCE_GLSL,
+                      "Only GLSL-sourced shaders are supported by OpenGL backend.");
 
     shader_ptr->id = shader_ptr->pGLCreateShader( raGL_utils_get_ogl_shader_type_for_ral_shader_type(shader_type) );
-
-    shader_ptr->pGLShaderSource(shader_ptr->id,
-                                1,
-                                (const GLchar**) &shader_body_raw_ptr,
-                                (const GLint*)   &shader_body_length);
 }
 
 /** TODO */
@@ -137,6 +130,13 @@ PRIVATE void _raGL_shader_release(void* shader)
 {
     _raGL_shader* shader_ptr = (_raGL_shader*) shader;
 
+    if (shader_ptr->callback_manager != NULL)
+    {
+        system_callback_manager_release(shader_ptr->callback_manager);
+
+        shader_ptr->callback_manager = NULL;
+    }
+
     if (shader_ptr->shader_info_log != NULL)
     {
         delete shader_ptr->shader_info_log;
@@ -152,11 +152,25 @@ PRIVATE void _raGL_shader_release(void* shader)
 /** Please see header for specification */
 PUBLIC bool raGL_shader_compile(raGL_shader shader)
 {
-    bool          result     = false;
-    _raGL_shader* shader_ptr = (_raGL_shader*) shader;
+    bool                      result      = false;
+    system_hashed_ansi_string shader_body = NULL;
+    _raGL_shader*             shader_ptr  = (_raGL_shader*) shader;
 
-    ASSERT_DEBUG_SYNC(!shader_ptr->has_been_compiled,
-                      "Specified shader has already been compiled.");
+    ral_shader_get_property(shader_ptr->shader_ral,
+                            RAL_SHADER_PROPERTY_GLSL_BODY,
+                           &shader_body);
+
+    if (!shader_ptr->has_been_compiled                                                  ||
+         shader_ptr->has_been_compiled && shader_ptr->last_compiled_body != shader_body)
+    {
+        shader_ptr->has_been_compiled  = false;
+        shader_ptr->last_compiled_body = shader_body;
+    }
+    else
+    {
+        ASSERT_DEBUG_SYNC(false,
+                          "Specified raGL shader has already been compiled.");
+    }
 
     if (!shader_ptr->has_been_compiled)
     {
@@ -166,6 +180,10 @@ PUBLIC bool raGL_shader_compile(raGL_shader shader)
 
         result                        = shader_ptr->compile_status;
         shader_ptr->has_been_compiled = true;
+
+        system_callback_manager_call_back(shader_ptr->callback_manager,
+                                          RAGL_SHADER_CALLBACK_ID_SHADER_COMPILED,
+                                          shader);
     }
 
     return result;
@@ -195,12 +213,14 @@ PUBLIC raGL_shader raGL_shader_create(ral_context context_ral,
 
     if (new_shader_ptr != NULL)
     {
-        new_shader_ptr->compile_status    = false;
-        new_shader_ptr->context           = context_ogl;
-        new_shader_ptr->has_been_compiled = false;
-        new_shader_ptr->id                = 0;
-        new_shader_ptr->shader_ral        = shader_ral;
-        new_shader_ptr->shader_info_log   = NULL;
+        new_shader_ptr->callback_manager   = system_callback_manager_create((_callback_id) RAGL_SHADER_CALLBACK_ID_COUNT);
+        new_shader_ptr->compile_status     = false;
+        new_shader_ptr->context            = context_ogl;
+        new_shader_ptr->has_been_compiled  = false;
+        new_shader_ptr->id                 = 0;
+        new_shader_ptr->last_compiled_body = NULL;
+        new_shader_ptr->shader_ral         = shader_ral;
+        new_shader_ptr->shader_info_log    = NULL;
 
         /* Initialize entry-point cache */
         ral_backend_type backend_type = RAL_BACKEND_TYPE_UNKNOWN;
@@ -269,6 +289,13 @@ PUBLIC void raGL_shader_get_property(raGL_shader          shader,
 
     switch (property)
     {
+        case RAGL_SHADER_PROPERTY_CALLBACK_MANAGER:
+        {
+            *(system_callback_manager*) out_result_ptr = shader_ptr->callback_manager;
+
+            break;
+        }
+
         case RAGL_SHADER_PROPERTY_COMPILE_STATUS:
         {
             *(bool*) out_result_ptr = shader_ptr->compile_status;
@@ -289,6 +316,13 @@ PUBLIC void raGL_shader_get_property(raGL_shader          shader,
                               "Cannot retrieve shader info log - shader has not been compiled yet!");
 
             *(const char**) out_result_ptr = shader_ptr->shader_info_log;
+
+            break;
+        }
+
+        case RAGL_SHADER_PROPERTY_SHADER_RAL:
+        {
+            *(ral_shader*) out_result_ptr = shader_ptr->shader_ral;
 
             break;
         }

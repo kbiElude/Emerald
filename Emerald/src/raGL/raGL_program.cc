@@ -10,10 +10,12 @@
 #include "ogl/ogl_program_ub.h"
 #include "raGL/raGL_program.h"
 #include "raGL/raGL_shader.h"
+#include "raGL/raGL_utils.h"
 #include "ral/ral_context.h"
 #include "ral/ral_program.h"
 #include "ral/ral_shader.h"
 #include "system/system_assertions.h"
+#include "system/system_callback_manager.h"
 #include "system/system_file_serializer.h"
 #include "system/system_hash64.h"
 #include "system/system_hash64map.h"
@@ -97,7 +99,7 @@ typedef struct
 typedef struct
 {
     _raGL_program* program_ptr;
-    ral_shader     shader;
+    raGL_shader    shader;
 } _raGL_attach_shader_callback_argument;
 
 
@@ -116,6 +118,8 @@ PRIVATE void _raGL_program_link_callback                       (ogl_context     
                                                                 void*                   in_arg);
 PRIVATE bool _raGL_program_load_binary_blob                    (ogl_context,
                                                                 _raGL_program*          program_ptr);
+PRIVATE void _raGL_program_on_shader_compile_callback          (const void*             callback_data,
+                                                                void*                   user_arg);
 PRIVATE void _raGL_program_release                             (void*                   program);
 PRIVATE void _raGL_program_release_active_attributes           (system_resizable_vector active_attributes);
 PRIVATE void _raGL_program_release_active_shader_storage_blocks(_raGL_program*          program_ptr);
@@ -128,6 +132,21 @@ PRIVATE void _raGL_program_save_binary_blob                    (ogl_context,
                                                                 _raGL_program*          program_ptr);
 PRIVATE void _raGL_program_save_shader_sources                 (_raGL_program*          program_ptr);
 
+
+/** TODO */
+PRIVATE void _raGL_program_attach_shader_callback(ogl_context context,
+                                                  void*       in_arg)
+{
+    _raGL_attach_shader_callback_argument* callback_arg_ptr = (_raGL_attach_shader_callback_argument*) in_arg;
+    GLuint                                 shader_raGL_id   = 0;
+
+    raGL_shader_get_property(callback_arg_ptr->shader,
+                             RAGL_SHADER_PROPERTY_ID,
+                            &shader_raGL_id);
+
+    callback_arg_ptr->program_ptr->pGLAttachShader(callback_arg_ptr->program_ptr->id,
+                                                   shader_raGL_id);
+}
 
 /** TODO */
 PRIVATE void _raGL_program_create_callback(ogl_context context,
@@ -218,7 +237,7 @@ PRIVATE char* _raGL_program_get_binary_blob_file_name(_raGL_program* program_ptr
 }
 
 /** TODO */
-PRIVATE char*_ogl_program_get_source_code_file_name(_raGL_program* program_ptr)
+PRIVATE char* _raGL_program_get_source_code_file_name(_raGL_program* program_ptr)
 {
     /* Form the hash-based file name */
     std::stringstream         file_name_sstream;
@@ -245,10 +264,10 @@ PRIVATE char*_ogl_program_get_source_code_file_name(_raGL_program* program_ptr)
 }
 
 /** TODO */
-PRIVATE void _ogl_program_init_blocks_for_context(ogl_program_block_type block_type,
-                                                  _raGL_program*         program_ptr,
-                                                  ogl_context            context_map_key,
-                                                  ogl_context            context)
+PRIVATE void _raGL_program_init_blocks_for_context(ogl_program_block_type block_type,
+                                                   _raGL_program*         program_ptr,
+                                                   ogl_context            context_map_key,
+                                                   ogl_context            context)
 {
     const GLenum block_interface_gl        = (block_type == OGL_PROGRAM_BLOCK_TYPE_SHADER_STORAGE_BUFFER) ? GL_SHADER_STORAGE_BLOCK
                                                                                                           : GL_UNIFORM_BLOCK;
@@ -523,8 +542,8 @@ PRIVATE void _raGL_program_link_callback(ogl_context context,
     system_time start_time = system_time_now();
 
     /* If program binaries are supportd, see if we've got a blob file already stashed. If so, no need to link at this point */
-    has_used_binary = _ogl_program_load_binary_blob(context,
-                                                    program_ptr);
+    has_used_binary = _raGL_program_load_binary_blob(context,
+                                                     program_ptr);
 
     if (!has_used_binary)
     {
@@ -657,17 +676,17 @@ PRIVATE void _raGL_program_link_callback(ogl_context context,
             ogl_context context_map_key = (program_ptr->syncable_ubs_mode == RAGL_PROGRAM_SYNCABLE_UBS_MODE_ENABLE_GLOBAL) ? 0
                                                                                                                            : context;
 
-            _ogl_program_init_blocks_for_context(OGL_PROGRAM_BLOCK_TYPE_UNIFORM_BUFFER,
-                                                 program_ptr,
-                                                 context_map_key,
-                                                 context);
+            _raGL_program_init_blocks_for_context(OGL_PROGRAM_BLOCK_TYPE_UNIFORM_BUFFER,
+                                                  program_ptr,
+                                                  context_map_key,
+                                                  context);
 
             /* Finish with shader storage blocks. */
-            _ogl_program_init_blocks_for_context(OGL_PROGRAM_BLOCK_TYPE_SHADER_STORAGE_BUFFER,
-                                                 program_ptr,
-                                                 0, /* context_map_key */
-                                                 context);
-            
+            _raGL_program_init_blocks_for_context(OGL_PROGRAM_BLOCK_TYPE_SHADER_STORAGE_BUFFER,
+                                                  program_ptr,
+                                                  0, /* context_map_key */
+                                                  context);
+
         } /* if (attribute_name != NULL && uniform_name != NULL) */
 
         /* Free the buffers. */
@@ -727,8 +746,8 @@ PRIVATE void _raGL_program_link_callback(ogl_context context,
 }
 
 /** TODO */
-PRIVATE bool _ogl_program_load_binary_blob(ogl_context    context,
-                                           _raGL_program* program_ptr)
+PRIVATE bool _raGL_program_load_binary_blob(ogl_context    context,
+                                            _raGL_program* program_ptr)
 {
     /* Form the name */
     char* file_name = _raGL_program_get_binary_blob_file_name(program_ptr);
@@ -905,6 +924,34 @@ PRIVATE bool _ogl_program_load_binary_blob(ogl_context    context,
 
     /* Done */
     return result;
+}
+
+/** TODO */
+PRIVATE void _raGL_program_on_shader_compile_callback(const void* callback_data,
+                                                      void*       user_arg)
+{
+    _raGL_program*            program_ptr  = (_raGL_program*) user_arg;
+    system_hashed_ansi_string program_name = NULL;
+    raGL_shader               shader       = (raGL_shader)    callback_data;
+    ral_shader                shader_ral   = NULL;
+    system_hashed_ansi_string shader_name  = NULL;
+
+    ral_program_get_property(program_ptr->program_ral,
+                             RAL_PROGRAM_PROPERTY_NAME,
+                            &program_name);
+    raGL_shader_get_property(shader,
+                             RAGL_SHADER_PROPERTY_SHADER_RAL,
+                            &shader_ral);
+
+    ral_shader_get_property(shader_ral,
+                            RAL_SHADER_PROPERTY_NAME,
+                           &shader_name);
+
+    LOG_INFO("Shader [%s] recompiled - linking program [%s] ..",
+             system_hashed_ansi_string_get_buffer(shader_name),
+             system_hashed_ansi_string_get_buffer(program_name) );
+
+    raGL_program_link( (raGL_program) program_ptr);
 }
 
 /** TODO */
@@ -1183,6 +1230,9 @@ PRIVATE void _raGL_program_release_callback(ogl_context context,
 {
     _raGL_program* program_ptr = (_raGL_program*) in_arg;
 
+    raGL_program_release_context_objects( (raGL_program) program_ptr,
+                                         context);
+
     program_ptr->pGLDeleteProgram(program_ptr->id);
 
     program_ptr->id = 0;
@@ -1298,9 +1348,37 @@ PRIVATE void _raGL_program_save_binary_blob(ogl_context   context_ptr,
 }
 
 /** TODO */
+PRIVATE void _raGL_program_subscribe_for_shader_notifications(_raGL_program* program_ptr,
+                                                              raGL_shader    shader,
+                                                              bool           should_subscribe)
+{
+    system_callback_manager shader_callback_manager = NULL;
+
+    raGL_shader_get_property(shader,
+                             RAGL_SHADER_PROPERTY_CALLBACK_MANAGER,
+                            &shader_callback_manager);
+
+    if (should_subscribe)
+    {
+        system_callback_manager_subscribe_for_callbacks(shader_callback_manager,
+                                                        RAGL_SHADER_CALLBACK_ID_SHADER_COMPILED,
+                                                        CALLBACK_SYNCHRONICITY_SYNCHRONOUS,
+                                                        _raGL_program_on_shader_compile_callback,
+                                                        program_ptr);
+    }
+    else
+    {
+        system_callback_manager_unsubscribe_from_callbacks(shader_callback_manager,
+                                                           RAGL_SHADER_CALLBACK_ID_SHADER_COMPILED,
+                                                           _raGL_program_on_shader_compile_callback,
+                                                           program_ptr);
+    }
+}
+
+/** TODO */
 PRIVATE void _raGL_program_save_shader_sources(_raGL_program* program_ptr)
 {
-    char*                     file_name    = _ogl_program_get_source_code_file_name   (program_ptr);
+    char*                     file_name    = _raGL_program_get_source_code_file_name(program_ptr);
     uint32_t                  n_shaders    = 0;
     system_hashed_ansi_string program_name = NULL;
     system_file_serializer    serializer   = system_file_serializer_create_for_writing(system_hashed_ansi_string_create(file_name) );
@@ -1438,8 +1516,8 @@ PRIVATE void _raGL_program_save_shader_sources(_raGL_program* program_ptr)
 
 
 /** Please see header for specification */
-PUBLIC EMERALD_API bool raGL_program_attach_shader(raGL_program program,
-                                                   ral_shader   shader)
+PUBLIC bool raGL_program_attach_shader(raGL_program program,
+                                       raGL_shader  shader)
 {
     _raGL_program* program_ptr = (_raGL_program*) program;
     bool           result      = false;
@@ -1451,6 +1529,7 @@ PUBLIC EMERALD_API bool raGL_program_attach_shader(raGL_program program,
 
     if (program_ptr->id != 0)
     {
+        /* Request a rendering thread call-back, so that we can pass the request to the driver */
         _raGL_attach_shader_callback_argument callback_argument;
 
         callback_argument.program_ptr = program_ptr;
@@ -1459,6 +1538,13 @@ PUBLIC EMERALD_API bool raGL_program_attach_shader(raGL_program program,
         ogl_context_request_callback_from_context_thread(ral_context_get_gl_context(program_ptr->context),
                                                          _raGL_program_attach_shader_callback,
                                                         &callback_argument);
+
+        /* Sign up for 'on shader compiled' notifications, so that we know when to re-link the program */
+        _raGL_program_subscribe_for_shader_notifications(program_ptr,
+                                                         shader,
+                                                         true /* should_subscribe */);
+
+        result = true;
     }
     else
     {
@@ -1470,9 +1556,9 @@ PUBLIC EMERALD_API bool raGL_program_attach_shader(raGL_program program,
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API raGL_program raGL_program_create(ral_context                    context,
-                                                    ral_program                    program_ral,
-                                                    raGL_program_syncable_ubs_mode syncable_ubs_mode)
+PUBLIC raGL_program raGL_program_create(ral_context                    context,
+                                        ral_program                    program_ral,
+                                        raGL_program_syncable_ubs_mode syncable_ubs_mode)
 {
     _raGL_program* new_program_ptr = new (std::nothrow) _raGL_program;
 
@@ -1576,7 +1662,7 @@ PUBLIC EMERALD_API raGL_program raGL_program_create(ral_context                 
 }
 
 /** TODO */
-PUBLIC void raGL_program_fill_ogl_program_variable(raGL_program          program,
+PUBLIC void raGL_program_fill_ral_program_variable(raGL_program          program,
                                                    unsigned int          temp_variable_name_storage_size,
                                                    char*                 temp_variable_name_storage,
                                                    ral_program_variable* variable_ptr,
@@ -1617,6 +1703,8 @@ PUBLIC void raGL_program_fill_ogl_program_variable(raGL_program          program
     if (variable_interface_type == GL_BUFFER_VARIABLE ||
         variable_interface_type == GL_UNIFORM)
     {
+        GLint type_gl = 0;
+
         program_ptr->pGLGetProgramResourceiv(program_ptr->id,
                                              variable_interface_type,
                                              n_variable,
@@ -1680,7 +1768,9 @@ PUBLIC void raGL_program_fill_ogl_program_variable(raGL_program          program
                                             &piq_property_type,
                                              1,    /* bufSize */
                                              NULL, /* length  */
-                                   (GLint*) &variable_ptr->type);
+                                   (GLint*) &type_gl);
+
+        variable_ptr->type = raGL_utils_get_ral_program_uniform_type_for_ogl_enum(type_gl);
     }
 
     if (variable_interface_type == GL_BUFFER_VARIABLE)
@@ -1737,9 +1827,9 @@ PUBLIC void raGL_program_fill_ogl_program_variable(raGL_program          program
 }
 
 /** Please see header for specification */
-PUBLIC void raGL_program_get_property(raGL_program          program,
-                                      raGL_program_property property,
-                                      void*                 out_result_ptr)
+PUBLIC EMERALD_API void raGL_program_get_property(raGL_program          program,
+                                                  raGL_program_property property,
+                                                  void*                 out_result_ptr)
 {
     _raGL_program* program_ptr = (_raGL_program*) program;
 
@@ -1903,9 +1993,9 @@ PUBLIC EMERALD_API bool raGL_program_get_uniform_by_name(raGL_program           
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API bool ogl_program_get_uniform_block_by_ub_index(raGL_program    program,
-                                                                  unsigned int    index,
-                                                                  ogl_program_ub* out_ub_ptr)
+PUBLIC EMERALD_API bool raGL_program_get_uniform_block_by_ub_index(raGL_program    program,
+                                                                   unsigned int    index,
+                                                                   ogl_program_ub* out_ub_ptr)
 {
     ogl_context      current_context    = NULL;
     _raGL_program*   program_ptr        = (_raGL_program*) program;
@@ -1921,10 +2011,10 @@ PUBLIC EMERALD_API bool ogl_program_get_uniform_block_by_ub_index(raGL_program  
     if (!system_hash64map_contains(program_ptr->context_to_ub_name_to_ub_map,
                                    (system_hash64) current_context) )
     {
-        _ogl_program_init_blocks_for_context(OGL_PROGRAM_BLOCK_TYPE_UNIFORM_BUFFER,
-                                             program_ptr,
-                                             current_context,
-                                             ogl_context_get_current_context() );
+        _raGL_program_init_blocks_for_context(OGL_PROGRAM_BLOCK_TYPE_UNIFORM_BUFFER,
+                                              program_ptr,
+                                              current_context,
+                                              ogl_context_get_current_context() );
     }
 
     if (system_hash64map_contains(program_ptr->context_to_ub_name_to_ub_map,
@@ -1949,9 +2039,9 @@ PUBLIC EMERALD_API bool ogl_program_get_uniform_block_by_ub_index(raGL_program  
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API bool ogl_program_get_uniform_block_by_name(raGL_program              program,
-                                                              system_hashed_ansi_string name,
-                                                              ogl_program_ub*           out_ub_ptr)
+PUBLIC EMERALD_API bool raGL_program_get_uniform_block_by_name(raGL_program              program,
+                                                               system_hashed_ansi_string name,
+                                                               ogl_program_ub*           out_ub_ptr)
 {
     ogl_context      current_context   = NULL;
     _raGL_program*   program_ptr       = (_raGL_program*) program;
@@ -1966,10 +2056,10 @@ PUBLIC EMERALD_API bool ogl_program_get_uniform_block_by_name(raGL_program      
     if (!system_hash64map_contains(program_ptr->context_to_ub_name_to_ub_map,
                                    (system_hash64) current_context) )
     {
-        _ogl_program_init_blocks_for_context(OGL_PROGRAM_BLOCK_TYPE_UNIFORM_BUFFER,
-                                             program_ptr,
-                                             current_context,
-                                             ogl_context_get_current_context() );
+        _raGL_program_init_blocks_for_context(OGL_PROGRAM_BLOCK_TYPE_UNIFORM_BUFFER,
+                                              program_ptr,
+                                              current_context,
+                                              ogl_context_get_current_context() );
     }
 
     if (system_hash64map_contains(program_ptr->context_to_ub_name_to_ub_map,
@@ -1989,9 +2079,9 @@ PUBLIC EMERALD_API bool ogl_program_get_uniform_block_by_name(raGL_program      
 }
 
 /** Please see header for specification */
-PUBLIC bool raGL_program_get_vertex_attribute_by_index(raGL_program                  program,
-                                                       size_t                        n_attribute,
-                                                       const ral_program_attribute** out_attribute_ptr)
+PUBLIC EMERALD_API bool raGL_program_get_vertex_attribute_by_index(raGL_program                  program,
+                                                                   size_t                        n_attribute,
+                                                                   const ral_program_attribute** out_attribute_ptr)
 {
     _raGL_program* program_ptr = (_raGL_program*) program;
     bool           result      = false;
@@ -2010,9 +2100,9 @@ PUBLIC bool raGL_program_get_vertex_attribute_by_index(raGL_program             
 }
 
 /** Please see header for specification */
-PUBLIC bool raGL_program_get_vertex_attribute_by_name(raGL_program                  program,
-                                                      system_hashed_ansi_string     name,
-                                                      const ral_program_attribute** out_attribute_ptr)
+PUBLIC EMERALD_API bool raGL_program_get_vertex_attribute_by_name(raGL_program                  program,
+                                                                  system_hashed_ansi_string     name,
+                                                                  const ral_program_attribute** out_attribute_ptr)
 {
     _raGL_program* program_ptr = (_raGL_program*) program;
     bool           result      = false;
@@ -2149,6 +2239,50 @@ PUBLIC bool raGL_program_link(raGL_program program)
     } /* if (n_attached_shaders > 0) */
 
     return result;
+}
+
+/** Please see header for specification */
+PUBLIC void raGL_program_release(raGL_program program)
+{
+    ogl_context    context_gl  = NULL;
+    _raGL_program* program_ptr = (_raGL_program*) program;
+
+    ral_context_get_property(program_ptr->context,
+                             RAL_CONTEXT_PROPERTY_BACKEND_CONTEXT,
+                            &context_gl);
+
+    ogl_context_request_callback_from_context_thread(context_gl,
+                                                     _raGL_program_release_callback,
+                                                     program_ptr);
+
+    /* Iterate over all attached shaders and sign out of notifications */
+    uint32_t n_shaders_attached = 0;
+
+    ral_program_get_property(program_ptr->program_ral,
+                             RAL_PROGRAM_PROPERTY_N_ATTACHED_SHADERS,
+                            &n_shaders_attached);
+
+    for (uint32_t n_attached_shader = 0;
+                  n_attached_shader < n_shaders_attached;
+                ++n_attached_shader)
+    {
+        ral_shader  shader      = NULL;
+        raGL_shader shader_raGL = NULL;
+
+        ral_program_get_attached_shader_at_index(program_ptr->program_ral,
+                                                 n_attached_shader,
+                                                &shader);
+
+        shader_raGL = ral_context_get_shader_gl(program_ptr->context,
+                                                shader);
+
+        _raGL_program_subscribe_for_shader_notifications(program_ptr,
+                                                         shader_raGL,
+                                                         false /* should_subscribe */);
+    }
+
+    /* Proceed with actual object destruction */
+    delete (_raGL_program*) program;
 }
 
 /** Please see header for specification */

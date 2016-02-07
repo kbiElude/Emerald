@@ -549,7 +549,7 @@ PRIVATE ogl_uber _ogl_materials_bake_uber(ogl_materials materials,
             ral_program material_program = NULL;
 
             mesh_material_get_property(material,
-                                       MESH_MATERIAL_PROPERTY_SOURCE_OGL_PROGRAM,
+                                       MESH_MATERIAL_PROPERTY_SOURCE_RAL_PROGRAM,
                                       &material_program);
 
             new_uber = ogl_uber_create_from_ral_program(context,

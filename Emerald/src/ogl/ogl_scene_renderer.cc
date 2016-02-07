@@ -1410,7 +1410,7 @@ PRIVATE void _ogl_scene_renderer_return_shadow_maps_to_pool(ogl_scene_renderer r
             ral_context_delete_objects(renderer_ptr->context,
                                        RAL_CONTEXT_OBJECT_TYPE_TEXTURE,
                                        1, /* n_objects */
-                                      &current_light_sm_texture_color);
+                                       (const void**) &current_light_sm_texture_color);
         } /* if (current_light_sm_texture_color != NULL) */
 
         if (current_light_sm_texture_depth != NULL)
@@ -1418,7 +1418,7 @@ PRIVATE void _ogl_scene_renderer_return_shadow_maps_to_pool(ogl_scene_renderer r
             ral_context_delete_objects(renderer_ptr->context,
                                        RAL_CONTEXT_OBJECT_TYPE_TEXTURE,
                                        1, /* n_objects */
-                                      &current_light_sm_texture_depth);
+                                       (const void**) &current_light_sm_texture_depth);
         } /* if (current_light_sm_texture_depth != NULL) */
     } /* for (all scene lights) */
 }

@@ -11,18 +11,19 @@
 #include "demo/demo_window.h"
 #include "ogl/ogl_context.h"
 #include "ogl/ogl_pipeline.h"
-#include "ogl/ogl_program.h"
 #include "ogl/ogl_program_ub.h"
-#include "ogl/ogl_shader.h"
 #include "raGL/raGL_buffer.h"
+#include "raGL/raGL_program.h"
 #include "ral/ral_buffer.h"
 #include "ral/ral_context.h"
+#include "ral/ral_program.h"
+#include "ral/ral_shader.h"
 #include "shaders/shaders_fragment_static.h"
 #include "shaders/shaders_vertex_combinedmvp_generic.h"
 #include "system/system_matrix4x4.h"
 #include <string.h>
 
-ogl_program      _light_program                        =  0;
+ral_program      _light_program                        =  0;
 ogl_program_ub   _light_program_datafs_ub              = NULL;
 ral_buffer       _light_program_datafs_ub_bo           =  0;
 GLuint           _light_program_datafs_ub_bo_size      =  0;
@@ -45,14 +46,20 @@ static void _stage_step_light_execute(ral_context context,
                                       const int*  rendering_area_px_topdown,
                                       void*       not_used)
 {
-    ogl_context                       context_gl  = ral_context_get_gl_context(context);
-    const ogl_context_gl_entrypoints* entrypoints = NULL;
+    ogl_context                       context_gl       = ral_context_get_gl_context(context);
+    const ogl_context_gl_entrypoints* entrypoints      = NULL;
+    const raGL_program                light_po_raGL    = ral_context_get_program_gl(context,
+                                                                                    _light_program);
+    GLuint                            light_po_raGL_id = 0;
 
-    ogl_context_get_property(context_gl,
-                             OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
-                            &entrypoints);
+    ogl_context_get_property (context_gl,
+                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
+                             &entrypoints);
+    raGL_program_get_property(light_po_raGL,
+                              RAGL_PROGRAM_PROPERTY_ID,
+                             &light_po_raGL_id);
 
-    entrypoints->pGLUseProgram     (ogl_program_get_id(_light_program) );
+    entrypoints->pGLUseProgram     (light_po_raGL_id);
     entrypoints->pGLBindVertexArray(_light_vao_id);
 
     /* Calculate MVP matrix */
@@ -168,7 +175,11 @@ static void _stage_step_light_execute(ral_context context,
 /* Please see header for specification */
 PUBLIC void stage_step_light_deinit(ral_context context)
 {
-    ogl_program_release     (_light_program);
+    ral_context_delete_objects(context,
+                               RAL_CONTEXT_OBJECT_TYPE_PROGRAM,
+                               1, /* n_objects */
+                               (const void**) &_light_program);
+
     system_matrix4x4_release(_light_view_matrix);
 }
 
@@ -181,48 +192,56 @@ PUBLIC void stage_step_light_init(ral_context  context,
     shaders_fragment_static            fragment_shader = NULL;
     shaders_vertex_combinedmvp_generic vertex_shader   = NULL;
 
-    _light_program  = ogl_program_create                       (context,
-                                                                system_hashed_ansi_string_create("light program"),
-                                                                OGL_PROGRAM_SYNCABLE_UBS_MODE_ENABLE_GLOBAL);
+    const ral_program_create_info light_po_create_info =
+    {
+        RAL_PROGRAM_SHADER_STAGE_BIT_FRAGMENT | RAL_PROGRAM_SHADER_STAGE_BIT_VERTEX,
+        system_hashed_ansi_string_create("light program")
+    };
+
+    ral_context_create_programs(context,
+                                1, /* n_create_info_items */
+                               &light_po_create_info,
+                               &_light_program);
+
     fragment_shader = shaders_fragment_static_create           (context,
                                                                 system_hashed_ansi_string_create("light fragment") );
     vertex_shader   = shaders_vertex_combinedmvp_generic_create(context,
                                                                 system_hashed_ansi_string_create("light vertex") );
 
-    ogl_program_attach_shader(_light_program,
+    ral_program_attach_shader(_light_program,
                               shaders_fragment_static_get_shader(fragment_shader) );
-    ogl_program_attach_shader(_light_program,
+    ral_program_attach_shader(_light_program,
                               shaders_vertex_combinedmvp_generic_get_shader(vertex_shader) );
-
-    ogl_program_link(_light_program);
 
     shaders_fragment_static_release           (fragment_shader);
     shaders_vertex_combinedmvp_generic_release(vertex_shader);
 
     /* Retrieve attribute/uniform locations */
-    const ogl_program_variable*             color_uniform_data         = NULL;
-    const ogl_program_attribute_descriptor* in_position_attribute_data = NULL;
-    const ogl_program_variable*             mvp_uniform_data           = NULL;
+    const ral_program_variable*  color_uniform_ptr         = NULL;
+    const ral_program_attribute* in_position_attribute_ptr = NULL;
+    const ral_program_variable*  mvp_uniform_ptr           = NULL;
 
-    ogl_program_get_attribute_by_name(_light_program,
-                                      system_hashed_ansi_string_create("in_position"),
-                                     &in_position_attribute_data);
-    ogl_program_get_uniform_by_name  (_light_program,
-                                      system_hashed_ansi_string_create("color"),
-                                     &color_uniform_data);
-    ogl_program_get_uniform_by_name  (_light_program,
-                                      system_hashed_ansi_string_create("mvp"),
-                                     &mvp_uniform_data);
+    const raGL_program light_po_raGL = ral_context_get_program_gl(context,
+                                                                  _light_program);
+    raGL_program_get_vertex_attribute_by_name(light_po_raGL,
+                                              system_hashed_ansi_string_create("in_position"),
+                                             &in_position_attribute_ptr);
+    raGL_program_get_uniform_by_name         (light_po_raGL,
+                                              system_hashed_ansi_string_create("color"),
+                                             &color_uniform_ptr);
+    raGL_program_get_uniform_by_name          (light_po_raGL,
+                                              system_hashed_ansi_string_create("mvp"),
+                                             &mvp_uniform_ptr);
 
-    _light_color_ub_offset                = (color_uniform_data         != NULL) ? color_uniform_data->block_offset     : -1;
-    _light_in_position_attribute_location = (in_position_attribute_data != NULL) ? in_position_attribute_data->location : -1;
-    _light_mvp_ub_offset                  = (mvp_uniform_data           != NULL) ? mvp_uniform_data->block_offset       : -1;
+    _light_color_ub_offset                = (color_uniform_ptr         != NULL) ? color_uniform_ptr->block_offset     : -1;
+    _light_in_position_attribute_location = (in_position_attribute_ptr != NULL) ? in_position_attribute_ptr->location : -1;
+    _light_mvp_ub_offset                  = (mvp_uniform_ptr           != NULL) ? mvp_uniform_ptr->block_offset       : -1;
 
     /* Retrieve uniform block properties */
-    ogl_program_get_uniform_block_by_name(_light_program,
+    raGL_program_get_uniform_block_by_name(light_po_raGL,
                                           system_hashed_ansi_string_create("dataFS"),
                                          &_light_program_datafs_ub);
-    ogl_program_get_uniform_block_by_name(_light_program,
+    raGL_program_get_uniform_block_by_name(light_po_raGL,
                                           system_hashed_ansi_string_create("dataVS"),
                                          &_light_program_datavs_ub);
 
@@ -247,14 +266,14 @@ PUBLIC void stage_step_light_init(ral_context  context,
                                &_light_program_datavs_ub_bp);
 
     /* Generate VAO */
-    const ogl_context_gl_entrypoints* entrypoints = NULL;
+    const ogl_context_gl_entrypoints* entrypoints_ptr = NULL;
 
     ogl_context_get_property(ral_context_get_gl_context(context),
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
-                            &entrypoints);
+                            &entrypoints_ptr);
 
-    entrypoints->pGLGenVertexArrays(1, /* n */
-                                   &_light_vao_id);
+    entrypoints_ptr->pGLGenVertexArrays(1, /* n */
+                                       &_light_vao_id);
 
     /* Add ourselves to the pipeline */
     ogl_pipeline_stage_step_declaration light_preview_stage_step;

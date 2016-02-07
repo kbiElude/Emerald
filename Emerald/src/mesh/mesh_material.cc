@@ -8,10 +8,10 @@
 #include "mesh/mesh_material.h"
 #include "ogl/ogl_context.h"
 #include "ogl/ogl_materials.h"
-#include "ogl/ogl_program.h"
-#include "ogl/ogl_shader.h"
 #include "ogl/ogl_uber.h"
 #include "ral/ral_context.h"
+#include "ral/ral_program.h"
+#include "ral/ral_shader.h"
 #include "ral/ral_texture.h"
 #include "scene/scene.h"
 #include "scene/scene_light.h"
@@ -110,8 +110,8 @@ typedef struct _mesh_material
     float                     vertex_smoothing_angle;
 
     /* MESH_MATERIAL_TYPE_SHADER_BODIES-specific properties */
-    ogl_program program;
-    ogl_shader  shaders[MESH_MATERIAL_SHADER_STAGE_COUNT];
+    ral_program program;
+    ral_shader  shaders[MESH_MATERIAL_SHADER_STAGE_COUNT];
 
     _mesh_material(ral_context in_context)
     {
@@ -166,9 +166,10 @@ _mesh_material_property_texture::~_mesh_material_property_texture()
 {
     if (sampler != NULL)
     {
-        ral_context_delete_samplers(parent_property_ptr->context,
-                                    1, /* n_samplers */
-                                   &sampler);
+        ral_context_delete_objects(parent_property_ptr->context,
+                                   RAL_CONTEXT_OBJECT_TYPE_SAMPLER,
+                                   1, /* n_objects */
+                                   (const void**) &sampler);
 
         sampler = NULL;
     }
@@ -244,9 +245,10 @@ PRIVATE void _mesh_material_release(void* data_ptr)
                 {
                     if (material_ptr->shading_properties[current_property].texture_data.sampler != NULL)
                     {
-                        ral_context_delete_samplers(material_ptr->context,
-                                                    1, /* n_samplers */
-                                                   &material_ptr->shading_properties[current_property].texture_data.sampler);
+                        ral_context_delete_objects(material_ptr->context,
+                                                   RAL_CONTEXT_OBJECT_TYPE_SAMPLER,
+                                                   1, /* n_objects */
+                                                   (const void**) &material_ptr->shading_properties[current_property].texture_data.sampler);
                     }
 
                     material_ptr->shading_properties[current_property].texture_data.sampler = NULL;
@@ -273,7 +275,10 @@ PRIVATE void _mesh_material_release(void* data_ptr)
         {
             if (material_ptr->shaders[n_shader_stage] != NULL)
             {
-                ogl_shader_release(material_ptr->shaders[n_shader_stage]);
+                ral_context_delete_objects(material_ptr->context,
+                                           RAL_CONTEXT_OBJECT_TYPE_SHADER,
+                                           1, /* n_objects */
+                                           (const void**) &material_ptr->shaders[n_shader_stage]);
 
                 material_ptr->shaders[n_shader_stage] = NULL;
             }
@@ -281,7 +286,10 @@ PRIVATE void _mesh_material_release(void* data_ptr)
 
         if (material_ptr->program != NULL)
         {
-            ogl_program_release(material_ptr->program);
+            ral_context_delete_objects(material_ptr->context,
+                                       RAL_CONTEXT_OBJECT_TYPE_PROGRAM,
+                                       1, /* n_objects */
+                                       (const void**) &material_ptr->program);
 
             material_ptr->program = NULL;
         }
@@ -412,14 +420,6 @@ PRIVATE void _mesh_material_get_ral_enums_for_mesh_material_texture_filtering(me
 
     switch (filtering)
     {
-        case MESH_MATERIAL_TEXTURE_FILTERING_LINEAR:
-        {
-            *out_texture_filter_ptr      = RAL_TEXTURE_FILTER_LINEAR;
-            *out_texture_mipmap_mode_ptr = RAL_TEXTURE_MIPMAP_MODE_BASE;
-
-            break;
-        }
-
         case MESH_MATERIAL_TEXTURE_FILTERING_LINEAR_LINEAR:
         {
             *out_texture_filter_ptr      = RAL_TEXTURE_FILTER_LINEAR;
@@ -432,14 +432,6 @@ PRIVATE void _mesh_material_get_ral_enums_for_mesh_material_texture_filtering(me
         {
             *out_texture_filter_ptr      = RAL_TEXTURE_FILTER_LINEAR;
             *out_texture_mipmap_mode_ptr = RAL_TEXTURE_MIPMAP_MODE_NEAREST;
-
-            break;
-        }
-
-        case MESH_MATERIAL_TEXTURE_FILTERING_NEAREST:
-        {
-            *out_texture_filter_ptr      = RAL_TEXTURE_FILTER_NEAREST;
-            *out_texture_mipmap_mode_ptr = RAL_TEXTURE_MIPMAP_MODE_BASE;
 
             break;
         }
@@ -475,27 +467,27 @@ PUBLIC EMERALD_API mesh_material mesh_material_create(system_hashed_ansi_string 
                                                       ral_context               context,
                                                       system_hashed_ansi_string object_manager_path)
 {
-    _mesh_material* new_material = new (std::nothrow) _mesh_material(context);
+    _mesh_material* new_material_ptr = new (std::nothrow) _mesh_material(context);
 
     LOG_INFO("Creating material [%s]",
              system_hashed_ansi_string_get_buffer(name) );
 
-    ASSERT_ALWAYS_SYNC(new_material != NULL,
+    ASSERT_ALWAYS_SYNC(new_material_ptr != NULL,
                        "Out of memory");
 
-    if (new_material != NULL)
+    if (new_material_ptr != NULL)
     {
         ASSERT_DEBUG_SYNC(name != NULL,
                           "Name is NULL");
 
-        new_material->callback_manager    = system_callback_manager_create( (_callback_id) MESH_MATERIAL_CALLBACK_ID_COUNT);
-        new_material->context             = context;
-        new_material->name                = name;
-        new_material->object_manager_path = object_manager_path;
-        new_material->type                = MESH_MATERIAL_TYPE_GENERAL;
-        new_material->uv_map_name         = NULL;
+        new_material_ptr->callback_manager    = system_callback_manager_create( (_callback_id) MESH_MATERIAL_CALLBACK_ID_COUNT);
+        new_material_ptr->context             = context;
+        new_material_ptr->name                = name;
+        new_material_ptr->object_manager_path = object_manager_path;
+        new_material_ptr->type                = MESH_MATERIAL_TYPE_GENERAL;
+        new_material_ptr->uv_map_name         = NULL;
 
-        REFCOUNT_INSERT_INIT_CODE_WITH_RELEASE_HANDLER(new_material,
+        REFCOUNT_INSERT_INIT_CODE_WITH_RELEASE_HANDLER(new_material_ptr,
                                                        _mesh_material_release,
                                                        OBJECT_TYPE_MESH_MATERIAL,
                                                        GET_OBJECT_PATH(name,
@@ -503,7 +495,7 @@ PUBLIC EMERALD_API mesh_material mesh_material_create(system_hashed_ansi_string 
                                                                        object_manager_path) );
     }
 
-    return (mesh_material) new_material;
+    return (mesh_material) new_material_ptr;
 }
 
 /* Please see header for specification */
@@ -577,7 +569,9 @@ PUBLIC EMERALD_API mesh_material mesh_material_create_copy(system_hashed_ansi_st
                 {
                     new_material_ptr->shaders[n_shader_stage] = src_material_ptr->shaders[n_shader_stage];
 
-                    ogl_shader_retain(new_material_ptr->shaders[n_shader_stage]);
+                    ral_context_retain_object(new_material_ptr->context,
+                                              RAL_CONTEXT_OBJECT_TYPE_SHADER,
+                                              new_material_ptr->shaders[n_shader_stage]);
                 } /* if (src_material_ptr->shaders[n_shader_stage] != NULL) */
             } /* for (all shader stages) */
 
@@ -585,7 +579,9 @@ PUBLIC EMERALD_API mesh_material mesh_material_create_copy(system_hashed_ansi_st
             {
                 new_material_ptr->program = src_material_ptr->program;
 
-                ogl_program_retain(new_material_ptr->program);
+                ral_context_retain_object(new_material_ptr->context,
+                                          RAL_CONTEXT_OBJECT_TYPE_PROGRAM,
+                                          new_material_ptr->program);
             } /* if (src_material_ptr->program != NULL) */
         } /* if (new_material_ptr->type == MESH_MATERIAL_TYPE_PROGRAM) */
         else
@@ -611,7 +607,7 @@ PUBLIC EMERALD_API mesh_material mesh_material_create_from_scene_material(scene_
                                                                           ral_context    context_ral)
 {
     /* Create a new mesh_material instance */
-    curve_container*                color                            = NULL;
+    curve_container*                color_curves_ptr                 = NULL;
     system_hashed_ansi_string       color_texture_file_name          = NULL;
     mesh_material_texture_filtering color_texture_mag_filter         = MESH_MATERIAL_TEXTURE_FILTERING_UNKNOWN;
     mesh_material_texture_filtering color_texture_min_filter         = MESH_MATERIAL_TEXTURE_FILTERING_UNKNOWN;
@@ -732,7 +728,7 @@ PUBLIC EMERALD_API mesh_material mesh_material_create_from_scene_material(scene_
 
     scene_material_get_property(src_material,
                                 SCENE_MATERIAL_PROPERTY_COLOR,
-                               &color);
+                               &color_curves_ptr);
     scene_material_get_property(src_material,
                                 SCENE_MATERIAL_PROPERTY_GLOSINESS,
                                &glosiness);
@@ -799,7 +795,7 @@ PUBLIC EMERALD_API mesh_material mesh_material_create_from_scene_material(scene_
         (color_texture_file_name != NULL) ? MESH_MATERIAL_PROPERTY_ATTACHMENT_TEXTURE
                                           : MESH_MATERIAL_PROPERTY_ATTACHMENT_CURVE_CONTAINER_VEC3,
 
-        (color_texture_file_name != NULL) ? NULL : color,
+        (color_texture_file_name != NULL) ? NULL : color_curves_ptr,
 
         color_texture_file_name,
         color_texture_mag_filter,
@@ -903,11 +899,7 @@ PUBLIC EMERALD_API mesh_material mesh_material_create_from_scene_material(scene_
                                                                   config.texture_min_filter);
 
                     /* Generate mip-maps if needed */
-                    if (config.texture_min_filter != MESH_MATERIAL_TEXTURE_FILTERING_LINEAR &&
-                        config.texture_min_filter != MESH_MATERIAL_TEXTURE_FILTERING_NEAREST)
-                    {
-                        ral_texture_generate_mipmaps(texture);
-                    }
+                    ral_texture_generate_mipmaps(texture);
                 }
 
                 break;
@@ -944,8 +936,8 @@ PUBLIC EMERALD_API mesh_material mesh_material_create_from_shader_bodies(system_
     ral_backend_type backend_type        = RAL_BACKEND_TYPE_UNKNOWN;
     mesh_material    result_material     = NULL;
     _mesh_material*  result_material_ptr = NULL;
-    ogl_program      result_program      = NULL;
-    ogl_shader       temp_shader         = NULL;
+    ral_program      result_program      = NULL;
+    ral_shader       temp_shader         = NULL;
 
     struct _body
     {
@@ -961,6 +953,16 @@ PUBLIC EMERALD_API mesh_material mesh_material_create_from_shader_bodies(system_
         {vs_body, " VS", RAL_SHADER_TYPE_VERTEX}
     };
     const unsigned int n_bodies = sizeof(bodies) / sizeof(bodies[0]);
+
+    const ral_program_create_info result_po_create_info =
+    {
+        ((fs_body != NULL) ? RAL_PROGRAM_SHADER_STAGE_BIT_FRAGMENT        : 0) |
+        ((gs_body != NULL) ? RAL_PROGRAM_SHADER_STAGE_BIT_GEOMETRY        : 0) |
+        ((tc_body != NULL) ? RAL_PROGRAM_SHADER_STAGE_BIT_TESS_CONTROL    : 0) |
+        ((te_body != NULL) ? RAL_PROGRAM_SHADER_STAGE_BIT_TESS_EVALUATION : 0) |
+        ((vs_body != NULL) ? RAL_PROGRAM_SHADER_STAGE_BIT_VERTEX          : 0),
+        name
+    };
 
     /* Create a new mesh_material instance */
     result_material = mesh_material_create(name,
@@ -989,13 +991,13 @@ PUBLIC EMERALD_API mesh_material mesh_material_create_from_shader_bodies(system_
                             &backend_context);
 
     result_material_ptr = (_mesh_material*) result_material;
-    result_program      = ogl_program_create(context,
-                                             name,
-                                             OGL_PROGRAM_SYNCABLE_UBS_MODE_ENABLE_GLOBAL);
 
     result_material_ptr->type = MESH_MATERIAL_TYPE_PROGRAM;
 
-    if (result_program == NULL)
+    if (!ral_context_create_programs(context,
+                                     1, /* n_create_info_items */
+                                    &result_po_create_info,
+                                    &result_program))
     {
         ASSERT_DEBUG_SYNC(false,
                           "ogl_program_create() call failed.");
@@ -1009,38 +1011,30 @@ PUBLIC EMERALD_API mesh_material mesh_material_create_from_shader_bodies(system_
     {
         if (bodies[n_body].body != NULL)
         {
-            temp_shader = ogl_shader_create(context,
-                                            bodies[n_body].type,
-                                            system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(name),
-                                                                                                    bodies[n_body].suffix) );
+            const ral_shader_create_info shader_create_info =
+            {
+                system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(name),
+                                                                        bodies[n_body].suffix),
+                bodies[n_body].type
+            };
 
-            if (temp_shader == NULL)
+            if (!ral_context_create_shaders(context,
+                                            1, /* n_create_info_items */
+                                           &shader_create_info,
+                                           &temp_shader) )
             {
                 ASSERT_DEBUG_SYNC(false,
-                                  "Could not create an ogl_shader instance");
+                                  "Could not create a RAL shader.");
 
                 goto end_error;
             }
 
-            if (!ogl_shader_set_body(temp_shader,
-                                     bodies[n_body].body) )
-            {
-                ASSERT_DEBUG_SYNC(false,
-                                  "ogl_shader_set_body() call failed.");
-
-                goto end_error;
-            }
-
-            if (!ogl_shader_compile(temp_shader) )
-            {
-                ASSERT_DEBUG_SYNC(false,
-                                  "ogl_shader_compile() call failed.");
-
-                goto end_error;
-            }
+            ral_shader_set_property(temp_shader,
+                                    RAL_SHADER_PROPERTY_GLSL_BODY,
+                                    &bodies[n_body].body);
 
             /* So far so good! */
-            if (!ogl_program_attach_shader(result_program,
+            if (!ral_program_attach_shader(result_program,
                                            temp_shader) )
             {
                 ASSERT_DEBUG_SYNC(false,
@@ -1052,15 +1046,6 @@ PUBLIC EMERALD_API mesh_material mesh_material_create_from_shader_bodies(system_
             result_material_ptr->shaders[n_body] = temp_shader;
         } /* if (bodies[n_body].body != NULL) */
     } /* for (all input bodies) */
-
-    /* Link the PO */
-    if (!ogl_program_link(result_program) )
-    {
-        ASSERT_DEBUG_SYNC(false,
-                          "ogl_program_link() call failed.");
-
-        goto end_error;
-    }
 
     result_material_ptr->program = result_program;
 
@@ -1075,7 +1060,10 @@ end_error:
     {
         if (result_material_ptr->shaders[n_shader] != NULL)
         {
-            ogl_shader_release(result_material_ptr->shaders[n_shader]);
+            ral_context_delete_objects(context,
+                                       RAL_CONTEXT_OBJECT_TYPE_SHADER,
+                                       1, /* n_objects */
+                                       (const void**) &result_material_ptr->shaders[n_shader]);
 
             result_material_ptr->shaders[n_shader] = NULL;
         } /* if (result_material_ptr->shaders[n_shader] != NULL) */
@@ -1083,7 +1071,10 @@ end_error:
 
     if (temp_shader != NULL)
     {
-        ogl_shader_release(temp_shader);
+        ral_context_delete_objects(context,
+                                   RAL_CONTEXT_OBJECT_TYPE_SHADER,
+                                   1, /* n_objects */
+                                   (const void**) &temp_shader);
 
         temp_shader = NULL;
     }
@@ -1091,7 +1082,10 @@ end_error:
     /* Do the same for the result program object */
     if (result_material_ptr->program != NULL)
     {
-        ogl_program_release(result_material_ptr->program);
+        ral_context_delete_objects(context,
+                                   RAL_CONTEXT_OBJECT_TYPE_PROGRAM,
+                                   1, /* n_objects */
+                                   (const void**) &result_material_ptr->program);
 
         result_material_ptr->program = NULL;
     }
@@ -1422,14 +1416,14 @@ PUBLIC EMERALD_API void mesh_material_get_property(mesh_material          materi
             break;
         }
 
-        case MESH_MATERIAL_PROPERTY_SOURCE_OGL_PROGRAM:
+        case MESH_MATERIAL_PROPERTY_SOURCE_RAL_PROGRAM:
         {
             ASSERT_DEBUG_SYNC(material_ptr->type == MESH_MATERIAL_TYPE_PROGRAM,
                               "MESH_MATERIAL_PROPERTY_SOURCE_OGL_PROGRAM query is invalid for non-program mesh_material instances.");
             ASSERT_DEBUG_SYNC(material_ptr->program != NULL,
-                              "mesh_material instance's program is NULL.");
+                              "mesh_material instance's RAL program is NULL.");
 
-            *(ogl_program*) out_result = material_ptr->program;
+            *(ral_program*) out_result = material_ptr->program;
 
             break;
         }
@@ -1955,9 +1949,10 @@ PUBLIC EMERALD_API void mesh_material_set_shading_property_to_texture(mesh_mater
         ral_sampler&  bound_sampler = material_ptr->shading_properties[property].texture_data.sampler;
         ral_texture&  bound_texture = material_ptr->shading_properties[property].texture_data.texture;
 
-        ral_context_delete_samplers(material_ptr->context,
-                                    1, /* n_samplers */
-                                   &bound_sampler);
+        ral_context_delete_objects(material_ptr->context,
+                                   RAL_CONTEXT_OBJECT_TYPE_SAMPLER,
+                                   1, /* n_samplers */
+                                   (const void**) &bound_sampler);
 
         bound_sampler = NULL;
         bound_texture = NULL;

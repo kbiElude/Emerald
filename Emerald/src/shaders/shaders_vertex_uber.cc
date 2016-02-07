@@ -235,7 +235,7 @@ PRIVATE void _shaders_vertex_uber_release(void* ptr)
         ral_context_delete_objects(data_ptr->context,
                                    RAL_CONTEXT_OBJECT_TYPE_SHADER,
                                    1, /* n_objects */
-                                  &data_ptr->vertex_shader);
+                                   (const void**) &data_ptr->vertex_shader);
 
         data_ptr->vertex_shader = NULL;
     }
@@ -539,18 +539,6 @@ PUBLIC EMERALD_API shaders_vertex_uber shaders_vertex_uber_create(ral_context   
         goto end;
     }
 
-    /* Fill other fields */
-    memset(result_object_ptr,
-           0,
-           sizeof(_shaders_vertex_uber) );
-
-    result_object_ptr->added_items        = system_resizable_vector_create(4 /* capacity */);
-    result_object_ptr->context            = context;
-    result_object_ptr->dirty              = true;
-    result_object_ptr->shader_constructor = shader_constructor;
-    result_object_ptr->vertex_shader      = vertex_shader;
-    result_object_ptr->vs_ub_id           = ub_id;
-
     /* Create the shader */
     system_hashed_ansi_string shader_body(ogl_shader_constructor_get_shader_body(shader_constructor) );
 
@@ -558,7 +546,7 @@ PUBLIC EMERALD_API shaders_vertex_uber shaders_vertex_uber_create(ral_context   
     shader_create_info.source = RAL_SHADER_SOURCE_GLSL;
     shader_create_info.type   = RAL_SHADER_TYPE_VERTEX;
 
-    if (!ral_context_create_shaders(result_object_ptr->context,
+    if (!ral_context_create_shaders(context,
                                     1, /* n_create_info_items */
                                    &shader_create_info,
                                    &vertex_shader) )
@@ -572,6 +560,18 @@ PUBLIC EMERALD_API shaders_vertex_uber shaders_vertex_uber_create(ral_context   
     ral_shader_set_property(vertex_shader,
                             RAL_SHADER_PROPERTY_GLSL_BODY,
                            &shader_body);
+
+    /* Fill other fields */
+    memset(result_object_ptr,
+           0,
+           sizeof(_shaders_vertex_uber) );
+
+    result_object_ptr->added_items        = system_resizable_vector_create(4 /* capacity */);
+    result_object_ptr->context            = context;
+    result_object_ptr->dirty              = true;
+    result_object_ptr->shader_constructor = shader_constructor;
+    result_object_ptr->vertex_shader      = vertex_shader;
+    result_object_ptr->vs_ub_id           = ub_id;
 
     REFCOUNT_INSERT_INIT_CODE_WITH_RELEASE_HANDLER(result_object_ptr,
                                                    _shaders_vertex_uber_release,

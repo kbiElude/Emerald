@@ -9,10 +9,11 @@
 #include "demo/demo_app.h"
 #include "demo/demo_window.h"
 #include "ogl/ogl_context.h"
-#include "ogl/ogl_program.h"
 #include "ogl/ogl_rendering_handler.h"
-#include "ogl/ogl_shader.h"
+#include "raGL/raGL_program.h"
 #include "ral/ral_context.h"
+#include "ral/ral_program.h"
+#include "ral/ral_shader.h"
 #include "system/system_hashed_ansi_string.h"
 #include "system/system_matrix4x4.h"
 #include "main.h"
@@ -128,7 +129,7 @@ static void _on_render_frame_creation_test_callback(ogl_context context,
 TEST(ShaderTest, CreationTest)
 {
     /* Create the window */
-    ogl_shader                      test_shader              = NULL;
+    ral_shader                      test_shader              = NULL;
     demo_window                     window                   = NULL;
     ral_context                     window_context           = NULL;
     const system_hashed_ansi_string window_name              = system_hashed_ansi_string_create("Test window");
@@ -154,6 +155,16 @@ TEST(ShaderTest, CreationTest)
     ASSERT_TRUE(demo_window_show(window) );
 
     /* Create the test shader */
+    const system_hashed_ansi_string shader_body_has    = system_hashed_ansi_string_create("void main()\n"
+                                                                                          "{\n"
+                                                                                          "  gl_FragColor.xyz = vec3(0, 0.25, 0.5);\n"
+                                                                                          "}");
+    const ral_shader_create_info    shader_create_info =
+    {
+        system_hashed_ansi_string_create("test shader"),
+        RAL_SHADER_TYPE_FRAGMENT,
+    };
+
     demo_window_get_property(window,
                              DEMO_WINDOW_PROPERTY_RENDERING_CONTEXT,
                             &window_context);
@@ -161,21 +172,21 @@ TEST(ShaderTest, CreationTest)
     ASSERT_NE(window_context,
               (ral_context) NULL);
 
-    test_shader = ogl_shader_create(window_context,
-                                    RAL_SHADER_TYPE_FRAGMENT,
-                                    system_hashed_ansi_string_create("test shader") );
+    ral_context_create_shaders(window_context,
+                               1, /* n_create_info_items */
+                              &shader_create_info,
+                              &test_shader);
 
     ASSERT_TRUE(test_shader != NULL);
 
-    ogl_shader_set_body(test_shader,
-                        system_hashed_ansi_string_create("void main()\n"
-                                                         "{\n"
-                                                         "  gl_FragColor.xyz = vec3(0, 0.25, 0.5);\n"
-                                                         "}")
-                       );
-    ASSERT_TRUE(ogl_shader_compile(test_shader) );
+    ral_shader_set_property(test_shader,
+                            RAL_SHADER_PROPERTY_GLSL_BODY,
+                           &shader_body_has);
 
-    ogl_shader_release(test_shader);
+    ral_context_delete_objects(window_context,
+                               RAL_CONTEXT_OBJECT_TYPE_SHADER,
+                               1, /* n_objects */
+                               (const void**) &test_shader);
 
     /* Destroy the window */
     ASSERT_TRUE(demo_app_destroy_window(window_name) );
@@ -222,76 +233,102 @@ TEST(ShaderTest, FullViewportTriangleTest)
                             &window_context_texture_format);
 
     /* Create the test vertex shader */
-    ogl_shader test_vertex_shader = NULL;
+    ral_shader                   test_vertex_shader             = NULL;
+    const ral_shader_create_info test_vertex_shader_create_info =
+    {
+        system_hashed_ansi_string_create("test vertex shader"),
+        RAL_SHADER_TYPE_VERTEX
+    };
+    const system_hashed_ansi_string test_vertex_shader_has = system_hashed_ansi_string_create("#version 430 core\n"
+                                                                                              "\n"
+                                                                                              "uniform mat4 view_matrix;\n"
+                                                                                              "uniform mat4 projection_matrix;\n"
+                                                                                              "\n"
+                                                                                              "in vec4 position;\n"
+                                                                                              "\n"
+                                                                                              "void main()\n"
+                                                                                              "{\n"
+                                                                                              "gl_Position = projection_matrix * view_matrix * position;"
+                                                                                              "}\n");
 
-    test_vertex_shader = ogl_shader_create(window_context,
-                                           RAL_SHADER_TYPE_VERTEX,
-                                           system_hashed_ansi_string_create("test vertex shader") );
+    ral_context_create_shaders(window_context,
+                               1, /* n_create_info_items */
+                              &test_vertex_shader_create_info,
+                              &test_vertex_shader);
 
     ASSERT_TRUE(test_vertex_shader != NULL);
 
-    ogl_shader_set_body(test_vertex_shader,
-                        system_hashed_ansi_string_create("#version 430 core\n"
-                                                         "\n"
-                                                         "uniform mat4 view_matrix;\n"
-                                                         "uniform mat4 projection_matrix;\n"
-                                                         "\n"
-                                                         "in vec4 position;\n"
-                                                         "\n"
-                                                         "void main()\n"
-                                                         "{\n"
-                                                         "gl_Position = projection_matrix * view_matrix * position;"
-                                                         "}\n"
-                                                        )
-                       );
-
-    ASSERT_TRUE(ogl_shader_compile(test_vertex_shader) );
+    ral_shader_set_property(test_vertex_shader,
+                            RAL_SHADER_PROPERTY_GLSL_BODY,
+                           &test_vertex_shader_has);
 
     /* Create the test fragment shader */
-    ogl_shader test_fragment_shader = ogl_shader_create(window_context,
-                                                        RAL_SHADER_TYPE_FRAGMENT,
-                                                        system_hashed_ansi_string_create("test fragment shader") );
+    ral_shader                   test_fragment_shader             = NULL;
+    const ral_shader_create_info test_fragment_shader_create_info =
+    {
+        system_hashed_ansi_string_create("test fragment shader"),
+        RAL_SHADER_TYPE_FRAGMENT
+    };
+    const system_hashed_ansi_string test_fragment_shader_has = system_hashed_ansi_string_create("void main()\n"
+                                                                                                "{\n"
+                                                                                                "  gl_FragColor.xyz = vec3((gl_FragCoord.x - 0.5)/320.0, (gl_FragCoord.y - 0.5) / 240.0, 0.5);\n"
+                                                                                                "}");
+
+    ral_context_create_shaders(window_context,
+                               1, /* n_create_info_items */
+                              &test_fragment_shader_create_info,
+                              &test_fragment_shader);
 
     ASSERT_TRUE(test_fragment_shader != NULL);
 
-    ogl_shader_set_body(test_fragment_shader,
-                        system_hashed_ansi_string_create("void main()\n"
-                                                         "{\n"
-                                                         "  gl_FragColor.xyz = vec3((gl_FragCoord.x - 0.5)/320.0, (gl_FragCoord.y - 0.5) / 240.0, 0.5);\n"
-                                                         "}")
-                       );
-
-    ASSERT_TRUE(ogl_shader_compile(test_fragment_shader) );
+    ral_shader_set_property(test_fragment_shader,
+                            RAL_SHADER_PROPERTY_GLSL_BODY,
+                           &test_fragment_shader_has);
 
     /* Create the test program */
-    ogl_program test_program = ogl_program_create(window_context,
-                                                  system_hashed_ansi_string_create("test program") );
+    ral_program                   test_program = NULL;
+    const ral_program_create_info test_program_create_info =
+    {
+        RAL_PROGRAM_SHADER_STAGE_BIT_FRAGMENT | RAL_PROGRAM_SHADER_STAGE_BIT_VERTEX,
+        system_hashed_ansi_string_create("test program")
+    };
+
+    ral_context_create_programs(window_context,
+                                1, /* n_create_info_items */
+                               &test_program_create_info,
+                               &test_program);
+
     ASSERT_TRUE(test_program != NULL);
 
-    ASSERT_TRUE(ogl_program_attach_shader(test_program,
+    ASSERT_TRUE(ral_program_attach_shader(test_program,
                                           test_vertex_shader) );
-    ASSERT_TRUE(ogl_program_attach_shader(test_program,
+    ASSERT_TRUE(ral_program_attach_shader(test_program,
                                           test_fragment_shader) );
-    ASSERT_TRUE(ogl_program_link         (test_program) );
 
     /* Retrieve test program id */
-    triangle_test_program_id = ogl_program_get_id(test_program);
+    const raGL_program test_program_raGL = ral_context_get_program_gl(window_context,
+                                                                      test_program);
 
-    ASSERT_NE(triangle_test_program_id, -1);
+    raGL_program_get_property(test_program_raGL,
+                              RAGL_PROGRAM_PROPERTY_ID,
+                              &triangle_test_program_id);
+
+    ASSERT_NE(triangle_test_program_id,
+              -1);
 
     /* Retrieve uniform locations */
-    const ogl_program_variable* projection_matrix_uniform_descriptor = NULL;
-    const ogl_program_variable* view_matrix_uniform_descriptor       = NULL; 
+    const ral_program_variable* projection_matrix_uniform_ptr = NULL;
+    const ral_program_variable* view_matrix_uniform_ptr       = NULL; 
 
-    ASSERT_TRUE(ogl_program_get_uniform_by_name(test_program,
-                                                system_hashed_ansi_string_create("view_matrix"),
-                                               &view_matrix_uniform_descriptor) );
-    ASSERT_TRUE(ogl_program_get_uniform_by_name(test_program,
-                                                system_hashed_ansi_string_create("projection_matrix"),
-                                               &projection_matrix_uniform_descriptor) );
+    ASSERT_TRUE(raGL_program_get_uniform_by_name(test_program_raGL,
+                                                 system_hashed_ansi_string_create("view_matrix"),
+                                                &view_matrix_uniform_ptr) );
+    ASSERT_TRUE(raGL_program_get_uniform_by_name(test_program_raGL,
+                                                 system_hashed_ansi_string_create("projection_matrix"),
+                                                &projection_matrix_uniform_ptr) );
 
-    triangle_test_projection_matrix_location = projection_matrix_uniform_descriptor->location;
-    triangle_test_view_matrix_location       = view_matrix_uniform_descriptor->location;
+    triangle_test_projection_matrix_location = projection_matrix_uniform_ptr->location;
+    triangle_test_view_matrix_location       = view_matrix_uniform_ptr->location;
 
     ASSERT_NE(triangle_test_projection_matrix_location,
               -1);
@@ -299,13 +336,13 @@ TEST(ShaderTest, FullViewportTriangleTest)
               -1);
 
     /* Retrieve attribute location */
-    const ogl_program_attribute_descriptor* position_attribute_descriptor = NULL;
+    const ral_program_attribute* position_attribute_ptr = NULL;
 
-    ASSERT_TRUE(ogl_program_get_attribute_by_name(test_program,
-                                                  system_hashed_ansi_string_create("position"),
-                                                 &position_attribute_descriptor) );
+    ASSERT_TRUE(raGL_program_get_vertex_attribute_by_name(test_program_raGL,
+                                                          system_hashed_ansi_string_create("position"),
+                                                         &position_attribute_ptr) );
 
-    triangle_test_position_location = position_attribute_descriptor->location;
+    triangle_test_position_location = position_attribute_ptr->location;
 
     ASSERT_NE(triangle_test_position_location,
               -1);
@@ -344,9 +381,21 @@ TEST(ShaderTest, FullViewportTriangleTest)
     ASSERT_TRUE(demo_window_stop_rendering(window) );
 
     /* Release */
-    ogl_program_release     (test_program);
-    ogl_shader_release      (test_fragment_shader);
-    ogl_shader_release      (test_vertex_shader);
+    const ral_shader test_shaders[] =
+    {
+        test_fragment_shader,
+        test_vertex_shader
+    };
+
+    ral_context_delete_objects(window_context,
+                               RAL_CONTEXT_OBJECT_TYPE_PROGRAM,
+                               1, /* n_objects */
+                               (const void**) &test_program);
+    ral_context_delete_objects(window_context,
+                               RAL_CONTEXT_OBJECT_TYPE_SHADER,
+                               sizeof(test_shaders) / sizeof(test_shaders[0]),
+                               (const void**) &test_shaders);
+
     system_matrix4x4_release(triangle_test_projection_matrix);
     system_matrix4x4_release(triangle_test_view_matrix);
 

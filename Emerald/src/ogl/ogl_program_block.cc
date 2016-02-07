@@ -119,7 +119,7 @@ typedef struct _ogl_program_block
             ral_context_delete_objects(context,
                                        RAL_CONTEXT_OBJECT_TYPE_BUFFER,
                                        1, /* n_buffers */
-                                      &block_bo);
+                                       (const void**) &block_bo);
 
             block_bo = NULL;
         }

@@ -58,7 +58,7 @@ PRIVATE void _shaders_fragment_convolution3x3_release(void* ptr)
         ral_context_delete_objects(data_ptr->context,
                                    RAL_CONTEXT_OBJECT_TYPE_SHADER,
                                    1, /* n_objects */
-                                  &data_ptr->fragment_shader);
+                                   (const void**) &data_ptr->fragment_shader);
 
         data_ptr->fragment_shader = NULL;
     }

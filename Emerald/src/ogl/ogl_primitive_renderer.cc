@@ -301,6 +301,7 @@ PRIVATE void _ogl_primitive_renderer_init_program(_ogl_primitive_renderer* rende
 
     const ral_program_create_info program_create_info =
     {
+        RAL_PROGRAM_SHADER_STAGE_BIT_FRAGMENT | RAL_PROGRAM_SHADER_STAGE_BIT_VERTEX,
         system_hashed_ansi_string_create_by_merging_two_strings("Line strip renderer program ",
                                                                 system_hashed_ansi_string_get_buffer(renderer_ptr->name) )
     };
@@ -324,6 +325,9 @@ PRIVATE void _ogl_primitive_renderer_init_program(_ogl_primitive_renderer* rende
                           "RAL shader creation failed.");
     }
 
+    fs = result_shaders[0];
+    vs = result_shaders[1];
+
     if (!ral_context_create_programs(renderer_ptr->context,
                                      1, /* n_create_info_items */
                                      &program_create_info,
@@ -346,11 +350,9 @@ PRIVATE void _ogl_primitive_renderer_init_program(_ogl_primitive_renderer* rende
                            &vs_body_has);
 
     if (!ral_program_attach_shader(renderer_ptr->program,
-                                   fs,
-                                   false /* relink_needed */) ||
+                                   fs) ||
         !ral_program_attach_shader(renderer_ptr->program,
-                                   vs,
-                                   true /* relink_needed */) )
+                                   vs) )
     {
         ASSERT_DEBUG_SYNC(false,
                           "RAL program configuration failed.");
@@ -367,7 +369,7 @@ PRIVATE void _ogl_primitive_renderer_init_program(_ogl_primitive_renderer* rende
     ral_context_delete_objects(renderer_ptr->context,
                                RAL_CONTEXT_OBJECT_TYPE_SHADER,
                                n_shaders_to_release,
-                               shaders_to_release);
+                               (const void**) shaders_to_release);
 }
 
 /** TODO */
@@ -413,7 +415,7 @@ PRIVATE void _ogl_primitive_renderer_release_rendering_thread_callback(ogl_conte
         ral_context_delete_objects(instance_ptr->context,
                                    RAL_CONTEXT_OBJECT_TYPE_BUFFER,
                                    1, /* n_objects */
-                                  &instance_ptr->bo);
+                                   (const void**) &instance_ptr->bo);
 
         instance_ptr->bo = NULL;
     }
@@ -423,7 +425,7 @@ PRIVATE void _ogl_primitive_renderer_release_rendering_thread_callback(ogl_conte
         ral_context_delete_objects(instance_ptr->context,
                                    RAL_CONTEXT_OBJECT_TYPE_PROGRAM,
                                    1, /* n_objects */
-                                  &instance_ptr->program);
+                                   (const void**) &instance_ptr->program);
 
         instance_ptr->program = NULL;
     }
@@ -508,7 +510,7 @@ PRIVATE void _ogl_primitive_renderer_update_bo_storage(ogl_context              
         ral_context_delete_objects(renderer_ptr->context,
                                    RAL_CONTEXT_OBJECT_TYPE_BUFFER,
                                    1, /* n_objects */
-                                  &renderer_ptr->bo);
+                                   (const void**) &renderer_ptr->bo);
 
         renderer_ptr->bo = NULL;
     }

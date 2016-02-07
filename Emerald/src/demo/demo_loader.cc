@@ -9,9 +9,12 @@
 #include "demo/demo_app.h"
 #include "demo/demo_loader.h"
 #include "demo/demo_window.h"
-#include "ogl/ogl_program.h"
 #include "ogl/ogl_rendering_handler.h"
-#include "ogl/ogl_shader.h"
+#include "raGL/raGL_program.h"
+#include "raGL/raGL_shader.h"
+#include "ral/ral_context.h"
+#include "ral/ral_program.h"
+#include "ral/ral_shader.h"
 #include "scene/scene.h"
 #include "scene/scene_multiloader.h"
 #include "system/system_assertions.h"
@@ -400,7 +403,7 @@ PUBLIC void demo_loader_release_object_by_index(demo_loader             loader,
 
                 case DEMO_LOADER_OBJECT_TYPE_PROGRAM:
                 {
-                    ogl_program_release( (ogl_program&) object);
+                    ral_program_release( (ral_program&) object);
 
                     break;
                 }
@@ -478,17 +481,33 @@ PUBLIC void demo_loader_run(demo_loader   loader,
             case DEMO_LOADER_OP_BUILD_PROGRAM:
             {
                 ral_context context     = NULL;
-                ogl_program new_program = NULL;
+                ral_program new_program = NULL;
+
+                const ral_program_create_info po_create_info =
+                {
+                    ((op_ptr->data.build_program.cs.body != NULL) ? RAL_PROGRAM_SHADER_STAGE_BIT_COMPUTE         : 0) |
+                    ((op_ptr->data.build_program.fs.body != NULL) ? RAL_PROGRAM_SHADER_STAGE_BIT_FRAGMENT        : 0) |
+                    ((op_ptr->data.build_program.gs.body != NULL) ? RAL_PROGRAM_SHADER_STAGE_BIT_GEOMETRY        : 0) |
+                    ((op_ptr->data.build_program.tc.body != NULL) ? RAL_PROGRAM_SHADER_STAGE_BIT_TESS_CONTROL    : 0) |
+                    ((op_ptr->data.build_program.te.body != NULL) ? RAL_PROGRAM_SHADER_STAGE_BIT_TESS_EVALUATION : 0) |
+                    ((op_ptr->data.build_program.vs.body != NULL) ? RAL_PROGRAM_SHADER_STAGE_BIT_VERTEX          : 0),
+                    op_ptr->data.build_program.name
+                };
 
                 system_window_get_property(window_private,
                                            SYSTEM_WINDOW_PROPERTY_RENDERING_CONTEXT_RAL,
                                           &context);
 
-                new_program = ogl_program_create(loader_ptr->context,
-                                                 op_ptr->data.build_program.name);
+                if (!ral_context_create_programs(loader_ptr->context,
+                                                 1, /* n_create_info_items */
+                                                &po_create_info,
+                                                &new_program) )
+                {
+                    ASSERT_DEBUG_SYNC(false,
+                                      "Could not create a new RAL program.");
 
-                ASSERT_DEBUG_SYNC(new_program != NULL,
-                                  "Could not create a new ogl_program instance.");
+                    continue;
+                }
 
                 struct _shader
                 {
@@ -513,35 +532,45 @@ PUBLIC void demo_loader_run(demo_loader   loader,
 
                     if (current_shader.data_ptr->body != NULL)
                     {
-                        ogl_shader new_shader = ogl_shader_create(loader_ptr->context,
-                                                                  current_shader.type,
-                                                                  current_shader.data_ptr->name);
+                        ral_shader                      new_shader         = NULL;
+                        const system_hashed_ansi_string shader_body        = system_hashed_ansi_string_create_by_token_replacement(current_shader.data_ptr->body,
+                                                                                                                                   current_shader.data_ptr->n_tokens,
+                                                                                                                                   current_shader.data_ptr->token_keys,
+                                                                                                                                   current_shader.data_ptr->token_values);
+                        const ral_shader_create_info    shader_create_info =
+                        {
+                            current_shader.data_ptr->name,
+                            current_shader.type
+                        };
 
-                        ASSERT_DEBUG_SYNC(new_shader != NULL,
-                                          "Cpuld not create a new ogl_shader instance");
+                        if (!ral_context_create_shaders(loader_ptr->context,
+                                                        1, /* n_create_info_items */
+                                                       &shader_create_info,
+                                                       &new_shader) )
+                        {
+                            ASSERT_DEBUG_SYNC(false,
+                                              "Cpuld not create a new RAL shader.");
 
-                        ogl_shader_set_body(new_shader,
-                                            system_hashed_ansi_string_create_by_token_replacement(current_shader.data_ptr->body,
-                                                                                                  current_shader.data_ptr->n_tokens,
-                                                                                                  current_shader.data_ptr->token_keys,
-                                                                                                  current_shader.data_ptr->token_values) );
+                            continue;
+                        }
 
-                        ogl_program_attach_shader(new_program,
-                                                  new_shader);
+                        ral_shader_set_property(new_shader,
+                                                RAL_SHADER_PROPERTY_GLSL_BODY,
+                                               &shader_body);
 
-                        ogl_shader_release(new_shader);
+                        if (!ral_program_attach_shader(new_program,
+                                                       new_shader) )
+                        {
+                            ASSERT_DEBUG_SYNC(false,
+                                              "Failed to attach a RAL shader to a RAL program.");
+                        }
+
+                        ral_context_delete_objects(loader_ptr->context,
+                                                   RAL_CONTEXT_OBJECT_TYPE_SHADER,
+                                                   1, /* n_objects */
+                                                   (const void**) &new_shader);
                     } /* if (current_shader.data_ptr->body != NULL) */
                 } /* for (all shader objects to init) */
-
-                if (!ogl_program_link(new_program) )
-                {
-                    ASSERT_DEBUG_SYNC(false,
-                                      "Program object [%s] failed to link successfully.",
-                                      system_hashed_ansi_string_get_buffer(op_ptr->data.build_program.name) );
-
-                    ogl_program_release(new_program);
-                    new_program = NULL;
-                }
 
                 if (new_program != NULL)
                 {

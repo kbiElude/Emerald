@@ -49,9 +49,10 @@ PRIVATE void _scene_texture_release(void* data_ptr)
 
     if (texture_ptr->texture != NULL)
     {
-        ral_context_delete_textures(texture_ptr->context,
-                                    1, /* n_textures */
-                                   &texture_ptr->texture);
+        ral_context_delete_objects(texture_ptr->context,
+                                   RAL_CONTEXT_OBJECT_TYPE_TEXTURE,
+                                   1, /* n_objects */
+                                   (const void**) &texture_ptr->texture);
 
         texture_ptr->texture = NULL;
     }

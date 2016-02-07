@@ -253,7 +253,7 @@ PUBLIC EMERALD_API bool system_resizable_vector_delete_element_at(system_resizab
 
 /** Please see header for specification */
 PUBLIC EMERALD_API size_t system_resizable_vector_find(system_resizable_vector resizable_vector,
-                                                       void*                   item)
+                                                       const void*             item)
 {
     _system_resizable_vector* vector_ptr = (_system_resizable_vector*) resizable_vector;
     size_t                    n_elements = vector_ptr->n_elements;

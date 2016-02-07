@@ -10,8 +10,22 @@
 #include "ral/ral_types.h"
 #include "system/system_types.h"
 
+enum
+{
+    /* Fired when a shader is compiled.
+     *
+     * arg: Originating raGL_shader instance.
+     */
+    RAGL_SHADER_CALLBACK_ID_SHADER_COMPILED,
+
+    RAGL_SHADER_CALLBACK_ID_COUNT,
+};
+
 typedef enum
 {
+    /* not settable; system_callback_manager */
+    RAGL_SHADER_PROPERTY_CALLBACK_MANAGER,
+
     /* not settable; bool */
     RAGL_SHADER_PROPERTY_COMPILE_STATUS,
 
@@ -19,7 +33,11 @@ typedef enum
     RAGL_SHADER_PROPERTY_ID,
 
     /* not settable; const char* */
-    RAGL_SHADER_PROPERTY_INFO_LOG
+    RAGL_SHADER_PROPERTY_INFO_LOG,
+
+    /* not settable; ral_shader */
+    RAGL_SHADER_PROPERTY_SHADER_RAL,
+
 } raGL_shader_property;
 
 

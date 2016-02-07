@@ -124,7 +124,6 @@ PRIVATE void _ogl_ui_checkbox_init_program(ogl_ui            ui,
     /* Create all objects */
     ral_context context = ogl_ui_get_context(ui);
     ral_shader  fs      = NULL;
-    ral_program program = NULL;
     ral_shader  vs      = NULL;
 
     ral_shader_create_info  fs_create_info;
@@ -135,7 +134,8 @@ PRIVATE void _ogl_ui_checkbox_init_program(ogl_ui            ui,
     fs_create_info.source = RAL_SHADER_SOURCE_GLSL;
     fs_create_info.type   = RAL_SHADER_TYPE_FRAGMENT;
 
-    program_create_info.name = system_hashed_ansi_string_create("UI checkbox program");
+    program_create_info.active_shader_stages = RAL_PROGRAM_SHADER_STAGE_BIT_FRAGMENT | RAL_PROGRAM_SHADER_STAGE_BIT_VERTEX;
+    program_create_info.name                 = system_hashed_ansi_string_create("UI checkbox program");
 
     vs_create_info.name   = system_hashed_ansi_string_create("UI checkbox vertex shader");
     vs_create_info.source = RAL_SHADER_SOURCE_GLSL;
@@ -147,7 +147,6 @@ PRIVATE void _ogl_ui_checkbox_init_program(ogl_ui            ui,
         vs_create_info
     };
     const uint32_t n_shader_create_info_items = sizeof(shader_create_info_items) / sizeof(shader_create_info_items[0]);
-
     ral_shader     result_shaders[n_shader_create_info_items];
 
     if (!ral_context_create_shaders(context,
@@ -165,7 +164,7 @@ PRIVATE void _ogl_ui_checkbox_init_program(ogl_ui            ui,
     if (!ral_context_create_programs(context,
                                      1, /* n_create_info_items */
                                     &program_create_info,
-                                    &program) )
+                                    &checkbox_ptr->program) )
     {
         ASSERT_DEBUG_SYNC(false,
                           "RAL program creation failed.");
@@ -183,12 +182,10 @@ PRIVATE void _ogl_ui_checkbox_init_program(ogl_ui            ui,
                            &vs_body);
 
     /* Set up program object */
-    if (!ral_program_attach_shader(program,
-                                   fs,
-                                   false /* relink_needed */) ||
-        !ral_program_attach_shader(program,
-                                   vs,
-                                   true /* relink_needed */) )
+    if (!ral_program_attach_shader(checkbox_ptr->program,
+                                   fs) ||
+        !ral_program_attach_shader(checkbox_ptr->program,
+                                   vs) )
     {
         ASSERT_DEBUG_SYNC(false,
                           "RAL program configuration failed.");
@@ -196,7 +193,7 @@ PRIVATE void _ogl_ui_checkbox_init_program(ogl_ui            ui,
 
     /* Set up uniform block bindings */
     raGL_program   program_raGL    = ral_context_get_program_gl(checkbox_ptr->context,
-                                                                program);
+                                                                checkbox_ptr->program);
     GLuint         program_raGL_id = 0;
     ogl_program_ub ub_fs           = NULL;
     unsigned int   ub_fs_index     = -1;
@@ -244,7 +241,7 @@ PRIVATE void _ogl_ui_checkbox_init_program(ogl_ui            ui,
     ral_context_delete_objects(checkbox_ptr->context,
                                RAL_CONTEXT_OBJECT_TYPE_SHADER,
                                n_shaders_to_release,
-                               shaders_to_release);
+                               (const void**) shaders_to_release);
 }
 
 /** TODO */
@@ -431,7 +428,7 @@ PUBLIC void ogl_ui_checkbox_deinit(void* internal_instance)
     ral_context_delete_objects(ui_checkbox_ptr->context,
                                RAL_CONTEXT_OBJECT_TYPE_PROGRAM,
                                1, /* n_objects */
-                              &ui_checkbox_ptr->program);
+                               (const void**) &ui_checkbox_ptr->program);
 
     delete ui_checkbox_ptr;
 }

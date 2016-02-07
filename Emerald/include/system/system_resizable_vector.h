@@ -68,7 +68,7 @@ PUBLIC EMERALD_API void system_resizable_vector_empty(system_resizable_vector ve
  *  @return ITEM_NOT_FOUND if unsuccessful, index otherwise.
  */
 PUBLIC EMERALD_API size_t system_resizable_vector_find(system_resizable_vector resizable_vector,
-                                                       void*                   item);
+                                                       const void*             item);
 
 /** Returns element stored at given index.
  *

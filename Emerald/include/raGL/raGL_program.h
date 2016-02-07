@@ -47,6 +47,11 @@ typedef enum
 
 } raGL_program_syncable_ubs_mode;
 
+
+/** TODO */
+PUBLIC bool raGL_program_attach_shader(raGL_program program_raGL,
+                                       raGL_shader  shader_raGL);
+
 /** Creates a new program instance.
  *
  *  Note: this function calls into rendering thread, so performance drop can be expected
@@ -67,9 +72,9 @@ PUBLIC void raGL_program_fill_ral_program_variable(raGL_program          program
                                                    unsigned int          n_variable);
 
 /** TODO */
-PUBLIC void raGL_program_get_property(raGL_program          program,
-                                      raGL_program_property property,
-                                      void*                 out_result_ptr);
+PUBLIC EMERALD_API void raGL_program_get_property(raGL_program          program,
+                                                  raGL_program_property property,
+                                                  void*                 out_result_ptr);
 
 /** TODO */
 PUBLIC EMERALD_API bool raGL_program_get_shader_storage_block_by_sb_index(raGL_program     program,
@@ -120,14 +125,14 @@ PUBLIC EMERALD_API bool raGL_program_get_uniform_block_by_name(raGL_program     
  *
  *  @return true if successful, false otherwise
  **/
-PUBLIC bool raGL_program_get_vertex_attribute_by_index(raGL_program                  program,
-                                                       size_t                        index,
-                                                       const ral_program_attribute** out_vertex_attribute_ptr);
+PUBLIC EMERALD_API bool raGL_program_get_vertex_attribute_by_index(raGL_program                  program,
+                                                                   size_t                        index,
+                                                                   const ral_program_attribute** out_vertex_attribute_ptr);
 
 /** TODO */
-PUBLIC bool raGL_program_get_vertex_attribute_by_name(raGL_program                  program,
-                                                      system_hashed_ansi_string     index,
-                                                      const ral_program_attribute** out_vertex_attribute_ptr);
+PUBLIC EMERALD_API bool raGL_program_get_vertex_attribute_by_name(raGL_program                  program,
+                                                                  system_hashed_ansi_string     index,
+                                                                  const ral_program_attribute** out_vertex_attribute_ptr);
 
 /** Links a given GL program. After calling this function, you can retrieve attributes/uniform descriptors and program info log.
  *

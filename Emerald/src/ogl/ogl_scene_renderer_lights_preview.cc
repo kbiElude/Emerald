@@ -116,6 +116,7 @@ PRIVATE void _ogl_context_scene_renderer_lights_preview_init_preview_program(_og
 
     const ral_program_create_info program_create_info =
     {
+        RAL_PROGRAM_SHADER_STAGE_BIT_FRAGMENT | RAL_PROGRAM_SHADER_STAGE_BIT_VERTEX,
         system_hashed_ansi_string_create_by_merging_two_strings("Scene Renderer lights preview program ",
                                                                 system_hashed_ansi_string_get_buffer(scene_name))
     };
@@ -168,11 +169,9 @@ PRIVATE void _ogl_context_scene_renderer_lights_preview_init_preview_program(_og
     }
 
     if (!ral_program_attach_shader(preview_ptr->preview_program,
-                                   fs,
-                                   false /* relink_needed */) ||
+                                   fs) ||
         !ral_program_attach_shader(preview_ptr->preview_program,
-                                   vs,
-                                   true /* relink_needed */) )
+                                   vs) )
     {
         ASSERT_DEBUG_SYNC(false,
                           "RAL program configuration failed.");
@@ -222,7 +221,7 @@ end_fail:
         ral_context_delete_objects(preview_ptr->context,
                                    RAL_CONTEXT_OBJECT_TYPE_PROGRAM,
                                    1, /* n_objects */
-                                  &preview_ptr->preview_program);
+                                   (const void**) &preview_ptr->preview_program);
 
         preview_ptr->preview_program = NULL;
     }
@@ -238,7 +237,7 @@ end:
     ral_context_delete_objects(preview_ptr->context,
                                RAL_CONTEXT_OBJECT_TYPE_SHADER,
                                n_shaders_to_release,
-                               shaders_to_release);
+                               (const void**) shaders_to_release);
 }
 
 
@@ -276,7 +275,7 @@ PUBLIC void ogl_scene_renderer_lights_preview_release(ogl_scene_renderer_lights_
         ral_context_delete_objects(preview_ptr->context,
                                    RAL_CONTEXT_OBJECT_TYPE_PROGRAM,
                                    1, /* n_objects */
-                                  &preview_ptr->preview_program);
+                                   (const void**) &preview_ptr->preview_program);
 
         preview_ptr->preview_program = NULL;
     }

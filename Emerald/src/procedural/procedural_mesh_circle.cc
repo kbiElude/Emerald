@@ -109,9 +109,10 @@ PRIVATE void _procedural_mesh_circle_release_renderer_callback(ogl_context conte
 
     if (mesh_circle_ptr->arrays_bo != NULL)
     {
-        ral_context_delete_buffers(mesh_circle_ptr->context,
+        ral_context_delete_objects(mesh_circle_ptr->context,
+                                   RAL_CONTEXT_OBJECT_TYPE_BUFFER,
                                    1, /* n_buffers */
-                                  &mesh_circle_ptr->arrays_bo);
+                                   (const void**) &mesh_circle_ptr->arrays_bo);
 
         mesh_circle_ptr->arrays_bo = NULL;
     }

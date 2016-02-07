@@ -9,17 +9,18 @@
 #include "demo/demo_window.h"
 #include "mesh/mesh.h"
 #include "ogl/ogl_context.h"
-#include "ogl/ogl_program.h"
 #include "ogl/ogl_program_ub.h"
-#include "ogl/ogl_shader.h"
 #include "ogl/ogl_rendering_handler.h"
 #include "ogl/ogl_vao.h"
 #include "postprocessing/postprocessing_motion_blur.h"
 #include "raGL/raGL_buffer.h"
 #include "raGL/raGL_framebuffer.h"
+#include "raGL/raGL_program.h"
 #include "raGL/raGL_texture.h"
 #include "ral/ral_buffer.h"
 #include "ral/ral_context.h"
+#include "ral/ral_program.h"
+#include "ral/ral_shader.h"
 #include "ral/ral_framebuffer.h"
 #include "ral/ral_texture.h"
 #include "system/system_assertions.h"
@@ -54,7 +55,7 @@ PRIVATE GLuint         _spinner_vao_id            = 0;
 
 PRIVATE system_time                _spinner_first_frame_time                                     = 0;
 PRIVATE postprocessing_motion_blur _spinner_motion_blur                                          = NULL;
-PRIVATE ogl_program                _spinner_polygonizer_po                                       = NULL;
+PRIVATE ral_program                _spinner_polygonizer_po                                       = NULL;
 PRIVATE unsigned int               _spinner_polygonizer_po_global_wg_size[3]                     = {0};
 PRIVATE ogl_program_ub             _spinner_polygonizer_po_propsBuffer_ub                        = NULL;
 PRIVATE ral_buffer                 _spinner_polygonizer_po_propsBuffer_ub_bo_ral                 = 0;
@@ -63,7 +64,7 @@ PRIVATE GLuint                     _spinner_polygonizer_po_propsBuffer_innerRing
 PRIVATE GLuint                     _spinner_polygonizer_po_propsBuffer_nRingsToSkip_ub_offset    = -1;
 PRIVATE GLuint                     _spinner_polygonizer_po_propsBuffer_outerRingRadius_ub_offset = -1;
 PRIVATE GLuint                     _spinner_polygonizer_po_propsBuffer_splineOffsets_ub_offset   = -1;
-PRIVATE ogl_program                _spinner_renderer_po                                          = NULL;
+PRIVATE ral_program                _spinner_renderer_po                                          = NULL;
 
 PRIVATE ral_framebuffer _spinner_blit_fbo         = NULL;
 PRIVATE ral_texture     _spinner_color_to         = NULL;
@@ -103,23 +104,49 @@ PRIVATE void _deinit_spinner()
                             &entrypoints_ptr);
 
     /* BOs */
-    if (_spinner_current_frame_bo != NULL)
+    const ral_buffer bos[] =
     {
-        ral_context_delete_buffers(_context,
-                                   1, /* n_buffers */
-                                  &_spinner_current_frame_bo);
-
-        _spinner_current_frame_bo = NULL;
-    }
-
-    if (_spinner_previous_frame_bo != NULL)
+        _spinner_current_frame_bo,
+        _spinner_previous_frame_bo
+    };
+    const ral_framebuffer fbos[] =
     {
-        ral_context_delete_buffers(_context,
-                                   1, /* n_buffers */
-                                  &_spinner_previous_frame_bo);
+        _spinner_blit_fbo,
+        _spinner_render_fbo
+    };
+    const ral_program pos[] =
+    {
+        _spinner_polygonizer_po,
+        _spinner_renderer_po
+    };
+    const ral_texture tos[] =
+    {
+        _spinner_color_to,
+        _spinner_color_to_blurred,
+        _spinner_velocity_to
+    };
 
-        _spinner_previous_frame_bo = NULL;
-    }
+    const uint32_t n_bos  = sizeof(bos)  / sizeof(bos[0]);
+    const uint32_t n_fbos = sizeof(fbos) / sizeof(fbos[0]);
+    const uint32_t n_pos  = sizeof(pos)  / sizeof(pos[0]);
+    const uint32_t n_tos  = sizeof(tos)  / sizeof(tos[0]);
+
+    ral_context_delete_objects(_context,
+                               RAL_CONTEXT_OBJECT_TYPE_BUFFER,
+                               n_bos,
+                               (const void**) bos);
+    ral_context_delete_objects(_context,
+                               RAL_CONTEXT_OBJECT_TYPE_FRAMEBUFFER,
+                               n_fbos,
+                               (const void**) fbos);
+    ral_context_delete_objects(_context,
+                               RAL_CONTEXT_OBJECT_TYPE_PROGRAM,
+                               n_pos,
+                               (const void**) pos);
+    ral_context_delete_objects(_context,
+                               RAL_CONTEXT_OBJECT_TYPE_TEXTURE,
+                               n_tos,
+                               (const void**) tos);
 
     _spinner_bo_size = 0;
 
@@ -130,68 +157,6 @@ PRIVATE void _deinit_spinner()
                                               &_spinner_vao_id);
 
         _spinner_vao_id = 0;
-    }
-
-    /* POs */
-    if (_spinner_polygonizer_po != NULL)
-    {
-        ogl_program_release(_spinner_polygonizer_po);
-
-        _spinner_polygonizer_po = NULL;
-    }
-
-    if (_spinner_renderer_po != NULL)
-    {
-        ogl_program_release(_spinner_renderer_po);
-
-        _spinner_renderer_po = NULL;
-    }
-
-    /* TOs */
-    if (_spinner_color_to != NULL)
-    {
-        ral_context_delete_textures(_context,
-                                    1, /* n_textures */
-                                   &_spinner_color_to);
-
-        _spinner_color_to = NULL;
-    }
-
-    if (_spinner_color_to_blurred != NULL)
-    {
-        ral_context_delete_textures(_context,
-                                    1, /* n_textures */
-                                   &_spinner_color_to_blurred);
-
-        _spinner_color_to_blurred = NULL;
-    }
-
-    if (_spinner_velocity_to != NULL)
-    {
-        ral_context_delete_textures(_context,
-                                    1, /* n_textures */
-                                   &_spinner_velocity_to);
-
-        _spinner_velocity_to = NULL;
-    }
-
-    /* FBOs */
-    if (_spinner_blit_fbo != NULL)
-    {
-        ral_context_delete_framebuffers(_context,
-                                        1, /* n_framebuffers */
-                                       &_spinner_blit_fbo);
-
-        _spinner_blit_fbo = NULL;
-    }
-
-    if (_spinner_render_fbo != NULL)
-    {
-        ral_context_delete_framebuffers(_context,
-                                        1, /* n_framebuffers */
-                                       &_spinner_render_fbo);
-
-        _spinner_render_fbo = NULL;
     }
 
     /* Post-processors */
@@ -345,10 +310,10 @@ PRIVATE void _init_spinner()
         NULL,
         NULL
     };
-    const ogl_program_variable*     cs_innerRingRadius_var_ptr = NULL;
-    const ogl_program_variable*     cs_nRingsToSkip_var_ptr    = NULL;
-    const ogl_program_variable*     cs_outerRingRadius_var_ptr = NULL;
-    const ogl_program_variable*     cs_splineOffsets_var_ptr   = NULL;
+    const ral_program_variable*     cs_innerRingRadius_var_ptr = NULL;
+    const ral_program_variable*     cs_nRingsToSkip_var_ptr    = NULL;
+    const ral_program_variable*     cs_outerRingRadius_var_ptr = NULL;
+    const ral_program_variable*     cs_splineOffsets_var_ptr   = NULL;
     ral_buffer_create_info          frame_bo_create_info;
     const unsigned int              n_cs_body_token_values     = sizeof(cs_body_tokens) / sizeof(cs_body_tokens[0]);
     const unsigned int              n_vs_body_token_values     = sizeof(vs_body_tokens) / sizeof(vs_body_tokens[0]);
@@ -358,9 +323,43 @@ PRIVATE void _init_spinner()
     const ogl_context_gl_entrypoints_ext_direct_state_access* dsa_entrypoints_ptr = NULL;
     const ogl_context_gl_entrypoints*                         entrypoints_ptr     = NULL;
     const ogl_context_gl_limits*                              limits_ptr          = NULL;
-    ogl_shader                                                polygonizer_cs      = NULL;
-    ogl_shader                                                renderer_fs         = NULL;
-    ogl_shader                                                renderer_vs         = NULL;
+    ral_shader                                                polygonizer_cs      = NULL;
+
+    const ral_shader_create_info renderer_so_create_info_items[] =
+    {
+        {
+            system_hashed_ansi_string_create("Spinner renderer FS"),
+            RAL_SHADER_TYPE_FRAGMENT
+        },
+        {
+            system_hashed_ansi_string_create("Spinner renderer VS"),
+            RAL_SHADER_TYPE_VERTEX
+        }
+    };
+    const uint32_t n_renderer_so_create_info_items = sizeof(renderer_so_create_info_items) / sizeof(renderer_so_create_info_items[0]);
+    ral_shader     renderer_sos[n_renderer_so_create_info_items];
+
+    const ral_shader_create_info polygonizer_cs_create_info =
+    {
+        system_hashed_ansi_string_create("Spinner polygonizer CS"),
+        RAL_SHADER_TYPE_COMPUTE
+    };
+
+    const ral_program_create_info po_create_info_items[] =
+    {
+        {
+            RAL_PROGRAM_SHADER_STAGE_BIT_COMPUTE,
+            system_hashed_ansi_string_create("Spinner polygonizer PO")
+        },
+
+        {
+            RAL_PROGRAM_SHADER_STAGE_BIT_FRAGMENT | RAL_PROGRAM_SHADER_STAGE_BIT_VERTEX,
+            system_hashed_ansi_string_create("Spinner renderer PO"),
+        }
+    };
+    const uint32_t n_po_create_info_items = sizeof(po_create_info_items) / sizeof(po_create_info_items[0]);
+    ral_program    result_pos[n_po_create_info_items];
+
 
     ogl_context_get_property(context_gl,
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
@@ -372,12 +371,13 @@ PRIVATE void _init_spinner()
                              OGL_CONTEXT_PROPERTY_LIMITS,
                             &limits_ptr);
 
-    _spinner_polygonizer_po = ogl_program_create(_context,
-                                                 system_hashed_ansi_string_create("Spinner polygonizer PO"),
-                                                 OGL_PROGRAM_SYNCABLE_UBS_MODE_ENABLE_GLOBAL);
-    _spinner_renderer_po    = ogl_program_create(_context,
-                                                 system_hashed_ansi_string_create("Spinner renderer PO"),
-                                                 OGL_PROGRAM_SYNCABLE_UBS_MODE_ENABLE_GLOBAL);
+    ral_context_create_programs(_context,
+                                n_po_create_info_items,
+                                po_create_info_items,
+                                result_pos);
+
+    _spinner_polygonizer_po = result_pos[0];
+    _spinner_renderer_po    = result_pos[1];
 
     if (_spinner_polygonizer_po == NULL ||
         _spinner_renderer_po    == NULL)
@@ -408,9 +408,10 @@ PRIVATE void _init_spinner()
     cs_body_values[2] = system_hashed_ansi_string_create(temp);
 
     /* Set up the polygonizer program object */
-    polygonizer_cs = ogl_shader_create(_context,
-                                       RAL_SHADER_TYPE_COMPUTE,
-                                       system_hashed_ansi_string_create("Spinner polygonizer CS") );
+    ral_context_create_shaders(_context,
+                               1, /* n_create_info_items */
+                              &polygonizer_cs_create_info,
+                              &polygonizer_cs);
 
     if (polygonizer_cs == NULL)
     {
@@ -419,7 +420,6 @@ PRIVATE void _init_spinner()
 
         goto end;
     }
-
 
     _spinner_polygonizer_po_global_wg_size[0] = 1 + (2 /* top half, bottom half */ * SPINNER_N_SEGMENTS_PER_SPLINE * SPINNER_N_SPLINES / limits_ptr->max_compute_work_group_size[0]);
     _spinner_polygonizer_po_global_wg_size[1] = 1;
@@ -432,26 +432,25 @@ PRIVATE void _init_spinner()
                       _spinner_polygonizer_po_global_wg_size[2] < (unsigned int) limits_ptr->max_compute_work_group_count[2],
                       "Invalid global work-group size requested");
 
-    ogl_shader_set_body      (polygonizer_cs,
-                              system_hashed_ansi_string_create_by_token_replacement(cs_body,
-                                                                                    n_cs_body_token_values,
-                                                                                    cs_body_tokens,
-                                                                                    cs_body_values) );
-    ogl_program_attach_shader(_spinner_polygonizer_po,
+    const system_hashed_ansi_string polygonizer_cs_has = system_hashed_ansi_string_create_by_token_replacement(cs_body,
+                                                                                                               n_cs_body_token_values,
+                                                                                                               cs_body_tokens,
+                                                                                                               cs_body_values);
+
+    ral_shader_set_property(polygonizer_cs,
+                            RAL_SHADER_PROPERTY_GLSL_BODY,
+                           &polygonizer_cs_has);
+
+    ral_program_attach_shader(_spinner_polygonizer_po,
                               polygonizer_cs);
 
-    if (!ogl_program_link(_spinner_polygonizer_po) )
-    {
-        ASSERT_DEBUG_SYNC(false,
-                          "Could not link spinner polygonizer PO");
-
-        goto end;
-    }
-
     /* Retrieve polygonizer PO properties */
-    ogl_program_get_uniform_block_by_name(_spinner_polygonizer_po,
-                                          system_hashed_ansi_string_create("propsBuffer"),
-                                         &_spinner_polygonizer_po_propsBuffer_ub);
+    const raGL_program spinner_polygonizer_po_raGL = ral_context_get_program_gl(_context,
+                                                                                _spinner_polygonizer_po);
+
+    raGL_program_get_uniform_block_by_name(spinner_polygonizer_po_raGL,
+                                           system_hashed_ansi_string_create("propsBuffer"),
+                                          &_spinner_polygonizer_po_propsBuffer_ub);
 
     ASSERT_DEBUG_SYNC(_spinner_polygonizer_po_propsBuffer_ub != NULL,
                       "propsBuffer uniform block is not recognized by GL");
@@ -501,37 +500,32 @@ PRIVATE void _init_spinner()
     vs_body_values[1] = system_hashed_ansi_string_create(temp);
 
     /* Set up renderer PO */
-    renderer_fs = ogl_shader_create(_context,
-                                    RAL_SHADER_TYPE_FRAGMENT,
-                                    system_hashed_ansi_string_create("Spinner renderer FS") );
-    renderer_vs = ogl_shader_create(_context,
-                                    RAL_SHADER_TYPE_VERTEX,
-                                    system_hashed_ansi_string_create("Spinner renderer VS") );
+    ral_context_create_shaders(_context,
+                               n_renderer_so_create_info_items,
+                               renderer_so_create_info_items,
+                               renderer_sos);
 
-    ASSERT_DEBUG_SYNC(renderer_fs != NULL &&
-                      renderer_vs != NULL,
+    ASSERT_DEBUG_SYNC(renderer_sos[0] != NULL &&
+                      renderer_sos[1] != NULL,
                       "Could not create spinner renderer FS and/or VS");
 
-    ogl_shader_set_body(renderer_fs,
-                        system_hashed_ansi_string_create(fs_body) );
-    ogl_shader_set_body(renderer_vs,
-                        system_hashed_ansi_string_create_by_token_replacement(vs_body,
-                                                                              n_vs_body_token_values,
-                                                                              vs_body_tokens,
-                                                                              vs_body_values) );
+    const system_hashed_ansi_string renderer_fs_has = system_hashed_ansi_string_create                     (fs_body);
+    const system_hashed_ansi_string renderer_vs_has = system_hashed_ansi_string_create_by_token_replacement(vs_body,
+                                                                                                            n_vs_body_token_values,
+                                                                                                            vs_body_tokens,
+                                                                                                            vs_body_values);
 
-    ogl_program_attach_shader(_spinner_renderer_po,
-                              renderer_fs);
-    ogl_program_attach_shader(_spinner_renderer_po,
-                              renderer_vs);
+    ral_shader_set_property(renderer_sos[0],
+                            RAL_SHADER_PROPERTY_GLSL_BODY,
+                           &renderer_fs_has);
+    ral_shader_set_property(renderer_sos[1],
+                            RAL_SHADER_PROPERTY_GLSL_BODY,
+                           &renderer_vs_has);
 
-    if (!ogl_program_link(_spinner_renderer_po) )
-    {
-        ASSERT_DEBUG_SYNC(false,
-                          "Could not link spinner renderer PO");
-
-        goto end;
-    }
+    ral_program_attach_shader(_spinner_renderer_po,
+                              renderer_sos[0]);
+    ral_program_attach_shader(_spinner_renderer_po,
+                              renderer_sos[1]);
 
     /* Set up BO to hold polygonized spinner data */
     _spinner_bo_size = SPINNER_N_SEGMENTS_PER_SPLINE * SPINNER_N_SPLINES * 2 /* triangles */ * 3 /* vertices per triangle */ * 4 /* comp's per vertex */ * sizeof(float) * 2 /* top half, bottom half */;
@@ -719,27 +713,18 @@ PRIVATE void _init_spinner()
 
     /* All done */
 end:
-    if (polygonizer_cs != NULL)
+    ral_shader shaders_to_release[] =
     {
-        ogl_shader_release(polygonizer_cs);
+        polygonizer_cs,
+        renderer_sos[0],
+        renderer_sos[1]
+    };
+    const uint32_t n_shaders_to_release = sizeof(shaders_to_release) / sizeof(shaders_to_release[0]);
 
-        polygonizer_cs = NULL;
-    }
-
-    if (renderer_fs != NULL)
-    {
-        ogl_shader_release(renderer_fs);
-
-        renderer_fs = NULL;
-    }
-
-    if (renderer_vs != NULL)
-    {
-        ogl_shader_release(renderer_vs);
-
-        renderer_vs = NULL;
-    }
-
+    ral_context_delete_objects(_context,
+                               RAL_CONTEXT_OBJECT_TYPE_SHADER,
+                               n_shaders_to_release,
+                               (const void**) shaders_to_release);
 }
 
 /** TODO */
@@ -914,7 +899,15 @@ PRIVATE void _render_spinner(unsigned int n_frames_rendered)
                              RAL_BUFFER_PROPERTY_START_OFFSET,
                              &spinner_previous_frame_bo_ral_start_offset);
 
-    entrypoints_ptr->pGLUseProgram(ogl_program_get_id(_spinner_polygonizer_po) );
+    const raGL_program spinner_polygonizer_po_raGL    = ral_context_get_program_gl(_context,
+                                                                                   _spinner_polygonizer_po);
+    GLuint             spinner_polygonizer_po_raGL_id = 0;
+
+    raGL_program_get_property(spinner_polygonizer_po_raGL,
+                              RAGL_PROGRAM_PROPERTY_ID,
+                             &spinner_polygonizer_po_raGL_id);
+
+    entrypoints_ptr->pGLUseProgram(spinner_polygonizer_po_raGL_id);
 
     ogl_program_ub_set_nonarrayed_uniform_value(_spinner_polygonizer_po_propsBuffer_ub,
                                                 _spinner_polygonizer_po_propsBuffer_innerRingRadius_ub_offset,
@@ -991,7 +984,15 @@ PRIVATE void _render_spinner(unsigned int n_frames_rendered)
                                     render_draw_buffers);
 
     /* Render the data */
-    entrypoints_ptr->pGLUseProgram     (ogl_program_get_id(_spinner_renderer_po) );
+    const raGL_program spinner_renderer_po_raGL    = ral_context_get_program_gl(_context,
+                                                                                _spinner_renderer_po);
+    GLuint             spinner_renderer_po_raGL_id = 0;
+
+    raGL_program_get_property(spinner_renderer_po_raGL,
+                              RAGL_PROGRAM_PROPERTY_ID,
+                             &spinner_renderer_po_raGL_id);
+
+    entrypoints_ptr->pGLUseProgram     (spinner_renderer_po_raGL_id);
     entrypoints_ptr->pGLBindVertexArray(_spinner_vao_id);
 
     entrypoints_ptr->pGLDisable      (GL_CULL_FACE);  /* culling is not needed - all triangles are always visible */

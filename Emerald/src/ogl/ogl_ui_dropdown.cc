@@ -436,26 +436,31 @@ PRIVATE void _ogl_ui_dropdown_init_program(ogl_ui            ui,
 
     ral_program_create_info program_bg_create_info =
     {
+        RAL_PROGRAM_SHADER_STAGE_BIT_FRAGMENT | RAL_PROGRAM_SHADER_STAGE_BIT_VERTEX,
         system_hashed_ansi_string_create("UI dropdown program (bg)")
     };
 
     ral_program_create_info program_label_bg_create_info =
     {
+        RAL_PROGRAM_SHADER_STAGE_BIT_FRAGMENT | RAL_PROGRAM_SHADER_STAGE_BIT_VERTEX,
         system_hashed_ansi_string_create("UI dropdown program (label bg)")
     };
 
     ral_program_create_info program_separator_create_info =
     {
+        RAL_PROGRAM_SHADER_STAGE_BIT_FRAGMENT | RAL_PROGRAM_SHADER_STAGE_BIT_VERTEX,
         system_hashed_ansi_string_create("UI dropdown program (separator)")
     };
 
     ral_program_create_info program_slider_create_info =
     {
+        RAL_PROGRAM_SHADER_STAGE_BIT_FRAGMENT | RAL_PROGRAM_SHADER_STAGE_BIT_VERTEX,
         system_hashed_ansi_string_create("UI dropdown program (slider)")
     };
 
     ral_program_create_info program_create_info =
     {
+        RAL_PROGRAM_SHADER_STAGE_BIT_FRAGMENT | RAL_PROGRAM_SHADER_STAGE_BIT_VERTEX,
         system_hashed_ansi_string_create("UI dropdown program")
     };
 
@@ -587,32 +592,29 @@ PRIVATE void _ogl_ui_dropdown_init_program(ogl_ui            ui,
 
     /* Set up program objects */
     if (!ral_program_attach_shader(dropdown_ptr->program,
-                                   fs,
-                                   false /* relink_needed */)     ||
+                                   fs) ||
         !ral_program_attach_shader(dropdown_ptr->program,
-                                   vs,
-                                   true /* relink_needed */)      ||
+                                   vs) ||
+
+        !ral_program_attach_shader(dropdown_ptr->program_bg,
+                                   fs_bg) ||
+        !ral_program_attach_shader(dropdown_ptr->program_bg,
+                                   vs) ||
 
         !ral_program_attach_shader(dropdown_ptr->program_label_bg,
-                                   fs_label_bg,
-                                   false /* relink_needed */)     ||
+                                   fs_label_bg) ||
         !ral_program_attach_shader(dropdown_ptr->program_label_bg,
-                                   vs,
-                                   true /* relink_neded */)       ||
+                                   vs) ||
 
         !ral_program_attach_shader(dropdown_ptr->program_separator,
-                                   fs_separator,
-                                   false /* relink_needed */)     ||
+                                   fs_separator) ||
         !ral_program_attach_shader(dropdown_ptr->program_separator,
-                                   vs_separator,
-                                   true /* relink_needed */)      ||
+                                   vs_separator) ||
 
         !ral_program_attach_shader(dropdown_ptr->program_slider,
-                                   fs_slider,
-                                   false /* relink_needed */)     ||
+                                   fs_slider) ||
         !ral_program_attach_shader(dropdown_ptr->program_slider,
-                                   vs,
-                                   true /* relink_needed */) )
+                                   vs) )
     {
         ASSERT_DEBUG_SYNC(false,
                           "RAL program configuration failed.");
@@ -652,7 +654,7 @@ PRIVATE void _ogl_ui_dropdown_init_program(ogl_ui            ui,
     ral_context_delete_objects(context,
                                RAL_CONTEXT_OBJECT_TYPE_SHADER,
                                n_shaders_to_release,
-                               shaders_to_release);
+                               (const void**) shaders_to_release);
 }
 
 /** TODO */
@@ -1389,7 +1391,7 @@ PUBLIC void ogl_ui_dropdown_deinit(void* internal_instance)
     ral_context_delete_objects(ui_dropdown_ptr->context,
                                RAL_CONTEXT_OBJECT_TYPE_PROGRAM,
                                n_programs_to_release,
-                               programs_to_release);
+                               (const void**) programs_to_release);
 
     /* Release all entry instances */
     _ogl_ui_dropdown_entry* entry_ptr = NULL;

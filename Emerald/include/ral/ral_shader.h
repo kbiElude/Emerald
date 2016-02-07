@@ -9,7 +9,7 @@ typedef enum
      *
      * arg: ral_shader instance.
      */
-    RAL_SHADER_CALLBACK_ID_COMPILATION_NEEDED,
+    RAL_SHADER_CALLBACK_ID_GLSL_BODY_UPDATED,
 
     /* Always last */
     RAL_SHADER_CALLBACK_ID_COUNT,
@@ -51,16 +51,16 @@ typedef enum
 PUBLIC ral_shader ral_shader_create(const ral_shader_create_info* shader_create_info_ptr);
 
 /** TODO */
-PUBLIC void ral_shader_get_property(ral_shader          shader,
-                                    ral_shader_property property,
-                                    void*               out_result_ptr);
+PUBLIC EMERALD_API void ral_shader_get_property(ral_shader          shader,
+                                                ral_shader_property property,
+                                                void*               out_result_ptr);
 
 /** TODO */
 PUBLIC void ral_shader_release(ral_shader& shader);
 
 /** TODO */
-PUBLIC void ral_shader_set_property(ral_shader          shader,
-                                    ral_shader_property property,
-                                    const void*         data);
+PUBLIC EMERALD_API void ral_shader_set_property(ral_shader          shader,
+                                                ral_shader_property property,
+                                                const void*         data);
 
 #endif /* RAL_SHADER_H */

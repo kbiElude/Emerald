@@ -8,13 +8,13 @@
 #include "mesh/mesh_material.h"
 #include "mesh/mesh_marchingcubes.h"
 #include "ogl/ogl_context.h"
-#include "ogl/ogl_program.h"
 #include "ogl/ogl_program_ssb.h"
 #include "ogl/ogl_program_ub.h"
-#include "ogl/ogl_programs.h"
-#include "ogl/ogl_shader.h"
+#include "raGL/raGL_program.h"
 #include "ral/ral_buffer.h"
 #include "ral/ral_context.h"
+#include "ral/ral_program.h"
+#include "ral/ral_shader.h"
 #include "scene/scene_material.h"
 #include "system/system_log.h"
 
@@ -40,7 +40,7 @@ typedef struct _mesh_marchingcubes
     ral_buffer      polygonized_data_normals_subregion_bo;
     ral_buffer      polygonized_data_vertices_subregion_bo;
 
-    ogl_program     po_scalar_field_polygonizer;
+    ral_program     po_scalar_field_polygonizer;
     ogl_program_ub  po_scalar_field_polygonizer_data_ub;
     ral_buffer      po_scalar_field_polygonizer_data_ub_bo;
     GLuint          po_scalar_field_polygonizer_data_ub_bo_size;
@@ -432,9 +432,10 @@ PRIVATE void _mesh_marchingcubes_deinit_rendering_thread_callback(ogl_context co
 
     if (mesh_ptr->indirect_draw_call_args_bo != NULL)
     {
-        ral_context_delete_buffers(mesh_ptr->context,
-                                   1, /* n_buffers */
-                                  &mesh_ptr->indirect_draw_call_args_bo);
+        ral_context_delete_objects(mesh_ptr->context,
+                                   RAL_CONTEXT_OBJECT_TYPE_BUFFER,
+                                   1, /* n_objects */
+                                   (const void**) &mesh_ptr->indirect_draw_call_args_bo);
 
         mesh_ptr->indirect_draw_call_args_bo = NULL;
     }
@@ -450,41 +451,48 @@ PRIVATE void _mesh_marchingcubes_deinit_rendering_thread_callback(ogl_context co
     {
         if (mesh_ptr->polygonized_data_normals_subregion_bo != NULL)
         {
-            ral_context_delete_buffers(mesh_ptr->context,
-                                       1, /* n_buffers */
-                                       &mesh_ptr->polygonized_data_normals_subregion_bo);
+            ral_context_delete_objects(mesh_ptr->context,
+                                       RAL_CONTEXT_OBJECT_TYPE_BUFFER,
+                                       1, /* n_objects */
+                                       (const void**) &mesh_ptr->polygonized_data_normals_subregion_bo);
 
             mesh_ptr->polygonized_data_normals_subregion_bo = NULL;
         }
 
         if (mesh_ptr->polygonized_data_vertices_subregion_bo != NULL)
         {
-            ral_context_delete_buffers(mesh_ptr->context,
-                                       1, /* n_buffers */
-                                      &mesh_ptr->polygonized_data_vertices_subregion_bo);
+            ral_context_delete_objects(mesh_ptr->context,
+                                       RAL_CONTEXT_OBJECT_TYPE_BUFFER,
+                                       1, /* n_objects */
+                                       (const void**) &mesh_ptr->polygonized_data_vertices_subregion_bo);
 
             mesh_ptr->polygonized_data_vertices_subregion_bo = NULL;
         }
 
-        ral_context_delete_buffers(mesh_ptr->context,
-                                   1, /* n_buffers */
-                                  &mesh_ptr->polygonized_data_bo);
+        ral_context_delete_objects(mesh_ptr->context,
+                                   RAL_CONTEXT_OBJECT_TYPE_BUFFER,
+                                   1, /* n_objects */
+                                   (const void**) &mesh_ptr->polygonized_data_bo);
 
         mesh_ptr->polygonized_data_bo = NULL;
     }
 
     if (mesh_ptr->po_scalar_field_polygonizer != NULL)
     {
-        ogl_program_release(mesh_ptr->po_scalar_field_polygonizer);
+        ral_context_delete_objects(mesh_ptr->context,
+                                   RAL_CONTEXT_OBJECT_TYPE_PROGRAM,
+                                   1, /* n_objects */
+                                   (const void**) &mesh_ptr->po_scalar_field_polygonizer);
 
         mesh_ptr->po_scalar_field_polygonizer = NULL;
     }
 
     if (mesh_ptr->po_scalar_field_polygonizer_data_ub_bo != NULL)
     {
-        ral_context_delete_buffers(mesh_ptr->context,
-                                   1, /* n_buffers */
-                                  &mesh_ptr->po_scalar_field_polygonizer_data_ub_bo);
+        ral_context_delete_objects(mesh_ptr->context,
+                                   RAL_CONTEXT_OBJECT_TYPE_BUFFER,
+                                   1, /* n_objects */
+                                   (const void**) &mesh_ptr->po_scalar_field_polygonizer_data_ub_bo);
 
         mesh_ptr->po_scalar_field_polygonizer_data_ub_bo = NULL;
     }
@@ -492,9 +500,10 @@ PRIVATE void _mesh_marchingcubes_deinit_rendering_thread_callback(ogl_context co
     if (mesh_ptr->po_scalar_field_polygonizer_precomputed_tables_ub_bo != NULL)
     {
         /* TODO: This data could be re-used across mesh_marchingcubes instances! */
-        ral_context_delete_buffers(mesh_ptr->context,
-                                   1, /* n_buffers */
-                                   &mesh_ptr->po_scalar_field_polygonizer_precomputed_tables_ub_bo);
+        ral_context_delete_objects(mesh_ptr->context,
+                                   RAL_CONTEXT_OBJECT_TYPE_BUFFER,
+                                   1, /* n_objects */
+                                   (const void**) &mesh_ptr->po_scalar_field_polygonizer_precomputed_tables_ub_bo);
 
         mesh_ptr->po_scalar_field_polygonizer_precomputed_tables_ub_bo = NULL;
     }
@@ -1167,19 +1176,32 @@ PRIVATE void _mesh_marchingcubes_init_polygonizer_po(_mesh_marchingcubes* mesh_p
                                                    mesh_ptr->po_scalar_field_polygonizer_global_wg_size);
 
     /* Initialize the shader */
-    ogl_shader                cs              = NULL;
-    system_hashed_ansi_string polygonizer_has = _mesh_marchingcubes_get_polygonizer_name(mesh_ptr);
+    ral_shader                      cs              = NULL;
+    const system_hashed_ansi_string cs_body_final   = system_hashed_ansi_string_create_by_token_replacement(cs_body,
+                                                                                                            n_token_key_value_pairs,
+                                                                                                            token_key_array_ptr,
+                                                                                                            token_value_array_ptr);
+    system_hashed_ansi_string       polygonizer_has = _mesh_marchingcubes_get_polygonizer_name             (mesh_ptr);
 
-    cs = ogl_shader_create(mesh_ptr->context,
-                           RAL_SHADER_TYPE_COMPUTE,
-                           system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(polygonizer_has),
-                                                                                   " CS") );
+    const ral_shader_create_info cs_create_info =
+    {
+        system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(polygonizer_has),
+                                                                " CS"),
+        RAL_SHADER_TYPE_COMPUTE
+    };
 
-    ogl_shader_set_body(cs,
-                        system_hashed_ansi_string_create_by_token_replacement(cs_body,
-                                                                              n_token_key_value_pairs,
-                                                                              token_key_array_ptr,
-                                                                              token_value_array_ptr) );
+    if (!ral_context_create_shaders(mesh_ptr->context,
+                                    1, /* n_create_info_items */
+                                   &cs_create_info,
+                                   &cs) )
+    {
+        ASSERT_DEBUG_SYNC(false,
+                          "RAL shader creation failed.");
+    }
+
+    ral_shader_set_property(cs,
+                            RAL_SHADER_PROPERTY_GLSL_BODY,
+                           &cs_body_final);
 
     delete [] token_key_array_ptr;
     token_key_array_ptr = NULL;
@@ -1188,14 +1210,28 @@ PRIVATE void _mesh_marchingcubes_init_polygonizer_po(_mesh_marchingcubes* mesh_p
     token_value_array_ptr = NULL;
 
     /* Prepare & link the program object */
-    mesh_ptr->po_scalar_field_polygonizer = ogl_program_create(mesh_ptr->context,
-                                                               system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(polygonizer_has),
-                                                                                                                                                 " PO"),
-                                                               OGL_PROGRAM_SYNCABLE_UBS_MODE_ENABLE_GLOBAL);
+    const ral_program_create_info po_create_info =
+    {
+        RAL_PROGRAM_SHADER_STAGE_BIT_COMPUTE,
+        system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(polygonizer_has),
+                                                                " PO")
+    };
 
-    ogl_program_attach_shader(mesh_ptr->po_scalar_field_polygonizer,
-                              cs);
-    ogl_program_link         (mesh_ptr->po_scalar_field_polygonizer);
+    if (!ral_context_create_programs(mesh_ptr->context,
+                                     1, /* n_create_info_items */
+                                    &po_create_info,
+                                    &mesh_ptr->po_scalar_field_polygonizer) )
+    {
+        ASSERT_DEBUG_SYNC(false,
+                          "RAL program creation failed");
+    }
+
+    if (!ral_program_attach_shader(mesh_ptr->po_scalar_field_polygonizer,
+                                   cs) )
+    {
+        ASSERT_DEBUG_SYNC(false,
+                          "Failed to attach a RAL shader to a RAL program");
+    }
 
     /* Set up a BO which is going to be used for holding indirect draw call arguments */
     const unsigned int indirect_draw_call_args[] =
@@ -1271,11 +1307,13 @@ PRIVATE void _mesh_marchingcubes_init_polygonizer_po(_mesh_marchingcubes* mesh_p
                               &mesh_ptr->polygonized_data_bo);
 
     /* Retrieve data UB properties */
-    const ogl_program_variable* uniform_isolevel_ptr = NULL;
+    const ral_program_variable* uniform_isolevel_ptr = NULL;
+    const raGL_program          polygonizer_po_raGL  = ral_context_get_program_gl(mesh_ptr->context,
+                                                                                  mesh_ptr->po_scalar_field_polygonizer);
 
-    ogl_program_get_uniform_block_by_name(mesh_ptr->po_scalar_field_polygonizer,
-                                          system_hashed_ansi_string_create("dataUB"),
-                                         &mesh_ptr->po_scalar_field_polygonizer_data_ub);
+    raGL_program_get_uniform_block_by_name(polygonizer_po_raGL,
+                                           system_hashed_ansi_string_create("dataUB"),
+                                          &mesh_ptr->po_scalar_field_polygonizer_data_ub);
 
     ogl_program_ub_get_property(mesh_ptr->po_scalar_field_polygonizer_data_ub,
                                 OGL_PROGRAM_UB_PROPERTY_BUFFER_RAL,
@@ -1287,29 +1325,29 @@ PRIVATE void _mesh_marchingcubes_init_polygonizer_po(_mesh_marchingcubes* mesh_p
                                 OGL_PROGRAM_UB_PROPERTY_INDEXED_BP,
                                &mesh_ptr->po_scalar_field_polygonizer_data_ub_bp);
 
-    ogl_program_get_uniform_by_name(mesh_ptr->po_scalar_field_polygonizer,
-                                    system_hashed_ansi_string_create("isolevel"),
-                                   &uniform_isolevel_ptr);
+    raGL_program_get_uniform_by_name(polygonizer_po_raGL,
+                                     system_hashed_ansi_string_create("isolevel"),
+                                    &uniform_isolevel_ptr);
 
     mesh_ptr->po_scalar_field_polygonizer_data_ub_isolevel_offset = uniform_isolevel_ptr->block_offset;
 
     /* Set up precomputed tables UB contents */
-    const ogl_program_variable* uniform_edge_table_ptr     = NULL;
-    const ogl_program_variable* uniform_triangle_table_ptr = NULL;
+    const ral_program_variable* uniform_edge_table_ptr     = NULL;
+    const ral_program_variable* uniform_triangle_table_ptr = NULL;
 
-    ogl_program_get_uniform_by_name(mesh_ptr->po_scalar_field_polygonizer,
-                                    system_hashed_ansi_string_create("edge_table[0]"),
-                                   &uniform_edge_table_ptr);
-    ogl_program_get_uniform_by_name(mesh_ptr->po_scalar_field_polygonizer,
-                                    system_hashed_ansi_string_create("triangle_table[0]"),
-                                   &uniform_triangle_table_ptr);
+    raGL_program_get_uniform_by_name(polygonizer_po_raGL,
+                                     system_hashed_ansi_string_create("edge_table[0]"),
+                                    &uniform_edge_table_ptr);
+    raGL_program_get_uniform_by_name(polygonizer_po_raGL,
+                                     system_hashed_ansi_string_create("triangle_table[0]"),
+                                    &uniform_triangle_table_ptr);
 
     mesh_ptr->po_scalar_field_polygonizer_precomputed_tables_ub_bo_edge_table_offset     = uniform_edge_table_ptr->block_offset;
     mesh_ptr->po_scalar_field_polygonizer_precomputed_tables_ub_bo_triangle_table_offset = uniform_triangle_table_ptr->block_offset;
 
-    ogl_program_get_uniform_block_by_name(mesh_ptr->po_scalar_field_polygonizer,
-                                          system_hashed_ansi_string_create("precomputed_tablesUB"),
-                                         &mesh_ptr->po_scalar_field_polygonizer_precomputed_tables_ub);
+    raGL_program_get_uniform_block_by_name(polygonizer_po_raGL,
+                                           system_hashed_ansi_string_create("precomputed_tablesUB"),
+                                          &mesh_ptr->po_scalar_field_polygonizer_precomputed_tables_ub);
 
     ogl_program_ub_get_property(mesh_ptr->po_scalar_field_polygonizer_precomputed_tables_ub,
                                 OGL_PROGRAM_UB_PROPERTY_BUFFER_RAL,
@@ -1322,52 +1360,50 @@ PRIVATE void _mesh_marchingcubes_init_polygonizer_po(_mesh_marchingcubes* mesh_p
                                &mesh_ptr->po_scalar_field_polygonizer_precomputed_tables_ub_bp);
 
     /* Set up indirect draw call <count> arg SSB */
-    ogl_program_get_shader_storage_block_by_name(mesh_ptr->po_scalar_field_polygonizer,
-                                                 system_hashed_ansi_string_create("indirect_draw_callSSB"),
-                                                &mesh_ptr->po_scalar_field_polygonizer_indirect_draw_call_count_ssb);
+    raGL_program_get_shader_storage_block_by_name(polygonizer_po_raGL,
+                                                  system_hashed_ansi_string_create("indirect_draw_callSSB"),
+                                                 &mesh_ptr->po_scalar_field_polygonizer_indirect_draw_call_count_ssb);
 
     ogl_program_ssb_get_property(mesh_ptr->po_scalar_field_polygonizer_indirect_draw_call_count_ssb,
                                  OGL_PROGRAM_SSB_PROPERTY_INDEXED_BP,
                                 &mesh_ptr->po_scalar_field_polygonizer_indirect_draw_call_count_ssb_bp);
 
     /* Set up result data SSB */
-    ogl_program_get_shader_storage_block_by_name(mesh_ptr->po_scalar_field_polygonizer,
-                                                 system_hashed_ansi_string_create("result_dataSSB"),
-                                                &mesh_ptr->po_scalar_field_polygonizer_result_data_ssb);
+    raGL_program_get_shader_storage_block_by_name(polygonizer_po_raGL,
+                                                  system_hashed_ansi_string_create("result_dataSSB"),
+                                                 &mesh_ptr->po_scalar_field_polygonizer_result_data_ssb);
 
     ogl_program_ssb_get_property(mesh_ptr->po_scalar_field_polygonizer_result_data_ssb,
                                  OGL_PROGRAM_SSB_PROPERTY_INDEXED_BP,
                                 &mesh_ptr->po_scalar_field_polygonizer_result_data_ssb_bp);
 
     /* Set up scalar field data SSB */
-    ogl_program_get_shader_storage_block_by_name(mesh_ptr->po_scalar_field_polygonizer,
-                                                 system_hashed_ansi_string_create("scalar_field_dataSSB"),
-                                                &mesh_ptr->po_scalar_field_polygonizer_scalar_field_data_ssb);
+    raGL_program_get_shader_storage_block_by_name(polygonizer_po_raGL,
+                                                  system_hashed_ansi_string_create("scalar_field_dataSSB"),
+                                                 &mesh_ptr->po_scalar_field_polygonizer_scalar_field_data_ssb);
 
     ogl_program_ssb_get_property(mesh_ptr->po_scalar_field_polygonizer_scalar_field_data_ssb,
                                  OGL_PROGRAM_SSB_PROPERTY_INDEXED_BP,
                                 &mesh_ptr->po_scalar_field_polygonizer_scalar_field_data_ssb_bp);
 
     /* Release stuff */
-    ogl_shader_release(cs);
+    ral_context_delete_objects(mesh_ptr->context,
+                               RAL_CONTEXT_OBJECT_TYPE_SHADER,
+                               1, /* n_objects */
+                               (const void**) &cs);
 }
 
 /** TODO */
 PRIVATE void _mesh_marchingcubes_init_rendering_thread_callback(ogl_context context,
                                                                 void*       user_arg)
 {
-    ogl_programs              context_programs     = NULL;
     _mesh_marchingcubes*      new_mesh_ptr         = (_mesh_marchingcubes*) user_arg;
     system_hashed_ansi_string polygonizer_name_has = NULL;
-    ogl_program               polygonizer_po       = NULL;
-
-    ogl_context_get_property(ral_context_get_gl_context(new_mesh_ptr->context),
-                             OGL_CONTEXT_PROPERTY_PROGRAMS,
-                            &context_programs);
+    ral_program               polygonizer_po       = NULL;
 
     /* Initialize the polygonizer, if one has not been already instantiated */
     polygonizer_name_has = _mesh_marchingcubes_get_polygonizer_name(new_mesh_ptr);
-    polygonizer_po       = ogl_programs_get_program_by_name        (context_programs,
+    polygonizer_po       = ral_context_get_program_by_name         (new_mesh_ptr->context,
                                                                     polygonizer_name_has);
 
     if (polygonizer_po == NULL)
@@ -1376,7 +1412,9 @@ PRIVATE void _mesh_marchingcubes_init_rendering_thread_callback(ogl_context cont
     } /* if (polygonizer_po == NULL) */
     else
     {
-        ogl_program_retain(polygonizer_po);
+        ral_context_retain_object(new_mesh_ptr->context,
+                                  RAL_CONTEXT_OBJECT_TYPE_PROGRAM,
+                                  polygonizer_po);
     }
 }
 
@@ -1692,7 +1730,15 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void mesh_marchingcubes_polygonize(mes
                                               &int_zero);
 
         /* Polygonize the scalar field */
-        entrypoints_ptr->pGLUseProgram     (ogl_program_get_id(mesh_ptr->po_scalar_field_polygonizer) );
+        const raGL_program polygonizer_po_raGL    = ral_context_get_program_gl(mesh_ptr->context,
+                                                                               mesh_ptr->po_scalar_field_polygonizer);
+        GLuint             polygonizer_po_raGL_id = 0;
+
+        raGL_program_get_property(polygonizer_po_raGL,
+                                  RAGL_PROGRAM_PROPERTY_ID,
+                                 &polygonizer_po_raGL_id);
+
+        entrypoints_ptr->pGLUseProgram     (polygonizer_po_raGL_id);
         entrypoints_ptr->pGLDispatchCompute(mesh_ptr->po_scalar_field_polygonizer_global_wg_size[0],
                                             mesh_ptr->po_scalar_field_polygonizer_global_wg_size[1],
                                             mesh_ptr->po_scalar_field_polygonizer_global_wg_size[2]);

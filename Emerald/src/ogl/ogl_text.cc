@@ -362,7 +362,7 @@ PRIVATE void _ogl_text_update_vram_data_storage(ogl_context context,
             ral_context_delete_objects(text_ptr->context,
                                        RAL_CONTEXT_OBJECT_TYPE_BUFFER,
                                        1, /* n_buffers */
-                                      &text_ptr->data_buffer);
+                                       (const void**) &text_ptr->data_buffer);
 
             text_ptr->data_buffer = NULL;
         }
@@ -503,9 +503,10 @@ PRIVATE void _ogl_text_construction_callback_from_renderer(ogl_context context,
             };
             const uint32_t n_shader_create_info_items                 = sizeof(shader_create_info_items) / sizeof(shader_create_info_items[0]);
             ral_shader     result_shaders[n_shader_create_info_items] = { NULL };
-            
+
             const ral_program_create_info draw_text_program_create_info =
             {
+                RAL_PROGRAM_SHADER_STAGE_BIT_FRAGMENT | RAL_PROGRAM_SHADER_STAGE_BIT_VERTEX,
                 system_hashed_ansi_string_create("ogl_text program")
             };
 
@@ -573,11 +574,9 @@ PRIVATE void _ogl_text_construction_callback_from_renderer(ogl_context context,
                                    &vs_body_has);
 
             if (!ral_program_attach_shader(_global.draw_text_program,
-                                           result_shaders[0],
-                                           false /* relink_needed */) ||
+                                           result_shaders[0]) ||
                 !ral_program_attach_shader(_global.draw_text_program,
-                                           result_shaders[1],
-                                           true /* relink_needed */) )
+                                           result_shaders[1]) )
             {
                 ASSERT_DEBUG_SYNC(false,
                                   "Could not link text drawing program.");
@@ -661,7 +660,7 @@ PRIVATE void _ogl_text_construction_callback_from_renderer(ogl_context context,
             ral_context_delete_objects(text_ptr->context,
                                        RAL_CONTEXT_OBJECT_TYPE_SHADER,
                                        n_shader_create_info_items,
-                                       result_shaders);
+                                       (const void**) result_shaders);
         }
         else
         {
@@ -837,7 +836,7 @@ PRIVATE void _ogl_text_destruction_callback_from_renderer(ogl_context context,
         ral_context_delete_objects(text_ptr->context,
                                    RAL_CONTEXT_OBJECT_TYPE_BUFFER,
                                    1, /* n_buffers */
-                                  &text_ptr->data_buffer);
+                                   (const void**) &text_ptr->data_buffer);
 
         text_ptr->data_buffer = NULL;
     }
@@ -851,7 +850,7 @@ PRIVATE void _ogl_text_destruction_callback_from_renderer(ogl_context context,
             ral_context_delete_objects(text_ptr->context,
                                        RAL_CONTEXT_OBJECT_TYPE_PROGRAM,
                                        1, /* n_objects */
-                                      &_global.draw_text_program);
+                                       (const void**) &_global.draw_text_program);
 
             for (FontTableIterator iterator  = _global.font_tables.begin();
                                    iterator != _global.font_tables.end();
@@ -860,7 +859,7 @@ PRIVATE void _ogl_text_destruction_callback_from_renderer(ogl_context context,
                 ral_context_delete_objects(text_ptr->context,
                                            RAL_CONTEXT_OBJECT_TYPE_TEXTURE,
                                            1, /* n_textures */
-                                          &iterator->second.to);
+                                           (const void**) &iterator->second.to);
             }
             _global.font_tables.clear();
 

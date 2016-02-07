@@ -80,6 +80,7 @@ PRIVATE void _ogl_ui_frame_init_program(ogl_ui         ui,
 
     const ral_program_create_info program_create_info =
     {
+        RAL_PROGRAM_SHADER_STAGE_BIT_FRAGMENT | RAL_PROGRAM_SHADER_STAGE_BIT_VERTEX,
         system_hashed_ansi_string_create("UI frame program")
     };
 
@@ -125,11 +126,9 @@ PRIVATE void _ogl_ui_frame_init_program(ogl_ui         ui,
 
     /* Set up program object */
     if (!ral_program_attach_shader(frame_ptr->program,
-                                   fs,
-                                   false /* relink_needed */) ||
+                                   fs) ||
         !ral_program_attach_shader(frame_ptr->program,
-                                   vs,
-                                   true /* relink_needed */) )
+                                   vs) )
     {
         ASSERT_DEBUG_SYNC(false,
                           "RAL program configuration failed.");
@@ -151,7 +150,7 @@ PRIVATE void _ogl_ui_frame_init_program(ogl_ui         ui,
     ral_context_delete_objects(frame_ptr->context,
                                RAL_CONTEXT_OBJECT_TYPE_SHADER,
                                n_shaders_to_release,
-                               shaders_to_release);
+                               (const void**) shaders_to_release);
 }
 
 /** Please see header for specification */
@@ -162,7 +161,7 @@ PUBLIC void ogl_ui_frame_deinit(void* internal_instance)
     ral_context_delete_objects(ui_frame_ptr->context,
                                RAL_CONTEXT_OBJECT_TYPE_PROGRAM,
                                1, /* n_objects */
-                              &ui_frame_ptr->program);
+                               (const void**) &ui_frame_ptr->program);
 
     delete ui_frame_ptr;
 }

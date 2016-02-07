@@ -305,8 +305,9 @@ PRIVATE void _ogl_skybox_init_ogl_skybox_spherical_projection_texture(_ogl_skybo
     /* Create a program */
     ral_program_create_info program_create_info;
 
-    program_create_info.name = system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(skybox_ptr->name),
-                                                                                       " program");
+    program_create_info.active_shader_stages = RAL_PROGRAM_SHADER_STAGE_BIT_FRAGMENT | RAL_PROGRAM_SHADER_STAGE_BIT_VERTEX;
+    program_create_info.name                 = system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(skybox_ptr->name),
+                                                                                                       " program");
 
     if (!ral_context_create_programs(skybox_ptr->context,
                                      1, /* n_create_info_items */
@@ -318,11 +319,9 @@ PRIVATE void _ogl_skybox_init_ogl_skybox_spherical_projection_texture(_ogl_skybo
     }
 
     if (!ral_program_attach_shader(skybox_ptr->program,
-                                   result_shaders[0],
-                                   false /* relink_needed */) ||
+                                   result_shaders[0]) ||
         !ral_program_attach_shader(skybox_ptr->program,
-                                   result_shaders[1],
-                                   true /* relink_needed */))
+                                   result_shaders[1]))
     {
         ASSERT_DEBUG_SYNC(false,
                           "Could not attach shaders to the skybox program");
@@ -356,7 +355,7 @@ PRIVATE void _ogl_skybox_init_ogl_skybox_spherical_projection_texture(_ogl_skybo
     ral_context_delete_objects(skybox_ptr->context,
                                RAL_CONTEXT_OBJECT_TYPE_SHADER,
                                n_create_info_items,
-                               result_shaders);
+                               (const void**) result_shaders);
 }
 
 /** TODO */
@@ -431,7 +430,7 @@ PRIVATE void _ogl_skybox_release(void* skybox)
     ral_context_delete_objects(skybox_ptr->context,
                                RAL_CONTEXT_OBJECT_TYPE_PROGRAM,
                                1, /* n_objects */
-                              &skybox_ptr->program);
+                               (const void**) &skybox_ptr->program);
 }
 
 #ifdef INCLUDE_OPENCL

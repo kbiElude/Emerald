@@ -13,7 +13,7 @@
 #include "raGL/raGL_program.h"
 #include "ral/ral_context.h"
 #include "ral/ral_program.h"
-#include "ral/ral.shader.h"
+#include "ral/ral_shader.h"
 #include "system/system_assertions.h"
 #include "system/system_critical_section.h"
 #include "system/system_log.h"
@@ -23,9 +23,8 @@
 /* Type definitions */
 typedef struct
 {
-    ogl_shader     fragment_shader;
-    ogl_shader     vertex_shader;
-    ogl_program    program;
+    ral_context    context;
+    ral_program    program;
     ogl_program_ub program_ub;
     ral_buffer     program_ub_bo;
     GLuint         program_ub_bo_size;
@@ -46,22 +45,15 @@ REFCOUNT_INSERT_IMPLEMENTATION(curve_editor_program_curvebackground,
 /** Please see header for specification */
 PRIVATE void _curve_editor_program_curvebackground_release(void* in)
 {
-    _curve_editor_program_curvebackground* program = (_curve_editor_program_curvebackground*) in;
+    _curve_editor_program_curvebackground* program_ptr = (_curve_editor_program_curvebackground*) in;
 
     /* Release all objects */
-    if (program->fragment_shader != NULL)
+    if (program_ptr->program != NULL)
     {
-        ogl_shader_release(program->fragment_shader);
-    }
-
-    if (program->vertex_shader != NULL)
-    {
-        ogl_shader_release(program->vertex_shader);
-    }
-
-    if (program->program != NULL)
-    {
-        ogl_program_release(program->program);
+        ral_context_delete_objects(program_ptr->context,
+                                   RAL_CONTEXT_OBJECT_TYPE_PROGRAM,
+                                   1, /* n_objects */
+                                   &program_ptr->program);
     }
 }
 
@@ -71,17 +63,16 @@ PRIVATE void _curve_editor_program_curvebackground_release(void* in)
 PUBLIC curve_editor_program_curvebackground curve_editor_program_curvebackground_create(ral_context               context,
                                                                                         system_hashed_ansi_string name)
 {
-    _curve_editor_program_curvebackground* result = new (std::nothrow) _curve_editor_program_curvebackground;
+    _curve_editor_program_curvebackground* result_ptr = new (std::nothrow) _curve_editor_program_curvebackground;
 
-    ASSERT_DEBUG_SYNC(result != NULL,
+    ASSERT_DEBUG_SYNC(result_ptr != NULL,
                       "Out of memroy while instantiating curve background program object.");
 
-    if (result != NULL)
+    if (result_ptr != NULL)
     {
         /* Reset the structure */
-        result->fragment_shader = NULL;
-        result->program         = NULL;
-        result->vertex_shader   = NULL;
+        result_ptr->context = context;
+        result_ptr->program = NULL;
 
         /* Create vertex shader */
         std::stringstream fp_body_stream;
@@ -114,137 +105,129 @@ PUBLIC curve_editor_program_curvebackground curve_editor_program_curvebackground
                           "}\n";
 
         /* Create the program */
-        result->program = ogl_program_create(context,
-                                             name,
-                                             OGL_PROGRAM_SYNCABLE_UBS_MODE_ENABLE_GLOBAL);
-
-        ASSERT_DEBUG_SYNC(result->program != NULL,
-                          "ogl_program_create() failed");
-
-        if (result->program == NULL)
+        const ral_program_create_info program_create_info =
         {
-            LOG_ERROR("Could not create curve background program.");
+            name
+        };
+
+        if (!ral_context_create_programs(context,
+                                         1, /* n_create_info_items */
+                                        &program_create_info,
+                                        &result_ptr->program) )
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "RAL program creation failed.");
 
             goto end;
         }
 
         /* Create the shaders */
-        result->fragment_shader = ogl_shader_create(context,
-                                                    RAL_SHADER_TYPE_FRAGMENT,
-                                                    system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(name),
-                                                                                                            " FP"));
-        result->vertex_shader   = ogl_shader_create(context,
-                                                    RAL_SHADER_TYPE_VERTEX,
-                                                    system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(name),
-                                                                                                            " VP"));
-
-        ASSERT_DEBUG_SYNC(result->fragment_shader != NULL &&
-                          result->vertex_shader   != NULL,
-                          "ogl_shader_create() failed");
-
-        if (result->fragment_shader == NULL ||
-            result->vertex_shader   == NULL)
+        const ral_shader_create_info fs_create_info =
         {
-            LOG_ERROR("Could not create curve background fragment / vertex shader.");
+            system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(name),
+                                                                    " FS"),
+            RAL_SHADER_TYPE_FRAGMENT
+        };
+        const ral_shader_create_info vs_create_info =
+        {
+            system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(name),
+                                                                    " VS"),
+            RAL_SHADER_TYPE_VERTEX
+        };
+
+        const ral_shader_create_info shader_create_info_items[] =
+        {
+            fs_create_info,
+            vs_create_info
+        };
+        const uint32_t n_shader_create_info_items                 = sizeof(shader_create_info_items) / sizeof(shader_create_info_items[0]);
+        ral_shader     result_shaders[n_shader_create_info_items] = { NULL };
+
+        if (!ral_context_create_shaders(context,
+                                        n_shader_create_info_items,
+                                        shader_create_info_items,
+                                        result_shaders))
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Could not create curve background fragment / vertex shader.");
 
             goto end;
         }
 
-        /* Set the shaders' bodies */
-        system_hashed_ansi_string fp_shader_body = system_hashed_ansi_string_create(fp_body_stream.str().c_str() );
-        system_hashed_ansi_string vp_shader_body = system_hashed_ansi_string_create(vp_body_stream.str().c_str() );
-        bool                      b_result       = false;
-        
-        b_result  = ogl_shader_set_body(result->fragment_shader,
-                                        fp_shader_body);
-        b_result &= ogl_shader_set_body(result->vertex_shader,
-                                        vp_shader_body);
+        /* Set the shader bodies */
+        system_hashed_ansi_string fs_shader_body = system_hashed_ansi_string_create(fp_body_stream.str().c_str() );
+        system_hashed_ansi_string vs_shader_body = system_hashed_ansi_string_create(vp_body_stream.str().c_str() );
 
-        ASSERT_DEBUG_SYNC(b_result,
-                          "ogl_shader_set_body() failed");
-
-        if (!b_result)
-        {
-            LOG_ERROR("Could not set curve background fragment / vertex shader body.");
-
-            goto end;
-        }
+        ral_shader_set_property(result_shaders[0],
+                                RAL_SHADER_PROPERTY_GLSL_BODY,
+                               &fs_shader_body);
+        ral_shader_set_property(result_shaders[1],
+                                RAL_SHADER_PROPERTY_GLSL_BODY,
+                               &vs_shader_body);
 
         /* Attach shaders to the program */
-        b_result  = ogl_program_attach_shader(result->program,
-                                              result->fragment_shader);
-        b_result &= ogl_program_attach_shader(result->program,
-                                              result->vertex_shader);
-
-        ASSERT_DEBUG_SYNC(b_result,
-                          "ogl_program_attach_shader() failed");
-        if (!b_result)
+        if (!ral_program_attach_shader(result_ptr->program,
+                                       result_shaders[0],
+                                       false /* relink_needed */) ||
+            !ral_program_attach_shader(result_ptr->program,
+                                       result_shaders[1],
+                                       true /* relink_needed */))
         {
-            LOG_ERROR("Could not attach shader(s) to curve background program.");
-
-            goto end;
-        }
-
-        /* Link the program */
-        b_result = ogl_program_link(result->program);
-
-        ASSERT_DEBUG_SYNC(b_result,
-                          "ogl_program_link() failed");
-        if (!b_result)
-        {
-            LOG_ERROR("Could not link curve background program");
+            ASSERT_DEBUG_SYNC(false,
+                              "Could not attach shader(s) to curve background program.");
 
             goto end;
         }
 
         /* Retrieve uniform locations */
-        const ogl_program_variable* colors_uniform_descriptor    = NULL;
-        const ogl_program_variable* positions_uniform_descriptor = NULL;
+        const ral_program_variable* colors_uniform_ptr    = NULL;
+        const ral_program_variable* positions_uniform_ptr = NULL;
+        raGL_program                program_raGL          = ral_context_get_program_gl(context,
+                                                                                       result_ptr->program);
 
-        b_result  = ogl_program_get_uniform_by_name      (result->program,
-                                                          system_hashed_ansi_string_create("colors"),
-                                                         &colors_uniform_descriptor);
-        b_result &= ogl_program_get_uniform_by_name      (result->program,
-                                                          system_hashed_ansi_string_create("positions[0]"),
-                                                         &positions_uniform_descriptor);
-        b_result &= ogl_program_get_uniform_block_by_name(result->program,
-                                                          system_hashed_ansi_string_create("data"),
-                                                         &result->program_ub);
+        raGL_program_get_uniform_by_name      (program_raGL,
+                                               system_hashed_ansi_string_create("colors"),
+                                              &colors_uniform_ptr);
+        raGL_program_get_uniform_by_name      (program_raGL,
+                                               system_hashed_ansi_string_create("positions[0]"),
+                                              &positions_uniform_ptr);
+        raGL_program_get_uniform_block_by_name(program_raGL,
+                                               system_hashed_ansi_string_create("data"),
+                                              &result_ptr->program_ub);
 
-        ASSERT_DEBUG_SYNC(b_result,
-                          "Could not retrieve colors or positions uniform descriptor.");
+        ASSERT_DEBUG_SYNC(colors_uniform_ptr     != NULL &&
+                          positions_uniform_ptr  != NULL &&
+                          result_ptr->program_ub != NULL,
+                          "Could not retrieve uniform / uniform block descriptors.");
 
-        if (b_result)
-        {
-            result->colors_ub_offset    = colors_uniform_descriptor->block_offset;
-            result->positions_ub_offset = positions_uniform_descriptor->block_offset;
+        result_ptr->colors_ub_offset    = colors_uniform_ptr->block_offset;
+        result_ptr->positions_ub_offset = positions_uniform_ptr->block_offset;
 
-            ASSERT_DEBUG_SYNC(result->colors_ub_offset    != -1 &&
-                              result->positions_ub_offset != -1,
-                              "At least one UB offset was -1");
+        ASSERT_DEBUG_SYNC(result_ptr->colors_ub_offset    != -1 &&
+                          result_ptr->positions_ub_offset != -1,
+                          "At least one UB offset was -1");
 
-            ogl_program_ub_get_property(result->program_ub,
-                                        OGL_PROGRAM_UB_PROPERTY_BLOCK_DATA_SIZE,
-                                       &result->program_ub_bo_size);
-            ogl_program_ub_get_property(result->program_ub,
-                                        OGL_PROGRAM_UB_PROPERTY_BUFFER_RAL,
-                                       &result->program_ub_bo);
-        }
+        ogl_program_ub_get_property(result_ptr->program_ub,
+                                    OGL_PROGRAM_UB_PROPERTY_BLOCK_DATA_SIZE,
+                                   &result_ptr->program_ub_bo_size);
+        ogl_program_ub_get_property(result_ptr->program_ub,
+                                    OGL_PROGRAM_UB_PROPERTY_BUFFER_RAL,
+                                   &result_ptr->program_ub_bo);
 
         /* Add to the object manager */
-        REFCOUNT_INSERT_INIT_CODE_WITH_RELEASE_HANDLER(result,
+        REFCOUNT_INSERT_INIT_CODE_WITH_RELEASE_HANDLER(result_ptr,
                                                        _curve_editor_program_curvebackground_release,
                                                        OBJECT_TYPE_PROGRAMS_CURVE_EDITOR_CURVEBACKGROUND,
                                                        system_hashed_ansi_string_create_by_merging_two_strings("\\Curve Editor Programs (Curve Background)\\",
                                                                                                                system_hashed_ansi_string_get_buffer(name)) );
     }
 
-    return (curve_editor_program_curvebackground) result;
+    return (curve_editor_program_curvebackground) result_ptr;
 
 end:
-    if (result != NULL)
+    if (result_ptr != NULL)
     {
-        curve_editor_program_curvebackground_release( (curve_editor_program_curvebackground&) result);
+        curve_editor_program_curvebackground_release( (curve_editor_program_curvebackground&) result_ptr);
     }
 
     return NULL;
@@ -301,6 +284,14 @@ PUBLIC void curve_editor_program_curvebackground_use(ral_context                
     raGL_buffer                            program_ub_bo_raGL         = NULL;
     uint32_t                               program_ub_bo_start_offset = -1;
 
+    const raGL_program                     program_raGL    = ral_context_get_program_gl(curvebackground_ptr->context,
+                                                                                        curvebackground_ptr->program);
+    GLuint                                 program_raGL_id = 0;
+
+    raGL_program_get_property(program_raGL,
+                              RAGL_PROGRAM_PROPERTY_ID,
+                             &program_raGL_id);
+
     ogl_context_get_property(ral_context_get_gl_context(context),
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
                             &entry_points);
@@ -322,5 +313,5 @@ PUBLIC void curve_editor_program_curvebackground_use(ral_context                
                                      program_ub_bo_id,
                                      program_ub_bo_start_offset,
                                      curvebackground_ptr->program_ub_bo_size);
-    entry_points->pGLUseProgram     (ogl_program_get_id(curvebackground_ptr->program) );
+    entry_points->pGLUseProgram     (program_raGL_id);
 }

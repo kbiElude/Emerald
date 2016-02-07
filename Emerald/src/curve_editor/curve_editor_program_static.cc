@@ -178,6 +178,12 @@ PUBLIC curve_editor_program_static curve_editor_program_static_create(ral_contex
             goto end;
         }
 
+        /* Release the shaders */
+        ral_context_delete_objects(program_ptr->context,
+                                   RAL_CONTEXT_OBJECT_TYPE_SHADER,
+                                   n_shader_create_info_items,
+                                   result_shaders);
+
         /* Retrieve uniform locations */
         const ral_program_variable* pos1_uniform_ptr = NULL;
         const ral_program_variable* pos2_uniform_ptr = NULL;

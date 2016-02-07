@@ -27,6 +27,7 @@
 #include "system/system_callback_manager.h"
 #include "system/system_critical_section.h"
 #include "system/system_hash64map.h"
+#include "system/system_log.h"
 #include "system/system_pixel_format.h"
 #include "system/system_window.h"
 
@@ -40,12 +41,14 @@ typedef struct _raGL_backend
     system_critical_section buffers_map_cs;
     system_hash64map        framebuffers_map; /* maps ral_framebuffer to raGL_framebuffer instance; owns the mapped raGL_framebuffer instances */
     system_critical_section framebuffers_map_cs;
-    system_hash64map        programs_map;     /* maps ral_program to raGL_program instance; owns the mapped raGL_program instances */
-    system_critical_section programs_map_cs;
     system_hash64map        samplers_map;     /* maps ral_sampler to raGL_sampler instance; owns the mapped raGL_sampler instances */
     system_critical_section samplers_map_cs;
     system_hash64map        shaders_map;     /* maps ral_shader to raGL_shader instance; owns the mapped raGL_shader instances */
     system_critical_section shaders_map_cs;
+
+    system_hash64map        program_id_to_raGL_program_map; /* maps GLid to raGL_program instance; does not own the raGL_program values; lock programs_map_cs before usage. */
+    system_hash64map        programs_map;                   /* maps ral_program to raGL_program instance; owns the mapped raGL_program instances */
+    system_critical_section programs_map_cs;
 
     system_hash64map        texture_id_to_raGL_texture_map; /* maps GLid to raGL_texture instance; does NOT own the mapepd raGL_texture instances; lock textures_map_cs before usage. */
     system_hash64map        textures_map;                   /* maps ral_texture to raGL_texture instance; owns the mapped raGL_texture instances */
@@ -75,6 +78,7 @@ typedef struct _raGL_backend
         framebuffers_map_cs               = system_critical_section_create();
         max_framebuffer_color_attachments = 0;
         name                              = in_name;
+        program_id_to_raGL_program_map    = system_hash64map_create       (sizeof(raGL_program) );
         programs_map                      = system_hash64map_create       (sizeof(raGL_program) );
         programs_map_cs                   = system_critical_section_create();
         samplers_map                      = system_hash64map_create       (sizeof(raGL_sampler) );
@@ -128,7 +132,7 @@ PRIVATE void _raGL_backend_on_objects_deleted_rendering_callback          (ogl_c
                                                                            void*                    callback_arg);
 PRIVATE void _raGL_backend_on_shader_attach_request                       (const void*              callback_arg_data,
                                                                            void*                    backend);
-PRIVATE void _raGL_backend_on_shader_compilation_needed_request           (const void*              callback_arg_data,
+PRIVATE void _raGL_backend_on_shader_body_updated_notification            (const void*              callback_arg_data,
                                                                            void*                    backend);
 PRIVATE void _raGL_backend_on_texture_client_memory_sourced_update_request(const void*              callback_arg_data,
                                                                            void*                    backend);
@@ -174,79 +178,63 @@ _raGL_backend::~_raGL_backend()
         textures = NULL;
     }
 
-    for (uint32_t n_object_type = 0;
-                  n_object_type < RAL_CONTEXT_OBJECT_TYPE_COUNT;
-                ++n_object_type)
-    {
-        system_critical_section cs              = NULL;
-        system_hash64map        objects_map     = NULL;
-        system_hash64map*       objects_map_ptr = &objects_map;
-
-        _raGL_backend_get_object_vars(this,
-                                      (ral_context_object_type) n_object_type,
-                                      &cs,
-                                     &objects_map);
-
-        system_critical_section_enter(cs);
-        {
-            if (*objects_map_ptr != NULL)
-            {
-                uint32_t n_objects = 0;
-
-                system_hash64map_get_property(*objects_map_ptr,
-                                              SYSTEM_HASH64MAP_PROPERTY_N_ELEMENTS,
-                                             &n_objects);
-
-                for (uint32_t n_object = 0;
-                              n_object < n_objects;
-                            ++n_object)
-                {
-                    void* current_object = NULL;
-
-                    if (!system_hash64map_get_element_at(*objects_map_ptr,
-                                                         n_object,
-                                                        &current_object,
-                                                         NULL) ) /* result_hash_ptr */
-                    {
-                        ASSERT_DEBUG_SYNC(false,
-                                          "Could not retrieve raGL object instance");
-
-                        continue;
-                    }
-
-                    switch (n_object_type)
-                    {
-                        case RAL_CONTEXT_OBJECT_TYPE_BUFFER:      raGL_buffer_release     ( (raGL_buffer&)      current_object); break;
-                        case RAL_CONTEXT_OBJECT_TYPE_FRAMEBUFFER: raGL_framebuffer_release( (raGL_framebuffer&) current_object); break;
-                        case RAL_CONTEXT_OBJECT_TYPE_PROGRAM:     raGL_program_release    ( (raGL_program&)     current_object); break;
-                        case RAL_CONTEXT_OBJECT_TYPE_SAMPLER:     raGL_sampler_release    ( (raGL_sampler&)     current_object); break;
-                        case RAL_CONTEXT_OBJECT_TYPE_SHADER:      raGL_shader_release     ( (raGL_shader&)      current_object); break;
-                        case RAL_CONTEXT_OBJECT_TYPE_TEXTURE:     raGL_texture_release    ( (raGL_texture&)     current_object); break;
-
-                        default:
-                        {
-                            ASSERT_DEBUG_SYNC(false,
-                                              "Unrecognized raGL_backend_object_type value.");
-                        }
-                    } /* switch (n_object_type) */
-
-                    current_object = NULL;
-                } /* for (all object map items) */
-
-                system_hash64map_release(*objects_map_ptr);
-                *objects_map_ptr = NULL;
-            } /* if (objects_map != NULL) */
-
-            system_critical_section_leave(cs);
-        } /* for (all raGL object types) */
-    }
-
     if (context_gl != NULL)
     {
         ogl_context_release(context_gl);
 
         context_gl = NULL;
     } /* if (context_gl != NULL) */
+
+    for (uint32_t n_object_type = 0;
+                  n_object_type < RAL_CONTEXT_OBJECT_TYPE_COUNT;
+                ++n_object_type)
+    {
+        system_critical_section cs                = NULL;
+        uint32_t                n_objects_leaking = 0;
+        system_hash64map        objects_map       = NULL;
+        system_hash64map*       objects_map_ptr   = &objects_map;
+
+        _raGL_backend_get_object_vars(this,
+                                      (ral_context_object_type) n_object_type,
+                                     &cs,
+                                     &objects_map);
+
+        system_hash64map_get_property(objects_map,
+                                      SYSTEM_HASH64MAP_PROPERTY_N_ELEMENTS,
+                                     &n_objects_leaking);
+
+        if (n_objects_leaking > 0)
+        {
+            char* error_string = NULL;
+            char  temp[128];
+
+            switch (n_object_type)
+            {
+                case RAL_CONTEXT_OBJECT_TYPE_BUFFER:      error_string = "GL back-end leaks [%d] buffers";      break;
+                case RAL_CONTEXT_OBJECT_TYPE_FRAMEBUFFER: error_string = "GL back-end leaks [%d] framebuffers"; break;
+                case RAL_CONTEXT_OBJECT_TYPE_PROGRAM:     error_string = "GL back-end leaks [%d] programs";     break;
+                case RAL_CONTEXT_OBJECT_TYPE_SAMPLER:     error_string = "GL back-end leaks [%d] samplers";     break;
+                case RAL_CONTEXT_OBJECT_TYPE_SHADER:      error_string = "GL back-end leaks [%d] shaders";      break;
+                case RAL_CONTEXT_OBJECT_TYPE_TEXTURE:     error_string = "GL back-end leaks [%d] textures";     break;
+
+                default:
+                {
+                    error_string = "!?";
+                }
+            } /* switch (n_object_type) */
+
+            snprintf(temp,
+                     sizeof(temp),
+                     error_string,
+                     n_objects_leaking);
+
+            LOG_ERROR("%s",
+                      temp);
+        } /* if (n_objects_leaking > 0) */
+
+        system_hash64map_release(*objects_map_ptr);
+        *objects_map_ptr = NULL;
+    }
 
     if (texture_id_to_raGL_texture_map != NULL)
     {
@@ -278,47 +266,12 @@ _raGL_backend::~_raGL_backend()
     system_critical_section_release(textures_map_cs);
     textures_map_cs = NULL;
 
-    /* Release the hash maps */
-    if (buffers_map != NULL)
+    /* Release the remaining hash maps */
+    if (program_id_to_raGL_program_map != NULL)
     {
-        system_hash64map_release(buffers_map);
+        system_hash64map_release(program_id_to_raGL_program_map);
 
-        buffers_map = NULL;
-    }
-
-    if (framebuffers_map != NULL)
-    {
-        system_hash64map_release(framebuffers_map);
-
-        framebuffers_map = NULL;
-    }
-
-    if (programs_map != NULL)
-    {
-        system_hash64map_release(programs_map);
-
-        programs_map = NULL;
-    }
-
-    if (samplers_map != NULL)
-    {
-        system_hash64map_release(samplers_map);
-
-        samplers_map = NULL;
-    }
-
-    if (shaders_map != NULL)
-    {
-        system_hash64map_release(shaders_map);
-
-        shaders_map = NULL;
-    }
-
-    if (textures_map != NULL)
-    {
-        system_hash64map_release(textures_map);
-
-        textures_map = NULL;
+        program_id_to_raGL_program_map = NULL;
     }
 }
 
@@ -816,8 +769,6 @@ PRIVATE void _raGL_backend_on_objects_created_rendering_callback(ogl_context con
                                                 context,
                                                 shader_ral);
 
-                raGL_shader_compile( (raGL_shader) new_object);
-
                 break;
             }
 
@@ -860,25 +811,51 @@ PRIVATE void _raGL_backend_on_objects_created_rendering_callback(ogl_context con
                                     NULL,  /* on_remove_callback */
                                     NULL); /* on_remove_callback_user_arg */
 
-            /* Texture objects are actually stored in two hash maps. */
-            if (callback_arg_ptr->ral_callback_arg_ptr->object_type == RAL_CONTEXT_OBJECT_TYPE_TEXTURE)
+            /* For a few object types, we also need to fill additional id->object maps */
+            switch (callback_arg_ptr->ral_callback_arg_ptr->object_type)
             {
-                GLuint       new_texture_id   = 0;
-                raGL_texture new_texture_raGL = (raGL_texture) new_object;
+                case RAL_CONTEXT_OBJECT_TYPE_PROGRAM:
+                {
+                    GLuint       new_program_id   = 0;
+                    raGL_program new_program_raGL = (raGL_program) new_object;
 
-                raGL_texture_get_property(new_texture_raGL,
-                                          RAGL_TEXTURE_PROPERTY_ID,
-                                         &new_texture_id);
+                    raGL_program_get_property(new_program_raGL,
+                                              RAGL_PROGRAM_PROPERTY_ID,
+                                             &new_program_id);
 
-                ASSERT_DEBUG_SYNC(new_texture_id != 0,
-                                  "New raGL_texture's GL id is 0");
+                    ASSERT_DEBUG_SYNC(new_program_id != 0,
+                                      "New raGL_program's GL id is 0");
 
-                system_hash64map_insert(callback_arg_ptr->backend_ptr->texture_id_to_raGL_texture_map,
-                                        (system_hash64) new_texture_id,
-                                        new_object,
-                                        NULL,  /* on_remove_callback          */
-                                        NULL); /* on_remove_callback_user_arg */
-            } /*( if (callback_arg_ptr->object_type == RAGL_BACKEND_OBJECT_TYPE_TEXTURE) */
+                    system_hash64map_insert(callback_arg_ptr->backend_ptr->program_id_to_raGL_program_map,
+                                            (system_hash64) new_program_id,
+                                            new_object,
+                                            NULL,  /* on_remove_callback          */
+                                            NULL); /* on_remove_callback_user_arg */
+
+                    break;
+                }
+
+                case RAL_CONTEXT_OBJECT_TYPE_TEXTURE:
+                {
+                    GLuint       new_texture_id   = 0;
+                    raGL_texture new_texture_raGL = (raGL_texture) new_object;
+
+                    raGL_texture_get_property(new_texture_raGL,
+                                              RAGL_TEXTURE_PROPERTY_ID,
+                                             &new_texture_id);
+
+                    ASSERT_DEBUG_SYNC(new_texture_id != 0,
+                                      "New raGL_texture's GL id is 0");
+
+                    system_hash64map_insert(callback_arg_ptr->backend_ptr->texture_id_to_raGL_texture_map,
+                                            (system_hash64) new_texture_id,
+                                            new_object,
+                                            NULL,  /* on_remove_callback          */
+                                            NULL); /* on_remove_callback_user_arg */
+
+                    break;
+                } /* case RAL_CONTEXT_OBJECT_TYPE_TEXTURE: */
+            } /* switch (callback_arg_ptr->ral_callback_arg_ptr->object_type) */
         }
         system_critical_section_leave(objects_map_cs);
     } /* for (all generated FB ids) */
@@ -925,12 +902,20 @@ PRIVATE void _raGL_backend_on_objects_deleted(const void* callback_arg,
 {
     _raGL_backend*                                           backend_ptr      = (_raGL_backend*)                                           backend;
     const ral_context_callback_objects_deleted_callback_arg* callback_arg_ptr = (const ral_context_callback_objects_deleted_callback_arg*) callback_arg;
+    system_hash64map                                         object_map       = NULL;
+    system_critical_section                                  object_map_cs    = NULL;
+    void*                                                    object_raGL      = NULL;
 
     /* Sanity checks */
     ASSERT_DEBUG_SYNC(backend_ptr != NULL,
                       "Backend instance is NULL");
     ASSERT_DEBUG_SYNC(callback_arg != NULL,
                       "Callback argument is NULL");
+
+    _raGL_backend_get_object_vars(backend_ptr,
+                                  callback_arg_ptr->object_type,
+                                 &object_map_cs,
+                                 &object_map);
 
     /* Unsubscribe from any RAL object notifications */
     switch (callback_arg_ptr->object_type)
@@ -1014,6 +999,68 @@ PRIVATE void _raGL_backend_on_objects_deleted(const void* callback_arg,
     ogl_context_request_callback_from_context_thread(backend_ptr->context_gl,
                                                      _raGL_backend_on_objects_deleted_rendering_callback,
                                                     &rendering_callback_arg);
+
+    /* Remove the object from all hashmaps relevant to the object */
+    system_critical_section_enter(object_map_cs);
+    {
+        /* Retrieve raGL object instances for the specified RAL objects */
+        for (uint32_t n_deleted_object = 0;
+                      n_deleted_object < callback_arg_ptr->n_objects;
+                    ++n_deleted_object)
+        {
+            if (!system_hash64map_get(object_map,
+                                      (system_hash64) callback_arg_ptr->deleted_objects[n_deleted_object],
+                                     &object_raGL) )
+            {
+                ASSERT_DEBUG_SYNC(false,
+                                  "No raGL instance found for the specified RAL object.");
+
+                continue;
+            }
+
+            /* Remove the object from any relevant hash-maps we maintain */
+            system_hash64map_remove(object_map,
+                                    (system_hash64) callback_arg_ptr->deleted_objects[n_deleted_object]);
+
+            switch (callback_arg_ptr->object_type)
+            {
+                case RAL_CONTEXT_OBJECT_TYPE_PROGRAM:
+                {
+                    GLuint object_id = 0;
+
+                    raGL_program_get_property((raGL_program) object_raGL,
+                                              RAGL_PROGRAM_PROPERTY_ID,
+                                             &object_id);
+
+                    ASSERT_DEBUG_SYNC(object_id != 0,
+                                      "raGL_program's GL id is 0");
+
+                    system_hash64map_remove(backend_ptr->program_id_to_raGL_program_map,
+                                            (system_hash64) object_id);
+
+                    break;
+                }
+
+                case RAL_CONTEXT_OBJECT_TYPE_TEXTURE:
+                {
+                    GLuint object_id = 0;
+
+                    raGL_texture_get_property((raGL_texture) object_raGL,
+                                              RAGL_TEXTURE_PROPERTY_ID,
+                                             &object_id);
+
+                    ASSERT_DEBUG_SYNC(object_id != 0,
+                                      "raGL_texture's GL id is 0");
+
+                    system_hash64map_remove(backend_ptr->texture_id_to_raGL_texture_map,
+                                            (system_hash64) object_id);
+
+                    break;
+                }
+            } /* switch (callback_arg_ptr->object_type) */
+        } /* for (all deleted objects) */
+    } /* for (all deleted objects) */
+    system_critical_section_leave(object_map_cs);
 }
 
 /** TODO */
@@ -1039,11 +1086,11 @@ PRIVATE void _raGL_backend_on_objects_deleted_rendering_callback(ogl_context con
 
     system_critical_section_enter(object_map_cs);
     {
-        /* Retrieve raGL object instances for the specified RAL objects */
         for (uint32_t n_deleted_object = 0;
                       n_deleted_object < callback_arg_ptr->ral_callback_arg_ptr->n_objects;
                     ++n_deleted_object)
         {
+            /* Retrieve raGL object instances for the specified RAL objects */
             if (!system_hash64map_get(object_map,
                                       (system_hash64) callback_arg_ptr->ral_callback_arg_ptr->deleted_objects[n_deleted_object],
                                      &object_raGL) )
@@ -1054,45 +1101,92 @@ PRIVATE void _raGL_backend_on_objects_deleted_rendering_callback(ogl_context con
                 continue;
             }
 
-            /* Remove the object from any relevant hash-maps we maintain */
-            system_hash64map_remove(object_map,
-                                    (system_hash64) callback_arg_ptr->ral_callback_arg_ptr->deleted_objects[n_deleted_object]);
-
-            if (callback_arg_ptr->ral_callback_arg_ptr->object_type == RAL_CONTEXT_OBJECT_TYPE_TEXTURE)
-            {
-                GLuint object_id = 0;
-
-                raGL_texture_get_property((raGL_texture) object_raGL,
-                                          RAGL_TEXTURE_PROPERTY_ID,
-                                         &object_id);
-
-                ASSERT_DEBUG_SYNC(object_id != 0,
-                                  "raGL_texture's GL id is 0");
-
-                system_hash64map_remove(callback_arg_ptr->backend_ptr->texture_id_to_raGL_texture_map,
-                                        (system_hash64) object_id);
-            } /* if (callback_arg_ptr->object_type == RAL_CONTEXT_OBJECT_TYPE_TEXTURE) */
-
             /* Release the raGL instance */
             _raGL_backend_release_raGL_object(callback_arg_ptr->backend_ptr,
                                               callback_arg_ptr->ral_callback_arg_ptr->object_type,
                                               object_raGL,
-                                              callback_arg_ptr->ral_callback_arg_ptr->deleted_objects[n_deleted_object]);
+                                              (const void**) callback_arg_ptr->ral_callback_arg_ptr->deleted_objects[n_deleted_object]);
         } /* for (all deleted objects) */
     }
     system_critical_section_leave(object_map_cs);
+end:
+    ;
+}
+
+/** TODO */
+PRIVATE void _raGL_backend_on_shader_attach_request(const void* callback_arg_data,
+                                                    void*       backend)
+{
+    _raGL_backend*                                         backend_ptr      = (_raGL_backend*)                                         backend;
+    _ral_program_callback_shader_attach_callback_argument* callback_arg_ptr = (_ral_program_callback_shader_attach_callback_argument*) callback_arg_data;
+    const raGL_program                                     program_raGL     = ral_context_get_program_gl(backend_ptr->context_ral,
+                                                                                                         callback_arg_ptr->program);
+    bool                                                   result           = false;
+    const raGL_shader                                      shader_raGL      = ral_context_get_shader_gl (backend_ptr->context_ral,
+                                                                                                         callback_arg_ptr->shader);
+
+    if (!raGL_program_attach_shader(program_raGL,
+                                    shader_raGL) )
+    {
+        system_hashed_ansi_string program_name;
+
+        ral_program_get_property(callback_arg_ptr->program,
+                                 RAL_PROGRAM_PROPERTY_NAME,
+                                &program_name);
+
+        LOG_ERROR("raGL_program_attach_shader() returned failure for program [%s]",
+                  system_hashed_ansi_string_get_buffer(program_name) );
+
+        goto end;
+    }
+
+    /* If all shader stages are assigned shaders, we need to link the program */
+    if (callback_arg_ptr->all_shader_stages_have_shaders_attached)
+    {
+        if (!raGL_program_link(program_raGL) )
+        {
+            system_hashed_ansi_string program_name;
+
+            ral_program_get_property(callback_arg_ptr->program,
+                                     RAL_PROGRAM_PROPERTY_NAME,
+                                    &program_name);
+
+            LOG_ERROR("raGL_program_link() returned failure for program [%s]",
+                      system_hashed_ansi_string_get_buffer(program_name) );
+
+            ASSERT_DEBUG_SYNC(false,
+                              "RAL program linking failed.");
+        }
+    }
 
 end:
     ;
 }
 
 /** TODO */
-PRIVATE void _raGL_backend_on_shader_compilation_needed_request(const void* callback_arg_data,
-                                                                void*       backend)
+PRIVATE void _raGL_backend_on_shader_body_updated_notification(const void* callback_arg_data,
+                                                               void*       backend)
 {
-    /* TODO */
-    ASSERT_DEBUG_SYNC(false,
-                      "TODO");
+    _raGL_backend*    backend_ptr       = (_raGL_backend*) backend;
+    bool              result            = false;
+    ral_shader        shader_to_compile = (ral_shader)     callback_arg_data;
+    const raGL_shader shader_raGL       = ral_context_get_shader_gl(backend_ptr->context_ral,
+                                                                    shader_to_compile);
+
+    if (!raGL_shader_compile(shader_raGL) )
+    {
+        system_hashed_ansi_string shader_name;
+
+        ral_shader_get_property(shader_to_compile,
+                                RAL_SHADER_PROPERTY_NAME,
+                               &shader_name);
+
+        LOG_ERROR("raGL_shader_compile() returned failure for shader [%s]",
+                  system_hashed_ansi_string_get_buffer(shader_name) );
+
+        ASSERT_DEBUG_SYNC(false,
+                          "RAL shader compilation failed.");
+    }
 }
 
 /** TODO */
@@ -1444,16 +1538,16 @@ PRIVATE void _raGL_backend_subscribe_for_shader_notifications(_raGL_backend* bac
     if (should_subscribe)
     {
         system_callback_manager_subscribe_for_callbacks(shader_ral_callback_manager,
-                                                        RAL_SHADER_CALLBACK_ID_COMPILATION_NEEDED,
+                                                        RAL_SHADER_CALLBACK_ID_GLSL_BODY_UPDATED,
                                                         CALLBACK_SYNCHRONICITY_SYNCHRONOUS,
-                                                        _raGL_backend_on_shader_compilation_needed_request,
+                                                        _raGL_backend_on_shader_body_updated_notification,
                                                         backend_ptr);
     } /* if (should_subscribe) */
     else
     {
         system_callback_manager_unsubscribe_from_callbacks(shader_ral_callback_manager,
-                                                           RAL_SHADER_CALLBACK_ID_COMPILATION_NEEDED,
-                                                           _raGL_backend_on_shader_compilation_needed_request,
+                                                           RAL_SHADER_CALLBACK_ID_GLSL_BODY_UPDATED,
+                                                           _raGL_backend_on_shader_body_updated_notification,
                                                            backend_ptr);
     }
 }
@@ -1586,6 +1680,62 @@ PUBLIC bool raGL_backend_get_program(void*       backend,
                                     RAL_CONTEXT_OBJECT_TYPE_PROGRAM,
                                     program_ral,
                                     out_program_raGL_ptr);
+}
+
+/** Please see header for specification */
+PUBLIC bool raGL_backend_get_program_by_id(raGL_backend  backend,
+                                           GLuint        program_id,
+                                           raGL_program* out_program_raGL_ptr)
+{
+    _raGL_backend* backend_ptr = (_raGL_backend*) backend;
+    bool           result      = false;
+
+    /* Sanity checks*/
+    if (backend == NULL)
+    {
+        ASSERT_DEBUG_SYNC(false,
+                          "Input raGL_backend instance is NULL");
+
+        goto end;
+    }
+
+    if (program_id == 0)
+    {
+        ASSERT_DEBUG_SYNC(false,
+                          "Input program_id is 0");
+
+        goto end;
+    }
+
+    if (out_program_raGL_ptr == NULL)
+    {
+        ASSERT_DEBUG_SYNC(false,
+                          "Output variable is NULL");
+
+        goto end;
+    }
+
+    /* Retrieve the requested texture object */
+    system_critical_section_enter(backend_ptr->programs_map_cs);
+    {
+        if (!system_hash64map_get(backend_ptr->program_id_to_raGL_program_map,
+                                  (system_hash64) program_id,
+                                  out_program_raGL_ptr) )
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Program GL id [%d] is not recognized.",
+                              program_id);
+
+            system_critical_section_leave(backend_ptr->programs_map_cs);
+            goto end;
+        }
+    }
+    system_critical_section_leave(backend_ptr->programs_map_cs);
+
+    /* All done */
+    result = true;
+end:
+    return result;
 }
 
 /** Please see header for specification */

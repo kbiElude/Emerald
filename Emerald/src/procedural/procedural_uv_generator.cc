@@ -6,16 +6,17 @@
 #include "shared.h"
 #include "mesh/mesh.h"
 #include "ogl/ogl_context.h"
-#include "ogl/ogl_program.h"
 #include "ogl/ogl_program_ssb.h"
 #include "ogl/ogl_program_ub.h"
-#include "ogl/ogl_programs.h"
-#include "ogl/ogl_shader.h"
 #include "procedural/procedural_uv_generator.h"
 #include "raGL/raGL_backend.h"
 #include "raGL/raGL_buffer.h"
+#include "raGL/raGL_program.h"
+#include "raGL/raGL_shader.h"
 #include "ral/ral_buffer.h"
 #include "ral/ral_context.h"
+#include "ral/ral_program.h"
+#include "ral/ral_shader.h"
 #include "system/system_assertions.h"
 #include "system/system_hashed_ansi_string.h"
 #include "system/system_log.h"
@@ -29,8 +30,8 @@ typedef struct _procedural_uv_generator
     ral_context                  context;
     procedural_uv_generator_type type;
 
-    ogl_shader      generator_cs;
-    ogl_program     generator_po;
+    ral_shader      generator_cs;
+    ral_program     generator_po;
     ogl_program_ssb input_data_ssb;
     GLuint          input_data_ssb_indexed_bp;
     ogl_program_ub  input_params_ub;
@@ -218,7 +219,10 @@ _procedural_uv_generator::~_procedural_uv_generator()
 
     if (generator_po != NULL)
     {
-        ogl_program_release(generator_po);
+        ral_context_delete_objects(context,
+                                   RAL_CONTEXT_OBJECT_TYPE_PROGRAM,
+                                   1, /* n_objects */
+                                   (const void**) generator_po);
 
         generator_po = NULL;
     }
@@ -237,9 +241,10 @@ _procedural_uv_generator_object::~_procedural_uv_generator_object()
     /* Release buffer memory allocated to hold the texcoords data */
     if (uv_bo != NULL)
     {
-        ral_context_delete_buffers(owning_generator_ptr->context,
-                                   1, /* n_buffers */
-                                  &uv_bo);
+        ral_context_delete_objects(owning_generator_ptr->context,
+                                   RAL_CONTEXT_OBJECT_TYPE_BUFFER,
+                                   1, /* n_objects */
+                                   (const void**) &uv_bo);
 
         uv_bo = NULL;
     }
@@ -376,34 +381,53 @@ PRIVATE bool _procedural_uv_generator_build_generator_po(_procedural_uv_generato
     token_values[2] = system_hashed_ansi_string_create(temp);
 
     /* Set up the compute shader program */
-    system_hashed_ansi_string merged_cs_body = system_hashed_ansi_string_create_by_merging_strings(n_cs_body_parts,
-                                                                                                   cs_body_parts);
-
-    generator_ptr->generator_cs = ogl_shader_create (generator_ptr->context,
-                                                     RAL_SHADER_TYPE_COMPUTE,
-                                                     _procedural_uv_generator_get_generator_name(generator_ptr->type) );
-    generator_ptr->generator_po = ogl_program_create(generator_ptr->context,
-                                                     _procedural_uv_generator_get_generator_name(generator_ptr->type),
-                                                     OGL_PROGRAM_SYNCABLE_UBS_MODE_ENABLE_GLOBAL);
-
-    ogl_shader_set_body(generator_ptr->generator_cs,
-                        system_hashed_ansi_string_create_by_token_replacement(system_hashed_ansi_string_get_buffer(merged_cs_body),
-                                                                              n_token_key_values,
-                                                                              token_keys,
-                                                                              token_values) );
-
-    if (!ogl_shader_compile(generator_ptr->generator_cs) )
+    const ral_program_create_info program_create_info =
     {
-        ASSERT_ALWAYS_SYNC(false,
-                           "Failed to compile procedural UV generator compute shader");
+        RAL_PROGRAM_SHADER_STAGE_BIT_COMPUTE,
+        _procedural_uv_generator_get_generator_name(generator_ptr->type)
+    };
+
+    const ral_shader_create_info shader_create_info =
+    {
+        _procedural_uv_generator_get_generator_name(generator_ptr->type),
+        RAL_SHADER_TYPE_COMPUTE
+    };
+
+    const system_hashed_ansi_string merged_cs_body = system_hashed_ansi_string_create_by_merging_strings  (n_cs_body_parts,
+                                                                                                           cs_body_parts);
+    const system_hashed_ansi_string final_cs_body  = system_hashed_ansi_string_create_by_token_replacement(system_hashed_ansi_string_get_buffer(merged_cs_body),
+                                                                                                           n_token_key_values,
+                                                                                                           token_keys,
+                                                                                                           token_values);
+
+    if (!ral_context_create_shaders(generator_ptr->context,
+                                    1, /* n_create_info_items */
+                                   &shader_create_info,
+                                   &generator_ptr->generator_cs) )
+    {
+        ASSERT_DEBUG_SYNC(false,
+                          "RAL shader creation failed");
 
         goto end;
     }
 
-    ogl_program_attach_shader(generator_ptr->generator_po,
-                              generator_ptr->generator_cs);
+    if (!ral_context_create_programs(generator_ptr->context,
+                                     1, /* n_create_info_items */
+                                    &program_create_info,
+                                    &generator_ptr->generator_po) )
+    {
+        ASSERT_DEBUG_SYNC(false,
+                          "RAL program creation failed");
 
-    if (!ogl_program_link(generator_ptr->generator_po) )
+        goto end;
+    }
+
+    ral_shader_set_property(generator_ptr->generator_cs,
+                            RAL_SHADER_PROPERTY_GLSL_BODY,
+                            &final_cs_body);
+
+    if (!ral_program_attach_shader(generator_ptr->generator_po,
+                                   generator_ptr->generator_cs))
     {
         ASSERT_ALWAYS_SYNC(false,
                            "Failed to link procedural UV generator computer shader program");
@@ -520,12 +544,11 @@ PRIVATE void _procedural_uv_generator_get_item_data_stream_properties(const _pro
 PRIVATE void _procedural_uv_generator_init_generator_po(_procedural_uv_generator* generator_ptr)
 {
     ogl_context_gl_limits*      limits_ptr                          = NULL;
-    ogl_programs                programs                            = NULL;
-    const ogl_program_variable* variable_arg1_ptr                   = NULL;
-    const ogl_program_variable* variable_arg2_ptr                   = NULL;
-    const ogl_program_variable* variable_n_items_defined_ptr        = NULL;
-    const ogl_program_variable* variable_item_data_stride_ptr       = NULL;
-    const ogl_program_variable* variable_start_offset_in_floats_ptr = NULL;
+    const ral_program_variable* variable_arg1_ptr                   = NULL;
+    const ral_program_variable* variable_arg2_ptr                   = NULL;
+    const ral_program_variable* variable_n_items_defined_ptr        = NULL;
+    const ral_program_variable* variable_item_data_stride_ptr       = NULL;
+    const ral_program_variable* variable_start_offset_in_floats_ptr = NULL;
 
     /* Determine the local work-group size. */
     ogl_context_get_property(ral_context_get_gl_context(generator_ptr->context),
@@ -537,12 +560,8 @@ PRIVATE void _procedural_uv_generator_init_generator_po(_procedural_uv_generator
     generator_ptr->wg_local_size[2] = 1;
 
     /* Check if the program object is not already cached for the rendering context. */
-    ogl_context_get_property(ral_context_get_gl_context(generator_ptr->context),
-                             OGL_CONTEXT_PROPERTY_PROGRAMS,
-                            &programs);
-
-    generator_ptr->generator_po = ogl_programs_get_program_by_name(programs,
-                                                                   _procedural_uv_generator_get_generator_name(generator_ptr->type) );
+    generator_ptr->generator_po = ral_context_get_program_by_name(generator_ptr->context,
+                                                                  _procedural_uv_generator_get_generator_name(generator_ptr->type) );
 
     if (generator_ptr->generator_po == NULL)
     {
@@ -559,11 +578,16 @@ PRIVATE void _procedural_uv_generator_init_generator_po(_procedural_uv_generator
     } /* if (generator_ptr->generator_po == NULL) */
     else
     {
-        ogl_program_retain(generator_ptr->generator_po);
+        ral_context_retain_object(generator_ptr->context,
+                                  RAL_CONTEXT_OBJECT_TYPE_PROGRAM,
+                                  generator_ptr->generator_po);
     }
 
     /* Retrieve the inputParams uniform block instance */
-    ogl_program_get_uniform_block_by_name(generator_ptr->generator_po,
+    const raGL_program program_raGL = ral_context_get_program_gl(generator_ptr->context,
+                                                                 generator_ptr->generator_po);
+
+    raGL_program_get_uniform_block_by_name(program_raGL,
                                           system_hashed_ansi_string_create("inputParams"),
                                          &generator_ptr->input_params_ub);
 
@@ -585,9 +609,9 @@ PRIVATE void _procedural_uv_generator_init_generator_po(_procedural_uv_generator
                   (void**) &generator_ptr->input_params_ub_bo_raGL);
 
     /* Retrieve the nItems uniform block instance */
-    ogl_program_get_uniform_block_by_name(generator_ptr->generator_po,
-                                          system_hashed_ansi_string_create("nItemsBlock"),
-                                         &generator_ptr->n_items_ub);
+    raGL_program_get_uniform_block_by_name(program_raGL,
+                                           system_hashed_ansi_string_create("nItemsBlock"),
+                                          &generator_ptr->n_items_ub);
 
     ASSERT_DEBUG_SYNC(generator_ptr->n_items_ub != NULL,
                       "Could not retrieve nItemsBlock uniform block instance");
@@ -603,9 +627,9 @@ PRIVATE void _procedural_uv_generator_init_generator_po(_procedural_uv_generator
                             generator_ptr->n_items_ub_bo,
                   (void**) &generator_ptr->n_items_ub_bo_raGL);
 
-    ogl_program_get_uniform_by_name(generator_ptr->generator_po,
-                                    system_hashed_ansi_string_create("n_items_defined"),
-                                   &variable_n_items_defined_ptr);
+    raGL_program_get_uniform_by_name(program_raGL,
+                                     system_hashed_ansi_string_create("n_items_defined"),
+                                    &variable_n_items_defined_ptr);
 
     ASSERT_DEBUG_SYNC(variable_n_items_defined_ptr != NULL,
                       "Could not retrieve nItemsBlock uniform block member descriptors");
@@ -613,12 +637,12 @@ PRIVATE void _procedural_uv_generator_init_generator_po(_procedural_uv_generator
                       "Invalid n_items_defined offset reported by GL");
 
     /* Retrieve the shader storage block instances */
-    ogl_program_get_shader_storage_block_by_name(generator_ptr->generator_po,
-                                                 system_hashed_ansi_string_create("inputData"),
-                                                &generator_ptr->input_data_ssb);
-    ogl_program_get_shader_storage_block_by_name(generator_ptr->generator_po,
-                                                 system_hashed_ansi_string_create("outputData"),
-                                                &generator_ptr->output_data_ssb);
+    raGL_program_get_shader_storage_block_by_name(program_raGL,
+                                                  system_hashed_ansi_string_create("inputData"),
+                                                 &generator_ptr->input_data_ssb);
+    raGL_program_get_shader_storage_block_by_name(program_raGL,
+                                                  system_hashed_ansi_string_create("outputData"),
+                                                 &generator_ptr->output_data_ssb);
 
     ASSERT_DEBUG_SYNC(generator_ptr->input_data_ssb  != NULL &&
                       generator_ptr->output_data_ssb != NULL,
@@ -636,18 +660,18 @@ PRIVATE void _procedural_uv_generator_init_generator_po(_procedural_uv_generator
      *
      * NOTE: arg1 & arg2 may be removed by the compiler for all but the "object linear" program.
      **/
-    ogl_program_get_uniform_by_name(generator_ptr->generator_po,
-                                    system_hashed_ansi_string_create("arg1"),
-                                   &variable_arg1_ptr);
-    ogl_program_get_uniform_by_name(generator_ptr->generator_po,
-                                    system_hashed_ansi_string_create("arg2"),
-                                   &variable_arg2_ptr);
-    ogl_program_get_uniform_by_name(generator_ptr->generator_po,
-                                    system_hashed_ansi_string_create("item_data_stride_in_floats"),
-                                   &variable_item_data_stride_ptr);
-    ogl_program_get_uniform_by_name(generator_ptr->generator_po,
-                                    system_hashed_ansi_string_create("start_offset_in_floats"),
-                                   &variable_start_offset_in_floats_ptr);
+    raGL_program_get_uniform_by_name(program_raGL,
+                                     system_hashed_ansi_string_create("arg1"),
+                                    &variable_arg1_ptr);
+    raGL_program_get_uniform_by_name(program_raGL,
+                                     system_hashed_ansi_string_create("arg2"),
+                                    &variable_arg2_ptr);
+    raGL_program_get_uniform_by_name(program_raGL,
+                                     system_hashed_ansi_string_create("item_data_stride_in_floats"),
+                                    &variable_item_data_stride_ptr);
+    raGL_program_get_uniform_by_name(program_raGL,
+                                     system_hashed_ansi_string_create("start_offset_in_floats"),
+                                    &variable_start_offset_in_floats_ptr);
 
     if (generator_ptr->type == PROCEDURAL_UV_GENERATOR_TYPE_OBJECT_LINEAR)
     {
@@ -670,7 +694,10 @@ end:
     /* Clean up */
     if (generator_ptr->generator_cs != NULL)
     {
-        ogl_shader_release(generator_ptr->generator_cs);
+        ral_context_delete_objects(generator_ptr->context,
+                                   RAL_CONTEXT_OBJECT_TYPE_SHADER,
+                                   1, /* n_objects */
+                                   (const void**) &generator_ptr->generator_cs);
 
         generator_ptr->generator_cs = NULL;
     }
@@ -923,11 +950,19 @@ PRIVATE void _procedural_uv_generator_run_po(_procedural_uv_generator*        ge
                                         object_ptr->uv_bo_size);
 
     /* Issue the dispatch call */
+    const raGL_program program_raGL    = ral_context_get_program_gl(generator_ptr->context,
+                                                                    generator_ptr->generator_po);
+    GLuint             program_raGL_id = 0;
+
+    raGL_program_get_property(program_raGL,
+                              RAGL_PROGRAM_PROPERTY_ID,
+                             &program_raGL_id);
+
     global_wg_size[0] = 1 + (item_data_bo_size / sizeof(float) / 2 /* uv */) / generator_ptr->wg_local_size[0];
     global_wg_size[1] = 1;
     global_wg_size[2] = 1;
 
-    entrypoints_ptr->pGLUseProgram     (ogl_program_get_id(generator_ptr->generator_po) );
+    entrypoints_ptr->pGLUseProgram     (program_raGL_id);
     entrypoints_ptr->pGLDispatchCompute(global_wg_size[0],
                                         global_wg_size[1],
                                         global_wg_size[2]);
@@ -1140,9 +1175,10 @@ PUBLIC EMERALD_API bool procedural_uv_generator_alloc_result_buffer_memory(proce
     /* If a buffer memory is already allocated for the UV generator object, dealloc it before continuing */
     if (object_ptr->uv_bo != NULL)
     {
-        ral_context_delete_buffers(generator_ptr->context,
+        ral_context_delete_objects(generator_ptr->context,
+                                   RAL_CONTEXT_OBJECT_TYPE_BUFFER,
                                    1, /* n_buffers */
-                                  &object_ptr->uv_bo);
+                                   (const void**) &object_ptr->uv_bo);
 
         object_ptr->uv_bo      = NULL;
         object_ptr->uv_bo_raGL = NULL;

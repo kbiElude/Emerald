@@ -13,20 +13,37 @@ enum
     RAL_PROGRAM_CALLBACK_ID_COUNT
 };
 
-typedef struct _ral_program_callback_shader_attach_callback_argument
+typedef struct _ral_program_callback_link_callback_argument
 {
     ral_program program;
-    bool        relink_needed;
+
+    explicit _ral_program_callback_link_callback_argument(ral_program in_program)
+    {
+        program = in_program;
+    }
+} _ral_program_callback_link_callback_argument;
+
+typedef struct _ral_program_callback_shader_attach_callback_argument
+{
+    bool        all_shader_stages_have_shaders_attached;
+    ral_program program;
     ral_shader  shader;
 
-    explicit _ral_program_callback_shader_attach_callback_argument(ral_program in_program,
-                                                                   ral_shader  in_shader,
-                                                                   bool        in_relink_needed)
+    _ral_program_callback_shader_attach_callback_argument()
+    {
+        all_shader_stages_have_shaders_attached = false;
+        program                                 = NULL;
+        shader                                  = NULL;
+    }
+
+    _ral_program_callback_shader_attach_callback_argument(ral_program in_program,
+                                                          ral_shader  in_shader,
+                                                          bool        in_all_shader_stages_have_shaders_attached)
 
     {
-        program       = in_program;
-        relink_needed = in_relink_needed;
-        shader        = in_shader;
+        all_shader_stages_have_shaders_attached = in_all_shader_stages_have_shaders_attached;
+        program                                 = in_program;
+        shader                                  = in_shader;
     }
 } _ral_program_callback_shader_attach_callback_argument;
 
@@ -45,9 +62,8 @@ typedef enum
 
 
 /** TODO */
-PUBLIC bool ral_program_attach_shader(ral_program program,
-                                      ral_shader  shader,
-                                      bool        relink_needed);
+PUBLIC EMERALD_API bool ral_program_attach_shader(ral_program program,
+                                                  ral_shader  shader);
 
 /** TODO
  *
@@ -58,17 +74,14 @@ PUBLIC ral_program ral_program_create(ral_context                    context,
                                       const ral_program_create_info* program_create_info_ptr);
 
 /** TODO */
-PUBLIC bool ral_program_get_attached_shader_at_index(ral_program program,
-                                                     uint32_t    n_shader,
-                                                     ral_shader* out_shader_ptr);
+PUBLIC EMERALD_API bool ral_program_get_attached_shader_at_index(ral_program program,
+                                                                 uint32_t    n_shader,
+                                                                 ral_shader* out_shader_ptr);
 
 /** TODO */
-PUBLIC void ral_program_get_property(ral_program          program,
-                                     ral_program_property property,
-                                     void*                out_result_ptr);
-
-/** TODO */
-PUBLIC void ral_program_link(ral_program program);
+PUBLIC EMERALD_API void ral_program_get_property(ral_program          program,
+                                                 ral_program_property property,
+                                                 void*                out_result_ptr);
 
 /** TODO */
 PUBLIC void ral_program_release(ral_program& program);

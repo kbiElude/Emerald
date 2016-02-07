@@ -162,6 +162,7 @@ PRIVATE void _ogl_ui_texture_preview_init_program(ogl_ui                   ui,
 
     const ral_program_create_info program_create_info =
     {
+        RAL_PROGRAM_SHADER_STAGE_BIT_FRAGMENT | RAL_PROGRAM_SHADER_STAGE_BIT_VERTEX,
         system_hashed_ansi_string_create(_ogl_ui_texture_preview_get_program_name(texture_preview_ptr->preview_type) )
     };
 
@@ -291,11 +292,9 @@ PRIVATE void _ogl_ui_texture_preview_init_program(ogl_ui                   ui,
 
     /* Set up program object */
     if (!ral_program_attach_shader(texture_preview_ptr->program,
-                                   fs,
-                                   false /* relink_needed */) ||
+                                   fs) ||
         !ral_program_attach_shader(texture_preview_ptr->program,
-                                   vs,
-                                   true /* relink_needed */) )
+                                   vs) )
     {
         ASSERT_DEBUG_SYNC(false,
                           "RAL program configuration failed.");
@@ -317,7 +316,7 @@ PRIVATE void _ogl_ui_texture_preview_init_program(ogl_ui                   ui,
     ral_context_delete_objects(texture_preview_ptr->context,
                                RAL_CONTEXT_OBJECT_TYPE_SHADER,
                                n_shaders_to_release,
-                               shaders_to_release);
+                               (const void**) shaders_to_release);
 }
 
 /** TODO */
@@ -532,7 +531,7 @@ PUBLIC void ogl_ui_texture_preview_deinit(void* internal_instance)
     ral_context_delete_objects(ui_texture_preview_ptr->context,
                                RAL_CONTEXT_OBJECT_TYPE_PROGRAM,
                                1, /* n_objects */
-                              &ui_texture_preview_ptr->program);
+                               (const void**) &ui_texture_preview_ptr->program);
 
     ogl_text_set(ui_texture_preview_ptr->text_renderer,
                  ui_texture_preview_ptr->text_index,

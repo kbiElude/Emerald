@@ -87,12 +87,14 @@ PUBLIC void stage_step_background_deinit(ral_context context)
     system_matrix4x4_release(_inv_projection);
     system_matrix4x4_release(_mv);
 
-    ral_context_delete_framebuffers(context,
-                                    1, /* n_framebuffers */
-                                   &_fbo);
-    ral_context_delete_textures    (context,
-                                    n_textures_to_release,
-                                    textures_to_release);
+    ral_context_delete_objects(context,
+                               RAL_CONTEXT_OBJECT_TYPE_FRAMEBUFFER,
+                               1, /* n_objects */
+                               (const void**) &_fbo);
+    ral_context_delete_objects(context,
+                               RAL_CONTEXT_OBJECT_TYPE_TEXTURE,
+                               n_textures_to_release,
+                               (const void**) textures_to_release);
 
     ogl_skybox_release (_skybox);
     gfx_image_release  (_skybox_image);

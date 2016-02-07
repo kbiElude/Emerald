@@ -82,7 +82,7 @@ PRIVATE void _shaders_fragment_texture2D_reinhardt_release(void* ptr)
         ral_context_delete_objects(data_ptr->context,
                                    RAL_CONTEXT_OBJECT_TYPE_SHADER,
                                    1, /* n_objects */
-                                  &data_ptr->shader);
+                                   (const void**) &data_ptr->shader);
 
         data_ptr->shader = NULL;
     }
@@ -123,7 +123,7 @@ PUBLIC EMERALD_API shaders_fragment_texture2D_reinhardt shaders_fragment_texture
 
     if (result_object_ptr == NULL)
     {
-        ASSERT_DEBUG_SYNC(result_object != NULL,
+        ASSERT_DEBUG_SYNC(result_object_ptr != NULL,
                           "Out of memory while instantiating _shaders_fragment_texture2D_reinhardt object.");
 
         goto end;
@@ -147,7 +147,7 @@ end:
         ral_context_delete_objects(result_object_ptr->context,
                                    RAL_CONTEXT_OBJECT_TYPE_SHADER,
                                    1, /* n_objects */
-                                  &shader);
+                                   (const void**) &shader);
 
         shader = NULL;
     }

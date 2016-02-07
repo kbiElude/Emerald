@@ -118,7 +118,8 @@ PRIVATE void _ogl_ui_button_init_program(ogl_ui          ui,
     fs_create_info.source = RAL_SHADER_SOURCE_GLSL;
     fs_create_info.type   = RAL_SHADER_TYPE_FRAGMENT;
 
-    program_create_info.name = system_hashed_ansi_string_create("UI button program");
+    program_create_info.active_shader_stages = RAL_PROGRAM_SHADER_STAGE_BIT_FRAGMENT | RAL_PROGRAM_SHADER_STAGE_BIT_VERTEX;
+    program_create_info.name                 = system_hashed_ansi_string_create("UI button program");
 
     vs_create_info.name   = system_hashed_ansi_string_create("UI button vertex shader");
     vs_create_info.source = RAL_SHADER_SOURCE_GLSL;
@@ -167,11 +168,9 @@ PRIVATE void _ogl_ui_button_init_program(ogl_ui          ui,
 
     /* Set up program object */
     if (!ral_program_attach_shader(program,
-                                   fs,
-                                   false /* relink_needed */) ||
+                                   fs) ||
         !ral_program_attach_shader(program,
-                                   vs,
-                                   true /* relink_needed */) )
+                                   vs) )
     {
         ASSERT_DEBUG_SYNC(false,
                           "Could not configure RAL program");
@@ -193,7 +192,7 @@ PRIVATE void _ogl_ui_button_init_program(ogl_ui          ui,
     ral_context_delete_objects(button_ptr->context,
                                RAL_CONTEXT_OBJECT_TYPE_SHADER,
                                n_shaders_to_delete,
-                               shaders_to_delete);
+                               (const void**) shaders_to_delete);
 }
 
 /** TODO */
@@ -355,7 +354,7 @@ PUBLIC void ogl_ui_button_deinit(void* internal_instance)
     ral_context_delete_objects(ui_button_ptr->context,
                                RAL_CONTEXT_OBJECT_TYPE_PROGRAM,
                                1, /* n_objects */
-                              &ui_button_ptr->program);
+                               (const void**) &ui_button_ptr->program);
 
     delete ui_button_ptr;
 }

@@ -559,9 +559,10 @@ PRIVATE void _procedural_mesh_box_release_renderer_callback(ogl_context context,
 
     if (mesh_box->data & DATA_BO_ARRAYS)
     {
-        ral_context_delete_buffers(mesh_box->context,
-                                   1, /* n_buffers */
-                                  &mesh_box->arrays_bo);
+        ral_context_delete_objects(mesh_box->context,
+                                   RAL_CONTEXT_OBJECT_TYPE_BUFFER,
+                                   1, /* n_objects */
+                                   (const void**) &mesh_box->arrays_bo);
 
         mesh_box->arrays_bo                = NULL;
         mesh_box->arrays_bo_normals_offset = -1;
@@ -569,9 +570,10 @@ PRIVATE void _procedural_mesh_box_release_renderer_callback(ogl_context context,
 
     if (mesh_box->data & DATA_BO_ELEMENTS)
     {
-        ral_context_delete_buffers(mesh_box->context,
+        ral_context_delete_objects(mesh_box->context,
+                                   RAL_CONTEXT_OBJECT_TYPE_BUFFER,
                                    1, /* n_buffers */
-                                  &mesh_box->elements_bo);
+                                   (const void**) &mesh_box->elements_bo);
 
         mesh_box->elements_bo                = NULL;
         mesh_box->elements_bo_indexes_offset = -1;

@@ -5,15 +5,16 @@
  */
 #include "shared.h"
 #include "ogl/ogl_context.h"
-#include "ogl/ogl_program.h"
 #include "ogl/ogl_program_ub.h"
-#include "ogl/ogl_programs.h"
-#include "ogl/ogl_shader.h"
 #include "postprocessing/postprocessing_motion_blur.h"
 #include "raGL/raGL_buffer.h"
+#include "raGL/raGL_program.h"
 #include "raGL/raGL_sampler.h"
+#include "raGL/raGL_shader.h"
 #include "raGL/raGL_texture.h"
 #include "ral/ral_context.h"
+#include "ral/ral_program.h"
+#include "ral/ral_shader.h"
 #include "ral/ral_texture.h"
 #include "system/system_assertions.h"
 #include "system/system_hashed_ansi_string.h"
@@ -31,7 +32,7 @@ typedef struct _postprocessing_motion_blur
     unsigned int                            dst_color_image_n_mipmap;
     postprocessing_motion_blur_image_type   image_type;
     unsigned int                            n_velocity_samples_max;
-    ogl_program                             po;
+    ral_program                             po;
     ogl_program_ub                          po_props_ub;
     ral_buffer                              po_props_ub_bo;
     unsigned int                            po_props_ub_bo_size;
@@ -386,71 +387,86 @@ PRIVATE system_hashed_ansi_string _postprocessing_motion_blur_get_blur_sampler_f
 /** TODO */
 PRIVATE void _postprocessing_motion_blur_init_po(_postprocessing_motion_blur* motion_blur_ptr)
 {
-    system_hashed_ansi_string po_name  = _postprocessing_motion_blur_get_po_name(motion_blur_ptr);
-    ogl_programs              programs = NULL;
+    system_hashed_ansi_string po_name = _postprocessing_motion_blur_get_po_name(motion_blur_ptr);
 
-    ogl_context_get_property(ral_context_get_gl_context(motion_blur_ptr->context),
-                             OGL_CONTEXT_PROPERTY_PROGRAMS,
-                            &programs);
-
-    motion_blur_ptr->po = ogl_programs_get_program_by_name(programs,
-                                                           po_name);
+    motion_blur_ptr->po = ral_context_get_program_by_name(motion_blur_ptr->context,
+                                                          po_name);
 
     if (motion_blur_ptr->po == NULL)
     {
         /* Form the compute shader */
+        ral_shader                cs      = NULL;
         system_hashed_ansi_string cs_body = _postprocessing_motion_blur_get_cs_body(motion_blur_ptr);
-        ogl_shader                cs      = ogl_shader_create                      (motion_blur_ptr->context,
-                                                                                    RAL_SHADER_TYPE_COMPUTE,
-                                                                                    system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(po_name),
-                                                                                                                                            " CS"));
 
-        ASSERT_DEBUG_SYNC(cs != NULL,
-                          "Could not create a compute shader object instance for the motion blur post-processor.");
+        const ral_shader_create_info cs_create_info =
+        {
+            system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(po_name),
+                                                                    " CS"),
+            RAL_SHADER_TYPE_COMPUTE
+        };
 
-        ogl_shader_set_body(cs,
-                            cs_body);
+        if (!ral_context_create_shaders(motion_blur_ptr->context,
+                                        1, /* n_create_info_items */
+                                       &cs_create_info,
+                                       &cs) )
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "RAL shader creation failed");
+        }
+
+        ral_shader_set_property(cs,
+                                RAL_SHADER_PROPERTY_GLSL_BODY,
+                               &cs_body);
 
         /* Form & link the program object */
-        motion_blur_ptr->po = ogl_program_create(motion_blur_ptr->context,
-                                                 po_name,
-                                                 OGL_PROGRAM_SYNCABLE_UBS_MODE_ENABLE_GLOBAL);
-
-        ASSERT_DEBUG_SYNC(motion_blur_ptr->po != NULL,
-                          "Could not create a program object for the motion blur post-processor.");
-
-        ogl_program_attach_shader(motion_blur_ptr->po,
-                                  cs);
-
-        if (!ogl_program_link(motion_blur_ptr->po) )
+        const ral_program_create_info po_create_info =
         {
-            ASSERT_ALWAYS_SYNC(false,
-                               "Could not link the motion blur post-processor.");
+            RAL_PROGRAM_SHADER_STAGE_BIT_COMPUTE,
+            po_name
+        };
 
-            ogl_program_release(motion_blur_ptr->po);
-            motion_blur_ptr->po = NULL;
-        } /* if (!ogl_program_link(motion_blur_ptr->po) ) */
+        if (!ral_context_create_programs(motion_blur_ptr->context,
+                                         1, /* n_create_info_items */
+                                        &po_create_info,
+                                        &motion_blur_ptr->po) )
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "RAL program creation failed");
+        }
+
+        if (!ral_program_attach_shader(motion_blur_ptr->po,
+                                       cs))
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Failed to attach & link a RAL program");
+        }
 
         /* All done */
-        ogl_shader_release(cs);
-        cs = NULL;
+        ral_context_delete_objects(motion_blur_ptr->context,
+                                   RAL_CONTEXT_OBJECT_TYPE_SHADER,
+                                   1, /* n_objects */
+                                   (const void**) &cs);
     } /* if (motion_blur_ptr->po == NULL) */
     else
     {
-        ogl_program_retain(motion_blur_ptr->po);
+        ral_context_retain_object(motion_blur_ptr->context,
+                                  RAL_CONTEXT_OBJECT_TYPE_PROGRAM,
+                                  motion_blur_ptr->po);
     }
 
     if (motion_blur_ptr->po != NULL)
     {
         /* Retrieve PO's uniform buffer & variable properties */
-        const ogl_program_variable* n_velocity_samples_max_variable_ptr = NULL;
+        const ral_program_variable* n_velocity_samples_max_variable_ptr = NULL;
+        raGL_program                po_raGL                             = ral_context_get_program_gl(motion_blur_ptr->context,
+                                                                                                     motion_blur_ptr->po);
 
-        ogl_program_get_uniform_block_by_name(motion_blur_ptr->po,
-                                              system_hashed_ansi_string_create("propsUB"),
-                                             &motion_blur_ptr->po_props_ub);
-        ogl_program_get_uniform_by_name      (motion_blur_ptr->po,
-                                              system_hashed_ansi_string_create("n_velocity_samples_max"),
-                                             &n_velocity_samples_max_variable_ptr);
+        raGL_program_get_uniform_block_by_name(po_raGL,
+                                               system_hashed_ansi_string_create("propsUB"),
+                                              &motion_blur_ptr->po_props_ub);
+        raGL_program_get_uniform_by_name      (po_raGL,
+                                               system_hashed_ansi_string_create("n_velocity_samples_max"),
+                                              &n_velocity_samples_max_variable_ptr);
 
         ASSERT_DEBUG_SYNC(n_velocity_samples_max_variable_ptr != NULL,
                           "Could not retrieve n_velocity_samples variable descriptor");
@@ -477,11 +493,11 @@ PRIVATE void _postprocessing_motion_blur_init_po(_postprocessing_motion_blur* mo
 
             case POSTPROCESSING_MOTION_BLUR_IMAGE_TYPE_2D_MULTISAMPLE:
             {
-                const ogl_program_variable* image_n_samples_variable_ptr = NULL;
+                const ral_program_variable* image_n_samples_variable_ptr = NULL;
 
-                ogl_program_get_uniform_by_name(motion_blur_ptr->po,
-                                                system_hashed_ansi_string_create("image_n_samples"),
-                                               &image_n_samples_variable_ptr);
+                raGL_program_get_uniform_by_name(po_raGL,
+                                                 system_hashed_ansi_string_create("image_n_samples"),
+                                                &image_n_samples_variable_ptr);
 
                 ASSERT_DEBUG_SYNC(image_n_samples_variable_ptr != NULL,
                                   "Could not retrieve image_n_samples variable descriptor");
@@ -521,12 +537,18 @@ PRIVATE void _postprocessing_motion_blur_init_po_rendering_callback(ogl_context 
                             &entrypoints_ptr);
 
     /* Set up texture bindings. Sampler uniform locations are predefined in the shader */
-    const GLuint po_id = ogl_program_get_id(motion_blur_ptr->po);
+    const raGL_program po_raGL    = ral_context_get_program_gl(motion_blur_ptr->context,
+                                                               motion_blur_ptr->po);
+    GLuint             po_raGL_id = 0;
 
-    entrypoints_ptr->pGLProgramUniform1i(po_id,
+    raGL_program_get_property(po_raGL,
+                              RAGL_PROGRAM_PROPERTY_ID,
+                             &po_raGL_id);
+
+    entrypoints_ptr->pGLProgramUniform1i(po_raGL_id,
                                          0, /* location for src_color_image */
                                          0);
-    entrypoints_ptr->pGLProgramUniform1i(po_id,
+    entrypoints_ptr->pGLProgramUniform1i(po_raGL_id,
                                          1, /* location for src_velocity_image */
                                          1);
 }
@@ -536,21 +558,14 @@ PRIVATE void _postprocessing_motion_blur_release(void* ptr)
 {
     _postprocessing_motion_blur* motion_blur_ptr = (_postprocessing_motion_blur*) ptr;
 
-    if (motion_blur_ptr->po != NULL)
-    {
-        ogl_program_release(motion_blur_ptr->po);
-
-        motion_blur_ptr->po = NULL;
-    }
-
-    if (motion_blur_ptr->sampler != NULL)
-    {
-        ral_context_delete_samplers(motion_blur_ptr->context,
-                                    1, /* n_samplers */
-                                   &motion_blur_ptr->sampler);
-
-        motion_blur_ptr->sampler = NULL;
-    }
+    ral_context_delete_objects(motion_blur_ptr->context,
+                               RAL_CONTEXT_OBJECT_TYPE_PROGRAM,
+                               1, /* n_objects */
+                               (const void**) &motion_blur_ptr->po);
+    ral_context_delete_objects(motion_blur_ptr->context,
+                               RAL_CONTEXT_OBJECT_TYPE_SAMPLER,
+                               1, /* n_objects */
+                               (const void**) &motion_blur_ptr->sampler);
 }
 
 
@@ -582,7 +597,7 @@ PUBLIC EMERALD_API postprocessing_motion_blur postprocessing_motion_blur_create(
         /* Retrieve a sampler object we will use to sample the color & velocity textures */
         ral_sampler_create_info blur_sampler_create_info;
 
-        blur_sampler_create_info.mipmap_mode = RAL_TEXTURE_MIPMAP_MODE_BASE;
+        blur_sampler_create_info.mipmap_mode = RAL_TEXTURE_MIPMAP_MODE_NEAREST;
         blur_sampler_create_info.min_filter  = RAL_TEXTURE_FILTER_LINEAR;
         blur_sampler_create_info.wrap_r      = RAL_TEXTURE_WRAP_MODE_CLAMP_TO_EDGE;
         blur_sampler_create_info.wrap_s      = RAL_TEXTURE_WRAP_MODE_CLAMP_TO_EDGE;
@@ -850,12 +865,20 @@ PUBLIC EMERALD_API RENDERING_CONTEXT_CALL void postprocessing_motion_blur_execut
                                         motion_blur_ptr->po_props_ub_bo_size);
 
     /* Launch the compute jobs */
+    const raGL_program po_raGL    = ral_context_get_program_gl(motion_blur_ptr->context,
+                                                               motion_blur_ptr->po);
+    GLuint             po_raGL_id = 0;
+
+    raGL_program_get_property(po_raGL,
+                              RAGL_PROGRAM_PROPERTY_ID,
+                             &po_raGL_id);
+
     if (input_color_texture_n_samples == 0)
     {
         input_color_texture_n_samples = 1;
     }
 
-    entrypoints_ptr->pGLUseProgram     (ogl_program_get_id(motion_blur_ptr->po) );
+    entrypoints_ptr->pGLUseProgram     (po_raGL_id);
     entrypoints_ptr->pGLDispatchCompute(1 + (input_color_texture_mipmap_height * input_color_texture_mipmap_width * input_color_texture_n_samples / motion_blur_ptr->wg_local_size_x), /* num_groups_x */
                                         1,  /* num_groups_y */
                                         1); /* num_groups_z */

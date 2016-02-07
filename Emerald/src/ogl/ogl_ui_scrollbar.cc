@@ -158,6 +158,7 @@ PRIVATE void _ogl_ui_scrollbar_init_program(ogl_ui             ui,
 
     const ral_program_create_info program_create_info =
     {
+        RAL_PROGRAM_SHADER_STAGE_BIT_FRAGMENT | RAL_PROGRAM_SHADER_STAGE_BIT_VERTEX,
         system_hashed_ansi_string_create("UI scrollbar program")
     };
 
@@ -170,7 +171,6 @@ PRIVATE void _ogl_ui_scrollbar_init_program(ogl_ui             ui,
 
     ral_shader result_shaders[n_shader_create_info_items];
 
-    
     if (!ral_context_create_programs(context,
                                      1, /* n_create_info_items */
                                     &program_create_info,
@@ -205,11 +205,9 @@ PRIVATE void _ogl_ui_scrollbar_init_program(ogl_ui             ui,
 
     /* Set up program object */
     if (!ral_program_attach_shader(scrollbar_ptr->program_slider,
-                                   fs,
-                                   false /* relink_needed */) ||
+                                   fs) ||
         !ral_program_attach_shader(scrollbar_ptr->program_slider,
-                                   vs,
-                                   true /* relink_needed */))
+                                   vs))
     {
         ASSERT_DEBUG_SYNC(false,
                           "RAL program configuration failed.");
@@ -231,7 +229,7 @@ PRIVATE void _ogl_ui_scrollbar_init_program(ogl_ui             ui,
     ral_context_delete_objects(scrollbar_ptr->context,
                                RAL_CONTEXT_OBJECT_TYPE_SHADER,
                                n_shaders_to_release,
-                               shaders_to_release);
+                               (const void**) shaders_to_release);
 }
 
 /** TODO */
@@ -419,7 +417,7 @@ PUBLIC void ogl_ui_scrollbar_deinit(void* internal_instance)
     ral_context_delete_objects(scrollbar_ptr->context,
                                RAL_CONTEXT_OBJECT_TYPE_PROGRAM,
                                1, /* n_objects */
-                               &scrollbar_ptr->program_slider);
+                               (const void**) &scrollbar_ptr->program_slider);
 
     /* Release variants */
     system_variant_release(scrollbar_ptr->max_value_variant);

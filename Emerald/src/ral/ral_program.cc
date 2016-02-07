@@ -11,9 +11,28 @@
 #include "system/system_log.h"
 #include "system/system_resizable_vector.h"
 
+typedef struct _ral_program_shader_stage
+{
+    bool       active;
+    ral_shader shader;
+
+    _ral_program_shader_stage()
+    {
+        active = false;
+        shader = NULL;
+    }
+
+    _ral_program_shader_stage(bool in_active)
+    {
+        active = in_active;
+        shader = NULL;
+    }
+
+} _ral_program_shader_stage;
+
 typedef struct _ral_program
 {
-    ral_shader                attached_shaders[RAL_SHADER_TYPE_COUNT];
+    _ral_program_shader_stage attached_shaders[RAL_SHADER_TYPE_COUNT];
     system_callback_manager   callback_manager;
     ral_context               context;
     system_hashed_ansi_string name;
@@ -21,9 +40,12 @@ typedef struct _ral_program
     _ral_program(ral_context                    in_context,
                  const ral_program_create_info* program_create_info_ptr)
     {
-        memset(attached_shaders,
-               0,
-               sizeof(attached_shaders) );
+        attached_shaders[RAL_SHADER_TYPE_COMPUTE]                 = _ral_program_shader_stage( (program_create_info_ptr->active_shader_stages & RAL_PROGRAM_SHADER_STAGE_BIT_COMPUTE)         != 0);
+        attached_shaders[RAL_SHADER_TYPE_FRAGMENT]                = _ral_program_shader_stage( (program_create_info_ptr->active_shader_stages & RAL_PROGRAM_SHADER_STAGE_BIT_FRAGMENT)        != 0);
+        attached_shaders[RAL_SHADER_TYPE_GEOMETRY]                = _ral_program_shader_stage( (program_create_info_ptr->active_shader_stages & RAL_PROGRAM_SHADER_STAGE_BIT_GEOMETRY)        != 0);
+        attached_shaders[RAL_SHADER_TYPE_TESSELLATION_CONTROL]    = _ral_program_shader_stage( (program_create_info_ptr->active_shader_stages & RAL_PROGRAM_SHADER_STAGE_BIT_TESS_CONTROL)    != 0);
+        attached_shaders[RAL_SHADER_TYPE_TESSELLATION_EVALUATION] = _ral_program_shader_stage( (program_create_info_ptr->active_shader_stages & RAL_PROGRAM_SHADER_STAGE_BIT_TESS_EVALUATION) != 0);
+        attached_shaders[RAL_SHADER_TYPE_VERTEX]                  = _ral_program_shader_stage( (program_create_info_ptr->active_shader_stages & RAL_PROGRAM_SHADER_STAGE_BIT_VERTEX)          != 0);
 
         callback_manager = system_callback_manager_create( (_callback_id) RAL_PROGRAM_CALLBACK_ID_COUNT);
         context          = in_context;
@@ -32,18 +54,26 @@ typedef struct _ral_program
 
     ~_ral_program()
     {
+        uint32_t   n_shaders_to_delete = 0;
+        ral_shader shaders_to_delete[RAL_SHADER_TYPE_COUNT];
+
         for (uint32_t n_shader_type = 0;
                       n_shader_type < RAL_SHADER_TYPE_COUNT;
                     ++n_shader_type)
         {
-            if (attached_shaders[n_shader_type] != NULL)
+            if (attached_shaders[n_shader_type].shader != NULL)
             {
-                ral_context_delete_objects(context,
-                                           RAL_CONTEXT_OBJECT_TYPE_SHADER,
-                                           1, /* n_objects */
-                                           attached_shaders + n_shader_type);
+                shaders_to_delete[n_shaders_to_delete++] = attached_shaders[n_shader_type].shader;
             }
         } /* for (all shader types) */
+
+        if (n_shaders_to_delete > 0)
+        {
+            ral_context_delete_objects(context,
+                               RAL_CONTEXT_OBJECT_TYPE_SHADER,
+                               n_shaders_to_delete,
+                               (const void**) shaders_to_delete);
+        }
 
         if (callback_manager != NULL)
         {
@@ -57,13 +87,11 @@ typedef struct _ral_program
 
 
 /** Please see header for specification */
-PUBLIC bool ral_program_attach_shader(ral_program program,
-                                      ral_shader  shader,
-                                      bool        relink_needed)
+PUBLIC EMERALD_API bool ral_program_attach_shader(ral_program program,
+                                                  ral_shader  shader)
 {
-    _ral_program_callback_shader_attach_callback_argument callback_arg = _ral_program_callback_shader_attach_callback_argument(program,
-                                                                                                                               shader,
-                                                                                                                               relink_needed);
+    bool                                                  all_shaders_attached = true;
+    _ral_program_callback_shader_attach_callback_argument callback_arg;
     _ral_program*                                         program_ptr  = (_ral_program*) program;
     bool                                                  result       = false;
     ral_shader_type                                       shader_type;
@@ -90,16 +118,41 @@ PUBLIC bool ral_program_attach_shader(ral_program program,
                             RAL_SHADER_PROPERTY_TYPE,
                            &shader_type);
 
-    if (program_ptr->attached_shaders[shader_type] != NULL)
+    if (!program_ptr->attached_shaders[shader_type].active)
     {
         ASSERT_DEBUG_SYNC(false,
-                          "Another shader is already attached for the pipeline stage, used by the input shader.");
+                          "Cannot attach RAL shader - the target RAL program does not expose the required shader stage slot.");
+
+        goto end;
+    }
+
+    if (program_ptr->attached_shaders[shader_type].shader != NULL)
+    {
+        ASSERT_DEBUG_SYNC(false,
+                          "Another shader is already attached to the pipeline stage the input shader defines.");
 
         goto end;
     }
 
     /* Attach the shader and fire a notification */
-    program_ptr->attached_shaders[shader_type] = shader;
+    program_ptr->attached_shaders[shader_type].shader = shader;
+
+    for (ral_shader_type current_shader_type = RAL_SHADER_TYPE_FIRST;
+                         current_shader_type < RAL_SHADER_TYPE_COUNT;
+                 ++(int&)current_shader_type)
+    {
+        if (program_ptr->attached_shaders[current_shader_type].active         &&
+            program_ptr->attached_shaders[current_shader_type].shader == NULL)
+        {
+            all_shaders_attached = false;
+
+            break;
+        }
+    }
+
+    callback_arg = _ral_program_callback_shader_attach_callback_argument(program,
+                                                                         shader,
+                                                                         all_shaders_attached);
 
     ral_context_retain_object(program_ptr->context,
                               RAL_CONTEXT_OBJECT_TYPE_SHADER,
@@ -120,6 +173,7 @@ PUBLIC ral_program ral_program_create(ral_context                    context,
 {
     _ral_program* program_ptr = NULL;
 
+    /* Sanity checks */
     if (program_create_info_ptr == NULL)
     {
         ASSERT_DEBUG_SYNC(!(program_create_info_ptr == NULL),
@@ -128,6 +182,45 @@ PUBLIC ral_program ral_program_create(ral_context                    context,
         goto end;
     }
 
+    if (program_create_info_ptr->active_shader_stages == 0)
+    {
+        ASSERT_DEBUG_SYNC(false,
+                          "No shader stages defined at RAL program creation time");
+
+        goto end;
+    }
+    else
+    if ((program_create_info_ptr->active_shader_stages &  RAL_PROGRAM_SHADER_STAGE_BIT_COMPUTE) != 0 &&
+        (program_create_info_ptr->active_shader_stages & ~RAL_PROGRAM_SHADER_STAGE_BIT_COMPUTE) != 0)
+    {
+        ASSERT_DEBUG_SYNC(false,
+                          "No shader stages apart from the compute stage can be defined for a compute RAL program");
+
+        goto end;
+    }
+    else
+    if ((program_create_info_ptr->active_shader_stages &  RAL_PROGRAM_SHADER_STAGE_BIT_COMPUTE) == 0)
+    {
+        if ((program_create_info_ptr->active_shader_stages & RAL_PROGRAM_SHADER_STAGE_BIT_VERTEX) == 0)
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Vertex shader stage is required for a graphics RAL program");
+
+            goto end;
+        }
+
+        if ((program_create_info_ptr->active_shader_stages & RAL_PROGRAM_SHADER_STAGE_BIT_TESS_CONTROL)   ^
+            (program_create_info_ptr->active_shader_stages & RAL_PROGRAM_SHADER_STAGE_BIT_TESS_EVALUATION))
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Tessellation control shader stage must be paired with a tessellation evaluation "
+                              "shader stage for a graphics RAL program");
+
+            goto end;
+        }
+    }
+
+    /* Create a new program instance */
     program_ptr = new (std::nothrow) _ral_program(context,
                                                   program_create_info_ptr);
 
@@ -139,16 +232,56 @@ end:
 }
 
 /** Please see header for specification */
-PUBLIC bool ral_program_get_attached_shader_at_index(ral_program program,
-                                                     uint32_t    n_shader,
-                                                     ral_shader* out_shader_ptr)
+PUBLIC EMERALD_API bool ral_program_get_attached_shader_at_index(ral_program program,
+                                                                 uint32_t    n_shader,
+                                                                 ral_shader* out_shader_ptr)
 {
+    uint32_t      n_nonnull_shader = 0;
+    _ral_program* program_ptr      = (_ral_program*) program;
+    bool          result           = false;
+
+    if (program == NULL)
+    {
+        ASSERT_DEBUG_SYNC(false,
+                          "Input ral_program instance is NULL");
+
+        goto end;
+    }
+
+    if (n_shader >= RAL_SHADER_TYPE_COUNT)
+    {
+        ASSERT_DEBUG_SYNC(false,
+                          "Invalid shader index requested");
+
+        goto end;
+    }
+
+    for (uint32_t n_shader_type = 0;
+                  n_shader_type < RAL_SHADER_TYPE_COUNT;
+                ++n_shader_type)
+    {
+        if (program_ptr->attached_shaders[n_shader_type].shader != NULL)
+        {
+            if (n_nonnull_shader == n_shader)
+            {
+                *out_shader_ptr = program_ptr->attached_shaders[n_shader_type].shader;
+
+                result = true;
+                goto end;
+            }
+
+            ++n_nonnull_shader;
+        }
+    } /* for (all available shader types) */
+
+end:
+    return result;
 }
 
 /** Please see header for specification */
-PUBLIC void ral_program_get_property(ral_program          program,
-                                     ral_program_property property,
-                                     void*                out_result_ptr)
+PUBLIC EMERALD_API void ral_program_get_property(ral_program          program,
+                                                 ral_program_property property,
+                                                 void*                out_result_ptr)
 {
     _ral_program* program_ptr = (_ral_program*) program;
 
@@ -184,7 +317,7 @@ PUBLIC void ral_program_get_property(ral_program          program,
                           n_shader_type < RAL_SHADER_TYPE_COUNT;
                         ++n_shader_type)
             {
-                if (program_ptr->attached_shaders[n_shader_type] != NULL)
+                if (program_ptr->attached_shaders[n_shader_type].shader != NULL)
                 {
                     ++result;
                 }

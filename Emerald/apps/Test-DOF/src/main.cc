@@ -11,7 +11,6 @@
 #include "demo/demo_window.h"
 #include "ogl/ogl_context.h"
 #include "ogl/ogl_pipeline.h"
-#include "ogl/ogl_program.h"
 #include "ogl/ogl_rendering_handler.h"
 #include "ogl/ogl_ui.h"
 #include "raGL/raGL_framebuffer.h"

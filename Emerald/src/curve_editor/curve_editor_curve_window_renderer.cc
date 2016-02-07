@@ -15,14 +15,16 @@
 #include "curve_editor/curve_editor_program_static.h"
 #include "curve_editor/curve_editor_program_tcb.h"
 #include "ogl/ogl_context.h"
-#include "ogl/ogl_program.h"
 #include "ogl/ogl_program_ub.h"
 #include "ogl/ogl_rendering_handler.h"
-#include "ogl/ogl_shader.h"
 #include "ogl/ogl_text.h"
 #include "ogl/ogl_types.h"
 #include "raGL/raGL_buffer.h"
+#include "raGL/raGL_program.h"
+#include "raGL/raGL_shader.h"
 #include "ral/ral_context.h"
+#include "ral/ral_program.h"
+#include "ral/ral_shader.h"
 #include "shaders/shaders_vertex_combinedmvp_simplified_twopoint.h"
 #include "shaders/shaders_vertex_fullscreen.h"
 #include "system/system_assertions.h"
@@ -166,12 +168,12 @@ typedef struct
 
 typedef struct
 {
-    ogl_program                 bg_program;
-    ogl_shader                  bg_fragment_shader;
+    ral_program                 bg_program;
+    ral_shader                  bg_fragment_shader;
     shaders_vertex_fullscreen   bg_vertex_shader;
 
-    ogl_shader                                     static_color_fragment_shader;
-    ogl_program                                    static_color_program;
+    ral_shader                                     static_color_fragment_shader;
+    ral_program                                    static_color_program;
     shaders_vertex_combinedmvp_simplified_twopoint static_color_vertex_shader;
 
     curve_editor_program_curvebackground curvebackground_program;

@@ -5,14 +5,16 @@
  */
 #include "shared.h"
 #include "ogl/ogl_context.h"
-#include "ogl/ogl_program.h"
 #include "ogl/ogl_program_ub.h"
-#include "ogl/ogl_shader.h"
 #include "postprocessing/postprocessing_reinhard_tonemap.h"
 #include "raGL/raGL_buffer.h"
 #include "raGL/raGL_framebuffer.h"
+#include "raGL/raGL_program.h"
+#include "raGL/raGL_shader.h"
 #include "raGL/raGL_texture.h"
 #include "ral/ral_context.h"
+#include "ral/ral_program.h"
+#include "ral/ral_shader.h"
 #include "ral/ral_texture.h"
 #include "shaders/shaders_fragment_rgb_to_Yxy.h"
 #include "shaders/shaders_vertex_fullscreen.h"
@@ -37,21 +39,21 @@ typedef struct
     ral_texture  yxy_texture;
     raGL_texture yxy_texture_gl;
 
-    GLuint  dst_framebuffer_id;
-    GLuint  src_framebuffer_id;
+    ral_framebuffer dst_framebuffer;
+    ral_framebuffer src_framebuffer;
 
     shaders_fragment_rgb_to_Yxy rgb_to_Yxy_fragment_shader;
     shaders_vertex_fullscreen   fullscreen_vertex_shader;
 
-    ogl_program rgb_to_Yxy_program;
+    ral_program rgb_to_Yxy_program;
     GLuint      rgb_to_Yxy_program_tex_uniform_location;
 
-    ogl_program    operator_program;
+    ral_program    operator_program;
     GLuint         operator_program_alpha_ub_offset;
     ogl_program_ub operator_program_ub;
     ral_buffer     operator_program_ub_bo;
     GLuint         operator_program_ub_bo_size;
-    ogl_shader     operator_fragment_shader;
+    ral_shader     operator_fragment_shader;
     GLuint         operator_program_luminance_texture_location;
     GLuint         operator_program_luminance_texture_avg_location;
     GLuint         operator_program_white_level_ub_offset;
@@ -120,12 +122,12 @@ REFCOUNT_INSERT_IMPLEMENTATION(postprocessing_reinhard_tonemap,
 PRIVATE void _create_callback(ogl_context context,
                               void*       arg)
 {
-    _create_callback_data*            data         = (_create_callback_data*) arg;
-    const ogl_context_gl_entrypoints* entry_points = NULL;
+    _create_callback_data*            callback_ptr     = (_create_callback_data*) arg;
+    const ogl_context_gl_entrypoints* entry_points_ptr = NULL;
 
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
-                            &entry_points);
+                            &entry_points_ptr);
 
     /* TODO */
     ral_texture_create_info         yxy_texture_create_info;
@@ -133,11 +135,11 @@ PRIVATE void _create_callback(ogl_context context,
     GLuint                          yxy_texture_id     = 0;
     bool                            yxy_texture_is_rbo = false;
     const system_hashed_ansi_string yxy_texture_name   = system_hashed_ansi_string_create_by_merging_two_strings("Reinhard tonemap [YXY texture] ",
-                                                                                                                 system_hashed_ansi_string_get_buffer(data->name) );
+                                                                                                                 system_hashed_ansi_string_get_buffer(callback_ptr->name) );
 
     yxy_texture_create_info.base_mipmap_depth      = 1;
-    yxy_texture_create_info.base_mipmap_height     = data->data_ptr->texture_height;
-    yxy_texture_create_info.base_mipmap_width      = data->data_ptr->texture_width;
+    yxy_texture_create_info.base_mipmap_height     = callback_ptr->data_ptr->texture_height;
+    yxy_texture_create_info.base_mipmap_width      = callback_ptr->data_ptr->texture_width;
     yxy_texture_create_info.fixed_sample_locations = false;
     yxy_texture_create_info.format                 = RAL_TEXTURE_FORMAT_RGB32_FLOAT;
     yxy_texture_create_info.name                   = yxy_texture_name;
@@ -149,47 +151,47 @@ PRIVATE void _create_callback(ogl_context context,
                                                      RAL_TEXTURE_USAGE_SAMPLED_BIT;
     yxy_texture_create_info.use_full_mipmap_chain  = true;
 
-    ral_context_create_textures(data->data_ptr->context,
+    ral_context_create_textures(callback_ptr->data_ptr->context,
                                 1, /* n_textures */
                                &yxy_texture_create_info,
-                               &data->data_ptr->yxy_texture);
+                               &callback_ptr->data_ptr->yxy_texture);
 
-    data->data_ptr->yxy_texture_gl = ral_context_get_texture_gl(data->data_ptr->context,
-                                                                data->data_ptr->yxy_texture);
+    callback_ptr->data_ptr->yxy_texture_gl = ral_context_get_texture_gl(callback_ptr->data_ptr->context,
+                                                                        callback_ptr->data_ptr->yxy_texture);
 
-    raGL_texture_get_property(data->data_ptr->yxy_texture_gl,
+    raGL_texture_get_property(callback_ptr->data_ptr->yxy_texture_gl,
                               RAGL_TEXTURE_PROPERTY_ID,
                              &yxy_texture_id);
-    raGL_texture_get_property(data->data_ptr->yxy_texture_gl,
+    raGL_texture_get_property(callback_ptr->data_ptr->yxy_texture_gl,
                               RAGL_TEXTURE_PROPERTY_IS_RENDERBUFFER,
                              &yxy_texture_is_rbo);
 
     ASSERT_DEBUG_SYNC(!yxy_texture_is_rbo,
                       "TODO");
 
-    entry_points->pGLBindTexture  (GL_TEXTURE_2D,
-                                   yxy_texture_id);
-    entry_points->pGLTexParameteri(GL_TEXTURE_2D,
-                                   GL_TEXTURE_WRAP_S,
-                                   GL_CLAMP_TO_BORDER);
-    entry_points->pGLTexParameteri(GL_TEXTURE_2D,
-                                   GL_TEXTURE_WRAP_T,
-                                   GL_CLAMP_TO_BORDER);
-    entry_points->pGLTexParameteri(GL_TEXTURE_2D,
-                                   GL_TEXTURE_MAG_FILTER,
-                                   GL_LINEAR);
-    entry_points->pGLTexParameteri(GL_TEXTURE_2D,
-                                   GL_TEXTURE_MIN_FILTER,
-                                   GL_LINEAR);
+    entry_points_ptr->pGLBindTexture  (GL_TEXTURE_2D,
+                                       yxy_texture_id);
+    entry_points_ptr->pGLTexParameteri(GL_TEXTURE_2D,
+                                       GL_TEXTURE_WRAP_S,
+                                       GL_CLAMP_TO_BORDER);
+    entry_points_ptr->pGLTexParameteri(GL_TEXTURE_2D,
+                                       GL_TEXTURE_WRAP_T,
+                                       GL_CLAMP_TO_BORDER);
+    entry_points_ptr->pGLTexParameteri(GL_TEXTURE_2D,
+                                       GL_TEXTURE_MAG_FILTER,
+                                       GL_LINEAR);
+    entry_points_ptr->pGLTexParameteri(GL_TEXTURE_2D,
+                                       GL_TEXTURE_MIN_FILTER,
+                                       GL_LINEAR);
 
     /* TODO */
-    if (data->data_ptr->use_crude_downsampled_lum_average_calculation)
+    if (callback_ptr->data_ptr->use_crude_downsampled_lum_average_calculation)
     {
         ral_texture_create_info         downsampled_yxy_texture_create_info;
         GLuint                          downsampled_yxy_texture_id     = 0;
         bool                            downsampled_yxy_texture_is_rbo = false;
         const system_hashed_ansi_string downsampled_yxy_texture_name   = system_hashed_ansi_string_create_by_merging_two_strings("Reinhard tonemap [downsampled YXY texture] ",
-                                                                                                                                 system_hashed_ansi_string_get_buffer(data->name) );
+                                                                                                                                 system_hashed_ansi_string_get_buffer(callback_ptr->name) );
 
         downsampled_yxy_texture_create_info.base_mipmap_depth      = 1;
         downsampled_yxy_texture_create_info.base_mipmap_height     = 64;
@@ -204,18 +206,18 @@ PRIVATE void _create_callback(ogl_context context,
                                                                      RAL_TEXTURE_USAGE_SAMPLED_BIT;
         downsampled_yxy_texture_create_info.use_full_mipmap_chain  = true;
 
-        ral_context_create_textures(data->data_ptr->context,
+        ral_context_create_textures(callback_ptr->data_ptr->context,
                                     1, /* n_textures */
                                    &downsampled_yxy_texture_create_info,
-                                   &data->data_ptr->downsampled_yxy_texture);
+                                   &callback_ptr->data_ptr->downsampled_yxy_texture);
 
-        data->data_ptr->downsampled_yxy_texture_gl = ral_context_get_texture_gl(data->data_ptr->context,
-                                                                                data->data_ptr->downsampled_yxy_texture);
+        callback_ptr->data_ptr->downsampled_yxy_texture_gl = ral_context_get_texture_gl(callback_ptr->data_ptr->context,
+                                                                                        callback_ptr->data_ptr->downsampled_yxy_texture);
 
-        raGL_texture_get_property(data->data_ptr->downsampled_yxy_texture_gl,
+        raGL_texture_get_property(callback_ptr->data_ptr->downsampled_yxy_texture_gl,
                                   RAGL_TEXTURE_PROPERTY_ID,
                                  &downsampled_yxy_texture_id);
-        raGL_texture_get_property(data->data_ptr->downsampled_yxy_texture_gl,
+        raGL_texture_get_property(callback_ptr->data_ptr->downsampled_yxy_texture_gl,
                                   RAGL_TEXTURE_PROPERTY_IS_RENDERBUFFER,
                                  &downsampled_yxy_texture_is_rbo);
 
@@ -223,120 +225,175 @@ PRIVATE void _create_callback(ogl_context context,
                           "TODO");
 
 
-        entry_points->pGLBindTexture  (GL_TEXTURE_2D,
-                                       downsampled_yxy_texture_id);
-        entry_points->pGLTexParameteri(GL_TEXTURE_2D,
-                                       GL_TEXTURE_WRAP_S,
-                                       GL_CLAMP_TO_BORDER);
-        entry_points->pGLTexParameteri(GL_TEXTURE_2D,
-                                       GL_TEXTURE_WRAP_T,
-                                       GL_CLAMP_TO_BORDER);
-        entry_points->pGLTexParameteri(GL_TEXTURE_2D,
-                                       GL_TEXTURE_MAG_FILTER,
-                                       GL_LINEAR);
-        entry_points->pGLTexParameteri(GL_TEXTURE_2D,
-                                       GL_TEXTURE_MIN_FILTER,
-                                       GL_LINEAR);
+        entry_points_ptr->pGLBindTexture  (GL_TEXTURE_2D,
+                                           downsampled_yxy_texture_id);
+        entry_points_ptr->pGLTexParameteri(GL_TEXTURE_2D,
+                                           GL_TEXTURE_WRAP_S,
+                                           GL_CLAMP_TO_BORDER);
+        entry_points_ptr->pGLTexParameteri(GL_TEXTURE_2D,
+                                           GL_TEXTURE_WRAP_T,
+                                           GL_CLAMP_TO_BORDER);
+        entry_points_ptr->pGLTexParameteri(GL_TEXTURE_2D,
+                                           GL_TEXTURE_MAG_FILTER,
+                                           GL_LINEAR);
+        entry_points_ptr->pGLTexParameteri(GL_TEXTURE_2D,
+                                           GL_TEXTURE_MIN_FILTER,
+                                           GL_LINEAR);
     }
     else
     {
-        data->data_ptr->downsampled_yxy_texture = NULL;
+        callback_ptr->data_ptr->downsampled_yxy_texture = NULL;
     }
 
-    /* Create a source framebuffer we will be using for blitting purposes */
-    entry_points->pGLGenFramebuffers(1,
-                                    &data->data_ptr->src_framebuffer_id);
+    /* Create framebuffers we will be using for blitting purposes */
+    ral_framebuffer result_framebuffers[2];
 
-    /* Create destination framebuffer we will be using for blitting purposes */
-    entry_points->pGLGenFramebuffers(1,
-                                    &data->data_ptr->dst_framebuffer_id);
+    ral_context_create_framebuffers(callback_ptr->data_ptr->context,
+                                    sizeof(result_framebuffers) / sizeof(result_framebuffers[0]),
+                                    result_framebuffers);
+
+    callback_ptr->data_ptr->dst_framebuffer = result_framebuffers[0];
+    callback_ptr->data_ptr->src_framebuffer = result_framebuffers[1];
 
     /* Create RGB=>Yxy fragment shader */
-    data->data_ptr->rgb_to_Yxy_fragment_shader = shaders_fragment_rgb_to_Yxy_create(data->data_ptr->context,
-                                                                                    system_hashed_ansi_string_create_by_merging_two_strings("Reinhard Tonemap RGB2YXY ",
-                                                                                                                                            system_hashed_ansi_string_get_buffer(data->name) ),
-                                                                                    true);
+    callback_ptr->data_ptr->rgb_to_Yxy_fragment_shader = shaders_fragment_rgb_to_Yxy_create(callback_ptr->data_ptr->context,
+                                                                                            system_hashed_ansi_string_create_by_merging_two_strings("Reinhard Tonemap RGB2YXY ",
+                                                                                                                                                    system_hashed_ansi_string_get_buffer(callback_ptr->name) ),
+                                                                                            true);
 
     /* Create fullscreen vertex shader */
-    data->data_ptr->fullscreen_vertex_shader = shaders_vertex_fullscreen_create(data->data_ptr->context,
-                                                                                true,
-                                                                                system_hashed_ansi_string_create_by_merging_two_strings("Reinhard Tonemap Fullscreen ",
-                                                                                                                                        system_hashed_ansi_string_get_buffer(data->name) ));
+    callback_ptr->data_ptr->fullscreen_vertex_shader = shaders_vertex_fullscreen_create(callback_ptr->data_ptr->context,
+                                                                                        true,
+                                                                                        system_hashed_ansi_string_create_by_merging_two_strings("Reinhard Tonemap Fullscreen ",
+                                                                                                                                                system_hashed_ansi_string_get_buffer(callback_ptr->name) ));
 
     /* Create RGB=>Yxy program */
-    data->data_ptr->rgb_to_Yxy_program = ogl_program_create(data->data_ptr->context,
-                                                            system_hashed_ansi_string_create_by_merging_two_strings("Reinhard Tonemap RGB2YXY ",
-                                                                                                                    system_hashed_ansi_string_get_buffer(data->name) ));
+    const ral_program_create_info rgb_to_yXy_po_create_info =
+    {
+        RAL_PROGRAM_SHADER_STAGE_BIT_FRAGMENT | RAL_PROGRAM_SHADER_STAGE_BIT_VERTEX,
+        system_hashed_ansi_string_create_by_merging_two_strings("Reinhard Tonemap RGB2YXY ",
+                                                                system_hashed_ansi_string_get_buffer(callback_ptr->name) )
+    };
+    raGL_program                  rgb_to_yXy_po_raGL = NULL;
 
-    ogl_program_attach_shader(data->data_ptr->rgb_to_Yxy_program,
-                              shaders_fragment_rgb_to_Yxy_get_shader(data->data_ptr->rgb_to_Yxy_fragment_shader) );
-    ogl_program_attach_shader(data->data_ptr->rgb_to_Yxy_program,
-                              shaders_vertex_fullscreen_get_shader  (data->data_ptr->fullscreen_vertex_shader) );
-    ogl_program_link         (data->data_ptr->rgb_to_Yxy_program);
+    if (!ral_context_create_programs(callback_ptr->data_ptr->context,
+                                     1, /* n_create_info_items */
+                                    &rgb_to_yXy_po_create_info,
+                                    &callback_ptr->data_ptr->rgb_to_Yxy_program) )
+    {
+        ASSERT_DEBUG_SYNC(false,
+                          "RAL program creation failed");
+    }
+    else
+    {
+        rgb_to_yXy_po_raGL = ral_context_get_program_gl(callback_ptr->data_ptr->context,
+                                                        callback_ptr->data_ptr->rgb_to_Yxy_program);
+    }
 
-    const ogl_program_variable* tex_uniform_descriptor = NULL;
+    if (!ral_program_attach_shader(callback_ptr->data_ptr->rgb_to_Yxy_program,
+                                   shaders_fragment_rgb_to_Yxy_get_shader(callback_ptr->data_ptr->rgb_to_Yxy_fragment_shader) ) ||
+        !ral_program_attach_shader(callback_ptr->data_ptr->rgb_to_Yxy_program,
+                                   shaders_vertex_fullscreen_get_shader  (callback_ptr->data_ptr->fullscreen_vertex_shader) ))
+    {
+        ASSERT_DEBUG_SYNC(false,
+                          "Failed to attach RAL shaders to a RAL program");
+    }
 
-    ogl_program_get_uniform_by_name(data->data_ptr->rgb_to_Yxy_program,
-                                    system_hashed_ansi_string_create("tex"),
-                                   &tex_uniform_descriptor);
+    const ral_program_variable* tex_uniform_ptr = NULL;
 
-    data->data_ptr->rgb_to_Yxy_program_tex_uniform_location = tex_uniform_descriptor->location;
+    raGL_program_get_uniform_by_name(rgb_to_yXy_po_raGL,
+                                     system_hashed_ansi_string_create("tex"),
+                                    &tex_uniform_ptr);
+
+    callback_ptr->data_ptr->rgb_to_Yxy_program_tex_uniform_location = tex_uniform_ptr->location;
 
     /* Create operator fragment shader */
-    data->data_ptr->operator_fragment_shader = ogl_shader_create(data->data_ptr->context,
-                                                                 RAL_SHADER_TYPE_FRAGMENT,
-                                                                 system_hashed_ansi_string_create_by_merging_two_strings("Reinhard Tonemap operator ",
-                                                                                                                         system_hashed_ansi_string_get_buffer(data->name) ));
+    const ral_shader_create_info operator_fs_create_info =
+    {
+        system_hashed_ansi_string_create_by_merging_two_strings("Reinhard Tonemap operator ",
+                                                                system_hashed_ansi_string_get_buffer(callback_ptr->name) ),
+        RAL_SHADER_TYPE_FRAGMENT
+    };
 
-    ogl_shader_set_body(data->data_ptr->operator_fragment_shader,
-                        reinhard_tonemap_fragment_shader_body);
+    if (!ral_context_create_shaders(callback_ptr->data_ptr->context,
+                                    1, /* n_create_info_items */
+                                   &operator_fs_create_info,
+                                   &callback_ptr->data_ptr->operator_fragment_shader) )
+    {
+        ASSERT_DEBUG_SYNC(false,
+                          "RAL shader creation failed.");
+    }
+
+    ral_shader_set_property(callback_ptr->data_ptr->operator_fragment_shader,
+                            RAL_SHADER_PROPERTY_GLSL_BODY,
+                            &reinhard_tonemap_fragment_shader_body);
 
     /* Create operator program */
-    data->data_ptr->operator_program = ogl_program_create(data->data_ptr->context,
-                                                          system_hashed_ansi_string_create_by_merging_two_strings("Reinhard Tonemap operator ",
-                                                                                                                  system_hashed_ansi_string_get_buffer(data->name) ),
-                                                          OGL_PROGRAM_SYNCABLE_UBS_MODE_ENABLE_GLOBAL);
+    const ral_program_create_info operator_po_create_info =
+    {
+        RAL_PROGRAM_SHADER_STAGE_BIT_FRAGMENT | RAL_PROGRAM_SHADER_STAGE_BIT_VERTEX,
+        system_hashed_ansi_string_create_by_merging_two_strings("Reinhard Tonemap operator ",
+                                                                system_hashed_ansi_string_get_buffer(callback_ptr->name))
+    };
+    raGL_program                  operator_po_raGL = NULL;
 
-    ogl_program_attach_shader(data->data_ptr->operator_program,
-                              data->data_ptr->operator_fragment_shader);
-    ogl_program_attach_shader(data->data_ptr->operator_program,
-                              shaders_vertex_fullscreen_get_shader(data->data_ptr->fullscreen_vertex_shader) );
-    ogl_program_link         (data->data_ptr->operator_program);
+    if (!ral_context_create_programs(callback_ptr->data_ptr->context,
+                                     1, /* n_create_info_items */
+                                    &operator_po_create_info,
+                                    &callback_ptr->data_ptr->operator_program) )
+    {
+        ASSERT_DEBUG_SYNC(false,
+                          "RAL program creation failed.");
+    }
+    else
+    {
+        operator_po_raGL = ral_context_get_program_gl(callback_ptr->data_ptr->context,
+                                                      callback_ptr->data_ptr->operator_program);
+    }
+
+    if (!ral_program_attach_shader(callback_ptr->data_ptr->operator_program,
+                                   callback_ptr->data_ptr->operator_fragment_shader) ||
+        !ral_program_attach_shader(callback_ptr->data_ptr->operator_program,
+                                   shaders_vertex_fullscreen_get_shader(callback_ptr->data_ptr->fullscreen_vertex_shader)) )
+    {
+        ASSERT_DEBUG_SYNC(false,
+                          "Failed to attach a RAL shader to a RAL program");
+    }
 
     /* Retrieve uniform block properties */
-    ogl_program_get_uniform_block_by_name(data->data_ptr->operator_program,
-                                          system_hashed_ansi_string_create("data"),
-                                         &data->data_ptr->operator_program_ub);
-    ogl_program_ub_get_property          (data->data_ptr->operator_program_ub,
-                                          OGL_PROGRAM_UB_PROPERTY_BLOCK_DATA_SIZE,
-                                         &data->data_ptr->operator_program_ub_bo_size);
-    ogl_program_ub_get_property          (data->data_ptr->operator_program_ub,
-                                          OGL_PROGRAM_UB_PROPERTY_BUFFER_RAL,
-                                         &data->data_ptr->operator_program_ub_bo);
+    raGL_program_get_uniform_block_by_name(operator_po_raGL,
+                                           system_hashed_ansi_string_create("data"),
+                                          &callback_ptr->data_ptr->operator_program_ub);
+    ogl_program_ub_get_property           (callback_ptr->data_ptr->operator_program_ub,
+                                           OGL_PROGRAM_UB_PROPERTY_BLOCK_DATA_SIZE,
+                                          &callback_ptr->data_ptr->operator_program_ub_bo_size);
+    ogl_program_ub_get_property           (callback_ptr->data_ptr->operator_program_ub,
+                                           OGL_PROGRAM_UB_PROPERTY_BUFFER_RAL,
+                                          &callback_ptr->data_ptr->operator_program_ub_bo);
 
     /* Retrieve uniform properties */
-    const ogl_program_variable* alpha_uniform_descriptor                 = NULL;
-    const ogl_program_variable* luminance_texture_uniform_descriptor     = NULL;
-    const ogl_program_variable* luminance_texture_avg_uniform_descriptor = NULL;
-    const ogl_program_variable* white_level_uniform_descriptor           = NULL;
+    const ral_program_variable* alpha_uniform_ptr                 = NULL;
+    const ral_program_variable* luminance_texture_uniform_ptr     = NULL;
+    const ral_program_variable* luminance_texture_avg_uniform_ptr = NULL;
+    const ral_program_variable* white_level_uniform_ptr           = NULL;
 
-    ogl_program_get_uniform_by_name(data->data_ptr->operator_program,
-                                    system_hashed_ansi_string_create("alpha"),
-                                   &alpha_uniform_descriptor);
-    ogl_program_get_uniform_by_name(data->data_ptr->operator_program,
-                                    system_hashed_ansi_string_create("luminance_texture"),
-                                   &luminance_texture_uniform_descriptor);
-    ogl_program_get_uniform_by_name(data->data_ptr->operator_program,
-                                    system_hashed_ansi_string_create("luminance_texture_avg"),
-                                   &luminance_texture_avg_uniform_descriptor);
-    ogl_program_get_uniform_by_name(data->data_ptr->operator_program,
-                                    system_hashed_ansi_string_create("white_level"),
-                                   &white_level_uniform_descriptor);
+    raGL_program_get_uniform_by_name(operator_po_raGL,
+                                     system_hashed_ansi_string_create("alpha"),
+                                    &alpha_uniform_ptr);
+    raGL_program_get_uniform_by_name(operator_po_raGL,
+                                     system_hashed_ansi_string_create("luminance_texture"),
+                                    &luminance_texture_uniform_ptr);
+    raGL_program_get_uniform_by_name(operator_po_raGL,
+                                     system_hashed_ansi_string_create("luminance_texture_avg"),
+                                    &luminance_texture_avg_uniform_ptr);
+    raGL_program_get_uniform_by_name(operator_po_raGL,
+                                     system_hashed_ansi_string_create("white_level"),
+                                    &white_level_uniform_ptr);
 
-    data->data_ptr->operator_program_alpha_ub_offset                = alpha_uniform_descriptor->block_offset;
-    data->data_ptr->operator_program_luminance_texture_location     = luminance_texture_uniform_descriptor->location;
-    data->data_ptr->operator_program_luminance_texture_avg_location = luminance_texture_avg_uniform_descriptor->location;
-    data->data_ptr->operator_program_white_level_ub_offset          = white_level_uniform_descriptor->block_offset;
+    callback_ptr->data_ptr->operator_program_alpha_ub_offset                = alpha_uniform_ptr->block_offset;
+    callback_ptr->data_ptr->operator_program_luminance_texture_location     = luminance_texture_uniform_ptr->location;
+    callback_ptr->data_ptr->operator_program_luminance_texture_avg_location = luminance_texture_avg_uniform_ptr->location;
+    callback_ptr->data_ptr->operator_program_white_level_ub_offset          = white_level_uniform_ptr->block_offset;
 }
 
 /** TODO */
@@ -346,35 +403,53 @@ PRIVATE void _release_callback(ogl_context context,
     _postprocessing_reinhard_tonemap* data_ptr     = (_postprocessing_reinhard_tonemap*) arg;
     const ogl_context_gl_entrypoints* entry_points = NULL;
 
+    const ral_framebuffer fbs_to_release[] =
+    {
+        data_ptr->dst_framebuffer,
+        data_ptr->src_framebuffer
+    };
+    const ral_program     programs_to_release[] =
+    {
+        data_ptr->rgb_to_Yxy_program,
+        data_ptr->operator_program
+    };
+    const ral_texture     tos_to_release[] =
+    {
+        data_ptr->downsampled_yxy_texture,
+        data_ptr->yxy_texture
+    };
+
+    const uint32_t n_fbs_to_release      = sizeof(fbs_to_release)      / sizeof(fbs_to_release     [0]);
+    const uint32_t n_programs_to_release = sizeof(programs_to_release) / sizeof(programs_to_release[0]);
+    const uint32_t n_tos_to_release      = sizeof(tos_to_release)      / sizeof(tos_to_release     [0]);
+
+
     ogl_context_get_property(ral_context_get_gl_context(data_ptr->context),
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
                             &entry_points);
 
-    entry_points->pGLDeleteFramebuffers(1,
-                                       &data_ptr->dst_framebuffer_id);
-    entry_points->pGLDeleteFramebuffers(1,
-                                       &data_ptr->src_framebuffer_id);
-
-    if (data_ptr->downsampled_yxy_texture != NULL)
-    {
-        ral_context_delete_textures(data_ptr->context,
-                                    1, /* n_textures */
-                                   &data_ptr->downsampled_yxy_texture);
-
-        data_ptr->downsampled_yxy_texture_gl = NULL;
-    }
-
-    ral_context_delete_textures(data_ptr->context,
-                                1, /* n_textures */
-                               &data_ptr->yxy_texture);
+    ral_context_delete_objects(data_ptr->context,
+                               RAL_CONTEXT_OBJECT_TYPE_FRAMEBUFFER,
+                               n_fbs_to_release,
+                               (const void**) fbs_to_release);
+    ral_context_delete_objects(data_ptr->context,
+                               RAL_CONTEXT_OBJECT_TYPE_TEXTURE,
+                               n_tos_to_release,
+                               (const void**) tos_to_release);
 
     data_ptr->yxy_texture = NULL;
 
     shaders_fragment_rgb_to_Yxy_release(data_ptr->rgb_to_Yxy_fragment_shader);
     shaders_vertex_fullscreen_release  (data_ptr->fullscreen_vertex_shader);
-    ogl_shader_release                 (data_ptr->operator_fragment_shader);
-    ogl_program_release                (data_ptr->rgb_to_Yxy_program);
-    ogl_program_release                (data_ptr->operator_program);
+
+    ral_context_delete_objects(data_ptr->context,
+                               RAL_CONTEXT_OBJECT_TYPE_PROGRAM,
+                               n_programs_to_release,
+                               (const void**) programs_to_release);
+    ral_context_delete_objects(data_ptr->context,
+                               RAL_CONTEXT_OBJECT_TYPE_SHADER,
+                               1, /* n_objects */
+                               (const void**) &data_ptr->operator_fragment_shader);
 }
 
 /** TODO */
@@ -395,24 +470,24 @@ PUBLIC EMERALD_API postprocessing_reinhard_tonemap postprocessing_reinhard_tonem
                                                                                           uint32_t*                 texture_size)
 {
     /* Instantiate the object */
-    _postprocessing_reinhard_tonemap* result_object = new (std::nothrow) _postprocessing_reinhard_tonemap;
+    _postprocessing_reinhard_tonemap* result_ptr = new (std::nothrow) _postprocessing_reinhard_tonemap;
 
-    ASSERT_DEBUG_SYNC(result_object != NULL,
+    ASSERT_DEBUG_SYNC(result_ptr != NULL,
                       "Out of memory while instantiating _postprocessing_reinhard_tonemap object.");
 
-    if (result_object == NULL)
+    if (result_ptr == NULL)
     {
         LOG_ERROR("Out of memory while creating Reinhard tonemap postprocessor object instance.");
 
         goto end;
     }
 
-    result_object->context = context;
+    result_ptr->context = context;
 
     /* Pass control to rendering thread */
     _create_callback_data data;
 
-    data.data_ptr                                                = result_object;
+    data.data_ptr                                                = result_ptr;
     data.data_ptr->texture_width                                 = texture_size[0];
     data.data_ptr->texture_height                                = texture_size[1];
     data.name                                                    = name;
@@ -422,21 +497,21 @@ PUBLIC EMERALD_API postprocessing_reinhard_tonemap postprocessing_reinhard_tonem
                                                      _create_callback,
                                                     &data);
 
-    REFCOUNT_INSERT_INIT_CODE_WITH_RELEASE_HANDLER(result_object,
+    REFCOUNT_INSERT_INIT_CODE_WITH_RELEASE_HANDLER(result_ptr,
                                                    _postprocessing_reinhard_tonemap_release,
                                                    OBJECT_TYPE_POSTPROCESSING_REINHARD_TONEMAP,
                                                    system_hashed_ansi_string_create_by_merging_two_strings("\\Post-processing Reinhard tonemap\\",
                                                                                                            system_hashed_ansi_string_get_buffer(name)) );
 
     /* Return the object */
-    return (postprocessing_reinhard_tonemap) result_object;
+    return (postprocessing_reinhard_tonemap) result_ptr;
 
 end:
-    if (result_object != NULL)
+    if (result_ptr != NULL)
     {
-        delete result_object;
+        delete result_ptr;
 
-        result_object = NULL;
+        result_ptr = NULL;
     }
 
     return NULL;
@@ -465,6 +540,29 @@ PUBLIC EMERALD_API void postprocessing_reinhard_tonemap_execute(postprocessing_r
     GLuint                            yxy_texture_id                 = 0;
     bool                              yxy_texture_is_rbo             = false;
     GLuint                            vao_id                         = 0;
+
+    const raGL_framebuffer            dst_framebuffer_raGL           = ral_context_get_framebuffer_gl(tonemapper_ptr->context,
+                                                                                                      tonemapper_ptr->dst_framebuffer);
+    GLuint                            dst_framebuffer_raGL_id        = 0;
+    const raGL_program                rgb_to_yXy_po_raGL             = ral_context_get_program_gl(tonemapper_ptr->context,
+                                                                                                  tonemapper_ptr->rgb_to_Yxy_program);
+    GLuint                            rgb_to_yXy_po_raGL_id          = 0;
+    const raGL_framebuffer            src_framebuffer_raGL           = ral_context_get_framebuffer_gl(tonemapper_ptr->context,
+                                                                                                      tonemapper_ptr->src_framebuffer);
+    GLuint                            src_framebuffer_raGL_id        = 0;
+    const raGL_program                tonemapper_po_raGL             = ral_context_get_program_gl(tonemapper_ptr->context,
+                                                                                                       tonemapper_ptr->operator_program);
+    GLuint                            tonemapper_po_raGL_id          = 0;
+
+    raGL_framebuffer_get_property(dst_framebuffer_raGL,
+                                  RAGL_FRAMEBUFFER_PROPERTY_ID,
+                                 &dst_framebuffer_raGL_id);
+    raGL_program_get_property    (rgb_to_yXy_po_raGL,
+                                  RAGL_PROGRAM_PROPERTY_ID,
+                                 &rgb_to_yXy_po_raGL_id);
+    raGL_program_get_property    (tonemapper_po_raGL,
+                                  RAGL_PROGRAM_PROPERTY_ID,
+                                 &tonemapper_po_raGL_id);
 
     in_texture_gl  = ral_context_get_texture_gl(tonemapper_ptr->context,
                                                 in_texture);
@@ -514,21 +612,19 @@ PUBLIC EMERALD_API void postprocessing_reinhard_tonemap_execute(postprocessing_r
                               tonemapper_ptr->texture_height);
 
     /* 1. Calculate luminance texture */
-    GLuint rgb_to_Yxy_program_id = ogl_program_get_id(tonemapper_ptr->rgb_to_Yxy_program);
-
     entry_points->pGLBindFramebuffer     (GL_DRAW_FRAMEBUFFER,
-                                          tonemapper_ptr->dst_framebuffer_id);
+                                          dst_framebuffer_raGL_id);
     entry_points->pGLFramebufferTexture2D(GL_DRAW_FRAMEBUFFER,                      /* TODO: WTF is happening here? Why isn't this FBO pre-configured? */
                                           GL_COLOR_ATTACHMENT0,
                                           GL_TEXTURE_2D,
                                           yxy_texture_id,
                                           0);
 
-    entry_points->pGLUseProgram      (rgb_to_Yxy_program_id);
+    entry_points->pGLUseProgram      (rgb_to_yXy_po_raGL_id);
     entry_points->pGLActiveTexture   (GL_TEXTURE0);
     entry_points->pGLBindTexture     (GL_TEXTURE_2D,
                                       in_texture_id);
-    entry_points->pGLProgramUniform1i(rgb_to_Yxy_program_id,
+    entry_points->pGLProgramUniform1i(rgb_to_yXy_po_raGL_id,
                                       tonemapper_ptr->rgb_to_Yxy_program_tex_uniform_location,
                                       0);
 
@@ -550,7 +646,7 @@ PUBLIC EMERALD_API void postprocessing_reinhard_tonemap_execute(postprocessing_r
                                  &downsampled_yxy_texture_is_rbo);
 
         entry_points->pGLBindFramebuffer     (GL_READ_FRAMEBUFFER,
-                                              tonemapper_ptr->src_framebuffer_id);  /* TODO: as above */
+                                              src_framebuffer_raGL_id);  /* TODO: as above */
         entry_points->pGLReadBuffer          (GL_COLOR_ATTACHMENT0);
         entry_points->pGLFramebufferTexture2D(GL_READ_FRAMEBUFFER,
                                               GL_COLOR_ATTACHMENT0,
@@ -558,7 +654,7 @@ PUBLIC EMERALD_API void postprocessing_reinhard_tonemap_execute(postprocessing_r
                                               yxy_texture_id,
                                               0);
         entry_points->pGLBindFramebuffer     (GL_DRAW_FRAMEBUFFER,
-                                              tonemapper_ptr->dst_framebuffer_id);
+                                              dst_framebuffer_raGL_id);
         entry_points->pGLDrawBuffers         (1,
                                               draw_buffers);
         entry_points->pGLFramebufferTexture2D(GL_DRAW_FRAMEBUFFER,
@@ -591,9 +687,7 @@ PUBLIC EMERALD_API void postprocessing_reinhard_tonemap_execute(postprocessing_r
     entry_points->pGLGenerateMipmap(GL_TEXTURE_2D);
 
     /* 4. Process input texture */
-    GLuint tonemapper_program_id = ogl_program_get_id(tonemapper_ptr->operator_program);
-
-    entry_points->pGLUseProgram   (tonemapper_program_id);
+    entry_points->pGLUseProgram   (tonemapper_po_raGL_id);
     entry_points->pGLActiveTexture(GL_TEXTURE0);
     entry_points->pGLBindTexture  (GL_TEXTURE_2D,
                                    yxy_texture_id);
@@ -605,10 +699,10 @@ PUBLIC EMERALD_API void postprocessing_reinhard_tonemap_execute(postprocessing_r
                                        downsampled_yxy_texture_id);
     }
 
-    entry_points->pGLProgramUniform1i(tonemapper_program_id,
+    entry_points->pGLProgramUniform1i(tonemapper_po_raGL_id,
                                       tonemapper_ptr->operator_program_luminance_texture_location,
                                       0);
-    entry_points->pGLProgramUniform1i(tonemapper_program_id,
+    entry_points->pGLProgramUniform1i(tonemapper_po_raGL_id,
                                       tonemapper_ptr->operator_program_luminance_texture_avg_location,
                                       (tonemapper_ptr->use_crude_downsampled_lum_average_calculation ? 1 : 0) );
 

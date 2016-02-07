@@ -1486,11 +1486,6 @@ PRIVATE void _ogl_context_release(void* ptr)
 {
     _ogl_context* context_ptr = (_ogl_context*) ptr;
 
-    /* NOTE: This leaks the no-VAA VAO, but it's not much damage, whereas entering
-     *       a rendering context from this method could be tricky under some
-     *       circumstances.
-     *
-     */
     if (context_ptr->bo_bindings != NULL)
     {
         ogl_context_bo_bindings_release(context_ptr->bo_bindings);
@@ -1510,7 +1505,7 @@ PRIVATE void _ogl_context_release(void* ptr)
         ral_context_delete_objects(context_ptr->context,
                                    RAL_CONTEXT_OBJECT_TYPE_FRAMEBUFFER,
                                    1, /* n_framebuffers */
-                                  &context_ptr->fbo);
+                                   (const void**) &context_ptr->fbo);
 
         context_ptr->fbo = NULL;
     }
@@ -1528,7 +1523,7 @@ PRIVATE void _ogl_context_release(void* ptr)
         ral_context_delete_objects(context_ptr->context,
                                    RAL_CONTEXT_OBJECT_TYPE_TEXTURE,
                                    n_fbo_tos,
-                                   fbo_tos);
+                                   (const void**) fbo_tos);
 
         context_ptr->fbo_color_to         = NULL;
         context_ptr->fbo_depth_stencil_to = NULL;

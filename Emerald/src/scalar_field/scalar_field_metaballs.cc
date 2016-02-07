@@ -5,13 +5,15 @@
  */
 #include "shared.h"
 #include "ogl/ogl_context.h"
-#include "ogl/ogl_program.h"
 #include "ogl/ogl_program_ub.h"
-#include "ogl/ogl_shader.h"
 #include "raGL/raGL_backend.h"
 #include "raGL/raGL_buffer.h"
+#include "raGL/raGL_program.h"
+#include "raGL/raGL_shader.h"
 #include "ral/ral_buffer.h"
 #include "ral/ral_context.h"
+#include "ral/ral_program.h"
+#include "ral/ral_shader.h"
 #include "scalar_field/scalar_field_metaballs.h"
 #include "system/system_log.h"
 
@@ -28,7 +30,7 @@ typedef struct _scalar_field_metaballs
     unsigned int              n_max_metaballs_cross_platform;
     unsigned int              n_metaballs;
     system_hashed_ansi_string name;
-    ogl_program               po;
+    ral_program               po;
     ogl_program_ub            po_props_ub;
     ral_buffer                po_props_ub_bo;
     unsigned int              po_props_ub_bo_offset_metaball_data;
@@ -90,16 +92,20 @@ PRIVATE void _scalar_field_metaballs_deinit_rendering_thread_callback(ogl_contex
 
     if (metaballs_ptr->po != NULL)
     {
-        ogl_program_release(metaballs_ptr->po);
+        ral_context_delete_objects(metaballs_ptr->context,
+                                   RAL_CONTEXT_OBJECT_TYPE_PROGRAM,
+                                   1, /* n_objects */
+                                   (const void**) &metaballs_ptr->po);
 
         metaballs_ptr->po = NULL;
     }
 
     if (metaballs_ptr->scalar_field_bo != NULL)
     {
-        ral_context_delete_buffers(metaballs_ptr->context,
-                                   1, /* n_buffers */
-                                  &metaballs_ptr->scalar_field_bo);
+        ral_context_delete_objects(metaballs_ptr->context,
+                                   RAL_CONTEXT_OBJECT_TYPE_BUFFER,
+                                   1, /* n_objects */
+                                   (const void**) &metaballs_ptr->scalar_field_bo);
 
         metaballs_ptr->scalar_field_bo = NULL;
     }
@@ -198,7 +204,7 @@ PRIVATE void _scalar_field_metaballs_get_token_key_value_arrays(const ogl_contex
 PRIVATE void _scalar_field_metaballs_init_rendering_thread_callback(ogl_context context,
                                                                     void*       user_arg)
 {
-    ogl_shader                        cs                      = NULL;
+    ral_shader                        cs                      = NULL;
     const ogl_context_gl_entrypoints* entrypoints_ptr         = NULL;
     const ogl_context_gl_limits*      limits_ptr              = NULL;
     _scalar_field_metaballs*          metaballs_ptr           = (_scalar_field_metaballs*) user_arg;
@@ -274,22 +280,47 @@ PRIVATE void _scalar_field_metaballs_init_rendering_thread_callback(ogl_context 
                                                        metaballs_ptr->global_wg_size);
 
     /* Create program & shader objects */
-    cs = ogl_shader_create(metaballs_ptr->context,
-                           RAL_SHADER_TYPE_COMPUTE,
-                           system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(metaballs_ptr->name),
-                                                                                   " CS") );
+    const ral_program_create_info program_create_info =
+    {
+        RAL_PROGRAM_SHADER_STAGE_BIT_COMPUTE,
+        system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(metaballs_ptr->name),
+                                                                " PO")
+    };
 
-    metaballs_ptr->po = ogl_program_create(metaballs_ptr->context,
-                                           system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(metaballs_ptr->name),
-                                                                                   " PO"),
-                                           OGL_PROGRAM_SYNCABLE_UBS_MODE_ENABLE_GLOBAL);
+    const ral_shader_create_info shader_create_info =
+    {
+        system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(metaballs_ptr->name),
+                                                                " CS"),
+        RAL_SHADER_TYPE_COMPUTE
+    };
+
+    if (!ral_context_create_shaders(metaballs_ptr->context,
+                                    1, /* n_create_info_items */
+                                   &shader_create_info,
+                                   &cs) )
+    {
+        ASSERT_DEBUG_SYNC(false,
+                          "RAL shader creation failed");
+    }
+
+    if (!ral_context_create_programs(metaballs_ptr->context,
+                                     1, /* n_create_info_items */
+                                    &program_create_info,
+                                    &metaballs_ptr->po) )
+    {
+        ASSERT_DEBUG_SYNC(false,
+                          "RAL program creation failed");
+    }
 
     /* Configure the shader object */
-    ogl_shader_set_body(cs,
-                        system_hashed_ansi_string_create_by_token_replacement(cs_body_template,
-                                                                              n_token_key_value_pairs,
-                                                                              token_key_array_ptr,
-                                                                              token_value_array_ptr) );
+    const system_hashed_ansi_string cs_body = system_hashed_ansi_string_create_by_token_replacement(cs_body_template,
+                                                                                                    n_token_key_value_pairs,
+                                                                                                    token_key_array_ptr,
+                                                                                                    token_value_array_ptr);
+
+    ral_shader_set_property(cs,
+                            RAL_SHADER_PROPERTY_GLSL_BODY,
+                           &cs_body);
 
     delete [] token_key_array_ptr;
     token_key_array_ptr = NULL;
@@ -298,24 +329,28 @@ PRIVATE void _scalar_field_metaballs_init_rendering_thread_callback(ogl_context 
     token_value_array_ptr = NULL;
 
     /* Configure & link the program object */
-    ogl_program_attach_shader(metaballs_ptr->po,
-                              cs);
-
-    ogl_program_link(metaballs_ptr->po);
+    if (!ral_program_attach_shader(metaballs_ptr->po,
+                                   cs))
+    {
+        ASSERT_DEBUG_SYNC(false,
+                          "Failed to attach RAL shader to the metaballs RAL program");
+    }
 
     /* Retrieve properties of the "props" UB */
-    const ogl_program_variable* uniform_metaball_data_variable_ptr = NULL;
-    const ogl_program_variable* uniform_n_metaballs_variable_ptr   = NULL;
+    const ral_program_variable* uniform_metaball_data_variable_ptr = NULL;
+    const ral_program_variable* uniform_n_metaballs_variable_ptr   = NULL;
+    const raGL_program          program_raGL                       = ral_context_get_program_gl(metaballs_ptr->context,
+                                                                                                metaballs_ptr->po);
 
-    ogl_program_get_uniform_block_by_name(metaballs_ptr->po,
-                                          system_hashed_ansi_string_create("props"),
-                                         &metaballs_ptr->po_props_ub);
-    ogl_program_get_uniform_by_name      (metaballs_ptr->po,
-                                          system_hashed_ansi_string_create("metaball_data[0]"),
-                                         &uniform_metaball_data_variable_ptr);
-    ogl_program_get_uniform_by_name      (metaballs_ptr->po,
-                                          system_hashed_ansi_string_create("n_metaballs"),
-                                         &uniform_n_metaballs_variable_ptr);
+    raGL_program_get_uniform_block_by_name(program_raGL,
+                                           system_hashed_ansi_string_create("props"),
+                                          &metaballs_ptr->po_props_ub);
+    raGL_program_get_uniform_by_name      (program_raGL,
+                                           system_hashed_ansi_string_create("metaball_data[0]"),
+                                          &uniform_metaball_data_variable_ptr);
+    raGL_program_get_uniform_by_name      (program_raGL,
+                                           system_hashed_ansi_string_create("n_metaballs"),
+                                          &uniform_n_metaballs_variable_ptr);
 
     ogl_program_ub_get_property(metaballs_ptr->po_props_ub,
                                 OGL_PROGRAM_UB_PROPERTY_BLOCK_DATA_SIZE,
@@ -345,7 +380,10 @@ PRIVATE void _scalar_field_metaballs_init_rendering_thread_callback(ogl_context 
                               &metaballs_ptr->scalar_field_bo);
 
     /* All done! */
-    ogl_shader_release(cs);
+    ral_context_delete_objects(metaballs_ptr->context,
+                               RAL_CONTEXT_OBJECT_TYPE_SHADER,
+                               1, /* n_objects */
+                               (const void**) &cs);
 }
 
 /** Please see header for specification */
@@ -559,17 +597,23 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API bool scalar_field_metaballs_update(sca
         ogl_program_ub_sync(metaballs_ptr->po_props_ub);
 
         /* Run the CS and generate the scalar field data */
-        GLuint      po_props_ub_bo_id            = 0;
-        raGL_buffer po_props_ub_bo_raGL          = NULL;
-        uint32_t    po_props_ub_bo_start_offset  = -1;
-        GLuint      scalar_field_bo_id           = 0;
-        raGL_buffer scalar_field_bo_raGL         = NULL;
-        uint32_t    scalar_field_bo_size         = 0;
-        uint32_t    scalar_field_bo_start_offset = -1;
+        GLuint             po_props_ub_bo_id            = 0;
+        raGL_buffer        po_props_ub_bo_raGL          = NULL;
+        uint32_t           po_props_ub_bo_start_offset  = -1;
+        const raGL_program po_raGL                      = ral_context_get_program_gl(metaballs_ptr->context,
+                                                                                     metaballs_ptr->po);
+        GLuint             po_raGL_id                   = 0;
+        GLuint             scalar_field_bo_id           = 0;
+        raGL_buffer        scalar_field_bo_raGL         = NULL;
+        uint32_t           scalar_field_bo_size         = 0;
+        uint32_t           scalar_field_bo_start_offset = -1;
 
-        ral_buffer_get_property(metaballs_ptr->scalar_field_bo,
-                                RAL_BUFFER_PROPERTY_SIZE,
-                               &scalar_field_bo_size);
+        raGL_program_get_property(po_raGL,
+                                  RAGL_PROGRAM_PROPERTY_ID,
+                                 &po_raGL_id);
+        ral_buffer_get_property  (metaballs_ptr->scalar_field_bo,
+                                  RAL_BUFFER_PROPERTY_SIZE,
+                                 &scalar_field_bo_size);
 
         raGL_backend_get_buffer(metaballs_ptr->backend,
                                 metaballs_ptr->po_props_ub_bo,
@@ -591,7 +635,7 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API bool scalar_field_metaballs_update(sca
                                  RAGL_BUFFER_PROPERTY_START_OFFSET,
                                 &scalar_field_bo_start_offset);
 
-        entrypoints_ptr->pGLUseProgram     (ogl_program_get_id(metaballs_ptr->po) );
+        entrypoints_ptr->pGLUseProgram     (po_raGL_id);
         entrypoints_ptr->pGLBindBufferRange(GL_SHADER_STORAGE_BUFFER,
                                             0, /* index */
                                             scalar_field_bo_id,

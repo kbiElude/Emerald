@@ -13,15 +13,16 @@
 #include "stage_step_julia.h"
 #include "ogl/ogl_context.h"
 #include "ogl/ogl_pipeline.h"
-#include "ogl/ogl_program.h"
 #include "ogl/ogl_program_ub.h"
-#include "ogl/ogl_shader.h"
 #include "raGL/raGL_buffer.h"
 #include "raGL/raGL_framebuffer.h"
+#include "raGL/raGL_program.h"
 #include "raGL/raGL_texture.h"
 #include "ral/ral_buffer.h"
 #include "ral/ral_context.h"
 #include "ral/ral_framebuffer.h"
+#include "ral/ral_program.h"
+#include "ral/ral_shader.h"
 #include "ral/ral_texture.h"
 
 #define DOWNSAMPLE_FACTOR (8)
@@ -37,7 +38,7 @@ ral_texture                 _dof_scheuermann_downsampled_to         = NULL;
 GLuint                      _dof_scheuermann_vao_id                 = -1;
 
 /* Combination program */
-ogl_program                 _dof_scheuermann_combination_po                             = NULL;
+ral_program                 _dof_scheuermann_combination_po                             = NULL;
 ogl_program_ub              _dof_scheuermann_combination_po_ub                          = NULL;
 ral_buffer                  _dof_scheuermann_combination_po_ub_bo                       = NULL;
 GLuint                      _dof_scheuermann_combination_po_ub_max_coc_px_ub_offset     = -1;
@@ -189,14 +190,22 @@ static void _stage_step_dof_scheuermann_combine_execute(ral_context context,
     ogl_program_ub_sync(_dof_scheuermann_combination_po_ub);
 
     /* Go on */
-    raGL_buffer dof_scheuermann_combination_po_ub_bo_raGL              = NULL;
-    GLuint      dof_scheuermann_combination_po_ub_bo_raGL_id           = 0;
-    uint32_t    dof_scheuermann_combination_po_ub_bo_raGL_start_offset = -1;
-    uint32_t    dof_scheuermann_combination_po_ub_bo_ral_start_offset  = -1;
-    uint32_t    dof_scheuermann_combination_po_ub_bo_size              = 0;
+    raGL_program dof_scheuermann_combination_po_raGL                    = NULL;
+    GLuint       dof_scheuermann_combination_po_raGL_id                 = 0;
+    raGL_buffer  dof_scheuermann_combination_po_ub_bo_raGL              = NULL;
+    GLuint       dof_scheuermann_combination_po_ub_bo_raGL_id           = 0;
+    uint32_t     dof_scheuermann_combination_po_ub_bo_raGL_start_offset = -1;
+    uint32_t     dof_scheuermann_combination_po_ub_bo_ral_start_offset  = -1;
+    uint32_t     dof_scheuermann_combination_po_ub_bo_size              = 0;
 
-    dof_scheuermann_combination_po_ub_bo_raGL = ral_context_get_buffer_gl(context,
-                                                                          _dof_scheuermann_combination_po_ub_bo);
+    dof_scheuermann_combination_po_raGL       = ral_context_get_program_gl(context,
+                                                                           _dof_scheuermann_combination_po);
+    dof_scheuermann_combination_po_ub_bo_raGL = ral_context_get_buffer_gl (context,
+                                                                           _dof_scheuermann_combination_po_ub_bo);
+
+    raGL_program_get_property(dof_scheuermann_combination_po_raGL,
+                              RAGL_PROGRAM_PROPERTY_ID,
+                             &dof_scheuermann_combination_po_raGL_id);
 
     ral_buffer_get_property (_dof_scheuermann_combination_po_ub_bo,
                              RAL_BUFFER_PROPERTY_SIZE,
@@ -217,7 +226,7 @@ static void _stage_step_dof_scheuermann_combine_execute(ral_context context,
                                     dof_scheuermann_combination_po_ub_bo_raGL_start_offset + dof_scheuermann_combination_po_ub_bo_ral_start_offset,
                                     dof_scheuermann_combination_po_ub_bo_size);
 
-    entrypoints->pGLUseProgram(ogl_program_get_id(_dof_scheuermann_combination_po) );
+    entrypoints->pGLUseProgram(dof_scheuermann_combination_po_raGL_id);
     entrypoints->pGLDrawArrays(GL_TRIANGLE_FAN,
                                0,  /* first */
                                4); /* count */
@@ -311,14 +320,18 @@ PUBLIC void stage_step_dof_scheuermann_deinit(ral_context context)
     const uint32_t n_framebuffers_to_release = sizeof(framebuffers_to_release) / sizeof(framebuffers_to_release[0]);
     const uint32_t n_textures_to_release     = sizeof(textures_to_release)     / sizeof(textures_to_release    [0]);
 
-    ogl_program_release(_dof_scheuermann_combination_po);
-
-    ral_context_delete_framebuffers(context,
-                                    n_framebuffers_to_release,
-                                    framebuffers_to_release);
-    ral_context_delete_textures    (context,
-                                    n_textures_to_release,
-                                    textures_to_release);
+    ral_context_delete_objects(context,
+                               RAL_CONTEXT_OBJECT_TYPE_PROGRAM,
+                               1, /* n_objects */
+                               (const void**) &_dof_scheuermann_combination_po);
+    ral_context_delete_objects(context,
+                               RAL_CONTEXT_OBJECT_TYPE_FRAMEBUFFER,
+                               n_framebuffers_to_release,
+                               (const void**) framebuffers_to_release);
+    ral_context_delete_objects(context,
+                               RAL_CONTEXT_OBJECT_TYPE_TEXTURE,
+                               n_textures_to_release,
+                               (const void**) textures_to_release);
 
     postprocessing_blur_poisson_release(_dof_scheuermann_blur_poisson);
 }
@@ -534,13 +547,7 @@ PUBLIC void stage_step_dof_scheuermann_init(ral_context  context,
                                                                        );
 
     /* Set up combination program */
-    ogl_shader                combination_fs = ogl_shader_create               (context,
-                                                                                RAL_SHADER_TYPE_FRAGMENT,
-                                                                                system_hashed_ansi_string_create("DOF Scheuermann combination FS") );
-    shaders_vertex_fullscreen combination_vs = shaders_vertex_fullscreen_create(context,
-                                                                                true, /* export_uv */
-                                                                                system_hashed_ansi_string_create("DOF Scheuermann combination VS") );
-
+    ral_shader  combination_fs              = NULL;
     const char* combination_fs_body_parts[] =
     {
         _dof_scheuermann_combination_fragment_shader_preambule,
@@ -548,78 +555,106 @@ PUBLIC void stage_step_dof_scheuermann_init(ral_context  context,
         postprocessing_blur_poisson_get_tap_data_shader_code(),
         _dof_scheuermann_combination_fragment_shader_main
     };
-    const uint32_t combination_fs_n_body_parts = sizeof(combination_fs_body_parts) /
-                                                 sizeof(combination_fs_body_parts[0]);
+    const uint32_t                  combination_fs_n_body_parts = sizeof(combination_fs_body_parts) /
+                                                                  sizeof(combination_fs_body_parts[0]);
+    const system_hashed_ansi_string combination_fs_body_has     = system_hashed_ansi_string_create_by_merging_strings(combination_fs_n_body_parts,
+                                                                                                                      combination_fs_body_parts);
+    shaders_vertex_fullscreen       combination_vs              = shaders_vertex_fullscreen_create(context,
+                                                                                                   true, /* export_uv */
+                                                                                                   system_hashed_ansi_string_create("DOF Scheuermann combination VS") );
 
-    _dof_scheuermann_combination_po = ogl_program_create(context,
-                                                         system_hashed_ansi_string_create("DOF Scheuermann combination PO"),
-                                                         OGL_PROGRAM_SYNCABLE_UBS_MODE_ENABLE_GLOBAL);
+    const ral_shader_create_info combination_fs_create_info =
+    {
+        system_hashed_ansi_string_create("DOF Scheuermann combination FS"),
+        RAL_SHADER_TYPE_FRAGMENT
+    };
+    const ral_program_create_info combination_po_create_info =
+    {
+        RAL_PROGRAM_SHADER_STAGE_BIT_FRAGMENT | RAL_PROGRAM_SHADER_STAGE_BIT_VERTEX,
+        system_hashed_ansi_string_create("DOF Scheuermann combination PO")
+    };
 
-    ogl_shader_set_body(combination_fs,
-                        system_hashed_ansi_string_create_by_merging_strings(combination_fs_n_body_parts,
-                                                                            combination_fs_body_parts) );
+    ral_context_create_programs(context,
+                                1, /* n_create_info_items */
+                               &combination_po_create_info,
+                               &_dof_scheuermann_combination_po);
+    ral_context_create_shaders (context,
+                                1, /* n_create_info_items */
+                               &combination_fs_create_info,
+                               &combination_fs);
 
-    ogl_shader_compile(combination_fs);
+    ral_shader_set_property(combination_fs,
+                            RAL_SHADER_PROPERTY_GLSL_BODY,
+                            &combination_fs_body_has);
 
-    ogl_program_attach_shader(_dof_scheuermann_combination_po,
+    ral_program_attach_shader(_dof_scheuermann_combination_po,
                               combination_fs);
-    ogl_program_attach_shader(_dof_scheuermann_combination_po,
-                              shaders_vertex_fullscreen_get_shader(combination_vs) );
-
-    ogl_program_link(_dof_scheuermann_combination_po);
+    ral_program_attach_shader(_dof_scheuermann_combination_po,
+                              shaders_vertex_fullscreen_get_shader(combination_vs));
 
     /* Retrieve combination program uniform block data */
-    ogl_program_get_uniform_block_by_name(_dof_scheuermann_combination_po,
-                                          system_hashed_ansi_string_create("data"),
-                                         &_dof_scheuermann_combination_po_ub);
+    const raGL_program dof_scheuermann_combination_po_raGL    = ral_context_get_program_gl(context,
+                                                                                           _dof_scheuermann_combination_po);
+    GLuint             dof_scheuermann_combination_po_raGL_id = 0;
 
-    ogl_program_ub_get_property(_dof_scheuermann_combination_po_ub,
-                                OGL_PROGRAM_UB_PROPERTY_BUFFER_RAL,
-                               &_dof_scheuermann_combination_po_ub_bo);
+    raGL_program_get_property(dof_scheuermann_combination_po_raGL,
+                              RAGL_PROGRAM_PROPERTY_ID,
+                             &dof_scheuermann_combination_po_raGL_id);
+
+    raGL_program_get_uniform_block_by_name(dof_scheuermann_combination_po_raGL,
+                                           system_hashed_ansi_string_create("data"),
+                                          &_dof_scheuermann_combination_po_ub);
+    ogl_program_ub_get_property           (_dof_scheuermann_combination_po_ub,
+                                           OGL_PROGRAM_UB_PROPERTY_BUFFER_RAL,
+                                          &_dof_scheuermann_combination_po_ub_bo);
 
     /* Retrieve combination program uniform locations */
-    const ogl_program_variable* bg_uniform_descriptor         = NULL;
-    const ogl_program_variable* data_high_uniform_descriptor  = NULL;
-    const ogl_program_variable* data_low_uniform_descriptor   = NULL;
-    const ogl_program_variable* depth_high_uniform_descriptor = NULL;
-    const ogl_program_variable* max_coc_px_uniform_descriptor = NULL;
+    const ral_program_variable* bg_uniform_ptr         = NULL;
+    const ral_program_variable* data_high_uniform_ptr  = NULL;
+    const ral_program_variable* data_low_uniform_ptr   = NULL;
+    const ral_program_variable* depth_high_uniform_ptr = NULL;
+    const ral_program_variable* max_coc_px_uniform_ptr = NULL;
 
-    ogl_program_get_uniform_by_name(_dof_scheuermann_combination_po,
-                                    system_hashed_ansi_string_create("bg"),
-                                   &bg_uniform_descriptor);
-    ogl_program_get_uniform_by_name(_dof_scheuermann_combination_po,
-                                    system_hashed_ansi_string_create("data_high"),
-                                   &data_high_uniform_descriptor);
-    ogl_program_get_uniform_by_name(_dof_scheuermann_combination_po,
-                                    system_hashed_ansi_string_create("data_low"),
-                                   &data_low_uniform_descriptor);
-    ogl_program_get_uniform_by_name(_dof_scheuermann_combination_po,
-                                    system_hashed_ansi_string_create("depth_high"),
-                                   &depth_high_uniform_descriptor);
-    ogl_program_get_uniform_by_name(_dof_scheuermann_combination_po,
-                                    system_hashed_ansi_string_create("max_coc_px"),
-                                   &max_coc_px_uniform_descriptor);
+    raGL_program_get_uniform_by_name(dof_scheuermann_combination_po_raGL,
+                                     system_hashed_ansi_string_create("bg"),
+                                    &bg_uniform_ptr);
+    raGL_program_get_uniform_by_name(dof_scheuermann_combination_po_raGL,
+                                     system_hashed_ansi_string_create("data_high"),
+                                    &data_high_uniform_ptr);
+    raGL_program_get_uniform_by_name(dof_scheuermann_combination_po_raGL,
+                                     system_hashed_ansi_string_create("data_low"),
+                                    &data_low_uniform_ptr);
+    raGL_program_get_uniform_by_name(dof_scheuermann_combination_po_raGL,
+                                     system_hashed_ansi_string_create("depth_high"),
+                                    &depth_high_uniform_ptr);
+    raGL_program_get_uniform_by_name(dof_scheuermann_combination_po_raGL,
+                                     system_hashed_ansi_string_create("max_coc_px"),
+                                    &max_coc_px_uniform_ptr);
 
-    _dof_scheuermann_combination_po_bg_uniform_location         = (bg_uniform_descriptor         != NULL) ? bg_uniform_descriptor->location             : -1;
-    _dof_scheuermann_combination_po_data_high_uniform_location  = (data_high_uniform_descriptor  != NULL) ? data_high_uniform_descriptor->location      : -1;
-    _dof_scheuermann_combination_po_data_low_uniform_location   = (data_low_uniform_descriptor   != NULL) ? data_low_uniform_descriptor->location       : -1;
-    _dof_scheuermann_combination_po_depth_high_uniform_location = (depth_high_uniform_descriptor != NULL) ? depth_high_uniform_descriptor->location     : -1;
-    _dof_scheuermann_combination_po_ub_max_coc_px_ub_offset     = (max_coc_px_uniform_descriptor != NULL) ? max_coc_px_uniform_descriptor->block_offset : -1;
+    _dof_scheuermann_combination_po_bg_uniform_location         = (bg_uniform_ptr         != NULL) ? bg_uniform_ptr->location             : -1;
+    _dof_scheuermann_combination_po_data_high_uniform_location  = (data_high_uniform_ptr  != NULL) ? data_high_uniform_ptr->location      : -1;
+    _dof_scheuermann_combination_po_data_low_uniform_location   = (data_low_uniform_ptr   != NULL) ? data_low_uniform_ptr->location       : -1;
+    _dof_scheuermann_combination_po_depth_high_uniform_location = (depth_high_uniform_ptr != NULL) ? depth_high_uniform_ptr->location     : -1;
+    _dof_scheuermann_combination_po_ub_max_coc_px_ub_offset     = (max_coc_px_uniform_ptr != NULL) ? max_coc_px_uniform_ptr->block_offset : -1;
 
-    entrypoints_ptr->pGLProgramUniform1i(ogl_program_get_id(_dof_scheuermann_combination_po),
-                                         data_high_uniform_descriptor->location,
+    entrypoints_ptr->pGLProgramUniform1i(dof_scheuermann_combination_po_raGL_id,
+                                         data_high_uniform_ptr->location,
                                          0);
-    entrypoints_ptr->pGLProgramUniform1i(ogl_program_get_id(_dof_scheuermann_combination_po),
-                                         data_low_uniform_descriptor->location,
+    entrypoints_ptr->pGLProgramUniform1i(dof_scheuermann_combination_po_raGL_id,
+                                         data_low_uniform_ptr->location,
                                          1);
-    entrypoints_ptr->pGLProgramUniform1i(ogl_program_get_id(_dof_scheuermann_combination_po),
-                                         bg_uniform_descriptor->location,
+    entrypoints_ptr->pGLProgramUniform1i(dof_scheuermann_combination_po_raGL_id,
+                                         bg_uniform_ptr->location,
                                          2);
-    entrypoints_ptr->pGLProgramUniform1i(ogl_program_get_id(_dof_scheuermann_combination_po),
-                                         depth_high_uniform_descriptor->location,
+    entrypoints_ptr->pGLProgramUniform1i(dof_scheuermann_combination_po_raGL_id,
+                                         depth_high_uniform_ptr->location,
                                          3);
 
-    ogl_shader_release               (combination_fs);
+    ral_context_delete_objects(context,
+                               RAL_CONTEXT_OBJECT_TYPE_SHADER,
+                               1, /* n_objects */
+                               (const void**) &combination_fs);
+
     shaders_vertex_fullscreen_release(combination_vs);
 
     /* Add ourselves to the pipeline */

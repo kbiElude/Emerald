@@ -168,7 +168,6 @@ PRIVATE void _ogl_context_scene_renderer_normals_preview_init_preview_program(_o
         vs_create_info
     };
     const uint32_t               n_shader_create_info_items = sizeof(shader_create_info_items) / sizeof(shader_create_info_items[0]);
-
     ral_shader                   result_shaders[n_shader_create_info_items];
 
 
@@ -179,6 +178,7 @@ PRIVATE void _ogl_context_scene_renderer_normals_preview_init_preview_program(_o
 
     const ral_program_create_info program_create_info =
     {
+        RAL_PROGRAM_SHADER_STAGE_BIT_FRAGMENT | RAL_PROGRAM_SHADER_STAGE_BIT_GEOMETRY | RAL_PROGRAM_SHADER_STAGE_BIT_VERTEX,
         system_hashed_ansi_string_create_by_merging_two_strings("Scene Renderer normals preview program ",
                                                                 system_hashed_ansi_string_get_buffer(scene_name) )
     };
@@ -222,14 +222,11 @@ PRIVATE void _ogl_context_scene_renderer_normals_preview_init_preview_program(_o
     }
 
     if (!ral_program_attach_shader(preview_ptr->preview_program,
-                                   fs,
-                                   false /* relink_needed */) ||
+                                   fs) ||
         !ral_program_attach_shader(preview_ptr->preview_program,
-                                   gs,
-                                   false /* relink_needed */) ||
+                                   gs) ||
         !ral_program_attach_shader(preview_ptr->preview_program,
-                                   vs,
-                                   true /* relink_needed */) )
+                                   vs) )
     {
         ASSERT_DEBUG_SYNC(false,
                           "RAL program configuration failed.");
@@ -328,7 +325,7 @@ end_fail:
         ral_context_delete_objects(preview_ptr->context,
                                    RAL_CONTEXT_OBJECT_TYPE_PROGRAM,
                                    1, /* n_objects */
-                                  &preview_ptr->preview_program);
+                                   (const void**) &preview_ptr->preview_program);
 
         preview_ptr->preview_program = NULL;
     }
@@ -345,7 +342,7 @@ end:
     ral_context_delete_objects(preview_ptr->context,
                                RAL_CONTEXT_OBJECT_TYPE_SHADER,
                                n_shaders_to_release,
-                               shaders_to_release);
+                               (const void**) shaders_to_release);
 }
 
 /** Please see header for spec */
@@ -393,7 +390,7 @@ PUBLIC void ogl_scene_renderer_normals_preview_release(ogl_scene_renderer_normal
         ral_context_delete_objects(preview_ptr->context,
                                    RAL_CONTEXT_OBJECT_TYPE_PROGRAM,
                                    1, /* n_objects */
-                                  &preview_ptr->preview_program);
+                                   (const void**) &preview_ptr->preview_program);
 
         preview_ptr->preview_program = NULL;
     }

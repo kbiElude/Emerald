@@ -59,7 +59,7 @@ PRIVATE void _shaders_vertex_combinedmvp_simplified_twopoint_release(void* ptr)
         ral_context_delete_objects(data_ptr->context,
                                    RAL_CONTEXT_OBJECT_TYPE_SHADER,
                                    1, /* n_objects */
-                                  &data_ptr->shader);
+                                   (const void**) &data_ptr->shader);
 
         data_ptr->shader = NULL;
     }
@@ -75,7 +75,7 @@ PUBLIC EMERALD_API shaders_vertex_combinedmvp_simplified_twopoint shaders_vertex
     ral_shader                                       shader            = NULL;
 
     /* Create the shader */
-    system_hashed_ansi_string shader_body       (system_hashed_ansi_string_create(shader_body) );
+    system_hashed_ansi_string shader_body_has   (system_hashed_ansi_string_create(shader_body) );
     ral_shader_create_info    shader_create_info(name,
                                                  RAL_SHADER_TYPE_VERTEX);
 
@@ -92,7 +92,7 @@ PUBLIC EMERALD_API shaders_vertex_combinedmvp_simplified_twopoint shaders_vertex
 
     ral_shader_set_property(shader,
                             RAL_SHADER_PROPERTY_GLSL_BODY,
-                           &shader_body);
+                           &shader_body_has);
 
     /* Instantiate the object */
     result_object_ptr = new (std::nothrow) _shaders_vertex_combinedmvp_simplified_twopoint;
@@ -123,7 +123,7 @@ end:
         ral_context_delete_objects(context,
                                    RAL_CONTEXT_OBJECT_TYPE_SHADER,
                                    1, /* n_objects */
-                                  &shader);
+                                   (const void**) &shader);
     }
 
     if (result_object_ptr != NULL)

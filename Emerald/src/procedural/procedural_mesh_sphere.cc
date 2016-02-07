@@ -226,9 +226,10 @@ PRIVATE void _procedural_mesh_sphere_release_renderer_callback(ogl_context conte
 
     if (mesh_sphere->creation_bitmask & DATA_BO_ARRAYS)
     {
-        ral_context_delete_buffers(mesh_sphere->context,
+        ral_context_delete_objects(mesh_sphere->context,
+                                   RAL_CONTEXT_OBJECT_TYPE_BUFFER,
                                    1, /* n_buffers */
-                                  &mesh_sphere->arrays_bo);
+                                   (const void**) &mesh_sphere->arrays_bo);
 
         mesh_sphere->arrays_bo = NULL;
     }

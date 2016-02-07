@@ -81,7 +81,7 @@ PRIVATE void _shaders_fragment_texture2D_filmic_release(void* ptr)
         ral_context_delete_objects(data_ptr->context,
                                    RAL_CONTEXT_OBJECT_TYPE_SHADER,
                                    1, /* n_objects */
-                                  &data_ptr->shader);
+                                   (const void**) &data_ptr->shader);
 
         data_ptr->shader = NULL;
     }
@@ -146,7 +146,7 @@ end:
         ral_context_delete_objects(context,
                                    RAL_CONTEXT_OBJECT_TYPE_SHADER,
                                    1, /* n_shaders */
-                                  &shader);
+                                   (const void**) &shader);
 
         shader = NULL;
     }

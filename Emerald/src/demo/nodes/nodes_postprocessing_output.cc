@@ -146,9 +146,10 @@ PUBLIC RENDERING_CONTEXT_CALL void nodes_postprocessing_output_deinit(demo_timel
 
     if (node_ptr->blit_src_fb != NULL)
     {
-        ral_context_delete_framebuffers(node_ptr->context,
-                                        1, /* n_framebuffers */
-                                       &node_ptr->blit_src_fb);
+        ral_context_delete_objects(node_ptr->context,
+                                   RAL_CONTEXT_OBJECT_TYPE_FRAMEBUFFER,
+                                   1, /* n_objects */
+                                   (const void**) &node_ptr->blit_src_fb);
 
         node_ptr->blit_src_fb = NULL;
     }

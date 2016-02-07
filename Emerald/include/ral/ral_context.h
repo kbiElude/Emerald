@@ -146,7 +146,7 @@ typedef struct
 
 typedef struct
 {
-    void**                  deleted_objects;
+    const void**            deleted_objects;
     ral_context_object_type object_type;
     uint32_t                n_objects;
 
@@ -212,7 +212,7 @@ PUBLIC EMERALD_API bool ral_context_create_textures_from_gfx_images(ral_context 
 PUBLIC EMERALD_API bool ral_context_delete_objects(ral_context             context,
                                                    ral_context_object_type object_type,
                                                    uint32_t                n_objects,
-                                                   const void*             objects);
+                                                   const void**            objects);
 
 /** TODO */
 PUBLIC EMERALD_API void ral_context_get_property(ral_context          context,
