@@ -197,26 +197,15 @@ PUBLIC EMERALD_API ogl_texture_data_type raGL_utils_get_ogl_data_type_for_ral_te
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API GLenum raGL_utils_get_ogl_enum_for_ral_program_uniform_type(ral_program_uniform_type in_uniform_type)
+PUBLIC EMERALD_API GLenum raGL_utils_get_ogl_enum_for_ral_program_variable_type(ral_program_variable_type in_type)
 {
     static const GLenum result_array[] =
     {
-        GL_FLOAT,
-        GL_FLOAT_VEC2,
-        GL_FLOAT_VEC3,
-        GL_FLOAT_VEC4,
-        GL_INT,
-        GL_INT_VEC2,
-        GL_INT_VEC3,
-        GL_INT_VEC4,
-        GL_UNSIGNED_INT,
-        GL_UNSIGNED_INT_VEC2,
-        GL_UNSIGNED_INT_VEC3,
-        GL_UNSIGNED_INT_VEC4,
         GL_BOOL,
         GL_BOOL_VEC2,
         GL_BOOL_VEC3,
         GL_BOOL_VEC4,
+        GL_FLOAT,
         GL_FLOAT_MAT2,
         GL_FLOAT_MAT3,
         GL_FLOAT_MAT4,
@@ -226,49 +215,93 @@ PUBLIC EMERALD_API GLenum raGL_utils_get_ogl_enum_for_ral_program_uniform_type(r
         GL_FLOAT_MAT3x4,
         GL_FLOAT_MAT4x2,
         GL_FLOAT_MAT4x3,
-        GL_SAMPLER_1D,
-        GL_SAMPLER_2D,
-        GL_SAMPLER_3D,
-        GL_SAMPLER_CUBE,
-        GL_SAMPLER_1D_SHADOW,
-        GL_SAMPLER_2D_SHADOW,
-        GL_SAMPLER_1D_ARRAY,
-        GL_SAMPLER_2D_ARRAY,
-        GL_SAMPLER_1D_ARRAY_SHADOW,
-        GL_SAMPLER_2D_ARRAY_SHADOW,
-        GL_SAMPLER_2D_MULTISAMPLE,
-        GL_SAMPLER_2D_MULTISAMPLE_ARRAY,
-        GL_SAMPLER_CUBE_SHADOW,
-        GL_SAMPLER_BUFFER,
-        GL_SAMPLER_2D_RECT,
-        GL_SAMPLER_2D_RECT_SHADOW,
+        GL_FLOAT_VEC2,
+        GL_FLOAT_VEC3,
+        GL_FLOAT_VEC4,
+        GL_IMAGE_1D,
+        GL_IMAGE_1D_ARRAY,
+        GL_IMAGE_2D,
+        GL_IMAGE_2D_ARRAY,
+        GL_IMAGE_2D_MULTISAMPLE,
+        GL_IMAGE_2D_MULTISAMPLE_ARRAY,
+        GL_IMAGE_2D_RECT,
+        GL_IMAGE_3D,
+        GL_IMAGE_BUFFER,
+        GL_IMAGE_CUBE,
+        GL_IMAGE_CUBE_MAP_ARRAY,
+        GL_INT,
+        GL_INT_IMAGE_1D,
+        GL_INT_IMAGE_1D_ARRAY,
+        GL_INT_IMAGE_2D,
+        GL_INT_IMAGE_2D_ARRAY,
+        GL_INT_IMAGE_2D_MULTISAMPLE,
+        GL_INT_IMAGE_2D_MULTISAMPLE_ARRAY,
+        GL_INT_IMAGE_2D_RECT,
+        GL_INT_IMAGE_3D,
+        GL_INT_IMAGE_BUFFER,
+        GL_INT_IMAGE_CUBE,
+        GL_INT_IMAGE_CUBE_MAP_ARRAY,
         GL_INT_SAMPLER_1D,
-        GL_INT_SAMPLER_2D,
-        GL_INT_SAMPLER_3D,
-        GL_INT_SAMPLER_CUBE,
         GL_INT_SAMPLER_1D_ARRAY,
+        GL_INT_SAMPLER_2D,
         GL_INT_SAMPLER_2D_ARRAY,
         GL_INT_SAMPLER_2D_MULTISAMPLE,
         GL_INT_SAMPLER_2D_MULTISAMPLE_ARRAY,
-        GL_INT_SAMPLER_BUFFER,
         GL_INT_SAMPLER_2D_RECT,
+        GL_INT_SAMPLER_3D,
+        GL_INT_SAMPLER_BUFFER,
+        GL_INT_SAMPLER_CUBE,
+        GL_INT_VEC2,
+        GL_INT_VEC3,
+        GL_INT_VEC4,
+        GL_SAMPLER_1D,
+        GL_SAMPLER_1D_ARRAY,
+        GL_SAMPLER_1D_ARRAY_SHADOW,
+        GL_SAMPLER_1D_SHADOW,
+        GL_SAMPLER_2D,
+        GL_SAMPLER_2D_ARRAY,
+        GL_SAMPLER_2D_ARRAY_SHADOW,
+        GL_SAMPLER_2D_MULTISAMPLE,
+        GL_SAMPLER_2D_MULTISAMPLE_ARRAY,
+        GL_SAMPLER_2D_RECT,
+        GL_SAMPLER_2D_RECT_SHADOW,
+        GL_SAMPLER_2D_SHADOW,
+        GL_SAMPLER_3D,
+        GL_SAMPLER_BUFFER,
+        GL_SAMPLER_CUBE,
+        GL_SAMPLER_CUBE_SHADOW,
+        GL_UNSIGNED_INT,
+        GL_UNSIGNED_INT_IMAGE_1D,
+        GL_UNSIGNED_INT_IMAGE_1D_ARRAY,
+        GL_UNSIGNED_INT_IMAGE_2D,
+        GL_UNSIGNED_INT_IMAGE_2D_ARRAY,
+        GL_UNSIGNED_INT_IMAGE_2D_MULTISAMPLE,
+        GL_UNSIGNED_INT_IMAGE_2D_MULTISAMPLE_ARRAY,
+        GL_UNSIGNED_INT_IMAGE_2D_RECT,
+        GL_UNSIGNED_INT_IMAGE_3D,
+        GL_UNSIGNED_INT_IMAGE_BUFFER,
+        GL_UNSIGNED_INT_IMAGE_CUBE,
+        GL_UNSIGNED_INT_IMAGE_CUBE_MAP_ARRAY,
         GL_UNSIGNED_INT_SAMPLER_1D,
-        GL_UNSIGNED_INT_SAMPLER_2D,
-        GL_UNSIGNED_INT_SAMPLER_3D,
-        GL_UNSIGNED_INT_SAMPLER_CUBE,
         GL_UNSIGNED_INT_SAMPLER_1D_ARRAY,
+        GL_UNSIGNED_INT_SAMPLER_2D,
         GL_UNSIGNED_INT_SAMPLER_2D_ARRAY,
         GL_UNSIGNED_INT_SAMPLER_2D_MULTISAMPLE,
         GL_UNSIGNED_INT_SAMPLER_2D_MULTISAMPLE_ARRAY,
+        GL_UNSIGNED_INT_SAMPLER_2D_RECT,
+        GL_UNSIGNED_INT_SAMPLER_3D,
         GL_UNSIGNED_INT_SAMPLER_BUFFER,
-        GL_UNSIGNED_INT_SAMPLER_2D_RECT
+        GL_UNSIGNED_INT_SAMPLER_CUBE,
+        GL_UNSIGNED_INT_VEC2,
+        GL_UNSIGNED_INT_VEC3,
+        GL_UNSIGNED_INT_VEC4,
     };
     static const uint32_t n_result_array_entries = sizeof(result_array) / sizeof(result_array[0]);
 
-    ASSERT_DEBUG_SYNC(in_uniform_type < n_result_array_entries,
+    ASSERT_DEBUG_SYNC(in_type < n_result_array_entries,
                       "Invalid ral_uniform_type value.");
 
-    return result_array[in_uniform_type];
+    return result_array[in_type];
 };
 
 /** Please see header for specification */
@@ -526,106 +559,126 @@ PUBLIC EMERALD_API ogl_texture_wrap_mode raGL_utils_get_ogl_texture_wrap_mode_fo
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API ral_program_uniform_type raGL_utils_get_ral_program_uniform_type_for_ogl_enum(GLenum type)
+PUBLIC EMERALD_API ral_program_block_type raGL_utils_get_ral_program_block_type_for_ogl_program_block_type(ogl_program_block_type in_block_type)
 {
-    ral_program_uniform_type result = RAL_PROGRAM_UNIFORM_TYPE_UNDEFINED;
+    ral_program_block_type result = RAL_PROGRAM_BLOCK_TYPE_UNDEFINED;
+
+    switch (in_block_type)
+    {
+        case OGL_PROGRAM_BLOCK_TYPE_SHADER_STORAGE_BUFFER: result = RAL_PROGRAM_BLOCK_TYPE_STORAGE_BUFFER; break;
+        case OGL_PROGRAM_BLOCK_TYPE_UNIFORM_BUFFER:        result = RAL_PROGRAM_BLOCK_TYPE_UNIFORM_BUFFER; break;
+
+        default:
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Unsupported ogl_program_block_type value specified.");
+        }
+    } /* switch (in_block_type) */
+
+    return result;
+}
+
+/* Please see header for specification */
+PUBLIC EMERALD_API ral_program_variable_type raGL_utils_get_ral_program_variable_type_for_ogl_enum(GLenum type)
+{
+    ral_program_variable_type result = RAL_PROGRAM_VARIABLE_TYPE_UNDEFINED;
 
     switch (type)
     {
-        case GL_BOOL:                                      result = RAL_PROGRAM_UNIFORM_TYPE_BOOL;                                      break;
-        case GL_BOOL_VEC2:                                 result = RAL_PROGRAM_UNIFORM_TYPE_BOOL_VEC2;                                 break;
-        case GL_BOOL_VEC3:                                 result = RAL_PROGRAM_UNIFORM_TYPE_BOOL_VEC3;                                 break;
-        case GL_BOOL_VEC4:                                 result = RAL_PROGRAM_UNIFORM_TYPE_BOOL_VEC4;                                 break;
-        case GL_FLOAT:                                     result = RAL_PROGRAM_UNIFORM_TYPE_FLOAT;                                     break;
-        case GL_FLOAT_MAT2:                                result = RAL_PROGRAM_UNIFORM_TYPE_FLOAT_MAT2;                                break;
-        case GL_FLOAT_MAT3:                                result = RAL_PROGRAM_UNIFORM_TYPE_FLOAT_MAT3;                                break;
-        case GL_FLOAT_MAT4:                                result = RAL_PROGRAM_UNIFORM_TYPE_FLOAT_MAT4;                                break;
-        case GL_FLOAT_MAT2x3:                              result = RAL_PROGRAM_UNIFORM_TYPE_FLOAT_MAT2x3;                              break;
-        case GL_FLOAT_MAT2x4:                              result = RAL_PROGRAM_UNIFORM_TYPE_FLOAT_MAT2x4;                              break;
-        case GL_FLOAT_MAT3x2:                              result = RAL_PROGRAM_UNIFORM_TYPE_FLOAT_MAT3x2;                              break;
-        case GL_FLOAT_MAT3x4:                              result = RAL_PROGRAM_UNIFORM_TYPE_FLOAT_MAT3x4;                              break;
-        case GL_FLOAT_MAT4x2:                              result = RAL_PROGRAM_UNIFORM_TYPE_FLOAT_MAT4x2;                              break;
-        case GL_FLOAT_MAT4x3:                              result = RAL_PROGRAM_UNIFORM_TYPE_FLOAT_MAT4x3;                              break;
-        case GL_FLOAT_VEC2:                                result = RAL_PROGRAM_UNIFORM_TYPE_FLOAT_VEC2;                                break;
-        case GL_FLOAT_VEC3:                                result = RAL_PROGRAM_UNIFORM_TYPE_FLOAT_VEC3;                                break;
-        case GL_FLOAT_VEC4:                                result = RAL_PROGRAM_UNIFORM_TYPE_FLOAT_VEC4;                                break;
-        case GL_IMAGE_1D:                                  result = RAL_PROGRAM_UNIFORM_TYPE_IMAGE_1D;                                  break;
-        case GL_IMAGE_1D_ARRAY:                            result = RAL_PROGRAM_UNIFORM_TYPE_IMAGE_1D_ARRAY;                            break;
-        case GL_IMAGE_2D:                                  result = RAL_PROGRAM_UNIFORM_TYPE_IMAGE_2D;                                  break;
-        case GL_IMAGE_2D_ARRAY:                            result = RAL_PROGRAM_UNIFORM_TYPE_IMAGE_2D_ARRAY;                            break;
-        case GL_IMAGE_2D_MULTISAMPLE:                      result = RAL_PROGRAM_UNIFORM_TYPE_IMAGE_2D_MULTISAMPLE;                      break;
-        case GL_IMAGE_2D_MULTISAMPLE_ARRAY:                result = RAL_PROGRAM_UNIFORM_TYPE_IMAGE_2D_MULTISAMPLE_ARRAY;                break;
-        case GL_IMAGE_2D_RECT:                             result = RAL_PROGRAM_UNIFORM_TYPE_IMAGE_2D_RECT;                             break;
-        case GL_IMAGE_3D:                                  result = RAL_PROGRAM_UNIFORM_TYPE_IMAGE_3D;                                  break;
-        case GL_IMAGE_BUFFER:                              result = RAL_PROGRAM_UNIFORM_TYPE_IMAGE_BUFFER;                              break;
-        case GL_IMAGE_CUBE:                                result = RAL_PROGRAM_UNIFORM_TYPE_IMAGE_CUBE;                                break;
-        case GL_IMAGE_CUBE_MAP_ARRAY:                      result = RAL_PROGRAM_UNIFORM_TYPE_IMAGE_CUBE_MAP_ARRAY;                      break;
-        case GL_INT:                                       result = RAL_PROGRAM_UNIFORM_TYPE_INT;                                       break;
-        case GL_INT_IMAGE_1D:                              result = RAL_PROGRAM_UNIFORM_TYPE_INT_IMAGE_1D;                              break;
-        case GL_INT_IMAGE_1D_ARRAY:                        result = RAL_PROGRAM_UNIFORM_TYPE_INT_IMAGE_1D_ARRAY;                        break;
-        case GL_INT_IMAGE_2D:                              result = RAL_PROGRAM_UNIFORM_TYPE_INT_IMAGE_2D;                              break;
-        case GL_INT_IMAGE_2D_ARRAY:                        result = RAL_PROGRAM_UNIFORM_TYPE_INT_IMAGE_2D_ARRAY;                        break;
-        case GL_INT_IMAGE_2D_MULTISAMPLE:                  result = RAL_PROGRAM_UNIFORM_TYPE_INT_IMAGE_2D_MULTISAMPLE;                  break;
-        case GL_INT_IMAGE_2D_MULTISAMPLE_ARRAY:            result = RAL_PROGRAM_UNIFORM_TYPE_INT_IMAGE_2D_MULTISAMPLE_ARRAY;            break;
-        case GL_INT_IMAGE_2D_RECT:                         result = RAL_PROGRAM_UNIFORM_TYPE_INT_IMAGE_2D_RECT;                         break;
-        case GL_INT_IMAGE_3D:                              result = RAL_PROGRAM_UNIFORM_TYPE_INT_IMAGE_3D;                              break;
-        case GL_INT_IMAGE_BUFFER:                          result = RAL_PROGRAM_UNIFORM_TYPE_INT_IMAGE_BUFFER;                          break;
-        case GL_INT_IMAGE_CUBE:                            result = RAL_PROGRAM_UNIFORM_TYPE_INT_IMAGE_CUBE;                            break;
-        case GL_INT_IMAGE_CUBE_MAP_ARRAY:                  result = RAL_PROGRAM_UNIFORM_TYPE_INT_IMAGE_CUBE_MAP_ARRAY;                  break;
-        case GL_INT_SAMPLER_1D:                            result = RAL_PROGRAM_UNIFORM_TYPE_INT_SAMPLER_1D;                            break;
-        case GL_INT_SAMPLER_1D_ARRAY:                      result = RAL_PROGRAM_UNIFORM_TYPE_INT_SAMPLER_1D_ARRAY;                      break;
-        case GL_INT_SAMPLER_2D:                            result = RAL_PROGRAM_UNIFORM_TYPE_INT_SAMPLER_2D;                            break;
-        case GL_INT_SAMPLER_2D_ARRAY:                      result = RAL_PROGRAM_UNIFORM_TYPE_INT_SAMPLER_2D_ARRAY;                      break;
-        case GL_INT_SAMPLER_2D_MULTISAMPLE:                result = RAL_PROGRAM_UNIFORM_TYPE_INT_SAMPLER_2D_MULTISAMPLE;                break;
-        case GL_INT_SAMPLER_2D_MULTISAMPLE_ARRAY:          result = RAL_PROGRAM_UNIFORM_TYPE_INT_SAMPLER_2D_MULTISAMPLE_ARRAY;          break;
-        case GL_INT_SAMPLER_2D_RECT:                       result = RAL_PROGRAM_UNIFORM_TYPE_INT_SAMPLER_2D_RECT;                       break;
-        case GL_INT_SAMPLER_3D:                            result = RAL_PROGRAM_UNIFORM_TYPE_INT_SAMPLER_3D;                            break;
-        case GL_INT_SAMPLER_BUFFER:                        result = RAL_PROGRAM_UNIFORM_TYPE_INT_SAMPLER_BUFFER;                        break;
-        case GL_INT_SAMPLER_CUBE:                          result = RAL_PROGRAM_UNIFORM_TYPE_INT_SAMPLER_CUBE;                          break;
-        case GL_INT_VEC2:                                  result = RAL_PROGRAM_UNIFORM_TYPE_INT_VEC2;                                  break;
-        case GL_INT_VEC3:                                  result = RAL_PROGRAM_UNIFORM_TYPE_INT_VEC3;                                  break;
-        case GL_INT_VEC4:                                  result = RAL_PROGRAM_UNIFORM_TYPE_INT_VEC4;                                  break;
-        case GL_SAMPLER_1D:                                result = RAL_PROGRAM_UNIFORM_TYPE_SAMPLER_1D;                                break;
-        case GL_SAMPLER_1D_ARRAY:                          result = RAL_PROGRAM_UNIFORM_TYPE_SAMPLER_1D_ARRAY;                          break;
-        case GL_SAMPLER_1D_ARRAY_SHADOW:                   result = RAL_PROGRAM_UNIFORM_TYPE_SAMPLER_1D_ARRAY_SHADOW;                   break;
-        case GL_SAMPLER_1D_SHADOW:                         result = RAL_PROGRAM_UNIFORM_TYPE_SAMPLER_1D_SHADOW;                         break;
-        case GL_SAMPLER_2D:                                result = RAL_PROGRAM_UNIFORM_TYPE_SAMPLER_2D;                                break;
-        case GL_SAMPLER_2D_ARRAY:                          result = RAL_PROGRAM_UNIFORM_TYPE_SAMPLER_2D_ARRAY;                          break;
-        case GL_SAMPLER_2D_ARRAY_SHADOW:                   result = RAL_PROGRAM_UNIFORM_TYPE_SAMPLER_2D_ARRAY_SHADOW;                   break;
-        case GL_SAMPLER_2D_MULTISAMPLE:                    result = RAL_PROGRAM_UNIFORM_TYPE_SAMPLER_2D_MULTISAMPLE;                    break;
-        case GL_SAMPLER_2D_MULTISAMPLE_ARRAY:              result = RAL_PROGRAM_UNIFORM_TYPE_SAMPLER_2D_MULTISAMPLE_ARRAY;              break;
-        case GL_SAMPLER_2D_RECT:                           result = RAL_PROGRAM_UNIFORM_TYPE_SAMPLER_2D_RECT;                           break;
-        case GL_SAMPLER_2D_RECT_SHADOW:                    result = RAL_PROGRAM_UNIFORM_TYPE_SAMPLER_2D_RECT_SHADOW;                    break;
-        case GL_SAMPLER_2D_SHADOW:                         result = RAL_PROGRAM_UNIFORM_TYPE_SAMPLER_2D_SHADOW;                         break;
-        case GL_SAMPLER_3D:                                result = RAL_PROGRAM_UNIFORM_TYPE_SAMPLER_3D;                                break;
-        case GL_SAMPLER_BUFFER:                            result = RAL_PROGRAM_UNIFORM_TYPE_SAMPLER_BUFFER;                            break;
-        case GL_SAMPLER_CUBE:                              result = RAL_PROGRAM_UNIFORM_TYPE_SAMPLER_CUBE;                              break;
-        case GL_SAMPLER_CUBE_SHADOW:                       result = RAL_PROGRAM_UNIFORM_TYPE_SAMPLER_CUBE_SHADOW;                       break;
-        case GL_UNSIGNED_INT:                              result = RAL_PROGRAM_UNIFORM_TYPE_UNSIGNED_INT;                              break;
-        case GL_UNSIGNED_INT_IMAGE_1D:                     result = RAL_PROGRAM_UNIFORM_TYPE_UNSIGNED_INT_IMAGE_1D;                     break;
-        case GL_UNSIGNED_INT_IMAGE_1D_ARRAY:               result = RAL_PROGRAM_UNIFORM_TYPE_UNSIGNED_INT_IMAGE_1D_ARRAY;               break;
-        case GL_UNSIGNED_INT_IMAGE_2D:                     result = RAL_PROGRAM_UNIFORM_TYPE_UNSIGNED_INT_IMAGE_2D;                     break;
-        case GL_UNSIGNED_INT_IMAGE_2D_ARRAY:               result = RAL_PROGRAM_UNIFORM_TYPE_UNSIGNED_INT_IMAGE_2D_ARRAY;               break;
-        case GL_UNSIGNED_INT_IMAGE_2D_MULTISAMPLE:         result = RAL_PROGRAM_UNIFORM_TYPE_UNSIGNED_INT_IMAGE_2D_MULTISAMPLE;         break;
-        case GL_UNSIGNED_INT_IMAGE_2D_MULTISAMPLE_ARRAY:   result = RAL_PROGRAM_UNIFORM_TYPE_UNSIGNED_INT_IMAGE_2D_MULTISAMPLE_ARRAY;   break;
-        case GL_UNSIGNED_INT_IMAGE_2D_RECT:                result = RAL_PROGRAM_UNIFORM_TYPE_UNSIGNED_INT_IMAGE_2D_RECT;                break;
-        case GL_UNSIGNED_INT_IMAGE_3D:                     result = RAL_PROGRAM_UNIFORM_TYPE_UNSIGNED_INT_IMAGE_3D;                     break;
-        case GL_UNSIGNED_INT_IMAGE_BUFFER:                 result = RAL_PROGRAM_UNIFORM_TYPE_UNSIGNED_INT_IMAGE_BUFFER;                 break;
-        case GL_UNSIGNED_INT_IMAGE_CUBE:                   result = RAL_PROGRAM_UNIFORM_TYPE_UNSIGNED_INT_IMAGE_CUBE;                   break;
-        case GL_UNSIGNED_INT_IMAGE_CUBE_MAP_ARRAY:         result = RAL_PROGRAM_UNIFORM_TYPE_UNSIGNED_INT_IMAGE_CUBE_MAP_ARRAY;         break;
-        case GL_UNSIGNED_INT_SAMPLER_1D:                   result = RAL_PROGRAM_UNIFORM_TYPE_UNSIGNED_INT_SAMPLER_1D;                   break;
-        case GL_UNSIGNED_INT_SAMPLER_2D:                   result = RAL_PROGRAM_UNIFORM_TYPE_UNSIGNED_INT_SAMPLER_2D;                   break;
-        case GL_UNSIGNED_INT_SAMPLER_3D:                   result = RAL_PROGRAM_UNIFORM_TYPE_UNSIGNED_INT_SAMPLER_3D;                   break;
-        case GL_UNSIGNED_INT_SAMPLER_CUBE:                 result = RAL_PROGRAM_UNIFORM_TYPE_UNSIGNED_INT_SAMPLER_CUBE;                 break;
-        case GL_UNSIGNED_INT_SAMPLER_1D_ARRAY:             result = RAL_PROGRAM_UNIFORM_TYPE_UNSIGNED_INT_SAMPLER_1D_ARRAY;             break;
-        case GL_UNSIGNED_INT_SAMPLER_2D_ARRAY:             result = RAL_PROGRAM_UNIFORM_TYPE_UNSIGNED_INT_SAMPLER_2D_ARRAY;             break;
-        case GL_UNSIGNED_INT_SAMPLER_2D_MULTISAMPLE:       result = RAL_PROGRAM_UNIFORM_TYPE_UNSIGNED_INT_SAMPLER_2D_MULTISAMPLE;       break;
-        case GL_UNSIGNED_INT_SAMPLER_2D_MULTISAMPLE_ARRAY: result = RAL_PROGRAM_UNIFORM_TYPE_UNSIGNED_INT_SAMPLER_2D_MULTISAMPLE_ARRAY; break;
-        case GL_UNSIGNED_INT_SAMPLER_BUFFER:               result = RAL_PROGRAM_UNIFORM_TYPE_UNSIGNED_INT_SAMPLER_BUFFER;               break;
-        case GL_UNSIGNED_INT_SAMPLER_2D_RECT:              result = RAL_PROGRAM_UNIFORM_TYPE_UNSIGNED_INT_SAMPLER_2D_RECT;              break;
-        case GL_UNSIGNED_INT_VEC2:                         result = RAL_PROGRAM_UNIFORM_TYPE_UNSIGNED_INT_VEC2;                         break;
-        case GL_UNSIGNED_INT_VEC3:                         result = RAL_PROGRAM_UNIFORM_TYPE_UNSIGNED_INT_VEC3;                         break;
-        case GL_UNSIGNED_INT_VEC4:                         result = RAL_PROGRAM_UNIFORM_TYPE_UNSIGNED_INT_VEC4;                         break;
+        case GL_BOOL:                                      result = RAL_PROGRAM_VARIABLE_TYPE_BOOL;                                      break;
+        case GL_BOOL_VEC2:                                 result = RAL_PROGRAM_VARIABLE_TYPE_BOOL_VEC2;                                 break;
+        case GL_BOOL_VEC3:                                 result = RAL_PROGRAM_VARIABLE_TYPE_BOOL_VEC3;                                 break;
+        case GL_BOOL_VEC4:                                 result = RAL_PROGRAM_VARIABLE_TYPE_BOOL_VEC4;                                 break;
+        case GL_FLOAT:                                     result = RAL_PROGRAM_VARIABLE_TYPE_FLOAT;                                     break;
+        case GL_FLOAT_MAT2:                                result = RAL_PROGRAM_VARIABLE_TYPE_FLOAT_MAT2;                                break;
+        case GL_FLOAT_MAT3:                                result = RAL_PROGRAM_VARIABLE_TYPE_FLOAT_MAT3;                                break;
+        case GL_FLOAT_MAT4:                                result = RAL_PROGRAM_VARIABLE_TYPE_FLOAT_MAT4;                                break;
+        case GL_FLOAT_MAT2x3:                              result = RAL_PROGRAM_VARIABLE_TYPE_FLOAT_MAT2x3;                              break;
+        case GL_FLOAT_MAT2x4:                              result = RAL_PROGRAM_VARIABLE_TYPE_FLOAT_MAT2x4;                              break;
+        case GL_FLOAT_MAT3x2:                              result = RAL_PROGRAM_VARIABLE_TYPE_FLOAT_MAT3x2;                              break;
+        case GL_FLOAT_MAT3x4:                              result = RAL_PROGRAM_VARIABLE_TYPE_FLOAT_MAT3x4;                              break;
+        case GL_FLOAT_MAT4x2:                              result = RAL_PROGRAM_VARIABLE_TYPE_FLOAT_MAT4x2;                              break;
+        case GL_FLOAT_MAT4x3:                              result = RAL_PROGRAM_VARIABLE_TYPE_FLOAT_MAT4x3;                              break;
+        case GL_FLOAT_VEC2:                                result = RAL_PROGRAM_VARIABLE_TYPE_FLOAT_VEC2;                                break;
+        case GL_FLOAT_VEC3:                                result = RAL_PROGRAM_VARIABLE_TYPE_FLOAT_VEC3;                                break;
+        case GL_FLOAT_VEC4:                                result = RAL_PROGRAM_VARIABLE_TYPE_FLOAT_VEC4;                                break;
+        case GL_IMAGE_1D:                                  result = RAL_PROGRAM_VARIABLE_TYPE_IMAGE_1D;                                  break;
+        case GL_IMAGE_1D_ARRAY:                            result = RAL_PROGRAM_VARIABLE_TYPE_IMAGE_1D_ARRAY;                            break;
+        case GL_IMAGE_2D:                                  result = RAL_PROGRAM_VARIABLE_TYPE_IMAGE_2D;                                  break;
+        case GL_IMAGE_2D_ARRAY:                            result = RAL_PROGRAM_VARIABLE_TYPE_IMAGE_2D_ARRAY;                            break;
+        case GL_IMAGE_2D_MULTISAMPLE:                      result = RAL_PROGRAM_VARIABLE_TYPE_IMAGE_2D_MULTISAMPLE;                      break;
+        case GL_IMAGE_2D_MULTISAMPLE_ARRAY:                result = RAL_PROGRAM_VARIABLE_TYPE_IMAGE_2D_MULTISAMPLE_ARRAY;                break;
+        case GL_IMAGE_2D_RECT:                             result = RAL_PROGRAM_VARIABLE_TYPE_IMAGE_2D_RECT;                             break;
+        case GL_IMAGE_3D:                                  result = RAL_PROGRAM_VARIABLE_TYPE_IMAGE_3D;                                  break;
+        case GL_IMAGE_BUFFER:                              result = RAL_PROGRAM_VARIABLE_TYPE_IMAGE_BUFFER;                              break;
+        case GL_IMAGE_CUBE:                                result = RAL_PROGRAM_VARIABLE_TYPE_IMAGE_CUBE;                                break;
+        case GL_IMAGE_CUBE_MAP_ARRAY:                      result = RAL_PROGRAM_VARIABLE_TYPE_IMAGE_CUBE_MAP_ARRAY;                      break;
+        case GL_INT:                                       result = RAL_PROGRAM_VARIABLE_TYPE_INT;                                       break;
+        case GL_INT_IMAGE_1D:                              result = RAL_PROGRAM_VARIABLE_TYPE_INT_IMAGE_1D;                              break;
+        case GL_INT_IMAGE_1D_ARRAY:                        result = RAL_PROGRAM_VARIABLE_TYPE_INT_IMAGE_1D_ARRAY;                        break;
+        case GL_INT_IMAGE_2D:                              result = RAL_PROGRAM_VARIABLE_TYPE_INT_IMAGE_2D;                              break;
+        case GL_INT_IMAGE_2D_ARRAY:                        result = RAL_PROGRAM_VARIABLE_TYPE_INT_IMAGE_2D_ARRAY;                        break;
+        case GL_INT_IMAGE_2D_MULTISAMPLE:                  result = RAL_PROGRAM_VARIABLE_TYPE_INT_IMAGE_2D_MULTISAMPLE;                  break;
+        case GL_INT_IMAGE_2D_MULTISAMPLE_ARRAY:            result = RAL_PROGRAM_VARIABLE_TYPE_INT_IMAGE_2D_MULTISAMPLE_ARRAY;            break;
+        case GL_INT_IMAGE_2D_RECT:                         result = RAL_PROGRAM_VARIABLE_TYPE_INT_IMAGE_2D_RECT;                         break;
+        case GL_INT_IMAGE_3D:                              result = RAL_PROGRAM_VARIABLE_TYPE_INT_IMAGE_3D;                              break;
+        case GL_INT_IMAGE_BUFFER:                          result = RAL_PROGRAM_VARIABLE_TYPE_INT_IMAGE_BUFFER;                          break;
+        case GL_INT_IMAGE_CUBE:                            result = RAL_PROGRAM_VARIABLE_TYPE_INT_IMAGE_CUBE;                            break;
+        case GL_INT_IMAGE_CUBE_MAP_ARRAY:                  result = RAL_PROGRAM_VARIABLE_TYPE_INT_IMAGE_CUBE_MAP_ARRAY;                  break;
+        case GL_INT_SAMPLER_1D:                            result = RAL_PROGRAM_VARIABLE_TYPE_INT_SAMPLER_1D;                            break;
+        case GL_INT_SAMPLER_1D_ARRAY:                      result = RAL_PROGRAM_VARIABLE_TYPE_INT_SAMPLER_1D_ARRAY;                      break;
+        case GL_INT_SAMPLER_2D:                            result = RAL_PROGRAM_VARIABLE_TYPE_INT_SAMPLER_2D;                            break;
+        case GL_INT_SAMPLER_2D_ARRAY:                      result = RAL_PROGRAM_VARIABLE_TYPE_INT_SAMPLER_2D_ARRAY;                      break;
+        case GL_INT_SAMPLER_2D_MULTISAMPLE:                result = RAL_PROGRAM_VARIABLE_TYPE_INT_SAMPLER_2D_MULTISAMPLE;                break;
+        case GL_INT_SAMPLER_2D_MULTISAMPLE_ARRAY:          result = RAL_PROGRAM_VARIABLE_TYPE_INT_SAMPLER_2D_MULTISAMPLE_ARRAY;          break;
+        case GL_INT_SAMPLER_2D_RECT:                       result = RAL_PROGRAM_VARIABLE_TYPE_INT_SAMPLER_2D_RECT;                       break;
+        case GL_INT_SAMPLER_3D:                            result = RAL_PROGRAM_VARIABLE_TYPE_INT_SAMPLER_3D;                            break;
+        case GL_INT_SAMPLER_BUFFER:                        result = RAL_PROGRAM_VARIABLE_TYPE_INT_SAMPLER_BUFFER;                        break;
+        case GL_INT_SAMPLER_CUBE:                          result = RAL_PROGRAM_VARIABLE_TYPE_INT_SAMPLER_CUBE;                          break;
+        case GL_INT_VEC2:                                  result = RAL_PROGRAM_VARIABLE_TYPE_INT_VEC2;                                  break;
+        case GL_INT_VEC3:                                  result = RAL_PROGRAM_VARIABLE_TYPE_INT_VEC3;                                  break;
+        case GL_INT_VEC4:                                  result = RAL_PROGRAM_VARIABLE_TYPE_INT_VEC4;                                  break;
+        case GL_SAMPLER_1D:                                result = RAL_PROGRAM_VARIABLE_TYPE_SAMPLER_1D;                                break;
+        case GL_SAMPLER_1D_ARRAY:                          result = RAL_PROGRAM_VARIABLE_TYPE_SAMPLER_1D_ARRAY;                          break;
+        case GL_SAMPLER_1D_ARRAY_SHADOW:                   result = RAL_PROGRAM_VARIABLE_TYPE_SAMPLER_1D_ARRAY_SHADOW;                   break;
+        case GL_SAMPLER_1D_SHADOW:                         result = RAL_PROGRAM_VARIABLE_TYPE_SAMPLER_1D_SHADOW;                         break;
+        case GL_SAMPLER_2D:                                result = RAL_PROGRAM_VARIABLE_TYPE_SAMPLER_2D;                                break;
+        case GL_SAMPLER_2D_ARRAY:                          result = RAL_PROGRAM_VARIABLE_TYPE_SAMPLER_2D_ARRAY;                          break;
+        case GL_SAMPLER_2D_ARRAY_SHADOW:                   result = RAL_PROGRAM_VARIABLE_TYPE_SAMPLER_2D_ARRAY_SHADOW;                   break;
+        case GL_SAMPLER_2D_MULTISAMPLE:                    result = RAL_PROGRAM_VARIABLE_TYPE_SAMPLER_2D_MULTISAMPLE;                    break;
+        case GL_SAMPLER_2D_MULTISAMPLE_ARRAY:              result = RAL_PROGRAM_VARIABLE_TYPE_SAMPLER_2D_MULTISAMPLE_ARRAY;              break;
+        case GL_SAMPLER_2D_RECT:                           result = RAL_PROGRAM_VARIABLE_TYPE_SAMPLER_2D_RECT;                           break;
+        case GL_SAMPLER_2D_RECT_SHADOW:                    result = RAL_PROGRAM_VARIABLE_TYPE_SAMPLER_2D_RECT_SHADOW;                    break;
+        case GL_SAMPLER_2D_SHADOW:                         result = RAL_PROGRAM_VARIABLE_TYPE_SAMPLER_2D_SHADOW;                         break;
+        case GL_SAMPLER_3D:                                result = RAL_PROGRAM_VARIABLE_TYPE_SAMPLER_3D;                                break;
+        case GL_SAMPLER_BUFFER:                            result = RAL_PROGRAM_VARIABLE_TYPE_SAMPLER_BUFFER;                            break;
+        case GL_SAMPLER_CUBE:                              result = RAL_PROGRAM_VARIABLE_TYPE_SAMPLER_CUBE;                              break;
+        case GL_SAMPLER_CUBE_SHADOW:                       result = RAL_PROGRAM_VARIABLE_TYPE_SAMPLER_CUBE_SHADOW;                       break;
+        case GL_UNSIGNED_INT:                              result = RAL_PROGRAM_VARIABLE_TYPE_UNSIGNED_INT;                              break;
+        case GL_UNSIGNED_INT_IMAGE_1D:                     result = RAL_PROGRAM_VARIABLE_TYPE_UNSIGNED_INT_IMAGE_1D;                     break;
+        case GL_UNSIGNED_INT_IMAGE_1D_ARRAY:               result = RAL_PROGRAM_VARIABLE_TYPE_UNSIGNED_INT_IMAGE_1D_ARRAY;               break;
+        case GL_UNSIGNED_INT_IMAGE_2D:                     result = RAL_PROGRAM_VARIABLE_TYPE_UNSIGNED_INT_IMAGE_2D;                     break;
+        case GL_UNSIGNED_INT_IMAGE_2D_ARRAY:               result = RAL_PROGRAM_VARIABLE_TYPE_UNSIGNED_INT_IMAGE_2D_ARRAY;               break;
+        case GL_UNSIGNED_INT_IMAGE_2D_MULTISAMPLE:         result = RAL_PROGRAM_VARIABLE_TYPE_UNSIGNED_INT_IMAGE_2D_MULTISAMPLE;         break;
+        case GL_UNSIGNED_INT_IMAGE_2D_MULTISAMPLE_ARRAY:   result = RAL_PROGRAM_VARIABLE_TYPE_UNSIGNED_INT_IMAGE_2D_MULTISAMPLE_ARRAY;   break;
+        case GL_UNSIGNED_INT_IMAGE_2D_RECT:                result = RAL_PROGRAM_VARIABLE_TYPE_UNSIGNED_INT_IMAGE_2D_RECT;                break;
+        case GL_UNSIGNED_INT_IMAGE_3D:                     result = RAL_PROGRAM_VARIABLE_TYPE_UNSIGNED_INT_IMAGE_3D;                     break;
+        case GL_UNSIGNED_INT_IMAGE_BUFFER:                 result = RAL_PROGRAM_VARIABLE_TYPE_UNSIGNED_INT_IMAGE_BUFFER;                 break;
+        case GL_UNSIGNED_INT_IMAGE_CUBE:                   result = RAL_PROGRAM_VARIABLE_TYPE_UNSIGNED_INT_IMAGE_CUBE;                   break;
+        case GL_UNSIGNED_INT_IMAGE_CUBE_MAP_ARRAY:         result = RAL_PROGRAM_VARIABLE_TYPE_UNSIGNED_INT_IMAGE_CUBE_MAP_ARRAY;         break;
+        case GL_UNSIGNED_INT_SAMPLER_1D:                   result = RAL_PROGRAM_VARIABLE_TYPE_UNSIGNED_INT_SAMPLER_1D;                   break;
+        case GL_UNSIGNED_INT_SAMPLER_2D:                   result = RAL_PROGRAM_VARIABLE_TYPE_UNSIGNED_INT_SAMPLER_2D;                   break;
+        case GL_UNSIGNED_INT_SAMPLER_3D:                   result = RAL_PROGRAM_VARIABLE_TYPE_UNSIGNED_INT_SAMPLER_3D;                   break;
+        case GL_UNSIGNED_INT_SAMPLER_CUBE:                 result = RAL_PROGRAM_VARIABLE_TYPE_UNSIGNED_INT_SAMPLER_CUBE;                 break;
+        case GL_UNSIGNED_INT_SAMPLER_1D_ARRAY:             result = RAL_PROGRAM_VARIABLE_TYPE_UNSIGNED_INT_SAMPLER_1D_ARRAY;             break;
+        case GL_UNSIGNED_INT_SAMPLER_2D_ARRAY:             result = RAL_PROGRAM_VARIABLE_TYPE_UNSIGNED_INT_SAMPLER_2D_ARRAY;             break;
+        case GL_UNSIGNED_INT_SAMPLER_2D_MULTISAMPLE:       result = RAL_PROGRAM_VARIABLE_TYPE_UNSIGNED_INT_SAMPLER_2D_MULTISAMPLE;       break;
+        case GL_UNSIGNED_INT_SAMPLER_2D_MULTISAMPLE_ARRAY: result = RAL_PROGRAM_VARIABLE_TYPE_UNSIGNED_INT_SAMPLER_2D_MULTISAMPLE_ARRAY; break;
+        case GL_UNSIGNED_INT_SAMPLER_BUFFER:               result = RAL_PROGRAM_VARIABLE_TYPE_UNSIGNED_INT_SAMPLER_BUFFER;               break;
+        case GL_UNSIGNED_INT_SAMPLER_2D_RECT:              result = RAL_PROGRAM_VARIABLE_TYPE_UNSIGNED_INT_SAMPLER_2D_RECT;              break;
+        case GL_UNSIGNED_INT_VEC2:                         result = RAL_PROGRAM_VARIABLE_TYPE_UNSIGNED_INT_VEC2;                         break;
+        case GL_UNSIGNED_INT_VEC3:                         result = RAL_PROGRAM_VARIABLE_TYPE_UNSIGNED_INT_VEC3;                         break;
+        case GL_UNSIGNED_INT_VEC4:                         result = RAL_PROGRAM_VARIABLE_TYPE_UNSIGNED_INT_VEC4;                         break;
 
         default:
         {

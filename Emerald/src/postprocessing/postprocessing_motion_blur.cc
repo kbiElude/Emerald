@@ -457,18 +457,20 @@ PRIVATE void _postprocessing_motion_blur_init_po(_postprocessing_motion_blur* mo
     if (motion_blur_ptr->po != NULL)
     {
         /* Retrieve PO's uniform buffer & variable properties */
-        const ral_program_variable* n_velocity_samples_max_variable_ptr = NULL;
-        raGL_program                po_raGL                             = ral_context_get_program_gl(motion_blur_ptr->context,
-                                                                                                     motion_blur_ptr->po);
+        const ral_program_variable* n_velocity_samples_max_variable_ral_ptr = NULL;
+        raGL_program                po_raGL                                 = ral_context_get_program_gl(motion_blur_ptr->context,
+                                                                                                         motion_blur_ptr->po);
 
         raGL_program_get_uniform_block_by_name(po_raGL,
                                                system_hashed_ansi_string_create("propsUB"),
                                               &motion_blur_ptr->po_props_ub);
-        raGL_program_get_uniform_by_name      (po_raGL,
-                                               system_hashed_ansi_string_create("n_velocity_samples_max"),
-                                              &n_velocity_samples_max_variable_ptr);
 
-        ASSERT_DEBUG_SYNC(n_velocity_samples_max_variable_ptr != NULL,
+        ral_program_get_block_variable_by_name(motion_blur_ptr->po,
+                                               system_hashed_ansi_string_create("propsUB"),
+                                               system_hashed_ansi_string_create("n_velocity_samples_max"),
+                                              &n_velocity_samples_max_variable_ral_ptr);
+
+        ASSERT_DEBUG_SYNC(n_velocity_samples_max_variable_ral_ptr != NULL,
                           "Could not retrieve n_velocity_samples variable descriptor");
         ASSERT_DEBUG_SYNC(motion_blur_ptr->po_props_ub != NULL,
                           "GL does not recognize motion blur post-processor's propsUB uniform block");
@@ -480,7 +482,7 @@ PRIVATE void _postprocessing_motion_blur_init_po(_postprocessing_motion_blur* mo
                                     OGL_PROGRAM_UB_PROPERTY_BLOCK_DATA_SIZE,
                                    &motion_blur_ptr->po_props_ub_bo_size);
 
-        motion_blur_ptr->po_props_ub_bo_n_velocity_samples_max_start_offset = n_velocity_samples_max_variable_ptr->block_offset;
+        motion_blur_ptr->po_props_ub_bo_n_velocity_samples_max_start_offset = n_velocity_samples_max_variable_ral_ptr->block_offset;
 
         /* Some variables in the props UB are optional */
         switch (motion_blur_ptr->image_type)
@@ -493,16 +495,17 @@ PRIVATE void _postprocessing_motion_blur_init_po(_postprocessing_motion_blur* mo
 
             case POSTPROCESSING_MOTION_BLUR_IMAGE_TYPE_2D_MULTISAMPLE:
             {
-                const ral_program_variable* image_n_samples_variable_ptr = NULL;
+                const ral_program_variable* image_n_samples_variable_ral_ptr = NULL;
 
-                raGL_program_get_uniform_by_name(po_raGL,
-                                                 system_hashed_ansi_string_create("image_n_samples"),
-                                                &image_n_samples_variable_ptr);
+                ral_program_get_block_variable_by_name(motion_blur_ptr->po,
+                                                       system_hashed_ansi_string_create("propsUB"),
+                                                       system_hashed_ansi_string_create("image_n_samples"),
+                                                      &image_n_samples_variable_ral_ptr);
 
-                ASSERT_DEBUG_SYNC(image_n_samples_variable_ptr != NULL,
+                ASSERT_DEBUG_SYNC(image_n_samples_variable_ral_ptr != NULL,
                                   "Could not retrieve image_n_samples variable descriptor");
 
-                motion_blur_ptr->po_props_ub_bo_image_n_samples_start_offset = image_n_samples_variable_ptr->block_offset;
+                motion_blur_ptr->po_props_ub_bo_image_n_samples_start_offset = image_n_samples_variable_ral_ptr->block_offset;
                 break;
             }
 

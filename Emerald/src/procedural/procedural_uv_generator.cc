@@ -543,12 +543,12 @@ PRIVATE void _procedural_uv_generator_get_item_data_stream_properties(const _pro
 /** TODO */
 PRIVATE void _procedural_uv_generator_init_generator_po(_procedural_uv_generator* generator_ptr)
 {
-    ogl_context_gl_limits*      limits_ptr                          = NULL;
-    const ral_program_variable* variable_arg1_ptr                   = NULL;
-    const ral_program_variable* variable_arg2_ptr                   = NULL;
-    const ral_program_variable* variable_n_items_defined_ptr        = NULL;
-    const ral_program_variable* variable_item_data_stride_ptr       = NULL;
-    const ral_program_variable* variable_start_offset_in_floats_ptr = NULL;
+    ogl_context_gl_limits*      limits_ptr                              = NULL;
+    const ral_program_variable* variable_arg1_ral_ptr                   = NULL;
+    const ral_program_variable* variable_arg2_ral_ptr                   = NULL;
+    const ral_program_variable* variable_n_items_defined_ral_ptr        = NULL;
+    const ral_program_variable* variable_item_data_stride_ral_ptr       = NULL;
+    const ral_program_variable* variable_start_offset_in_floats_ral_ptr = NULL;
 
     /* Determine the local work-group size. */
     ogl_context_get_property(ral_context_get_gl_context(generator_ptr->context),
@@ -627,13 +627,14 @@ PRIVATE void _procedural_uv_generator_init_generator_po(_procedural_uv_generator
                             generator_ptr->n_items_ub_bo,
                   (void**) &generator_ptr->n_items_ub_bo_raGL);
 
-    raGL_program_get_uniform_by_name(program_raGL,
-                                     system_hashed_ansi_string_create("n_items_defined"),
-                                    &variable_n_items_defined_ptr);
+    ral_program_get_block_variable_by_name(generator_ptr->generator_po,
+                                           system_hashed_ansi_string_create("nItemsBlock"),
+                                           system_hashed_ansi_string_create("n_items_defined"),
+                                          &variable_n_items_defined_ral_ptr);
 
-    ASSERT_DEBUG_SYNC(variable_n_items_defined_ptr != NULL,
+    ASSERT_DEBUG_SYNC(variable_n_items_defined_ral_ptr != NULL,
                       "Could not retrieve nItemsBlock uniform block member descriptors");
-    ASSERT_DEBUG_SYNC(variable_n_items_defined_ptr->block_offset == 0,
+    ASSERT_DEBUG_SYNC(variable_n_items_defined_ral_ptr->block_offset == 0,
                       "Invalid n_items_defined offset reported by GL");
 
     /* Retrieve the shader storage block instances */
@@ -660,35 +661,39 @@ PRIVATE void _procedural_uv_generator_init_generator_po(_procedural_uv_generator
      *
      * NOTE: arg1 & arg2 may be removed by the compiler for all but the "object linear" program.
      **/
-    raGL_program_get_uniform_by_name(program_raGL,
-                                     system_hashed_ansi_string_create("arg1"),
-                                    &variable_arg1_ptr);
-    raGL_program_get_uniform_by_name(program_raGL,
-                                     system_hashed_ansi_string_create("arg2"),
-                                    &variable_arg2_ptr);
-    raGL_program_get_uniform_by_name(program_raGL,
-                                     system_hashed_ansi_string_create("item_data_stride_in_floats"),
-                                    &variable_item_data_stride_ptr);
-    raGL_program_get_uniform_by_name(program_raGL,
-                                     system_hashed_ansi_string_create("start_offset_in_floats"),
-                                    &variable_start_offset_in_floats_ptr);
+    ral_program_get_block_variable_by_name(generator_ptr->generator_po,
+                                           system_hashed_ansi_string_create("inputParams"),
+                                           system_hashed_ansi_string_create("arg1"),
+                                          &variable_arg1_ral_ptr);
+    ral_program_get_block_variable_by_name(generator_ptr->generator_po,
+                                           system_hashed_ansi_string_create("inputParams"),
+                                           system_hashed_ansi_string_create("arg2"),
+                                          &variable_arg2_ral_ptr);
+    ral_program_get_block_variable_by_name(generator_ptr->generator_po,
+                                           system_hashed_ansi_string_create("inputParams"),
+                                           system_hashed_ansi_string_create("item_data_stride_in_floats"),
+                                          &variable_item_data_stride_ral_ptr);
+    ral_program_get_block_variable_by_name(generator_ptr->generator_po,
+                                           system_hashed_ansi_string_create("inputParams"),
+                                           system_hashed_ansi_string_create("start_offset_in_floats"),
+                                          &variable_start_offset_in_floats_ral_ptr);
 
     if (generator_ptr->type == PROCEDURAL_UV_GENERATOR_TYPE_OBJECT_LINEAR)
     {
-        ASSERT_DEBUG_SYNC(variable_arg1_ptr != NULL &&
-                          variable_arg2_ptr != NULL,
+        ASSERT_DEBUG_SYNC(variable_arg1_ral_ptr != NULL &&
+                          variable_arg2_ral_ptr != NULL,
                           "Could not retrieve arg1 and/or arg2 uniform block member descriptors");
 
-        generator_ptr->input_params_ub_arg1_block_offset = variable_arg1_ptr->block_offset;
-        generator_ptr->input_params_ub_arg2_block_offset = variable_arg2_ptr->block_offset;
+        generator_ptr->input_params_ub_arg1_block_offset = variable_arg1_ral_ptr->block_offset;
+        generator_ptr->input_params_ub_arg2_block_offset = variable_arg2_ral_ptr->block_offset;
     }
 
-    ASSERT_DEBUG_SYNC(variable_item_data_stride_ptr       != NULL &&
-                      variable_start_offset_in_floats_ptr != NULL,
+    ASSERT_DEBUG_SYNC(variable_item_data_stride_ral_ptr       != NULL &&
+                      variable_start_offset_in_floats_ral_ptr != NULL,
                       "Could not retrieve inputParams uniform block member descriptors");
 
-    generator_ptr->input_params_ub_item_data_stride_block_offset = variable_item_data_stride_ptr->block_offset;
-    generator_ptr->input_params_ub_start_offset_block_offset     = variable_start_offset_in_floats_ptr->block_offset;
+    generator_ptr->input_params_ub_item_data_stride_block_offset = variable_item_data_stride_ral_ptr->block_offset;
+    generator_ptr->input_params_ub_start_offset_block_offset     = variable_start_offset_in_floats_ral_ptr->block_offset;
 
 end:
     /* Clean up */

@@ -28,13 +28,6 @@ typedef enum
 
     /* GLuint */
     OGL_PROGRAM_SSB_PROPERTY_INDEXED_BP,
-
-    /* system_hashed_ansi_string */
-    OGL_PROGRAM_SSB_PROPERTY_NAME,
-
-    /* unsigned int */
-    OGL_PROGRAM_SSB_PROPERTY_N_MEMBERS,
-
 } ogl_program_ssb_property;
 
 
@@ -48,11 +41,6 @@ PUBLIC RENDERING_CONTEXT_CALL ogl_program_ssb ogl_program_ssb_create(ral_context
                                                                      raGL_program              owner_program,
                                                                      unsigned int              ssb_index,
                                                                      system_hashed_ansi_string ssb_name);
-
-/** TODO */
-PUBLIC EMERALD_API bool ogl_program_ssb_get_variable_by_index(const ogl_program_ssb        ssb,
-                                                              unsigned int                 n_variable,
-                                                              const ral_program_variable** out_variable_ptr);
 
 /** TODO */
 PUBLIC EMERALD_API void ogl_program_ssb_get_property(const ogl_program_ssb    ssb,

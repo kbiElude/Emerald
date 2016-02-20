@@ -282,23 +282,24 @@ void _init_gl(ogl_context context,
     shaders_vertex_fullscreen_release(general_vs);
 
     /* Retrieve uniform locations */
-    const ral_program_variable* input_ptr = NULL;
-    const ral_program_variable* time_ptr  = NULL;
+    const _raGL_program_variable* input_raGL_ptr = NULL;
+    const ral_program_variable*   time_ral_ptr   = NULL;
 
     const raGL_program generation_po_raGL   = ral_context_get_program_gl(_context,
                                                                          _generation_po);
     const raGL_program modification_po_raGL = ral_context_get_program_gl(_context,
                                                                          _modification_po);
 
-    raGL_program_get_uniform_by_name(generation_po_raGL,
-                                     system_hashed_ansi_string_create("time"),
-                                    &time_ptr);
-    raGL_program_get_uniform_by_name(modification_po_raGL,
-                                     system_hashed_ansi_string_create("in_data"),
-                                    &input_ptr);
+    ral_program_get_block_variable_by_name(_generation_po,
+                                           system_hashed_ansi_string_create("data"),
+                                           system_hashed_ansi_string_create("time"),
+                                          &time_ral_ptr);
+    raGL_program_get_uniform_by_name      (modification_po_raGL,
+                                           system_hashed_ansi_string_create("in_data"),
+                                          &input_raGL_ptr);
 
-    _generation_po_time_ub_offset   = time_ptr->block_offset;
-    _modification_po_input_location = input_ptr->location;
+    _generation_po_time_ub_offset   = time_ral_ptr->block_offset;
+    _modification_po_input_location = input_raGL_ptr->location;
 
     /* Retrieve uniform block data */
     raGL_program_get_uniform_block_by_name(generation_po_raGL,

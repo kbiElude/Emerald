@@ -317,18 +317,18 @@ TEST(ShaderTest, FullViewportTriangleTest)
               -1);
 
     /* Retrieve uniform locations */
-    const ral_program_variable* projection_matrix_uniform_ptr = NULL;
-    const ral_program_variable* view_matrix_uniform_ptr       = NULL; 
+    const _raGL_program_variable* projection_matrix_uniform_raGL_ptr = NULL;
+    const _raGL_program_variable* view_matrix_uniform_raGL_ptr       = NULL; 
 
     ASSERT_TRUE(raGL_program_get_uniform_by_name(test_program_raGL,
                                                  system_hashed_ansi_string_create("view_matrix"),
-                                                &view_matrix_uniform_ptr) );
+                                                &view_matrix_uniform_raGL_ptr) );
     ASSERT_TRUE(raGL_program_get_uniform_by_name(test_program_raGL,
                                                  system_hashed_ansi_string_create("projection_matrix"),
-                                                &projection_matrix_uniform_ptr) );
+                                                &projection_matrix_uniform_raGL_ptr) );
 
-    triangle_test_projection_matrix_location = projection_matrix_uniform_ptr->location;
-    triangle_test_view_matrix_location       = view_matrix_uniform_ptr->location;
+    triangle_test_projection_matrix_location = projection_matrix_uniform_raGL_ptr->location;
+    triangle_test_view_matrix_location       = view_matrix_uniform_raGL_ptr->location;
 
     ASSERT_NE(triangle_test_projection_matrix_location,
               -1);
@@ -336,13 +336,13 @@ TEST(ShaderTest, FullViewportTriangleTest)
               -1);
 
     /* Retrieve attribute location */
-    const ral_program_attribute* position_attribute_ptr = NULL;
+    const _raGL_program_attribute* position_attribute_raGL_ptr = NULL;
 
     ASSERT_TRUE(raGL_program_get_vertex_attribute_by_name(test_program_raGL,
                                                           system_hashed_ansi_string_create("position"),
-                                                         &position_attribute_ptr) );
+                                                         &position_attribute_raGL_ptr) );
 
-    triangle_test_position_location = position_attribute_ptr->location;
+    triangle_test_position_location = position_attribute_raGL_ptr->location;
 
     ASSERT_NE(triangle_test_position_location,
               -1);

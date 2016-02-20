@@ -1325,25 +1325,28 @@ PRIVATE void _mesh_marchingcubes_init_polygonizer_po(_mesh_marchingcubes* mesh_p
                                 OGL_PROGRAM_UB_PROPERTY_INDEXED_BP,
                                &mesh_ptr->po_scalar_field_polygonizer_data_ub_bp);
 
-    raGL_program_get_uniform_by_name(polygonizer_po_raGL,
-                                     system_hashed_ansi_string_create("isolevel"),
-                                    &uniform_isolevel_ptr);
+    ral_program_get_block_variable_by_name(mesh_ptr->po_scalar_field_polygonizer,
+                                           system_hashed_ansi_string_create("dataUB"),
+                                           system_hashed_ansi_string_create("isolevel"),
+                                          &uniform_isolevel_ptr);
 
     mesh_ptr->po_scalar_field_polygonizer_data_ub_isolevel_offset = uniform_isolevel_ptr->block_offset;
 
     /* Set up precomputed tables UB contents */
-    const ral_program_variable* uniform_edge_table_ptr     = NULL;
-    const ral_program_variable* uniform_triangle_table_ptr = NULL;
+    const ral_program_variable* uniform_edge_table_ral_ptr     = NULL;
+    const ral_program_variable* uniform_triangle_table_ral_ptr = NULL;
 
-    raGL_program_get_uniform_by_name(polygonizer_po_raGL,
-                                     system_hashed_ansi_string_create("edge_table[0]"),
-                                    &uniform_edge_table_ptr);
-    raGL_program_get_uniform_by_name(polygonizer_po_raGL,
-                                     system_hashed_ansi_string_create("triangle_table[0]"),
-                                    &uniform_triangle_table_ptr);
+    ral_program_get_block_variable_by_name(mesh_ptr->po_scalar_field_polygonizer,
+                                           system_hashed_ansi_string_create("precomputed_tablesUB"),
+                                           system_hashed_ansi_string_create("edge_table[0]"),
+                                          &uniform_edge_table_ral_ptr);
+    ral_program_get_block_variable_by_name(mesh_ptr->po_scalar_field_polygonizer,
+                                           system_hashed_ansi_string_create("precomputed_tablesUB"),
+                                           system_hashed_ansi_string_create("triangle_table[0]"),
+                                          &uniform_triangle_table_ral_ptr);
 
-    mesh_ptr->po_scalar_field_polygonizer_precomputed_tables_ub_bo_edge_table_offset     = uniform_edge_table_ptr->block_offset;
-    mesh_ptr->po_scalar_field_polygonizer_precomputed_tables_ub_bo_triangle_table_offset = uniform_triangle_table_ptr->block_offset;
+    mesh_ptr->po_scalar_field_polygonizer_precomputed_tables_ub_bo_edge_table_offset     = uniform_edge_table_ral_ptr->block_offset;
+    mesh_ptr->po_scalar_field_polygonizer_precomputed_tables_ub_bo_triangle_table_offset = uniform_triangle_table_ral_ptr->block_offset;
 
     raGL_program_get_uniform_block_by_name(polygonizer_po_raGL,
                                            system_hashed_ansi_string_create("precomputed_tablesUB"),

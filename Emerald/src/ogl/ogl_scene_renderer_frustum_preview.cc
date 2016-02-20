@@ -496,18 +496,19 @@ PRIVATE void _ogl_scene_renderer_frustum_preview_init_rendering_thread_callback(
                                &preview_ptr->po_ub_bo);
 
     /* Retrieve PO uniform locations */
-    const ral_program_variable* po_vp_descriptor = NULL;
+    const ral_program_variable* po_vp_ral_ptr = NULL;
 
-    if (!raGL_program_get_uniform_by_name(po_raGL,
-                                          system_hashed_ansi_string_create("vp"),
-                                         &po_vp_descriptor) )
+    if (!ral_program_get_block_variable_by_name(preview_ptr->po,
+                                                system_hashed_ansi_string_create("dataVS"),
+                                                system_hashed_ansi_string_create("vp"),
+                                               &po_vp_ral_ptr) )
     {
         ASSERT_DEBUG_SYNC(false,
                           "ogl_program_get_uniform_by_name() failed.");
     }
     else
     {
-        preview_ptr->po_vp_ub_offset = po_vp_descriptor->block_offset;
+        preview_ptr->po_vp_ub_offset = po_vp_ral_ptr->block_offset;
 
         ASSERT_DEBUG_SYNC(preview_ptr->po_vp_ub_offset != -1,
                           "VP UB offset is -1");

@@ -11,14 +11,49 @@
 #include "ral/ral_types.h"
 #include "system/system_types.h"
 
+/* TODO TODO TODO: This should be moved to raGL_program.cc once RAL integration is finished. */
+typedef struct _raGL_program_attribute
+{
+    int32_t                   location;
+    system_hashed_ansi_string name;
+
+    _raGL_program_attribute()
+    {
+        location = -1;
+        name     = NULL;
+    }
+} _raGL_program_attribute;
+
+/* TODO TODO TODO: This should be moved to raGL_program.cc once RAL integration is finished. */
+typedef struct _raGL_program_variable
+{
+    /* Buffer variables, uniforms (default & regular uniform block): */
+    uint32_t block_index;
+
+    /* Uniforms (default & regular uniform block): */
+    int32_t location;
+
+    /* Common: */
+    system_hashed_ansi_string name;
+
+    _raGL_program_variable()
+    {
+        block_index = -1;
+        location    = -1;
+        name        = NULL;
+    }
+} _raGL_program_variable;
+
 typedef enum
 {
     /* not settable; GLuint */
     RAGL_PROGRAM_PROPERTY_ID,
 
     /* not settable; system_hashed_ansi_string */
-    RAGL_PROGRAM_PROPERTY_INFO_LOG
+    RAGL_PROGRAM_PROPERTY_INFO_LOG,
 
+    /* not settable; ral_program */
+    RAGL_PROGRAM_PROPERTY_PARENT_RAL_PROGRAM
 } raGL_program_property;
 
 typedef enum
@@ -64,12 +99,14 @@ PUBLIC raGL_program raGL_program_create(ral_context                    context,
                                         raGL_program_syncable_ubs_mode syncable_ubs_mode = RAGL_PROGRAM_SYNCABLE_UBS_MODE_DISABLE);
 
 /** TODO */
-PUBLIC void raGL_program_fill_ral_program_variable(raGL_program          program,
-                                                   unsigned int          temp_variable_name_storage_size,
-                                                   char*                 temp_variable_name_storage,
-                                                   ral_program_variable* variable_ptr,
-                                                   GLenum                variable_interface_type,
-                                                   unsigned int          n_variable);
+PUBLIC void raGL_program_get_program_variable_details(raGL_program            program,
+                                                      unsigned int            temp_variable_name_storage_size,
+                                                      char*                   temp_variable_name_storage,
+                                                      ral_program_variable*   variable_ral_ptr,
+                                                      _raGL_program_variable* variable_raGL_ptr,
+                                                      GLenum                  variable_interface_type,
+                                                      unsigned int            n_variable);
+
 
 /** TODO */
 PUBLIC EMERALD_API void raGL_program_get_property(raGL_program          program,
@@ -96,14 +133,14 @@ PUBLIC EMERALD_API bool raGL_program_get_shader_storage_block_by_name(raGL_progr
  *
  *  @return true if successful, false otherwise.
  **/
-PUBLIC EMERALD_API bool raGL_program_get_uniform_by_index(raGL_program                 program,
-                                                          size_t                       index,
-                                                          const ral_program_variable** out_uniform_ptr);
+PUBLIC EMERALD_API bool raGL_program_get_uniform_by_index(raGL_program                   program,
+                                                          size_t                         index,
+                                                          const _raGL_program_variable** out_uniform_ptr);
 
 /** TODO */
-PUBLIC EMERALD_API bool raGL_program_get_uniform_by_name(raGL_program                 program,
-                                                         system_hashed_ansi_string    index,
-                                                         const ral_program_variable** out_uniform_ptr);
+PUBLIC EMERALD_API bool raGL_program_get_uniform_by_name(raGL_program                   program,
+                                                         system_hashed_ansi_string      index,
+                                                         const _raGL_program_variable** out_uniform_ptr);
 
 /** TODO */
 PUBLIC EMERALD_API bool raGL_program_get_uniform_block_by_ub_index(raGL_program    program,
@@ -125,14 +162,14 @@ PUBLIC EMERALD_API bool raGL_program_get_uniform_block_by_name(raGL_program     
  *
  *  @return true if successful, false otherwise
  **/
-PUBLIC EMERALD_API bool raGL_program_get_vertex_attribute_by_index(raGL_program                  program,
-                                                                   size_t                        index,
-                                                                   const ral_program_attribute** out_vertex_attribute_ptr);
+PUBLIC EMERALD_API bool raGL_program_get_vertex_attribute_by_index(raGL_program                    program,
+                                                                   size_t                          index,
+                                                                   const _raGL_program_attribute** out_vertex_attribute_ptr);
 
 /** TODO */
-PUBLIC EMERALD_API bool raGL_program_get_vertex_attribute_by_name(raGL_program                  program,
-                                                                  system_hashed_ansi_string     index,
-                                                                  const ral_program_attribute** out_vertex_attribute_ptr);
+PUBLIC EMERALD_API bool raGL_program_get_vertex_attribute_by_name(raGL_program                    program,
+                                                                  system_hashed_ansi_string       index,
+                                                                  const _raGL_program_attribute** out_vertex_attribute_ptr);
 
 /** Links a given GL program. After calling this function, you can retrieve attributes/uniform descriptors and program info log.
  *

@@ -8,6 +8,7 @@
 #include "ral/ral_program.h"
 #include "ral/ral_shader.h"
 #include "system/system_callback_manager.h"
+#include "system/system_hash64map.h"
 #include "system/system_log.h"
 #include "system/system_resizable_vector.h"
 
@@ -30,15 +31,134 @@ typedef struct _ral_program_shader_stage
 
 } _ral_program_shader_stage;
 
+typedef struct _ral_program_metadata_block
+{
+    system_hashed_ansi_string name;
+    ral_program_block_type    type;
+    system_resizable_vector   variables;                   /* holds ral_program_variable instances */
+    system_hash64map          variables_by_name_hashmap;   /* does NOT own ral_program_variable instance values */
+    system_hash64map          variables_by_offset_hashmap; /* does NOT own ral_program_variable instance values; only not NULL for blocks with name != "" */
+
+    explicit _ral_program_metadata_block(system_hashed_ansi_string in_name,
+                                         ral_program_block_type    in_type)
+    {
+        name                        = in_name;
+        type                        = in_type;
+        variables                   = system_resizable_vector_create(4 /* capacity */);
+        variables_by_name_hashmap   = system_hash64map_create       (sizeof(ral_program_variable*) );
+
+        if (system_hashed_ansi_string_get_length(in_name) > 0)
+        {
+            variables_by_offset_hashmap = system_hash64map_create(sizeof(ral_program_variable*));
+        }
+        else
+        {
+            variables_by_offset_hashmap = NULL;
+        }
+    }
+
+    ~_ral_program_metadata_block()
+    {
+        if (variables != NULL)
+        {
+            ral_program_variable* current_variable_ptr = NULL;
+
+            while (system_resizable_vector_pop(variables,
+                                              &current_variable_ptr) )
+            {
+                delete current_variable_ptr;
+
+                current_variable_ptr = NULL;
+            }
+
+            system_resizable_vector_release(variables);
+            variables = NULL;
+        } /* if (variables != NULL) */
+
+        if (variables_by_name_hashmap != NULL)
+        {
+            system_hash64map_release(variables_by_name_hashmap);
+
+            variables_by_name_hashmap = NULL;
+        } /* if (variables_by_name_hashmap != NULL) */
+
+        if (variables_by_offset_hashmap != NULL)
+        {
+            system_hash64map_release(variables_by_offset_hashmap);
+
+            variables_by_offset_hashmap = NULL;
+        } /* if (variables_by_offset_hashmap != NULL) */
+    }
+} _ral_program_metadata_block;
+
+typedef struct _ral_program_metadata
+{
+    system_resizable_vector attributes;                  /* holds ral_program_attribute instances */
+    system_hash64map        attributes_by_name_hashmap;  /* does NOT own ral_program_attribute instance values */
+    system_resizable_vector blocks;                      /* owns _ral_program_metadata_block instances */
+    system_hash64map        blocks_by_name_hashmap;      /* does NOT own _ral_program_metadata_block instance values */
+    ral_program             owner_program;
+
+    explicit _ral_program_metadata(ral_program in_owner_program)
+    {
+        attributes                  = system_resizable_vector_create(4 /* capacity */);
+        attributes_by_name_hashmap  = system_hash64map_create       (sizeof(ral_program_attribute*) );
+        blocks                      = system_resizable_vector_create(4 /* capacity */);
+        blocks_by_name_hashmap      = system_hash64map_create       (sizeof(_ral_program_metadata_block*) );
+        owner_program               = in_owner_program;
+    }
+
+    ~_ral_program_metadata()
+    {
+        ral_program_clear_metadata(owner_program);
+
+        if (attributes != NULL)
+        {
+            ral_program_attribute* current_attribute_ptr = NULL;
+
+            while (system_resizable_vector_pop(attributes,
+                                              &current_attribute_ptr) )
+            {
+                delete current_attribute_ptr;
+            }
+
+            system_resizable_vector_release(attributes);
+            attributes = NULL;
+        } /* if (attributes != NULL) */
+
+        if (attributes_by_name_hashmap != NULL)
+        {
+            system_hash64map_release(attributes_by_name_hashmap);
+
+            attributes_by_name_hashmap = NULL;
+        } /* if (attributes_by_name_hashmap != NULL) */
+
+        if (blocks != NULL)
+        {
+            system_resizable_vector_release(blocks);
+            blocks = NULL;
+        } /* if (blocks != NULL) */
+
+        if (blocks_by_name_hashmap != NULL)
+        {
+            system_hash64map_release(blocks_by_name_hashmap);
+
+            blocks_by_name_hashmap = NULL;
+        } /* if (blocks_by_name_hashmap != NULL) */
+    }
+} _ral_program_metadata;
+
 typedef struct _ral_program
 {
     _ral_program_shader_stage attached_shaders[RAL_SHADER_TYPE_COUNT];
     system_callback_manager   callback_manager;
     ral_context               context;
+    _ral_program_metadata     metadata;
     system_hashed_ansi_string name;
 
     _ral_program(ral_context                    in_context,
                  const ral_program_create_info* program_create_info_ptr)
+        :metadata( (ral_program) this)
     {
         attached_shaders[RAL_SHADER_TYPE_COMPUTE]                 = _ral_program_shader_stage( (program_create_info_ptr->active_shader_stages & RAL_PROGRAM_SHADER_STAGE_BIT_COMPUTE)         != 0);
         attached_shaders[RAL_SHADER_TYPE_FRAGMENT]                = _ral_program_shader_stage( (program_create_info_ptr->active_shader_stages & RAL_PROGRAM_SHADER_STAGE_BIT_FRAGMENT)        != 0);
@@ -70,9 +190,9 @@ typedef struct _ral_program
         if (n_shaders_to_delete > 0)
         {
             ral_context_delete_objects(context,
-                               RAL_CONTEXT_OBJECT_TYPE_SHADER,
-                               n_shaders_to_delete,
-                               (const void**) shaders_to_delete);
+                                       RAL_CONTEXT_OBJECT_TYPE_SHADER,
+                                       n_shaders_to_delete,
+                                       (const void**) shaders_to_delete);
         }
 
         if (callback_manager != NULL)
@@ -85,6 +205,206 @@ typedef struct _ral_program
 } _ral_program;
 
 
+
+/** Please see header for specification */
+PUBLIC void ral_program_add_metadata_block(ral_program               program,
+                                           ral_program_block_type    block_type,
+                                           system_hashed_ansi_string block_name)
+{
+    const system_hash64 block_name_hash = system_hashed_ansi_string_get_hash(block_name);
+    _ral_program*       program_ptr     = (_ral_program*) program;
+
+    /* Sanity checks */
+    if (program == NULL)
+    {
+        ASSERT_DEBUG_SYNC(program != NULL,
+                          "Input RAL program instance is NULL");
+
+        goto end;
+    }
+
+    /* Make sure the block is not already recognized */
+    if (system_hash64map_contains(program_ptr->metadata.blocks_by_name_hashmap,
+                                  block_name_hash) )
+    {
+        const char* block_name_raw_ptr   = system_hashed_ansi_string_get_buffer(block_name);
+        const char* program_name_raw_ptr = system_hashed_ansi_string_get_buffer(program_ptr->name);
+
+        ASSERT_DEBUG_SYNC(false,
+                          "RAL program [%s] already has a metadata block [%s] added.",
+                          program_name_raw_ptr,
+                          block_name_raw_ptr);
+
+        goto end;
+    }
+
+    /* Spawn a new descriptor */
+    _ral_program_metadata_block* new_block_ptr = new (std::nothrow) _ral_program_metadata_block(block_name,
+                                                                                                block_type);
+
+    if (new_block_ptr == NULL)
+    {
+        ASSERT_ALWAYS_SYNC(new_block_ptr != NULL,
+                           "Out of memory");
+
+        goto end;
+    }
+
+    system_resizable_vector_push(program_ptr->metadata.blocks,
+                                 new_block_ptr);
+    system_hash64map_insert     (program_ptr->metadata.blocks_by_name_hashmap,
+                                 block_name_hash,
+                                 new_block_ptr,
+                                 NULL,  /* callback          */
+                                 NULL); /* callback_argument */
+
+end:
+    ;
+}
+
+/** Please see header for specification */
+PUBLIC void ral_program_attach_variable_to_metadata_block(ral_program               program,
+                                                          system_hashed_ansi_string block_name,
+                                                          ral_program_variable*     variable_ptr)
+{
+    const system_hash64          block_name_hash    = system_hashed_ansi_string_get_hash(block_name);
+    _ral_program_metadata_block* block_ptr          = NULL;
+    _ral_program*                program_ptr        = (_ral_program*) program;
+    system_hash64                variable_name_hash = 0;
+
+    /* Sanity checks */
+    if (program_ptr == NULL)
+    {
+        ASSERT_DEBUG_SYNC(program_ptr != NULL,
+                          "Input RAL program instance is NULL");
+
+        goto end;
+    }
+
+    if (variable_ptr == NULL)
+    {
+        ASSERT_DEBUG_SYNC(variable_ptr != NULL,
+                          "Input RAL program variable instance is NULL");
+
+        goto end;
+    }
+    else
+    {
+        variable_name_hash = system_hashed_ansi_string_get_hash(variable_ptr->name);
+    }
+
+    /* Retrieve the block descriptor */
+    if (!system_hash64map_get(program_ptr->metadata.blocks_by_name_hashmap,
+                              block_name_hash,
+                             &block_ptr) )
+    {
+        const char* block_name_raw_ptr   = system_hashed_ansi_string_get_buffer(block_name);
+        const char* program_name_raw_ptr = system_hashed_ansi_string_get_buffer(program_ptr->name);
+
+        ASSERT_DEBUG_SYNC(false,
+                          "RAL program does not have a metadata block [%s] added",
+                          program_name_raw_ptr,
+                          block_name_raw_ptr);
+
+        goto end;
+    }
+
+    /* Make sure the variable has not already been added */
+    if (                                                  system_hash64map_contains(block_ptr->variables_by_name_hashmap,
+                                                                                    variable_name_hash)                     ||
+        block_ptr->variables_by_offset_hashmap != NULL && system_hash64map_contains(block_ptr->variables_by_offset_hashmap,
+                                                                                    variable_ptr->block_offset) )
+    {
+        const char* block_name_raw_ptr    = system_hashed_ansi_string_get_buffer(block_name);
+        const char* program_name_raw_ptr  = system_hashed_ansi_string_get_buffer(program_ptr->name);
+        const char* variable_name_raw_ptr = system_hashed_ansi_string_get_buffer(variable_ptr->name);
+
+        ASSERT_DEBUG_SYNC(false,
+                          "Metadata block [%s] of a RAL program [%s] already has variable [%s] attached.",
+                          block_name_raw_ptr,
+                          program_name_raw_ptr,
+                          variable_name_raw_ptr);
+
+        goto end;
+    }
+
+    /* Append the specified variable descriptor */
+    system_resizable_vector_push(block_ptr->variables,
+                                 variable_ptr);
+    system_hash64map_insert     (block_ptr->variables_by_name_hashmap,
+                                 variable_name_hash,
+                                 variable_ptr,
+                                 NULL,  /* callback          */
+                                 NULL); /* callback_argument */
+
+    if (block_ptr->variables_by_offset_hashmap != NULL)
+    {
+        system_hash64map_insert(block_ptr->variables_by_offset_hashmap,
+                                variable_ptr->block_offset,
+                                variable_ptr,
+                                NULL,  /* callback          */
+                                NULL); /* callback_argument */
+    }
+
+end:
+    ;
+}
+
+/** Please see header for specification */
+PUBLIC void ral_program_attach_vertex_attribute(ral_program            program,
+                                                ral_program_attribute* attribute_ptr)
+{
+    system_hash64 attribute_name_hash = 0;
+    _ral_program* program_ptr         = (_ral_program*) program;
+
+    /* Sanity checks */
+    if (program_ptr == NULL)
+    {
+        ASSERT_DEBUG_SYNC(program_ptr != NULL,
+                          "Input RAL program instance is NULL");
+
+        goto end;
+    }
+
+    if (attribute_ptr == NULL)
+    {
+        ASSERT_DEBUG_SYNC(attribute_ptr != NULL,
+                          "Input RAL attribute instance is NULL");
+
+        goto end;
+    }
+    else
+    {
+        attribute_name_hash = system_hashed_ansi_string_get_hash(attribute_ptr->name);
+    }
+
+    /* Make sure the variable has not already been added */
+    if (system_hash64map_contains(program_ptr->metadata.attributes_by_name_hashmap,
+                                  attribute_name_hash)  )
+    {
+        const char* attribute_name_raw_ptr = system_hashed_ansi_string_get_buffer(attribute_ptr->name);
+        const char* program_name_raw_ptr   = system_hashed_ansi_string_get_buffer(program_ptr->name);
+
+        ASSERT_DEBUG_SYNC(false,
+                          "RAL program [%s] already has attribute [%s] attached.",
+                          program_name_raw_ptr,
+                          attribute_name_raw_ptr);
+
+        goto end;
+    }
+
+    /* Append the specified variable descriptor */
+    system_resizable_vector_push(program_ptr->metadata.attributes,
+                                 attribute_ptr);
+    system_hash64map_insert     (program_ptr->metadata.attributes_by_name_hashmap,
+                                 attribute_name_hash,
+                                 attribute_ptr,
+                                 NULL,  /* callback          */
+                                 NULL); /* callback_argument */
+
+end:
+    ;
+}
 
 /** Please see header for specification */
 PUBLIC EMERALD_API bool ral_program_attach_shader(ral_program program,
@@ -232,6 +552,48 @@ end:
 }
 
 /** Please see header for specification */
+PUBLIC void ral_program_clear_metadata(ral_program program)
+{
+    _ral_program* program_ptr = (_ral_program*) program;
+
+    if (program_ptr->metadata.attributes != NULL)
+    {
+        ral_program_attribute* current_attribute_ptr = NULL;
+
+        while (system_resizable_vector_pop(program_ptr->metadata.attributes,
+                                          &current_attribute_ptr) )
+        {
+            delete current_attribute_ptr;
+
+            current_attribute_ptr = NULL;
+        }
+    }
+
+    if (program_ptr->metadata.blocks != NULL)
+    {
+        _ral_program_metadata_block* current_block_ptr = NULL;
+
+        while (system_resizable_vector_pop(program_ptr->metadata.blocks,
+                                          &current_block_ptr) )
+        {
+            delete current_block_ptr;
+
+            current_block_ptr = NULL;
+        }
+    } /* if (program_ptr->metadata.blocks != NULL) */
+
+    if (program_ptr->metadata.attributes_by_name_hashmap != NULL)
+    {
+        system_hash64map_clear(program_ptr->metadata.attributes_by_name_hashmap);
+    }
+
+    if (program_ptr->metadata.blocks_by_name_hashmap != NULL)
+    {
+        system_hash64map_clear(program_ptr->metadata.blocks_by_name_hashmap);
+    } /* if (program_ptr->metadata.blocks_by_name_hashmap != NULL) */
+}
+
+/** Please see header for specification */
 PUBLIC EMERALD_API bool ral_program_get_attached_shader_at_index(ral_program program,
                                                                  uint32_t    n_shader,
                                                                  ral_shader* out_shader_ptr)
@@ -274,6 +636,250 @@ PUBLIC EMERALD_API bool ral_program_get_attached_shader_at_index(ral_program pro
         }
     } /* for (all available shader types) */
 
+end:
+    return result;
+}
+
+/** Please see header for specification */
+PUBLIC EMERALD_API bool ral_program_get_block_property(ral_program                program,
+                                                       system_hashed_ansi_string  block_name,
+                                                       ral_program_block_property property,
+                                                       void*                      out_result_ptr)
+{
+    const system_hash64          block_name_hash = system_hashed_ansi_string_get_hash(block_name);
+    _ral_program_metadata_block* block_ptr       = NULL;
+    _ral_program*                program_ptr     = (_ral_program*) program;
+    bool                         result          = false;
+
+    /* Sanity checks */
+    if (program == NULL)
+    {
+        ASSERT_DEBUG_SYNC(false,
+                          "Input RAL program instance is NULL");
+
+        goto end;
+    }
+
+    /* Retrieve the block descriptor */
+    if (!system_hash64map_get(program_ptr->metadata.blocks_by_name_hashmap,
+                              block_name_hash,
+                             &block_ptr) )
+    {
+        const char* block_name_raw_ptr    = system_hashed_ansi_string_get_buffer(block_name);
+        const char* program_name_raw_ptr  = system_hashed_ansi_string_get_buffer(program_ptr->name);
+
+        ASSERT_DEBUG_SYNC(false,
+                          "RAL program [%s] does not have a block [%s] assigned.",
+                          program_name_raw_ptr,
+                          block_name_raw_ptr);
+
+        goto end;
+    }
+
+    /* Retrieve the requested property value */
+    switch (property)
+    {
+        case RAL_PROGRAM_BLOCK_PROPERTY_N_VARIABLES:
+        {
+            system_resizable_vector_get_property(block_ptr->variables,
+                                                 SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                                 out_result_ptr);
+
+            break;
+        }
+
+        case RAL_PROGRAM_BLOCK_PROPERTY_TYPE:
+        {
+            *(ral_program_block_type*) out_result_ptr = block_ptr->type;
+
+            break;
+        }
+
+        default:
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Unrecognized ral_program_block_property value.");
+
+            goto end;
+        }
+    } /* switch (property) */
+
+    /* All done */
+    result = true;
+end:
+    return result;
+}
+
+/** Please see header for specification */
+PUBLIC EMERALD_API bool ral_program_get_block_variable_by_index(ral_program                  program,
+                                                                system_hashed_ansi_string    block_name,
+                                                                uint32_t                     n_variable,
+                                                                const ral_program_variable** out_variable_ptr_ptr)
+{
+    const system_hash64          block_name_hash = system_hashed_ansi_string_get_hash(block_name);
+    _ral_program_metadata_block* block_ptr       = NULL;
+    _ral_program*                program_ptr     = (_ral_program*) program;
+    bool                         result          = false;
+    ral_program_variable*        variable_ptr    = NULL;
+
+    /* Sanity checks */
+    if (program == NULL)
+    {
+        ASSERT_DEBUG_SYNC(false,
+                          "Input RAL program instance is NULL");
+
+        goto end;
+    }
+
+    /* Retrieve the block descriptor */
+    if (!system_hash64map_get(program_ptr->metadata.blocks_by_name_hashmap,
+                              block_name_hash,
+                             &block_ptr) )
+    {
+        const char* block_name_raw_ptr    = system_hashed_ansi_string_get_buffer(block_name);
+        const char* program_name_raw_ptr  = system_hashed_ansi_string_get_buffer(program_ptr->name);
+
+        ASSERT_DEBUG_SYNC(false,
+                          "RAL program [%s] does not have a block [%s] assigned.",
+                          program_name_raw_ptr,
+                          block_name_raw_ptr);
+
+        goto end;
+    }
+
+    /* Retrieve the requested variable descriptor */
+    if (!system_resizable_vector_get_element_at(block_ptr->variables,
+                                                n_variable,
+                                               &variable_ptr) )
+    {
+        const char* block_name_raw_ptr = system_hashed_ansi_string_get_buffer(block_name);
+
+        ASSERT_DEBUG_SYNC(false,
+                          "Block [%s] does not hold any variable at index [%d]",
+                          block_name_raw_ptr,
+                          n_variable);
+
+        goto end;
+    }
+
+    *out_variable_ptr_ptr = variable_ptr;
+
+    /* All done */
+    result = true;
+end:
+    return result;
+}
+
+/** Please see header for specification */
+PUBLIC EMERALD_API bool ral_program_get_block_variable_by_offset(ral_program                 program,
+                                                                system_hashed_ansi_string    block_name,
+                                                                uint32_t                     variable_block_offset,
+                                                                const ral_program_variable** out_variable_ptr_ptr)
+{
+    const system_hash64          block_name_hash    = system_hashed_ansi_string_get_hash(block_name);
+    _ral_program_metadata_block* block_ptr          = NULL;
+    _ral_program*                program_ptr        = (_ral_program*) program;
+    bool                         result             = false;
+    ral_program_variable*        variable_ptr       = NULL;
+
+    /* Sanity checks */
+    if (program == NULL)
+    {
+        ASSERT_DEBUG_SYNC(false,
+                          "Input RAL program instance is NULL");
+
+        goto end;
+    }
+
+    /* Retrieve the block descriptor */
+    if (!system_hash64map_get(program_ptr->metadata.blocks_by_name_hashmap,
+                              block_name_hash,
+                             &block_ptr) )
+    {
+        const char* block_name_raw_ptr    = system_hashed_ansi_string_get_buffer(block_name);
+        const char* program_name_raw_ptr  = system_hashed_ansi_string_get_buffer(program_ptr->name);
+
+        ASSERT_DEBUG_SYNC(false,
+                          "RAL program [%s] does not have a block [%s] assigned.",
+                          program_name_raw_ptr,
+                          block_name_raw_ptr);
+
+        goto end;
+    }
+
+    /* Retrieve the requested variable descriptor */
+    if (!system_hash64map_get(block_ptr->variables_by_offset_hashmap,
+                              variable_block_offset,
+                              &variable_ptr) )
+    {
+        const char* block_name_raw_ptr = system_hashed_ansi_string_get_buffer(block_name);
+
+        ASSERT_DEBUG_SYNC(false,
+                          "Block [%s] does not hold any variable at offset [%d]",
+                          block_name_raw_ptr,
+                          variable_block_offset);
+
+        goto end;
+    }
+
+    *out_variable_ptr_ptr = variable_ptr;
+
+    /* All done */
+    result = true;
+end:
+    return result;
+}
+
+/** Please see header for specification */
+PUBLIC EMERALD_API bool ral_program_get_block_variable_by_name(ral_program                  program,
+                                                               system_hashed_ansi_string    block_name,
+                                                               system_hashed_ansi_string    variable_name,
+                                                               const ral_program_variable** out_variable_ptr_ptr)
+{
+    const system_hash64          block_name_hash    = system_hashed_ansi_string_get_hash(block_name);
+    _ral_program_metadata_block* block_ptr          = NULL;
+    _ral_program*                program_ptr        = (_ral_program*) program;
+    bool                         result             = false;
+    const system_hash64          variable_name_hash = system_hashed_ansi_string_get_hash(variable_name);
+    ral_program_variable*        variable_ptr       = NULL;
+
+    /* Sanity checks */
+    if (program == NULL)
+    {
+        ASSERT_DEBUG_SYNC(false,
+                          "Input RAL program instance is NULL");
+
+        goto end;
+    }
+
+    /* Retrieve the block descriptor */
+    if (!system_hash64map_get(program_ptr->metadata.blocks_by_name_hashmap,
+                              block_name_hash,
+                             &block_ptr) )
+    {
+        const char* block_name_raw_ptr    = system_hashed_ansi_string_get_buffer(block_name);
+        const char* program_name_raw_ptr  = system_hashed_ansi_string_get_buffer(program_ptr->name);
+
+        ASSERT_DEBUG_SYNC(false,
+                          "RAL program [%s] does not have a block [%s] assigned.",
+                          program_name_raw_ptr,
+                          block_name_raw_ptr);
+
+        goto end;
+    }
+
+    /* Retrieve the requested variable descriptor */
+    if (!system_hash64map_get(block_ptr->variables_by_name_hashmap,
+                              variable_name_hash,
+                             &variable_ptr) )
+    {
+        goto end;
+    }
+
+    *out_variable_ptr_ptr = variable_ptr;
+
+    /* All done */
+    result = true;
 end:
     return result;
 }
@@ -324,6 +930,15 @@ PUBLIC EMERALD_API void ral_program_get_property(ral_program          program,
             } /* for (all shader types) */
 
             *(uint32_t*) out_result_ptr = result;
+
+            break;
+        }
+
+        case RAL_PROGRAM_PROPERTY_N_METADATA_BLOCKS:
+        {
+            system_resizable_vector_get_property(program_ptr->metadata.blocks,
+                                                 SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                                 out_result_ptr);
 
             break;
         }

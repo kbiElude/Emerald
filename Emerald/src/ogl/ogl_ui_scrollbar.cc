@@ -303,28 +303,32 @@ PRIVATE void _ogl_ui_scrollbar_init_renderer_callback(ogl_context context,
                                           UB_DATAVS_BP);
 
     /* Retrieve uniform locations */
-    const ral_program_variable* border_width_uniform_ptr = NULL;
-    const ral_program_variable* brightness_uniform_ptr   = NULL;
-    const ral_program_variable* is_handle_uniform_ptr    = NULL;
-    const ral_program_variable* x1y1x2y2_uniform_ptr     = NULL;
+    const ral_program_variable* border_width_uniform_ral_ptr = NULL;
+    const ral_program_variable* brightness_uniform_ral_ptr   = NULL;
+    const ral_program_variable* is_handle_uniform_ral_ptr    = NULL;
+    const ral_program_variable* x1y1x2y2_uniform_ral_ptr     = NULL;
 
-    raGL_program_get_uniform_by_name(program_raGL,
-                                     system_hashed_ansi_string_create("border_width"),
-                                    &border_width_uniform_ptr);
-    raGL_program_get_uniform_by_name(program_raGL,
-                                     system_hashed_ansi_string_create("brightness"),
-                                    &brightness_uniform_ptr);
-    raGL_program_get_uniform_by_name(program_raGL,
-                                     system_hashed_ansi_string_create("is_handle"),
-                                    &is_handle_uniform_ptr);
-    raGL_program_get_uniform_by_name(program_raGL,
-                                     system_hashed_ansi_string_create("x1y1x2y2"),
-                                    &x1y1x2y2_uniform_ptr);
+    ral_program_get_block_variable_by_name(scrollbar_ptr->program_slider,
+                                           system_hashed_ansi_string_create("dataFS"),
+                                           system_hashed_ansi_string_create("border_width"),
+                                          &border_width_uniform_ral_ptr);
+    ral_program_get_block_variable_by_name(scrollbar_ptr->program_slider,
+                                           system_hashed_ansi_string_create("dataFS"),
+                                           system_hashed_ansi_string_create("brightness"),
+                                          &brightness_uniform_ral_ptr);
+    ral_program_get_block_variable_by_name(scrollbar_ptr->program_slider,
+                                           system_hashed_ansi_string_create("dataFS"),
+                                           system_hashed_ansi_string_create("is_handle"),
+                                          &is_handle_uniform_ral_ptr);
+    ral_program_get_block_variable_by_name(scrollbar_ptr->program_slider,
+                                           system_hashed_ansi_string_create("dataVS"),
+                                           system_hashed_ansi_string_create("x1y1x2y2"),
+                                          &x1y1x2y2_uniform_ral_ptr);
 
-    scrollbar_ptr->program_slider_border_width_ub_offset = (border_width_uniform_ptr != NULL ? border_width_uniform_ptr->block_offset : -1);
-    scrollbar_ptr->program_slider_brightness_ub_offset   = (brightness_uniform_ptr   != NULL ? brightness_uniform_ptr->block_offset   : -1);
-    scrollbar_ptr->program_slider_is_handle_ub_offset    = (is_handle_uniform_ptr    != NULL ? is_handle_uniform_ptr->block_offset    : -1);
-    scrollbar_ptr->program_slider_x1y1x2y2_ub_offset     = (x1y1x2y2_uniform_ptr     != NULL ? x1y1x2y2_uniform_ptr->block_offset     : -1);
+    scrollbar_ptr->program_slider_border_width_ub_offset = (border_width_uniform_ral_ptr != NULL ? border_width_uniform_ral_ptr->block_offset : -1);
+    scrollbar_ptr->program_slider_brightness_ub_offset   = (brightness_uniform_ral_ptr   != NULL ? brightness_uniform_ral_ptr->block_offset   : -1);
+    scrollbar_ptr->program_slider_is_handle_ub_offset    = (is_handle_uniform_ral_ptr    != NULL ? is_handle_uniform_ral_ptr->block_offset    : -1);
+    scrollbar_ptr->program_slider_x1y1x2y2_ub_offset     = (x1y1x2y2_uniform_ral_ptr     != NULL ? x1y1x2y2_uniform_ral_ptr->block_offset     : -1);
 
     /* Set general uniforms */
     ogl_program_ub_set_nonarrayed_uniform_value(scrollbar_ptr->program_slider_ub_fs,

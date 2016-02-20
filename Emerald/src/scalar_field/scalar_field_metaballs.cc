@@ -337,20 +337,23 @@ PRIVATE void _scalar_field_metaballs_init_rendering_thread_callback(ogl_context 
     }
 
     /* Retrieve properties of the "props" UB */
-    const ral_program_variable* uniform_metaball_data_variable_ptr = NULL;
-    const ral_program_variable* uniform_n_metaballs_variable_ptr   = NULL;
-    const raGL_program          program_raGL                       = ral_context_get_program_gl(metaballs_ptr->context,
-                                                                                                metaballs_ptr->po);
+    const ral_program_variable* uniform_metaball_data_variable_ral_ptr = NULL;
+    const ral_program_variable* uniform_n_metaballs_variable_ral_ptr   = NULL;
+    const raGL_program          program_raGL                           = ral_context_get_program_gl(metaballs_ptr->context,
+                                                                                                    metaballs_ptr->po);
 
     raGL_program_get_uniform_block_by_name(program_raGL,
                                            system_hashed_ansi_string_create("props"),
                                           &metaballs_ptr->po_props_ub);
-    raGL_program_get_uniform_by_name      (program_raGL,
+
+    ral_program_get_block_variable_by_name(metaballs_ptr->po,
+                                           system_hashed_ansi_string_create("props"),
                                            system_hashed_ansi_string_create("metaball_data[0]"),
-                                          &uniform_metaball_data_variable_ptr);
-    raGL_program_get_uniform_by_name      (program_raGL,
+                                          &uniform_metaball_data_variable_ral_ptr);
+    ral_program_get_block_variable_by_name(metaballs_ptr->po,
+                                           system_hashed_ansi_string_create("props"),
                                            system_hashed_ansi_string_create("n_metaballs"),
-                                          &uniform_n_metaballs_variable_ptr);
+                                          &uniform_n_metaballs_variable_ral_ptr);
 
     ogl_program_ub_get_property(metaballs_ptr->po_props_ub,
                                 OGL_PROGRAM_UB_PROPERTY_BLOCK_DATA_SIZE,
@@ -359,8 +362,8 @@ PRIVATE void _scalar_field_metaballs_init_rendering_thread_callback(ogl_context 
                                 OGL_PROGRAM_UB_PROPERTY_BUFFER_RAL,
                                &metaballs_ptr->po_props_ub_bo);
 
-    metaballs_ptr->po_props_ub_bo_offset_metaball_data = uniform_metaball_data_variable_ptr->block_offset;
-    metaballs_ptr->po_props_ub_bo_offset_n_metaballs   = uniform_n_metaballs_variable_ptr->block_offset;
+    metaballs_ptr->po_props_ub_bo_offset_metaball_data = uniform_metaball_data_variable_ral_ptr->block_offset;
+    metaballs_ptr->po_props_ub_bo_offset_n_metaballs   = uniform_n_metaballs_variable_ral_ptr->block_offset;
 
     /* Prepare a BO which is going to hold the scalar field data */
     ral_buffer_create_info scalar_field_buffer_create_info;

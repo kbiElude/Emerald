@@ -299,13 +299,13 @@ PRIVATE void _create_callback(ogl_context context,
                           "Failed to attach RAL shaders to a RAL program");
     }
 
-    const ral_program_variable* tex_uniform_ptr = NULL;
+    const _raGL_program_variable* tex_uniform_raGL_ptr = NULL;
 
     raGL_program_get_uniform_by_name(rgb_to_yXy_po_raGL,
                                      system_hashed_ansi_string_create("tex"),
-                                    &tex_uniform_ptr);
+                                    &tex_uniform_raGL_ptr);
 
-    callback_ptr->data_ptr->rgb_to_Yxy_program_tex_uniform_location = tex_uniform_ptr->location;
+    callback_ptr->data_ptr->rgb_to_Yxy_program_tex_uniform_location = tex_uniform_raGL_ptr->location;
 
     /* Create operator fragment shader */
     const ral_shader_create_info operator_fs_create_info =
@@ -372,28 +372,30 @@ PRIVATE void _create_callback(ogl_context context,
                                           &callback_ptr->data_ptr->operator_program_ub_bo);
 
     /* Retrieve uniform properties */
-    const ral_program_variable* alpha_uniform_ptr                 = NULL;
-    const ral_program_variable* luminance_texture_uniform_ptr     = NULL;
-    const ral_program_variable* luminance_texture_avg_uniform_ptr = NULL;
-    const ral_program_variable* white_level_uniform_ptr           = NULL;
+    const ral_program_variable*   alpha_uniform_ral_ptr                  = NULL;
+    const _raGL_program_variable* luminance_texture_uniform_raGL_ptr     = NULL;
+    const _raGL_program_variable* luminance_texture_avg_uniform_raGL_ptr = NULL;
+    const ral_program_variable*   white_level_uniform_ral_ptr            = NULL;
 
-    raGL_program_get_uniform_by_name(operator_po_raGL,
-                                     system_hashed_ansi_string_create("alpha"),
-                                    &alpha_uniform_ptr);
-    raGL_program_get_uniform_by_name(operator_po_raGL,
-                                     system_hashed_ansi_string_create("luminance_texture"),
-                                    &luminance_texture_uniform_ptr);
-    raGL_program_get_uniform_by_name(operator_po_raGL,
-                                     system_hashed_ansi_string_create("luminance_texture_avg"),
-                                    &luminance_texture_avg_uniform_ptr);
-    raGL_program_get_uniform_by_name(operator_po_raGL,
-                                     system_hashed_ansi_string_create("white_level"),
-                                    &white_level_uniform_ptr);
+    ral_program_get_block_variable_by_name(callback_ptr->data_ptr->operator_program,
+                                           system_hashed_ansi_string_create("data"),
+                                           system_hashed_ansi_string_create("alpha"),
+                                          &alpha_uniform_ral_ptr);
+    raGL_program_get_uniform_by_name      (operator_po_raGL,
+                                           system_hashed_ansi_string_create("luminance_texture"),
+                                          &luminance_texture_uniform_raGL_ptr);
+    raGL_program_get_uniform_by_name      (operator_po_raGL,
+                                           system_hashed_ansi_string_create("luminance_texture_avg"),
+                                          &luminance_texture_avg_uniform_raGL_ptr);
+    ral_program_get_block_variable_by_name(callback_ptr->data_ptr->operator_program,
+                                           system_hashed_ansi_string_create("data"),
+                                           system_hashed_ansi_string_create("white_level"),
+                                          &white_level_uniform_ral_ptr);
 
-    callback_ptr->data_ptr->operator_program_alpha_ub_offset                = alpha_uniform_ptr->block_offset;
-    callback_ptr->data_ptr->operator_program_luminance_texture_location     = luminance_texture_uniform_ptr->location;
-    callback_ptr->data_ptr->operator_program_luminance_texture_avg_location = luminance_texture_avg_uniform_ptr->location;
-    callback_ptr->data_ptr->operator_program_white_level_ub_offset          = white_level_uniform_ptr->block_offset;
+    callback_ptr->data_ptr->operator_program_alpha_ub_offset                = alpha_uniform_ral_ptr->block_offset;
+    callback_ptr->data_ptr->operator_program_luminance_texture_location     = luminance_texture_uniform_raGL_ptr->location;
+    callback_ptr->data_ptr->operator_program_luminance_texture_avg_location = luminance_texture_avg_uniform_raGL_ptr->location;
+    callback_ptr->data_ptr->operator_program_white_level_ub_offset          = white_level_uniform_ral_ptr->block_offset;
 }
 
 /** TODO */

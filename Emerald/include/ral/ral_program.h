@@ -49,21 +49,62 @@ typedef struct _ral_program_callback_shader_attach_callback_argument
 
 typedef enum
 {
+    /* not settable; uint32_t */
+    RAL_PROGRAM_BLOCK_PROPERTY_N_VARIABLES,
+
+    /* not settable; ral_program_block_type */
+    RAL_PROGRAM_BLOCK_PROPERTY_TYPE,
+
+} ral_program_block_property;
+
+typedef enum
+{
     /* not settable; system_callback_manager */
     RAL_PROGRAM_PROPERTY_CALLBACK_MANAGER,
 
     /* not settable; uint32_t */
     RAL_PROGRAM_PROPERTY_N_ATTACHED_SHADERS,
 
+    /* not settable; uint32_t */
+    RAL_PROGRAM_PROPERTY_N_METADATA_BLOCKS,
+
     /* not settable; system_hashed_ansi_string */
-    RAL_PROGRAM_PROPERTY_NAME
+    RAL_PROGRAM_PROPERTY_NAME,
 
 } ral_program_property;
 
 
+/** TODO
+ *
+ *  NOTE: Should only be called by rendering back-end.
+ **/
+PUBLIC void ral_program_add_metadata_block(ral_program               program,
+                                           ral_program_block_type    block_type,
+                                           system_hashed_ansi_string block_name);
+
+/** TODO
+ *
+ *  NOTE: Should only be called by rendering back-end.
+ *  NOTE: RAL program takes ownership of @param variable_ptr.
+ **/
+PUBLIC void ral_program_attach_variable_to_metadata_block(ral_program               program,
+                                                          system_hashed_ansi_string block_name,
+                                                          ral_program_variable*     variable_ptr);
+
+/** TODO
+ *
+ *  NOTE: Should only be called by rendering back-end.
+ *  NOTE: RAL program takes ownership of @param attribute_ptr.
+ **/
+PUBLIC void ral_program_attach_vertex_attribute(ral_program            program,
+                                                ral_program_attribute* attribute_ptr);
+
 /** TODO */
 PUBLIC EMERALD_API bool ral_program_attach_shader(ral_program program,
                                                   ral_shader  shader);
+
+/** TODO */
+PUBLIC void ral_program_clear_metadata(ral_program program);
 
 /** TODO
  *
@@ -77,6 +118,30 @@ PUBLIC ral_program ral_program_create(ral_context                    context,
 PUBLIC EMERALD_API bool ral_program_get_attached_shader_at_index(ral_program program,
                                                                  uint32_t    n_shader,
                                                                  ral_shader* out_shader_ptr);
+
+/** TODO */
+PUBLIC EMERALD_API bool ral_program_get_block_property(ral_program                program,
+                                                       system_hashed_ansi_string  block_name,
+                                                       ral_program_block_property property,
+                                                       void*                      out_result_ptr);
+
+/** TODO */
+PUBLIC EMERALD_API bool ral_program_get_block_variable_by_index(ral_program                  program,
+                                                                system_hashed_ansi_string    block_name,
+                                                                uint32_t                     n_variable,
+                                                                const ral_program_variable** out_variable_ptr_ptr);
+
+/** TODO */
+PUBLIC EMERALD_API bool ral_program_get_block_variable_by_offset(ral_program                 program,
+                                                                system_hashed_ansi_string    block_name,
+                                                                uint32_t                     variable_block_offset,
+                                                                const ral_program_variable** out_variable_ptr_ptr);
+
+/** TODO */
+PUBLIC EMERALD_API bool ral_program_get_block_variable_by_name(ral_program                  program,
+                                                               system_hashed_ansi_string    block_name,
+                                                               system_hashed_ansi_string    variable_name,
+                                                               const ral_program_variable** out_variable_ptr_ptr);
 
 /** TODO */
 PUBLIC EMERALD_API void ral_program_get_property(ral_program          program,

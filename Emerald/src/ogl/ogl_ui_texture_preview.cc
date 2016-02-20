@@ -433,44 +433,48 @@ PRIVATE void _ogl_ui_texture_preview_init_texture_renderer_callback(ogl_context 
                                       text_xy);
 
     /* Retrieve uniform locations */
-    const ral_program_variable* border_width_uniform_ptr = NULL;
-    const ral_program_variable* layer_uniform_ptr        = NULL;
-    const ral_program_variable* texture_uniform_ptr      = NULL;
-    const ral_program_variable* x1y1x2y2_uniform_ptr     = NULL;
+    const ral_program_variable* border_width_uniform_ral_ptr = NULL;
+    const ral_program_variable* layer_uniform_ral_ptr        = NULL;
+    const ral_program_variable* texture_uniform_ral_ptr      = NULL;
+    const ral_program_variable* x1y1x2y2_uniform_ral_ptr     = NULL;
 
-    raGL_program_get_uniform_by_name(program_raGL,
-                                     system_hashed_ansi_string_create("border_width"),
-                                    &border_width_uniform_ptr);
-    raGL_program_get_uniform_by_name(program_raGL,
-                                     system_hashed_ansi_string_create("layer"),
-                                    &layer_uniform_ptr);
-    raGL_program_get_uniform_by_name(program_raGL,
-                                     system_hashed_ansi_string_create("texture"),
-                                    &texture_uniform_ptr);
-    raGL_program_get_uniform_by_name(program_raGL,
-                                     system_hashed_ansi_string_create("x1y1x2y2"),
-                                    &x1y1x2y2_uniform_ptr);
+    ral_program_get_block_variable_by_name(texture_preview_ptr->program,
+                                           system_hashed_ansi_string_create("dataFS"),
+                                           system_hashed_ansi_string_create("border_width"),
+                                          &border_width_uniform_ral_ptr);
+    ral_program_get_block_variable_by_name(texture_preview_ptr->program,
+                                           system_hashed_ansi_string_create("dataFS"),
+                                           system_hashed_ansi_string_create("layer"),
+                                          &layer_uniform_ral_ptr);
+    ral_program_get_block_variable_by_name(texture_preview_ptr->program,
+                                           system_hashed_ansi_string_create(""),
+                                           system_hashed_ansi_string_create("texture"),
+                                          &texture_uniform_ral_ptr);
+    ral_program_get_block_variable_by_name(texture_preview_ptr->program,
+                                           system_hashed_ansi_string_create("dataVS"),
+                                           system_hashed_ansi_string_create("x1y1x2y2"),
+                                          &x1y1x2y2_uniform_ral_ptr);
 
-    if (border_width_uniform_ptr != NULL)
+    if (border_width_uniform_ral_ptr != NULL)
     {
-        texture_preview_ptr->program_border_width_ub_offset = border_width_uniform_ptr->block_offset;
+        texture_preview_ptr->program_border_width_ub_offset = border_width_uniform_ral_ptr->block_offset;
     }
     else
     {
         texture_preview_ptr->program_border_width_ub_offset = -1;
     }
 
-    if (layer_uniform_ptr != NULL)
+    if (layer_uniform_ral_ptr != NULL)
     {
-        texture_preview_ptr->program_layer_ub_offset = layer_uniform_ptr->block_offset;
+        texture_preview_ptr->program_layer_ub_offset = layer_uniform_ral_ptr->block_offset;
     }
     else
     {
         texture_preview_ptr->program_layer_ub_offset = -1;
     }
 
-    texture_preview_ptr->program_texture_ub_offset  = texture_uniform_ptr->block_offset;
-    texture_preview_ptr->program_x1y1x2y2_ub_offset = x1y1x2y2_uniform_ptr->block_offset;
+    texture_preview_ptr->program_texture_ub_offset  = texture_uniform_ral_ptr->block_offset;
+    texture_preview_ptr->program_x1y1x2y2_ub_offset = x1y1x2y2_uniform_ral_ptr->block_offset;
 
     /* Set up uniform blocks */
     unsigned int ub_fs_index = -1;

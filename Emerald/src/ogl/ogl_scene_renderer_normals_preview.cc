@@ -127,11 +127,11 @@ PRIVATE void _ogl_context_scene_renderer_normals_preview_init_preview_program(_o
     ASSERT_DEBUG_SYNC(preview_ptr->preview_program == NULL,
                       "Preview program has already been initialized");
 
-    const ogl_context_gl_entrypoints* entrypoints_ptr           = NULL;
-    const ral_program_variable*       normal_matrix_uniform_ptr = NULL;
-    const ral_program_variable*       start_offsets_uniform_ptr = NULL;
-    const ral_program_variable*       stride_uniform_ptr        = NULL;
-    const ral_program_variable*       vp_uniform_ptr            = NULL;
+    const ogl_context_gl_entrypoints* entrypoints_ptr               = NULL;
+    const ral_program_variable*       normal_matrix_uniform_ral_ptr = NULL;
+    const ral_program_variable*       start_offsets_uniform_ral_ptr = NULL;
+    const ral_program_variable*       stride_uniform_ral_ptr        = NULL;
+    const ral_program_variable*       vp_uniform_ral_ptr            = NULL;
 
     /* Create shaders and set their bodies */
     ral_shader                fs         = NULL;
@@ -238,46 +238,50 @@ PRIVATE void _ogl_context_scene_renderer_normals_preview_init_preview_program(_o
     const raGL_program preview_program_raGL = ral_context_get_program_gl(preview_ptr->context,
                                                                          preview_ptr->preview_program);
 
-    raGL_program_get_uniform_by_name(preview_program_raGL,
-                                     system_hashed_ansi_string_create("normal_matrix"),
-                                    &normal_matrix_uniform_ptr);
-    raGL_program_get_uniform_by_name(preview_program_raGL,
-                                     system_hashed_ansi_string_create("start_offsets"),
-                                    &start_offsets_uniform_ptr);
-    raGL_program_get_uniform_by_name(preview_program_raGL,
-                                     system_hashed_ansi_string_create("stride"),
-                                    &stride_uniform_ptr);
-    raGL_program_get_uniform_by_name(preview_program_raGL,
-                                     system_hashed_ansi_string_create("vp"),
-                                    &vp_uniform_ptr);
+    ral_program_get_block_variable_by_name(preview_ptr->preview_program,
+                                           system_hashed_ansi_string_create("dataGS"),
+                                           system_hashed_ansi_string_create("normal_matrix"),
+                                          &normal_matrix_uniform_ral_ptr);
+    ral_program_get_block_variable_by_name(preview_ptr->preview_program,
+                                           system_hashed_ansi_string_create("dataVS"),
+                                           system_hashed_ansi_string_create("start_offsets"),
+                                          &start_offsets_uniform_ral_ptr);
+    ral_program_get_block_variable_by_name(preview_ptr->preview_program,
+                                           system_hashed_ansi_string_create("dataVS"),
+                                           system_hashed_ansi_string_create("stride"),
+                                          &stride_uniform_ral_ptr);
+    ral_program_get_block_variable_by_name(preview_ptr->preview_program,
+                                           system_hashed_ansi_string_create("dataGS"),
+                                           system_hashed_ansi_string_create("vp"),
+                                          &vp_uniform_ral_ptr);
 
-    ASSERT_DEBUG_SYNC(normal_matrix_uniform_ptr != NULL,
+    ASSERT_DEBUG_SYNC(normal_matrix_uniform_ral_ptr != NULL,
                       "Normal matrix uniform not recognized");
-    ASSERT_DEBUG_SYNC(start_offsets_uniform_ptr != NULL,
+    ASSERT_DEBUG_SYNC(start_offsets_uniform_ral_ptr != NULL,
                       "Start offsets uniform not recognized");
-    ASSERT_DEBUG_SYNC(stride_uniform_ptr != NULL,
+    ASSERT_DEBUG_SYNC(stride_uniform_ral_ptr != NULL,
                       "Stride uniform not recognized");
-    ASSERT_DEBUG_SYNC(vp_uniform_ptr != NULL,
+    ASSERT_DEBUG_SYNC(vp_uniform_ral_ptr != NULL,
                       "VP uniform not recognized");
 
-    if (normal_matrix_uniform_ptr != NULL)
+    if (normal_matrix_uniform_ral_ptr != NULL)
     {
-        preview_ptr->preview_program_normal_matrix_ub_offset = normal_matrix_uniform_ptr->block_offset;
+        preview_ptr->preview_program_normal_matrix_ub_offset = normal_matrix_uniform_ral_ptr->block_offset;
     }
 
-    if (start_offsets_uniform_ptr != NULL)
+    if (start_offsets_uniform_ral_ptr != NULL)
     {
-        preview_ptr->preview_program_start_offsets_ub_offset = start_offsets_uniform_ptr->block_offset;
+        preview_ptr->preview_program_start_offsets_ub_offset = start_offsets_uniform_ral_ptr->block_offset;
     }
 
-    if (stride_uniform_ptr != NULL)
+    if (stride_uniform_ral_ptr != NULL)
     {
-        preview_ptr->preview_program_stride_ub_offset = stride_uniform_ptr->block_offset;
+        preview_ptr->preview_program_stride_ub_offset = stride_uniform_ral_ptr->block_offset;
     }
 
-    if (vp_uniform_ptr != NULL)
+    if (vp_uniform_ral_ptr != NULL)
     {
-        preview_ptr->preview_program_vp_ub_offset = vp_uniform_ptr->block_offset;
+        preview_ptr->preview_program_vp_ub_offset = vp_uniform_ral_ptr->block_offset;
     }
 
     /* Retrieve UB properties */

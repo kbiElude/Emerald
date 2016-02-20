@@ -88,8 +88,8 @@ typedef struct _ogl_scene_renderer_lights_preview
 /** TODO */
 PRIVATE void _ogl_context_scene_renderer_lights_preview_init_preview_program(_ogl_scene_renderer_lights_preview* preview_ptr)
 {
-    const ral_program_variable* color_uniform_ptr    = NULL;
-    const ral_program_variable* position_uniform_ptr = NULL;
+    const ral_program_variable* color_uniform_ral_ptr     = NULL;
+    const ral_program_variable* position_uniform_ral_ptr  = NULL;
 
     ASSERT_DEBUG_SYNC(preview_ptr->preview_program == NULL,
                       "Preview program has already been initialized");
@@ -198,15 +198,17 @@ PRIVATE void _ogl_context_scene_renderer_lights_preview_init_preview_program(_og
                                &preview_ptr->preview_program_ub_bo);
 
     /* Retrieve uniform properties */
-    raGL_program_get_uniform_by_name(preview_program_raGL,
-                                     system_hashed_ansi_string_create("color"),
-                                    &color_uniform_ptr);
-    raGL_program_get_uniform_by_name(preview_program_raGL,
-                                     system_hashed_ansi_string_create("position[0]"),
-                                    &position_uniform_ptr);
+    ral_program_get_block_variable_by_name(preview_ptr->preview_program,
+                                           system_hashed_ansi_string_create("data"),
+                                           system_hashed_ansi_string_create("color"),
+                                          &color_uniform_ral_ptr);
+    ral_program_get_block_variable_by_name(preview_ptr->preview_program,
+                                           system_hashed_ansi_string_create("data"),
+                                           system_hashed_ansi_string_create("position[0]"),
+                                          &position_uniform_ral_ptr);
 
-    preview_ptr->preview_program_color_ub_offset    = color_uniform_ptr->block_offset;
-    preview_ptr->preview_program_position_ub_offset = position_uniform_ptr->block_offset;
+    preview_ptr->preview_program_color_ub_offset    = color_uniform_ral_ptr->block_offset;
+    preview_ptr->preview_program_position_ub_offset = position_uniform_ral_ptr->block_offset;
 
     ASSERT_DEBUG_SYNC(preview_ptr->preview_program_color_ub_offset    != -1 &&
                       preview_ptr->preview_program_position_ub_offset != -1,

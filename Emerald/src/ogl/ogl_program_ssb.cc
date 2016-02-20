@@ -36,20 +36,6 @@ PRIVATE ogl_program_block_property _ogl_program_ssb_get_block_property_for_ssb_p
             break;
         }
 
-        case OGL_PROGRAM_SSB_PROPERTY_NAME:
-        {
-            result = OGL_PROGRAM_BLOCK_PROPERTY_NAME;
-
-            break;
-        }
-
-        case OGL_PROGRAM_SSB_PROPERTY_N_MEMBERS:
-        {
-            result = OGL_PROGRAM_BLOCK_PROPERTY_N_MEMBERS;
-
-            break;
-        }
-
         default:
         {
             ASSERT_DEBUG_SYNC(false,
@@ -83,16 +69,6 @@ PUBLIC EMERALD_API void ogl_program_ssb_get_property(const ogl_program_ssb    ss
     ogl_program_block_get_property((ogl_program_block) ssb,
                                    _ogl_program_ssb_get_block_property_for_ssb_property(property),
                                    out_result);
-}
-
-/** Please see header for spec */
-PUBLIC EMERALD_API bool ogl_program_ssb_get_variable_by_index(const ogl_program_ssb        ssb,
-                                                              unsigned int                 n_variable,
-                                                              const ral_program_variable** out_variable_ptr)
-{
-    return ogl_program_block_get_block_variable((ogl_program_block) ssb,
-                                                n_variable,
-                                                out_variable_ptr);
 }
 
 /** Please see header for spec */

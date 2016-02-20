@@ -22,6 +22,17 @@ DECLARE_HANDLE(ogl_primitive_renderer);
 
 typedef unsigned int ogl_primitive_renderer_dataset_id;
 
+/* Native GL block types */
+typedef enum
+{
+    /* Shader storage buffer block */
+    OGL_PROGRAM_BLOCK_TYPE_SHADER_STORAGE_BUFFER,
+
+    /* Uniform buffer block */
+    OGL_PROGRAM_BLOCK_TYPE_UNIFORM_BUFFER
+
+} ogl_program_block_type;
+
 /* Enumerator describing native GL compare function types. */
 typedef enum
 {

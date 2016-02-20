@@ -132,7 +132,6 @@ typedef struct
 
     ral_program               program_bg;
     GLint                     program_bg_border_width_ub_offset;
-    GLint                     program_bg_button_start_uv_ub_offset;
     GLint                     program_bg_highlighted_v1v2_ub_offset;
     GLint                     program_bg_selected_v1v2_ub_offset;
     GLint                     program_bg_x1y1x2y2_ub_offset;
@@ -879,82 +878,95 @@ PRIVATE void _ogl_ui_dropdown_init_renderer_callback(ogl_context context,
     } /* for (all programs) */
 
     /* Retrieve uniform locations */
-    const ral_program_variable* border_width_uniform_ptr              = NULL;
-    const ral_program_variable* border_width_bg_uniform_ptr           = NULL;
-    const ral_program_variable* brightness_uniform_ptr                = NULL;
-    const ral_program_variable* button_start_u_uniform_ptr            = NULL;
-    const ral_program_variable* button_start_uv_uniform_ptr           = NULL;
-    const ral_program_variable* color_uniform_ptr                     = NULL;
-    const ral_program_variable* highlighted_v1v2_uniform_ptr          = NULL;
-    const ral_program_variable* selected_v1v2_uniform_ptr             = NULL;
-    const ral_program_variable* stop_data_uniform_ptr                 = NULL;
-    const ral_program_variable* x1_x2_y_uniform_ptr                   = NULL;
-    const ral_program_variable* x1y1x2y2_program_bg_uniform_ptr       = NULL;
-    const ral_program_variable* x1y1x2y2_program_label_bg_uniform_ptr = NULL;
-    const ral_program_variable* x1y1x2y2_program_slider_uniform_ptr   = NULL;
-    const ral_program_variable* x1y1x2y2_program_uniform_ptr          = NULL;
+    const ral_program_variable* border_width_uniform_ral_ptr              = NULL;
+    const ral_program_variable* border_width_bg_uniform_ral_ptr           = NULL;
+    const ral_program_variable* brightness_uniform_ral_ptr                = NULL;
+    const ral_program_variable* button_start_u_uniform_ral_ptr            = NULL;
+    const ral_program_variable* button_start_uv_uniform_ral_ptr           = NULL;
+    const ral_program_variable* color_uniform_ral_ptr                     = NULL;
+    const ral_program_variable* highlighted_v1v2_uniform_ral_ptr          = NULL;
+    const ral_program_variable* selected_v1v2_uniform_ral_ptr             = NULL;
+    const ral_program_variable* stop_data_uniform_ral_ptr                 = NULL;
+    const ral_program_variable* x1_x2_y_uniform_ral_ptr                   = NULL;
+    const ral_program_variable* x1y1x2y2_program_bg_uniform_ral_ptr       = NULL;
+    const ral_program_variable* x1y1x2y2_program_label_bg_uniform_ral_ptr = NULL;
+    const ral_program_variable* x1y1x2y2_program_slider_uniform_ral_ptr   = NULL;
+    const ral_program_variable* x1y1x2y2_program_uniform_ral_ptr          = NULL;
 
-    raGL_program_get_uniform_by_name(program_raGL,
-                                     system_hashed_ansi_string_create("border_width"),
-                                    &border_width_uniform_ptr);
-    raGL_program_get_uniform_by_name(program_raGL,
-                                     system_hashed_ansi_string_create("button_start_u"),
-                                    &button_start_u_uniform_ptr);
-    raGL_program_get_uniform_by_name(program_raGL,
-                                     system_hashed_ansi_string_create("brightness"),
-                                    &brightness_uniform_ptr);
-    raGL_program_get_uniform_by_name(program_raGL,
-                                     system_hashed_ansi_string_create("stop_data[0]"),
-                                    &stop_data_uniform_ptr);
-    raGL_program_get_uniform_by_name(program_raGL,
-                                     system_hashed_ansi_string_create("x1y1x2y2"),
-                                    &x1y1x2y2_program_uniform_ptr);
+    ral_program_get_block_variable_by_name(dropdown_ptr->program,
+                                           system_hashed_ansi_string_create("dataFS"),
+                                           system_hashed_ansi_string_create("border_width"),
+                                          &border_width_uniform_ral_ptr);
+    ral_program_get_block_variable_by_name(dropdown_ptr->program,
+                                           system_hashed_ansi_string_create("dataFS"),
+                                           system_hashed_ansi_string_create("button_start_u"),
+                                          &button_start_u_uniform_ral_ptr);
+    ral_program_get_block_variable_by_name(dropdown_ptr->program,
+                                           system_hashed_ansi_string_create("dataFS"),
+                                           system_hashed_ansi_string_create("brightness"),
+                                          &brightness_uniform_ral_ptr);
+    ral_program_get_block_variable_by_name(dropdown_ptr->program,
+                                           system_hashed_ansi_string_create("dataFS"),
+                                           system_hashed_ansi_string_create("stop_data[0]"),
+                                          &stop_data_uniform_ral_ptr);
+    ral_program_get_block_variable_by_name(dropdown_ptr->program,
+                                           system_hashed_ansi_string_create("dataVS"),
+                                           system_hashed_ansi_string_create("x1y1x2y2"),
+                                          &x1y1x2y2_program_uniform_ral_ptr);
 
-    raGL_program_get_uniform_by_name(program_bg_raGL,
-                                     system_hashed_ansi_string_create("border_width"),
-                                    &border_width_bg_uniform_ptr);
-    raGL_program_get_uniform_by_name(program_bg_raGL,
-                                     system_hashed_ansi_string_create("button_start_uv"),
-                                    &button_start_uv_uniform_ptr);
-    raGL_program_get_uniform_by_name(program_bg_raGL,
-                                     system_hashed_ansi_string_create("highlighted_v1v2"),
-                                    &highlighted_v1v2_uniform_ptr);
-    raGL_program_get_uniform_by_name(program_bg_raGL,
-                                     system_hashed_ansi_string_create("selected_v1v2"),
-                                    &selected_v1v2_uniform_ptr);
-    raGL_program_get_uniform_by_name(program_bg_raGL,
-                                     system_hashed_ansi_string_create("x1y1x2y2"),
-                                    &x1y1x2y2_program_bg_uniform_ptr);
+    ral_program_get_block_variable_by_name(dropdown_ptr->program_bg,
+                                           system_hashed_ansi_string_create("dataFS"),
+                                           system_hashed_ansi_string_create("border_width"),
+                                          &border_width_bg_uniform_ral_ptr);
+    ral_program_get_block_variable_by_name(dropdown_ptr->program_bg,
+                                           system_hashed_ansi_string_create("dataFS"),
+                                           system_hashed_ansi_string_create("button_start_uv"),
+                                          &button_start_uv_uniform_ral_ptr);
+    ral_program_get_block_variable_by_name(dropdown_ptr->program_bg,
+                                           system_hashed_ansi_string_create("dataFS"),
+                                           system_hashed_ansi_string_create("highlighted_v1v2"),
+                                          &highlighted_v1v2_uniform_ral_ptr);
+    ral_program_get_block_variable_by_name(dropdown_ptr->program_bg,
+                                           system_hashed_ansi_string_create("dataFS"),
+                                           system_hashed_ansi_string_create("selected_v1v2"),
+                                          &selected_v1v2_uniform_ral_ptr);
+    ral_program_get_block_variable_by_name(dropdown_ptr->program_bg,
+                                           system_hashed_ansi_string_create("dataVS"),
+                                           system_hashed_ansi_string_create("x1y1x2y2"),
+                                          &x1y1x2y2_program_bg_uniform_ral_ptr);
 
-    raGL_program_get_uniform_by_name(program_label_bg_raGL,
-                                     system_hashed_ansi_string_create("x1y1x2y2"),
-                                    &x1y1x2y2_program_label_bg_uniform_ptr);
+    ral_program_get_block_variable_by_name(dropdown_ptr->program_label_bg,
+                                           system_hashed_ansi_string_create("dataVS"),
+                                           system_hashed_ansi_string_create("x1y1x2y2"),
+                                          &x1y1x2y2_program_label_bg_uniform_ral_ptr);
 
-    raGL_program_get_uniform_by_name(program_separator_raGL,
-                                     system_hashed_ansi_string_create("x1_x2_y"),
-                                    &x1_x2_y_uniform_ptr);
+    ral_program_get_block_variable_by_name(dropdown_ptr->program_separator,
+                                           system_hashed_ansi_string_create("dataVS"),
+                                           system_hashed_ansi_string_create("x1_x2_y"),
+                                          &x1_x2_y_uniform_ral_ptr);
 
-    raGL_program_get_uniform_by_name(program_slider_raGL,
-                                     system_hashed_ansi_string_create("color"),
-                                    &color_uniform_ptr);
-    raGL_program_get_uniform_by_name(program_slider_raGL,
-                                     system_hashed_ansi_string_create("x1y1x2y2"),
-                                    &x1y1x2y2_program_slider_uniform_ptr);
+    ral_program_get_block_variable_by_name(dropdown_ptr->program_slider,
+                                           system_hashed_ansi_string_create("dataFS"),
+                                           system_hashed_ansi_string_create("color"),
+                                          &color_uniform_ral_ptr);
+    ral_program_get_block_variable_by_name(dropdown_ptr->program_slider,
+                                           system_hashed_ansi_string_create("dataVS"),
+                                           system_hashed_ansi_string_create("x1y1x2y2"),
+                                          &x1y1x2y2_program_slider_uniform_ral_ptr);
 
-    dropdown_ptr->program_bg_border_width_ub_offset     = border_width_bg_uniform_ptr->block_offset;
-    dropdown_ptr->program_bg_button_start_uv_ub_offset  = button_start_uv_uniform_ptr->block_offset;
-    dropdown_ptr->program_bg_highlighted_v1v2_ub_offset = highlighted_v1v2_uniform_ptr->block_offset;
-    dropdown_ptr->program_bg_selected_v1v2_ub_offset    = selected_v1v2_uniform_ptr->block_offset;
-    dropdown_ptr->program_bg_x1y1x2y2_ub_offset         = x1y1x2y2_program_bg_uniform_ptr->block_offset;
-    dropdown_ptr->program_border_width_ub_offset        = border_width_uniform_ptr->block_offset;
-    dropdown_ptr->program_brightness_ub_offset          = brightness_uniform_ptr->block_offset;
-    dropdown_ptr->program_button_start_u_ub_offset      = button_start_u_uniform_ptr->block_offset;
-    dropdown_ptr->program_label_bg_x1y1x2y2_ub_offset   = x1y1x2y2_program_label_bg_uniform_ptr->block_offset;
-    dropdown_ptr->program_separator_x1_x2_y_ub_offset   = x1_x2_y_uniform_ptr->block_offset;
-    dropdown_ptr->program_slider_color_ub_offset        = color_uniform_ptr->block_offset;
-    dropdown_ptr->program_slider_x1y1x2y2_ub_offset     = x1y1x2y2_program_slider_uniform_ptr->block_offset;
-    dropdown_ptr->program_stop_data_ub_offset           = stop_data_uniform_ptr->block_offset;
-    dropdown_ptr->program_x1y1x2y2_ub_offset            = x1y1x2y2_program_uniform_ptr->block_offset;
+    dropdown_ptr->program_bg_border_width_ub_offset     = border_width_bg_uniform_ral_ptr->block_offset;
+    dropdown_ptr->program_bg_highlighted_v1v2_ub_offset = highlighted_v1v2_uniform_ral_ptr->block_offset;
+    dropdown_ptr->program_bg_selected_v1v2_ub_offset    = selected_v1v2_uniform_ral_ptr->block_offset;
+    dropdown_ptr->program_bg_x1y1x2y2_ub_offset         = x1y1x2y2_program_bg_uniform_ral_ptr->block_offset;
+    dropdown_ptr->program_border_width_ub_offset        = border_width_uniform_ral_ptr->block_offset;
+    dropdown_ptr->program_brightness_ub_offset          = brightness_uniform_ral_ptr->block_offset;
+    dropdown_ptr->program_button_start_u_ub_offset      = button_start_u_uniform_ral_ptr->block_offset;
+    dropdown_ptr->program_label_bg_x1y1x2y2_ub_offset   = x1y1x2y2_program_label_bg_uniform_ral_ptr->block_offset;
+    dropdown_ptr->program_separator_x1_x2_y_ub_offset   = x1_x2_y_uniform_ral_ptr->block_offset;
+    dropdown_ptr->program_slider_color_ub_offset        = color_uniform_ral_ptr->block_offset;
+    dropdown_ptr->program_slider_x1y1x2y2_ub_offset     = x1y1x2y2_program_slider_uniform_ral_ptr->block_offset;
+    dropdown_ptr->program_stop_data_ub_offset           = stop_data_uniform_ral_ptr->block_offset;
+    dropdown_ptr->program_x1y1x2y2_ub_offset            = x1y1x2y2_program_uniform_ral_ptr->block_offset;
 
     /* Set them up */
     const float button_start_uv[] =
@@ -964,28 +976,28 @@ PRIVATE void _ogl_ui_dropdown_init_renderer_callback(ogl_context context,
     };
 
     ogl_program_ub_set_nonarrayed_uniform_value(dropdown_ptr->program_ub_fs,
-                                                button_start_u_uniform_ptr->block_offset,
+                                                button_start_u_uniform_ral_ptr->block_offset,
                                                &button_start_uv[0],
                                                 0, /* src_data_flags */
                                                 sizeof(float) );
     ogl_program_ub_set_nonarrayed_uniform_value(dropdown_ptr->program_bg_ub_fs,
-                                                button_start_uv_uniform_ptr->block_offset,
+                                                button_start_uv_uniform_ral_ptr->block_offset,
                                                 button_start_uv,
                                                 0, /* src_data_flags */
                                                 sizeof(float) * 2);
     ogl_program_ub_set_nonarrayed_uniform_value(dropdown_ptr->program_ub_fs,
-                                                border_width_uniform_ptr->block_offset,
+                                                border_width_uniform_ral_ptr->block_offset,
                                                 border_width,
                                                 0, /* src_data_flags */
                                                 sizeof(float) * 2);
     ogl_program_ub_set_nonarrayed_uniform_value(dropdown_ptr->program_bg_ub_fs,
-                                                border_width_bg_uniform_ptr->block_offset,
+                                                border_width_bg_uniform_ral_ptr->block_offset,
                                                 border_width_bg,
                                                 0, /* src_data_flags */
                                                 sizeof(float) * 2);
 
     ogl_program_ub_set_arrayed_uniform_value   (dropdown_ptr->program_ub_fs,
-                                                stop_data_uniform_ptr->block_offset,
+                                                stop_data_uniform_ral_ptr->block_offset,
                                                 stop_data,
                                                 0,                /* src_data_flags */
                                                 sizeof(float) * 4 /* vec4 */ * 4 /* array items */,

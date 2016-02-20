@@ -1390,37 +1390,37 @@ PUBLIC EMERALD_API void ogl_uber_get_shader_item_property(const ogl_uber        
 /** TODO */
 PUBLIC EMERALD_API void ogl_uber_link(ogl_uber uber)
 {
-    const ral_program_variable*  ambient_material_sampler_uniform_ptr    = NULL;
-    const ral_program_variable*  ambient_material_uniform_ptr            = NULL;
-    const ral_program_variable*  diffuse_material_sampler_uniform_ptr    = NULL;
-    const ral_program_variable*  diffuse_material_uniform_ptr            = NULL;
-    const ral_program_variable*  emission_material_sampler_uniform_ptr   = NULL;
-    const ral_program_variable*  emission_material_uniform_ptr           = NULL;
-    const ral_program_variable*  far_near_plane_diff_uniform_ptr         = NULL;
-    const ral_program_variable*  flip_z_uniform_ptr                      = NULL;
-    const ral_program_variable*  glosiness_uniform_ptr                   = NULL;
-    const ral_program_variable*  luminosity_material_sampler_uniform_ptr = NULL;
-    const ral_program_variable*  luminosity_material_uniform_ptr         = NULL;
-    const ral_program_variable*  max_variance_uniform_ptr                = NULL;
-    const ral_program_variable*  mesh_sh3_uniform_ptr                    = NULL;
-    const ral_program_variable*  mesh_sh3_data_offset_uniform_ptr        = NULL;
-    const ral_program_variable*  mesh_sh4_uniform_ptr                    = NULL;
-    const ral_program_variable*  mesh_sh4_data_offset_uniform_ptr        = NULL;
-    const ral_program_variable*  model_uniform_ptr                       = NULL;
-    const ral_program_variable*  near_plane_uniform_ptr                  = NULL;
-    unsigned int                 n_items                                 = 0;
-    const ral_program_variable*  normal_matrix_uniform_ptr               = NULL;
-    const ral_program_attribute* object_normal_ptr                       = NULL;
-    const ral_program_attribute* object_uv_ptr                           = NULL;
-    const ral_program_attribute* object_vertex_ptr                       = NULL;
-    raGL_program                 program_raGL                            = NULL;
-    const ral_program_variable*  shininess_material_sampler_uniform_ptr  = NULL;
-    const ral_program_variable*  shininess_material_uniform_ptr          = NULL;
-    const ral_program_variable*  specular_material_sampler_uniform_ptr   = NULL;
-    const ral_program_variable*  specular_material_uniform_ptr           = NULL;
-    _ogl_uber*                   uber_ptr                                = (_ogl_uber*) uber;
-    const ral_program_variable*  vp_uniform_ptr                          = NULL;
-    const ral_program_variable*  world_camera_uniform_ptr                = NULL;
+    const _raGL_program_variable* ambient_material_sampler_uniform_raGL_ptr    = NULL;
+    const ral_program_variable*   ambient_material_uniform_ral_ptr             = NULL;
+    const _raGL_program_variable* diffuse_material_sampler_uniform_raGL_ptr    = NULL;
+    const ral_program_variable*   diffuse_material_uniform_ral_ptr             = NULL;
+    const _raGL_program_variable* emission_material_sampler_uniform_raGL_ptr   = NULL;
+    const ral_program_variable*   emission_material_uniform_ral_ptr            = NULL;
+    const ral_program_variable*   far_near_plane_diff_uniform_ral_ptr          = NULL;
+    const ral_program_variable*   flip_z_uniform_ral_ptr                       = NULL;
+    const _raGL_program_variable* glosiness_uniform_raGL_ptr                   = NULL;
+    const _raGL_program_variable* luminosity_material_sampler_uniform_raGL_ptr = NULL;
+    const ral_program_variable*   luminosity_material_uniform_ral_ptr          = NULL;
+    const ral_program_variable*   max_variance_uniform_ral_ptr                 = NULL;
+    const _raGL_program_variable* mesh_sh3_uniform_raGL_ptr                    = NULL;
+    const _raGL_program_variable* mesh_sh3_data_offset_uniform_raGL_ptr        = NULL;
+    const _raGL_program_variable* mesh_sh4_uniform_raGL_ptr                    = NULL;
+    const _raGL_program_variable* mesh_sh4_data_offset_uniform_raGL_ptr        = NULL;
+    const ral_program_variable*   model_uniform_ral_ptr                        = NULL;
+    const ral_program_variable*   near_plane_uniform_ral_ptr                   = NULL;
+    unsigned int                  n_items                                      = 0;
+    const ral_program_variable*   normal_matrix_uniform_ral_ptr                = NULL;
+    const _raGL_program_attribute*object_normal_raGL_ptr                       = NULL;
+    const _raGL_program_attribute*object_uv_raGL_ptr                           = NULL;
+    const _raGL_program_attribute*object_vertex_raGL_ptr                       = NULL;
+    raGL_program                  program_raGL                                 = NULL;
+    const _raGL_program_variable* shininess_material_sampler_uniform_raGL_ptr  = NULL;
+    const ral_program_variable*   shininess_material_uniform_ral_ptr           = NULL;
+    const _raGL_program_variable* specular_material_sampler_uniform_raGL_ptr   = NULL;
+    const ral_program_variable*   specular_material_uniform_ral_ptr            = NULL;
+    _ogl_uber*                    uber_ptr                                     = (_ogl_uber*) uber;
+    const ral_program_variable*   vp_uniform_ral_ptr                           = NULL;
+    const ral_program_variable*   world_camera_uniform_ral_ptr                 = NULL;
 
     /* Bail out if no need to link */
     if (!uber_ptr->dirty)
@@ -1451,248 +1451,264 @@ PUBLIC EMERALD_API void ogl_uber_link(ogl_uber uber)
 
     raGL_program_get_vertex_attribute_by_name(program_raGL,
                                               system_hashed_ansi_string_create("object_normal"),
-                                             &object_normal_ptr);
+                                             &object_normal_raGL_ptr);
     raGL_program_get_vertex_attribute_by_name(program_raGL,
                                               system_hashed_ansi_string_create("object_uv"),
-                                             &object_uv_ptr);
+                                             &object_uv_raGL_ptr);
     raGL_program_get_vertex_attribute_by_name(program_raGL,
                                               system_hashed_ansi_string_create("object_vertex"),
-                                             &object_vertex_ptr);
+                                             &object_vertex_raGL_ptr);
 
-    if (object_normal_ptr != NULL)
+    if (object_normal_raGL_ptr != NULL)
     {
-        uber_ptr->object_normal_attribute_location = object_normal_ptr->location;
+        uber_ptr->object_normal_attribute_location = object_normal_raGL_ptr->location;
     }
 
-    if (object_uv_ptr != NULL)
+    if (object_uv_raGL_ptr != NULL)
     {
-        uber_ptr->object_uv_attribute_location = object_uv_ptr->location;
+        uber_ptr->object_uv_attribute_location = object_uv_raGL_ptr->location;
     }
 
-    if (object_vertex_ptr != NULL)
+    if (object_vertex_raGL_ptr != NULL)
     {
-        uber_ptr->object_vertex_attribute_location = object_vertex_ptr->location;
+        uber_ptr->object_vertex_attribute_location = object_vertex_raGL_ptr->location;
     }
 
     /* Retrieve uniform locations */
+    ral_program_get_block_variable_by_name(uber_ptr->program,
+                                           system_hashed_ansi_string_create("FragmentShaderProperties"),
+                                           system_hashed_ansi_string_create("ambient_material"),
+                                          &ambient_material_uniform_ral_ptr);
+    ral_program_get_block_variable_by_name(uber_ptr->program,
+                                           system_hashed_ansi_string_create("FragmentShaderProperties"),
+                                           system_hashed_ansi_string_create("diffuse_material"),
+                                          &diffuse_material_uniform_ral_ptr);
+    ral_program_get_block_variable_by_name(uber_ptr->program,
+                                           system_hashed_ansi_string_create("FragmentShaderProperties"),
+                                           system_hashed_ansi_string_create("emission_material"),
+                                          &emission_material_uniform_ral_ptr);
+    ral_program_get_block_variable_by_name(uber_ptr->program,
+                                           system_hashed_ansi_string_create("VertexShaderProperties"),
+                                           system_hashed_ansi_string_create("far_near_plane_diff"),
+                                          &far_near_plane_diff_uniform_ral_ptr);
+    ral_program_get_block_variable_by_name(uber_ptr->program,
+                                           system_hashed_ansi_string_create("VertexShaderProperties"),
+                                           system_hashed_ansi_string_create("flip_z"),
+                                          &flip_z_uniform_ral_ptr);
+    ral_program_get_block_variable_by_name(uber_ptr->program,
+                                           system_hashed_ansi_string_create("FragmentShaderProperties"),
+                                           system_hashed_ansi_string_create("luminosity_material"),
+                                          &luminosity_material_uniform_ral_ptr);
+    ral_program_get_block_variable_by_name(uber_ptr->program,
+                                           system_hashed_ansi_string_create("FragmentShaderProperties"),
+                                           system_hashed_ansi_string_create("max_variance"),
+                                          &max_variance_uniform_ral_ptr);
+    ral_program_get_block_variable_by_name(uber_ptr->program,
+                                           system_hashed_ansi_string_create("VertexShaderProperties"),
+                                           system_hashed_ansi_string_create("model"),
+                                          &model_uniform_ral_ptr);
+    ral_program_get_block_variable_by_name(uber_ptr->program,
+                                           system_hashed_ansi_string_create("VertexShaderProperties"),
+                                           system_hashed_ansi_string_create("near_plane"),
+                                          &near_plane_uniform_ral_ptr);
+    ral_program_get_block_variable_by_name(uber_ptr->program,
+                                           system_hashed_ansi_string_create("VertexShaderProperties"),
+                                           system_hashed_ansi_string_create("normal_matrix"),
+                                          &normal_matrix_uniform_ral_ptr);
+    ral_program_get_block_variable_by_name(uber_ptr->program,
+                                           system_hashed_ansi_string_create("FragmentShaderProperties"),
+                                           system_hashed_ansi_string_create("shininess_material"),
+                                          &shininess_material_uniform_ral_ptr);
+    ral_program_get_block_variable_by_name(uber_ptr->program,
+                                           system_hashed_ansi_string_create("FragmentShaderProperties"),
+                                           system_hashed_ansi_string_create("specular_material"),
+                                          &specular_material_uniform_ral_ptr);
+    ral_program_get_block_variable_by_name(uber_ptr->program,
+                                           system_hashed_ansi_string_create("VertexShaderProperties"),
+                                           system_hashed_ansi_string_create("world_camera"),
+                                          &world_camera_uniform_ral_ptr);
+    ral_program_get_block_variable_by_name(uber_ptr->program,
+                                           system_hashed_ansi_string_create("VertexShaderProperties"),
+                                           system_hashed_ansi_string_create("vp"),
+                                          &vp_uniform_ral_ptr);
+
+
     raGL_program_get_uniform_by_name(program_raGL,
                                      system_hashed_ansi_string_create("ambient_material_sampler"),
-                                    &ambient_material_sampler_uniform_ptr);
-    raGL_program_get_uniform_by_name(program_raGL,
-                                     system_hashed_ansi_string_create("ambient_material"),
-                                    &ambient_material_uniform_ptr);
+                                    &ambient_material_sampler_uniform_raGL_ptr);
     raGL_program_get_uniform_by_name(program_raGL,
                                      system_hashed_ansi_string_create("diffuse_material_sampler"),
-                                    &diffuse_material_sampler_uniform_ptr);
-    raGL_program_get_uniform_by_name(program_raGL,
-                                     system_hashed_ansi_string_create("diffuse_material"),
-                                    &diffuse_material_uniform_ptr);
+                                    &diffuse_material_sampler_uniform_raGL_ptr);
     raGL_program_get_uniform_by_name(program_raGL,
                                      system_hashed_ansi_string_create("emission_material_sampler"),
-                                    &emission_material_sampler_uniform_ptr);
-    raGL_program_get_uniform_by_name(program_raGL,
-                                     system_hashed_ansi_string_create("emission_material"),
-                                    &emission_material_uniform_ptr);
-    raGL_program_get_uniform_by_name(program_raGL,
-                                     system_hashed_ansi_string_create("far_near_plane_diff"),
-                                    &far_near_plane_diff_uniform_ptr);
-    raGL_program_get_uniform_by_name(program_raGL,
-                                     system_hashed_ansi_string_create("flip_z"),
-                                    &flip_z_uniform_ptr);
+                                    &emission_material_sampler_uniform_raGL_ptr);
     raGL_program_get_uniform_by_name(program_raGL,
                                      system_hashed_ansi_string_create("glosiness"),
-                                    &glosiness_uniform_ptr);
+                                    &glosiness_uniform_raGL_ptr);
     raGL_program_get_uniform_by_name(program_raGL,
                                      system_hashed_ansi_string_create("luminosity_material_sampler"),
-                                    &luminosity_material_sampler_uniform_ptr);
-    raGL_program_get_uniform_by_name(program_raGL,
-                                     system_hashed_ansi_string_create("luminosity_material"),
-                                    &luminosity_material_uniform_ptr);
-    raGL_program_get_uniform_by_name(program_raGL,
-                                     system_hashed_ansi_string_create("max_variance"),
-                                    &max_variance_uniform_ptr);
+                                    &luminosity_material_sampler_uniform_raGL_ptr);
     raGL_program_get_uniform_by_name(program_raGL,
                                      system_hashed_ansi_string_create("mesh_sh3"),
-                                    &mesh_sh3_uniform_ptr);
+                                    &mesh_sh3_uniform_raGL_ptr);
     raGL_program_get_uniform_by_name(program_raGL,
                                      system_hashed_ansi_string_create("mesh_sh3_data_offset"),
-                                    &mesh_sh3_data_offset_uniform_ptr);
+                                    &mesh_sh3_data_offset_uniform_raGL_ptr);
     raGL_program_get_uniform_by_name(program_raGL,
                                      system_hashed_ansi_string_create("mesh_sh4"),
-                                    &mesh_sh4_uniform_ptr);
+                                    &mesh_sh4_uniform_raGL_ptr);
     raGL_program_get_uniform_by_name(program_raGL,
                                      system_hashed_ansi_string_create("mesh_sh4_data_offset"),
-                                    &mesh_sh4_data_offset_uniform_ptr);
-    raGL_program_get_uniform_by_name(program_raGL,
-                                     system_hashed_ansi_string_create("model"),
-                                    &model_uniform_ptr);
-    raGL_program_get_uniform_by_name(program_raGL,
-                                     system_hashed_ansi_string_create("near_plane"),
-                                    &near_plane_uniform_ptr);
-    raGL_program_get_uniform_by_name(program_raGL,
-                                     system_hashed_ansi_string_create("normal_matrix"),
-                                    &normal_matrix_uniform_ptr);
+                                    &mesh_sh4_data_offset_uniform_raGL_ptr);
     raGL_program_get_uniform_by_name(program_raGL,
                                      system_hashed_ansi_string_create("shininess_material_sampler"),
-                                    &shininess_material_sampler_uniform_ptr);
-    raGL_program_get_uniform_by_name(program_raGL,
-                                     system_hashed_ansi_string_create("shininess_material"),
-                                    &shininess_material_uniform_ptr);
+                                    &shininess_material_sampler_uniform_raGL_ptr);
     raGL_program_get_uniform_by_name(program_raGL,
                                      system_hashed_ansi_string_create("specular_material_sampler"),
-                                    &specular_material_sampler_uniform_ptr);
-    raGL_program_get_uniform_by_name(program_raGL,
-                                     system_hashed_ansi_string_create("specular_material"),
-                                    &specular_material_uniform_ptr);
-    raGL_program_get_uniform_by_name(program_raGL,
-                                     system_hashed_ansi_string_create("vp"),
-                                    &vp_uniform_ptr);
-    raGL_program_get_uniform_by_name(program_raGL,
-                                     system_hashed_ansi_string_create("world_camera"),
-                                    &world_camera_uniform_ptr);
+                                    &specular_material_sampler_uniform_raGL_ptr);
 
-    if (ambient_material_sampler_uniform_ptr != NULL)
+    if (ambient_material_sampler_uniform_raGL_ptr != NULL)
     {
-        uber_ptr->ambient_material_sampler_uniform_location = ambient_material_sampler_uniform_ptr->location;
+        uber_ptr->ambient_material_sampler_uniform_location = ambient_material_sampler_uniform_raGL_ptr->location;
     }
 
-    if (ambient_material_uniform_ptr != NULL)
+    if (ambient_material_uniform_ral_ptr != NULL)
     {
-        ASSERT_DEBUG_SYNC(ambient_material_uniform_ptr->block_offset != -1,
+        ASSERT_DEBUG_SYNC(ambient_material_uniform_ral_ptr->block_offset != -1,
                           "Ambient material UB offset is -1");
 
-        uber_ptr->ambient_material_ub_offset = ambient_material_uniform_ptr->block_offset;
+        uber_ptr->ambient_material_ub_offset = ambient_material_uniform_ral_ptr->block_offset;
     }
 
-    if (diffuse_material_sampler_uniform_ptr != NULL)
+    if (diffuse_material_sampler_uniform_raGL_ptr != NULL)
     {
-        uber_ptr->diffuse_material_sampler_uniform_location = diffuse_material_sampler_uniform_ptr->location;
+        uber_ptr->diffuse_material_sampler_uniform_location = diffuse_material_sampler_uniform_raGL_ptr->location;
     }
 
-    if (diffuse_material_uniform_ptr != NULL)
+    if (diffuse_material_uniform_ral_ptr != NULL)
     {
-        ASSERT_DEBUG_SYNC(diffuse_material_uniform_ptr->block_offset != -1,
+        ASSERT_DEBUG_SYNC(diffuse_material_uniform_ral_ptr->block_offset != -1,
                           "Diffuse material UB offset is -1");
 
-        uber_ptr->diffuse_material_ub_offset = diffuse_material_uniform_ptr->block_offset;
+        uber_ptr->diffuse_material_ub_offset = diffuse_material_uniform_ral_ptr->block_offset;
     }
 
-    if (far_near_plane_diff_uniform_ptr != NULL)
+    if (far_near_plane_diff_uniform_ral_ptr != NULL)
     {
-        ASSERT_DEBUG_SYNC(far_near_plane_diff_uniform_ptr->block_offset != -1,
+        ASSERT_DEBUG_SYNC(far_near_plane_diff_uniform_ral_ptr->block_offset != -1,
                           "Far/near plane diff UB offset is -1");
 
-        uber_ptr->far_near_plane_diff_ub_offset = far_near_plane_diff_uniform_ptr->block_offset;
+        uber_ptr->far_near_plane_diff_ub_offset = far_near_plane_diff_uniform_ral_ptr->block_offset;
     }
 
-    if (flip_z_uniform_ptr != NULL)
+    if (flip_z_uniform_ral_ptr != NULL)
     {
-        ASSERT_DEBUG_SYNC(flip_z_uniform_ptr->block_offset != -1,
+        ASSERT_DEBUG_SYNC(flip_z_uniform_ral_ptr->block_offset != -1,
                           "Flip Z UB offset is -1");
 
-        uber_ptr->flip_z_ub_offset = flip_z_uniform_ptr->block_offset;
+        uber_ptr->flip_z_ub_offset = flip_z_uniform_ral_ptr->block_offset;
     }
 
-    if (luminosity_material_sampler_uniform_ptr != NULL)
+    if (luminosity_material_sampler_uniform_raGL_ptr != NULL)
     {
-        uber_ptr->luminosity_material_sampler_uniform_location = luminosity_material_sampler_uniform_ptr->location;
+        uber_ptr->luminosity_material_sampler_uniform_location = luminosity_material_sampler_uniform_raGL_ptr->location;
     }
 
-    if (luminosity_material_uniform_ptr != NULL)
+    if (luminosity_material_uniform_ral_ptr != NULL)
     {
-        ASSERT_DEBUG_SYNC(luminosity_material_uniform_ptr->block_offset != -1,
+        ASSERT_DEBUG_SYNC(luminosity_material_uniform_ral_ptr->block_offset != -1,
                           "Luminosity material UB offset is -1.");
 
-        uber_ptr->luminosity_material_ub_offset = luminosity_material_uniform_ptr->block_offset;
+        uber_ptr->luminosity_material_ub_offset = luminosity_material_uniform_ral_ptr->block_offset;
     }
 
-    if (max_variance_uniform_ptr != NULL)
+    if (max_variance_uniform_ral_ptr != NULL)
     {
-        ASSERT_DEBUG_SYNC(max_variance_uniform_ptr->block_offset != -1,
+        ASSERT_DEBUG_SYNC(max_variance_uniform_ral_ptr->block_offset != -1,
                           "Max variance UB offset is -1");
 
-        uber_ptr->max_variance_ub_offset = max_variance_uniform_ptr->block_offset;
+        uber_ptr->max_variance_ub_offset = max_variance_uniform_ral_ptr->block_offset;
     }
 
-    if (mesh_sh3_uniform_ptr != NULL)
+    if (mesh_sh3_uniform_raGL_ptr != NULL)
     {
-        uber_ptr->mesh_sh3_uniform_location = mesh_sh3_uniform_ptr->location;
+        uber_ptr->mesh_sh3_uniform_location = mesh_sh3_uniform_raGL_ptr->location;
     }
-    if (mesh_sh3_data_offset_uniform_ptr != NULL)
+    if (mesh_sh3_data_offset_uniform_raGL_ptr != NULL)
     {
-        uber_ptr->mesh_sh3_data_offset_uniform_location = mesh_sh3_data_offset_uniform_ptr->location;
-    }
-
-    if (mesh_sh4_uniform_ptr != NULL)
-    {
-        uber_ptr->mesh_sh4_uniform_location = mesh_sh4_uniform_ptr->location;
-    }
-    if (mesh_sh4_data_offset_uniform_ptr != NULL)
-    {
-        uber_ptr->mesh_sh4_data_offset_uniform_location = mesh_sh4_data_offset_uniform_ptr->location;
+        uber_ptr->mesh_sh3_data_offset_uniform_location = mesh_sh3_data_offset_uniform_raGL_ptr->location;
     }
 
-    if (model_uniform_ptr != NULL)
+    if (mesh_sh4_uniform_raGL_ptr != NULL)
     {
-        ASSERT_DEBUG_SYNC(model_uniform_ptr->block_offset != -1,
+        uber_ptr->mesh_sh4_uniform_location = mesh_sh4_uniform_raGL_ptr->location;
+    }
+    if (mesh_sh4_data_offset_uniform_raGL_ptr != NULL)
+    {
+        uber_ptr->mesh_sh4_data_offset_uniform_location = mesh_sh4_data_offset_uniform_raGL_ptr->location;
+    }
+
+    if (model_uniform_ral_ptr != NULL)
+    {
+        ASSERT_DEBUG_SYNC(model_uniform_ral_ptr->block_offset != -1,
                           "Model matrix UB offset is -1");
 
-        uber_ptr->model_ub_offset = model_uniform_ptr->block_offset;
+        uber_ptr->model_ub_offset = model_uniform_ral_ptr->block_offset;
     }
 
-    if (near_plane_uniform_ptr != NULL)
+    if (near_plane_uniform_ral_ptr != NULL)
     {
-        ASSERT_DEBUG_SYNC(near_plane_uniform_ptr->block_offset != -1,
+        ASSERT_DEBUG_SYNC(near_plane_uniform_ral_ptr->block_offset != -1,
                           "Near plane UB offset is -1");
 
-        uber_ptr->near_plane_ub_offset = near_plane_uniform_ptr->block_offset;
+        uber_ptr->near_plane_ub_offset = near_plane_uniform_ral_ptr->block_offset;
     }
 
-    if (normal_matrix_uniform_ptr != NULL)
+    if (normal_matrix_uniform_ral_ptr != NULL)
     {
-        ASSERT_DEBUG_SYNC(normal_matrix_uniform_ptr->block_offset != -1,
+        ASSERT_DEBUG_SYNC(normal_matrix_uniform_ral_ptr->block_offset != -1,
                           "Normal matrix UB offset is -1");
 
-        uber_ptr->normal_matrix_ub_offset = normal_matrix_uniform_ptr->block_offset;
+        uber_ptr->normal_matrix_ub_offset = normal_matrix_uniform_ral_ptr->block_offset;
     }
 
-    if (shininess_material_sampler_uniform_ptr != NULL)
+    if (shininess_material_sampler_uniform_raGL_ptr != NULL)
     {
-        uber_ptr->shininess_material_sampler_uniform_location = shininess_material_sampler_uniform_ptr->location;
+        uber_ptr->shininess_material_sampler_uniform_location = shininess_material_sampler_uniform_raGL_ptr->location;
     }
 
-    if (shininess_material_uniform_ptr != NULL)
+    if (shininess_material_uniform_ral_ptr != NULL)
     {
-        ASSERT_DEBUG_SYNC(shininess_material_uniform_ptr->block_offset != -1,
+        ASSERT_DEBUG_SYNC(shininess_material_uniform_ral_ptr->block_offset != -1,
                           "Shininess material UB offset is -1");
 
-        uber_ptr->shininess_material_ub_offset = shininess_material_uniform_ptr->block_offset;
+        uber_ptr->shininess_material_ub_offset = shininess_material_uniform_ral_ptr->block_offset;
     }
 
-    if (specular_material_sampler_uniform_ptr != NULL)
+    if (specular_material_sampler_uniform_raGL_ptr != NULL)
     {
-        uber_ptr->specular_material_sampler_uniform_location = specular_material_sampler_uniform_ptr->location;
+        uber_ptr->specular_material_sampler_uniform_location = specular_material_sampler_uniform_raGL_ptr->location;
     }
 
-    if (specular_material_uniform_ptr != NULL)
+    if (specular_material_uniform_ral_ptr != NULL)
     {
-        uber_ptr->specular_material_ub_offset = specular_material_uniform_ptr->block_offset;
+        uber_ptr->specular_material_ub_offset = specular_material_uniform_ral_ptr->block_offset;
     }
 
-    if (vp_uniform_ptr != NULL)
+    if (vp_uniform_ral_ptr != NULL)
     {
-        ASSERT_DEBUG_SYNC(vp_uniform_ptr->block_offset != -1,
+        ASSERT_DEBUG_SYNC(vp_uniform_ral_ptr->block_offset != -1,
                           "VP UB offset is -1");
 
-        uber_ptr->vp_ub_offset = vp_uniform_ptr->block_offset;
+        uber_ptr->vp_ub_offset = vp_uniform_ral_ptr->block_offset;
     }
 
-    if (world_camera_uniform_ptr != NULL)
+    if (world_camera_uniform_ral_ptr != NULL)
     {
-        ASSERT_DEBUG_SYNC(world_camera_uniform_ptr->block_index != -1,
+        ASSERT_DEBUG_SYNC(world_camera_uniform_ral_ptr->block_offset != -1,
                           "World camera UB offset is -1");
 
-        uber_ptr->world_camera_ub_offset = world_camera_uniform_ptr->block_offset;
+        uber_ptr->world_camera_ub_offset = world_camera_uniform_ral_ptr->block_offset;
     }
 
     /* Retrieve uniform block IDs and their properties*/
@@ -1768,22 +1784,22 @@ PUBLIC EMERALD_API void ogl_uber_link(ogl_uber uber)
             case OGL_UBER_ITEM_LIGHT:
             {
                 /* Fragment shader stuff */
-                const ral_program_variable* light_ambient_color_uniform_ptr               = NULL;
-                const ral_program_variable* light_attenuations_uniform_ptr                = NULL;
-                const ral_program_variable* light_cone_angle_uniform_ptr                  = NULL;
-                const ral_program_variable* light_diffuse_uniform_ptr                     = NULL;
-                const ral_program_variable* light_direction_uniform_ptr                   = NULL;
-                const ral_program_variable* light_edge_angle_uniform_ptr                  = NULL;
-                const ral_program_variable* light_far_near_diff_uniform_ptr               = NULL;
-                const ral_program_variable* light_location_uniform_ptr                    = NULL;
-                const ral_program_variable* light_near_plane_uniform_ptr                  = NULL;
-                const ral_program_variable* light_projection_uniform_ptr                  = NULL;
-                const ral_program_variable* light_range_uniform_ptr                       = NULL;
-                const ral_program_variable* light_shadow_map_color_uniform_ptr            = NULL;
-                const ral_program_variable* light_shadow_map_depth_uniform_ptr            = NULL;
-                const ral_program_variable* light_shadow_map_vsm_cutoff_uniform_ptr       = NULL;
-                const ral_program_variable* light_shadow_map_vsm_min_variance_uniform_ptr = NULL;
-                const ral_program_variable* light_view_uniform_ptr                        = NULL;
+                const ral_program_variable*   light_ambient_color_uniform_ral_ptr               = NULL;
+                const ral_program_variable*   light_attenuations_uniform_ral_ptr                = NULL;
+                const ral_program_variable*   light_cone_angle_uniform_ral_ptr                  = NULL;
+                const ral_program_variable*   light_diffuse_uniform_ral_ptr                     = NULL;
+                const ral_program_variable*   light_direction_uniform_ral_ptr                   = NULL;
+                const ral_program_variable*   light_edge_angle_uniform_ral_ptr                  = NULL;
+                const ral_program_variable*   light_far_near_diff_uniform_ral_ptr               = NULL;
+                const ral_program_variable*   light_location_uniform_ral_ptr                    = NULL;
+                const ral_program_variable*   light_near_plane_uniform_ral_ptr                  = NULL;
+                const ral_program_variable*   light_projection_uniform_ral_ptr                  = NULL;
+                const ral_program_variable*   light_range_uniform_ral_ptr                       = NULL;
+                const _raGL_program_variable* light_shadow_map_color_uniform_raGL_ptr           = NULL;
+                const _raGL_program_variable* light_shadow_map_depth_uniform_raGL_ptr           = NULL;
+                const ral_program_variable*   light_shadow_map_vsm_cutoff_uniform_ral_ptr       = NULL;
+                const ral_program_variable*   light_shadow_map_vsm_min_variance_uniform_ral_ptr = NULL;
+                const ral_program_variable*   light_view_uniform_ral_ptr                        = NULL;
 
                 std::stringstream  light_attenuations_uniform_name_sstream;
                 std::stringstream  light_cone_angle_uniform_name_sstream;
@@ -1848,150 +1864,166 @@ PUBLIC EMERALD_API void ogl_uber_link(ogl_uber uber)
                                                                        << "_view";
 
                 raGL_program_get_uniform_by_name(program_raGL,
-                                                 system_hashed_ansi_string_create("ambient_color"),
-                                                &light_ambient_color_uniform_ptr);
-                raGL_program_get_uniform_by_name(program_raGL,
-                                                 system_hashed_ansi_string_create(light_attenuations_uniform_name_sstream.str().c_str() ),
-                                                &light_attenuations_uniform_ptr);
-                raGL_program_get_uniform_by_name(program_raGL,
-                                                 system_hashed_ansi_string_create(light_cone_angle_uniform_name_sstream.str().c_str() ),
-                                                &light_cone_angle_uniform_ptr);
-                raGL_program_get_uniform_by_name(program_raGL,
-                                                 system_hashed_ansi_string_create(light_diffuse_uniform_name_sstream.str().c_str() ),
-                                                &light_diffuse_uniform_ptr);
-                raGL_program_get_uniform_by_name(program_raGL,
-                                                 system_hashed_ansi_string_create(light_direction_uniform_name_sstream.str().c_str() ),
-                                                &light_direction_uniform_ptr);
-                raGL_program_get_uniform_by_name(program_raGL,
-                                                 system_hashed_ansi_string_create(light_edge_angle_uniform_name_sstream.str().c_str() ),
-                                                &light_edge_angle_uniform_ptr);
-                raGL_program_get_uniform_by_name(program_raGL,
-                                                 system_hashed_ansi_string_create(light_far_near_diff_uniform_name_sstream.str().c_str() ),
-                                                &light_far_near_diff_uniform_ptr);
-                raGL_program_get_uniform_by_name(program_raGL,
-                                                 system_hashed_ansi_string_create(light_location_uniform_name_sstream.str().c_str()  ),
-                                                &light_location_uniform_ptr);
-                raGL_program_get_uniform_by_name(program_raGL,
-                                                 system_hashed_ansi_string_create(light_near_plane_uniform_name_sstream.str().c_str() ),
-                                                &light_near_plane_uniform_ptr);
-                raGL_program_get_uniform_by_name(program_raGL,
-                                                 system_hashed_ansi_string_create(light_projection_uniform_name_sstream.str().c_str() ),
-                                                &light_projection_uniform_ptr);
-                raGL_program_get_uniform_by_name(program_raGL,
-                                                 system_hashed_ansi_string_create(light_range_uniform_name_sstream.str().c_str()  ),
-                                                &light_range_uniform_ptr);
-                raGL_program_get_uniform_by_name(program_raGL,
                                                  system_hashed_ansi_string_create(light_shadow_map_color_uniform_name_sstream.str().c_str() ),
-                                                &light_shadow_map_color_uniform_ptr);
+                                                &light_shadow_map_color_uniform_raGL_ptr);
                 raGL_program_get_uniform_by_name(program_raGL,
                                                  system_hashed_ansi_string_create(light_shadow_map_depth_uniform_name_sstream.str().c_str() ),
-                                                &light_shadow_map_depth_uniform_ptr);
-                raGL_program_get_uniform_by_name(program_raGL,
-                                                 system_hashed_ansi_string_create(light_view_uniform_name_sstream.str().c_str() ),
-                                                &light_view_uniform_ptr);
-                raGL_program_get_uniform_by_name(program_raGL,
-                                                 system_hashed_ansi_string_create(light_shadow_map_vsm_cutoff_uniform_name_sstream.str().c_str() ),
-                                                &light_shadow_map_vsm_cutoff_uniform_ptr);
-                raGL_program_get_uniform_by_name(program_raGL,
-                                                 system_hashed_ansi_string_create(light_shadow_map_vsm_min_variance_uniform_name_sstream.str().c_str() ),
-                                                &light_shadow_map_vsm_min_variance_uniform_ptr);
+                                                &light_shadow_map_depth_uniform_raGL_ptr);
 
-                if (light_ambient_color_uniform_ptr != NULL)
+                ral_program_get_block_variable_by_name(uber_ptr->program,
+                                                       system_hashed_ansi_string_create("FragmentShaderProperties"),
+                                                       system_hashed_ansi_string_create("ambient_color"),
+                                                      &light_ambient_color_uniform_ral_ptr);
+                ral_program_get_block_variable_by_name(uber_ptr->program,
+                                                       system_hashed_ansi_string_create("FragmentShaderProperties"),
+                                                       system_hashed_ansi_string_create(light_attenuations_uniform_name_sstream.str().c_str() ),
+                                                      &light_attenuations_uniform_ral_ptr);
+                ral_program_get_block_variable_by_name(uber_ptr->program,
+                                                       system_hashed_ansi_string_create("FragmentShaderProperties"),
+                                                       system_hashed_ansi_string_create(light_cone_angle_uniform_name_sstream.str().c_str() ),
+                                                      &light_cone_angle_uniform_ral_ptr);
+                ral_program_get_block_variable_by_name(uber_ptr->program,
+                                                       system_hashed_ansi_string_create("FragmentShaderProperties"),
+                                                       system_hashed_ansi_string_create(light_diffuse_uniform_name_sstream.str().c_str() ),
+                                                      &light_diffuse_uniform_ral_ptr);
+                ral_program_get_block_variable_by_name(uber_ptr->program,
+                                                       system_hashed_ansi_string_create("FragmentShaderProperties"),
+                                                       system_hashed_ansi_string_create(light_direction_uniform_name_sstream.str().c_str() ),
+                                                      &light_direction_uniform_ral_ptr);
+                ral_program_get_block_variable_by_name(uber_ptr->program,
+                                                       system_hashed_ansi_string_create("FragmentShaderProperties"),
+                                                       system_hashed_ansi_string_create(light_edge_angle_uniform_name_sstream.str().c_str() ),
+                                                      &light_edge_angle_uniform_ral_ptr);
+                ral_program_get_block_variable_by_name(uber_ptr->program,
+                                                       system_hashed_ansi_string_create("FragmentShaderProperties"),
+                                                       system_hashed_ansi_string_create(light_far_near_diff_uniform_name_sstream.str().c_str() ),
+                                                      &light_far_near_diff_uniform_ral_ptr);
+                ral_program_get_block_variable_by_name(uber_ptr->program,
+                                                       system_hashed_ansi_string_create("FragmentShaderProperties"),
+                                                       system_hashed_ansi_string_create(light_location_uniform_name_sstream.str().c_str()  ),
+                                                      &light_location_uniform_ral_ptr);
+                ral_program_get_block_variable_by_name(uber_ptr->program,
+                                                       system_hashed_ansi_string_create("FragmentShaderProperties"),
+                                                       system_hashed_ansi_string_create(light_near_plane_uniform_name_sstream.str().c_str() ),
+                                                      &light_near_plane_uniform_ral_ptr);
+                ral_program_get_block_variable_by_name(uber_ptr->program,
+                                                       system_hashed_ansi_string_create("FragmentShaderProperties"),
+                                                       system_hashed_ansi_string_create(light_projection_uniform_name_sstream.str().c_str() ),
+                                                      &light_projection_uniform_ral_ptr);
+                ral_program_get_block_variable_by_name(uber_ptr->program,
+                                                       system_hashed_ansi_string_create("FragmentShaderProperties"),
+                                                       system_hashed_ansi_string_create(light_range_uniform_name_sstream.str().c_str()  ),
+                                                      &light_range_uniform_ral_ptr);
+                ral_program_get_block_variable_by_name(uber_ptr->program,
+                                                       system_hashed_ansi_string_create("FragmentShaderProperties"),
+                                                       system_hashed_ansi_string_create(light_view_uniform_name_sstream.str().c_str() ),
+                                                      &light_view_uniform_ral_ptr);
+                ral_program_get_block_variable_by_name(uber_ptr->program,
+                                                       system_hashed_ansi_string_create("FragmentShaderProperties"),
+                                                       system_hashed_ansi_string_create(light_shadow_map_vsm_cutoff_uniform_name_sstream.str().c_str() ),
+                                                      &light_shadow_map_vsm_cutoff_uniform_ral_ptr);
+                ral_program_get_block_variable_by_name(uber_ptr->program,
+                                                       system_hashed_ansi_string_create("FragmentShaderProperties"),
+                                                       system_hashed_ansi_string_create(light_shadow_map_vsm_min_variance_uniform_name_sstream.str().c_str() ),
+                                                      &light_shadow_map_vsm_min_variance_uniform_ral_ptr);
+
+                if (light_ambient_color_uniform_ral_ptr != NULL)
                 {
-                    item_ptr->fragment_shader_item.ambient_color_ub_offset = light_ambient_color_uniform_ptr->block_offset;
+                    item_ptr->fragment_shader_item.ambient_color_ub_offset = light_ambient_color_uniform_ral_ptr->block_offset;
                 }
 
-                if (light_attenuations_uniform_ptr != NULL)
+                if (light_attenuations_uniform_ral_ptr != NULL)
                 {
-                    item_ptr->fragment_shader_item.current_light_attenuations_ub_offset = light_attenuations_uniform_ptr->block_offset;
+                    item_ptr->fragment_shader_item.current_light_attenuations_ub_offset = light_attenuations_uniform_ral_ptr->block_offset;
                 }
 
-                if (light_cone_angle_uniform_ptr != NULL)
+                if (light_cone_angle_uniform_ral_ptr != NULL)
                 {
-                    item_ptr->fragment_shader_item.current_light_cone_angle_ub_offset = light_cone_angle_uniform_ptr->block_offset;
+                    item_ptr->fragment_shader_item.current_light_cone_angle_ub_offset = light_cone_angle_uniform_ral_ptr->block_offset;
                 }
 
-                if (light_direction_uniform_ptr != NULL)
+                if (light_direction_uniform_ral_ptr != NULL)
                 {
-                    item_ptr->fragment_shader_item.current_light_direction_ub_offset = light_direction_uniform_ptr->block_offset;
+                    item_ptr->fragment_shader_item.current_light_direction_ub_offset = light_direction_uniform_ral_ptr->block_offset;
                 }
 
-                if (light_diffuse_uniform_ptr != NULL)
+                if (light_diffuse_uniform_ral_ptr != NULL)
                 {
-                    item_ptr->fragment_shader_item.current_light_diffuse_ub_offset  = light_diffuse_uniform_ptr->block_offset;
+                    item_ptr->fragment_shader_item.current_light_diffuse_ub_offset  = light_diffuse_uniform_ral_ptr->block_offset;
                 }
 
-                if (light_edge_angle_uniform_ptr != NULL)
+                if (light_edge_angle_uniform_ral_ptr != NULL)
                 {
-                    item_ptr->fragment_shader_item.current_light_edge_angle_ub_offset = light_edge_angle_uniform_ptr->block_offset;
+                    item_ptr->fragment_shader_item.current_light_edge_angle_ub_offset = light_edge_angle_uniform_ral_ptr->block_offset;
                 }
 
-                if (light_far_near_diff_uniform_ptr != NULL)
+                if (light_far_near_diff_uniform_ral_ptr != NULL)
                 {
-                    item_ptr->fragment_shader_item.current_light_far_near_diff_ub_offset = light_far_near_diff_uniform_ptr->block_offset;
+                    item_ptr->fragment_shader_item.current_light_far_near_diff_ub_offset = light_far_near_diff_uniform_ral_ptr->block_offset;
                 }
 
-                if (light_location_uniform_ptr != NULL)
+                if (light_location_uniform_ral_ptr != NULL)
                 {
-                    item_ptr->fragment_shader_item.current_light_location_ub_offset = light_location_uniform_ptr->block_offset;
+                    item_ptr->fragment_shader_item.current_light_location_ub_offset = light_location_uniform_ral_ptr->block_offset;
                 }
 
-                if (light_near_plane_uniform_ptr != NULL)
+                if (light_near_plane_uniform_ral_ptr != NULL)
                 {
-                    item_ptr->fragment_shader_item.current_light_near_plane_ub_offset = light_near_plane_uniform_ptr->block_offset;
+                    item_ptr->fragment_shader_item.current_light_near_plane_ub_offset = light_near_plane_uniform_ral_ptr->block_offset;
                 }
 
-                if (light_projection_uniform_ptr != NULL)
+                if (light_projection_uniform_ral_ptr != NULL)
                 {
-                    item_ptr->fragment_shader_item.current_light_projection_ub_offset = light_projection_uniform_ptr->block_offset;
+                    item_ptr->fragment_shader_item.current_light_projection_ub_offset = light_projection_uniform_ral_ptr->block_offset;
                 }
 
-                if (light_range_uniform_ptr != NULL)
+                if (light_range_uniform_ral_ptr != NULL)
                 {
-                    item_ptr->fragment_shader_item.current_light_range_ub_offset = light_range_uniform_ptr->block_offset;
+                    item_ptr->fragment_shader_item.current_light_range_ub_offset = light_range_uniform_ral_ptr->block_offset;
                 }
 
-                if (light_shadow_map_color_uniform_ptr != NULL)
+                if (light_shadow_map_color_uniform_raGL_ptr != NULL)
                 {
-                    item_ptr->fragment_shader_item.current_light_shadow_map_texture_color_sampler_location = light_shadow_map_color_uniform_ptr->location;
+                    item_ptr->fragment_shader_item.current_light_shadow_map_texture_color_sampler_location = light_shadow_map_color_uniform_raGL_ptr->location;
                 }
 
-                if (light_shadow_map_depth_uniform_ptr != NULL)
+                if (light_shadow_map_depth_uniform_raGL_ptr != NULL)
                 {
-                    item_ptr->fragment_shader_item.current_light_shadow_map_texture_depth_sampler_location = light_shadow_map_depth_uniform_ptr->location;
+                    item_ptr->fragment_shader_item.current_light_shadow_map_texture_depth_sampler_location = light_shadow_map_depth_uniform_raGL_ptr->location;
                 }
 
-                if (light_view_uniform_ptr != NULL)
+                if (light_view_uniform_ral_ptr != NULL)
                 {
-                    item_ptr->fragment_shader_item.current_light_view_ub_offset = light_view_uniform_ptr->block_offset;
+                    item_ptr->fragment_shader_item.current_light_view_ub_offset = light_view_uniform_ral_ptr->block_offset;
                 }
 
-                if (light_shadow_map_vsm_cutoff_uniform_ptr != NULL)
+                if (light_shadow_map_vsm_cutoff_uniform_ral_ptr != NULL)
                 {
-                    item_ptr->fragment_shader_item.current_light_shadow_map_vsm_cutoff_ub_offset = light_shadow_map_vsm_cutoff_uniform_ptr->block_offset;
+                    item_ptr->fragment_shader_item.current_light_shadow_map_vsm_cutoff_ub_offset = light_shadow_map_vsm_cutoff_uniform_ral_ptr->block_offset;
                 }
 
-                if (light_shadow_map_vsm_min_variance_uniform_ptr != NULL)
+                if (light_shadow_map_vsm_min_variance_uniform_ral_ptr != NULL)
                 {
-                    item_ptr->fragment_shader_item.current_light_shadow_map_vsm_min_variance_ub_offset = light_shadow_map_vsm_min_variance_uniform_ptr->block_offset;
+                    item_ptr->fragment_shader_item.current_light_shadow_map_vsm_min_variance_ub_offset = light_shadow_map_vsm_min_variance_uniform_ral_ptr->block_offset;
                 }
 
                 /* Vertex shader stuff */
                 std::stringstream           light_depth_vb_uniform_name_sstream;
-                const ral_program_variable* light_depth_vb_uniform_ptr = NULL;
-                shaders_vertex_uber_light   light_type                 = SHADERS_VERTEX_UBER_LIGHT_NONE;
+                const ral_program_variable* light_depth_vb_uniform_ral_ptr = NULL;
+                shaders_vertex_uber_light   light_type                     = SHADERS_VERTEX_UBER_LIGHT_NONE;
 
                 light_depth_vb_uniform_name_sstream << "light"
                                                     << n_item
                                                     << "_depth_vp";
 
-                raGL_program_get_uniform_by_name(program_raGL,
-                                                 system_hashed_ansi_string_create(light_depth_vb_uniform_name_sstream.str().c_str() ),
-                                                &light_depth_vb_uniform_ptr);
+                ral_program_get_block_variable_by_name(uber_ptr->program,
+                                                       system_hashed_ansi_string_create("VertexShaderProperties"),
+                                                       system_hashed_ansi_string_create(light_depth_vb_uniform_name_sstream.str().c_str() ),
+                                                      &light_depth_vb_uniform_ral_ptr);
 
-                if (light_depth_vb_uniform_ptr != NULL)
+                if (light_depth_vb_uniform_ral_ptr != NULL)
                 {
-                    item_ptr->vertex_shader_item.current_light_depth_vp_ub_offset = light_depth_vb_uniform_ptr->block_offset;
+                    item_ptr->vertex_shader_item.current_light_depth_vp_ub_offset = light_depth_vb_uniform_ral_ptr->block_offset;
                 }
                 else
                 {
@@ -2008,7 +2040,7 @@ PUBLIC EMERALD_API void ogl_uber_link(ogl_uber uber)
                 {
                     GLint                       sh_data_uniform_location = -1;
                     std::stringstream           sh_data_uniform_name_sstream;
-                    const ral_program_variable* sh_data_uniform_ptr      = NULL;
+                    const ral_program_variable* sh_data_uniform_ral_ptr  = NULL;
 
                     if (light_type == SHADERS_VERTEX_UBER_LIGHT_SH_3_BANDS)
                     {
@@ -2019,16 +2051,17 @@ PUBLIC EMERALD_API void ogl_uber_link(ogl_uber uber)
                         sh_data_uniform_name_sstream << "light" << n_item << "_sh4[0]";
                     }
 
-                    raGL_program_get_uniform_by_name(program_raGL,
-                                                     system_hashed_ansi_string_create(sh_data_uniform_name_sstream.str().c_str()),
-                                                    &sh_data_uniform_ptr);
+                    ral_program_get_block_variable_by_name(uber_ptr->program,
+                                                           system_hashed_ansi_string_create("VertexShaderProperties"),
+                                                           system_hashed_ansi_string_create(sh_data_uniform_name_sstream.str().c_str()),
+                                                          &sh_data_uniform_ral_ptr);
 
-                    ASSERT_DEBUG_SYNC(sh_data_uniform_ptr != NULL,
+                    ASSERT_DEBUG_SYNC(sh_data_uniform_ral_ptr != NULL,
                                       "Could not retrieve SH data uniform descriptor");
-                    ASSERT_DEBUG_SYNC(sh_data_uniform_ptr->block_offset != -1,
+                    ASSERT_DEBUG_SYNC(sh_data_uniform_ral_ptr->block_offset != -1,
                                       "UB offset for SH data is -1");
 
-                    item_ptr->vertex_shader_item.current_light_sh_data_ub_offset = sh_data_uniform_ptr->block_offset;
+                    item_ptr->vertex_shader_item.current_light_sh_data_ub_offset = sh_data_uniform_ral_ptr->block_offset;
                 }
 
                 break;

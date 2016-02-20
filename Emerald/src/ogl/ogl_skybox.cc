@@ -328,25 +328,27 @@ PRIVATE void _ogl_skybox_init_ogl_skybox_spherical_projection_texture(_ogl_skybo
     }
 
     /* Retrieve uniform locations */
-    const ral_program_variable* inverse_projection_uniform_ptr = NULL;
-    const ral_program_variable* mv_data_uniform_ptr            = NULL;
-    raGL_program                program_raGL                   = ral_context_get_program_gl(skybox_ptr->context,
-                                                                                            skybox_ptr->program);
-    const ral_program_variable* skybox_uniform_ptr             = NULL;
+    const ral_program_variable*   inverse_projection_uniform_ral_ptr = NULL;
+    const ral_program_variable*   mv_data_uniform_ral_ptr            = NULL;
+    raGL_program                  program_raGL                       = ral_context_get_program_gl(skybox_ptr->context,
+                                                                                                  skybox_ptr->program);
+    const _raGL_program_variable* skybox_uniform_raGL_ptr            = NULL;
 
-    raGL_program_get_uniform_by_name(program_raGL,
-                                     system_hashed_ansi_string_create("inv_projection"),
-                                    &inverse_projection_uniform_ptr);
-    raGL_program_get_uniform_by_name(program_raGL,
-                                     system_hashed_ansi_string_create("mv"),
-                                    &mv_data_uniform_ptr);
-    raGL_program_get_uniform_by_name(program_raGL,
-                                     system_hashed_ansi_string_create("skybox"),
-                                    &skybox_uniform_ptr);
+    ral_program_get_block_variable_by_name(skybox_ptr->program,
+                                           system_hashed_ansi_string_create("dataVS"),
+                                           system_hashed_ansi_string_create("inv_projection"),
+                                          &inverse_projection_uniform_ral_ptr);
+    ral_program_get_block_variable_by_name(skybox_ptr->program,
+                                           system_hashed_ansi_string_create("dataVS"),
+                                           system_hashed_ansi_string_create("mv"),
+                                          &mv_data_uniform_ral_ptr);
+    raGL_program_get_uniform_by_name      (program_raGL,
+                                           system_hashed_ansi_string_create("skybox"),
+                                          &skybox_uniform_raGL_ptr);
 
-    skybox_ptr->inverse_projection_ub_offset = (inverse_projection_uniform_ptr != NULL) ? inverse_projection_uniform_ptr->block_offset : -1;
-    skybox_ptr->mv_ub_offset                 = (mv_data_uniform_ptr            != NULL) ? mv_data_uniform_ptr->block_offset            : -1;
-    skybox_ptr->skybox_uniform_location      = (skybox_uniform_ptr             != NULL) ? skybox_uniform_ptr->location                 : -1;
+    skybox_ptr->inverse_projection_ub_offset = (inverse_projection_uniform_ral_ptr != NULL) ? inverse_projection_uniform_ral_ptr->block_offset : -1;
+    skybox_ptr->mv_ub_offset                 = (mv_data_uniform_ral_ptr            != NULL) ? mv_data_uniform_ral_ptr->block_offset            : -1;
+    skybox_ptr->skybox_uniform_location      = (skybox_uniform_raGL_ptr            != NULL) ? skybox_uniform_raGL_ptr->location                : -1;
 
     /* Retrieve uniform block info */
     _ogl_skybox_init_ub(skybox_ptr);

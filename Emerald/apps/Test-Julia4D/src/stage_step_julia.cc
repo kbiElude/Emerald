@@ -497,18 +497,18 @@ PUBLIC void stage_step_julia_init(ral_context  context,
                                (const void**) result_shaders);
 
     /* Retrieve attribute/uniform locations */
-    const ral_program_variable*  data_uniform_ptr                      = NULL;
-    const ral_program_variable*  epsilon_uniform_ptr                   = NULL;
-    const ral_program_variable*  escape_uniform_ptr                    = NULL;
-    const ral_program_variable*  eye_uniform_ptr                       = NULL;
-    const ral_program_variable*  light_color_uniform_ptr               = NULL;
-    const ral_program_variable*  light_position_uniform_ptr            = NULL;
-    const ral_program_variable*  max_iterations_uniform_ptr            = NULL;
-    const ral_program_variable*  mvp_uniform_ptr                       = NULL;
-    const ral_program_variable*  raycast_radius_multiplier_uniform_ptr = NULL;
-    const ral_program_variable*  shadows_uniform_ptr                   = NULL;
-    const ral_program_variable*  specularity_uniform_ptr               = NULL;
-    const ral_program_attribute* vertex_attribute_ptr                  = NULL;
+    const ral_program_variable*    data_uniform_ptr                      = NULL;
+    const ral_program_variable*    epsilon_uniform_ptr                   = NULL;
+    const ral_program_variable*    escape_uniform_ptr                    = NULL;
+    const ral_program_variable*    eye_uniform_ptr                       = NULL;
+    const ral_program_variable*    light_color_uniform_ptr               = NULL;
+    const ral_program_variable*    light_position_uniform_ptr            = NULL;
+    const ral_program_variable*    max_iterations_uniform_ptr            = NULL;
+    const ral_program_variable*    mvp_uniform_ptr                       = NULL;
+    const ral_program_variable*    raycast_radius_multiplier_uniform_ptr = NULL;
+    const ral_program_variable*    shadows_uniform_ptr                   = NULL;
+    const ral_program_variable*    specularity_uniform_ptr               = NULL;
+    const _raGL_program_attribute* vertex_attribute_ptr                  = NULL;
 
     const raGL_program julia_po_raGL = ral_context_get_program_gl(context,
                                                                   _julia_program);
@@ -516,40 +516,50 @@ PUBLIC void stage_step_julia_init(ral_context  context,
     raGL_program_get_vertex_attribute_by_name(julia_po_raGL,
                                               system_hashed_ansi_string_create("vertex"),
                                              &vertex_attribute_ptr);
-
-    raGL_program_get_uniform_by_name  (julia_po_raGL,
-                                       system_hashed_ansi_string_create("data"),
-                                      &data_uniform_ptr);
-    raGL_program_get_uniform_by_name  (julia_po_raGL,
-                                        system_hashed_ansi_string_create("epsilon"),
-                                       &epsilon_uniform_ptr);
-    raGL_program_get_uniform_by_name  (julia_po_raGL,
-                                       system_hashed_ansi_string_create("escape"),
-                                      &escape_uniform_ptr);
-    raGL_program_get_uniform_by_name  (julia_po_raGL,
-                                       system_hashed_ansi_string_create("eye"),
-                                      &eye_uniform_ptr);
-    raGL_program_get_uniform_by_name  (julia_po_raGL,
-                                       system_hashed_ansi_string_create("light_color"),
-                                      &light_color_uniform_ptr);
-    raGL_program_get_uniform_by_name  (julia_po_raGL,
-                                       system_hashed_ansi_string_create("light_position"),
-                                      &light_position_uniform_ptr);
-    raGL_program_get_uniform_by_name  (julia_po_raGL,
-                                       system_hashed_ansi_string_create("max_iterations"),
-                                      &max_iterations_uniform_ptr);
-    raGL_program_get_uniform_by_name  (julia_po_raGL,
-                                       system_hashed_ansi_string_create("mvp"),
-                                      &mvp_uniform_ptr);
-    raGL_program_get_uniform_by_name  (julia_po_raGL,
-                                       system_hashed_ansi_string_create("raycast_radius_multiplier"),
-                                      &raycast_radius_multiplier_uniform_ptr);
-    raGL_program_get_uniform_by_name  (julia_po_raGL,
-                                       system_hashed_ansi_string_create("shadows"),
-                                      &shadows_uniform_ptr);
-    raGL_program_get_uniform_by_name  (julia_po_raGL,
-                                       system_hashed_ansi_string_create("specularity"),
-                                      &specularity_uniform_ptr);
+    ral_program_get_block_variable_by_name   (_julia_program,
+                                              system_hashed_ansi_string_create("dataUB"),
+                                              system_hashed_ansi_string_create("data"),
+                                             &data_uniform_ptr);
+    ral_program_get_block_variable_by_name   (_julia_program,
+                                              system_hashed_ansi_string_create("dataUB"),
+                                              system_hashed_ansi_string_create("epsilon"),
+                                             &epsilon_uniform_ptr);
+    ral_program_get_block_variable_by_name   (_julia_program,
+                                              system_hashed_ansi_string_create("dataUB"),
+                                              system_hashed_ansi_string_create("escape"),
+                                             &escape_uniform_ptr);
+    ral_program_get_block_variable_by_name   (_julia_program,
+                                              system_hashed_ansi_string_create("dataUB"),
+                                              system_hashed_ansi_string_create("eye"),
+                                             &eye_uniform_ptr);
+    ral_program_get_block_variable_by_name   (_julia_program,
+                                              system_hashed_ansi_string_create("dataUB"),
+                                              system_hashed_ansi_string_create("light_color"),
+                                             &light_color_uniform_ptr);
+    ral_program_get_block_variable_by_name   (_julia_program,
+                                              system_hashed_ansi_string_create("dataUB"),
+                                              system_hashed_ansi_string_create("light_position"),
+                                             &light_position_uniform_ptr);
+    ral_program_get_block_variable_by_name   (_julia_program,
+                                              system_hashed_ansi_string_create("dataUB"),
+                                              system_hashed_ansi_string_create("max_iterations"),
+                                             &max_iterations_uniform_ptr);
+    ral_program_get_block_variable_by_name   (_julia_program,
+                                              system_hashed_ansi_string_create("dataUB"),
+                                              system_hashed_ansi_string_create("mvp"),
+                                             &mvp_uniform_ptr);
+    ral_program_get_block_variable_by_name   (_julia_program,
+                                              system_hashed_ansi_string_create("dataUB"),
+                                              system_hashed_ansi_string_create("raycast_radius_multiplier"),
+                                             &raycast_radius_multiplier_uniform_ptr);
+    ral_program_get_block_variable_by_name   (_julia_program,
+                                              system_hashed_ansi_string_create("dataUB"),
+                                              system_hashed_ansi_string_create("shadows"),
+                                             &shadows_uniform_ptr);
+    ral_program_get_block_variable_by_name   (_julia_program,
+                                              system_hashed_ansi_string_create("dataUB"),
+                                              system_hashed_ansi_string_create("specularity"),
+                                             &specularity_uniform_ptr);
 
     _julia_data_ub_offset                      = (data_uniform_ptr                      != NULL) ? data_uniform_ptr->block_offset                      : -1;
     _julia_epsilon_ub_offset                   = (epsilon_uniform_ptr                   != NULL) ? epsilon_uniform_ptr->block_offset                   : -1;

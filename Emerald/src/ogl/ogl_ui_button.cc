@@ -220,28 +220,32 @@ PRIVATE void _ogl_ui_button_init_renderer_callback(ogl_context context,
                              &program_raGL_id);
 
     /* Retrieve uniform UB offsets */
-    const ral_program_variable* border_width_uniform_ptr = NULL;
-    const ral_program_variable* brightness_uniform_ptr   = NULL;
-    const ral_program_variable* stop_data_uniform_ptr    = NULL;
-    const ral_program_variable* x1y1x2y2_uniform_ptr     = NULL;
+    const ral_program_variable* border_width_uniform_ral_ptr = NULL;
+    const ral_program_variable* brightness_uniform_ral_ptr   = NULL;
+    const ral_program_variable* stop_data_uniform_ral_ptr    = NULL;
+    const ral_program_variable* x1y1x2y2_uniform_ral_ptr     = NULL;
 
-    raGL_program_get_uniform_by_name(program_raGL,
-                                     system_hashed_ansi_string_create("border_width"),
-                                    &border_width_uniform_ptr);
-    raGL_program_get_uniform_by_name(program_raGL,
-                                     system_hashed_ansi_string_create("brightness"),
-                                    &brightness_uniform_ptr);
-    raGL_program_get_uniform_by_name(program_raGL,
-                                     system_hashed_ansi_string_create("stop_data[0]"),
-                                    &stop_data_uniform_ptr);
-    raGL_program_get_uniform_by_name(program_raGL,
-                                     system_hashed_ansi_string_create("x1y1x2y2"),
-                                    &x1y1x2y2_uniform_ptr);
+    ral_program_get_block_variable_by_name(button_ptr->program,
+                                           system_hashed_ansi_string_create("dataFS"),
+                                           system_hashed_ansi_string_create("border_width"),
+                                          &border_width_uniform_ral_ptr);
+    ral_program_get_block_variable_by_name(button_ptr->program,
+                                           system_hashed_ansi_string_create("dataFS"),
+                                           system_hashed_ansi_string_create("brightness"),
+                                          &brightness_uniform_ral_ptr);
+    ral_program_get_block_variable_by_name(button_ptr->program,
+                                           system_hashed_ansi_string_create("dataFS"),
+                                           system_hashed_ansi_string_create("stop_data[0]"),
+                                          &stop_data_uniform_ral_ptr);
+    ral_program_get_block_variable_by_name(button_ptr->program,
+                                           system_hashed_ansi_string_create("dataVS"),
+                                           system_hashed_ansi_string_create("x1y1x2y2"),
+                                          &x1y1x2y2_uniform_ral_ptr);
 
-    button_ptr->program_border_width_ub_offset = border_width_uniform_ptr->block_offset;
-    button_ptr->program_brightness_ub_offset   = brightness_uniform_ptr->block_offset;
-    button_ptr->program_stop_data_ub_offset    = stop_data_uniform_ptr->block_offset;
-    button_ptr->program_x1y1x2y2_ub_offset     = x1y1x2y2_uniform_ptr->block_offset;
+    button_ptr->program_border_width_ub_offset = border_width_uniform_ral_ptr->block_offset;
+    button_ptr->program_brightness_ub_offset   = brightness_uniform_ral_ptr->block_offset;
+    button_ptr->program_stop_data_ub_offset    = stop_data_uniform_ral_ptr->block_offset;
+    button_ptr->program_x1y1x2y2_ub_offset     = x1y1x2y2_uniform_ral_ptr->block_offset;
 
     /* Retrieve uniform block data */
     unsigned int ub_fs_index = -1;
@@ -287,7 +291,7 @@ PRIVATE void _ogl_ui_button_init_renderer_callback(ogl_context context,
 
     /* Set them up */
     ogl_program_ub_set_arrayed_uniform_value(button_ptr->program_ub_fs,
-                                             stop_data_uniform_ptr->block_offset,
+                                             stop_data_uniform_ral_ptr->block_offset,
                                              stop_data,
                                              0, /* src_data_flags */
                                              sizeof(stop_data),

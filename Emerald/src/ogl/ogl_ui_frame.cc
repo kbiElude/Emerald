@@ -375,13 +375,14 @@ PUBLIC void* ogl_ui_frame_init(ogl_ui       instance,
                                               0); /* uniformBlockBinding */
 
         /* Retrieve the uniforms */
-        const ral_program_variable* x1y1x2y2_uniform_ptr = NULL;
+        const ral_program_variable* x1y1x2y2_uniform_ral_ptr = NULL;
 
-        raGL_program_get_uniform_by_name(program_raGL,
-                                         system_hashed_ansi_string_create("x1y1x2y2"),
-                                        &x1y1x2y2_uniform_ptr);
+        ral_program_get_block_variable_by_name(new_frame_ptr->program,
+                                               system_hashed_ansi_string_create("dataVS"),
+                                               system_hashed_ansi_string_create("x1y1x2y2"),
+                                              &x1y1x2y2_uniform_ral_ptr);
 
-        new_frame_ptr->program_x1y1x2y2_ub_offset = x1y1x2y2_uniform_ptr->block_offset;
+        new_frame_ptr->program_x1y1x2y2_ub_offset = x1y1x2y2_uniform_ral_ptr->block_offset;
     } /* if (new_frame_ptr != NULL) */
 
     return (void*) new_frame_ptr;

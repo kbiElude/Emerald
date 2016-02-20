@@ -583,11 +583,10 @@ PRIVATE void _ogl_text_construction_callback_from_renderer(ogl_context context,
             }
 
             /* Retrieve uniform locations */
-            const ral_program_variable* fragment_shader_color_ptr            = NULL;
-            const ral_program_variable* fragment_shader_font_table_ptr       = NULL;
-            const ral_program_variable* vertex_shader_data_ptr               = NULL;
-            const ral_program_variable* vertex_shader_n_origin_character_ptr = NULL;
-            const ral_program_variable* vertex_shader_scale_ptr              = NULL;
+            const ral_program_variable*   fragment_shader_color_ral_ptr            = NULL;
+            const _raGL_program_variable* fragment_shader_font_table_raGL_ptr      = NULL;
+            const ral_program_variable*   vertex_shader_n_origin_character_ral_ptr = NULL;
+            const ral_program_variable*   vertex_shader_scale_ral_ptr              = NULL;
 
             draw_text_program_raGL = ral_context_get_program_gl(text_ptr->context,
                                                                 _global.draw_text_program);
@@ -596,9 +595,10 @@ PRIVATE void _ogl_text_construction_callback_from_renderer(ogl_context context,
                                       RAGL_PROGRAM_PROPERTY_ID,
                                      &draw_text_program_raGL_id);
 
-            if (!raGL_program_get_uniform_by_name(draw_text_program_raGL,
-                                                  system_hashed_ansi_string_create("color"),
-                                                 &fragment_shader_color_ptr) )
+            if (!ral_program_get_block_variable_by_name(_global.draw_text_program,
+                                                        system_hashed_ansi_string_create("FSData"),
+                                                        system_hashed_ansi_string_create("color"),
+                                                       &fragment_shader_color_ral_ptr) )
             {
                 ASSERT_DEBUG_SYNC(false,
                                   "Could not retrieve color uniform descriptor.");
@@ -606,23 +606,25 @@ PRIVATE void _ogl_text_construction_callback_from_renderer(ogl_context context,
             else
             if (!raGL_program_get_uniform_by_name(draw_text_program_raGL,
                                                   system_hashed_ansi_string_create("font_table"),
-                                                 &fragment_shader_font_table_ptr) )
+                                                 &fragment_shader_font_table_raGL_ptr) )
             {
                 ASSERT_DEBUG_SYNC(false,
                                   "Could not retrieve font table uniform descriptor.");
             }
             else
-            if (!raGL_program_get_uniform_by_name(draw_text_program_raGL,
-                                                  system_hashed_ansi_string_create("n_origin_character"),
-                                                 &vertex_shader_n_origin_character_ptr))
+            if (!ral_program_get_block_variable_by_name(_global.draw_text_program,
+                                                        system_hashed_ansi_string_create("VSData"),
+                                                        system_hashed_ansi_string_create("n_origin_character"),
+                                                       &vertex_shader_n_origin_character_ral_ptr))
             {
                 ASSERT_DEBUG_SYNC(false,
                                   "Could not retrieve n origin character uniform descriptor.");
             }
             else
-            if (!raGL_program_get_uniform_by_name(draw_text_program_raGL,
-                                                  system_hashed_ansi_string_create("scale"),
-                                                 &vertex_shader_scale_ptr) )
+            if (!ral_program_get_block_variable_by_name(_global.draw_text_program,
+                                                        system_hashed_ansi_string_create("VSData"),
+                                                        system_hashed_ansi_string_create("scale"),
+                                                       &vertex_shader_scale_ral_ptr) )
             {
                 ASSERT_DEBUG_SYNC(false,
                                   "Could not retrieve scale uniform descriptor.");
@@ -638,10 +640,10 @@ PRIVATE void _ogl_text_construction_callback_from_renderer(ogl_context context,
             }
             else
             {
-                _global.draw_text_fragment_shader_color_ub_offset            = fragment_shader_color_ptr->block_offset;
-                _global.draw_text_fragment_shader_font_table_location        = fragment_shader_font_table_ptr->location;
-                _global.draw_text_vertex_shader_n_origin_character_ub_offset = vertex_shader_n_origin_character_ptr->block_offset;
-                _global.draw_text_vertex_shader_scale_ub_offset              = vertex_shader_scale_ptr->block_offset;
+                _global.draw_text_fragment_shader_color_ub_offset            = fragment_shader_color_ral_ptr->block_offset;
+                _global.draw_text_fragment_shader_font_table_location        = fragment_shader_font_table_raGL_ptr->location;
+                _global.draw_text_vertex_shader_n_origin_character_ub_offset = vertex_shader_n_origin_character_ral_ptr->block_offset;
+                _global.draw_text_vertex_shader_scale_ub_offset              = vertex_shader_scale_ral_ptr->block_offset;
 
                 ASSERT_DEBUG_SYNC(_global.draw_text_fragment_shader_color_ub_offset != -1,
                                   "FSData color uniform UB offset is -1");

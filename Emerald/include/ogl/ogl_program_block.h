@@ -23,6 +23,8 @@
 #define OGL_PROGRAM_BLOCK_H
 
 #include "ogl/ogl_types.h"
+#include "raGL/raGL_program.h"
+#include "raGL/raGL_types.h"
 #include "ral/ral_types.h"
 #include "system/system_types.h"
 
@@ -49,17 +51,6 @@ typedef enum
 
 } ogl_program_block_property;
 
-typedef enum
-{
-    /* Shader storage buffer block */
-    OGL_PROGRAM_BLOCK_TYPE_SHADER_STORAGE_BUFFER,
-
-    /* Uniform buffer block */
-    OGL_PROGRAM_BLOCK_TYPE_UNIFORM_BUFFER
-
-} ogl_program_block_type;
-
-
 /** TODO
  *
  *  Internal use only
@@ -74,14 +65,14 @@ PUBLIC RENDERING_CONTEXT_CALL ogl_program_block ogl_program_block_create(ral_con
                                                                          bool                      support_sync_behavior);
 
 /** TODO */
-PUBLIC bool ogl_program_block_get_block_variable(ogl_program_block            block,
-                                                 unsigned int                 index,
-                                                 const ral_program_variable** out_variable_ptr);
+PUBLIC bool ogl_program_block_get_block_variable(ogl_program_block              block,
+                                                 unsigned int                   index,
+                                                 const _raGL_program_variable** out_variable_ptr);
 
 /** TODO */
-PUBLIC bool ogl_program_block_get_block_variable_by_name(ogl_program_block            block,
-                                                         system_hashed_ansi_string    name,
-                                                         const ral_program_variable** out_variable_ptr);
+PUBLIC bool ogl_program_block_get_block_variable_by_name(ogl_program_block              block,
+                                                         system_hashed_ansi_string      name,
+                                                         const _raGL_program_variable** out_variable_ptr);
 
 /** TODO */
 PUBLIC void ogl_program_block_get_property(const ogl_program_block    block,

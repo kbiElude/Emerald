@@ -271,28 +271,32 @@ PRIVATE void _ogl_ui_checkbox_init_renderer_callback(ogl_context context,
     border_width[1] = 1.0f / (float)((checkbox_ptr->x1y1x2y2[3] - checkbox_ptr->x1y1x2y2[1]) * window_size[1]);
 
     /* Retrieve uniform locations */
-    const ral_program_variable* border_width_uniform    = NULL;
-    const ral_program_variable* brightness_uniform      = NULL;
-    const ral_program_variable* text_brightness_uniform = NULL;
-    const ral_program_variable* x1y1x2y2_uniform        = NULL;
+    const ral_program_variable* border_width_uniform_ral_ptr    = NULL;
+    const ral_program_variable* brightness_uniform_ral_ptr      = NULL;
+    const ral_program_variable* text_brightness_uniform_ral_ptr = NULL;
+    const ral_program_variable* x1y1x2y2_uniform_ral_ptr        = NULL;
 
-    raGL_program_get_uniform_by_name(program_raGL,
-                                     system_hashed_ansi_string_create("border_width"),
-                                    &border_width_uniform);
-    raGL_program_get_uniform_by_name(program_raGL,
-                                     system_hashed_ansi_string_create("brightness"),
-                                    &brightness_uniform);
-    raGL_program_get_uniform_by_name(program_raGL,
-                                     system_hashed_ansi_string_create("text_brightness"),
-                                    &text_brightness_uniform);
-    raGL_program_get_uniform_by_name(program_raGL,
-                                     system_hashed_ansi_string_create("x1y1x2y2"),
-                                    &x1y1x2y2_uniform);
+    ral_program_get_block_variable_by_name(checkbox_ptr->program,
+                                           system_hashed_ansi_string_create("dataFS"),
+                                           system_hashed_ansi_string_create("border_width"),
+                                          &border_width_uniform_ral_ptr);
+    ral_program_get_block_variable_by_name(checkbox_ptr->program,
+                                           system_hashed_ansi_string_create("dataFS"),
+                                           system_hashed_ansi_string_create("brightness"),
+                                          &brightness_uniform_ral_ptr);
+    ral_program_get_block_variable_by_name(checkbox_ptr->program,
+                                           system_hashed_ansi_string_create("dataFS"),
+                                           system_hashed_ansi_string_create("text_brightness"),
+                                          &text_brightness_uniform_ral_ptr);
+    ral_program_get_block_variable_by_name(checkbox_ptr->program,
+                                           system_hashed_ansi_string_create("dataVS"),
+                                           system_hashed_ansi_string_create("x1y1x2y2"),
+                                          &x1y1x2y2_uniform_ral_ptr);
 
-    checkbox_ptr->program_border_width_ub_offset    = border_width_uniform->block_offset;
-    checkbox_ptr->program_brightness_ub_offset      = brightness_uniform->block_offset;
-    checkbox_ptr->program_text_brightness_ub_offset = text_brightness_uniform->block_offset;
-    checkbox_ptr->program_x1y1x2y2_ub_offset        = x1y1x2y2_uniform->block_offset;
+    checkbox_ptr->program_border_width_ub_offset    = border_width_uniform_ral_ptr->block_offset;
+    checkbox_ptr->program_brightness_ub_offset      = brightness_uniform_ral_ptr->block_offset;
+    checkbox_ptr->program_text_brightness_ub_offset = text_brightness_uniform_ral_ptr->block_offset;
+    checkbox_ptr->program_x1y1x2y2_ub_offset        = x1y1x2y2_uniform_ral_ptr->block_offset;
 
     /* Set up uniform blocks */
     checkbox_ptr->program_ub_fs = NULL;
@@ -328,12 +332,12 @@ PRIVATE void _ogl_ui_checkbox_init_renderer_callback(ogl_context context,
     const float default_brightness = NONFOCUSED_BRIGHTNESS;
 
     ogl_program_ub_set_nonarrayed_uniform_value(checkbox_ptr->program_ub_fs,
-                                                border_width_uniform->block_offset,
+                                                border_width_uniform_ral_ptr->block_offset,
                                                &border_width,
                                                 0, /* src_data_flags */
                                                 sizeof(float) * 2);
     ogl_program_ub_set_nonarrayed_uniform_value(checkbox_ptr->program_ub_fs,
-                                                text_brightness_uniform->block_offset,
+                                                text_brightness_uniform_ral_ptr->block_offset,
                                                &default_brightness,
                                                 0, /* src_data_flags */
                                                 sizeof(float) );

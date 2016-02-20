@@ -217,25 +217,27 @@ PUBLIC void stage_step_light_init(ral_context  context,
     shaders_vertex_combinedmvp_generic_release(vertex_shader);
 
     /* Retrieve attribute/uniform locations */
-    const ral_program_variable*  color_uniform_ptr         = NULL;
-    const ral_program_attribute* in_position_attribute_ptr = NULL;
-    const ral_program_variable*  mvp_uniform_ptr           = NULL;
+    const ral_program_variable*    color_uniform_ral_ptr          = NULL;
+    const _raGL_program_attribute* in_position_attribute_raGL_ptr = NULL;
+    const ral_program_variable*    mvp_uniform_ral_ptr            = NULL;
 
     const raGL_program light_po_raGL = ral_context_get_program_gl(context,
                                                                   _light_program);
     raGL_program_get_vertex_attribute_by_name(light_po_raGL,
                                               system_hashed_ansi_string_create("in_position"),
-                                             &in_position_attribute_ptr);
-    raGL_program_get_uniform_by_name         (light_po_raGL,
+                                             &in_position_attribute_raGL_ptr);
+    ral_program_get_block_variable_by_name   (_light_program,
+                                              system_hashed_ansi_string_create("dataFS"),
                                               system_hashed_ansi_string_create("color"),
-                                             &color_uniform_ptr);
-    raGL_program_get_uniform_by_name          (light_po_raGL,
+                                             &color_uniform_ral_ptr);
+    ral_program_get_block_variable_by_name   (_light_program,
+                                              system_hashed_ansi_string_create("dataVS"),
                                               system_hashed_ansi_string_create("mvp"),
-                                             &mvp_uniform_ptr);
+                                             &mvp_uniform_ral_ptr);
 
-    _light_color_ub_offset                = (color_uniform_ptr         != NULL) ? color_uniform_ptr->block_offset     : -1;
-    _light_in_position_attribute_location = (in_position_attribute_ptr != NULL) ? in_position_attribute_ptr->location : -1;
-    _light_mvp_ub_offset                  = (mvp_uniform_ptr           != NULL) ? mvp_uniform_ptr->block_offset       : -1;
+    _light_color_ub_offset                = (color_uniform_ral_ptr          != NULL) ? color_uniform_ral_ptr->block_offset      : -1;
+    _light_in_position_attribute_location = (in_position_attribute_raGL_ptr != NULL) ? in_position_attribute_raGL_ptr->location : -1;
+    _light_mvp_ub_offset                  = (mvp_uniform_ral_ptr            != NULL) ? mvp_uniform_ral_ptr->block_offset        : -1;
 
     /* Retrieve uniform block properties */
     raGL_program_get_uniform_block_by_name(light_po_raGL,

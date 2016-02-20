@@ -164,19 +164,20 @@ PUBLIC void _postprocessing_blur_poisson_init_renderer_callback(ogl_context cont
                               shaders_vertex_fullscreen_get_shader(vertex_shader) );
 
     /* Retrieve attribute & uniform locations */
-    const ral_program_variable* blur_strength_uniform_ptr = NULL;
+    const ral_program_variable* blur_strength_uniform_ral_ptr = NULL;
 
     po_raGL = ral_context_get_program_gl(poisson_ptr->context,
                                          poisson_ptr->program);
 
-    raGL_program_get_uniform_by_name(po_raGL,
-                                     system_hashed_ansi_string_create("blur_strength"),
-                                    &blur_strength_uniform_ptr);
+    ral_program_get_block_variable_by_name(poisson_ptr->program,
+                                           system_hashed_ansi_string_create("dataFS"),
+                                           system_hashed_ansi_string_create("blur_strength"),
+                                          &blur_strength_uniform_ral_ptr);
 
-    ASSERT_DEBUG_SYNC(blur_strength_uniform_ptr->block_offset != -1,
+    ASSERT_DEBUG_SYNC(blur_strength_uniform_ral_ptr->block_offset != -1,
                       "Blur strength UB offset is -1");
 
-    poisson_ptr->blur_strength_ub_offset = blur_strength_uniform_ptr->block_offset;
+    poisson_ptr->blur_strength_ub_offset = blur_strength_uniform_ral_ptr->block_offset;
 
     /* Retrieve UB info */
     raGL_program_get_uniform_block_by_name(po_raGL,

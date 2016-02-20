@@ -609,45 +609,46 @@ PUBLIC void stage_step_dof_scheuermann_init(ral_context  context,
                                           &_dof_scheuermann_combination_po_ub_bo);
 
     /* Retrieve combination program uniform locations */
-    const ral_program_variable* bg_uniform_ptr         = NULL;
-    const ral_program_variable* data_high_uniform_ptr  = NULL;
-    const ral_program_variable* data_low_uniform_ptr   = NULL;
-    const ral_program_variable* depth_high_uniform_ptr = NULL;
-    const ral_program_variable* max_coc_px_uniform_ptr = NULL;
+    const _raGL_program_variable* bg_uniform_raGL_ptr         = NULL;
+    const _raGL_program_variable* data_high_uniform_raGL_ptr  = NULL;
+    const _raGL_program_variable* data_low_uniform_raGL_ptr   = NULL;
+    const _raGL_program_variable* depth_high_uniform_raGL_ptr = NULL;
+    const ral_program_variable*   max_coc_px_uniform_ral_ptr = NULL;
 
-    raGL_program_get_uniform_by_name(dof_scheuermann_combination_po_raGL,
-                                     system_hashed_ansi_string_create("bg"),
-                                    &bg_uniform_ptr);
-    raGL_program_get_uniform_by_name(dof_scheuermann_combination_po_raGL,
-                                     system_hashed_ansi_string_create("data_high"),
-                                    &data_high_uniform_ptr);
-    raGL_program_get_uniform_by_name(dof_scheuermann_combination_po_raGL,
-                                     system_hashed_ansi_string_create("data_low"),
-                                    &data_low_uniform_ptr);
-    raGL_program_get_uniform_by_name(dof_scheuermann_combination_po_raGL,
-                                     system_hashed_ansi_string_create("depth_high"),
-                                    &depth_high_uniform_ptr);
-    raGL_program_get_uniform_by_name(dof_scheuermann_combination_po_raGL,
-                                     system_hashed_ansi_string_create("max_coc_px"),
-                                    &max_coc_px_uniform_ptr);
+    raGL_program_get_uniform_by_name      (dof_scheuermann_combination_po_raGL,
+                                           system_hashed_ansi_string_create("bg"),
+                                          &bg_uniform_raGL_ptr);
+    raGL_program_get_uniform_by_name      (dof_scheuermann_combination_po_raGL,
+                                           system_hashed_ansi_string_create("data_high"),
+                                          &data_high_uniform_raGL_ptr);
+    raGL_program_get_uniform_by_name      (dof_scheuermann_combination_po_raGL,
+                                           system_hashed_ansi_string_create("data_low"),
+                                          &data_low_uniform_raGL_ptr);
+    raGL_program_get_uniform_by_name      (dof_scheuermann_combination_po_raGL,
+                                           system_hashed_ansi_string_create("depth_high"),
+                                          &depth_high_uniform_raGL_ptr);
+    ral_program_get_block_variable_by_name(_dof_scheuermann_combination_po,
+                                           system_hashed_ansi_string_create("data"),
+                                           system_hashed_ansi_string_create("max_coc_px"),
+                                          &max_coc_px_uniform_ral_ptr);
 
-    _dof_scheuermann_combination_po_bg_uniform_location         = (bg_uniform_ptr         != NULL) ? bg_uniform_ptr->location             : -1;
-    _dof_scheuermann_combination_po_data_high_uniform_location  = (data_high_uniform_ptr  != NULL) ? data_high_uniform_ptr->location      : -1;
-    _dof_scheuermann_combination_po_data_low_uniform_location   = (data_low_uniform_ptr   != NULL) ? data_low_uniform_ptr->location       : -1;
-    _dof_scheuermann_combination_po_depth_high_uniform_location = (depth_high_uniform_ptr != NULL) ? depth_high_uniform_ptr->location     : -1;
-    _dof_scheuermann_combination_po_ub_max_coc_px_ub_offset     = (max_coc_px_uniform_ptr != NULL) ? max_coc_px_uniform_ptr->block_offset : -1;
+    _dof_scheuermann_combination_po_bg_uniform_location         = (bg_uniform_raGL_ptr         != NULL) ? bg_uniform_raGL_ptr->location            : -1;
+    _dof_scheuermann_combination_po_data_high_uniform_location  = (data_high_uniform_raGL_ptr  != NULL) ? data_high_uniform_raGL_ptr->location     : -1;
+    _dof_scheuermann_combination_po_data_low_uniform_location   = (data_low_uniform_raGL_ptr   != NULL) ? data_low_uniform_raGL_ptr->location      : -1;
+    _dof_scheuermann_combination_po_depth_high_uniform_location = (depth_high_uniform_raGL_ptr != NULL) ? depth_high_uniform_raGL_ptr->location    : -1;
+    _dof_scheuermann_combination_po_ub_max_coc_px_ub_offset     = (max_coc_px_uniform_ral_ptr  != NULL) ? max_coc_px_uniform_ral_ptr->block_offset : -1;
 
     entrypoints_ptr->pGLProgramUniform1i(dof_scheuermann_combination_po_raGL_id,
-                                         data_high_uniform_ptr->location,
+                                         data_high_uniform_raGL_ptr->location,
                                          0);
     entrypoints_ptr->pGLProgramUniform1i(dof_scheuermann_combination_po_raGL_id,
-                                         data_low_uniform_ptr->location,
+                                         data_low_uniform_raGL_ptr->location,
                                          1);
     entrypoints_ptr->pGLProgramUniform1i(dof_scheuermann_combination_po_raGL_id,
-                                         bg_uniform_ptr->location,
+                                         bg_uniform_raGL_ptr->location,
                                          2);
     entrypoints_ptr->pGLProgramUniform1i(dof_scheuermann_combination_po_raGL_id,
-                                         depth_high_uniform_ptr->location,
+                                         depth_high_uniform_raGL_ptr->location,
                                          3);
 
     ral_context_delete_objects(context,
