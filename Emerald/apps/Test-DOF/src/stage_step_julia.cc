@@ -12,11 +12,11 @@
 #include "demo/demo_window.h"
 #include "ogl/ogl_context.h"
 #include "ogl/ogl_pipeline.h"
-#include "ogl/ogl_program_block.h"
 #include "procedural/procedural_mesh_sphere.h"
 #include "raGL/raGL_buffer.h"
 #include "raGL/raGL_framebuffer.h"
 #include "raGL/raGL_program.h"
+#include "raGL/raGL_program_block.h"
 #include "raGL/raGL_shader.h"
 #include "raGL/raGL_texture.h"
 #include "ral/ral_buffer.h"
@@ -45,8 +45,8 @@ GLuint                 _julia_max_iterations_ub_offset            = -1;
 GLuint                 _julia_mv_ub_offset                        = -1;
 GLuint                 _julia_mvp_ub_offset                       = -1;
 ral_program            _julia_program                             = NULL;
-ogl_program_block      _julia_program_ub                          = NULL;
 ral_buffer             _julia_program_ub_bo                       = NULL;
+raGL_program_block     _julia_program_ub_raGL                     = NULL;
 GLuint                 _julia_raycast_radius_multiplier_ub_offset = -1;
 GLuint                 _julia_reflectivity_ub_offset              = -1;
 GLuint                 _julia_sph_texture_uniform_location        = -1;
@@ -374,80 +374,80 @@ static void _stage_step_julia_execute(ral_context context,
     mvp = system_matrix4x4_create_by_mul(main_get_projection_matrix(),
                                          _julia_view_matrix);
 
-    ogl_program_block_set_nonarrayed_variable_value(_julia_program_ub,
-                                                    _julia_data_ub_offset,
-                                                    data,
-                                                    sizeof(float) * 4);
-    ogl_program_block_set_nonarrayed_variable_value(_julia_program_ub,
-                                                    _julia_dof_cutoff_ub_offset,
-                                                   &dof_cutoff,
-                                                    sizeof(float) );
-    ogl_program_block_set_nonarrayed_variable_value(_julia_program_ub,
-                                                    _julia_dof_far_plane_depth_ub_offset,
-                                                   &dof_far_plane_depth,
-                                                    sizeof(float) );
-    ogl_program_block_set_nonarrayed_variable_value(_julia_program_ub,
-                                                    _julia_dof_focal_plane_depth_ub_offset,
-                                                   &dof_focal_plane_depth,
-                                                    sizeof(float) );
-    ogl_program_block_set_nonarrayed_variable_value(_julia_program_ub,
-                                                    _julia_dof_near_plane_depth_ub_offset,
-                                                   &dof_near_plane_depth,
-                                                    sizeof(float) );
-    ogl_program_block_set_nonarrayed_variable_value(_julia_program_ub,
-                                                    _julia_epsilon_ub_offset,
-                                                   &epsilon,
-                                                    sizeof(float) );
-    ogl_program_block_set_nonarrayed_variable_value(_julia_program_ub,
-                                                    _julia_escape_ub_offset,
-                                                   &escape,
-                                                    sizeof(float) );
-    ogl_program_block_set_nonarrayed_variable_value(_julia_program_ub,
-                                                    _julia_fresnel_reflectance_ub_offset,
-                                                   &fresnel_reflectance,
-                                                    sizeof(float) );
-    ogl_program_block_set_nonarrayed_variable_value(_julia_program_ub,
-                                                    _julia_reflectivity_ub_offset,
-                                                   &reflectivity,
-                                                    sizeof(float) );
-    ogl_program_block_set_nonarrayed_variable_value(_julia_program_ub,
-                                                    _julia_light_position_ub_offset,
-                                                    light_position,
-                                                    sizeof(float) * 3);
-    ogl_program_block_set_nonarrayed_variable_value(_julia_program_ub,
-                                                    _julia_light_color_ub_offset,
-                                                    light_color,
-                                                    sizeof(float) * 3);
-    ogl_program_block_set_nonarrayed_variable_value(_julia_program_ub,
-                                                    _julia_max_iterations_ub_offset,
-                                                   &max_iterations,
-                                                    sizeof(int) );
-    ogl_program_block_set_nonarrayed_variable_value(_julia_program_ub,
-                                                    _julia_raycast_radius_multiplier_ub_offset,
-                                                   &raycast_radius_multiplier,
-                                                    sizeof(float) );
-    ogl_program_block_set_nonarrayed_variable_value(_julia_program_ub,
-                                                    _julia_shadows_ub_offset,
-                                                   &shadows,
-                                                    sizeof(bool) );
-    ogl_program_block_set_nonarrayed_variable_value(_julia_program_ub,
-                                                    _julia_specularity_ub_offset,
-                                                   &specularity,
-                                                    sizeof(float) );
-    ogl_program_block_set_nonarrayed_variable_value(_julia_program_ub,
-                                                    _julia_eye_ub_offset,
-                                                    camera_location,
-                                                    sizeof(float) * 3);
-    ogl_program_block_set_nonarrayed_variable_value(_julia_program_ub,
-                                                   _julia_mv_ub_offset,
-                                                   system_matrix4x4_get_column_major_data(_julia_view_matrix),
-                                                   sizeof(float) * 16);
-    ogl_program_block_set_nonarrayed_variable_value(_julia_program_ub,
-                                                    _julia_mvp_ub_offset,
-                                                    system_matrix4x4_get_column_major_data(mvp),
+    raGL_program_block_set_nonarrayed_variable_value(_julia_program_ub_raGL,
+                                                     _julia_data_ub_offset,
+                                                     data,
+                                                     sizeof(float) * 4);
+    raGL_program_block_set_nonarrayed_variable_value(_julia_program_ub_raGL,
+                                                     _julia_dof_cutoff_ub_offset,
+                                                    &dof_cutoff,
+                                                     sizeof(float) );
+    raGL_program_block_set_nonarrayed_variable_value(_julia_program_ub_raGL,
+                                                     _julia_dof_far_plane_depth_ub_offset,
+                                                    &dof_far_plane_depth,
+                                                     sizeof(float) );
+    raGL_program_block_set_nonarrayed_variable_value(_julia_program_ub_raGL,
+                                                     _julia_dof_focal_plane_depth_ub_offset,
+                                                    &dof_focal_plane_depth,
+                                                     sizeof(float) );
+    raGL_program_block_set_nonarrayed_variable_value(_julia_program_ub_raGL,
+                                                     _julia_dof_near_plane_depth_ub_offset,
+                                                    &dof_near_plane_depth,
+                                                     sizeof(float) );
+    raGL_program_block_set_nonarrayed_variable_value(_julia_program_ub_raGL,
+                                                     _julia_epsilon_ub_offset,
+                                                    &epsilon,
+                                                     sizeof(float) );
+    raGL_program_block_set_nonarrayed_variable_value(_julia_program_ub_raGL,
+                                                     _julia_escape_ub_offset,
+                                                    &escape,
+                                                     sizeof(float) );
+    raGL_program_block_set_nonarrayed_variable_value(_julia_program_ub_raGL,
+                                                     _julia_fresnel_reflectance_ub_offset,
+                                                    &fresnel_reflectance,
+                                                     sizeof(float) );
+    raGL_program_block_set_nonarrayed_variable_value(_julia_program_ub_raGL,
+                                                     _julia_reflectivity_ub_offset,
+                                                    &reflectivity,
+                                                     sizeof(float) );
+    raGL_program_block_set_nonarrayed_variable_value(_julia_program_ub_raGL,
+                                                     _julia_light_position_ub_offset,
+                                                     light_position,
+                                                     sizeof(float) * 3);
+    raGL_program_block_set_nonarrayed_variable_value(_julia_program_ub_raGL,
+                                                     _julia_light_color_ub_offset,
+                                                     light_color,
+                                                     sizeof(float) * 3);
+    raGL_program_block_set_nonarrayed_variable_value(_julia_program_ub_raGL,
+                                                     _julia_max_iterations_ub_offset,
+                                                    &max_iterations,
+                                                     sizeof(int) );
+    raGL_program_block_set_nonarrayed_variable_value(_julia_program_ub_raGL,
+                                                     _julia_raycast_radius_multiplier_ub_offset,
+                                                    &raycast_radius_multiplier,
+                                                     sizeof(float) );
+    raGL_program_block_set_nonarrayed_variable_value(_julia_program_ub_raGL,
+                                                     _julia_shadows_ub_offset,
+                                                    &shadows,
+                                                     sizeof(bool) );
+    raGL_program_block_set_nonarrayed_variable_value(_julia_program_ub_raGL,
+                                                     _julia_specularity_ub_offset,
+                                                    &specularity,
+                                                     sizeof(float) );
+    raGL_program_block_set_nonarrayed_variable_value(_julia_program_ub_raGL,
+                                                     _julia_eye_ub_offset,
+                                                     camera_location,
+                                                     sizeof(float) * 3);
+    raGL_program_block_set_nonarrayed_variable_value(_julia_program_ub_raGL,
+                                                    _julia_mv_ub_offset,
+                                                    system_matrix4x4_get_column_major_data(_julia_view_matrix),
                                                     sizeof(float) * 16);
+    raGL_program_block_set_nonarrayed_variable_value(_julia_program_ub_raGL,
+                                                     _julia_mvp_ub_offset,
+                                                     system_matrix4x4_get_column_major_data(mvp),
+                                                     sizeof(float) * 16);
 
-    ogl_program_block_sync(_julia_program_ub);
+    raGL_program_block_sync(_julia_program_ub_raGL);
 
     system_matrix4x4_release(mvp);
 
@@ -671,11 +671,11 @@ PUBLIC void stage_step_julia_init(ral_context  context,
                                           &julia_program_raGL_id);
     raGL_program_get_uniform_block_by_name(julia_program_raGL,
                                            system_hashed_ansi_string_create("dataUB"),
-                                          &_julia_program_ub);
+                                          &_julia_program_ub_raGL);
 
-    ogl_program_block_get_property(_julia_program_ub,
-                                   OGL_PROGRAM_BLOCK_PROPERTY_BUFFER_RAL,
-                                  &_julia_program_ub_bo);
+    raGL_program_block_get_property(_julia_program_ub_raGL,
+                                    RAGL_PROGRAM_BLOCK_PROPERTY_BUFFER_RAL,
+                                   &_julia_program_ub_bo);
 
     /* Retrieve attribute/uniform locations */
     const ral_program_variable*    data_uniform_ral_ptr                      = NULL;

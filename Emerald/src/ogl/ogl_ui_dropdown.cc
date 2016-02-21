@@ -5,13 +5,13 @@
  */
 #include "shared.h"
 #include "ogl/ogl_context.h"
-#include "ogl/ogl_program_block.h"
 #include "ogl/ogl_text.h"
 #include "ogl/ogl_ui.h"
 #include "ogl/ogl_ui_dropdown.h"
 #include "ogl/ogl_ui_shared.h"
 #include "raGL/raGL_buffer.h"
 #include "raGL/raGL_program.h"
+#include "raGL/raGL_program_block.h"
 #include "raGL/raGL_shader.h"
 #include "ral/ral_context.h"
 #include "ral/ral_program.h"
@@ -123,44 +123,44 @@ typedef struct
     GLint                     program_brightness_ub_offset;
     GLint                     program_stop_data_ub_offset;
     GLint                     program_x1y1x2y2_ub_offset;
-    ogl_program_block         program_ub_fs;
     ral_buffer                program_ub_fs_bo;
     GLuint                    program_ub_fs_bo_size;
-    ogl_program_block         program_ub_vs;
+    raGL_program_block        program_ub_fs_raGL;
     ral_buffer                program_ub_vs_bo;
     GLuint                    program_ub_vs_bo_size;
+    raGL_program_block        program_ub_vs_raGL;
 
     ral_program               program_bg;
     GLint                     program_bg_border_width_ub_offset;
     GLint                     program_bg_highlighted_v1v2_ub_offset;
     GLint                     program_bg_selected_v1v2_ub_offset;
     GLint                     program_bg_x1y1x2y2_ub_offset;
-    ogl_program_block         program_bg_ub_fs;
     ral_buffer                program_bg_ub_fs_bo;
     GLuint                    program_bg_ub_fs_bo_size;
-    ogl_program_block         program_bg_ub_vs;
+    raGL_program_block        program_bg_ub_fs_raGL;
     ral_buffer                program_bg_ub_vs_bo;
     GLuint                    program_bg_ub_vs_bo_size;
+    raGL_program_block        program_bg_ub_vs_raGL;
 
     ral_program               program_label_bg;
     GLuint                    program_label_bg_x1y1x2y2_ub_offset;
-    ogl_program_block         program_label_bg_ub_vs;
+    raGL_program_block        program_label_bg_ub_vs_raGL;
     ral_buffer                program_label_bg_ub_vs_bo;
     GLuint                    program_label_bg_ub_vs_bo_size;
 
     ral_program               program_separator;
-    ogl_program_block         program_separator_ub_vs;
     ral_buffer                program_separator_ub_vs_bo;
     GLuint                    program_separator_ub_vs_bo_size;
+    raGL_program_block        program_separator_ub_vs_raGL;
     GLint                     program_separator_x1_x2_y_ub_offset;
 
     ral_program               program_slider;
     GLint                     program_slider_color_ub_offset;
     GLint                     program_slider_x1y1x2y2_ub_offset;
-    ogl_program_block         program_slider_ub_fs;
+    raGL_program_block        program_slider_ub_fs_raGL;
     ral_buffer                program_slider_ub_fs_bo;
     GLuint                    program_slider_ub_fs_bo_size;
-    ogl_program_block         program_slider_ub_vs;
+    raGL_program_block        program_slider_ub_vs_raGL;
     ral_buffer                program_slider_ub_vs_bo;
     GLuint                    program_slider_ub_vs_bo_size;
 
@@ -716,99 +716,98 @@ PRIVATE void _ogl_ui_dropdown_init_renderer_callback(ogl_context context,
     /* Retrieve UBOs */
     raGL_program_get_uniform_block_by_name(program_raGL,
                                            system_hashed_ansi_string_create("dataFS"),
-                                          &dropdown_ptr->program_ub_fs);
+                                          &dropdown_ptr->program_ub_fs_raGL);
     raGL_program_get_uniform_block_by_name(program_raGL,
                                            system_hashed_ansi_string_create("dataVS"),
-                                          &dropdown_ptr->program_ub_vs);
+                                          &dropdown_ptr->program_ub_vs_raGL);
 
     raGL_program_get_uniform_block_by_name(program_bg_raGL,
                                            system_hashed_ansi_string_create("dataFS"),
-                                          &dropdown_ptr->program_bg_ub_fs);
+                                          &dropdown_ptr->program_bg_ub_fs_raGL);
     raGL_program_get_uniform_block_by_name(program_bg_raGL,
                                            system_hashed_ansi_string_create("dataVS"),
-                                          &dropdown_ptr->program_bg_ub_vs);
+                                          &dropdown_ptr->program_bg_ub_vs_raGL);
 
     raGL_program_get_uniform_block_by_name(program_label_bg_raGL,
                                            system_hashed_ansi_string_create("dataVS"),
-                                          &dropdown_ptr->program_label_bg_ub_vs);
+                                          &dropdown_ptr->program_label_bg_ub_vs_raGL);
 
     raGL_program_get_uniform_block_by_name(program_separator_raGL,
                                            system_hashed_ansi_string_create("dataVS"),
-                                          &dropdown_ptr->program_separator_ub_vs);
+                                          &dropdown_ptr->program_separator_ub_vs_raGL);
 
     raGL_program_get_uniform_block_by_name(program_slider_raGL,
                                            system_hashed_ansi_string_create("dataFS"),
-                                          &dropdown_ptr->program_slider_ub_fs);
+                                          &dropdown_ptr->program_slider_ub_fs_raGL);
     raGL_program_get_uniform_block_by_name(program_slider_raGL,
                                            system_hashed_ansi_string_create("dataVS"),
-                                          &dropdown_ptr->program_slider_ub_vs);
+                                          &dropdown_ptr->program_slider_ub_vs_raGL);
 
-    ASSERT_DEBUG_SYNC(dropdown_ptr->program_bg_ub_fs        != NULL &&
-                      dropdown_ptr->program_bg_ub_vs        != NULL &&
-                      dropdown_ptr->program_label_bg_ub_vs  != NULL &&
-                      dropdown_ptr->program_separator_ub_vs != NULL &&
-                      dropdown_ptr->program_slider_ub_fs    != NULL &&
-                      dropdown_ptr->program_slider_ub_vs    != NULL &&
-                      dropdown_ptr->program_ub_fs           != NULL &&
-                      dropdown_ptr->program_ub_vs           != NULL,
+    ASSERT_DEBUG_SYNC(dropdown_ptr->program_bg_ub_fs_raGL        != NULL &&
+                      dropdown_ptr->program_bg_ub_vs_raGL        != NULL &&
+                      dropdown_ptr->program_label_bg_ub_vs_raGL  != NULL &&
+                      dropdown_ptr->program_separator_ub_vs_raGL != NULL &&
+                      dropdown_ptr->program_slider_ub_fs_raGL    != NULL &&
+                      dropdown_ptr->program_slider_ub_vs_raGL    != NULL &&
+                      dropdown_ptr->program_ub_fs_raGL           != NULL &&
+                      dropdown_ptr->program_ub_vs_raGL           != NULL,
                       "Returned program UB instances are NULL");
 
-    ogl_program_block_get_property(dropdown_ptr->program_ub_fs,
-                                   OGL_PROGRAM_BLOCK_PROPERTY_BLOCK_DATA_SIZE,
-                                  &dropdown_ptr->program_ub_fs_bo_size);
-    ogl_program_block_get_property(dropdown_ptr->program_ub_vs,
-                                   OGL_PROGRAM_BLOCK_PROPERTY_BLOCK_DATA_SIZE,
-                                  &dropdown_ptr->program_ub_vs_bo_size);
+    raGL_program_block_get_property(dropdown_ptr->program_ub_fs_raGL,
+                                    RAGL_PROGRAM_BLOCK_PROPERTY_BLOCK_DATA_SIZE,
+                                   &dropdown_ptr->program_ub_fs_bo_size);
+    raGL_program_block_get_property(dropdown_ptr->program_ub_vs_raGL,
+                                    RAGL_PROGRAM_BLOCK_PROPERTY_BLOCK_DATA_SIZE,
+                                   &dropdown_ptr->program_ub_vs_bo_size);
 
-    ogl_program_block_get_property(dropdown_ptr->program_bg_ub_fs,
-                                   OGL_PROGRAM_BLOCK_PROPERTY_BLOCK_DATA_SIZE,
-                                  &dropdown_ptr->program_bg_ub_fs_bo_size);
-    ogl_program_block_get_property(dropdown_ptr->program_bg_ub_vs,
-                                   OGL_PROGRAM_BLOCK_PROPERTY_BLOCK_DATA_SIZE,
-                                  &dropdown_ptr->program_bg_ub_vs_bo_size);
+    raGL_program_block_get_property(dropdown_ptr->program_bg_ub_fs_raGL,
+                                    RAGL_PROGRAM_BLOCK_PROPERTY_BLOCK_DATA_SIZE,
+                                   &dropdown_ptr->program_bg_ub_fs_bo_size);
+    raGL_program_block_get_property(dropdown_ptr->program_bg_ub_vs_raGL,
+                                    RAGL_PROGRAM_BLOCK_PROPERTY_BLOCK_DATA_SIZE,
+                                   &dropdown_ptr->program_bg_ub_vs_bo_size);
 
-    ogl_program_block_get_property(dropdown_ptr->program_label_bg_ub_vs,
-                                   OGL_PROGRAM_BLOCK_PROPERTY_BLOCK_DATA_SIZE,
-                                  &dropdown_ptr->program_label_bg_ub_vs_bo_size);
-    ogl_program_block_get_property(dropdown_ptr->program_separator_ub_vs,
-                                   OGL_PROGRAM_BLOCK_PROPERTY_BLOCK_DATA_SIZE,
-                                  &dropdown_ptr->program_separator_ub_vs_bo_size);
+    raGL_program_block_get_property(dropdown_ptr->program_label_bg_ub_vs_raGL,
+                                    RAGL_PROGRAM_BLOCK_PROPERTY_BLOCK_DATA_SIZE,
+                                   &dropdown_ptr->program_label_bg_ub_vs_bo_size);
+    raGL_program_block_get_property(dropdown_ptr->program_separator_ub_vs_raGL,
+                                    RAGL_PROGRAM_BLOCK_PROPERTY_BLOCK_DATA_SIZE,
+                                   &dropdown_ptr->program_separator_ub_vs_bo_size);
 
-    ogl_program_block_get_property(dropdown_ptr->program_slider_ub_fs,
-                                   OGL_PROGRAM_BLOCK_PROPERTY_BLOCK_DATA_SIZE,
-                                  &dropdown_ptr->program_slider_ub_fs_bo_size);
-    ogl_program_block_get_property(dropdown_ptr->program_slider_ub_vs,
-                                   OGL_PROGRAM_BLOCK_PROPERTY_BLOCK_DATA_SIZE,
-                                  &dropdown_ptr->program_slider_ub_vs_bo_size);
+    raGL_program_block_get_property(dropdown_ptr->program_slider_ub_fs_raGL,
+                                    RAGL_PROGRAM_BLOCK_PROPERTY_BLOCK_DATA_SIZE,
+                                   &dropdown_ptr->program_slider_ub_fs_bo_size);
+    raGL_program_block_get_property(dropdown_ptr->program_slider_ub_vs_raGL,
+                                    RAGL_PROGRAM_BLOCK_PROPERTY_BLOCK_DATA_SIZE,
+                                   &dropdown_ptr->program_slider_ub_vs_bo_size);
 
+    raGL_program_block_get_property(dropdown_ptr->program_ub_fs_raGL,
+                                    RAGL_PROGRAM_BLOCK_PROPERTY_BUFFER_RAL,
+                                   &dropdown_ptr->program_ub_fs_bo);
+    raGL_program_block_get_property(dropdown_ptr->program_ub_vs_raGL,
+                                    RAGL_PROGRAM_BLOCK_PROPERTY_BUFFER_RAL,
+                                   &dropdown_ptr->program_ub_vs_bo);
 
-    ogl_program_block_get_property(dropdown_ptr->program_ub_fs,
-                                   OGL_PROGRAM_BLOCK_PROPERTY_BUFFER_RAL,
-                                  &dropdown_ptr->program_ub_fs_bo);
-    ogl_program_block_get_property(dropdown_ptr->program_ub_vs,
-                                   OGL_PROGRAM_BLOCK_PROPERTY_BUFFER_RAL,
-                                  &dropdown_ptr->program_ub_vs_bo);
+    raGL_program_block_get_property(dropdown_ptr->program_bg_ub_fs_raGL,
+                                    RAGL_PROGRAM_BLOCK_PROPERTY_BUFFER_RAL,
+                                   &dropdown_ptr->program_bg_ub_fs_bo);
+    raGL_program_block_get_property(dropdown_ptr->program_bg_ub_vs_raGL,
+                                    RAGL_PROGRAM_BLOCK_PROPERTY_BUFFER_RAL,
+                                   &dropdown_ptr->program_bg_ub_vs_bo);
 
-    ogl_program_block_get_property(dropdown_ptr->program_bg_ub_fs,
-                                   OGL_PROGRAM_BLOCK_PROPERTY_BUFFER_RAL,
-                                  &dropdown_ptr->program_bg_ub_fs_bo);
-    ogl_program_block_get_property(dropdown_ptr->program_bg_ub_vs,
-                                   OGL_PROGRAM_BLOCK_PROPERTY_BUFFER_RAL,
-                                  &dropdown_ptr->program_bg_ub_vs_bo);
+    raGL_program_block_get_property(dropdown_ptr->program_label_bg_ub_vs_raGL,
+                                    RAGL_PROGRAM_BLOCK_PROPERTY_BUFFER_RAL,
+                                   &dropdown_ptr->program_label_bg_ub_vs_bo);
+    raGL_program_block_get_property(dropdown_ptr->program_separator_ub_vs_raGL,
+                                    RAGL_PROGRAM_BLOCK_PROPERTY_BUFFER_RAL,
+                                   &dropdown_ptr->program_separator_ub_vs_bo);
 
-    ogl_program_block_get_property(dropdown_ptr->program_label_bg_ub_vs,
-                                   OGL_PROGRAM_BLOCK_PROPERTY_BUFFER_RAL,
-                                  &dropdown_ptr->program_label_bg_ub_vs_bo);
-    ogl_program_block_get_property(dropdown_ptr->program_separator_ub_vs,
-                                   OGL_PROGRAM_BLOCK_PROPERTY_BUFFER_RAL,
-                                  &dropdown_ptr->program_separator_ub_vs_bo);
-
-    ogl_program_block_get_property(dropdown_ptr->program_slider_ub_fs,
-                                   OGL_PROGRAM_BLOCK_PROPERTY_BUFFER_RAL,
-                                  &dropdown_ptr->program_slider_ub_fs_bo);
-    ogl_program_block_get_property(dropdown_ptr->program_slider_ub_vs,
-                                   OGL_PROGRAM_BLOCK_PROPERTY_BUFFER_RAL,
-                                  &dropdown_ptr->program_slider_ub_vs_bo);
+    raGL_program_block_get_property(dropdown_ptr->program_slider_ub_fs_raGL,
+                                    RAGL_PROGRAM_BLOCK_PROPERTY_BUFFER_RAL,
+                                   &dropdown_ptr->program_slider_ub_fs_bo);
+    raGL_program_block_get_property(dropdown_ptr->program_slider_ub_vs_raGL,
+                                    RAGL_PROGRAM_BLOCK_PROPERTY_BUFFER_RAL,
+                                   &dropdown_ptr->program_slider_ub_vs_bo);
 
     /* Set up uniform block->buffer binding points mappings.
      *
@@ -831,28 +830,28 @@ PRIVATE void _ogl_ui_dropdown_init_renderer_callback(ogl_context context,
         const ral_program  current_program         = programs[n_program];
         const raGL_program current_program_raGL    = ral_context_get_program_gl(dropdown_ptr->context,
                                                                                 current_program);
-        uint32_t          current_program_raGL_id = 0;
-        GLuint            fsdata_index            = -1;
-        ogl_program_block fsdata_ub               = NULL;
-        GLuint            vsdata_index            = -1;
-        ogl_program_block vsdata_ub               = NULL;
+        uint32_t           current_program_raGL_id = 0;
+        GLuint             fsdata_index            = -1;
+        raGL_program_block fsdata_ub_raGL          = NULL;
+        GLuint             vsdata_index            = -1;
+        raGL_program_block vsdata_ub_raGL          = NULL;
 
         raGL_program_get_uniform_block_by_name(current_program_raGL,
                                               system_hashed_ansi_string_create("dataFS"),
-                                             &fsdata_ub);
+                                             &fsdata_ub_raGL);
         raGL_program_get_uniform_block_by_name(current_program_raGL,
                                               system_hashed_ansi_string_create("dataVS"),
-                                             &vsdata_ub);
+                                             &vsdata_ub_raGL);
 
         raGL_program_get_property(current_program_raGL,
                                   RAGL_PROGRAM_PROPERTY_ID,
                                  &current_program_raGL_id);
 
-        if (fsdata_ub != NULL)
+        if (fsdata_ub_raGL != NULL)
         {
-            ogl_program_block_get_property(fsdata_ub,
-                                           OGL_PROGRAM_BLOCK_PROPERTY_INDEX,
-                                          &fsdata_index);
+            raGL_program_block_get_property(fsdata_ub_raGL,
+                                            RAGL_PROGRAM_BLOCK_PROPERTY_INDEX,
+                                           &fsdata_index);
 
             ASSERT_DEBUG_SYNC(fsdata_index != -1,
                               "Invalid dataFS uniform block index");
@@ -862,11 +861,11 @@ PRIVATE void _ogl_ui_dropdown_init_renderer_callback(ogl_context context,
                                                  UB_FSDATA_BP); /* uniformBlockBinding */
         }
 
-        if (vsdata_ub != NULL)
+        if (vsdata_ub_raGL != NULL)
         {
-            ogl_program_block_get_property(vsdata_ub,
-                                           OGL_PROGRAM_BLOCK_PROPERTY_INDEX,
-                                          &vsdata_index);
+            raGL_program_block_get_property(vsdata_ub_raGL,
+                                            RAGL_PROGRAM_BLOCK_PROPERTY_INDEX,
+                                           &vsdata_index);
 
             ASSERT_DEBUG_SYNC(vsdata_index != -1,
                               "Invalid dataVS uniform block index");
@@ -975,29 +974,29 @@ PRIVATE void _ogl_ui_dropdown_init_renderer_callback(ogl_context context,
         1.0f - BUTTON_WIDTH_PX * border_width[1]
     };
 
-    ogl_program_block_set_nonarrayed_variable_value(dropdown_ptr->program_ub_fs,
-                                                    button_start_u_uniform_ral_ptr->block_offset,
-                                                   &button_start_uv[0],
-                                                    sizeof(float) );
-    ogl_program_block_set_nonarrayed_variable_value(dropdown_ptr->program_bg_ub_fs,
-                                                    button_start_uv_uniform_ral_ptr->block_offset,
-                                                    button_start_uv,
-                                                    sizeof(float) * 2);
-    ogl_program_block_set_nonarrayed_variable_value(dropdown_ptr->program_ub_fs,
-                                                    border_width_uniform_ral_ptr->block_offset,
-                                                    border_width,
-                                                    sizeof(float) * 2);
-    ogl_program_block_set_nonarrayed_variable_value(dropdown_ptr->program_bg_ub_fs,
-                                                    border_width_bg_uniform_ral_ptr->block_offset,
-                                                    border_width_bg,
-                                                    sizeof(float) * 2);
+    raGL_program_block_set_nonarrayed_variable_value(dropdown_ptr->program_ub_fs_raGL,
+                                                     button_start_u_uniform_ral_ptr->block_offset,
+                                                    &button_start_uv[0],
+                                                     sizeof(float) );
+    raGL_program_block_set_nonarrayed_variable_value(dropdown_ptr->program_bg_ub_fs_raGL,
+                                                     button_start_uv_uniform_ral_ptr->block_offset,
+                                                     button_start_uv,
+                                                     sizeof(float) * 2);
+    raGL_program_block_set_nonarrayed_variable_value(dropdown_ptr->program_ub_fs_raGL,
+                                                     border_width_uniform_ral_ptr->block_offset,
+                                                     border_width,
+                                                     sizeof(float) * 2);
+    raGL_program_block_set_nonarrayed_variable_value(dropdown_ptr->program_bg_ub_fs_raGL,
+                                                     border_width_bg_uniform_ral_ptr->block_offset,
+                                                     border_width_bg,
+                                                     sizeof(float) * 2);
 
-    ogl_program_block_set_arrayed_variable_value(dropdown_ptr->program_ub_fs,
-                                                 stop_data_uniform_ral_ptr->block_offset,
-                                                 stop_data,
-                                                 sizeof(float) * 4 /* vec4 */ * 4 /* array items */,
-                                                 0,                /* dst_array_start_index */
-                                                 4);               /* dst_array_item_count */
+    raGL_program_block_set_arrayed_variable_value(dropdown_ptr->program_ub_fs_raGL,
+                                                  stop_data_uniform_ral_ptr->block_offset,
+                                                  stop_data,
+                                                  sizeof(float) * 4 /* vec4 */ * 4 /* array items */,
+                                                  0,                /* dst_array_start_index */
+                                                  4);               /* dst_array_item_count */
 
     dropdown_ptr->current_gpu_brightness_level = NONFOCUSED_BRIGHTNESS;
 
@@ -1568,30 +1567,30 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_ui_dropdown_draw(void* internal_instance)
 
     const float new_brightness_uniform_value = brightness * ((dropdown_ptr->is_lbm_on && dropdown_ptr->is_button_lbm) ? CLICK_BRIGHTNESS_MODIFIER : 1);
 
-    ogl_program_block_set_nonarrayed_variable_value(dropdown_ptr->program_ub_fs,
-                                                    dropdown_ptr->program_brightness_ub_offset,
-                                                   &new_brightness_uniform_value,
-                                                    sizeof(float) );
-    ogl_program_block_set_nonarrayed_variable_value(dropdown_ptr->program_ub_vs,
-                                                    dropdown_ptr->program_x1y1x2y2_ub_offset,
-                                                    dropdown_ptr->x1y1x2y2,
-                                                    sizeof(float) * 4);
-    ogl_program_block_set_nonarrayed_variable_value(dropdown_ptr->program_bg_ub_fs,
-                                                    dropdown_ptr->program_bg_highlighted_v1v2_ub_offset,
-                                                    highlighted_v1v2,
-                                                    sizeof(float) * 2);
-    ogl_program_block_set_nonarrayed_variable_value(dropdown_ptr->program_bg_ub_fs,
-                                                    dropdown_ptr->program_bg_selected_v1v2_ub_offset,
-                                                    selected_v1v2,
-                                                    sizeof(float) * 2);
-    ogl_program_block_set_nonarrayed_variable_value(dropdown_ptr->program_bg_ub_vs,
-                                                    dropdown_ptr->program_bg_x1y1x2y2_ub_offset,
-                                                    dropdown_ptr->drop_x1y2x2y1,
-                                                    sizeof(float) * 4);
-    ogl_program_block_set_nonarrayed_variable_value(dropdown_ptr->program_label_bg_ub_vs,
-                                                    dropdown_ptr->program_label_bg_x1y1x2y2_ub_offset,
-                                                    dropdown_ptr->label_bg_x1y1x2y2,
-                                                    sizeof(float) * 4);
+    raGL_program_block_set_nonarrayed_variable_value(dropdown_ptr->program_ub_fs_raGL,
+                                                     dropdown_ptr->program_brightness_ub_offset,
+                                                    &new_brightness_uniform_value,
+                                                     sizeof(float) );
+    raGL_program_block_set_nonarrayed_variable_value(dropdown_ptr->program_ub_vs_raGL,
+                                                     dropdown_ptr->program_x1y1x2y2_ub_offset,
+                                                     dropdown_ptr->x1y1x2y2,
+                                                     sizeof(float) * 4);
+    raGL_program_block_set_nonarrayed_variable_value(dropdown_ptr->program_bg_ub_fs_raGL,
+                                                     dropdown_ptr->program_bg_highlighted_v1v2_ub_offset,
+                                                     highlighted_v1v2,
+                                                     sizeof(float) * 2);
+    raGL_program_block_set_nonarrayed_variable_value(dropdown_ptr->program_bg_ub_fs_raGL,
+                                                     dropdown_ptr->program_bg_selected_v1v2_ub_offset,
+                                                     selected_v1v2,
+                                                     sizeof(float) * 2);
+    raGL_program_block_set_nonarrayed_variable_value(dropdown_ptr->program_bg_ub_vs_raGL,
+                                                     dropdown_ptr->program_bg_x1y1x2y2_ub_offset,
+                                                     dropdown_ptr->drop_x1y2x2y1,
+                                                     sizeof(float) * 4);
+    raGL_program_block_set_nonarrayed_variable_value(dropdown_ptr->program_label_bg_ub_vs_raGL,
+                                                     dropdown_ptr->program_label_bg_x1y1x2y2_ub_offset,
+                                                     dropdown_ptr->label_bg_x1y1x2y2,
+                                                     sizeof(float) * 4);
 
     /* Draw */
     if (dropdown_ptr->is_droparea_visible)
@@ -1646,8 +1645,8 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_ui_dropdown_draw(void* internal_instance)
                                          program_bg_ub_vs_bo_start_offset,
                                          dropdown_ptr->program_bg_ub_vs_bo_size);
 
-        ogl_program_block_sync(dropdown_ptr->program_bg_ub_fs);
-        ogl_program_block_sync(dropdown_ptr->program_bg_ub_vs);
+        raGL_program_block_sync(dropdown_ptr->program_bg_ub_fs_raGL);
+        raGL_program_block_sync(dropdown_ptr->program_bg_ub_vs_raGL);
 
         dropdown_ptr->pGLDrawArrays(GL_TRIANGLE_FAN,
                                     0, /* first */
@@ -1690,13 +1689,13 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_ui_dropdown_draw(void* internal_instance)
                 {
                     x1_x2_y[2] = -1.0f + 2.0f * x1_x2_y[2];
 
-                    ogl_program_block_set_nonarrayed_variable_value(dropdown_ptr->program_separator_ub_vs,
-                                                                    dropdown_ptr->program_separator_x1_x2_y_ub_offset,
-                                                                    x1_x2_y,
-                                                                    sizeof(float) * 3);
+                    raGL_program_block_set_nonarrayed_variable_value(dropdown_ptr->program_separator_ub_vs_raGL,
+                                                                     dropdown_ptr->program_separator_x1_x2_y_ub_offset,
+                                                                     x1_x2_y,
+                                                                     sizeof(float) * 3);
 
                     /* TODO: Improve! */
-                    ogl_program_block_sync(dropdown_ptr->program_separator_ub_vs);
+                    raGL_program_block_sync(dropdown_ptr->program_separator_ub_vs_raGL);
 
                     dropdown_ptr->pGLDrawArrays(GL_LINES,
                                                 0, /* first */
@@ -1758,17 +1757,17 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_ui_dropdown_draw(void* internal_instance)
                                          program_slider_ub_vs_bo_start_offset,
                                          dropdown_ptr->program_slider_ub_vs_bo_size);
 
-        ogl_program_block_set_nonarrayed_variable_value(dropdown_ptr->program_slider_ub_fs,
-                                                        dropdown_ptr->program_slider_color_ub_offset,
-                                                        slider_color,
-                                                        sizeof(float) * 4);
-        ogl_program_block_set_nonarrayed_variable_value(dropdown_ptr->program_slider_ub_vs,
-                                                        dropdown_ptr->program_slider_x1y1x2y2_ub_offset,
-                                                        slider_x1y1x2y2,
-                                                        sizeof(float) * 4);
+        raGL_program_block_set_nonarrayed_variable_value(dropdown_ptr->program_slider_ub_fs_raGL,
+                                                         dropdown_ptr->program_slider_color_ub_offset,
+                                                         slider_color,
+                                                         sizeof(float) * 4);
+        raGL_program_block_set_nonarrayed_variable_value(dropdown_ptr->program_slider_ub_vs_raGL,
+                                                         dropdown_ptr->program_slider_x1y1x2y2_ub_offset,
+                                                         slider_x1y1x2y2,
+                                                         sizeof(float) * 4);
 
-        ogl_program_block_sync(dropdown_ptr->program_slider_ub_fs);
-        ogl_program_block_sync(dropdown_ptr->program_slider_ub_vs);
+        raGL_program_block_sync(dropdown_ptr->program_slider_ub_fs_raGL);
+        raGL_program_block_sync(dropdown_ptr->program_slider_ub_vs_raGL);
 
         dropdown_ptr->pGLDrawArrays(GL_TRIANGLE_FAN,
                                     0,  /* first */
@@ -1813,8 +1812,8 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_ui_dropdown_draw(void* internal_instance)
                                      program_ub_vs_bo_start_offset,
                                      dropdown_ptr->program_ub_vs_bo_size);
 
-    ogl_program_block_sync(dropdown_ptr->program_ub_fs);
-    ogl_program_block_sync(dropdown_ptr->program_ub_vs);
+    raGL_program_block_sync(dropdown_ptr->program_ub_fs_raGL);
+    raGL_program_block_sync(dropdown_ptr->program_ub_vs_raGL);
 
     dropdown_ptr->pGLDrawArrays(GL_TRIANGLE_FAN,
                                 0,  /* first */
@@ -1844,7 +1843,7 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_ui_dropdown_draw(void* internal_instance)
                                          program_label_bg_ub_vs_bo_start_offset,
                                          dropdown_ptr->program_label_bg_ub_vs_bo_size);
 
-        ogl_program_block_sync(dropdown_ptr->program_label_bg_ub_vs);
+        raGL_program_block_sync(dropdown_ptr->program_label_bg_ub_vs_raGL);
 
         dropdown_ptr->pGLDrawArrays(GL_TRIANGLE_FAN,
                                     0,  /* first */

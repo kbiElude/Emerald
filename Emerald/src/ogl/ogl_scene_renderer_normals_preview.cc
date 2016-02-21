@@ -6,11 +6,11 @@
 #include "shared.h"
 #include "mesh/mesh.h"
 #include "ogl/ogl_context.h"
-#include "ogl/ogl_program_block.h"
 #include "ogl/ogl_scene_renderer.h"
 #include "ogl/ogl_scene_renderer_normals_preview.h"
 #include "raGL/raGL_buffer.h"
 #include "raGL/raGL_program.h"
+#include "raGL/raGL_program_block.h"
 #include "raGL/raGL_shader.h"
 #include "ral/ral_buffer.h"
 #include "ral/ral_context.h"
@@ -102,11 +102,11 @@ typedef struct _ogl_scene_renderer_normals_preview
     GLint              preview_program_normal_matrix_ub_offset;
     GLint              preview_program_start_offsets_ub_offset;
     GLint              preview_program_stride_ub_offset;
-    ogl_program_block  preview_program_ub_gs;
+    raGL_program_block preview_program_ub_gs_raGL;
     ral_buffer         preview_program_ub_gs_bo;
     unsigned int       preview_program_ub_gs_bo_size;
     GLuint             preview_program_ub_gs_ub_bp;
-    ogl_program_block  preview_program_ub_vs;
+    raGL_program_block preview_program_ub_vs_raGL;
     ral_buffer         preview_program_ub_vs_bo;
     unsigned int       preview_program_ub_vs_bo_size;
     GLuint             preview_program_ub_vs_ub_bp;
@@ -285,40 +285,40 @@ PRIVATE void _ogl_context_scene_renderer_normals_preview_init_preview_program(_o
     }
 
     /* Retrieve UB properties */
-    preview_ptr->preview_program_ub_gs = NULL;
-    preview_ptr->preview_program_ub_vs = NULL;
+    preview_ptr->preview_program_ub_gs_raGL = NULL;
+    preview_ptr->preview_program_ub_vs_raGL = NULL;
 
     raGL_program_get_uniform_block_by_name(preview_program_raGL,
                                            system_hashed_ansi_string_create("dataGS"),
-                                          &preview_ptr->preview_program_ub_gs);
+                                          &preview_ptr->preview_program_ub_gs_raGL);
     raGL_program_get_uniform_block_by_name(preview_program_raGL,
                                            system_hashed_ansi_string_create("dataVS"),
-                                          &preview_ptr->preview_program_ub_vs);
+                                          &preview_ptr->preview_program_ub_vs_raGL);
 
-    ASSERT_DEBUG_SYNC(preview_ptr->preview_program_ub_gs != NULL &&
-                      preview_ptr->preview_program_ub_vs != NULL,
+    ASSERT_DEBUG_SYNC(preview_ptr->preview_program_ub_gs_raGL != NULL &&
+                      preview_ptr->preview_program_ub_vs_raGL != NULL,
                       "Could not retrieve UB descriptors");
 
-    ogl_program_block_get_property(preview_ptr->preview_program_ub_gs,
-                                   OGL_PROGRAM_BLOCK_PROPERTY_BLOCK_DATA_SIZE,
-                                  &preview_ptr->preview_program_ub_gs_bo_size);
-    ogl_program_block_get_property(preview_ptr->preview_program_ub_vs,
-                                   OGL_PROGRAM_BLOCK_PROPERTY_BLOCK_DATA_SIZE,
-                                  &preview_ptr->preview_program_ub_vs_bo_size);
+    raGL_program_block_get_property(preview_ptr->preview_program_ub_gs_raGL,
+                                    RAGL_PROGRAM_BLOCK_PROPERTY_BLOCK_DATA_SIZE,
+                                   &preview_ptr->preview_program_ub_gs_bo_size);
+    raGL_program_block_get_property(preview_ptr->preview_program_ub_vs_raGL,
+                                    RAGL_PROGRAM_BLOCK_PROPERTY_BLOCK_DATA_SIZE,
+                                   &preview_ptr->preview_program_ub_vs_bo_size);
 
-    ogl_program_block_get_property(preview_ptr->preview_program_ub_gs,
-                                   OGL_PROGRAM_BLOCK_PROPERTY_BUFFER_RAL,
-                                  &preview_ptr->preview_program_ub_gs_bo);
-    ogl_program_block_get_property(preview_ptr->preview_program_ub_vs,
-                                   OGL_PROGRAM_BLOCK_PROPERTY_BUFFER_RAL,
-                                  &preview_ptr->preview_program_ub_vs_bo);
+    raGL_program_block_get_property(preview_ptr->preview_program_ub_gs_raGL,
+                                    RAGL_PROGRAM_BLOCK_PROPERTY_BUFFER_RAL,
+                                   &preview_ptr->preview_program_ub_gs_bo);
+    raGL_program_block_get_property(preview_ptr->preview_program_ub_vs_raGL,
+                                    RAGL_PROGRAM_BLOCK_PROPERTY_BUFFER_RAL,
+                                   &preview_ptr->preview_program_ub_vs_bo);
 
-    ogl_program_block_get_property(preview_ptr->preview_program_ub_gs,
-                                   OGL_PROGRAM_BLOCK_PROPERTY_INDEXED_BP,
-                                  &preview_ptr->preview_program_ub_gs_ub_bp);
-    ogl_program_block_get_property(preview_ptr->preview_program_ub_vs,
-                                   OGL_PROGRAM_BLOCK_PROPERTY_INDEXED_BP,
-                                  &preview_ptr->preview_program_ub_vs_ub_bp);
+    raGL_program_block_get_property(preview_ptr->preview_program_ub_gs_raGL,
+                                    RAGL_PROGRAM_BLOCK_PROPERTY_INDEXED_BP,
+                                   &preview_ptr->preview_program_ub_gs_ub_bp);
+    raGL_program_block_get_property(preview_ptr->preview_program_ub_vs_raGL,
+                                    RAGL_PROGRAM_BLOCK_PROPERTY_INDEXED_BP,
+                                   &preview_ptr->preview_program_ub_vs_ub_bp);
 
     /* All done */
     goto end;
@@ -486,21 +486,21 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_scene_renderer_normals_preview_render(ogl
         mesh_start_offset_vertex/* - mesh_bo_start_offset */
     };
 
-    ogl_program_block_set_nonarrayed_variable_value(preview_ptr->preview_program_ub_gs,
-                                                    preview_ptr->preview_program_normal_matrix_ub_offset,
-                                                    system_matrix4x4_get_column_major_data(normal_matrix),
-                                                    sizeof(float) * 16);
-    ogl_program_block_set_nonarrayed_variable_value(preview_ptr->preview_program_ub_vs,
-                                                    preview_ptr->preview_program_start_offsets_ub_offset,
-                                                    start_offsets,
-                                                    sizeof(unsigned int) * 2);
-    ogl_program_block_set_nonarrayed_variable_value(preview_ptr->preview_program_ub_vs,
-                                                    preview_ptr->preview_program_stride_ub_offset,
-                                                   &mesh_stride,
-                                                    sizeof(unsigned int) );
+    raGL_program_block_set_nonarrayed_variable_value(preview_ptr->preview_program_ub_gs_raGL,
+                                                     preview_ptr->preview_program_normal_matrix_ub_offset,
+                                                     system_matrix4x4_get_column_major_data(normal_matrix),
+                                                     sizeof(float) * 16);
+    raGL_program_block_set_nonarrayed_variable_value(preview_ptr->preview_program_ub_vs_raGL,
+                                                     preview_ptr->preview_program_start_offsets_ub_offset,
+                                                     start_offsets,
+                                                     sizeof(unsigned int) * 2);
+    raGL_program_block_set_nonarrayed_variable_value(preview_ptr->preview_program_ub_vs_raGL,
+                                                     preview_ptr->preview_program_stride_ub_offset,
+                                                    &mesh_stride,
+                                                     sizeof(unsigned int) );
 
-    ogl_program_block_sync(preview_ptr->preview_program_ub_gs);
-    ogl_program_block_sync(preview_ptr->preview_program_ub_vs);
+    raGL_program_block_sync(preview_ptr->preview_program_ub_gs_raGL);
+    raGL_program_block_sync(preview_ptr->preview_program_ub_vs_raGL);
 
     /* Set up shader storage buffer binding */
     entrypoints_ptr->pGLBindBufferRange(GL_SHADER_STORAGE_BUFFER,
@@ -552,11 +552,11 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_scene_renderer_normals_preview_start(ogl_
                               OGL_CONTEXT_PROPERTY_VAO_NO_VAAS,
                              &vao_id);
 
-    entrypoints_ptr->pGLUseProgram                 (program_raGL_id);
-    ogl_program_block_set_nonarrayed_variable_value(preview_ptr->preview_program_ub_gs,
-                                                    preview_ptr->preview_program_vp_ub_offset,
-                                                    system_matrix4x4_get_column_major_data(vp),
-                                                    sizeof(float) * 16);
+    entrypoints_ptr->pGLUseProgram                  (program_raGL_id);
+    raGL_program_block_set_nonarrayed_variable_value(preview_ptr->preview_program_ub_gs_raGL,
+                                                     preview_ptr->preview_program_vp_ub_offset,
+                                                     system_matrix4x4_get_column_major_data(vp),
+                                                     sizeof(float) * 16);
 
     GLuint      preview_program_ub_gs_bo_id           = 0;
     raGL_buffer preview_program_ub_gs_bo_raGL         = NULL;

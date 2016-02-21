@@ -5,10 +5,10 @@
  */
 #include "shared.h"
 #include "ogl/ogl_context.h"
-#include "ogl/ogl_program_block.h"
 #include "postprocessing/postprocessing_motion_blur.h"
 #include "raGL/raGL_buffer.h"
 #include "raGL/raGL_program.h"
+#include "raGL/raGL_program_block.h"
 #include "raGL/raGL_sampler.h"
 #include "raGL/raGL_shader.h"
 #include "raGL/raGL_texture.h"
@@ -33,11 +33,11 @@ typedef struct _postprocessing_motion_blur
     postprocessing_motion_blur_image_type   image_type;
     unsigned int                            n_velocity_samples_max;
     ral_program                             po;
-    ogl_program_block                       po_props_ub;
     ral_buffer                              po_props_ub_bo;
     unsigned int                            po_props_ub_bo_size;
     unsigned int                            po_props_ub_bo_image_n_samples_start_offset;
     unsigned int                            po_props_ub_bo_n_velocity_samples_max_start_offset;
+    raGL_program_block                      po_props_ub_raGL;
     const GLuint                            po_binding_src_color_image;
     const GLuint                            po_binding_src_velocity_image;
     const GLuint                            po_binding_dst_color_image;
@@ -66,10 +66,10 @@ typedef struct _postprocessing_motion_blur
         image_type                                         = in_image_type;
         n_velocity_samples_max                             = 32; /* as per documentation */
         po                                                 = NULL;
-        po_props_ub                                        = NULL;
         po_props_ub_bo                                     = NULL;
         po_props_ub_bo_n_velocity_samples_max_start_offset = -1;
         po_props_ub_bo_size                                = 0;
+        po_props_ub_raGL                                   = NULL;
         sampler                                            = NULL;
         src_color_image_n_layer                            = 0;
         src_color_image_n_mipmap                           = 0;
@@ -463,7 +463,7 @@ PRIVATE void _postprocessing_motion_blur_init_po(_postprocessing_motion_blur* mo
 
         raGL_program_get_uniform_block_by_name(po_raGL,
                                                system_hashed_ansi_string_create("propsUB"),
-                                              &motion_blur_ptr->po_props_ub);
+                                              &motion_blur_ptr->po_props_ub_raGL);
 
         ral_program_get_block_variable_by_name(motion_blur_ptr->po,
                                                system_hashed_ansi_string_create("propsUB"),
@@ -472,15 +472,15 @@ PRIVATE void _postprocessing_motion_blur_init_po(_postprocessing_motion_blur* mo
 
         ASSERT_DEBUG_SYNC(n_velocity_samples_max_variable_ral_ptr != NULL,
                           "Could not retrieve n_velocity_samples variable descriptor");
-        ASSERT_DEBUG_SYNC(motion_blur_ptr->po_props_ub != NULL,
+        ASSERT_DEBUG_SYNC(motion_blur_ptr->po_props_ub_raGL != NULL,
                           "GL does not recognize motion blur post-processor's propsUB uniform block");
 
-        ogl_program_block_get_property(motion_blur_ptr->po_props_ub,
-                                       OGL_PROGRAM_BLOCK_PROPERTY_BUFFER_RAL,
-                                      &motion_blur_ptr->po_props_ub_bo);
-        ogl_program_block_get_property(motion_blur_ptr->po_props_ub,
-                                       OGL_PROGRAM_BLOCK_PROPERTY_BLOCK_DATA_SIZE,
-                                      &motion_blur_ptr->po_props_ub_bo_size);
+        raGL_program_block_get_property(motion_blur_ptr->po_props_ub_raGL,
+                                        RAGL_PROGRAM_BLOCK_PROPERTY_BUFFER_RAL,
+                                       &motion_blur_ptr->po_props_ub_bo);
+        raGL_program_block_get_property(motion_blur_ptr->po_props_ub_raGL,
+                                        RAGL_PROGRAM_BLOCK_PROPERTY_BLOCK_DATA_SIZE,
+                                       &motion_blur_ptr->po_props_ub_bo_size);
 
         motion_blur_ptr->po_props_ub_bo_n_velocity_samples_max_start_offset = n_velocity_samples_max_variable_ral_ptr->block_offset;
 
@@ -821,10 +821,10 @@ PUBLIC EMERALD_API RENDERING_CONTEXT_CALL void postprocessing_motion_blur_execut
                                          _postprocessing_motion_blur_get_blur_image_format_glenum(motion_blur_ptr->src_dst_color_image_format) );
 
     /* Update propsUB binding & data */
-    ogl_program_block_set_nonarrayed_variable_value(motion_blur_ptr->po_props_ub,
-                                                    motion_blur_ptr->po_props_ub_bo_n_velocity_samples_max_start_offset,
-                                                   &motion_blur_ptr->n_velocity_samples_max,
-                                                    sizeof(unsigned int) );
+    raGL_program_block_set_nonarrayed_variable_value(motion_blur_ptr->po_props_ub_raGL,
+                                                     motion_blur_ptr->po_props_ub_bo_n_velocity_samples_max_start_offset,
+                                                    &motion_blur_ptr->n_velocity_samples_max,
+                                                     sizeof(unsigned int) );
 
     if (motion_blur_ptr->image_type == POSTPROCESSING_MOTION_BLUR_IMAGE_TYPE_2D_MULTISAMPLE)
     {
@@ -837,13 +837,13 @@ PUBLIC EMERALD_API RENDERING_CONTEXT_CALL void postprocessing_motion_blur_execut
         ASSERT_DEBUG_SYNC(n_samples != 0,
                           "Zero-sample texture provided as input 2DMS texture!");
 
-        ogl_program_block_set_nonarrayed_variable_value(motion_blur_ptr->po_props_ub,
-                                                        motion_blur_ptr->po_props_ub_bo_image_n_samples_start_offset,
-                                                       &n_samples,
-                                                        sizeof(unsigned int) );
+        raGL_program_block_set_nonarrayed_variable_value(motion_blur_ptr->po_props_ub_raGL,
+                                                         motion_blur_ptr->po_props_ub_bo_image_n_samples_start_offset,
+                                                        &n_samples,
+                                                         sizeof(unsigned int) );
     } /* if (motion_blur_ptr->image_dimensionality == POSTPROCESSING_MOTION_BLUR_IMAGE_TYPE_2D_MULTISAMPLE) */
 
-    ogl_program_block_sync(motion_blur_ptr->po_props_ub);
+    raGL_program_block_sync(motion_blur_ptr->po_props_ub_raGL);
 
     GLuint      po_props_ub_bo_id           = 0;
     raGL_buffer po_props_ub_bo_raGL         = NULL;

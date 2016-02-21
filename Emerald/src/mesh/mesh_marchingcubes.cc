@@ -8,8 +8,8 @@
 #include "mesh/mesh_material.h"
 #include "mesh/mesh_marchingcubes.h"
 #include "ogl/ogl_context.h"
-#include "ogl/ogl_program_block.h"
 #include "raGL/raGL_program.h"
+#include "raGL/raGL_program_block.h"
 #include "ral/ral_buffer.h"
 #include "ral/ral_context.h"
 #include "ral/ral_program.h"
@@ -39,25 +39,25 @@ typedef struct _mesh_marchingcubes
     ral_buffer      polygonized_data_normals_subregion_bo;
     ral_buffer      polygonized_data_vertices_subregion_bo;
 
-    ral_program       po_scalar_field_polygonizer;
-    ogl_program_block po_scalar_field_polygonizer_data_ub;
-    ral_buffer        po_scalar_field_polygonizer_data_ub_bo;
-    GLuint            po_scalar_field_polygonizer_data_ub_bo_size;
-    GLuint            po_scalar_field_polygonizer_data_ub_bp;
-    GLuint            po_scalar_field_polygonizer_data_ub_isolevel_offset;
-    unsigned int      po_scalar_field_polygonizer_global_wg_size[3];
-    ogl_program_block po_scalar_field_polygonizer_indirect_draw_call_count_ssb;
-    GLuint            po_scalar_field_polygonizer_indirect_draw_call_count_ssb_bp;
-    ogl_program_block po_scalar_field_polygonizer_precomputed_tables_ub;
-    GLuint            po_scalar_field_polygonizer_precomputed_tables_ub_bo_edge_table_offset;
-    ral_buffer        po_scalar_field_polygonizer_precomputed_tables_ub_bo;
-    GLuint            po_scalar_field_polygonizer_precomputed_tables_ub_bo_size;
-    GLuint            po_scalar_field_polygonizer_precomputed_tables_ub_bo_triangle_table_offset;
-    GLuint            po_scalar_field_polygonizer_precomputed_tables_ub_bp;
-    ogl_program_block po_scalar_field_polygonizer_result_data_ssb;
-    GLuint            po_scalar_field_polygonizer_result_data_ssb_bp;
-    ogl_program_block po_scalar_field_polygonizer_scalar_field_data_ssb;
-    GLuint            po_scalar_field_polygonizer_scalar_field_data_ssb_bp;
+    ral_program        po_scalar_field_polygonizer;
+    ral_buffer         po_scalar_field_polygonizer_data_ub_bo;
+    GLuint             po_scalar_field_polygonizer_data_ub_bo_size;
+    GLuint             po_scalar_field_polygonizer_data_ub_bp;
+    GLuint             po_scalar_field_polygonizer_data_ub_isolevel_offset;
+    raGL_program_block po_scalar_field_polygonizer_data_ub_raGL;
+    unsigned int       po_scalar_field_polygonizer_global_wg_size[3];
+    GLuint             po_scalar_field_polygonizer_indirect_draw_call_count_ssb_bp;
+    raGL_program_block po_scalar_field_polygonizer_indirect_draw_call_count_ssb_raGL;
+    GLuint             po_scalar_field_polygonizer_precomputed_tables_ub_bo_edge_table_offset;
+    ral_buffer         po_scalar_field_polygonizer_precomputed_tables_ub_bo;
+    GLuint             po_scalar_field_polygonizer_precomputed_tables_ub_bo_size;
+    GLuint             po_scalar_field_polygonizer_precomputed_tables_ub_bo_triangle_table_offset;
+    GLuint             po_scalar_field_polygonizer_precomputed_tables_ub_bp;
+    raGL_program_block po_scalar_field_polygonizer_precomputed_tables_ub_raGL;
+    GLuint             po_scalar_field_polygonizer_result_data_ssb_bp;
+    raGL_program_block po_scalar_field_polygonizer_result_data_ssb_raGL;
+    GLuint             po_scalar_field_polygonizer_scalar_field_data_ssb_bp;
+    raGL_program_block po_scalar_field_polygonizer_scalar_field_data_ssb_raGL;
 
     REFCOUNT_INSERT_VARIABLES;
 
@@ -85,23 +85,23 @@ typedef struct _mesh_marchingcubes
         polygonized_data_vertices_subregion_bo = NULL;
 
         po_scalar_field_polygonizer                                                = NULL;
-        po_scalar_field_polygonizer_data_ub                                        = NULL;
         po_scalar_field_polygonizer_data_ub_bo                                     = NULL;
         po_scalar_field_polygonizer_data_ub_bo_size                                = 0;
         po_scalar_field_polygonizer_data_ub_bp                                     = -1;
         po_scalar_field_polygonizer_data_ub_isolevel_offset                        = -1;
-        po_scalar_field_polygonizer_indirect_draw_call_count_ssb                   = NULL;
+        po_scalar_field_polygonizer_data_ub_raGL                                   = NULL;
+        po_scalar_field_polygonizer_indirect_draw_call_count_ssb_raGL              = NULL;
         po_scalar_field_polygonizer_indirect_draw_call_count_ssb_bp                = -1;
-        po_scalar_field_polygonizer_precomputed_tables_ub                          = NULL;
         po_scalar_field_polygonizer_precomputed_tables_ub_bo_edge_table_offset     = -1;
         po_scalar_field_polygonizer_precomputed_tables_ub_bo                       = NULL;
         po_scalar_field_polygonizer_precomputed_tables_ub_bo_size                  = 0;
         po_scalar_field_polygonizer_precomputed_tables_ub_bo_triangle_table_offset = -1;
         po_scalar_field_polygonizer_precomputed_tables_ub_bp                       = -1;
-        po_scalar_field_polygonizer_result_data_ssb                                = NULL;
+        po_scalar_field_polygonizer_precomputed_tables_ub_raGL                     = NULL;
         po_scalar_field_polygonizer_result_data_ssb_bp                             = NULL;
-        po_scalar_field_polygonizer_scalar_field_data_ssb                          = NULL;
+        po_scalar_field_polygonizer_result_data_ssb_raGL                           = NULL;
         po_scalar_field_polygonizer_scalar_field_data_ssb_bp                       = NULL;
+        po_scalar_field_polygonizer_scalar_field_data_ssb_raGL                     = NULL;
     }
 } _mesh_marchingcubes;
 
@@ -1312,17 +1312,17 @@ PRIVATE void _mesh_marchingcubes_init_polygonizer_po(_mesh_marchingcubes* mesh_p
 
     raGL_program_get_uniform_block_by_name(polygonizer_po_raGL,
                                            system_hashed_ansi_string_create("dataUB"),
-                                          &mesh_ptr->po_scalar_field_polygonizer_data_ub);
+                                          &mesh_ptr->po_scalar_field_polygonizer_data_ub_raGL);
 
-    ogl_program_block_get_property(mesh_ptr->po_scalar_field_polygonizer_data_ub,
-                                   OGL_PROGRAM_BLOCK_PROPERTY_BUFFER_RAL,
-                                  &mesh_ptr->po_scalar_field_polygonizer_data_ub_bo);
-    ogl_program_block_get_property(mesh_ptr->po_scalar_field_polygonizer_data_ub,
-                                   OGL_PROGRAM_BLOCK_PROPERTY_BLOCK_DATA_SIZE,
-                                  &mesh_ptr->po_scalar_field_polygonizer_data_ub_bo_size);
-    ogl_program_block_get_property(mesh_ptr->po_scalar_field_polygonizer_data_ub,
-                                   OGL_PROGRAM_BLOCK_PROPERTY_INDEXED_BP,
-                                  &mesh_ptr->po_scalar_field_polygonizer_data_ub_bp);
+    raGL_program_block_get_property(mesh_ptr->po_scalar_field_polygonizer_data_ub_raGL,
+                                    RAGL_PROGRAM_BLOCK_PROPERTY_BUFFER_RAL,
+                                   &mesh_ptr->po_scalar_field_polygonizer_data_ub_bo);
+    raGL_program_block_get_property(mesh_ptr->po_scalar_field_polygonizer_data_ub_raGL,
+                                    RAGL_PROGRAM_BLOCK_PROPERTY_BLOCK_DATA_SIZE,
+                                   &mesh_ptr->po_scalar_field_polygonizer_data_ub_bo_size);
+    raGL_program_block_get_property(mesh_ptr->po_scalar_field_polygonizer_data_ub_raGL,
+                                    RAGL_PROGRAM_BLOCK_PROPERTY_INDEXED_BP,
+                                   &mesh_ptr->po_scalar_field_polygonizer_data_ub_bp);
 
     ral_program_get_block_variable_by_name(mesh_ptr->po_scalar_field_polygonizer,
                                            system_hashed_ansi_string_create("dataUB"),
@@ -1349,44 +1349,44 @@ PRIVATE void _mesh_marchingcubes_init_polygonizer_po(_mesh_marchingcubes* mesh_p
 
     raGL_program_get_uniform_block_by_name(polygonizer_po_raGL,
                                            system_hashed_ansi_string_create("precomputed_tablesUB"),
-                                          &mesh_ptr->po_scalar_field_polygonizer_precomputed_tables_ub);
+                                          &mesh_ptr->po_scalar_field_polygonizer_precomputed_tables_ub_raGL);
 
-    ogl_program_block_get_property(mesh_ptr->po_scalar_field_polygonizer_precomputed_tables_ub,
-                                   OGL_PROGRAM_BLOCK_PROPERTY_BUFFER_RAL,
-                                  &mesh_ptr->po_scalar_field_polygonizer_precomputed_tables_ub_bo);
-    ogl_program_block_get_property(mesh_ptr->po_scalar_field_polygonizer_precomputed_tables_ub,
-                                   OGL_PROGRAM_BLOCK_PROPERTY_BLOCK_DATA_SIZE,
-                                  &mesh_ptr->po_scalar_field_polygonizer_precomputed_tables_ub_bo_size);
-    ogl_program_block_get_property(mesh_ptr->po_scalar_field_polygonizer_precomputed_tables_ub,
-                                   OGL_PROGRAM_BLOCK_PROPERTY_INDEXED_BP,
-                                  &mesh_ptr->po_scalar_field_polygonizer_precomputed_tables_ub_bp);
+    raGL_program_block_get_property(mesh_ptr->po_scalar_field_polygonizer_precomputed_tables_ub_raGL,
+                                    RAGL_PROGRAM_BLOCK_PROPERTY_BUFFER_RAL,
+                                   &mesh_ptr->po_scalar_field_polygonizer_precomputed_tables_ub_bo);
+    raGL_program_block_get_property(mesh_ptr->po_scalar_field_polygonizer_precomputed_tables_ub_raGL,
+                                    RAGL_PROGRAM_BLOCK_PROPERTY_BLOCK_DATA_SIZE,
+                                   &mesh_ptr->po_scalar_field_polygonizer_precomputed_tables_ub_bo_size);
+    raGL_program_block_get_property(mesh_ptr->po_scalar_field_polygonizer_precomputed_tables_ub_raGL,
+                                    RAGL_PROGRAM_BLOCK_PROPERTY_INDEXED_BP,
+                                   &mesh_ptr->po_scalar_field_polygonizer_precomputed_tables_ub_bp);
 
     /* Set up indirect draw call <count> arg SSB */
     raGL_program_get_shader_storage_block_by_name(polygonizer_po_raGL,
                                                   system_hashed_ansi_string_create("indirect_draw_callSSB"),
-                                                 &mesh_ptr->po_scalar_field_polygonizer_indirect_draw_call_count_ssb);
+                                                 &mesh_ptr->po_scalar_field_polygonizer_indirect_draw_call_count_ssb_raGL);
 
-    ogl_program_block_get_property(mesh_ptr->po_scalar_field_polygonizer_indirect_draw_call_count_ssb,
-                                   OGL_PROGRAM_BLOCK_PROPERTY_INDEXED_BP,
-                                  &mesh_ptr->po_scalar_field_polygonizer_indirect_draw_call_count_ssb_bp);
+    raGL_program_block_get_property(mesh_ptr->po_scalar_field_polygonizer_indirect_draw_call_count_ssb_raGL,
+                                    RAGL_PROGRAM_BLOCK_PROPERTY_INDEXED_BP,
+                                   &mesh_ptr->po_scalar_field_polygonizer_indirect_draw_call_count_ssb_bp);
 
     /* Set up result data SSB */
     raGL_program_get_shader_storage_block_by_name(polygonizer_po_raGL,
                                                   system_hashed_ansi_string_create("result_dataSSB"),
-                                                 &mesh_ptr->po_scalar_field_polygonizer_result_data_ssb);
+                                                 &mesh_ptr->po_scalar_field_polygonizer_result_data_ssb_raGL);
 
-    ogl_program_block_get_property(mesh_ptr->po_scalar_field_polygonizer_result_data_ssb,
-                                   OGL_PROGRAM_BLOCK_PROPERTY_INDEXED_BP,
-                                  &mesh_ptr->po_scalar_field_polygonizer_result_data_ssb_bp);
+    raGL_program_block_get_property(mesh_ptr->po_scalar_field_polygonizer_result_data_ssb_raGL,
+                                    RAGL_PROGRAM_BLOCK_PROPERTY_INDEXED_BP,
+                                   &mesh_ptr->po_scalar_field_polygonizer_result_data_ssb_bp);
 
     /* Set up scalar field data SSB */
     raGL_program_get_shader_storage_block_by_name(polygonizer_po_raGL,
                                                   system_hashed_ansi_string_create("scalar_field_dataSSB"),
-                                                 &mesh_ptr->po_scalar_field_polygonizer_scalar_field_data_ssb);
+                                                 &mesh_ptr->po_scalar_field_polygonizer_scalar_field_data_ssb_raGL);
 
-    ogl_program_block_get_property(mesh_ptr->po_scalar_field_polygonizer_scalar_field_data_ssb,
-                                   OGL_PROGRAM_BLOCK_PROPERTY_INDEXED_BP,
-                                  &mesh_ptr->po_scalar_field_polygonizer_scalar_field_data_ssb_bp);
+    raGL_program_block_get_property(mesh_ptr->po_scalar_field_polygonizer_scalar_field_data_ssb_raGL,
+                                    RAGL_PROGRAM_BLOCK_PROPERTY_INDEXED_BP,
+                                   &mesh_ptr->po_scalar_field_polygonizer_scalar_field_data_ssb_bp);
 
     /* Release stuff */
     ral_context_delete_objects(mesh_ptr->context,
@@ -1584,26 +1584,26 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void mesh_marchingcubes_polygonize(mes
                                  OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
                                 &entrypoints_ptr);
 
-        ogl_program_block_set_nonarrayed_variable_value(mesh_ptr->po_scalar_field_polygonizer_data_ub,
-                                                        mesh_ptr->po_scalar_field_polygonizer_data_ub_isolevel_offset,
-                                                       &mesh_ptr->isolevel,
-                                                        sizeof(float) );
+        raGL_program_block_set_nonarrayed_variable_value(mesh_ptr->po_scalar_field_polygonizer_data_ub_raGL,
+                                                         mesh_ptr->po_scalar_field_polygonizer_data_ub_isolevel_offset,
+                                                        &mesh_ptr->isolevel,
+                                                         sizeof(float) );
 
-        ogl_program_block_set_arrayed_variable_value(mesh_ptr->po_scalar_field_polygonizer_precomputed_tables_ub,
-                                                     mesh_ptr->po_scalar_field_polygonizer_precomputed_tables_ub_bo_edge_table_offset,
-                                                     _edge_table,
-                                                     sizeof(_edge_table),
-                                                     0, /* dst_array_start_index */
-                                                     sizeof(_edge_table) / sizeof(_edge_table[0]) );
-        ogl_program_block_set_arrayed_variable_value(mesh_ptr->po_scalar_field_polygonizer_precomputed_tables_ub,
-                                                     mesh_ptr->po_scalar_field_polygonizer_precomputed_tables_ub_bo_triangle_table_offset,
-                                                     _triangle_table,
-                                                     sizeof(_triangle_table),
-                                                     0, /* dst_array_start_index */
-                                                     sizeof(_triangle_table) / sizeof(_triangle_table[0]) );
+        raGL_program_block_set_arrayed_variable_value(mesh_ptr->po_scalar_field_polygonizer_precomputed_tables_ub_raGL,
+                                                      mesh_ptr->po_scalar_field_polygonizer_precomputed_tables_ub_bo_edge_table_offset,
+                                                      _edge_table,
+                                                      sizeof(_edge_table),
+                                                      0, /* dst_array_start_index */
+                                                      sizeof(_edge_table) / sizeof(_edge_table[0]) );
+        raGL_program_block_set_arrayed_variable_value(mesh_ptr->po_scalar_field_polygonizer_precomputed_tables_ub_raGL,
+                                                      mesh_ptr->po_scalar_field_polygonizer_precomputed_tables_ub_bo_triangle_table_offset,
+                                                      _triangle_table,
+                                                      sizeof(_triangle_table),
+                                                      0, /* dst_array_start_index */
+                                                      sizeof(_triangle_table) / sizeof(_triangle_table[0]) );
 
-        ogl_program_block_sync(mesh_ptr->po_scalar_field_polygonizer_data_ub);
-        ogl_program_block_sync(mesh_ptr->po_scalar_field_polygonizer_precomputed_tables_ub);
+        raGL_program_block_sync(mesh_ptr->po_scalar_field_polygonizer_data_ub_raGL);
+        raGL_program_block_sync(mesh_ptr->po_scalar_field_polygonizer_precomputed_tables_ub_raGL);
 
         /* Set up the SSBO & UBO bindings */
         GLuint      indirect_draw_call_args_bo_id                                     = 0;

@@ -7,8 +7,8 @@
  */
 #include "shared.h"
 #include "ogl/ogl_context.h"
-#include "ogl/ogl_program_block.h"
 #include "raGL/raGL_program.h"
+#include "raGL/raGL_program_block.h"
 #include "raGL/raGL_utils.h"
 #include "ral/ral_buffer.h"
 #include "ral/ral_context.h"
@@ -24,7 +24,7 @@
 
 
 /** Internal types */
-typedef struct _ogl_program_block
+typedef struct _raGL_program_block
 {
     ral_context  context; /* NOT retained */
     unsigned int index;
@@ -35,7 +35,7 @@ typedef struct _ogl_program_block
     ral_buffer             block_bo;
     unsigned char*         block_data;
     GLint                  block_data_size;
-    ogl_program_block_type block_type;
+    ral_program_block_type block_type;
     GLint                  indexed_bp;
 
     bool                      is_intel_driver;
@@ -65,19 +65,19 @@ typedef struct _ogl_program_block
     unsigned int dirty_offset_end;
     unsigned int dirty_offset_start;
 
-    explicit _ogl_program_block(ral_context               in_context,
-                                raGL_program              in_owner,
-                                unsigned int              in_index,
-                                system_hashed_ansi_string in_name,
-                                bool                      in_syncable,
-                                ogl_program_block_type    in_type)
+    explicit _raGL_program_block(ral_context               in_context,
+                                 raGL_program              in_owner,
+                                 unsigned int              in_index,
+                                 system_hashed_ansi_string in_name,
+                                 bool                      in_syncable,
+                                 ral_program_block_type    in_type)
     {
         /* Sanity checks.
          *
          * 1. Sync is not available yet for SSBs (todo?)
          */
-        ASSERT_DEBUG_SYNC(in_type == OGL_PROGRAM_BLOCK_TYPE_SHADER_STORAGE_BUFFER && !in_syncable || 
-                          in_type == OGL_PROGRAM_BLOCK_TYPE_UNIFORM_BUFFER,
+        ASSERT_DEBUG_SYNC(in_type == RAL_PROGRAM_BLOCK_TYPE_STORAGE_BUFFER && !in_syncable || 
+                          in_type == RAL_PROGRAM_BLOCK_TYPE_UNIFORM_BUFFER,
                           "Sanity check failed");
 
         /* Initialize fields with default values */
@@ -102,7 +102,7 @@ typedef struct _ogl_program_block
         syncable                  = in_syncable;
     }
 
-    ~_ogl_program_block()
+    ~_raGL_program_block()
     {
         if (block_bo != NULL)
         {
@@ -143,12 +143,12 @@ typedef struct _ogl_program_block
             members_raGL_by_name = NULL;
         }
     }
-} _ogl_program_block;
+} _raGL_program_block;
 
 
 /** TODO */
-PRIVATE unsigned int _ogl_program_block_get_expected_src_data_size(const ral_program_variable* uniform_ptr,
-                                                                   unsigned int                n_array_items)
+PRIVATE unsigned int _raGL_program_block_get_expected_src_data_size(const ral_program_variable* uniform_ptr,
+                                                                    unsigned int                n_array_items)
 {
     unsigned int result = 0;
 
@@ -195,7 +195,7 @@ PRIVATE unsigned int _ogl_program_block_get_expected_src_data_size(const ral_pro
 }
 
 /** TODO */
-PRIVATE unsigned int _ogl_program_block_get_memcpy_friendly_matrix_stride(const ral_program_variable* uniform_ptr)
+PRIVATE unsigned int _raGL_program_block_get_memcpy_friendly_matrix_stride(const ral_program_variable* uniform_ptr)
 {
     unsigned int result = 0;
 
@@ -267,7 +267,7 @@ PRIVATE unsigned int _ogl_program_block_get_memcpy_friendly_matrix_stride(const 
 }
 
 /** TODO */
-PRIVATE unsigned int _ogl_program_block_get_n_matrix_columns(const ral_program_variable* uniform_ptr)
+PRIVATE unsigned int _raGL_program_block_get_n_matrix_columns(const ral_program_variable* uniform_ptr)
 {
     unsigned int result = 0;
 
@@ -295,7 +295,7 @@ PRIVATE unsigned int _ogl_program_block_get_n_matrix_columns(const ral_program_v
 }
 
 /** TODO */
-PRIVATE unsigned int _ogl_program_block_get_n_matrix_rows(const ral_program_variable* uniform_ptr)
+PRIVATE unsigned int _raGL_program_block_get_n_matrix_rows(const ral_program_variable* uniform_ptr)
 {
     unsigned int result = 0;
 
@@ -330,7 +330,7 @@ PRIVATE unsigned int _ogl_program_block_get_n_matrix_rows(const ral_program_vari
  *        Instead, we configure the bindings in the linking handler, after all blocks are
  *        enumerated.
  */
-PRIVATE bool _ogl_program_block_init(_ogl_program_block* block_ptr)
+PRIVATE bool _raGL_program_block_init(_raGL_program_block* block_ptr)
 {
     GLint*      active_variable_indices = NULL;
     GLint       n_active_variables      = 0;
@@ -399,12 +399,12 @@ PRIVATE bool _ogl_program_block_init(_ogl_program_block* block_ptr)
     }
 
     /* Convert the block type to GL interface type */
-    const GLenum block_type_gl = (block_ptr->block_type == OGL_PROGRAM_BLOCK_TYPE_SHADER_STORAGE_BUFFER) ? GL_SHADER_STORAGE_BLOCK
-                                                                                                         : GL_UNIFORM_BLOCK;
+    const GLenum block_type_gl = (block_ptr->block_type == RAL_PROGRAM_BLOCK_TYPE_STORAGE_BUFFER) ? GL_SHADER_STORAGE_BLOCK
+                                                                                                  : GL_UNIFORM_BLOCK;
 
-    ASSERT_DEBUG_SYNC(block_ptr->block_type == OGL_PROGRAM_BLOCK_TYPE_SHADER_STORAGE_BUFFER ||
-                      block_ptr->block_type == OGL_PROGRAM_BLOCK_TYPE_UNIFORM_BUFFER,
-                      "Unrecognized ogl_program_block type.");
+    ASSERT_DEBUG_SYNC(block_ptr->block_type == RAL_PROGRAM_BLOCK_TYPE_STORAGE_BUFFER ||
+                      block_ptr->block_type == RAL_PROGRAM_BLOCK_TYPE_UNIFORM_BUFFER,
+                      "Unrecognized ral_program_block type.");
 
     /* Retrieve UB uniform block properties */
     static const GLenum block_property_active_variables     = GL_ACTIVE_VARIABLES;
@@ -459,7 +459,7 @@ PRIVATE bool _ogl_program_block_init(_ogl_program_block* block_ptr)
         block_ptr->dirty_offset_end   = block_ptr->block_data_size;
         block_ptr->dirty_offset_start = 0;
 
-        ogl_program_block_sync( (ogl_program_block) block_ptr);
+        raGL_program_block_sync( (raGL_program_block) block_ptr);
     } /* if (ub_ptr->block_data_size > 0 && ub_ptr->syncable) */
 
     /* Register the block on RAL level */
@@ -511,7 +511,7 @@ PRIVATE bool _ogl_program_block_init(_ogl_program_block* block_ptr)
                 _raGL_program_variable* variable_raGL_ptr = NULL;
                 ral_program_variable*   variable_ral_ptr  = NULL;
 
-                if (block_ptr->block_type == OGL_PROGRAM_BLOCK_TYPE_SHADER_STORAGE_BUFFER)
+                if (block_ptr->block_type == RAL_PROGRAM_BLOCK_TYPE_STORAGE_BUFFER)
                 {
                     variable_raGL_ptr = new (std::nothrow) _raGL_program_variable;
                     variable_ral_ptr  = new (std::nothrow) ral_program_variable;
@@ -540,7 +540,7 @@ PRIVATE bool _ogl_program_block_init(_ogl_program_block* block_ptr)
                     ral_program             program_ral            = NULL;
                     _raGL_program_variable* temp_variable_raGL_ptr = NULL;
 
-                    ASSERT_DEBUG_SYNC(block_ptr->block_type == OGL_PROGRAM_BLOCK_TYPE_UNIFORM_BUFFER,
+                    ASSERT_DEBUG_SYNC(block_ptr->block_type == RAL_PROGRAM_BLOCK_TYPE_UNIFORM_BUFFER,
                                       "Sanity check failed");
 
                     raGL_program_get_property(block_ptr->owner,
@@ -595,7 +595,7 @@ end:
 }
 
 /** TODO */
-PRIVATE bool _ogl_program_block_is_matrix_uniform(const ral_program_variable* uniform_ptr)
+PRIVATE bool _raGL_program_block_is_matrix_uniform(const ral_program_variable* uniform_ptr)
 {
     bool result = false;
 
@@ -619,14 +619,14 @@ PRIVATE bool _ogl_program_block_is_matrix_uniform(const ral_program_variable* un
 }
 
 /** TODO */
-PRIVATE void _ogl_program_block_set_uniform_value(ogl_program_block block,
-                                                  GLuint            block_variable_offset,
-                                                  const void*       src_data,
-                                                  unsigned int      src_data_size,
-                                                  unsigned int      dst_array_start_index,
-                                                  unsigned int      dst_array_item_count)
+PRIVATE void _raGL_program_block_set_uniform_value(raGL_program_block block,
+                                                   GLuint             block_variable_offset,
+                                                   const void*        src_data,
+                                                   unsigned int       src_data_size,
+                                                   unsigned int       dst_array_start_index,
+                                                   unsigned int       dst_array_item_count)
 {
-    _ogl_program_block*         block_ptr             = (_ogl_program_block*) block;
+    _raGL_program_block*        block_ptr             = (_raGL_program_block*) block;
     unsigned char*              dst_traveller_ptr     = NULL;
     bool                        is_uniform_matrix     = false;
     unsigned int                modified_region_end   = DIRTY_OFFSET_UNUSED;
@@ -685,8 +685,8 @@ PRIVATE void _ogl_program_block_set_uniform_value(ogl_program_block block,
     /* Check if src_data_size is correct */
     #ifdef _DEBUG
     {
-        const unsigned int expected_src_data_size = _ogl_program_block_get_expected_src_data_size(variable_ral_ptr,
-                                                                                                  dst_array_item_count);
+        const unsigned int expected_src_data_size = _raGL_program_block_get_expected_src_data_size(variable_ral_ptr,
+                                                                                                   dst_array_item_count);
 
         if (src_data_size != expected_src_data_size)
         {
@@ -702,7 +702,7 @@ PRIVATE void _ogl_program_block_set_uniform_value(ogl_program_block block,
     #endif
 
     /* Proceed with updating the internal cache */
-    is_uniform_matrix = _ogl_program_block_is_matrix_uniform(variable_ral_ptr);
+    is_uniform_matrix = _raGL_program_block_is_matrix_uniform(variable_ral_ptr);
 
     dst_traveller_ptr = block_ptr->block_data + variable_ral_ptr->block_offset                                                +
                         ((variable_ral_ptr->array_stride != -1) ? variable_ral_ptr->array_stride : 0) * dst_array_start_index;
@@ -711,14 +711,14 @@ PRIVATE void _ogl_program_block_set_uniform_value(ogl_program_block block,
     if (is_uniform_matrix)
     {
         /* Matrix uniforms, yay */
-        if (_ogl_program_block_get_memcpy_friendly_matrix_stride(variable_ral_ptr) != variable_ral_ptr->matrix_stride)
+        if (_raGL_program_block_get_memcpy_friendly_matrix_stride(variable_ral_ptr) != variable_ral_ptr->matrix_stride)
         {
             /* NOTE: The following code may seem redundant but will be useful for code maintainability
              *       when we introduce transposed data support. */
             if (variable_ral_ptr->is_row_major_matrix)
             {
                 /* Need to copy the data row-by-row */
-                const unsigned int n_matrix_rows = _ogl_program_block_get_n_matrix_rows(variable_ral_ptr);
+                const unsigned int n_matrix_rows = _raGL_program_block_get_n_matrix_rows(variable_ral_ptr);
                 const unsigned int row_data_size = n_matrix_rows * sizeof(float);
 
                 for (unsigned int n_row = 0;
@@ -749,7 +749,7 @@ PRIVATE void _ogl_program_block_set_uniform_value(ogl_program_block block,
             else
             {
                 /* Need to copy the data column-by-column */
-                const unsigned int n_matrix_columns = _ogl_program_block_get_n_matrix_columns(variable_ral_ptr);
+                const unsigned int n_matrix_columns = _raGL_program_block_get_n_matrix_columns(variable_ral_ptr);
                 const unsigned int column_data_size = sizeof(float) * n_matrix_columns;
 
                 for (unsigned int n_column = 0;
@@ -803,8 +803,8 @@ PRIVATE void _ogl_program_block_set_uniform_value(ogl_program_block block,
         if (variable_ral_ptr->array_stride != 0  && /* no padding             */
             variable_ral_ptr->array_stride != -1)   /* not an arrayed uniform */
         {
-            const unsigned int src_single_item_size = _ogl_program_block_get_expected_src_data_size(variable_ral_ptr,
-                                                                                                    1);         /* n_array_items */
+            const unsigned int src_single_item_size = _raGL_program_block_get_expected_src_data_size(variable_ral_ptr,
+                                                                                                     1);         /* n_array_items */
 
             /* Not good, need to take the padding into account..
              *
@@ -885,38 +885,38 @@ end:
 
 
 /** Please see header for spec */
-PUBLIC ogl_program_block ogl_program_block_create(ral_context               context,
-                                                  raGL_program              owner_program,
-                                                  ogl_program_block_type    block_type,
-                                                  unsigned int              block_index,
-                                                  system_hashed_ansi_string block_name,
-                                                  bool                      support_sync_behavior)
+PUBLIC raGL_program_block raGL_program_block_create(ral_context               context,
+                                                    raGL_program              owner_program,
+                                                    ral_program_block_type    block_type,
+                                                    unsigned int              block_index,
+                                                    system_hashed_ansi_string block_name,
+                                                    bool                      support_sync_behavior)
 {
-    _ogl_program_block* new_block_ptr = new (std::nothrow) _ogl_program_block(context,
-                                                                              owner_program,
-                                                                              block_index,
-                                                                              block_name,
-                                                                              support_sync_behavior,
-                                                                              block_type);
+    _raGL_program_block* new_block_ptr = new (std::nothrow) _raGL_program_block(context,
+                                                                                owner_program,
+                                                                                block_index,
+                                                                                block_name,
+                                                                                support_sync_behavior,
+                                                                                block_type);
 
     ASSERT_DEBUG_SYNC(new_block_ptr != NULL,
                       "Out of memory");
 
     if (new_block_ptr != NULL)
     {
-        _ogl_program_block_init(new_block_ptr);
-    } /* if (new_ub_ptr != NULL) */
+        _raGL_program_block_init(new_block_ptr);
+    } /* if (new_block_ptr != NULL) */
 
-    return (ogl_program_block) new_block_ptr;
+    return (raGL_program_block) new_block_ptr;
 }
 
 /** Please see header for spec */
-PUBLIC bool ogl_program_block_get_block_variable(ogl_program_block              block,
-                                                 unsigned int                   index,
-                                                 const _raGL_program_variable** out_variable_ptr)
+PUBLIC bool raGL_program_block_get_block_variable(raGL_program_block             block,
+                                                  unsigned int                   index,
+                                                  const _raGL_program_variable** out_variable_ptr)
 {
-    _ogl_program_block* block_ptr = (_ogl_program_block*) block;
-    bool                result    = false;
+    _raGL_program_block* block_ptr = (_raGL_program_block*) block;
+    bool                 result    = false;
 
     result = system_resizable_vector_get_element_at(block_ptr->members_raGL,
                                                     index,
@@ -926,22 +926,22 @@ PUBLIC bool ogl_program_block_get_block_variable(ogl_program_block              
 }
 
 /** Please see header for spec */
-PUBLIC bool ogl_program_block_get_block_variable_by_name(ogl_program_block              block,
-                                                         system_hashed_ansi_string      name,
-                                                         const _raGL_program_variable** out_variable_ptr)
+PUBLIC bool raGL_program_block_get_block_variable_by_name(raGL_program_block             block,
+                                                          system_hashed_ansi_string      name,
+                                                          const _raGL_program_variable** out_variable_ptr)
 {
-    const _ogl_program_block* block_ptr = (const _ogl_program_block*) block;
-    bool                      result    = true;
+    const _raGL_program_block* block_ptr = (const _raGL_program_block*) block;
+    bool                       result    = true;
 
     ASSERT_DEBUG_SYNC(block_ptr != NULL,
-                      "Input ogl_program_block instance is NULL");
+                      "Input raGL_program_block instance is NULL");
 
     if (!system_hash64map_get(block_ptr->members_raGL_by_name,
                               system_hashed_ansi_string_get_hash(name),
                               out_variable_ptr) )
     {
         ASSERT_DEBUG_SYNC(false,
-                          "Input variable [%s] is not recognized by ogl_program_block",
+                          "Input variable [%s] is not recognized by raGL_program_block",
                           system_hashed_ansi_string_get_buffer(name) );
 
         result = false;
@@ -951,56 +951,56 @@ PUBLIC bool ogl_program_block_get_block_variable_by_name(ogl_program_block      
 }
 
 /** Please see header for spec */
-PUBLIC EMERALD_API void ogl_program_block_get_property(const ogl_program_block    block,
-                                                       ogl_program_block_property property,
-                                                       void*                      out_result)
+PUBLIC EMERALD_API void raGL_program_block_get_property(const raGL_program_block    block,
+                                                        raGL_program_block_property property,
+                                                        void*                       out_result)
 {
-    const _ogl_program_block* block_ptr = (const _ogl_program_block*) block;
+    const _raGL_program_block* block_ptr = (const _raGL_program_block*) block;
 
     switch (property)
     {
-        case OGL_PROGRAM_BLOCK_PROPERTY_BLOCK_DATA_SIZE:
+        case RAGL_PROGRAM_BLOCK_PROPERTY_BLOCK_DATA_SIZE:
         {
             ASSERT_DEBUG_SYNC(block_ptr->syncable,
-                              "OGL_PROGRAM_UB_PROPERTY_BLOCK_DATA_SIZE property only available for syncable ogl_program_ub instances.");
+                              "RAGL_PROGRAM_UB_PROPERTY_BLOCK_DATA_SIZE property only available for syncable UB instances.");
 
             *(unsigned int*) out_result = block_ptr->block_data_size;
 
             break;
         }
 
-        case OGL_PROGRAM_BLOCK_PROPERTY_BUFFER_RAL:
+        case RAGL_PROGRAM_BLOCK_PROPERTY_BUFFER_RAL:
         {
             ASSERT_DEBUG_SYNC(block_ptr->syncable,
-                              "OGL_PROGRAM_BLOCK_PROPERTY_BUFFER_RAL property only available for syncable ogl_program_ub instances.");
+                              "RAGL_PROGRAM_BLOCK_PROPERTY_BUFFER_RAL property only available for syncable UB instances.");
 
             *(ral_buffer*) out_result = block_ptr->block_bo;
 
             break;
         }
 
-        case OGL_PROGRAM_BLOCK_PROPERTY_INDEX:
+        case RAGL_PROGRAM_BLOCK_PROPERTY_INDEX:
         {
             *(GLuint*) out_result = block_ptr->index;
 
             break;
         }
 
-        case OGL_PROGRAM_BLOCK_PROPERTY_INDEXED_BP:
+        case RAGL_PROGRAM_BLOCK_PROPERTY_INDEXED_BP:
         {
             *(GLuint*) out_result = block_ptr->indexed_bp;
 
             break;
         }
 
-        case OGL_PROGRAM_BLOCK_PROPERTY_NAME:
+        case RAGL_PROGRAM_BLOCK_PROPERTY_NAME:
         {
             *(system_hashed_ansi_string*) out_result = block_ptr->name;
 
             break;
         }
 
-        case OGL_PROGRAM_BLOCK_PROPERTY_N_MEMBERS:
+        case RAGL_PROGRAM_BLOCK_PROPERTY_N_MEMBERS:
         {
             system_resizable_vector_get_property(block_ptr->members_raGL,
                                                  SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
@@ -1012,57 +1012,57 @@ PUBLIC EMERALD_API void ogl_program_block_get_property(const ogl_program_block  
         default:
         {
             ASSERT_DEBUG_SYNC(false,
-                              "Unrecognized ogl_program_ub_property value.");
+                              "Unrecognized raGL_program_block_property value.");
         }
     } /* switch (property) */
 }
 
 /** Please see header for spec */
-PUBLIC void ogl_program_block_release(ogl_program_block block)
+PUBLIC void raGL_program_block_release(raGL_program_block block)
 {
-    delete (_ogl_program_block*) block;
+    delete (_raGL_program_block*) block;
 }
 
 /* Please see header for spec */
-PUBLIC EMERALD_API void ogl_program_block_set_arrayed_variable_value(ogl_program_block block,
-                                                                     GLuint            block_variable_offset,
-                                                                     const void*       src_data,
-                                                                     unsigned int      src_data_size,
-                                                                     unsigned int      dst_array_start_index,
-                                                                     unsigned int      dst_array_item_count)
+PUBLIC EMERALD_API void raGL_program_block_set_arrayed_variable_value(raGL_program_block block,
+                                                                      GLuint             block_variable_offset,
+                                                                      const void*        src_data,
+                                                                      unsigned int       src_data_size,
+                                                                      unsigned int       dst_array_start_index,
+                                                                      unsigned int       dst_array_item_count)
 {
-    _ogl_program_block_set_uniform_value(block,
-                                         block_variable_offset,
-                                         src_data,
-                                         src_data_size,
-                                         dst_array_start_index,
-                                         dst_array_item_count);
+    _raGL_program_block_set_uniform_value(block,
+                                          block_variable_offset,
+                                          src_data,
+                                          src_data_size,
+                                          dst_array_start_index,
+                                          dst_array_item_count);
 }
 
 /* Please see header for spec */
-PUBLIC EMERALD_API void ogl_program_block_set_nonarrayed_variable_value(ogl_program_block block,
-                                                                        GLuint            block_variable_offset,
-                                                                        const void*       src_data,
-                                                                        unsigned int      src_data_size)
+PUBLIC EMERALD_API void raGL_program_block_set_nonarrayed_variable_value(raGL_program_block block,
+                                                                         GLuint             block_variable_offset,
+                                                                         const void*        src_data,
+                                                                         unsigned int       src_data_size)
 {
-    _ogl_program_block_set_uniform_value(block,
-                                         block_variable_offset,
-                                         src_data,
-                                         src_data_size,
-                                         0,  /* dst_array_start */
-                                         1); /* dst_array_item_count */
+    _raGL_program_block_set_uniform_value(block,
+                                          block_variable_offset,
+                                          src_data,
+                                          src_data_size,
+                                          0,  /* dst_array_start */
+                                          1); /* dst_array_item_count */
 }
 
 /* Please see header for spec */
-PUBLIC void ogl_program_block_set_property(const ogl_program_block    block,
-                                           ogl_program_block_property property,
-                                           const void*                data)
+PUBLIC void raGL_program_block_set_property(const raGL_program_block    block,
+                                            raGL_program_block_property property,
+                                            const void*                 data)
 {
-    _ogl_program_block* block_ptr = (_ogl_program_block*) block;
+    _raGL_program_block* block_ptr = (_raGL_program_block*) block;
 
     switch (property)
     {
-        case OGL_PROGRAM_BLOCK_PROPERTY_INDEXED_BP:
+        case RAGL_PROGRAM_BLOCK_PROPERTY_INDEXED_BP:
         {
             block_ptr->indexed_bp = *(GLuint*) data;
 
@@ -1072,15 +1072,15 @@ PUBLIC void ogl_program_block_set_property(const ogl_program_block    block,
         default:
         {
             ASSERT_DEBUG_SYNC(false,
-                              "Unrecognized ogl_program_block_property value.");
+                              "Unrecognized raGL_program_block_property value.");
         }
     } /* switch (property) */
 }
 
 /* Please see header for spec */
-PUBLIC EMERALD_API RENDERING_CONTEXT_CALL void ogl_program_block_sync(ogl_program_block block)
+PUBLIC EMERALD_API RENDERING_CONTEXT_CALL void raGL_program_block_sync(raGL_program_block block)
 {
-    _ogl_program_block* block_ptr = (_ogl_program_block*) block;
+    _raGL_program_block* block_ptr = (_raGL_program_block*) block;
 
     /* Sanity checks */
     ASSERT_DEBUG_SYNC(block_ptr->dirty_offset_end != DIRTY_OFFSET_UNUSED && block_ptr->dirty_offset_start != DIRTY_OFFSET_UNUSED ||

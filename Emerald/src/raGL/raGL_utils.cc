@@ -559,26 +559,6 @@ PUBLIC EMERALD_API ogl_texture_wrap_mode raGL_utils_get_ogl_texture_wrap_mode_fo
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API ral_program_block_type raGL_utils_get_ral_program_block_type_for_ogl_program_block_type(ogl_program_block_type in_block_type)
-{
-    ral_program_block_type result = RAL_PROGRAM_BLOCK_TYPE_UNDEFINED;
-
-    switch (in_block_type)
-    {
-        case OGL_PROGRAM_BLOCK_TYPE_SHADER_STORAGE_BUFFER: result = RAL_PROGRAM_BLOCK_TYPE_STORAGE_BUFFER; break;
-        case OGL_PROGRAM_BLOCK_TYPE_UNIFORM_BUFFER:        result = RAL_PROGRAM_BLOCK_TYPE_UNIFORM_BUFFER; break;
-
-        default:
-        {
-            ASSERT_DEBUG_SYNC(false,
-                              "Unsupported ogl_program_block_type value specified.");
-        }
-    } /* switch (in_block_type) */
-
-    return result;
-}
-
-/* Please see header for specification */
 PUBLIC EMERALD_API ral_program_variable_type raGL_utils_get_ral_program_variable_type_for_ogl_enum(GLenum type)
 {
     ral_program_variable_type result = RAL_PROGRAM_VARIABLE_TYPE_UNDEFINED;

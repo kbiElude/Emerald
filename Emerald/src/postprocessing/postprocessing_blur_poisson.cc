@@ -5,11 +5,11 @@
  */
 #include "shared.h"
 #include "ogl/ogl_context.h"
-#include "ogl/ogl_program_block.h"
 #include "postprocessing/postprocessing_blur_poisson.h"
 #include "raGL/raGL_buffer.h"
 #include "raGL/raGL_framebuffer.h"
 #include "raGL/raGL_program.h"
+#include "raGL/raGL_program_block.h"
 #include "raGL/raGL_shader.h"
 #include "raGL/raGL_texture.h"
 #include "ral/ral_buffer.h"
@@ -37,8 +37,8 @@ typedef struct
 
     system_hashed_ansi_string name;
     ral_program               program;
-    ogl_program_block         program_ub;
     ral_buffer                program_ub_bo;
+    raGL_program_block        program_ub_raGL;
 
     REFCOUNT_INSERT_VARIABLES
 } _postprocessing_blur_poisson;
@@ -182,14 +182,14 @@ PUBLIC void _postprocessing_blur_poisson_init_renderer_callback(ogl_context cont
     /* Retrieve UB info */
     raGL_program_get_uniform_block_by_name(po_raGL,
                                            system_hashed_ansi_string_create("dataFS"),
-                                          &poisson_ptr->program_ub);
+                                          &poisson_ptr->program_ub_raGL);
 
-    ASSERT_DEBUG_SYNC(poisson_ptr->program_ub != NULL,
+    ASSERT_DEBUG_SYNC(poisson_ptr->program_ub_raGL != NULL,
                       "dataFS uniform block descriptor is NULL");
 
-    ogl_program_block_get_property(poisson_ptr->program_ub,
-                                   OGL_PROGRAM_BLOCK_PROPERTY_BUFFER_RAL,
-                                  &poisson_ptr->program_ub_bo);
+    raGL_program_block_get_property(poisson_ptr->program_ub_raGL,
+                                    RAGL_PROGRAM_BLOCK_PROPERTY_BUFFER_RAL,
+                                   &poisson_ptr->program_ub_bo);
 
     /* Generate FBO */
     ral_context_create_framebuffers(poisson_ptr->context,
@@ -366,11 +366,11 @@ PUBLIC EMERALD_API void postprocessing_blur_poisson_execute(postprocessing_blur_
                                             GL_TEXTURE_2D,
                                             input_texture_id);
 
-    ogl_program_block_set_nonarrayed_variable_value(poisson_ptr->program_ub,
-                                                    poisson_ptr->blur_strength_ub_offset,
-                                                   &blur_strength,
-                                                    sizeof(float) );
-    ogl_program_block_sync                         (poisson_ptr->program_ub);
+    raGL_program_block_set_nonarrayed_variable_value(poisson_ptr->program_ub_raGL,
+                                                     poisson_ptr->blur_strength_ub_offset,
+                                                    &blur_strength,
+                                                     sizeof(float) );
+    raGL_program_block_sync                         (poisson_ptr->program_ub_raGL);
 
     ral_texture_get_mipmap_property(result_texture_ral,
                                     0, /* n_layer */

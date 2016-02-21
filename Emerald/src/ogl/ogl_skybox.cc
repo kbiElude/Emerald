@@ -5,11 +5,11 @@
  */
 #include "shared.h"
 #include "ogl/ogl_context.h"
-#include "ogl/ogl_program_block.h"
 #include "ogl/ogl_skybox.h"
 #include "object_manager/object_manager_general.h"
 #include "raGL/raGL_buffer.h"
 #include "raGL/raGL_program.h"
+#include "raGL/raGL_program_block.h"
 #include "raGL/raGL_shader.h"
 #include "ral/ral_buffer.h"
 #include "ral/ral_context.h"
@@ -118,14 +118,14 @@ typedef struct
     ral_texture               texture;
     _ogl_skybox_type          type;
 
-    GLuint            input_sh_light_data_uniform_location;
-    GLuint            inverse_projection_ub_offset;
-    GLuint            mv_ub_offset;
-    ral_program       program;
-    ogl_program_block program_ub;
-    ral_buffer        program_ub_bo;
-    unsigned int      program_ub_bo_size;
-    GLuint            skybox_uniform_location;
+    GLuint             input_sh_light_data_uniform_location;
+    GLuint             inverse_projection_ub_offset;
+    GLuint             mv_ub_offset;
+    ral_program        program;
+    ral_buffer         program_ub_bo;
+    unsigned int       program_ub_bo_size;
+    raGL_program_block program_ub_raGL;
+    GLuint             skybox_uniform_location;
 
     REFCOUNT_INSERT_VARIABLES
 } _ogl_skybox;
@@ -411,17 +411,17 @@ PRIVATE void _ogl_skybox_init_ub(_ogl_skybox* skybox_ptr)
     raGL_program_get_uniform_block_by_name(ral_context_get_program_gl(skybox_ptr->context,
                                                                       skybox_ptr->program),
                                            system_hashed_ansi_string_create("dataVS"),
-                                          &skybox_ptr->program_ub);
+                                          &skybox_ptr->program_ub_raGL);
 
-    ASSERT_DEBUG_SYNC(skybox_ptr->program_ub != NULL,
+    ASSERT_DEBUG_SYNC(skybox_ptr->program_ub_raGL != NULL,
                       "dataVS uniform block descriptor is NULL.");
 
-    ogl_program_block_get_property(skybox_ptr->program_ub,
-                                   OGL_PROGRAM_BLOCK_PROPERTY_BLOCK_DATA_SIZE,
-                                  &skybox_ptr->program_ub_bo_size);
-    ogl_program_block_get_property(skybox_ptr->program_ub,
-                                   OGL_PROGRAM_BLOCK_PROPERTY_BUFFER_RAL,
-                                  &skybox_ptr->program_ub_bo);
+    raGL_program_block_get_property(skybox_ptr->program_ub_raGL,
+                                    RAGL_PROGRAM_BLOCK_PROPERTY_BLOCK_DATA_SIZE,
+                                   &skybox_ptr->program_ub_bo_size);
+    raGL_program_block_get_property(skybox_ptr->program_ub_raGL,
+                                    RAGL_PROGRAM_BLOCK_PROPERTY_BUFFER_RAL,
+                                   &skybox_ptr->program_ub_bo);
 }
 
 /** TODO */
@@ -531,14 +531,14 @@ PUBLIC EMERALD_API void ogl_skybox_draw(ogl_skybox       skybox,
     entry_points_ptr->pGLBindVertexArray(vao_id);
 
     /* Update general uniforms */
-    ogl_program_block_set_nonarrayed_variable_value(skybox_ptr->program_ub,
-                                                    skybox_ptr->inverse_projection_ub_offset,
-                                                    system_matrix4x4_get_column_major_data(inverted_projection),
-                                                    sizeof(float) * 16);
-    ogl_program_block_set_nonarrayed_variable_value(skybox_ptr->program_ub,
-                                                    skybox_ptr->mv_ub_offset,
-                                                    system_matrix4x4_get_column_major_data(modelview),
-                                                    sizeof(float) * 16);
+    raGL_program_block_set_nonarrayed_variable_value(skybox_ptr->program_ub_raGL,
+                                                     skybox_ptr->inverse_projection_ub_offset,
+                                                     system_matrix4x4_get_column_major_data(inverted_projection),
+                                                     sizeof(float) * 16);
+    raGL_program_block_set_nonarrayed_variable_value(skybox_ptr->program_ub_raGL,
+                                                     skybox_ptr->mv_ub_offset,
+                                                     system_matrix4x4_get_column_major_data(modelview),
+                                                     sizeof(float) * 16);
 
 #ifdef INCLUDE_OPENCL
     /* Do SH-specific stuff */
@@ -587,7 +587,7 @@ PUBLIC EMERALD_API void ogl_skybox_draw(ogl_skybox       skybox,
                              RAL_BUFFER_PROPERTY_START_OFFSET,
                             &program_ub_bo_ral_start_offset);
 
-    ogl_program_block_sync(skybox_ptr->program_ub);
+    raGL_program_block_sync(skybox_ptr->program_ub_raGL);
 
     entry_points_ptr->pGLBindBufferRange(GL_UNIFORM_BUFFER,
                                          0, /* index */

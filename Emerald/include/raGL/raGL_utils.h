@@ -40,9 +40,6 @@ PUBLIC EMERALD_API ogl_texture_target raGL_utils_get_ogl_texture_target_for_ral_
 PUBLIC EMERALD_API ogl_texture_wrap_mode raGL_utils_get_ogl_texture_wrap_mode_for_ral_texture_wrap_mode(ral_texture_wrap_mode in_texture_wrap_mode);
 
 /** TODO */
-PUBLIC EMERALD_API ral_program_block_type raGL_utils_get_ral_program_block_type_for_ogl_program_block_type(ogl_program_block_type in_block_type);
-
-/** TODO */
 PUBLIC EMERALD_API ral_program_variable_type raGL_utils_get_ral_program_variable_type_for_ogl_enum(GLenum type);
 
 /** TODO */

@@ -11,9 +11,9 @@
 #include "demo/demo_window.h"
 #include "ogl/ogl_context.h"
 #include "ogl/ogl_pipeline.h"
-#include "ogl/ogl_program_block.h"
 #include "raGL/raGL_buffer.h"
 #include "raGL/raGL_program.h"
+#include "raGL/raGL_program_block.h"
 #include "ral/ral_buffer.h"
 #include "ral/ral_context.h"
 #include "ral/ral_program.h"
@@ -23,21 +23,21 @@
 #include "system/system_matrix4x4.h"
 #include <string.h>
 
-ral_program       _light_program                        =  0;
-ogl_program_block  _light_program_datafs_ub              = NULL;
-ral_buffer        _light_program_datafs_ub_bo           =  0;
-GLuint            _light_program_datafs_ub_bo_size      =  0;
-GLuint            _light_program_datafs_ub_bp           = -1;
-ogl_program_block _light_program_datavs_ub              = NULL;
-ral_buffer        _light_program_datavs_ub_bo           =  0;
-GLuint            _light_program_datavs_ub_bo_size      =  0;
-GLuint            _light_program_datavs_ub_bp           = -1;
-GLuint            _light_color_ub_offset                = -1;
-GLuint            _light_in_position_attribute_location = -1;
-GLuint            _light_mvp_ub_offset                  = -1;
-GLuint            _light_vao_id                         = -1;
-GLuint            _light_vertex_attribute_location      = -1;
-system_matrix4x4  _light_view_matrix                    = NULL;
+ral_program        _light_program                        =  0;
+ral_buffer         _light_program_datafs_ub_bo           =  0;
+GLuint             _light_program_datafs_ub_bo_size      =  0;
+GLuint             _light_program_datafs_ub_bp           = -1;
+raGL_program_block _light_program_datafs_ub_raGL         = NULL;
+ral_buffer         _light_program_datavs_ub_bo           =  0;
+GLuint             _light_program_datavs_ub_bo_size      =  0;
+GLuint             _light_program_datavs_ub_bp           = -1;
+raGL_program_block _light_program_datavs_ub_raGL         = NULL;
+GLuint             _light_color_ub_offset                = -1;
+GLuint             _light_in_position_attribute_location = -1;
+GLuint             _light_mvp_ub_offset                  = -1;
+GLuint             _light_vao_id                         = -1;
+GLuint             _light_vertex_attribute_location      = -1;
+system_matrix4x4   _light_view_matrix                    = NULL;
 
 /** TODO */
 static void _stage_step_light_execute(ral_context context,
@@ -86,10 +86,10 @@ static void _stage_step_light_execute(ral_context context,
     const  float* light_color           = main_get_light_color();
     const  float* light_position        = main_get_light_position();
 
-    ogl_program_block_set_nonarrayed_variable_value(_light_program_datafs_ub,
-                                                    _light_color_ub_offset,
-                                                    light_color,
-                                                    sizeof(float) * 4);
+    raGL_program_block_set_nonarrayed_variable_value(_light_program_datafs_ub_raGL,
+                                                     _light_color_ub_offset,
+                                                     light_color,
+                                                     sizeof(float) * 4);
 
     if (memcmp(gpu_light_position,
                light_position,
@@ -103,15 +103,15 @@ static void _stage_step_light_execute(ral_context context,
                sizeof(float) * 3);
     }
 
-    ogl_program_block_set_nonarrayed_variable_value(_light_program_datavs_ub,
-                                                    _light_mvp_ub_offset,
-                                                    system_matrix4x4_get_column_major_data(mvp),
-                                                    sizeof(float) * 16);
+    raGL_program_block_set_nonarrayed_variable_value(_light_program_datavs_ub_raGL,
+                                                     _light_mvp_ub_offset,
+                                                     system_matrix4x4_get_column_major_data(mvp),
+                                                     sizeof(float) * 16);
 
     system_matrix4x4_release(mvp);
 
-    ogl_program_block_sync(_light_program_datafs_ub);
-    ogl_program_block_sync(_light_program_datavs_ub);
+    raGL_program_block_sync(_light_program_datafs_ub_raGL);
+    raGL_program_block_sync(_light_program_datavs_ub_raGL);
 
     raGL_buffer light_program_datafs_ub_bo_raGL              = NULL;
     GLuint      light_program_datafs_ub_bo_raGL_id           = 0;
@@ -240,30 +240,30 @@ PUBLIC void stage_step_light_init(ral_context  context,
     /* Retrieve uniform block properties */
     raGL_program_get_uniform_block_by_name(light_po_raGL,
                                           system_hashed_ansi_string_create("dataFS"),
-                                         &_light_program_datafs_ub);
+                                         &_light_program_datafs_ub_raGL);
     raGL_program_get_uniform_block_by_name(light_po_raGL,
                                           system_hashed_ansi_string_create("dataVS"),
-                                         &_light_program_datavs_ub);
+                                         &_light_program_datavs_ub_raGL);
 
-    ogl_program_block_get_property(_light_program_datafs_ub,
-                                OGL_PROGRAM_BLOCK_PROPERTY_BLOCK_DATA_SIZE,
-                               &_light_program_datafs_ub_bo_size);
-    ogl_program_block_get_property(_light_program_datafs_ub,
-                                OGL_PROGRAM_BLOCK_PROPERTY_BUFFER_RAL,
-                               &_light_program_datafs_ub_bo);
-    ogl_program_block_get_property(_light_program_datafs_ub,
-                                OGL_PROGRAM_BLOCK_PROPERTY_INDEXED_BP,
-                               &_light_program_datafs_ub_bp);
+    raGL_program_block_get_property(_light_program_datafs_ub_raGL,
+                                    RAGL_PROGRAM_BLOCK_PROPERTY_BLOCK_DATA_SIZE,
+                                   &_light_program_datafs_ub_bo_size);
+    raGL_program_block_get_property(_light_program_datafs_ub_raGL,
+                                    RAGL_PROGRAM_BLOCK_PROPERTY_BUFFER_RAL,
+                                   &_light_program_datafs_ub_bo);
+    raGL_program_block_get_property(_light_program_datafs_ub_raGL,
+                                    RAGL_PROGRAM_BLOCK_PROPERTY_INDEXED_BP,
+                                   &_light_program_datafs_ub_bp);
 
-    ogl_program_block_get_property(_light_program_datavs_ub,
-                                   OGL_PROGRAM_BLOCK_PROPERTY_BLOCK_DATA_SIZE,
-                                  &_light_program_datavs_ub_bo_size);
-    ogl_program_block_get_property(_light_program_datavs_ub,
-                                   OGL_PROGRAM_BLOCK_PROPERTY_BUFFER_RAL,
-                                  &_light_program_datavs_ub_bo);
-    ogl_program_block_get_property(_light_program_datavs_ub,
-                                   OGL_PROGRAM_BLOCK_PROPERTY_INDEXED_BP,
-                                  &_light_program_datavs_ub_bp);
+    raGL_program_block_get_property(_light_program_datavs_ub_raGL,
+                                    RAGL_PROGRAM_BLOCK_PROPERTY_BLOCK_DATA_SIZE,
+                                   &_light_program_datavs_ub_bo_size);
+    raGL_program_block_get_property(_light_program_datavs_ub_raGL,
+                                    RAGL_PROGRAM_BLOCK_PROPERTY_BUFFER_RAL,
+                                   &_light_program_datavs_ub_bo);
+    raGL_program_block_get_property(_light_program_datavs_ub_raGL,
+                                    RAGL_PROGRAM_BLOCK_PROPERTY_INDEXED_BP,
+                                   &_light_program_datavs_ub_bp);
 
     /* Generate VAO */
     const ogl_context_gl_entrypoints* entrypoints_ptr = NULL;

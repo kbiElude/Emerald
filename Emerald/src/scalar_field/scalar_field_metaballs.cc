@@ -5,10 +5,10 @@
  */
 #include "shared.h"
 #include "ogl/ogl_context.h"
-#include "ogl/ogl_program_block.h"
 #include "raGL/raGL_backend.h"
 #include "raGL/raGL_buffer.h"
 #include "raGL/raGL_program.h"
+#include "raGL/raGL_program_block.h"
 #include "raGL/raGL_shader.h"
 #include "ral/ral_buffer.h"
 #include "ral/ral_context.h"
@@ -31,11 +31,11 @@ typedef struct _scalar_field_metaballs
     unsigned int              n_metaballs;
     system_hashed_ansi_string name;
     ral_program               po;
-    ogl_program_block         po_props_ub;
     ral_buffer                po_props_ub_bo;
     unsigned int              po_props_ub_bo_offset_metaball_data;
     unsigned int              po_props_ub_bo_offset_n_metaballs;
     uint32_t                  po_props_ub_bo_size;
+    raGL_program_block        po_props_ub_raGL;
     ral_buffer                scalar_field_bo;
     int                       sync_max_index;
     int                       sync_min_index;
@@ -62,11 +62,11 @@ typedef struct _scalar_field_metaballs
         n_metaballs                         =  0;
         name                                =  in_name;
         po                                  =  NULL;
-        po_props_ub                         =  NULL;
         po_props_ub_bo                      =  NULL;
         po_props_ub_bo_offset_metaball_data = -1;
         po_props_ub_bo_offset_n_metaballs   = -1;
         po_props_ub_bo_size                 = 0;
+        po_props_ub_raGL                    =  NULL;
         scalar_field_bo                     = NULL;
         sync_max_index                      = -1;
         sync_min_index                      = -1;
@@ -344,7 +344,7 @@ PRIVATE void _scalar_field_metaballs_init_rendering_thread_callback(ogl_context 
 
     raGL_program_get_uniform_block_by_name(program_raGL,
                                            system_hashed_ansi_string_create("props"),
-                                          &metaballs_ptr->po_props_ub);
+                                          &metaballs_ptr->po_props_ub_raGL);
 
     ral_program_get_block_variable_by_name(metaballs_ptr->po,
                                            system_hashed_ansi_string_create("props"),
@@ -355,12 +355,12 @@ PRIVATE void _scalar_field_metaballs_init_rendering_thread_callback(ogl_context 
                                            system_hashed_ansi_string_create("n_metaballs"),
                                           &uniform_n_metaballs_variable_ral_ptr);
 
-    ogl_program_block_get_property(metaballs_ptr->po_props_ub,
-                                   OGL_PROGRAM_BLOCK_PROPERTY_BLOCK_DATA_SIZE,
-                                  &metaballs_ptr->po_props_ub_bo_size);
-    ogl_program_block_get_property(metaballs_ptr->po_props_ub,
-                                   OGL_PROGRAM_BLOCK_PROPERTY_BUFFER_RAL,
-                                  &metaballs_ptr->po_props_ub_bo);
+    raGL_program_block_get_property(metaballs_ptr->po_props_ub_raGL,
+                                    RAGL_PROGRAM_BLOCK_PROPERTY_BLOCK_DATA_SIZE,
+                                   &metaballs_ptr->po_props_ub_bo_size);
+    raGL_program_block_get_property(metaballs_ptr->po_props_ub_raGL,
+                                    RAGL_PROGRAM_BLOCK_PROPERTY_BUFFER_RAL,
+                                   &metaballs_ptr->po_props_ub_bo);
 
     metaballs_ptr->po_props_ub_bo_offset_metaball_data = uniform_metaball_data_variable_ral_ptr->block_offset;
     metaballs_ptr->po_props_ub_bo_offset_n_metaballs   = uniform_n_metaballs_variable_ral_ptr->block_offset;
@@ -574,28 +574,28 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API bool scalar_field_metaballs_update(sca
                                 &entrypoints_ptr);
 
         /* Update the metaball props UB if necessary */
-        ogl_program_block_set_nonarrayed_variable_value(metaballs_ptr->po_props_ub,
-                                                        metaballs_ptr->po_props_ub_bo_offset_n_metaballs,
-                                                       &metaballs_ptr->n_metaballs,
-                                                        sizeof(unsigned int) );
+        raGL_program_block_set_nonarrayed_variable_value(metaballs_ptr->po_props_ub_raGL,
+                                                         metaballs_ptr->po_props_ub_bo_offset_n_metaballs,
+                                                        &metaballs_ptr->n_metaballs,
+                                                         sizeof(unsigned int) );
 
         if (metaballs_ptr->sync_max_index != -1 &&
             metaballs_ptr->sync_min_index != -1)
         {
             const unsigned int n_metaballs_to_update = (metaballs_ptr->sync_max_index - metaballs_ptr->sync_min_index + 1);
 
-            ogl_program_block_set_arrayed_variable_value(metaballs_ptr->po_props_ub,
-                                                         metaballs_ptr->po_props_ub_bo_offset_metaball_data,
-                                                         metaballs_ptr->metaball_data + metaballs_ptr->sync_min_index * 4 /* size + xyz */,
-                                                         sizeof(float) * n_metaballs_to_update * 4 /* size + xyz */, /* src_data_size         */
-                                                         metaballs_ptr->sync_min_index,                              /* dst_array_start_index */
-                                                         n_metaballs_to_update);                                     /* dst_array_item_count  */
+            raGL_program_block_set_arrayed_variable_value(metaballs_ptr->po_props_ub_raGL,
+                                                          metaballs_ptr->po_props_ub_bo_offset_metaball_data,
+                                                          metaballs_ptr->metaball_data + metaballs_ptr->sync_min_index * 4 /* size + xyz */,
+                                                          sizeof(float) * n_metaballs_to_update * 4 /* size + xyz */, /* src_data_size         */
+                                                          metaballs_ptr->sync_min_index,                              /* dst_array_start_index */
+                                                          n_metaballs_to_update);                                     /* dst_array_item_count  */
 
             metaballs_ptr->sync_max_index = -1;
             metaballs_ptr->sync_min_index = -1;
         } /* if (metaball data needs an update) */
 
-        ogl_program_block_sync(metaballs_ptr->po_props_ub);
+        raGL_program_block_sync(metaballs_ptr->po_props_ub_raGL);
 
         /* Run the CS and generate the scalar field data */
         GLuint             po_props_ub_bo_id            = 0;

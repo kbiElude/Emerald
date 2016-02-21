@@ -13,10 +13,10 @@
 #include "stage_step_julia.h"
 #include "ogl/ogl_context.h"
 #include "ogl/ogl_pipeline.h"
-#include "ogl/ogl_program_block.h"
 #include "raGL/raGL_buffer.h"
 #include "raGL/raGL_framebuffer.h"
 #include "raGL/raGL_program.h"
+#include "raGL/raGL_program_block.h"
 #include "raGL/raGL_texture.h"
 #include "ral/ral_buffer.h"
 #include "ral/ral_context.h"
@@ -39,9 +39,9 @@ GLuint                      _dof_scheuermann_vao_id                 = -1;
 
 /* Combination program */
 ral_program                 _dof_scheuermann_combination_po                             = NULL;
-ogl_program_block           _dof_scheuermann_combination_po_ub                          = NULL;
 ral_buffer                  _dof_scheuermann_combination_po_ub_bo                       = NULL;
 GLuint                      _dof_scheuermann_combination_po_ub_max_coc_px_ub_offset     = -1;
+raGL_program_block          _dof_scheuermann_combination_po_ub_raGL                     = NULL;
 GLuint                      _dof_scheuermann_combination_po_bg_uniform_location         = -1;
 GLuint                      _dof_scheuermann_combination_po_data_high_uniform_location  = -1;
 GLuint                      _dof_scheuermann_combination_po_data_low_uniform_location   = -1;
@@ -181,12 +181,12 @@ static void _stage_step_dof_scheuermann_combine_execute(ral_context context,
     /* Uniforms! */
     const  float max_coc_px = main_get_max_coc_px();
 
-    ogl_program_block_set_nonarrayed_variable_value(_dof_scheuermann_combination_po_ub,
-                                                    _dof_scheuermann_combination_po_ub_max_coc_px_ub_offset,
-                                                   &max_coc_px,
-                                                    sizeof(float) );
+    raGL_program_block_set_nonarrayed_variable_value(_dof_scheuermann_combination_po_ub_raGL,
+                                                     _dof_scheuermann_combination_po_ub_max_coc_px_ub_offset,
+                                                    &max_coc_px,
+                                                     sizeof(float) );
 
-    ogl_program_block_sync(_dof_scheuermann_combination_po_ub);
+    raGL_program_block_sync(_dof_scheuermann_combination_po_ub_raGL);
 
     /* Go on */
     raGL_program dof_scheuermann_combination_po_raGL                    = NULL;
@@ -602,9 +602,9 @@ PUBLIC void stage_step_dof_scheuermann_init(ral_context  context,
 
     raGL_program_get_uniform_block_by_name(dof_scheuermann_combination_po_raGL,
                                            system_hashed_ansi_string_create("data"),
-                                          &_dof_scheuermann_combination_po_ub);
-    ogl_program_block_get_property        (_dof_scheuermann_combination_po_ub,
-                                           OGL_PROGRAM_BLOCK_PROPERTY_BUFFER_RAL,
+                                          &_dof_scheuermann_combination_po_ub_raGL);
+    raGL_program_block_get_property       (_dof_scheuermann_combination_po_ub_raGL,
+                                           RAGL_PROGRAM_BLOCK_PROPERTY_BUFFER_RAL,
                                           &_dof_scheuermann_combination_po_ub_bo);
 
     /* Retrieve combination program uniform locations */

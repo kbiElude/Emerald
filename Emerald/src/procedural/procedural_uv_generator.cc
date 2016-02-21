@@ -6,11 +6,11 @@
 #include "shared.h"
 #include "mesh/mesh.h"
 #include "ogl/ogl_context.h"
-#include "ogl/ogl_program_block.h"
 #include "procedural/procedural_uv_generator.h"
 #include "raGL/raGL_backend.h"
 #include "raGL/raGL_buffer.h"
 #include "raGL/raGL_program.h"
+#include "raGL/raGL_program_block.h"
 #include "raGL/raGL_shader.h"
 #include "ral/ral_buffer.h"
 #include "ral/ral_context.h"
@@ -29,26 +29,26 @@ typedef struct _procedural_uv_generator
     ral_context                  context;
     procedural_uv_generator_type type;
 
-    ral_shader        generator_cs;
-    ral_program       generator_po;
-    ogl_program_block input_data_ssb;
-    GLuint            input_data_ssb_indexed_bp;
-    ogl_program_block input_params_ub;
-    GLint             input_params_ub_arg1_block_offset;
-    GLint             input_params_ub_arg2_block_offset;
-    ral_buffer        input_params_ub_bo;
-    raGL_buffer       input_params_ub_bo_raGL;
-    unsigned int      input_params_ub_bo_size;
-    GLuint            input_params_ub_indexed_bp;
-    GLint             input_params_ub_item_data_stride_block_offset;
-    GLint             input_params_ub_start_offset_block_offset;
-    ogl_program_block n_items_ub;
-    ral_buffer        n_items_ub_bo;
-    raGL_buffer       n_items_ub_bo_raGL;
-    GLuint            n_items_ub_indexed_bp;
-    ogl_program_block output_data_ssb;
-    GLuint            output_data_ssb_indexed_bp;
-    unsigned int      wg_local_size[3];
+    ral_shader         generator_cs;
+    ral_program        generator_po;
+    GLuint             input_data_ssb_indexed_bp;
+    raGL_program_block input_data_ssb_raGL;
+    GLint              input_params_ub_arg1_block_offset;
+    GLint              input_params_ub_arg2_block_offset;
+    ral_buffer         input_params_ub_bo;
+    raGL_buffer        input_params_ub_bo_raGL;
+    unsigned int       input_params_ub_bo_size;
+    GLuint             input_params_ub_indexed_bp;
+    raGL_program_block input_params_ub_raGL;
+    GLint              input_params_ub_item_data_stride_block_offset;
+    GLint              input_params_ub_start_offset_block_offset;
+    ral_buffer         n_items_ub_bo;
+    raGL_buffer        n_items_ub_bo_raGL;
+    GLuint             n_items_ub_indexed_bp;
+    raGL_program_block n_items_ub_raGL;
+    GLuint             output_data_ssb_indexed_bp;
+    raGL_program_block output_data_ssb_raGL;
+    unsigned int       wg_local_size[3];
 
     system_resizable_vector objects;
 
@@ -116,22 +116,22 @@ _procedural_uv_generator::_procedural_uv_generator(ral_context                  
     context                                       = in_context;
     generator_cs                                  = NULL;
     generator_po                                  = NULL;
-    input_data_ssb                                = NULL;
     input_data_ssb_indexed_bp                     = -1;
-    input_params_ub                               = NULL;
+    input_data_ssb_raGL                           = NULL;
     input_params_ub_arg1_block_offset             = -1;
     input_params_ub_arg2_block_offset             = -1;
     input_params_ub_bo                            = NULL;
     input_params_ub_bo_size                       = 0;
     input_params_ub_indexed_bp                    = -1;
     input_params_ub_item_data_stride_block_offset = -1;
+    input_params_ub_raGL                          = NULL;
     input_params_ub_start_offset_block_offset     = -1;
-    n_items_ub                                    = NULL;
     n_items_ub_bo                                 = NULL;
     n_items_ub_indexed_bp                         = 0;
+    n_items_ub_raGL                               = NULL;
     objects                                       = system_resizable_vector_create(4 /* capacity */);
-    output_data_ssb                               = NULL;
     output_data_ssb_indexed_bp                    = -1;
+    output_data_ssb_raGL                          = NULL;
     type                                          = in_type;
 
     ral_context_get_property(context,
@@ -587,21 +587,21 @@ PRIVATE void _procedural_uv_generator_init_generator_po(_procedural_uv_generator
                                                                  generator_ptr->generator_po);
 
     raGL_program_get_uniform_block_by_name(program_raGL,
-                                          system_hashed_ansi_string_create("inputParams"),
-                                         &generator_ptr->input_params_ub);
+                                           system_hashed_ansi_string_create("inputParams"),
+                                          &generator_ptr->input_params_ub_raGL);
 
-    ASSERT_DEBUG_SYNC(generator_ptr->input_params_ub != NULL,
+    ASSERT_DEBUG_SYNC(generator_ptr->input_params_ub_raGL != NULL,
                       "Could not retrieve inputParams uniform block instance");
 
-    ogl_program_block_get_property(generator_ptr->input_params_ub,
-                                   OGL_PROGRAM_BLOCK_PROPERTY_BUFFER_RAL,
-                                  &generator_ptr->input_params_ub_bo);
-    ogl_program_block_get_property(generator_ptr->input_params_ub,
-                                   OGL_PROGRAM_BLOCK_PROPERTY_BLOCK_DATA_SIZE,
-                                  &generator_ptr->input_params_ub_bo_size);
-    ogl_program_block_get_property(generator_ptr->input_params_ub,
-                                   OGL_PROGRAM_BLOCK_PROPERTY_INDEXED_BP,
-                                  &generator_ptr->input_params_ub_indexed_bp);
+    raGL_program_block_get_property(generator_ptr->input_params_ub_raGL,
+                                    RAGL_PROGRAM_BLOCK_PROPERTY_BUFFER_RAL,
+                                   &generator_ptr->input_params_ub_bo);
+    raGL_program_block_get_property(generator_ptr->input_params_ub_raGL,
+                                    RAGL_PROGRAM_BLOCK_PROPERTY_BLOCK_DATA_SIZE,
+                                   &generator_ptr->input_params_ub_bo_size);
+    raGL_program_block_get_property(generator_ptr->input_params_ub_raGL,
+                                    RAGL_PROGRAM_BLOCK_PROPERTY_INDEXED_BP,
+                                   &generator_ptr->input_params_ub_indexed_bp);
 
     raGL_backend_get_buffer(generator_ptr->backend,
                             generator_ptr->input_params_ub_bo,
@@ -610,17 +610,17 @@ PRIVATE void _procedural_uv_generator_init_generator_po(_procedural_uv_generator
     /* Retrieve the nItems uniform block instance */
     raGL_program_get_uniform_block_by_name(program_raGL,
                                            system_hashed_ansi_string_create("nItemsBlock"),
-                                          &generator_ptr->n_items_ub);
+                                          &generator_ptr->n_items_ub_raGL);
 
-    ASSERT_DEBUG_SYNC(generator_ptr->n_items_ub != NULL,
+    ASSERT_DEBUG_SYNC(generator_ptr->n_items_ub_raGL != NULL,
                       "Could not retrieve nItemsBlock uniform block instance");
 
-    ogl_program_block_get_property(generator_ptr->n_items_ub,
-                                   OGL_PROGRAM_BLOCK_PROPERTY_BUFFER_RAL,
-                                  &generator_ptr->n_items_ub_bo);
-    ogl_program_block_get_property(generator_ptr->n_items_ub,
-                                   OGL_PROGRAM_BLOCK_PROPERTY_INDEXED_BP,
-                                  &generator_ptr->n_items_ub_indexed_bp);
+    raGL_program_block_get_property(generator_ptr->n_items_ub_raGL,
+                                    RAGL_PROGRAM_BLOCK_PROPERTY_BUFFER_RAL,
+                                   &generator_ptr->n_items_ub_bo);
+    raGL_program_block_get_property(generator_ptr->n_items_ub_raGL,
+                                    RAGL_PROGRAM_BLOCK_PROPERTY_INDEXED_BP,
+                                   &generator_ptr->n_items_ub_indexed_bp);
 
     raGL_backend_get_buffer(generator_ptr->backend,
                             generator_ptr->n_items_ub_bo,
@@ -639,22 +639,22 @@ PRIVATE void _procedural_uv_generator_init_generator_po(_procedural_uv_generator
     /* Retrieve the shader storage block instances */
     raGL_program_get_shader_storage_block_by_name(program_raGL,
                                                   system_hashed_ansi_string_create("inputData"),
-                                                 &generator_ptr->input_data_ssb);
+                                                 &generator_ptr->input_data_ssb_raGL);
     raGL_program_get_shader_storage_block_by_name(program_raGL,
                                                   system_hashed_ansi_string_create("outputData"),
-                                                 &generator_ptr->output_data_ssb);
+                                                 &generator_ptr->output_data_ssb_raGL);
 
-    ASSERT_DEBUG_SYNC(generator_ptr->input_data_ssb  != NULL &&
-                      generator_ptr->output_data_ssb != NULL,
+    ASSERT_DEBUG_SYNC(generator_ptr->input_data_ssb_raGL  != NULL &&
+                      generator_ptr->output_data_ssb_raGL != NULL,
                       "Could not retrieve shader storage block instance descriptors");
 
     /* ..and query their properties */
-    ogl_program_block_get_property(generator_ptr->input_data_ssb,
-                                   OGL_PROGRAM_BLOCK_PROPERTY_INDEXED_BP,
-                                  &generator_ptr->input_data_ssb_indexed_bp);
-    ogl_program_block_get_property(generator_ptr->output_data_ssb,
-                                   OGL_PROGRAM_BLOCK_PROPERTY_INDEXED_BP,
-                                  &generator_ptr->output_data_ssb_indexed_bp);
+    raGL_program_block_get_property(generator_ptr->input_data_ssb_raGL,
+                                    RAGL_PROGRAM_BLOCK_PROPERTY_INDEXED_BP,
+                                   &generator_ptr->input_data_ssb_indexed_bp);
+    raGL_program_block_get_property(generator_ptr->output_data_ssb_raGL,
+                                    RAGL_PROGRAM_BLOCK_PROPERTY_INDEXED_BP,
+                                   &generator_ptr->output_data_ssb_indexed_bp);
 
     /* Retrieve the uniform block member descriptors
      *
@@ -872,30 +872,30 @@ PRIVATE void _procedural_uv_generator_run_po(_procedural_uv_generator*        ge
     item_data_bo_stride_div_4         = item_data_bo_stride         / sizeof(float);
 
     /* Set up UB bindings & contents. The bindings are hard-coded in the shader. */
-    ogl_program_block_set_nonarrayed_variable_value(generator_ptr->input_params_ub,
-                                                    generator_ptr->input_params_ub_item_data_stride_block_offset,
-                                                   &item_data_bo_stride_div_4,
-                                                    sizeof(item_data_bo_stride) );
-    ogl_program_block_set_nonarrayed_variable_value(generator_ptr->input_params_ub,
-                                                    generator_ptr->input_params_ub_start_offset_block_offset,
-                                                   &item_data_offset_adjustment_div_4,
-                                                    sizeof(unsigned int) );
+    raGL_program_block_set_nonarrayed_variable_value(generator_ptr->input_params_ub_raGL,
+                                                     generator_ptr->input_params_ub_item_data_stride_block_offset,
+                                                    &item_data_bo_stride_div_4,
+                                                     sizeof(item_data_bo_stride) );
+    raGL_program_block_set_nonarrayed_variable_value(generator_ptr->input_params_ub_raGL,
+                                                     generator_ptr->input_params_ub_start_offset_block_offset,
+                                                    &item_data_offset_adjustment_div_4,
+                                                     sizeof(unsigned int) );
 
     if (generator_ptr->type == PROCEDURAL_UV_GENERATOR_TYPE_OBJECT_LINEAR)
     {
         /* U/V plane coefficients */
-        ogl_program_block_set_nonarrayed_variable_value(generator_ptr->input_params_ub,
-                                                        generator_ptr->input_params_ub_arg1_block_offset,
-                                                        generator_ptr->u_plane_coeffs,
-                                                        sizeof(generator_ptr->u_plane_coeffs) );
+        raGL_program_block_set_nonarrayed_variable_value(generator_ptr->input_params_ub_raGL,
+                                                         generator_ptr->input_params_ub_arg1_block_offset,
+                                                         generator_ptr->u_plane_coeffs,
+                                                         sizeof(generator_ptr->u_plane_coeffs) );
 
-        ogl_program_block_set_nonarrayed_variable_value(generator_ptr->input_params_ub,
-                                                        generator_ptr->input_params_ub_arg2_block_offset,
-                                                        generator_ptr->v_plane_coeffs,
-                                                        sizeof(generator_ptr->v_plane_coeffs) );
+        raGL_program_block_set_nonarrayed_variable_value(generator_ptr->input_params_ub_raGL,
+                                                         generator_ptr->input_params_ub_arg2_block_offset,
+                                                         generator_ptr->v_plane_coeffs,
+                                                         sizeof(generator_ptr->v_plane_coeffs) );
     }
 
-    ogl_program_block_sync(generator_ptr->input_params_ub);
+    raGL_program_block_sync(generator_ptr->input_params_ub_raGL);
 
     GLuint   input_params_ub_bo_id           = 0;
     uint32_t input_params_ub_bo_start_offset = -1;

@@ -5,12 +5,12 @@
  */
 #include "shared.h"
 #include "ogl/ogl_context.h"
-#include "ogl/ogl_program_block.h"
 #include "ogl/ogl_scene_renderer.h"
 #include "ogl/ogl_scene_renderer_frustum_preview.h"
 #include "ogl/ogl_text.h"
 #include "raGL/raGL_buffer.h"
 #include "raGL/raGL_program.h"
+#include "raGL/raGL_program_block.h"
 #include "raGL/raGL_shader.h"
 #include "ral/ral_buffer.h"
 #include "ral/ral_context.h"
@@ -130,7 +130,7 @@ typedef struct _ogl_scene_renderer_frustum_preview
     unsigned int            data_bo_size;
     scene                   owned_scene;
     ral_program             po;
-    ogl_program_block       po_ub;
+    raGL_program_block      po_ub_raGL;
     ral_buffer              po_ub_bo;
     unsigned int            po_ub_bo_size;
     GLint                   po_vp_ub_offset;
@@ -483,17 +483,17 @@ PRIVATE void _ogl_scene_renderer_frustum_preview_init_rendering_thread_callback(
 
     raGL_program_get_uniform_block_by_name(po_raGL,
                                            system_hashed_ansi_string_create("dataVS"),
-                                          &preview_ptr->po_ub);
+                                          &preview_ptr->po_ub_raGL);
 
-    ASSERT_DEBUG_SYNC(preview_ptr->po_ub != NULL,
+    ASSERT_DEBUG_SYNC(preview_ptr->po_ub_raGL != NULL,
                       "dataVS UB uniform descriptor is NULL");
 
-    ogl_program_block_get_property(preview_ptr->po_ub,
-                                   OGL_PROGRAM_BLOCK_PROPERTY_BLOCK_DATA_SIZE,
-                                  &preview_ptr->po_ub_bo_size);
-    ogl_program_block_get_property(preview_ptr->po_ub,
-                                   OGL_PROGRAM_BLOCK_PROPERTY_BUFFER_RAL,
-                                  &preview_ptr->po_ub_bo);
+    raGL_program_block_get_property(preview_ptr->po_ub_raGL,
+                                    RAGL_PROGRAM_BLOCK_PROPERTY_BLOCK_DATA_SIZE,
+                                   &preview_ptr->po_ub_bo_size);
+    raGL_program_block_get_property(preview_ptr->po_ub_raGL,
+                                    RAGL_PROGRAM_BLOCK_PROPERTY_BUFFER_RAL,
+                                   &preview_ptr->po_ub_bo);
 
     /* Retrieve PO uniform locations */
     const ral_program_variable* po_vp_ral_ptr = NULL;
@@ -997,11 +997,11 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_scene_renderer_frustum_preview_render(ogl
 
     entrypoints_ptr->pGLUseProgram(po_raGL_id);
 
-    ogl_program_block_set_nonarrayed_variable_value(preview_ptr->po_ub,
-                                                    preview_ptr->po_vp_ub_offset,
-                                                    system_matrix4x4_get_column_major_data(vp),
-                                                    sizeof(float) * 16);
-    ogl_program_block_sync                         (preview_ptr->po_ub);
+    raGL_program_block_set_nonarrayed_variable_value(preview_ptr->po_ub_raGL,
+                                                     preview_ptr->po_vp_ub_offset,
+                                                     system_matrix4x4_get_column_major_data(vp),
+                                                     sizeof(float) * 16);
+    raGL_program_block_sync                         (preview_ptr->po_ub_raGL);
 
     /* Draw! */
     entrypoints_ptr->pGLEnable(GL_PRIMITIVE_RESTART_FIXED_INDEX);

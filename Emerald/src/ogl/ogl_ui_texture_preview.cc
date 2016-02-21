@@ -5,13 +5,13 @@
  */
 #include "shared.h"
 #include "ogl/ogl_context.h"
-#include "ogl/ogl_program_block.h"
 #include "ogl/ogl_text.h"
 #include "ogl/ogl_ui.h"
 #include "ogl/ogl_ui_texture_preview.h"
 #include "ogl/ogl_ui_shared.h"
 #include "raGL/raGL_buffer.h"
 #include "raGL/raGL_program.h"
+#include "raGL/raGL_program_block.h"
 #include "raGL/raGL_shader.h"
 #include "raGL/raGL_utils.h"
 #include "ral/ral_context.h"
@@ -55,12 +55,12 @@ typedef struct
     GLint                     program_border_width_ub_offset;
     GLint                     program_layer_ub_offset;
     GLint                     program_texture_ub_offset;
-    ogl_program_block         program_ub_fs;
     ral_buffer                program_ub_fs_bo;
     GLuint                    program_ub_fs_bo_size;
-    ogl_program_block         program_ub_vs;
+    raGL_program_block        program_ub_fs_raGL;
     ral_buffer                program_ub_vs_bo;
     GLuint                    program_ub_vs_bo_size;
+    raGL_program_block        program_ub_vs_raGL;
     GLint                     program_x1y1x2y2_ub_offset;
     ral_texture               texture;
     bool                      texture_initialized;
@@ -480,41 +480,41 @@ PRIVATE void _ogl_ui_texture_preview_init_texture_renderer_callback(ogl_context 
     unsigned int ub_fs_index = -1;
     unsigned int ub_vs_index = -1;
 
-    texture_preview_ptr->program_ub_fs = NULL;
-    texture_preview_ptr->program_ub_vs = NULL;
+    texture_preview_ptr->program_ub_fs_raGL = NULL;
+    texture_preview_ptr->program_ub_vs_raGL = NULL;
 
     raGL_program_get_uniform_block_by_name(program_raGL,
                                            system_hashed_ansi_string_create("dataFS"),
-                                          &texture_preview_ptr->program_ub_fs);
+                                          &texture_preview_ptr->program_ub_fs_raGL);
     raGL_program_get_uniform_block_by_name(program_raGL,
                                            system_hashed_ansi_string_create("dataVS"),
-                                          &texture_preview_ptr->program_ub_vs);
+                                          &texture_preview_ptr->program_ub_vs_raGL);
 
-    ASSERT_DEBUG_SYNC(texture_preview_ptr->program_ub_fs != NULL,
+    ASSERT_DEBUG_SYNC(texture_preview_ptr->program_ub_fs_raGL != NULL,
                       "dataFS uniform block descriptor is NULL.");
-    ASSERT_DEBUG_SYNC(texture_preview_ptr->program_ub_vs != NULL,
+    ASSERT_DEBUG_SYNC(texture_preview_ptr->program_ub_vs_raGL != NULL,
                       "dataVS uniform block descriptor is NULL.");
 
-    ogl_program_block_get_property(texture_preview_ptr->program_ub_fs,
-                                   OGL_PROGRAM_BLOCK_PROPERTY_BLOCK_DATA_SIZE,
-                                  &texture_preview_ptr->program_ub_fs_bo_size);
-    ogl_program_block_get_property(texture_preview_ptr->program_ub_vs,
-                                   OGL_PROGRAM_BLOCK_PROPERTY_BLOCK_DATA_SIZE,
-                                  &texture_preview_ptr->program_ub_vs_bo_size);
+    raGL_program_block_get_property(texture_preview_ptr->program_ub_fs_raGL,
+                                    RAGL_PROGRAM_BLOCK_PROPERTY_BLOCK_DATA_SIZE,
+                                   &texture_preview_ptr->program_ub_fs_bo_size);
+    raGL_program_block_get_property(texture_preview_ptr->program_ub_vs_raGL,
+                                    RAGL_PROGRAM_BLOCK_PROPERTY_BLOCK_DATA_SIZE,
+                                   &texture_preview_ptr->program_ub_vs_bo_size);
 
-    ogl_program_block_get_property(texture_preview_ptr->program_ub_fs,
-                                   OGL_PROGRAM_BLOCK_PROPERTY_BUFFER_RAL,
-                                  &texture_preview_ptr->program_ub_fs_bo);
-    ogl_program_block_get_property(texture_preview_ptr->program_ub_vs,
-                                   OGL_PROGRAM_BLOCK_PROPERTY_BUFFER_RAL,
-                                  &texture_preview_ptr->program_ub_vs_bo);
+    raGL_program_block_get_property(texture_preview_ptr->program_ub_fs_raGL,
+                                    RAGL_PROGRAM_BLOCK_PROPERTY_BUFFER_RAL,
+                                   &texture_preview_ptr->program_ub_fs_bo);
+    raGL_program_block_get_property(texture_preview_ptr->program_ub_vs_raGL,
+                                    RAGL_PROGRAM_BLOCK_PROPERTY_BUFFER_RAL,
+                                   &texture_preview_ptr->program_ub_vs_bo);
 
-    ogl_program_block_get_property(texture_preview_ptr->program_ub_fs,
-                                   OGL_PROGRAM_BLOCK_PROPERTY_INDEX,
-                                  &ub_fs_index);
-    ogl_program_block_get_property(texture_preview_ptr->program_ub_vs,
-                                   OGL_PROGRAM_BLOCK_PROPERTY_INDEX,
-                                  &ub_vs_index);
+    raGL_program_block_get_property(texture_preview_ptr->program_ub_fs_raGL,
+                                    RAGL_PROGRAM_BLOCK_PROPERTY_INDEX,
+                                   &ub_fs_index);
+    raGL_program_block_get_property(texture_preview_ptr->program_ub_vs_raGL,
+                                    RAGL_PROGRAM_BLOCK_PROPERTY_INDEX,
+                                   &ub_vs_index);
 
     texture_preview_ptr->pGLUniformBlockBinding(program_raGL_id,
                                                 ub_fs_index,
@@ -618,18 +618,18 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_ui_texture_preview_draw(void* internal_in
     /* Set up uniforms */
     layer_index = (float) texture_preview_ptr->layer_shown;
 
-    ogl_program_block_set_nonarrayed_variable_value(texture_preview_ptr->program_ub_fs,
-                                                    texture_preview_ptr->program_border_width_ub_offset,
-                                                    texture_preview_ptr->border_width,
-                                                    sizeof(float) * 2);
-    ogl_program_block_set_nonarrayed_variable_value(texture_preview_ptr->program_ub_vs,
-                                                    texture_preview_ptr->program_x1y1x2y2_ub_offset,
-                                                    texture_preview_ptr->x1y1x2y2,
-                                                    sizeof(float) * 4);
-    ogl_program_block_set_nonarrayed_variable_value(texture_preview_ptr->program_ub_fs,
-                                                    texture_preview_ptr->program_layer_ub_offset,
-                                                   &layer_index,
-                                                    sizeof(float) );
+    raGL_program_block_set_nonarrayed_variable_value(texture_preview_ptr->program_ub_fs_raGL,
+                                                     texture_preview_ptr->program_border_width_ub_offset,
+                                                     texture_preview_ptr->border_width,
+                                                     sizeof(float) * 2);
+    raGL_program_block_set_nonarrayed_variable_value(texture_preview_ptr->program_ub_vs_raGL,
+                                                     texture_preview_ptr->program_x1y1x2y2_ub_offset,
+                                                     texture_preview_ptr->x1y1x2y2,
+                                                     sizeof(float) * 4);
+    raGL_program_block_set_nonarrayed_variable_value(texture_preview_ptr->program_ub_fs_raGL,
+                                                     texture_preview_ptr->program_layer_ub_offset,
+                                                    &layer_index,
+                                                     sizeof(float) );
 
     /* Configure blending.
      *
@@ -692,8 +692,8 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_ui_texture_preview_draw(void* internal_in
                                             program_ub_vs_bo_start_offset,
                                             texture_preview_ptr->program_ub_vs_bo_size);
 
-    ogl_program_block_sync(texture_preview_ptr->program_ub_fs);
-    ogl_program_block_sync(texture_preview_ptr->program_ub_vs);
+    raGL_program_block_sync(texture_preview_ptr->program_ub_fs_raGL);
+    raGL_program_block_sync(texture_preview_ptr->program_ub_vs_raGL);
 
     texture_preview_ptr->pGLUseProgram(program_raGL_id);
     texture_preview_ptr->pGLDrawArrays(GL_TRIANGLE_FAN,
