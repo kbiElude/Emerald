@@ -18,8 +18,7 @@
 #include "shared.h"
 #include "gfx/gfx_bfg_font_table.h"
 #include "ogl/ogl_context.h"
-#include "ogl/ogl_program_ssb.h"
-#include "ogl/ogl_program_ub.h"
+#include "ogl/ogl_program_block.h"
 #include "ogl/ogl_rendering_handler.h"
 #include "ogl/ogl_text.h"
 #include "raGL/raGL_buffer.h"
@@ -125,14 +124,14 @@ typedef struct
 
 typedef struct _global_per_context_variables
 {
-    ogl_program_ub draw_text_program_ub_fsdata;
-    ral_buffer     draw_text_program_ub_fsdata_bo;
-    GLuint         draw_text_program_ub_fsdata_bo_size;
-    GLuint         draw_text_program_ub_fsdata_index;
-    ogl_program_ub draw_text_program_ub_vsdata;
-    ral_buffer     draw_text_program_ub_vsdata_bo;
-    GLuint         draw_text_program_ub_vsdata_bo_size;
-    GLuint         draw_text_program_ub_vsdata_index;
+    ogl_program_block draw_text_program_ub_fsdata;
+    ral_buffer        draw_text_program_ub_fsdata_bo;
+    GLuint            draw_text_program_ub_fsdata_bo_size;
+    GLuint            draw_text_program_ub_fsdata_index;
+    ogl_program_block draw_text_program_ub_vsdata;
+    ral_buffer        draw_text_program_ub_vsdata_bo;
+    GLuint            draw_text_program_ub_vsdata_bo_size;
+    GLuint            draw_text_program_ub_vsdata_index;
 
     _global_per_context_variables()
     {
@@ -149,8 +148,8 @@ typedef struct _global_per_context_variables
 
 typedef struct
 {
-    ral_program     draw_text_program;          /* ogl_program_ub instances are PER-CONTEXT */
-    ogl_program_ssb draw_text_program_data_ssb; /* NOT per-context */
+    ral_program       draw_text_program;          /* ogl_program_ub instances are PER-CONTEXT */
+    ogl_program_block draw_text_program_data_ssb; /* NOT per-context */
 
     GLuint draw_text_fragment_shader_color_ub_offset;
     GLuint draw_text_fragment_shader_font_table_location;
@@ -701,25 +700,25 @@ PRIVATE void _ogl_text_construction_callback_from_renderer(ogl_context context,
 
 
             /* Set up uniform block bindings */
-            ogl_program_ub_get_property(per_context_data_ptr->draw_text_program_ub_fsdata,
-                                        OGL_PROGRAM_UB_PROPERTY_INDEX,
-                                       &per_context_data_ptr->draw_text_program_ub_fsdata_index);
-            ogl_program_ub_get_property(per_context_data_ptr->draw_text_program_ub_fsdata,
-                                        OGL_PROGRAM_UB_PROPERTY_BLOCK_DATA_SIZE,
-                                       &per_context_data_ptr->draw_text_program_ub_fsdata_bo_size);
-            ogl_program_ub_get_property(per_context_data_ptr->draw_text_program_ub_fsdata,
-                                        OGL_PROGRAM_UB_PROPERTY_BUFFER_RAL,
-                                       &per_context_data_ptr->draw_text_program_ub_fsdata_bo);
+            ogl_program_block_get_property(per_context_data_ptr->draw_text_program_ub_fsdata,
+                                           OGL_PROGRAM_BLOCK_PROPERTY_INDEX,
+                                          &per_context_data_ptr->draw_text_program_ub_fsdata_index);
+            ogl_program_block_get_property(per_context_data_ptr->draw_text_program_ub_fsdata,
+                                           OGL_PROGRAM_BLOCK_PROPERTY_BLOCK_DATA_SIZE,
+                                          &per_context_data_ptr->draw_text_program_ub_fsdata_bo_size);
+            ogl_program_block_get_property(per_context_data_ptr->draw_text_program_ub_fsdata,
+                                           OGL_PROGRAM_BLOCK_PROPERTY_BUFFER_RAL,
+                                          &per_context_data_ptr->draw_text_program_ub_fsdata_bo);
 
-            ogl_program_ub_get_property(per_context_data_ptr->draw_text_program_ub_vsdata,
-                                        OGL_PROGRAM_UB_PROPERTY_INDEX,
-                                       &per_context_data_ptr->draw_text_program_ub_vsdata_index);
-            ogl_program_ub_get_property(per_context_data_ptr->draw_text_program_ub_vsdata,
-                                        OGL_PROGRAM_UB_PROPERTY_BLOCK_DATA_SIZE,
-                                       &per_context_data_ptr->draw_text_program_ub_vsdata_bo_size);
-            ogl_program_ub_get_property(per_context_data_ptr->draw_text_program_ub_vsdata,
-                                        OGL_PROGRAM_UB_PROPERTY_BUFFER_RAL,
-                                       &per_context_data_ptr->draw_text_program_ub_vsdata_bo);
+            ogl_program_block_get_property(per_context_data_ptr->draw_text_program_ub_vsdata,
+                                           OGL_PROGRAM_BLOCK_PROPERTY_INDEX,
+                                          &per_context_data_ptr->draw_text_program_ub_vsdata_index);
+            ogl_program_block_get_property(per_context_data_ptr->draw_text_program_ub_vsdata,
+                                           OGL_PROGRAM_BLOCK_PROPERTY_BLOCK_DATA_SIZE,
+                                          &per_context_data_ptr->draw_text_program_ub_vsdata_bo_size);
+            ogl_program_block_get_property(per_context_data_ptr->draw_text_program_ub_vsdata,
+                                           OGL_PROGRAM_BLOCK_PROPERTY_BUFFER_RAL,
+                                          &per_context_data_ptr->draw_text_program_ub_vsdata_bo);
 
             text_ptr->pGLUniformBlockBinding(draw_text_program_raGL_id,
                                              per_context_data_ptr->draw_text_program_ub_fsdata_index,
@@ -1077,24 +1076,21 @@ PRIVATE void _ogl_text_draw_callback_from_renderer(ogl_context context,
                                 has_enabled_scissor_test = true;
                             }
 
-                            ogl_program_ub_set_nonarrayed_uniform_value(variables_ptr->draw_text_program_ub_fsdata,
-                                                                        _global.draw_text_fragment_shader_color_ub_offset,
-                                                                        string_ptr->color,
-                                                                        0, /* src_data_flags */
-                                                                        sizeof(float) * 3);
-                            ogl_program_ub_set_nonarrayed_uniform_value(variables_ptr->draw_text_program_ub_vsdata,
-                                                                        _global.draw_text_vertex_shader_scale_ub_offset,
-                                                                       &string_ptr->scale,
-                                                                        0, /* src_data_flags */
-                                                                        sizeof(float) );
-                            ogl_program_ub_set_nonarrayed_uniform_value(variables_ptr->draw_text_program_ub_vsdata,
-                                                                        _global.draw_text_vertex_shader_n_origin_character_ub_offset,
-                                                                       &n_characters_drawn_so_far,
-                                                                        0, /* src_data_flags */
-                                                                        sizeof(int) );
+                            ogl_program_block_set_nonarrayed_variable_value(variables_ptr->draw_text_program_ub_fsdata,
+                                                                            _global.draw_text_fragment_shader_color_ub_offset,
+                                                                            string_ptr->color,
+                                                                            sizeof(float) * 3);
+                            ogl_program_block_set_nonarrayed_variable_value(variables_ptr->draw_text_program_ub_vsdata,
+                                                                            _global.draw_text_vertex_shader_scale_ub_offset,
+                                                                           &string_ptr->scale,
+                                                                            sizeof(float) );
+                            ogl_program_block_set_nonarrayed_variable_value(variables_ptr->draw_text_program_ub_vsdata,
+                                                                            _global.draw_text_vertex_shader_n_origin_character_ub_offset,
+                                                                           &n_characters_drawn_so_far,
+                                                                            sizeof(int) );
 
-                            ogl_program_ub_sync(variables_ptr->draw_text_program_ub_fsdata);
-                            ogl_program_ub_sync(variables_ptr->draw_text_program_ub_vsdata);
+                            ogl_program_block_sync(variables_ptr->draw_text_program_ub_fsdata);
+                            ogl_program_block_sync(variables_ptr->draw_text_program_ub_vsdata);
 
                             text_ptr->pGLDrawArrays(GL_TRIANGLES,
                                                     n_characters_drawn_so_far * 6,

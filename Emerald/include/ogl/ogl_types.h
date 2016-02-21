@@ -1537,8 +1537,6 @@ typedef enum
 
 /** Program handle */
 DECLARE_HANDLE(ogl_program_block);
-DECLARE_HANDLE(ogl_program_ssb);
-DECLARE_HANDLE(ogl_program_ub);
 
 /** Shader handle & various related types from shaders module. */
 DECLARE_HANDLE(ogl_shader_constructor);

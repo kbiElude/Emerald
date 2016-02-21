@@ -5,7 +5,7 @@
  */
 #include "shared.h"
 #include "ogl/ogl_context.h"
-#include "ogl/ogl_program_ub.h"
+#include "ogl/ogl_program_block.h"
 #include "ogl/ogl_text.h"
 #include "ogl/ogl_ui.h"
 #include "ogl/ogl_ui_frame.h"
@@ -30,10 +30,10 @@ typedef struct
     bool        visible;
     float       x1y1x2y2[4];
 
-    ogl_program_ub program_ub;
-    ral_buffer     program_ub_bo;
-    GLuint         program_ub_bo_size;
-    GLint          program_x1y1x2y2_ub_offset;
+    ogl_program_block program_ub;
+    ral_buffer        program_ub_bo;
+    GLuint            program_ub_bo_size;
+    GLint             program_x1y1x2y2_ub_offset;
 
     /* Cached func ptrs */
     PFNGLBINDBUFFERRANGEPROC     pGLBindBufferRange;
@@ -180,11 +180,10 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_ui_frame_draw(void* internal_instance)
                               RAGL_PROGRAM_PROPERTY_ID,
                              &program_raGL_id);
 
-    ogl_program_ub_set_nonarrayed_uniform_value(frame_ptr->program_ub,
-                                                frame_ptr->program_x1y1x2y2_ub_offset,
-                                                frame_ptr->x1y1x2y2,
-                                                0, /* src_data-flags */
-                                                sizeof(float) * 4);
+    ogl_program_block_set_nonarrayed_variable_value(frame_ptr->program_ub,
+                                                    frame_ptr->program_x1y1x2y2_ub_offset,
+                                                    frame_ptr->x1y1x2y2,
+                                                    sizeof(float) * 4);
 
     /* Draw */
     frame_ptr->pGLBlendEquation(GL_FUNC_ADD);
@@ -213,7 +212,7 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_ui_frame_draw(void* internal_instance)
                                       program_ub_bo_start_offset,
                                       frame_ptr->program_ub_bo_size);
 
-        ogl_program_ub_sync(frame_ptr->program_ub);
+        ogl_program_block_sync(frame_ptr->program_ub);
 
         frame_ptr->pGLDrawArrays(GL_TRIANGLE_FAN,
                                  0,  /* first */
@@ -362,12 +361,12 @@ PUBLIC void* ogl_ui_frame_init(ogl_ui       instance,
         ASSERT_DEBUG_SYNC(new_frame_ptr->program_ub != NULL,
                           "dataVS uniform block descriptor is NULL");
 
-        ogl_program_ub_get_property(new_frame_ptr->program_ub,
-                                    OGL_PROGRAM_UB_PROPERTY_BLOCK_DATA_SIZE,
-                                   &new_frame_ptr->program_ub_bo_size);
-        ogl_program_ub_get_property(new_frame_ptr->program_ub,
-                                    OGL_PROGRAM_UB_PROPERTY_BUFFER_RAL,
-                                   &new_frame_ptr->program_ub_bo);
+        ogl_program_block_get_property(new_frame_ptr->program_ub,
+                                       OGL_PROGRAM_BLOCK_PROPERTY_BLOCK_DATA_SIZE,
+                                      &new_frame_ptr->program_ub_bo_size);
+        ogl_program_block_get_property(new_frame_ptr->program_ub,
+                                       OGL_PROGRAM_BLOCK_PROPERTY_BUFFER_RAL,
+                                      &new_frame_ptr->program_ub_bo);
 
         /* Set up UBO bindings */
         new_frame_ptr->pGLUniformBlockBinding(program_raGL_id,

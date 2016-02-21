@@ -5,7 +5,7 @@
  */
 #include "shared.h"
 #include "ogl/ogl_context.h"
-#include "ogl/ogl_program_ub.h"
+#include "ogl/ogl_program_block.h"
 #include "ogl/ogl_text.h"
 #include "ogl/ogl_ui.h"
 #include "ogl/ogl_ui_texture_preview.h"
@@ -55,10 +55,10 @@ typedef struct
     GLint                     program_border_width_ub_offset;
     GLint                     program_layer_ub_offset;
     GLint                     program_texture_ub_offset;
-    ogl_program_ub            program_ub_fs;
+    ogl_program_block         program_ub_fs;
     ral_buffer                program_ub_fs_bo;
     GLuint                    program_ub_fs_bo_size;
-    ogl_program_ub            program_ub_vs;
+    ogl_program_block         program_ub_vs;
     ral_buffer                program_ub_vs_bo;
     GLuint                    program_ub_vs_bo_size;
     GLint                     program_x1y1x2y2_ub_offset;
@@ -495,26 +495,26 @@ PRIVATE void _ogl_ui_texture_preview_init_texture_renderer_callback(ogl_context 
     ASSERT_DEBUG_SYNC(texture_preview_ptr->program_ub_vs != NULL,
                       "dataVS uniform block descriptor is NULL.");
 
-    ogl_program_ub_get_property(texture_preview_ptr->program_ub_fs,
-                                OGL_PROGRAM_UB_PROPERTY_BLOCK_DATA_SIZE,
-                               &texture_preview_ptr->program_ub_fs_bo_size);
-    ogl_program_ub_get_property(texture_preview_ptr->program_ub_vs,
-                                OGL_PROGRAM_UB_PROPERTY_BLOCK_DATA_SIZE,
-                               &texture_preview_ptr->program_ub_vs_bo_size);
+    ogl_program_block_get_property(texture_preview_ptr->program_ub_fs,
+                                   OGL_PROGRAM_BLOCK_PROPERTY_BLOCK_DATA_SIZE,
+                                  &texture_preview_ptr->program_ub_fs_bo_size);
+    ogl_program_block_get_property(texture_preview_ptr->program_ub_vs,
+                                   OGL_PROGRAM_BLOCK_PROPERTY_BLOCK_DATA_SIZE,
+                                  &texture_preview_ptr->program_ub_vs_bo_size);
 
-    ogl_program_ub_get_property(texture_preview_ptr->program_ub_fs,
-                                OGL_PROGRAM_UB_PROPERTY_BUFFER_RAL,
-                               &texture_preview_ptr->program_ub_fs_bo);
-    ogl_program_ub_get_property(texture_preview_ptr->program_ub_vs,
-                                OGL_PROGRAM_UB_PROPERTY_BUFFER_RAL,
-                               &texture_preview_ptr->program_ub_vs_bo);
+    ogl_program_block_get_property(texture_preview_ptr->program_ub_fs,
+                                   OGL_PROGRAM_BLOCK_PROPERTY_BUFFER_RAL,
+                                  &texture_preview_ptr->program_ub_fs_bo);
+    ogl_program_block_get_property(texture_preview_ptr->program_ub_vs,
+                                   OGL_PROGRAM_BLOCK_PROPERTY_BUFFER_RAL,
+                                  &texture_preview_ptr->program_ub_vs_bo);
 
-    ogl_program_ub_get_property(texture_preview_ptr->program_ub_fs,
-                                OGL_PROGRAM_UB_PROPERTY_INDEX,
-                               &ub_fs_index);
-    ogl_program_ub_get_property(texture_preview_ptr->program_ub_vs,
-                                OGL_PROGRAM_UB_PROPERTY_INDEX,
-                               &ub_vs_index);
+    ogl_program_block_get_property(texture_preview_ptr->program_ub_fs,
+                                   OGL_PROGRAM_BLOCK_PROPERTY_INDEX,
+                                  &ub_fs_index);
+    ogl_program_block_get_property(texture_preview_ptr->program_ub_vs,
+                                   OGL_PROGRAM_BLOCK_PROPERTY_INDEX,
+                                  &ub_vs_index);
 
     texture_preview_ptr->pGLUniformBlockBinding(program_raGL_id,
                                                 ub_fs_index,
@@ -618,21 +618,18 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_ui_texture_preview_draw(void* internal_in
     /* Set up uniforms */
     layer_index = (float) texture_preview_ptr->layer_shown;
 
-    ogl_program_ub_set_nonarrayed_uniform_value(texture_preview_ptr->program_ub_fs,
-                                                texture_preview_ptr->program_border_width_ub_offset,
-                                                texture_preview_ptr->border_width,
-                                                0, /* src_data_flags */
-                                                sizeof(float) * 2);
-    ogl_program_ub_set_nonarrayed_uniform_value(texture_preview_ptr->program_ub_vs,
-                                                texture_preview_ptr->program_x1y1x2y2_ub_offset,
-                                                texture_preview_ptr->x1y1x2y2,
-                                                0, /* src_data_flags */
-                                                sizeof(float) * 4);
-    ogl_program_ub_set_nonarrayed_uniform_value(texture_preview_ptr->program_ub_fs,
-                                                texture_preview_ptr->program_layer_ub_offset,
-                                               &layer_index,
-                                                0, /* src_data_flags */
-                                                sizeof(float) );
+    ogl_program_block_set_nonarrayed_variable_value(texture_preview_ptr->program_ub_fs,
+                                                    texture_preview_ptr->program_border_width_ub_offset,
+                                                    texture_preview_ptr->border_width,
+                                                    sizeof(float) * 2);
+    ogl_program_block_set_nonarrayed_variable_value(texture_preview_ptr->program_ub_vs,
+                                                    texture_preview_ptr->program_x1y1x2y2_ub_offset,
+                                                    texture_preview_ptr->x1y1x2y2,
+                                                    sizeof(float) * 4);
+    ogl_program_block_set_nonarrayed_variable_value(texture_preview_ptr->program_ub_fs,
+                                                    texture_preview_ptr->program_layer_ub_offset,
+                                                   &layer_index,
+                                                    sizeof(float) );
 
     /* Configure blending.
      *
@@ -695,8 +692,8 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_ui_texture_preview_draw(void* internal_in
                                             program_ub_vs_bo_start_offset,
                                             texture_preview_ptr->program_ub_vs_bo_size);
 
-    ogl_program_ub_sync(texture_preview_ptr->program_ub_fs);
-    ogl_program_ub_sync(texture_preview_ptr->program_ub_vs);
+    ogl_program_block_sync(texture_preview_ptr->program_ub_fs);
+    ogl_program_block_sync(texture_preview_ptr->program_ub_vs);
 
     texture_preview_ptr->pGLUseProgram(program_raGL_id);
     texture_preview_ptr->pGLDrawArrays(GL_TRIANGLE_FAN,

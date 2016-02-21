@@ -7,7 +7,7 @@
 #include "demo/demo_app.h"
 #include "demo/demo_window.h"
 #include "ogl/ogl_context.h"
-#include "ogl/ogl_program_ssb.h"
+#include "ogl/ogl_program_block.h"
 #include "ogl/ogl_rendering_handler.h"
 #include "raGL/raGL_buffer.h"
 #include "raGL/raGL_framebuffer.h"

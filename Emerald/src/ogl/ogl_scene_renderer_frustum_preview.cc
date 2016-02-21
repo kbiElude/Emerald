@@ -5,7 +5,7 @@
  */
 #include "shared.h"
 #include "ogl/ogl_context.h"
-#include "ogl/ogl_program_ub.h"
+#include "ogl/ogl_program_block.h"
 #include "ogl/ogl_scene_renderer.h"
 #include "ogl/ogl_scene_renderer_frustum_preview.h"
 #include "ogl/ogl_text.h"
@@ -130,7 +130,7 @@ typedef struct _ogl_scene_renderer_frustum_preview
     unsigned int            data_bo_size;
     scene                   owned_scene;
     ral_program             po;
-    ogl_program_ub          po_ub;
+    ogl_program_block       po_ub;
     ral_buffer              po_ub_bo;
     unsigned int            po_ub_bo_size;
     GLint                   po_vp_ub_offset;
@@ -488,12 +488,12 @@ PRIVATE void _ogl_scene_renderer_frustum_preview_init_rendering_thread_callback(
     ASSERT_DEBUG_SYNC(preview_ptr->po_ub != NULL,
                       "dataVS UB uniform descriptor is NULL");
 
-    ogl_program_ub_get_property(preview_ptr->po_ub,
-                                OGL_PROGRAM_UB_PROPERTY_BLOCK_DATA_SIZE,
-                               &preview_ptr->po_ub_bo_size);
-    ogl_program_ub_get_property(preview_ptr->po_ub,
-                                OGL_PROGRAM_UB_PROPERTY_BUFFER_RAL,
-                               &preview_ptr->po_ub_bo);
+    ogl_program_block_get_property(preview_ptr->po_ub,
+                                   OGL_PROGRAM_BLOCK_PROPERTY_BLOCK_DATA_SIZE,
+                                  &preview_ptr->po_ub_bo_size);
+    ogl_program_block_get_property(preview_ptr->po_ub,
+                                   OGL_PROGRAM_BLOCK_PROPERTY_BUFFER_RAL,
+                                  &preview_ptr->po_ub_bo);
 
     /* Retrieve PO uniform locations */
     const ral_program_variable* po_vp_ral_ptr = NULL;
@@ -997,12 +997,11 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_scene_renderer_frustum_preview_render(ogl
 
     entrypoints_ptr->pGLUseProgram(po_raGL_id);
 
-    ogl_program_ub_set_nonarrayed_uniform_value(preview_ptr->po_ub,
-                                                preview_ptr->po_vp_ub_offset,
-                                                system_matrix4x4_get_column_major_data(vp),
-                                                0, /* src_data_flags */
-                                                sizeof(float) * 16);
-    ogl_program_ub_sync                        (preview_ptr->po_ub);
+    ogl_program_block_set_nonarrayed_variable_value(preview_ptr->po_ub,
+                                                    preview_ptr->po_vp_ub_offset,
+                                                    system_matrix4x4_get_column_major_data(vp),
+                                                    sizeof(float) * 16);
+    ogl_program_block_sync                         (preview_ptr->po_ub);
 
     /* Draw! */
     entrypoints_ptr->pGLEnable(GL_PRIMITIVE_RESTART_FIXED_INDEX);

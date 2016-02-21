@@ -5,7 +5,7 @@
  */
 #include "shared.h"
 #include "ogl/ogl_context.h"
-#include "ogl/ogl_program_ub.h"
+#include "ogl/ogl_program_block.h"
 #include "ogl/ogl_scene_renderer.h"
 #include "ogl/ogl_scene_renderer_lights_preview.h"
 #include "raGL/raGL_buffer.h"
@@ -55,13 +55,13 @@ typedef struct _ogl_scene_renderer_lights_preview
      */
     ral_context context;
 
-    scene          owned_scene;
-    ral_program    preview_program;
-    ogl_program_ub preview_program_ub;
-    ral_buffer     preview_program_ub_bo;
-    unsigned int   preview_program_ub_bo_size;
-    GLint          preview_program_color_ub_offset;
-    GLint          preview_program_position_ub_offset;
+    scene             owned_scene;
+    ral_program       preview_program;
+    ogl_program_block preview_program_ub;
+    ral_buffer        preview_program_ub_bo;
+    unsigned int      preview_program_ub_bo_size;
+    GLint             preview_program_color_ub_offset;
+    GLint             preview_program_position_ub_offset;
 
     _ogl_scene_renderer_lights_preview()
     {
@@ -190,12 +190,12 @@ PRIVATE void _ogl_context_scene_renderer_lights_preview_init_preview_program(_og
     ASSERT_DEBUG_SYNC(preview_ptr->preview_program_ub != NULL,
                       "Data UB descriptor is NULL");
 
-    ogl_program_ub_get_property(preview_ptr->preview_program_ub,
-                                OGL_PROGRAM_UB_PROPERTY_BLOCK_DATA_SIZE,
-                               &preview_ptr->preview_program_ub_bo_size);
-    ogl_program_ub_get_property(preview_ptr->preview_program_ub,
-                                OGL_PROGRAM_UB_PROPERTY_BUFFER_RAL,
-                               &preview_ptr->preview_program_ub_bo);
+    ogl_program_block_get_property(preview_ptr->preview_program_ub,
+                                   OGL_PROGRAM_BLOCK_PROPERTY_BLOCK_DATA_SIZE,
+                                  &preview_ptr->preview_program_ub_bo_size);
+    ogl_program_block_get_property(preview_ptr->preview_program_ub,
+                                   OGL_PROGRAM_BLOCK_PROPERTY_BUFFER_RAL,
+                                  &preview_ptr->preview_program_ub_bo);
 
     /* Retrieve uniform properties */
     ral_program_get_block_variable_by_name(preview_ptr->preview_program,
@@ -321,20 +321,18 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_scene_renderer_lights_preview_render(ogl_
                sizeof(float) * 4);
     }
 
-    ogl_program_ub_set_arrayed_uniform_value   (preview_ptr->preview_program_ub,
-                                                preview_ptr->preview_program_position_ub_offset,
-                                                merged_light_positions,
-                                                0, /* src_data_flags */
-                                                sizeof(float) * 4,
-                                                0, /* dst_array_start_index */
-                                                ((light_pos_plus_direction != NULL) ? 2 : 1) );
-    ogl_program_ub_set_nonarrayed_uniform_value(preview_ptr->preview_program_ub,
-                                                preview_ptr->preview_program_color_ub_offset,
-                                                light_color,
-                                                0, /* src_data_flags */
-                                                sizeof(float) * 3);
+    ogl_program_block_set_arrayed_variable_value  (preview_ptr->preview_program_ub,
+                                                   preview_ptr->preview_program_position_ub_offset,
+                                                   merged_light_positions,
+                                                   sizeof(float) * 4,
+                                                   0, /* dst_array_start_index */
+                                                   ((light_pos_plus_direction != NULL) ? 2 : 1) );
+    ogl_program_block_set_nonarrayed_variable_value(preview_ptr->preview_program_ub,
+                                                    preview_ptr->preview_program_color_ub_offset,
+                                                    light_color,
+                                                    sizeof(float) * 3);
 
-    ogl_program_ub_sync(preview_ptr->preview_program_ub);
+    ogl_program_block_sync(preview_ptr->preview_program_ub);
 
     /* Draw. This probably beats the world's worst way of achieving this functionality,
      * but light preview is only used for debugging purposes, so not much sense

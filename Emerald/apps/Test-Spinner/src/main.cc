@@ -9,7 +9,7 @@
 #include "demo/demo_window.h"
 #include "mesh/mesh.h"
 #include "ogl/ogl_context.h"
-#include "ogl/ogl_program_ub.h"
+#include "ogl/ogl_program_block.h"
 #include "ogl/ogl_rendering_handler.h"
 #include "ogl/ogl_vao.h"
 #include "postprocessing/postprocessing_motion_blur.h"
@@ -57,7 +57,7 @@ PRIVATE system_time                _spinner_first_frame_time                    
 PRIVATE postprocessing_motion_blur _spinner_motion_blur                                          = NULL;
 PRIVATE ral_program                _spinner_polygonizer_po                                       = NULL;
 PRIVATE unsigned int               _spinner_polygonizer_po_global_wg_size[3]                     = {0};
-PRIVATE ogl_program_ub             _spinner_polygonizer_po_propsBuffer_ub                        = NULL;
+PRIVATE ogl_program_block          _spinner_polygonizer_po_propsBuffer_ub                        = NULL;
 PRIVATE ral_buffer                 _spinner_polygonizer_po_propsBuffer_ub_bo_ral                 = 0;
 PRIVATE unsigned int               _spinner_polygonizer_po_propsBuffer_ub_bo_ral_size            = 0;
 PRIVATE GLuint                     _spinner_polygonizer_po_propsBuffer_innerRingRadius_ub_offset = -1;
@@ -455,12 +455,12 @@ PRIVATE void _init_spinner()
     ASSERT_DEBUG_SYNC(_spinner_polygonizer_po_propsBuffer_ub != NULL,
                       "propsBuffer uniform block is not recognized by GL");
 
-    ogl_program_ub_get_property(_spinner_polygonizer_po_propsBuffer_ub,
-                                OGL_PROGRAM_UB_PROPERTY_BLOCK_DATA_SIZE,
-                               &_spinner_polygonizer_po_propsBuffer_ub_bo_ral_size);
-    ogl_program_ub_get_property(_spinner_polygonizer_po_propsBuffer_ub,
-                                OGL_PROGRAM_UB_PROPERTY_BUFFER_RAL,
-                               &_spinner_polygonizer_po_propsBuffer_ub_bo_ral);
+    ogl_program_block_get_property(_spinner_polygonizer_po_propsBuffer_ub,
+                                   OGL_PROGRAM_BLOCK_PROPERTY_BLOCK_DATA_SIZE,
+                                  &_spinner_polygonizer_po_propsBuffer_ub_bo_ral_size);
+    ogl_program_block_get_property(_spinner_polygonizer_po_propsBuffer_ub,
+                                   OGL_PROGRAM_BLOCK_PROPERTY_BUFFER_RAL,
+                                  &_spinner_polygonizer_po_propsBuffer_ub_bo_ral);
 
     ral_program_get_block_variable_by_name(_spinner_polygonizer_po,
                                            system_hashed_ansi_string_create("propsBuffer"),
@@ -840,13 +840,12 @@ PRIVATE void _render_spinner(unsigned int n_frames_rendered)
             spline_accelerations[n_spline] = 0.0f;
         }
 
-        ogl_program_ub_set_arrayed_uniform_value(_spinner_polygonizer_po_propsBuffer_ub,
-                                                 _spinner_polygonizer_po_propsBuffer_splineOffsets_ub_offset,
-                                                 spline_offsets + n_spline,
-                                                 0,            /* src_data_flags */
-                                                 sizeof(float),
-                                                 n_spline,
-                                                 1);           /* dst_array_item_count */
+        ogl_program_block_set_arrayed_variable_value(_spinner_polygonizer_po_propsBuffer_ub,
+                                                     _spinner_polygonizer_po_propsBuffer_splineOffsets_ub_offset,
+                                                     spline_offsets + n_spline,
+                                                     sizeof(float),
+                                                     n_spline,
+                                                     1);           /* dst_array_item_count */
     }
 
     /* Generate spinner mesh data */
@@ -913,22 +912,19 @@ PRIVATE void _render_spinner(unsigned int n_frames_rendered)
 
     entrypoints_ptr->pGLUseProgram(spinner_polygonizer_po_raGL_id);
 
-    ogl_program_ub_set_nonarrayed_uniform_value(_spinner_polygonizer_po_propsBuffer_ub,
-                                                _spinner_polygonizer_po_propsBuffer_innerRingRadius_ub_offset,
-                                               &inner_ring_radius,
-                                                0, /* src_data_flags */
-                                                sizeof(float) );
-    ogl_program_ub_set_nonarrayed_uniform_value(_spinner_polygonizer_po_propsBuffer_ub,
-                                                _spinner_polygonizer_po_propsBuffer_nRingsToSkip_ub_offset,
-                                               &n_rings_to_skip,
-                                                0, /* src_data_flags */
-                                                sizeof(int) );
-    ogl_program_ub_set_nonarrayed_uniform_value(_spinner_polygonizer_po_propsBuffer_ub,
-                                                _spinner_polygonizer_po_propsBuffer_outerRingRadius_ub_offset,
-                                               &outer_ring_radius,
-                                                0, /* src_data_flags */
-                                                sizeof(float) );
-    ogl_program_ub_sync                        (_spinner_polygonizer_po_propsBuffer_ub);
+    ogl_program_block_set_nonarrayed_variable_value(_spinner_polygonizer_po_propsBuffer_ub,
+                                                    _spinner_polygonizer_po_propsBuffer_innerRingRadius_ub_offset,
+                                                   &inner_ring_radius,
+                                                    sizeof(float) );
+    ogl_program_block_set_nonarrayed_variable_value(_spinner_polygonizer_po_propsBuffer_ub,
+                                                    _spinner_polygonizer_po_propsBuffer_nRingsToSkip_ub_offset,
+                                                   &n_rings_to_skip,
+                                                    sizeof(int) );
+    ogl_program_block_set_nonarrayed_variable_value(_spinner_polygonizer_po_propsBuffer_ub,
+                                                    _spinner_polygonizer_po_propsBuffer_outerRingRadius_ub_offset,
+                                                   &outer_ring_radius,
+                                                    sizeof(float) );
+    ogl_program_block_sync                         (_spinner_polygonizer_po_propsBuffer_ub);
 
     entrypoints_ptr->pGLBindBufferRange(GL_SHADER_STORAGE_BUFFER,
                                         0, /* index */

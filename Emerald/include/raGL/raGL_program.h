@@ -114,14 +114,14 @@ PUBLIC EMERALD_API void raGL_program_get_property(raGL_program          program,
                                                   void*                 out_result_ptr);
 
 /** TODO */
-PUBLIC EMERALD_API bool raGL_program_get_shader_storage_block_by_sb_index(raGL_program     program,
-                                                                          unsigned int     index,
-                                                                          ogl_program_ssb* out_ssb_ptr);
+PUBLIC EMERALD_API bool raGL_program_get_shader_storage_block_by_sb_index(raGL_program       program,
+                                                                          unsigned int       index,
+                                                                          ogl_program_block* out_ssb_ptr);
 
 /** TODO */
 PUBLIC EMERALD_API bool raGL_program_get_shader_storage_block_by_name(raGL_program              program,
                                                                       system_hashed_ansi_string name,
-                                                                      ogl_program_ssb*          out_ssb_ptr);
+                                                                      ogl_program_block*        out_ssb_ptr);
 
 /** Retrieves uniform descriptor for a particular index of user-provided program object.
  *
@@ -143,14 +143,14 @@ PUBLIC EMERALD_API bool raGL_program_get_uniform_by_name(raGL_program           
                                                          const _raGL_program_variable** out_uniform_ptr);
 
 /** TODO */
-PUBLIC EMERALD_API bool raGL_program_get_uniform_block_by_ub_index(raGL_program    program,
-                                                                   unsigned int    index,
-                                                                   ogl_program_ub* out_ub_ptr);
+PUBLIC EMERALD_API bool raGL_program_get_uniform_block_by_ub_index(raGL_program       program,
+                                                                   unsigned int       index,
+                                                                   ogl_program_block* out_ub_ptr);
 
 /** TODO */
 PUBLIC EMERALD_API bool raGL_program_get_uniform_block_by_name(raGL_program              program,
                                                                system_hashed_ansi_string name,
-                                                               ogl_program_ub*           out_ub_ptr);
+                                                               ogl_program_block*        out_ub_ptr);
 
 /** Retrieves vertex attribute descriptor for a particular index of user-provided program object.
  *

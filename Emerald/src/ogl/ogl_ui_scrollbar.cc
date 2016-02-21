@@ -5,7 +5,7 @@
  */
 #include "shared.h"
 #include "ogl/ogl_context.h"
-#include "ogl/ogl_program_ub.h"
+#include "ogl/ogl_program_block.h"
 #include "ogl/ogl_text.h"
 #include "ogl/ogl_ui.h"
 #include "ogl/ogl_ui_scrollbar.h"
@@ -89,10 +89,10 @@ typedef struct
     GLint                          program_slider_brightness_ub_offset;
     GLint                          program_slider_is_handle_ub_offset;
     GLint                          program_slider_x1y1x2y2_ub_offset;
-    ogl_program_ub                 program_slider_ub_fs;
+    ogl_program_block              program_slider_ub_fs;
     ral_buffer                     program_slider_ub_fs_bo;
     GLuint                         program_slider_ub_fs_bo_size;
-    ogl_program_ub                 program_slider_ub_vs;
+    ogl_program_block              program_slider_ub_vs;
     ral_buffer                     program_slider_ub_vs_bo;
     GLuint                         program_slider_ub_vs_bo_size;
 
@@ -271,26 +271,26 @@ PRIVATE void _ogl_ui_scrollbar_init_renderer_callback(ogl_context context,
                       scrollbar_ptr->program_slider_ub_vs != NULL,
                       "UB descriptors are NULL");
 
-    ogl_program_ub_get_property(scrollbar_ptr->program_slider_ub_fs,
-                                OGL_PROGRAM_UB_PROPERTY_BLOCK_DATA_SIZE,
-                               &scrollbar_ptr->program_slider_ub_fs_bo_size);
-    ogl_program_ub_get_property(scrollbar_ptr->program_slider_ub_vs,
-                                OGL_PROGRAM_UB_PROPERTY_BLOCK_DATA_SIZE,
-                               &scrollbar_ptr->program_slider_ub_vs_bo_size);
+    ogl_program_block_get_property(scrollbar_ptr->program_slider_ub_fs,
+                                   OGL_PROGRAM_BLOCK_PROPERTY_BLOCK_DATA_SIZE,
+                                  &scrollbar_ptr->program_slider_ub_fs_bo_size);
+    ogl_program_block_get_property(scrollbar_ptr->program_slider_ub_vs,
+                                   OGL_PROGRAM_BLOCK_PROPERTY_BLOCK_DATA_SIZE,
+                                  &scrollbar_ptr->program_slider_ub_vs_bo_size);
 
-    ogl_program_ub_get_property(scrollbar_ptr->program_slider_ub_fs,
-                                OGL_PROGRAM_UB_PROPERTY_BUFFER_RAL,
-                               &scrollbar_ptr->program_slider_ub_fs_bo);
-    ogl_program_ub_get_property(scrollbar_ptr->program_slider_ub_vs,
-                                OGL_PROGRAM_UB_PROPERTY_BUFFER_RAL,
-                               &scrollbar_ptr->program_slider_ub_vs_bo);
+    ogl_program_block_get_property(scrollbar_ptr->program_slider_ub_fs,
+                                   OGL_PROGRAM_BLOCK_PROPERTY_BUFFER_RAL,
+                                  &scrollbar_ptr->program_slider_ub_fs_bo);
+    ogl_program_block_get_property(scrollbar_ptr->program_slider_ub_vs,
+                                   OGL_PROGRAM_BLOCK_PROPERTY_BUFFER_RAL,
+                                  &scrollbar_ptr->program_slider_ub_vs_bo);
 
-    ogl_program_ub_get_property(scrollbar_ptr->program_slider_ub_fs,
-                                OGL_PROGRAM_UB_PROPERTY_INDEX,
-                               &datafs_ub_index);
-    ogl_program_ub_get_property(scrollbar_ptr->program_slider_ub_vs,
-                                OGL_PROGRAM_UB_PROPERTY_INDEX,
-                               &datavs_ub_index);
+    ogl_program_block_get_property(scrollbar_ptr->program_slider_ub_fs,
+                                   OGL_PROGRAM_BLOCK_PROPERTY_INDEX,
+                                  &datafs_ub_index);
+    ogl_program_block_get_property(scrollbar_ptr->program_slider_ub_vs,
+                                   OGL_PROGRAM_BLOCK_PROPERTY_INDEX,
+                                  &datavs_ub_index);
 
     /* Set up uniform block bindings.
      *
@@ -331,11 +331,10 @@ PRIVATE void _ogl_ui_scrollbar_init_renderer_callback(ogl_context context,
     scrollbar_ptr->program_slider_x1y1x2y2_ub_offset     = (x1y1x2y2_uniform_ral_ptr     != NULL ? x1y1x2y2_uniform_ral_ptr->block_offset     : -1);
 
     /* Set general uniforms */
-    ogl_program_ub_set_nonarrayed_uniform_value(scrollbar_ptr->program_slider_ub_fs,
-                                                scrollbar_ptr->program_slider_brightness_ub_offset,
-                                               &scrollbar_ptr->current_gpu_brightness_level,
-                                                0, /* src_data_flags */
-                                                sizeof(float) );
+    ogl_program_block_set_nonarrayed_variable_value(scrollbar_ptr->program_slider_ub_fs,
+                                                    scrollbar_ptr->program_slider_brightness_ub_offset,
+                                                   &scrollbar_ptr->current_gpu_brightness_level,
+                                                    sizeof(float) );
 }
 
 /** TODO */
@@ -532,11 +531,10 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_ui_scrollbar_draw(void* internal_instance
     {
         const float new_brightness = brightness * (scrollbar_ptr->is_lbm_on ? CLICK_BRIGHTNESS_MODIFIER : 1);
 
-        ogl_program_ub_set_nonarrayed_uniform_value(scrollbar_ptr->program_slider_ub_fs,
-                                                    scrollbar_ptr->program_slider_brightness_ub_offset,
-                                                   &new_brightness,
-                                                    0, /* src_data_flags */
-                                                    sizeof(float) );
+        ogl_program_block_set_nonarrayed_variable_value(scrollbar_ptr->program_slider_ub_fs,
+                                                        scrollbar_ptr->program_slider_brightness_ub_offset,
+                                                       &new_brightness,
+                                                        sizeof(float) );
 
         scrollbar_ptr->current_gpu_brightness_level = brightness;
         scrollbar_ptr->force_gpu_brightness_update  = false;
@@ -565,48 +563,42 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_ui_scrollbar_draw(void* internal_instance
         static const bool bool_false = 0;
         static const bool bool_true  = 1;
 
-        ogl_program_ub_set_nonarrayed_uniform_value(scrollbar_ptr->program_slider_ub_fs,
-                                                    scrollbar_ptr->program_slider_border_width_ub_offset,
-                                                    scrollbar_ptr->slider_border_width,
-                                                    0, /* src_data_flags */
-                                                    sizeof(float) * 2);
-        ogl_program_ub_set_nonarrayed_uniform_value(scrollbar_ptr->program_slider_ub_fs,
-                                                    scrollbar_ptr->program_slider_is_handle_ub_offset,
-                                                   &bool_false,
-                                                    0, /* src_data_flags */
-                                                    sizeof(bool) );
-        ogl_program_ub_set_nonarrayed_uniform_value(scrollbar_ptr->program_slider_ub_vs,
-                                                    scrollbar_ptr->program_slider_x1y1x2y2_ub_offset,
-                                                    scrollbar_ptr->slider_x1y1x2y2,
-                                                    0, /* src_data_flags */
-                                                    sizeof(float) * 4);
+        ogl_program_block_set_nonarrayed_variable_value(scrollbar_ptr->program_slider_ub_fs,
+                                                        scrollbar_ptr->program_slider_border_width_ub_offset,
+                                                        scrollbar_ptr->slider_border_width,
+                                                        sizeof(float) * 2);
+        ogl_program_block_set_nonarrayed_variable_value(scrollbar_ptr->program_slider_ub_fs,
+                                                        scrollbar_ptr->program_slider_is_handle_ub_offset,
+                                                       &bool_false,
+                                                        sizeof(bool) );
+        ogl_program_block_set_nonarrayed_variable_value(scrollbar_ptr->program_slider_ub_vs,
+                                                        scrollbar_ptr->program_slider_x1y1x2y2_ub_offset,
+                                                        scrollbar_ptr->slider_x1y1x2y2,
+                                                        sizeof(float) * 4);
 
-        ogl_program_ub_sync(scrollbar_ptr->program_slider_ub_fs);
-        ogl_program_ub_sync(scrollbar_ptr->program_slider_ub_vs);
+        ogl_program_block_sync(scrollbar_ptr->program_slider_ub_fs);
+        ogl_program_block_sync(scrollbar_ptr->program_slider_ub_vs);
 
         scrollbar_ptr->pGLDrawArrays(GL_TRIANGLE_FAN,
                                      0,  /* first */
                                      4); /* count */
 
         /* Draw the handle */
-        ogl_program_ub_set_nonarrayed_uniform_value(scrollbar_ptr->program_slider_ub_fs,
-                                                    scrollbar_ptr->program_slider_border_width_ub_offset,
-                                                    scrollbar_ptr->slider_handle_border_width,
-                                                    0, /* src_data_flags */
-                                                    sizeof(float) * 2);
-        ogl_program_ub_set_nonarrayed_uniform_value(scrollbar_ptr->program_slider_ub_fs,
-                                                    scrollbar_ptr->program_slider_is_handle_ub_offset,
-                                                   &bool_true,
-                                                    0, /* src_data_flags */
-                                                    sizeof(bool) );
-        ogl_program_ub_set_nonarrayed_uniform_value(scrollbar_ptr->program_slider_ub_vs,
-                                                    scrollbar_ptr->program_slider_x1y1x2y2_ub_offset,
-                                                    scrollbar_ptr->slider_handle_x1y1x2y2,
-                                                    0, /* src_data_flags */
-                                                    sizeof(float) * 4);
+        ogl_program_block_set_nonarrayed_variable_value(scrollbar_ptr->program_slider_ub_fs,
+                                                        scrollbar_ptr->program_slider_border_width_ub_offset,
+                                                        scrollbar_ptr->slider_handle_border_width,
+                                                        sizeof(float) * 2);
+        ogl_program_block_set_nonarrayed_variable_value(scrollbar_ptr->program_slider_ub_fs,
+                                                        scrollbar_ptr->program_slider_is_handle_ub_offset,
+                                                       &bool_true,
+                                                        sizeof(bool) );
+        ogl_program_block_set_nonarrayed_variable_value(scrollbar_ptr->program_slider_ub_vs,
+                                                        scrollbar_ptr->program_slider_x1y1x2y2_ub_offset,
+                                                        scrollbar_ptr->slider_handle_x1y1x2y2,
+                                                        sizeof(float) * 4);
 
-        ogl_program_ub_sync(scrollbar_ptr->program_slider_ub_fs);
-        ogl_program_ub_sync(scrollbar_ptr->program_slider_ub_vs);
+        ogl_program_block_sync(scrollbar_ptr->program_slider_ub_fs);
+        ogl_program_block_sync(scrollbar_ptr->program_slider_ub_vs);
 
         scrollbar_ptr->pGLDrawArrays(GL_TRIANGLE_FAN,
                                      0,  /* first */

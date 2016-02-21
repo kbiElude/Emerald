@@ -10,7 +10,7 @@
 #include "main.h"
 #include "ogl/ogl_context.h"
 #include "ogl/ogl_pipeline.h"
-#include "ogl/ogl_program_ub.h"
+#include "ogl/ogl_program_block.h"
 #include "ogl/ogl_rendering_handler.h"
 #include "raGL/raGL_buffer.h"
 #include "raGL/raGL_framebuffer.h"
@@ -36,16 +36,16 @@ demo_window   _window              = NULL;
 system_event  _window_closed_event = system_event_create(true); /* manual_reset */
 int           _window_size[2]      = {0};
 
-ral_framebuffer _fbo                              = NULL;
-ral_program     _generation_po                    = NULL;
-GLuint          _generation_po_time_ub_offset     = -1;
-ogl_program_ub  _generation_po_ub                 = NULL;
-ral_buffer      _generation_po_ub_bo              = NULL;
-ral_program     _modification_po                  = NULL;
-GLuint          _modification_po_input_location   = -1; /* set to GL_TEXTURE0 */
-ral_texture     _to_1                             = 0;
-ral_texture     _to_2                             = 0;
-GLuint          _vao_id                           = 0;
+ral_framebuffer   _fbo                              = NULL;
+ral_program       _generation_po                    = NULL;
+GLuint            _generation_po_time_ub_offset     = -1;
+ogl_program_block _generation_po_ub                 = NULL;
+ral_buffer        _generation_po_ub_bo              = NULL;
+ral_program       _modification_po                  = NULL;
+GLuint            _modification_po_input_location   = -1; /* set to GL_TEXTURE0 */
+ral_texture       _to_1                             = 0;
+ral_texture       _to_2                             = 0;
+GLuint            _vao_id                           = 0;
 
 const char* fragment_shader_generation = "#version 430 core\n"
                                          "\n"
@@ -306,9 +306,9 @@ void _init_gl(ogl_context context,
                                            system_hashed_ansi_string_create("data"),
                                           &_generation_po_ub);
 
-    ogl_program_ub_get_property(_generation_po_ub,
-                                OGL_PROGRAM_UB_PROPERTY_BUFFER_RAL,
-                                &_generation_po_ub_bo);
+    ogl_program_block_get_property(_generation_po_ub,
+                                   OGL_PROGRAM_BLOCK_PROPERTY_BUFFER_RAL,
+                                  &_generation_po_ub_bo);
 }
 
 /* Stage step 1: sample data generation */
@@ -350,12 +350,11 @@ static void _stage_step_generate_data(ral_context context,
     entry_points_ptr->pGLBindVertexArray(_vao_id);
     entry_points_ptr->pGLUseProgram      (generation_po_raGL_id);
 
-    ogl_program_ub_set_nonarrayed_uniform_value(_generation_po_ub,
-                                                _generation_po_time_ub_offset,
-                                               &time_ms_as_s,
-                                                0, /* src_data_flags */
-                                                sizeof(float) );
-    ogl_program_ub_sync                        (_generation_po_ub);
+    ogl_program_block_set_nonarrayed_variable_value(_generation_po_ub,
+                                                    _generation_po_time_ub_offset,
+                                                   &time_ms_as_s,
+                                                    sizeof(float) );
+    ogl_program_block_sync                         (_generation_po_ub);
 
     raGL_framebuffer fbo_raGL                              = NULL;
     GLuint           fbo_raGL_id                           = -1;

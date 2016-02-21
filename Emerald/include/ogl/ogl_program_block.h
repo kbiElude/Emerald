@@ -75,9 +75,9 @@ PUBLIC bool ogl_program_block_get_block_variable_by_name(ogl_program_block      
                                                          const _raGL_program_variable** out_variable_ptr);
 
 /** TODO */
-PUBLIC void ogl_program_block_get_property(const ogl_program_block    block,
-                                           ogl_program_block_property property,
-                                           void*                      out_result);
+PUBLIC EMERALD_API void ogl_program_block_get_property(const ogl_program_block    block,
+                                                       ogl_program_block_property property,
+                                                       void*                      out_result);
 
 /** TODO
  *
@@ -87,18 +87,18 @@ PUBLIC void ogl_program_block_get_property(const ogl_program_block    block,
 PUBLIC void ogl_program_block_release(ogl_program_block block);
 
 /** TODO */
-PUBLIC void ogl_program_block_set_arrayed_variable_value(ogl_program_block block,
-                                                         GLuint            block_variable_offset,
-                                                         const void*       src_data,
-                                                         unsigned int      src_data_size,
-                                                         unsigned int      dst_array_start_index,
-                                                         unsigned int      dst_array_item_count);
+PUBLIC EMERALD_API void ogl_program_block_set_arrayed_variable_value(ogl_program_block block,
+                                                                     GLuint            block_variable_offset,
+                                                                     const void*       src_data,
+                                                                     unsigned int      src_data_size,
+                                                                     unsigned int      dst_array_start_index,
+                                                                     unsigned int      dst_array_item_count);
 
 /** TODO */
-PUBLIC void ogl_program_block_set_nonarrayed_variable_value(ogl_program_block block,
-                                                            GLuint            block_variable_offset,
-                                                            const void*       src_data,
-                                                            unsigned int      src_data_size);
+PUBLIC EMERALD_API void ogl_program_block_set_nonarrayed_variable_value(ogl_program_block block,
+                                                                        GLuint            block_variable_offset,
+                                                                        const void*       src_data,
+                                                                        unsigned int      src_data_size);
 
 /** TODO */
 PUBLIC void ogl_program_block_set_property(const ogl_program_block    block,
@@ -106,6 +106,6 @@ PUBLIC void ogl_program_block_set_property(const ogl_program_block    block,
                                            const void*                data);
 
 /** TODO */
-PUBLIC RENDERING_CONTEXT_CALL void ogl_program_block_sync(ogl_program_block block);
+PUBLIC EMERALD_API RENDERING_CONTEXT_CALL void ogl_program_block_sync(ogl_program_block block);
 
 #endif /* OGL_PROGRAM_BLOCK_H */

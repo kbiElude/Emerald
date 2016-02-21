@@ -6,8 +6,6 @@
 #include "shared.h"
 #include "ogl/ogl_context.h"
 #include "ogl/ogl_program_block.h"
-#include "ogl/ogl_program_ssb.h"
-#include "ogl/ogl_program_ub.h"
 #include "raGL/raGL_program.h"
 #include "raGL/raGL_shader.h"
 #include "raGL/raGL_utils.h"
@@ -47,10 +45,10 @@ typedef struct
      */
     system_resizable_vector active_ssbs;
 
-    /* Maps shader storage block index to a corresponding ogl_program_ssb instance. */
+    /* Maps shader storage block index to a corresponding ogl_program_block instance. */
     system_hash64map ssb_index_to_ssb_map;
 
-    /* Maps shared storage block name to a corresponding ogl_program_ssb instnace. */
+    /* Maps shared storage block name to a corresponding ogl_program_block instnace. */
     system_hash64map ssb_name_to_ssb_map;
 
     /* Maps ogl_context instances to ogl_program_ub instances.
@@ -64,11 +62,11 @@ typedef struct
     system_hash64map context_to_active_ubs_map;
 
     /* Same as above, but maps an ogl_context instance to a system_hash64map which
-     * maps uniform block indices to ogl_program_ub instances */
+     * maps uniform block indices to ogl_program_block instances */
     system_hash64map context_to_ub_index_to_ub_map;
 
     /* Same as above, but maps an ogl_context instances to a system_hash64map, which
-     * maps uniform block names (represented as system_hash64) to ogl_program_ub instances */
+     * maps uniform block names (represented as system_hash64) to ogl_program_block instances */
     system_hash64map context_to_ub_name_to_ub_map; /* do NOT release the stored items */
 
     /* GL entry-point cache */
@@ -571,10 +569,12 @@ PRIVATE void _raGL_program_init_blocks_for_context(ogl_program_block_type block_
         {
             case OGL_PROGRAM_BLOCK_TYPE_SHADER_STORAGE_BUFFER:
             {
-                ogl_program_ssb new_ssb = ogl_program_ssb_create(program_ptr->context,
-                                                                 (raGL_program) program_ptr,
-                                                                 n_active_block,
-                                                                 block_name_has);
+                ogl_program_block new_ssb = ogl_program_block_create(program_ptr->context,
+                                                                     (raGL_program) program_ptr,
+                                                                     OGL_PROGRAM_BLOCK_TYPE_SHADER_STORAGE_BUFFER,
+                                                                     n_active_block,
+                                                                     block_name_has,
+                                                                     false /* support_sync_behavior */);
 
                 ASSERT_ALWAYS_SYNC(new_ssb != NULL,
                                    "ogl_program_ssb_create() returned NULL.");
@@ -585,8 +585,8 @@ PRIVATE void _raGL_program_init_blocks_for_context(ogl_program_block_type block_
                     program_ptr->ssb_name_to_ssb_map  == NULL)
                 {
                     program_ptr->active_ssbs          = system_resizable_vector_create(4 /* capacity */);
-                    program_ptr->ssb_index_to_ssb_map = system_hash64map_create       (sizeof(ogl_program_ssb) );
-                    program_ptr->ssb_name_to_ssb_map  = system_hash64map_create       (sizeof(ogl_program_ssb) );
+                    program_ptr->ssb_index_to_ssb_map = system_hash64map_create       (sizeof(ogl_program_block) );
+                    program_ptr->ssb_name_to_ssb_map  = system_hash64map_create       (sizeof(ogl_program_block) );
 
                     ASSERT_DEBUG_SYNC(program_ptr->active_ssbs          != NULL &&
                                       program_ptr->ssb_index_to_ssb_map != NULL &&
@@ -622,11 +622,12 @@ PRIVATE void _raGL_program_init_blocks_for_context(ogl_program_block_type block_
 
             case OGL_PROGRAM_BLOCK_TYPE_UNIFORM_BUFFER:
             {
-                ogl_program_ub new_ub = ogl_program_ub_create(program_ptr->context,
-                                                              (raGL_program) program_ptr,
-                                                              n_active_block,
-                                                              block_name_has,
-                                                              program_ptr->syncable_ubs_mode != RAGL_PROGRAM_SYNCABLE_UBS_MODE_DISABLE);
+                ogl_program_block new_ub = ogl_program_block_create(program_ptr->context,
+                                                                    (raGL_program) program_ptr,
+                                                                    OGL_PROGRAM_BLOCK_TYPE_UNIFORM_BUFFER,
+                                                                    n_active_block,
+                                                                    block_name_has,
+                                                                    program_ptr->syncable_ubs_mode != RAGL_PROGRAM_SYNCABLE_UBS_MODE_DISABLE);
 
                 ASSERT_ALWAYS_SYNC(new_ub != NULL,
                                    "ogl_program_ub_create() returned NULL.");
@@ -651,8 +652,8 @@ PRIVATE void _raGL_program_init_blocks_for_context(ogl_program_block_type block_
                     context_ub_name_to_ub_map  == NULL)
                 {
                     context_active_ubs         = system_resizable_vector_create(4 /* capacity */);
-                    context_ub_index_to_ub_map = system_hash64map_create       (sizeof(ogl_program_ub) );
-                    context_ub_name_to_ub_map  = system_hash64map_create       (sizeof(ogl_program_ub) );
+                    context_ub_index_to_ub_map = system_hash64map_create       (sizeof(ogl_program_block) );
+                    context_ub_name_to_ub_map  = system_hash64map_create       (sizeof(ogl_program_block) );
 
                     ASSERT_DEBUG_SYNC(context_active_ubs         != NULL &&
                                       context_ub_index_to_ub_map != NULL &&
@@ -1195,7 +1196,7 @@ PRIVATE void _raGL_program_release(void* program)
     /* Release resizable vectors */
     ral_program_attribute* attribute_ptr = NULL;
     ral_program_variable*  uniform_ptr   = NULL;
-    ogl_program_ub         uniform_block = NULL;
+    ogl_program_block      uniform_block = NULL;
 
     _raGL_program_release_active_attributes           (program_ptr->active_attributes_raGL);
     _raGL_program_release_active_shader_storage_blocks(program_ptr);
@@ -1256,12 +1257,12 @@ PRIVATE void _raGL_program_release_active_shader_storage_blocks(_raGL_program* p
 {
     if (program_ptr->active_ssbs != NULL)
     {
-        ogl_program_ssb current_ssb = NULL;
+        ogl_program_block current_ssb = NULL;
 
         while (system_resizable_vector_pop(program_ptr->active_ssbs,
                                           &current_ssb))
         {
-            ogl_program_ssb_release(current_ssb);
+            ogl_program_block_release(current_ssb);
 
             current_ssb = NULL;
         }
@@ -1304,7 +1305,7 @@ PRIVATE void _raGL_program_release_active_uniform_blocks(_raGL_program* program_
             system_resizable_vector active_ubs                 = NULL;
             system_hash64           current_owner_context_hash = 0;
             ogl_context             current_owner_context      = NULL;
-            ogl_program_ub          uniform_block              = NULL;
+            ogl_program_block       uniform_block              = NULL;
 
             system_hash64map_get_element_at(program_ptr->context_to_active_ubs_map,
                                             n_context,
@@ -1321,7 +1322,7 @@ PRIVATE void _raGL_program_release_active_uniform_blocks(_raGL_program* program_
                     while (system_resizable_vector_pop(active_ubs,
                                                       &uniform_block) )
                     {
-                        ogl_program_ub_release(uniform_block);
+                        ogl_program_block_release(uniform_block);
 
                         uniform_block = NULL;
                     }
@@ -1950,13 +1951,13 @@ end:
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API bool raGL_program_get_shader_storage_block_by_sb_index(raGL_program     program,
-                                                                          unsigned int     index,
-                                                                          ogl_program_ssb* out_ssb_ptr)
+PUBLIC EMERALD_API bool raGL_program_get_shader_storage_block_by_sb_index(raGL_program       program,
+                                                                          unsigned int       index,
+                                                                          ogl_program_block* out_ssb_ptr)
 {
-    _raGL_program*  program_ptr = (_raGL_program*) program;
-    bool            result      = false;
-    ogl_program_ssb result_ssb  = NULL;
+    _raGL_program*    program_ptr = (_raGL_program*) program;
+    bool              result      = false;
+    ogl_program_block result_ssb  = NULL;
 
     result = system_hash64map_get_element_at(program_ptr->ssb_index_to_ssb_map,
                                              index,
@@ -1974,7 +1975,7 @@ PUBLIC EMERALD_API bool raGL_program_get_shader_storage_block_by_sb_index(raGL_p
 /** Please see header for specification */
 PUBLIC EMERALD_API bool raGL_program_get_shader_storage_block_by_name(raGL_program              program,
                                                                       system_hashed_ansi_string name,
-                                                                      ogl_program_ssb*          out_ssb_ptr)
+                                                                      ogl_program_block*        out_ssb_ptr)
 {
     _raGL_program* program_ptr = (_raGL_program*) program;
     bool           result      = false;
@@ -2064,15 +2065,15 @@ PUBLIC EMERALD_API bool raGL_program_get_uniform_by_name(raGL_program           
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API bool raGL_program_get_uniform_block_by_ub_index(raGL_program    program,
-                                                                   unsigned int    index,
-                                                                   ogl_program_ub* out_ub_ptr)
+PUBLIC EMERALD_API bool raGL_program_get_uniform_block_by_ub_index(raGL_program       program,
+                                                                   unsigned int       index,
+                                                                   ogl_program_block* out_ub_ptr)
 {
-    ogl_context      current_context    = NULL;
-    _raGL_program*   program_ptr        = (_raGL_program*) program;
-    bool             result             = false;
-    ogl_program_ub   result_ub          = NULL;
-    system_hash64map ub_index_to_ub_map = NULL;
+    ogl_context       current_context    = NULL;
+    _raGL_program*    program_ptr        = (_raGL_program*) program;
+    bool              result             = false;
+    ogl_program_block result_ub          = NULL;
+    system_hash64map  ub_index_to_ub_map = NULL;
 
     if (program_ptr->syncable_ubs_mode == RAGL_PROGRAM_SYNCABLE_UBS_MODE_ENABLE_PER_CONTEXT)
     {
@@ -2112,7 +2113,7 @@ PUBLIC EMERALD_API bool raGL_program_get_uniform_block_by_ub_index(raGL_program 
 /** Please see header for specification */
 PUBLIC EMERALD_API bool raGL_program_get_uniform_block_by_name(raGL_program              program,
                                                                system_hashed_ansi_string name,
-                                                               ogl_program_ub*           out_ub_ptr)
+                                                               ogl_program_block*        out_ub_ptr)
 {
     ogl_context      current_context   = NULL;
     _raGL_program*   program_ptr       = (_raGL_program*) program;

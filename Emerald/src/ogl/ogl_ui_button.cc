@@ -5,7 +5,7 @@
  */
 #include "shared.h"
 #include "ogl/ogl_context.h"
-#include "ogl/ogl_program_ub.h"
+#include "ogl/ogl_program_block.h"
 #include "ogl/ogl_text.h"
 #include "ogl/ogl_ui.h"
 #include "ogl/ogl_ui_button.h"
@@ -53,18 +53,18 @@ typedef struct
     system_time start_hovering_time;
     bool        visible;
 
-    ral_context    context;
-    ral_program    program;
-    GLint          program_border_width_ub_offset;
-    GLint          program_brightness_ub_offset;
-    GLint          program_stop_data_ub_offset;
-    ogl_program_ub program_ub_fs;
-    ral_buffer     program_ub_fs_bo;
-    GLuint         program_ub_fs_bo_size;
-    ogl_program_ub program_ub_vs;
-    ral_buffer     program_ub_vs_bo;
-    GLuint         program_ub_vs_bo_size;
-    GLint          program_x1y1x2y2_ub_offset;
+    ral_context       context;
+    ral_program       program;
+    GLint             program_border_width_ub_offset;
+    GLint             program_brightness_ub_offset;
+    GLint             program_stop_data_ub_offset;
+    ogl_program_block program_ub_fs;
+    ral_buffer        program_ub_fs_bo;
+    GLuint            program_ub_fs_bo_size;
+    ogl_program_block program_ub_vs;
+    ral_buffer        program_ub_vs_bo;
+    GLuint            program_ub_vs_bo_size;
+    GLint             program_x1y1x2y2_ub_offset;
 
     GLint    text_index;
     ogl_text text_renderer;
@@ -261,26 +261,26 @@ PRIVATE void _ogl_ui_button_init_renderer_callback(ogl_context context,
                                           system_hashed_ansi_string_create("dataVS"),
                                          &button_ptr->program_ub_vs);
 
-    ogl_program_ub_get_property(button_ptr->program_ub_fs,
-                                OGL_PROGRAM_UB_PROPERTY_BLOCK_DATA_SIZE,
-                               &button_ptr->program_ub_fs_bo_size);
-    ogl_program_ub_get_property(button_ptr->program_ub_vs,
-                                OGL_PROGRAM_UB_PROPERTY_BLOCK_DATA_SIZE,
-                               &button_ptr->program_ub_vs_bo_size);
+    ogl_program_block_get_property(button_ptr->program_ub_fs,
+                                   OGL_PROGRAM_BLOCK_PROPERTY_BLOCK_DATA_SIZE,
+                                  &button_ptr->program_ub_fs_bo_size);
+    ogl_program_block_get_property(button_ptr->program_ub_vs,
+                                   OGL_PROGRAM_BLOCK_PROPERTY_BLOCK_DATA_SIZE,
+                                  &button_ptr->program_ub_vs_bo_size);
 
-    ogl_program_ub_get_property(button_ptr->program_ub_fs,
-                                OGL_PROGRAM_UB_PROPERTY_BUFFER_RAL,
-                               &button_ptr->program_ub_fs_bo);
-    ogl_program_ub_get_property(button_ptr->program_ub_vs,
-                                OGL_PROGRAM_UB_PROPERTY_BUFFER_RAL,
-                               &button_ptr->program_ub_vs_bo);
+    ogl_program_block_get_property(button_ptr->program_ub_fs,
+                                   OGL_PROGRAM_BLOCK_PROPERTY_BUFFER_RAL,
+                                  &button_ptr->program_ub_fs_bo);
+    ogl_program_block_get_property(button_ptr->program_ub_vs,
+                                   OGL_PROGRAM_BLOCK_PROPERTY_BUFFER_RAL,
+                                  &button_ptr->program_ub_vs_bo);
 
-    ogl_program_ub_get_property(button_ptr->program_ub_fs,
-                                OGL_PROGRAM_UB_PROPERTY_INDEX,
-                               &ub_fs_index);
-    ogl_program_ub_get_property(button_ptr->program_ub_vs,
-                                OGL_PROGRAM_UB_PROPERTY_INDEX,
-                               &ub_vs_index);
+    ogl_program_block_get_property(button_ptr->program_ub_fs,
+                                   OGL_PROGRAM_BLOCK_PROPERTY_INDEX,
+                                  &ub_fs_index);
+    ogl_program_block_get_property(button_ptr->program_ub_vs,
+                                   OGL_PROGRAM_BLOCK_PROPERTY_INDEX,
+                                  &ub_vs_index);
 
     button_ptr->pGLUniformBlockBinding(program_raGL_id,
                                        ub_fs_index,         /* uniformBlockIndex */
@@ -290,13 +290,12 @@ PRIVATE void _ogl_ui_button_init_renderer_callback(ogl_context context,
                                        UB_DATAVS_BP_INDEX); /* uniformBlockBinding */
 
     /* Set them up */
-    ogl_program_ub_set_arrayed_uniform_value(button_ptr->program_ub_fs,
-                                             stop_data_uniform_ral_ptr->block_offset,
-                                             stop_data,
-                                             0, /* src_data_flags */
-                                             sizeof(stop_data),
-                                             0, /* dst_array_start_index */
-                                             sizeof(stop_data) / sizeof(float) / 4);
+    ogl_program_block_set_arrayed_variable_value(button_ptr->program_ub_fs,
+                                                 stop_data_uniform_ral_ptr->block_offset,
+                                                 stop_data,
+                                                 sizeof(stop_data),
+                                                 0, /* dst_array_start_index */
+                                                 sizeof(stop_data) / sizeof(float) / 4);
 
     button_ptr->current_gpu_brightness_level = NONFOCUSED_BRIGHTNESS;
 }
@@ -445,16 +444,14 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_ui_button_draw(void* internal_instance)
         button_ptr->force_gpu_brightness_update  = false;
     }
 
-    ogl_program_ub_set_nonarrayed_uniform_value(button_ptr->program_ub_fs,
-                                                button_ptr->program_brightness_ub_offset,
-                                               &new_brightness,
-                                                0, /* src_data_flags */
-                                                sizeof(new_brightness) );
-    ogl_program_ub_set_nonarrayed_uniform_value(button_ptr->program_ub_vs,
-                                                button_ptr->program_x1y1x2y2_ub_offset,
-                                                button_ptr->x1y1x2y2,
-                                                0, /* src_data_flags */
-                                                sizeof(float) * 4);
+    ogl_program_block_set_nonarrayed_variable_value(button_ptr->program_ub_fs,
+                                                    button_ptr->program_brightness_ub_offset,
+                                                   &new_brightness,
+                                                    sizeof(new_brightness) );
+    ogl_program_block_set_nonarrayed_variable_value(button_ptr->program_ub_vs,
+                                                    button_ptr->program_x1y1x2y2_ub_offset,
+                                                    button_ptr->x1y1x2y2,
+                                                    sizeof(float) * 4);
 
     if (button_ptr->should_update_border_width)
     {
@@ -472,11 +469,10 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_ui_button_draw(void* internal_instance)
         border_width[0] = 1.0f / (float)((button_ptr->x1y1x2y2[2] - button_ptr->x1y1x2y2[0]) * (window_size[0]) );
         border_width[1] = 1.0f / (float)((button_ptr->x1y1x2y2[3] - button_ptr->x1y1x2y2[1]) * (window_size[1]));
 
-        ogl_program_ub_set_nonarrayed_uniform_value(button_ptr->program_ub_fs,
-                                                    button_ptr->program_border_width_ub_offset,
-                                                    border_width,
-                                                    0, /* src_data_flags */
-                                                    sizeof(border_width) );
+        ogl_program_block_set_nonarrayed_variable_value(button_ptr->program_ub_fs,
+                                                        button_ptr->program_border_width_ub_offset,
+                                                        border_width,
+                                                        sizeof(border_width) );
 
         button_ptr->should_update_border_width = false;
     }
@@ -518,8 +514,8 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_ui_button_draw(void* internal_instance)
                                    program_ub_vs_bo_start_offset,
                                    button_ptr->program_ub_vs_bo_size);
 
-    ogl_program_ub_sync(button_ptr->program_ub_fs);
-    ogl_program_ub_sync(button_ptr->program_ub_vs);
+    ogl_program_block_sync(button_ptr->program_ub_fs);
+    ogl_program_block_sync(button_ptr->program_ub_vs);
 
     button_ptr->pGLUseProgram(program_raGL_id);
     button_ptr->pGLDrawArrays(GL_TRIANGLE_FAN,

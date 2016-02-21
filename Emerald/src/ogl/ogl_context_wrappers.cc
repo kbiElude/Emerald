@@ -11,8 +11,7 @@
 #include "ogl/ogl_context_to_bindings.h"
 #include "ogl/ogl_context_wrappers.h"
 #include "ogl/ogl_context_vaos.h"
-#include "ogl/ogl_program_ssb.h"
-#include "ogl/ogl_program_ub.h"
+#include "ogl/ogl_program_block.h"
 #include "ogl/ogl_vao.h"
 #include "raGL/raGL_program.h"
 #include "raGL/raGL_texture.h"
@@ -4502,7 +4501,7 @@ PUBLIC void APIENTRY ogl_context_wrappers_glShaderStorageBlockBinding(GLuint pro
 
     if (program_raGL != NULL)
     {
-        ogl_program_ssb requested_ssb = NULL;
+        ogl_program_block requested_ssb = NULL;
 
         raGL_program_get_shader_storage_block_by_sb_index(program_raGL,
                                                          shaderStorageBlockIndex,
@@ -4515,9 +4514,9 @@ PUBLIC void APIENTRY ogl_context_wrappers_glShaderStorageBlockBinding(GLuint pro
         {
             GLuint current_indexed_ssb_bp = -1;
 
-            ogl_program_ssb_get_property(requested_ssb,
-                                         OGL_PROGRAM_SSB_PROPERTY_INDEXED_BP,
-                                        &current_indexed_ssb_bp);
+            ogl_program_block_get_property(requested_ssb,
+                                           OGL_PROGRAM_BLOCK_PROPERTY_INDEXED_BP,
+                                          &current_indexed_ssb_bp);
 
             if (current_indexed_ssb_bp != shaderStorageBlockBinding)
             {
@@ -4526,9 +4525,9 @@ PUBLIC void APIENTRY ogl_context_wrappers_glShaderStorageBlockBinding(GLuint pro
                                                                        shaderStorageBlockIndex,
                                                                        shaderStorageBlockBinding);
 
-                ogl_program_ssb_set_property(requested_ssb,
-                                             OGL_PROGRAM_SSB_PROPERTY_INDEXED_BP,
-                                            &shaderStorageBlockBinding);
+                ogl_program_block_set_property(requested_ssb,
+                                               OGL_PROGRAM_BLOCK_PROPERTY_INDEXED_BP,
+                                              &shaderStorageBlockBinding);
             } /* if (current_indexed_ssb_bp != shaderStorageBlockBinding) */
         } /* if (requested_ssb != NULL) */
     } /* if (program_instance != NULL) */
@@ -5083,7 +5082,7 @@ PUBLIC void APIENTRY ogl_context_wrappers_glUniformBlockBinding(GLuint program,
 
     if (program_raGL != NULL)
     {
-        ogl_program_ub requested_ub = NULL;
+        ogl_program_block requested_ub = NULL;
 
         raGL_program_get_uniform_block_by_ub_index(program_raGL,
                                                    uniformBlockIndex,
@@ -5096,9 +5095,9 @@ PUBLIC void APIENTRY ogl_context_wrappers_glUniformBlockBinding(GLuint program,
         {
             GLuint current_indexed_ub_bp = -1;
 
-            ogl_program_ub_get_property(requested_ub,
-                                        OGL_PROGRAM_UB_PROPERTY_INDEXED_BP,
-                                       &current_indexed_ub_bp);
+            ogl_program_block_get_property(requested_ub,
+                                           OGL_PROGRAM_BLOCK_PROPERTY_INDEXED_BP,
+                                          &current_indexed_ub_bp);
 
             if (current_indexed_ub_bp != uniformBlockBinding)
             {
@@ -5107,9 +5106,9 @@ PUBLIC void APIENTRY ogl_context_wrappers_glUniformBlockBinding(GLuint program,
                                                                  uniformBlockIndex,
                                                                  uniformBlockBinding);
 
-                ogl_program_ub_set_property(requested_ub,
-                                            OGL_PROGRAM_UB_PROPERTY_INDEXED_BP,
-                                           &uniformBlockBinding);
+                ogl_program_block_set_property(requested_ub,
+                                               OGL_PROGRAM_BLOCK_PROPERTY_INDEXED_BP,
+                                              &uniformBlockBinding);
             } /* if (current_indexed_ub_bp != uniformBlockBinding) */
         } /* if (requested_ub != NULL) */
     } /* if (program_instance != NULL) */

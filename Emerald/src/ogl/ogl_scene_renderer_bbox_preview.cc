@@ -6,7 +6,7 @@
 #include "shared.h"
 #include "mesh/mesh.h"
 #include "ogl/ogl_context.h"
-#include "ogl/ogl_program_ub.h"
+#include "ogl/ogl_program_block.h"
 #include "ogl/ogl_scene_renderer.h"
 #include "ogl/ogl_scene_renderer_bbox_preview.h"
 #include "raGL/raGL_buffers.h"
@@ -120,7 +120,7 @@ typedef struct _ogl_scene_renderer_bbox_preview
     scene              owned_scene;
     ogl_scene_renderer owner;
     ral_program        preview_program;
-    ogl_program_ub     preview_program_data_ub;
+    ogl_program_block  preview_program_data_ub;
     GLuint             preview_program_ub_offset_model;
     GLuint             preview_program_ub_offset_vp;
 
@@ -455,9 +455,9 @@ PRIVATE void _ogl_context_scene_renderer_bbox_preview_init_ub_data(_ogl_scene_re
     uint32_t                              data_bo_size = 0;
     ral_buffer_client_sourced_update_info data_bo_update;
 
-    ogl_program_ub_get_property(preview_ptr->preview_program_data_ub,
-                                OGL_PROGRAM_UB_PROPERTY_BUFFER_RAL,
-                               &preview_ptr->data_bo);
+    ogl_program_block_get_property(preview_ptr->preview_program_data_ub,
+                                   OGL_PROGRAM_BLOCK_PROPERTY_BUFFER_RAL,
+                                  &preview_ptr->data_bo);
 
     ral_buffer_get_property (preview_ptr->data_bo,
                              RAL_BUFFER_PROPERTY_SIZE,
@@ -619,13 +619,12 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_scene_renderer_bbox_preview_render(ogl_sc
     /* NOTE: model may be null at this point if the item was culled out. */
     if (model != NULL)
     {
-        ogl_program_ub_set_nonarrayed_uniform_value(preview_ptr->preview_program_data_ub,
-                                                    preview_ptr->preview_program_ub_offset_model,
-                                                    system_matrix4x4_get_row_major_data(model),
-                                                    0, /* src_data_flags */
-                                                    sizeof(float) * 16);
+        ogl_program_block_set_nonarrayed_variable_value(preview_ptr->preview_program_data_ub,
+                                                        preview_ptr->preview_program_ub_offset_model,
+                                                        system_matrix4x4_get_row_major_data(model),
+                                                        sizeof(float) * 16);
 
-        ogl_program_ub_sync(preview_ptr->preview_program_data_ub);
+        ogl_program_block_sync(preview_ptr->preview_program_data_ub);
 
         preview_ptr->pGLDrawArrays(GL_POINTS,
                                    mesh_id, /* first */
@@ -687,11 +686,10 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_scene_renderer_bbox_preview_start(ogl_sce
 
     preview_ptr->pGLUseProgram(program_raGL_id);
 
-    ogl_program_ub_set_nonarrayed_uniform_value(preview_ptr->preview_program_data_ub,
-                                                preview_ptr->preview_program_ub_offset_vp,
-                                                system_matrix4x4_get_row_major_data(vp),
-                                                0, /* src_data_flags */
-                                                sizeof(float) * 16);
+    ogl_program_block_set_nonarrayed_variable_value(preview_ptr->preview_program_data_ub,
+                                                    preview_ptr->preview_program_ub_offset_vp,
+                                                    system_matrix4x4_get_row_major_data(vp),
+                                                    sizeof(float) * 16);
 
     preview_ptr->pGLBindBufferRange(GL_UNIFORM_BUFFER,
                                     0, /* index */
