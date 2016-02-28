@@ -34,18 +34,21 @@ typedef struct _ral_program_shader_stage
 typedef struct _ral_program_metadata_block
 {
     system_hashed_ansi_string name;
+    uint32_t                  size;
     ral_program_block_type    type;
     system_resizable_vector   variables;                   /* holds ral_program_variable instances */
     system_hash64map          variables_by_name_hashmap;   /* does NOT own ral_program_variable instance values */
     system_hash64map          variables_by_offset_hashmap; /* does NOT own ral_program_variable instance values; only not NULL for blocks with name != "" */
 
     explicit _ral_program_metadata_block(system_hashed_ansi_string in_name,
+                                         uint32_t                  in_size,
                                          ral_program_block_type    in_type)
     {
-        name                        = in_name;
-        type                        = in_type;
-        variables                   = system_resizable_vector_create(4 /* capacity */);
-        variables_by_name_hashmap   = system_hash64map_create       (sizeof(ral_program_variable*) );
+        name                      = in_name;
+        size                      = in_size;
+        type                      = in_type;
+        variables                 = system_resizable_vector_create(4 /* capacity */);
+        variables_by_name_hashmap = system_hash64map_create       (sizeof(ral_program_variable*) );
 
         if (system_hashed_ansi_string_get_length(in_name) > 0)
         {
@@ -97,6 +100,8 @@ typedef struct _ral_program_metadata
     system_hash64map        attributes_by_name_hashmap;  /* does NOT own ral_program_attribute instance values */
     system_resizable_vector blocks;                      /* owns _ral_program_metadata_block instances */
     system_hash64map        blocks_by_name_hashmap;      /* does NOT own _ral_program_metadata_block instance values */
+    system_hash64map        blocks_ssb_by_name_hashmap;  /* does NOT own _ral_program_metadata_block instance values */
+    system_hash64map        blocks_ub_by_name_hashmap;   /* does NOT own _ral_program_metadata_block instance values */
     ral_program             owner_program;
 
     explicit _ral_program_metadata(ral_program in_owner_program)
@@ -105,6 +110,8 @@ typedef struct _ral_program_metadata
         attributes_by_name_hashmap  = system_hash64map_create       (sizeof(ral_program_attribute*) );
         blocks                      = system_resizable_vector_create(4 /* capacity */);
         blocks_by_name_hashmap      = system_hash64map_create       (sizeof(_ral_program_metadata_block*) );
+        blocks_ssb_by_name_hashmap  = system_hash64map_create       (sizeof(_ral_program_metadata_block*) );
+        blocks_ub_by_name_hashmap   = system_hash64map_create       (sizeof(_ral_program_metadata_block*) );
         owner_program               = in_owner_program;
     }
 
@@ -145,6 +152,20 @@ typedef struct _ral_program_metadata
 
             blocks_by_name_hashmap = NULL;
         } /* if (blocks_by_name_hashmap != NULL) */
+
+        if (blocks_ssb_by_name_hashmap != NULL)
+        {
+            system_hash64map_release(blocks_ssb_by_name_hashmap);
+
+            blocks_ssb_by_name_hashmap = NULL;
+        } /* if (blocks_ssb_by_name_hashmap != NULL) */
+
+        if (blocks_ub_by_name_hashmap != NULL)
+        {
+            system_hash64map_release(blocks_ub_by_name_hashmap);
+
+            blocks_ub_by_name_hashmap = NULL;
+        } /* if (blocks_ub_by_name_hashmap != NULL) */
     }
 } _ral_program_metadata;
 
@@ -207,12 +228,14 @@ typedef struct _ral_program
 
 
 /** Please see header for specification */
-PUBLIC void ral_program_add_metadata_block(ral_program               program,
-                                           ral_program_block_type    block_type,
-                                           system_hashed_ansi_string block_name)
+PUBLIC void ral_program_add_block(ral_program               program,
+                                  uint32_t                  block_size,
+                                  ral_program_block_type    block_type,
+                                  system_hashed_ansi_string block_name)
 {
-    const system_hash64 block_name_hash = system_hashed_ansi_string_get_hash(block_name);
-    _ral_program*       program_ptr     = (_ral_program*) program;
+    const system_hash64 block_name_hash             = system_hashed_ansi_string_get_hash(block_name);
+    _ral_program*       program_ptr                 = (_ral_program*) program;
+    system_hash64map    specialized_by_name_hashmap = NULL;
 
     /* Sanity checks */
     if (program == NULL)
@@ -240,6 +263,7 @@ PUBLIC void ral_program_add_metadata_block(ral_program               program,
 
     /* Spawn a new descriptor */
     _ral_program_metadata_block* new_block_ptr = new (std::nothrow) _ral_program_metadata_block(block_name,
+                                                                                                block_size,
                                                                                                 block_type);
 
     if (new_block_ptr == NULL)
@@ -258,14 +282,36 @@ PUBLIC void ral_program_add_metadata_block(ral_program               program,
                                  NULL,  /* callback          */
                                  NULL); /* callback_argument */
 
+    switch (block_type)
+    {
+        case RAL_PROGRAM_BLOCK_TYPE_STORAGE_BUFFER: specialized_by_name_hashmap = program_ptr->metadata.blocks_ssb_by_name_hashmap; break;
+        case RAL_PROGRAM_BLOCK_TYPE_UNIFORM_BUFFER: specialized_by_name_hashmap = program_ptr->metadata.blocks_ub_by_name_hashmap;  break;
+
+        default:
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Unrecognized RAL program block type.");
+        }
+    }
+
+    ASSERT_DEBUG_SYNC(!system_hash64map_contains(specialized_by_name_hashmap,
+                                                 block_name_hash),
+                      "Block [%s] is already registered.",
+                      system_hashed_ansi_string_get_buffer(block_name) );
+
+    system_hash64map_insert(specialized_by_name_hashmap,
+                            block_name_hash,
+                            new_block_ptr,
+                            NULL,  /* callback          */
+                            NULL); /* callback_argument */
 end:
     ;
 }
 
 /** Please see header for specification */
-PUBLIC void ral_program_attach_variable_to_metadata_block(ral_program               program,
-                                                          system_hashed_ansi_string block_name,
-                                                          ral_program_variable*     variable_ptr)
+PUBLIC void ral_program_attach_variable_to_block(ral_program               program,
+                                                 system_hashed_ansi_string block_name,
+                                                 ral_program_variable*     variable_ptr)
 {
     const system_hash64          block_name_hash    = system_hashed_ansi_string_get_hash(block_name);
     _ral_program_metadata_block* block_ptr          = NULL;
@@ -591,6 +637,16 @@ PUBLIC void ral_program_clear_metadata(ral_program program)
     {
         system_hash64map_clear(program_ptr->metadata.blocks_by_name_hashmap);
     } /* if (program_ptr->metadata.blocks_by_name_hashmap != NULL) */
+
+    if (program_ptr->metadata.blocks_ssb_by_name_hashmap != NULL)
+    {
+        system_hash64map_clear(program_ptr->metadata.blocks_ssb_by_name_hashmap);
+    }
+
+    if (program_ptr->metadata.blocks_ub_by_name_hashmap != NULL)
+    {
+        system_hash64map_clear(program_ptr->metadata.blocks_ub_by_name_hashmap);
+    }
 }
 
 /** Please see header for specification */
@@ -679,11 +735,25 @@ PUBLIC EMERALD_API bool ral_program_get_block_property(ral_program              
     /* Retrieve the requested property value */
     switch (property)
     {
+        case RAL_PROGRAM_BLOCK_PROPERTY_NAME:
+        {
+            *(system_hashed_ansi_string*) out_result_ptr = block_ptr->name;
+
+            break;
+        }
+
         case RAL_PROGRAM_BLOCK_PROPERTY_N_VARIABLES:
         {
             system_resizable_vector_get_property(block_ptr->variables,
                                                  SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
                                                  out_result_ptr);
+
+            break;
+        }
+
+        case RAL_PROGRAM_BLOCK_PROPERTY_SIZE:
+        {
+            *(uint32_t*) out_result_ptr = block_ptr->size;
 
             break;
         }
@@ -708,6 +778,61 @@ PUBLIC EMERALD_API bool ral_program_get_block_property(ral_program              
     result = true;
 end:
     return result;
+}
+
+/** Please see header for specification */
+PUBLIC EMERALD_API bool ral_program_get_block_property_by_index(ral_program                program,
+                                                                ral_program_block_type     block_type,
+                                                                uint32_t                   block_index,
+                                                                ral_program_block_property property,
+                                                                void*                      out_result_ptr)
+{
+    _ral_program_metadata_block* block_ptr                   = NULL;
+    _ral_program*                program_ptr                 = (_ral_program*) program;
+    system_hash64map             specialized_by_name_hashmap = NULL;
+
+    /* Sanity checks */
+    if (program == NULL)
+    {
+        ASSERT_DEBUG_SYNC(false,
+                          "Input RAL program instance is NULL");
+
+        goto end_fail;
+    }
+
+    switch (block_type)
+    {
+        case RAL_PROGRAM_BLOCK_TYPE_STORAGE_BUFFER: specialized_by_name_hashmap = program_ptr->metadata.blocks_ssb_by_name_hashmap; break;
+        case RAL_PROGRAM_BLOCK_TYPE_UNIFORM_BUFFER: specialized_by_name_hashmap = program_ptr->metadata.blocks_ub_by_name_hashmap;  break;
+
+        default:
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Unrecognized RAL program block type specified.");
+
+            goto end_fail;
+        }
+    }
+
+    if (!system_hash64map_get_element_at(specialized_by_name_hashmap,
+                                         block_index,
+                                        &block_ptr,
+                                         NULL /* result_hash_ptr */) )
+    {
+        ASSERT_DEBUG_SYNC(false,
+                          "No block defined at index [%d]",
+                          block_index);
+
+        goto end_fail;
+    }
+
+    return ral_program_get_block_property(program,
+                                          block_ptr->name,
+                                          property,
+                                          out_result_ptr);
+
+end_fail:
+    return false;
 }
 
 /** Please see header for specification */
@@ -952,6 +1077,35 @@ PUBLIC EMERALD_API void ral_program_get_property(ral_program          program,
 
 end:
     ;
+}
+
+/** Please see header for specification */
+PUBLIC EMERALD_API bool ral_program_is_block_defined(ral_program               program,
+                                                     system_hashed_ansi_string block_name)
+{
+    _ral_program* program_ptr = (_ral_program*) program;
+    bool          result      = false;
+
+    if (program_ptr == NULL)
+    {
+        ASSERT_DEBUG_SYNC(program_ptr != NULL,
+                          "Input ral_program instance is NULL");
+
+        goto end;
+    }
+
+    if (block_name == NULL)
+    {
+        ASSERT_DEBUG_SYNC(block_name != NULL,
+                          "Input block name is NULL");
+
+        goto end;
+    }
+
+    result = system_hash64map_contains(program_ptr->metadata.blocks_by_name_hashmap,
+                                       system_hashed_ansi_string_get_hash(block_name) );
+end:
+    return result;
 }
 
 /** Please see header for specification */

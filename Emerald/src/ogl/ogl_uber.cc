@@ -12,12 +12,13 @@
 #include "ogl/ogl_uber.h"
 #include "raGL/raGL_buffer.h"
 #include "raGL/raGL_program.h"
-#include "raGL/raGL_program_block.h"
 #include "raGL/raGL_sampler.h"
 #include "raGL/raGL_shader.h"
 #include "raGL/raGL_utils.h"
+#include "ral/ral_buffer.h"
 #include "ral/ral_context.h"
 #include "ral/ral_program.h"
+#include "ral/ral_program_block_buffer.h"
 #include "ral/ral_shader.h"
 #include "ral/ral_texture.h"
 #include "scene/scene.h"
@@ -198,12 +199,10 @@ typedef struct _ogl_uber
 
     bool                      is_rendering;
     uint32_t                  n_texture_units_assigned;
-    ral_buffer                ub_fs_bo;
+    ral_program_block_buffer  ub_fs;
     GLuint                    ub_fs_bo_size;
-    raGL_program_block        ub_fs_raGL;
-    ral_buffer                ub_vs_bo;
+    ral_program_block_buffer  ub_vs;
     GLuint                    ub_vs_bo_size;
-    raGL_program_block        ub_vs_raGL;
 
     system_matrix4x4          current_vp;
     float                     current_vsm_max_variance;
@@ -262,8 +261,8 @@ _ogl_uber::_ogl_uber(ral_context               in_context,
     shader_fragment                = NULL;
     shader_vertex                  = NULL;
     type                           = in_type;
-    ub_fs_raGL                     = NULL;
-    ub_vs_raGL                     = NULL;
+    ub_fs                          = NULL;
+    ub_vs                          = NULL;
 
     _ogl_uber_reset_attribute_uniform_locations(this);
 }
@@ -857,6 +856,20 @@ PRIVATE void _ogl_uber_release(void* uber)
                                        (const void**) &uber_ptr->program);
 
             uber_ptr->program = NULL;
+        }
+
+        if (uber_ptr->ub_fs != NULL)
+        {
+            ral_program_block_buffer_release(uber_ptr->ub_fs);
+
+            uber_ptr->ub_fs = NULL;
+        }
+
+        if (uber_ptr->ub_vs != NULL)
+        {
+            ral_program_block_buffer_release(uber_ptr->ub_vs);
+
+            uber_ptr->ub_vs = NULL;
         }
 
         if (uber_ptr->mesh_to_vao_descriptor_map != NULL)
@@ -1712,43 +1725,56 @@ PUBLIC EMERALD_API void ogl_uber_link(ogl_uber uber)
     }
 
     /* Retrieve uniform block IDs and their properties*/
-    uber_ptr->ub_fs_raGL = NULL;
-    uber_ptr->ub_vs_raGL = NULL;
-
-    raGL_program_get_uniform_block_by_name(program_raGL,
-                                           system_hashed_ansi_string_create("FragmentShaderProperties"),
-                                          &uber_ptr->ub_fs_raGL);
-    raGL_program_get_uniform_block_by_name(program_raGL,
-                                           system_hashed_ansi_string_create("VertexShaderProperties"),
-                                          &uber_ptr->ub_vs_raGL);
-
-    if (uber_ptr->ub_fs_raGL != NULL)
+    if (uber_ptr->ub_fs != NULL)
     {
-        raGL_program_block_get_property(uber_ptr->ub_fs_raGL,
-                                        RAGL_PROGRAM_BLOCK_PROPERTY_BLOCK_DATA_SIZE,
-                                       &uber_ptr->ub_fs_bo_size);
-        raGL_program_block_get_property(uber_ptr->ub_fs_raGL,
-                                        RAGL_PROGRAM_BLOCK_PROPERTY_BUFFER_RAL,
-                                       &uber_ptr->ub_fs_bo);
+        ral_program_block_buffer_release(uber_ptr->ub_fs);
+
+        uber_ptr->ub_fs = NULL;
+    }
+
+    if (uber_ptr->ub_vs != NULL)
+    {
+        ral_program_block_buffer_release(uber_ptr->ub_vs);
+
+        uber_ptr->ub_vs = NULL;
+    }
+
+    uber_ptr->ub_fs = ral_program_block_buffer_create(uber_ptr->context,
+                                                      uber_ptr->program,
+                                                      system_hashed_ansi_string_create("FragmentShaderProperties") );
+    uber_ptr->ub_vs = ral_program_block_buffer_create(uber_ptr->context,
+                                                      uber_ptr->program,
+                                                      system_hashed_ansi_string_create("VertexShaderProperties") );
+
+    if (uber_ptr->ub_fs != NULL)
+    {
+        ral_buffer buffer_ral = NULL;
+
+        ral_program_block_buffer_get_property(uber_ptr->ub_fs,
+                                              RAL_PROGRAM_BLOCK_BUFFER_PROPERTY_BUFFER_RAL,
+                                             &buffer_ral);
+        ral_buffer_get_property              (buffer_ral,
+                                              RAL_BUFFER_PROPERTY_SIZE,
+                                             &uber_ptr->ub_fs_bo_size);
     }
     else
     {
-        uber_ptr->ub_fs_bo      = NULL;
         uber_ptr->ub_fs_bo_size = 0;
     }
 
-    if (uber_ptr->ub_vs_raGL != NULL)
+    if (uber_ptr->ub_vs != NULL)
     {
-        raGL_program_block_get_property(uber_ptr->ub_vs_raGL,
-                                        RAGL_PROGRAM_BLOCK_PROPERTY_BLOCK_DATA_SIZE,
-                                       &uber_ptr->ub_vs_bo_size);
-        raGL_program_block_get_property(uber_ptr->ub_vs_raGL,
-                                        RAGL_PROGRAM_BLOCK_PROPERTY_BUFFER_RAL,
-                                       &uber_ptr->ub_vs_bo);
+        ral_buffer buffer_ral = NULL;
+
+        ral_program_block_buffer_get_property(uber_ptr->ub_vs,
+                                              RAL_PROGRAM_BLOCK_BUFFER_PROPERTY_BUFFER_RAL,
+                                             &buffer_ral);
+        ral_buffer_get_property              (buffer_ral,
+                                              RAL_BUFFER_PROPERTY_SIZE,
+                                             &uber_ptr->ub_vs_bo_size);
     }
     else
     {
-        uber_ptr->ub_vs_bo      = NULL;
         uber_ptr->ub_vs_bo_size = 0;
     }
 
@@ -2193,10 +2219,10 @@ PUBLIC void ogl_uber_rendering_render_mesh(mesh             mesh_gpu,
         ASSERT_DEBUG_SYNC(uber_ptr->model_ub_offset != -1,
                           "No model matrix uniform found");
 
-        raGL_program_block_set_nonarrayed_variable_value(uber_ptr->ub_vs_raGL,
-                                                         uber_ptr->model_ub_offset,
-                                                         system_matrix4x4_get_row_major_data(model),
-                                                         sizeof(float) * 16);
+        ral_program_block_buffer_set_nonarrayed_variable_value(uber_ptr->ub_vs,
+                                                               uber_ptr->model_ub_offset,
+                                                               system_matrix4x4_get_row_major_data(model),
+                                                               sizeof(float) * 16);
 
         /* Update normal matrix */
         if (uber_ptr->normal_matrix_ub_offset != -1)
@@ -2204,21 +2230,26 @@ PUBLIC void ogl_uber_rendering_render_mesh(mesh             mesh_gpu,
             ASSERT_DEBUG_SYNC(normal_matrix != NULL,
                               "Normal matrix is NULL but is required.");
 
-            raGL_program_block_set_nonarrayed_variable_value(uber_ptr->ub_vs_raGL,
-                                                             uber_ptr->normal_matrix_ub_offset,
-                                                             system_matrix4x4_get_row_major_data(normal_matrix),
-                                                             sizeof(float) * 16);
+            ral_program_block_buffer_set_nonarrayed_variable_value(uber_ptr->ub_vs,
+                                                                   uber_ptr->normal_matrix_ub_offset,
+                                                                   system_matrix4x4_get_row_major_data(normal_matrix),
+                                                                   sizeof(float) * 16);
         }
 
         /* Make sure the uniform buffer bindings are fine */
-        if (uber_ptr->ub_fs_raGL != NULL)
+        if (uber_ptr->ub_fs != NULL)
         {
             GLuint      ub_fs_bo_id           = 0;
             raGL_buffer ub_fs_bo_raGL         = NULL;
+            ral_buffer  ub_fs_bo_ral          = NULL;
             uint32_t    ub_fs_bo_start_offset = -1;
 
+            ral_program_block_buffer_get_property(uber_ptr->ub_fs,
+                                                  RAL_PROGRAM_BLOCK_BUFFER_PROPERTY_BUFFER_RAL,
+                                                 &ub_fs_bo_ral);
+
             ub_fs_bo_raGL = ral_context_get_buffer_gl(uber_ptr->context,
-                                                      uber_ptr->ub_fs_bo);
+                                                      ub_fs_bo_ral);
 
             raGL_buffer_get_property(ub_fs_bo_raGL,
                                      RAGL_BUFFER_PROPERTY_ID,
@@ -2234,14 +2265,19 @@ PUBLIC void ogl_uber_rendering_render_mesh(mesh             mesh_gpu,
                                                  uber_ptr->ub_fs_bo_size);
         }
 
-        if (uber_ptr->ub_vs_raGL != NULL)
+        if (uber_ptr->ub_vs != NULL)
         {
             GLuint      ub_vs_bo_id           = 0;
             raGL_buffer ub_vs_bo_raGL         = NULL;
+            ral_buffer  ub_vs_bo_ral          = NULL;
             uint32_t    ub_vs_bo_start_offset = -1;
 
+            ral_program_block_buffer_get_property(uber_ptr->ub_vs,
+                                                  RAL_PROGRAM_BLOCK_BUFFER_PROPERTY_BUFFER_RAL,
+                                                 &ub_vs_bo_ral);
+
             ub_vs_bo_raGL = ral_context_get_buffer_gl(uber_ptr->context,
-                                                      uber_ptr->ub_vs_bo);
+                                                      ub_vs_bo_ral);
 
             raGL_buffer_get_property(ub_vs_bo_raGL,
                                      RAGL_BUFFER_PROPERTY_ID,
@@ -2422,17 +2458,17 @@ PUBLIC void ogl_uber_rendering_render_mesh(mesh             mesh_gpu,
                                 if (attachment_type == MESH_MATERIAL_PROPERTY_ATTACHMENT_FLOAT                  ||
                                     attachment_type == MESH_MATERIAL_PROPERTY_ATTACHMENT_CURVE_CONTAINER_FLOAT)
                                 {
-                                    raGL_program_block_set_nonarrayed_variable_value(uber_ptr->ub_fs_raGL,
-                                                                                     attachment.shader_scalar_ub_offset,
-                                                                                     data_vec3,
-                                                                                     sizeof(float) );
+                                    ral_program_block_buffer_set_nonarrayed_variable_value(uber_ptr->ub_fs,
+                                                                                           attachment.shader_scalar_ub_offset,
+                                                                                           data_vec3,
+                                                                                           sizeof(float) );
                                 }
                                 else
                                 {
-                                    raGL_program_block_set_nonarrayed_variable_value(uber_ptr->ub_fs_raGL,
-                                                                                     attachment.shader_scalar_ub_offset,
-                                                                                     data_vec3,
-                                                                                     sizeof(float) * 3);
+                                    ral_program_block_buffer_set_nonarrayed_variable_value(uber_ptr->ub_fs,
+                                                                                           attachment.shader_scalar_ub_offset,
+                                                                                           data_vec3,
+                                                                                           sizeof(float) * 3);
                                 }
 
                                 break;
@@ -2504,10 +2540,10 @@ PUBLIC void ogl_uber_rendering_render_mesh(mesh             mesh_gpu,
                                     }
                                 } /* if (attachment.convert_to_linear) */
 
-                                raGL_program_block_set_nonarrayed_variable_value(uber_ptr->ub_fs_raGL,
-                                                                                 attachment.shader_scalar_ub_offset,
-                                                                                 data_vec4,
-                                                                                 sizeof(float) * 4);
+                                ral_program_block_buffer_set_nonarrayed_variable_value(uber_ptr->ub_fs,
+                                                                                       attachment.shader_scalar_ub_offset,
+                                                                                       data_vec4,
+                                                                                       sizeof(float) * 4);
 
                                 break;
                             } /* case MESH_MATERIAL_PROPERTY_ATTACHMENT_VEC4: */
@@ -2520,14 +2556,14 @@ PUBLIC void ogl_uber_rendering_render_mesh(mesh             mesh_gpu,
                     } /* for (all attachments) */
                 } /* if (material != NULL) */
 
-                if (uber_ptr->ub_fs_raGL != NULL)
+                if (uber_ptr->ub_fs != NULL)
                 {
-                    raGL_program_block_sync(uber_ptr->ub_fs_raGL);
+                    ral_program_block_buffer_sync(uber_ptr->ub_fs);
                 }
 
-                if (uber_ptr->ub_vs_raGL != NULL)
+                if (uber_ptr->ub_vs != NULL)
                 {
-                    raGL_program_block_sync(uber_ptr->ub_vs_raGL);
+                    ral_program_block_buffer_sync(uber_ptr->ub_vs);
                 }
 
                 /* Issue the draw call. We need to handle two separate cases here:
@@ -2875,49 +2911,44 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void ogl_uber_rendering_start(ogl_uber
     /* Configure other stuff */
     if (uber_ptr->max_variance_ub_offset != -1)
     {
-        raGL_program_block_set_nonarrayed_variable_value(uber_ptr->ub_fs_raGL,
-                                                         uber_ptr->max_variance_ub_offset,
-                                                        &uber_ptr->current_vsm_max_variance,
-                                                         sizeof(float) );
+        ral_program_block_buffer_set_nonarrayed_variable_value(uber_ptr->ub_fs,
+                                                               uber_ptr->max_variance_ub_offset,
+                                                              &uber_ptr->current_vsm_max_variance,
+                                                               sizeof(float) );
     }
 
     /* Sync the UBOs */
-    if (uber_ptr->ub_fs_raGL != NULL)
+    if (uber_ptr->ub_fs != NULL)
     {
-        raGL_program_block_sync(uber_ptr->ub_fs_raGL);
+        ral_program_block_buffer_sync(uber_ptr->ub_fs);
     }
 
-    if (uber_ptr->ub_vs_raGL != NULL)
+    if (uber_ptr->ub_vs != NULL)
     {
-        raGL_program_block_sync(uber_ptr->ub_vs_raGL);
+        ral_program_block_buffer_sync(uber_ptr->ub_vs);
     }
 
     /* Configure uniform buffer bindings */
-    ral_buffer  fs_ub_bo              =  NULL;
     GLuint      fs_ub_bo_id           =  0;
     raGL_buffer fs_ub_bo_raGL         = NULL;
+    ral_buffer  fs_ub_bo_ral          = NULL;
     GLuint      fs_ub_bo_start_offset = -1;
-    uint32_t    fs_ub_size            =  0;
-    ral_buffer  vs_ub_bo              =  NULL;
     GLuint      vs_ub_bo_id           =  0;
     raGL_buffer vs_ub_bo_raGL         = NULL;
+    ral_buffer  vs_ub_bo_ral          = NULL;
     GLuint      vs_ub_bo_start_offset = -1;
-    uint32_t    vs_ub_size            =  0;
 
-    if (uber_ptr->ub_fs_raGL != NULL)
+    if (uber_ptr->ub_fs != NULL)
     {
-        raGL_program_block_get_property(uber_ptr->ub_fs_raGL,
-                                        RAGL_PROGRAM_BLOCK_PROPERTY_BLOCK_DATA_SIZE,
-                                       &fs_ub_size);
-        raGL_program_block_get_property(uber_ptr->ub_fs_raGL,
-                                        RAGL_PROGRAM_BLOCK_PROPERTY_BUFFER_RAL,
-                                       &fs_ub_bo);
+        ral_program_block_buffer_get_property(uber_ptr->ub_fs,
+                                              RAL_PROGRAM_BLOCK_BUFFER_PROPERTY_BUFFER_RAL,
+                                             &fs_ub_bo_ral);
 
-        if (fs_ub_size != 0)
+        fs_ub_bo_raGL = ral_context_get_buffer_gl(uber_ptr->context,
+                                                  fs_ub_bo_ral);
+
+        if (uber_ptr->ub_fs_bo_size != 0)
         {
-            fs_ub_bo_raGL = ral_context_get_buffer_gl(uber_ptr->context,
-                                                      fs_ub_bo);
-
             raGL_buffer_get_property(fs_ub_bo_raGL,
                                      RAGL_BUFFER_PROPERTY_ID,
                                     &fs_ub_bo_id);
@@ -2929,24 +2960,21 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void ogl_uber_rendering_start(ogl_uber
                                                  FRAGMENT_SHADER_PROPERTIES_UBO_BINDING_ID,
                                                  fs_ub_bo_id,
                                                  fs_ub_bo_start_offset,
-                                                 fs_ub_size);
+                                                 uber_ptr->ub_fs_bo_size);
         }
     } /* if (uber_ptr->ub_fs != NULL) */
 
-    if (uber_ptr->ub_vs_raGL != NULL)
+    if (uber_ptr->ub_vs != NULL)
     {
-        raGL_program_block_get_property(uber_ptr->ub_vs_raGL,
-                                        RAGL_PROGRAM_BLOCK_PROPERTY_BLOCK_DATA_SIZE,
-                                       &vs_ub_size);
-        raGL_program_block_get_property(uber_ptr->ub_vs_raGL,
-                                        RAGL_PROGRAM_BLOCK_PROPERTY_BUFFER_RAL,
-                                       &vs_ub_bo);
+        ral_program_block_buffer_get_property(uber_ptr->ub_vs,
+                                              RAL_PROGRAM_BLOCK_BUFFER_PROPERTY_BUFFER_RAL,
+                                             &vs_ub_bo_ral);
 
-        if (vs_ub_size != 0)
+        vs_ub_bo_raGL = ral_context_get_buffer_gl(uber_ptr->context,
+                                                  vs_ub_bo_ral);
+
+        if (uber_ptr->ub_vs_bo_size != 0)
         {
-            vs_ub_bo_raGL = ral_context_get_buffer_gl(uber_ptr->context,
-                                                      vs_ub_bo);
-
             raGL_buffer_get_property(vs_ub_bo_raGL,
                                      RAGL_BUFFER_PROPERTY_ID,
                                     &vs_ub_bo_id);
@@ -2958,7 +2986,7 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void ogl_uber_rendering_start(ogl_uber
                                                  VERTEX_SHADER_PROPERTIES_UBO_BINDING_ID,
                                                  vs_ub_bo_id,
                                                  vs_ub_bo_start_offset,
-                                                 vs_ub_size);
+                                                 uber_ptr->ub_vs_bo_size);
         }
     } /* if (uber_ptr->ub_vs != NULL) */
 
@@ -2977,7 +3005,7 @@ PUBLIC EMERALD_API void ogl_uber_set_shader_general_property(ogl_uber           
     _ogl_uber* uber_ptr = (_ogl_uber*) uber;
 
     /* All properties below refer to the uniform block defined in uber vertex shader. */
-    if (uber_ptr->ub_vs_raGL == NULL)
+    if (uber_ptr->ub_vs == NULL)
     {
         goto end;
     }
@@ -2996,10 +3024,10 @@ PUBLIC EMERALD_API void ogl_uber_set_shader_general_property(ogl_uber           
                     1.0f
                 };
 
-                raGL_program_block_set_nonarrayed_variable_value(uber_ptr->ub_vs_raGL,
-                                                                 uber_ptr->world_camera_ub_offset,
-                                                                 location,
-                                                                 sizeof(float) * 4);
+                ral_program_block_buffer_set_nonarrayed_variable_value(uber_ptr->ub_vs,
+                                                                       uber_ptr->world_camera_ub_offset,
+                                                                       location,
+                                                                       sizeof(float) * 4);
             }
 
             break;
@@ -3007,20 +3035,20 @@ PUBLIC EMERALD_API void ogl_uber_set_shader_general_property(ogl_uber           
 
         case OGL_UBER_GENERAL_PROPERTY_FAR_NEAR_PLANE_DIFF:
         {
-            raGL_program_block_set_nonarrayed_variable_value(uber_ptr->ub_vs_raGL,
-                                                             uber_ptr->far_near_plane_diff_ub_offset,
-                                                             data,
-                                                             sizeof(float) );
+            ral_program_block_buffer_set_nonarrayed_variable_value(uber_ptr->ub_vs,
+                                                                   uber_ptr->far_near_plane_diff_ub_offset,
+                                                                   data,
+                                                                   sizeof(float) );
 
             break;
         }
 
         case OGL_UBER_GENERAL_PROPERTY_FLIP_Z:
         {
-            raGL_program_block_set_nonarrayed_variable_value(uber_ptr->ub_vs_raGL,
-                                                             uber_ptr->flip_z_ub_offset,
-                                                             data,
-                                                             sizeof(float) );
+            ral_program_block_buffer_set_nonarrayed_variable_value(uber_ptr->ub_vs,
+                                                                   uber_ptr->flip_z_ub_offset,
+                                                                   data,
+                                                                   sizeof(float) );
 
             break;
         }
@@ -3036,20 +3064,20 @@ PUBLIC EMERALD_API void ogl_uber_set_shader_general_property(ogl_uber           
 
         case OGL_UBER_GENERAL_PROPERTY_NEAR_PLANE:
         {
-            raGL_program_block_set_nonarrayed_variable_value(uber_ptr->ub_vs_raGL,
-                                                             uber_ptr->near_plane_ub_offset,
-                                                             data,
-                                                             sizeof(float) );
+            ral_program_block_buffer_set_nonarrayed_variable_value(uber_ptr->ub_vs,
+                                                                   uber_ptr->near_plane_ub_offset,
+                                                                   data,
+                                                                   sizeof(float) );
 
             break;
         }
 
         case OGL_UBER_GENERAL_PROPERTY_VP:
         {
-            raGL_program_block_set_nonarrayed_variable_value(uber_ptr->ub_vs_raGL,
-                                                             uber_ptr->vp_ub_offset,
-                                                             system_matrix4x4_get_row_major_data( (system_matrix4x4) data),
-                                                             sizeof(float) * 16);
+            ral_program_block_buffer_set_nonarrayed_variable_value(uber_ptr->ub_vs,
+                                                                   uber_ptr->vp_ub_offset,
+                                                                   system_matrix4x4_get_row_major_data( (system_matrix4x4) data),
+                                                                   sizeof(float) * 16);
 
             break;
         }
@@ -3121,10 +3149,10 @@ PUBLIC EMERALD_API void ogl_uber_set_shader_item_property(ogl_uber              
                                 linear_data[n_component] = convert_sRGB_to_linear(srgb_data_ptr[n_component]);
                             }
 
-                            raGL_program_block_set_nonarrayed_variable_value(uber_ptr->ub_fs_raGL,
-                                                                             item_ptr->fragment_shader_item.ambient_color_ub_offset,
-                                                                             linear_data,
-                                                                             sizeof(float) * 3);
+                            ral_program_block_buffer_set_nonarrayed_variable_value(uber_ptr->ub_fs,
+                                                                                   item_ptr->fragment_shader_item.ambient_color_ub_offset,
+                                                                                   linear_data,
+                                                                                   sizeof(float) * 3);
                         } /* if (item_ptr->fragment_shader_item.ambient_color_ub_offset != -1) */
 
                         break;
@@ -3134,10 +3162,10 @@ PUBLIC EMERALD_API void ogl_uber_set_shader_item_property(ogl_uber              
                     {
                         if (item_ptr->fragment_shader_item.current_light_attenuations_ub_offset != -1)
                         {
-                            raGL_program_block_set_nonarrayed_variable_value(uber_ptr->ub_fs_raGL,
-                                                                             item_ptr->fragment_shader_item.current_light_attenuations_ub_offset,
-                                                                             data,
-                                                                             sizeof(float) * 3);
+                            ral_program_block_buffer_set_nonarrayed_variable_value(uber_ptr->ub_fs,
+                                                                                   item_ptr->fragment_shader_item.current_light_attenuations_ub_offset,
+                                                                                   data,
+                                                                                   sizeof(float) * 3);
                         } /* if (item_ptr->fragment_shader_item.current_light_attenuations_ub_offset != -1) */
 
                         break;
@@ -3147,10 +3175,10 @@ PUBLIC EMERALD_API void ogl_uber_set_shader_item_property(ogl_uber              
                     {
                         if (item_ptr->fragment_shader_item.current_light_cone_angle_ub_offset != -1)
                         {
-                            raGL_program_block_set_nonarrayed_variable_value(uber_ptr->ub_fs_raGL,
-                                                                             item_ptr->fragment_shader_item.current_light_cone_angle_ub_offset,
-                                                                             data,
-                                                                             sizeof(float) );
+                            ral_program_block_buffer_set_nonarrayed_variable_value(uber_ptr->ub_fs,
+                                                                                   item_ptr->fragment_shader_item.current_light_cone_angle_ub_offset,
+                                                                                   data,
+                                                                                   sizeof(float) );
                         } /* if (item_ptr->fragment_shader_item.current_light_cone_angle_ub_offset != -1) */
 
                         break;
@@ -3174,10 +3202,10 @@ PUBLIC EMERALD_API void ogl_uber_set_shader_item_property(ogl_uber              
 
                             linear_data[3] = 1.0f;
 
-                            raGL_program_block_set_nonarrayed_variable_value(uber_ptr->ub_fs_raGL,
-                                                                             item_ptr->fragment_shader_item.current_light_diffuse_ub_offset,
-                                                                             data,
-                                                                             sizeof(float) * 4);
+                            ral_program_block_buffer_set_nonarrayed_variable_value(uber_ptr->ub_fs,
+                                                                                   item_ptr->fragment_shader_item.current_light_diffuse_ub_offset,
+                                                                                   data,
+                                                                                   sizeof(float) * 4);
                         } /* if (item_ptr->fragment_shader_item.current_light_diffuse_ub_offset != -1) */
 
                         break;
@@ -3189,10 +3217,10 @@ PUBLIC EMERALD_API void ogl_uber_set_shader_item_property(ogl_uber              
 
                         if (item_ptr->fragment_shader_item.current_light_direction_ub_offset != -1)
                         {
-                            raGL_program_block_set_nonarrayed_variable_value(uber_ptr->ub_fs_raGL,
-                                                                             item_ptr->fragment_shader_item.current_light_direction_ub_offset,
-                                                                             data,
-                                                                             sizeof(float) * 3);
+                            ral_program_block_buffer_set_nonarrayed_variable_value(uber_ptr->ub_fs,
+                                                                                   item_ptr->fragment_shader_item.current_light_direction_ub_offset,
+                                                                                   data,
+                                                                                   sizeof(float) * 3);
                         } /* if (item_ptr->fragment_shader_item.current_light_direction_ub_offset != -1) */
 
                         break;
@@ -3202,10 +3230,10 @@ PUBLIC EMERALD_API void ogl_uber_set_shader_item_property(ogl_uber              
                     {
                         if (item_ptr->fragment_shader_item.current_light_edge_angle_ub_offset != -1)
                         {
-                            raGL_program_block_set_nonarrayed_variable_value(uber_ptr->ub_fs_raGL,
-                                                                             item_ptr->fragment_shader_item.current_light_edge_angle_ub_offset,
-                                                                             data,
-                                                                             sizeof(float) );
+                            ral_program_block_buffer_set_nonarrayed_variable_value(uber_ptr->ub_fs,
+                                                                                   item_ptr->fragment_shader_item.current_light_edge_angle_ub_offset,
+                                                                                   data,
+                                                                                   sizeof(float) );
                         } /* if (item_ptr->fragment_shader_item.current_light_edge_angle_ub_offset != -1) */
 
                         break;
@@ -3215,10 +3243,10 @@ PUBLIC EMERALD_API void ogl_uber_set_shader_item_property(ogl_uber              
                     {
                         if (item_ptr->fragment_shader_item.current_light_far_near_diff_ub_offset != -1)
                         {
-                            raGL_program_block_set_nonarrayed_variable_value(uber_ptr->ub_fs_raGL,
-                                                                             item_ptr->fragment_shader_item.current_light_far_near_diff_ub_offset,
-                                                                             data,
-                                                                             sizeof(float) );
+                            ral_program_block_buffer_set_nonarrayed_variable_value(uber_ptr->ub_fs,
+                                                                                   item_ptr->fragment_shader_item.current_light_far_near_diff_ub_offset,
+                                                                                   data,
+                                                                                   sizeof(float) );
                         } /* if (item_ptr->fragment_shader_item.current_light_far_near_diff_ub_offset != -1) */
 
                         break;
@@ -3236,10 +3264,10 @@ PUBLIC EMERALD_API void ogl_uber_set_shader_item_property(ogl_uber              
                                 1.0f
                             };
 
-                            raGL_program_block_set_nonarrayed_variable_value(uber_ptr->ub_fs_raGL,
-                                                                             item_ptr->fragment_shader_item.current_light_location_ub_offset,
-                                                                             location,
-                                                                             sizeof(float) * 4);
+                            ral_program_block_buffer_set_nonarrayed_variable_value(uber_ptr->ub_fs,
+                                                                                   item_ptr->fragment_shader_item.current_light_location_ub_offset,
+                                                                                   location,
+                                                                                   sizeof(float) * 4);
                         } /* if (item_ptr->fragment_shader_item.current_light_location_ub_offset != -1) */
 
                         break;
@@ -3249,10 +3277,10 @@ PUBLIC EMERALD_API void ogl_uber_set_shader_item_property(ogl_uber              
                     {
                         if (item_ptr->fragment_shader_item.current_light_near_plane_ub_offset != -1)
                         {
-                            raGL_program_block_set_nonarrayed_variable_value(uber_ptr->ub_fs_raGL,
-                                                                             item_ptr->fragment_shader_item.current_light_near_plane_ub_offset,
-                                                                             data,
-                                                                             sizeof(float) );
+                            ral_program_block_buffer_set_nonarrayed_variable_value(uber_ptr->ub_fs,
+                                                                                   item_ptr->fragment_shader_item.current_light_near_plane_ub_offset,
+                                                                                   data,
+                                                                                   sizeof(float) );
                         } /* if (item_ptr->fragment_shader_item.current_light_near_plane_ub_offset != -1) */
 
                         break;
@@ -3262,10 +3290,10 @@ PUBLIC EMERALD_API void ogl_uber_set_shader_item_property(ogl_uber              
                     {
                         if (item_ptr->fragment_shader_item.current_light_projection_ub_offset != -1)
                         {
-                            raGL_program_block_set_nonarrayed_variable_value(uber_ptr->ub_fs_raGL,
-                                                                             item_ptr->fragment_shader_item.current_light_projection_ub_offset,
-                                                                             data,
-                                                                             sizeof(float) * 16);
+                            ral_program_block_buffer_set_nonarrayed_variable_value(uber_ptr->ub_fs,
+                                                                                   item_ptr->fragment_shader_item.current_light_projection_ub_offset,
+                                                                                   data,
+                                                                                   sizeof(float) * 16);
                         } /* if (item_ptr->fragment_shader_item.current_light_projection_ub_offset != -1) */
 
                         break;
@@ -3275,10 +3303,10 @@ PUBLIC EMERALD_API void ogl_uber_set_shader_item_property(ogl_uber              
                     {
                         if (item_ptr->fragment_shader_item.current_light_range_ub_offset != -1)
                         {
-                            raGL_program_block_set_nonarrayed_variable_value(uber_ptr->ub_fs_raGL,
-                                                                             item_ptr->fragment_shader_item.current_light_range_ub_offset,
-                                                                             data,
-                                                                             sizeof(float) );
+                            ral_program_block_buffer_set_nonarrayed_variable_value(uber_ptr->ub_fs,
+                                                                                   item_ptr->fragment_shader_item.current_light_range_ub_offset,
+                                                                                   data,
+                                                                                   sizeof(float) );
                         } /* if (item_ptr->fragment_shader_item.current_light_range_ub_offset != -1) */
 
                         break;
@@ -3288,10 +3316,10 @@ PUBLIC EMERALD_API void ogl_uber_set_shader_item_property(ogl_uber              
                     {
                         if (item_ptr->fragment_shader_item.current_light_view_ub_offset != -1)
                         {
-                            raGL_program_block_set_nonarrayed_variable_value(uber_ptr->ub_fs_raGL,
-                                                                             item_ptr->fragment_shader_item.current_light_view_ub_offset,
-                                                                             data,
-                                                                             sizeof(float) * 16);
+                            ral_program_block_buffer_set_nonarrayed_variable_value(uber_ptr->ub_fs,
+                                                                                   item_ptr->fragment_shader_item.current_light_view_ub_offset,
+                                                                                   data,
+                                                                                   sizeof(float) * 16);
                         } /* if (item_ptr->fragment_shader_item.current_light_view_ub_offset != -1) */
 
                         break;
@@ -3315,10 +3343,10 @@ PUBLIC EMERALD_API void ogl_uber_set_shader_item_property(ogl_uber              
                     {
                         if (item_ptr->fragment_shader_item.current_light_shadow_map_vsm_cutoff_ub_offset != -1)
                         {
-                            raGL_program_block_set_nonarrayed_variable_value(uber_ptr->ub_fs_raGL,
-                                                                             item_ptr->fragment_shader_item.current_light_shadow_map_vsm_cutoff_ub_offset,
-                                                                             data,
-                                                                             sizeof(float) );
+                            ral_program_block_buffer_set_nonarrayed_variable_value(uber_ptr->ub_fs,
+                                                                                   item_ptr->fragment_shader_item.current_light_shadow_map_vsm_cutoff_ub_offset,
+                                                                                   data,
+                                                                                   sizeof(float) );
                         } /* if (item_ptr->fragment_shader_item.current_light_shadow_map_vsm_cutoff_ub_offset != -1) */
 
                         break;
@@ -3328,10 +3356,10 @@ PUBLIC EMERALD_API void ogl_uber_set_shader_item_property(ogl_uber              
                     {
                         if (item_ptr->fragment_shader_item.current_light_shadow_map_vsm_min_variance_ub_offset != -1)
                         {
-                            raGL_program_block_set_nonarrayed_variable_value(uber_ptr->ub_fs_raGL,
-                                                                             item_ptr->fragment_shader_item.current_light_shadow_map_vsm_min_variance_ub_offset,
-                                                                             data,
-                                                                             sizeof(float) );
+                            ral_program_block_buffer_set_nonarrayed_variable_value(uber_ptr->ub_fs,
+                                                                                   item_ptr->fragment_shader_item.current_light_shadow_map_vsm_min_variance_ub_offset,
+                                                                                   data,
+                                                                                   sizeof(float) );
                         } /* if (item_ptr->fragment_shader_item.current_light_shadow_map_vsm_min_variance_ub_offset != -1) */
 
                         break;
@@ -3341,10 +3369,10 @@ PUBLIC EMERALD_API void ogl_uber_set_shader_item_property(ogl_uber              
                     {
                         if (item_ptr->vertex_shader_item.current_light_depth_vp_ub_offset != -1)
                         {
-                            raGL_program_block_set_nonarrayed_variable_value(uber_ptr->ub_vs_raGL,
-                                                                             item_ptr->vertex_shader_item.current_light_depth_vp_ub_offset,
-                                                                             data,
-                                                                             sizeof(float) * 16);
+                            ral_program_block_buffer_set_nonarrayed_variable_value(uber_ptr->ub_vs,
+                                                                                   item_ptr->vertex_shader_item.current_light_depth_vp_ub_offset,
+                                                                                   data,
+                                                                                   sizeof(float) * 16);
                         } /* if (item_ptr->vertex_shader_item.current_light_depth_vp_ub_offset != -1) */
 
                         break;

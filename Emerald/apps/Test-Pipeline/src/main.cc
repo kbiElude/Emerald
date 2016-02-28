@@ -14,11 +14,11 @@
 #include "raGL/raGL_buffer.h"
 #include "raGL/raGL_framebuffer.h"
 #include "raGL/raGL_program.h"
-#include "raGL/raGL_program_block.h"
 #include "raGL/raGL_texture.h"
 #include "ral/ral_buffer.h"
 #include "ral/ral_framebuffer.h"
 #include "ral/ral_program.h"
+#include "ral/ral_program_block_buffer.h"
 #include "ral/ral_shader.h"
 #include "ral/ral_texture.h"
 #include "shaders/shaders_vertex_fullscreen.h"
@@ -36,16 +36,15 @@ demo_window   _window              = NULL;
 system_event  _window_closed_event = system_event_create(true); /* manual_reset */
 int           _window_size[2]      = {0};
 
-ral_framebuffer    _fbo                              = NULL;
-ral_program        _generation_po                    = NULL;
-GLuint             _generation_po_time_ub_offset     = -1;
-ral_buffer         _generation_po_ub_bo              = NULL;
-raGL_program_block _generation_po_ub_raGL            = NULL;
-ral_program        _modification_po                  = NULL;
-GLuint             _modification_po_input_location   = -1; /* set to GL_TEXTURE0 */
-ral_texture        _to_1                             = 0;
-ral_texture        _to_2                             = 0;
-GLuint             _vao_id                           = 0;
+ral_framebuffer          _fbo                              = NULL;
+ral_program              _generation_po                    = NULL;
+GLuint                   _generation_po_time_ub_offset     = -1;
+ral_program_block_buffer _generation_po_ub                 = NULL;
+ral_program              _modification_po                  = NULL;
+GLuint                   _modification_po_input_location   = -1; /* set to GL_TEXTURE0 */
+ral_texture              _to_1                             = 0;
+ral_texture              _to_2                             = 0;
+GLuint                   _vao_id                           = 0;
 
 const char* fragment_shader_generation = "#version 430 core\n"
                                          "\n"
@@ -302,13 +301,9 @@ void _init_gl(ogl_context context,
     _modification_po_input_location = input_raGL_ptr->location;
 
     /* Retrieve uniform block data */
-    raGL_program_get_uniform_block_by_name(generation_po_raGL,
-                                           system_hashed_ansi_string_create("data"),
-                                          &_generation_po_ub_raGL);
-
-    raGL_program_block_get_property(_generation_po_ub_raGL,
-                                    RAGL_PROGRAM_BLOCK_PROPERTY_BUFFER_RAL,
-                                   &_generation_po_ub_bo);
+    _generation_po_ub = ral_program_block_buffer_create(_context,
+                                                        _generation_po,
+                                                        system_hashed_ansi_string_create("data") );
 }
 
 /* Stage step 1: sample data generation */
@@ -324,6 +319,7 @@ static void _stage_step_generate_data(ral_context context,
     const raGL_program                                        generation_po_raGL       = ral_context_get_program_gl(context,
                                                                                                                     _generation_po);
     GLuint                                                    generation_po_raGL_id    = 0;
+    ral_buffer                                                generation_po_ub_bo_ral  = NULL;
     raGL_buffer                                               generation_po_ub_bo_raGL = NULL;
     uint32_t                                                  time_ms                  = 0;
     float                                                     time_ms_as_s             = 0;
@@ -339,8 +335,12 @@ static void _stage_step_generate_data(ral_context context,
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
                             &entry_points_ptr);
 
+    ral_program_block_buffer_get_property(_generation_po_ub,
+                                          RAL_PROGRAM_BLOCK_BUFFER_PROPERTY_BUFFER_RAL,
+                                         &generation_po_ub_bo_ral);
+
     generation_po_ub_bo_raGL = ral_context_get_buffer_gl(context,
-                                                         _generation_po_ub_bo);
+                                                         generation_po_ub_bo_ral);
 
     system_time_get_msec_for_time(time,
                                  &time_ms);
@@ -350,11 +350,11 @@ static void _stage_step_generate_data(ral_context context,
     entry_points_ptr->pGLBindVertexArray(_vao_id);
     entry_points_ptr->pGLUseProgram      (generation_po_raGL_id);
 
-    raGL_program_block_set_nonarrayed_variable_value(_generation_po_ub_raGL,
-                                                     _generation_po_time_ub_offset,
-                                                    &time_ms_as_s,
-                                                     sizeof(float) );
-    raGL_program_block_sync                         (_generation_po_ub_raGL);
+    ral_program_block_buffer_set_nonarrayed_variable_value(_generation_po_ub,
+                                                           _generation_po_time_ub_offset,
+                                                          &time_ms_as_s,
+                                                           sizeof(float) );
+    ral_program_block_buffer_sync                         (_generation_po_ub);
 
     raGL_framebuffer fbo_raGL                              = NULL;
     GLuint           fbo_raGL_id                           = -1;
@@ -376,10 +376,10 @@ static void _stage_step_generate_data(ral_context context,
     raGL_buffer_get_property(generation_po_ub_bo_raGL,
                              RAGL_BUFFER_PROPERTY_START_OFFSET,
                             &generation_po_ub_bo_raGL_start_offset);
-    ral_buffer_get_property (_generation_po_ub_bo,
+    ral_buffer_get_property (generation_po_ub_bo_ral,
                              RAL_BUFFER_PROPERTY_SIZE,
                             &generation_po_ub_bo_ral_size);
-    ral_buffer_get_property (_generation_po_ub_bo,
+    ral_buffer_get_property (generation_po_ub_bo_ral,
                              RAL_BUFFER_PROPERTY_START_OFFSET,
                             &generation_po_ub_bo_ral_start_offset);
 
@@ -499,6 +499,13 @@ PRIVATE void _window_closing_callback_handler(system_window window,
     system_window_get_property(window,
                                SYSTEM_WINDOW_PROPERTY_RENDERING_CONTEXT_RAL,
                               &context);
+
+    if (_generation_po_ub != NULL)
+    {
+        ral_program_block_buffer_release(_generation_po_ub);
+
+        _generation_po_ub = NULL;
+    }
 
     _deinit_gl          (context);
     ogl_pipeline_release(_pipeline);

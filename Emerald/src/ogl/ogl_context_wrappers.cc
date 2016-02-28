@@ -13,7 +13,6 @@
 #include "ogl/ogl_context_vaos.h"
 #include "ogl/ogl_vao.h"
 #include "raGL/raGL_program.h"
-#include "raGL/raGL_program_block.h"
 #include "raGL/raGL_texture.h"
 #include "raGL/raGL_utils.h"
 #include "ral/ral_program.h"
@@ -4477,10 +4476,10 @@ PUBLIC void APIENTRY ogl_context_wrappers_glShaderStorageBlockBinding(GLuint pro
                                                                       GLuint shaderStorageBlockIndex,
                                                                       GLuint shaderStorageBlockBinding)
 {
-    raGL_backend            context_backend = NULL;
-    ogl_context             context         = ogl_context_get_current_context();
-    raGL_program            program_raGL    = NULL;
-    ogl_context_state_cache state_cache     = NULL;
+    raGL_backend              context_backend = NULL;
+    ogl_context               context         = ogl_context_get_current_context();
+    raGL_program              program_raGL    = NULL;
+    ogl_context_state_cache   state_cache     = NULL;
 
     ogl_context_get_property    (context,
                                  OGL_CONTEXT_PROPERTY_BACKEND,
@@ -4488,6 +4487,7 @@ PUBLIC void APIENTRY ogl_context_wrappers_glShaderStorageBlockBinding(GLuint pro
     ogl_context_get_property    (context,
                                  OGL_CONTEXT_PROPERTY_STATE_CACHE,
                                 &state_cache);
+
     ogl_context_state_cache_sync(state_cache,
                                  STATE_CACHE_SYNC_BIT_ACTIVE_PROGRAM_OBJECT);
 
@@ -4501,36 +4501,28 @@ PUBLIC void APIENTRY ogl_context_wrappers_glShaderStorageBlockBinding(GLuint pro
 
     if (program_raGL != NULL)
     {
-        raGL_program_block requested_ssb = NULL;
+        GLuint current_indexed_ssb_bp = -1;
 
-        raGL_program_get_shader_storage_block_by_sb_index(program_raGL,
-                                                         shaderStorageBlockIndex,
-                                                        &requested_ssb);
+        raGL_program_get_block_property(program_raGL,
+                                        RAL_PROGRAM_BLOCK_TYPE_STORAGE_BUFFER,
+                                        shaderStorageBlockIndex,
+                                        RAGL_PROGRAM_BLOCK_PROPERTY_INDEXED_BP,
+                                       &current_indexed_ssb_bp);
 
-        ASSERT_DEBUG_SYNC(requested_ssb != NULL,
-                          "ogl_program_ssb instance for requested shader storage block index was not found.");
-
-        if (requested_ssb != NULL)
+        //if (current_indexed_ssb_bp != shaderStorageBlockBinding)
         {
-            GLuint current_indexed_ssb_bp = -1;
+            /* Update the internal cache */
+            _private_entrypoints_ptr->pGLShaderStorageBlockBinding(program,
+                                                                   shaderStorageBlockIndex,
+                                                                   shaderStorageBlockBinding);
 
-            raGL_program_block_get_property(requested_ssb,
+            raGL_program_set_block_property(program_raGL,
+                                            RAL_PROGRAM_BLOCK_TYPE_STORAGE_BUFFER,
+                                            shaderStorageBlockIndex,
                                             RAGL_PROGRAM_BLOCK_PROPERTY_INDEXED_BP,
-                                           &current_indexed_ssb_bp);
-
-            if (current_indexed_ssb_bp != shaderStorageBlockBinding)
-            {
-                /* Update the internal cache */
-                _private_entrypoints_ptr->pGLShaderStorageBlockBinding(program,
-                                                                       shaderStorageBlockIndex,
-                                                                       shaderStorageBlockBinding);
-
-                raGL_program_block_set_property(requested_ssb,
-                                                RAGL_PROGRAM_BLOCK_PROPERTY_INDEXED_BP,
-                                               &shaderStorageBlockBinding);
-            } /* if (current_indexed_ssb_bp != shaderStorageBlockBinding) */
-        } /* if (requested_ssb != NULL) */
-    } /* if (program_instance != NULL) */
+                                           &shaderStorageBlockBinding);
+        } /* if (current_indexed_ssb_bp != shaderStorageBlockBinding) */
+    } /* if (program_raGL != NULL) */
 }
 
 /* Please see header for specification */
@@ -5057,18 +5049,17 @@ PUBLIC void APIENTRY ogl_context_wrappers_glUniformBlockBinding(GLuint program,
                                                                 GLuint uniformBlockIndex,
                                                                 GLuint uniformBlockBinding)
 {
-    ogl_context             context         = ogl_context_get_current_context();
-    raGL_backend            context_backend = NULL;
-    raGL_program            program_raGL    = NULL;
-    ogl_context_state_cache state_cache     = NULL;
+    raGL_backend              context_backend = NULL;
+    ogl_context               context         = ogl_context_get_current_context();
+    raGL_program              program_raGL    = NULL;
+    ogl_context_state_cache   state_cache     = NULL;
 
-    ogl_context_get_property(context,
-                             OGL_CONTEXT_PROPERTY_BACKEND,
-                            &context_backend);
-    ogl_context_get_property(context,
-                             OGL_CONTEXT_PROPERTY_STATE_CACHE,
-                            &state_cache);
-
+    ogl_context_get_property    (context,
+                                 OGL_CONTEXT_PROPERTY_BACKEND,
+                                &context_backend);
+    ogl_context_get_property    (context,
+                                 OGL_CONTEXT_PROPERTY_STATE_CACHE,
+                                &state_cache);
     ogl_context_state_cache_sync(state_cache,
                                  STATE_CACHE_SYNC_BIT_ACTIVE_PROGRAM_OBJECT);
 
@@ -5082,36 +5073,28 @@ PUBLIC void APIENTRY ogl_context_wrappers_glUniformBlockBinding(GLuint program,
 
     if (program_raGL != NULL)
     {
-        raGL_program_block requested_ub = NULL;
+        GLuint current_indexed_ssb_bp = -1;
 
-        raGL_program_get_uniform_block_by_ub_index(program_raGL,
-                                                   uniformBlockIndex,
-                                                  &requested_ub);
+        raGL_program_get_block_property(program_raGL,
+                                        RAL_PROGRAM_BLOCK_TYPE_UNIFORM_BUFFER,
+                                        uniformBlockIndex,
+                                        RAGL_PROGRAM_BLOCK_PROPERTY_INDEXED_BP,
+                                       &current_indexed_ssb_bp);
 
-        ASSERT_DEBUG_SYNC(requested_ub != NULL,
-                          "ogl_program_ub instance for requested uniform block index was not found.");
-
-        if (requested_ub != NULL)
+        //if (current_indexed_ssb_bp != uniformBlockBinding)
         {
-            GLuint current_indexed_ub_bp = -1;
+            /* Update the internal cache */
+            _private_entrypoints_ptr->pGLUniformBlockBinding(program,
+                                                             uniformBlockIndex,
+                                                             uniformBlockBinding);
 
-            raGL_program_block_get_property(requested_ub,
+            raGL_program_set_block_property(program_raGL,
+                                            RAL_PROGRAM_BLOCK_TYPE_UNIFORM_BUFFER,
+                                            uniformBlockIndex,
                                             RAGL_PROGRAM_BLOCK_PROPERTY_INDEXED_BP,
-                                           &current_indexed_ub_bp);
-
-            if (current_indexed_ub_bp != uniformBlockBinding)
-            {
-                /* Update the internal cache */
-                _private_entrypoints_ptr->pGLUniformBlockBinding(program,
-                                                                 uniformBlockIndex,
-                                                                 uniformBlockBinding);
-
-                raGL_program_block_set_property(requested_ub,
-                                                RAGL_PROGRAM_BLOCK_PROPERTY_INDEXED_BP,
-                                               &uniformBlockBinding);
-            } /* if (current_indexed_ub_bp != uniformBlockBinding) */
-        } /* if (requested_ub != NULL) */
-    } /* if (program_instance != NULL) */
+                                           &uniformBlockBinding);
+        } /* if (current_indexed_ssb_bp != uniformBlockBinding) */
+    } /* if (program_raGL != NULL) */
 }
 
 /** Please see header for spec */

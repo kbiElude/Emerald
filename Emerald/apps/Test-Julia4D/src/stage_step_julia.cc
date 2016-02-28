@@ -14,31 +14,30 @@
 #include "procedural/procedural_mesh_sphere.h"
 #include "raGL/raGL_buffer.h"
 #include "raGL/raGL_program.h"
-#include "raGL/raGL_program_block.h"
 #include "ral/ral_buffer.h"
 #include "ral/ral_context.h"
 #include "ral/ral_program.h"
+#include "ral/ral_program_block_buffer.h"
 #include "ral/ral_shader.h"
 #include "system/system_matrix4x4.h"
 
-GLuint                 _julia_data_ub_offset                      = -1;
-GLuint                 _julia_epsilon_ub_offset                   = -1;
-GLuint                 _julia_escape_ub_offset                    = -1;
-GLuint                 _julia_eye_ub_offset                       = -1;
-GLuint                 _julia_light_color_ub_offset               = -1;
-GLuint                 _julia_light_position_ub_offset            = -1;
-GLuint                 _julia_max_iterations_ub_offset            = -1;
-GLuint                 _julia_mvp_ub_offset                       = -1;
-ral_program            _julia_program                             = 0;
-ral_buffer             _julia_program_ub_bo                       = NULL;
-raGL_program_block     _julia_program_ub_raGL                     = NULL;
-GLuint                 _julia_raycast_radius_multiplier_ub_offset = -1;
-GLuint                 _julia_shadows_ub_offset                   = -1;
-GLuint                 _julia_specularity_ub_offset               = -1;
-procedural_mesh_sphere _julia_sphere                              = NULL;
-GLuint                 _julia_vao_id                              = -1;
-GLuint                 _julia_vertex_attribute_location           = -1;
-system_matrix4x4       _julia_view_matrix                         = NULL;
+GLuint                   _julia_data_ub_offset                      = -1;
+GLuint                   _julia_epsilon_ub_offset                   = -1;
+GLuint                   _julia_escape_ub_offset                    = -1;
+GLuint                   _julia_eye_ub_offset                       = -1;
+GLuint                   _julia_light_color_ub_offset               = -1;
+GLuint                   _julia_light_position_ub_offset            = -1;
+GLuint                   _julia_max_iterations_ub_offset            = -1;
+GLuint                   _julia_mvp_ub_offset                       = -1;
+ral_program              _julia_program                             = 0;
+ral_program_block_buffer _julia_program_ub                          = NULL;
+GLuint                   _julia_raycast_radius_multiplier_ub_offset = -1;
+GLuint                   _julia_shadows_ub_offset                   = -1;
+GLuint                   _julia_specularity_ub_offset               = -1;
+procedural_mesh_sphere   _julia_sphere                              = NULL;
+GLuint                   _julia_vao_id                              = -1;
+GLuint                   _julia_vertex_attribute_location           = -1;
+system_matrix4x4         _julia_view_matrix                         = NULL;
 
 /* Shaders.
  *
@@ -299,52 +298,52 @@ static void _stage_step_julia_execute(ral_context context,
     mvp = system_matrix4x4_create_by_mul(main_get_projection_matrix(),
                                          _julia_view_matrix);
 
-    raGL_program_block_set_nonarrayed_variable_value(_julia_program_ub_raGL,
-                                                     _julia_data_ub_offset,
-                                                     data,
-                                                     sizeof(float) * 4);
-    raGL_program_block_set_nonarrayed_variable_value(_julia_program_ub_raGL,
-                                                     _julia_epsilon_ub_offset,
-                                                    &epsilon,
-                                                     sizeof(float) );
-    raGL_program_block_set_nonarrayed_variable_value(_julia_program_ub_raGL,
-                                                     _julia_escape_ub_offset,
-                                                    &escape,
-                                                     sizeof(float) );
-    raGL_program_block_set_nonarrayed_variable_value(_julia_program_ub_raGL,
-                                                     _julia_light_position_ub_offset,
-                                                     light_position,
-                                                     sizeof(float) * 3);
-    raGL_program_block_set_nonarrayed_variable_value(_julia_program_ub_raGL,
-                                                     _julia_light_color_ub_offset,
-                                                     light_color,
-                                                     sizeof(float) * 3);
-    raGL_program_block_set_nonarrayed_variable_value(_julia_program_ub_raGL,
-                                                     _julia_max_iterations_ub_offset,
-                                                    &max_iterations,
-                                                     sizeof(int) );
-    raGL_program_block_set_nonarrayed_variable_value(_julia_program_ub_raGL,
-                                                     _julia_raycast_radius_multiplier_ub_offset,
-                                                    &raycast_radius_multiplier,
-                                                     sizeof(float) );
-    raGL_program_block_set_nonarrayed_variable_value(_julia_program_ub_raGL,
-                                                     _julia_shadows_ub_offset,
-                                                    &shadows,
-                                                     sizeof(bool) );
-    raGL_program_block_set_nonarrayed_variable_value(_julia_program_ub_raGL,
-                                                     _julia_specularity_ub_offset,
-                                                    &specularity,
-                                                     sizeof(float) );
-    raGL_program_block_set_nonarrayed_variable_value(_julia_program_ub_raGL,
-                                                     _julia_eye_ub_offset,
-                                                     camera_location,
-                                                     sizeof(float) * 3);
-    raGL_program_block_set_nonarrayed_variable_value(_julia_program_ub_raGL,
-                                                     _julia_mvp_ub_offset,
-                                                     system_matrix4x4_get_column_major_data(mvp),
-                                                     sizeof(float) * 16);
+    ral_program_block_buffer_set_nonarrayed_variable_value(_julia_program_ub,
+                                                           _julia_data_ub_offset,
+                                                           data,
+                                                           sizeof(float) * 4);
+    ral_program_block_buffer_set_nonarrayed_variable_value(_julia_program_ub,
+                                                           _julia_epsilon_ub_offset,
+                                                          &epsilon,
+                                                           sizeof(float) );
+    ral_program_block_buffer_set_nonarrayed_variable_value(_julia_program_ub,
+                                                           _julia_escape_ub_offset,
+                                                          &escape,
+                                                           sizeof(float) );
+    ral_program_block_buffer_set_nonarrayed_variable_value(_julia_program_ub,
+                                                           _julia_light_position_ub_offset,
+                                                           light_position,
+                                                           sizeof(float) * 3);
+    ral_program_block_buffer_set_nonarrayed_variable_value(_julia_program_ub,
+                                                           _julia_light_color_ub_offset,
+                                                           light_color,
+                                                           sizeof(float) * 3);
+    ral_program_block_buffer_set_nonarrayed_variable_value(_julia_program_ub,
+                                                           _julia_max_iterations_ub_offset,
+                                                          &max_iterations,
+                                                           sizeof(int) );
+    ral_program_block_buffer_set_nonarrayed_variable_value(_julia_program_ub,
+                                                           _julia_raycast_radius_multiplier_ub_offset,
+                                                          &raycast_radius_multiplier,
+                                                           sizeof(float) );
+    ral_program_block_buffer_set_nonarrayed_variable_value(_julia_program_ub,
+                                                           _julia_shadows_ub_offset,
+                                                          &shadows,
+                                                           sizeof(bool) );
+    ral_program_block_buffer_set_nonarrayed_variable_value(_julia_program_ub,
+                                                           _julia_specularity_ub_offset,
+                                                          &specularity,
+                                                           sizeof(float) );
+    ral_program_block_buffer_set_nonarrayed_variable_value(_julia_program_ub,
+                                                           _julia_eye_ub_offset,
+                                                           camera_location,
+                                                           sizeof(float) * 3);
+    ral_program_block_buffer_set_nonarrayed_variable_value(_julia_program_ub,
+                                                           _julia_mvp_ub_offset,
+                                                           system_matrix4x4_get_column_major_data(mvp),
+                                                           sizeof(float) * 16);
 
-    raGL_program_block_sync(_julia_program_ub_raGL);
+    ral_program_block_buffer_sync(_julia_program_ub);
 
     system_matrix4x4_release(mvp);
 
@@ -352,20 +351,23 @@ static void _stage_step_julia_execute(ral_context context,
     raGL_buffer julia_program_ub_bo_raGL              = NULL;
     GLuint      julia_program_ub_bo_raGL_id           = 0;
     uint32_t    julia_program_ub_bo_raGL_start_offset = -1;
+    ral_buffer  julia_program_ub_bo_ral               = NULL;
     uint32_t    julia_program_ub_bo_ral_size          = 0;
     uint32_t    julia_program_ub_bo_ral_start_offset  = 0;
 
-    ral_buffer_get_property(_julia_program_ub_bo,
-                            RAL_BUFFER_PROPERTY_SIZE,
-                            &julia_program_ub_bo_ral_size);
-    ral_buffer_get_property(_julia_program_ub_bo,
-                            RAL_BUFFER_PROPERTY_START_OFFSET,
-                            &julia_program_ub_bo_ral_start_offset);
+    ral_program_block_buffer_get_property(_julia_program_ub,
+                                          RAL_PROGRAM_BLOCK_BUFFER_PROPERTY_BUFFER_RAL,
+                                         &julia_program_ub_bo_ral);
 
     julia_program_ub_bo_raGL = ral_context_get_buffer_gl(context,
-                                                         _julia_program_ub_bo);
+                                                         julia_program_ub_bo_ral);
 
-
+    ral_buffer_get_property (julia_program_ub_bo_ral,
+                             RAL_BUFFER_PROPERTY_SIZE,
+                             &julia_program_ub_bo_ral_size);
+    ral_buffer_get_property (julia_program_ub_bo_ral,
+                             RAL_BUFFER_PROPERTY_START_OFFSET,
+                             &julia_program_ub_bo_ral_start_offset);
     raGL_buffer_get_property(julia_program_ub_bo_raGL,
                              RAGL_BUFFER_PROPERTY_ID,
                             &julia_program_ub_bo_raGL_id);
@@ -411,6 +413,13 @@ PUBLIC void stage_step_julia_deinit(ral_context context)
 
     procedural_mesh_sphere_release(_julia_sphere);
     system_matrix4x4_release      (_julia_view_matrix);
+
+    if (_julia_program_ub != NULL)
+    {
+        ral_program_block_buffer_release(_julia_program_ub);
+
+        _julia_program_ub = NULL;
+    }
 }
 
 /* Please see header for specification */
@@ -564,13 +573,9 @@ PUBLIC void stage_step_julia_init(ral_context  context,
     _julia_vertex_attribute_location           = (vertex_attribute_ptr                  != NULL) ? vertex_attribute_ptr->location                      : -1;
 
     /* Retrieve uniform block data */
-    raGL_program_get_uniform_block_by_name(julia_po_raGL,
-                                           system_hashed_ansi_string_create("dataUB"),
-                                          &_julia_program_ub_raGL);
-
-    raGL_program_block_get_property(_julia_program_ub_raGL,
-                                    RAGL_PROGRAM_BLOCK_PROPERTY_BUFFER_RAL,
-                                   &_julia_program_ub_bo);
+    _julia_program_ub = ral_program_block_buffer_create(context,
+                                                        _julia_program,
+                                                        system_hashed_ansi_string_create("dataUB") );
 
     /* Generate & set VAO up */
     ogl_context                       context_gl      = NULL;

@@ -9,13 +9,13 @@
 #include "raGL/raGL_buffer.h"
 #include "raGL/raGL_framebuffer.h"
 #include "raGL/raGL_program.h"
-#include "raGL/raGL_program_block.h"
 #include "raGL/raGL_shader.h"
 #include "raGL/raGL_texture.h"
 #include "ral/ral_buffer.h"
 #include "ral/ral_context.h"
 #include "ral/ral_framebuffer.h"
 #include "ral/ral_program.h"
+#include "ral/ral_program_block_buffer.h"
 #include "ral/ral_shader.h"
 #include "ral/ral_texture.h"
 #include "shaders/shaders_vertex_fullscreen.h"
@@ -37,8 +37,7 @@ typedef struct
 
     system_hashed_ansi_string name;
     ral_program               program;
-    ral_buffer                program_ub_bo;
-    raGL_program_block        program_ub_raGL;
+    ral_program_block_buffer  program_ub;
 
     REFCOUNT_INSERT_VARIABLES
 } _postprocessing_blur_poisson;
@@ -180,16 +179,9 @@ PUBLIC void _postprocessing_blur_poisson_init_renderer_callback(ogl_context cont
     poisson_ptr->blur_strength_ub_offset = blur_strength_uniform_ral_ptr->block_offset;
 
     /* Retrieve UB info */
-    raGL_program_get_uniform_block_by_name(po_raGL,
-                                           system_hashed_ansi_string_create("dataFS"),
-                                          &poisson_ptr->program_ub_raGL);
-
-    ASSERT_DEBUG_SYNC(poisson_ptr->program_ub_raGL != NULL,
-                      "dataFS uniform block descriptor is NULL");
-
-    raGL_program_block_get_property(poisson_ptr->program_ub_raGL,
-                                    RAGL_PROGRAM_BLOCK_PROPERTY_BUFFER_RAL,
-                                   &poisson_ptr->program_ub_bo);
+    poisson_ptr->program_ub = ral_program_block_buffer_create(poisson_ptr->context,
+                                                              poisson_ptr->program,
+                                                              system_hashed_ansi_string_create("dataFS") );
 
     /* Generate FBO */
     ral_context_create_framebuffers(poisson_ptr->context,
@@ -219,6 +211,13 @@ PRIVATE void _postprocessing_blur_poisson_release(void* ptr)
                                RAL_CONTEXT_OBJECT_TYPE_PROGRAM,
                                1, /* n_objects */
                                (const void**) &data_ptr->program);
+
+    if (data_ptr->program_ub != NULL)
+    {
+        ral_program_block_buffer_release(data_ptr->program_ub);
+
+        data_ptr->program_ub = NULL;
+    }
 }
 
 
@@ -366,11 +365,11 @@ PUBLIC EMERALD_API void postprocessing_blur_poisson_execute(postprocessing_blur_
                                             GL_TEXTURE_2D,
                                             input_texture_id);
 
-    raGL_program_block_set_nonarrayed_variable_value(poisson_ptr->program_ub_raGL,
-                                                     poisson_ptr->blur_strength_ub_offset,
-                                                    &blur_strength,
-                                                     sizeof(float) );
-    raGL_program_block_sync                         (poisson_ptr->program_ub_raGL);
+    ral_program_block_buffer_set_nonarrayed_variable_value(poisson_ptr->program_ub,
+                                                           poisson_ptr->blur_strength_ub_offset,
+                                                          &blur_strength,
+                                                           sizeof(float) );
+    ral_program_block_buffer_sync                         (poisson_ptr->program_ub);
 
     ral_texture_get_mipmap_property(result_texture_ral,
                                     0, /* n_layer */
@@ -383,13 +382,18 @@ PUBLIC EMERALD_API void postprocessing_blur_poisson_execute(postprocessing_blur_
                                     RAL_TEXTURE_MIPMAP_PROPERTY_WIDTH,
                                    &texture_width);
 
-    raGL_buffer program_ub_bo_raGL         = NULL;
     GLuint      program_ub_bo_id           = 0;
+    raGL_buffer program_ub_bo_raGL         = NULL;
+    ral_buffer  program_ub_bo_ral          = NULL;
     uint32_t    program_ub_bo_size         = 0;
     uint32_t    program_ub_bo_start_offset = -1;
 
+    ral_program_block_buffer_get_property(poisson_ptr->program_ub,
+                                          RAL_PROGRAM_BLOCK_BUFFER_PROPERTY_BUFFER_RAL,
+                                         &program_ub_bo_ral);
+
     program_ub_bo_raGL = ral_context_get_buffer_gl(poisson_ptr->context,
-                                                   poisson_ptr->program_ub_bo);
+                                                   program_ub_bo_ral);
 
     raGL_buffer_get_property(program_ub_bo_raGL,
                              RAGL_BUFFER_PROPERTY_ID,
@@ -397,7 +401,7 @@ PUBLIC EMERALD_API void postprocessing_blur_poisson_execute(postprocessing_blur_
     raGL_buffer_get_property(program_ub_bo_raGL,
                              RAGL_BUFFER_PROPERTY_START_OFFSET,
                             &program_ub_bo_start_offset);
-    ral_buffer_get_property (poisson_ptr->program_ub_bo,
+    ral_buffer_get_property (program_ub_bo_ral,
                              RAL_BUFFER_PROPERTY_SIZE,
                             &program_ub_bo_size);
 

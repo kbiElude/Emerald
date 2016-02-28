@@ -19,11 +19,11 @@
 #include "raGL/raGL_buffer.h"
 #include "raGL/raGL_framebuffer.h"
 #include "raGL/raGL_program.h"
-#include "raGL/raGL_program_block.h"
 #include "raGL/raGL_texture.h"
 #include "ral/ral_buffer.h"
 #include "ral/ral_framebuffer.h"
 #include "ral/ral_program.h"
+#include "ral/ral_program_block_buffer.h"
 #include "ral/ral_texture.h"
 #include "shaders/shaders_vertex_fullscreen.h"
 #include "shaders/shaders_fragment_texture2D_filmic_customizable.h"
@@ -67,9 +67,8 @@ const ral_program_variable*                    _filmic_customizable_program_expo
 const ral_program_variable*                    _filmic_customizable_program_f_uniform_ral_ptr             = NULL;
 const ral_program_variable*                    _filmic_customizable_program_w_uniform_ral_ptr             = NULL;
 const _raGL_program_variable*                  _filmic_customizable_program_tex_uniform_raGL_ptr          = NULL;
-ral_buffer                                     _filmic_customizable_program_ub_bo                         = NULL;
+ral_program_block_buffer                       _filmic_customizable_program_ub                            = NULL;
 uint32_t                                       _filmic_customizable_program_ub_bo_size                    = 0;
-raGL_program_block                             _filmic_customizable_program_ub_raGL                       = NULL;
 curve_container                                _filmic_customizable_a_curve                               = NULL;
 curve_container                                _filmic_customizable_b_curve                               = NULL;
 curve_container                                _filmic_customizable_c_curve                               = NULL;
@@ -87,26 +86,23 @@ shaders_fragment_texture2D_filmic     _filmic_fp                                
 ral_program                           _filmic_program                             = NULL;
 const ral_program_variable*           _filmic_program_exposure_uniform_ral_ptr    = NULL;
 const _raGL_program_variable*         _filmic_program_tex_uniform_raGL_ptr        = NULL;
-ral_buffer                            _filmic_program_ub_bo                       = NULL;
 uint32_t                              _filmic_program_ub_bo_size                  = 0;
-raGL_program_block                    _filmic_program_ub_raGL                     = NULL;
+ral_program_block_buffer              _filmic_program_ub                          = NULL;
 system_variant                        _float_variant                              = NULL;
 shaders_fragment_texture2D_linear     _linear_fp                                  = NULL;
 ral_program                           _linear_program                             = NULL;
 const ral_program_variable*           _linear_program_exposure_uniform_ral_ptr    = NULL;
 const _raGL_program_variable*         _linear_program_tex_uniform_raGL_ptr        = NULL;
-ral_buffer                            _linear_program_ub_bo                       = NULL;
 uint32_t                              _linear_program_ub_bo_size                  = 0;
-raGL_program_block                    _linear_program_ub_raGL                     = NULL;
+ral_program_block_buffer              _linear_program_ub                          = NULL;
 postprocessing_reinhard_tonemap       _postprocessing_reinhard_tonemapper         = NULL;
 postprocessing_reinhard_tonemap       _postprocessing_reinhard_tonemapper_crude   = NULL;
 shaders_fragment_texture2D_reinhardt  _reinhardt_fp                               = NULL;
 ral_program                           _reinhardt_program                          = NULL;
 const ral_program_variable*           _reinhardt_program_exposure_uniform_ral_ptr = NULL;
 const _raGL_program_variable*         _reinhardt_program_tex_uniform_raGL_ptr     = NULL;
-ral_buffer                            _reinhardt_program_ub_bo                    = 0;
 uint32_t                              _reinhardt_program_ub_bo_size               = 0;
-raGL_program_block                    _reinhardt_program_ub_raGL                  = NULL;
+ral_program_block_buffer              _reinhardt_program_ub                       = NULL;
 ogl_text                              _text_renderer                              = NULL;
 uint32_t                              _texture_height                             = -1;
 ral_texture                           _texture                                    = NULL;
@@ -302,20 +298,26 @@ void _rendering_handler(ogl_context context_gl,
     {
         case MAPPING_LINEAR:
         {
-            raGL_buffer  linear_program_ub_bo_raGL              = ral_context_get_buffer_gl(_context,
-                                                                                            _linear_program_ub_bo);
+            raGL_buffer  linear_program_ub_bo_raGL              = NULL;
             GLuint       linear_program_ub_bo_raGL_id           = 0;
             uint32_t     linear_program_ub_bo_raGL_start_offset = -1;
+            ral_buffer   linear_program_ub_bo_ral               = NULL;
             uint32_t     linear_program_ub_bo_ral_start_offset  = -1;
             raGL_program po_raGL                                = ral_context_get_program_gl(_context,
                                                                                              _linear_program);
             GLuint       po_raGL_id                             = 0;
 
-            raGL_program_get_property(po_raGL,
-                                      RAGL_PROGRAM_PROPERTY_ID,
-                                     &po_raGL_id);
+            ral_program_block_buffer_get_property(_linear_program_ub,
+                                                  RAL_PROGRAM_BLOCK_BUFFER_PROPERTY_BUFFER_RAL,
+                                                 &linear_program_ub_bo_ral);
+            raGL_program_get_property            (po_raGL,
+                                                  RAGL_PROGRAM_PROPERTY_ID,
+                                                 &po_raGL_id);
 
-            ral_buffer_get_property (_linear_program_ub_bo,
+            linear_program_ub_bo_raGL = ral_context_get_buffer_gl(_context,
+                                                                  linear_program_ub_bo_ral);
+
+            ral_buffer_get_property (linear_program_ub_bo_ral,
                                      RAL_BUFFER_PROPERTY_START_OFFSET,
                                     &linear_program_ub_bo_ral_start_offset);
             raGL_buffer_get_property(linear_program_ub_bo_raGL,
@@ -334,12 +336,12 @@ void _rendering_handler(ogl_context context_gl,
                                               _linear_program_tex_uniform_raGL_ptr->location,
                                               0);
 
-            raGL_program_block_set_nonarrayed_variable_value(_linear_program_ub_raGL,
-                                                             _linear_program_exposure_uniform_ral_ptr->block_offset,
-                                                            &variant_value,
-                                                             sizeof(float) );
+            ral_program_block_buffer_set_nonarrayed_variable_value(_linear_program_ub,
+                                                                   _linear_program_exposure_uniform_ral_ptr->block_offset,
+                                                                  &variant_value,
+                                                                   sizeof(float) );
 
-            raGL_program_block_sync(_linear_program_ub_raGL);
+            ral_program_block_buffer_sync(_linear_program_ub);
 
             entry_points->pGLBindBufferRange(GL_UNIFORM_BUFFER,
                                              0, /* index */
@@ -355,17 +357,23 @@ void _rendering_handler(ogl_context context_gl,
             const raGL_program po_raGL                                   = ral_context_get_program_gl(_context,
                                                                                                       _reinhardt_program);
             GLuint             po_raGL_id                                = 0;
-            raGL_buffer        reinhardt_program_ub_bo_raGL              = ral_context_get_buffer_gl(_context,
-                                                                                                     _reinhardt_program_ub_bo);
+            raGL_buffer        reinhardt_program_ub_bo_raGL              = NULL;
             GLuint             reinhardt_program_ub_bo_raGL_id           = 0;
             uint32_t           reinhardt_program_ub_bo_raGL_start_offset = -1;
+            ral_buffer         reinhardt_program_ub_bo_ral               = NULL;
             uint32_t           reinhardt_program_ub_bo_ral_start_offset  = -1;
 
-            raGL_program_get_property(po_raGL,
-                                      RAGL_PROGRAM_PROPERTY_ID,
-                                     &po_raGL_id);
+            raGL_program_get_property            (po_raGL,
+                                                  RAGL_PROGRAM_PROPERTY_ID,
+                                                 &po_raGL_id);
+            ral_program_block_buffer_get_property(_reinhardt_program_ub,
+                                                  RAL_PROGRAM_BLOCK_BUFFER_PROPERTY_BUFFER_RAL,
+                                                 &reinhardt_program_ub_bo_ral);
 
-            ral_buffer_get_property (_reinhardt_program_ub_bo,
+            reinhardt_program_ub_bo_raGL = ral_context_get_buffer_gl(_context,
+                                                                     reinhardt_program_ub_bo_ral);
+
+            ral_buffer_get_property (reinhardt_program_ub_bo_ral,
                                      RAL_BUFFER_PROPERTY_START_OFFSET,
                                     &reinhardt_program_ub_bo_ral_start_offset);
             raGL_buffer_get_property(reinhardt_program_ub_bo_raGL,
@@ -384,12 +392,11 @@ void _rendering_handler(ogl_context context_gl,
                                               _reinhardt_program_tex_uniform_raGL_ptr->location,
                                               0);
 
-            raGL_program_block_set_nonarrayed_variable_value(_reinhardt_program_ub_raGL,
-                                                             _reinhardt_program_exposure_uniform_ral_ptr->block_offset,
-                                                            &variant_value,
-                                                             sizeof(float) );
-
-            raGL_program_block_sync(_reinhardt_program_ub_raGL);
+            ral_program_block_buffer_set_nonarrayed_variable_value(_reinhardt_program_ub,
+                                                                   _reinhardt_program_exposure_uniform_ral_ptr->block_offset,
+                                                                  &variant_value,
+                                                                   sizeof(float) );
+            ral_program_block_buffer_sync                         (_reinhardt_program_ub);
 
             entry_points->pGLBindBufferRange(GL_UNIFORM_BUFFER,
                                              0, /* index */
@@ -422,18 +429,24 @@ void _rendering_handler(ogl_context context_gl,
 
         case MAPPING_FILMIC:
         {
-            raGL_buffer        filmic_program_ub_bo_raGL              = ral_context_get_buffer_gl(_context,
-                                                                                                  _filmic_program_ub_bo);
+            raGL_buffer        filmic_program_ub_bo_raGL              = NULL;
             GLuint             filmic_program_ub_bo_raGL_id           = 0;
             uint32_t           filmic_program_ub_bo_raGL_start_offset = -1;
+            ral_buffer         filmic_program_ub_bo_ral               = NULL;
             uint32_t           filmic_program_ub_bo_ral_start_offset  = -1;
             const raGL_program po_raGL                                = ral_context_get_program_gl(_context,
                                                                                                    _filmic_program);
             GLuint             po_raGL_id                             = 0;
 
-            raGL_program_get_property(po_raGL,
-                                      RAGL_PROGRAM_PROPERTY_ID,
-                                     &po_raGL_id);
+            raGL_program_get_property            (po_raGL,
+                                                  RAGL_PROGRAM_PROPERTY_ID,
+                                                 &po_raGL_id);
+            ral_program_block_buffer_get_property(_filmic_program_ub,
+                                                  RAL_PROGRAM_BLOCK_BUFFER_PROPERTY_BUFFER_RAL,
+                                                 &filmic_program_ub_bo_ral);
+
+            filmic_program_ub_bo_raGL = ral_context_get_buffer_gl(_context,
+                                                                  filmic_program_ub_bo_ral);
 
             raGL_buffer_get_property(filmic_program_ub_bo_raGL,
                                      RAGL_BUFFER_PROPERTY_ID,
@@ -441,7 +454,7 @@ void _rendering_handler(ogl_context context_gl,
             raGL_buffer_get_property(filmic_program_ub_bo_raGL,
                                      RAGL_BUFFER_PROPERTY_START_OFFSET,
                                     &filmic_program_ub_bo_raGL_start_offset);
-            ral_buffer_get_property (_filmic_program_ub_bo,
+            ral_buffer_get_property (filmic_program_ub_bo_ral,
                                      RAL_BUFFER_PROPERTY_START_OFFSET,
                                     &filmic_program_ub_bo_ral_start_offset);
 
@@ -454,12 +467,11 @@ void _rendering_handler(ogl_context context_gl,
                                               _filmic_program_tex_uniform_raGL_ptr->location,
                                               0);
 
-            raGL_program_block_set_nonarrayed_variable_value(_filmic_program_ub_raGL,
-                                                             _filmic_program_exposure_uniform_ral_ptr->block_offset,
-                                                            &variant_value,
-                                                             sizeof(float) );
-
-            raGL_program_block_sync(_filmic_program_ub_raGL);
+            ral_program_block_buffer_set_nonarrayed_variable_value(_filmic_program_ub,
+                                                                   _filmic_program_exposure_uniform_ral_ptr->block_offset,
+                                                                  &variant_value,
+                                                                   sizeof(float) );
+            ral_program_block_buffer_sync                         (_filmic_program_ub);
 
             entry_points->pGLBindBufferRange(GL_UNIFORM_BUFFER,
                                              0, /* index */
@@ -473,18 +485,24 @@ void _rendering_handler(ogl_context context_gl,
         case MAPPING_FILMIC_CUSTOMIZABLE:
         {
             float              a, b, c, d, e, exposure_bias, f, w;
-            raGL_buffer        filmic_customizable_program_ub_bo_raGL              = ral_context_get_buffer_gl(_context,
-                                                                                                               _filmic_customizable_program_ub_bo);
+            raGL_buffer        filmic_customizable_program_ub_bo_raGL              = NULL;
             GLuint             filmic_customizable_program_ub_bo_raGL_id           = 0;
             uint32_t           filmic_customizable_program_ub_bo_raGL_start_offset = -1;
+            ral_buffer         filmic_customizable_program_ub_bo_ral               = NULL;
             uint32_t           filmic_customizable_program_ub_bo_ral_start_offset  = -1;
             const raGL_program po_raGL                                             = ral_context_get_program_gl(_context,
                                                                                                                 _filmic_customizable_program);
             GLuint             po_raGL_id                                          = 0;
 
-            raGL_program_get_property(po_raGL,
-                                      RAGL_PROGRAM_PROPERTY_ID,
-                                     &po_raGL_id);
+            raGL_program_get_property            (po_raGL,
+                                                  RAGL_PROGRAM_PROPERTY_ID,
+                                                 &po_raGL_id);
+            ral_program_block_buffer_get_property(_filmic_customizable_program_ub,
+                                                  RAL_PROGRAM_BLOCK_BUFFER_PROPERTY_BUFFER_RAL,
+                                                  &filmic_customizable_program_ub_bo_ral);
+
+            filmic_customizable_program_ub_bo_raGL = ral_context_get_buffer_gl(_context,
+                                                                               filmic_customizable_program_ub_bo_ral);
 
             raGL_buffer_get_property(filmic_customizable_program_ub_bo_raGL,
                                      RAGL_BUFFER_PROPERTY_ID,
@@ -492,7 +510,7 @@ void _rendering_handler(ogl_context context_gl,
             raGL_buffer_get_property(filmic_customizable_program_ub_bo_raGL,
                                      RAGL_BUFFER_PROPERTY_START_OFFSET,
                                     &filmic_customizable_program_ub_bo_raGL_start_offset);
-            ral_buffer_get_property (_filmic_customizable_program_ub_bo,
+            ral_buffer_get_property (filmic_customizable_program_ub_bo_ral,
                                      RAL_BUFFER_PROPERTY_START_OFFSET,
                                     &filmic_customizable_program_ub_bo_ral_start_offset);
 
@@ -542,44 +560,44 @@ void _rendering_handler(ogl_context context_gl,
             entry_points->pGLBindTexture     (GL_TEXTURE_2D,
                                               texture_raGL_id);
 
-            raGL_program_block_set_nonarrayed_variable_value(_filmic_customizable_program_ub_raGL,
+            ral_program_block_buffer_set_nonarrayed_variable_value(_filmic_customizable_program_ub,
                                                              _filmic_customizable_program_a_uniform_ral_ptr->block_offset,
                                                             &a,
                                                              sizeof(float) );
-            raGL_program_block_set_nonarrayed_variable_value(_filmic_customizable_program_ub_raGL,
+            ral_program_block_buffer_set_nonarrayed_variable_value(_filmic_customizable_program_ub,
                                                              _filmic_customizable_program_b_uniform_ral_ptr->block_offset,
                                                             &b,
                                                              sizeof(float) );
-            raGL_program_block_set_nonarrayed_variable_value(_filmic_customizable_program_ub_raGL,
+            ral_program_block_buffer_set_nonarrayed_variable_value(_filmic_customizable_program_ub,
                                                              _filmic_customizable_program_c_uniform_ral_ptr->block_offset,
                                                             &c,
                                                              sizeof(float) );
-            raGL_program_block_set_nonarrayed_variable_value(_filmic_customizable_program_ub_raGL,
+            ral_program_block_buffer_set_nonarrayed_variable_value(_filmic_customizable_program_ub,
                                                              _filmic_customizable_program_d_uniform_ral_ptr->block_offset,
                                                             &d,
                                                              sizeof(float) );
-            raGL_program_block_set_nonarrayed_variable_value(_filmic_customizable_program_ub_raGL,
+            ral_program_block_buffer_set_nonarrayed_variable_value(_filmic_customizable_program_ub,
                                                              _filmic_customizable_program_e_uniform_ral_ptr->block_offset,
                                                             &e,
                                                              sizeof(float) );
-            raGL_program_block_set_nonarrayed_variable_value(_filmic_customizable_program_ub_raGL,
+            ral_program_block_buffer_set_nonarrayed_variable_value(_filmic_customizable_program_ub,
                                                              _filmic_customizable_program_exposure_uniform_ral_ptr->block_offset,
                                                             &variant_value,
                                                              sizeof(float) );
-            raGL_program_block_set_nonarrayed_variable_value(_filmic_customizable_program_ub_raGL,
+            ral_program_block_buffer_set_nonarrayed_variable_value(_filmic_customizable_program_ub,
                                                              _filmic_customizable_program_exposure_bias_uniform_ral_ptr->block_offset,
                                                             &exposure_bias,
                                                              sizeof(float) );
-            raGL_program_block_set_nonarrayed_variable_value(_filmic_customizable_program_ub_raGL,
+            ral_program_block_buffer_set_nonarrayed_variable_value(_filmic_customizable_program_ub,
                                                              _filmic_customizable_program_f_uniform_ral_ptr->block_offset,
                                                             &f,
                                                              sizeof(float) );
-            raGL_program_block_set_nonarrayed_variable_value(_filmic_customizable_program_ub_raGL,
+            ral_program_block_buffer_set_nonarrayed_variable_value(_filmic_customizable_program_ub,
                                                              _filmic_customizable_program_w_uniform_ral_ptr->block_offset,
                                                             &w,
                                                              sizeof(float) );
 
-            raGL_program_block_sync(_filmic_customizable_program_ub_raGL);
+            ral_program_block_buffer_sync(_filmic_customizable_program_ub);
 
             entry_points->pGLProgramUniform1i(po_raGL_id,
                                               _filmic_customizable_program_tex_uniform_raGL_ptr->location,
@@ -643,6 +661,12 @@ void _window_closing_callback_handler(system_window window,
 {
     curve_editor_hide();
 
+    const ral_program_block_buffer block_buffers_to_release[] =
+    {
+        _filmic_program_ub,
+        _linear_program_ub,
+        _reinhardt_program_ub
+    };
     const ral_program programs_to_release[] =
     {
         _filmic_program,
@@ -650,7 +674,9 @@ void _window_closing_callback_handler(system_window window,
         _linear_program,
         _reinhardt_program
     };
-    const uint32_t n_programs_to_release = sizeof(programs_to_release) / sizeof(programs_to_release[0]);
+
+    const uint32_t n_block_buffers_to_release = sizeof(block_buffers_to_release) / sizeof(block_buffers_to_release[0]);
+    const uint32_t n_programs_to_release      = sizeof(programs_to_release)      / sizeof(programs_to_release[0]);
 
     ral_context_delete_objects(_context,
                                RAL_CONTEXT_OBJECT_TYPE_PROGRAM,
@@ -669,6 +695,13 @@ void _window_closing_callback_handler(system_window window,
     postprocessing_reinhard_tonemap_release               (_postprocessing_reinhard_tonemapper);
     postprocessing_reinhard_tonemap_release               (_postprocessing_reinhard_tonemapper_crude);
     shaders_vertex_fullscreen_release                     (_vp);
+
+    for (uint32_t n_block_buffer = 0;
+                  n_block_buffer < n_block_buffers_to_release;
+                ++n_block_buffer)
+    {
+        ral_program_block_buffer_release(block_buffers_to_release[n_block_buffer]);
+    }
 }
 
 /** Entry point */
@@ -879,15 +912,18 @@ void _window_closing_callback_handler(system_window window,
                                            system_hashed_ansi_string_create("tex"),
                                           &_linear_program_tex_uniform_raGL_ptr);
 
-    raGL_program_get_uniform_block_by_name(linear_po_raGL,
-                                           system_hashed_ansi_string_create("data"),
-                                          &_linear_program_ub_raGL);
-    raGL_program_block_get_property       (_linear_program_ub_raGL,
-                                           RAGL_PROGRAM_BLOCK_PROPERTY_BLOCK_DATA_SIZE,
-                                          &_linear_program_ub_bo_size);
-    raGL_program_block_get_property       (_linear_program_ub_raGL,
-                                           RAGL_PROGRAM_BLOCK_PROPERTY_BUFFER_RAL,
-                                          &_linear_program_ub_bo);
+    _linear_program_ub = ral_program_block_buffer_create(_context,
+                                                         _linear_program,
+                                                         system_hashed_ansi_string_create("data") );
+
+    ral_buffer linear_po_ub_ral = NULL;
+
+    ral_program_block_buffer_get_property(_linear_program_ub,
+                                          RAL_PROGRAM_BLOCK_BUFFER_PROPERTY_BUFFER_RAL,
+                                         &linear_po_ub_ral);
+    ral_buffer_get_property              (linear_po_ub_ral,
+                                          RAL_BUFFER_PROPERTY_SIZE,
+                                         &_linear_program_ub_bo_size);
 
     /* Create Reinhardt texture program */
     const ral_program_create_info reinhardt_po_create_info =
@@ -921,15 +957,18 @@ void _window_closing_callback_handler(system_window window,
                                            system_hashed_ansi_string_create("tex"),
                                           &_reinhardt_program_tex_uniform_raGL_ptr);
 
-    raGL_program_get_uniform_block_by_name(reinhardt_po_raGL,
-                                           system_hashed_ansi_string_create("data"),
-                                          &_reinhardt_program_ub_raGL);
-    raGL_program_block_get_property       (_reinhardt_program_ub_raGL,
-                                           RAGL_PROGRAM_BLOCK_PROPERTY_BLOCK_DATA_SIZE,
-                                          &_reinhardt_program_ub_bo_size);
-    raGL_program_block_get_property       (_reinhardt_program_ub_raGL,
-                                           RAGL_PROGRAM_BLOCK_PROPERTY_BUFFER_RAL,
-                                          &_reinhardt_program_ub_bo);
+    _reinhardt_program_ub = ral_program_block_buffer_create(_context,
+                                                            _reinhardt_program,
+                                                            system_hashed_ansi_string_create("data") );
+
+    ral_buffer reinhardt_program_ub_bo_ral = NULL;
+
+    ral_program_block_buffer_get_property(_reinhardt_program_ub,
+                                          RAL_PROGRAM_BLOCK_BUFFER_PROPERTY_BUFFER_RAL,
+                                         &reinhardt_program_ub_bo_ral);
+    ral_buffer_get_property              (reinhardt_program_ub_bo_ral,
+                                          RAL_BUFFER_PROPERTY_SIZE,
+                                         &_reinhardt_program_ub_bo_size);
 
     /* Create global Reinhardt post-processors */
     uint32_t texture_size[2] =
@@ -979,15 +1018,18 @@ void _window_closing_callback_handler(system_window window,
                                            system_hashed_ansi_string_create("tex"),
                                           &_filmic_program_tex_uniform_raGL_ptr);
 
-    raGL_program_get_uniform_block_by_name(filmic_po_raGL,
-                                           system_hashed_ansi_string_create("data"),
-                                          &_filmic_program_ub_raGL);
-    raGL_program_block_get_property       (_filmic_program_ub_raGL,
-                                           RAGL_PROGRAM_BLOCK_PROPERTY_BLOCK_DATA_SIZE,
-                                          &_filmic_program_ub_bo_size);
-    raGL_program_block_get_property       (_filmic_program_ub_raGL,
-                                           RAGL_PROGRAM_BLOCK_PROPERTY_BUFFER_RAL,
-                                          &_filmic_program_ub_bo);
+    _filmic_program_ub = ral_program_block_buffer_create(_context,
+                                                         _filmic_program,
+                                                         system_hashed_ansi_string_create("data") );
+
+    ral_buffer filmic_program_ub_bo_ral = NULL;
+
+    ral_program_block_buffer_get_property(_filmic_program_ub,
+                                          RAL_PROGRAM_BLOCK_BUFFER_PROPERTY_BUFFER_RAL,
+                                         &filmic_program_ub_bo_ral);
+    ral_buffer_get_property              (filmic_program_ub_bo_ral,
+                                          RAL_BUFFER_PROPERTY_SIZE,
+                                         &_filmic_program_ub_bo_size);
 
     /* Create Filmic Customizable texture program */
     const ral_program_create_info filmic_customizable_po_create_info =
@@ -1054,15 +1096,18 @@ void _window_closing_callback_handler(system_window window,
                                            system_hashed_ansi_string_create("w"),
                                           &_filmic_customizable_program_w_uniform_ral_ptr);
 
-    raGL_program_get_uniform_block_by_name(filmic_customizable_po_raGL,
-                                           system_hashed_ansi_string_create("data"),
-                                          &_filmic_customizable_program_ub_raGL);
-    raGL_program_block_get_property       (_filmic_customizable_program_ub_raGL,
-                                           RAGL_PROGRAM_BLOCK_PROPERTY_BLOCK_DATA_SIZE,
-                                          &_filmic_customizable_program_ub_bo_size);
-    raGL_program_block_get_property       (_filmic_customizable_program_ub_raGL,
-                                           RAGL_PROGRAM_BLOCK_PROPERTY_BUFFER_RAL,
-                                          &_filmic_customizable_program_ub_bo);
+    _filmic_customizable_program_ub = ral_program_block_buffer_create(_context,
+                                                                      _filmic_customizable_program,
+                                                                      system_hashed_ansi_string_create("data") );
+
+    ral_buffer filmic_customizable_program_ub_bo_ral = NULL;
+
+    ral_program_block_buffer_get_property(_filmic_customizable_program_ub,
+                                          RAL_PROGRAM_BLOCK_BUFFER_PROPERTY_BUFFER_RAL,
+                                         &filmic_customizable_program_ub_bo_ral);
+    ral_buffer_get_property              (filmic_customizable_program_ub_bo_ral,
+                                          RAL_BUFFER_PROPERTY_SIZE,
+                                         &_filmic_customizable_program_ub_bo_size);
 
     /* Open curve editor */
     curve_editor_show(_context);

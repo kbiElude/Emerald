@@ -110,6 +110,8 @@ typedef struct
 
 } ral_program_attribute;
 
+DECLARE_HANDLE(ral_program_block_buffer);
+
 /* Describes RAL-recognized block types. */
 typedef enum
 {

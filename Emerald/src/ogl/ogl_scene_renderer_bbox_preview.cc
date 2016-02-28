@@ -10,10 +10,10 @@
 #include "ogl/ogl_scene_renderer_bbox_preview.h"
 #include "raGL/raGL_buffers.h"
 #include "raGL/raGL_program.h"
-#include "raGL/raGL_program_block.h"
 #include "ral/ral_buffer.h"
 #include "ral/ral_context.h"
 #include "ral/ral_program.h"
+#include "ral/ral_program_block_buffer.h"
 #include "ral/ral_shader.h"
 #include "scene/scene.h"
 #include "scene/scene_mesh.h"
@@ -115,14 +115,13 @@ typedef struct _ogl_scene_renderer_bbox_preview
     /* DO NOT release. */
     ral_context context;
 
-    ral_buffer         data_bo;
-    uint32_t           data_n_meshes;
-    scene              owned_scene;
-    ogl_scene_renderer owner;
-    ral_program        preview_program;
-    raGL_program_block preview_program_data_ub_raGL;
-    GLuint             preview_program_ub_offset_model;
-    GLuint             preview_program_ub_offset_vp;
+    uint32_t                 data_n_meshes;
+    scene                    owned_scene;
+    ogl_scene_renderer       owner;
+    ral_program              preview_program;
+    ral_program_block_buffer preview_program_data_ub;
+    GLuint                   preview_program_ub_offset_model;
+    GLuint                   preview_program_ub_offset_vp;
 
     /* Cached func ptrs */
     PFNGLBINDBUFFERPROC          pGLBindBuffer;
@@ -275,9 +274,10 @@ PRIVATE void _ogl_context_scene_renderer_bbox_preview_init_preview_program(_ogl_
                               RAGL_PROGRAM_PROPERTY_ID,
                              &preview_program_raGL_id);
 
-    raGL_program_get_uniform_block_by_name(preview_program_raGL,
-                                           system_hashed_ansi_string_create("data"),
-                                          &preview_ptr->preview_program_data_ub_raGL);
+    preview_ptr->preview_program_data_ub = ral_program_block_buffer_create(preview_ptr->context,
+                                                                           preview_ptr->preview_program,
+                                                                           system_hashed_ansi_string_create("data") );
+
     ral_program_get_block_variable_by_name(preview_ptr->preview_program,
                                            system_hashed_ansi_string_create("data"),
                                            system_hashed_ansi_string_create("model"),
@@ -287,8 +287,6 @@ PRIVATE void _ogl_context_scene_renderer_bbox_preview_init_preview_program(_ogl_
                                            system_hashed_ansi_string_create("vp"),
                                           &vp_uniform_ral_ptr);
 
-    ASSERT_DEBUG_SYNC(preview_ptr->preview_program_data_ub_raGL != NULL,
-                      "Preview program's data uniform block is NULL");
     ASSERT_DEBUG_SYNC(model_uniform_ral_ptr != NULL,
                       "Model uniform descriptor is NULL");
     ASSERT_DEBUG_SYNC(vp_uniform_ral_ptr != NULL,
@@ -334,7 +332,8 @@ PRIVATE void _ogl_context_scene_renderer_bbox_preview_init_ub_data(_ogl_scene_re
     GLuint           uniform_buffer_offset_alignment = -1;
 
     /* Allocate space for AABB data. */
-    const uint32_t matrix_data_size = 4 /* vec4 */ * 2 /* max, min */ * preview_ptr->data_n_meshes * sizeof(float);
+    const uint32_t min_bbox_ub_offset = 4 /* vec4 */ *                    preview_ptr->data_n_meshes * sizeof(float);
+    const uint32_t matrix_data_size   = 4 /* vec4 */ * 2 /* max, min */ * preview_ptr->data_n_meshes * sizeof(float);
 
     ub_data = new (std::nothrow) float[matrix_data_size / sizeof(float)];
 
@@ -446,55 +445,29 @@ PRIVATE void _ogl_context_scene_renderer_bbox_preview_init_ub_data(_ogl_scene_re
         uniform_buffer_offset_alignment = limits_ptr->uniform_buffer_offset_alignment;
     }
 
-    /* Initialize UBO storage.
-     *
-     * NOTE: Since ogl_program_ub does not provide arrayed uniform setters at the time of writing,
-     *       simply push the AABB data behind its back. This is OK, since AABB data is set in stone
-     *       and will not change later.
-     */
-    uint32_t                              data_bo_size = 0;
-    ral_buffer_client_sourced_update_info data_bo_update;
+    /* Initialize UBO storage. */
+    uint32_t data_bo_size = 0;
 
-    raGL_program_block_get_property(preview_ptr->preview_program_data_ub_raGL,
-                                    RAGL_PROGRAM_BLOCK_PROPERTY_BUFFER_RAL,
-                                   &preview_ptr->data_bo);
+    ral_program_block_buffer_set_arrayed_variable_value(preview_ptr->preview_program_data_ub,
+                                                        0, /* max AABB data offset */
+                                                        ub_data,
+                                                        matrix_data_size / 2, /* src_data_size         */
+                                                        0,                    /* dst_array_start_index */
+                                                        preview_ptr->data_n_meshes);
+    ral_program_block_buffer_set_arrayed_variable_value(preview_ptr->preview_program_data_ub,
+                                                        min_bbox_ub_offset,
+                                                        ub_data,
+                                                        matrix_data_size / 2, /* src_data_size         */
+                                                        0,                    /* dst_array_start_index */
+                                                        preview_ptr->data_n_meshes);
 
-    ral_buffer_get_property (preview_ptr->data_bo,
-                             RAL_BUFFER_PROPERTY_SIZE,
-                            &data_bo_size);
-
-    data_bo_update.data         = ub_data;
-    data_bo_update.data_size    = matrix_data_size;
-    data_bo_update.start_offset = 0;
-
-    ral_buffer_set_data_from_client_memory(preview_ptr->data_bo,
-                                           1, /* n_updates */
-                                           &data_bo_update);
-
-    /* All set! */
+    ral_program_block_buffer_sync(preview_ptr->preview_program_data_ub);
 end:
     if (ub_data != NULL)
     {
         delete [] ub_data;
 
         ub_data = NULL;
-    }
-}
-
-/** TODO */
-PRIVATE void _ogl_scene_renderer_bbox_preview_release_renderer_callback(ogl_context context,
-                                                                        void*       preview)
-{
-    _ogl_scene_renderer_bbox_preview* preview_ptr = (_ogl_scene_renderer_bbox_preview*) preview;
-
-    if (preview_ptr->preview_program != NULL)
-    {
-        ral_context_delete_objects(preview_ptr->context,
-                                   RAL_CONTEXT_OBJECT_TYPE_PROGRAM,
-                                   1, /* n_objects */
-                                   (const void**) &preview_ptr->preview_program);
-
-        preview_ptr->preview_program = NULL;
     }
 }
 
@@ -514,12 +487,11 @@ PUBLIC ogl_scene_renderer_bbox_preview ogl_scene_renderer_bbox_preview_create(ra
          * are asked to render the preview.
          */
         new_instance_ptr->context                         = context;
-        new_instance_ptr->data_bo                         = NULL;
         new_instance_ptr->data_n_meshes                   = 0;
         new_instance_ptr->owned_scene                     = scene;
         new_instance_ptr->owner                           = owner;
         new_instance_ptr->preview_program                 = NULL;
-        new_instance_ptr->preview_program_data_ub_raGL    = NULL;
+        new_instance_ptr->preview_program_data_ub         = NULL;
         new_instance_ptr->preview_program_ub_offset_model = -1;
         new_instance_ptr->preview_program_ub_offset_vp    = -1;
 
@@ -588,11 +560,28 @@ PUBLIC void ogl_scene_renderer_bbox_preview_release(ogl_scene_renderer_bbox_prev
 {
     _ogl_scene_renderer_bbox_preview* preview_ptr = (_ogl_scene_renderer_bbox_preview*) preview;
 
-    if (preview_ptr->data_bo != NULL)
+    if (preview_ptr->preview_program_data_ub != NULL)
     {
-        ogl_context_request_callback_from_context_thread(ral_context_get_gl_context(preview_ptr->context),
-                                                         _ogl_scene_renderer_bbox_preview_release_renderer_callback,
-                                                         preview_ptr);
+        ral_program_block_buffer_release(preview_ptr->preview_program_data_ub);
+
+        preview_ptr->preview_program_data_ub = NULL;
+    }
+
+    if (preview_ptr->preview_program != NULL)
+    {
+        ral_context_delete_objects(preview_ptr->context,
+                                   RAL_CONTEXT_OBJECT_TYPE_PROGRAM,
+                                   1, /* n_objects */
+                                   (const void**) &preview_ptr->preview_program);
+
+        preview_ptr->preview_program = NULL;
+    }
+
+    if (preview_ptr->preview_program_data_ub != NULL)
+    {
+        ral_program_block_buffer_release(preview_ptr->preview_program_data_ub);
+
+        preview_ptr->preview_program_data_ub = NULL;
     }
 
     if (preview_ptr->owned_scene != NULL)
@@ -619,12 +608,12 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_scene_renderer_bbox_preview_render(ogl_sc
     /* NOTE: model may be null at this point if the item was culled out. */
     if (model != NULL)
     {
-        raGL_program_block_set_nonarrayed_variable_value(preview_ptr->preview_program_data_ub_raGL,
-                                                         preview_ptr->preview_program_ub_offset_model,
-                                                         system_matrix4x4_get_row_major_data(model),
-                                                         sizeof(float) * 16);
+        ral_program_block_buffer_set_nonarrayed_variable_value(preview_ptr->preview_program_data_ub,
+                                                               preview_ptr->preview_program_ub_offset_model,
+                                                               system_matrix4x4_get_row_major_data(model),
+                                                               sizeof(float) * 16);
 
-        raGL_program_block_sync(preview_ptr->preview_program_data_ub_raGL);
+        ral_program_block_buffer_sync(preview_ptr->preview_program_data_ub);
 
         preview_ptr->pGLDrawArrays(GL_POINTS,
                                    mesh_id, /* first */
@@ -648,7 +637,7 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_scene_renderer_bbox_preview_start(ogl_sce
     }
 
     /* Initialize a BO store if one has not been created yet */
-    if (preview_ptr->data_bo == NULL)
+    if (preview_ptr->preview_program_data_ub == NULL)
     {
         _ogl_context_scene_renderer_bbox_preview_init_ub_data(preview_ptr);
     }
@@ -656,6 +645,7 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_scene_renderer_bbox_preview_start(ogl_sce
     /* Issue the draw call */
     GLuint             data_bo_id           = 0;
     raGL_buffer        data_bo_raGL         = NULL;
+    ral_buffer         data_bo_ral          = NULL;
     uint32_t           data_bo_size         =  0;
     uint32_t           data_bo_start_offset = -1;
     const raGL_program program_raGL         = ral_context_get_program_gl(preview_ptr->context,
@@ -667,8 +657,12 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_scene_renderer_bbox_preview_start(ogl_sce
                               RAGL_PROGRAM_PROPERTY_ID,
                              &program_raGL_id);
 
+    ral_program_block_buffer_get_property(preview_ptr->preview_program_data_ub,
+                                          RAL_PROGRAM_BLOCK_BUFFER_PROPERTY_BUFFER_RAL,
+                                         &data_bo_ral);
+
     data_bo_raGL = ral_context_get_buffer_gl(preview_ptr->context,
-                                             preview_ptr->data_bo);
+                                             data_bo_ral);
 
     raGL_buffer_get_property(data_bo_raGL,
                              RAGL_BUFFER_PROPERTY_ID,
@@ -676,7 +670,7 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_scene_renderer_bbox_preview_start(ogl_sce
     raGL_buffer_get_property(data_bo_raGL,
                              RAGL_BUFFER_PROPERTY_START_OFFSET,
                             &data_bo_start_offset);
-    ral_buffer_get_property (preview_ptr->data_bo,
+    ral_buffer_get_property (data_bo_ral,
                              RAL_BUFFER_PROPERTY_SIZE,
                             &data_bo_size);
 
@@ -686,10 +680,10 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_scene_renderer_bbox_preview_start(ogl_sce
 
     preview_ptr->pGLUseProgram(program_raGL_id);
 
-    raGL_program_block_set_nonarrayed_variable_value(preview_ptr->preview_program_data_ub_raGL,
-                                                     preview_ptr->preview_program_ub_offset_vp,
-                                                     system_matrix4x4_get_row_major_data(vp),
-                                                     sizeof(float) * 16);
+    ral_program_block_buffer_set_nonarrayed_variable_value(preview_ptr->preview_program_data_ub,
+                                                           preview_ptr->preview_program_ub_offset_vp,
+                                                           system_matrix4x4_get_row_major_data(vp),
+                                                           sizeof(float) * 16);
 
     preview_ptr->pGLBindBufferRange(GL_UNIFORM_BUFFER,
                                     0, /* index */

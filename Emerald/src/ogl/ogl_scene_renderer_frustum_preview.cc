@@ -10,11 +10,11 @@
 #include "ogl/ogl_text.h"
 #include "raGL/raGL_buffer.h"
 #include "raGL/raGL_program.h"
-#include "raGL/raGL_program_block.h"
 #include "raGL/raGL_shader.h"
 #include "ral/ral_buffer.h"
 #include "ral/ral_context.h"
 #include "ral/ral_program.h"
+#include "ral/ral_program_block_buffer.h"
 #include "ral/ral_shader.h"
 #include "scene/scene.h"
 #include "scene/scene_camera.h"
@@ -122,20 +122,18 @@ typedef struct _ogl_scene_renderer_frustum_preview
     system_resizable_vector assigned_cameras; /* holds _ogl_scene_renderer_frustum_preview_camera instances */
     ogl_text_string_id      test_text_id;
 
-    ral_context             context;
-    unsigned char*          data_bo_buffer;
-    system_time             data_bo_buffer_last_update_time;
-    unsigned int            data_bo_buffer_size;
-    ral_buffer              data_bo;
-    unsigned int            data_bo_size;
-    scene                   owned_scene;
-    ral_program             po;
-    raGL_program_block      po_ub_raGL;
-    ral_buffer              po_ub_bo;
-    unsigned int            po_ub_bo_size;
-    GLint                   po_vp_ub_offset;
-    ogl_text                text_renderer;  /* TODO: use a global text renderer */
-    GLuint                  vao_id;
+    ral_context              context;
+    unsigned char*           data_bo_buffer;
+    system_time              data_bo_buffer_last_update_time;
+    unsigned int             data_bo_buffer_size;
+    ral_buffer               data_bo;
+    unsigned int             data_bo_size;
+    scene                    owned_scene;
+    ral_program              po;
+    ral_program_block_buffer po_ub;
+    GLint                    po_vp_ub_offset;
+    ogl_text                 text_renderer;  /* TODO: use a global text renderer */
+    GLuint                   vao_id;
 
     /* The following arrays are used for the multi draw-call. The number of elements
      * is equal to the total number of frustrums to be rendered. */
@@ -159,8 +157,6 @@ typedef struct _ogl_scene_renderer_frustum_preview
         mdebv_indices_array             = NULL;
         owned_scene                     = NULL;
         po                              = NULL;
-        po_ub_bo                        = NULL;
-        po_ub_bo_size                   = 0;
         po_vp_ub_offset                 = -1;
         text_renderer                   = NULL;
         vao_id                          = 0;
@@ -306,6 +302,13 @@ PRIVATE void _ogl_scene_renderer_frustum_preview_deinit_rendering_thread_callbac
                                    (const void**) &preview_ptr->po);
 
         preview_ptr->po = NULL;
+    }
+
+    if (preview_ptr->po_ub != NULL)
+    {
+        ral_program_block_buffer_release(preview_ptr->po_ub);
+
+        preview_ptr->po_ub = NULL;
     }
 
     /* Release VAO */
@@ -478,22 +481,9 @@ PRIVATE void _ogl_scene_renderer_frustum_preview_init_rendering_thread_callback(
     }
 
     /* Retrieve PO UB details */
-    raGL_program po_raGL = ral_context_get_program_gl(preview_ptr->context,
-                                                      preview_ptr->po);
-
-    raGL_program_get_uniform_block_by_name(po_raGL,
-                                           system_hashed_ansi_string_create("dataVS"),
-                                          &preview_ptr->po_ub_raGL);
-
-    ASSERT_DEBUG_SYNC(preview_ptr->po_ub_raGL != NULL,
-                      "dataVS UB uniform descriptor is NULL");
-
-    raGL_program_block_get_property(preview_ptr->po_ub_raGL,
-                                    RAGL_PROGRAM_BLOCK_PROPERTY_BLOCK_DATA_SIZE,
-                                   &preview_ptr->po_ub_bo_size);
-    raGL_program_block_get_property(preview_ptr->po_ub_raGL,
-                                    RAGL_PROGRAM_BLOCK_PROPERTY_BUFFER_RAL,
-                                   &preview_ptr->po_ub_bo);
+    preview_ptr->po_ub = ral_program_block_buffer_create(preview_ptr->context,
+                                                         preview_ptr->po,
+                                                         system_hashed_ansi_string_create("dataVS") );
 
     /* Retrieve PO uniform locations */
     const ral_program_variable* po_vp_ral_ptr = NULL;
@@ -997,34 +987,44 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_scene_renderer_frustum_preview_render(ogl
 
     entrypoints_ptr->pGLUseProgram(po_raGL_id);
 
-    raGL_program_block_set_nonarrayed_variable_value(preview_ptr->po_ub_raGL,
-                                                     preview_ptr->po_vp_ub_offset,
-                                                     system_matrix4x4_get_column_major_data(vp),
-                                                     sizeof(float) * 16);
-    raGL_program_block_sync                         (preview_ptr->po_ub_raGL);
+    ral_program_block_buffer_set_nonarrayed_variable_value(preview_ptr->po_ub,
+                                                           preview_ptr->po_vp_ub_offset,
+                                                           system_matrix4x4_get_column_major_data(vp),
+                                                           sizeof(float) * 16);
+    ral_program_block_buffer_sync                         (preview_ptr->po_ub);
 
     /* Draw! */
     entrypoints_ptr->pGLEnable(GL_PRIMITIVE_RESTART_FIXED_INDEX);
     {
-        GLuint      po_ub_bo_id           = 0;
-        raGL_buffer po_ub_bo_raGL         = NULL;
-        uint32_t    po_ub_bo_start_offset = -1;
+        GLuint      po_ub_bo_id                = 0;
+        raGL_buffer po_ub_bo_raGL              = NULL;
+        ral_buffer  po_ub_bo_ral               = NULL;
+        uint32_t    po_ub_bo_size              = 0;
+        uint32_t    po_ub_bo_start_offset_raGL = -1;
+
+        ral_program_block_buffer_get_property(preview_ptr->po_ub,
+                                              RAL_PROGRAM_BLOCK_BUFFER_PROPERTY_BUFFER_RAL,
+                                             &po_ub_bo_ral);
+
+        ral_buffer_get_property(po_ub_bo_ral,
+                                RAL_BUFFER_PROPERTY_SIZE,
+                               &po_ub_bo_size);
 
         po_ub_bo_raGL = ral_context_get_buffer_gl(preview_ptr->context,
-                                                  preview_ptr->po_ub_bo);
+                                                  po_ub_bo_ral);
 
         raGL_buffer_get_property(po_ub_bo_raGL,
                                  RAGL_BUFFER_PROPERTY_ID,
                                 &po_ub_bo_id);
         raGL_buffer_get_property(po_ub_bo_raGL,
                                  RAGL_BUFFER_PROPERTY_START_OFFSET,
-                                &po_ub_bo_start_offset);
+                                &po_ub_bo_start_offset_raGL);
 
         entrypoints_ptr->pGLBindBufferRange            (GL_UNIFORM_BUFFER,
                                                         0, /* index */
                                                         po_ub_bo_id,
-                                                        po_ub_bo_start_offset,
-                                                        preview_ptr->po_ub_bo_size);
+                                                        po_ub_bo_start_offset_raGL,
+                                                        po_ub_bo_size);
         entrypoints_ptr->pGLMultiDrawElementsBaseVertex(GL_LINE_STRIP,
                                                         preview_ptr->mdebv_count_array,
                                                         GL_UNSIGNED_BYTE,

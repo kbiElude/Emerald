@@ -11,10 +11,11 @@
 #include "ogl/ogl_ui_shared.h"
 #include "raGL/raGL_buffer.h"
 #include "raGL/raGL_program.h"
-#include "raGL/raGL_program_block.h"
 #include "raGL/raGL_shader.h"
+#include "ral/ral_buffer.h"
 #include "ral/ral_context.h"
 #include "ral/ral_program.h"
+#include "ral/ral_program_block_buffer.h"
 #include "ral/ral_shader.h"
 #include "system/system_assertions.h"
 #include "system/system_hashed_ansi_string.h"
@@ -30,10 +31,9 @@ typedef struct
     bool        visible;
     float       x1y1x2y2[4];
 
-    ral_buffer         program_ub_bo;
-    GLuint             program_ub_bo_size;
-    raGL_program_block program_ub_raGL;
-    GLint              program_x1y1x2y2_ub_offset;
+    ral_program_block_buffer program_ub;
+    GLuint                   program_ub_bo_size;
+    GLint                    program_x1y1x2y2_ub_offset;
 
     /* Cached func ptrs */
     PFNGLBINDBUFFERRANGEPROC     pGLBindBufferRange;
@@ -163,6 +163,13 @@ PUBLIC void ogl_ui_frame_deinit(void* internal_instance)
                                1, /* n_objects */
                                (const void**) &ui_frame_ptr->program);
 
+    if (ui_frame_ptr->program_ub != NULL)
+    {
+        ral_program_block_buffer_release(ui_frame_ptr->program_ub);
+
+        ui_frame_ptr->program_ub = NULL;
+    }
+
     delete ui_frame_ptr;
 }
 
@@ -180,10 +187,10 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_ui_frame_draw(void* internal_instance)
                               RAGL_PROGRAM_PROPERTY_ID,
                              &program_raGL_id);
 
-    raGL_program_block_set_nonarrayed_variable_value(frame_ptr->program_ub_raGL,
-                                                     frame_ptr->program_x1y1x2y2_ub_offset,
-                                                     frame_ptr->x1y1x2y2,
-                                                     sizeof(float) * 4);
+    ral_program_block_buffer_set_nonarrayed_variable_value(frame_ptr->program_ub,
+                                                           frame_ptr->program_x1y1x2y2_ub_offset,
+                                                           frame_ptr->x1y1x2y2,
+                                                           sizeof(float) * 4);
 
     /* Draw */
     frame_ptr->pGLBlendEquation(GL_FUNC_ADD);
@@ -193,10 +200,15 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_ui_frame_draw(void* internal_instance)
     {
         GLuint      program_ub_bo_id           = 0;
         raGL_buffer program_ub_bo_raGL         = NULL;
+        ral_buffer  program_ub_bo_ral          = NULL;
         uint32_t    program_ub_bo_start_offset = -1;
 
+        ral_program_block_buffer_get_property(frame_ptr->program_ub,
+                                              RAL_PROGRAM_BLOCK_BUFFER_PROPERTY_BUFFER_RAL,
+                                             &program_ub_bo_ral);
+
         program_ub_bo_raGL = ral_context_get_buffer_gl(frame_ptr->context,
-                                                       frame_ptr->program_ub_bo);
+                                                       program_ub_bo_ral);
 
         raGL_buffer_get_property(program_ub_bo_raGL,
                                  RAGL_BUFFER_PROPERTY_ID,
@@ -212,7 +224,7 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_ui_frame_draw(void* internal_instance)
                                       program_ub_bo_start_offset,
                                       frame_ptr->program_ub_bo_size);
 
-        raGL_program_block_sync(frame_ptr->program_ub_raGL);
+        ral_program_block_buffer_sync(frame_ptr->program_ub);
 
         frame_ptr->pGLDrawArrays(GL_TRIANGLE_FAN,
                                  0,  /* first */
@@ -354,24 +366,23 @@ PUBLIC void* ogl_ui_frame_init(ogl_ui       instance,
                                  &program_raGL_id);
 
         /* Retrieve the uniform block properties */
-        raGL_program_get_uniform_block_by_name(program_raGL,
-                                               system_hashed_ansi_string_create("dataVS"),
-                                              &new_frame_ptr->program_ub_raGL);
+        ral_buffer program_ub_bo_ral = NULL;
 
-        ASSERT_DEBUG_SYNC(new_frame_ptr->program_ub_raGL != NULL,
-                          "dataVS uniform block descriptor is NULL");
+        new_frame_ptr->program_ub = ral_program_block_buffer_create(new_frame_ptr->context,
+                                                                    new_frame_ptr->program,
+                                                                    system_hashed_ansi_string_create("dataVS") );
 
-        raGL_program_block_get_property(new_frame_ptr->program_ub_raGL,
-                                        RAGL_PROGRAM_BLOCK_PROPERTY_BLOCK_DATA_SIZE,
-                                       &new_frame_ptr->program_ub_bo_size);
-        raGL_program_block_get_property(new_frame_ptr->program_ub_raGL,
-                                        RAGL_PROGRAM_BLOCK_PROPERTY_BUFFER_RAL,
-                                       &new_frame_ptr->program_ub_bo);
+        ral_program_block_buffer_get_property(new_frame_ptr->program_ub,
+                                              RAL_PROGRAM_BLOCK_BUFFER_PROPERTY_BUFFER_RAL,
+                                             &program_ub_bo_ral);
+        ral_buffer_get_property              (program_ub_bo_ral,
+                                              RAL_BUFFER_PROPERTY_SIZE,
+                                             &new_frame_ptr->program_ub_bo_size);
 
-        /* Set up UBO bindings */
-        new_frame_ptr->pGLUniformBlockBinding(program_raGL_id,
-                                              0,  /* uniformBlockIndex */
-                                              0); /* uniformBlockBinding */
+        raGL_program_set_block_property_by_name(program_raGL,
+                                                system_hashed_ansi_string_create("dataVS"),
+                                                RAGL_PROGRAM_BLOCK_PROPERTY_INDEXED_BP,
+                                                0);
 
         /* Retrieve the uniforms */
         const ral_program_variable* x1y1x2y2_uniform_ral_ptr = NULL;

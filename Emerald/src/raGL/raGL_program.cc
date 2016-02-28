@@ -5,8 +5,8 @@
  */
 #include "shared.h"
 #include "ogl/ogl_context.h"
+#include "ogl/ogl_context_state_cache.h"
 #include "raGL/raGL_program.h"
-#include "raGL/raGL_program_block.h"
 #include "raGL/raGL_shader.h"
 #include "raGL/raGL_utils.h"
 #include "ral/ral_context.h"
@@ -27,47 +27,37 @@ const char* file_blob_prefix       = "temp_shader_blob_";
 const char* file_sourcecode_prefix = "temp_shader_sourcecode_";
 
 /** Internal type definitions */
+typedef struct _raGL_program_block_binding
+{
+    uint32_t                  block_index;
+    system_hashed_ansi_string block_name;
+    ral_program_block_type    block_type;
+    GLuint                    indexed_bp;
+
+    _raGL_program_block_binding()
+    {
+        block_index = -1;
+        block_name  = NULL;
+        block_type  = RAL_PROGRAM_BLOCK_TYPE_UNDEFINED;
+        indexed_bp  = 0;
+    }
+} _raGL_program_block_binding;
+
 typedef struct
 {
-    system_resizable_vector        active_attributes_raGL; /* holds _raGL_program_attribute instances */
-    system_resizable_vector        active_uniforms_raGL;   /* holds _raGL_program_variable instances */
-    ral_context                    context; /* DO NOT retain - context owns the instance! */
-    GLuint                         id;
-    bool                           link_status;
-    system_hashed_ansi_string      program_info_log;
-    ral_program                    program_ral;
-    raGL_program_syncable_ubs_mode syncable_ubs_mode;
+    system_resizable_vector   active_attributes_raGL; /* holds _raGL_program_attribute instances */
+    system_resizable_vector   active_uniforms_raGL;   /* holds _raGL_program_variable instances */
+    ral_context               context;                /* DO NOT retain - context owns the instance! */
+    GLuint                    id;
+    bool                      link_status;
+    system_hashed_ansi_string program_info_log;
+    ral_program               program_ral;
 
-    /* Stores ogl_program_ssb instances.
-     *
-     * NOTE: All rendering contexts in Emerald use a shared namespace. Since SSB content synchronization
-     *       is not currently supported, we need not use any sort of context->ssb mapping.
-     */
-    system_resizable_vector active_ssbs;
-
-    /* Maps shader storage block index to a corresponding ogl_program_block instance. */
-    system_hash64map ssb_index_to_ssb_map;
-
-    /* Maps shared storage block name to a corresponding ogl_program_block instnace. */
-    system_hash64map ssb_name_to_ssb_map;
-
-    /* Maps ogl_context instances to ogl_program_ub instances.
-     *
-     * If syncable_ubs_mode is set to:
-     *   a) OGL_PROGRAM_SYNCABLE_UBS_MODE_DISABLE:            as _GLOBAL.
-     *   b) OGL_PROGRAM_SYNCABLE_UBS_MODE_ENABLE_GLOBAL:      this map holds a single entry at key 0.
-     *   c) OGL_PROGRAM_SYNCABLE_UBS_MODE_ENABLE_PER_CONTEXT: this map holds as many entries, as there were contexts
-     *                                                        that tried to access it. use ogl_context instances as keys.
-     */
-    system_hash64map context_to_active_ubs_map;
-
-    /* Same as above, but maps an ogl_context instance to a system_hash64map which
-     * maps uniform block indices to ogl_program_block instances */
-    system_hash64map context_to_ub_index_to_ub_map;
-
-    /* Same as above, but maps an ogl_context instances to a system_hash64map, which
-     * maps uniform block names (represented as system_hash64) to ogl_program_block instances */
-    system_hash64map context_to_ub_name_to_ub_map; /* do NOT release the stored items */
+    system_hash64map             block_name_to_binding_map;
+    uint32_t                     n_ssb_bindings;
+    uint32_t                     n_ub_bindings;
+    _raGL_program_block_binding* ssb_bindings;
+    _raGL_program_block_binding* ub_bindings;
 
     /* GL entry-point cache */
     PFNGLATTACHSHADERPROC               pGLAttachShader;
@@ -76,7 +66,6 @@ typedef struct
     PFNGLDETACHSHADERPROC               pGLDetachShader;
     PFNGLGETACTIVEATTRIBPROC            pGLGetActiveAttrib;
     PFNGLGETATTRIBLOCATIONPROC          pGLGetAttribLocation;
-    PFNGLGETERRORPROC                   pGLGetError;
     PFNGLGETPROGRAMBINARYPROC           pGLGetProgramBinary;
     PFNGLGETPROGRAMIVPROC               pGLGetProgramiv;
     PFNGLGETPROGRAMINFOLOGPROC          pGLGetProgramInfoLog;
@@ -88,7 +77,6 @@ typedef struct
     PFNGLPROGRAMBINARYPROC              pGLProgramBinary;
     PFNGLPROGRAMPARAMETERIPROC          pGLProgramParameteri;
     PFNGLSHADERSTORAGEBLOCKBINDINGPROC  pGLShaderStorageBlockBinding;
-    PFNGLTRANSFORMFEEDBACKVARYINGSPROC  pGLTransformFeedbackVaryings;
     PFNGLUNIFORMBLOCKBINDINGPROC        pGLUniformBlockBinding;
 
     REFCOUNT_INSERT_VARIABLES
@@ -104,31 +92,31 @@ typedef struct
 /** Internal variables */
 
 /* Forward declarations */
-PRIVATE void _raGL_program_attach_shader_callback              (ogl_context             context,
-                                                               void*                    in_arg);
-PRIVATE void _raGL_program_create_callback                     (ogl_context             context,
-                                                               void*                    in_arg);
-PRIVATE void _raGL_program_detach_shader_callback              (ogl_context             context,
-                                                               void*                    in_arg);
-PRIVATE char*_raGL_program_get_binary_blob_file_name           (_raGL_program*          program_ptr);
-PRIVATE char*_raGL_program_get_source_code_file_name           (_raGL_program*          program_ptr);
-PRIVATE void _raGL_program_link_callback                       (ogl_context             context,
-                                                                void*                   in_arg);
-PRIVATE bool _raGL_program_load_binary_blob                    (ogl_context,
-                                                                _raGL_program*          program_ptr);
-PRIVATE void _raGL_program_on_shader_compile_callback          (const void*             callback_data,
-                                                                void*                   user_arg);
-PRIVATE void _raGL_program_release                             (void*                   program);
-PRIVATE void _raGL_program_release_active_attributes           (system_resizable_vector active_attributes);
-PRIVATE void _raGL_program_release_active_shader_storage_blocks(_raGL_program*          program_ptr);
-PRIVATE void _raGL_program_release_active_uniform_blocks       (_raGL_program*          program_ptr,
-                                                                ogl_context             owner_context = NULL);
-PRIVATE void _raGL_program_release_active_uniforms             (system_resizable_vector active_uniforms);
-PRIVATE void _raGL_program_release_callback                    (ogl_context             context,
-                                                                void*                   in_arg);
-PRIVATE void _raGL_program_save_binary_blob                    (ogl_context,
-                                                                _raGL_program*          program_ptr);
-PRIVATE void _raGL_program_save_shader_sources                 (_raGL_program*          program_ptr);
+PRIVATE void _raGL_program_attach_shader_callback    (ogl_context             context,
+                                                     void*                    in_arg);
+/** TODO */
+PRIVATE void _raGL_program_clear_bindings_metadata   (_raGL_program*          program_ptr,
+                                                      bool                    should_release);
+PRIVATE void _raGL_program_create_callback           (ogl_context             context,
+                                                     void*                    in_arg);
+PRIVATE void _raGL_program_detach_shader_callback    (ogl_context             context,
+                                                     void*                    in_arg);
+PRIVATE char*_raGL_program_get_binary_blob_file_name (_raGL_program*          program_ptr);
+PRIVATE char*_raGL_program_get_source_code_file_name (_raGL_program*          program_ptr);
+PRIVATE void _raGL_program_link_callback             (ogl_context             context,
+                                                      void*                   in_arg);
+PRIVATE bool _raGL_program_load_binary_blob          (ogl_context,
+                                                      _raGL_program*          program_ptr);
+PRIVATE void _raGL_program_on_shader_compile_callback(const void*             callback_data,
+                                                      void*                   user_arg);
+PRIVATE void _raGL_program_release                   (void*                   program);
+PRIVATE void _raGL_program_release_active_attributes (system_resizable_vector active_attributes);
+PRIVATE void _raGL_program_release_active_uniforms   (system_resizable_vector active_uniforms);
+PRIVATE void _raGL_program_release_callback          (ogl_context             context,
+                                                      void*                   in_arg);
+PRIVATE void _raGL_program_save_binary_blob          (ogl_context,
+                                                      _raGL_program*          program_ptr);
+PRIVATE void _raGL_program_save_shader_sources       (_raGL_program*          program_ptr);
 
 
 /** TODO */
@@ -144,6 +132,42 @@ PRIVATE void _raGL_program_attach_shader_callback(ogl_context context,
 
     callback_arg_ptr->program_ptr->pGLAttachShader(callback_arg_ptr->program_ptr->id,
                                                    shader_raGL_id);
+}
+
+/** TODO */
+PRIVATE void _raGL_program_clear_bindings_metadata(_raGL_program* program_ptr,
+                                                   bool           should_release)
+{
+    if (program_ptr->block_name_to_binding_map != NULL)
+    {
+        if (should_release)
+        {
+            system_hash64map_release(program_ptr->block_name_to_binding_map);
+
+            program_ptr->block_name_to_binding_map = NULL;
+        }
+        else
+        {
+            system_hash64map_clear(program_ptr->block_name_to_binding_map);
+        }
+    }
+
+    if (program_ptr->ssb_bindings != NULL)
+    {
+        delete [] program_ptr->ssb_bindings;
+
+        program_ptr->ssb_bindings = NULL;
+    }
+
+    if (program_ptr->ub_bindings != NULL)
+    {
+        delete [] program_ptr->ub_bindings;
+
+        program_ptr->ub_bindings = NULL;
+    }
+
+    program_ptr->n_ssb_bindings = 0;
+    program_ptr->n_ub_bindings  = 0;
 }
 
 /** TODO */
@@ -472,20 +496,57 @@ PRIVATE char* _raGL_program_get_source_code_file_name(_raGL_program* program_ptr
 
 /** TODO */
 PRIVATE void _raGL_program_init_blocks_for_context(ral_program_block_type block_type,
-                                                   _raGL_program*         program_ptr,
-                                                   ogl_context            context_map_key,
-                                                   ogl_context            context)
+                                                   _raGL_program*         program_ptr)
 {
-    const GLenum block_interface_gl        = (block_type == RAL_PROGRAM_BLOCK_TYPE_STORAGE_BUFFER) ? GL_SHADER_STORAGE_BLOCK
-                                                                                                   : GL_UNIFORM_BLOCK;
-    GLchar*      block_name                = NULL;
-    GLint        n_active_blocks           = 0;
-    GLint        n_active_block_max_length = 0;
+    _raGL_program_block_binding* block_bindings_ptr              = NULL;
+    static const GLenum          block_property_buffer_data_size = GL_BUFFER_DATA_SIZE;
+    const GLenum                 block_interface_gl              = (block_type == RAL_PROGRAM_BLOCK_TYPE_STORAGE_BUFFER) ? GL_SHADER_STORAGE_BLOCK
+                                                                                                                         : GL_UNIFORM_BLOCK;
+    GLchar*                      block_name                      = NULL;
+    GLint                        n_active_blocks                 = 0;
+    GLint                        n_active_block_max_length       = 0;
 
     program_ptr->pGLGetProgramInterfaceiv(program_ptr->id,
                                           block_interface_gl,
                                           GL_ACTIVE_RESOURCES, /* pname */
                                           &n_active_blocks);
+
+    if (n_active_blocks != 0)
+    {
+        block_bindings_ptr = new (std::nothrow) _raGL_program_block_binding[n_active_blocks];
+
+        ASSERT_ALWAYS_SYNC(block_bindings_ptr != NULL,
+                           "Out of memory");
+    }
+
+    switch (block_type)
+    {
+        case RAL_PROGRAM_BLOCK_TYPE_STORAGE_BUFFER:
+        {
+            ASSERT_DEBUG_SYNC(program_ptr->ssb_bindings == NULL,
+                              "");
+
+            program_ptr->n_ssb_bindings = n_active_blocks;
+            program_ptr->ssb_bindings   = block_bindings_ptr;
+            break;
+        }
+
+        case RAL_PROGRAM_BLOCK_TYPE_UNIFORM_BUFFER:
+        {
+            ASSERT_DEBUG_SYNC(program_ptr->ub_bindings  == NULL,
+                              "");
+
+            program_ptr->n_ub_bindings = n_active_blocks;
+            program_ptr->ub_bindings   = block_bindings_ptr;
+            break;
+        }
+
+        default:
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Unrecognized RAL program block type");
+        }
+    }
 
     /* NOTE: As of driver version 10.18.14.4170, the glGetProgramInterfaceiv() call we're making below does not seem to 
      *       raise some sort of an internal driver flag. This causes the subsequent glGetProgramResourceiv() call
@@ -518,7 +579,7 @@ PRIVATE void _raGL_program_init_blocks_for_context(ral_program_block_type block_
             GLint current_block_name_length = 0;
 
             program_ptr->pGLGetProgramResourceiv(program_ptr->id,
-                                                 GL_UNIFORM_BLOCK,
+                                                 block_interface_gl,
                                                  n_ub,
                                                  1, /* propCount */
                                                  &piq_property_name_length,
@@ -543,7 +604,9 @@ PRIVATE void _raGL_program_init_blocks_for_context(ral_program_block_type block_
                n_active_block < n_active_blocks;
              ++n_active_block)
     {
+        /* Register the new block */
         system_hashed_ansi_string block_name_has = NULL;
+        GLint                     block_size     = 0;
 
         if (n_active_block_max_length != 0)
         {
@@ -561,156 +624,112 @@ PRIVATE void _raGL_program_init_blocks_for_context(ral_program_block_type block_
             block_name_has = system_hashed_ansi_string_get_default_empty_string();
         }
 
-        ral_program_add_metadata_block(program_ptr->program_ral,
-                                       block_type,
-                                       block_name_has);
+        program_ptr->pGLGetProgramResourceiv(program_ptr->id,
+                                             block_interface_gl,
+                                             n_active_block,
+                                             1, /* propCount */
+                                            &block_property_buffer_data_size,
+                                             1,    /* bufSize */
+                                             NULL, /* length */
+                                            &block_size);
 
-        switch (block_type)
+        ral_program_add_block(program_ptr->program_ral,
+                              block_size,
+                              block_type,
+                              block_name_has);
+    }
+
+    for (GLint n_active_block = 0;
+               n_active_block < n_active_blocks;
+             ++n_active_block)
+    {
+        system_hashed_ansi_string block_name_has = NULL;
+
+        ral_program_get_block_property_by_index(program_ptr->program_ral,
+                                                block_type,
+                                                n_active_block,
+                                                RAL_PROGRAM_BLOCK_PROPERTY_NAME,
+                                               &block_name_has);
+
+        /* For UBs, also enumerate members */
+        if (block_type == RAL_PROGRAM_BLOCK_TYPE_UNIFORM_BUFFER)
         {
-            case RAL_PROGRAM_BLOCK_TYPE_STORAGE_BUFFER:
+                         GLint* active_variable_indices             = NULL;
+            static const GLenum block_property_active_variables     = GL_ACTIVE_VARIABLES;
+            static const GLenum block_property_buffer_data_size     = GL_BUFFER_DATA_SIZE;
+            static const GLenum block_property_num_active_variables = GL_NUM_ACTIVE_VARIABLES;
+                         GLint  n_active_variables                  = 0;
+                         GLint  n_active_uniform_blocks             = 0;
+                         GLint  n_active_uniform_block_max_length   = 0;
+
+            program_ptr->pGLGetProgramResourceiv(program_ptr->id,
+                                                 GL_UNIFORM_BLOCK,
+                                                 n_active_block,
+                                                 1, /* propCount */
+                                                &block_property_num_active_variables,
+                                                 1,    /* bufSize */
+                                                 NULL, /* length */
+                                                &n_active_variables);
+
+            if (n_active_variables > 0)
             {
-                raGL_program_block new_ssb = raGL_program_block_create(program_ptr->context,
-                                                                       (raGL_program) program_ptr,
-                                                                       block_type,
-                                                                       n_active_block,
-                                                                       block_name_has,
-                                                                       false /* support_sync_behavior */);
+                active_variable_indices = new (std::nothrow) GLint[n_active_variables];
 
-                ASSERT_ALWAYS_SYNC(new_ssb != NULL,
-                                   "ogl_program_ssb_create() returned NULL.");
+                ASSERT_ALWAYS_SYNC(active_variable_indices != NULL,
+                                   "Out of memory");
 
-                /* Store the SSB info in the internal hash-maps */
-                if (program_ptr->active_ssbs          == NULL ||
-                    program_ptr->ssb_index_to_ssb_map == NULL ||
-                    program_ptr->ssb_name_to_ssb_map  == NULL)
+                program_ptr->pGLGetProgramResourceiv(program_ptr->id,
+                                                     GL_UNIFORM_BLOCK,
+                                                     n_active_block,
+                                                     1, /* propCount */
+                                                    &block_property_active_variables,
+                                                     n_active_variables,
+                                                     NULL, /* length */
+                                                     active_variable_indices);
+
+                for (int n_active_variable = 0;
+                         n_active_variable < n_active_variables;
+                       ++n_active_variable)
                 {
-                    program_ptr->active_ssbs          = system_resizable_vector_create(4 /* capacity */);
-                    program_ptr->ssb_index_to_ssb_map = system_hash64map_create       (sizeof(raGL_program_block) );
-                    program_ptr->ssb_name_to_ssb_map  = system_hash64map_create       (sizeof(raGL_program_block) );
+                    ral_program_variable* variable_ral_ptr = NULL;
 
-                    ASSERT_DEBUG_SYNC(program_ptr->active_ssbs          != NULL &&
-                                      program_ptr->ssb_index_to_ssb_map != NULL &&
-                                      program_ptr->ssb_name_to_ssb_map  != NULL,
-                                      "Sanity check failed");
-                }
+                    variable_ral_ptr = new (std::nothrow) ral_program_variable();
 
-                ASSERT_DEBUG_SYNC(system_resizable_vector_find(program_ptr->active_ssbs,
-                                                               new_ssb) == ITEM_NOT_FOUND,
-                                  "Sanity check failed");
-                ASSERT_DEBUG_SYNC(!system_hash64map_contains(program_ptr->ssb_index_to_ssb_map,
-                                                             (system_hash64) n_active_block),
-                                  "Sanity check failed");
-                ASSERT_DEBUG_SYNC(!system_hash64map_contains(program_ptr->ssb_name_to_ssb_map,
-                                                             system_hashed_ansi_string_get_hash(block_name_has) ),
-                                  "Sanity check failed");
+                    raGL_program_get_program_variable_details( (raGL_program) program_ptr,
+                                                              0,    /* temp_variable_name_storage */
+                                                              NULL, /* temp_variable_name */
+                                                              variable_ral_ptr,
+                                                              NULL,
+                                                              GL_UNIFORM,
+                                                              active_variable_indices[n_active_variable]);
 
-                system_resizable_vector_push(program_ptr->active_ssbs,
-                                             new_ssb);
-                system_hash64map_insert     (program_ptr->ssb_index_to_ssb_map,
-                                             n_active_block,
-                                             new_ssb,
-                                             NULL,  /* on_remove_callback */
-                                             NULL); /* on_remove_callback_user_arg */
-                system_hash64map_insert     (program_ptr->ssb_name_to_ssb_map,
-                                             system_hashed_ansi_string_get_hash(block_name_has),
-                                             new_ssb,
-                                             NULL,  /* on_remove_callback */
-                                             NULL); /* on_remove_callback_user_arg */
+                    ral_program_attach_variable_to_block(program_ptr->program_ral,
+                                                         block_name_has,
+                                                         variable_ral_ptr);
+                } /* for (all active variables) */
 
-                break;
-            }
-
-            case RAL_PROGRAM_BLOCK_TYPE_UNIFORM_BUFFER:
-            {
-                raGL_program_block new_ub = raGL_program_block_create(program_ptr->context,
-                                                                      (raGL_program) program_ptr,
-                                                                      block_type,
-                                                                      n_active_block,
-                                                                      block_name_has,
-                                                                      program_ptr->syncable_ubs_mode != RAGL_PROGRAM_SYNCABLE_UBS_MODE_DISABLE);
-
-                ASSERT_ALWAYS_SYNC(new_ub != NULL,
-                                   "ogl_program_ub_create() returned NULL.");
-
-                /* Go ahead and store the UB info */
-                system_resizable_vector context_active_ubs         = NULL;
-                system_hash64map        context_ub_index_to_ub_map = NULL;
-                system_hash64map        context_ub_name_to_ub_map  = NULL;
-
-                system_hash64map_get(program_ptr->context_to_active_ubs_map,
-                                     (system_hash64) context_map_key,
-                                    &context_active_ubs);
-                system_hash64map_get(program_ptr->context_to_ub_index_to_ub_map,
-                                     (system_hash64) context_map_key,
-                                    &context_ub_index_to_ub_map);
-                system_hash64map_get(program_ptr->context_to_ub_name_to_ub_map,
-                                     (system_hash64) context_map_key,
-                                    &context_ub_name_to_ub_map);
-
-                if (context_active_ubs         == NULL ||
-                    context_ub_index_to_ub_map == NULL ||
-                    context_ub_name_to_ub_map  == NULL)
-                {
-                    context_active_ubs         = system_resizable_vector_create(4 /* capacity */);
-                    context_ub_index_to_ub_map = system_hash64map_create       (sizeof(raGL_program_block) );
-                    context_ub_name_to_ub_map  = system_hash64map_create       (sizeof(raGL_program_block) );
-
-                    ASSERT_DEBUG_SYNC(context_active_ubs         != NULL &&
-                                      context_ub_index_to_ub_map != NULL &&
-                                      context_ub_name_to_ub_map  != NULL,
-                                      "Sanity check failed");
-
-                    system_hash64map_insert(program_ptr->context_to_active_ubs_map,
-                                            (system_hash64) context_map_key,
-                                            context_active_ubs,
-                                            NULL,  /* on_remove_callback          */
-                                            NULL); /* on_remove_callback_user_arg */
-                    system_hash64map_insert(program_ptr->context_to_ub_index_to_ub_map,
-                                            (system_hash64) context_map_key,
-                                            context_ub_index_to_ub_map,
-                                            NULL,  /* on_remove_callback          */
-                                            NULL); /* on_remove_callback_user_arg */
-                    system_hash64map_insert(program_ptr->context_to_ub_name_to_ub_map,
-                                            (system_hash64) context_map_key,
-                                            context_ub_name_to_ub_map,
-                                            NULL,  /* on_remove_callback          */
-                                            NULL); /* on_remove_callback_user_arg */
-                }
-
-                ASSERT_DEBUG_SYNC(system_resizable_vector_find(context_active_ubs,
-                                                               new_ub) == ITEM_NOT_FOUND,
-                                  "Sanity check failed");
-                ASSERT_DEBUG_SYNC(!system_hash64map_contains(context_ub_index_to_ub_map,
-                                                             (system_hash64) n_active_block),
-                                  "Sanity check failed");
-                ASSERT_DEBUG_SYNC(!system_hash64map_contains(context_ub_name_to_ub_map,
-                                                             system_hashed_ansi_string_get_hash(block_name_has) ),
-                                  "Sanity check failed");
-
-                system_resizable_vector_push(context_active_ubs,
-                                             new_ub);
-                system_hash64map_insert     (context_ub_index_to_ub_map,
-                                             n_active_block,
-                                             new_ub,
-                                             NULL,  /* on_remove_callback */
-                                             NULL); /* on_remove_callback_user_arg */
-                system_hash64map_insert     (context_ub_name_to_ub_map,
-                                             system_hashed_ansi_string_get_hash(block_name_has),
-                                             new_ub,
-                                             NULL,  /* on_remove_callback */
-                                             NULL); /* on_remove_callback_user_arg */
-
-                break;
-            }
-
-            default:
-            {
-                ASSERT_DEBUG_SYNC(false,
-                                  "Unrecognized block type");
-            }
-        } /* switch (block_type) */
+                delete [] active_variable_indices;
+                active_variable_indices = NULL;
+            } /* if (n_active_variable > 0) */
+        } /* if (block_type == RAL_PROGRAM_BLOCK_TYPE_UNIFORM_BUFFER) */
 
         /* Set up the block binding */
+        block_bindings_ptr[n_active_block].block_index = n_active_block;
+        block_bindings_ptr[n_active_block].block_name  = block_name_has;
+        block_bindings_ptr[n_active_block].block_type  = block_type;
+        block_bindings_ptr[n_active_block].indexed_bp  = n_active_block;
+
+        ASSERT_DEBUG_SYNC(!system_hash64map_contains(program_ptr->block_name_to_binding_map,
+                                                     system_hashed_ansi_string_get_hash(block_name_has) ),
+                          "Block [%s] is already registered",
+                          system_hashed_ansi_string_get_buffer(block_name_has) );
+
+        system_hash64map_insert(program_ptr->block_name_to_binding_map,
+                                system_hashed_ansi_string_get_hash(block_name_has),
+                               &block_bindings_ptr[n_active_block],
+                                NULL,  /* on_removal_callback          */
+                                NULL); /* on_removal_callback_user_arg */
+
         switch (block_type)
         {
             case RAL_PROGRAM_BLOCK_TYPE_STORAGE_BUFFER:
@@ -756,7 +775,9 @@ PRIVATE void _raGL_program_link_callback(ogl_context context,
     system_time start_time = system_time_now();
 
     /* Clear metadata before proceeding .. */
-    ral_program_clear_metadata(program_ptr->program_ral);
+    ral_program_clear_metadata           (program_ptr->program_ral);
+    _raGL_program_clear_bindings_metadata(program_ptr,
+                                          false /* should_release */);
 
     /* If program binaries are supportd, see if we've got a blob file already stashed. If so, no need to link at this point */
     has_used_binary = _raGL_program_load_binary_blob(context,
@@ -778,11 +799,6 @@ PRIVATE void _raGL_program_link_callback(ogl_context context,
     program_ptr->link_status = (link_status == 1);
     if (program_ptr->link_status)
     {
-        ral_program_clear_metadata    (program_ptr->program_ral);
-        ral_program_add_metadata_block(program_ptr->program_ral,
-                                       RAL_PROGRAM_BLOCK_TYPE_UNIFORM_BUFFER,
-                                       system_hashed_ansi_string_create("") );
-
         if (!has_used_binary)
         {
             /* Stash the binary to local storage! */
@@ -874,49 +890,52 @@ PRIVATE void _raGL_program_link_callback(ogl_context context,
                                              new_attribute_raGL_ptr);
             } /* for (all active attributes) */
 
-            /* Now for the uniforms */
+            /* Continue with uniform blocks. */
+            _raGL_program_init_blocks_for_context(RAL_PROGRAM_BLOCK_TYPE_UNIFORM_BUFFER,
+                                                  program_ptr);
+
+            /* Finish with shader storage blocks. */
+            _raGL_program_init_blocks_for_context(RAL_PROGRAM_BLOCK_TYPE_STORAGE_BUFFER,
+                                                  program_ptr);
+
+            /* Now for the uniforms coming from the default uniform block */
+            ral_program_add_block(program_ptr->program_ral,
+                                  0, /* block_size */
+                                  RAL_PROGRAM_BLOCK_TYPE_UNIFORM_BUFFER,
+                                  system_hashed_ansi_string_create("") );
+
             for (GLint n_active_uniform = 0;
                        n_active_uniform < n_active_uniforms;
                      ++n_active_uniform)
             {
-                _raGL_program_variable* new_uniform_raGL_ptr = new (std::nothrow) _raGL_program_variable;
-                ral_program_variable*   new_uniform_ral_ptr  = new (std::nothrow) ral_program_variable;
-
-                ASSERT_ALWAYS_SYNC(new_uniform_raGL_ptr != NULL &&
-                                   new_uniform_ral_ptr  != NULL,
-                                   "Out of memory while allocating space for uniform descriptors.");
+                _raGL_program_variable temp_raGL;
+                ral_program_variable   temp_ral;
 
                 raGL_program_get_program_variable_details((raGL_program) program_ptr,
                                                           uniform_name_length,
                                                           uniform_name,
-                                                          new_uniform_ral_ptr,
-                                                          new_uniform_raGL_ptr,
+                                                         &temp_ral,
+                                                         &temp_raGL,
                                                           GL_UNIFORM,
                                                           n_active_uniform);
 
-                system_resizable_vector_push(program_ptr->active_uniforms_raGL,
-                                             new_uniform_raGL_ptr);
+                if (temp_ral.block_offset == -1)
+                {
+                    _raGL_program_variable* new_uniform_raGL_ptr = new (std::nothrow) _raGL_program_variable(temp_raGL);
+                    ral_program_variable*   new_uniform_ral_ptr  = new (std::nothrow) ral_program_variable  (temp_ral);
 
-                ral_program_attach_variable_to_metadata_block(program_ptr->program_ral,
-                                                              system_hashed_ansi_string_create(""),
-                                                              new_uniform_ral_ptr);
+                    ASSERT_ALWAYS_SYNC(new_uniform_raGL_ptr != NULL &&
+                                       new_uniform_ral_ptr  != NULL,
+                                       "Out of memory while allocating space for uniform descriptors.");
+
+                    system_resizable_vector_push(program_ptr->active_uniforms_raGL,
+                                                 new_uniform_raGL_ptr);
+
+                    ral_program_attach_variable_to_block(program_ptr->program_ral,
+                                                         system_hashed_ansi_string_create(""),
+                                                         new_uniform_ral_ptr);
+                }
             }
-
-            /* Continue with uniform blocks. */
-            ogl_context context_map_key = (program_ptr->syncable_ubs_mode == RAGL_PROGRAM_SYNCABLE_UBS_MODE_ENABLE_GLOBAL) ? 0
-                                                                                                                           : context;
-
-            _raGL_program_init_blocks_for_context(RAL_PROGRAM_BLOCK_TYPE_UNIFORM_BUFFER,
-                                                  program_ptr,
-                                                  context_map_key,
-                                                  context);
-
-            /* Finish with shader storage blocks. */
-            _raGL_program_init_blocks_for_context(RAL_PROGRAM_BLOCK_TYPE_STORAGE_BUFFER,
-                                                  program_ptr,
-                                                  0, /* context_map_key */
-                                                  context);
-
         } /* if (attribute_name != NULL && uniform_name != NULL) */
 
         /* Free the buffers. */
@@ -1196,12 +1215,9 @@ PRIVATE void _raGL_program_release(void* program)
     /* Release resizable vectors */
     ral_program_attribute* attribute_ptr = NULL;
     ral_program_variable*  uniform_ptr   = NULL;
-    raGL_program_block     uniform_block = NULL;
 
-    _raGL_program_release_active_attributes           (program_ptr->active_attributes_raGL);
-    _raGL_program_release_active_shader_storage_blocks(program_ptr);
-    _raGL_program_release_active_uniforms             (program_ptr->active_uniforms_raGL);
-    _raGL_program_release_active_uniform_blocks       (program_ptr);
+    _raGL_program_release_active_attributes(program_ptr->active_attributes_raGL);
+    _raGL_program_release_active_uniforms  (program_ptr->active_uniforms_raGL);
 
     if (program_ptr->active_attributes_raGL != NULL)
     {
@@ -1215,23 +1231,8 @@ PRIVATE void _raGL_program_release(void* program)
         program_ptr->active_uniforms_raGL = NULL;
     }
 
-    if (program_ptr->context_to_active_ubs_map != NULL)
-    {
-        system_hash64map_release(program_ptr->context_to_active_ubs_map);
-        program_ptr->context_to_active_ubs_map = NULL;
-    }
-
-    if (program_ptr->context_to_ub_index_to_ub_map != NULL)
-    {
-        system_hash64map_release(program_ptr->context_to_ub_index_to_ub_map);
-        program_ptr->context_to_ub_index_to_ub_map = NULL;
-    }
-
-    if (program_ptr->context_to_ub_name_to_ub_map != NULL)
-    {
-        system_hash64map_release(program_ptr->context_to_ub_name_to_ub_map);
-        program_ptr->context_to_ub_name_to_ub_map = NULL;
-    }
+    _raGL_program_clear_bindings_metadata(program_ptr,
+                                          true /* should_release */);
 }
 
 /** TODO */
@@ -1250,189 +1251,6 @@ PRIVATE void _raGL_program_release_active_attributes(system_resizable_vector act
 
         delete program_attribute_ptr;
     }
-}
-
-/** TODO */
-PRIVATE void _raGL_program_release_active_shader_storage_blocks(_raGL_program* program_ptr)
-{
-    if (program_ptr->active_ssbs != NULL)
-    {
-        raGL_program_block current_ssb = NULL;
-
-        while (system_resizable_vector_pop(program_ptr->active_ssbs,
-                                          &current_ssb))
-        {
-            raGL_program_block_release(current_ssb);
-
-            current_ssb = NULL;
-        }
-
-        system_resizable_vector_release(program_ptr->active_ssbs);
-        program_ptr->active_ssbs = NULL;
-    }
-
-    if (program_ptr->ssb_index_to_ssb_map != NULL)
-    {
-        system_hash64map_release(program_ptr->ssb_index_to_ssb_map);
-
-        program_ptr->ssb_index_to_ssb_map = NULL;
-    }
-
-    if (program_ptr->ssb_name_to_ssb_map != NULL)
-    {
-        system_hash64map_release(program_ptr->ssb_name_to_ssb_map);
-
-        program_ptr->ssb_name_to_ssb_map = NULL;
-    }
-}
-
-/** TODO */
-PRIVATE void _raGL_program_release_active_uniform_blocks(_raGL_program* program_ptr,
-                                                         ogl_context    owner_context)
-{
-    if (program_ptr->context_to_active_ubs_map != NULL)
-    {
-        uint32_t n_contexts = 0;
-
-        system_hash64map_get_property(program_ptr->context_to_active_ubs_map,
-                                      SYSTEM_HASH64MAP_PROPERTY_N_ELEMENTS,
-                                     &n_contexts);
-
-        for (unsigned int n_context = 0;
-                          n_context < n_contexts;
-                        ++n_context)
-        {
-            system_resizable_vector active_ubs                 = NULL;
-            system_hash64           current_owner_context_hash = 0;
-            ogl_context             current_owner_context      = NULL;
-            raGL_program_block      uniform_block              = NULL;
-
-            system_hash64map_get_element_at(program_ptr->context_to_active_ubs_map,
-                                            n_context,
-                                           &active_ubs,
-                                           &current_owner_context_hash);
-
-            current_owner_context = (ogl_context) current_owner_context_hash;
-
-            if (active_ubs != NULL)
-            {
-                if (owner_context == NULL ||
-                    owner_context != NULL && owner_context == current_owner_context)
-                {
-                    while (system_resizable_vector_pop(active_ubs,
-                                                      &uniform_block) )
-                    {
-                        raGL_program_block_release(uniform_block);
-
-                        uniform_block = NULL;
-                    }
-
-                    system_resizable_vector_release(active_ubs);
-                    active_ubs = NULL;
-
-                    system_hash64map_remove(program_ptr->context_to_active_ubs_map,
-                                            current_owner_context_hash);
-
-                    --n_context;
-                    --n_contexts;
-                }
-            }
-        } /* for (all recognized contexts) */
-    } /* if (program_ptr->context_to_active_ubs_map != NULL) */
-
-    if (program_ptr->context_to_ub_index_to_ub_map != NULL)
-    {
-        unsigned int n_contexts = 0;
-
-        system_hash64map_get_property(program_ptr->context_to_ub_index_to_ub_map,
-                                      SYSTEM_HASH64MAP_PROPERTY_N_ELEMENTS,
-                                     &n_contexts);
-
-        for (unsigned int n_context = 0;
-                          n_context < n_contexts;
-                        ++n_context)
-        {
-            system_hash64    current_owner_context_hash = 0;
-            ogl_context      current_owner_context      = NULL;
-            system_hash64map current_ub_index_to_ub_map = NULL;
-
-            if (!system_hash64map_get_element_at(program_ptr->context_to_ub_index_to_ub_map,
-                                                 n_context,
-                                                &current_ub_index_to_ub_map,
-                                                &current_owner_context_hash) )
-            {
-#if 0
-            TODO: pending fix for hash map container
-
-                ASSERT_DEBUG_SYNC(false,
-                                  "Sanity check failed");
-#endif
-
-                continue;
-            }
-
-            current_owner_context = (ogl_context) current_owner_context_hash;
-
-            if (owner_context == NULL ||
-                owner_context != NULL && owner_context == current_owner_context)
-            {
-                system_hash64map_clear(current_ub_index_to_ub_map);
-                current_ub_index_to_ub_map = NULL;
-
-                system_hash64map_remove(program_ptr->context_to_ub_index_to_ub_map,
-                                        current_owner_context_hash);
-            }
-        } /* for (all recognized contexts) */
-    } /* if (program_ptr->context_to_ub_index_to_ub_map != NULL) */
-
-    if (program_ptr->context_to_ub_name_to_ub_map != NULL)
-    {
-        system_hash64 current_owner_context_hash = 0;
-        ogl_context   current_owner_context      = NULL;
-        unsigned int  n_contexts                 = 0;
-
-        system_hash64map_get_property(program_ptr->context_to_ub_name_to_ub_map,
-                                      SYSTEM_HASH64MAP_PROPERTY_N_ELEMENTS,
-                                     &n_contexts);
-
-        for (unsigned int n_context = 0;
-                          n_context < n_contexts;
-                        ++n_context)
-        {
-            system_hash64map current_ub_name_to_ub_map = NULL;
-
-            if (!system_hash64map_get_element_at(program_ptr->context_to_ub_name_to_ub_map,
-                                                 n_context,
-                                                &current_ub_name_to_ub_map,
-                                                &current_owner_context_hash) )
-            {
-#if 0
-            TODO: pending fix for hash map container
-
-                ASSERT_DEBUG_SYNC(false,
-                                  "Sanity check failed");
-#endif
-
-                continue;
-            }
-
-            current_owner_context = (ogl_context) current_owner_context_hash;
-
-            if (owner_context == NULL ||
-                owner_context != NULL && owner_context == current_owner_context)
-            {
-                system_hash64map_clear(current_ub_name_to_ub_map);
-                current_ub_name_to_ub_map = NULL;
-
-                system_hash64map_remove(program_ptr->context_to_ub_name_to_ub_map,
-                                        current_owner_context_hash);
-            }
-        } /* for (all recognized contexts) */
-    } /* if (program_ptr->context_to_ub_name_to_ub_map != NULL) */
-
-    /* Do NOT release the maps in this function, as it can also be called right before
-     * linking time.
-     */
 }
 
 /** TODO */
@@ -1459,9 +1277,6 @@ PRIVATE void _raGL_program_release_callback(ogl_context context,
                                             void*       in_arg)
 {
     _raGL_program* program_ptr = (_raGL_program*) in_arg;
-
-    raGL_program_release_context_objects( (raGL_program) program_ptr,
-                                         context);
 
     program_ptr->pGLDeleteProgram(program_ptr->id);
 
@@ -1786,30 +1601,24 @@ PUBLIC bool raGL_program_attach_shader(raGL_program program,
 }
 
 /** Please see header for specification */
-PUBLIC raGL_program raGL_program_create(ral_context                    context,
-                                        ral_program                    program_ral,
-                                        raGL_program_syncable_ubs_mode syncable_ubs_mode)
+PUBLIC raGL_program raGL_program_create(ral_context context,
+                                        ral_program program_ral)
 {
     _raGL_program* new_program_ptr = new (std::nothrow) _raGL_program;
 
     if (new_program_ptr != NULL)
     {
-        new_program_ptr->active_attributes_raGL        = NULL;
-        new_program_ptr->active_ssbs                   = NULL;
-        new_program_ptr->active_uniforms_raGL          = NULL;
-        new_program_ptr->context                       = context;
-        new_program_ptr->context_to_active_ubs_map     = system_hash64map_create(sizeof(system_hash64map),
-                                                                                 true); /* should_be_thread_safe */
-        new_program_ptr->context_to_ub_index_to_ub_map = system_hash64map_create(sizeof(system_hash64map),
-                                                                                 true); /* should_be_thread_safe */
-        new_program_ptr->context_to_ub_name_to_ub_map  = system_hash64map_create(sizeof(system_hash64map),
-                                                                                 true); /* should_be_thread_safe */
-        new_program_ptr->id                            = 0;
-        new_program_ptr->link_status                   = false;
-        new_program_ptr->program_ral                   = program_ral;
-        new_program_ptr->ssb_index_to_ssb_map          = NULL;
-        new_program_ptr->ssb_name_to_ssb_map           = NULL;
-        new_program_ptr->syncable_ubs_mode             = syncable_ubs_mode;
+        new_program_ptr->active_attributes_raGL    = NULL;
+        new_program_ptr->active_uniforms_raGL      = NULL;
+        new_program_ptr->block_name_to_binding_map = system_hash64map_create(sizeof(_raGL_program_block_binding*) );
+        new_program_ptr->context                   = context;
+        new_program_ptr->id                        = 0;
+        new_program_ptr->link_status               = false;
+        new_program_ptr->n_ssb_bindings            = 0;
+        new_program_ptr->n_ub_bindings             = 0;
+        new_program_ptr->program_ral               = program_ral;
+        new_program_ptr->ssb_bindings              = NULL;
+        new_program_ptr->ub_bindings               = NULL;
 
         /* Init GL entry-point cache */
         ral_backend_type backend_type = RAL_BACKEND_TYPE_UNKNOWN;
@@ -1833,7 +1642,6 @@ PUBLIC raGL_program raGL_program_create(ral_context                    context,
             new_program_ptr->pGLGetActiveAttrib            = entry_points->pGLGetActiveAttrib;
             new_program_ptr->pGLGetProgramResourceiv       = entry_points->pGLGetProgramResourceiv;
             new_program_ptr->pGLGetAttribLocation          = entry_points->pGLGetAttribLocation;
-            new_program_ptr->pGLGetError                   = entry_points->pGLGetError;
             new_program_ptr->pGLGetProgramBinary           = entry_points->pGLGetProgramBinary;
             new_program_ptr->pGLGetProgramInfoLog          = entry_points->pGLGetProgramInfoLog;
             new_program_ptr->pGLGetProgramInterfaceiv      = entry_points->pGLGetProgramInterfaceiv;
@@ -1845,7 +1653,6 @@ PUBLIC raGL_program raGL_program_create(ral_context                    context,
             new_program_ptr->pGLProgramBinary              = entry_points->pGLProgramBinary;
             new_program_ptr->pGLProgramParameteri          = entry_points->pGLProgramParameteri;
             new_program_ptr->pGLShaderStorageBlockBinding  = entry_points->pGLShaderStorageBlockBinding;
-            new_program_ptr->pGLTransformFeedbackVaryings  = entry_points->pGLTransformFeedbackVaryings;
             new_program_ptr->pGLUniformBlockBinding        = entry_points->pGLUniformBlockBinding;
         }
         else
@@ -1866,7 +1673,6 @@ PUBLIC raGL_program raGL_program_create(ral_context                    context,
             new_program_ptr->pGLGetActiveAttrib            = entry_points->pGLGetActiveAttrib;
             new_program_ptr->pGLGetProgramResourceiv       = entry_points->pGLGetProgramResourceiv;
             new_program_ptr->pGLGetAttribLocation          = entry_points->pGLGetAttribLocation;
-            new_program_ptr->pGLGetError                   = entry_points->pGLGetError;
             new_program_ptr->pGLGetProgramBinary           = entry_points->pGLGetProgramBinary;
             new_program_ptr->pGLGetProgramInfoLog          = entry_points->pGLGetProgramInfoLog;
             new_program_ptr->pGLGetProgramInterfaceiv      = entry_points->pGLGetProgramInterfaceiv;
@@ -1878,7 +1684,6 @@ PUBLIC raGL_program raGL_program_create(ral_context                    context,
             new_program_ptr->pGLProgramBinary              = entry_points->pGLProgramBinary;
             new_program_ptr->pGLProgramParameteri          = entry_points->pGLProgramParameteri;
             new_program_ptr->pGLShaderStorageBlockBinding  = entry_points->pGLShaderStorageBlockBinding;
-            new_program_ptr->pGLTransformFeedbackVaryings  = entry_points->pGLTransformFeedbackVaryings;
             new_program_ptr->pGLUniformBlockBinding        = entry_points->pGLUniformBlockBinding;
         }
 
@@ -1889,6 +1694,73 @@ PUBLIC raGL_program raGL_program_create(ral_context                    context,
     }
 
     return (raGL_program) new_program_ptr;
+}
+
+/** Please see header for specification */
+PUBLIC void raGL_program_get_block_property(raGL_program                program,
+                                            ral_program_block_type      block_type,
+                                            uint32_t                    index,
+                                            raGL_program_block_property property,
+                                            void*                       out_result_ptr)
+{
+    _raGL_program* program_ptr = (_raGL_program*) program;
+
+    if (program == NULL)
+    {
+        ASSERT_DEBUG_SYNC(program != NULL,
+                          "Input raGL_program instance is NULL");
+
+        goto end;
+    }
+
+    if (property != RAGL_PROGRAM_BLOCK_PROPERTY_INDEXED_BP)
+    {
+        ASSERT_DEBUG_SYNC(property == RAGL_PROGRAM_BLOCK_PROPERTY_INDEXED_BP,
+                          "Invalid raGL_program_block_property arg value specified.");
+
+        goto end;
+    }
+
+    switch (block_type)
+    {
+        case RAL_PROGRAM_BLOCK_TYPE_STORAGE_BUFFER:
+        {
+            if (index >= program_ptr->n_ssb_bindings)
+            {
+                ASSERT_DEBUG_SYNC(!(index >= program_ptr->n_ssb_bindings),
+                                  "Invalid block index specified.");
+
+                goto end;
+            }
+
+            *(uint32_t*) out_result_ptr = program_ptr->ssb_bindings[index].indexed_bp;
+
+            break;
+        }
+
+        case RAL_PROGRAM_BLOCK_TYPE_UNIFORM_BUFFER:
+        {
+            if (index >= program_ptr->n_ub_bindings)
+            {
+                ASSERT_DEBUG_SYNC(!(index >= program_ptr->n_ub_bindings),
+                                  "Invalid block index specified.");
+
+                goto end;
+            }
+
+            *(uint32_t*) out_result_ptr = program_ptr->ub_bindings[index].indexed_bp;
+
+            break;
+        }
+
+        default:
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Unsupported ral_program_block_type argument value specified.");
+        }
+    } /* switch (block_type) */
+end:
+    ;
 }
 
 /** Please see header for specification */
@@ -1951,69 +1823,61 @@ end:
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API bool raGL_program_get_shader_storage_block_by_sb_index(raGL_program        program,
-                                                                          unsigned int        index,
-                                                                          raGL_program_block* out_ssb_ptr)
+PUBLIC EMERALD_API void raGL_program_get_block_property_by_name(raGL_program                program,
+                                                                system_hashed_ansi_string   block_name,
+                                                                raGL_program_block_property property,
+                                                                void*                       out_result_ptr)
 {
-    _raGL_program*     program_ptr = (_raGL_program*) program;
-    bool               result      = false;
-    raGL_program_block result_ssb  = NULL;
+    _raGL_program_block_binding* binding_ptr = NULL;
+    _raGL_program*               program_ptr = (_raGL_program*) program;
 
-    result = system_hash64map_get_element_at(program_ptr->ssb_index_to_ssb_map,
-                                             index,
-                                            &result_ssb,
-                                             NULL); /* pOutHash */
-
-    if (result)
+    if (program == NULL)
     {
-        *out_ssb_ptr = result_ssb;
+        ASSERT_DEBUG_SYNC(program != NULL,
+                          "Input raGL_program instance is NULL");
+
+        goto end;
     }
 
-    return result;
-}
-
-/** Please see header for specification */
-PUBLIC EMERALD_API bool raGL_program_get_shader_storage_block_by_name(raGL_program              program,
-                                                                      system_hashed_ansi_string name,
-                                                                      raGL_program_block*       out_ssb_ptr)
-{
-    _raGL_program* program_ptr = (_raGL_program*) program;
-    bool           result      = false;
-
-    result = system_hash64map_get(program_ptr->ssb_name_to_ssb_map,
-                                  system_hashed_ansi_string_get_hash(name),
-                                  out_ssb_ptr);
-
-    return result;
-}
-
-/** Please see header for specification */
-PUBLIC EMERALD_API bool raGL_program_get_uniform_by_index(raGL_program                   program,
-                                                          size_t                         n_uniform,
-                                                          const _raGL_program_variable** out_uniform_ptr)
-{
-    _raGL_program* program_ptr = (_raGL_program*) program;
-    bool           result      = false;
-
-    ASSERT_DEBUG_SYNC(program_ptr->link_status,
-                      "You cannot retrieve an uniform descriptor without linking the program beforehand.");
-
-    if (program_ptr->link_status)
+    if (block_name                                       == NULL ||
+        system_hashed_ansi_string_get_length(block_name) == 0)
     {
-        _raGL_program_variable* uniform_ptr = NULL;
+        ASSERT_DEBUG_SYNC(false,
+                          "Input block name is NULL or of 0 length.");
 
-        result = system_resizable_vector_get_element_at(program_ptr->active_uniforms_raGL,
-                                                        n_uniform,
-                                                        &uniform_ptr);
+        goto end;
+    }
 
-        if (result)
-        {
-            *out_uniform_ptr = uniform_ptr;
-             result          = true;
-        }
-    } /* if (program_ptr->link_status) */
+    if (property != RAGL_PROGRAM_BLOCK_PROPERTY_INDEXED_BP)
+    {
+        ASSERT_DEBUG_SYNC(property == RAGL_PROGRAM_BLOCK_PROPERTY_INDEXED_BP,
+                          "Invalid raGL_program_block_property value passed.");
 
-    return result;
+        goto end;
+    }
+
+    if (!system_hash64map_get(program_ptr->block_name_to_binding_map,
+                              system_hashed_ansi_string_get_hash(block_name),
+                             &binding_ptr) )
+    {
+        system_hashed_ansi_string program_name = NULL;
+
+        ral_program_get_property(program_ptr->program_ral,
+                                 RAL_PROGRAM_PROPERTY_NAME,
+                                &program_name);
+
+        ASSERT_DEBUG_SYNC(false,
+                          "Block [%s] is not recognized for program [%s]",
+                          system_hashed_ansi_string_get_buffer(block_name),
+                          system_hashed_ansi_string_get_buffer(program_name) );
+
+        goto end;
+    }
+
+    *(uint32_t*) out_result_ptr = binding_ptr->indexed_bp;
+
+end:
+    ;
 }
 
 /** Please see header for specification */
@@ -2059,113 +1923,6 @@ PUBLIC EMERALD_API bool raGL_program_get_uniform_by_name(raGL_program           
                 result = false;
             }
         }
-    }
-
-    return result;
-}
-
-/** Please see header for specification */
-PUBLIC EMERALD_API bool raGL_program_get_uniform_block_by_ub_index(raGL_program        program,
-                                                                   unsigned int        index,
-                                                                   raGL_program_block* out_ub_ptr)
-{
-    ogl_context        current_context    = NULL;
-    _raGL_program*     program_ptr        = (_raGL_program*) program;
-    bool               result             = false;
-    raGL_program_block result_ub          = NULL;
-    system_hash64map   ub_index_to_ub_map = NULL;
-
-    if (program_ptr->syncable_ubs_mode == RAGL_PROGRAM_SYNCABLE_UBS_MODE_ENABLE_PER_CONTEXT)
-    {
-        current_context = ogl_context_get_current_context();
-    } /* if (program_ptr->syncable_ubs_mode == RAGL_PROGRAM_SYNCABLE_UBS_MODE_ENABLE_PER_CONTEXT) */
-
-    if (!system_hash64map_contains(program_ptr->context_to_ub_name_to_ub_map,
-                                   (system_hash64) current_context) )
-    {
-        _raGL_program_init_blocks_for_context(RAL_PROGRAM_BLOCK_TYPE_UNIFORM_BUFFER,
-                                              program_ptr,
-                                              current_context,
-                                              ogl_context_get_current_context() );
-    }
-
-    if (system_hash64map_contains(program_ptr->context_to_ub_name_to_ub_map,
-                                  (system_hash64) current_context) )
-    {
-        if (system_hash64map_get(program_ptr->context_to_ub_index_to_ub_map,
-                                 (system_hash64) current_context,
-                                &ub_index_to_ub_map) )
-        {
-            result = system_hash64map_get(ub_index_to_ub_map,
-                                          index,
-                                         &result_ub);
-
-            if (result)
-            {
-                *out_ub_ptr = result_ub;
-            }
-        }
-    }
-
-    return result;
-}
-
-/** Please see header for specification */
-PUBLIC EMERALD_API bool raGL_program_get_uniform_block_by_name(raGL_program              program,
-                                                               system_hashed_ansi_string name,
-                                                               raGL_program_block*       out_ub_ptr)
-{
-    ogl_context      current_context   = NULL;
-    _raGL_program*   program_ptr       = (_raGL_program*) program;
-    bool             result            = false;
-    system_hash64map ub_name_to_ub_map = NULL;
-
-    if (program_ptr->syncable_ubs_mode == RAGL_PROGRAM_SYNCABLE_UBS_MODE_ENABLE_PER_CONTEXT)
-    {
-        current_context = ogl_context_get_current_context();
-    }
-
-    if (!system_hash64map_contains(program_ptr->context_to_ub_name_to_ub_map,
-                                   (system_hash64) current_context) )
-    {
-        _raGL_program_init_blocks_for_context(RAL_PROGRAM_BLOCK_TYPE_UNIFORM_BUFFER,
-                                              program_ptr,
-                                              current_context,
-                                              ogl_context_get_current_context() );
-    }
-
-    if (system_hash64map_contains(program_ptr->context_to_ub_name_to_ub_map,
-                                  (system_hash64) current_context) )
-    {
-        if (system_hash64map_get(program_ptr->context_to_ub_name_to_ub_map,
-                                 (system_hash64) current_context,
-                                &ub_name_to_ub_map) )
-        {
-            result = system_hash64map_get(ub_name_to_ub_map,
-                                          system_hashed_ansi_string_get_hash(name),
-                                          out_ub_ptr);
-        }
-    }
-
-    return result;
-}
-
-/** Please see header for specification */
-PUBLIC EMERALD_API bool raGL_program_get_vertex_attribute_by_index(raGL_program                    program,
-                                                                   size_t                          n_attribute,
-                                                                   const _raGL_program_attribute** out_attribute_ptr)
-{
-    _raGL_program* program_ptr = (_raGL_program*) program;
-    bool           result      = false;
-
-    ASSERT_DEBUG_SYNC(program_ptr->link_status,
-                      "You cannot retrieve an attribute descriptor without linking the program beforehand.");
-
-    if (program_ptr->link_status)
-    {
-        result = system_resizable_vector_get_element_at(program_ptr->active_attributes_raGL,
-                                                        n_attribute,
-                                                        (void*) *out_attribute_ptr);
     }
 
     return result;
@@ -2236,10 +1993,8 @@ PUBLIC bool raGL_program_link(raGL_program program)
     if (n_attached_shaders > 0)
     {
         /* Clean up */
-        _raGL_program_release_active_attributes           (program_ptr->active_attributes_raGL);
-        _raGL_program_release_active_shader_storage_blocks(program_ptr);
-        _raGL_program_release_active_uniform_blocks       (program_ptr);
-        _raGL_program_release_active_uniforms             (program_ptr->active_uniforms_raGL);
+        _raGL_program_release_active_attributes(program_ptr->active_attributes_raGL);
+        _raGL_program_release_active_uniforms  (program_ptr->active_uniforms_raGL);
 
         /* Run through all the attached shaders and make sure these are compiled.
         *
@@ -2358,17 +2113,148 @@ PUBLIC void raGL_program_release(raGL_program program)
 }
 
 /** Please see header for specification */
-PUBLIC RENDERING_CONTEXT_CALL void raGL_program_release_context_objects(raGL_program program,
-                                                                        ogl_context  context)
+PUBLIC void raGL_program_set_block_property(raGL_program                program,
+                                            ral_program_block_type      block_type,
+                                            uint32_t                    index,
+                                            raGL_program_block_property property,
+                                            const void*                 value_ptr)
 {
     _raGL_program* program_ptr = (_raGL_program*) program;
 
-    ASSERT_DEBUG_SYNC(context != NULL,
-                      "Sanity check failed");
-
-    if (context != NULL)
+    if (program == NULL)
     {
-        _raGL_program_release_active_uniform_blocks(program_ptr,
-                                                    context);
+        ASSERT_DEBUG_SYNC(program != NULL,
+                          "Input raGL_program instance is NULL");
+
+        goto end;
     }
+
+    if (property != RAGL_PROGRAM_BLOCK_PROPERTY_INDEXED_BP)
+    {
+        ASSERT_DEBUG_SYNC(property == RAGL_PROGRAM_BLOCK_PROPERTY_INDEXED_BP,
+                          "Invalid raGL_program_block_property arg value specified.");
+
+        goto end;
+    }
+
+    switch (block_type)
+    {
+        case RAL_PROGRAM_BLOCK_TYPE_STORAGE_BUFFER:
+        {
+            if (index >= program_ptr->n_ssb_bindings)
+            {
+                ASSERT_DEBUG_SYNC(!(index >= program_ptr->n_ssb_bindings),
+                                  "Invalid block index specified.");
+
+                goto end;
+            }
+
+            raGL_program_set_block_property_by_name(program,
+                                                    program_ptr->ssb_bindings[index].block_name,
+                                                    property,
+                                                    value_ptr);
+
+            break;
+        }
+
+        case RAL_PROGRAM_BLOCK_TYPE_UNIFORM_BUFFER:
+        {
+            if (index >= program_ptr->n_ub_bindings)
+            {
+                ASSERT_DEBUG_SYNC(!(index >= program_ptr->n_ub_bindings),
+                                  "Invalid block index specified.");
+
+                goto end;
+            }
+
+            raGL_program_set_block_property_by_name(program,
+                                                    program_ptr->ub_bindings[index].block_name,
+                                                    property,
+                                                    value_ptr);
+
+            break;
+        }
+
+        default:
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Unsupported ral_program_block_type argument value specified.");
+        }
+    } /* switch (block_type) */
+end:
+    ;
+}
+
+/** Please see header for specification */
+PUBLIC RENDERING_CONTEXT_CALL void raGL_program_set_block_property_by_name(raGL_program                program,
+                                                                           system_hashed_ansi_string   block_name,
+                                                                           raGL_program_block_property property,
+                                                                           const void*                 value_ptr)
+{
+    _raGL_program_block_binding* binding_ptr = NULL;
+    _raGL_program*               program_ptr = (_raGL_program*) program;
+
+    if (program == NULL)
+    {
+        ASSERT_DEBUG_SYNC(program != NULL,
+                          "Input raGL_program instance is NULL");
+
+        goto end;
+    }
+
+    if (property != RAGL_PROGRAM_BLOCK_PROPERTY_INDEXED_BP)
+    {
+        ASSERT_DEBUG_SYNC(property == RAGL_PROGRAM_BLOCK_PROPERTY_INDEXED_BP,
+                          "Invalid raGL_program_block_property arg value specified.");
+
+        goto end;
+    }
+
+    if (!system_hash64map_get(program_ptr->block_name_to_binding_map,
+                              system_hashed_ansi_string_get_hash(block_name),
+                             &binding_ptr) )
+    {
+        system_hashed_ansi_string program_name = NULL;
+
+        ral_program_get_property(program_ptr->program_ral,
+                                 RAL_PROGRAM_PROPERTY_NAME,
+                                &program_name);
+
+        ASSERT_DEBUG_SYNC(false,
+                          "Program [%s] does not have a block [%s] defined.",
+                          system_hashed_ansi_string_get_buffer(program_name),
+                          system_hashed_ansi_string_get_buffer(block_name) );
+
+        goto end;
+    }
+
+    if (binding_ptr->indexed_bp != *(uint32_t*) value_ptr)
+    {
+        ogl_context                 current_context = ogl_context_get_current_context();
+        ogl_context_gl_entrypoints* entrypoints_ptr = NULL;
+
+        binding_ptr->indexed_bp = *(uint32_t*) value_ptr;
+
+        ogl_context_get_property(current_context,
+                                 OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
+                                &entrypoints_ptr);
+
+        if (binding_ptr->block_type == RAL_PROGRAM_BLOCK_TYPE_STORAGE_BUFFER)
+        {
+            entrypoints_ptr->pGLShaderStorageBlockBinding(program_ptr->id,
+                                                          binding_ptr->block_index,
+                                                          binding_ptr->indexed_bp);
+        }
+        else
+        {
+            ASSERT_DEBUG_SYNC(binding_ptr->block_type == RAL_PROGRAM_BLOCK_TYPE_UNIFORM_BUFFER,
+                              "Unrecognized block type encountered");
+
+            entrypoints_ptr->pGLUniformBlockBinding(program_ptr->id,
+                                                    binding_ptr->block_index,
+                                                    binding_ptr->indexed_bp);
+        }
+    }
+end:
+    ;
 }

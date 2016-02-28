@@ -49,8 +49,14 @@ typedef struct _ral_program_callback_shader_attach_callback_argument
 
 typedef enum
 {
+    /* not settable; system_hashed_ansi_string */
+    RAL_PROGRAM_BLOCK_PROPERTY_NAME,
+
     /* not settable; uint32_t */
     RAL_PROGRAM_BLOCK_PROPERTY_N_VARIABLES,
+
+    /* not settable; uint32_t */
+    RAL_PROGRAM_BLOCK_PROPERTY_SIZE,
 
     /* not settable; ral_program_block_type */
     RAL_PROGRAM_BLOCK_PROPERTY_TYPE,
@@ -78,18 +84,19 @@ typedef enum
  *
  *  NOTE: Should only be called by rendering back-end.
  **/
-PUBLIC void ral_program_add_metadata_block(ral_program               program,
-                                           ral_program_block_type    block_type,
-                                           system_hashed_ansi_string block_name);
+PUBLIC void ral_program_add_block(ral_program               program,
+                                  uint32_t                  block_size,
+                                  ral_program_block_type    block_type,
+                                  system_hashed_ansi_string block_name);
 
 /** TODO
  *
  *  NOTE: Should only be called by rendering back-end.
  *  NOTE: RAL program takes ownership of @param variable_ptr.
  **/
-PUBLIC void ral_program_attach_variable_to_metadata_block(ral_program               program,
-                                                          system_hashed_ansi_string block_name,
-                                                          ral_program_variable*     variable_ptr);
+PUBLIC void ral_program_attach_variable_to_block(ral_program               program,
+                                                 system_hashed_ansi_string block_name,
+                                                 ral_program_variable*     variable_ptr);
 
 /** TODO
  *
@@ -126,6 +133,13 @@ PUBLIC EMERALD_API bool ral_program_get_block_property(ral_program              
                                                        void*                      out_result_ptr);
 
 /** TODO */
+PUBLIC EMERALD_API bool ral_program_get_block_property_by_index(ral_program                program,
+                                                                ral_program_block_type     block_type,
+                                                                uint32_t                   block_index,
+                                                                ral_program_block_property property,
+                                                                void*                      out_result_ptr);
+
+/** TODO */
 PUBLIC EMERALD_API bool ral_program_get_block_variable_by_index(ral_program                  program,
                                                                 system_hashed_ansi_string    block_name,
                                                                 uint32_t                     n_variable,
@@ -147,6 +161,10 @@ PUBLIC EMERALD_API bool ral_program_get_block_variable_by_name(ral_program      
 PUBLIC EMERALD_API void ral_program_get_property(ral_program          program,
                                                  ral_program_property property,
                                                  void*                out_result_ptr);
+
+/** TODO */
+PUBLIC EMERALD_API bool ral_program_is_block_defined(ral_program               program,
+                                                     system_hashed_ansi_string block_name);
 
 /** TODO */
 PUBLIC void ral_program_release(ral_program& program);

@@ -9,11 +9,12 @@
 #include "raGL/raGL_buffer.h"
 #include "raGL/raGL_framebuffer.h"
 #include "raGL/raGL_program.h"
-#include "raGL/raGL_program_block.h"
 #include "raGL/raGL_shader.h"
 #include "raGL/raGL_texture.h"
+#include "ral/ral_buffer.h"
 #include "ral/ral_context.h"
 #include "ral/ral_program.h"
+#include "ral/ral_program_block_buffer.h"
 #include "ral/ral_shader.h"
 #include "ral/ral_texture.h"
 #include "shaders/shaders_fragment_rgb_to_Yxy.h"
@@ -48,15 +49,14 @@ typedef struct
     ral_program rgb_to_Yxy_program;
     GLuint      rgb_to_Yxy_program_tex_uniform_location;
 
-    ral_program        operator_program;
-    GLuint             operator_program_alpha_ub_offset;
-    ral_buffer         operator_program_ub_bo;
-    GLuint             operator_program_ub_bo_size;
-    raGL_program_block operator_program_ub_raGL;
-    ral_shader         operator_fragment_shader;
-    GLuint             operator_program_luminance_texture_location;
-    GLuint             operator_program_luminance_texture_avg_location;
-    GLuint             operator_program_white_level_ub_offset;
+    ral_program              operator_program;
+    GLuint                   operator_program_alpha_ub_offset;
+    ral_program_block_buffer operator_program_ub;
+    GLuint                   operator_program_ub_bo_size;
+    ral_shader               operator_fragment_shader;
+    GLuint                   operator_program_luminance_texture_location;
+    GLuint                   operator_program_luminance_texture_avg_location;
+    GLuint                   operator_program_white_level_ub_offset;
 
     uint32_t texture_width;
     uint32_t texture_height;
@@ -361,15 +361,18 @@ PRIVATE void _create_callback(ogl_context context,
     }
 
     /* Retrieve uniform block properties */
-    raGL_program_get_uniform_block_by_name(operator_po_raGL,
-                                           system_hashed_ansi_string_create("data"),
-                                          &callback_ptr->data_ptr->operator_program_ub_raGL);
-    raGL_program_block_get_property       (callback_ptr->data_ptr->operator_program_ub_raGL,
-                                           RAGL_PROGRAM_BLOCK_PROPERTY_BLOCK_DATA_SIZE,
-                                          &callback_ptr->data_ptr->operator_program_ub_bo_size);
-    raGL_program_block_get_property       (callback_ptr->data_ptr->operator_program_ub_raGL,
-                                           RAGL_PROGRAM_BLOCK_PROPERTY_BUFFER_RAL,
-                                          &callback_ptr->data_ptr->operator_program_ub_bo);
+    ral_buffer ub_ral = NULL;
+
+    callback_ptr->data_ptr->operator_program_ub = ral_program_block_buffer_create(callback_ptr->data_ptr->context,
+                                                                                  callback_ptr->data_ptr->operator_program,
+                                                                                  system_hashed_ansi_string_create("data") );
+
+    ral_program_block_buffer_get_property(callback_ptr->data_ptr->operator_program_ub,
+                                          RAL_PROGRAM_BLOCK_BUFFER_PROPERTY_BUFFER_RAL,
+                                         &ub_ral);
+    ral_buffer_get_property              (ub_ral,
+                                          RAL_BUFFER_PROPERTY_SIZE,
+                                         &callback_ptr->data_ptr->operator_program_ub_bo_size);
 
     /* Retrieve uniform properties */
     const ral_program_variable*   alpha_uniform_ral_ptr                  = NULL;
@@ -452,6 +455,13 @@ PRIVATE void _release_callback(ogl_context context,
                                RAL_CONTEXT_OBJECT_TYPE_SHADER,
                                1, /* n_objects */
                                (const void**) &data_ptr->operator_fragment_shader);
+
+    if (data_ptr->operator_program_ub != NULL)
+    {
+        ral_program_block_buffer_release(data_ptr->operator_program_ub);
+
+        data_ptr->operator_program_ub = NULL;
+    }
 }
 
 /** TODO */
@@ -708,16 +718,16 @@ PUBLIC EMERALD_API void postprocessing_reinhard_tonemap_execute(postprocessing_r
                                       tonemapper_ptr->operator_program_luminance_texture_avg_location,
                                       (tonemapper_ptr->use_crude_downsampled_lum_average_calculation ? 1 : 0) );
 
-    raGL_program_block_set_nonarrayed_variable_value(tonemapper_ptr->operator_program_ub_raGL,
-                                                     tonemapper_ptr->operator_program_alpha_ub_offset,
-                                                    &alpha,
-                                                     sizeof(float) );
-    raGL_program_block_set_nonarrayed_variable_value(tonemapper_ptr->operator_program_ub_raGL,
-                                                     tonemapper_ptr->operator_program_white_level_ub_offset,
-                                                    &white_level,
-                                                     sizeof(float) );
+    ral_program_block_buffer_set_nonarrayed_variable_value(tonemapper_ptr->operator_program_ub,
+                                                           tonemapper_ptr->operator_program_alpha_ub_offset,
+                                                          &alpha,
+                                                           sizeof(float) );
+    ral_program_block_buffer_set_nonarrayed_variable_value(tonemapper_ptr->operator_program_ub,
+                                                           tonemapper_ptr->operator_program_white_level_ub_offset,
+                                                          &white_level,
+                                                           sizeof(float) );
 
-    raGL_program_block_sync(tonemapper_ptr->operator_program_ub_raGL);
+    ral_program_block_buffer_sync(tonemapper_ptr->operator_program_ub);
 
     if (out_texture != NULL)
     {
@@ -747,10 +757,15 @@ PUBLIC EMERALD_API void postprocessing_reinhard_tonemap_execute(postprocessing_r
 
     GLuint      operator_program_ub_bo_id           = 0;
     raGL_buffer operator_program_ub_bo_raGL         = NULL;
+    ral_buffer  operator_program_ub_bo_ral          = NULL;
     uint32_t    operator_program_ub_bo_start_offset = -1;
 
+    ral_program_block_buffer_get_property(tonemapper_ptr->operator_program_ub,
+                                          RAL_PROGRAM_BLOCK_BUFFER_PROPERTY_BUFFER_RAL,
+                                         &operator_program_ub_bo_ral);
+
     operator_program_ub_bo_raGL = ral_context_get_buffer_gl(tonemapper_ptr->context,
-                                                            tonemapper_ptr->operator_program_ub_bo);
+                                                            operator_program_ub_bo_ral);
 
     raGL_buffer_get_property(operator_program_ub_bo_raGL,
                              RAGL_BUFFER_PROPERTY_ID,

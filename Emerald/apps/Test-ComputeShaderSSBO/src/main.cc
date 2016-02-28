@@ -11,7 +11,6 @@
 #include "raGL/raGL_buffer.h"
 #include "raGL/raGL_framebuffer.h"
 #include "raGL/raGL_program.h"
-#include "raGL/raGL_program_block.h"
 #include "raGL/raGL_texture.h"
 #include "ral/ral_buffer.h"
 #include "ral/ral_context.h"

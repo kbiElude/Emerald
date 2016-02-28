@@ -16,12 +16,12 @@
 #include "raGL/raGL_buffer.h"
 #include "raGL/raGL_framebuffer.h"
 #include "raGL/raGL_program.h"
-#include "raGL/raGL_program_block.h"
 #include "raGL/raGL_texture.h"
 #include "ral/ral_buffer.h"
 #include "ral/ral_context.h"
 #include "ral/ral_framebuffer.h"
 #include "ral/ral_program.h"
+#include "ral/ral_program_block_buffer.h"
 #include "ral/ral_shader.h"
 #include "ral/ral_texture.h"
 
@@ -39,9 +39,8 @@ GLuint                      _dof_scheuermann_vao_id                 = -1;
 
 /* Combination program */
 ral_program                 _dof_scheuermann_combination_po                             = NULL;
-ral_buffer                  _dof_scheuermann_combination_po_ub_bo                       = NULL;
+ral_program_block_buffer    _dof_scheuermann_combination_po_ub                          = NULL;
 GLuint                      _dof_scheuermann_combination_po_ub_max_coc_px_ub_offset     = -1;
-raGL_program_block          _dof_scheuermann_combination_po_ub_raGL                     = NULL;
 GLuint                      _dof_scheuermann_combination_po_bg_uniform_location         = -1;
 GLuint                      _dof_scheuermann_combination_po_data_high_uniform_location  = -1;
 GLuint                      _dof_scheuermann_combination_po_data_low_uniform_location   = -1;
@@ -181,12 +180,12 @@ static void _stage_step_dof_scheuermann_combine_execute(ral_context context,
     /* Uniforms! */
     const  float max_coc_px = main_get_max_coc_px();
 
-    raGL_program_block_set_nonarrayed_variable_value(_dof_scheuermann_combination_po_ub_raGL,
-                                                     _dof_scheuermann_combination_po_ub_max_coc_px_ub_offset,
-                                                    &max_coc_px,
-                                                     sizeof(float) );
+    ral_program_block_buffer_set_nonarrayed_variable_value(_dof_scheuermann_combination_po_ub,
+                                                           _dof_scheuermann_combination_po_ub_max_coc_px_ub_offset,
+                                                          &max_coc_px,
+                                                           sizeof(float) );
 
-    raGL_program_block_sync(_dof_scheuermann_combination_po_ub_raGL);
+    ral_program_block_buffer_sync(_dof_scheuermann_combination_po_ub);
 
     /* Go on */
     raGL_program dof_scheuermann_combination_po_raGL                    = NULL;
@@ -194,22 +193,27 @@ static void _stage_step_dof_scheuermann_combine_execute(ral_context context,
     raGL_buffer  dof_scheuermann_combination_po_ub_bo_raGL              = NULL;
     GLuint       dof_scheuermann_combination_po_ub_bo_raGL_id           = 0;
     uint32_t     dof_scheuermann_combination_po_ub_bo_raGL_start_offset = -1;
+    ral_buffer   dof_scheuermann_combination_po_ub_bo_ral               = NULL;
     uint32_t     dof_scheuermann_combination_po_ub_bo_ral_start_offset  = -1;
     uint32_t     dof_scheuermann_combination_po_ub_bo_size              = 0;
+
+    ral_program_block_buffer_get_property(_dof_scheuermann_combination_po_ub,
+                                          RAL_PROGRAM_BLOCK_BUFFER_PROPERTY_BUFFER_RAL,
+                                         &dof_scheuermann_combination_po_ub_bo_ral);
 
     dof_scheuermann_combination_po_raGL       = ral_context_get_program_gl(context,
                                                                            _dof_scheuermann_combination_po);
     dof_scheuermann_combination_po_ub_bo_raGL = ral_context_get_buffer_gl (context,
-                                                                           _dof_scheuermann_combination_po_ub_bo);
+                                                                           dof_scheuermann_combination_po_ub_bo_ral);
 
     raGL_program_get_property(dof_scheuermann_combination_po_raGL,
                               RAGL_PROGRAM_PROPERTY_ID,
                              &dof_scheuermann_combination_po_raGL_id);
 
-    ral_buffer_get_property (_dof_scheuermann_combination_po_ub_bo,
+    ral_buffer_get_property (dof_scheuermann_combination_po_ub_bo_ral,
                              RAL_BUFFER_PROPERTY_SIZE,
                             &dof_scheuermann_combination_po_ub_bo_size);
-    ral_buffer_get_property (_dof_scheuermann_combination_po_ub_bo,
+    ral_buffer_get_property (dof_scheuermann_combination_po_ub_bo_ral,
                              RAL_BUFFER_PROPERTY_START_OFFSET,
                             &dof_scheuermann_combination_po_ub_bo_ral_start_offset);
     raGL_buffer_get_property(dof_scheuermann_combination_po_ub_bo_raGL,
@@ -332,6 +336,7 @@ PUBLIC void stage_step_dof_scheuermann_deinit(ral_context context)
                                n_textures_to_release,
                                (const void**) textures_to_release);
 
+    ral_program_block_buffer_release   (_dof_scheuermann_combination_po_ub);
     postprocessing_blur_poisson_release(_dof_scheuermann_blur_poisson);
 }
 
@@ -600,19 +605,16 @@ PUBLIC void stage_step_dof_scheuermann_init(ral_context  context,
                               RAGL_PROGRAM_PROPERTY_ID,
                              &dof_scheuermann_combination_po_raGL_id);
 
-    raGL_program_get_uniform_block_by_name(dof_scheuermann_combination_po_raGL,
-                                           system_hashed_ansi_string_create("data"),
-                                          &_dof_scheuermann_combination_po_ub_raGL);
-    raGL_program_block_get_property       (_dof_scheuermann_combination_po_ub_raGL,
-                                           RAGL_PROGRAM_BLOCK_PROPERTY_BUFFER_RAL,
-                                          &_dof_scheuermann_combination_po_ub_bo);
+    _dof_scheuermann_combination_po_ub = ral_program_block_buffer_create(context,
+                                                                         _dof_scheuermann_combination_po,
+                                                                         system_hashed_ansi_string_create("data"));
 
     /* Retrieve combination program uniform locations */
     const _raGL_program_variable* bg_uniform_raGL_ptr         = NULL;
     const _raGL_program_variable* data_high_uniform_raGL_ptr  = NULL;
     const _raGL_program_variable* data_low_uniform_raGL_ptr   = NULL;
     const _raGL_program_variable* depth_high_uniform_raGL_ptr = NULL;
-    const ral_program_variable*   max_coc_px_uniform_ral_ptr = NULL;
+    const ral_program_variable*   max_coc_px_uniform_ral_ptr  = NULL;
 
     raGL_program_get_uniform_by_name      (dof_scheuermann_combination_po_raGL,
                                            system_hashed_ansi_string_create("bg"),

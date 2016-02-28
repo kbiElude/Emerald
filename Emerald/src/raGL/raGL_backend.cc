@@ -743,8 +743,7 @@ PRIVATE void _raGL_backend_on_objects_created_rendering_callback(ogl_context con
                 ral_program program_ral = (ral_program) callback_arg_ptr->ral_callback_arg_ptr->created_objects[n_object_id];
 
                 new_object = raGL_program_create(callback_arg_ptr->backend_ptr->context_ral,
-                                                 program_ral,
-                                                 RAGL_PROGRAM_SYNCABLE_UBS_MODE_ENABLE_PER_CONTEXT);
+                                                 program_ral);
 
                 break;
             }
