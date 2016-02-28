@@ -13,19 +13,19 @@
 #include "gfx/gfx_rgbe.h"
 #include "ogl/ogl_context.h"
 #include "ogl/ogl_pipeline.h"
-#include "ogl/ogl_skybox.h"
 #include "raGL/raGL_framebuffer.h"
 #include "raGL/raGL_texture.h"
 #include "ral/ral_context.h"
 #include "ral/ral_framebuffer.h"
 #include "ral/ral_texture.h"
 #include "system/system_matrix4x4.h"
+#include "varia/varia_skybox.h"
 
 ral_framebuffer  _fbo            = NULL;
 system_matrix4x4 _inv_projection = NULL;
 system_matrix4x4 _mv             = NULL;
 ral_texture      _result_texture = NULL;
-ogl_skybox       _skybox         = NULL;
+varia_skybox     _skybox         = NULL;
 gfx_image        _skybox_image   = NULL;
 ral_texture      _skybox_texture = NULL;
 
@@ -69,9 +69,9 @@ static void _stage_step_background_execute(ral_context context,
                             DEMO_FLYBY_PROPERTY_VIEW_MATRIX,
                            &_mv);
 
-    ogl_skybox_draw(_skybox,
-                    _mv,
-                    _inv_projection);
+    varia_skybox_draw(_skybox,
+                      _mv,
+                      _inv_projection);
 }
 
 /* Please see header for specification */
@@ -96,8 +96,8 @@ PUBLIC void stage_step_background_deinit(ral_context context)
                                n_textures_to_release,
                                (const void**) textures_to_release);
 
-    ogl_skybox_release (_skybox);
-    gfx_image_release  (_skybox_image);
+    varia_skybox_release(_skybox);
+    gfx_image_release   (_skybox_image);
 }
 
 /* Please see header for specification */
@@ -186,9 +186,9 @@ PUBLIC void stage_step_background_init(ral_context  context,
                                                &_skybox_image,
                                                &_skybox_texture);
 
-    _skybox = ogl_skybox_create_spherical_projection_texture(context,
-                                                             _skybox_texture,
-                                                             system_hashed_ansi_string_create("skybox") );
+    _skybox = varia_skybox_create_spherical_projection_texture(context,
+                                                               _skybox_texture,
+                                                               system_hashed_ansi_string_create("skybox") );
 
     /* Add ourselves to the pipeline */
     ogl_pipeline_stage_step_declaration stage_step_background;

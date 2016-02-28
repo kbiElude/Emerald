@@ -119,6 +119,8 @@ FILE(GLOB SystemIncludes            "${EMERALD_SOURCE_DIR}/include/system/*.h")
 FILE(GLOB SystemSources             "${EMERALD_SOURCE_DIR}/src/system/*.cc")
 FILE(GLOB TextureIncludes           "${EMERALD_SOURCE_DIR}/include/texture/*.h")
 FILE(GLOB TextureSources            "${EMERALD_SOURCE_DIR}/src/texture/*.cc")
+FILE(GLOB VariaIncludes             "${EMERALD_SOURCE_DIR}/include/varia/*.h")
+FILE(GLOB VariaSources              "${EMERALD_SOURCE_DIR}/src/varia/*.cc")
 
 IF (INCLUDE_WEBCAM_MANAGER)
     FILE(GLOB WebcamIncludes "${EMERALD_SOURCE_DIR}/include/webcam/*.h")
@@ -176,10 +178,11 @@ SET(AllSources
                ${OpenCLSources}
                ${TextureSources}
                ${DemoSources}
-			   ${DemoTimelineNodesSources}
+               ${DemoTimelineNodesSources}
                ${ScalarFieldSources}
                ${RALSources}
-			   ${RAGLSources})
+               ${RAGLSources}
+               ${VariaSources})
 
 ADD_MSVC_PRECOMPILED_HEADER("shared.h" "src/shared.cc" AllSources)
 
@@ -218,10 +221,11 @@ ADD_LIBRARY(EMERALD SHARED ${AllSources}
                            ${OpenCLIncludes}
                            ${TextureIncludes}
                            ${DemoIncludes}
-						   ${DemoTimelineNodesIncludes}
+                           ${DemoTimelineNodesIncludes}
                            ${ScalarFieldIncludes}
                            ${RALIncludes}
-						   ${RAGLIncludes}
+                           ${RAGLIncludes}
+                           ${VariaIncludes}
                             Emerald.rc)
 
 GENERATE_EXPORT_HEADER(EMERALD
@@ -232,54 +236,56 @@ GENERATE_EXPORT_HEADER(EMERALD
 
 SET(LIBRARY_OUTPUT_PATH ${EMERALD_BINARY_DIR}/bin)
 
-SOURCE_GROUP ("Audio includes"                       		 FILES ${AudioIncludes})
-SOURCE_GROUP ("Audio sources"                        		 FILES ${AudioSources})
-SOURCE_GROUP ("Collada includes"                     		 FILES ${ColladaIncludes})
-SOURCE_GROUP ("Collada sources"                      		 FILES ${ColladaSources})
-SOURCE_GROUP ("Curve Editor includes"                		 FILES ${CurveEditorIncludes})
-SOURCE_GROUP ("Curve Editor sources"                 		 FILES ${CurveEditorSources})
-SOURCE_GROUP ("Curve includes"                       		 FILES ${CurveIncludes})
-SOURCE_GROUP ("Curve sources"                        		 FILES ${CurveSources})
-SOURCE_GROUP ("Demo includes"                        		 FILES ${DemoIncludes})
-SOURCE_GROUP ("Demo sources"                         		 FILES ${DemoSources})
-SOURCE_GROUP ("Demo timeline nodes includes"			     FILES ${DemoTimelineNodesIncludes})
+SOURCE_GROUP ("Audio includes"                               FILES ${AudioIncludes})
+SOURCE_GROUP ("Audio sources"                                FILES ${AudioSources})
+SOURCE_GROUP ("Collada includes"                             FILES ${ColladaIncludes})
+SOURCE_GROUP ("Collada sources"                              FILES ${ColladaSources})
+SOURCE_GROUP ("Curve Editor includes"                        FILES ${CurveEditorIncludes})
+SOURCE_GROUP ("Curve Editor sources"                         FILES ${CurveEditorSources})
+SOURCE_GROUP ("Curve includes"                               FILES ${CurveIncludes})
+SOURCE_GROUP ("Curve sources"                                FILES ${CurveSources})
+SOURCE_GROUP ("Demo includes"                                FILES ${DemoIncludes})
+SOURCE_GROUP ("Demo sources"                                 FILES ${DemoSources})
+SOURCE_GROUP ("Demo timeline nodes includes"                 FILES ${DemoTimelineNodesIncludes})
 SOURCE_GROUP ("Demo timeline nodes sources"                  FILES ${DemoTimelineNodesSources})
-SOURCE_GROUP ("General includes"                     		 FILES ${GeneralIncludes})
-SOURCE_GROUP ("General sources"                      		 FILES ${GeneralSources})
-SOURCE_GROUP ("GFX includes"                         		 FILES ${GFXIncludes})
-SOURCE_GROUP ("GFX sources"                          		 FILES ${GFXSources})
-SOURCE_GROUP ("Mesh includes"                        		 FILES ${MeshIncludes})
-SOURCE_GROUP ("Mesh sources"                         		 FILES ${MeshSources})
-SOURCE_GROUP ("Object Manager includes"              		 FILES ${ObjectManagerIncludes})
-SOURCE_GROUP ("Object Manager sources"               		 FILES ${ObjectManagerSources})
-SOURCE_GROUP ("OpenCL includes"                      		 FILES ${OpenCLIncludes})
-SOURCE_GROUP ("OpenCL sources"                       		 FILES ${OpenCLSources})
-SOURCE_GROUP ("OpenGL includes"                      		 FILES ${OpenGLIncludes})
-SOURCE_GROUP ("OpenGL sources"                       		 FILES ${OpenGLSources})
-SOURCE_GROUP ("Post-processing includes"             		 FILES ${PostProcessingIncludes})
-SOURCE_GROUP ("Post-processing sources"              		 FILES ${PostProcessingSources})
-SOURCE_GROUP ("Procedural includes"                  		 FILES ${ProceduralIncludes})
-SOURCE_GROUP ("Procedural sources"                   		 FILES ${ProceduralSources})
+SOURCE_GROUP ("General includes"                             FILES ${GeneralIncludes})
+SOURCE_GROUP ("General sources"                              FILES ${GeneralSources})
+SOURCE_GROUP ("GFX includes"                                 FILES ${GFXIncludes})
+SOURCE_GROUP ("GFX sources"                                  FILES ${GFXSources})
+SOURCE_GROUP ("Mesh includes"                                FILES ${MeshIncludes})
+SOURCE_GROUP ("Mesh sources"                                 FILES ${MeshSources})
+SOURCE_GROUP ("Object Manager includes"                      FILES ${ObjectManagerIncludes})
+SOURCE_GROUP ("Object Manager sources"                       FILES ${ObjectManagerSources})
+SOURCE_GROUP ("OpenCL includes"                              FILES ${OpenCLIncludes})
+SOURCE_GROUP ("OpenCL sources"                               FILES ${OpenCLSources})
+SOURCE_GROUP ("OpenGL includes"                              FILES ${OpenGLIncludes})
+SOURCE_GROUP ("OpenGL sources"                               FILES ${OpenGLSources})
+SOURCE_GROUP ("Post-processing includes"                     FILES ${PostProcessingIncludes})
+SOURCE_GROUP ("Post-processing sources"                      FILES ${PostProcessingSources})
+SOURCE_GROUP ("Procedural includes"                          FILES ${ProceduralIncludes})
+SOURCE_GROUP ("Procedural sources"                           FILES ${ProceduralSources})
 SOURCE_GROUP ("Rendering Abstraction Impl includes (OpenGL)" FILES ${RAGLIncludes})
 SOURCE_GROUP ("Rendering Abstraction Impl sources (OpenGL)"  FILES ${RAGLSources})
-SOURCE_GROUP ("Rendering Abstraction Layer includes" 		 FILES ${RALIncludes})
-SOURCE_GROUP ("Rendering Abstraction Layer sources"  		 FILES ${RALSources})
-SOURCE_GROUP ("Scalar field includes"    		     		 FILES ${ScalarFieldIncludes})
-SOURCE_GROUP ("Scalar field sources"     		     		 FILES ${ScalarFieldSources})
-SOURCE_GROUP ("Scene includes"           		     		 FILES ${SceneIncludes})
-SOURCE_GROUP ("Scene sources"            		     		 FILES ${SceneSources})
-SOURCE_GROUP ("Shaders includes"         		     		 FILES ${ShadersIncludes})
-SOURCE_GROUP ("Shaders sources"          		     		 FILES ${ShadersSources})
-SOURCE_GROUP ("SH includes"              		     		 FILES ${ShIncludes})
-SOURCE_GROUP ("SH sources"               		     		 FILES ${ShSources})
-SOURCE_GROUP ("SH Light Editor includes" 		     		 FILES ${ShLightEditorIncludes})
-SOURCE_GROUP ("SH Light Editor sources"  		     		 FILES ${ShLightEditorSources})
-SOURCE_GROUP ("System includes"          		     		 FILES ${SystemIncludes})
-SOURCE_GROUP ("System sources"           		     		 FILES ${SystemSources})
-SOURCE_GROUP ("Texture includes"         		     		 FILES ${TextureIncludes})
-SOURCE_GROUP ("Texture sources"          		     		 FILES ${TextureSources})
-SOURCE_GROUP ("Webcam includes"          		     		 FILES ${WebcamIncludes})
-SOURCE_GROUP ("Webcam sources"           		     		 FILES ${WebcamSources})
+SOURCE_GROUP ("Rendering Abstraction Layer includes"         FILES ${RALIncludes})
+SOURCE_GROUP ("Rendering Abstraction Layer sources"          FILES ${RALSources})
+SOURCE_GROUP ("Scalar field includes"                        FILES ${ScalarFieldIncludes})
+SOURCE_GROUP ("Scalar field sources"                         FILES ${ScalarFieldSources})
+SOURCE_GROUP ("Scene includes"                               FILES ${SceneIncludes})
+SOURCE_GROUP ("Scene sources"                                FILES ${SceneSources})
+SOURCE_GROUP ("Shaders includes"                             FILES ${ShadersIncludes})
+SOURCE_GROUP ("Shaders sources"                              FILES ${ShadersSources})
+SOURCE_GROUP ("SH includes"                                  FILES ${ShIncludes})
+SOURCE_GROUP ("SH sources"                                   FILES ${ShSources})
+SOURCE_GROUP ("SH Light Editor includes"                     FILES ${ShLightEditorIncludes})
+SOURCE_GROUP ("SH Light Editor sources"                      FILES ${ShLightEditorSources})
+SOURCE_GROUP ("System includes"                              FILES ${SystemIncludes})
+SOURCE_GROUP ("System sources"                               FILES ${SystemSources})
+SOURCE_GROUP ("Texture includes"                             FILES ${TextureIncludes})
+SOURCE_GROUP ("Texture sources"                              FILES ${TextureSources})
+SOURCE_GROUP ("Webcam includes"                              FILES ${WebcamIncludes})
+SOURCE_GROUP ("Webcam sources"                               FILES ${WebcamSources})
+SOURCE_GROUP ("Varia includes"                               FILES ${VariaIncludes})
+SOURCE_GROUP ("Varia sources"                                FILES ${VariaSources})
 
 FILE          (GLOB   TestSources  "test/*.cc")
 ADD_EXECUTABLE(TEST ${TestSources} "gtest-1.6.0/src/gtest-all.cc")
