@@ -19,9 +19,6 @@
 #include "ogl/ogl_rendering_handler.h"
 #include "ogl/ogl_scene_renderer.h"
 #include "ogl/ogl_uber.h"
-#include "ogl/ogl_ui.h"
-#include "ogl/ogl_ui_dropdown.h"
-#include "ogl/ogl_ui_texture_preview.h"
 #include "ral/ral_context.h"
 #include "scene/scene.h"
 #include "scene/scene_camera.h"
@@ -46,6 +43,9 @@
 #include "app_config.h"
 #include "state.h"
 #include "ui.h"
+#include "ui/ui.h"
+#include "ui/ui_dropdown.h"
+#include "ui/ui_texture_preview.h"
 
 ral_context           _context             = NULL;
 ogl_rendering_handler _rendering_handler   = NULL;
@@ -119,9 +119,9 @@ PUBLIC void _render_scene(ral_context context,
     {
         /* If there is no projection matrix available, initialize one now */
         /* Retrieve the camera descriptro */
-        ogl_ui_control active_path_control = ui_get_active_path_control();
-        float          new_zfar            = CAMERA_SETTING_Z_FAR;
-        float          new_znear           = 1.0f;
+        ui_control active_path_control = ui_get_active_path_control();
+        float      new_zfar            = CAMERA_SETTING_Z_FAR;
+        float      new_znear           = 1.0f;
 
         if (!camera_is_flyby_active)
         {
@@ -149,9 +149,9 @@ PUBLIC void _render_scene(ral_context context,
 
             if (active_path_control != NULL)
             {
-                ogl_ui_set_control_property(active_path_control,
-                                            OGL_UI_CONTROL_PROPERTY_DROPDOWN_VISIBLE,
-                                           &new_visibility);
+                ui_set_control_property(active_path_control,
+                                        UI_CONTROL_PROPERTY_DROPDOWN_VISIBLE,
+                                       &new_visibility);
             }
         } /* if (!camera_ptr->is_flyby) */
         else
@@ -165,9 +165,9 @@ PUBLIC void _render_scene(ral_context context,
 
             if (active_path_control != NULL)
             {
-                ogl_ui_set_control_property(active_path_control,
-                                            OGL_UI_CONTROL_PROPERTY_DROPDOWN_VISIBLE,
-                                           &new_visibility);
+                ui_set_control_property(active_path_control,
+                                        UI_CONTROL_PROPERTY_DROPDOWN_VISIBLE,
+                                       &new_visibility);
             }
 
             demo_flyby_get_property(_flyby,
@@ -285,10 +285,10 @@ PUBLIC void _render_scene(ral_context context,
     /* Configure texture preview. Shadow maps are assigned from the texture pool, so we need to
      * refresh the texture assigned to the texture preview control every frame
      */
-    scene_light    light              = scene_get_light_by_index(state_get_scene(),
-                                                                 0);
-    ral_texture    light_sm           = NULL;
-    ogl_ui_control ui_texture_preview = ui_get_texture_preview_control();
+    scene_light light              = scene_get_light_by_index(state_get_scene(),
+                                                              0);
+    ral_texture light_sm           = NULL;
+    ui_control  ui_texture_preview = ui_get_texture_preview_control();
 
     scene_light_get_property(light,
                              SCENE_LIGHT_PROPERTY_SHADOW_MAP_TEXTURE_COLOR_RAL,
@@ -296,9 +296,9 @@ PUBLIC void _render_scene(ral_context context,
 
     if (ui_texture_preview != NULL)
     {
-        ogl_ui_set_control_property(ui_texture_preview,
-                                    OGL_UI_CONTROL_PROPERTY_TEXTURE_PREVIEW_TEXTURE_RAL,
-                                   &light_sm);
+        ui_set_control_property(ui_texture_preview,
+                                UI_CONTROL_PROPERTY_TEXTURE_PREVIEW_TEXTURE_RAL,
+                               &light_sm);
     }
 
     /* Render UI */

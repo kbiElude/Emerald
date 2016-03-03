@@ -1583,37 +1583,8 @@ typedef void (*PFNOGLPIPELINECALLBACKPROC)(ral_context context,
                                            const int*  rendering_area_px_topdown,
                                            void*       callback_user_arg);
 
-/** Skybox handle */
-DECLARE_HANDLE(ogl_skybox);
-
 /** Text handle */
 DECLARE_HANDLE(ogl_text);
-
-/* UI renderer and handler */
-DECLARE_HANDLE(ogl_ui);
-
-typedef enum
-{
-    OGL_UI_SCROLLBAR_TEXT_LOCATION_ABOVE_SLIDER,
-    OGL_UI_SCROLLBAR_TEXT_LOCATION_LEFT_TO_SLIDER
-} ogl_ui_scrollbar_text_location;
-
-typedef enum
-{
-    OGL_UI_TEXTURE_PREVIEW_TYPE_SAMPLER2D_ALPHA,
-    OGL_UI_TEXTURE_PREVIEW_TYPE_SAMPLER2D_DEPTH,
-    OGL_UI_TEXTURE_PREVIEW_TYPE_SAMPLER2D_RED,
-    OGL_UI_TEXTURE_PREVIEW_TYPE_SAMPLER2D_RGB,
-    OGL_UI_TEXTURE_PREVIEW_TYPE_SAMPLER2D_RGBA,
-
-    OGL_UI_TEXTURE_PREVIEW_TYPE_SAMPLER2DARRAY_DEPTH,
-
-} ogl_ui_texture_preview_type;
-
-/* UI bag handle */
-DECLARE_HANDLE(ogl_ui_bag);
-/* UI control handle */
-DECLARE_HANDLE(ogl_ui_control);
 
 /** Rendering handler call-back
  *

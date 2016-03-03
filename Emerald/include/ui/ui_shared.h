@@ -4,8 +4,8 @@
  *
  * Internal usage only.
  */
-#ifndef OGL_UI_SHARED_H
-#define OGL_UI_SHARED_H
+#ifndef UI_SHARED_H
+#define UI_SHARED_H
 
 static const char* ui_general_vertex_shader_body = "#version 430 core\n"
                                                    "\n"
@@ -24,4 +24,4 @@ static const char* ui_general_vertex_shader_body = "#version 430 core\n"
                                                    "   uv          = vec2(gl_VertexID < 2 ? 0.0 : 1.0, (gl_VertexID == 0 || gl_VertexID == 3) ? 1.0 : 0.0);\n"
                                                    "}\n";
 
-#endif /* OGL_UI_SHARED_H */
+#endif /* UI_SHARED_H */

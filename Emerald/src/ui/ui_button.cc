@@ -6,9 +6,6 @@
 #include "shared.h"
 #include "ogl/ogl_context.h"
 #include "ogl/ogl_text.h"
-#include "ogl/ogl_ui.h"
-#include "ogl/ogl_ui_button.h"
-#include "ogl/ogl_ui_shared.h"
 #include "raGL/raGL_buffer.h"
 #include "raGL/raGL_program.h"
 #include "ral/ral_context.h"
@@ -20,6 +17,9 @@
 #include "system/system_log.h"
 #include "system/system_thread_pool.h"
 #include "system/system_window.h"
+#include "ui/ui.h"
+#include "ui/ui_button.h"
+#include "ui/ui_shared.h"
 
 #define CLICK_BRIGHTNESS_MODIFIER             (1.5f)
 #define FOCUSED_BRIGHTNESS                    (1.5f)
@@ -36,10 +36,10 @@ static system_hashed_ansi_string ui_button_program_name = system_hashed_ansi_str
 /** Internal types */
 typedef struct
 {
-    float               x1y1x2y2[4];
+    float x1y1x2y2[4];
 
-    void*               fire_proc_user_arg;
-    PFNOGLUIFIREPROCPTR pfn_fire_proc_ptr;
+    void*            fire_proc_user_arg;
+    PFNUIFIREPROCPTR pfn_fire_proc_ptr;
 
     float       current_gpu_brightness_level;
     bool        force_gpu_brightness_update;
@@ -71,7 +71,7 @@ typedef struct
     PFNGLDRAWARRAYSPROC          pGLDrawArrays;
     PFNGLUNIFORMBLOCKBINDINGPROC pGLUniformBlockBinding;
     PFNGLUSEPROGRAMPROC          pGLUseProgram;
-} _ogl_ui_button;
+} _ui_button;
 
 /** Internal variables */
 static const char* ui_button_fragment_shader_body = "#version 430 core\n"
@@ -98,11 +98,11 @@ static const char* ui_button_fragment_shader_body = "#version 430 core\n"
                                                     "}\n";
 
 /** TODO */
-PRIVATE void _ogl_ui_button_init_program(ogl_ui          ui,
-                                         _ogl_ui_button* button_ptr)
+PRIVATE void _ui_button_init_program(ui          ui_instance,
+                                     _ui_button* button_ptr)
 {
     /* Create all objects */
-    ral_context context = ogl_ui_get_context(ui);
+    ral_context context = ui_get_context(ui_instance);
     ral_shader  fs      = NULL;
     ral_program program = NULL;
     ral_shader  vs      = NULL;
@@ -174,9 +174,9 @@ PRIVATE void _ogl_ui_button_init_program(ogl_ui          ui,
     }
 
     /* Register the prgoram with UI so following button instances will reuse the program */
-    ogl_ui_register_program(ui,
-                            ui_button_program_name,
-                            button_ptr->program);
+    ui_register_program(ui_instance,
+                        ui_button_program_name,
+                        button_ptr->program);
 
     /* Release shaders we will no longer need */
     ral_shader shaders_to_delete[] =
@@ -193,17 +193,17 @@ PRIVATE void _ogl_ui_button_init_program(ogl_ui          ui,
 }
 
 /** TODO */
-PRIVATE void _ogl_ui_button_init_renderer_callback(ogl_context context,
-                                                   void*       button)
+PRIVATE void _ui_button_init_renderer_callback(ogl_context context,
+                                               void*       button)
 {
-    _ogl_ui_button* button_ptr      = (_ogl_ui_button*) button;
-    raGL_program    program_raGL    = NULL;
-    GLuint          program_raGL_id = 0;
-    const GLfloat   stop_data[]     = {0,     174.0f / 255.0f * 0.5f, 188.0f / 255.0f * 0.5f, 191.0f / 255.0f * 0.5f,
-                                       0.5f,  110.0f / 255.0f * 0.5f, 119.0f / 255.0f * 0.5f, 116.0f / 255.0f * 0.5f,
-                                       0.51f, 10.0f  / 255.0f * 0.5f, 14.0f  / 255.0f * 0.5f, 10.0f  / 255.0f * 0.5f,
-                                       1.0f,  10.0f  / 255.0f * 0.5f, 8.0f   / 255.0f * 0.5f, 9.0f   / 255.0f * 0.5f};
-    system_window   window          = NULL;
+    _ui_button*   button_ptr      = (_ui_button*) button;
+    raGL_program  program_raGL    = NULL;
+    GLuint        program_raGL_id = 0;
+    const GLfloat stop_data[]     = {0,     174.0f / 255.0f * 0.5f, 188.0f / 255.0f * 0.5f, 191.0f / 255.0f * 0.5f,
+                                     0.5f,  110.0f / 255.0f * 0.5f, 119.0f / 255.0f * 0.5f, 116.0f / 255.0f * 0.5f,
+                                     0.51f, 10.0f  / 255.0f * 0.5f, 14.0f  / 255.0f * 0.5f, 10.0f  / 255.0f * 0.5f,
+                                     1.0f,  10.0f  / 255.0f * 0.5f, 8.0f   / 255.0f * 0.5f, 9.0f   / 255.0f * 0.5f};
+    system_window window          = NULL;
 
     ral_context_get_property(button_ptr->context,
                              RAL_CONTEXT_PROPERTY_WINDOW_SYSTEM,
@@ -276,7 +276,7 @@ PRIVATE void _ogl_ui_button_init_renderer_callback(ogl_context context,
 }
 
 /** TODO */
-PRIVATE void _ogl_ui_button_update_text_location(_ogl_ui_button* button_ptr)
+PRIVATE void _ui_button_update_text_location(_ui_button* button_ptr)
 {
     int           text_height   = 0;
     int           text_xy[2]    = {0};
@@ -321,9 +321,9 @@ PRIVATE void _ogl_ui_button_update_text_location(_ogl_ui_button* button_ptr)
 
 
 /** Please see header for specification */
-PUBLIC void ogl_ui_button_deinit(void* internal_instance)
+PUBLIC void ui_button_deinit(void* internal_instance)
 {
-    _ogl_ui_button* ui_button_ptr = (_ogl_ui_button*) internal_instance;
+    _ui_button* ui_button_ptr = (_ui_button*) internal_instance;
 
     ogl_text_set(ui_button_ptr->text_renderer,
                  ui_button_ptr->text_index,
@@ -352,10 +352,10 @@ PUBLIC void ogl_ui_button_deinit(void* internal_instance)
 }
 
 /** Please see header for specification */
-PUBLIC RENDERING_CONTEXT_CALL void ogl_ui_button_draw(void* internal_instance)
+PUBLIC RENDERING_CONTEXT_CALL void ui_button_draw(void* internal_instance)
 {
-    _ogl_ui_button* button_ptr  = (_ogl_ui_button*) internal_instance;
-    system_time     time_now    = system_time_now();
+    _ui_button* button_ptr  = (_ui_button*) internal_instance;
+    system_time time_now    = system_time_now();
 
     /* Update brightness if necessary */
     float brightness = button_ptr->current_gpu_brightness_level;
@@ -523,29 +523,29 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_ui_button_draw(void* internal_instance)
 }
 
 /** Please see header for specification */
-PUBLIC void ogl_ui_button_get_property(const void*              button,
-                                       _ogl_ui_control_property property,
-                                       void*                    out_result)
+PUBLIC void ui_button_get_property(const void*         button,
+                                   ui_control_property property,
+                                   void*               out_result)
 {
-    const _ogl_ui_button* button_ptr = (const _ogl_ui_button*) button;
+    const _ui_button* button_ptr = (const _ui_button*) button;
 
     switch (property)
     {
-        case OGL_UI_CONTROL_PROPERTY_BUTTON_HEIGHT_SS:
+        case UI_CONTROL_PROPERTY_BUTTON_HEIGHT_SS:
         {
             *(float*) out_result = button_ptr->x1y1x2y2[3] - button_ptr->x1y1x2y2[1];
 
             break;
         }
 
-        case OGL_UI_CONTROL_PROPERTY_BUTTON_WIDTH_SS:
+        case UI_CONTROL_PROPERTY_BUTTON_WIDTH_SS:
         {
             *(float*) out_result = button_ptr->x1y1x2y2[2] - button_ptr->x1y1x2y2[0];
 
             break;
         }
 
-        case OGL_UI_CONTROL_PROPERTY_GENERAL_VISIBLE:
+        case UI_CONTROL_PROPERTY_GENERAL_VISIBLE:
         {
             *(bool*) out_result = button_ptr->visible;
 
@@ -556,21 +556,21 @@ PUBLIC void ogl_ui_button_get_property(const void*              button,
         default:
         {
             ASSERT_DEBUG_SYNC(false,
-                              "Unrecognized _ogl_ui_control_property property");
+                              "Unrecognized ui_control_property property");
         }
     } /* switch (property_value) */
 }
 
 /** Please see header for specification */
-PUBLIC void* ogl_ui_button_init(ogl_ui                    instance,
-                                ogl_text                  text_renderer,
-                                system_hashed_ansi_string name,
-                                const float*              x1y1,
-                                const float*              x2y2,
-                                PFNOGLUIFIREPROCPTR       pfn_fire_proc_ptr,
-                                void*                     fire_proc_user_arg)
+PUBLIC void* ui_button_init(ui                        instance,
+                            ogl_text                  text_renderer,
+                            system_hashed_ansi_string name,
+                            const float*              x1y1,
+                            const float*              x2y2,
+                            PFNUIFIREPROCPTR          pfn_fire_proc_ptr,
+                            void*                     fire_proc_user_arg)
 {
-    _ogl_ui_button* new_button_ptr = new (std::nothrow) _ogl_ui_button;
+    _ui_button* new_button_ptr = new (std::nothrow) _ui_button;
 
     ASSERT_ALWAYS_SYNC(new_button_ptr != NULL,
                        "Out of memory");
@@ -580,7 +580,7 @@ PUBLIC void* ogl_ui_button_init(ogl_ui                    instance,
         /* Initialize fields */
         memset(new_button_ptr,
                0,
-               sizeof(_ogl_ui_button) );
+               sizeof(_ui_button) );
 
         new_button_ptr->should_update_border_width = true;
         new_button_ptr->x1y1x2y2[0]                =     x1y1[0];
@@ -588,7 +588,7 @@ PUBLIC void* ogl_ui_button_init(ogl_ui                    instance,
         new_button_ptr->x1y1x2y2[2]                =     x2y2[0];
         new_button_ptr->x1y1x2y2[3]                = 1 - x1y1[1];
 
-        new_button_ptr->context            = ogl_ui_get_context(instance);
+        new_button_ptr->context            = ui_get_context(instance);
         new_button_ptr->fire_proc_user_arg = fire_proc_user_arg;
         new_button_ptr->pfn_fire_proc_ptr  = pfn_fire_proc_ptr;
         new_button_ptr->text_renderer      = text_renderer;
@@ -637,7 +637,7 @@ PUBLIC void* ogl_ui_button_init(ogl_ui                    instance,
                      new_button_ptr->text_index,
                      system_hashed_ansi_string_get_buffer(name) );
 
-        _ogl_ui_button_update_text_location(new_button_ptr);
+        _ui_button_update_text_location(new_button_ptr);
 
         ogl_text_set_text_string_property(new_button_ptr->text_renderer,
                                           new_button_ptr->text_index,
@@ -645,13 +645,13 @@ PUBLIC void* ogl_ui_button_init(ogl_ui                    instance,
                                           _ui_button_text_color);
 
         /* Retrieve the rendering program */
-        new_button_ptr->program = ogl_ui_get_registered_program(instance,
-                                                                ui_button_program_name);
+        new_button_ptr->program = ui_get_registered_program(instance,
+                                                            ui_button_program_name);
 
         if (new_button_ptr->program == NULL)
         {
-            _ogl_ui_button_init_program(instance,
-                                        new_button_ptr);
+            _ui_button_init_program(instance,
+                                    new_button_ptr);
 
             ASSERT_DEBUG_SYNC(new_button_ptr->program != NULL,
                               "Could not initialize button UI program");
@@ -659,7 +659,7 @@ PUBLIC void* ogl_ui_button_init(ogl_ui                    instance,
 
         /* Set up predefined values */
         ogl_context_request_callback_from_context_thread(ral_context_get_gl_context(new_button_ptr->context),
-                                                         _ogl_ui_button_init_renderer_callback,
+                                                         _ui_button_init_renderer_callback,
                                                          new_button_ptr);
     } /* if (new_button != NULL) */
 
@@ -667,10 +667,10 @@ PUBLIC void* ogl_ui_button_init(ogl_ui                    instance,
 }
 
 /** Please see header for specification */
-PUBLIC bool ogl_ui_button_is_over(void* internal_instance, const float* xy)
+PUBLIC bool ui_button_is_over(void* internal_instance, const float* xy)
 {
-    _ogl_ui_button* button_ptr = (_ogl_ui_button*) internal_instance;
-    float           inversed_y = 1.0f - xy[1];
+    _ui_button* button_ptr = (_ui_button*) internal_instance;
+    float       inversed_y = 1.0f - xy[1];
 
     if (xy[0]      >= button_ptr->x1y1x2y2[0] && xy[0]      <= button_ptr->x1y1x2y2[2] &&
         inversed_y >= button_ptr->x1y1x2y2[1] && inversed_y <= button_ptr->x1y1x2y2[3])
@@ -698,10 +698,10 @@ PUBLIC bool ogl_ui_button_is_over(void* internal_instance, const float* xy)
 }
 
 /** Please see header for specification */
-PUBLIC void ogl_ui_button_on_lbm_down(void* internal_instance, const float* xy)
+PUBLIC void ui_button_on_lbm_down(void* internal_instance, const float* xy)
 {
-    _ogl_ui_button* button_ptr = (_ogl_ui_button*) internal_instance;
-    float           inversed_y = 1.0f - xy[1];
+    _ui_button* button_ptr = (_ui_button*) internal_instance;
+    float       inversed_y = 1.0f - xy[1];
 
     if (xy[0]      >= button_ptr->x1y1x2y2[0] && xy[0]      <= button_ptr->x1y1x2y2[2] &&
         inversed_y >= button_ptr->x1y1x2y2[1] && inversed_y <= button_ptr->x1y1x2y2[3])
@@ -712,14 +712,14 @@ PUBLIC void ogl_ui_button_on_lbm_down(void* internal_instance, const float* xy)
 }
 
 /** Please see header for specification */
-PUBLIC void ogl_ui_button_on_lbm_up(void* internal_instance, const float* xy)
+PUBLIC void ui_button_on_lbm_up(void* internal_instance, const float* xy)
 {
-    _ogl_ui_button* button_ptr = (_ogl_ui_button*) internal_instance;
+    _ui_button* button_ptr = (_ui_button*) internal_instance;
 
     button_ptr->is_lbm_on                   = false;
     button_ptr->force_gpu_brightness_update = true;
 
-    if (ogl_ui_button_is_over(internal_instance, xy) &&
+    if (ui_button_is_over(internal_instance, xy) &&
         button_ptr->pfn_fire_proc_ptr != NULL)
     {
         system_thread_pool_task task = system_thread_pool_create_task_handler_only(THREAD_POOL_TASK_PRIORITY_NORMAL,
@@ -731,15 +731,15 @@ PUBLIC void ogl_ui_button_on_lbm_up(void* internal_instance, const float* xy)
 }
 
 /** Please see header for specification */
-PUBLIC void ogl_ui_button_set_property(void*                    button,
-                                       _ogl_ui_control_property property,
-                                       const void*              data)
+PUBLIC void ui_button_set_property(void*               button,
+                                   ui_control_property property,
+                                   const void*         data)
 {
-    _ogl_ui_button* button_ptr = (_ogl_ui_button*) button;
+    _ui_button* button_ptr = (_ui_button*) button;
 
     switch (property)
     {
-        case OGL_UI_CONTROL_PROPERTY_BUTTON_X1Y1:
+        case UI_CONTROL_PROPERTY_BUTTON_X1Y1:
         {
             float dx = button_ptr->x1y1x2y2[2] - button_ptr->x1y1x2y2[0];
             float dy = button_ptr->x1y1x2y2[3] - button_ptr->x1y1x2y2[1];
@@ -756,12 +756,12 @@ PUBLIC void ogl_ui_button_set_property(void*                    button,
 
             button_ptr->should_update_border_width = true;
 
-            _ogl_ui_button_update_text_location(button_ptr);
+            _ui_button_update_text_location(button_ptr);
 
             break;
         }
 
-        case OGL_UI_CONTROL_PROPERTY_BUTTON_X1Y1X2Y2:
+        case UI_CONTROL_PROPERTY_BUTTON_X1Y1X2Y2:
         {
             memcpy(button_ptr->x1y1x2y2,
                    data,
@@ -771,7 +771,7 @@ PUBLIC void ogl_ui_button_set_property(void*                    button,
             button_ptr->x1y1x2y2[3]                = 1.0f - button_ptr->x1y1x2y2[3];
             button_ptr->should_update_border_width = true;
 
-            _ogl_ui_button_update_text_location(button_ptr);
+            _ui_button_update_text_location(button_ptr);
 
             break;
         }
@@ -779,7 +779,7 @@ PUBLIC void ogl_ui_button_set_property(void*                    button,
         default:
         {
             ASSERT_DEBUG_SYNC(false,
-                              "Unrecognized _ogl_ui_control_property value");
+                              "Unrecognized ui_control_property value");
         }
     } /* switch (property_value) */
 }

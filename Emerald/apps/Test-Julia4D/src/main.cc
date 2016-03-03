@@ -12,7 +12,6 @@
 #include "ogl/ogl_context.h"
 #include "ogl/ogl_pipeline.h"
 #include "ogl/ogl_rendering_handler.h"
-#include "ogl/ogl_ui.h"
 #include "ral/ral_context.h"
 #include "ral/ral_program.h"
 #include "system/system_assertions.h"
@@ -23,6 +22,7 @@
 #include "system/system_screen_mode.h"
 #include "system/system_window.h"
 #include "system/system_variant.h"
+#include "ui/ui.h"
 #include "stage_step_julia.h"
 #include "stage_step_light.h"
 
@@ -335,164 +335,164 @@ PRIVATE void _init_ui()
     const float scrollbar_14_x1y1[] = {0.0f, 0.6f};
     const float scrollbar_15_x1y1[] = {0.0f, 0.7f};
     const float checkbox_1_x1y1[]   = {0.0f, 0.1f};
-    ogl_ui      pipeline_ui         = ogl_pipeline_get_ui(_pipeline);
+    ui          pipeline_ui         = ogl_pipeline_get_ui(_pipeline);
 
-    ogl_ui_add_scrollbar(pipeline_ui,
-                         system_hashed_ansi_string_create("A"),
-                         OGL_UI_SCROLLBAR_TEXT_LOCATION_ABOVE_SLIDER,
-                         system_variant_create_float(-1.5f),
-                         system_variant_create_float(1.5f),
-                         scrollbar_1_x1y1,
-                         _get_a_value,
-                         NULL,         /* get_current_value_user_arg */
-                         _set_a_value,
-                         NULL);        /* set_current_value_user_arg */
-    ogl_ui_add_scrollbar(pipeline_ui,
-                         system_hashed_ansi_string_create("B"),
-                         OGL_UI_SCROLLBAR_TEXT_LOCATION_ABOVE_SLIDER,
-                         system_variant_create_float(-1.5f),
-                         system_variant_create_float(1.5f),
-                         scrollbar_2_x1y1,
-                         _get_b_value,
-                         NULL,         /* get_current_value_user_arg */
-                         _set_b_value,
-                         NULL);        /* set_current_value_user_arg */
-    ogl_ui_add_scrollbar(pipeline_ui,
-                         system_hashed_ansi_string_create("C"),
-                         OGL_UI_SCROLLBAR_TEXT_LOCATION_ABOVE_SLIDER,
-                         system_variant_create_float(-1.5f),
-                         system_variant_create_float(1.5f),
-                         scrollbar_3_x1y1,
-                         _get_c_value,
-                         NULL,         /* get_current_value_user_arg */
-                         _set_c_value,
-                         NULL);        /* set_current_value_user_arg */
-    ogl_ui_add_scrollbar(pipeline_ui,
-                         system_hashed_ansi_string_create("D"),
-                         OGL_UI_SCROLLBAR_TEXT_LOCATION_ABOVE_SLIDER,
-                         system_variant_create_float(-1.5f),
-                         system_variant_create_float(1.5f),
-                         scrollbar_4_x1y1,
-                         _get_d_value,
-                         NULL,         /* get_current_value_user_arg */
-                         _set_d_value,
-                         NULL);        /* set_current_value_user_arg */
-    ogl_ui_add_scrollbar(pipeline_ui,
-                         system_hashed_ansi_string_create("Epsilon"),
-                         OGL_UI_SCROLLBAR_TEXT_LOCATION_ABOVE_SLIDER,
-                         system_variant_create_float(0.00001f),
-                         system_variant_create_float(0.01f),
-                         scrollbar_5_x1y1,
-                         _get_epsilon_value,
-                         NULL,               /* get_current_value_user_arg */
-                         _set_epsilon_value,
-                         NULL);              /* set_current_value_user_arg */
-    ogl_ui_add_scrollbar(pipeline_ui,
-                         system_hashed_ansi_string_create("Escape threshold"),
-                         OGL_UI_SCROLLBAR_TEXT_LOCATION_ABOVE_SLIDER,
-                         system_variant_create_float(0.01f),
-                         system_variant_create_float(8.0f),
-                         scrollbar_6_x1y1,
-                         _get_escape_threshold_value,
-                         NULL,                        /* get_current_value_user_arg */
-                         _set_escape_threshold_value,
-                         NULL);                       /* set_current_value_user_arg */
-    ogl_ui_add_scrollbar(pipeline_ui,
-                         system_hashed_ansi_string_create("Max iterations"),
-                         OGL_UI_SCROLLBAR_TEXT_LOCATION_ABOVE_SLIDER,
-                         system_variant_create_float(1),
-                         system_variant_create_float(10),
-                         scrollbar_7_x1y1,
-                         _get_max_iterations_value,
-                         NULL,                      /* get_current_value_user_arg */
-                         _set_max_iterations_value,
-                         NULL);                     /* set_current_value_user_arg */
-    ogl_ui_add_scrollbar(pipeline_ui,
-                         system_hashed_ansi_string_create("Raycast radius"),
-                         OGL_UI_SCROLLBAR_TEXT_LOCATION_ABOVE_SLIDER,
-                         system_variant_create_float(1),
-                         system_variant_create_float(4.0f),
-                         scrollbar_8_x1y1,
-                         _get_raycast_radius_multiplier_value,
-                         NULL,                                 /* get_current_value_user_arg */
-                         _set_raycast_radius_multiplier_value,
-                         NULL);                                /* set_current_value_user_arg */
-    ogl_ui_add_scrollbar(pipeline_ui,
-                         system_hashed_ansi_string_create("Specularity"),
-                         OGL_UI_SCROLLBAR_TEXT_LOCATION_ABOVE_SLIDER,
-                         system_variant_create_float(0.0001f),
-                         system_variant_create_float(40.0f),
-                         scrollbar_9_x1y1,
-                         _get_specularity_value,
-                         NULL,                   /* get_current_value_user_arg */
-                         _set_specularity_value,
-                         NULL);                  /* set_current_value_user_arg */
-    ogl_ui_add_checkbox (pipeline_ui,
-                         system_hashed_ansi_string_create("Shadows"),
-                         checkbox_1_x1y1,
-                         _shadows,
-                         _fire_shadows,
-                         NULL);         /* fire_user_arg */
-    ogl_ui_add_scrollbar(pipeline_ui,
-                         system_hashed_ansi_string_create("Light Color R"),
-                         OGL_UI_SCROLLBAR_TEXT_LOCATION_ABOVE_SLIDER,
-                         system_variant_create_float(0.0f),
-                         system_variant_create_float(1.0f),
-                         scrollbar_10_x1y1,
-                         _get_light_color_red_value,
-                         NULL,                       /* get_current_value_user_arg */
-                         _set_light_color_red_value,
-                         NULL);                      /* set_current_value_user_arg */
-    ogl_ui_add_scrollbar(pipeline_ui,
-                         system_hashed_ansi_string_create("Light Color G"),
-                         OGL_UI_SCROLLBAR_TEXT_LOCATION_ABOVE_SLIDER,
-                         system_variant_create_float(0.0f),
-                         system_variant_create_float(1.0f),
-                         scrollbar_11_x1y1,
-                         _get_light_color_green_value,
-                         NULL,                         /* get_current_value_user_arg */
-                         _set_light_color_green_value,
-                         NULL);                        /* set_current_value_user_arg */
-    ogl_ui_add_scrollbar(pipeline_ui,
-                         system_hashed_ansi_string_create("Light Color B"),
-                         OGL_UI_SCROLLBAR_TEXT_LOCATION_ABOVE_SLIDER,
-                         system_variant_create_float(0.0f),
-                         system_variant_create_float(1.0f),
-                         scrollbar_12_x1y1,
-                         _get_light_color_blue_value,
-                         NULL,                        /* get_current_value_user_arg */
-                         _set_light_color_blue_value,
-                         NULL);                       /* set_current_value_user_arg */
-    ogl_ui_add_scrollbar(pipeline_ui,
-                         system_hashed_ansi_string_create("Light Position X"),
-                         OGL_UI_SCROLLBAR_TEXT_LOCATION_ABOVE_SLIDER,
-                         system_variant_create_float(-3.0f),
-                         system_variant_create_float(3.0f),
-                         scrollbar_13_x1y1,
-                         _get_light_position_x_value,
-                         NULL,                        /* get_current_value_user_arg */
-                         _set_light_position_x_value,
-                         NULL);                       /* set_current_value_user_arg */
-    ogl_ui_add_scrollbar(pipeline_ui,
-                         system_hashed_ansi_string_create("Light Position Y"),
-                         OGL_UI_SCROLLBAR_TEXT_LOCATION_ABOVE_SLIDER,
-                         system_variant_create_float(-3.0f),
-                         system_variant_create_float(3.0f),
-                         scrollbar_14_x1y1,
-                         _get_light_position_y_value,
-                         NULL,                        /* get_current_value_user_arg */
-                         _set_light_position_y_value,
-                         NULL);                       /* set_current_value_user_arg */
-    ogl_ui_add_scrollbar(pipeline_ui,
-                         system_hashed_ansi_string_create("Light Position Z"),
-                         OGL_UI_SCROLLBAR_TEXT_LOCATION_ABOVE_SLIDER,
-                         system_variant_create_float(-3.0f),
-                         system_variant_create_float(3.0f),
-                         scrollbar_15_x1y1,
-                         _get_light_position_z_value,
-                         NULL,                        /* get_current_value_user_arg */
-                         _set_light_position_z_value,
-                         NULL);                       /* set_current_value_user_arg */
+    ui_add_scrollbar(pipeline_ui,
+                     system_hashed_ansi_string_create("A"),
+                     UI_SCROLLBAR_TEXT_LOCATION_ABOVE_SLIDER,
+                     system_variant_create_float(-1.5f),
+                     system_variant_create_float(1.5f),
+                     scrollbar_1_x1y1,
+                     _get_a_value,
+                     NULL,         /* get_current_value_user_arg */
+                     _set_a_value,
+                     NULL);        /* set_current_value_user_arg */
+    ui_add_scrollbar(pipeline_ui,
+                     system_hashed_ansi_string_create("B"),
+                     UI_SCROLLBAR_TEXT_LOCATION_ABOVE_SLIDER,
+                     system_variant_create_float(-1.5f),
+                     system_variant_create_float(1.5f),
+                     scrollbar_2_x1y1,
+                     _get_b_value,
+                     NULL,         /* get_current_value_user_arg */
+                     _set_b_value,
+                     NULL);        /* set_current_value_user_arg */
+    ui_add_scrollbar(pipeline_ui,
+                     system_hashed_ansi_string_create("C"),
+                     UI_SCROLLBAR_TEXT_LOCATION_ABOVE_SLIDER,
+                     system_variant_create_float(-1.5f),
+                     system_variant_create_float(1.5f),
+                     scrollbar_3_x1y1,
+                     _get_c_value,
+                     NULL,         /* get_current_value_user_arg */
+                     _set_c_value,
+                     NULL);        /* set_current_value_user_arg */
+    ui_add_scrollbar(pipeline_ui,
+                     system_hashed_ansi_string_create("D"),
+                     UI_SCROLLBAR_TEXT_LOCATION_ABOVE_SLIDER,
+                     system_variant_create_float(-1.5f),
+                     system_variant_create_float(1.5f),
+                     scrollbar_4_x1y1,
+                     _get_d_value,
+                     NULL,         /* get_current_value_user_arg */
+                     _set_d_value,
+                     NULL);        /* set_current_value_user_arg */
+    ui_add_scrollbar(pipeline_ui,
+                     system_hashed_ansi_string_create("Epsilon"),
+                     UI_SCROLLBAR_TEXT_LOCATION_ABOVE_SLIDER,
+                     system_variant_create_float(0.00001f),
+                     system_variant_create_float(0.01f),
+                     scrollbar_5_x1y1,
+                     _get_epsilon_value,
+                     NULL,               /* get_current_value_user_arg */
+                     _set_epsilon_value,
+                     NULL);              /* set_current_value_user_arg */
+    ui_add_scrollbar(pipeline_ui,
+                     system_hashed_ansi_string_create("Escape threshold"),
+                     UI_SCROLLBAR_TEXT_LOCATION_ABOVE_SLIDER,
+                     system_variant_create_float(0.01f),
+                     system_variant_create_float(8.0f),
+                     scrollbar_6_x1y1,
+                     _get_escape_threshold_value,
+                     NULL,                        /* get_current_value_user_arg */
+                     _set_escape_threshold_value,
+                     NULL);                       /* set_current_value_user_arg */
+    ui_add_scrollbar(pipeline_ui,
+                     system_hashed_ansi_string_create("Max iterations"),
+                     UI_SCROLLBAR_TEXT_LOCATION_ABOVE_SLIDER,
+                     system_variant_create_float(1),
+                     system_variant_create_float(10),
+                     scrollbar_7_x1y1,
+                     _get_max_iterations_value,
+                     NULL,                      /* get_current_value_user_arg */
+                     _set_max_iterations_value,
+                     NULL);                     /* set_current_value_user_arg */
+    ui_add_scrollbar(pipeline_ui,
+                     system_hashed_ansi_string_create("Raycast radius"),
+                     UI_SCROLLBAR_TEXT_LOCATION_ABOVE_SLIDER,
+                     system_variant_create_float(1),
+                     system_variant_create_float(4.0f),
+                     scrollbar_8_x1y1,
+                     _get_raycast_radius_multiplier_value,
+                     NULL,                                 /* get_current_value_user_arg */
+                     _set_raycast_radius_multiplier_value,
+                     NULL);                                /* set_current_value_user_arg */
+    ui_add_scrollbar(pipeline_ui,
+                     system_hashed_ansi_string_create("Specularity"),
+                     UI_SCROLLBAR_TEXT_LOCATION_ABOVE_SLIDER,
+                     system_variant_create_float(0.0001f),
+                     system_variant_create_float(40.0f),
+                     scrollbar_9_x1y1,
+                     _get_specularity_value,
+                     NULL,                   /* get_current_value_user_arg */
+                     _set_specularity_value,
+                     NULL);                  /* set_current_value_user_arg */
+    ui_add_checkbox (pipeline_ui,
+                     system_hashed_ansi_string_create("Shadows"),
+                     checkbox_1_x1y1,
+                     _shadows,
+                     _fire_shadows,
+                     NULL);         /* fire_user_arg */
+    ui_add_scrollbar(pipeline_ui,
+                     system_hashed_ansi_string_create("Light Color R"),
+                     UI_SCROLLBAR_TEXT_LOCATION_ABOVE_SLIDER,
+                     system_variant_create_float(0.0f),
+                     system_variant_create_float(1.0f),
+                     scrollbar_10_x1y1,
+                     _get_light_color_red_value,
+                     NULL,                       /* get_current_value_user_arg */
+                     _set_light_color_red_value,
+                     NULL);                      /* set_current_value_user_arg */
+    ui_add_scrollbar(pipeline_ui,
+                     system_hashed_ansi_string_create("Light Color G"),
+                     UI_SCROLLBAR_TEXT_LOCATION_ABOVE_SLIDER,
+                     system_variant_create_float(0.0f),
+                     system_variant_create_float(1.0f),
+                     scrollbar_11_x1y1,
+                     _get_light_color_green_value,
+                     NULL,                         /* get_current_value_user_arg */
+                     _set_light_color_green_value,
+                     NULL);                        /* set_current_value_user_arg */
+    ui_add_scrollbar(pipeline_ui,
+                     system_hashed_ansi_string_create("Light Color B"),
+                     UI_SCROLLBAR_TEXT_LOCATION_ABOVE_SLIDER,
+                     system_variant_create_float(0.0f),
+                     system_variant_create_float(1.0f),
+                     scrollbar_12_x1y1,
+                     _get_light_color_blue_value,
+                     NULL,                        /* get_current_value_user_arg */
+                     _set_light_color_blue_value,
+                     NULL);                       /* set_current_value_user_arg */
+    ui_add_scrollbar(pipeline_ui,
+                     system_hashed_ansi_string_create("Light Position X"),
+                     UI_SCROLLBAR_TEXT_LOCATION_ABOVE_SLIDER,
+                     system_variant_create_float(-3.0f),
+                     system_variant_create_float(3.0f),
+                     scrollbar_13_x1y1,
+                     _get_light_position_x_value,
+                     NULL,                        /* get_current_value_user_arg */
+                     _set_light_position_x_value,
+                     NULL);                       /* set_current_value_user_arg */
+    ui_add_scrollbar(pipeline_ui,
+                     system_hashed_ansi_string_create("Light Position Y"),
+                     UI_SCROLLBAR_TEXT_LOCATION_ABOVE_SLIDER,
+                     system_variant_create_float(-3.0f),
+                     system_variant_create_float(3.0f),
+                     scrollbar_14_x1y1,
+                     _get_light_position_y_value,
+                     NULL,                        /* get_current_value_user_arg */
+                     _set_light_position_y_value,
+                     NULL);                       /* set_current_value_user_arg */
+    ui_add_scrollbar(pipeline_ui,
+                     system_hashed_ansi_string_create("Light Position Z"),
+                     UI_SCROLLBAR_TEXT_LOCATION_ABOVE_SLIDER,
+                     system_variant_create_float(-3.0f),
+                     system_variant_create_float(3.0f),
+                     scrollbar_15_x1y1,
+                     _get_light_position_z_value,
+                     NULL,                        /* get_current_value_user_arg */
+                     _set_light_position_z_value,
+                     NULL);                       /* set_current_value_user_arg */
 }
 
 /** Rendering handler */

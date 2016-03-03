@@ -8,9 +8,6 @@
 #include "ogl/ogl_context.h"
 #include "ogl/ogl_rendering_handler.h"
 #include "ogl/ogl_text.h"
-#include "ogl/ogl_ui.h"
-#include "ogl/ogl_ui_bag.h"
-#include "ogl/ogl_ui_dropdown.h"
 #include "ogl/ogl_shadow_mapping.h"
 #include "ral/ral_context.h"
 #include "postprocessing/postprocessing_blur_gaussian.h"
@@ -19,25 +16,28 @@
 #include "system/system_critical_section.h"
 #include "system/system_resources.h"
 #include "system/system_window.h"
+#include "ui/ui.h"
+#include "ui/ui_bag.h"
+#include "ui/ui_dropdown.h"
 #include "app_config.h"
 #include "include/main.h"
 #include "state.h"
 
 PRIVATE system_variant _temp_variant_float                           = NULL;
 PRIVATE ogl_text       _text_renderer                                = NULL;
-PRIVATE ogl_ui         _ui                                           = NULL;
-PRIVATE ogl_ui_bag     _ui_bag                                       = NULL;
-PRIVATE ogl_ui_control _ui_color_shadow_map_blur_n_passes_scrollbar  = NULL;
-PRIVATE ogl_ui_control _ui_color_shadow_map_blur_n_taps_scrollbar    = NULL;
-PRIVATE ogl_ui_control _ui_color_shadow_map_blur_resolution_dropdown = NULL;
-PRIVATE ogl_ui_control _ui_color_shadow_map_format_dropdown          = NULL;
-PRIVATE ogl_ui_control _ui_depth_shadow_map_format_dropdown          = NULL;
-PRIVATE ogl_ui_control _ui_shadow_map_algorithm_dropdown             = NULL;
-PRIVATE ogl_ui_control _ui_shadow_map_pl_algorithm_dropdown          = NULL;
-PRIVATE ogl_ui_control _ui_shadow_map_size_dropdown                  = NULL;
-PRIVATE ogl_ui_control _ui_vsm_cutoff_scrollbar                      = NULL;
-PRIVATE ogl_ui_control _ui_vsm_max_variance_scrollbar                = NULL;
-PRIVATE ogl_ui_control _ui_vsm_min_variance_scrollbar                = NULL;
+PRIVATE ui             _ui                                           = NULL;
+PRIVATE ui_bag         _ui_bag                                       = NULL;
+PRIVATE ui_control     _ui_color_shadow_map_blur_n_passes_scrollbar  = NULL;
+PRIVATE ui_control     _ui_color_shadow_map_blur_n_taps_scrollbar    = NULL;
+PRIVATE ui_control     _ui_color_shadow_map_blur_resolution_dropdown = NULL;
+PRIVATE ui_control     _ui_color_shadow_map_format_dropdown          = NULL;
+PRIVATE ui_control     _ui_depth_shadow_map_format_dropdown          = NULL;
+PRIVATE ui_control     _ui_shadow_map_algorithm_dropdown             = NULL;
+PRIVATE ui_control     _ui_shadow_map_pl_algorithm_dropdown          = NULL;
+PRIVATE ui_control     _ui_shadow_map_size_dropdown                  = NULL;
+PRIVATE ui_control     _ui_vsm_cutoff_scrollbar                      = NULL;
+PRIVATE ui_control     _ui_vsm_max_variance_scrollbar                = NULL;
+PRIVATE ui_control     _ui_vsm_min_variance_scrollbar                = NULL;
 
 
 scene_light_shadow_map_algorithm shadow_map_algorithm_emerald_enums[] =
@@ -380,57 +380,57 @@ PRIVATE void _ui_on_shadow_map_algorithm_changed(void* unused,
 
     if (new_sm_algo == SCENE_LIGHT_SHADOW_MAP_ALGORITHM_PLAIN)
     {
-        ogl_ui_set_control_property(_ui_color_shadow_map_blur_n_passes_scrollbar,
-                                    OGL_UI_CONTROL_PROPERTY_GENERAL_VISIBLE,
-                                   &not_visible);
-        ogl_ui_set_control_property(_ui_color_shadow_map_blur_n_taps_scrollbar,
-                                    OGL_UI_CONTROL_PROPERTY_GENERAL_VISIBLE,
-                                   &not_visible);
-        ogl_ui_set_control_property(_ui_color_shadow_map_blur_resolution_dropdown,
-                                    OGL_UI_CONTROL_PROPERTY_GENERAL_VISIBLE,
-                                   &not_visible);
-        ogl_ui_set_control_property(_ui_color_shadow_map_format_dropdown,
-                                    OGL_UI_CONTROL_PROPERTY_GENERAL_VISIBLE,
-                                   &not_visible);
-        ogl_ui_set_control_property(_ui_depth_shadow_map_format_dropdown,
-                                    OGL_UI_CONTROL_PROPERTY_GENERAL_VISIBLE,
-                                   &visible);
-        ogl_ui_set_control_property(_ui_vsm_cutoff_scrollbar,
-                                    OGL_UI_CONTROL_PROPERTY_GENERAL_VISIBLE,
-                                   &not_visible);
-        ogl_ui_set_control_property(_ui_vsm_max_variance_scrollbar,
-                                    OGL_UI_CONTROL_PROPERTY_GENERAL_VISIBLE,
-                                   &not_visible);
-        ogl_ui_set_control_property(_ui_vsm_min_variance_scrollbar,
-                                    OGL_UI_CONTROL_PROPERTY_GENERAL_VISIBLE,
-                                   &not_visible);
+        ui_set_control_property(_ui_color_shadow_map_blur_n_passes_scrollbar,
+                                UI_CONTROL_PROPERTY_GENERAL_VISIBLE,
+                               &not_visible);
+        ui_set_control_property(_ui_color_shadow_map_blur_n_taps_scrollbar,
+                                UI_CONTROL_PROPERTY_GENERAL_VISIBLE,
+                               &not_visible);
+        ui_set_control_property(_ui_color_shadow_map_blur_resolution_dropdown,
+                                UI_CONTROL_PROPERTY_GENERAL_VISIBLE,
+                               &not_visible);
+        ui_set_control_property(_ui_color_shadow_map_format_dropdown,
+                                UI_CONTROL_PROPERTY_GENERAL_VISIBLE,
+                               &not_visible);
+        ui_set_control_property(_ui_depth_shadow_map_format_dropdown,
+                                UI_CONTROL_PROPERTY_GENERAL_VISIBLE,
+                               &visible);
+        ui_set_control_property(_ui_vsm_cutoff_scrollbar,
+                                UI_CONTROL_PROPERTY_GENERAL_VISIBLE,
+                               &not_visible);
+        ui_set_control_property(_ui_vsm_max_variance_scrollbar,
+                                UI_CONTROL_PROPERTY_GENERAL_VISIBLE,
+                               &not_visible);
+        ui_set_control_property(_ui_vsm_min_variance_scrollbar,
+                                UI_CONTROL_PROPERTY_GENERAL_VISIBLE,
+                               &not_visible);
     }
     else
     {
-        ogl_ui_set_control_property(_ui_color_shadow_map_blur_n_passes_scrollbar,
-                                    OGL_UI_CONTROL_PROPERTY_GENERAL_VISIBLE,
-                                   &visible);
-        ogl_ui_set_control_property(_ui_color_shadow_map_blur_n_taps_scrollbar,
-                                    OGL_UI_CONTROL_PROPERTY_GENERAL_VISIBLE,
-                                   &visible);
-        ogl_ui_set_control_property(_ui_color_shadow_map_blur_resolution_dropdown,
-                                    OGL_UI_CONTROL_PROPERTY_GENERAL_VISIBLE,
-                                   &visible);
-        ogl_ui_set_control_property(_ui_color_shadow_map_format_dropdown,
-                                    OGL_UI_CONTROL_PROPERTY_GENERAL_VISIBLE,
-                                   &visible);
-        ogl_ui_set_control_property(_ui_depth_shadow_map_format_dropdown,
-                                    OGL_UI_CONTROL_PROPERTY_GENERAL_VISIBLE,
-                                   &visible);
-        ogl_ui_set_control_property(_ui_vsm_cutoff_scrollbar,
-                                    OGL_UI_CONTROL_PROPERTY_GENERAL_VISIBLE,
-                                   &visible);
-        ogl_ui_set_control_property(_ui_vsm_max_variance_scrollbar,
-                                    OGL_UI_CONTROL_PROPERTY_GENERAL_VISIBLE,
-                                   &visible);
-        ogl_ui_set_control_property(_ui_vsm_min_variance_scrollbar,
-                                    OGL_UI_CONTROL_PROPERTY_GENERAL_VISIBLE,
-                                   &visible);
+        ui_set_control_property(_ui_color_shadow_map_blur_n_passes_scrollbar,
+                                UI_CONTROL_PROPERTY_GENERAL_VISIBLE,
+                               &visible);
+        ui_set_control_property(_ui_color_shadow_map_blur_n_taps_scrollbar,
+                                UI_CONTROL_PROPERTY_GENERAL_VISIBLE,
+                               &visible);
+        ui_set_control_property(_ui_color_shadow_map_blur_resolution_dropdown,
+                                UI_CONTROL_PROPERTY_GENERAL_VISIBLE,
+                               &visible);
+        ui_set_control_property(_ui_color_shadow_map_format_dropdown,
+                                UI_CONTROL_PROPERTY_GENERAL_VISIBLE,
+                               &visible);
+        ui_set_control_property(_ui_depth_shadow_map_format_dropdown,
+                                UI_CONTROL_PROPERTY_GENERAL_VISIBLE,
+                               &visible);
+        ui_set_control_property(_ui_vsm_cutoff_scrollbar,
+                                UI_CONTROL_PROPERTY_GENERAL_VISIBLE,
+                               &visible);
+        ui_set_control_property(_ui_vsm_max_variance_scrollbar,
+                                UI_CONTROL_PROPERTY_GENERAL_VISIBLE,
+                               &visible);
+        ui_set_control_property(_ui_vsm_min_variance_scrollbar,
+                                UI_CONTROL_PROPERTY_GENERAL_VISIBLE,
+                               &visible);
     }
 }
 
@@ -513,10 +513,10 @@ PRIVATE void _ui_set_current_vsm_min_variance_value(void*          unused,
 /** Please see header for spec */
 PUBLIC void ui_deinit()
 {
-    ogl_ui_bag_release(_ui_bag);
+    ui_bag_release(_ui_bag);
     _ui_bag = NULL;
 
-    ogl_ui_release(_ui);
+    ui_release(_ui);
     _ui = NULL;
 
     ogl_text_release(_text_renderer);
@@ -529,7 +529,7 @@ PUBLIC void ui_deinit()
 /** Please see header for spec */
 PUBLIC void ui_draw()
 {
-    ogl_ui_draw  (_ui);
+    ui_draw      (_ui);
     ogl_text_draw(_context,
                   _text_renderer);
 }
@@ -557,34 +557,34 @@ PUBLIC void ui_init()
                                       OGL_TEXT_STRING_PROPERTY_SCALE,
                                      &text_default_size);
 
-    _ui = ogl_ui_create(_text_renderer,
-                        system_hashed_ansi_string_create("UI") );
+    _ui = ui_create(_text_renderer,
+                    system_hashed_ansi_string_create("UI") );
 
     /* Add shadow map algorithm dropdown */
-    _ui_shadow_map_algorithm_dropdown = ogl_ui_add_dropdown(_ui,
-                                                            n_shadow_map_algorithm_emerald_enums,
-                                                            shadow_map_algorithm_strings,
-                                                            (void**) shadow_map_algorithm_emerald_enums,
-                                                            _ui_get_current_shadow_map_algorithm_index(),
-                                                            system_hashed_ansi_string_create("Shadow map algorithm"),
-                                                            temp_x1y1,
-                                                            _ui_on_shadow_map_algorithm_changed,
-                                                            NULL); /* fire_user_arg */
+    _ui_shadow_map_algorithm_dropdown = ui_add_dropdown(_ui,
+                                                        n_shadow_map_algorithm_emerald_enums,
+                                                        shadow_map_algorithm_strings,
+                                                        (void**) shadow_map_algorithm_emerald_enums,
+                                                        _ui_get_current_shadow_map_algorithm_index(),
+                                                        system_hashed_ansi_string_create("Shadow map algorithm"),
+                                                        temp_x1y1,
+                                                        _ui_on_shadow_map_algorithm_changed,
+                                                        NULL); /* fire_user_arg */
 
     /* Add color shadow map blur n passes scrollbar */
     system_variant blur_n_passes_max_value = system_variant_create_float(4.0f);
     system_variant blur_n_passes_min_value = system_variant_create_float(0.0f);
 
-    _ui_color_shadow_map_blur_n_passes_scrollbar = ogl_ui_add_scrollbar(_ui,
-                                                                        system_hashed_ansi_string_create("Color Shadow map blur passes"),
-                                                                        OGL_UI_SCROLLBAR_TEXT_LOCATION_LEFT_TO_SLIDER,
-                                                                        blur_n_passes_min_value,
-                                                                        blur_n_passes_max_value,
-                                                                        temp_x1y1,
-                                                                        _ui_get_current_vsm_blur_n_passes_value,
-                                                                        NULL,
-                                                                        _ui_set_current_vsm_blur_n_passes_value,
-                                                                        NULL);
+    _ui_color_shadow_map_blur_n_passes_scrollbar = ui_add_scrollbar(_ui,
+                                                                    system_hashed_ansi_string_create("Color Shadow map blur passes"),
+                                                                    UI_SCROLLBAR_TEXT_LOCATION_LEFT_TO_SLIDER,
+                                                                    blur_n_passes_min_value,
+                                                                    blur_n_passes_max_value,
+                                                                    temp_x1y1,
+                                                                    _ui_get_current_vsm_blur_n_passes_value,
+                                                                    NULL,
+                                                                    _ui_set_current_vsm_blur_n_passes_value,
+                                                                    NULL);
 
     system_variant_release(blur_n_passes_max_value);
     system_variant_release(blur_n_passes_min_value);
@@ -608,89 +608,89 @@ PUBLIC void ui_init()
     system_variant max_n_taps_variant = system_variant_create_float((float) max_n_taps);
     system_variant min_n_taps_variant = system_variant_create_float((float) min_n_taps);
 
-    _ui_color_shadow_map_blur_n_taps_scrollbar = ogl_ui_add_scrollbar(_ui,
-                                                                      system_hashed_ansi_string_create("Color Shadow map blur taps"),
-                                                                      OGL_UI_SCROLLBAR_TEXT_LOCATION_LEFT_TO_SLIDER,
-                                                                      min_n_taps_variant,
-                                                                      max_n_taps_variant,
-                                                                      temp_x1y1,
-                                                                      _ui_get_current_vsm_blur_taps_value,
-                                                                      NULL,
-                                                                      _ui_set_current_vsm_blur_taps_value,
-                                                                      NULL);
+    _ui_color_shadow_map_blur_n_taps_scrollbar = ui_add_scrollbar(_ui,
+                                                                  system_hashed_ansi_string_create("Color Shadow map blur taps"),
+                                                                  UI_SCROLLBAR_TEXT_LOCATION_LEFT_TO_SLIDER,
+                                                                  min_n_taps_variant,
+                                                                  max_n_taps_variant,
+                                                                  temp_x1y1,
+                                                                  _ui_get_current_vsm_blur_taps_value,
+                                                                  NULL,
+                                                                  _ui_set_current_vsm_blur_taps_value,
+                                                                  NULL);
 
     system_variant_release(max_n_taps_variant);
     system_variant_release(min_n_taps_variant);
 
     /* Add color shadow map blur resolution dropdown */
-    _ui_color_shadow_map_blur_resolution_dropdown = ogl_ui_add_dropdown(_ui,
-                                                                        n_color_shadow_map_blur_resolution_strings,
-                                                                        color_shadow_map_blur_resolution_strings,
-                                                                        (void**) color_shadow_map_blur_resolution_enums,
-                                                                        _ui_get_current_color_shadow_map_blur_resolution_index(),
-                                                                        system_hashed_ansi_string_create("Color shadow map blur resolution"),
-                                                                        temp_x1y1,
-                                                                        _ui_on_color_shadow_map_blur_resolution_changed,
-                                                                        NULL); /* fire_user_arg */
+    _ui_color_shadow_map_blur_resolution_dropdown = ui_add_dropdown(_ui,
+                                                                    n_color_shadow_map_blur_resolution_strings,
+                                                                    color_shadow_map_blur_resolution_strings,
+                                                                    (void**) color_shadow_map_blur_resolution_enums,
+                                                                    _ui_get_current_color_shadow_map_blur_resolution_index(),
+                                                                    system_hashed_ansi_string_create("Color shadow map blur resolution"),
+                                                                    temp_x1y1,
+                                                                    _ui_on_color_shadow_map_blur_resolution_changed,
+                                                                    NULL); /* fire_user_arg */
 
     /* Add color shadow map internalformat dropdown */
-    _ui_color_shadow_map_format_dropdown = ogl_ui_add_dropdown(_ui,
-                                                               n_color_shadow_map_format_strings,
-                                                               color_shadow_map_format_strings,
-                                                               (void**) color_shadow_map_format_enums,
-                                                               _ui_get_current_color_shadow_map_format_index(),
-                                                               system_hashed_ansi_string_create("Color shadow map format"),
-                                                               temp_x1y1,
-                                                               _ui_on_color_shadow_map_format_changed,
-                                                               NULL); /* fire_user_arg */
+    _ui_color_shadow_map_format_dropdown = ui_add_dropdown(_ui,
+                                                           n_color_shadow_map_format_strings,
+                                                           color_shadow_map_format_strings,
+                                                           (void**) color_shadow_map_format_enums,
+                                                           _ui_get_current_color_shadow_map_format_index(),
+                                                           system_hashed_ansi_string_create("Color shadow map format"),
+                                                           temp_x1y1,
+                                                           _ui_on_color_shadow_map_format_changed,
+                                                           NULL); /* fire_user_arg */
 
     /* Add depth shadow map internalformat dropdown */
-    _ui_depth_shadow_map_format_dropdown = ogl_ui_add_dropdown(_ui,
-                                                               n_depth_shadow_map_format_strings,
-                                                               depth_shadow_map_format_strings,
-                                                               (void**) depth_shadow_map_format_enums,
-                                                               _ui_get_current_depth_shadow_map_format_index(),
-                                                               system_hashed_ansi_string_create("Depth shadow map format"),
-                                                               temp_x1y1,
-                                                               _ui_on_depth_shadow_map_format_changed,
-                                                               NULL); /* fire_user_arg */
+    _ui_depth_shadow_map_format_dropdown = ui_add_dropdown(_ui,
+                                                           n_depth_shadow_map_format_strings,
+                                                           depth_shadow_map_format_strings,
+                                                           (void**) depth_shadow_map_format_enums,
+                                                           _ui_get_current_depth_shadow_map_format_index(),
+                                                           system_hashed_ansi_string_create("Depth shadow map format"),
+                                                           temp_x1y1,
+                                                           _ui_on_depth_shadow_map_format_changed,
+                                                           NULL); /* fire_user_arg */
 
     /* Add shadow map size dropdown */
-    _ui_shadow_map_size_dropdown = ogl_ui_add_dropdown(_ui,
-                                                       n_shadow_map_size_strings,
-                                                       shadow_map_size_strings,
-                                                       (void**) shadow_map_size_ints,
-                                                       _ui_get_current_shadow_map_size_index(),
-                                                       system_hashed_ansi_string_create("Shadow map size"),
-                                                       temp_x1y1,
-                                                       _ui_on_shadow_map_size_changed,
-                                                       NULL); /* fire_user_arg */
+    _ui_shadow_map_size_dropdown = ui_add_dropdown(_ui,
+                                                   n_shadow_map_size_strings,
+                                                   shadow_map_size_strings,
+                                                   (void**) shadow_map_size_ints,
+                                                   _ui_get_current_shadow_map_size_index(),
+                                                   system_hashed_ansi_string_create("Shadow map size"),
+                                                   temp_x1y1,
+                                                   _ui_on_shadow_map_size_changed,
+                                                   NULL); /* fire_user_arg */
 
     /* Add point light algorithm dropdown */
-    _ui_shadow_map_pl_algorithm_dropdown = ogl_ui_add_dropdown(_ui,
-                                                               n_shadow_map_pointlight_algorithm_strings,
-                                                               shadow_map_pointlight_algorithm_strings,
-                                                               (void**) shadow_map_pointlight_algorithm_emerald_enums,
-                                                               _ui_get_current_color_shadow_map_pointlight_algorithm_index(),
-                                                               system_hashed_ansi_string_create("Point light CM algorithm"),
-                                                               temp_x1y1,
-                                                               _ui_on_shadow_map_pointlight_algorithm_changed,
-                                                               NULL); /* fire_user_arg */
+    _ui_shadow_map_pl_algorithm_dropdown = ui_add_dropdown(_ui,
+                                                           n_shadow_map_pointlight_algorithm_strings,
+                                                           shadow_map_pointlight_algorithm_strings,
+                                                           (void**) shadow_map_pointlight_algorithm_emerald_enums,
+                                                           _ui_get_current_color_shadow_map_pointlight_algorithm_index(),
+                                                           system_hashed_ansi_string_create("Point light CM algorithm"),
+                                                           temp_x1y1,
+                                                           _ui_on_shadow_map_pointlight_algorithm_changed,
+                                                           NULL); /* fire_user_arg */
 
     /* Add VSM cutoff scrollbar */
     system_variant vsm_cutoff_max_value = system_variant_create_float(1.0f);
     system_variant vsm_cutoff_min_value = system_variant_create_float(0.0f);
 
-    _ui_vsm_cutoff_scrollbar = ogl_ui_add_scrollbar(_ui,
-                                                    system_hashed_ansi_string_create("VSM cut-off"),
-                                                    OGL_UI_SCROLLBAR_TEXT_LOCATION_LEFT_TO_SLIDER,
-                                                    vsm_cutoff_min_value,
-                                                    vsm_cutoff_max_value,
-                                                    temp_x1y1,
-                                                    _ui_get_current_vsm_cutoff_value,
-                                                    NULL,
-                                                    _ui_set_current_vsm_cutoff_value,
-                                                    NULL);
+    _ui_vsm_cutoff_scrollbar = ui_add_scrollbar(_ui,
+                                                system_hashed_ansi_string_create("VSM cut-off"),
+                                                UI_SCROLLBAR_TEXT_LOCATION_LEFT_TO_SLIDER,
+                                                vsm_cutoff_min_value,
+                                                vsm_cutoff_max_value,
+                                                temp_x1y1,
+                                                _ui_get_current_vsm_cutoff_value,
+                                                NULL,
+                                                _ui_set_current_vsm_cutoff_value,
+                                                NULL);
 
     system_variant_release(vsm_cutoff_max_value);
     system_variant_release(vsm_cutoff_min_value);
@@ -699,16 +699,16 @@ PUBLIC void ui_init()
     system_variant vsm_max_variance_max_value = system_variant_create_float(0.1f);
     system_variant vsm_max_variance_min_value = system_variant_create_float(4.0f);
 
-    _ui_vsm_max_variance_scrollbar = ogl_ui_add_scrollbar(_ui,
-                                                          system_hashed_ansi_string_create("VSM maximum variance"),
-                                                          OGL_UI_SCROLLBAR_TEXT_LOCATION_LEFT_TO_SLIDER,
-                                                          vsm_max_variance_min_value,
-                                                          vsm_max_variance_max_value,
-                                                          temp_x1y1,
-                                                          _ui_get_current_vsm_max_variance_value,
-                                                          NULL,
-                                                          _ui_set_current_vsm_max_variance_value,
-                                                          NULL);
+    _ui_vsm_max_variance_scrollbar = ui_add_scrollbar(_ui,
+                                                      system_hashed_ansi_string_create("VSM maximum variance"),
+                                                      UI_SCROLLBAR_TEXT_LOCATION_LEFT_TO_SLIDER,
+                                                      vsm_max_variance_min_value,
+                                                      vsm_max_variance_max_value,
+                                                      temp_x1y1,
+                                                      _ui_get_current_vsm_max_variance_value,
+                                                      NULL,
+                                                      _ui_set_current_vsm_max_variance_value,
+                                                      NULL);
 
     system_variant_release(vsm_max_variance_max_value);
     system_variant_release(vsm_max_variance_min_value);
@@ -717,24 +717,24 @@ PUBLIC void ui_init()
     system_variant vsm_min_variance_max_value = system_variant_create_float(1e-3f);
     system_variant vsm_min_variance_min_value = system_variant_create_float(1e-6f);
 
-    _ui_vsm_min_variance_scrollbar = ogl_ui_add_scrollbar(_ui,
-                                                          system_hashed_ansi_string_create("VSM minimum variance"),
-                                                          OGL_UI_SCROLLBAR_TEXT_LOCATION_LEFT_TO_SLIDER,
-                                                          vsm_min_variance_min_value,
-                                                          vsm_min_variance_max_value,
-                                                          temp_x1y1,
-                                                          _ui_get_current_vsm_min_variance_value,
-                                                          NULL,
-                                                          _ui_set_current_vsm_min_variance_value,
-                                                          NULL);
+    _ui_vsm_min_variance_scrollbar = ui_add_scrollbar(_ui,
+                                                      system_hashed_ansi_string_create("VSM minimum variance"),
+                                                      UI_SCROLLBAR_TEXT_LOCATION_LEFT_TO_SLIDER,
+                                                      vsm_min_variance_min_value,
+                                                      vsm_min_variance_max_value,
+                                                      temp_x1y1,
+                                                      _ui_get_current_vsm_min_variance_value,
+                                                      NULL,
+                                                      _ui_set_current_vsm_min_variance_value,
+                                                      NULL);
 
     system_variant_release(vsm_min_variance_max_value);
     system_variant_release(vsm_min_variance_min_value);
 
     /* Add a bag which will re-adjust control positions whenever any of the dropdowns
      * is opened */
-    const float          control_bag_x1y1[2] = {0.9f, 0.1f};
-    const ogl_ui_control ui_controls[]       =
+    const float      control_bag_x1y1[2] = {0.9f, 0.1f};
+    const ui_control ui_controls[]       =
     {
         _ui_shadow_map_algorithm_dropdown,
         _ui_color_shadow_map_blur_n_passes_scrollbar,
@@ -750,10 +750,10 @@ PUBLIC void ui_init()
     };
     const unsigned int n_ui_controls = sizeof(ui_controls) / sizeof(ui_controls[0]);
 
-    _ui_bag = ogl_ui_bag_create(_ui,
-                                control_bag_x1y1,
-                                n_ui_controls,
-                                ui_controls);
+    _ui_bag = ui_bag_create(_ui,
+                            control_bag_x1y1,
+                            n_ui_controls,
+                            ui_controls);
 
     /* Set up a temp variant */
     _temp_variant_float = system_variant_create(SYSTEM_VARIANT_FLOAT);

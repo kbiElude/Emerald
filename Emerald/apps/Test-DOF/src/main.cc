@@ -12,7 +12,6 @@
 #include "ogl/ogl_context.h"
 #include "ogl/ogl_pipeline.h"
 #include "ogl/ogl_rendering_handler.h"
-#include "ogl/ogl_ui.h"
 #include "raGL/raGL_framebuffer.h"
 #include "ral/ral_context.h"
 #include "ral/ral_framebuffer.h"
@@ -28,6 +27,7 @@
 #include "stage_step_dof_scheuermann.h"
 #include "stage_step_julia.h"
 #include "stage_step_preview.h"
+#include "ui/ui.h"
 
 
 INCLUDE_OPTIMUS_SUPPORT;
@@ -238,88 +238,88 @@ void _init_gl(ogl_context context,
     const float scrollbar_8_x1y1[]         = {0.8f, 0.7f};
     const float texture_preview_max_size[] = {0.3f, 0.05f};
     const float texture_preview_x1y1[]     = {0.6f, 0.1f};
-    ogl_ui      pipeline_ui                = ogl_pipeline_get_ui(_pipeline);
+    ui          pipeline_ui                = ogl_pipeline_get_ui(_pipeline);
 
-    ogl_ui_add_scrollbar(pipeline_ui,
-                         system_hashed_ansi_string_create("DOF cut-off"),
-                         OGL_UI_SCROLLBAR_TEXT_LOCATION_ABOVE_SLIDER,
-                         system_variant_create_float     (0.0f),
-                         system_variant_create_float     (1.0f),
-                         scrollbar_1_x1y1,
-                         _get_dof_cutoff,
-                         NULL,             /* pfn_get_current_value_ptr */
-                         _set_dof_cutoff,
-                         NULL);            /* pfn_set_current_value_ptr */
-    ogl_ui_add_scrollbar(pipeline_ui, 
-                         system_hashed_ansi_string_create("DOF far plane depth"),
-                         OGL_UI_SCROLLBAR_TEXT_LOCATION_ABOVE_SLIDER,
-                         system_variant_create_float     (0.0f),
-                         system_variant_create_float     (10.0f),
-                         scrollbar_2_x1y1,
-                         _get_dof_far_plane_depth,
-                         NULL,                    /* pfn_get_current_value_ptr */
-                         _set_dof_far_plane_depth,
-                         NULL);                   /* pfn_set_current_value_ptr */
-    ogl_ui_add_scrollbar(pipeline_ui, 
-                         system_hashed_ansi_string_create("DOF focal plane depth"),
-                         OGL_UI_SCROLLBAR_TEXT_LOCATION_ABOVE_SLIDER,
-                         system_variant_create_float     (0.0f),
-                         system_variant_create_float     (10.0f),
-                         scrollbar_3_x1y1,
-                         _get_dof_focal_plane_depth,
-                         NULL,                       /* pfn_get_current_value_ptr */
-                         _set_dof_focal_plane_depth,
-                         NULL);                      /* pfn_set_current_value_ptr */
-    ogl_ui_add_scrollbar(pipeline_ui,
-                         system_hashed_ansi_string_create("DOF near plane depth"),
-                         OGL_UI_SCROLLBAR_TEXT_LOCATION_ABOVE_SLIDER,
-                         system_variant_create_float     (0.0f),
-                         system_variant_create_float     (10.0f),
-                         scrollbar_4_x1y1,
-                         _get_dof_near_plane_depth,
-                         NULL,                     /* pfn_get_current_value_ptr */
-                         _set_dof_near_plane_depth,
-                         NULL);                    /* pfn_set_current_value_ptr */
-    ogl_ui_add_scrollbar(pipeline_ui,
-                         system_hashed_ansi_string_create("Max CoC size (px)"),
-                         OGL_UI_SCROLLBAR_TEXT_LOCATION_ABOVE_SLIDER,
-                         system_variant_create_float     (1.0f),
-                         system_variant_create_float     (20.0f),
-                         scrollbar_5_x1y1,
-                         _get_max_coc_px,
-                         NULL,            /* pfn_get_current_value_ptr */
-                         _set_max_coc_px,
-                         NULL);           /* pfn_set_current_value_ptr */
-    ogl_ui_add_scrollbar(pipeline_ui,
-                         system_hashed_ansi_string_create("Blur radius"),
-                         OGL_UI_SCROLLBAR_TEXT_LOCATION_ABOVE_SLIDER,
-                         system_variant_create_float     (0.01f),
-                         system_variant_create_float     (2.0f),
-                         scrollbar_6_x1y1,
-                         _get_blur_radius,
-                         NULL,            /* pfn_get_current_value_ptr */
-                         _set_blur_radius,
-                         NULL);           /* pfn_set_current_value_ptr */
-    ogl_ui_add_scrollbar(pipeline_ui,
-                         system_hashed_ansi_string_create("Reflectivity"),
-                         OGL_UI_SCROLLBAR_TEXT_LOCATION_ABOVE_SLIDER,
-                         system_variant_create_float     (0.0f),
-                         system_variant_create_float     (1.0f),
-                         scrollbar_7_x1y1,
-                         _get_reflectivity,
-                         NULL,             /* pfn_get_current_value_ptr */
-                         _set_reflectivity,
-                         NULL);            /* pfn_set_current_value_ptr */
-    ogl_ui_add_scrollbar(pipeline_ui,
-                         system_hashed_ansi_string_create("Fresnel reflectance"),
-                         OGL_UI_SCROLLBAR_TEXT_LOCATION_ABOVE_SLIDER,
-                         system_variant_create_float     (0.0f),
-                         system_variant_create_float     (1.0f),
-                         scrollbar_8_x1y1,
-                         _get_fresnel_reflectance,
-                         NULL,                     /* pfn_get_current_value_ptr */
-                         _set_fresnel_reflectance,
-                         NULL);                    /* pfn_set_current_value_ptr */
+    ui_add_scrollbar(pipeline_ui,
+                     system_hashed_ansi_string_create("DOF cut-off"),
+                     UI_SCROLLBAR_TEXT_LOCATION_ABOVE_SLIDER,
+                     system_variant_create_float     (0.0f),
+                     system_variant_create_float     (1.0f),
+                     scrollbar_1_x1y1,
+                     _get_dof_cutoff,
+                     NULL,             /* pfn_get_current_value_ptr */
+                     _set_dof_cutoff,
+                     NULL);            /* pfn_set_current_value_ptr */
+    ui_add_scrollbar(pipeline_ui, 
+                     system_hashed_ansi_string_create("DOF far plane depth"),
+                     UI_SCROLLBAR_TEXT_LOCATION_ABOVE_SLIDER,
+                     system_variant_create_float     (0.0f),
+                     system_variant_create_float     (10.0f),
+                     scrollbar_2_x1y1,
+                     _get_dof_far_plane_depth,
+                     NULL,                    /* pfn_get_current_value_ptr */
+                     _set_dof_far_plane_depth,
+                     NULL);                   /* pfn_set_current_value_ptr */
+    ui_add_scrollbar(pipeline_ui, 
+                     system_hashed_ansi_string_create("DOF focal plane depth"),
+                     UI_SCROLLBAR_TEXT_LOCATION_ABOVE_SLIDER,
+                     system_variant_create_float     (0.0f),
+                     system_variant_create_float     (10.0f),
+                     scrollbar_3_x1y1,
+                     _get_dof_focal_plane_depth,
+                     NULL,                       /* pfn_get_current_value_ptr */
+                     _set_dof_focal_plane_depth,
+                     NULL);                      /* pfn_set_current_value_ptr */
+    ui_add_scrollbar(pipeline_ui,
+                     system_hashed_ansi_string_create("DOF near plane depth"),
+                     UI_SCROLLBAR_TEXT_LOCATION_ABOVE_SLIDER,
+                     system_variant_create_float     (0.0f),
+                     system_variant_create_float     (10.0f),
+                     scrollbar_4_x1y1,
+                     _get_dof_near_plane_depth,
+                     NULL,                     /* pfn_get_current_value_ptr */
+                     _set_dof_near_plane_depth,
+                     NULL);                    /* pfn_set_current_value_ptr */
+    ui_add_scrollbar(pipeline_ui,
+                     system_hashed_ansi_string_create("Max CoC size (px)"),
+                     UI_SCROLLBAR_TEXT_LOCATION_ABOVE_SLIDER,
+                     system_variant_create_float     (1.0f),
+                     system_variant_create_float     (20.0f),
+                     scrollbar_5_x1y1,
+                     _get_max_coc_px,
+                     NULL,            /* pfn_get_current_value_ptr */
+                     _set_max_coc_px,
+                     NULL);           /* pfn_set_current_value_ptr */
+    ui_add_scrollbar(pipeline_ui,
+                     system_hashed_ansi_string_create("Blur radius"),
+                     UI_SCROLLBAR_TEXT_LOCATION_ABOVE_SLIDER,
+                     system_variant_create_float     (0.01f),
+                     system_variant_create_float     (2.0f),
+                     scrollbar_6_x1y1,
+                     _get_blur_radius,
+                     NULL,            /* pfn_get_current_value_ptr */
+                     _set_blur_radius,
+                     NULL);           /* pfn_set_current_value_ptr */
+    ui_add_scrollbar(pipeline_ui,
+                     system_hashed_ansi_string_create("Reflectivity"),
+                     UI_SCROLLBAR_TEXT_LOCATION_ABOVE_SLIDER,
+                     system_variant_create_float     (0.0f),
+                     system_variant_create_float     (1.0f),
+                     scrollbar_7_x1y1,
+                     _get_reflectivity,
+                     NULL,             /* pfn_get_current_value_ptr */
+                     _set_reflectivity,
+                     NULL);            /* pfn_set_current_value_ptr */
+    ui_add_scrollbar(pipeline_ui,
+                     system_hashed_ansi_string_create("Fresnel reflectance"),
+                     UI_SCROLLBAR_TEXT_LOCATION_ABOVE_SLIDER,
+                     system_variant_create_float     (0.0f),
+                     system_variant_create_float     (1.0f),
+                     scrollbar_8_x1y1,
+                     _get_fresnel_reflectance,
+                     NULL,                     /* pfn_get_current_value_ptr */
+                     _set_fresnel_reflectance,
+                     NULL);                    /* pfn_set_current_value_ptr */
 }
 
 /** Rendering handler */

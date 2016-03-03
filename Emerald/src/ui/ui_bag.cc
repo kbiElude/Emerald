@@ -4,40 +4,40 @@
  *
  */
 #include "shared.h"
-#include "ogl/ogl_ui.h"
-#include "ogl/ogl_ui_bag.h"
-#include "ogl/ogl_ui_dropdown.h"
-#include "ogl/ogl_ui_frame.h"
-#include "ogl/ogl_ui_scrollbar.h"
-#include "ogl/ogl_ui_shared.h"
 #include "ral/ral_context.h"
 #include "system/system_assertions.h"
 #include "system/system_log.h"
 #include "system/system_resizable_vector.h"
 #include "system/system_window.h"
+#include "ui/ui.h"
+#include "ui/ui_bag.h"
+#include "ui/ui_dropdown.h"
+#include "ui/ui_frame.h"
+#include "ui/ui_scrollbar.h"
+#include "ui/ui_shared.h"
 
 #define INTER_CONTROL_DELTA_HORIZONTAL (5) /* in px */
 #define INTER_CONTROL_DELTA_VERTICAL   (5) /* in px */
 
 /** Internal types */
-typedef struct _ogl_ui_bag
+typedef struct _ui_bag
 {
     system_resizable_vector controls;
-    ogl_ui_control          frame;
+    ui_control              frame;
     float                   x1y1[2];
-    ogl_ui                  ui;
+    ui                      ui_instance;
 
-    explicit _ogl_ui_bag(ogl_ui       in_ui,
-                         const float* in_x1y1)
+    explicit _ui_bag(ui           in_ui,
+                     const float* in_x1y1)
     {
-        controls = NULL;
-        frame    = NULL;
-        x1y1[0]  = in_x1y1[0];
-        x1y1[1]  = in_x1y1[1];
-        ui       = in_ui;
+        controls    = NULL;
+        frame       = NULL;
+        x1y1[0]     = in_x1y1[0];
+        x1y1[1]     = in_x1y1[1];
+        ui_instance = in_ui;
     }
 
-    ~_ogl_ui_bag()
+    ~_ui_bag()
     {
         if (controls != NULL)
         {
@@ -46,14 +46,14 @@ typedef struct _ogl_ui_bag
             controls = NULL;
         }
     }
-} _ogl_ui_label;
+} _ui_label;
 
 /* Forward declarations */
-PRIVATE void _ogl_ui_bag_position_controls(_ogl_ui_bag* bag_ptr);
+PRIVATE void _ui_bag_position_controls(_ui_bag* bag_ptr);
 
 
 /** TODO */
-PRIVATE void _ogl_ui_bag_position_controls(_ogl_ui_bag* bag_ptr)
+PRIVATE void _ui_bag_position_controls(_ui_bag* bag_ptr)
 {
     unsigned int n_controls      = 0;
     float        current_x1y1[2] =
@@ -67,7 +67,7 @@ PRIVATE void _ogl_ui_bag_position_controls(_ogl_ui_bag* bag_ptr)
                                         &n_controls);
 
     /* Determine deltas */
-    ral_context   context              = ogl_ui_get_context(bag_ptr->ui);
+    ral_context   context              = ui_get_context(bag_ptr->ui_instance);
     system_window window               = NULL;
     int           window_dimensions[2] = {0};
 
@@ -90,20 +90,20 @@ PRIVATE void _ogl_ui_bag_position_controls(_ogl_ui_bag* bag_ptr)
                       n_control < n_controls;
                     ++n_control)
     {
-        ogl_ui_control control         = NULL;
-        float          control_width   = 0.0f;
-        float          control_x1y1[2] = {0.0f};
+        ui_control control         = NULL;
+        float      control_width   = 0.0f;
+        float      control_x1y1[2] = {0.0f};
 
         system_resizable_vector_get_element_at(bag_ptr->controls,
                                                n_control,
                                               &control);
 
-        ogl_ui_get_control_property(control,
-                                    OGL_UI_CONTROL_PROPERTY_GENERAL_WIDTH_NORMALIZED,
-                                   &control_width);
-        ogl_ui_get_control_property(control,
-                                    OGL_UI_CONTROL_PROPERTY_GENERAL_X1Y1,
-                                   &control_x1y1);
+        ui_get_control_property(control,
+                                UI_CONTROL_PROPERTY_GENERAL_WIDTH_NORMALIZED,
+                               &control_width);
+        ui_get_control_property(control,
+                                UI_CONTROL_PROPERTY_GENERAL_X1Y1,
+                               &control_x1y1);
 
         if (control_width > max_width)
         {
@@ -135,29 +135,29 @@ PRIVATE void _ogl_ui_bag_position_controls(_ogl_ui_bag* bag_ptr)
                       n_control < n_controls;
                     ++n_control)
     {
-        ogl_ui_control control         = NULL;
-        float          control_height  = 0.0f;
-        bool           control_visible = false;
+        ui_control control         = NULL;
+        float      control_height  = 0.0f;
+        bool       control_visible = false;
 
         system_resizable_vector_get_element_at(bag_ptr->controls,
                                                n_control,
                                               &control);
 
-        ogl_ui_get_control_property(control,
-                                    OGL_UI_CONTROL_PROPERTY_GENERAL_VISIBLE,
-                                   &control_visible);
+        ui_get_control_property(control,
+                                UI_CONTROL_PROPERTY_GENERAL_VISIBLE,
+                               &control_visible);
 
         if (control_visible)
         {
-            ogl_ui_get_control_property(control,
-                                        OGL_UI_CONTROL_PROPERTY_GENERAL_HEIGHT_NORMALIZED,
-                                       &control_height);
+            ui_get_control_property(control,
+                                    UI_CONTROL_PROPERTY_GENERAL_HEIGHT_NORMALIZED,
+                                   &control_height);
 
             current_x1y1[1] += v_delta;
 
-            ogl_ui_set_control_property(control,
-                                        OGL_UI_CONTROL_PROPERTY_GENERAL_X1Y1,
-                                        current_x1y1);
+            ui_set_control_property(control,
+                                    UI_CONTROL_PROPERTY_GENERAL_X1Y1,
+                                    current_x1y1);
 
             current_x1y1[1] += control_height;
         } /* if (control_visible) */
@@ -181,20 +181,20 @@ PRIVATE void _ogl_ui_bag_position_controls(_ogl_ui_bag* bag_ptr)
                       n_control < n_controls;
                     ++n_control)
     {
-        ogl_ui_control control         = NULL;
-        float          control_width   = 0.0f;
-        float          control_x1y1[2] = {0.0f};
+        ui_control control         = NULL;
+        float      control_width   = 0.0f;
+        float      control_x1y1[2] = {0.0f};
 
         system_resizable_vector_get_element_at(bag_ptr->controls,
                                                n_control,
                                               &control);
 
-        ogl_ui_get_control_property(control,
-                                    OGL_UI_CONTROL_PROPERTY_GENERAL_WIDTH_NORMALIZED,
-                                   &control_width);
-        ogl_ui_get_control_property(control,
-                                    OGL_UI_CONTROL_PROPERTY_GENERAL_X1Y1,
-                                   &control_x1y1);
+        ui_get_control_property(control,
+                                UI_CONTROL_PROPERTY_GENERAL_WIDTH_NORMALIZED,
+                               &control_width);
+        ui_get_control_property(control,
+                                UI_CONTROL_PROPERTY_GENERAL_X1Y1,
+                               &control_x1y1);
 
         if (control_x1y1[0] < frame_x1y1[0])
         {
@@ -202,38 +202,38 @@ PRIVATE void _ogl_ui_bag_position_controls(_ogl_ui_bag* bag_ptr)
         }
     }
 
-    ogl_ui_get_control_property(bag_ptr->frame,
-                                OGL_UI_CONTROL_PROPERTY_FRAME_X1Y1X2Y2,
-                                frame_x1y1x2y2);
+    ui_get_control_property(bag_ptr->frame,
+                            UI_CONTROL_PROPERTY_FRAME_X1Y1X2Y2,
+                            frame_x1y1x2y2);
 
     frame_x1y1x2y2[0] = frame_x1y1[0] - h_delta;
     frame_x1y1x2y2[1] = frame_x1y1[1];
     frame_x1y1x2y2[2] = frame_x1y1x2y2[0] + max_width + 2.0f * h_delta;
     frame_x1y1x2y2[3] = current_x1y1[1];
 
-    ogl_ui_set_control_property(bag_ptr->frame,
-                                OGL_UI_CONTROL_PROPERTY_FRAME_X1Y1X2Y2,
-                                frame_x1y1x2y2);
+    ui_set_control_property(bag_ptr->frame,
+                            UI_CONTROL_PROPERTY_FRAME_X1Y1X2Y2,
+                            frame_x1y1x2y2);
 }
 
 /** TODO */
-PRIVATE void _ogl_ui_on_controls_changed_callback(ogl_ui_control control,
-                                                  int            callback_id,
-                                                  void*          callback_subscriber_data,
-                                                  void*          callback_data)
+PRIVATE void _ui_on_controls_changed_callback(ui_control control,
+                                              int        callback_id,
+                                              void*      callback_subscriber_data,
+                                              void*      callback_data)
 {
     /* Reposition the controls and resize the frame */
-    _ogl_ui_bag_position_controls( (_ogl_ui_bag*) callback_subscriber_data);
+    _ui_bag_position_controls( (_ui_bag*) callback_subscriber_data);
 }
 
 /* Please see header for spec */
-PUBLIC EMERALD_API ogl_ui_bag ogl_ui_bag_create(ogl_ui                ui,
-                                                const float*          x1y1,
-                                                unsigned int          n_controls,
-                                                const ogl_ui_control* controls)
+PUBLIC EMERALD_API ui_bag ui_bag_create(ui                ui_instance,
+                                        const float*      x1y1,
+                                        unsigned int      n_controls,
+                                        const ui_control* controls)
 {
-    _ogl_ui_bag* new_bag_ptr = new (std::nothrow) _ogl_ui_bag(ui,
-                                                              x1y1);
+    _ui_bag* new_bag_ptr = new (std::nothrow) _ui_bag(ui_instance,
+                                                      x1y1);
 
     ASSERT_DEBUG_SYNC(new_bag_ptr != NULL,
                       "Out of memory");
@@ -242,7 +242,7 @@ PUBLIC EMERALD_API ogl_ui_bag ogl_ui_bag_create(ogl_ui                ui,
     {
         /* Spawn the controls vector */
         ASSERT_DEBUG_SYNC(new_bag_ptr->controls == NULL,
-                          "_ogl_ui_bag spawned a controls vector");
+                          "_ui_bag spawned a controls vector");
 
         new_bag_ptr->controls = system_resizable_vector_create(n_controls);
 
@@ -260,8 +260,8 @@ PUBLIC EMERALD_API ogl_ui_bag ogl_ui_bag_create(ogl_ui                ui,
         } /* for (all controls) */
 
         /* Spawn a new frame control */
-        new_bag_ptr->frame = ogl_ui_add_frame(ui,
-                                              x1y1);
+        new_bag_ptr->frame = ui_add_frame(ui_instance,
+                                          x1y1);
 
         /* The frame should be located underneath all controls.
          *
@@ -274,9 +274,9 @@ PUBLIC EMERALD_API ogl_ui_bag ogl_ui_bag_create(ogl_ui                ui,
         {
             unsigned int temp_index = 0xFFFFFFFF;
 
-            ogl_ui_get_control_property(controls[n_control],
-                                        OGL_UI_CONTROL_PROPERTY_GENERAL_INDEX,
-                                       &temp_index);
+            ui_get_control_property(controls[n_control],
+                                    UI_CONTROL_PROPERTY_GENERAL_INDEX,
+                                   &temp_index);
 
             if (temp_index < deepest_control_index)
             {
@@ -290,59 +290,59 @@ PUBLIC EMERALD_API ogl_ui_bag ogl_ui_bag_create(ogl_ui                ui,
                           n_control < n_controls;
                         ++n_control)
         {
-            _ogl_ui_control_type control_type = OGL_UI_CONTROL_TYPE_UNKNOWN;
+            _ui_control_type control_type = UI_CONTROL_TYPE_UNKNOWN;
 
-            ogl_ui_get_control_property(controls[n_control],
-                                        OGL_UI_CONTROL_PROPERTY_GENERAL_TYPE,
-                                       &control_type);
+            ui_get_control_property(controls[n_control],
+                                    UI_CONTROL_PROPERTY_GENERAL_TYPE,
+                                   &control_type);
 
-            if (control_type == OGL_UI_CONTROL_TYPE_DROPDOWN)
+            if (control_type == UI_CONTROL_TYPE_DROPDOWN)
             {
-                ogl_ui_register_control_callback(ui,
-                                                 controls[n_control],
-                                                 OGL_UI_DROPDOWN_CALLBACK_ID_DROPAREA_TOGGLE,
-                                                 _ogl_ui_on_controls_changed_callback,
-                                                 new_bag_ptr);
-                ogl_ui_register_control_callback(ui,
-                                                 controls[n_control],
-                                                 OGL_UI_DROPDOWN_CALLBACK_ID_VISIBILITY_TOGGLE,
-                                                 _ogl_ui_on_controls_changed_callback,
-                                                 new_bag_ptr);
+                ui_register_control_callback(ui_instance,
+                                             controls[n_control],
+                                             UI_DROPDOWN_CALLBACK_ID_DROPAREA_TOGGLE,
+                                             _ui_on_controls_changed_callback,
+                                             new_bag_ptr);
+                ui_register_control_callback(ui_instance,
+                                             controls[n_control],
+                                             UI_DROPDOWN_CALLBACK_ID_VISIBILITY_TOGGLE,
+                                             _ui_on_controls_changed_callback,
+                                             new_bag_ptr);
             }
             else
-            if (control_type == OGL_UI_CONTROL_TYPE_SCROLLBAR)
+            if (control_type == UI_CONTROL_TYPE_SCROLLBAR)
             {
-                ogl_ui_register_control_callback(ui,
-                                                 controls[n_control],
-                                                 OGL_UI_SCROLLBAR_CALLBACK_ID_VISIBILITY_TOGGLE,
-                                                 _ogl_ui_on_controls_changed_callback,
-                                                 new_bag_ptr);
+                ui_register_control_callback(ui_instance,
+                                             controls[n_control],
+                                             UI_SCROLLBAR_CALLBACK_ID_VISIBILITY_TOGGLE,
+                                             _ui_on_controls_changed_callback,
+                                             new_bag_ptr);
             }
         } /* for (all controls) */
 
         /* Insert the frame underneath */
-        ogl_ui_reposition_control(new_bag_ptr->frame,
-                                  deepest_control_index);
+        ui_reposition_control(new_bag_ptr->frame,
+                              deepest_control_index);
 
         /* Position the controls in a vertical order, one after another. While on it,
          * also resize the underlying frame.
          */
-        _ogl_ui_bag_position_controls(new_bag_ptr);
+        _ui_bag_position_controls(new_bag_ptr);
     } /* if (new_bag_ptr != NULL) */
 
     /* All done */
-    return (ogl_ui_bag) new_bag_ptr;
+    return (ui_bag) new_bag_ptr;
 }
 
 /* Please see header for spec */
-PUBLIC EMERALD_API void ogl_ui_bag_release(ogl_ui_bag bag)
+PUBLIC EMERALD_API void ui_bag_release(ui_bag bag)
 {
     /* Sanity checks */
     ASSERT_DEBUG_SYNC(bag != NULL,
                       "Input bag argument is NULL");
 
     /* Release the resource */
-    delete (_ogl_ui_bag*) bag;
+    delete (_ui_bag*) bag;
 
     bag = NULL;
 }

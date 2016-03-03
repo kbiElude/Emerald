@@ -12,7 +12,6 @@
 #include "ogl/ogl_query.h"
 #include "ogl/ogl_rendering_handler.h"
 #include "ogl/ogl_text.h"
-#include "ogl/ogl_ui.h"
 #include "ral/ral_context.h"
 #include "system/system_assertions.h"
 #include "system/system_hashed_ansi_string.h"
@@ -21,6 +20,7 @@
 #include "system/system_resources.h"
 #include "system/system_types.h"
 #include "system/system_window.h"
+#include "ui/ui.h"
 
 #define DEFAULT_STAGES_CAPACITY      (4)
 #define DEFAULT_STAGE_STEPS_CAPACITY (4)
@@ -46,7 +46,7 @@ typedef struct
     ogl_text                  text_renderer;
     uint32_t                  text_y_delta;
 
-    ogl_ui                    ui;
+    ui                        ui_instance;
 
     system_resizable_vector   stages;
 
@@ -132,9 +132,9 @@ PRIVATE void _ogl_pipeline_deinit_pipeline(_ogl_pipeline* pipeline_ptr)
         }
     } /* while (true) */
 
-    if (pipeline_ptr->ui != NULL)
+    if (pipeline_ptr->ui_instance != NULL)
     {
-        ogl_ui_release(pipeline_ptr->ui);
+        ui_release(pipeline_ptr->ui_instance);
     }
 
     if (pipeline_ptr->text_renderer != NULL)
@@ -221,7 +221,7 @@ PRIVATE void _ogl_pipeline_init_pipeline(_ogl_pipeline*            pipeline_ptr,
     pipeline_ptr->name                            = name;
     pipeline_ptr->should_overlay_performance_info = should_overlay_performance_info;
     pipeline_ptr->stages                          = system_resizable_vector_create(DEFAULT_STAGES_CAPACITY);
-    pipeline_ptr->ui                              = ogl_ui_create                 (pipeline_ptr->text_renderer,
+    pipeline_ptr->ui_instance                     = ui_create                     (pipeline_ptr->text_renderer,
                                                                                    system_hashed_ansi_string_create("Pipeline UI") );
     pipeline_ptr->text_y_delta                    = (uint32_t) (gfx_bfg_font_table_get_maximum_character_height(font_table) * TEXT_SCALE);
 
@@ -687,7 +687,7 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API bool ogl_pipeline_draw_stage(ogl_pipel
         } /* for (uint32_t n_step = 0; n_step < n_steps; ++n_step) */
 
         /* If any UI controls are around, draw them now */
-        ogl_ui_draw(pipeline_ptr->ui);
+        ui_draw(pipeline_ptr->ui_instance);
 
         if (pipeline_ptr->should_overlay_performance_info)
         {
@@ -819,7 +819,7 @@ PUBLIC ogl_text ogl_pipeline_get_text_renderer(ogl_pipeline instance)
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API ogl_ui ogl_pipeline_get_ui(ogl_pipeline instance)
+PUBLIC EMERALD_API ui ogl_pipeline_get_ui(ogl_pipeline instance)
 {
-    return ((_ogl_pipeline*) instance)->ui;
+    return ((_ogl_pipeline*) instance)->ui_instance;
 }

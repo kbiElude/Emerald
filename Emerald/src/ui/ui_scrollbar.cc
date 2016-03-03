@@ -6,9 +6,6 @@
 #include "shared.h"
 #include "ogl/ogl_context.h"
 #include "ogl/ogl_text.h"
-#include "ogl/ogl_ui.h"
-#include "ogl/ogl_ui_scrollbar.h"
-#include "ogl/ogl_ui_shared.h"
 #include "raGL/raGL_buffer.h"
 #include "raGL/raGL_program.h"
 #include "raGL/raGL_shader.h"
@@ -21,6 +18,9 @@
 #include "system/system_hashed_ansi_string.h"
 #include "system/system_log.h"
 #include "system/system_window.h"
+#include "ui/ui.h"
+#include "ui/ui_scrollbar.h"
+#include "ui/ui_shared.h"
 
 /** Internal constants */
 static system_hashed_ansi_string _ui_scrollbar_slider_program_name = system_hashed_ansi_string_create("UI Scrollbar Slider");
@@ -77,48 +77,48 @@ static const char* ui_scrollbar_fragment_shader_body = "#version 430 core\n"
 /** Internal types */
 typedef struct
 {
-    ral_context                    context;
-    system_hashed_ansi_string      name;
+    ral_context                context;
+    system_hashed_ansi_string  name;
 
-    uint32_t                       text_index;
-    ogl_ui_scrollbar_text_location text_location;
-    ogl_text                       text_renderer;
-    ogl_ui                         ui;
+    uint32_t                   text_index;
+    ui_scrollbar_text_location text_location;
+    ogl_text                   text_renderer;
+    ui                         ui_instance;
 
-    ral_program                    program_slider;
-    GLint                          program_slider_border_width_ub_offset;
-    GLint                          program_slider_brightness_ub_offset;
-    GLint                          program_slider_is_handle_ub_offset;
-    GLint                          program_slider_x1y1x2y2_ub_offset;
-    ral_program_block_buffer       program_slider_ub_fs;
-    GLuint                         program_slider_ub_fs_bo_size;
-    ral_program_block_buffer       program_slider_ub_vs;
-    GLuint                         program_slider_ub_vs_bo_size;
+    ral_program              program_slider;
+    GLint                    program_slider_border_width_ub_offset;
+    GLint                    program_slider_brightness_ub_offset;
+    GLint                    program_slider_is_handle_ub_offset;
+    GLint                    program_slider_x1y1x2y2_ub_offset;
+    ral_program_block_buffer program_slider_ub_fs;
+    GLuint                   program_slider_ub_fs_bo_size;
+    ral_program_block_buffer program_slider_ub_vs;
+    GLuint                   program_slider_ub_vs_bo_size;
 
-    system_variant                 min_value_variant;
-    system_variant                 max_value_variant;
-    system_variant                 temp_variant;
+    system_variant min_value_variant;
+    system_variant max_value_variant;
+    system_variant temp_variant;
 
-    float                          current_gpu_brightness_level;
-    bool                           force_gpu_brightness_update;
-    bool                           is_hovering;
-    bool                           is_lbm_on;
-    bool                           is_visible;
-    float                          start_hovering_brightness;
-    system_time                    start_hovering_time;
+    float       current_gpu_brightness_level;
+    bool        force_gpu_brightness_update;
+    bool        is_hovering;
+    bool        is_lbm_on;
+    bool        is_visible;
+    float       start_hovering_brightness;
+    system_time start_hovering_time;
 
-    float                          gpu_slider_handle_position;
-    float                          slider_handle_size    [2]; /* scaled to window size */
-    float                          slider_handle_x1y1x2y2[4];
+    float gpu_slider_handle_position;
+    float slider_handle_size    [2]; /* scaled to window size */
+    float slider_handle_x1y1x2y2[4];
 
-    float                          slider_border_width       [2];
-    float                          slider_handle_border_width[2];
-    float                          slider_x1y1x2y2           [4];
+    float slider_border_width       [2];
+    float slider_handle_border_width[2];
+    float slider_x1y1x2y2           [4];
 
-    PFNOGLUIGETCURRENTVALUEPROCPTR pfn_get_current_value_ptr;
-    void*                          get_current_value_ptr_user_arg;
-    PFNOGLUISETCURRENTVALUEPROCPTR pfn_set_current_value_ptr;
-    void*                          set_current_value_ptr_user_arg;
+    PFNUIGETCURRENTVALUEPROCPTR pfn_get_current_value_ptr;
+    void*                       get_current_value_ptr_user_arg;
+    PFNUISETCURRENTVALUEPROCPTR pfn_set_current_value_ptr;
+    void*                       set_current_value_ptr_user_arg;
 
     /* Cached func ptrs */
     PFNGLBINDBUFFERRANGEPROC     pGLBindBufferRange;
@@ -129,18 +129,18 @@ typedef struct
     PFNGLENABLEPROC              pGLEnable;
     PFNGLUNIFORMBLOCKBINDINGPROC pGLUniformBlockBinding;
     PFNGLUSEPROGRAMPROC          pGLUseProgram;
-} _ogl_ui_scrollbar;
+} _ui_scrollbar;
 
 /* Forward declarations */
-PRIVATE void _ogl_ui_scrollbar_update_slider_handle_position(_ogl_ui_scrollbar* scrollbar_ptr);
+PRIVATE void _ui_scrollbar_update_slider_handle_position(_ui_scrollbar* scrollbar_ptr);
 
 
 /** TODO */
-PRIVATE void _ogl_ui_scrollbar_init_program(ogl_ui             ui,
-                                            _ogl_ui_scrollbar* scrollbar_ptr)
+PRIVATE void _ui_scrollbar_init_program(ui             ui_instance,
+                                        _ui_scrollbar* scrollbar_ptr)
 {
     /* Create all objects */
-    ral_context context = ogl_ui_get_context(ui);
+    ral_context context = ui_get_context(ui_instance);
     ral_shader  fs      = NULL;
     ral_shader  vs      = NULL;
 
@@ -213,9 +213,9 @@ PRIVATE void _ogl_ui_scrollbar_init_program(ogl_ui             ui,
     }
 
     /* Register the prgoram with UI so following button instances will reuse the program */
-    ogl_ui_register_program(ui,
-                            _ui_scrollbar_slider_program_name,
-                            scrollbar_ptr->program_slider);
+    ui_register_program(ui_instance,
+                        _ui_scrollbar_slider_program_name,
+                        scrollbar_ptr->program_slider);
 
     /* Release shaders we will no longer need */
     ral_shader shaders_to_release[] =
@@ -232,13 +232,13 @@ PRIVATE void _ogl_ui_scrollbar_init_program(ogl_ui             ui,
 }
 
 /** TODO */
-PRIVATE void _ogl_ui_scrollbar_init_renderer_callback(ogl_context context,
-                                                      void*       scrollbar)
+PRIVATE void _ui_scrollbar_init_renderer_callback(ogl_context context,
+                                                  void*       scrollbar)
 {
-    float              border_width[2] = {0};
-    _ogl_ui_scrollbar* scrollbar_ptr   = (_ogl_ui_scrollbar*) scrollbar;
-    system_window      window          = NULL;
-    int                window_size[2]  = {0};
+    float          border_width[2] = {0};
+    _ui_scrollbar* scrollbar_ptr   = (_ui_scrollbar*) scrollbar;
+    system_window  window          = NULL;
+    int            window_size[2]  = {0};
 
     const raGL_program program_raGL    = ral_context_get_program_gl(scrollbar_ptr->context,
                                                                     scrollbar_ptr->program_slider);
@@ -330,7 +330,7 @@ PRIVATE void _ogl_ui_scrollbar_init_renderer_callback(ogl_context context,
 }
 
 /** TODO */
-PRIVATE void _ogl_ui_scrollbar_update_slider_handle_position(_ogl_ui_scrollbar* scrollbar_ptr)
+PRIVATE void _ui_scrollbar_update_slider_handle_position(_ui_scrollbar* scrollbar_ptr)
 {
     float       max_value  = 0;
     float       min_value  = 0;
@@ -362,7 +362,7 @@ PRIVATE void _ogl_ui_scrollbar_update_slider_handle_position(_ogl_ui_scrollbar* 
 }
 
 /** TODO */
-PRIVATE void _ogl_ui_scrollbar_update_text_position(_ogl_ui_scrollbar* scrollbar_ptr)
+PRIVATE void _ui_scrollbar_update_text_position(_ui_scrollbar* scrollbar_ptr)
 {
     int           text_height    = 0;
     int           text_xy[2]     = {0};
@@ -386,7 +386,7 @@ PRIVATE void _ogl_ui_scrollbar_update_text_position(_ogl_ui_scrollbar* scrollbar
                                       scrollbar_ptr->text_index,
                                      &text_width);
 
-    if (scrollbar_ptr->text_location == OGL_UI_SCROLLBAR_TEXT_LOCATION_ABOVE_SLIDER)
+    if (scrollbar_ptr->text_location == UI_SCROLLBAR_TEXT_LOCATION_ABOVE_SLIDER)
     {
         text_xy[0] = (int) ((scrollbar_ptr->slider_x1y1x2y2[0] + (scrollbar_ptr->slider_x1y1x2y2[2] - scrollbar_ptr->slider_x1y1x2y2[0] - float(text_width)  / window_size[0])  * 0.5f) * (float) window_size[0]);
         text_xy[1] = (int) ((1.0f - scrollbar_ptr->slider_x1y1x2y2[1] - (float(text_height) / window_size[1]) ) * (float) window_size[1]);
@@ -404,9 +404,9 @@ PRIVATE void _ogl_ui_scrollbar_update_text_position(_ogl_ui_scrollbar* scrollbar
 }
 
 /** TODO */
-PUBLIC void ogl_ui_scrollbar_deinit(void* internal_instance)
+PUBLIC void ui_scrollbar_deinit(void* internal_instance)
 {
-    _ogl_ui_scrollbar* scrollbar_ptr = (_ogl_ui_scrollbar*) internal_instance;
+    _ui_scrollbar* scrollbar_ptr = (_ui_scrollbar*) internal_instance;
 
     /* Release block buffers */
     if (scrollbar_ptr->program_slider_ub_fs != NULL)
@@ -436,14 +436,14 @@ PUBLIC void ogl_ui_scrollbar_deinit(void* internal_instance)
 }
 
 /** TODO */
-PUBLIC RENDERING_CONTEXT_CALL void ogl_ui_scrollbar_draw(void* internal_instance)
+PUBLIC RENDERING_CONTEXT_CALL void ui_scrollbar_draw(void* internal_instance)
 {
-    float                brightness;
-    _ogl_ui_scrollbar*   scrollbar_ptr   = (_ogl_ui_scrollbar*) internal_instance;
-    const raGL_program   program_raGL    = ral_context_get_program_gl(scrollbar_ptr->context,
-                                                                      scrollbar_ptr->program_slider);
-    GLuint               program_raGL_id = 0;
-    system_time          time_now        = system_time_now();
+    float              brightness;
+    _ui_scrollbar*     scrollbar_ptr   = (_ui_scrollbar*) internal_instance;
+    const raGL_program program_raGL    = ral_context_get_program_gl(scrollbar_ptr->context,
+                                                                    scrollbar_ptr->program_slider);
+    GLuint             program_raGL_id = 0;
+    system_time        time_now        = system_time_now();
 
     raGL_program_get_property(program_raGL,
                               RAGL_PROGRAM_PROPERTY_ID,
@@ -627,15 +627,15 @@ end:
 }
 
 /** TODO */
-PUBLIC void ogl_ui_scrollbar_get_property(const void*              scrollbar,
-                                          _ogl_ui_control_property property,
-                                          void*                    out_result)
+PUBLIC void ui_scrollbar_get_property(const void*         scrollbar,
+                                      ui_control_property property,
+                                      void*               out_result)
 {
-    _ogl_ui_scrollbar* scrollbar_ptr = (_ogl_ui_scrollbar*) scrollbar;
+    _ui_scrollbar* scrollbar_ptr = (_ui_scrollbar*) scrollbar;
 
     switch (property)
     {
-        case OGL_UI_CONTROL_PROPERTY_GENERAL_HEIGHT_NORMALIZED:
+        case UI_CONTROL_PROPERTY_GENERAL_HEIGHT_NORMALIZED:
         {
             if (scrollbar_ptr->is_visible)
             {
@@ -649,7 +649,7 @@ PUBLIC void ogl_ui_scrollbar_get_property(const void*              scrollbar,
                 *(float*) out_result = scrollbar_ptr->slider_x1y1x2y2[3] -
                                        scrollbar_ptr->slider_x1y1x2y2[1];
 
-                if (scrollbar_ptr->text_location == OGL_UI_SCROLLBAR_TEXT_LOCATION_ABOVE_SLIDER)
+                if (scrollbar_ptr->text_location == UI_SCROLLBAR_TEXT_LOCATION_ABOVE_SLIDER)
                 {
                     *(float*) out_result += text_height;
                 }
@@ -662,14 +662,14 @@ PUBLIC void ogl_ui_scrollbar_get_property(const void*              scrollbar,
             break;
         }
 
-        case OGL_UI_CONTROL_PROPERTY_GENERAL_WIDTH_NORMALIZED:
+        case UI_CONTROL_PROPERTY_GENERAL_WIDTH_NORMALIZED:
         {
             *(float*) out_result = scrollbar_ptr->slider_x1y1x2y2[2] - scrollbar_ptr->slider_x1y1x2y2[0];
 
             break;
         }
 
-        case OGL_UI_CONTROL_PROPERTY_GENERAL_X1Y1:
+        case UI_CONTROL_PROPERTY_GENERAL_X1Y1:
         {
             ((float*) out_result)[0] = scrollbar_ptr->slider_x1y1x2y2[0];
             ((float*) out_result)[1] = scrollbar_ptr->slider_x1y1x2y2[1];
@@ -677,8 +677,8 @@ PUBLIC void ogl_ui_scrollbar_get_property(const void*              scrollbar,
             break;
         }
 
-        case OGL_UI_CONTROL_PROPERTY_GENERAL_VISIBLE:
-        case OGL_UI_CONTROL_PROPERTY_SCROLLBAR_VISIBLE:
+        case UI_CONTROL_PROPERTY_GENERAL_VISIBLE:
+        case UI_CONTROL_PROPERTY_SCROLLBAR_VISIBLE:
         {
             *(bool*) out_result = scrollbar_ptr->is_visible;
 
@@ -688,32 +688,32 @@ PUBLIC void ogl_ui_scrollbar_get_property(const void*              scrollbar,
         default:
         {
             ASSERT_DEBUG_SYNC(false,
-                              "Unrecognized _ogl_ui_control_property value");
+                              "Unrecognized ui_control_property value");
         }
     } /* switch (property_value) */
 }
 
 /** TODO */
-PUBLIC void ogl_ui_scrollbar_hover(void*        internal_instance,
-                                   const float* xy_screen_norm)
+PUBLIC void ui_scrollbar_hover(void*        internal_instance,
+                               const float* xy_screen_norm)
 {
 }
 
 /** TODO */
-PUBLIC void* ogl_ui_scrollbar_init(ogl_ui                         instance,
-                                   ogl_text                       text_renderer,
-                                   ogl_ui_scrollbar_text_location text_location,
-                                   system_hashed_ansi_string      name,
-                                   system_variant                 min_value,
-                                   system_variant                 max_value,
-                                   const float*                   x1y1,
-                                   const float*                   x2y2,
-                                   PFNOGLUIGETCURRENTVALUEPROCPTR pfn_get_current_value_ptr,
-                                   void*                          get_current_value_ptr_user_arg,
-                                   PFNOGLUISETCURRENTVALUEPROCPTR pfn_set_current_value_ptr,
-                                   void*                          set_current_value_ptr_user_arg)
+PUBLIC void* ui_scrollbar_init(ui                          ui_instance,
+                               ogl_text                    text_renderer,
+                               ui_scrollbar_text_location  text_location,
+                               system_hashed_ansi_string   name,
+                               system_variant              min_value,
+                               system_variant              max_value,
+                               const float*                x1y1,
+                               const float*                x2y2,
+                               PFNUIGETCURRENTVALUEPROCPTR pfn_get_current_value_ptr,
+                               void*                       get_current_value_ptr_user_arg,
+                               PFNUISETCURRENTVALUEPROCPTR pfn_set_current_value_ptr,
+                               void*                       set_current_value_ptr_user_arg)
 {
-    _ogl_ui_scrollbar* new_scrollbar_ptr = new (std::nothrow) _ogl_ui_scrollbar;
+    _ui_scrollbar* new_scrollbar_ptr = new (std::nothrow) _ui_scrollbar;
 
     ASSERT_ALWAYS_SYNC(new_scrollbar_ptr != NULL,
                        "Out of memory");
@@ -723,7 +723,7 @@ PUBLIC void* ogl_ui_scrollbar_init(ogl_ui                         instance,
         /* Initialize fields */
         memset(new_scrollbar_ptr,
                0,
-               sizeof(_ogl_ui_scrollbar) );
+               sizeof(_ui_scrollbar) );
 
         new_scrollbar_ptr->gpu_slider_handle_position = 0;
         new_scrollbar_ptr->is_visible                 = true;
@@ -734,7 +734,7 @@ PUBLIC void* ogl_ui_scrollbar_init(ogl_ui                         instance,
         new_scrollbar_ptr->slider_x1y1x2y2[3] = 1 - x1y1[1];
 
         new_scrollbar_ptr->current_gpu_brightness_level   = NONFOCUSED_BRIGHTNESS;
-        new_scrollbar_ptr->context                        = ogl_ui_get_context(instance);
+        new_scrollbar_ptr->context                        = ui_get_context(ui_instance);
         new_scrollbar_ptr->pfn_get_current_value_ptr      = pfn_get_current_value_ptr;
         new_scrollbar_ptr->get_current_value_ptr_user_arg = get_current_value_ptr_user_arg;
         new_scrollbar_ptr->pfn_set_current_value_ptr      = pfn_set_current_value_ptr;
@@ -743,7 +743,7 @@ PUBLIC void* ogl_ui_scrollbar_init(ogl_ui                         instance,
         new_scrollbar_ptr->text_renderer                  = text_renderer;
         new_scrollbar_ptr->text_index                     = ogl_text_add_string(text_renderer);
         new_scrollbar_ptr->text_location                  = text_location;
-        new_scrollbar_ptr->ui                             = instance;
+        new_scrollbar_ptr->ui_instance                    = ui_instance;
 
         new_scrollbar_ptr->max_value_variant              = system_variant_create(system_variant_get_type(max_value) );
         new_scrollbar_ptr->min_value_variant              = system_variant_create(system_variant_get_type(min_value) );
@@ -832,7 +832,7 @@ PUBLIC void* ogl_ui_scrollbar_init(ogl_ui                         instance,
                                           OGL_TEXT_STRING_PROPERTY_COLOR,
                                           _ui_scrollbar_text_color);
 
-        _ogl_ui_scrollbar_update_text_position(new_scrollbar_ptr);
+        _ui_scrollbar_update_text_position(new_scrollbar_ptr);
 
         /* Calculate slider sizes */
         new_scrollbar_ptr->slider_border_width       [0] = 1.0f / (float)((new_scrollbar_ptr->slider_x1y1x2y2[2] - new_scrollbar_ptr->slider_x1y1x2y2[0]) * window_size[0]);
@@ -845,16 +845,16 @@ PUBLIC void* ogl_ui_scrollbar_init(ogl_ui                         instance,
         new_scrollbar_ptr->slider_handle_size[1] = float(SLIDER_SIZE_PX) / float(window_size[1]);
 
         /* Update slider handle position */
-        _ogl_ui_scrollbar_update_slider_handle_position(new_scrollbar_ptr);
+        _ui_scrollbar_update_slider_handle_position(new_scrollbar_ptr);
 
         /* Retrieve the rendering program */
-        new_scrollbar_ptr->program_slider = ogl_ui_get_registered_program(instance,
-                                                                          _ui_scrollbar_slider_program_name);
+        new_scrollbar_ptr->program_slider = ui_get_registered_program(ui_instance,
+                                                                      _ui_scrollbar_slider_program_name);
 
         if (new_scrollbar_ptr->program_slider == NULL)
         {
-            _ogl_ui_scrollbar_init_program(instance,
-                                           new_scrollbar_ptr);
+            _ui_scrollbar_init_program(ui_instance,
+                                       new_scrollbar_ptr);
 
             ASSERT_DEBUG_SYNC(new_scrollbar_ptr->program_slider != NULL,
                               "Could not initialize scrollbar slider UI program");
@@ -862,7 +862,7 @@ PUBLIC void* ogl_ui_scrollbar_init(ogl_ui                         instance,
 
         /* Set up predefined values */
         ogl_context_request_callback_from_context_thread(ral_context_get_gl_context(new_scrollbar_ptr->context),
-                                                         _ogl_ui_scrollbar_init_renderer_callback,
+                                                         _ui_scrollbar_init_renderer_callback,
                                                          new_scrollbar_ptr);
     } /* if (new_scrollbar_ptr != NULL) */
 
@@ -870,11 +870,11 @@ PUBLIC void* ogl_ui_scrollbar_init(ogl_ui                         instance,
 }
 
 /** TODO */
-PUBLIC bool ogl_ui_scrollbar_is_over(void*        internal_instance,
-                                     const float* xy)
+PUBLIC bool ui_scrollbar_is_over(void*        internal_instance,
+                                 const float* xy)
 {
-    _ogl_ui_scrollbar* scrollbar_ptr = (_ogl_ui_scrollbar*) internal_instance;
-    float              inversed_y = 1.0f - xy[1];
+    _ui_scrollbar* scrollbar_ptr = (_ui_scrollbar*) internal_instance;
+    float          inversed_y    = 1.0f - xy[1];
 
     if (scrollbar_ptr->is_lbm_on)
     {
@@ -907,11 +907,11 @@ PUBLIC bool ogl_ui_scrollbar_is_over(void*        internal_instance,
 }
 
 /** TODO */
-PUBLIC void ogl_ui_scrollbar_on_lbm_down(void*        internal_instance,
-                                         const float* xy)
+PUBLIC void ui_scrollbar_on_lbm_down(void*        internal_instance,
+                                     const float* xy)
 {
-    _ogl_ui_scrollbar* scrollbar_ptr = (_ogl_ui_scrollbar*) internal_instance;
-    float              inversed_y    = 1.0f - xy[1];
+    _ui_scrollbar* scrollbar_ptr = (_ui_scrollbar*) internal_instance;
+    float          inversed_y    = 1.0f - xy[1];
 
     if (xy[0]      >= scrollbar_ptr->slider_handle_x1y1x2y2[0] &&
         xy[0]      <= scrollbar_ptr->slider_handle_x1y1x2y2[2] &&
@@ -924,21 +924,21 @@ PUBLIC void ogl_ui_scrollbar_on_lbm_down(void*        internal_instance,
 }
 
 /** TODO */
-PUBLIC void ogl_ui_scrollbar_on_lbm_up(void*        internal_instance,
-                                       const float* xy)
+PUBLIC void ui_scrollbar_on_lbm_up(void*        internal_instance,
+                                   const float* xy)
 {
-    _ogl_ui_scrollbar* scrollbar_ptr = (_ogl_ui_scrollbar*) internal_instance;
+    _ui_scrollbar* scrollbar_ptr = (_ui_scrollbar*) internal_instance;
 
     scrollbar_ptr->is_lbm_on                   = false;
     scrollbar_ptr->force_gpu_brightness_update = true;
 }
 
 /** TODO */
-PUBLIC void ogl_ui_scrollbar_on_mouse_move(void*        internal_instance,
-                                           const float* xy)
+PUBLIC void ui_scrollbar_on_mouse_move(void*        internal_instance,
+                                       const float* xy)
 {
-    _ogl_ui_scrollbar* scrollbar_ptr = (_ogl_ui_scrollbar*) internal_instance;
-    float              x_clicked     = xy[0];
+    _ui_scrollbar* scrollbar_ptr = (_ui_scrollbar*) internal_instance;
+    float          x_clicked     = xy[0];
 
     if (scrollbar_ptr->is_lbm_on)
     {
@@ -972,26 +972,26 @@ PUBLIC void ogl_ui_scrollbar_on_mouse_move(void*        internal_instance,
                                                  scrollbar_ptr->temp_variant);
 
         /* Update UI */
-        _ogl_ui_scrollbar_update_slider_handle_position(scrollbar_ptr);
+        _ui_scrollbar_update_slider_handle_position(scrollbar_ptr);
     } /* if (scrollbar_ptr->is_lbm_on) */
 }
 
 /** TODO */
-PUBLIC void ogl_ui_scrollbar_set_property(void*                    scrollbar,
-                                          _ogl_ui_control_property property,
-                                          const void*              data)
+PUBLIC void ui_scrollbar_set_property(void*               scrollbar,
+                                      ui_control_property property,
+                                      const void*         data)
 {
-    _ogl_ui_scrollbar* scrollbar_ptr = (_ogl_ui_scrollbar*) scrollbar;
+    _ui_scrollbar* scrollbar_ptr = (_ui_scrollbar*) scrollbar;
 
     switch (property)
     {
-        case OGL_UI_CONTROL_PROPERTY_GENERAL_X1Y1:
+        case UI_CONTROL_PROPERTY_GENERAL_X1Y1:
         {
             const float dx             = scrollbar_ptr->slider_x1y1x2y2[2] - scrollbar_ptr->slider_x1y1x2y2[0];
             const float dy             = scrollbar_ptr->slider_x1y1x2y2[3] - scrollbar_ptr->slider_x1y1x2y2[1];
                   float text_height_ss = 0.0f;
 
-            if (scrollbar_ptr->text_location == OGL_UI_SCROLLBAR_TEXT_LOCATION_ABOVE_SLIDER)
+            if (scrollbar_ptr->text_location == UI_SCROLLBAR_TEXT_LOCATION_ABOVE_SLIDER)
             {
                 ogl_text_get_text_string_property(scrollbar_ptr->text_renderer,
                                                   OGL_TEXT_STRING_PROPERTY_TEXT_HEIGHT_SS,
@@ -1004,14 +1004,14 @@ PUBLIC void ogl_ui_scrollbar_set_property(void*                    scrollbar,
             scrollbar_ptr->slider_x1y1x2y2[2] = scrollbar_ptr->slider_x1y1x2y2[0] + dx;
             scrollbar_ptr->slider_x1y1x2y2[3] = scrollbar_ptr->slider_x1y1x2y2[1] + dy;
 
-            _ogl_ui_scrollbar_update_slider_handle_position(scrollbar_ptr);
-            _ogl_ui_scrollbar_update_text_position         (scrollbar_ptr);
+            _ui_scrollbar_update_slider_handle_position(scrollbar_ptr);
+            _ui_scrollbar_update_text_position         (scrollbar_ptr);
 
             break;
         }
 
-        case OGL_UI_CONTROL_PROPERTY_GENERAL_VISIBLE:
-        case OGL_UI_CONTROL_PROPERTY_SCROLLBAR_VISIBLE:
+        case UI_CONTROL_PROPERTY_GENERAL_VISIBLE:
+        case UI_CONTROL_PROPERTY_SCROLLBAR_VISIBLE:
         {
             scrollbar_ptr->is_visible = *(bool*) data;
 
@@ -1020,10 +1020,10 @@ PUBLIC void ogl_ui_scrollbar_set_property(void*                    scrollbar,
                                               OGL_TEXT_STRING_PROPERTY_VISIBILITY,
                                               data);
 
-            ogl_ui_receive_control_callback(scrollbar_ptr->ui,
-                                            (ogl_ui_control) scrollbar_ptr,
-                                            OGL_UI_SCROLLBAR_CALLBACK_ID_VISIBILITY_TOGGLE,
-                                            NULL); /* callback_user_arg */
+            ui_receive_control_callback(scrollbar_ptr->ui_instance,
+                                        (ui_control) scrollbar_ptr,
+                                        UI_SCROLLBAR_CALLBACK_ID_VISIBILITY_TOGGLE,
+                                        NULL); /* callback_user_arg */
 
             break;
         }
@@ -1031,7 +1031,7 @@ PUBLIC void ogl_ui_scrollbar_set_property(void*                    scrollbar,
         default:
         {
             ASSERT_DEBUG_SYNC(false,
-                              "Unrecognized _ogl_ui_control_property property");
+                              "Unrecognized ui_control_property property");
         }
     } /* switch (property_value) */
 }

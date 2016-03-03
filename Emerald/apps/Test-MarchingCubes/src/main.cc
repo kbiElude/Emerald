@@ -14,8 +14,6 @@
 #include "ogl/ogl_pipeline.h"
 #include "ogl/ogl_rendering_handler.h"
 #include "ogl/ogl_scene_renderer.h"
-#include "ogl/ogl_ui.h"
-#include "ogl/ogl_ui_scrollbar.h"
 #include "procedural/procedural_uv_generator.h"
 #include "ral/ral_buffer.h"
 #include "ral/ral_context.h"
@@ -34,6 +32,8 @@
 #include "system/system_matrix4x4.h"
 #include "system/system_screen_mode.h"
 #include "system/system_variant.h"
+#include "ui/ui.h"
+#include "ui/ui_scrollbar.h"
 #include <algorithm>
 #include "main.h"
 
@@ -113,7 +113,7 @@ PRIVATE void _get_isolevel_value(void*          user_arg,
 /** TODO */
 PRIVATE void _init_pipeline()
 {
-    ogl_ui                              pipeline_ui = NULL;
+    ui                                  pipeline_ui = NULL;
     ogl_pipeline_stage_step_declaration rendering_stage_step;
 
     /* Set up pipeline */
@@ -134,16 +134,16 @@ PRIVATE void _init_pipeline()
     /* Set up UI */
     const float isolevel_scrollbar_x1y1[] = {0.8f, 0.0f};
 
-    ogl_ui_add_scrollbar(pipeline_ui,
-                         system_hashed_ansi_string_create("Isolevel"),
-                         OGL_UI_SCROLLBAR_TEXT_LOCATION_ABOVE_SLIDER,
-                         system_variant_create_float(float(_n_start_metaball_configs - 1)),
-                         system_variant_create_float(float(_n_start_metaball_configs)    ),
-                         isolevel_scrollbar_x1y1,
-                         _get_isolevel_value,
-                         NULL,         /* get_current_value_user_arg */
-                         _set_isolevel_value,
-                         NULL);        /* set_current_value_user_arg */
+    ui_add_scrollbar(pipeline_ui,
+                     system_hashed_ansi_string_create("Isolevel"),
+                     UI_SCROLLBAR_TEXT_LOCATION_ABOVE_SLIDER,
+                     system_variant_create_float(float(_n_start_metaball_configs - 1)),
+                     system_variant_create_float(float(_n_start_metaball_configs)    ),
+                     isolevel_scrollbar_x1y1,
+                     _get_isolevel_value,
+                     NULL,         /* get_current_value_user_arg */
+                     _set_isolevel_value,
+                     NULL);        /* set_current_value_user_arg */
 }
 
 /** TODO */

@@ -40,7 +40,6 @@ static system_hashed_ansi_string _object_type_ogl_shader_constructor_hashed_ansi
 static system_hashed_ansi_string _object_type_ogl_text_hashed_ansi_string                              = NULL;
 static system_hashed_ansi_string _object_type_ogl_textures_hashed_ansi_string                          = NULL;
 static system_hashed_ansi_string _object_type_ogl_uber_hashed_ansi_string                              = NULL;
-static system_hashed_ansi_string _object_type_ogl_ui_hashed_ansi_string                                = NULL;
 static system_hashed_ansi_string _object_type_postprocessing_bloom_hashed_ansi_string                  = NULL;
 static system_hashed_ansi_string _object_type_postprocessing_blur_poisson_hashed_ansi_string           = NULL;
 static system_hashed_ansi_string _object_type_postprocessing_motion_blur_hashed_ansi_string            = NULL;
@@ -87,6 +86,7 @@ static system_hashed_ansi_string _object_type_shaders_vertex_uber               
 static system_hashed_ansi_string _object_type_system_file_serializer_hashed_ansi_string                = NULL;
 static system_hashed_ansi_string _object_type_system_randomizer_hashed_ansi_string                     = NULL;
 static system_hashed_ansi_string _object_type_system_window_hashed_ansi_string                         = NULL;
+static system_hashed_ansi_string _object_type_ui_hashed_ansi_string                                    = NULL;
 static system_hashed_ansi_string _object_type_unknown_hashed_ansi_string                               = NULL;
 static system_hashed_ansi_string _object_type_varia_skybox_hashed_ansi_string                          = NULL;
 
@@ -121,7 +121,6 @@ PUBLIC system_hashed_ansi_string object_manager_convert_object_manager_object_ty
         case OBJECT_TYPE_OGL_TEXT:                                        return _object_type_ogl_text_hashed_ansi_string;
         case OBJECT_TYPE_OGL_TEXTURE:                                     return _object_type_ogl_textures_hashed_ansi_string;
         case OBJECT_TYPE_OGL_UBER:                                        return _object_type_ogl_uber_hashed_ansi_string;
-        case OBJECT_TYPE_OGL_UI:                                          return _object_type_ogl_ui_hashed_ansi_string;
         case OBJECT_TYPE_POSTPROCESSING_BLOOM:                            return _object_type_postprocessing_bloom_hashed_ansi_string;
         case OBJECT_TYPE_POSTPROCESSING_BLUR_POISSON:                     return _object_type_postprocessing_blur_poisson_hashed_ansi_string;
         case OBJECT_TYPE_POSTPROCESSING_MOTION_BLUR:                      return _object_type_postprocessing_motion_blur_hashed_ansi_string;
@@ -168,6 +167,7 @@ PUBLIC system_hashed_ansi_string object_manager_convert_object_manager_object_ty
         case OBJECT_TYPE_SYSTEM_FILE_SERIALIZER:                          return _object_type_system_file_serializer_hashed_ansi_string;
         case OBJECT_TYPE_SYSTEM_RANDOMIZER:                               return _object_type_system_randomizer_hashed_ansi_string;
         case OBJECT_TYPE_SYSTEM_WINDOW:                                   return _object_type_system_window_hashed_ansi_string;
+        case OBJECT_TYPE_UI:                                              return _object_type_ui_hashed_ansi_string;
         case OBJECT_TYPE_VARIA_SKYBOX:                                    return _object_type_varia_skybox_hashed_ansi_string;
         default:                                                          return _object_type_unknown_hashed_ansi_string;
     }
@@ -374,7 +374,6 @@ PUBLIC void _object_manager_init()
     _object_type_ogl_text_hashed_ansi_string                              = system_hashed_ansi_string_create("OpenGL Text Renderers");
     _object_type_ogl_textures_hashed_ansi_string                          = system_hashed_ansi_string_create("OpenGL Textures");
     _object_type_ogl_uber_hashed_ansi_string                              = system_hashed_ansi_string_create("OpenGL Ubers");
-    _object_type_ogl_ui_hashed_ansi_string                                = system_hashed_ansi_string_create("OpenGL UIs");
     _object_type_postprocessing_bloom_hashed_ansi_string                  = system_hashed_ansi_string_create("Post-processing Bloom");
     _object_type_postprocessing_blur_poisson_hashed_ansi_string           = system_hashed_ansi_string_create("Post-processing Blur Poisson");
     _object_type_postprocessing_motion_blur_hashed_ansi_string            = system_hashed_ansi_string_create("Post-processing Motion Blur");
@@ -421,6 +420,7 @@ PUBLIC void _object_manager_init()
     _object_type_system_file_serializer_hashed_ansi_string                = system_hashed_ansi_string_create("File Serializers");
     _object_type_system_randomizer_hashed_ansi_string                     = system_hashed_ansi_string_create("System Randomizers");
     _object_type_system_window_hashed_ansi_string                         = system_hashed_ansi_string_create("System Windows"); 
+    _object_type_ui_hashed_ansi_string                                    = system_hashed_ansi_string_create("UIs");
     _object_type_unknown_hashed_ansi_string                               = system_hashed_ansi_string_create("Unknown");
     _object_type_varia_skybox_hashed_ansi_string                          = system_hashed_ansi_string_create("Varia Skyboxes");
 

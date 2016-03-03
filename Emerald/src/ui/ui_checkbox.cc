@@ -6,9 +6,6 @@
 #include "shared.h"
 #include "ogl/ogl_context.h"
 #include "ogl/ogl_text.h"
-#include "ogl/ogl_ui.h"
-#include "ogl/ogl_ui_checkbox.h"
-#include "ogl/ogl_ui_shared.h"
 #include "raGL/raGL_buffer.h"
 #include "raGL/raGL_program.h"
 #include "raGL/raGL_shader.h"
@@ -23,6 +20,9 @@
 #include "system/system_log.h"
 #include "system/system_thread_pool.h"
 #include "system/system_window.h"
+#include "ui/ui.h"
+#include "ui/ui_checkbox.h"
+#include "ui/ui_shared.h"
 #include <algorithm>
 
 #ifdef _WIN32
@@ -50,8 +50,8 @@ typedef struct
     float               base_x1y1[2]; /* bottom-left position */
     float               x1y1x2y2[4];
 
-    void*               fire_proc_user_arg;
-    PFNOGLUIFIREPROCPTR pfn_fire_proc_ptr;
+    void*            fire_proc_user_arg;
+    PFNUIFIREPROCPTR pfn_fire_proc_ptr;
 
     float       current_gpu_brightness_level;
     bool        force_gpu_brightness_update;
@@ -83,7 +83,7 @@ typedef struct
     PFNGLDRAWARRAYSPROC          pGLDrawArrays;
     PFNGLUNIFORMBLOCKBINDINGPROC pGLUniformBlockBinding;
     PFNGLUSEPROGRAMPROC          pGLUseProgram;
-} _ogl_ui_checkbox;
+} _ui_checkbox;
 
 /** Internal variables */
 static const char* ui_checkbox_fragment_shader_body = "#version 430 core\n"
@@ -116,11 +116,11 @@ static const char* ui_checkbox_fragment_shader_body = "#version 430 core\n"
                                                       "}\n";
 
 /** TODO */
-PRIVATE void _ogl_ui_checkbox_init_program(ogl_ui            ui,
-                                           _ogl_ui_checkbox* checkbox_ptr)
+PRIVATE void _ui_checkbox_init_program(ui            ui_instance,
+                                       _ui_checkbox* checkbox_ptr)
 {
     /* Create all objects */
-    ral_context context = ogl_ui_get_context(ui);
+    ral_context context = ui_get_context(ui_instance);
     ral_shader  fs      = NULL;
     ral_shader  vs      = NULL;
 
@@ -190,9 +190,9 @@ PRIVATE void _ogl_ui_checkbox_init_program(ogl_ui            ui,
     }
 
     /* Register the prgoram with UI so following button instances will reuse the program */
-    ogl_ui_register_program(ui,
-                            ui_checkbox_program_name,
-                            checkbox_ptr->program);
+    ui_register_program(ui_instance,
+                        ui_checkbox_program_name,
+                        checkbox_ptr->program);
 
     /* Release shaders we will no longer need */
     ral_shader shaders_to_release[] =
@@ -209,16 +209,16 @@ PRIVATE void _ogl_ui_checkbox_init_program(ogl_ui            ui,
 }
 
 /** TODO */
-PRIVATE void _ogl_ui_checkbox_init_renderer_callback(ogl_context context,
-                                                     void*       checkbox)
+PRIVATE void _ui_checkbox_init_renderer_callback(ogl_context context,
+                                                 void*       checkbox)
 {
-    float             border_width[2] = {0};
-    _ogl_ui_checkbox* checkbox_ptr    = (_ogl_ui_checkbox*) checkbox;
-    raGL_program      program_raGL    = ral_context_get_program_gl(checkbox_ptr->context,
-                                                                   checkbox_ptr->program);
-    GLuint            program_raGL_id = 0;
-    system_window     window          = NULL;
-    int               window_size[2]  = {0};
+    float         border_width[2] = {0};
+    _ui_checkbox* checkbox_ptr    = (_ui_checkbox*) checkbox;
+    raGL_program  program_raGL    = ral_context_get_program_gl(checkbox_ptr->context,
+                                                               checkbox_ptr->program);
+    GLuint        program_raGL_id = 0;
+    system_window window          = NULL;
+    int           window_size[2]  = {0};
 
     raGL_program_get_property(program_raGL,
                               RAGL_PROGRAM_PROPERTY_ID,
@@ -315,7 +315,7 @@ PRIVATE void _ogl_ui_checkbox_init_renderer_callback(ogl_context context,
 }
 
 /** TODO */
-PRIVATE void _ogl_ui_checkbox_update_text_location(_ogl_ui_checkbox* checkbox_ptr)
+PRIVATE void _ui_checkbox_update_text_location(_ui_checkbox* checkbox_ptr)
 {
     int           text_height    = 0;
     int           text_xy[2]     = {0};
@@ -360,7 +360,7 @@ PRIVATE void _ogl_ui_checkbox_update_text_location(_ogl_ui_checkbox* checkbox_pt
 }
 
 /** TODO */
-PRIVATE void _ogl_ui_checkbox_update_x1y1x2y2(_ogl_ui_checkbox* checkbox_ptr)
+PRIVATE void _ui_checkbox_update_x1y1x2y2(_ui_checkbox* checkbox_ptr)
 {
     int           text_height    = 0;
     int           text_width     = 0;
@@ -390,9 +390,9 @@ PRIVATE void _ogl_ui_checkbox_update_x1y1x2y2(_ogl_ui_checkbox* checkbox_ptr)
 }
 
 /** Please see header for specification */
-PUBLIC void ogl_ui_checkbox_deinit(void* internal_instance)
+PUBLIC void ui_checkbox_deinit(void* internal_instance)
 {
-    _ogl_ui_checkbox* ui_checkbox_ptr = (_ogl_ui_checkbox*) internal_instance;
+    _ui_checkbox* ui_checkbox_ptr = (_ui_checkbox*) internal_instance;
 
     ogl_text_set(ui_checkbox_ptr->text_renderer,
                  ui_checkbox_ptr->text_index,
@@ -421,10 +421,10 @@ PUBLIC void ogl_ui_checkbox_deinit(void* internal_instance)
 }
 
 /** Please see header for specification */
-PUBLIC RENDERING_CONTEXT_CALL void ogl_ui_checkbox_draw(void* internal_instance)
+PUBLIC RENDERING_CONTEXT_CALL void ui_checkbox_draw(void* internal_instance)
 {
-    _ogl_ui_checkbox* checkbox_ptr = (_ogl_ui_checkbox*) internal_instance;
-    system_time       time_now     = system_time_now();
+    _ui_checkbox* checkbox_ptr = (_ui_checkbox*) internal_instance;
+    system_time   time_now     = system_time_now();
 
     /* Update brightness if necessary */
     float brightness = checkbox_ptr->current_gpu_brightness_level;
@@ -570,22 +570,22 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_ui_checkbox_draw(void* internal_instance)
 }
 
 /** Please see header for specification */
-PUBLIC void ogl_ui_checkbox_get_property(const void*              checkbox,
-                                         _ogl_ui_control_property property,
-                                         void*                    out_result)
+PUBLIC void ui_checkbox_get_property(const void*         checkbox,
+                                     ui_control_property property,
+                                     void*               out_result)
 {
-    const _ogl_ui_checkbox* checkbox_ptr = (const _ogl_ui_checkbox*) checkbox;
+    const _ui_checkbox* checkbox_ptr = (const _ui_checkbox*) checkbox;
 
     switch (property)
     {
-        case OGL_UI_CONTROL_PROPERTY_CHECKBOX_CHECK_STATUS:
+        case UI_CONTROL_PROPERTY_CHECKBOX_CHECK_STATUS:
         {
             *(bool*) out_result = checkbox_ptr->status;
 
             break;
         }
 
-        case OGL_UI_CONTROL_PROPERTY_GENERAL_VISIBLE:
+        case UI_CONTROL_PROPERTY_GENERAL_VISIBLE:
         {
             *(bool*) out_result = checkbox_ptr->visible;
 
@@ -595,21 +595,21 @@ PUBLIC void ogl_ui_checkbox_get_property(const void*              checkbox,
         default:
         {
             ASSERT_DEBUG_SYNC(false,
-                              "Unrecognized _ogl_ui_control_property property");
+                              "Unrecognized ui_control_property property");
         }
     } /* switch (property) */
 }
 
 /** Please see header for specification */
-PUBLIC void* ogl_ui_checkbox_init(ogl_ui                    instance,
-                                  ogl_text                  text_renderer,
-                                  system_hashed_ansi_string name,
-                                  const float*              x1y1,
-                                  PFNOGLUIFIREPROCPTR       pfn_fire_proc_ptr,
-                                  void*                     fire_proc_user_arg,
-                                  bool                      default_status)
+PUBLIC void* ui_checkbox_init(ui                        instance,
+                              ogl_text                  text_renderer,
+                              system_hashed_ansi_string name,
+                              const float*              x1y1,
+                              PFNUIFIREPROCPTR          pfn_fire_proc_ptr,
+                              void*                     fire_proc_user_arg,
+                              bool                      default_status)
 {
-    _ogl_ui_checkbox* new_checkbox_ptr = new (std::nothrow) _ogl_ui_checkbox;
+    _ui_checkbox* new_checkbox_ptr = new (std::nothrow) _ui_checkbox;
 
     ASSERT_ALWAYS_SYNC(new_checkbox_ptr != NULL,
                        "Out of memory");
@@ -619,12 +619,12 @@ PUBLIC void* ogl_ui_checkbox_init(ogl_ui                    instance,
         /* Initialize fields */
         memset(new_checkbox_ptr,
                0,
-               sizeof(_ogl_ui_checkbox) );
+               sizeof(_ui_checkbox) );
 
         new_checkbox_ptr->base_x1y1[0] = x1y1[0];
         new_checkbox_ptr->base_x1y1[1] = x1y1[1];
 
-        new_checkbox_ptr->context            = ogl_ui_get_context(instance);
+        new_checkbox_ptr->context            = ui_get_context(instance);
         new_checkbox_ptr->fire_proc_user_arg = fire_proc_user_arg;
         new_checkbox_ptr->pfn_fire_proc_ptr  = pfn_fire_proc_ptr;
         new_checkbox_ptr->status             = default_status;
@@ -674,8 +674,8 @@ PUBLIC void* ogl_ui_checkbox_init(ogl_ui                    instance,
                      new_checkbox_ptr->text_index,
                      system_hashed_ansi_string_get_buffer(name) );
 
-        _ogl_ui_checkbox_update_x1y1x2y2     (new_checkbox_ptr);
-        _ogl_ui_checkbox_update_text_location(new_checkbox_ptr);
+        _ui_checkbox_update_x1y1x2y2     (new_checkbox_ptr);
+        _ui_checkbox_update_text_location(new_checkbox_ptr);
 
         ogl_text_set_text_string_property(new_checkbox_ptr->text_renderer,
                                           new_checkbox_ptr->text_index,
@@ -683,13 +683,13 @@ PUBLIC void* ogl_ui_checkbox_init(ogl_ui                    instance,
                                           _ui_checkbox_text_color);
 
         /* Retrieve the rendering program */
-        new_checkbox_ptr->program = ogl_ui_get_registered_program(instance,
-                                                                 ui_checkbox_program_name);
+        new_checkbox_ptr->program = ui_get_registered_program(instance,
+                                                             ui_checkbox_program_name);
 
         if (new_checkbox_ptr->program == NULL)
         {
-            _ogl_ui_checkbox_init_program(instance,
-                                          new_checkbox_ptr);
+            _ui_checkbox_init_program(instance,
+                                      new_checkbox_ptr);
 
             ASSERT_DEBUG_SYNC(new_checkbox_ptr->program != NULL,
                               "Could not initialize checkbox UI program");
@@ -697,7 +697,7 @@ PUBLIC void* ogl_ui_checkbox_init(ogl_ui                    instance,
 
         /* Set up predefined values */
         ogl_context_request_callback_from_context_thread(ral_context_get_gl_context(new_checkbox_ptr->context),
-                                                         _ogl_ui_checkbox_init_renderer_callback,
+                                                         _ui_checkbox_init_renderer_callback,
                                                          new_checkbox_ptr);
     } /* if (new_checkbox != NULL) */
 
@@ -705,11 +705,11 @@ PUBLIC void* ogl_ui_checkbox_init(ogl_ui                    instance,
 }
 
 /** Please see header for specification */
-PUBLIC bool ogl_ui_checkbox_is_over(void*        internal_instance,
-                                    const float* xy)
+PUBLIC bool ui_checkbox_is_over(void*        internal_instance,
+                                const float* xy)
 {
-    _ogl_ui_checkbox* checkbox_ptr = (_ogl_ui_checkbox*) internal_instance;
-    float             inversed_y   = 1.0f - xy[1];
+    _ui_checkbox* checkbox_ptr = (_ui_checkbox*) internal_instance;
+    float         inversed_y   = 1.0f - xy[1];
 
     if (xy[0]      >= checkbox_ptr->x1y1x2y2[0] && xy[0]      <= checkbox_ptr->x1y1x2y2[2] &&
         inversed_y >= checkbox_ptr->x1y1x2y2[1] && inversed_y <= checkbox_ptr->x1y1x2y2[3])
@@ -737,11 +737,11 @@ PUBLIC bool ogl_ui_checkbox_is_over(void*        internal_instance,
 }
 
 /** Please see header for specification */
-PUBLIC void ogl_ui_checkbox_on_lbm_down(void*        internal_instance,
-                                        const float* xy)
+PUBLIC void ui_checkbox_on_lbm_down(void*        internal_instance,
+                                    const float* xy)
 {
-    _ogl_ui_checkbox* checkbox_ptr = (_ogl_ui_checkbox*) internal_instance;
-    float             inversed_y   = 1.0f - xy[1];
+    _ui_checkbox* checkbox_ptr = (_ui_checkbox*) internal_instance;
+    float          inversed_y   = 1.0f - xy[1];
 
     if (xy[0]      >= checkbox_ptr->x1y1x2y2[0] && xy[0]      <= checkbox_ptr->x1y1x2y2[2] &&
         inversed_y >= checkbox_ptr->x1y1x2y2[1] && inversed_y <= checkbox_ptr->x1y1x2y2[3])
@@ -752,15 +752,15 @@ PUBLIC void ogl_ui_checkbox_on_lbm_down(void*        internal_instance,
 }
 
 /** Please see header for specification */
-PUBLIC void ogl_ui_checkbox_on_lbm_up(void*        internal_instance,
-                                      const float* xy)
+PUBLIC void ui_checkbox_on_lbm_up(void*        internal_instance,
+                                  const float* xy)
 {
-    _ogl_ui_checkbox* checkbox_ptr = (_ogl_ui_checkbox*) internal_instance;
+    _ui_checkbox* checkbox_ptr = (_ui_checkbox*) internal_instance;
 
     checkbox_ptr->is_lbm_on = false;
 
-    if (ogl_ui_checkbox_is_over(internal_instance,
-                                xy) )
+    if (ui_checkbox_is_over(internal_instance,
+                            xy) )
     {
         if (checkbox_ptr->pfn_fire_proc_ptr != NULL)
         {
@@ -777,15 +777,15 @@ PUBLIC void ogl_ui_checkbox_on_lbm_up(void*        internal_instance,
 }
 
 /* Please see header for spec */
-PUBLIC void ogl_ui_checkbox_set_property(void*                    checkbox,
-                                         _ogl_ui_control_property property,
-                                         const void*              data)
+PUBLIC void ui_checkbox_set_property(void*               checkbox,
+                                     ui_control_property property,
+                                     const void*         data)
 {
-    _ogl_ui_checkbox* checkbox_ptr = (_ogl_ui_checkbox*) checkbox;
+    _ui_checkbox* checkbox_ptr = (_ui_checkbox*) checkbox;
 
     switch (property)
     {
-        case OGL_UI_CONTROL_PROPERTY_CHECKBOX_X1Y1:
+        case UI_CONTROL_PROPERTY_CHECKBOX_X1Y1:
         {
             memcpy(checkbox_ptr->base_x1y1,
                    data,
@@ -793,8 +793,8 @@ PUBLIC void ogl_ui_checkbox_set_property(void*                    checkbox,
 
             checkbox_ptr->base_x1y1[1] = 1.0f - checkbox_ptr->base_x1y1[1];
 
-            _ogl_ui_checkbox_update_x1y1x2y2     (checkbox_ptr);
-            _ogl_ui_checkbox_update_text_location(checkbox_ptr);
+            _ui_checkbox_update_x1y1x2y2     (checkbox_ptr);
+            _ui_checkbox_update_text_location(checkbox_ptr);
 
             break;
         }
@@ -802,7 +802,7 @@ PUBLIC void ogl_ui_checkbox_set_property(void*                    checkbox,
         default:
         {
             ASSERT_DEBUG_SYNC(false,
-                              "Unrecognized _ogl_ui_control_property value");
+                              "Unrecognized ui_control_property value");
         }
     } /* switch (property_value) */
 }

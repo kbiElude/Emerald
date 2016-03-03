@@ -6,9 +6,6 @@
 #include "shared.h"
 #include "ogl/ogl_context.h"
 #include "ogl/ogl_text.h"
-#include "ogl/ogl_ui.h"
-#include "ogl/ogl_ui_frame.h"
-#include "ogl/ogl_ui_shared.h"
 #include "raGL/raGL_buffer.h"
 #include "raGL/raGL_program.h"
 #include "raGL/raGL_shader.h"
@@ -22,6 +19,9 @@
 #include "system/system_log.h"
 #include "system/system_thread_pool.h"
 #include "system/system_window.h"
+#include "ui/ui.h"
+#include "ui/ui_frame.h"
+#include "ui/ui_shared.h"
 
 /** Internal types */
 typedef struct
@@ -44,7 +44,7 @@ typedef struct
     PFNGLENABLEPROC              pGLEnable;
     PFNGLUNIFORMBLOCKBINDINGPROC pGLUniformBlockBinding;
     PFNGLUSEPROGRAMPROC          pGLUseProgram;
-} _ogl_ui_frame;
+} _ui_frame;
 
 /** Internal variables */
 static const char* ui_frame_fragment_shader_body = "#version 430 core\n"
@@ -59,11 +59,11 @@ static const char* ui_frame_fragment_shader_body = "#version 430 core\n"
 static system_hashed_ansi_string ui_frame_program_name = system_hashed_ansi_string_create("UI Frame");
 
 /** TODO */
-PRIVATE void _ogl_ui_frame_init_program(ogl_ui         ui,
-                                        _ogl_ui_frame* frame_ptr)
+PRIVATE void _ui_frame_init_program(ui         ui_instance,
+                                    _ui_frame* frame_ptr)
 {
     /* Create all objects */
-    ral_context context = ogl_ui_get_context(ui);
+    ral_context context = ui_get_context(ui_instance);
     ral_shader  fs      = NULL;
     ral_shader  vs      = NULL;
 
@@ -135,9 +135,9 @@ PRIVATE void _ogl_ui_frame_init_program(ogl_ui         ui,
     }
 
     /* Register the prgoram with UI so following frame instances will reuse the program */
-    ogl_ui_register_program(ui,
-                            ui_frame_program_name,
-                            frame_ptr->program);
+    ui_register_program(ui_instance,
+                        ui_frame_program_name,
+                        frame_ptr->program);
 
     /* Release shaders we will no longer need */
     const ral_shader shaders_to_release[] =
@@ -154,9 +154,9 @@ PRIVATE void _ogl_ui_frame_init_program(ogl_ui         ui,
 }
 
 /** Please see header for specification */
-PUBLIC void ogl_ui_frame_deinit(void* internal_instance)
+PUBLIC void ui_frame_deinit(void* internal_instance)
 {
-    _ogl_ui_frame* ui_frame_ptr = (_ogl_ui_frame*) internal_instance;
+    _ui_frame* ui_frame_ptr = (_ui_frame*) internal_instance;
 
     ral_context_delete_objects(ui_frame_ptr->context,
                                RAL_CONTEXT_OBJECT_TYPE_PROGRAM,
@@ -174,9 +174,9 @@ PUBLIC void ogl_ui_frame_deinit(void* internal_instance)
 }
 
 /** Please see header for specification */
-PUBLIC RENDERING_CONTEXT_CALL void ogl_ui_frame_draw(void* internal_instance)
+PUBLIC RENDERING_CONTEXT_CALL void ui_frame_draw(void* internal_instance)
 {
-    _ogl_ui_frame* frame_ptr = (_ogl_ui_frame*) internal_instance;
+    _ui_frame* frame_ptr = (_ui_frame*) internal_instance;
 
     /* Update uniforms */
     raGL_program program_raGL    = ral_context_get_program_gl(frame_ptr->context,
@@ -234,29 +234,29 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_ui_frame_draw(void* internal_instance)
 }
 
 /** Please see header for specification */
-PUBLIC void ogl_ui_frame_get_property(const void*              frame,
-                                      _ogl_ui_control_property property,
-                                      void*                    out_result)
+PUBLIC void ui_frame_get_property(const void*         frame,
+                                  ui_control_property property,
+                                  void*               out_result)
 {
-    const _ogl_ui_frame* frame_ptr = (const _ogl_ui_frame*) frame;
+    const _ui_frame* frame_ptr = (const _ui_frame*) frame;
 
     switch (property)
     {
-        case OGL_UI_CONTROL_PROPERTY_GENERAL_HEIGHT_NORMALIZED:
+        case UI_CONTROL_PROPERTY_GENERAL_HEIGHT_NORMALIZED:
         {
             *(float*) out_result = frame_ptr->x1y1x2y2[3] - frame_ptr->x1y1x2y2[1];
 
             break;
         }
 
-        case OGL_UI_CONTROL_PROPERTY_GENERAL_VISIBLE:
+        case UI_CONTROL_PROPERTY_GENERAL_VISIBLE:
         {
             *(bool*) out_result = frame_ptr->visible;
 
             break;
         }
 
-        case OGL_UI_CONTROL_PROPERTY_FRAME_X1Y1X2Y2:
+        case UI_CONTROL_PROPERTY_FRAME_X1Y1X2Y2:
         {
             ((float*) out_result)[0] =        frame_ptr->x1y1x2y2[0];
             ((float*) out_result)[1] = 1.0f - frame_ptr->x1y1x2y2[1];
@@ -269,16 +269,16 @@ PUBLIC void ogl_ui_frame_get_property(const void*              frame,
         default:
         {
             ASSERT_DEBUG_SYNC(false,
-                              "Unrecognized _ogl_ui_control_property value");
+                              "Unrecognized ui_control_property value");
         }
     } /* switch (property_value) */
 }
 
 /** Please see header for specification */
-PUBLIC void* ogl_ui_frame_init(ogl_ui       instance,
-                               const float* x1y1x2y2)
+PUBLIC void* ui_frame_init(ui           instance,
+                           const float* x1y1x2y2)
 {
-    _ogl_ui_frame* new_frame_ptr = new (std::nothrow) _ogl_ui_frame;
+    _ui_frame* new_frame_ptr = new (std::nothrow) _ui_frame;
 
     ASSERT_ALWAYS_SYNC(new_frame_ptr != NULL,
                        "Out of memory");
@@ -288,9 +288,9 @@ PUBLIC void* ogl_ui_frame_init(ogl_ui       instance,
         /* Initialize fields */
         memset(new_frame_ptr,
                0,
-               sizeof(_ogl_ui_frame) );
+               sizeof(_ui_frame) );
 
-        new_frame_ptr->context     = ogl_ui_get_context(instance);
+        new_frame_ptr->context     = ui_get_context(instance);
         new_frame_ptr->visible     = true;
         new_frame_ptr->x1y1x2y2[0] = x1y1x2y2[0];
         new_frame_ptr->x1y1x2y2[1] = 1.0f - x1y1x2y2[1];
@@ -346,13 +346,13 @@ PUBLIC void* ogl_ui_frame_init(ogl_ui       instance,
         raGL_program program_raGL    = NULL;
         GLuint       program_raGL_id = 0;
 
-        new_frame_ptr->program = ogl_ui_get_registered_program(instance,
-                                                               ui_frame_program_name);
+        new_frame_ptr->program = ui_get_registered_program(instance,
+                                                           ui_frame_program_name);
 
         if (new_frame_ptr->program == NULL)
         {
-            _ogl_ui_frame_init_program(instance,
-                                       new_frame_ptr);
+            _ui_frame_init_program(instance,
+                                   new_frame_ptr);
 
             ASSERT_DEBUG_SYNC(new_frame_ptr->program != NULL,
                               "Could not initialize frame UI program");
@@ -399,15 +399,15 @@ PUBLIC void* ogl_ui_frame_init(ogl_ui       instance,
 }
 
 /** Please see header for specification */
-PUBLIC void ogl_ui_frame_set_property(void*                    frame,
-                                      _ogl_ui_control_property property,
-                                      const void*              data)
+PUBLIC void ui_frame_set_property(void*               frame,
+                                  ui_control_property property,
+                                  const void*         data)
 {
-    _ogl_ui_frame* frame_ptr = (_ogl_ui_frame*) frame;
+    _ui_frame* frame_ptr = (_ui_frame*) frame;
 
     switch (property)
     {
-        case OGL_UI_CONTROL_PROPERTY_FRAME_X1Y1X2Y2:
+        case UI_CONTROL_PROPERTY_FRAME_X1Y1X2Y2:
         {
             const float* x1y1x2y2 = (const float*) data;
 
@@ -424,7 +424,7 @@ PUBLIC void ogl_ui_frame_set_property(void*                    frame,
         default:
         {
             ASSERT_DEBUG_SYNC(false,
-                              "Unrecognized _ogl_ui_control_property value");
+                              "Unrecognized ui_control_property value");
         }
     } /* switch (property_value) */
 }

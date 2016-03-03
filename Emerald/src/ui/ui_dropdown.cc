@@ -6,9 +6,6 @@
 #include "shared.h"
 #include "ogl/ogl_context.h"
 #include "ogl/ogl_text.h"
-#include "ogl/ogl_ui.h"
-#include "ogl/ogl_ui_dropdown.h"
-#include "ogl/ogl_ui_shared.h"
 #include "raGL/raGL_buffer.h"
 #include "raGL/raGL_program.h"
 #include "raGL/raGL_shader.h"
@@ -23,6 +20,9 @@
 #include "system/system_resizable_vector.h"
 #include "system/system_thread_pool.h"
 #include "system/system_window.h"
+#include "ui/ui.h"
+#include "ui/ui_dropdown.h"
+#include "ui/ui_shared.h"
 
 #define BUTTON_WIDTH_PX                       (14)
 #define CLICK_BRIGHTNESS_MODIFIER             (1.5f)
@@ -49,22 +49,22 @@ static system_hashed_ansi_string ui_dropdown_program_name           = system_has
 static system_hashed_ansi_string ui_dropdown_separator_program_name = system_hashed_ansi_string_create("UI Dropdown Separator");
 static system_hashed_ansi_string ui_dropdown_slider_program_name    = system_hashed_ansi_string_create("UI Dropdown Slider");
 
-typedef struct _ogl_ui_dropdown_fire_event
+typedef struct _ui_dropdown_fire_event
 {
-    void*               event_user_arg;
-    void*               fire_proc_user_arg;
-    PFNOGLUIFIREPROCPTR pfn_fire_proc_ptr;
+    void*            event_user_arg;
+    void*            fire_proc_user_arg;
+    PFNUIFIREPROCPTR pfn_fire_proc_ptr;
 
-    _ogl_ui_dropdown_fire_event()
+    _ui_dropdown_fire_event()
     {
         event_user_arg     = NULL;
         fire_proc_user_arg = NULL;
         pfn_fire_proc_ptr  = NULL;
     }
-} _ogl_ui_dropdown_fire_event;
+} _ui_dropdown_fire_event;
 
 /** Internal types */
-typedef struct _ogl_ui_dropdown_entry
+typedef struct _ui_dropdown_entry
 {
     int                       base_x;
     int                       base_y;
@@ -73,7 +73,7 @@ typedef struct _ogl_ui_dropdown_entry
     int                       text_y;
     void*                     user_arg;
 
-    _ogl_ui_dropdown_entry()
+    _ui_dropdown_entry()
     {
         base_x    = 0;
         base_y    = 0;
@@ -82,29 +82,29 @@ typedef struct _ogl_ui_dropdown_entry
         text_y    = 0;
         user_arg  = NULL;
     }
-} _ogl_ui_dropdown_entry;
+} _ui_dropdown_entry;
 
 typedef struct
 {
-    float               accumulated_wheel_delta;
+    float            accumulated_wheel_delta;
 
-    float               button_x1y1x2y2  [4];
-    float               drop_x1y2x2y1    [4];
-    float               label_x1y1       [2];
-    float               label_bg_x1y1x2y2[4];
-    float               hover_ss[2];
-    float               separator_delta_y;
+    float            button_x1y1x2y2  [4];
+    float            drop_x1y2x2y1    [4];
+    float            label_x1y1       [2];
+    float            label_bg_x1y1x2y2[4];
+    float            hover_ss[2];
+    float            separator_delta_y;
 
-    float               slider_delta_y;
-    float               slider_delta_y_base;
-    float               slider_height;
-    float               slider_lbm_start_y;
-    float               slider_separator_y;
-    float               slider_x1x2[2];
-    float               x1y1x2y2[4];
+    float            slider_delta_y;
+    float            slider_delta_y_base;
+    float            slider_height;
+    float            slider_lbm_start_y;
+    float            slider_separator_y;
+    float            slider_x1x2[2];
+    float            x1y1x2y2[4];
 
-    void*               fire_proc_user_arg;
-    PFNOGLUIFIREPROCPTR pfn_fire_proc_ptr;
+    void*            fire_proc_user_arg;
+    PFNUIFIREPROCPTR pfn_fire_proc_ptr;
 
     float       current_gpu_brightness_level;
     bool        force_gpu_brightness_update;
@@ -163,9 +163,9 @@ typedef struct
     system_hashed_ansi_string label_text;
     ogl_text_string_id        label_string_id;
     ogl_text                  text_renderer;
-    ogl_ui                    ui; /* NOT reference-counted */
+    ui                        ui_instance; /* NOT reference-counted */
 
-    ogl_ui_control            owner_control; /* this object, as visible for applications */
+    ui_control owner_control; /* this object, as visible for applications */
 
     bool visible;
 
@@ -176,7 +176,7 @@ typedef struct
     PFNGLENABLEPROC              pGLEnable;
     PFNGLUNIFORMBLOCKBINDINGPROC pGLUniformBlockBinding;
     PFNGLUSEPROGRAMPROC          pGLUseProgram;
-} _ogl_ui_dropdown;
+} _ui_dropdown;
 
 /** Internal variables */
 static const char* ui_dropdown_bg_fragment_shader_body = "#version 430 core\n"
@@ -318,11 +318,13 @@ static const char* ui_dropdown_slider_fragment_shader_body    = "#version 430 co
                                                                 "}\n";
 
 /** TODO */
-volatile void _ogl_ui_dropdown_fire_callback(system_thread_pool_callback_argument arg)
+volatile void _ui_dropdown_fire_callback(system_thread_pool_callback_argument arg)
 {
-    _ogl_ui_dropdown_fire_event* event_ptr = (_ogl_ui_dropdown_fire_event*) arg;
+    _ui_dropdown_fire_event* event_ptr = (_ui_dropdown_fire_event*) arg;
 
-    ASSERT_DEBUG_SYNC(event_ptr != NULL, "Event descriptor is NULL");
+    ASSERT_DEBUG_SYNC(event_ptr != NULL,
+                      "Event descriptor is NULL");
+
     if (event_ptr != NULL)
     {
         event_ptr->pfn_fire_proc_ptr(event_ptr->fire_proc_user_arg,
@@ -334,9 +336,9 @@ volatile void _ogl_ui_dropdown_fire_callback(system_thread_pool_callback_argumen
 }
 
 /** TODO */
-PRIVATE void _ogl_ui_dropdown_get_highlighted_v1v2(_ogl_ui_dropdown* dropdown_ptr,
-                                                   bool              offset_by_slider_dy,
-                                                   float*            out_highlighted_v1v2)
+PRIVATE void _ui_dropdown_get_highlighted_v1v2(_ui_dropdown* dropdown_ptr,
+                                               bool          offset_by_slider_dy,
+                                               float*        out_highlighted_v1v2)
 {
     unsigned int n_entries = 0;
     float        slider_height_ss;
@@ -373,8 +375,8 @@ PRIVATE void _ogl_ui_dropdown_get_highlighted_v1v2(_ogl_ui_dropdown* dropdown_pt
 }
 
 /** TODO */
-PRIVATE void _ogl_ui_dropdown_get_selected_v1v2(_ogl_ui_dropdown* dropdown_ptr,
-                                                float*            out_selected_v1v2)
+PRIVATE void _ui_dropdown_get_selected_v1v2(_ui_dropdown* dropdown_ptr,
+                                            float*        out_selected_v1v2)
 {
     unsigned int n_entries = 0;
 
@@ -395,8 +397,8 @@ PRIVATE void _ogl_ui_dropdown_get_selected_v1v2(_ogl_ui_dropdown* dropdown_ptr,
 }
 
 /** TODO */
-PRIVATE void _ogl_ui_dropdown_get_slider_x1y1x2y2(_ogl_ui_dropdown* dropdown_ptr,
-                                                  float*            out_result)
+PRIVATE void _ui_dropdown_get_slider_x1y1x2y2(_ui_dropdown* dropdown_ptr,
+                                              float*        out_result)
 {
     out_result[0] = dropdown_ptr->slider_x1x2[0];
     out_result[1] = dropdown_ptr->drop_x1y2x2y1[1]   -
@@ -414,11 +416,11 @@ PRIVATE void _ogl_ui_dropdown_get_slider_x1y1x2y2(_ogl_ui_dropdown* dropdown_ptr
 }
 
 /** TODO */
-PRIVATE void _ogl_ui_dropdown_init_program(ogl_ui            ui,
-                                           _ogl_ui_dropdown* dropdown_ptr)
+PRIVATE void _ui_dropdown_init_program(ui            ui_instance,
+                                       _ui_dropdown* dropdown_ptr)
 {
     /* Create all objects */
-    ral_context context      = ogl_ui_get_context(ui);
+    ral_context context      = ui_get_context(ui_instance);
     ral_shader  fs_bg        = NULL;
     ral_shader  fs_label_bg  = NULL;
     ral_shader  fs_separator = NULL;
@@ -615,21 +617,21 @@ PRIVATE void _ogl_ui_dropdown_init_program(ogl_ui            ui,
 
 
     /* Register the programs with UI so following button instances will reuse the program */
-    ogl_ui_register_program(ui,
-                            ui_dropdown_program_name,
-                            dropdown_ptr->program);
-    ogl_ui_register_program(ui,
-                            ui_dropdown_bg_program_name,
-                            dropdown_ptr->program_bg);
-    ogl_ui_register_program(ui,
-                            ui_dropdown_label_bg_program_name,
-                            dropdown_ptr->program_label_bg);
-    ogl_ui_register_program(ui,
-                            ui_dropdown_separator_program_name,
-                            dropdown_ptr->program_separator);
-    ogl_ui_register_program(ui,
-                            ui_dropdown_slider_program_name,
-                            dropdown_ptr->program_slider);
+    ui_register_program(ui_instance,
+                        ui_dropdown_program_name,
+                        dropdown_ptr->program);
+    ui_register_program(ui_instance,
+                        ui_dropdown_bg_program_name,
+                        dropdown_ptr->program_bg);
+    ui_register_program(ui_instance,
+                        ui_dropdown_label_bg_program_name,
+                        dropdown_ptr->program_label_bg);
+    ui_register_program(ui_instance,
+                        ui_dropdown_separator_program_name,
+                        dropdown_ptr->program_separator);
+    ui_register_program(ui_instance,
+                        ui_dropdown_slider_program_name,
+                        dropdown_ptr->program_slider);
 
     /* Release shaders we will no longer need */
     const ral_shader shaders_to_release[] =
@@ -651,12 +653,12 @@ PRIVATE void _ogl_ui_dropdown_init_program(ogl_ui            ui,
 }
 
 /** TODO */
-PRIVATE void _ogl_ui_dropdown_init_renderer_callback(ogl_context context,
-                                                     void*       dropdown)
+PRIVATE void _ui_dropdown_init_renderer_callback(ogl_context context,
+                                                 void*       dropdown)
 {
     float                border_width_bg[2]        = {0};
     float                border_width[2]           = {0};
-    _ogl_ui_dropdown*    dropdown_ptr              = (_ogl_ui_dropdown*) dropdown;
+    _ui_dropdown*        dropdown_ptr              = (_ui_dropdown*) dropdown;
     raGL_program         program_bg_raGL           = ral_context_get_program_gl(dropdown_ptr->context,
                                                                                 dropdown_ptr->program_bg);
     GLuint               program_bg_raGL_id        = 0;
@@ -955,7 +957,7 @@ PRIVATE void _ogl_ui_dropdown_init_renderer_callback(ogl_context context,
 }
 
 /* TODO */
-PRIVATE void _ogl_ui_dropdown_update_entry_positions(_ogl_ui_dropdown* dropdown_ptr)
+PRIVATE void _ui_dropdown_update_entry_positions(_ui_dropdown* dropdown_ptr)
 {
     system_window context_window = NULL;
     uint32_t      n_entries      = 0;
@@ -976,7 +978,7 @@ PRIVATE void _ogl_ui_dropdown_update_entry_positions(_ogl_ui_dropdown* dropdown_
                   n_entry < n_entries - 1; /* exclude bar string */
                 ++n_entry)
     {
-        _ogl_ui_dropdown_entry* entry_ptr = NULL;
+        _ui_dropdown_entry* entry_ptr = NULL;
 
         if (system_resizable_vector_get_element_at(dropdown_ptr->entries,
                                                    n_entry,
@@ -1001,8 +1003,8 @@ PRIVATE void _ogl_ui_dropdown_update_entry_positions(_ogl_ui_dropdown* dropdown_
 }
 
 /** TODO */
-PRIVATE void _ogl_ui_dropdown_update_entry_strings(_ogl_ui_dropdown* dropdown_ptr,
-                                                   bool              only_update_selected_entry)
+PRIVATE void _ui_dropdown_update_entry_strings(_ui_dropdown* dropdown_ptr,
+                                               bool          only_update_selected_entry)
 {
     unsigned int n_strings = 0;
 
@@ -1039,7 +1041,7 @@ PRIVATE void _ogl_ui_dropdown_update_entry_strings(_ogl_ui_dropdown* dropdown_pt
                   n_entry < n_strings;
                 ++n_entry)
     {
-        _ogl_ui_dropdown_entry* entry_ptr = NULL;
+        _ui_dropdown_entry* entry_ptr = NULL;
 
         if (system_resizable_vector_get_element_at(dropdown_ptr->entries,
                                                    n_entry,
@@ -1050,7 +1052,7 @@ PRIVATE void _ogl_ui_dropdown_update_entry_strings(_ogl_ui_dropdown* dropdown_pt
                  dropdown_ptr->current_entry_string_id = entry_ptr->string_id;
 
                  /* Also update the string that should be shown on the bar */
-                 _ogl_ui_dropdown_entry* selected_entry_ptr = NULL;
+                 _ui_dropdown_entry* selected_entry_ptr = NULL;
 
                  if (system_resizable_vector_get_element_at(dropdown_ptr->entries,
                                                             dropdown_ptr->n_selected_entry,
@@ -1118,7 +1120,7 @@ PRIVATE void _ogl_ui_dropdown_update_entry_strings(_ogl_ui_dropdown* dropdown_pt
 }
 
 /** TODO */
-PRIVATE void _ogl_ui_dropdown_update_entry_visibility(_ogl_ui_dropdown* dropdown_ptr)
+PRIVATE void _ui_dropdown_update_entry_visibility(_ui_dropdown* dropdown_ptr)
 {
     unsigned int n_entries = 0;
 
@@ -1143,7 +1145,7 @@ PRIVATE void _ogl_ui_dropdown_update_entry_visibility(_ogl_ui_dropdown* dropdown
                       n_entry < n_entries;
                     ++n_entry)
     {
-        _ogl_ui_dropdown_entry* entry_ptr = NULL;
+        _ui_dropdown_entry* entry_ptr = NULL;
 
         if (system_resizable_vector_get_element_at(dropdown_ptr->entries,
                                                    n_entry,
@@ -1177,8 +1179,8 @@ PRIVATE void _ogl_ui_dropdown_update_entry_visibility(_ogl_ui_dropdown* dropdown
     } /* for (all entries) */
 }
 
-PRIVATE void _ogl_ui_dropdown_update_position(_ogl_ui_dropdown* dropdown_ptr,
-                                              const float*      x1y1)
+PRIVATE void _ui_dropdown_update_position(_ui_dropdown* dropdown_ptr,
+                                          const float*  x1y1)
 {
     system_window window         = NULL;
     int           window_size[2] = {0};
@@ -1205,7 +1207,7 @@ PRIVATE void _ogl_ui_dropdown_update_position(_ogl_ui_dropdown* dropdown_ptr,
                       n_entry < n_strings;
                     ++n_entry)
     {
-        _ogl_ui_dropdown_entry* entry_ptr = NULL;
+        _ui_dropdown_entry* entry_ptr = NULL;
 
         if (system_resizable_vector_get_element_at(dropdown_ptr->entries,
                                                    n_entry,
@@ -1273,9 +1275,9 @@ PRIVATE void _ogl_ui_dropdown_update_position(_ogl_ui_dropdown* dropdown_ptr,
     dropdown_ptr->slider_x1x2[1] = dropdown_ptr->slider_x1x2[0] + float(SLIDER_WIDTH_PX)                     / float(window_size[0]);
 
     /* We can now position the text strings */
-    _ogl_ui_dropdown_update_entry_strings   (dropdown_ptr, false);
-    _ogl_ui_dropdown_update_entry_positions (dropdown_ptr);
-    _ogl_ui_dropdown_update_entry_visibility(dropdown_ptr);
+    _ui_dropdown_update_entry_strings   (dropdown_ptr, false);
+    _ui_dropdown_update_entry_positions (dropdown_ptr);
+    _ui_dropdown_update_entry_visibility(dropdown_ptr);
 
     /* Set up the label */
     unsigned int text_height = 0;
@@ -1331,9 +1333,9 @@ PRIVATE void _ogl_ui_dropdown_update_position(_ogl_ui_dropdown* dropdown_ptr,
 }
 
 /** Please see header for specification */
-PUBLIC void ogl_ui_dropdown_deinit(void* internal_instance)
+PUBLIC void ui_dropdown_deinit(void* internal_instance)
 {
-    _ogl_ui_dropdown* ui_dropdown_ptr  = (_ogl_ui_dropdown*) internal_instance;
+    _ui_dropdown*     ui_dropdown_ptr  = (_ui_dropdown*) internal_instance;
     const static bool visibility_false = false;
 
     ral_program       programs_to_release[] =
@@ -1352,7 +1354,7 @@ PUBLIC void ogl_ui_dropdown_deinit(void* internal_instance)
                                (const void**) programs_to_release);
 
     /* Release all entry instances */
-    _ogl_ui_dropdown_entry* entry_ptr = NULL;
+    _ui_dropdown_entry* entry_ptr = NULL;
 
     ogl_text_set_text_string_property(ui_dropdown_ptr->text_renderer,
                                       ui_dropdown_ptr->current_entry_string_id,
@@ -1401,12 +1403,12 @@ PUBLIC void ogl_ui_dropdown_deinit(void* internal_instance)
 }
 
 /** Please see header for specification */
-PUBLIC RENDERING_CONTEXT_CALL void ogl_ui_dropdown_draw(void* internal_instance)
+PUBLIC RENDERING_CONTEXT_CALL void ui_dropdown_draw(void* internal_instance)
 {
-    _ogl_ui_dropdown* dropdown_ptr = (_ogl_ui_dropdown*) internal_instance;
-    system_time       time_now     = system_time_now();
-    system_window     window       = NULL;
-    int               window_size[2];
+    _ui_dropdown* dropdown_ptr = (_ui_dropdown*) internal_instance;
+    system_time   time_now     = system_time_now();
+    system_window window       = NULL;
+    int           window_size[2];
 
     ral_context_get_property  (dropdown_ptr->context,
                                RAL_CONTEXT_PROPERTY_WINDOW_SYSTEM,
@@ -1517,8 +1519,8 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_ui_dropdown_draw(void* internal_instance)
                                          SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
                                         &n_entries);
 
-    _ogl_ui_dropdown_get_highlighted_v1v2(dropdown_ptr, false, highlighted_v1v2);
-    _ogl_ui_dropdown_get_selected_v1v2   (dropdown_ptr,        selected_v1v2);
+    _ui_dropdown_get_highlighted_v1v2(dropdown_ptr, false, highlighted_v1v2);
+    _ui_dropdown_get_selected_v1v2   (dropdown_ptr,        selected_v1v2);
 
     if (fabs(highlighted_v1v2[0]  - selected_v1v2[0]) <  1e-5f                             && /* exclude the area outside the drop area, */
         fabs(highlighted_v1v2[1]  - selected_v1v2[1]) <  1e-5f                             ||
@@ -1659,7 +1661,7 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_ui_dropdown_draw(void* internal_instance)
                           n_entry < n_entries;
                         ++n_entry)
         {
-            _ogl_ui_dropdown_entry* entry_ptr = NULL;
+            _ui_dropdown_entry* entry_ptr = NULL;
 
             if (system_resizable_vector_get_element_at(dropdown_ptr->entries,
                                                        n_entry,
@@ -1728,8 +1730,8 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_ui_dropdown_draw(void* internal_instance)
                                  RAGL_BUFFER_PROPERTY_START_OFFSET,
                                 &program_slider_ub_vs_bo_start_offset);
 
-        _ogl_ui_dropdown_get_slider_x1y1x2y2(dropdown_ptr,
-                                             slider_x1y1x2y2);
+        _ui_dropdown_get_slider_x1y1x2y2(dropdown_ptr,
+                                         slider_x1y1x2y2);
 
         bool        is_cursor_over_slider = (dropdown_ptr->hover_ss[0] >= slider_x1y1x2y2[0] && dropdown_ptr->hover_ss[0] <= slider_x1y1x2y2[2] &&
                                              dropdown_ptr->hover_ss[1] >= slider_x1y1x2y2[3] && dropdown_ptr->hover_ss[1] <= slider_x1y1x2y2[1] ||
@@ -1868,22 +1870,22 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_ui_dropdown_draw(void* internal_instance)
 }
 
 /** Please see header for specification */
-PUBLIC void ogl_ui_dropdown_get_property(const void*              dropdown,
-                                         _ogl_ui_control_property property,
-                                         void*                    out_result)
+PUBLIC void ui_dropdown_get_property(const void*         dropdown,
+                                     ui_control_property property,
+                                     void*               out_result)
 {
-    const _ogl_ui_dropdown* dropdown_ptr = (const _ogl_ui_dropdown*) dropdown;
+    const _ui_dropdown* dropdown_ptr = (const _ui_dropdown*) dropdown;
 
     switch (property)
     {
-        case OGL_UI_CONTROL_PROPERTY_DROPDOWN_IS_DROPAREA_VISIBLE:
+        case UI_CONTROL_PROPERTY_DROPDOWN_IS_DROPAREA_VISIBLE:
         {
             *(bool*) out_result = dropdown_ptr->is_droparea_visible;
 
             break;
         }
 
-        case OGL_UI_CONTROL_PROPERTY_DROPDOWN_LABEL_BG_X1Y1X2Y2:
+        case UI_CONTROL_PROPERTY_DROPDOWN_LABEL_BG_X1Y1X2Y2:
         {
             memcpy(out_result,
                    dropdown_ptr->label_bg_x1y1x2y2,
@@ -1892,7 +1894,7 @@ PUBLIC void ogl_ui_dropdown_get_property(const void*              dropdown,
             break;
         }
 
-        case OGL_UI_CONTROL_PROPERTY_DROPDOWN_LABEL_X1Y1:
+        case UI_CONTROL_PROPERTY_DROPDOWN_LABEL_X1Y1:
         {
             memcpy(out_result,
                    dropdown_ptr->label_x1y1,
@@ -1901,7 +1903,7 @@ PUBLIC void ogl_ui_dropdown_get_property(const void*              dropdown,
             break;
         }
 
-        case OGL_UI_CONTROL_PROPERTY_GENERAL_HEIGHT_NORMALIZED:
+        case UI_CONTROL_PROPERTY_GENERAL_HEIGHT_NORMALIZED:
         {
             if (dropdown_ptr->visible)
             {
@@ -1923,21 +1925,21 @@ PUBLIC void ogl_ui_dropdown_get_property(const void*              dropdown,
             break;
         }
 
-        case OGL_UI_CONTROL_PROPERTY_GENERAL_WIDTH_NORMALIZED:
+        case UI_CONTROL_PROPERTY_GENERAL_WIDTH_NORMALIZED:
         {
             *(float*) out_result = dropdown_ptr->x1y1x2y2[2] - dropdown_ptr->label_bg_x1y1x2y2[0];
 
             break;
         }
 
-        case OGL_UI_CONTROL_PROPERTY_GENERAL_VISIBLE:
+        case UI_CONTROL_PROPERTY_GENERAL_VISIBLE:
         {
             *(bool*) out_result = dropdown_ptr->visible;
 
             break;
         }
 
-        case OGL_UI_CONTROL_PROPERTY_GENERAL_X1Y1:
+        case UI_CONTROL_PROPERTY_GENERAL_X1Y1:
         {
             float* result = (float*) out_result;
 
@@ -1947,9 +1949,9 @@ PUBLIC void ogl_ui_dropdown_get_property(const void*              dropdown,
             break;
         }
 
-        case OGL_UI_CONTROL_PROPERTY_DROPDOWN_X1Y1X2Y2:
+        case UI_CONTROL_PROPERTY_DROPDOWN_X1Y1X2Y2:
         {
-            /* NOTE: Update OGL_UI_CONTROL_PROPERTY_GENERAL_HEIGHT_NORMALIZED handler if this changes */
+            /* NOTE: Update UI_CONTROL_PROPERTY_GENERAL_HEIGHT_NORMALIZED handler if this changes */
             float* result = (float*) out_result;
 
             if (!dropdown_ptr->is_droparea_visible)
@@ -1973,26 +1975,26 @@ PUBLIC void ogl_ui_dropdown_get_property(const void*              dropdown,
         default:
         {
             ASSERT_DEBUG_SYNC(false,
-                              "Unrecognized _ogl_ui_control_property property requested");
+                              "Unrecognized ui_control_property property requested");
         }
     } /* switch (property) */
 }
 
 /** Please see header for specification */
-PUBLIC void* ogl_ui_dropdown_init(ogl_ui                     instance,
-                                  ogl_text                   text_renderer,
-                                  system_hashed_ansi_string  label_text,
-                                  uint32_t                   n_strings,
-                                  system_hashed_ansi_string* strings,
-                                  void**                     user_args,
-                                  uint32_t                   n_selected_entry,
-                                  system_hashed_ansi_string  name,
-                                  const float*               x1y1,
-                                  PFNOGLUIFIREPROCPTR        pfn_fire_proc_ptr,
-                                  void*                      fire_proc_user_arg,
-                                  ogl_ui_control             owner_control)
+PUBLIC void* ui_dropdown_init(ui                         instance,
+                              ogl_text                   text_renderer,
+                              system_hashed_ansi_string  label_text,
+                              uint32_t                   n_strings,
+                              system_hashed_ansi_string* strings,
+                              void**                     user_args,
+                              uint32_t                   n_selected_entry,
+                              system_hashed_ansi_string  name,
+                              const float*               x1y1,
+                              PFNUIFIREPROCPTR           pfn_fire_proc_ptr,
+                              void*                      fire_proc_user_arg,
+                              ui_control                 owner_control)
 {
-    _ogl_ui_dropdown* new_dropdown_ptr = new (std::nothrow) _ogl_ui_dropdown;
+    _ui_dropdown* new_dropdown_ptr = new (std::nothrow) _ui_dropdown;
 
     ASSERT_ALWAYS_SYNC(new_dropdown_ptr != NULL,
                        "Out of memory");
@@ -2002,9 +2004,9 @@ PUBLIC void* ogl_ui_dropdown_init(ogl_ui                     instance,
         /* Initialize fields */
         memset(new_dropdown_ptr,
                0,
-               sizeof(_ogl_ui_dropdown) );
+               sizeof(_ui_dropdown) );
 
-        new_dropdown_ptr->context             = ogl_ui_get_context            (instance);
+        new_dropdown_ptr->context             = ui_get_context                (instance);
         new_dropdown_ptr->entries             = system_resizable_vector_create(4 /* capacity */);
         new_dropdown_ptr->fire_proc_user_arg  = fire_proc_user_arg;
         new_dropdown_ptr->is_button_lbm       = false;
@@ -2018,7 +2020,7 @@ PUBLIC void* ogl_ui_dropdown_init(ogl_ui                     instance,
         new_dropdown_ptr->owner_control       = owner_control;
         new_dropdown_ptr->pfn_fire_proc_ptr   = pfn_fire_proc_ptr;
         new_dropdown_ptr->text_renderer       = text_renderer;
-        new_dropdown_ptr->ui                  = instance;
+        new_dropdown_ptr->ui_instance         = instance;
         new_dropdown_ptr->visible             = true;
 
         /* Cache GL func pointers */
@@ -2077,9 +2079,9 @@ PUBLIC void* ogl_ui_dropdown_init(ogl_ui                     instance,
                       n_entry < n_strings + 1 /* currently selected entry */;
                     ++n_entry)
         {
-            _ogl_ui_dropdown_entry* entry_ptr = NULL;
+            _ui_dropdown_entry* entry_ptr = NULL;
 
-            entry_ptr = new (std::nothrow) _ogl_ui_dropdown_entry;
+            entry_ptr = new (std::nothrow) _ui_dropdown_entry;
             ASSERT_DEBUG_SYNC(entry_ptr != NULL, "Out of memory");
 
             /* Fill the descriptor */
@@ -2114,24 +2116,24 @@ PUBLIC void* ogl_ui_dropdown_init(ogl_ui                     instance,
          *       Unfortunately, the required vector values have not been calculated yet,
          *       so we will need to redo this call after these become available.
          */
-        _ogl_ui_dropdown_update_entry_strings(new_dropdown_ptr,
-                                              false);
+        _ui_dropdown_update_entry_strings(new_dropdown_ptr,
+                                          false);
 
         /* Update sub-control sizes */
-        _ogl_ui_dropdown_update_position(new_dropdown_ptr,
-                                         x1y1);
+        _ui_dropdown_update_position(new_dropdown_ptr,
+                                     x1y1);
 
         /* Retrieve the rendering program */
-        new_dropdown_ptr->program           = ogl_ui_get_registered_program(instance,
-                                                                            ui_dropdown_program_name);
-        new_dropdown_ptr->program_bg        = ogl_ui_get_registered_program(instance,
-                                                                            ui_dropdown_bg_program_name);
-        new_dropdown_ptr->program_label_bg  = ogl_ui_get_registered_program(instance,
-                                                                            ui_dropdown_label_bg_program_name);
-        new_dropdown_ptr->program_separator = ogl_ui_get_registered_program(instance,
-                                                                            ui_dropdown_separator_program_name);
-        new_dropdown_ptr->program_slider    = ogl_ui_get_registered_program(instance,
-                                                                            ui_dropdown_slider_program_name);
+        new_dropdown_ptr->program           = ui_get_registered_program(instance,
+                                                                        ui_dropdown_program_name);
+        new_dropdown_ptr->program_bg        = ui_get_registered_program(instance,
+                                                                        ui_dropdown_bg_program_name);
+        new_dropdown_ptr->program_label_bg  = ui_get_registered_program(instance,
+                                                                        ui_dropdown_label_bg_program_name);
+        new_dropdown_ptr->program_separator = ui_get_registered_program(instance,
+                                                                        ui_dropdown_separator_program_name);
+        new_dropdown_ptr->program_slider    = ui_get_registered_program(instance,
+                                                                        ui_dropdown_slider_program_name);
 
         if (new_dropdown_ptr->program           == NULL ||
             new_dropdown_ptr->program_bg        == NULL ||
@@ -2139,8 +2141,8 @@ PUBLIC void* ogl_ui_dropdown_init(ogl_ui                     instance,
             new_dropdown_ptr->program_separator == NULL ||
             new_dropdown_ptr->program_slider    == NULL)
         {
-            _ogl_ui_dropdown_init_program(instance,
-                                          new_dropdown_ptr);
+            _ui_dropdown_init_program(instance,
+                                      new_dropdown_ptr);
 
             ASSERT_DEBUG_SYNC(new_dropdown_ptr->program != NULL,
                               "Could not initialize dropdown UI programs");
@@ -2148,7 +2150,7 @@ PUBLIC void* ogl_ui_dropdown_init(ogl_ui                     instance,
 
         /* Set up predefined values */
         ogl_context_request_callback_from_context_thread(ral_context_get_gl_context(new_dropdown_ptr->context),
-                                                         _ogl_ui_dropdown_init_renderer_callback,
+                                                         _ui_dropdown_init_renderer_callback,
                                                          new_dropdown_ptr);
     } /* if (new_dropdown != NULL) */
 
@@ -2156,11 +2158,11 @@ PUBLIC void* ogl_ui_dropdown_init(ogl_ui                     instance,
 }
 
 /** Please see header for specification */
-PUBLIC bool ogl_ui_dropdown_is_over(void*        internal_instance,
-                                    const float* xy)
+PUBLIC bool ui_dropdown_is_over(void*        internal_instance,
+                                const float* xy)
 {
-    _ogl_ui_dropdown* dropdown_ptr = (_ogl_ui_dropdown*) internal_instance;
-    float             inversed_y   = 1.0f - xy[1];
+    _ui_dropdown* dropdown_ptr = (_ui_dropdown*) internal_instance;
+    float         inversed_y   = 1.0f - xy[1];
 
     if (!dropdown_ptr->visible)
     {
@@ -2203,7 +2205,8 @@ PUBLIC bool ogl_ui_dropdown_is_over(void*        internal_instance,
         {
             float slider_x1y1x2y2[4];
 
-            _ogl_ui_dropdown_get_slider_x1y1x2y2(dropdown_ptr, slider_x1y1x2y2);
+            _ui_dropdown_get_slider_x1y1x2y2(dropdown_ptr,
+                                             slider_x1y1x2y2);
 
             if (inversed_y >= slider_x1y1x2y2[3] && inversed_y <= slider_x1y1x2y2[1])
             {
@@ -2224,11 +2227,11 @@ PUBLIC bool ogl_ui_dropdown_is_over(void*        internal_instance,
 }
 
 /** Please see header for specification */
-PUBLIC void ogl_ui_dropdown_on_lbm_down(void*        internal_instance,
-                                        const float* xy)
+PUBLIC void ui_dropdown_on_lbm_down(void*        internal_instance,
+                                    const float* xy)
 {
-    _ogl_ui_dropdown* dropdown_ptr = (_ogl_ui_dropdown*) internal_instance;
-    float             inversed_y = 1.0f - xy[1];
+    _ui_dropdown* dropdown_ptr = (_ui_dropdown*) internal_instance;
+    float         inversed_y = 1.0f - xy[1];
 
     if (!dropdown_ptr->visible)
     {
@@ -2248,7 +2251,8 @@ PUBLIC void ogl_ui_dropdown_on_lbm_down(void*        internal_instance,
     {
         float slider_x1y1x2y2[4];
 
-        _ogl_ui_dropdown_get_slider_x1y1x2y2(dropdown_ptr, slider_x1y1x2y2);
+        _ui_dropdown_get_slider_x1y1x2y2(dropdown_ptr,
+                                         slider_x1y1x2y2);
 
         if (inversed_y >= slider_x1y1x2y2[3] && inversed_y <= slider_x1y1x2y2[1])
         {
@@ -2267,11 +2271,11 @@ PUBLIC void ogl_ui_dropdown_on_lbm_down(void*        internal_instance,
 }
 
 /** Please see header for specification */
-PUBLIC void ogl_ui_dropdown_on_lbm_up(void*        internal_instance,
-                                      const float* xy)
+PUBLIC void ui_dropdown_on_lbm_up(void*        internal_instance,
+                                  const float* xy)
 {
-    _ogl_ui_dropdown* dropdown_ptr = (_ogl_ui_dropdown*) internal_instance;
-    float             inversed_y = 1.0f - xy[1];
+    _ui_dropdown* dropdown_ptr = (_ui_dropdown*) internal_instance;
+    float         inversed_y = 1.0f - xy[1];
 
     if (!dropdown_ptr->visible)
     {
@@ -2286,8 +2290,8 @@ PUBLIC void ogl_ui_dropdown_on_lbm_up(void*        internal_instance,
         dropdown_ptr->slider_delta_y_base += dropdown_ptr->slider_delta_y;
         dropdown_ptr->slider_delta_y       = 0.0f;
 
-        _ogl_ui_dropdown_update_entry_positions (dropdown_ptr);
-        _ogl_ui_dropdown_update_entry_visibility(dropdown_ptr);
+        _ui_dropdown_update_entry_positions (dropdown_ptr);
+        _ui_dropdown_update_entry_visibility(dropdown_ptr);
     }
     else
     if (xy[0]      >= dropdown_ptr->button_x1y1x2y2[0] && xy[0]      <= dropdown_ptr->button_x1y1x2y2[2] &&
@@ -2297,13 +2301,13 @@ PUBLIC void ogl_ui_dropdown_on_lbm_up(void*        internal_instance,
         dropdown_ptr->is_droparea_visible = !dropdown_ptr->is_droparea_visible;
 
         /* Update visibility of the entries */
-        _ogl_ui_dropdown_update_entry_visibility(dropdown_ptr);
+        _ui_dropdown_update_entry_visibility(dropdown_ptr);
 
         /* Call back any subscribers */
-        ogl_ui_receive_control_callback(dropdown_ptr->ui,
-                                        (ogl_ui_control) dropdown_ptr,
-                                        OGL_UI_DROPDOWN_CALLBACK_ID_DROPAREA_TOGGLE,
-                                        dropdown_ptr);
+        ui_receive_control_callback(dropdown_ptr->ui_instance,
+                                    (ui_control) dropdown_ptr,
+                                    UI_DROPDOWN_CALLBACK_ID_DROPAREA_TOGGLE,
+                                    dropdown_ptr);
     }
     else
     {
@@ -2320,9 +2324,9 @@ PUBLIC void ogl_ui_dropdown_on_lbm_up(void*        internal_instance,
                                                  SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
                                                 &n_entries);
 
-            _ogl_ui_dropdown_get_highlighted_v1v2(dropdown_ptr,
-                                                  true,
-                                                  highlighted_v1v2);
+            _ui_dropdown_get_highlighted_v1v2(dropdown_ptr,
+                                              true,
+                                              highlighted_v1v2);
 
             /* NOTE: This value starts from 1, as 0 corresponds to the header bar string */
             n_selected_entry = (unsigned int)((1.0f - highlighted_v1v2[0]) * MAX_N_ENTRIES_VISIBLE + 0.5f);
@@ -2332,7 +2336,7 @@ PUBLIC void ogl_ui_dropdown_on_lbm_up(void*        internal_instance,
                 dropdown_ptr->n_selected_entry = (n_selected_entry - 1);
 
                 /* Fire the associated callback, if assigned */
-                _ogl_ui_dropdown_entry* entry_ptr = NULL;
+                _ui_dropdown_entry* entry_ptr = NULL;
 
                 system_resizable_vector_get_element_at(dropdown_ptr->entries,
                                                        dropdown_ptr->n_selected_entry,
@@ -2344,7 +2348,7 @@ PUBLIC void ogl_ui_dropdown_on_lbm_up(void*        internal_instance,
                     /* Spawn the callback descriptor. It will be released in the thread pool call-back
                      * handler after the event is taken care of by the dropdown fire event handler.
                      */
-                    _ogl_ui_dropdown_fire_event* event_ptr = new (std::nothrow) _ogl_ui_dropdown_fire_event;
+                    _ui_dropdown_fire_event* event_ptr = new (std::nothrow) _ui_dropdown_fire_event;
 
                     ASSERT_ALWAYS_SYNC(event_ptr != NULL, "Out of memory");
                     if (event_ptr != NULL)
@@ -2354,7 +2358,7 @@ PUBLIC void ogl_ui_dropdown_on_lbm_up(void*        internal_instance,
                         event_ptr->pfn_fire_proc_ptr  = dropdown_ptr->pfn_fire_proc_ptr;
 
                         system_thread_pool_task task = system_thread_pool_create_task_handler_only(THREAD_POOL_TASK_PRIORITY_NORMAL,
-                                                                                                   _ogl_ui_dropdown_fire_callback,
+                                                                                                   _ui_dropdown_fire_callback,
                                                                                                    event_ptr);
 
                         system_thread_pool_submit_single_task(task);
@@ -2362,8 +2366,8 @@ PUBLIC void ogl_ui_dropdown_on_lbm_up(void*        internal_instance,
                 }
 
                 /* Finally, update the bar string */
-                _ogl_ui_dropdown_update_entry_strings(dropdown_ptr,
-                                                      true); /* only update selected entry */
+                _ui_dropdown_update_entry_strings(dropdown_ptr,
+                                                  true); /* only update selected entry */
             }
         }
     }
@@ -2374,11 +2378,11 @@ PUBLIC void ogl_ui_dropdown_on_lbm_up(void*        internal_instance,
 }
 
 /** Please see header for specification */
-PUBLIC void ogl_ui_dropdown_on_mouse_move(void*        internal_instance,
-                                          const float* xy)
+PUBLIC void ui_dropdown_on_mouse_move(void*        internal_instance,
+                                      const float* xy)
 {
-    _ogl_ui_dropdown* dropdown_ptr = (_ogl_ui_dropdown*) internal_instance;
-    float             inversed_y   = 1.0f - xy[1];
+    _ui_dropdown* dropdown_ptr = (_ui_dropdown*) internal_instance;
+    float         inversed_y   = 1.0f - xy[1];
 
     if (!dropdown_ptr->visible)
     {
@@ -2402,15 +2406,15 @@ PUBLIC void ogl_ui_dropdown_on_mouse_move(void*        internal_instance,
         }
 
         /* Update entry positions */
-        _ogl_ui_dropdown_update_entry_positions(dropdown_ptr);
+        _ui_dropdown_update_entry_positions(dropdown_ptr);
     } /* if (dropdown_ptr->is_slider_lbm) */
 }
 
 /** Please see header for specification */
-PUBLIC void ogl_ui_dropdown_on_mouse_wheel(void* internal_instance,
-                                           float wheel_delta)
+PUBLIC void ui_dropdown_on_mouse_wheel(void* internal_instance,
+                                       float wheel_delta)
 {
-    _ogl_ui_dropdown* dropdown_ptr = (_ogl_ui_dropdown*) internal_instance;
+    _ui_dropdown* dropdown_ptr = (_ui_dropdown*) internal_instance;
 
     if (!dropdown_ptr->visible)
     {
@@ -2436,39 +2440,40 @@ PUBLIC void ogl_ui_dropdown_on_mouse_wheel(void* internal_instance,
             dropdown_ptr->slider_delta_y_base = -slider_height_ss;
         }
 
-        _ogl_ui_dropdown_update_entry_positions(dropdown_ptr);
+        _ui_dropdown_update_entry_positions(dropdown_ptr);
     } /* if (!dropdown_ptr->is_lbm_on) */
 }
 
 /* Please see header for spec */
-PUBLIC void ogl_ui_dropdown_set_property(void*                    dropdown,
-                                         _ogl_ui_control_property property,
-                                         const void*              data)
+PUBLIC void ui_dropdown_set_property(void*               dropdown,
+                                     ui_control_property property,
+                                     const void*         data)
 {
-    _ogl_ui_dropdown* dropdown_ptr = (_ogl_ui_dropdown*) dropdown;
+    _ui_dropdown* dropdown_ptr = (_ui_dropdown*) dropdown;
 
     switch (property)
     {
-        case OGL_UI_CONTROL_PROPERTY_DROPDOWN_VISIBLE:
-        case OGL_UI_CONTROL_PROPERTY_GENERAL_VISIBLE:
+        case UI_CONTROL_PROPERTY_DROPDOWN_VISIBLE:
+        case UI_CONTROL_PROPERTY_GENERAL_VISIBLE:
         {
             dropdown_ptr->visible = *(bool*) data;
 
-            _ogl_ui_dropdown_update_entry_visibility(dropdown_ptr);
+            _ui_dropdown_update_entry_visibility(dropdown_ptr);
 
             /* If there's anyone waiting on this event, let them know */
-            ogl_ui_receive_control_callback(dropdown_ptr->ui,
-                                            (ogl_ui_control) dropdown_ptr,
-                                            OGL_UI_DROPDOWN_CALLBACK_ID_VISIBILITY_TOGGLE,
-                                            dropdown_ptr);
+            ui_receive_control_callback(dropdown_ptr->ui_instance,
+                                        (ui_control) dropdown_ptr,
+                                        UI_DROPDOWN_CALLBACK_ID_VISIBILITY_TOGGLE,
+                                        dropdown_ptr);
+
             break;
         }
 
-        case OGL_UI_CONTROL_PROPERTY_GENERAL_X1Y1:
-        case OGL_UI_CONTROL_PROPERTY_DROPDOWN_X1Y1:
+        case UI_CONTROL_PROPERTY_GENERAL_X1Y1:
+        case UI_CONTROL_PROPERTY_DROPDOWN_X1Y1:
         {
-            _ogl_ui_dropdown_update_position(dropdown_ptr,
-                                             (const float*) data);
+            _ui_dropdown_update_position(dropdown_ptr,
+                                         (const float*) data);
 
             break;
         }
@@ -2476,7 +2481,7 @@ PUBLIC void ogl_ui_dropdown_set_property(void*                    dropdown,
         default:
         {
             ASSERT_DEBUG_SYNC(false,
-                              "Unrecognized _ogl_ui_control_property value");
+                              "Unrecognized ui_control_property value");
         }
     } /* switch (property_value) */
 }

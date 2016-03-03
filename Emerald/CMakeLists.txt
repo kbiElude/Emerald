@@ -119,6 +119,8 @@ FILE(GLOB SystemIncludes            "${EMERALD_SOURCE_DIR}/include/system/*.h")
 FILE(GLOB SystemSources             "${EMERALD_SOURCE_DIR}/src/system/*.cc")
 FILE(GLOB TextureIncludes           "${EMERALD_SOURCE_DIR}/include/texture/*.h")
 FILE(GLOB TextureSources            "${EMERALD_SOURCE_DIR}/src/texture/*.cc")
+FILE(GLOB UIIncludes                "${EMERALD_SOURCE_DIR}/include/ui/*.h")
+FILE(GLOB UISources                 "${EMERALD_SOURCE_DIR}/src/ui/*.cc")
 FILE(GLOB VariaIncludes             "${EMERALD_SOURCE_DIR}/include/varia/*.h")
 FILE(GLOB VariaSources              "${EMERALD_SOURCE_DIR}/src/varia/*.cc")
 
@@ -182,7 +184,8 @@ SET(AllSources
                ${ScalarFieldSources}
                ${RALSources}
                ${RAGLSources}
-               ${VariaSources})
+               ${VariaSources}
+               ${UISources})
 
 ADD_MSVC_PRECOMPILED_HEADER("shared.h" "src/shared.cc" AllSources)
 
@@ -226,6 +229,7 @@ ADD_LIBRARY(EMERALD SHARED ${AllSources}
                            ${RALIncludes}
                            ${RAGLIncludes}
                            ${VariaIncludes}
+                           ${UIIncludes}
                             Emerald.rc)
 
 GENERATE_EXPORT_HEADER(EMERALD
@@ -282,6 +286,8 @@ SOURCE_GROUP ("System includes"                              FILES ${SystemInclu
 SOURCE_GROUP ("System sources"                               FILES ${SystemSources})
 SOURCE_GROUP ("Texture includes"                             FILES ${TextureIncludes})
 SOURCE_GROUP ("Texture sources"                              FILES ${TextureSources})
+SOURCE_GROUP ("UI includes"                                  FILES ${UIIncludes})
+SOURCE_GROUP ("UI sources"                                   FILES ${UISources})
 SOURCE_GROUP ("Webcam includes"                              FILES ${WebcamIncludes})
 SOURCE_GROUP ("Webcam sources"                               FILES ${WebcamSources})
 SOURCE_GROUP ("Varia includes"                               FILES ${VariaIncludes})

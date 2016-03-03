@@ -6,9 +6,6 @@
 #include "shared.h"
 #include "ogl/ogl_context.h"
 #include "ogl/ogl_text.h"
-#include "ogl/ogl_ui.h"
-#include "ogl/ogl_ui_texture_preview.h"
-#include "ogl/ogl_ui_shared.h"
 #include "raGL/raGL_buffer.h"
 #include "raGL/raGL_program.h"
 #include "raGL/raGL_shader.h"
@@ -23,6 +20,9 @@
 #include "system/system_hashed_ansi_string.h"
 #include "system/system_log.h"
 #include "system/system_window.h"
+#include "ui/ui.h"
+#include "ui/ui_texture_preview.h"
+#include "ui/ui_shared.h"
 #include <string>
 
 #define UB_FS_BP_INDEX (0)
@@ -45,10 +45,10 @@ typedef struct
     GLuint  layer_shown;
     bool    visible;
 
-    float                       border_width[2];
-    float                       max_size[2];
-    ogl_ui_texture_preview_type preview_type;
-    float                       x1y1x2y2[4];
+    float                   border_width[2];
+    float                   max_size[2];
+    ui_texture_preview_type preview_type;
+    float                   x1y1x2y2[4];
 
     ral_context               context;
     system_hashed_ansi_string name;
@@ -85,7 +85,7 @@ typedef struct
     PFNGLTEXPARAMETERIPROC          pGLTexParameteri;
     PFNGLUNIFORMBLOCKBINDINGPROC    pGLUniformBlockBinding;
     PFNGLUSEPROGRAMPROC             pGLUseProgram;
-} _ogl_ui_texture_preview;
+} _ui_texture_preview;
 
 /** Internal variables */
 static const char* ui_texture_preview_renderer_sampler2d_alpha_body      = "result = vec4(textureLod(texture, uv, 0).aaa, 1.0);\n";
@@ -125,21 +125,21 @@ static const char* ui_texture_preview_sampler2darray_type = "sampler2DArray";
 
 
 /** TODO */
-PRIVATE const char* _ogl_ui_texture_preview_get_program_name(ogl_ui_texture_preview_type type)
+PRIVATE const char* _ui_texture_preview_get_program_name(ui_texture_preview_type type)
 {
-    const char* result = (type == OGL_UI_TEXTURE_PREVIEW_TYPE_SAMPLER2D_ALPHA) ? "UI texture preview [sampler2d alpha]" :
-                         (type == OGL_UI_TEXTURE_PREVIEW_TYPE_SAMPLER2D_DEPTH) ? "UI texture preview [sampler2d depth]" :
-                         (type == OGL_UI_TEXTURE_PREVIEW_TYPE_SAMPLER2D_RED)   ? "UI texture preview [sampler2d red]"   :
-                         (type == OGL_UI_TEXTURE_PREVIEW_TYPE_SAMPLER2D_RGB)   ? "UI texture preview [sampler2d rgb]"   :
-                         (type == OGL_UI_TEXTURE_PREVIEW_TYPE_SAMPLER2D_RGBA)  ? "UI texture preview [sampler2d rgba]"  :
-                                                                                 "UI texture preview [sampler2DArray depth]";
+    const char* result = (type == UI_TEXTURE_PREVIEW_TYPE_SAMPLER2D_ALPHA) ? "UI texture preview [sampler2d alpha]" :
+                         (type == UI_TEXTURE_PREVIEW_TYPE_SAMPLER2D_DEPTH) ? "UI texture preview [sampler2d depth]" :
+                         (type == UI_TEXTURE_PREVIEW_TYPE_SAMPLER2D_RED)   ? "UI texture preview [sampler2d red]"   :
+                         (type == UI_TEXTURE_PREVIEW_TYPE_SAMPLER2D_RGB)   ? "UI texture preview [sampler2d rgb]"   :
+                         (type == UI_TEXTURE_PREVIEW_TYPE_SAMPLER2D_RGBA)  ? "UI texture preview [sampler2d rgba]"  :
+                                                                             "UI texture preview [sampler2DArray depth]";
 
     return result;
 }
 
 /** TODO */
-PRIVATE void _ogl_ui_texture_preview_init_program(ogl_ui                   ui,
-                                                  _ogl_ui_texture_preview* texture_preview_ptr)
+PRIVATE void _ui_texture_preview_init_program(ui                   ui_instance,
+                                              _ui_texture_preview* texture_preview_ptr)
 {
     /* Create all objects */
     ral_context context = NULL;
@@ -148,21 +148,21 @@ PRIVATE void _ogl_ui_texture_preview_init_program(ogl_ui                   ui,
 
     const ral_shader_create_info fs_create_info =
     {
-        system_hashed_ansi_string_create_by_merging_two_strings(_ogl_ui_texture_preview_get_program_name(texture_preview_ptr->preview_type),
-                                                                                                         " fragment shader"),
+        system_hashed_ansi_string_create_by_merging_two_strings(_ui_texture_preview_get_program_name(texture_preview_ptr->preview_type),
+                                                                                                     " fragment shader"),
         RAL_SHADER_TYPE_FRAGMENT
     };
     const ral_shader_create_info vs_create_info =
     {
-        system_hashed_ansi_string_create_by_merging_two_strings(_ogl_ui_texture_preview_get_program_name(texture_preview_ptr->preview_type),
-                                                                                                         " vertex shader"),
+        system_hashed_ansi_string_create_by_merging_two_strings(_ui_texture_preview_get_program_name(texture_preview_ptr->preview_type),
+                                                                                                     " vertex shader"),
         RAL_SHADER_TYPE_VERTEX
     };
 
     const ral_program_create_info program_create_info =
     {
         RAL_PROGRAM_SHADER_STAGE_BIT_FRAGMENT | RAL_PROGRAM_SHADER_STAGE_BIT_VERTEX,
-        system_hashed_ansi_string_create(_ogl_ui_texture_preview_get_program_name(texture_preview_ptr->preview_type) )
+        system_hashed_ansi_string_create(_ui_texture_preview_get_program_name(texture_preview_ptr->preview_type) )
     };
 
     const ral_shader_create_info shader_create_info_items[] =
@@ -175,7 +175,7 @@ PRIVATE void _ogl_ui_texture_preview_init_program(ogl_ui                   ui,
     ral_shader     result_shaders[n_shader_create_info_items];
 
 
-    context = ogl_ui_get_context(ui);
+    context = ui_get_context(ui_instance);
 
     if (!ral_context_create_shaders(texture_preview_ptr->context,
                                     n_shader_create_info_items,
@@ -209,7 +209,7 @@ PRIVATE void _ogl_ui_texture_preview_init_program(ogl_ui                   ui,
 
     switch (texture_preview_ptr->preview_type)
     {
-        case OGL_UI_TEXTURE_PREVIEW_TYPE_SAMPLER2D_ALPHA:
+        case UI_TEXTURE_PREVIEW_TYPE_SAMPLER2D_ALPHA:
         {
             render_result_body = ui_texture_preview_renderer_sampler2d_alpha_body;
             sampler_type_body  = ui_texture_preview_sampler2d_type;
@@ -217,7 +217,7 @@ PRIVATE void _ogl_ui_texture_preview_init_program(ogl_ui                   ui,
             break;
         }
 
-        case OGL_UI_TEXTURE_PREVIEW_TYPE_SAMPLER2D_DEPTH:
+        case UI_TEXTURE_PREVIEW_TYPE_SAMPLER2D_DEPTH:
         {
             render_result_body = ui_texture_preview_renderer_sampler2d_depth_body;
             sampler_type_body  = ui_texture_preview_sampler2d_type;
@@ -225,7 +225,7 @@ PRIVATE void _ogl_ui_texture_preview_init_program(ogl_ui                   ui,
             break;
         }
 
-        case OGL_UI_TEXTURE_PREVIEW_TYPE_SAMPLER2D_RED:
+        case UI_TEXTURE_PREVIEW_TYPE_SAMPLER2D_RED:
         {
             render_result_body = ui_texture_preview_renderer_sampler2d_red_body;
             sampler_type_body  = ui_texture_preview_sampler2d_type;
@@ -233,7 +233,7 @@ PRIVATE void _ogl_ui_texture_preview_init_program(ogl_ui                   ui,
             break;
         }
 
-        case OGL_UI_TEXTURE_PREVIEW_TYPE_SAMPLER2D_RGB:
+        case UI_TEXTURE_PREVIEW_TYPE_SAMPLER2D_RGB:
         {
             render_result_body = ui_texture_preview_renderer_sampler2d_rgb_body;
             sampler_type_body  = ui_texture_preview_sampler2d_type;
@@ -241,7 +241,7 @@ PRIVATE void _ogl_ui_texture_preview_init_program(ogl_ui                   ui,
             break;
         }
 
-        case OGL_UI_TEXTURE_PREVIEW_TYPE_SAMPLER2D_RGBA:
+        case UI_TEXTURE_PREVIEW_TYPE_SAMPLER2D_RGBA:
         {
             render_result_body = ui_texture_preview_renderer_sampler2d_rgba_body;
             sampler_type_body  = ui_texture_preview_sampler2d_type;
@@ -249,7 +249,7 @@ PRIVATE void _ogl_ui_texture_preview_init_program(ogl_ui                   ui,
             break;
         }
 
-        case OGL_UI_TEXTURE_PREVIEW_TYPE_SAMPLER2DARRAY_DEPTH:
+        case UI_TEXTURE_PREVIEW_TYPE_SAMPLER2DARRAY_DEPTH:
         {
             render_result_body = ui_texture_preview_renderer_sampler2darray_depth_body;
             sampler_type_body  = ui_texture_preview_sampler2darray_type;
@@ -300,9 +300,9 @@ PRIVATE void _ogl_ui_texture_preview_init_program(ogl_ui                   ui,
     }
 
     /* Register the prgoram with UI so following button instances will reuse the program */
-    ogl_ui_register_program(ui,
-                            system_hashed_ansi_string_create(_ogl_ui_texture_preview_get_program_name(texture_preview_ptr->preview_type)),
-                            texture_preview_ptr->program);
+    ui_register_program(ui_instance,
+                        system_hashed_ansi_string_create(_ui_texture_preview_get_program_name(texture_preview_ptr->preview_type)),
+                        texture_preview_ptr->program);
 
     /* Release shaders we will no longer need */
     const ral_shader shaders_to_release[] =
@@ -319,15 +319,15 @@ PRIVATE void _ogl_ui_texture_preview_init_program(ogl_ui                   ui,
 }
 
 /** TODO */
-PRIVATE void _ogl_ui_texture_preview_init_texture_renderer_callback(ogl_context context,
-                                                                    void*       texture_preview)
+PRIVATE void _ui_texture_preview_init_texture_renderer_callback(ogl_context context,
+                                                                void*       texture_preview)
 {
-    _ogl_ui_texture_preview* texture_preview_ptr = (_ogl_ui_texture_preview*) texture_preview;
-    const raGL_program       program_raGL        = ral_context_get_program_gl(texture_preview_ptr->context,
-                                                                              texture_preview_ptr->program);
-    GLuint                   program_raGL_id     = 0;
-    system_window            window              = NULL;
-    int                      window_size[2]      = {0};
+    _ui_texture_preview* texture_preview_ptr = (_ui_texture_preview*) texture_preview;
+    const raGL_program   program_raGL        = ral_context_get_program_gl(texture_preview_ptr->context,
+                                                                          texture_preview_ptr->program);
+    GLuint               program_raGL_id     = 0;
+    system_window        window              = NULL;
+    int                  window_size[2]      = {0};
 
     ASSERT_DEBUG_SYNC(!texture_preview_ptr->texture_initialized,
                       "TO already initialized");
@@ -526,9 +526,9 @@ PRIVATE void _ogl_ui_texture_preview_init_texture_renderer_callback(ogl_context 
 }
 
 /** Please see header for specification */
-PUBLIC void ogl_ui_texture_preview_deinit(void* internal_instance)
+PUBLIC void ui_texture_preview_deinit(void* internal_instance)
 {
-    _ogl_ui_texture_preview* ui_texture_preview_ptr = (_ogl_ui_texture_preview*) internal_instance;
+    _ui_texture_preview* ui_texture_preview_ptr = (_ui_texture_preview*) internal_instance;
 
     ral_context_delete_objects(ui_texture_preview_ptr->context,
                                RAL_CONTEXT_OBJECT_TYPE_PROGRAM,
@@ -557,16 +557,16 @@ PUBLIC void ogl_ui_texture_preview_deinit(void* internal_instance)
 }
 
 /** Please see header for specification */
-PUBLIC RENDERING_CONTEXT_CALL void ogl_ui_texture_preview_draw(void* internal_instance)
+PUBLIC RENDERING_CONTEXT_CALL void ui_texture_preview_draw(void* internal_instance)
 {
-    float                    layer_index         = 0.0f;
-    _ogl_ui_texture_preview* texture_preview_ptr = (_ogl_ui_texture_preview*) internal_instance;
-    GLenum                   texture_target      = GL_ZERO;
-    ral_texture_type         texture_type        = RAL_TEXTURE_TYPE_UNKNOWN;
+    float                layer_index         = 0.0f;
+    _ui_texture_preview* texture_preview_ptr = (_ui_texture_preview*) internal_instance;
+    GLenum               texture_target      = GL_ZERO;
+    ral_texture_type     texture_type        = RAL_TEXTURE_TYPE_UNKNOWN;
 
-    const raGL_program       program_raGL    = ral_context_get_program_gl(texture_preview_ptr->context,
-                                                                          texture_preview_ptr->program);
-    GLuint                   program_raGL_id = 0;
+    const raGL_program   program_raGL    = ral_context_get_program_gl(texture_preview_ptr->context,
+                                                                      texture_preview_ptr->program);
+    GLuint               program_raGL_id = 0;
 
     raGL_program_get_property(program_raGL,
                               RAGL_PROGRAM_PROPERTY_ID,
@@ -581,8 +581,8 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_ui_texture_preview_draw(void* internal_in
     /* If TO was not initialized, set it up now */
     if (!texture_preview_ptr->texture_initialized)
     {
-        _ogl_ui_texture_preview_init_texture_renderer_callback(ral_context_get_gl_context(texture_preview_ptr->context),
-                                                               texture_preview_ptr);
+        _ui_texture_preview_init_texture_renderer_callback(ral_context_get_gl_context(texture_preview_ptr->context),
+                                                           texture_preview_ptr);
     }
 
     /* Make sure user-requested texture is bound to zeroth texture unit before we continue */
@@ -726,22 +726,22 @@ end:
 }
 
 /** Please see header for specification */
-PUBLIC void ogl_ui_texture_preview_get_property(const void*              texture_preview,
-                                                _ogl_ui_control_property property,
-                                                void*                    out_result)
+PUBLIC void ui_texture_preview_get_property(const void*         texture_preview,
+                                            ui_control_property property,
+                                            void*               out_result)
 {
-    _ogl_ui_texture_preview* texture_preview_ptr = (_ogl_ui_texture_preview*) texture_preview;
+    _ui_texture_preview* texture_preview_ptr = (_ui_texture_preview*) texture_preview;
 
     switch (property)
     {
-        case OGL_UI_CONTROL_PROPERTY_GENERAL_VISIBLE:
+        case UI_CONTROL_PROPERTY_GENERAL_VISIBLE:
         {
             *(bool*) out_result = texture_preview_ptr->visible;
 
             break;
         }
 
-        case OGL_UI_CONTROL_PROPERTY_TEXTURE_PREVIEW_BLEND_COLOR:
+        case UI_CONTROL_PROPERTY_TEXTURE_PREVIEW_BLEND_COLOR:
         {
             memcpy(out_result,
                    texture_preview_ptr->blend_color,
@@ -750,56 +750,56 @@ PUBLIC void ogl_ui_texture_preview_get_property(const void*              texture
             break;
         }
 
-        case OGL_UI_CONTROL_PROPERTY_TEXTURE_PREVIEW_BLEND_EQUATION_ALPHA:
+        case UI_CONTROL_PROPERTY_TEXTURE_PREVIEW_BLEND_EQUATION_ALPHA:
         {
             *(GLenum*) out_result = texture_preview_ptr->blend_equation_alpha;
 
             break;
         }
 
-        case OGL_UI_CONTROL_PROPERTY_TEXTURE_PREVIEW_BLEND_EQUATION_RGB:
+        case UI_CONTROL_PROPERTY_TEXTURE_PREVIEW_BLEND_EQUATION_RGB:
         {
             *(GLenum*) out_result = texture_preview_ptr->blend_equation_rgb;
 
             break;
         }
 
-        case OGL_UI_CONTROL_PROPERTY_TEXTURE_PREVIEW_BLEND_FUNCTION_DST_ALPHA:
+        case UI_CONTROL_PROPERTY_TEXTURE_PREVIEW_BLEND_FUNCTION_DST_ALPHA:
         {
             *(GLenum*) out_result = texture_preview_ptr->blend_function_dst_alpha;
 
             break;
         }
 
-        case OGL_UI_CONTROL_PROPERTY_TEXTURE_PREVIEW_BLEND_FUNCTION_DST_RGB:
+        case UI_CONTROL_PROPERTY_TEXTURE_PREVIEW_BLEND_FUNCTION_DST_RGB:
         {
             *(GLenum*) out_result = texture_preview_ptr->blend_function_dst_rgb;
 
             break;
         }
 
-        case OGL_UI_CONTROL_PROPERTY_TEXTURE_PREVIEW_BLEND_FUNCTION_SRC_ALPHA:
+        case UI_CONTROL_PROPERTY_TEXTURE_PREVIEW_BLEND_FUNCTION_SRC_ALPHA:
         {
             *(GLenum*) out_result = texture_preview_ptr->blend_function_src_alpha;
 
             break;
         }
 
-        case OGL_UI_CONTROL_PROPERTY_TEXTURE_PREVIEW_BLEND_FUNCTION_SRC_RGB:
+        case UI_CONTROL_PROPERTY_TEXTURE_PREVIEW_BLEND_FUNCTION_SRC_RGB:
         {
             *(GLenum*) out_result = texture_preview_ptr->blend_function_src_rgb;
 
             break;
         }
 
-        case OGL_UI_CONTROL_PROPERTY_TEXTURE_PREVIEW_IS_BLENDING_ENABLED:
+        case UI_CONTROL_PROPERTY_TEXTURE_PREVIEW_IS_BLENDING_ENABLED:
         {
             *(bool*) out_result = texture_preview_ptr->is_blending_enabled;
 
             break;
         }
 
-        case OGL_UI_CONTROL_PROPERTY_TEXTURE_PREVIEW_SHOW_TEXTURE_NAME:
+        case UI_CONTROL_PROPERTY_TEXTURE_PREVIEW_SHOW_TEXTURE_NAME:
         {
             ogl_text_get_text_string_property(texture_preview_ptr->text_renderer,
                                               OGL_TEXT_STRING_PROPERTY_VISIBILITY,
@@ -809,7 +809,7 @@ PUBLIC void ogl_ui_texture_preview_get_property(const void*              texture
             break;
         }
 
-        case OGL_UI_CONTROL_PROPERTY_TEXTURE_PREVIEW_TEXTURE_RAL:
+        case UI_CONTROL_PROPERTY_TEXTURE_PREVIEW_TEXTURE_RAL:
         {
             *(ral_texture*) out_result = texture_preview_ptr->texture;
 
@@ -819,21 +819,21 @@ PUBLIC void ogl_ui_texture_preview_get_property(const void*              texture
         default:
         {
             ASSERT_DEBUG_SYNC(false,
-                              "Unrecognized _ogl_ui_control_property value");
+                              "Unrecognized ui_control_property value");
         }
     } /* switch (property_value) */
 }
 
 /** Please see header for specification */
-PUBLIC void* ogl_ui_texture_preview_init(ogl_ui                      instance,
-                                         ogl_text                    text_renderer,
-                                         system_hashed_ansi_string   name,
-                                         const float*                x1y1,
-                                         const float*                max_size,
-                                         ral_texture                 to,
-                                         ogl_ui_texture_preview_type preview_type)
+PUBLIC void* ui_texture_preview_init(ui                        instance,
+                                     ogl_text                  text_renderer,
+                                     system_hashed_ansi_string name,
+                                     const float*              x1y1,
+                                     const float*              max_size,
+                                     ral_texture               to,
+                                     ui_texture_preview_type   preview_type)
 {
-    _ogl_ui_texture_preview* new_texture_preview_ptr = new (std::nothrow) _ogl_ui_texture_preview;
+    _ui_texture_preview* new_texture_preview_ptr = new (std::nothrow) _ui_texture_preview;
 
     ASSERT_ALWAYS_SYNC(new_texture_preview_ptr != NULL,
                        "Out of memory");
@@ -843,7 +843,7 @@ PUBLIC void* ogl_ui_texture_preview_init(ogl_ui                      instance,
         /* Initialize fields */
         memset(new_texture_preview_ptr,
                0,
-               sizeof(_ogl_ui_texture_preview) );
+               sizeof(_ui_texture_preview) );
         memcpy(new_texture_preview_ptr->max_size,
                max_size,
                sizeof(float) * 2);
@@ -851,7 +851,7 @@ PUBLIC void* ogl_ui_texture_preview_init(ogl_ui                      instance,
         new_texture_preview_ptr->x1y1x2y2[0]         =     x1y1[0];
         new_texture_preview_ptr->x1y1x2y2[1]         = 1 - x1y1[1];
 
-        new_texture_preview_ptr->context             = ogl_ui_get_context(instance);
+        new_texture_preview_ptr->context             = ui_get_context(instance);
         new_texture_preview_ptr->backend_type        = RAL_BACKEND_TYPE_UNKNOWN;
         new_texture_preview_ptr->layer_shown         = 1;
         new_texture_preview_ptr->name                = name;
@@ -945,13 +945,13 @@ PUBLIC void* ogl_ui_texture_preview_init(ogl_ui                      instance,
         }
 
         /* Retrieve the rendering program */
-        new_texture_preview_ptr->program = ogl_ui_get_registered_program(instance,
-                                                                         system_hashed_ansi_string_create(_ogl_ui_texture_preview_get_program_name(preview_type)) );
+        new_texture_preview_ptr->program = ui_get_registered_program(instance,
+                                                                     system_hashed_ansi_string_create(_ui_texture_preview_get_program_name(preview_type)) );
 
         if (new_texture_preview_ptr->program == NULL)
         {
-            _ogl_ui_texture_preview_init_program(instance,
-                                                 new_texture_preview_ptr);
+            _ui_texture_preview_init_program(instance,
+                                             new_texture_preview_ptr);
 
             ASSERT_DEBUG_SYNC(new_texture_preview_ptr->program != NULL,
                               "Could not initialize texture preview UI program");
@@ -962,7 +962,7 @@ PUBLIC void* ogl_ui_texture_preview_init(ogl_ui                      instance,
         if (to != NULL)
         {
             ogl_context_request_callback_from_context_thread(ral_context_get_gl_context(new_texture_preview_ptr->context),
-                                                             _ogl_ui_texture_preview_init_texture_renderer_callback,
+                                                             _ui_texture_preview_init_texture_renderer_callback,
                                                              new_texture_preview_ptr);
         }
     } /* if (new_texture_preview_ptr != NULL) */
@@ -971,15 +971,15 @@ PUBLIC void* ogl_ui_texture_preview_init(ogl_ui                      instance,
 }
 
 /** Please see header for specification */
-PUBLIC void ogl_ui_texture_preview_set_property(void*                    texture_preview,
-                                                _ogl_ui_control_property property,
-                                                const void*              data)
+PUBLIC void ui_texture_preview_set_property(void*               texture_preview,
+                                            ui_control_property property,
+                                            const void*         data)
 {
-    _ogl_ui_texture_preview* texture_preview_ptr = (_ogl_ui_texture_preview*) texture_preview;
+    _ui_texture_preview* texture_preview_ptr = (_ui_texture_preview*) texture_preview;
 
     switch (property)
     {
-        case OGL_UI_CONTROL_PROPERTY_TEXTURE_PREVIEW_BLEND_COLOR:
+        case UI_CONTROL_PROPERTY_TEXTURE_PREVIEW_BLEND_COLOR:
         {
             memcpy(texture_preview_ptr->blend_color,
                    data,
@@ -988,63 +988,63 @@ PUBLIC void ogl_ui_texture_preview_set_property(void*                    texture
             break;
         }
 
-        case OGL_UI_CONTROL_PROPERTY_TEXTURE_PREVIEW_BLEND_EQUATION_ALPHA:
+        case UI_CONTROL_PROPERTY_TEXTURE_PREVIEW_BLEND_EQUATION_ALPHA:
         {
             texture_preview_ptr->blend_equation_alpha = *(GLenum*) data;
 
             break;
         }
 
-        case OGL_UI_CONTROL_PROPERTY_TEXTURE_PREVIEW_BLEND_EQUATION_RGB:
+        case UI_CONTROL_PROPERTY_TEXTURE_PREVIEW_BLEND_EQUATION_RGB:
         {
             texture_preview_ptr->blend_equation_rgb = *(GLenum*) data;
 
             break;
         }
 
-        case OGL_UI_CONTROL_PROPERTY_TEXTURE_PREVIEW_BLEND_FUNCTION_DST_ALPHA:
+        case UI_CONTROL_PROPERTY_TEXTURE_PREVIEW_BLEND_FUNCTION_DST_ALPHA:
         {
             texture_preview_ptr->blend_function_dst_alpha = *(GLenum*) data;
 
             break;
         }
 
-        case OGL_UI_CONTROL_PROPERTY_TEXTURE_PREVIEW_BLEND_FUNCTION_DST_RGB:
+        case UI_CONTROL_PROPERTY_TEXTURE_PREVIEW_BLEND_FUNCTION_DST_RGB:
         {
             texture_preview_ptr->blend_function_dst_rgb = *(GLenum*) data;
 
             break;
         }
 
-        case OGL_UI_CONTROL_PROPERTY_TEXTURE_PREVIEW_BLEND_FUNCTION_SRC_ALPHA:
+        case UI_CONTROL_PROPERTY_TEXTURE_PREVIEW_BLEND_FUNCTION_SRC_ALPHA:
         {
             texture_preview_ptr->blend_function_src_alpha = *(GLenum*) data;
 
             break;
         }
 
-        case OGL_UI_CONTROL_PROPERTY_TEXTURE_PREVIEW_BLEND_FUNCTION_SRC_RGB:
+        case UI_CONTROL_PROPERTY_TEXTURE_PREVIEW_BLEND_FUNCTION_SRC_RGB:
         {
             texture_preview_ptr->blend_function_src_rgb = *(GLenum*) data;
 
             break;
         }
 
-        case OGL_UI_CONTROL_PROPERTY_TEXTURE_PREVIEW_IS_BLENDING_ENABLED:
+        case UI_CONTROL_PROPERTY_TEXTURE_PREVIEW_IS_BLENDING_ENABLED:
         {
             texture_preview_ptr->is_blending_enabled = *(bool*) data;
 
             break;
         }
 
-        case OGL_UI_CONTROL_PROPERTY_TEXTURE_PREVIEW_LAYER_SHOWN:
+        case UI_CONTROL_PROPERTY_TEXTURE_PREVIEW_LAYER_SHOWN:
         {
             texture_preview_ptr->layer_shown = *(GLuint*) data;
 
             break;
         }
 
-        case OGL_UI_CONTROL_PROPERTY_TEXTURE_PREVIEW_SHOW_TEXTURE_NAME:
+        case UI_CONTROL_PROPERTY_TEXTURE_PREVIEW_SHOW_TEXTURE_NAME:
         {
             ogl_text_set_text_string_property(texture_preview_ptr->text_renderer,
                                               texture_preview_ptr->text_index,
@@ -1054,7 +1054,7 @@ PUBLIC void ogl_ui_texture_preview_set_property(void*                    texture
             break;
         }
 
-        case OGL_UI_CONTROL_PROPERTY_TEXTURE_PREVIEW_TEXTURE_RAL:
+        case UI_CONTROL_PROPERTY_TEXTURE_PREVIEW_TEXTURE_RAL:
         {
             texture_preview_ptr->texture             = *(ral_texture*) data;
             texture_preview_ptr->texture_initialized = false;
@@ -1065,7 +1065,7 @@ PUBLIC void ogl_ui_texture_preview_set_property(void*                    texture
         default:
         {
             ASSERT_DEBUG_SYNC(false,
-                              "Unrecognized _ogl_ui_control_property value requested");
+                              "Unrecognized ui_control_property value requested");
         }
     } /* switch (property) */
 }
