@@ -6,7 +6,6 @@
 #include "shared.h"
 #include "demo/demo_flyby.h"
 #include "ogl/ogl_context.h"
-#include "ogl/ogl_curve_renderer.h"
 #include "ogl/ogl_pipeline.h"
 #include "ogl/ogl_rendering_handler.h"
 #include "ral/ral_context.h"
@@ -18,6 +17,7 @@
 #include "system/system_file_enumerator.h"
 #include "system/system_file_unpacker.h"
 #include "system/system_resizable_vector.h"
+#include "varia/varia_curve_renderer.h"
 #include "app_config.h"
 #include "include/main.h"
 #include "state.h"
@@ -33,8 +33,8 @@ void**                     _camera_path_indices          = NULL;
 system_hashed_ansi_string* _camera_path_names            = NULL;
 system_hashed_ansi_string* _camera_names                 = NULL;
 system_resizable_vector    _cameras                      = NULL;
-ogl_curve_renderer         _curve_renderer               = NULL;
-ogl_curve_item_id          _curve_renderer_item_id       = -1;
+varia_curve_renderer       _curve_renderer               = NULL;
+varia_curve_item_id        _curve_renderer_item_id       = -1;
 demo_flyby                 _flyby                        = NULL;
 system_time                _last_frame_time              = 0;
 ogl_pipeline               _pipeline                     = NULL;
@@ -191,7 +191,7 @@ PUBLIC void state_deinit()
 
     if (_curve_renderer != NULL)
     {
-        ogl_curve_renderer_release(_curve_renderer);
+        varia_curve_renderer_release(_curve_renderer);
 
         _curve_renderer = NULL;
     }
@@ -304,13 +304,13 @@ PUBLIC system_resizable_vector state_get_cameras()
 }
 
 /** Please see header for spec */
-PUBLIC ogl_curve_renderer state_get_curve_renderer()
+PUBLIC varia_curve_renderer state_get_curve_renderer()
 {
     return _curve_renderer;
 }
 
 /** Please see header for spec */
-PUBLIC ogl_curve_item_id state_get_curve_renderer_item_id()
+PUBLIC varia_curve_item_id state_get_curve_renderer_item_id()
 {
     return _curve_renderer_item_id;
 }
@@ -502,8 +502,8 @@ PUBLIC bool state_init(system_hashed_ansi_string scene_filename)
                                &scene_rendering_stage_step);
 
     /* Spawn curve renderer */
-    _curve_renderer = ogl_curve_renderer_create(ral_context_get_gl_context(_context),
-                                                system_hashed_ansi_string_create("Curve renderer") );
+    _curve_renderer = varia_curve_renderer_create(ral_context_get_gl_context(_context),
+                                                  system_hashed_ansi_string_create("Curve renderer") );
 
 end:
     /* Release the unpacker */
@@ -556,8 +556,8 @@ PUBLIC void state_set_active_camera_path_index(unsigned int index)
 
     if (_curve_renderer_item_id != -1)
     {
-        ogl_curve_renderer_delete_curve(_curve_renderer,
-                                        _curve_renderer_item_id);
+        varia_curve_renderer_delete_curve(_curve_renderer,
+                                          _curve_renderer_item_id);
 
         _curve_renderer_item_id = -1;
     }
@@ -589,13 +589,13 @@ PUBLIC void state_set_active_camera_path_index(unsigned int index)
             ASSERT_DEBUG_SYNC(camera_node != NULL,
                               "Could not retrieve owner node for selected camera.");
 
-            _curve_renderer_item_id = ogl_curve_renderer_add_scene_graph_node_curve(_curve_renderer,
-                                                                                    graph,
-                                                                                    camera_node,
-                                                                                    curve_color,
-                                                                                    _scene_duration,
-                                                                                    15,      /* n_samples_per_second */
-                                                                                    10.0f); /* view_vector_length */
+            _curve_renderer_item_id = varia_curve_renderer_add_scene_graph_node_curve(_curve_renderer,
+                                                                                      graph,
+                                                                                      camera_node,
+                                                                                      curve_color,
+                                                                                      _scene_duration,
+                                                                                      15,      /* n_samples_per_second */
+                                                                                      10.0f); /* view_vector_length */
        }
     }
 }

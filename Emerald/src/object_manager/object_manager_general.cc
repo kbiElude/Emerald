@@ -32,7 +32,6 @@ static system_hashed_ansi_string _object_type_ocl_kdtree_hashed_ansi_string     
 static system_hashed_ansi_string _object_type_ocl_kernel_hashed_ansi_string                            = NULL;
 static system_hashed_ansi_string _object_type_ocl_program_hashed_ansi_string                           = NULL;
 static system_hashed_ansi_string _object_type_ogl_context_hashed_ansi_string                           = NULL;
-static system_hashed_ansi_string _object_type_ogl_curve_renderer_hashed_ansi_string                    = NULL;
 static system_hashed_ansi_string _object_type_ogl_pipeline_hashed_ansi_string                          = NULL;
 static system_hashed_ansi_string _object_type_ogl_primitive_renderer_hashed_ansi_string                = NULL;
 static system_hashed_ansi_string _object_type_ogl_rendering_handler_hashed_ansi_string                 = NULL;
@@ -88,6 +87,7 @@ static system_hashed_ansi_string _object_type_system_randomizer_hashed_ansi_stri
 static system_hashed_ansi_string _object_type_system_window_hashed_ansi_string                         = NULL;
 static system_hashed_ansi_string _object_type_ui_hashed_ansi_string                                    = NULL;
 static system_hashed_ansi_string _object_type_unknown_hashed_ansi_string                               = NULL;
+static system_hashed_ansi_string _object_type_varia_curve_renderer_hashed_ansi_string                  = NULL;
 static system_hashed_ansi_string _object_type_varia_skybox_hashed_ansi_string                          = NULL;
 
 
@@ -113,7 +113,6 @@ PUBLIC system_hashed_ansi_string object_manager_convert_object_manager_object_ty
         case OBJECT_TYPE_OCL_KERNEL:                                      return _object_type_ocl_kernel_hashed_ansi_string;
         case OBJECT_TYPE_OCL_PROGRAM:                                     return _object_type_ocl_program_hashed_ansi_string;
         case OBJECT_TYPE_OGL_CONTEXT:                                     return _object_type_ogl_context_hashed_ansi_string;
-        case OBJECT_TYPE_OGL_CURVE_RENDERER:                              return _object_type_ogl_curve_renderer_hashed_ansi_string;
         case OBJECT_TYPE_OGL_PIPELINE:                                    return _object_type_ogl_pipeline_hashed_ansi_string;
         case OBJECT_TYPE_OGL_PRIMITIVE_RENDERER:                          return _object_type_ogl_primitive_renderer_hashed_ansi_string;
         case OBJECT_TYPE_OGL_RENDERING_HANDLER:                           return _object_type_ogl_rendering_handler_hashed_ansi_string;
@@ -168,6 +167,7 @@ PUBLIC system_hashed_ansi_string object_manager_convert_object_manager_object_ty
         case OBJECT_TYPE_SYSTEM_RANDOMIZER:                               return _object_type_system_randomizer_hashed_ansi_string;
         case OBJECT_TYPE_SYSTEM_WINDOW:                                   return _object_type_system_window_hashed_ansi_string;
         case OBJECT_TYPE_UI:                                              return _object_type_ui_hashed_ansi_string;
+        case OBJECT_TYPE_VARIA_CURVE_RENDERER:                            return _object_type_varia_curve_renderer_hashed_ansi_string;
         case OBJECT_TYPE_VARIA_SKYBOX:                                    return _object_type_varia_skybox_hashed_ansi_string;
         default:                                                          return _object_type_unknown_hashed_ansi_string;
     }
@@ -366,7 +366,6 @@ PUBLIC void _object_manager_init()
     _object_type_ocl_kernel_hashed_ansi_string                            = system_hashed_ansi_string_create("OpenCL Kernels");
     _object_type_ocl_program_hashed_ansi_string                           = system_hashed_ansi_string_create("OpenCL Programs");
     _object_type_ogl_context_hashed_ansi_string                           = system_hashed_ansi_string_create("OpenGL Contexts");
-    _object_type_ogl_curve_renderer_hashed_ansi_string                    = system_hashed_ansi_string_create("Curve Renderers");
     _object_type_ogl_pipeline_hashed_ansi_string                          = system_hashed_ansi_string_create("OpenGL Pipelines");
     _object_type_ogl_primitive_renderer_hashed_ansi_string                = system_hashed_ansi_string_create("Primitive Renderers");
     _object_type_ogl_rendering_handler_hashed_ansi_string                 = system_hashed_ansi_string_create("OpenGL Rendering Handlers");
@@ -422,6 +421,7 @@ PUBLIC void _object_manager_init()
     _object_type_system_window_hashed_ansi_string                         = system_hashed_ansi_string_create("System Windows"); 
     _object_type_ui_hashed_ansi_string                                    = system_hashed_ansi_string_create("UIs");
     _object_type_unknown_hashed_ansi_string                               = system_hashed_ansi_string_create("Unknown");
+    _object_type_varia_curve_renderer_hashed_ansi_string                  = system_hashed_ansi_string_create("Varia Curve Renderers");
     _object_type_varia_skybox_hashed_ansi_string                          = system_hashed_ansi_string_create("Varia Skyboxes");
 
     /* Create "directories" (one per each object type) in the internal registry. */

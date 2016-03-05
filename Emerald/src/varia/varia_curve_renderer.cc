@@ -6,7 +6,6 @@
 #include "shared.h"
 #include "curve/curve_container.h"
 #include "ogl/ogl_context.h"
-#include "ogl/ogl_curve_renderer.h"
 #include "ogl/ogl_primitive_renderer.h"
 #include "object_manager/object_manager_general.h"
 #include "scene/scene_graph.h"
@@ -16,27 +15,28 @@
 #include "system/system_math_vector.h"
 #include "system/system_matrix4x4.h"
 #include "system/system_resizable_vector.h"
+#include "varia/varia_curve_renderer.h"
 
 /** Internal type declarations */
-typedef struct _ogl_curve_renderer_item
+typedef struct _varia_curve_renderer_item
 {
     ogl_primitive_renderer_dataset_id path_dataset_id;
     ogl_primitive_renderer_dataset_id view_vector_dataset_id;
 
-    _ogl_curve_renderer_item()
+    _varia_curve_renderer_item()
     {
         path_dataset_id        = -1;
         view_vector_dataset_id = -1;
     }
 
-    ~_ogl_curve_renderer_item()
+    ~_varia_curve_renderer_item()
     {
         ASSERT_DEBUG_SYNC(path_dataset_id == -1,
                           "Path dataset has not been released");
         ASSERT_DEBUG_SYNC(view_vector_dataset_id == -1,
                           "View vector dataset has not been released");
     }
-} _ogl_curve_renderer_item;
+} _varia_curve_renderer_item;
 
 typedef struct
 {
@@ -48,37 +48,37 @@ typedef struct
     system_hashed_ansi_string name;
 
     REFCOUNT_INSERT_VARIABLES
-} _ogl_curve_renderer;
+} _varia_curve_renderer;
 
 
 /** Reference counter impl */
-REFCOUNT_INSERT_IMPLEMENTATION(ogl_curve_renderer,
-                               ogl_curve_renderer,
-                              _ogl_curve_renderer)
+REFCOUNT_INSERT_IMPLEMENTATION(varia_curve_renderer,
+                               varia_curve_renderer,
+                              _varia_curve_renderer)
 
 /* Forward declarations */
-PRIVATE bool _ogl_curve_renderer_get_scene_graph_node_vertex_data(scene_graph               graph,
-                                                                  scene_graph_node          node,
-                                                                  system_time               duration,
-                                                                  unsigned int              n_samples_per_second,
-                                                                  float                     view_vector_length,
-                                                                  unsigned int*             out_n_vertices,
-                                                                  float**                   out_vertex_line_strip_data,
-                                                                  float**                   out_view_vector_lines_data);
-PRIVATE void _ogl_curve_renderer_release                         (void*                     renderer);
-PRIVATE void _ogl_curve_renderer_release_item                    (_ogl_curve_renderer*      renderer_ptr,
-                                                                  _ogl_curve_renderer_item* item_ptr);
+PRIVATE bool _varia_curve_renderer_get_scene_graph_node_vertex_data(scene_graph                 graph,
+                                                                    scene_graph_node            node,
+                                                                    system_time                 duration,
+                                                                    unsigned int                n_samples_per_second,
+                                                                    float                       view_vector_length,
+                                                                    unsigned int*               out_n_vertices,
+                                                                    float**                     out_vertex_line_strip_data,
+                                                                    float**                     out_view_vector_lines_data);
+PRIVATE void _varia_curve_renderer_release                         (void*                       renderer);
+PRIVATE void _varia_curve_renderer_release_item                    (_varia_curve_renderer*      renderer_ptr,
+                                                                    _varia_curve_renderer_item* item_ptr);
 
 
 /** TODO */
-PRIVATE bool _ogl_curve_renderer_get_scene_graph_node_vertex_data(scene_graph      graph,
-                                                                  scene_graph_node node,
-                                                                  system_time      duration,
-                                                                  unsigned int     n_samples_per_second,
-                                                                  float            view_vector_length,
-                                                                  unsigned int*    out_n_vertices,
-                                                                  float**          out_vertex_line_strip_data,
-                                                                  float**          out_view_vector_lines_data)
+PRIVATE bool _varia_curve_renderer_get_scene_graph_node_vertex_data(scene_graph      graph,
+                                                                    scene_graph_node node,
+                                                                    system_time      duration,
+                                                                    unsigned int     n_samples_per_second,
+                                                                    float            view_vector_length,
+                                                                    unsigned int*    out_n_vertices,
+                                                                    float**          out_vertex_line_strip_data,
+                                                                    float**          out_view_vector_lines_data)
 {
 
     uint32_t     duration_ms             = 0;
@@ -275,21 +275,21 @@ end:
 }
 
 /** TODO */
-PRIVATE void _ogl_curve_renderer_release(void* renderer)
+PRIVATE void _varia_curve_renderer_release(void* renderer)
 {
-    _ogl_curve_renderer* renderer_ptr = (_ogl_curve_renderer*) renderer;
+    _varia_curve_renderer* renderer_ptr = (_varia_curve_renderer*) renderer;
 
     if (renderer_ptr->items != NULL)
     {
-        _ogl_curve_renderer_item* item_ptr = NULL;
+        _varia_curve_renderer_item* item_ptr = NULL;
 
         while (system_resizable_vector_pop(renderer_ptr->items,
                                           &item_ptr) )
         {
             if (item_ptr != NULL)
             {
-                _ogl_curve_renderer_release_item(renderer_ptr,
-                                                 item_ptr);
+                _varia_curve_renderer_release_item(renderer_ptr,
+                                                   item_ptr);
 
                 delete item_ptr;
                 item_ptr = NULL;
@@ -309,8 +309,8 @@ PRIVATE void _ogl_curve_renderer_release(void* renderer)
 }
 
 /** TODO */
-PRIVATE void _ogl_curve_renderer_release_item(_ogl_curve_renderer*      renderer_ptr,
-                                              _ogl_curve_renderer_item* item_ptr)
+PRIVATE void _varia_curve_renderer_release_item(_varia_curve_renderer*      renderer_ptr,
+                                                _varia_curve_renderer_item* item_ptr)
 {
     ogl_primitive_renderer_delete_dataset(renderer_ptr->primitive_renderer,
                                           item_ptr->path_dataset_id);
@@ -322,33 +322,33 @@ PRIVATE void _ogl_curve_renderer_release_item(_ogl_curve_renderer*      renderer
 }
 
 /** Please see header for spec */
-PUBLIC EMERALD_API ogl_curve_item_id ogl_curve_renderer_add_scene_graph_node_curve(ogl_curve_renderer renderer,
-                                                                                   scene_graph        graph,
-                                                                                   scene_graph_node   node,
-                                                                                   const float*       curve_color,
-                                                                                   system_time        duration,
-                                                                                   unsigned int       n_samples_per_second,
-                                                                                   float              view_vector_length)
+PUBLIC EMERALD_API varia_curve_item_id varia_curve_renderer_add_scene_graph_node_curve(varia_curve_renderer renderer,
+                                                                                       scene_graph          graph,
+                                                                                       scene_graph_node     node,
+                                                                                       const float*         curve_color,
+                                                                                       system_time          duration,
+                                                                                       unsigned int         n_samples_per_second,
+                                                                                       float                view_vector_length)
 {
-    ogl_curve_item_id    item_id                     = -1;
-    _ogl_curve_renderer* renderer_ptr                = (_ogl_curve_renderer*) renderer;
-    bool                 should_include_view_vectors = (view_vector_length > 1e-5f);
+    varia_curve_item_id    item_id                     = -1;
+    _varia_curve_renderer* renderer_ptr                = (_varia_curve_renderer*) renderer;
+    bool                   should_include_view_vectors = (view_vector_length > 1e-5f);
 
     /* Prepare vertex data */
-    _ogl_curve_renderer_item* item_ptr               = NULL;
-    unsigned int              n_vertices             = 0;
-    bool                      result                 = false;
-    float*                    vertex_data            = NULL;
-    float*                    view_vector_lines_data = NULL;
+    _varia_curve_renderer_item* item_ptr               = NULL;
+    unsigned int                n_vertices             = 0;
+    bool                        result                 = false;
+    float*                      vertex_data            = NULL;
+    float*                      view_vector_lines_data = NULL;
 
-    result = _ogl_curve_renderer_get_scene_graph_node_vertex_data(graph,
-                                                                  node,
-                                                                  duration,
-                                                                  n_samples_per_second,
-                                                                  view_vector_length,
-                                                                 &n_vertices,
-                                                                 &vertex_data,
-                                                                 should_include_view_vectors ? &view_vector_lines_data : NULL);
+    result = _varia_curve_renderer_get_scene_graph_node_vertex_data(graph,
+                                                                    node,
+                                                                    duration,
+                                                                    n_samples_per_second,
+                                                                    view_vector_length,
+                                                                   &n_vertices,
+                                                                   &vertex_data,
+                                                                   should_include_view_vectors ? &view_vector_lines_data : NULL);
 
     ASSERT_ALWAYS_SYNC(result              &&
                        n_vertices  != 0    &&
@@ -361,7 +361,7 @@ PUBLIC EMERALD_API ogl_curve_item_id ogl_curve_renderer_add_scene_graph_node_cur
     }
 
     /* Spawn new item descriptor */
-    item_ptr = new (std::nothrow) _ogl_curve_renderer_item;
+    item_ptr = new (std::nothrow) _varia_curve_renderer_item;
 
     ASSERT_ALWAYS_SYNC(item_ptr != NULL,
                        "Out of memory");
@@ -407,10 +407,10 @@ end:
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API ogl_curve_renderer ogl_curve_renderer_create(ogl_context               context,
-                                                                system_hashed_ansi_string name)
+PUBLIC EMERALD_API varia_curve_renderer varia_curve_renderer_create(ogl_context               context,
+                                                                    system_hashed_ansi_string name)
 {
-    _ogl_curve_renderer* new_instance = new (std::nothrow) _ogl_curve_renderer;
+    _varia_curve_renderer* new_instance = new (std::nothrow) _varia_curve_renderer;
 
     ASSERT_DEBUG_SYNC(new_instance != NULL,
                       "Out of memory");
@@ -428,21 +428,21 @@ PUBLIC EMERALD_API ogl_curve_renderer ogl_curve_renderer_create(ogl_context     
         new_instance->n_conversion_array_items = 0;
 
         REFCOUNT_INSERT_INIT_CODE_WITH_RELEASE_HANDLER(new_instance,
-                                                       _ogl_curve_renderer_release,
-                                                       OBJECT_TYPE_OGL_CURVE_RENDERER,
-                                                       system_hashed_ansi_string_create_by_merging_two_strings("\\Curve Renderers\\",
+                                                       _varia_curve_renderer_release,
+                                                       OBJECT_TYPE_VARIA_CURVE_RENDERER,
+                                                       system_hashed_ansi_string_create_by_merging_two_strings("\\Varia Curve Renderers\\",
                                                                                                                system_hashed_ansi_string_get_buffer(name)) );
     } /* if (new_instance != NULL) */
 
-    return (ogl_curve_renderer) new_instance;
+    return (varia_curve_renderer) new_instance;
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API void ogl_curve_renderer_delete_curve(ogl_curve_renderer renderer,
-                                                        ogl_curve_item_id  item_id)
+PUBLIC EMERALD_API void varia_curve_renderer_delete_curve(varia_curve_renderer renderer,
+                                                          varia_curve_item_id  item_id)
 {
-    _ogl_curve_renderer_item* item_ptr     = NULL;
-    _ogl_curve_renderer*      renderer_ptr = (_ogl_curve_renderer*) renderer;
+    _varia_curve_renderer_item* item_ptr     = NULL;
+    _varia_curve_renderer*      renderer_ptr = (_varia_curve_renderer*) renderer;
 
     if (!system_resizable_vector_get_element_at(renderer_ptr->items,
                                                 item_id,
@@ -455,8 +455,8 @@ PUBLIC EMERALD_API void ogl_curve_renderer_delete_curve(ogl_curve_renderer rende
     }
 
     /* Release the item */
-    _ogl_curve_renderer_release_item(renderer_ptr,
-                                     item_ptr);
+    _varia_curve_renderer_release_item(renderer_ptr,
+                                       item_ptr);
 
     delete item_ptr;
     item_ptr = NULL;
@@ -472,13 +472,13 @@ end:
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API void ogl_curve_renderer_draw(      ogl_curve_renderer   renderer,
-                                                      unsigned int         n_item_ids,
-                                                const ogl_curve_item_id*   item_ids,
-                                                      system_matrix4x4     mvp)
+PUBLIC EMERALD_API void varia_curve_renderer_draw(varia_curve_renderer       renderer,
+                                                  unsigned int               n_item_ids,
+                                                  const varia_curve_item_id* item_ids,
+                                                  system_matrix4x4           mvp)
 {
-    unsigned int         n_items_used = 0;
-    _ogl_curve_renderer* renderer_ptr = (_ogl_curve_renderer*) renderer;
+    unsigned int           n_items_used = 0;
+    _varia_curve_renderer* renderer_ptr = (_varia_curve_renderer*) renderer;
 
     /* Convert curve item IDs to line strip item IDs. Use a preallocated array.
      * If necessary, scale it up.
@@ -515,7 +515,7 @@ PUBLIC EMERALD_API void ogl_curve_renderer_draw(      ogl_curve_renderer   rende
                       n_item_id < n_item_ids;
                     ++n_item_id)
     {
-        _ogl_curve_renderer_item* item_ptr = NULL;
+        _varia_curve_renderer_item* item_ptr = NULL;
 
         if (!system_resizable_vector_get_element_at(renderer_ptr->items,
                                                     item_ids[n_item_id],

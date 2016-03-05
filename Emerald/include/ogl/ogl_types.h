@@ -87,11 +87,6 @@ typedef enum
     OGL_TEXTURE_DATA_TYPE_UNDEFINED = GL_NONE
 } ogl_texture_data_type;
 
-/* Curve renderer */
-DECLARE_HANDLE(ogl_curve_renderer);
-
-typedef unsigned int ogl_curve_item_id;
-
 /* Vertex array object handles */
 DECLARE_HANDLE(ogl_context_vaos);
 DECLARE_HANDLE(ogl_vao);

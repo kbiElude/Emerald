@@ -7,6 +7,9 @@
 #define STATE_H
 
 #include "scene_renderer/scene_renderer.h"
+#include "varia/varia_types.h"
+
+
 /** TODO */
 PUBLIC void state_deinit();
 
@@ -35,10 +38,10 @@ PUBLIC void** state_get_camera_path_indices();
 PUBLIC system_hashed_ansi_string* state_get_camera_path_names();
 
 /** TODO */
-PUBLIC ogl_curve_renderer state_get_curve_renderer();
+PUBLIC varia_curve_renderer state_get_curve_renderer();
 
 /** TODO */
-PUBLIC ogl_curve_item_id state_get_curve_renderer_item_id();
+PUBLIC varia_curve_item_id state_get_curve_renderer_item_id();
 
 /** TODO */
 PUBLIC system_time state_get_last_frame_time();

@@ -13,7 +13,6 @@
 #include "mesh/mesh.h"
 #include "mesh/mesh_material.h"
 #include "ogl/ogl_context.h"
-#include "ogl/ogl_curve_renderer.h"
 #include "ogl/ogl_materials.h"
 #include "ogl/ogl_pipeline.h"
 #include "ogl/ogl_rendering_handler.h"
@@ -37,6 +36,7 @@
 #include "system/system_resizable_vector.h"
 #include "system/system_screen_mode.h"
 #include "system/system_variant.h"
+#include "varia/varia_curve_renderer.h"
 #include <string>
 #include <sstream>
 #include "app_config.h"
@@ -259,8 +259,8 @@ PUBLIC void _render_scene(ral_context context,
                                      );
 
     /* Draw curves marked as active. **/
-    const ogl_curve_item_id current_curve_item_id = state_get_curve_renderer_item_id();
-    ogl_curve_renderer      curve_renderer        = state_get_curve_renderer();
+    const varia_curve_item_id current_curve_item_id = state_get_curve_renderer_item_id();
+    varia_curve_renderer      curve_renderer        = state_get_curve_renderer();
 
     if (current_curve_item_id != -1 &&
         camera_is_flyby_active)
@@ -273,10 +273,10 @@ PUBLIC void _render_scene(ral_context context,
                                  OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
                                 &entry_points);
 
-        ogl_curve_renderer_draw(state_get_curve_renderer(),
-                                1,
-                               &current_curve_item_id,
-                                vp);
+        varia_curve_renderer_draw(state_get_curve_renderer(),
+                                  1,
+                                 &current_curve_item_id,
+                                  vp);
 
         system_matrix4x4_release(vp);
     }
