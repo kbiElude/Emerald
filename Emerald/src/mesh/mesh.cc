@@ -81,7 +81,7 @@ typedef struct
 
     /* Other */
     system_resizable_vector layers;    /* contains _mesh_layer instances */
-    system_resizable_vector materials; /* cache of all materials used by the mesh. queried by ogl_scene_renderer */
+    system_resizable_vector materials; /* cache of all materials used by the mesh. queried by scene_renderer */
     unsigned int            set_id_counter;
 
     REFCOUNT_INSERT_VARIABLES

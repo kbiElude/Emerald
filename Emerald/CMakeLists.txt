@@ -112,6 +112,8 @@ FILE(GLOB RALSources                "${EMERALD_SOURCE_DIR}/src/ral/*.cc")
 FILE(GLOB ScalarFieldIncludes       "${EMERALD_SOURCE_DIR}/include/scalar_field/*.h")
 FILE(GLOB ScalarFieldSources        "${EMERALD_SOURCE_DIR}/src/scalar_field/*.cc")
 FILE(GLOB SceneIncludes             "${EMERALD_SOURCE_DIR}/include/scene/*.h")
+FILE(GLOB SceneRendererSources      "${EMERALD_SOURCE_DIR}/src/scene_renderer/*.cc")
+FILE(GLOB SceneRendererIncludes     "${EMERALD_SOURCE_DIR}/include/scene_renderer/*.h")
 FILE(GLOB SceneSources              "${EMERALD_SOURCE_DIR}/src/scene/*.cc")
 FILE(GLOB ShadersIncludes           "${EMERALD_SOURCE_DIR}/include/shaders/*.h")
 FILE(GLOB ShadersSources            "${EMERALD_SOURCE_DIR}/src/shaders/*.cc")
@@ -185,7 +187,8 @@ SET(AllSources
                ${RALSources}
                ${RAGLSources}
                ${VariaSources}
-               ${UISources})
+               ${UISources}
+               ${SceneRendererSources})
 
 ADD_MSVC_PRECOMPILED_HEADER("shared.h" "src/shared.cc" AllSources)
 
@@ -230,6 +233,7 @@ ADD_LIBRARY(EMERALD SHARED ${AllSources}
                            ${RAGLIncludes}
                            ${VariaIncludes}
                            ${UIIncludes}
+                           ${SceneRendererIncludes}
                             Emerald.rc)
 
 GENERATE_EXPORT_HEADER(EMERALD
@@ -276,6 +280,8 @@ SOURCE_GROUP ("Scalar field includes"                        FILES ${ScalarField
 SOURCE_GROUP ("Scalar field sources"                         FILES ${ScalarFieldSources})
 SOURCE_GROUP ("Scene includes"                               FILES ${SceneIncludes})
 SOURCE_GROUP ("Scene sources"                                FILES ${SceneSources})
+SOURCE_GROUP ("Scene renderer includes"                      FILES ${SceneRendererIncludes})
+SOURCE_GROUP ("Scene renderer sources"                       FILES ${SceneRendererSources})
 SOURCE_GROUP ("Shaders includes"                             FILES ${ShadersIncludes})
 SOURCE_GROUP ("Shaders sources"                              FILES ${ShadersSources})
 SOURCE_GROUP ("SH includes"                                  FILES ${ShIncludes})

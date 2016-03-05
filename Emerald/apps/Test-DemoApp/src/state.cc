@@ -6,12 +6,12 @@
 #include "shared.h"
 #include "ogl/ogl_pipeline.h"
 #include "ogl/ogl_rendering_handler.h"
-#include "ogl/ogl_scene_renderer.h"
 #include "scene/scene.h"
 #include "scene/scene_camera.h"
 #include "scene/scene_graph.h"
 #include "scene/scene_light.h"
 #include "scene/scene_multiloader.h"
+#include "scene_renderer/scene_renderer.h"
 #include "system/system_log.h"
 #include "system/system_file_enumerator.h"
 #include "system/system_file_unpacker.h"
@@ -23,9 +23,9 @@
 /* A descriptor for a single scene */
 typedef struct _scene_descriptor
 {
-    system_time        duration;
-    ogl_scene_renderer renderer;
-    scene              this_scene;
+    system_time    duration;
+    scene_renderer renderer;
+    scene          this_scene;
 
     _scene_descriptor()
     {
@@ -87,7 +87,7 @@ PUBLIC void state_deinit()
     {
         if (_scenes[n_scene].renderer != NULL)
         {
-            ogl_scene_renderer_release(_scenes[n_scene].renderer);
+            scene_renderer_release(_scenes[n_scene].renderer);
 
             _scenes[n_scene].renderer = NULL;
         }
@@ -109,10 +109,10 @@ PUBLIC void state_deinit()
 }
 
 /** Please see header for spec */
-PUBLIC void state_get_current_frame_properties(scene*              out_current_scene,
-                                               scene_camera*       out_current_scene_camera,
-                                               ogl_scene_renderer* out_current_renderer,
-                                               system_time*        out_current_frame_time)
+PUBLIC void state_get_current_frame_properties(scene*          out_current_scene,
+                                               scene_camera*   out_current_scene_camera,
+                                               scene_renderer* out_current_renderer,
+                                               system_time*    out_current_frame_time)
 {
     system_time  current_time        = 0;
     unsigned int n_times_scene_shown = 0;
@@ -329,11 +329,11 @@ PUBLIC void state_init()
         scene_duration_summed            = _scenes_duration_summed[n_scene];
 
         /* Initialize scene renderers */
-        _scenes[n_scene].renderer = ogl_scene_renderer_create(_context,
-                                                              _scenes[n_scene].this_scene);
+        _scenes[n_scene].renderer = scene_renderer_create(_context,
+                                                          _scenes[n_scene].this_scene);
 
         /* Initialize ogl_uber instances */
-        ogl_scene_renderer_bake_gpu_assets(_scenes[n_scene].renderer);
+        scene_renderer_bake_gpu_assets(_scenes[n_scene].renderer);
     }
 
     scene_multiloader_release(loader);

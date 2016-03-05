@@ -2114,7 +2114,7 @@ end:
 
 /** TODO.
  *
- *  Used by ogl_scene_renderer.
+ *  Used by scene_renderer.
  *
  *  @param material Material to issue draw calls for. Note that this function
  *                  does not change current GL active program state - it merely

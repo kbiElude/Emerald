@@ -1,6 +1,6 @@
 /**
  *
- * Internal Emerald scene viewer (kbi/elude @2014-2015)
+ * Internal Emerald scene viewer (kbi/elude @2014-2016)
  *
  */
 #include "shared.h"
@@ -9,11 +9,11 @@
 #include "ogl/ogl_curve_renderer.h"
 #include "ogl/ogl_pipeline.h"
 #include "ogl/ogl_rendering_handler.h"
-#include "ogl/ogl_scene_renderer.h"
 #include "ral/ral_context.h"
 #include "scene/scene.h"
 #include "scene/scene_camera.h"
 #include "scene/scene_graph.h"
+#include "scene_renderer/scene_renderer.h"
 #include "system/system_critical_section.h"
 #include "system/system_file_enumerator.h"
 #include "system/system_file_unpacker.h"
@@ -42,7 +42,7 @@ uint32_t                   _pipeline_stage_id            = -1;
 bool                       _playback_status              = true;
 scene                      _scene                        = NULL;
 system_time                _scene_duration               = 0;
-ogl_scene_renderer         _scene_renderer               = NULL;
+scene_renderer             _scene_renderer               = NULL;
 
 
 typedef struct _camera
@@ -184,7 +184,7 @@ PUBLIC void state_deinit()
 
     if (_scene_renderer != NULL)
     {
-        ogl_scene_renderer_release(_scene_renderer);
+        scene_renderer_release(_scene_renderer);
 
         _scene_renderer = NULL;
     }
@@ -358,7 +358,7 @@ PUBLIC scene state_get_scene()
 }
 
 /** Please see header for spec */
-PUBLIC ogl_scene_renderer state_get_scene_renderer()
+PUBLIC scene_renderer state_get_scene_renderer()
 {
     return _scene_renderer;
 }
@@ -474,8 +474,8 @@ PUBLIC bool state_init(system_hashed_ansi_string scene_filename)
     _animation_duration_time = system_time_get_time_for_msec( uint32_t(_animation_duration_float * 1000.0f) );
 
     /* Carry on initializing */
-    _scene_renderer = ogl_scene_renderer_create(_context,
-                                                _scene);
+    _scene_renderer = scene_renderer_create(_context,
+                                            _scene);
 
     demo_flyby_set_property(_flyby,
                             DEMO_FLYBY_PROPERTY_CAMERA_LOCATION,

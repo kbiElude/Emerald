@@ -86,7 +86,7 @@ typedef enum
 
     /* Settable, float[3]. Set in run-time.
      *
-     * NOTE: This property is set during run-time by ogl_scene_renderer and is NOT
+     * NOTE: This property is set during run-time by scene_renderer and is NOT
      *       serialized. It acts merely as a communication mean between the scene
      *       graph traversation layer and actual renderer.
      *

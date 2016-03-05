@@ -15,10 +15,10 @@
 PUBLIC void state_deinit();
 
 /** TODO */
-PUBLIC void state_get_current_frame_properties(scene*              out_current_scene,
-                                               scene_camera*       out_current_scene_camera,
-                                               ogl_scene_renderer* out_current_renderer,
-                                               system_time*        out_current_frame_time);
+PUBLIC void state_get_current_frame_properties(scene*          out_current_scene,
+                                               scene_camera*   out_current_scene_camera,
+                                               scene_renderer* out_current_renderer,
+                                               system_time*    out_current_frame_time);
 
 /** TODO */
 PUBLIC postprocessing_blur_gaussian_resolution state_get_color_shadow_map_blur_resolution();

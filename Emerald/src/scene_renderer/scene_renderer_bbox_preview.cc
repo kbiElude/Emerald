@@ -1,13 +1,11 @@
 /**
  *
- * Emerald (kbi/elude @2014-2015)
+ * Emerald (kbi/elude @2014-2016)
  *
  */
 #include "shared.h"
 #include "mesh/mesh.h"
 #include "ogl/ogl_context.h"
-#include "ogl/ogl_scene_renderer.h"
-#include "ogl/ogl_scene_renderer_bbox_preview.h"
 #include "raGL/raGL_buffers.h"
 #include "raGL/raGL_program.h"
 #include "ral/ral_buffer.h"
@@ -17,6 +15,8 @@
 #include "ral/ral_shader.h"
 #include "scene/scene.h"
 #include "scene/scene_mesh.h"
+#include "scene_renderer/scene_renderer.h"
+#include "scene_renderer/scene_renderer_bbox_preview.h"
 #include "system/system_matrix4x4.h"
 #include <string.h>
 
@@ -110,14 +110,14 @@ static const char* preview_vertex_shader   = "#version 430 core\n"
                                              "}\n";
 
 /** TODO */
-typedef struct _ogl_scene_renderer_bbox_preview
+typedef struct _scene_renderer_bbox_preview
 {
     /* DO NOT release. */
     ral_context context;
 
     uint32_t                 data_n_meshes;
     scene                    owned_scene;
-    ogl_scene_renderer       owner;
+    scene_renderer           owner;
     ral_program              preview_program;
     ral_program_block_buffer preview_program_data_ub;
     GLuint                   preview_program_ub_offset_model;
@@ -134,11 +134,11 @@ typedef struct _ogl_scene_renderer_bbox_preview
     PFNGLGENVERTEXARRAYSPROC     pGLGenVertexArrays;
     PFNGLUNIFORMBLOCKBINDINGPROC pGLUniformBlockBinding;
     PFNGLUSEPROGRAMPROC          pGLUseProgram;
-} _ogl_scene_renderer_bbox_preview;
+} _scene_renderer_bbox_preview;
 
 
 /** TODO */
-PRIVATE void _ogl_context_scene_renderer_bbox_preview_init_preview_program(_ogl_scene_renderer_bbox_preview* preview_ptr)
+PRIVATE void _scene_renderer_bbox_preview_init_preview_program(_scene_renderer_bbox_preview* preview_ptr)
 {
     const ral_program_variable* model_uniform_ral_ptr = NULL;
     const ral_program_variable* vp_uniform_ral_ptr    = NULL;
@@ -324,7 +324,7 @@ end:
 }
 
 /** TODO */
-PRIVATE void _ogl_context_scene_renderer_bbox_preview_init_ub_data(_ogl_scene_renderer_bbox_preview* preview_ptr)
+PRIVATE void _scene_renderer_bbox_preview_init_ub_data(_scene_renderer_bbox_preview* preview_ptr)
 {
     ral_backend_type backend_type                    = RAL_BACKEND_TYPE_UNKNOWN;
     float*           traveller_ptr                   = NULL;
@@ -472,11 +472,11 @@ end:
 }
 
 /** Please see header for spec */
-PUBLIC ogl_scene_renderer_bbox_preview ogl_scene_renderer_bbox_preview_create(ral_context        context,
-                                                                              scene              scene,
-                                                                              ogl_scene_renderer owner)
+PUBLIC scene_renderer_bbox_preview scene_renderer_bbox_preview_create(ral_context    context,
+                                                                      scene          scene,
+                                                                      scene_renderer owner)
 {
-    _ogl_scene_renderer_bbox_preview* new_instance_ptr = new (std::nothrow) _ogl_scene_renderer_bbox_preview;
+    _scene_renderer_bbox_preview* new_instance_ptr = new (std::nothrow) _scene_renderer_bbox_preview;
 
     ASSERT_ALWAYS_SYNC(new_instance_ptr != NULL,
                        "Out of memory");
@@ -552,13 +552,13 @@ PUBLIC ogl_scene_renderer_bbox_preview ogl_scene_renderer_bbox_preview_create(ra
                           &new_instance_ptr->data_n_meshes);
     } /* if (new_instance != NULL) */
 
-    return (ogl_scene_renderer_bbox_preview) new_instance_ptr;
+    return (scene_renderer_bbox_preview) new_instance_ptr;
 }
 
 /** Please see header for spec */
-PUBLIC void ogl_scene_renderer_bbox_preview_release(ogl_scene_renderer_bbox_preview preview)
+PUBLIC void scene_renderer_bbox_preview_release(scene_renderer_bbox_preview preview)
 {
-    _ogl_scene_renderer_bbox_preview* preview_ptr = (_ogl_scene_renderer_bbox_preview*) preview;
+    _scene_renderer_bbox_preview* preview_ptr = (_scene_renderer_bbox_preview*) preview;
 
     if (preview_ptr->preview_program_data_ub != NULL)
     {
@@ -594,16 +594,16 @@ PUBLIC void ogl_scene_renderer_bbox_preview_release(ogl_scene_renderer_bbox_prev
 }
 
 /** Please see header for spec */
-PUBLIC RENDERING_CONTEXT_CALL void ogl_scene_renderer_bbox_preview_render(ogl_scene_renderer_bbox_preview preview,
-                                                                          uint32_t                        mesh_id)
+PUBLIC RENDERING_CONTEXT_CALL void scene_renderer_bbox_preview_render(scene_renderer_bbox_preview preview,
+                                                                      uint32_t                    mesh_id)
 {
-    system_matrix4x4                  model       = NULL;
-    _ogl_scene_renderer_bbox_preview* preview_ptr = (_ogl_scene_renderer_bbox_preview*) preview;
+    system_matrix4x4              model       = NULL;
+    _scene_renderer_bbox_preview* preview_ptr = (_scene_renderer_bbox_preview*) preview;
 
-    ogl_scene_renderer_get_indexed_property(preview_ptr->owner,
-                                            OGL_SCENE_RENDERER_PROPERTY_MESH_MODEL_MATRIX,
-                                            mesh_id,
-                                           &model);
+    scene_renderer_get_indexed_property(preview_ptr->owner,
+                                        SCENE_RENDERER_PROPERTY_MESH_MODEL_MATRIX,
+                                        mesh_id,
+                                       &model);
 
     /* NOTE: model may be null at this point if the item was culled out. */
     if (model != NULL)
@@ -622,15 +622,15 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_scene_renderer_bbox_preview_render(ogl_sc
 }
 
 /** Please see header for spec */
-PUBLIC RENDERING_CONTEXT_CALL void ogl_scene_renderer_bbox_preview_start(ogl_scene_renderer_bbox_preview preview,
-                                                                         system_matrix4x4                vp)
+PUBLIC RENDERING_CONTEXT_CALL void scene_renderer_bbox_preview_start(scene_renderer_bbox_preview preview,
+                                                                     system_matrix4x4            vp)
 {
-    _ogl_scene_renderer_bbox_preview* preview_ptr  = (_ogl_scene_renderer_bbox_preview*) preview;
+    _scene_renderer_bbox_preview* preview_ptr  = (_scene_renderer_bbox_preview*) preview;
 
     /* Initialize the program object if one has not been initialized yet */
     if (preview_ptr->preview_program == NULL)
     {
-        _ogl_context_scene_renderer_bbox_preview_init_preview_program(preview_ptr);
+        _scene_renderer_bbox_preview_init_preview_program(preview_ptr);
 
         ASSERT_DEBUG_SYNC(preview_ptr->preview_program != NULL,
                           "Could not initialize preview program");
@@ -639,7 +639,7 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_scene_renderer_bbox_preview_start(ogl_sce
     /* Initialize a BO store if one has not been created yet */
     if (preview_ptr->preview_program_data_ub == NULL)
     {
-        _ogl_context_scene_renderer_bbox_preview_init_ub_data(preview_ptr);
+        _scene_renderer_bbox_preview_init_ub_data(preview_ptr);
     }
 
     /* Issue the draw call */
@@ -695,9 +695,9 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_scene_renderer_bbox_preview_start(ogl_sce
 }
 
 /** Please see header for spec */
-PUBLIC RENDERING_CONTEXT_CALL void ogl_scene_renderer_bbox_preview_stop(ogl_scene_renderer_bbox_preview preview)
+PUBLIC RENDERING_CONTEXT_CALL void scene_renderer_bbox_preview_stop(scene_renderer_bbox_preview preview)
 {
-    _ogl_scene_renderer_bbox_preview* preview_ptr = (_ogl_scene_renderer_bbox_preview*) preview;
+    _scene_renderer_bbox_preview* preview_ptr = (_scene_renderer_bbox_preview*) preview;
 
     preview_ptr->pGLBindVertexArray(0);
 }

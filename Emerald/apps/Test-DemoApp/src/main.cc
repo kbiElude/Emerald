@@ -10,13 +10,13 @@
 #include "ogl/ogl_materials.h"
 #include "ogl/ogl_pipeline.h"
 #include "ogl/ogl_rendering_handler.h"
-#include "ogl/ogl_scene_renderer.h"
 #include "postprocessing/postprocessing_blur_gaussian.h"
 #include "raGL/raGL_framebuffer.h"
 #include "ral/ral_context.h"
 #include "scene/scene.h"
 #include "scene/scene_camera.h"
 #include "scene/scene_graph.h"
+#include "scene_renderer/scene_renderer.h"
 #include "system/system_event.h"
 #include "system/system_file_enumerator.h"
 #include "system/system_file_serializer.h"
@@ -100,10 +100,10 @@ PUBLIC void _render_scene(ral_context context,
                           const int*  rendering_area_px_topdown,
                           void*       not_used)
 {
-    scene_camera       current_camera   = NULL;
-    ogl_scene_renderer current_renderer = NULL;
-    scene              current_scene    = NULL;
-    system_time        frame_time       = 0;
+    scene_camera   current_camera   = NULL;
+    scene_renderer current_renderer = NULL;
+    scene          current_scene    = NULL;
+    system_time    frame_time       = 0;
 
     state_get_current_frame_properties(&current_scene,
                                        &current_camera,
@@ -139,9 +139,9 @@ PUBLIC void _render_scene(ral_context context,
      */
     scene_graph scene_renderer_graph = NULL;
 
-    ogl_scene_renderer_get_property(current_renderer,
-                                    OGL_SCENE_RENDERER_PROPERTY_GRAPH,
-                                   &scene_renderer_graph);
+    scene_renderer_get_property(current_renderer,
+                                SCENE_RENDERER_PROPERTY_GRAPH,
+                               &scene_renderer_graph);
 
     scene_graph_lock(scene_renderer_graph);
     {
@@ -177,15 +177,15 @@ PUBLIC void _render_scene(ral_context context,
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
                             &entry_points);
 
-    ogl_scene_renderer_render_scene_graph(current_renderer,
-                                          view,
-                                          projection,
-                                          current_camera,
-                                          RENDER_MODE_FORWARD_WITHOUT_DEPTH_PREPASS,
-                                          true,  /* apply_shadow_mapping */
-                                          HELPER_VISUALIZATION_BOUNDING_BOXES,
-                                          frame_time
-                                         );
+    scene_renderer_render_scene_graph(current_renderer,
+                                      view,
+                                      projection,
+                                      current_camera,
+                                      RENDER_MODE_FORWARD_WITHOUT_DEPTH_PREPASS,
+                                      true,  /* apply_shadow_mapping */
+                                      HELPER_VISUALIZATION_BOUNDING_BOXES,
+                                      frame_time
+                                     );
 
     /* Render UI */
     ui_draw();

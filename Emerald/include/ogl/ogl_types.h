@@ -92,9 +92,6 @@ DECLARE_HANDLE(ogl_curve_renderer);
 
 typedef unsigned int ogl_curve_item_id;
 
-/* Scene renderer */
-DECLARE_HANDLE(ogl_scene_renderer);
-
 /* Vertex array object handles */
 DECLARE_HANDLE(ogl_context_vaos);
 DECLARE_HANDLE(ogl_vao);

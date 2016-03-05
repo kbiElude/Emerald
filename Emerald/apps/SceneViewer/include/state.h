@@ -6,6 +6,7 @@
 #ifndef STATE_H
 #define STATE_H
 
+#include "scene_renderer/scene_renderer.h"
 /** TODO */
 PUBLIC void state_deinit();
 
@@ -62,7 +63,7 @@ PUBLIC uint32_t state_get_pipeline_stage_id();
 PUBLIC scene state_get_scene();
 
 /** TODO */
-PUBLIC ogl_scene_renderer state_get_scene_renderer();
+PUBLIC scene_renderer state_get_scene_renderer();
 
 /** TODO */
 PUBLIC bool state_init(system_hashed_ansi_string scene_filename);

@@ -9,6 +9,7 @@
 #include "ogl/ogl_types.h"
 #include "ogl/ogl_shader_constructor.h"
 #include "scene/scene_types.h"
+#include "scene_renderer/scene_renderer_types.h"
 #include "shaders/shaders_fragment_uber.h"
 
 DECLARE_HANDLE(ogl_shadow_mapping);
@@ -140,14 +141,14 @@ PUBLIC void ogl_shadow_mapping_process_mesh_for_shadow_map_rendering(scene_mesh 
 PUBLIC void ogl_shadow_mapping_release(ogl_shadow_mapping handler);
 
 /** TODO */
-PUBLIC void ogl_shadow_mapping_render_shadow_map_meshes(ogl_shadow_mapping   shadow_mapping,
-                                                        ogl_scene_renderer   renderer,
-                                                        scene                scene,
-                                                        system_time          frame_time);
+PUBLIC void ogl_shadow_mapping_render_shadow_map_meshes(ogl_shadow_mapping shadow_mapping,
+                                                        scene_renderer     renderer,
+                                                        scene              scene,
+                                                        system_time        frame_time);
 
 /** TODO */
 PUBLIC void ogl_shadow_mapping_render_shadow_maps(ogl_shadow_mapping shadow_mapping,
-                                                  ogl_scene_renderer renderer,
+                                                  scene_renderer     renderer,
                                                   scene              current_scene,
                                                   scene_camera       target_camera,
                                                   system_time        frame_time);

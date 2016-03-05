@@ -1,13 +1,11 @@
 /**
  *
- * Emerald (kbi/elude @2014-2015)
+ * Emerald (kbi/elude @2014-2016)
  *
  */
 #include "shared.h"
 #include "mesh/mesh.h"
 #include "ogl/ogl_context.h"
-#include "ogl/ogl_scene_renderer.h"
-#include "ogl/ogl_scene_renderer_normals_preview.h"
 #include "raGL/raGL_buffer.h"
 #include "raGL/raGL_program.h"
 #include "raGL/raGL_shader.h"
@@ -18,6 +16,8 @@
 #include "ral/ral_shader.h"
 #include "scene/scene.h"
 #include "scene/scene_mesh.h"
+#include "scene_renderer/scene_renderer.h"
+#include "scene_renderer/scene_renderer_normals_preview.h"
 #include "system/system_matrix4x4.h"
 #include <string.h>
 
@@ -89,7 +89,7 @@ static const char* preview_vertex_shader   = "#version 430 core\n"
                                              "}\n";
 
 /** TODO */
-typedef struct _ogl_scene_renderer_normals_preview
+typedef struct _scene_renderer_normals_preview
 {
     /* DO NOT retain/release, as this object is managed by ogl_context and retaining it
      * will cause the rendering context to never release itself.
@@ -97,7 +97,7 @@ typedef struct _ogl_scene_renderer_normals_preview
     ral_context context;
 
     scene                    owned_scene;
-    ogl_scene_renderer       owner;
+    scene_renderer           owner;
     ral_program              preview_program;
     GLint                    preview_program_normal_matrix_ub_offset;
     GLint                    preview_program_start_offsets_ub_offset;
@@ -107,18 +107,18 @@ typedef struct _ogl_scene_renderer_normals_preview
     ral_program_block_buffer preview_program_ub_vs;
     GLuint                   preview_program_ub_vs_ub_bp;
     GLint                    preview_program_vp_ub_offset;
-} _ogl_scene_renderer_normals_preview;
+} _scene_renderer_normals_preview;
 
 /* Forward declarations */
 #ifdef _DEBUG
-    PRIVATE void _ogl_scene_renderer_normals_preview_verify_context_type(ogl_context);
+    PRIVATE void _scene_renderer_normals_preview_verify_context_type(ogl_context);
 #else
-    #define _ogl_scene_renderer_normals_preview_verify_context_type(x)
+    #define _scene_renderer_normals_preview_verify_context_type(x)
 #endif
 
 
 /** TODO */
-PRIVATE void _ogl_context_scene_renderer_normals_preview_init_preview_program(_ogl_scene_renderer_normals_preview* preview_ptr)
+PRIVATE void _scene_renderer_normals_preview_init_preview_program(_scene_renderer_normals_preview* preview_ptr)
 {
     ASSERT_DEBUG_SYNC(preview_ptr->preview_program == NULL,
                       "Preview program has already been initialized");
@@ -332,11 +332,11 @@ end:
 }
 
 /** Please see header for spec */
-PUBLIC ogl_scene_renderer_normals_preview ogl_scene_renderer_normals_preview_create(ral_context        context,
-                                                                                    scene              scene,
-                                                                                    ogl_scene_renderer owner)
+PUBLIC scene_renderer_normals_preview scene_renderer_normals_preview_create(ral_context    context,
+                                                                            scene          scene,
+                                                                            scene_renderer owner)
 {
-    _ogl_scene_renderer_normals_preview* new_instance_ptr = new (std::nothrow) _ogl_scene_renderer_normals_preview;
+    _scene_renderer_normals_preview* new_instance_ptr = new (std::nothrow) _scene_renderer_normals_preview;
 
     ASSERT_ALWAYS_SYNC(new_instance_ptr != NULL,
                        "Out of memory");
@@ -358,13 +358,13 @@ PUBLIC ogl_scene_renderer_normals_preview ogl_scene_renderer_normals_preview_cre
         scene_retain(scene);
     } /* if (new_instance != NULL) */
 
-    return (ogl_scene_renderer_normals_preview) new_instance_ptr;
+    return (scene_renderer_normals_preview) new_instance_ptr;
 }
 
 /** Please see header for spec */
-PUBLIC void ogl_scene_renderer_normals_preview_release(ogl_scene_renderer_normals_preview preview)
+PUBLIC void scene_renderer_normals_preview_release(scene_renderer_normals_preview preview)
 {
-    _ogl_scene_renderer_normals_preview* preview_ptr = (_ogl_scene_renderer_normals_preview*) preview;
+    _scene_renderer_normals_preview* preview_ptr = (_scene_renderer_normals_preview*) preview;
 
     if (preview_ptr->owned_scene != NULL)
     {
@@ -400,36 +400,36 @@ PUBLIC void ogl_scene_renderer_normals_preview_release(ogl_scene_renderer_normal
 }
 
 /** Please see header for spec */
-PUBLIC RENDERING_CONTEXT_CALL void ogl_scene_renderer_normals_preview_render(ogl_scene_renderer_normals_preview preview,
-                                                                             uint32_t                           mesh_id)
+PUBLIC RENDERING_CONTEXT_CALL void scene_renderer_normals_preview_render(scene_renderer_normals_preview preview,
+                                                                         uint32_t                       mesh_id)
 {
-    const ogl_context_gl_entrypoints*    entrypoints_ptr          = NULL;
-    ral_buffer                           mesh_bo                  = NULL;
-    GLuint                               mesh_bo_id               = 0;
-    raGL_buffer                          mesh_bo_raGL             = NULL;
-    unsigned int                         mesh_bo_size             = 0;
-    uint32_t                             mesh_bo_start_offset     = -1;
-    mesh                                 mesh_instance            = NULL;
-    mesh_type                            mesh_instance_type;
-    uint32_t                             mesh_start_offset_normal = -1;
-    uint32_t                             mesh_start_offset_vertex = -1;
-    uint32_t                             mesh_stride              = -1;
-    uint32_t                             mesh_total_elements      = 0;
-    system_matrix4x4                     normal_matrix            = NULL;
-    _ogl_scene_renderer_normals_preview* preview_ptr              = (_ogl_scene_renderer_normals_preview*) preview;
+    const ogl_context_gl_entrypoints* entrypoints_ptr          = NULL;
+    ral_buffer                        mesh_bo                  = NULL;
+    GLuint                            mesh_bo_id               = 0;
+    raGL_buffer                       mesh_bo_raGL             = NULL;
+    unsigned int                      mesh_bo_size             = 0;
+    uint32_t                          mesh_bo_start_offset     = -1;
+    mesh                              mesh_instance            = NULL;
+    mesh_type                         mesh_instance_type;
+    uint32_t                          mesh_start_offset_normal = -1;
+    uint32_t                          mesh_start_offset_vertex = -1;
+    uint32_t                          mesh_stride              = -1;
+    uint32_t                          mesh_total_elements      = 0;
+    system_matrix4x4                  normal_matrix            = NULL;
+    _scene_renderer_normals_preview*  preview_ptr              = (_scene_renderer_normals_preview*) preview;
 
     /* Retrieve mesh properties */
-    ogl_context_get_property               (ral_context_get_gl_context(preview_ptr->context),
-                                            OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
-                                           &entrypoints_ptr);
-    ogl_scene_renderer_get_indexed_property(preview_ptr->owner,
-                                            OGL_SCENE_RENDERER_PROPERTY_MESH_INSTANCE,
-                                            mesh_id,
-                                           &mesh_instance);
-    ogl_scene_renderer_get_indexed_property(preview_ptr->owner,
-                                            OGL_SCENE_RENDERER_PROPERTY_MESH_NORMAL_MATRIX,
-                                            mesh_id,
-                                           &normal_matrix);
+    ogl_context_get_property           (ral_context_get_gl_context(preview_ptr->context),
+                                        OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
+                                       &entrypoints_ptr);
+    scene_renderer_get_indexed_property(preview_ptr->owner,
+                                        SCENE_RENDERER_PROPERTY_MESH_INSTANCE,
+                                        mesh_id,
+                                       &mesh_instance);
+    scene_renderer_get_indexed_property(preview_ptr->owner,
+                                        SCENE_RENDERER_PROPERTY_MESH_NORMAL_MATRIX,
+                                        mesh_id,
+                                       &normal_matrix);
 
     /* Only regular meshes are supported at the moment. Throw an assertion failure for other
      * mesh types. */
@@ -512,12 +512,12 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_scene_renderer_normals_preview_render(ogl
 }
 
 /** Please see header for spec */
-PUBLIC RENDERING_CONTEXT_CALL void ogl_scene_renderer_normals_preview_start(ogl_scene_renderer_normals_preview preview,
-                                                                            system_matrix4x4                   vp)
+PUBLIC RENDERING_CONTEXT_CALL void scene_renderer_normals_preview_start(scene_renderer_normals_preview preview,
+                                                                        system_matrix4x4               vp)
 {
     const ogl_context_gl_entrypoints_ext_direct_state_access* dsa_entrypoints_ptr = NULL;
     const ogl_context_gl_entrypoints*                         entrypoints_ptr     = NULL;
-    _ogl_scene_renderer_normals_preview*                      preview_ptr         = (_ogl_scene_renderer_normals_preview*) preview;
+    _scene_renderer_normals_preview*                          preview_ptr         = (_scene_renderer_normals_preview*) preview;
 
     ogl_context_get_property(ral_context_get_gl_context(preview_ptr->context),
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
@@ -529,7 +529,7 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_scene_renderer_normals_preview_start(ogl_
     /* Initialize the program object if one has not been initialized yet */
     if (preview_ptr->preview_program == NULL)
     {
-        _ogl_context_scene_renderer_normals_preview_init_preview_program(preview_ptr);
+        _scene_renderer_normals_preview_init_preview_program(preview_ptr);
 
         ASSERT_DEBUG_SYNC(preview_ptr->preview_program != NULL,
                           "Could not initialize preview program");
@@ -612,10 +612,10 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_scene_renderer_normals_preview_start(ogl_
 }
 
 /** Please see header for spec */
-PUBLIC RENDERING_CONTEXT_CALL void ogl_scene_renderer_normals_preview_stop(ogl_scene_renderer_normals_preview preview)
+PUBLIC RENDERING_CONTEXT_CALL void scene_renderer_normals_preview_stop(scene_renderer_normals_preview preview)
 {
-    const ogl_context_gl_entrypoints*    entrypoints_ptr = NULL;
-    _ogl_scene_renderer_normals_preview* preview_ptr     = (_ogl_scene_renderer_normals_preview*) preview;
+    const ogl_context_gl_entrypoints* entrypoints_ptr = NULL;
+    _scene_renderer_normals_preview*  preview_ptr     = (_scene_renderer_normals_preview*) preview;
 
     ogl_context_get_property(ral_context_get_gl_context(preview_ptr->context),
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,

@@ -8,7 +8,6 @@
 #include "mesh/mesh.h"
 #include "ogl/ogl_context.h"
 #include "ogl/ogl_materials.h"
-#include "ogl/ogl_scene_renderer.h"
 #include "ogl/ogl_shadow_mapping.h"
 #include "ogl/ogl_shader_constructor.h"
 #include "ogl/ogl_uber.h"
@@ -29,6 +28,7 @@
 #include "scene/scene_graph.h"
 #include "scene/scene_light.h"
 #include "scene/scene_mesh.h"
+#include "scene_renderer/scene_renderer.h"
 #include "system/system_log.h"
 #include "system/system_math_other.h"
 #include "system/system_math_vector.h"
@@ -78,7 +78,7 @@ typedef struct _ogl_shadow_mapping
     /* FBO used to render depth data to light-specific depth texture. */
     GLuint fbo_id;
 
-    /* Used during pre-processing phase, called for each ogl_scene_renderer_render_scene_graph()
+    /* Used during pre-processing phase, called for each scene_renderer_render_scene_graph()
      * call with SM enabled.
      *
      * Holds meshes that should be rendered for the SM pass that follows.
@@ -89,7 +89,7 @@ typedef struct _ogl_shadow_mapping
      *
      * Used for storing meshes which are visible from the camera PoV -
      * this is determined during pre-processing phase for each
-     * ogl_scene_renderer_render_scene_graph() call with SM enabled.
+     * scene_renderer_render_scene_graph() call with SM enabled.
      */
     system_resource_pool mesh_item_pool;
 
@@ -1130,10 +1130,10 @@ PRIVATE void _ogl_shadow_mapping_process_mesh_for_shadow_map_pre_pass(scene_mesh
         }
 
         /* Perform frustum culling. This is where the AABBs are also updated. */
-        ogl_scene_renderer_cull_against_frustum( (ogl_scene_renderer) renderer,
-                                                 mesh_gpu,
-                                                 OGL_SCENE_RENDERER_FRUSTUM_CULLING_BEHAVIOR_USE_CAMERA_CLIPPING_PLANES,
-                                                 NULL);
+        scene_renderer_cull_against_frustum( (scene_renderer) renderer,
+                                             mesh_gpu,
+                                             SCENE_RENDERER_FRUSTUM_CULLING_BEHAVIOR_USE_CAMERA_CLIPPING_PLANES,
+                                             NULL);
     }
 }
 
@@ -2602,19 +2602,19 @@ PUBLIC void ogl_shadow_mapping_process_mesh_for_shadow_map_rendering(scene_mesh 
     mesh                           mesh_instantiation_parent_gpu = NULL;
     bool                           mesh_is_shadow_caster         = false;
     _ogl_shadow_mapping_mesh_item* new_mesh_item                 = NULL;
-    ogl_scene_renderer             renderer                      = (ogl_scene_renderer) renderer_raw;
+    scene_renderer                 renderer                      = (scene_renderer) renderer_raw;
     system_matrix4x4               renderer_current_model_matrix = NULL;
     _ogl_shadow_mapping*           shadow_mapping_ptr            = NULL;
 
-    ogl_scene_renderer_get_property(renderer,
-                                    OGL_SCENE_RENDERER_PROPERTY_CONTEXT_RAL,
-                                   &context);
-    ogl_context_get_property       (ral_context_get_gl_context(context),
-                                    OGL_CONTEXT_PROPERTY_SHADOW_MAPPING,
-                                   &shadow_mapping_ptr);
-    scene_mesh_get_property        (scene_mesh_instance,
-                                    SCENE_MESH_PROPERTY_IS_SHADOW_CASTER,
-                                   &mesh_is_shadow_caster);
+    scene_renderer_get_property(renderer,
+                                SCENE_RENDERER_PROPERTY_CONTEXT_RAL,
+                               &context);
+    ogl_context_get_property   (ral_context_get_gl_context(context),
+                                OGL_CONTEXT_PROPERTY_SHADOW_MAPPING,
+                               &shadow_mapping_ptr);
+    scene_mesh_get_property    (scene_mesh_instance,
+                                SCENE_MESH_PROPERTY_IS_SHADOW_CASTER,
+                               &mesh_is_shadow_caster);
 
     if (!mesh_is_shadow_caster)
     {
@@ -2655,10 +2655,10 @@ PUBLIC void ogl_shadow_mapping_process_mesh_for_shadow_map_rendering(scene_mesh 
         culling_behavior_data[4] = 0.0f;
         culling_behavior_data[5] = (shadow_mapping_ptr->current_target_face == OGL_SHADOW_MAPPING_TARGET_FACE_2D_PARABOLOID_FRONT) ? 1.0f : -1.0f;
 
-        if (!ogl_scene_renderer_cull_against_frustum( (ogl_scene_renderer) renderer,
-                                                      mesh_instantiation_parent_gpu,
-                                                      OGL_SCENE_RENDERER_FRUSTUM_CULLING_BEHAVIOR_PASS_OBJECTS_IN_FRONT_OF_CAMERA,
-                                                      culling_behavior_data) )
+        if (!scene_renderer_cull_against_frustum( (scene_renderer) renderer,
+                                                  mesh_instantiation_parent_gpu,
+                                                  SCENE_RENDERER_FRUSTUM_CULLING_BEHAVIOR_PASS_OBJECTS_IN_FRONT_OF_CAMERA,
+                                                  culling_behavior_data) )
         {
             goto end;
         }
@@ -2666,10 +2666,10 @@ PUBLIC void ogl_shadow_mapping_process_mesh_for_shadow_map_rendering(scene_mesh 
     else
     {
         /* Not a DPSM shadow map generation pass */
-        if (!ogl_scene_renderer_cull_against_frustum( (ogl_scene_renderer) renderer,
-                                                      mesh_instantiation_parent_gpu,
-                                                      OGL_SCENE_RENDERER_FRUSTUM_CULLING_BEHAVIOR_USE_CAMERA_CLIPPING_PLANES,
-                                                      NULL) ) /* behavior_data */
+        if (!scene_renderer_cull_against_frustum( (scene_renderer) renderer,
+                                                  mesh_instantiation_parent_gpu,
+                                                  SCENE_RENDERER_FRUSTUM_CULLING_BEHAVIOR_USE_CAMERA_CLIPPING_PLANES,
+                                                  NULL) ) /* behavior_data */
         {
             goto end;
         }
@@ -2679,7 +2679,7 @@ PUBLIC void ogl_shadow_mapping_process_mesh_for_shadow_map_rendering(scene_mesh 
      * using for forward rendering, in "no rasterization" mode there is only one uber
      * that is used for the rendeirng process.
      * However, if we were to re-use the same map as in the other modes, we'd need
-     * to clean it every ogl_scene_renderer_render_scene_graph() call which could
+     * to clean it every scene_renderer_render_scene_graph() call which could
      * affect performance. It would also disrupt the shadow mapping baking.
      * Hence, for the "no rasterization mode", we use a renderer-level vector to store
      * visible meshes. This will work, as long the "no rasterization mode" does not
@@ -2690,9 +2690,9 @@ PUBLIC void ogl_shadow_mapping_process_mesh_for_shadow_map_rendering(scene_mesh 
     ASSERT_ALWAYS_SYNC(new_mesh_item != NULL,
                        "Out of memory");
 
-    ogl_scene_renderer_get_property(renderer,
-                                    OGL_SCENE_RENDERER_PROPERTY_MESH_MODEL_MATRIX,
-                                   &renderer_current_model_matrix);
+    scene_renderer_get_property(renderer,
+                                SCENE_RENDERER_PROPERTY_MESH_MODEL_MATRIX,
+                               &renderer_current_model_matrix);
 
     new_mesh_item->mesh_instance = mesh_gpu;
     new_mesh_item->model_matrix  = system_matrix4x4_create();
@@ -2722,7 +2722,7 @@ PUBLIC void ogl_shadow_mapping_release(ogl_shadow_mapping handler)
 
 /** TODO */
 PUBLIC void ogl_shadow_mapping_render_shadow_map_meshes(ogl_shadow_mapping shadow_mapping,
-                                                        ogl_scene_renderer renderer,
+                                                        scene_renderer     renderer,
                                                         scene              scene,
                                                         system_time        frame_time)
 {
@@ -2852,9 +2852,9 @@ PUBLIC void ogl_shadow_mapping_render_shadow_map_meshes(ogl_shadow_mapping shado
     /* Set VP */
     system_matrix4x4 vp = NULL;
 
-    ogl_scene_renderer_get_property(renderer,
-                                    OGL_SCENE_RENDERER_PROPERTY_VP,
-                                   &vp);
+    scene_renderer_get_property(renderer,
+                                SCENE_RENDERER_PROPERTY_VP,
+                               &vp);
 
     ogl_uber_set_shader_general_property(sm_material_uber,
                                          OGL_UBER_GENERAL_PROPERTY_VP,
@@ -2913,11 +2913,11 @@ PUBLIC void ogl_shadow_mapping_render_shadow_map_meshes(ogl_shadow_mapping shado
 }
 
 /** TODO */
-PUBLIC void ogl_shadow_mapping_render_shadow_maps(ogl_shadow_mapping   shadow_mapping,
-                                                  ogl_scene_renderer   renderer,
-                                                  scene                current_scene,
-                                                  scene_camera         target_camera,
-                                                  system_time          frame_time)
+PUBLIC void ogl_shadow_mapping_render_shadow_maps(ogl_shadow_mapping shadow_mapping,
+                                                  scene_renderer     renderer,
+                                                  scene              current_scene,
+                                                  scene_camera       target_camera,
+                                                  system_time        frame_time)
 {
     const ogl_context_gl_entrypoints_ext_direct_state_access* dsa_entrypoints_ptr = NULL;
     scene_graph                                               graph               = NULL;
@@ -2955,30 +2955,30 @@ PUBLIC void ogl_shadow_mapping_render_shadow_maps(ogl_shadow_mapping   shadow_ma
         DEFAULT_AABB_MIN_VALUE
     };
 
-    ogl_scene_renderer_set_property(renderer,
-                                    OGL_SCENE_RENDERER_PROPERTY_VISIBLE_WORLD_AABB_MAX,
-                                    default_aabb_max_setting);
-    ogl_scene_renderer_set_property(renderer,
-                                    OGL_SCENE_RENDERER_PROPERTY_VISIBLE_WORLD_AABB_MIN,
-                                    default_aabb_min_setting);
+    scene_renderer_set_property(renderer,
+                                SCENE_RENDERER_PROPERTY_VISIBLE_WORLD_AABB_MAX,
+                                default_aabb_max_setting);
+    scene_renderer_set_property(renderer,
+                                SCENE_RENDERER_PROPERTY_VISIBLE_WORLD_AABB_MIN,
+                                default_aabb_min_setting);
 
     scene_graph_traverse(graph,
-                         ogl_scene_renderer_update_current_model_matrix,
+                         scene_renderer_update_current_model_matrix,
                          NULL, /* insert_camera_proc */
-                         ogl_scene_renderer_update_light_properties,
+                         scene_renderer_update_light_properties,
                          _ogl_shadow_mapping_process_mesh_for_shadow_map_pre_pass,
                          renderer,
                          frame_time);
 
     /* Even if no meshes were found to be visible, we still need to clear the SM.
-     * Zero out visible AABB so that ogl_scene_renderer routines do not get confused
+     * Zero out visible AABB so that scene_renderer routines do not get confused
      * later on. */
-    ogl_scene_renderer_get_property(renderer,
-                                    OGL_SCENE_RENDERER_PROPERTY_VISIBLE_WORLD_AABB_MAX,
-                                    current_aabb_max_setting);
-    ogl_scene_renderer_get_property(renderer,
-                                    OGL_SCENE_RENDERER_PROPERTY_VISIBLE_WORLD_AABB_MIN,
-                                    current_aabb_min_setting);
+    scene_renderer_get_property(renderer,
+                                SCENE_RENDERER_PROPERTY_VISIBLE_WORLD_AABB_MAX,
+                                current_aabb_max_setting);
+    scene_renderer_get_property(renderer,
+                                SCENE_RENDERER_PROPERTY_VISIBLE_WORLD_AABB_MIN,
+                                current_aabb_min_setting);
 
     if (current_aabb_max_setting[0] == DEFAULT_AABB_MAX_VALUE &&
         current_aabb_max_setting[1] == DEFAULT_AABB_MAX_VALUE &&
@@ -2994,12 +2994,12 @@ PUBLIC void ogl_shadow_mapping_render_shadow_maps(ogl_shadow_mapping   shadow_ma
             0.0f
         };
 
-        ogl_scene_renderer_set_property(renderer,
-                                        OGL_SCENE_RENDERER_PROPERTY_VISIBLE_WORLD_AABB_MAX,
-                                        default_aabb_zero_setting);
-        ogl_scene_renderer_set_property(renderer,
-                                        OGL_SCENE_RENDERER_PROPERTY_VISIBLE_WORLD_AABB_MIN,
-                                        default_aabb_zero_setting);
+        scene_renderer_set_property(renderer,
+                                    SCENE_RENDERER_PROPERTY_VISIBLE_WORLD_AABB_MAX,
+                                    default_aabb_zero_setting);
+        scene_renderer_set_property(renderer,
+                                    SCENE_RENDERER_PROPERTY_VISIBLE_WORLD_AABB_MIN,
+                                    default_aabb_zero_setting);
 
         memcpy(current_aabb_max_setting,
                default_aabb_zero_setting,
@@ -3172,14 +3172,14 @@ PUBLIC void ogl_shadow_mapping_render_shadow_maps(ogl_shadow_mapping   shadow_ma
                     shadow_mapping_ptr->current_light       = current_light;
                     shadow_mapping_ptr->current_target_face = current_target_face;
 
-                    ogl_scene_renderer_render_scene_graph(renderer,
-                                                          sm_view_matrix,
-                                                          sm_projection_matrix,
-                                                          target_camera,
-                                                          RENDER_MODE_SHADOW_MAP,
-                                                          false, /* apply_shadow_mapping */
-                                                          HELPER_VISUALIZATION_NONE,
-                                                          frame_time);
+                    scene_renderer_render_scene_graph(renderer,
+                                                      sm_view_matrix,
+                                                      sm_projection_matrix,
+                                                      target_camera,
+                                                      RENDER_MODE_SHADOW_MAP,
+                                                      false, /* apply_shadow_mapping */
+                                                      HELPER_VISUALIZATION_NONE,
+                                                      frame_time);
                } /* if (it makes sense to render SM) */
 
                /* Clean up */

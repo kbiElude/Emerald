@@ -17,7 +17,6 @@
 #include "ogl/ogl_materials.h"
 #include "ogl/ogl_pipeline.h"
 #include "ogl/ogl_rendering_handler.h"
-#include "ogl/ogl_scene_renderer.h"
 #include "ogl/ogl_uber.h"
 #include "ral/ral_context.h"
 #include "scene/scene.h"
@@ -25,6 +24,7 @@
 #include "scene/scene_graph.h"
 #include "scene/scene_light.h"
 #include "scene/scene_mesh.h"
+#include "scene_renderer/scene_renderer.h"
 #include "system/system_assertions.h"
 #include "system/system_capabilities.h"
 #include "system/system_critical_section.h"
@@ -199,9 +199,9 @@ PUBLIC void _render_scene(ral_context context,
             scene_graph scene_renderer_graph = NULL;
 
             /* Compute matrices for all nodes */
-            ogl_scene_renderer_get_property(state_get_scene_renderer(),
-                                            OGL_SCENE_RENDERER_PROPERTY_GRAPH,
-                                           &scene_renderer_graph);
+            scene_renderer_get_property(state_get_scene_renderer(),
+                                        SCENE_RENDERER_PROPERTY_GRAPH,
+                                       &scene_renderer_graph);
 
             scene_graph_lock(scene_renderer_graph);
             {
@@ -241,23 +241,23 @@ PUBLIC void _render_scene(ral_context context,
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
                             &entry_points);
 
-    ogl_scene_renderer_render_scene_graph(state_get_scene_renderer(),
-                                          view,
-                                          projection,
-                                          camera,
-                                          RENDER_MODE_FORWARD_WITHOUT_DEPTH_PREPASS,
+    scene_renderer_render_scene_graph(state_get_scene_renderer(),
+                                      view,
+                                      projection,
+                                      camera,
+                                      RENDER_MODE_FORWARD_WITHOUT_DEPTH_PREPASS,
 #ifdef ENABLE_SM
-                                          true,  /* apply_shadow_mapping */
+                                      true,  /* apply_shadow_mapping */
 #else
-                                          false, /* apply_shadow_mapping */
+                                      false, /* apply_shadow_mapping */
 #endif
 #ifdef ENABLE_BB_VISUALIZATION
-                                          HELPER_VISUALIZATION_BOUNDING_BOXES,
+                                      HELPER_VISUALIZATION_BOUNDING_BOXES,
 #else
-                                          HELPER_VISUALIZATION_NONE,
+                                      HELPER_VISUALIZATION_NONE,
 #endif
-                                          frame_time
-                                         );
+                                      frame_time
+                                     );
 
     /* Draw curves marked as active. **/
     const ogl_curve_item_id current_curve_item_id = state_get_curve_renderer_item_id();
