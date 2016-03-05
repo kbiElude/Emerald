@@ -269,6 +269,8 @@ PUBLIC EMERALD_API GLenum raGL_utils_get_ogl_enum_for_ral_program_variable_type(
         GL_SAMPLER_3D,
         GL_SAMPLER_BUFFER,
         GL_SAMPLER_CUBE,
+        GL_SAMPLER_CUBE_MAP_ARRAY,
+        GL_SAMPLER_CUBE_MAP_ARRAY_SHADOW,
         GL_SAMPLER_CUBE_SHADOW,
         GL_UNSIGNED_INT,
         GL_UNSIGNED_INT_IMAGE_1D,
@@ -292,11 +294,15 @@ PUBLIC EMERALD_API GLenum raGL_utils_get_ogl_enum_for_ral_program_variable_type(
         GL_UNSIGNED_INT_SAMPLER_3D,
         GL_UNSIGNED_INT_SAMPLER_BUFFER,
         GL_UNSIGNED_INT_SAMPLER_CUBE,
+        GL_UNSIGNED_INT_SAMPLER_CUBE_MAP_ARRAY,
         GL_UNSIGNED_INT_VEC2,
         GL_UNSIGNED_INT_VEC3,
         GL_UNSIGNED_INT_VEC4,
+        0, /* GL_VOID */
     };
     static const uint32_t n_result_array_entries = sizeof(result_array) / sizeof(result_array[0]);
+
+    static_assert(n_result_array_entries == RAL_PROGRAM_VARIABLE_TYPE_COUNT, "");
 
     ASSERT_DEBUG_SYNC(in_type < n_result_array_entries,
                       "Invalid ral_uniform_type value.");
@@ -633,6 +639,8 @@ PUBLIC EMERALD_API ral_program_variable_type raGL_utils_get_ral_program_variable
         case GL_SAMPLER_3D:                                result = RAL_PROGRAM_VARIABLE_TYPE_SAMPLER_3D;                                break;
         case GL_SAMPLER_BUFFER:                            result = RAL_PROGRAM_VARIABLE_TYPE_SAMPLER_BUFFER;                            break;
         case GL_SAMPLER_CUBE:                              result = RAL_PROGRAM_VARIABLE_TYPE_SAMPLER_CUBE;                              break;
+        case GL_SAMPLER_CUBE_MAP_ARRAY:                    result = RAL_PROGRAM_VARIABLE_TYPE_SAMPLER_CUBE_ARRAY;                        break;
+        case GL_SAMPLER_CUBE_MAP_ARRAY_SHADOW:             result = RAL_PROGRAM_VARIABLE_TYPE_SAMPLER_CUBE_ARRAY_SHADOW;                 break;
         case GL_SAMPLER_CUBE_SHADOW:                       result = RAL_PROGRAM_VARIABLE_TYPE_SAMPLER_CUBE_SHADOW;                       break;
         case GL_UNSIGNED_INT:                              result = RAL_PROGRAM_VARIABLE_TYPE_UNSIGNED_INT;                              break;
         case GL_UNSIGNED_INT_IMAGE_1D:                     result = RAL_PROGRAM_VARIABLE_TYPE_UNSIGNED_INT_IMAGE_1D;                     break;
@@ -650,6 +658,7 @@ PUBLIC EMERALD_API ral_program_variable_type raGL_utils_get_ral_program_variable
         case GL_UNSIGNED_INT_SAMPLER_2D:                   result = RAL_PROGRAM_VARIABLE_TYPE_UNSIGNED_INT_SAMPLER_2D;                   break;
         case GL_UNSIGNED_INT_SAMPLER_3D:                   result = RAL_PROGRAM_VARIABLE_TYPE_UNSIGNED_INT_SAMPLER_3D;                   break;
         case GL_UNSIGNED_INT_SAMPLER_CUBE:                 result = RAL_PROGRAM_VARIABLE_TYPE_UNSIGNED_INT_SAMPLER_CUBE;                 break;
+        case GL_UNSIGNED_INT_SAMPLER_CUBE_MAP_ARRAY:       result = RAL_PROGRAM_VARIABLE_TYPE_UNSIGNED_INT_SAMPLER_CUBE_ARRAY;           break;
         case GL_UNSIGNED_INT_SAMPLER_1D_ARRAY:             result = RAL_PROGRAM_VARIABLE_TYPE_UNSIGNED_INT_SAMPLER_1D_ARRAY;             break;
         case GL_UNSIGNED_INT_SAMPLER_2D_ARRAY:             result = RAL_PROGRAM_VARIABLE_TYPE_UNSIGNED_INT_SAMPLER_2D_ARRAY;             break;
         case GL_UNSIGNED_INT_SAMPLER_2D_MULTISAMPLE:       result = RAL_PROGRAM_VARIABLE_TYPE_UNSIGNED_INT_SAMPLER_2D_MULTISAMPLE;       break;

@@ -6,8 +6,8 @@
 #ifndef SCENE_RENDERER_SM_H
 #define SCENE_RENDERER_SM_H
 
+#include "glsl/glsl_types.h"
 #include "ogl/ogl_types.h"
-#include "ogl/ogl_shader_constructor.h"
 #include "scene/scene_types.h"
 #include "scene_renderer/scene_renderer_types.h"
 #include "shaders/shaders_fragment_uber.h"
@@ -86,21 +86,21 @@ typedef enum
 } scene_renderer_sm_target_face;
 
 /** TODO */
-PUBLIC void scene_renderer_sm_adjust_fragment_uber_code(ogl_shader_constructor     shader_constructor_fs,
-                                                        uint32_t                   n_light,
-                                                        scene_light                light_instance,
-                                                        _uniform_block_id          ub_fs,
-                                                        system_hashed_ansi_string  light_world_pos_var_name,
-                                                        system_hashed_ansi_string  light_vector_norm_var_name,
-                                                        system_hashed_ansi_string  light_vector_non_norm_var_name,
-                                                        system_hashed_ansi_string* out_visibility_var_name);
+PUBLIC void scene_renderer_sm_adjust_fragment_uber_code(glsl_shader_constructor                  shader_constructor_fs,
+                                                        uint32_t                                 n_light,
+                                                        scene_light                              light_instance,
+                                                        glsl_shader_constructor_uniform_block_id ub_fs,
+                                                        system_hashed_ansi_string                light_world_pos_var_name,
+                                                        system_hashed_ansi_string                light_vector_norm_var_name,
+                                                        system_hashed_ansi_string                light_vector_non_norm_var_name,
+                                                        system_hashed_ansi_string*               out_visibility_var_name);
 
 /** TODO */
-PUBLIC void scene_renderer_sm_adjust_vertex_uber_code(ogl_shader_constructor           shader_constructor_vs,
-                                                      uint32_t                         n_light,
-                                                      shaders_fragment_uber_light_type light_type,
-                                                      _uniform_block_id                ub_vs,
-                                                      system_hashed_ansi_string        world_vertex_vec4_variable_name);
+PUBLIC void scene_renderer_sm_adjust_vertex_uber_code(glsl_shader_constructor                  shader_constructor_vs,
+                                                      uint32_t                                 n_light,
+                                                      shaders_fragment_uber_light_type         light_type,
+                                                      glsl_shader_constructor_uniform_block_id ub_vs,
+                                                      system_hashed_ansi_string                world_vertex_vec4_variable_name);
 
 /** TODO.
  *

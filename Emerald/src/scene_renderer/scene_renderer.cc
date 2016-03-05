@@ -7,7 +7,6 @@
 #include "curve/curve_container.h"
 #include "mesh/mesh_material.h"
 #include "ogl/ogl_context.h"
-#include "ogl/ogl_materials.h"
 #include "ral/ral_context.h"
 #include "ral/ral_program.h"
 #include "ral/ral_shader.h"
@@ -21,6 +20,7 @@
 #include "scene_renderer/scene_renderer_bbox_preview.h"
 #include "scene_renderer/scene_renderer_frustum_preview.h"
 #include "scene_renderer/scene_renderer_lights_preview.h"
+#include "scene_renderer/scene_renderer_materials.h"
 #include "scene_renderer/scene_renderer_normals_preview.h"
 #include "scene_renderer/scene_renderer_sm.h"
 #include "scene_renderer/scene_renderer_uber.h"
@@ -135,10 +135,10 @@ typedef struct _scene_renderer
     scene_renderer_lights_preview  lights_preview;
     scene_renderer_normals_preview normals_preview;
 
-    ral_context    context;
-    ogl_materials  material_manager;
-    scene          owned_scene;
-    system_variant temp_variant_float;
+    ral_context              context;
+    scene_renderer_materials material_manager;
+    scene                    owned_scene;
+    system_variant           temp_variant_float;
 
     float                               current_camera_visible_world_aabb_max[3];
     float                               current_camera_visible_world_aabb_min[3];
@@ -197,7 +197,7 @@ PRIVATE void _scene_renderer_get_light_color                          (scene_lig
                                                                        system_variant              temp_float_variant,
                                                                        float*                      out_color);
 PRIVATE void _scene_renderer_get_ogl_uber_for_render_mode             (scene_renderer_render_mode  render_mode,
-                                                                       ogl_materials               context_materials,
+                                                                       scene_renderer_materials    context_materials,
                                                                        scene                       scene,
                                                                        scene_renderer_uber*        result_uber_ptr);
 PRIVATE void _scene_renderer_init_resizable_vector_for_resource_pool  (system_resource_pool_block  block);
@@ -506,7 +506,7 @@ PRIVATE void _scene_renderer_get_light_color(scene_light    light,
 
 /** TODO */
 PRIVATE void _scene_renderer_get_ogl_uber_for_render_mode(scene_renderer_render_mode render_mode,
-                                                          ogl_materials              context_materials,
+                                                          scene_renderer_materials   context_materials,
                                                           scene                      scene,
                                                           scene_renderer_uber*       result_uber_ptr)
 {
@@ -522,8 +522,8 @@ PRIVATE void _scene_renderer_get_ogl_uber_for_render_mode(scene_renderer_render_
 
         case RENDER_MODE_NORMALS_ONLY:
         {
-            *result_uber_ptr = mesh_material_get_uber(ogl_materials_get_special_material(context_materials,
-                                                                                         SPECIAL_MATERIAL_NORMALS),
+            *result_uber_ptr = mesh_material_get_uber(scene_renderer_materials_get_special_material(context_materials,
+                                                                                                    SPECIAL_MATERIAL_NORMALS),
                                                       scene,
                                                       false); /* use_shadow_maps */
 
@@ -532,8 +532,8 @@ PRIVATE void _scene_renderer_get_ogl_uber_for_render_mode(scene_renderer_render_
 
         case RENDER_MODE_TEXCOORDS_ONLY:
         {
-            *result_uber_ptr = mesh_material_get_uber(ogl_materials_get_special_material(context_materials,
-                                                                                         SPECIAL_MATERIAL_TEXCOORD),
+            *result_uber_ptr = mesh_material_get_uber(scene_renderer_materials_get_special_material(context_materials,
+                                                                                                    SPECIAL_MATERIAL_TEXCOORD),
                                                       scene,
                                                       false); /* use_shadow_maps */
 
@@ -1042,11 +1042,11 @@ PRIVATE void _scene_renderer_render_traversed_scene_graph(_scene_renderer*      
                                                           const ogl_context_gl_entrypoints* entry_points_ptr,
                                                           system_time                       frame_time)
 {
-    float               camera_location[4];
-    system_hash64       material_hash             = 0;
-    scene_renderer_uber material_uber             = NULL;
-    ogl_materials       materials                 = NULL;
-    uint32_t            n_custom_meshes_to_render = 0;
+    float                    camera_location[4];
+    system_hash64            material_hash             = 0;
+    scene_renderer_uber      material_uber             = NULL;
+    scene_renderer_materials materials                 = NULL;
+    uint32_t                 n_custom_meshes_to_render = 0;
 
     ogl_context_get_property(ral_context_get_gl_context(renderer_ptr->context),
                              OGL_CONTEXT_PROPERTY_MATERIALS,
@@ -1180,8 +1180,8 @@ PRIVATE void _scene_renderer_render_traversed_scene_graph(_scene_renderer*      
                 else
                 {
                     /* Use the 'clip depth' material to output the clip-space depth data */
-                    material_uber = mesh_material_get_uber(ogl_materials_get_special_material(materials,
-                                                                                              SPECIAL_MATERIAL_DEPTH_CLIP),
+                    material_uber = mesh_material_get_uber(scene_renderer_materials_get_special_material(materials,
+                                                                                                         SPECIAL_MATERIAL_DEPTH_CLIP),
                                                            renderer_ptr->owned_scene,
                                                            false); /* use_shadow_maps */
                 }
@@ -1928,8 +1928,8 @@ PRIVATE void _scene_renderer_update_ogl_uber_light_properties(scene_renderer_ube
 /** Please see header for specification */
 PUBLIC EMERALD_API void scene_renderer_bake_gpu_assets(scene_renderer renderer)
 {
-    ogl_materials    context_materials = NULL;
-    _scene_renderer* renderer_ptr      = (_scene_renderer*) renderer;
+    scene_renderer_materials context_materials = NULL;
+    _scene_renderer*         renderer_ptr      = (_scene_renderer*) renderer;
 
     ogl_context_get_property(ral_context_get_gl_context(renderer_ptr->context),
                              OGL_CONTEXT_PROPERTY_MATERIALS,

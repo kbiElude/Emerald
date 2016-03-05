@@ -5,10 +5,9 @@
  */
 #include "shared.h"
 #include "curve/curve_container.h"
+#include "glsl/glsl_shader_constructor.h"
 #include "mesh/mesh.h"
 #include "ogl/ogl_context.h"
-#include "ogl/ogl_materials.h"
-#include "ogl/ogl_shader_constructor.h"
 #include "postprocessing/postprocessing_blur_gaussian.h"
 #include "raGL/raGL_framebuffer.h"
 #include "raGL/raGL_program.h"
@@ -27,6 +26,7 @@
 #include "scene/scene_light.h"
 #include "scene/scene_mesh.h"
 #include "scene_renderer/scene_renderer.h"
+#include "scene_renderer/scene_renderer_materials.h"
 #include "scene_renderer/scene_renderer_sm.h"
 #include "scene_renderer/scene_renderer_uber.h"
 #include "system/system_log.h"
@@ -241,14 +241,14 @@ PRIVATE void _scene_renderer_sm_add_bias_variable_to_fragment_uber(std::stringst
 }
 
 /** TODO */
-PRIVATE void _scene_renderer_sm_add_constructor_variable(ogl_shader_constructor     constructor,
-                                                         uint32_t                   n_light,
-                                                         system_hashed_ansi_string  var_suffix,
-                                                         _variable_type             var_type,
-                                                         _layout_qualifier          layout_qualifier,
-                                                         _shader_variable_type      shader_var_type,
-                                                         _uniform_block_id          ub_id,
-                                                         system_hashed_ansi_string* out_var_name)
+PRIVATE void _scene_renderer_sm_add_constructor_variable(glsl_shader_constructor                  constructor,
+                                                         uint32_t                                 n_light,
+                                                         system_hashed_ansi_string                var_suffix,
+                                                         glsl_shader_constructor_variable_type    var_type,
+                                                         glsl_shader_constructor_layout_qualifier layout_qualifier,
+                                                         ral_program_variable_type                shader_var_type,
+                                                         glsl_shader_constructor_uniform_block_id ub_id,
+                                                         system_hashed_ansi_string*               out_var_name)
 {
     bool              is_var_added = false;
     std::stringstream var_name_sstream;
@@ -258,34 +258,34 @@ PRIVATE void _scene_renderer_sm_add_constructor_variable(ogl_shader_constructor 
                      << "_"
                      << system_hashed_ansi_string_get_buffer(var_suffix);
 
-    *out_var_name = system_hashed_ansi_string_create                (var_name_sstream.str().c_str() );
-    is_var_added  = ogl_shader_constructor_is_general_variable_in_ub(constructor,
-                                                                     0, /* uniform_block */
-                                                                     *out_var_name);
+    *out_var_name = system_hashed_ansi_string_create                 (var_name_sstream.str().c_str() );
+    is_var_added  = glsl_shader_constructor_is_general_variable_in_ub(constructor,
+                                                                      0, /* uniform_block */
+                                                                      *out_var_name);
 
     ASSERT_DEBUG_SYNC(!is_var_added,
                       "Variable already added!");
 
-    ogl_shader_constructor_add_general_variable_to_ub(constructor,
-                                                      var_type,
-                                                      layout_qualifier,
-                                                      shader_var_type,
-                                                      0,     /* array_size */
-                                                      ub_id,
-                                                     *out_var_name,
-                                                      NULL); /* out_variable_id */
+    glsl_shader_constructor_add_general_variable_to_ub(constructor,
+                                                       var_type,
+                                                       layout_qualifier,
+                                                       shader_var_type,
+                                                       0,     /* array_size */
+                                                       ub_id,
+                                                      *out_var_name,
+                                                       NULL); /* out_variable_id */
 }
 
 /** TODO */
-PRIVATE void _scene_renderer_sm_add_uniforms_to_fragment_uber_for_non_point_light(ogl_shader_constructor     constructor,
-                                                                                  _uniform_block_id          ub_fs,
-                                                                                  scene_light                light,
-                                                                                  uint32_t                   n_light,
-                                                                                  system_hashed_ansi_string* out_light_shadow_coord_var_name_has,
-                                                                                  system_hashed_ansi_string* out_shadow_map_color_sampler_var_name_has,
-                                                                                  system_hashed_ansi_string* out_shadow_map_depth_sampler_var_name_has,
-                                                                                  system_hashed_ansi_string* out_vsm_cutoff_var_name_has,
-                                                                                  system_hashed_ansi_string* out_vsm_min_variance_var_name_has)
+PRIVATE void _scene_renderer_sm_add_uniforms_to_fragment_uber_for_non_point_light(glsl_shader_constructor                  constructor,
+                                                                                  glsl_shader_constructor_uniform_block_id ub_fs,
+                                                                                  scene_light                              light,
+                                                                                  uint32_t                                 n_light,
+                                                                                  system_hashed_ansi_string*               out_light_shadow_coord_var_name_has,
+                                                                                  system_hashed_ansi_string*               out_shadow_map_color_sampler_var_name_has,
+                                                                                  system_hashed_ansi_string*               out_shadow_map_depth_sampler_var_name_has,
+                                                                                  system_hashed_ansi_string*               out_vsm_cutoff_var_name_has,
+                                                                                  system_hashed_ansi_string*               out_vsm_min_variance_var_name_has)
 {
     /* Add the light-specific shadow coordinate input variable.
      *
@@ -296,7 +296,7 @@ PRIVATE void _scene_renderer_sm_add_uniforms_to_fragment_uber_for_non_point_ligh
                                                 system_hashed_ansi_string_create("shadow_coord"),
                                                 VARIABLE_TYPE_INPUT_ATTRIBUTE,
                                                 LAYOUT_QUALIFIER_NONE,
-                                                TYPE_VEC4,
+                                                RAL_PROGRAM_VARIABLE_TYPE_FLOAT_VEC4,
                                                 0, /* ub_id */
                                                 out_light_shadow_coord_var_name_has);
 
@@ -324,7 +324,7 @@ PRIVATE void _scene_renderer_sm_add_uniforms_to_fragment_uber_for_non_point_ligh
                                                         system_hashed_ansi_string_create("shadow_map_depth"),
                                                         VARIABLE_TYPE_UNIFORM,
                                                         LAYOUT_QUALIFIER_NONE,
-                                                        TYPE_SAMPLER2DSHADOW,
+                                                        RAL_PROGRAM_VARIABLE_TYPE_SAMPLER_2D_SHADOW,
                                                         0, /* ub_id */
                                                         out_shadow_map_depth_sampler_var_name_has);
 
@@ -341,7 +341,7 @@ PRIVATE void _scene_renderer_sm_add_uniforms_to_fragment_uber_for_non_point_ligh
                                                         system_hashed_ansi_string_create("shadow_map_color"),
                                                         VARIABLE_TYPE_UNIFORM,
                                                         LAYOUT_QUALIFIER_NONE,
-                                                        TYPE_SAMPLER2D,
+                                                        RAL_PROGRAM_VARIABLE_TYPE_SAMPLER_2D,
                                                         0, /* ub_id */
                                                         out_shadow_map_color_sampler_var_name_has);
 
@@ -350,7 +350,7 @@ PRIVATE void _scene_renderer_sm_add_uniforms_to_fragment_uber_for_non_point_ligh
                                                         system_hashed_ansi_string_create("shadow_map_vsm_cutoff"),
                                                         VARIABLE_TYPE_UNIFORM,
                                                         LAYOUT_QUALIFIER_NONE,
-                                                        TYPE_FLOAT,
+                                                        RAL_PROGRAM_VARIABLE_TYPE_FLOAT,
                                                         ub_fs,
                                                         out_vsm_cutoff_var_name_has);
 
@@ -359,7 +359,7 @@ PRIVATE void _scene_renderer_sm_add_uniforms_to_fragment_uber_for_non_point_ligh
                                                         system_hashed_ansi_string_create("shadow_map_vsm_min_variance"),
                                                         VARIABLE_TYPE_UNIFORM,
                                                         LAYOUT_QUALIFIER_NONE,
-                                                        TYPE_FLOAT,
+                                                        RAL_PROGRAM_VARIABLE_TYPE_FLOAT,
                                                         ub_fs,
                                                         out_vsm_min_variance_var_name_has);
 
@@ -375,18 +375,18 @@ PRIVATE void _scene_renderer_sm_add_uniforms_to_fragment_uber_for_non_point_ligh
 }
 
 /** TODO */
-PRIVATE void _scene_renderer_sm_add_uniforms_to_fragment_uber_for_point_light(ogl_shader_constructor     constructor,
-                                                                              _uniform_block_id          ub_fs,
-                                                                              scene_light                light,
-                                                                              uint32_t                   n_light,
-                                                                              system_hashed_ansi_string* out_light_far_near_diff_var_name_has,
-                                                                              system_hashed_ansi_string* out_light_near_var_name_has,
-                                                                              system_hashed_ansi_string* out_light_projection_matrix_var_name_has,
-                                                                              system_hashed_ansi_string* out_light_view_matrix_var_name_has,
-                                                                              system_hashed_ansi_string* out_shadow_map_color_sampler_var_name_has,
-                                                                              system_hashed_ansi_string* out_shadow_map_depth_sampler_var_name_has,
-                                                                              system_hashed_ansi_string* out_vsm_cutoff_var_name_has,
-                                                                              system_hashed_ansi_string* out_vsm_min_variance_var_name_has)
+PRIVATE void _scene_renderer_sm_add_uniforms_to_fragment_uber_for_point_light(glsl_shader_constructor                  constructor,
+                                                                              glsl_shader_constructor_uniform_block_id ub_fs,
+                                                                              scene_light                              light,
+                                                                              uint32_t                                 n_light,
+                                                                              system_hashed_ansi_string*               out_light_far_near_diff_var_name_has,
+                                                                              system_hashed_ansi_string*               out_light_near_var_name_has,
+                                                                              system_hashed_ansi_string*               out_light_projection_matrix_var_name_has,
+                                                                              system_hashed_ansi_string*               out_light_view_matrix_var_name_has,
+                                                                              system_hashed_ansi_string*               out_shadow_map_color_sampler_var_name_has,
+                                                                              system_hashed_ansi_string*               out_shadow_map_depth_sampler_var_name_has,
+                                                                              system_hashed_ansi_string*               out_vsm_cutoff_var_name_has,
+                                                                              system_hashed_ansi_string*               out_vsm_min_variance_var_name_has)
 {
     scene_light_shadow_map_algorithm            sm_algorithm;
     scene_light_shadow_map_pointlight_algorithm sm_pl_algorithm;
@@ -406,7 +406,7 @@ PRIVATE void _scene_renderer_sm_add_uniforms_to_fragment_uber_for_point_light(og
                                                     system_hashed_ansi_string_create("shadow_map_vsm_cutoff"),
                                                     VARIABLE_TYPE_UNIFORM,
                                                     LAYOUT_QUALIFIER_NONE,
-                                                    TYPE_FLOAT,
+                                                    RAL_PROGRAM_VARIABLE_TYPE_FLOAT,
                                                     ub_fs,
                                                     out_vsm_cutoff_var_name_has);
 
@@ -415,7 +415,7 @@ PRIVATE void _scene_renderer_sm_add_uniforms_to_fragment_uber_for_point_light(og
                                                     system_hashed_ansi_string_create("shadow_map_vsm_min_variance"),
                                                     VARIABLE_TYPE_UNIFORM,
                                                     LAYOUT_QUALIFIER_NONE,
-                                                    TYPE_FLOAT,
+                                                    RAL_PROGRAM_VARIABLE_TYPE_FLOAT,
                                                     ub_fs,
                                                     out_vsm_min_variance_var_name_has);
     }
@@ -434,7 +434,7 @@ PRIVATE void _scene_renderer_sm_add_uniforms_to_fragment_uber_for_point_light(og
                                                         system_hashed_ansi_string_create("projection"),
                                                         VARIABLE_TYPE_UNIFORM,
                                                         LAYOUT_QUALIFIER_ROW_MAJOR,
-                                                        TYPE_MAT4,
+                                                        RAL_PROGRAM_VARIABLE_TYPE_FLOAT_MAT4,
                                                         ub_fs, /* uniform_block */
                                                         out_light_projection_matrix_var_name_has);
 
@@ -446,7 +446,7 @@ PRIVATE void _scene_renderer_sm_add_uniforms_to_fragment_uber_for_point_light(og
                                                             system_hashed_ansi_string_create("shadow_map_color"),
                                                             VARIABLE_TYPE_UNIFORM,
                                                             LAYOUT_QUALIFIER_NONE,
-                                                            TYPE_SAMPLERCUBE,
+                                                            RAL_PROGRAM_VARIABLE_TYPE_SAMPLER_CUBE,
                                                             0, /* ub_fs */
                                                             out_shadow_map_color_sampler_var_name_has);
             }
@@ -457,8 +457,8 @@ PRIVATE void _scene_renderer_sm_add_uniforms_to_fragment_uber_for_point_light(og
                                                             system_hashed_ansi_string_create("shadow_map_depth"),
                                                             VARIABLE_TYPE_UNIFORM,
                                                             LAYOUT_QUALIFIER_NONE,
-                                                            (sm_algorithm == SCENE_LIGHT_SHADOW_MAP_ALGORITHM_PLAIN) ? TYPE_SAMPLERCUBESHADOW
-                                                                                                                     : TYPE_SAMPLERCUBE,
+                                                            (sm_algorithm == SCENE_LIGHT_SHADOW_MAP_ALGORITHM_PLAIN) ? RAL_PROGRAM_VARIABLE_TYPE_SAMPLER_CUBE_SHADOW
+                                                                                                                     : RAL_PROGRAM_VARIABLE_TYPE_SAMPLER_CUBE,
                                                             0, /* ub_fs */
                                                             out_shadow_map_depth_sampler_var_name_has);
             }
@@ -474,7 +474,7 @@ PRIVATE void _scene_renderer_sm_add_uniforms_to_fragment_uber_for_point_light(og
                                                         system_hashed_ansi_string_create("far_near_diff"),
                                                         VARIABLE_TYPE_UNIFORM,
                                                         LAYOUT_QUALIFIER_NONE,
-                                                        TYPE_FLOAT,
+                                                        RAL_PROGRAM_VARIABLE_TYPE_FLOAT,
                                                         ub_fs, /* uniform_block */
                                                         out_light_far_near_diff_var_name_has);
 
@@ -484,7 +484,7 @@ PRIVATE void _scene_renderer_sm_add_uniforms_to_fragment_uber_for_point_light(og
                                                         system_hashed_ansi_string_create("near"),
                                                         VARIABLE_TYPE_UNIFORM,
                                                         LAYOUT_QUALIFIER_NONE,
-                                                        TYPE_FLOAT,
+                                                        RAL_PROGRAM_VARIABLE_TYPE_FLOAT,
                                                         ub_fs, /* uniform_block */
                                                         out_light_near_var_name_has);
 
@@ -494,7 +494,7 @@ PRIVATE void _scene_renderer_sm_add_uniforms_to_fragment_uber_for_point_light(og
                                                         system_hashed_ansi_string_create("view"),
                                                         VARIABLE_TYPE_UNIFORM,
                                                         LAYOUT_QUALIFIER_ROW_MAJOR,
-                                                        TYPE_MAT4,
+                                                        RAL_PROGRAM_VARIABLE_TYPE_FLOAT_MAT4,
                                                         ub_fs, /* uniform_block */
                                                         out_light_view_matrix_var_name_has);
 
@@ -506,7 +506,7 @@ PRIVATE void _scene_renderer_sm_add_uniforms_to_fragment_uber_for_point_light(og
                                                             system_hashed_ansi_string_create("shadow_map_color"),
                                                             VARIABLE_TYPE_UNIFORM,
                                                             LAYOUT_QUALIFIER_NONE,
-                                                            TYPE_SAMPLER2DARRAY,
+                                                            RAL_PROGRAM_VARIABLE_TYPE_SAMPLER_2D_ARRAY,
                                                             0, /* ub_fs */
                                                             out_shadow_map_color_sampler_var_name_has);
             }
@@ -517,7 +517,7 @@ PRIVATE void _scene_renderer_sm_add_uniforms_to_fragment_uber_for_point_light(og
                                                             system_hashed_ansi_string_create("shadow_map_depth"),
                                                             VARIABLE_TYPE_UNIFORM,
                                                             LAYOUT_QUALIFIER_NONE,
-                                                            TYPE_SAMPLER2DARRAYSHADOW,
+                                                            RAL_PROGRAM_VARIABLE_TYPE_SAMPLER_2D_ARRAY_SHADOW,
                                                             0, /* uniform_block */
                                                             out_shadow_map_depth_sampler_var_name_has);
             }
@@ -1138,14 +1138,14 @@ PRIVATE void _scene_renderer_sm_process_mesh_for_shadow_map_pre_pass(scene_mesh 
 }
 
 /** Please see header for spec */
-PUBLIC void scene_renderer_sm_adjust_fragment_uber_code(ogl_shader_constructor     shader_constructor_fs,
-                                                        uint32_t                   n_light,
-                                                        scene_light                light_instance,
-                                                        _uniform_block_id          ub_fs,
-                                                        system_hashed_ansi_string  light_world_pos_var_name,
-                                                        system_hashed_ansi_string  light_vector_norm_var_name,
-                                                        system_hashed_ansi_string  light_vector_non_norm_var_name,
-                                                        system_hashed_ansi_string* out_visibility_var_name)
+PUBLIC void scene_renderer_sm_adjust_fragment_uber_code(glsl_shader_constructor                  shader_constructor_fs,
+                                                        uint32_t                                 n_light,
+                                                        scene_light                              light_instance,
+                                                        glsl_shader_constructor_uniform_block_id ub_fs,
+                                                        system_hashed_ansi_string                light_world_pos_var_name,
+                                                        system_hashed_ansi_string                light_vector_norm_var_name,
+                                                        system_hashed_ansi_string                light_vector_non_norm_var_name,
+                                                        system_hashed_ansi_string*               out_visibility_var_name)
 {
     scene_light_shadow_map_algorithm            light_sm_algorithm;
     scene_light_shadow_map_pointlight_algorithm light_sm_pointlight_algorithm;
@@ -1700,20 +1700,20 @@ PUBLIC void scene_renderer_sm_adjust_fragment_uber_code(ogl_shader_constructor  
 
     code_snippet_has = system_hashed_ansi_string_create(code_snippet_sstream.str().c_str());
 
-    ogl_shader_constructor_append_to_function_body(shader_constructor_fs,
-                                                   0, /* function_id */
-                                                   code_snippet_has);
+    glsl_shader_constructor_append_to_function_body(shader_constructor_fs,
+                                                    0, /* function_id */
+                                                    code_snippet_has);
 
     /* Tell the caller what the name of the visibility variable is. */
     *out_visibility_var_name = system_hashed_ansi_string_create(light_visibility_var_name_sstream.str().c_str() );
 }
 
 /** Please see header for spec */
-PUBLIC void scene_renderer_sm_adjust_vertex_uber_code(ogl_shader_constructor           shader_constructor_vs,
-                                                      uint32_t                         n_light,
-                                                      shaders_fragment_uber_light_type light_type,
-                                                      _uniform_block_id                ub_vs,
-                                                      system_hashed_ansi_string        world_vertex_vec4_variable_name)
+PUBLIC void scene_renderer_sm_adjust_vertex_uber_code(glsl_shader_constructor                  shader_constructor_vs,
+                                                      uint32_t                                 n_light,
+                                                      shaders_fragment_uber_light_type         light_type,
+                                                      glsl_shader_constructor_uniform_block_id ub_vs,
+                                                      system_hashed_ansi_string                world_vertex_vec4_variable_name)
 {
     /* NOTE: The following code is only used for the directional and spot lights. We're using a
      *       "light_view * camera_view_inversed" matrix directly in FS for point lights, so we
@@ -1735,38 +1735,38 @@ PUBLIC void scene_renderer_sm_adjust_vertex_uber_code(ogl_shader_constructor    
         system_hashed_ansi_string depth_bias_matrix_var_name       = system_hashed_ansi_string_create("depth_bias");
 
         /* Add a global depth bias matrix which normalizes coordinates at range <-1, 1> to <0, 1> */
-        bool is_depth_bias_matrix_added = ogl_shader_constructor_is_general_variable_in_ub(shader_constructor_vs,
-                                                                                           0, /* uniform_block */
-                                                                                           depth_bias_matrix_var_name);
+        bool is_depth_bias_matrix_added = glsl_shader_constructor_is_general_variable_in_ub(shader_constructor_vs,
+                                                                                            0, /* uniform_block */
+                                                                                            depth_bias_matrix_var_name);
 
         if (!is_depth_bias_matrix_added)
         {
-            uint32_t     matrix_variable_data_size = 0;
-            _variable_id matrix_variable_id        = -1;
+            uint32_t                            matrix_variable_data_size = 0;
+            glsl_shader_constructor_variable_id matrix_variable_id        = -1;
 
-            ogl_shader_constructor_add_general_variable_to_ub(shader_constructor_vs,
+            glsl_shader_constructor_add_general_variable_to_ub(shader_constructor_vs,
                                                               VARIABLE_TYPE_CONST,
                                                               LAYOUT_QUALIFIER_NONE,
-                                                              TYPE_MAT4,
+                                                              RAL_PROGRAM_VARIABLE_TYPE_FLOAT_MAT4,
                                                               0, /* array_size */
                                                               0, /* uniform_block */
                                                               depth_bias_matrix_var_name,
                                                              &matrix_variable_id);
 
-            ogl_shader_constructor_set_general_variable_default_value(shader_constructor_vs,
-                                                                      0,                         /* uniform_block */
-                                                                      matrix_variable_id,
-                                                                      NULL,                      /* data */
-                                                                     &matrix_variable_data_size);
+            glsl_shader_constructor_set_general_variable_default_value(shader_constructor_vs,
+                                                                       0,                         /* uniform_block */
+                                                                       matrix_variable_id,
+                                                                       NULL,                      /* data */
+                                                                      &matrix_variable_data_size);
 
             ASSERT_DEBUG_SYNC(matrix_variable_data_size == sizeof(depth_bias_matrix_data),
-                              "ogl_shader_constructor glitch detected");
+                              "glsl_shader_constructor glitch detected");
 
-            ogl_shader_constructor_set_general_variable_default_value(shader_constructor_vs ,
-                                                                      0,                      /* uniform_block */
-                                                                      matrix_variable_id,
-                                                                      depth_bias_matrix_data,
-                                                                      NULL);                  /* n_bytes_to_read */
+            glsl_shader_constructor_set_general_variable_default_value(shader_constructor_vs ,
+                                                                       0,                      /* uniform_block */
+                                                                       matrix_variable_id,
+                                                                       depth_bias_matrix_data,
+                                                                       NULL);                  /* n_bytes_to_read */
         }
         /* Add the light-specific depth VP matrix. */
         system_hashed_ansi_string depth_vp_matrix_name_has     = NULL;
@@ -1777,23 +1777,23 @@ PUBLIC void scene_renderer_sm_adjust_vertex_uber_code(ogl_shader_constructor    
                                      << n_light
                                      << "_depth_vp";
 
-        depth_vp_matrix_name_has = system_hashed_ansi_string_create                (depth_vp_matrix_name_sstream.str().c_str() );
-        is_depth_vp_matrix_added = ogl_shader_constructor_is_general_variable_in_ub(shader_constructor_vs,
-                                                                                    ub_vs,
-                                                                                    depth_vp_matrix_name_has);
+        depth_vp_matrix_name_has = system_hashed_ansi_string_create                 (depth_vp_matrix_name_sstream.str().c_str() );
+        is_depth_vp_matrix_added = glsl_shader_constructor_is_general_variable_in_ub(shader_constructor_vs,
+                                                                                     ub_vs,
+                                                                                     depth_vp_matrix_name_has);
 
         ASSERT_DEBUG_SYNC(!is_depth_vp_matrix_added,
                           "Depth VP already added to VS UB for light [%d]",
                           n_light);
 
-        ogl_shader_constructor_add_general_variable_to_ub(shader_constructor_vs,
-                                                          VARIABLE_TYPE_UNIFORM,
-                                                          LAYOUT_QUALIFIER_ROW_MAJOR,
-                                                          TYPE_MAT4,
-                                                          0, /* array_size */
-                                                          ub_vs,
-                                                          depth_vp_matrix_name_has,
-                                                          NULL); /* out_variable_id */
+        glsl_shader_constructor_add_general_variable_to_ub(shader_constructor_vs,
+                                                           VARIABLE_TYPE_UNIFORM,
+                                                           LAYOUT_QUALIFIER_ROW_MAJOR,
+                                                           RAL_PROGRAM_VARIABLE_TYPE_FLOAT_MAT4,
+                                                           0, /* array_size */
+                                                           ub_vs,
+                                                           depth_vp_matrix_name_has,
+                                                           NULL); /* out_variable_id */
 
         /* Add an output variable that calculates the vertex position in light-view space */
         bool                      is_light_shadow_coord_added = false;
@@ -1804,23 +1804,23 @@ PUBLIC void scene_renderer_sm_adjust_vertex_uber_code(ogl_shader_constructor    
                                         << n_light
                                         << "_shadow_coord";
 
-        light_shadow_coord_name_has = system_hashed_ansi_string_create                (light_shadow_coord_name_sstream.str().c_str() );
-        is_light_shadow_coord_added = ogl_shader_constructor_is_general_variable_in_ub(shader_constructor_vs,
-                                                                                       ub_vs,
-                                                                                       light_shadow_coord_name_has);
+        light_shadow_coord_name_has = system_hashed_ansi_string_create                 (light_shadow_coord_name_sstream.str().c_str() );
+        is_light_shadow_coord_added = glsl_shader_constructor_is_general_variable_in_ub(shader_constructor_vs,
+                                                                                        ub_vs,
+                                                                                        light_shadow_coord_name_has);
 
         ASSERT_DEBUG_SYNC(!is_light_shadow_coord_added,
                           "Light shadow coord for light [%d] already added",
                           n_light);
 
-        ogl_shader_constructor_add_general_variable_to_ub(shader_constructor_vs,
-                                                          VARIABLE_TYPE_OUTPUT_ATTRIBUTE,
-                                                          LAYOUT_QUALIFIER_NONE,
-                                                          TYPE_VEC4,
-                                                          0, /* array_size */
-                                                          0, /* ub_id */
-                                                          light_shadow_coord_name_has,
-                                                          NULL); /* out_variable_id */
+        glsl_shader_constructor_add_general_variable_to_ub(shader_constructor_vs,
+                                                           VARIABLE_TYPE_OUTPUT_ATTRIBUTE,
+                                                           LAYOUT_QUALIFIER_NONE,
+                                                           RAL_PROGRAM_VARIABLE_TYPE_FLOAT_VEC4,
+                                                           0, /* array_size */
+                                                           0, /* ub_id */
+                                                           light_shadow_coord_name_has,
+                                                           NULL); /* out_variable_id */
 
         /* Add new code snippet to main() */
         const char*               world_vertex_vec4_name_raw = system_hashed_ansi_string_get_buffer(world_vertex_vec4_variable_name);
@@ -1838,9 +1838,9 @@ PUBLIC void scene_renderer_sm_adjust_vertex_uber_code(ogl_shader_constructor    
 
         vs_code_has = system_hashed_ansi_string_create(vs_code_sstream.str().c_str() );
 
-        ogl_shader_constructor_append_to_function_body(shader_constructor_vs,
-                                                       0, /* function_id */
-                                                       vs_code_has);
+        glsl_shader_constructor_append_to_function_body(shader_constructor_vs,
+                                                        0, /* function_id */
+                                                        vs_code_has);
     } /* if (!is_point_light) */
 }
 
@@ -2726,8 +2726,8 @@ PUBLIC void scene_renderer_sm_render_shadow_map_meshes(scene_renderer_sm shadow_
                                                        scene             scene,
                                                        system_time       frame_time)
 {
-    ogl_materials       materials          = NULL;
-    _scene_renderer_sm* shadow_mapping_ptr = (_scene_renderer_sm*) shadow_mapping;
+    scene_renderer_materials materials          = NULL;
+    _scene_renderer_sm*      shadow_mapping_ptr = (_scene_renderer_sm*) shadow_mapping;
 
     ogl_context_get_property(ral_context_get_gl_context(shadow_mapping_ptr->context),
                              OGL_CONTEXT_PROPERTY_MATERIALS,
@@ -2735,8 +2735,8 @@ PUBLIC void scene_renderer_sm_render_shadow_map_meshes(scene_renderer_sm shadow_
 
     /* Retrieve the material and associated uber, which
      * should be used for the rendering process. */
-    scene_light_shadow_map_algorithm sm_algo             = SCENE_LIGHT_SHADOW_MAP_ALGORITHM_UNKNOWN;
-    _ogl_materials_special_material  sm_special_material = SPECIAL_MATERIAL_UNKNOWN;
+    scene_light_shadow_map_algorithm          sm_algo             = SCENE_LIGHT_SHADOW_MAP_ALGORITHM_UNKNOWN;
+    scene_renderer_materials_special_material sm_special_material = SPECIAL_MATERIAL_UNKNOWN;
 
     scene_light_get_property(shadow_mapping_ptr->current_light,
                              SCENE_LIGHT_PROPERTY_SHADOW_MAP_ALGORITHM,
@@ -2773,11 +2773,11 @@ PUBLIC void scene_renderer_sm_render_shadow_map_meshes(scene_renderer_sm shadow_
         }
     }
 
-    mesh_material       sm_material      = ogl_materials_get_special_material(materials,
-                                                                              sm_special_material);
-    scene_renderer_uber sm_material_uber = mesh_material_get_uber            (sm_material,
-                                                                              scene,
-                                                                              false); /* use_shadow_maps */
+    mesh_material       sm_material      = scene_renderer_materials_get_special_material(materials,
+                                                                                         sm_special_material);
+    scene_renderer_uber sm_material_uber = mesh_material_get_uber                       (sm_material,
+                                                                                         scene,
+                                                                                         false); /* use_shadow_maps */
 
     /* Configure the uber.
      *

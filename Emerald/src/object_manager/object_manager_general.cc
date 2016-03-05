@@ -24,6 +24,7 @@ static system_hashed_ansi_string _object_type_demo_timeline_hashed_ansi_string  
 static system_hashed_ansi_string _object_type_demo_timeline_segment_hashed_ansi_string                 = NULL;
 static system_hashed_ansi_string _object_type_gfx_bfg_font_table_hashed_ansi_string                    = NULL;
 static system_hashed_ansi_string _object_type_gfx_image_hashed_ansi_string                             = NULL;
+static system_hashed_ansi_string _object_type_glsl_shader_constructor_hashed_ansi_string               = NULL;
 static system_hashed_ansi_string _object_type_mesh_hashed_ansi_string                                  = NULL;
 static system_hashed_ansi_string _object_type_mesh_marchingcubes_hashed_ansi_string                    = NULL;
 static system_hashed_ansi_string _object_type_mesh_material_hashed_ansi_string                         = NULL;
@@ -34,7 +35,6 @@ static system_hashed_ansi_string _object_type_ocl_program_hashed_ansi_string    
 static system_hashed_ansi_string _object_type_ogl_context_hashed_ansi_string                           = NULL;
 static system_hashed_ansi_string _object_type_ogl_pipeline_hashed_ansi_string                          = NULL;
 static system_hashed_ansi_string _object_type_ogl_rendering_handler_hashed_ansi_string                 = NULL;
-static system_hashed_ansi_string _object_type_ogl_shader_constructor_hashed_ansi_string                = NULL;
 static system_hashed_ansi_string _object_type_ogl_text_hashed_ansi_string                              = NULL;
 static system_hashed_ansi_string _object_type_ogl_textures_hashed_ansi_string                          = NULL;
 static system_hashed_ansi_string _object_type_postprocessing_bloom_hashed_ansi_string                  = NULL;
@@ -105,6 +105,7 @@ PUBLIC system_hashed_ansi_string object_manager_convert_object_manager_object_ty
         case OBJECT_TYPE_DEMO_TIMELINE_SEGMENT:                           return _object_type_demo_timeline_segment_hashed_ansi_string;
         case OBJECT_TYPE_GFX_BFG_FONT_TABLE:                              return _object_type_gfx_bfg_font_table_hashed_ansi_string;
         case OBJECT_TYPE_GFX_IMAGE:                                       return _object_type_gfx_image_hashed_ansi_string;
+        case OBJECT_TYPE_GLSL_SHADER_CONSTRUCTOR:                         return _object_type_glsl_shader_constructor_hashed_ansi_string;
         case OBJECT_TYPE_MESH:                                            return _object_type_mesh_hashed_ansi_string;
         case OBJECT_TYPE_MESH_MARCHINGCUBES:                              return _object_type_mesh_marchingcubes_hashed_ansi_string;
         case OBJECT_TYPE_MESH_MATERIAL:                                   return _object_type_mesh_material_hashed_ansi_string;
@@ -115,7 +116,6 @@ PUBLIC system_hashed_ansi_string object_manager_convert_object_manager_object_ty
         case OBJECT_TYPE_OGL_CONTEXT:                                     return _object_type_ogl_context_hashed_ansi_string;
         case OBJECT_TYPE_OGL_PIPELINE:                                    return _object_type_ogl_pipeline_hashed_ansi_string;
         case OBJECT_TYPE_OGL_RENDERING_HANDLER:                           return _object_type_ogl_rendering_handler_hashed_ansi_string;
-        case OBJECT_TYPE_OGL_SHADER_CONSTRUCTOR:                          return _object_type_ogl_shader_constructor_hashed_ansi_string;
         case OBJECT_TYPE_OGL_TEXT:                                        return _object_type_ogl_text_hashed_ansi_string;
         case OBJECT_TYPE_OGL_TEXTURE:                                     return _object_type_ogl_textures_hashed_ansi_string;
         case OBJECT_TYPE_POSTPROCESSING_BLOOM:                            return _object_type_postprocessing_bloom_hashed_ansi_string;
@@ -358,6 +358,7 @@ PUBLIC void _object_manager_init()
     _object_type_demo_timeline_segment_hashed_ansi_string                 = system_hashed_ansi_string_create("Demo Timeline Segment");
     _object_type_gfx_bfg_font_table_hashed_ansi_string                    = system_hashed_ansi_string_create("GFX BFG Font Tables");
     _object_type_gfx_image_hashed_ansi_string                             = system_hashed_ansi_string_create("GFX Images");
+    _object_type_glsl_shader_constructor_hashed_ansi_string               = system_hashed_ansi_string_create("GLSL Shader Constructors");
     _object_type_mesh_hashed_ansi_string                                  = system_hashed_ansi_string_create("Meshes");
     _object_type_mesh_marchingcubes_hashed_ansi_string                    = system_hashed_ansi_string_create("Mesh (Marching-Cubes)");
     _object_type_mesh_material_hashed_ansi_string                         = system_hashed_ansi_string_create("Mesh Materials");
@@ -368,7 +369,6 @@ PUBLIC void _object_manager_init()
     _object_type_ogl_context_hashed_ansi_string                           = system_hashed_ansi_string_create("OpenGL Contexts");
     _object_type_ogl_pipeline_hashed_ansi_string                          = system_hashed_ansi_string_create("OpenGL Pipelines");
     _object_type_ogl_rendering_handler_hashed_ansi_string                 = system_hashed_ansi_string_create("OpenGL Rendering Handlers");
-    _object_type_ogl_shader_constructor_hashed_ansi_string                = system_hashed_ansi_string_create("OpenGL Shader Constructors");
     _object_type_ogl_text_hashed_ansi_string                              = system_hashed_ansi_string_create("OpenGL Text Renderers");
     _object_type_ogl_textures_hashed_ansi_string                          = system_hashed_ansi_string_create("OpenGL Textures");
     _object_type_postprocessing_bloom_hashed_ansi_string                  = system_hashed_ansi_string_create("Post-processing Bloom");

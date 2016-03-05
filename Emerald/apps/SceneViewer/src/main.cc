@@ -13,7 +13,6 @@
 #include "mesh/mesh.h"
 #include "mesh/mesh_material.h"
 #include "ogl/ogl_context.h"
-#include "ogl/ogl_materials.h"
 #include "ogl/ogl_pipeline.h"
 #include "ogl/ogl_rendering_handler.h"
 #include "ral/ral_context.h"

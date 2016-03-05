@@ -97,6 +97,8 @@ FILE(GLOB GeneralIncludes           "${EMERALD_SOURCE_DIR}/include/*.h")
 FILE(GLOB GeneralSources            "${EMERALD_SOURCE_DIR}/src/main.cc")
 FILE(GLOB GFXIncludes               "${EMERALD_SOURCE_DIR}/include/gfx/*.h")
 FILE(GLOB GFXSources                "${EMERALD_SOURCE_DIR}/src/gfx/*.cc")
+FILE(GLOB GLSLIncludes              "${EMERALD_SOURCE_DIR}/include/glsl/*.h")
+FILE(GLOB GLSLSources               "${EMERALD_SOURCE_DIR}/src/glsl/*.cc")
 FILE(GLOB MeshIncludes              "${EMERALD_SOURCE_DIR}/include/mesh/*.h")
 FILE(GLOB MeshSources               "${EMERALD_SOURCE_DIR}/src/mesh/*.cc")
 FILE(GLOB OpenGLIncludes            "${EMERALD_SOURCE_DIR}/include/ogl/*.h")
@@ -188,7 +190,8 @@ SET(AllSources
                ${RAGLSources}
                ${VariaSources}
                ${UISources}
-               ${SceneRendererSources})
+               ${SceneRendererSources}
+               ${GLSLSources})
 
 ADD_MSVC_PRECOMPILED_HEADER("shared.h" "src/shared.cc" AllSources)
 
@@ -234,6 +237,7 @@ ADD_LIBRARY(EMERALD SHARED ${AllSources}
                            ${VariaIncludes}
                            ${UIIncludes}
                            ${SceneRendererIncludes}
+                           ${GLSLIncludes}
                             Emerald.rc)
 
 GENERATE_EXPORT_HEADER(EMERALD
@@ -260,6 +264,8 @@ SOURCE_GROUP ("General includes"                             FILES ${GeneralIncl
 SOURCE_GROUP ("General sources"                              FILES ${GeneralSources})
 SOURCE_GROUP ("GFX includes"                                 FILES ${GFXIncludes})
 SOURCE_GROUP ("GFX sources"                                  FILES ${GFXSources})
+SOURCE_GROUP ("GLSL includes"                                FILES ${GLSLIncludes})
+SOURCE_GROUP ("GLSL sources"                                 FILES ${GLSLSources})
 SOURCE_GROUP ("Mesh includes"                                FILES ${MeshIncludes})
 SOURCE_GROUP ("Mesh sources"                                 FILES ${MeshSources})
 SOURCE_GROUP ("Object Manager includes"                      FILES ${ObjectManagerIncludes})

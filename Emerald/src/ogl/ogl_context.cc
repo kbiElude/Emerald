@@ -13,7 +13,6 @@
 #include "ogl/ogl_context_to_bindings.h"
 #include "ogl/ogl_context_vaos.h"
 #include "ogl/ogl_context_wrappers.h"
-#include "ogl/ogl_materials.h"
 #include "ogl/ogl_rendering_handler.h"
 #include "ogl/ogl_text.h"
 #include "raGL/raGL_buffers.h"
@@ -23,6 +22,7 @@
 #include "ral/ral_framebuffer.h"
 #include "ral/ral_texture.h"
 #include "ral/ral_utils.h"
+#include "scene_renderer/scene_renderer_materials.h"
 #include "scene_renderer/scene_renderer_sm.h"
 #include "system/system_assertions.h"
 #include "system/system_critical_section.h"
@@ -132,7 +132,7 @@ typedef struct
     ral_context   context;
 
     ogl_context_bo_bindings         bo_bindings;
-    ogl_materials                   materials;
+    scene_renderer_materials        materials;
     varia_primitive_renderer        primitive_renderer;
     ogl_context_sampler_bindings    sampler_bindings;
     scene_renderer_sm               shadow_mapping;
@@ -3457,10 +3457,10 @@ PUBLIC EMERALD_API void ogl_context_get_property(ogl_context          context,
             /* If there's no material manager available, create one now */
             if (context_ptr->materials == NULL)
             {
-                context_ptr->materials = ogl_materials_create(context_ptr->context);
+                context_ptr->materials = scene_renderer_materials_create(context_ptr->context);
             }
 
-            *((ogl_materials*) out_result) = context_ptr->materials;
+            *((scene_renderer_materials*) out_result) = context_ptr->materials;
 
             break;
         }
@@ -3655,7 +3655,7 @@ PUBLIC bool ogl_context_release_managers(ogl_context context)
 
     if (context_ptr->materials != NULL)
     {
-        ogl_materials_release(context_ptr->materials);
+        scene_renderer_materials_release(context_ptr->materials);
 
         context_ptr->materials = NULL;
     }

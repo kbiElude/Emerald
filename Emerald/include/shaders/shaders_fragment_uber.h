@@ -93,13 +93,13 @@ typedef enum
 typedef struct _shaders_fragment_uber_new_fragment_input_callback
 {
     system_hashed_ansi_string fs_attribute_name;
-    _shader_variable_type     fs_attribute_type;
+    ral_program_variable_type fs_attribute_type;
     system_hashed_ansi_string vs_attribute_name;
 
     _shaders_fragment_uber_new_fragment_input_callback()
     {
         fs_attribute_name = NULL;
-        fs_attribute_type = TYPE_UNKNOWN;
+        fs_attribute_type = RAL_PROGRAM_VARIABLE_TYPE_UNDEFINED;
         vs_attribute_name = NULL;
     }
 

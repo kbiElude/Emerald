@@ -1,10 +1,10 @@
 /**
  *
- * Emerald (kbi/elude @2012-2015)
+ * Emerald (kbi/elude @2012-2016)
  *
  */
 #include "shared.h"
-#include "ogl/ogl_shader_constructor.h"
+#include "glsl/glsl_shader_constructor.h"
 #include "ral/ral_types.h"
 #include "system/system_assertions.h"
 #include "system/system_hashed_ansi_string.h"
@@ -13,30 +13,30 @@
 #include <sstream>
 
 /* Forward definitions */
-struct _ogl_shader_constructor_function;
-struct _ogl_shader_constructor_function_argument;
-struct _ogl_shader_constructor_structure;
-struct _ogl_shader_constructor_uniform_block;
-struct _ogl_shader_constructor_variable;
+struct _glsl_shader_constructor_function;
+struct _glsl_shader_constructor_function_argument;
+struct _glsl_shader_constructor_structure;
+struct _glsl_shader_constructor_uniform_block;
+struct _glsl_shader_constructor_variable;
 
 /** Internal type definitions */
-typedef struct _ogl_shader_constructor_function
+typedef struct _glsl_shader_constructor_function
 {
-    /* Stores _ogl_shader_constructor_function_argument* items */
+    /* Stores _glsl_shader_constructor_function_argument* items */
     system_resizable_vector   arguments;
     system_hashed_ansi_string body;
-    _shader_variable_type     returned_value_type;
+    ral_program_variable_type returned_value_type;
     system_hashed_ansi_string name;
 
-    _ogl_shader_constructor_function()
+    _glsl_shader_constructor_function()
     {
         arguments           = system_resizable_vector_create(4 /* capacity */);
         body                = NULL;
-        returned_value_type = TYPE_UNKNOWN;
+        returned_value_type = RAL_PROGRAM_VARIABLE_TYPE_UNDEFINED;
         name                = NULL;
     }
 
-    ~_ogl_shader_constructor_function()
+    ~_glsl_shader_constructor_function()
     {
         if (arguments != NULL)
         {
@@ -45,35 +45,35 @@ typedef struct _ogl_shader_constructor_function
             arguments = NULL;
         }
     }
-} _ogl_shader_constructor_function;
+} _glsl_shader_constructor_function;
 
 
-typedef struct _ogl_shader_constructor_variable
+typedef struct _glsl_shader_constructor_variable
 {
     system_hashed_ansi_string name;
 
     /* If this is not NULL, this variable is actually a structure */
-    _ogl_shader_constructor_structure* structure_ptr;
+    _glsl_shader_constructor_structure* structure_ptr;
 
     /* Otherwise, this is a normal variable */
-    uint32_t              array_size;
-    char*                 default_data;
-    _layout_qualifier     layout_qualifiers;
-    _shader_variable_type type;
-    _variable_type        variable_type;
+    uint32_t                                 array_size;
+    char*                                    default_data;
+    glsl_shader_constructor_layout_qualifier layout_qualifiers;
+    ral_program_variable_type                type;
+    glsl_shader_constructor_variable_type    variable_type;
 
-    _ogl_shader_constructor_variable()
+    _glsl_shader_constructor_variable()
     {
         array_size        = 0;
         default_data      = NULL;
         layout_qualifiers = LAYOUT_QUALIFIER_NONE;
         name              = NULL;
         structure_ptr     = NULL;
-        type              = TYPE_UNKNOWN;
+        type              = RAL_PROGRAM_VARIABLE_TYPE_UNDEFINED;
         variable_type     = VARIABLE_TYPE_UNKNOWN;
     }
 
-    ~_ogl_shader_constructor_variable()
+    ~_glsl_shader_constructor_variable()
     {
         if (default_data != NULL)
         {
@@ -82,21 +82,21 @@ typedef struct _ogl_shader_constructor_variable
             default_data = NULL;
         }
     }
-} _ogl_shader_constructor_variable;
+} _glsl_shader_constructor_variable;
 
 
-typedef struct _ogl_shader_constructor_function_argument
+typedef struct _glsl_shader_constructor_function_argument
 {
-    _ogl_shader_constructor_variable* properties;
-    _shader_argument_qualifier        qualifier;
+    _glsl_shader_constructor_variable*                properties;
+    glsl_shader_constructor_shader_argument_qualifier qualifier;
 
-    _ogl_shader_constructor_function_argument()
+    _glsl_shader_constructor_function_argument()
     {
-        properties = new (std::nothrow) _ogl_shader_constructor_variable;
+        properties = new (std::nothrow) _glsl_shader_constructor_variable;
         qualifier  = SHADER_ARGUMENT_QUALIFIER_UNKNOWN;
     }
 
-    ~_ogl_shader_constructor_function_argument()
+    ~_glsl_shader_constructor_function_argument()
     {
         if (properties != NULL)
         {
@@ -105,22 +105,22 @@ typedef struct _ogl_shader_constructor_function_argument
             properties = NULL;
         }
     }
-} _ogl_shader_constructor_function_argument;
+} _glsl_shader_constructor_function_argument;
 
 
-typedef struct _ogl_shader_constructor_structure
+typedef struct _glsl_shader_constructor_structure
 {
-    /* Stores _ogl_shader_constructor_variable* items */
+    /* Stores _glsl_shader_constructor_variable* items */
     system_resizable_vector   members;
     system_hashed_ansi_string name;
 
-    _ogl_shader_constructor_structure()
+    _glsl_shader_constructor_structure()
     {
         members = system_resizable_vector_create(4 /* capacity */);
         name    = NULL;
     }
 
-    ~_ogl_shader_constructor_structure()
+    ~_glsl_shader_constructor_structure()
     {
         if (members != NULL)
         {
@@ -129,24 +129,24 @@ typedef struct _ogl_shader_constructor_structure
             members = NULL;
         }
     }
-} _ogl_shader_constructor_structure;
+} _glsl_shader_constructor_structure;
 
 
-typedef struct _ogl_shader_constructor_uniform_block
+typedef struct _glsl_shader_constructor_uniform_block
 {
     bool                      is_default_ub;
-    /* Stores _ogl_shader_constructor_variable* items */
+    /* Stores _glsl_shader_constructor_variable* items */
     system_hashed_ansi_string name;
     system_resizable_vector   variables;
 
-    _ogl_shader_constructor_uniform_block()
+    _glsl_shader_constructor_uniform_block()
     {
         is_default_ub = false;
         name          = NULL;
         variables     = system_resizable_vector_create(4 /* capacity */);
     }
 
-    ~_ogl_shader_constructor_uniform_block()
+    ~_glsl_shader_constructor_uniform_block()
     {
         if (variables != NULL)
         {
@@ -155,27 +155,27 @@ typedef struct _ogl_shader_constructor_uniform_block
             variables = NULL;
         }
     }
-} _ogl_shader_constructor_uniform_block;
+} _glsl_shader_constructor_uniform_block;
 
 
-typedef struct _ogl_shader_constructor
+typedef struct _glsl_shader_constructor
 {
     system_hashed_ansi_string body;
     bool                      dirty;
     system_hashed_ansi_string name;
     ral_shader_type           shader_type;
 
-    /* Stores _ogl_shader_constructor_function* items. 0th item corresponds to main(). */
+    /* Stores _glsl_shader_constructor_function* items. 0th item corresponds to main(). */
     system_resizable_vector functions;
-    /* Stores _ogl_shader_constructor_structure* items */
+    /* Stores _glsl_shader_constructor_structure* items */
     system_resizable_vector structures;
-    /* Stores _ogl_shader_constructor_uniform_block* items. 0th item corresponds to default
+    /* Stores _glsl_shader_constructor_uniform_block* items. 0th item corresponds to default
      * uniform block.
      */
     system_resizable_vector uniform_blocks;
 
 
-    _ogl_shader_constructor()
+    _glsl_shader_constructor()
     {
         body           = system_hashed_ansi_string_get_default_empty_string();
         dirty          = true;
@@ -186,7 +186,7 @@ typedef struct _ogl_shader_constructor
         uniform_blocks = system_resizable_vector_create(4 /* capacity */);
     }
 
-    ~_ogl_shader_constructor()
+    ~_glsl_shader_constructor()
     {
         if (functions != NULL)
         {
@@ -210,31 +210,31 @@ typedef struct _ogl_shader_constructor
         }
     }
     REFCOUNT_INSERT_VARIABLES
-} _ogl_shader_constructor;
+} _glsl_shader_constructor;
 
 
 /** Reference counter impl */
-REFCOUNT_INSERT_IMPLEMENTATION(ogl_shader_constructor,
-                               ogl_shader_constructor,
-                              _ogl_shader_constructor);
+REFCOUNT_INSERT_IMPLEMENTATION(glsl_shader_constructor,
+                               glsl_shader_constructor,
+                              _glsl_shader_constructor);
 
 /** Internal variables */
 
 /* Forward declarations */
-PRIVATE void        _ogl_shader_constructor_bake_body                           (_ogl_shader_constructor*               constructor_ptr);
-PRIVATE std::string _ogl_shader_constructor_get_argument_list_string            (system_resizable_vector                arguments);
-PRIVATE std::string _ogl_shader_constructor_get_function_declaration_string     (_ogl_shader_constructor_function*      function_ptr);
-PRIVATE std::string _ogl_shader_constructor_get_layout_qualifier_string         (_layout_qualifier                      qualifier);
-PRIVATE std::string _ogl_shader_constructor_get_shader_argument_qualifier_string(_shader_argument_qualifier             qualifier);
-PRIVATE std::string _ogl_shader_constructor_get_structure_declaration_string    (_ogl_shader_constructor_structure*     structure_ptr);
-PRIVATE const char* _ogl_shader_constructor_get_type_string                     (_shader_variable_type                  type);
-PRIVATE std::string _ogl_shader_constructor_get_uniform_block_declaration_string(_ogl_shader_constructor_uniform_block* ub_ptr);
-PRIVATE std::string _ogl_shader_constructor_get_variable_declaration_string     (_ogl_shader_constructor_variable*      variable_ptr);
-PRIVATE const char* _ogl_shader_constructor_get_variable_type_string            (_variable_type                         variable_type);
-PRIVATE void        _ogl_shader_constructor_release                             (void*                                  constructor);
+PRIVATE void        _glsl_shader_constructor_bake_body                           (_glsl_shader_constructor*                         constructor_ptr);
+PRIVATE std::string _glsl_shader_constructor_get_argument_list_string            (system_resizable_vector                           arguments);
+PRIVATE std::string _glsl_shader_constructor_get_function_declaration_string     (_glsl_shader_constructor_function*                function_ptr);
+PRIVATE std::string _glsl_shader_constructor_get_layout_qualifier_string         (glsl_shader_constructor_layout_qualifier          qualifier);
+PRIVATE std::string _glsl_shader_constructor_get_shader_argument_qualifier_string(glsl_shader_constructor_shader_argument_qualifier qualifier);
+PRIVATE std::string _glsl_shader_constructor_get_structure_declaration_string    (_glsl_shader_constructor_structure*               structure_ptr);
+PRIVATE const char* _glsl_shader_constructor_get_type_string                     (ral_program_variable_type                         type);
+PRIVATE std::string _glsl_shader_constructor_get_uniform_block_declaration_string(_glsl_shader_constructor_uniform_block*           ub_ptr);
+PRIVATE std::string _glsl_shader_constructor_get_variable_declaration_string     (_glsl_shader_constructor_variable*                variable_ptr);
+PRIVATE const char* _glsl_shader_constructor_get_variable_type_string            (glsl_shader_constructor_variable_type             variable_type);
+PRIVATE void        _glsl_shader_constructor_release                             (void*                                             constructor);
 
 /** TODO */
-PRIVATE void _ogl_shader_constructor_bake_body(_ogl_shader_constructor* constructor_ptr)
+PRIVATE void _glsl_shader_constructor_bake_body(_glsl_shader_constructor* constructor_ptr)
 {
     std::stringstream body_sstream;
 
@@ -256,13 +256,13 @@ PRIVATE void _ogl_shader_constructor_bake_body(_ogl_shader_constructor* construc
                       n_structure < n_structures;
                     ++n_structure)
     {
-        _ogl_shader_constructor_structure* structure_ptr = NULL;
+        _glsl_shader_constructor_structure* structure_ptr = NULL;
 
         if (system_resizable_vector_get_element_at(constructor_ptr->structures,
                                                    n_structure,
                                                   &structure_ptr) )
         {
-            body_sstream << _ogl_shader_constructor_get_structure_declaration_string(structure_ptr)
+            body_sstream << _glsl_shader_constructor_get_structure_declaration_string(structure_ptr)
                          << "\n";
         }
         else
@@ -283,13 +283,13 @@ PRIVATE void _ogl_shader_constructor_bake_body(_ogl_shader_constructor* construc
                       n_ub < n_uniform_blocks;
                     ++n_ub)
     {
-        _ogl_shader_constructor_uniform_block* ub_ptr = NULL;
+        _glsl_shader_constructor_uniform_block* ub_ptr = NULL;
 
         if (system_resizable_vector_get_element_at(constructor_ptr->uniform_blocks,
                                                    n_ub,
                                                   &ub_ptr) )
         {
-            body_sstream << _ogl_shader_constructor_get_uniform_block_declaration_string(ub_ptr)
+            body_sstream << _glsl_shader_constructor_get_uniform_block_declaration_string(ub_ptr)
                          << "\n";
         }
         else
@@ -312,14 +312,14 @@ PRIVATE void _ogl_shader_constructor_bake_body(_ogl_shader_constructor* construc
     {
         /* main() is assigned an id of 0. We want it declared as the very last function. */
 
-        unsigned int                      current_function_id = (n_function + 1) % n_functions;
-        _ogl_shader_constructor_function* function_ptr        = NULL;
+        unsigned int                       current_function_id = (n_function + 1) % n_functions;
+        _glsl_shader_constructor_function* function_ptr        = NULL;
 
         if (system_resizable_vector_get_element_at(constructor_ptr->functions,
                                                    current_function_id,
                                                   &function_ptr) )
         {
-            body_sstream << _ogl_shader_constructor_get_function_declaration_string(function_ptr)
+            body_sstream << _glsl_shader_constructor_get_function_declaration_string(function_ptr)
                          << "\n";
         }
         else
@@ -335,7 +335,7 @@ PRIVATE void _ogl_shader_constructor_bake_body(_ogl_shader_constructor* construc
 }
 
 /** TODO */
-PRIVATE std::string _ogl_shader_constructor_get_argument_list_string(system_resizable_vector arguments)
+PRIVATE std::string _glsl_shader_constructor_get_argument_list_string(system_resizable_vector arguments)
 {
     unsigned int      n_arguments = 0;
     std::stringstream result;
@@ -348,17 +348,17 @@ PRIVATE std::string _ogl_shader_constructor_get_argument_list_string(system_resi
                       n_argument < n_arguments;
                     ++n_argument)
     {
-        _ogl_shader_constructor_function_argument* argument_ptr = NULL;
+        _glsl_shader_constructor_function_argument* argument_ptr = NULL;
 
         if (system_resizable_vector_get_element_at(arguments,
                                                    n_argument,
                                                   &argument_ptr) )
         {
             /* in/inout/out */
-            std::string qualifier_string = _ogl_shader_constructor_get_shader_argument_qualifier_string(argument_ptr->qualifier);
+            std::string qualifier_string = _glsl_shader_constructor_get_shader_argument_qualifier_string(argument_ptr->qualifier);
 
             result << qualifier_string << " "
-                   << _ogl_shader_constructor_get_variable_declaration_string(argument_ptr->properties);
+                   << _glsl_shader_constructor_get_variable_declaration_string(argument_ptr->properties);
 
             /* separators */
             if (n_argument != (n_arguments - 1) )
@@ -378,17 +378,17 @@ PRIVATE std::string _ogl_shader_constructor_get_argument_list_string(system_resi
 }
 
 /** TODO */
-PRIVATE std::string _ogl_shader_constructor_get_function_declaration_string(_ogl_shader_constructor_function* function_ptr)
+PRIVATE std::string _glsl_shader_constructor_get_function_declaration_string(_glsl_shader_constructor_function* function_ptr)
 {
     std::stringstream result_sstream;
 
     /* Function declaration */
-    const char* returned_value_type_string = _ogl_shader_constructor_get_type_string(function_ptr->returned_value_type);
+    const char* returned_value_type_string = _glsl_shader_constructor_get_type_string(function_ptr->returned_value_type);
 
     result_sstream << returned_value_type_string                               << " "
                    << system_hashed_ansi_string_get_buffer(function_ptr->name) << " "
                    << "("
-                   << _ogl_shader_constructor_get_argument_list_string(function_ptr->arguments)
+                   << _glsl_shader_constructor_get_argument_list_string(function_ptr->arguments)
                    << ")\n"
                       "{\n"
                    << system_hashed_ansi_string_get_buffer(function_ptr->body)
@@ -400,7 +400,7 @@ PRIVATE std::string _ogl_shader_constructor_get_function_declaration_string(_ogl
 }
 
 /** TODO */
-PRIVATE std::string _ogl_shader_constructor_get_layout_qualifier_string(_layout_qualifier qualifier)
+PRIVATE std::string _glsl_shader_constructor_get_layout_qualifier_string(glsl_shader_constructor_layout_qualifier qualifier)
 {
     bool              first_qualifier = true;
     std::stringstream result_sstream;
@@ -476,7 +476,7 @@ PRIVATE std::string _ogl_shader_constructor_get_layout_qualifier_string(_layout_
 }
 
 /** TODO */
-PRIVATE std::string _ogl_shader_constructor_get_shader_argument_qualifier_string(_shader_argument_qualifier qualifier)
+PRIVATE std::string _glsl_shader_constructor_get_shader_argument_qualifier_string(glsl_shader_constructor_shader_argument_qualifier qualifier)
 {
     const char* result = "[?]";
 
@@ -498,7 +498,7 @@ PRIVATE std::string _ogl_shader_constructor_get_shader_argument_qualifier_string
 }
 
 /** TODO */
-PRIVATE std::string _ogl_shader_constructor_get_structure_declaration_string(_ogl_shader_constructor_structure* structure_ptr)
+PRIVATE std::string _glsl_shader_constructor_get_structure_declaration_string(_glsl_shader_constructor_structure* structure_ptr)
 {
     std::stringstream result_sstream;
 
@@ -517,13 +517,13 @@ PRIVATE std::string _ogl_shader_constructor_get_structure_declaration_string(_og
                       n_member < n_members;
                     ++n_member)
     {
-        _ogl_shader_constructor_variable* variable_ptr = NULL;
+        _glsl_shader_constructor_variable* variable_ptr = NULL;
 
         if (system_resizable_vector_get_element_at(structure_ptr->members,
                                                    n_member,
                                                   &variable_ptr) )
         {
-            result_sstream << _ogl_shader_constructor_get_variable_declaration_string(variable_ptr)
+            result_sstream << _glsl_shader_constructor_get_variable_declaration_string(variable_ptr)
                            << ";\n";
         }
         else
@@ -540,94 +540,82 @@ PRIVATE std::string _ogl_shader_constructor_get_structure_declaration_string(_og
 }
 
 /** TODO */
-PRIVATE const char* _ogl_shader_constructor_get_type_string(_shader_variable_type type)
+PRIVATE const char* _glsl_shader_constructor_get_type_string(ral_program_variable_type type)
 {
     const char* result ="[?]";
 
     switch (type)
     {
-        case TYPE_BOOL:                   result = "bool";                   break;
-        case TYPE_BVEC2:                  result = "bvec2";                  break;
-        case TYPE_BVEC3:                  result = "bvec3";                  break;
-        case TYPE_BVEC4:                  result = "bvec4";                  break;
-        case TYPE_DMAT2:                  result = "dmat2";                  break;
-        case TYPE_DMAT2X3:                result = "dmat2x3";                break;
-        case TYPE_DMAT2X4:                result = "dmat2x4";                break;
-        case TYPE_DMAT3:                  result = "dmat3";                  break;
-        case TYPE_DMAT3X2:                result = "dmat3x2";                break;
-        case TYPE_DMAT3X4:                result = "dmat3x4";                break;
-        case TYPE_DMAT4:                  result = "dmat4";                  break;
-        case TYPE_DMAT4X2:                result = "dmat4x2";                break;
-        case TYPE_DMAT4X3:                result = "dmat4x3";                break;
-        case TYPE_DVEC2:                  result = "dvec2";                  break;
-        case TYPE_DVEC3:                  result = "dvec3";                  break;
-        case TYPE_DVEC4:                  result = "dvec4";                  break;
-        case TYPE_FLOAT:                  result = "float";                  break;
-        case TYPE_INT:                    result = "int";                    break;
-        case TYPE_ISAMPLER1D:             result = "isampler1D";             break;
-        case TYPE_ISAMPLER1DARRAY:        result = "isampler1DArray";        break;
-        case TYPE_ISAMPLER2D:             result = "isampler2D";             break;
-        case TYPE_ISAMPLER2DARRAY:        result = "isampler2DArray";        break;
-        case TYPE_ISAMPLER2DMS:           result = "isampler2DMS";           break;
-        case TYPE_ISAMPLER2DMSARRAY:      result = "isampler2DMSArray";      break;
-        case TYPE_ISAMPLER2DRECT:         result = "isampler2DRect";         break;
-        case TYPE_ISAMPLER3D:             result = "isampler3D";             break;
-        case TYPE_ISAMPLERBUFFER:         result = "isamplerBuffer";         break;
-        case TYPE_ISAMPLERCUBE:           result = "isamplerCube";           break;
-        case TYPE_ISAMPLERCUBEARRAY:      result = "isamplerCubeArray";      break;
-        case TYPE_IVEC2:                  result = "ivec2";                  break;
-        case TYPE_IVEC3:                  result = "ivec3";                  break;
-        case TYPE_IVEC4:                  result = "ivec4";                  break;
-        case TYPE_MAT2:                   result = "mat2";                   break;
-        case TYPE_MAT2X3:                 result = "mat2x3";                 break;
-        case TYPE_MAT2X4:                 result = "mat2x4";                 break;
-        case TYPE_MAT3:                   result = "mat3";                   break;
-        case TYPE_MAT3X2:                 result = "mat3x2";                 break;
-        case TYPE_MAT3X4:                 result = "mat3x4";                 break;
-        case TYPE_MAT4:                   result = "mat4";                   break;
-        case TYPE_MAT4X2:                 result = "mat4x2";                 break;
-        case TYPE_MAT4X3:                 result = "mat4x3";                 break;
-        case TYPE_SAMPLER1D:              result = "sampler1D";              break;
-        case TYPE_SAMPLER1DARRAY:         result = "sampler1DArray";         break;
-        case TYPE_SAMPLER1DARRAYSHADOW:   result = "sampler1DArrayShadow";   break;
-        case TYPE_SAMPLER1DSHADOW:        result = "sampler1DShadow";        break;
-        case TYPE_SAMPLER2D:              result = "sampler2D";              break;
-        case TYPE_SAMPLER2DARRAY:         result = "sampler2DArray";         break;
-        case TYPE_SAMPLER2DARRAYSHADOW:   result = "sampler2DArrayShadow";   break;
-        case TYPE_SAMPLER2DMS:            result = "sampler2DMS";            break;
-        case TYPE_SAMPLER2DMSARRAY:       result = "sampler2DMSArray";       break;
-        case TYPE_SAMPLER2DRECT:          result = "sampler2DRect";          break;
-        case TYPE_SAMPLER2DRECTSHADOW:    result = "sampler2DRectShadow";    break;
-        case TYPE_SAMPLER2DSHADOW:        result = "sampler2DShadow";        break;
-        case TYPE_SAMPLER3D:              result = "sampler3D";              break;
-        case TYPE_SAMPLERBUFFER:          result = "samplerBuffer";          break;
-        case TYPE_SAMPLERCUBE:            result = "samplerCube";            break;
-        case TYPE_SAMPLERCUBEARRAY:       result = "samplerCubeArray";       break;
-        case TYPE_SAMPLERCUBEARRAYSHADOW: result = "samplerCubeArrayShadow"; break;
-        case TYPE_SAMPLERCUBESHADOW:      result = "samplerCubeShadow";      break;
-        case TYPE_UINT:                   result = "uint";                   break;
-        case TYPE_USAMPLER1D:             result = "usampler1D";             break;
-        case TYPE_USAMPLER1DARRAY:        result = "usampler1DArray";        break;
-        case TYPE_USAMPLER2D:             result = "usampler2D";             break;
-        case TYPE_USAMPLER2DARRAY:        result = "usampler2DArray";        break;
-        case TYPE_USAMPLER2DMS:           result = "usampler2DMS";           break;
-        case TYPE_USAMPLER2DMSARRAY:      result = "usampler2DMSArray";      break;
-        case TYPE_USAMPLER2DRECT:         result = "usampler2DRect";         break;
-        case TYPE_USAMPLER3D:             result = "usampler3D";             break;
-        case TYPE_USAMPLERBUFFER:         result = "usamplerBuffer";         break;
-        case TYPE_USAMPLERCUBE:           result = "usamplerCube";           break;
-        case TYPE_USAMPLERCUBEARRAY:      result = "usamplerCubeArray";      break;
-        case TYPE_UVEC2:                  result = "uvec2";                  break;
-        case TYPE_UVEC3:                  result = "uvec3";                  break;
-        case TYPE_UVEC4:                  result = "uvec4";                  break;
-        case TYPE_VEC2:                   result = "vec2";                   break;
-        case TYPE_VEC3:                   result = "vec3";                   break;
-        case TYPE_VEC4:                   result = "vec4";                   break;
-        case TYPE_VOID:                   result = "void";                   break;
+        case RAL_PROGRAM_VARIABLE_TYPE_BOOL:                                      result = "bool";                   break;
+        case RAL_PROGRAM_VARIABLE_TYPE_BOOL_VEC2:                                 result = "bvec2";                  break;
+        case RAL_PROGRAM_VARIABLE_TYPE_BOOL_VEC3:                                 result = "bvec3";                  break;
+        case RAL_PROGRAM_VARIABLE_TYPE_BOOL_VEC4:                                 result = "bvec4";                  break;
+        case RAL_PROGRAM_VARIABLE_TYPE_FLOAT:                                     result = "float";                  break;
+        case RAL_PROGRAM_VARIABLE_TYPE_INT:                                       result = "int";                    break;
+        case RAL_PROGRAM_VARIABLE_TYPE_INT_SAMPLER_1D:                            result = "isampler1D";             break;
+        case RAL_PROGRAM_VARIABLE_TYPE_INT_SAMPLER_1D_ARRAY:                      result = "isampler1DArray";        break;
+        case RAL_PROGRAM_VARIABLE_TYPE_INT_SAMPLER_2D:                            result = "isampler2D";             break;
+        case RAL_PROGRAM_VARIABLE_TYPE_INT_SAMPLER_2D_ARRAY:                      result = "isampler2DArray";        break;
+        case RAL_PROGRAM_VARIABLE_TYPE_INT_SAMPLER_2D_MULTISAMPLE:                result = "isampler2DMS";           break;
+        case RAL_PROGRAM_VARIABLE_TYPE_INT_SAMPLER_2D_MULTISAMPLE_ARRAY:          result = "isampler2DMSArray";      break;
+        case RAL_PROGRAM_VARIABLE_TYPE_INT_SAMPLER_2D_RECT:                       result = "isampler2DRect";         break;
+        case RAL_PROGRAM_VARIABLE_TYPE_INT_SAMPLER_3D:                            result = "isampler3D";             break;
+        case RAL_PROGRAM_VARIABLE_TYPE_INT_SAMPLER_BUFFER:                        result = "isamplerBuffer";         break;
+        case RAL_PROGRAM_VARIABLE_TYPE_INT_SAMPLER_CUBE:                          result = "isamplerCube";           break;
+        case RAL_PROGRAM_VARIABLE_TYPE_INT_VEC2:                                  result = "ivec2";                  break;
+        case RAL_PROGRAM_VARIABLE_TYPE_INT_VEC3:                                  result = "ivec3";                  break;
+        case RAL_PROGRAM_VARIABLE_TYPE_INT_VEC4:                                  result = "ivec4";                  break;
+        case RAL_PROGRAM_VARIABLE_TYPE_FLOAT_MAT2:                                result = "mat2";                   break;
+        case RAL_PROGRAM_VARIABLE_TYPE_FLOAT_MAT2x3:                              result = "mat2x3";                 break;
+        case RAL_PROGRAM_VARIABLE_TYPE_FLOAT_MAT2x4:                              result = "mat2x4";                 break;
+        case RAL_PROGRAM_VARIABLE_TYPE_FLOAT_MAT3:                                result = "mat3";                   break;
+        case RAL_PROGRAM_VARIABLE_TYPE_FLOAT_MAT3x2:                              result = "mat3x2";                 break;
+        case RAL_PROGRAM_VARIABLE_TYPE_FLOAT_MAT3x4:                              result = "mat3x4";                 break;
+        case RAL_PROGRAM_VARIABLE_TYPE_FLOAT_MAT4:                                result = "mat4";                   break;
+        case RAL_PROGRAM_VARIABLE_TYPE_FLOAT_MAT4x2:                              result = "mat4x2";                 break;
+        case RAL_PROGRAM_VARIABLE_TYPE_FLOAT_MAT4x3:                              result = "mat4x3";                 break;
+        case RAL_PROGRAM_VARIABLE_TYPE_FLOAT_VEC2:                                result = "vec2";                   break;
+        case RAL_PROGRAM_VARIABLE_TYPE_FLOAT_VEC3:                                result = "vec3";                   break;
+        case RAL_PROGRAM_VARIABLE_TYPE_FLOAT_VEC4:                                result = "vec4";                   break;
+        case RAL_PROGRAM_VARIABLE_TYPE_SAMPLER_1D:                                result = "sampler1D";              break;
+        case RAL_PROGRAM_VARIABLE_TYPE_SAMPLER_1D_ARRAY:                          result = "sampler1DArray";         break;
+        case RAL_PROGRAM_VARIABLE_TYPE_SAMPLER_1D_ARRAY_SHADOW:                   result = "sampler1DArrayShadow";   break;
+        case RAL_PROGRAM_VARIABLE_TYPE_SAMPLER_1D_SHADOW:                         result = "sampler1DShadow";        break;
+        case RAL_PROGRAM_VARIABLE_TYPE_SAMPLER_2D:                                result = "sampler2D";              break;
+        case RAL_PROGRAM_VARIABLE_TYPE_SAMPLER_2D_ARRAY:                          result = "sampler2DArray";         break;
+        case RAL_PROGRAM_VARIABLE_TYPE_SAMPLER_2D_ARRAY_SHADOW:                   result = "sampler2DArrayShadow";   break;
+        case RAL_PROGRAM_VARIABLE_TYPE_SAMPLER_2D_MULTISAMPLE:                    result = "sampler2DMS";            break;
+        case RAL_PROGRAM_VARIABLE_TYPE_SAMPLER_2D_MULTISAMPLE_ARRAY:              result = "sampler2DMSArray";       break;
+        case RAL_PROGRAM_VARIABLE_TYPE_SAMPLER_2D_RECT:                           result = "sampler2DRect";          break;
+        case RAL_PROGRAM_VARIABLE_TYPE_SAMPLER_2D_RECT_SHADOW:                    result = "sampler2DRectShadow";    break;
+        case RAL_PROGRAM_VARIABLE_TYPE_SAMPLER_2D_SHADOW:                         result = "sampler2DShadow";        break;
+        case RAL_PROGRAM_VARIABLE_TYPE_SAMPLER_3D:                                result = "sampler3D";              break;
+        case RAL_PROGRAM_VARIABLE_TYPE_SAMPLER_BUFFER:                            result = "samplerBuffer";          break;
+        case RAL_PROGRAM_VARIABLE_TYPE_SAMPLER_CUBE:                              result = "samplerCube";            break;
+        case RAL_PROGRAM_VARIABLE_TYPE_SAMPLER_CUBE_ARRAY:                        result = "samplerCubeArray";       break;
+        case RAL_PROGRAM_VARIABLE_TYPE_SAMPLER_CUBE_ARRAY_SHADOW:                 result = "samplerCubeArrayShadow"; break;
+        case RAL_PROGRAM_VARIABLE_TYPE_SAMPLER_CUBE_SHADOW:                       result = "samplerCubeShadow";      break;
+        case RAL_PROGRAM_VARIABLE_TYPE_UNSIGNED_INT:                              result = "uint";                   break;
+        case RAL_PROGRAM_VARIABLE_TYPE_UNSIGNED_INT_SAMPLER_1D:                   result = "usampler1D";             break;
+        case RAL_PROGRAM_VARIABLE_TYPE_UNSIGNED_INT_SAMPLER_1D_ARRAY:             result = "usampler1DArray";        break;
+        case RAL_PROGRAM_VARIABLE_TYPE_UNSIGNED_INT_SAMPLER_2D:                   result = "usampler2D";             break;
+        case RAL_PROGRAM_VARIABLE_TYPE_UNSIGNED_INT_SAMPLER_2D_ARRAY:             result = "usampler2DArray";        break;
+        case RAL_PROGRAM_VARIABLE_TYPE_UNSIGNED_INT_SAMPLER_2D_MULTISAMPLE:       result = "usampler2DMS";           break;
+        case RAL_PROGRAM_VARIABLE_TYPE_UNSIGNED_INT_SAMPLER_2D_MULTISAMPLE_ARRAY: result = "usampler2DMSArray";      break;
+        case RAL_PROGRAM_VARIABLE_TYPE_UNSIGNED_INT_SAMPLER_2D_RECT:              result = "usampler2DRect";         break;
+        case RAL_PROGRAM_VARIABLE_TYPE_UNSIGNED_INT_SAMPLER_3D:                   result = "usampler3D";             break;
+        case RAL_PROGRAM_VARIABLE_TYPE_UNSIGNED_INT_SAMPLER_BUFFER:               result = "usamplerBuffer";         break;
+        case RAL_PROGRAM_VARIABLE_TYPE_UNSIGNED_INT_SAMPLER_CUBE:                 result = "usamplerCube";           break;
+        case RAL_PROGRAM_VARIABLE_TYPE_UNSIGNED_INT_SAMPLER_CUBE_ARRAY:           result = "usamplerCubeArray";      break;
+        case RAL_PROGRAM_VARIABLE_TYPE_UNSIGNED_INT_VEC2:                         result = "uvec2";                  break;
+        case RAL_PROGRAM_VARIABLE_TYPE_UNSIGNED_INT_VEC3:                         result = "uvec3";                  break;
+        case RAL_PROGRAM_VARIABLE_TYPE_UNSIGNED_INT_VEC4:                         result = "uvec4";                  break;
+        case RAL_PROGRAM_VARIABLE_TYPE_VOID:                                      result = "void";                   break;
 
         default:
         {
-            ASSERT_DEBUG_SYNC(false, "Unrecognized type");
+            ASSERT_DEBUG_SYNC(false,
+                              "Unrecognized type");
         }
     } /* switch (type) */
 
@@ -635,7 +623,7 @@ PRIVATE const char* _ogl_shader_constructor_get_type_string(_shader_variable_typ
 }
 
 /** TODO */
-PRIVATE std::string _ogl_shader_constructor_get_uniform_block_declaration_string(_ogl_shader_constructor_uniform_block* ub_ptr)
+PRIVATE std::string _glsl_shader_constructor_get_uniform_block_declaration_string(_glsl_shader_constructor_uniform_block* ub_ptr)
 {
     std::stringstream result_sstream;
 
@@ -659,13 +647,13 @@ PRIVATE std::string _ogl_shader_constructor_get_uniform_block_declaration_string
                           n_variable < n_variables;
                         ++n_variable)
         {
-            _ogl_shader_constructor_variable* variable_ptr = NULL;
+            _glsl_shader_constructor_variable* variable_ptr = NULL;
 
             if (system_resizable_vector_get_element_at(ub_ptr->variables,
                                                        n_variable,
                                                       &variable_ptr) )
             {
-                result_sstream << _ogl_shader_constructor_get_variable_declaration_string(variable_ptr) << ";\n";
+                result_sstream << _glsl_shader_constructor_get_variable_declaration_string(variable_ptr) << ";\n";
             }
             else
             {
@@ -685,20 +673,20 @@ PRIVATE std::string _ogl_shader_constructor_get_uniform_block_declaration_string
 }
 
 /** TODO */
-PRIVATE std::string _ogl_shader_constructor_get_variable_declaration_string(_ogl_shader_constructor_variable* variable_ptr)
+PRIVATE std::string _glsl_shader_constructor_get_variable_declaration_string(_glsl_shader_constructor_variable* variable_ptr)
 {
     std::stringstream result_sstream;
 
     /* layout qualifiers */
     if (variable_ptr->layout_qualifiers != LAYOUT_QUALIFIER_NONE)
     {
-        std::string layout_qualifiers_string = _ogl_shader_constructor_get_layout_qualifier_string(variable_ptr->layout_qualifiers);
+        std::string layout_qualifiers_string = _glsl_shader_constructor_get_layout_qualifier_string(variable_ptr->layout_qualifiers);
 
         result_sstream << layout_qualifiers_string;
     }
 
     /* variable type */
-    const char* variable_type_string = _ogl_shader_constructor_get_variable_type_string(variable_ptr->variable_type);
+    const char* variable_type_string = _glsl_shader_constructor_get_variable_type_string(variable_ptr->variable_type);
 
     result_sstream << variable_type_string << " ";
 
@@ -712,7 +700,7 @@ PRIVATE std::string _ogl_shader_constructor_get_variable_declaration_string(_ogl
     else
     {
         /* type */
-        std::string type_string = _ogl_shader_constructor_get_type_string(variable_ptr->type);
+        std::string type_string = _glsl_shader_constructor_get_type_string(variable_ptr->type);
 
         result_sstream << type_string << " ";
     }
@@ -731,7 +719,7 @@ PRIVATE std::string _ogl_shader_constructor_get_variable_declaration_string(_ogl
     {
         /* TODO: Yeah, current impl is over-simplified. Implement when needed */
         ASSERT_DEBUG_SYNC(variable_ptr->array_size == 0         &&
-                          variable_ptr->type       == TYPE_MAT4,
+                          variable_ptr->type       == RAL_PROGRAM_VARIABLE_TYPE_FLOAT_MAT4,
                           "TODO: Unsupported case");
 
         result_sstream << " = mat4(";
@@ -755,7 +743,7 @@ PRIVATE std::string _ogl_shader_constructor_get_variable_declaration_string(_ogl
 }
 
 /** TODO */
-PRIVATE const char* _ogl_shader_constructor_get_variable_type_string(_variable_type variable_type)
+PRIVATE const char* _glsl_shader_constructor_get_variable_type_string(glsl_shader_constructor_variable_type variable_type)
 {
     const char* result = "[?]";
 
@@ -777,24 +765,24 @@ PRIVATE const char* _ogl_shader_constructor_get_variable_type_string(_variable_t
 }
 
 /** TODO */
-PRIVATE void _ogl_shader_constructor_release(void* constructor)
+PRIVATE void _glsl_shader_constructor_release(void* constructor)
 {
-    _ogl_shader_constructor* constructor_ptr = (_ogl_shader_constructor*) constructor;
+    _glsl_shader_constructor* constructor_ptr = (_glsl_shader_constructor*) constructor;
 
     /* Nothing to be done */
 }
 
 
 /** Please see header for specification */
-PUBLIC EMERALD_API bool ogl_shader_constructor_add_function(ogl_shader_constructor    constructor,
-                                                            system_hashed_ansi_string name,
-                                                            _shader_variable_type     returned_value_type,
-                                                            _function_id*             out_new_function_id_ptr)
+PUBLIC EMERALD_API bool glsl_shader_constructor_add_function(glsl_shader_constructor              constructor,
+                                                             system_hashed_ansi_string            name,
+                                                             ral_program_variable_type            returned_value_type,
+                                                             glsl_shader_constructor_function_id* out_new_function_id_ptr)
 {
-    _ogl_shader_constructor*          constructor_ptr  = (_ogl_shader_constructor*) constructor;
-    _ogl_shader_constructor_function* new_function_ptr = NULL;
-    bool                              result           = false;
-    _function_id                      result_id        = 0;
+    _glsl_shader_constructor*           constructor_ptr  = (_glsl_shader_constructor*) constructor;
+    _glsl_shader_constructor_function*  new_function_ptr = NULL;
+    bool                                result           = false;
+    glsl_shader_constructor_function_id result_id        = 0;
 
     system_resizable_vector_get_property(constructor_ptr->functions,
                                          SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
@@ -805,7 +793,7 @@ PUBLIC EMERALD_API bool ogl_shader_constructor_add_function(ogl_shader_construct
                       n_function < result_id /* total count */;
                     ++n_function)
     {
-        _ogl_shader_constructor_function* function_ptr = NULL;
+        _glsl_shader_constructor_function* function_ptr = NULL;
 
         if (system_resizable_vector_get_element_at(constructor_ptr->functions,
                                                    n_function,
@@ -829,7 +817,7 @@ PUBLIC EMERALD_API bool ogl_shader_constructor_add_function(ogl_shader_construct
     } /* for (all function descriptors) */
 
     /* Form the new descriptor */
-    new_function_ptr = new (std::nothrow) _ogl_shader_constructor_function;
+    new_function_ptr = new (std::nothrow) _glsl_shader_constructor_function;
 
     ASSERT_ALWAYS_SYNC(new_function_ptr != NULL,
                        "Out of memory");
@@ -856,18 +844,18 @@ end:
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API void ogl_shader_constructor_add_function_argument(ogl_shader_constructor     constructor,
-                                                                     _function_id               function_id,
-                                                                     _shader_argument_qualifier qualifier,
-                                                                     _shader_variable_type      argument_type,
-                                                                     system_hashed_ansi_string  argument_name)
+PUBLIC EMERALD_API void glsl_shader_constructor_add_function_argument(glsl_shader_constructor                           constructor,
+                                                                      glsl_shader_constructor_function_id               function_id,
+                                                                      glsl_shader_constructor_shader_argument_qualifier qualifier,
+                                                                      ral_program_variable_type                         argument_type,
+                                                                      system_hashed_ansi_string                         argument_name)
 {
-    _ogl_shader_constructor*                   constructor_ptr  = (_ogl_shader_constructor*) constructor;
-    unsigned int                               n_arguments      = 0;
-    _ogl_shader_constructor_function_argument* new_func_arg_ptr = NULL;
+    _glsl_shader_constructor*                   constructor_ptr  = (_glsl_shader_constructor*) constructor;
+    unsigned int                                n_arguments      = 0;
+    _glsl_shader_constructor_function_argument* new_func_arg_ptr = NULL;
 
     /* Identify the function descriptor */
-    _ogl_shader_constructor_function* function_ptr = NULL;
+    _glsl_shader_constructor_function* function_ptr = NULL;
 
     if (!system_resizable_vector_get_element_at(constructor_ptr->functions,
                                                 function_id,
@@ -888,7 +876,7 @@ PUBLIC EMERALD_API void ogl_shader_constructor_add_function_argument(ogl_shader_
                       n_argument < n_arguments;
                     ++n_argument)
     {
-        _ogl_shader_constructor_function_argument* argument_ptr = NULL;
+        _glsl_shader_constructor_function_argument* argument_ptr = NULL;
 
         if (!system_resizable_vector_get_element_at(function_ptr->arguments,
                                                     n_argument,
@@ -912,7 +900,7 @@ PUBLIC EMERALD_API void ogl_shader_constructor_add_function_argument(ogl_shader_
     } /* for (all arguments) */
 
     /* Form the new descriptor */
-    new_func_arg_ptr = new (std::nothrow) _ogl_shader_constructor_function_argument;
+    new_func_arg_ptr = new (std::nothrow) _glsl_shader_constructor_function_argument;
 
     ASSERT_ALWAYS_SYNC(new_func_arg_ptr != NULL,
                        "Out of memory");
@@ -937,18 +925,18 @@ end:
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API bool ogl_shader_constructor_add_general_variable_to_structure(ogl_shader_constructor    constructor,
-                                                                                 _shader_variable_type     type,
-                                                                                 uint32_t                  array_size,
-                                                                                 _structure_id             structure,
-                                                                                 system_hashed_ansi_string name)
+PUBLIC EMERALD_API bool glsl_shader_constructor_add_general_variable_to_structure(glsl_shader_constructor              constructor,
+                                                                                  ral_program_variable_type            type,
+                                                                                  uint32_t                             array_size,
+                                                                                  glsl_shader_constructor_structure_id structure,
+                                                                                  system_hashed_ansi_string            name)
 {
-    _ogl_shader_constructor*          constructor_ptr = (_ogl_shader_constructor*) constructor;
-    bool                              result          = false;
-    _ogl_shader_constructor_variable* variable_ptr    = NULL;
+    _glsl_shader_constructor*          constructor_ptr = (_glsl_shader_constructor*) constructor;
+    bool                               result          = false;
+    _glsl_shader_constructor_variable* variable_ptr    = NULL;
 
     /* Retrieve structure descriptor */
-    _ogl_shader_constructor_structure* structure_ptr = NULL;
+    _glsl_shader_constructor_structure* structure_ptr = NULL;
 
     if (!system_resizable_vector_get_element_at(constructor_ptr->structures,
                                                 structure,
@@ -961,7 +949,7 @@ PUBLIC EMERALD_API bool ogl_shader_constructor_add_general_variable_to_structure
     }
 
     /* Form new variable descriptor */
-    variable_ptr = new (std::nothrow) _ogl_shader_constructor_variable;
+    variable_ptr = new (std::nothrow) _glsl_shader_constructor_variable;
 
     ASSERT_ALWAYS_SYNC(variable_ptr != NULL,
                        "Out of memory");
@@ -990,20 +978,20 @@ end:
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API bool ogl_shader_constructor_add_general_variable_to_ub(ogl_shader_constructor    constructor,
-                                                                          _variable_type            variable_type,
-                                                                          _layout_qualifier         layout_qualifiers,
-                                                                          _shader_variable_type     type,
-                                                                          uint32_t                  array_size,
-                                                                          _uniform_block_id         uniform_block,
-                                                                          system_hashed_ansi_string name,
-                                                                          _variable_id*             out_variable_id)
+PUBLIC EMERALD_API bool glsl_shader_constructor_add_general_variable_to_ub(glsl_shader_constructor                  constructor,
+                                                                           glsl_shader_constructor_variable_type    variable_type,
+                                                                           glsl_shader_constructor_layout_qualifier layout_qualifiers,
+                                                                           ral_program_variable_type                type,
+                                                                           uint32_t                                 array_size,
+                                                                           glsl_shader_constructor_uniform_block_id uniform_block,
+                                                                           system_hashed_ansi_string                name,
+                                                                           glsl_shader_constructor_variable_id*     out_variable_id)
 {
-    _ogl_shader_constructor*               constructor_ptr      = (_ogl_shader_constructor*) constructor;
-    unsigned int                           n_existing_variables = 0;
-    bool                                   result               = false;
-    _ogl_shader_constructor_uniform_block* ub_ptr               = NULL;
-    _ogl_shader_constructor_variable*      variable_ptr         = NULL;
+    _glsl_shader_constructor*               constructor_ptr      = (_glsl_shader_constructor*) constructor;
+    unsigned int                            n_existing_variables = 0;
+    bool                                    result               = false;
+    _glsl_shader_constructor_uniform_block* ub_ptr               = NULL;
+    _glsl_shader_constructor_variable*      variable_ptr         = NULL;
 
     /* Sanity checks */
     if (variable_type == VARIABLE_TYPE_INPUT_ATTRIBUTE &&
@@ -1043,7 +1031,7 @@ PUBLIC EMERALD_API bool ogl_shader_constructor_add_general_variable_to_ub(ogl_sh
                       n_variable < n_existing_variables;
                     ++n_variable)
     {
-        _ogl_shader_constructor_variable* variable_ptr = NULL;
+        _glsl_shader_constructor_variable* variable_ptr = NULL;
 
         if (system_resizable_vector_get_element_at(ub_ptr->variables,
                                                    n_variable,
@@ -1071,12 +1059,13 @@ PUBLIC EMERALD_API bool ogl_shader_constructor_add_general_variable_to_ub(ogl_sh
         }
         else
         {
-            ASSERT_DEBUG_SYNC(false, "Could not retrieve variable descriptor");
+            ASSERT_DEBUG_SYNC(false,
+                              "Could not retrieve variable descriptor");
         }
     } /* for (all known variables) */
 
     /* Form new variable descriptor */
-    variable_ptr = new (std::nothrow) _ogl_shader_constructor_variable;
+    variable_ptr = new (std::nothrow) _glsl_shader_constructor_variable;
 
     ASSERT_ALWAYS_SYNC(variable_ptr != NULL,
                        "Out of memory");
@@ -1114,14 +1103,14 @@ end:
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API bool ogl_shader_constructor_add_structure(ogl_shader_constructor    constructor,
-                                                             system_hashed_ansi_string name,
-                                                             _structure_id*            out_result_id_ptr)
+PUBLIC EMERALD_API bool glsl_shader_constructor_add_structure(glsl_shader_constructor               constructor,
+                                                              system_hashed_ansi_string             name,
+                                                              glsl_shader_constructor_structure_id* out_result_id_ptr)
 {
-    _ogl_shader_constructor*           constructor_ptr   = (_ogl_shader_constructor*) constructor;
-    _ogl_shader_constructor_structure* new_structure_ptr = NULL;
-    bool                               result            = false;
-    _structure_id                      result_id         = 0;
+    _glsl_shader_constructor*            constructor_ptr   = (_glsl_shader_constructor*) constructor;
+    _glsl_shader_constructor_structure*  new_structure_ptr = NULL;
+    bool                                 result            = false;
+    glsl_shader_constructor_structure_id result_id         = 0;
 
     /* Make sure the structure has not already been added */
     unsigned int n_structures = 0;
@@ -1134,7 +1123,7 @@ PUBLIC EMERALD_API bool ogl_shader_constructor_add_structure(ogl_shader_construc
                       n_structure < n_structures;
                     ++n_structure)
     {
-        _ogl_shader_constructor_structure* structure_ptr = NULL;
+        _glsl_shader_constructor_structure* structure_ptr = NULL;
 
         if (!system_resizable_vector_get_element_at(constructor_ptr->structures,
                                                     n_structure,
@@ -1157,7 +1146,7 @@ PUBLIC EMERALD_API bool ogl_shader_constructor_add_structure(ogl_shader_construc
     } /* for (all added structures) */
 
     /* Form a new descriptor */
-     new_structure_ptr = new (std::nothrow) _ogl_shader_constructor_structure;
+     new_structure_ptr = new (std::nothrow) _glsl_shader_constructor_structure;
 
     ASSERT_ALWAYS_SYNC(new_structure_ptr != NULL,
                        "Out of memory");
@@ -1191,18 +1180,18 @@ end:
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API bool ogl_shader_constructor_add_structure_variable_to_ub(ogl_shader_constructor    constructor,
-                                                                            _structure_id             structure,
-                                                                            _uniform_block_id         uniform_block,
-                                                                            system_hashed_ansi_string name)
+PUBLIC EMERALD_API bool glsl_shader_constructor_add_structure_variable_to_ub(glsl_shader_constructor                  constructor,
+                                                                             glsl_shader_constructor_structure_id     structure,
+                                                                             glsl_shader_constructor_uniform_block_id uniform_block,
+                                                                             system_hashed_ansi_string                name)
 {
-    _ogl_shader_constructor*               constructor_ptr = (_ogl_shader_constructor*) constructor;
-    bool                                   result          = false;
-    _ogl_shader_constructor_uniform_block* ub_ptr          = NULL;
-    _ogl_shader_constructor_variable*      variable_ptr    = NULL;
+    _glsl_shader_constructor*               constructor_ptr = (_glsl_shader_constructor*) constructor;
+    bool                                    result          = false;
+    _glsl_shader_constructor_uniform_block* ub_ptr          = NULL;
+    _glsl_shader_constructor_variable*      variable_ptr    = NULL;
 
     /* Retrieve structure descriptor */
-    _ogl_shader_constructor_structure* structure_ptr = NULL;
+    _glsl_shader_constructor_structure* structure_ptr = NULL;
 
     if (!system_resizable_vector_get_element_at(constructor_ptr->structures,
                                                 structure,
@@ -1226,7 +1215,7 @@ PUBLIC EMERALD_API bool ogl_shader_constructor_add_structure_variable_to_ub(ogl_
     }
 
     /* Form new variable descriptor */
-    variable_ptr = new (std::nothrow) _ogl_shader_constructor_variable;
+    variable_ptr = new (std::nothrow) _glsl_shader_constructor_variable;
 
     ASSERT_ALWAYS_SYNC(variable_ptr != NULL,
                        "Out of memory");
@@ -1254,13 +1243,13 @@ end:
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API void ogl_shader_constructor_append_to_function_body(ogl_shader_constructor    constructor,
-                                                                       _function_id              function_id,
-                                                                       system_hashed_ansi_string body_to_append)
+PUBLIC EMERALD_API void glsl_shader_constructor_append_to_function_body(glsl_shader_constructor             constructor,
+                                                                        glsl_shader_constructor_function_id function_id,
+                                                                        system_hashed_ansi_string           body_to_append)
 {
-    std::stringstream                 body_sstream;
-    _ogl_shader_constructor*          constructor_ptr = (_ogl_shader_constructor*) constructor;
-    _ogl_shader_constructor_function* function_ptr    = NULL;
+    std::stringstream                  body_sstream;
+    _glsl_shader_constructor*          constructor_ptr = (_glsl_shader_constructor*) constructor;
+    _glsl_shader_constructor_function* function_ptr    = NULL;
 
     if (!system_resizable_vector_get_element_at(constructor_ptr->functions,
                                                 function_id,
@@ -1286,14 +1275,14 @@ end:
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API _uniform_block_id ogl_shader_constructor_add_uniform_block(ogl_shader_constructor    constructor,
-                                                                              _layout_qualifier         layout_qualifiers,
-                                                                              system_hashed_ansi_string name)
+PUBLIC EMERALD_API glsl_shader_constructor_uniform_block_id glsl_shader_constructor_add_uniform_block(glsl_shader_constructor                  constructor,
+                                                                                                      glsl_shader_constructor_layout_qualifier layout_qualifiers,
+                                                                                                      system_hashed_ansi_string                name)
 {
-    _ogl_shader_constructor*               constructor_ptr = (_ogl_shader_constructor*) constructor;
-    bool                                   is_default_ub   = false;
-    _uniform_block_id                      result_id       = 0;
-    _ogl_shader_constructor_uniform_block* ub_ptr          = NULL;
+    _glsl_shader_constructor*                constructor_ptr = (_glsl_shader_constructor*) constructor;
+    bool                                     is_default_ub   = false;
+    glsl_shader_constructor_uniform_block_id result_id       = 0;
+    _glsl_shader_constructor_uniform_block*  ub_ptr          = NULL;
 
     /* Make sure the uniform block has not already been added */
     unsigned int n_uniform_blocks = 0;
@@ -1306,7 +1295,7 @@ PUBLIC EMERALD_API _uniform_block_id ogl_shader_constructor_add_uniform_block(og
                       n_uniform_block < n_uniform_blocks;
                     ++n_uniform_block)
     {
-        _ogl_shader_constructor_uniform_block* ub_ptr = NULL;
+        _glsl_shader_constructor_uniform_block* ub_ptr = NULL;
 
         if (!system_resizable_vector_get_element_at(constructor_ptr->uniform_blocks,
                                                     n_uniform_block,
@@ -1353,7 +1342,7 @@ PUBLIC EMERALD_API _uniform_block_id ogl_shader_constructor_add_uniform_block(og
     }
 
     /* Form a new descriptor */
-    ub_ptr = new (std::nothrow) _ogl_shader_constructor_uniform_block;
+    ub_ptr = new (std::nothrow) _glsl_shader_constructor_uniform_block;
 
     if (ub_ptr == NULL)
     {
@@ -1383,10 +1372,10 @@ end:
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API ogl_shader_constructor ogl_shader_constructor_create(ral_shader_type           shader_type,
-                                                                        system_hashed_ansi_string name)
+PUBLIC EMERALD_API glsl_shader_constructor glsl_shader_constructor_create(ral_shader_type           shader_type,
+                                                                          system_hashed_ansi_string name)
 {
-    _ogl_shader_constructor* constructor_ptr = new (std::nothrow) _ogl_shader_constructor;
+    _glsl_shader_constructor* constructor_ptr = new (std::nothrow) _glsl_shader_constructor;
 
     if (constructor_ptr != NULL)
     {
@@ -1394,41 +1383,41 @@ PUBLIC EMERALD_API ogl_shader_constructor ogl_shader_constructor_create(ral_shad
         constructor_ptr->shader_type = shader_type;
 
         /* Create the default uniform block's descriptor */
-        ogl_shader_constructor_add_uniform_block( (ogl_shader_constructor) constructor_ptr,
-                                                  (_layout_qualifier)      0, /* no layout qualifiers */
-                                                  system_hashed_ansi_string_get_default_empty_string() );
+        glsl_shader_constructor_add_uniform_block( (glsl_shader_constructor)                  constructor_ptr,
+                                                   (glsl_shader_constructor_layout_qualifier) 0, /* no layout qualifiers */
+                                                   system_hashed_ansi_string_get_default_empty_string() );
 
         /* Create main() function descriptor */
-        _function_id main_function_id = (_function_id) 0xFFFFFFFF;
+        glsl_shader_constructor_function_id main_function_id = (glsl_shader_constructor_function_id) 0xFFFFFFFF;
 
-        ogl_shader_constructor_add_function( (ogl_shader_constructor) constructor_ptr,
-                                             system_hashed_ansi_string_create("main"),
-                                             TYPE_VOID,
-                                             &main_function_id);
+        glsl_shader_constructor_add_function( (glsl_shader_constructor) constructor_ptr,
+                                              system_hashed_ansi_string_create("main"),
+                                              RAL_PROGRAM_VARIABLE_TYPE_VOID,
+                                              &main_function_id);
 
         ASSERT_DEBUG_SYNC(main_function_id == 0,
                           "main() function ID is not 0!");
 
         /* Initialize reference counting */
         REFCOUNT_INSERT_INIT_CODE_WITH_RELEASE_HANDLER(constructor_ptr,
-                                                       _ogl_shader_constructor_release,
-                                                       OBJECT_TYPE_OGL_SHADER_CONSTRUCTOR,
-                                                       system_hashed_ansi_string_create_by_merging_two_strings("\\OpenGL Shader Constructors\\",
+                                                       _glsl_shader_constructor_release,
+                                                       OBJECT_TYPE_GLSL_SHADER_CONSTRUCTOR,
+                                                       system_hashed_ansi_string_create_by_merging_two_strings("\\GLSL Shader Constructors\\",
                                                                                                                system_hashed_ansi_string_get_buffer(name)) );
     }
 
-    return (ogl_shader_constructor) constructor_ptr;
+    return (glsl_shader_constructor) constructor_ptr;
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API unsigned int ogl_shader_constructor_get_amount_of_variables_in_ub(ogl_shader_constructor constructor,
-                                                                                     _uniform_block_id      ub_id)
+PUBLIC EMERALD_API unsigned int glsl_shader_constructor_get_amount_of_variables_in_ub(glsl_shader_constructor                  constructor,
+                                                                                      glsl_shader_constructor_uniform_block_id ub_id)
 {
-    _ogl_shader_constructor* constructor_ptr = (_ogl_shader_constructor*) constructor;
-    unsigned int             result          = 0;
+    _glsl_shader_constructor* constructor_ptr = (_glsl_shader_constructor*) constructor;
+    unsigned int              result          = 0;
 
     /* Identify the uniform block descriptor */
-    _ogl_shader_constructor_uniform_block* ub_ptr = NULL;
+    _glsl_shader_constructor_uniform_block* ub_ptr = NULL;
 
     if (!system_resizable_vector_get_element_at(constructor_ptr->uniform_blocks,
                                                 ub_id,
@@ -1450,27 +1439,27 @@ end:
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API system_hashed_ansi_string ogl_shader_constructor_get_shader_body(ogl_shader_constructor constructor)
+PUBLIC EMERALD_API system_hashed_ansi_string glsl_shader_constructor_get_shader_body(glsl_shader_constructor constructor)
 {
-    _ogl_shader_constructor* constructor_ptr = (_ogl_shader_constructor*) constructor;
+    _glsl_shader_constructor* constructor_ptr = (_glsl_shader_constructor*) constructor;
 
     if (constructor_ptr->dirty)
     {
-        _ogl_shader_constructor_bake_body(constructor_ptr);
+        _glsl_shader_constructor_bake_body(constructor_ptr);
     }
 
     return constructor_ptr->body;
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API bool ogl_shader_constructor_is_general_variable_in_ub(ogl_shader_constructor    constructor,
-                                                                         _uniform_block_id         uniform_block,
-                                                                         system_hashed_ansi_string var_name)
+PUBLIC EMERALD_API bool glsl_shader_constructor_is_general_variable_in_ub(glsl_shader_constructor                  constructor,
+                                                                          glsl_shader_constructor_uniform_block_id uniform_block,
+                                                                          system_hashed_ansi_string                var_name)
 {
-    _ogl_shader_constructor*               constructor_ptr = (_ogl_shader_constructor*) constructor;
-    uint32_t                               n_variables     = 0;
-    bool                                   result          = false;
-    _ogl_shader_constructor_uniform_block* ub_ptr          = NULL;
+    _glsl_shader_constructor*               constructor_ptr = (_glsl_shader_constructor*) constructor;
+    uint32_t                                n_variables     = 0;
+    bool                                    result          = false;
+    _glsl_shader_constructor_uniform_block* ub_ptr          = NULL;
 
     if (!system_resizable_vector_get_element_at(constructor_ptr->uniform_blocks,
                                                 uniform_block,
@@ -1487,13 +1476,13 @@ PUBLIC EMERALD_API bool ogl_shader_constructor_is_general_variable_in_ub(ogl_sha
                                          SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
                                         &n_variables);
 
-    LOG_ERROR("ogl_shader_constructor_is_general_variable_in_ub(): Slow code path!");
+    LOG_ERROR("glsl_shader_constructor_is_general_variable_in_ub(): Slow code path!");
 
     for (uint32_t n_variable = 0;
                   n_variable < n_variables;
                 ++n_variable)
     {
-        _ogl_shader_constructor_variable* variable_ptr = NULL;
+        _glsl_shader_constructor_variable* variable_ptr = NULL;
 
         if (!system_resizable_vector_get_element_at(ub_ptr->variables,
                                                     n_variable,
@@ -1522,12 +1511,12 @@ end:
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API void ogl_shader_constructor_set_function_body(ogl_shader_constructor    constructor,
-                                                                 _function_id              function_id,
-                                                                 system_hashed_ansi_string body)
+PUBLIC EMERALD_API void glsl_shader_constructor_set_function_body(glsl_shader_constructor             constructor,
+                                                                  glsl_shader_constructor_function_id function_id,
+                                                                  system_hashed_ansi_string           body)
 {
-    _ogl_shader_constructor*          constructor_ptr = (_ogl_shader_constructor*) constructor;
-    _ogl_shader_constructor_function* function_ptr    = NULL;
+    _glsl_shader_constructor*          constructor_ptr = (_glsl_shader_constructor*) constructor;
+    _glsl_shader_constructor_function* function_ptr    = NULL;
 
     if (!system_resizable_vector_get_element_at(constructor_ptr->functions,
                                                 function_id,
@@ -1551,18 +1540,18 @@ end:
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API bool ogl_shader_constructor_set_general_variable_default_value(ogl_shader_constructor constructor,
-                                                                                  _uniform_block_id      uniform_block,
-                                                                                  _variable_id           variable_id,
-                                                                                  const void*            data,
-                                                                                  uint32_t*              out_n_bytes_to_read)
+PUBLIC EMERALD_API bool glsl_shader_constructor_set_general_variable_default_value(glsl_shader_constructor                  constructor,
+                                                                                   glsl_shader_constructor_uniform_block_id uniform_block,
+                                                                                   glsl_shader_constructor_variable_id      variable_id,
+                                                                                   const void*                              data,
+                                                                                   uint32_t*                                out_n_bytes_to_read)
 {
-    _ogl_shader_constructor*          constructor_ptr = (_ogl_shader_constructor*) constructor;
-    bool                              result          = false;
-    _ogl_shader_constructor_variable* variable_ptr    = NULL;
+    _glsl_shader_constructor*          constructor_ptr = (_glsl_shader_constructor*) constructor;
+    bool                               result          = false;
+    _glsl_shader_constructor_variable* variable_ptr    = NULL;
 
     /* Retrieve UB descriptor */
-    _ogl_shader_constructor_uniform_block* ub_ptr = NULL;
+    _glsl_shader_constructor_uniform_block* ub_ptr = NULL;
 
     if (!system_resizable_vector_get_element_at(constructor_ptr->uniform_blocks,
                                                 uniform_block,
@@ -1590,10 +1579,10 @@ PUBLIC EMERALD_API bool ogl_shader_constructor_set_general_variable_default_valu
      *
      * TODO: Expand if needed.
      */
-    if (variable_ptr->type != TYPE_MAT4)
+    if (variable_ptr->type != RAL_PROGRAM_VARIABLE_TYPE_FLOAT_MAT4)
     {
         ASSERT_DEBUG_SYNC(false,
-                          "ogl_shader_constructor_set_general_variable_default_value() only supports mat4's atm.");
+                          "glsl_shader_constructor_set_general_variable_default_value() only supports mat4's atm.");
 
         goto end;
     }
@@ -1601,7 +1590,7 @@ PUBLIC EMERALD_API bool ogl_shader_constructor_set_general_variable_default_valu
     if (variable_ptr->array_size != 0)
     {
         ASSERT_DEBUG_SYNC(false,
-                          "ogl_shader_constructor_set_general_variable_default_value() only supports non-arrayed variables atm.");
+                          "glsl_shader_constructor_set_general_variable_default_value() only supports non-arrayed variables atm.");
 
         goto end;
     }
@@ -1617,7 +1606,7 @@ PUBLIC EMERALD_API bool ogl_shader_constructor_set_general_variable_default_valu
     if (variable_ptr->variable_type != VARIABLE_TYPE_CONST)
     {
         ASSERT_DEBUG_SYNC(false,
-                          "ogl_shader_constructor_set_general_variable_default_value() only supports constant variables atm.");
+                          "glsl_shader_constructor_set_general_variable_default_value() only supports constant variables atm.");
 
         goto end;
     }

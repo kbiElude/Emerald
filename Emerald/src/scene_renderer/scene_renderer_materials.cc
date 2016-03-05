@@ -5,11 +5,11 @@
  */
 #include "shared.h"
 #include "mesh/mesh_material.h"
-#include "ogl/ogl_materials.h"
 #include "ral/ral_context.h"
 #include "ral/ral_texture.h"
 #include "scene/scene.h"
 #include "scene/scene_light.h"
+#include "scene_renderer/scene_renderer_materials.h"
 #include "scene_renderer/scene_renderer_sm.h"
 #include "scene_renderer/scene_renderer_uber.h"
 #include "shaders/shaders_fragment_uber.h"
@@ -20,20 +20,20 @@
 
 
 /* Private type definitions */
-typedef struct _ogl_materials_mesh_material_setting
+typedef struct _scene_renderer_materials_mesh_material_setting
 {
     mesh_material_property_attachment attachment;
     void*                             attachment_data;
     mesh_material_shading_property    property;
 
-    _ogl_materials_mesh_material_setting()
+    _scene_renderer_materials_mesh_material_setting()
     {
         attachment      = MESH_MATERIAL_PROPERTY_ATTACHMENT_UNKNOWN;
         attachment_data = NULL;
         property        = MESH_MATERIAL_SHADING_PROPERTY_UNKNOWN;
     }
 
-    ~_ogl_materials_mesh_material_setting()
+    ~_scene_renderer_materials_mesh_material_setting()
     {
         if (attachment_data != NULL)
         {
@@ -73,22 +73,22 @@ typedef struct _ogl_materials_mesh_material_setting
             } /* switch (attachment) */
         } /* if (attachment_data != NULL) */
     }
-} _ogl_materials_mesh_material_setting;
+} _scene_renderer_materials_mesh_material_setting;
 
-typedef struct _ogl_materials_uber
+typedef struct _scene_renderer_materials_uber
 {
     mesh_material       material;
     scene_renderer_uber uber;
     bool                use_shadow_maps;
 
-    _ogl_materials_uber()
+    _scene_renderer_materials_uber()
     {
         material        = NULL;
         uber            = NULL;
         use_shadow_maps = false;
     }
 
-    ~_ogl_materials_uber()
+    ~_scene_renderer_materials_uber()
     {
         if (material != NULL)
         {
@@ -104,16 +104,16 @@ typedef struct _ogl_materials_uber
             uber = NULL;
         }
     }
-} _ogl_materials_uber;
+} _scene_renderer_materials_uber;
 
-typedef struct _ogl_materials
+typedef struct _scene_renderer_materials
 {
     ral_context             context;
     system_resizable_vector forced_mesh_material_settings;
     mesh_material           special_materials[SPECIAL_MATERIAL_COUNT];
     system_resizable_vector ubers; /* stores _ogl_materials_uber* */
 
-    _ogl_materials()
+    _scene_renderer_materials()
     {
         context                       = NULL;
         forced_mesh_material_settings = system_resizable_vector_create(4 /* capacity */);
@@ -124,11 +124,11 @@ typedef struct _ogl_materials
                sizeof(special_materials) );
     }
 
-    ~_ogl_materials()
+    ~_scene_renderer_materials()
     {
         if (forced_mesh_material_settings != NULL)
         {
-            _ogl_materials_mesh_material_setting* mesh_material_setting_ptr = NULL;
+            _scene_renderer_materials_mesh_material_setting* mesh_material_setting_ptr = NULL;
 
             while (system_resizable_vector_pop(forced_mesh_material_settings,
                                               &mesh_material_setting_ptr) )
@@ -141,9 +141,9 @@ typedef struct _ogl_materials
 
         if (special_materials != NULL)
         {
-            for (_ogl_materials_special_material special_material  = SPECIAL_MATERIAL_FIRST;
-                                                 special_material != SPECIAL_MATERIAL_COUNT;
-                                          ((int&)special_material)++)
+            for (scene_renderer_materials_special_material special_material  = SPECIAL_MATERIAL_FIRST;
+                                                           special_material != SPECIAL_MATERIAL_COUNT;
+                                                    ((int&)special_material)++)
             {
                 if (special_materials[special_material] != NULL)
                 {
@@ -156,7 +156,7 @@ typedef struct _ogl_materials
 
         if (ubers != NULL)
         {
-            _ogl_materials_uber* uber_ptr = NULL;
+            _scene_renderer_materials_uber* uber_ptr = NULL;
 
             while (system_resizable_vector_pop(ubers,
                                               &uber_ptr) )
@@ -180,44 +180,44 @@ typedef struct _ogl_materials
             ubers = NULL;
         }
     }
-} _ogl_materials;
+} _scene_renderer_materials;
 
 
 /* Forward declarations */
-PRIVATE scene_renderer_uber       _ogl_materials_bake_uber             (ogl_materials                      materials,
-                                                                        mesh_material                      material,
-                                                                        scene                              scene,
-                                                                        bool                               use_shadow_maps);
-PRIVATE bool                      _ogl_materials_does_uber_match_scene (scene_renderer_uber                uber,
-                                                                        scene                              scene,
-                                                                        bool                               use_shadow_maps);
-PRIVATE void                      _ogl_materials_get_forced_setting    (ogl_materials                      materials,
-                                                                        mesh_material_shading_property,
-                                                                        mesh_material_property_attachment* out_attachment,
-                                                                        void**                             out_attachment_data);
-PRIVATE system_hashed_ansi_string _ogl_materials_get_uber_name         (mesh_material                      material,
-                                                                        scene                              scene,
-                                                                        bool                               use_shadow_maps);
-PRIVATE void                      _ogl_materials_init_special_materials(_ogl_materials*                    materials_ptr);
+PRIVATE scene_renderer_uber       _scene_renderer_materials_bake_uber             (scene_renderer_materials           materials,
+                                                                                   mesh_material                      material,
+                                                                                   scene                              scene,
+                                                                                   bool                               use_shadow_maps);
+PRIVATE bool                      _scene_renderer_materials_does_uber_match_scene (scene_renderer_uber                uber,
+                                                                                   scene                              scene,
+                                                                                   bool                               use_shadow_maps);
+PRIVATE void                      _scene_renderer_materials_get_forced_setting    (scene_renderer_materials           materials,
+                                                                                   mesh_material_shading_property,
+                                                                                   mesh_material_property_attachment* out_attachment,
+                                                                                   void**                             out_attachment_data);
+PRIVATE system_hashed_ansi_string _scene_renderer_materials_get_uber_name         (mesh_material                      material,
+                                                                                   scene                              scene,
+                                                                                   bool                               use_shadow_maps);
+PRIVATE void                      _scene_renderer_materials_init_special_materials(_scene_renderer_materials*         materials_ptr);
 
 
 /** TODO */
-PRIVATE scene_renderer_uber _ogl_materials_bake_uber(ogl_materials materials,
-                                                     mesh_material material,
-                                                     scene         scene,
-                                                     bool          use_shadow_maps)
+PRIVATE scene_renderer_uber _scene_renderer_materials_bake_uber(scene_renderer_materials materials,
+                                                                mesh_material            material,
+                                                                scene                    scene,
+                                                                bool                     use_shadow_maps)
 {
-    _ogl_materials* materials_ptr = (_ogl_materials*) materials;
-    ral_context     context       = materials_ptr->context;
+    _scene_renderer_materials* materials_ptr = (_scene_renderer_materials*) materials;
+    ral_context                context       = materials_ptr->context;
 
-    LOG_INFO("Performance warning: _ogl_materials_bake_uber() called.");
+    LOG_INFO("Performance warning: _scene_renderer_materials_bake_uber() called.");
 
     /* Spawn a new uber  */
     mesh_material_type        material_type = MESH_MATERIAL_TYPE_UNDEFINED;
     scene_renderer_uber       new_uber      = NULL;
-    system_hashed_ansi_string uber_name     = _ogl_materials_get_uber_name(material,
-                                                                           scene,
-                                                                           use_shadow_maps);
+    system_hashed_ansi_string uber_name     = _scene_renderer_materials_get_uber_name(material,
+                                                                                      scene,
+                                                                                      use_shadow_maps);
 
     mesh_material_get_property(material,
                                MESH_MATERIAL_PROPERTY_TYPE,
@@ -294,10 +294,10 @@ PRIVATE scene_renderer_uber _ogl_materials_bake_uber(ogl_materials materials,
                         mesh_material_property_attachment material_attachment = mesh_material_get_shading_property_attachment_type(material,
                                                                                                                                    mapping.material_property);
 
-                        _ogl_materials_get_forced_setting(materials,
-                                                          mapping.material_property,
-                                                         &material_attachment,
-                                                         NULL /* out_attachment_data */);
+                        _scene_renderer_materials_get_forced_setting(materials,
+                                                                     mapping.material_property,
+                                                                    &material_attachment,
+                                                                    NULL /* out_attachment_data */);
 
                         if (material_attachment != MESH_MATERIAL_PROPERTY_ATTACHMENT_NONE)
                         {
@@ -575,9 +575,9 @@ PRIVATE scene_renderer_uber _ogl_materials_bake_uber(ogl_materials materials,
 }
 
 /** TODO. **/
-PRIVATE bool _ogl_materials_does_uber_match_scene(scene_renderer_uber uber,
-                                                  scene               scene,
-                                                  bool                use_shadow_mapping)
+PRIVATE bool _scene_renderer_materials_does_uber_match_scene(scene_renderer_uber uber,
+                                                             scene               scene,
+                                                             bool                use_shadow_mapping)
 {
     bool result = true;
 
@@ -785,13 +785,13 @@ end:
 }
 
 /** TODO */
-PRIVATE void _ogl_materials_get_forced_setting(ogl_materials                      materials,
-                                               mesh_material_shading_property     shading_property,
-                                               mesh_material_property_attachment* out_attachment,
-                                               void**                             out_attachment_data)
+PRIVATE void _scene_renderer_materials_get_forced_setting(scene_renderer_materials           materials,
+                                                          mesh_material_shading_property     shading_property,
+                                                          mesh_material_property_attachment* out_attachment,
+                                                          void**                             out_attachment_data)
 {
-    const _ogl_materials* materials_ptr     = (const _ogl_materials*) materials;
-    unsigned int          n_forced_settings = 0;
+    const _scene_renderer_materials* materials_ptr     = (const _scene_renderer_materials*) materials;
+    unsigned int                     n_forced_settings = 0;
 
     system_resizable_vector_get_property(materials_ptr->forced_mesh_material_settings,
                                          SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
@@ -801,7 +801,7 @@ PRIVATE void _ogl_materials_get_forced_setting(ogl_materials                    
                       n_setting < n_forced_settings;
                     ++n_setting)
     {
-        _ogl_materials_mesh_material_setting* setting_ptr = NULL;
+        _scene_renderer_materials_mesh_material_setting* setting_ptr = NULL;
 
         if (system_resizable_vector_get_element_at(materials_ptr->forced_mesh_material_settings,
                                                    n_setting,
@@ -824,15 +824,16 @@ PRIVATE void _ogl_materials_get_forced_setting(ogl_materials                    
         }
         else
         {
-            ASSERT_DEBUG_SYNC(false, "Could not retrieved forced mesh material setting descriptor");
+            ASSERT_DEBUG_SYNC(false,
+                              "Could not retrieved forced mesh material setting descriptor");
         }
     }
 }
 
 /** TODO */
-PRIVATE system_hashed_ansi_string _ogl_materials_get_uber_name(mesh_material material,
-                                                               scene         scene,
-                                                               bool          use_shadow_maps)
+PRIVATE system_hashed_ansi_string _scene_renderer_materials_get_uber_name(mesh_material material,
+                                                                          scene         scene,
+                                                                          bool          use_shadow_maps)
 {
     system_hashed_ansi_string material_name = NULL;
     std::stringstream         name_sstream;
@@ -1024,7 +1025,7 @@ PRIVATE system_hashed_ansi_string _ogl_materials_get_uber_name(mesh_material mat
 }
 
 /** TODO */
-PRIVATE void _ogl_materials_init_special_materials(_ogl_materials* materials_ptr)
+PRIVATE void _scene_renderer_materials_init_special_materials(_scene_renderer_materials* materials_ptr)
 {
     const mesh_material_shading     shading_type_attribute_data = MESH_MATERIAL_SHADING_INPUT_FRAGMENT_ATTRIBUTE;
     const mesh_material_shading     shading_type_none           = MESH_MATERIAL_SHADING_NONE;
@@ -1106,9 +1107,9 @@ PRIVATE void _ogl_materials_init_special_materials(_ogl_materials* materials_ptr
 
 
 /** Please see header for specification */
-PUBLIC ogl_materials ogl_materials_create(ral_context context)
+PUBLIC scene_renderer_materials scene_renderer_materials_create(ral_context context)
 {
-    _ogl_materials* materials_ptr = new (std::nothrow) _ogl_materials;
+    _scene_renderer_materials* materials_ptr = new (std::nothrow) _scene_renderer_materials;
 
     ASSERT_ALWAYS_SYNC(materials_ptr != NULL,
                        "Out of memory");
@@ -1117,20 +1118,20 @@ PUBLIC ogl_materials ogl_materials_create(ral_context context)
     {
         materials_ptr->context = context;
 
-        _ogl_materials_init_special_materials(materials_ptr);
+        _scene_renderer_materials_init_special_materials(materials_ptr);
     }
 
-    return (ogl_materials) materials_ptr;
+    return (scene_renderer_materials) materials_ptr;
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API void ogl_materials_force_mesh_material_shading_property_attachment(ogl_materials                     materials,
-                                                                                      mesh_material_shading_property    property,
-                                                                                      mesh_material_property_attachment attachment,
-                                                                                      void*                             attachment_data)
+PUBLIC EMERALD_API void scene_renderer_materials_force_mesh_material_shading_property_attachment(scene_renderer_materials          materials,
+                                                                                                 mesh_material_shading_property    property,
+                                                                                                 mesh_material_property_attachment attachment,
+                                                                                                 void*                             attachment_data)
 {
-    _ogl_materials*                       materials_ptr   = (_ogl_materials*) materials;
-    _ogl_materials_mesh_material_setting* new_setting_ptr = new _ogl_materials_mesh_material_setting;
+    _scene_renderer_materials*                       materials_ptr   = (_scene_renderer_materials*) materials;
+    _scene_renderer_materials_mesh_material_setting* new_setting_ptr = new _scene_renderer_materials_mesh_material_setting;
 
     ASSERT_ALWAYS_SYNC(new_setting_ptr != NULL,
                        "Out of memory");
@@ -1148,20 +1149,20 @@ PUBLIC EMERALD_API void ogl_materials_force_mesh_material_shading_property_attac
 }
 
 /** Please see header for specification */
-PUBLIC mesh_material ogl_materials_get_special_material(ogl_materials                   materials,
-                                                        _ogl_materials_special_material special_material)
+PUBLIC mesh_material scene_renderer_materials_get_special_material(scene_renderer_materials                  materials,
+                                                                   scene_renderer_materials_special_material special_material)
 {
-    return ( (_ogl_materials*) materials)->special_materials[special_material];
+    return ( (_scene_renderer_materials*) materials)->special_materials[special_material];
 }
 
 /** Please see header for specification */
-PUBLIC scene_renderer_uber ogl_materials_get_uber(ogl_materials materials,
-                                                  mesh_material material,
-                                                  scene         scene,
-                                                  bool          use_shadow_maps)
+PUBLIC scene_renderer_uber scene_renderer_materials_get_uber(scene_renderer_materials materials,
+                                                             mesh_material            material,
+                                                             scene                    scene,
+                                                             bool                     use_shadow_maps)
 {
-    _ogl_materials*     materials_ptr = (_ogl_materials*) materials;
-    scene_renderer_uber result        = NULL;
+    _scene_renderer_materials* materials_ptr = (_scene_renderer_materials*) materials;
+    scene_renderer_uber        result        = NULL;
 
     /* First, iterate over existing uber containers and check if there's a match */
     unsigned int n_materials = 0;
@@ -1174,7 +1175,7 @@ PUBLIC scene_renderer_uber ogl_materials_get_uber(ogl_materials materials,
                       n_material < n_materials;
                     ++n_material)
     {
-        _ogl_materials_uber* uber_ptr = NULL;
+        _scene_renderer_materials_uber* uber_ptr = NULL;
 
         if (system_resizable_vector_get_element_at(materials_ptr->ubers,
                                                    n_material,
@@ -1188,10 +1189,10 @@ PUBLIC scene_renderer_uber ogl_materials_get_uber(ogl_materials materials,
 
             if (do_materials_match)
             {
-                does_material_match_scene = (scene == NULL                                                          ||
-                                             scene != NULL && _ogl_materials_does_uber_match_scene(uber_ptr->uber,
-                                                                                                   scene,
-                                                                                                   use_shadow_maps) );
+                does_material_match_scene = (scene == NULL                                                                   ||
+                                             scene != NULL && _scene_renderer_materials_does_uber_match_scene(uber_ptr->uber,
+                                                                                                              scene,
+                                                                                                              use_shadow_maps) );
 
                 /* Do not take scene input into account if IFA shading is used */
                 mesh_material_shading material_shading = MESH_MATERIAL_SHADING_NONE;
@@ -1225,17 +1226,17 @@ PUBLIC scene_renderer_uber ogl_materials_get_uber(ogl_materials materials,
     if (result == NULL)
     {
         /* Nope? Gotta bake a new uber then */
-        scene_renderer_uber new_uber = _ogl_materials_bake_uber(materials,
-                                                                material,
-                                                                scene,
-                                                                use_shadow_maps);
+        scene_renderer_uber new_uber = _scene_renderer_materials_bake_uber(materials,
+                                                                           material,
+                                                                           scene,
+                                                                           use_shadow_maps);
 
         ASSERT_DEBUG_SYNC(new_uber != NULL,
                           "Could not bake a new uber");
 
         if (new_uber != NULL)
         {
-            _ogl_materials_uber* new_uber_ptr = new (std::nothrow) _ogl_materials_uber;
+            _scene_renderer_materials_uber* new_uber_ptr = new (std::nothrow) _scene_renderer_materials_uber;
 
             ASSERT_ALWAYS_SYNC(new_uber_ptr != NULL,
                                "Out of memory");
@@ -1268,12 +1269,12 @@ PUBLIC scene_renderer_uber ogl_materials_get_uber(ogl_materials materials,
 }
 
 /** Please see header for specification */
-PUBLIC void ogl_materials_release(ogl_materials materials)
+PUBLIC void scene_renderer_materials_release(scene_renderer_materials materials)
 {
     if (materials != NULL)
     {
         /* Release the container */
-        delete (_ogl_materials*) materials;
+        delete (_scene_renderer_materials*) materials;
 
         materials = NULL;
     }

@@ -5,8 +5,8 @@
  */
 #include "shared.h"
 #include "mesh/mesh_material.h"
+#include "glsl/glsl_shader_constructor.h"
 #include "ogl/ogl_context.h"
-#include "ogl/ogl_shader_constructor.h"
 #include "ral/ral_context.h"
 #include "ral/ral_shader.h"
 #include "scene/scene_light.h"
@@ -61,10 +61,10 @@ typedef struct
     ral_context context;
     ral_shader  shader;
 
-    system_resizable_vector added_items;
-    bool                    dirty;
-    _uniform_block_id       fragment_shader_properties_ub;
-    ogl_shader_constructor  shader_constructor;
+    system_resizable_vector                  added_items;
+    bool                                     dirty;
+    glsl_shader_constructor_uniform_block_id fragment_shader_properties_ub;
+    glsl_shader_constructor                  shader_constructor;
 
     REFCOUNT_INSERT_VARIABLES
 } _shaders_fragment_uber;
@@ -80,13 +80,13 @@ REFCOUNT_INSERT_IMPLEMENTATION(shaders_fragment_uber,
 /** TODO */
 PRIVATE void _shaders_fragment_uber_add_lambert_ambient_diffuse_factor(scene_light                              light_instance,
                                                                        shaders_fragment_uber_light_type         light_type,
-                                                                       ogl_shader_constructor                   shader_constructor,
+                                                                       glsl_shader_constructor                  shader_constructor,
                                                                        unsigned int                             n_item,
                                                                        shaders_fragment_uber_property_value*    properties,
                                                                        PFNSHADERSFRAGMENTUBERPARENTCALLBACKPROC pCallbackProc,
                                                                        void*                                    user_arg,
                                                                        system_hashed_ansi_string                light_visibility_var_name,
-                                                                       _uniform_block_id                        fs_props_ub_id)
+                                                                       glsl_shader_constructor_uniform_block_id fs_props_ub_id)
 {
     scene_light_falloff light_falloff_type = SCENE_LIGHT_FALLOFF_UNKNOWN;
 
@@ -157,22 +157,22 @@ PRIVATE void _shaders_fragment_uber_add_lambert_ambient_diffuse_factor(scene_lig
                                << light_edge_angle_var_name_sstream.str()
                                << ")";
 
-        ogl_shader_constructor_add_general_variable_to_ub(shader_constructor,
-                                                          VARIABLE_TYPE_UNIFORM,
-                                                          LAYOUT_QUALIFIER_NONE,
-                                                          TYPE_FLOAT,
-                                                          0, /* array_size */
-                                                          fs_props_ub_id,
-                                                          system_hashed_ansi_string_create(light_cone_angle_var_name_sstream.str().c_str() ),
-                                                          NULL /* out_variable_id */);
-        ogl_shader_constructor_add_general_variable_to_ub(shader_constructor,
-                                                          VARIABLE_TYPE_UNIFORM,
-                                                          LAYOUT_QUALIFIER_NONE,
-                                                          TYPE_FLOAT,
-                                                          0, /* array_size */
-                                                          fs_props_ub_id,
-                                                          system_hashed_ansi_string_create(light_edge_angle_var_name_sstream.str().c_str() ),
-                                                          NULL /* out_variable_id */);
+        glsl_shader_constructor_add_general_variable_to_ub(shader_constructor,
+                                                           VARIABLE_TYPE_UNIFORM,
+                                                           LAYOUT_QUALIFIER_NONE,
+                                                           RAL_PROGRAM_VARIABLE_TYPE_FLOAT,
+                                                           0, /* array_size */
+                                                           fs_props_ub_id,
+                                                           system_hashed_ansi_string_create(light_cone_angle_var_name_sstream.str().c_str() ),
+                                                           NULL /* out_variable_id */);
+        glsl_shader_constructor_add_general_variable_to_ub(shader_constructor,
+                                                           VARIABLE_TYPE_UNIFORM,
+                                                           LAYOUT_QUALIFIER_NONE,
+                                                           RAL_PROGRAM_VARIABLE_TYPE_FLOAT,
+                                                           0, /* array_size */
+                                                           fs_props_ub_id,
+                                                           system_hashed_ansi_string_create(light_edge_angle_var_name_sstream.str().c_str() ),
+                                                           NULL /* out_variable_id */);
 
         line << "float "
              << light_spotlight_effect_var_name_sstream.str()
@@ -223,10 +223,10 @@ PRIVATE void _shaders_fragment_uber_add_lambert_ambient_diffuse_factor(scene_lig
         {
             case SCENE_LIGHT_FALLOFF_CUSTOM:
             {
-                ogl_shader_constructor_add_general_variable_to_ub(shader_constructor,
+                glsl_shader_constructor_add_general_variable_to_ub(shader_constructor,
                                                                   VARIABLE_TYPE_UNIFORM,
                                                                   LAYOUT_QUALIFIER_NONE,
-                                                                  TYPE_VEC3,
+                                                                  RAL_PROGRAM_VARIABLE_TYPE_FLOAT_VEC3,
                                                                   0, /* array_size */
                                                                   fs_props_ub_id,
                                                                   system_hashed_ansi_string_create(light_attenuations_var_name_sstream.str().c_str() ),
@@ -244,14 +244,14 @@ PRIVATE void _shaders_fragment_uber_add_lambert_ambient_diffuse_factor(scene_lig
 
             case SCENE_LIGHT_FALLOFF_INVERSED_DISTANCE:
             {
-                ogl_shader_constructor_add_general_variable_to_ub(shader_constructor,
-                                                                  VARIABLE_TYPE_UNIFORM,
-                                                                  LAYOUT_QUALIFIER_NONE,
-                                                                  TYPE_FLOAT,
-                                                                  0, /* array_size */
-                                                                  fs_props_ub_id,
-                                                                  system_hashed_ansi_string_create(light_range_var_name_sstream.str().c_str() ),
-                                                                  NULL /* out_variable_id */);
+                glsl_shader_constructor_add_general_variable_to_ub(shader_constructor,
+                                                                   VARIABLE_TYPE_UNIFORM,
+                                                                   LAYOUT_QUALIFIER_NONE,
+                                                                   RAL_PROGRAM_VARIABLE_TYPE_FLOAT,
+                                                                   0, /* array_size */
+                                                                   fs_props_ub_id,
+                                                                   system_hashed_ansi_string_create(light_range_var_name_sstream.str().c_str() ),
+                                                                   NULL /* out_variable_id */);
 
                 line << "float "
                      << light_attenuation_var_name_sstream.str() << " = ";
@@ -272,14 +272,14 @@ PRIVATE void _shaders_fragment_uber_add_lambert_ambient_diffuse_factor(scene_lig
 
             case SCENE_LIGHT_FALLOFF_INVERSED_DISTANCE_SQUARE:
             {
-                ogl_shader_constructor_add_general_variable_to_ub(shader_constructor,
-                                                                  VARIABLE_TYPE_UNIFORM,
-                                                                  LAYOUT_QUALIFIER_NONE,
-                                                                  TYPE_FLOAT,
-                                                                  0, /* array_size */
-                                                                  fs_props_ub_id,
-                                                                  system_hashed_ansi_string_create(light_range_var_name_sstream.str().c_str() ),
-                                                                  NULL /* out_variable_id */);
+                glsl_shader_constructor_add_general_variable_to_ub(shader_constructor,
+                                                                   VARIABLE_TYPE_UNIFORM,
+                                                                   LAYOUT_QUALIFIER_NONE,
+                                                                   RAL_PROGRAM_VARIABLE_TYPE_FLOAT,
+                                                                   0, /* array_size */
+                                                                   fs_props_ub_id,
+                                                                   system_hashed_ansi_string_create(light_range_var_name_sstream.str().c_str() ),
+                                                                   NULL /* out_variable_id */);
 
                 line << "float "
                      << light_attenuation_var_name_sstream.str() << " = ";
@@ -302,14 +302,14 @@ PRIVATE void _shaders_fragment_uber_add_lambert_ambient_diffuse_factor(scene_lig
 
             case SCENE_LIGHT_FALLOFF_LINEAR:
             {
-                ogl_shader_constructor_add_general_variable_to_ub(shader_constructor,
-                                                                  VARIABLE_TYPE_UNIFORM,
-                                                                  LAYOUT_QUALIFIER_NONE,
-                                                                  TYPE_FLOAT,
-                                                                  0, /* array_size */
-                                                                  fs_props_ub_id,
-                                                                  system_hashed_ansi_string_create(light_range_var_name_sstream.str().c_str() ),
-                                                                  NULL /* out_variable_id */);
+                glsl_shader_constructor_add_general_variable_to_ub(shader_constructor,
+                                                                   VARIABLE_TYPE_UNIFORM,
+                                                                   LAYOUT_QUALIFIER_NONE,
+                                                                   RAL_PROGRAM_VARIABLE_TYPE_FLOAT,
+                                                                   0, /* array_size */
+                                                                   fs_props_ub_id,
+                                                                   system_hashed_ansi_string_create(light_range_var_name_sstream.str().c_str() ),
+                                                                   NULL /* out_variable_id */);
 
                 line << "float "
                      << light_attenuation_var_name_sstream.str()
@@ -467,41 +467,41 @@ PRIVATE void _shaders_fragment_uber_add_lambert_ambient_diffuse_factor(scene_lig
     line << ";\n";
 
     /* Add the snippet to main function body */
-    ogl_shader_constructor_append_to_function_body(shader_constructor,
-                                                   0, /* main() */
-                                                   system_hashed_ansi_string_create(line.str().c_str() ));
+    glsl_shader_constructor_append_to_function_body(shader_constructor,
+                                                    0, /* main() */
+                                                    system_hashed_ansi_string_create(line.str().c_str() ));
 }
 
 /** TODO */
-PRIVATE void _shaders_fragment_uber_add_phong_specular_factor(ogl_shader_constructor    shader_constructor,
+PRIVATE void _shaders_fragment_uber_add_phong_specular_factor(glsl_shader_constructor   shader_constructor,
                                                               unsigned int              n_light,
                                                               system_hashed_ansi_string light_visibility_var_name)
 {
     /* Add a phong_specular() function (if not already added) */
-    _function_id phong_specular_func_id = -1;
+    glsl_shader_constructor_function_id phong_specular_func_id = -1;
 
-    if (ogl_shader_constructor_add_function(shader_constructor,
-                                            system_hashed_ansi_string_create("phong_specular"),
-                                            TYPE_FLOAT,
-                                            &phong_specular_func_id) )
+    if (glsl_shader_constructor_add_function(shader_constructor,
+                                             system_hashed_ansi_string_create("phong_specular"),
+                                             RAL_PROGRAM_VARIABLE_TYPE_FLOAT,
+                                             &phong_specular_func_id) )
     {
         /* Configure the argument list */
-        ogl_shader_constructor_add_function_argument(shader_constructor,
-                                                     phong_specular_func_id,
-                                                     SHADER_ARGUMENT_QUALIFIER_IN,
-                                                     TYPE_VEC3,
-                                                     system_hashed_ansi_string_create("normal") );
+        glsl_shader_constructor_add_function_argument(shader_constructor,
+                                                      phong_specular_func_id,
+                                                      SHADER_ARGUMENT_QUALIFIER_IN,
+                                                      RAL_PROGRAM_VARIABLE_TYPE_FLOAT_VEC3,
+                                                      system_hashed_ansi_string_create("normal") );
 
-        ogl_shader_constructor_add_function_argument(shader_constructor,
-                                                     phong_specular_func_id,
-                                                     SHADER_ARGUMENT_QUALIFIER_IN,
-                                                     TYPE_VEC3,
-                                                     system_hashed_ansi_string_create("light_vector") );
-        ogl_shader_constructor_add_function_argument(shader_constructor,
-                                                     phong_specular_func_id,
-                                                     SHADER_ARGUMENT_QUALIFIER_IN,
-                                                     TYPE_FLOAT,
-                                                     system_hashed_ansi_string_create("light_LdotN") );
+        glsl_shader_constructor_add_function_argument(shader_constructor,
+                                                      phong_specular_func_id,
+                                                      SHADER_ARGUMENT_QUALIFIER_IN,
+                                                      RAL_PROGRAM_VARIABLE_TYPE_FLOAT_VEC3,
+                                                      system_hashed_ansi_string_create("light_vector") );
+        glsl_shader_constructor_add_function_argument(shader_constructor,
+                                                      phong_specular_func_id,
+                                                      SHADER_ARGUMENT_QUALIFIER_IN,
+                                                      RAL_PROGRAM_VARIABLE_TYPE_FLOAT,
+                                                      system_hashed_ansi_string_create("light_LdotN") );
 
         /* Configure the body.
          *
@@ -509,16 +509,16 @@ PRIVATE void _shaders_fragment_uber_add_phong_specular_factor(ogl_shader_constru
          *
          * TODO: Expand if needed!
          **/
-        ogl_shader_constructor_set_function_body(shader_constructor,
-                                                 phong_specular_func_id,
-                                                 system_hashed_ansi_string_create("    if (light_LdotN > 0.0 && shininess_material > 0.0)\n"
-                                                                                  "    {\n"
-                                                                                  "        float reflection_view_vector_dot = max(0.0, dot(-reflect(light_vector, normal), normalize(view_vector) ));\n"
-                                                                                  "\n"
-                                                                                  "        return clamp(specular_material * pow(reflection_view_vector_dot, 32.0 * shininess_material), 0.0, 1.0);\n"
-                                                                                  "    }\n"
-                                                                                  "\n"
-                                                                                  "    return 0.0;\n") );
+        glsl_shader_constructor_set_function_body(shader_constructor,
+                                                  phong_specular_func_id,
+                                                  system_hashed_ansi_string_create("    if (light_LdotN > 0.0 && shininess_material > 0.0)\n"
+                                                                                   "    {\n"
+                                                                                   "        float reflection_view_vector_dot = max(0.0, dot(-reflect(light_vector, normal), normalize(view_vector) ));\n"
+                                                                                   "\n"
+                                                                                   "        return clamp(specular_material * pow(reflection_view_vector_dot, 32.0 * shininess_material), 0.0, 1.0);\n"
+                                                                                   "    }\n"
+                                                                                   "\n"
+                                                                                   "    return 0.0;\n") );
     }
 
     /* Compute the light contribution */
@@ -540,14 +540,14 @@ PRIVATE void _shaders_fragment_uber_add_phong_specular_factor(ogl_shader_constru
          << n_light
          << "_LdotN)), 0.0);\n";
 
-    ogl_shader_constructor_append_to_function_body(shader_constructor,
-                                                   0, /* main() */
-                                                   system_hashed_ansi_string_create(line.str().c_str() ));
+    glsl_shader_constructor_append_to_function_body(shader_constructor,
+                                                    0, /* main() */
+                                                    system_hashed_ansi_string_create(line.str().c_str() ));
 }
 
 /** TODO */
-PRIVATE void _shaders_fragment_uber_add_sh3_diffuse_factor(ogl_shader_constructor shader_constructor,
-                                                           unsigned int           n_light)
+PRIVATE void _shaders_fragment_uber_add_sh3_diffuse_factor(glsl_shader_constructor shader_constructor,
+                                                           unsigned int            n_light)
 {
     /* Add SH-specific input attribute */
     std::stringstream attribute_name_sstream;
@@ -556,28 +556,28 @@ PRIVATE void _shaders_fragment_uber_add_sh3_diffuse_factor(ogl_shader_constructo
                            << n_light
                            << "_mesh_ambient_diffuse_sh3";
 
-    ogl_shader_constructor_add_general_variable_to_ub(shader_constructor,
-                                                      VARIABLE_TYPE_INPUT_ATTRIBUTE,
-                                                      LAYOUT_QUALIFIER_NONE,
-                                                      TYPE_VEC3,
-                                                      0, /* array_size */
-                                                      0, /* uniform_block */
-                                                      system_hashed_ansi_string_create(attribute_name_sstream.str().c_str() ),
-                                                      NULL /* out_variable_id */);
+    glsl_shader_constructor_add_general_variable_to_ub(shader_constructor,
+                                                       VARIABLE_TYPE_INPUT_ATTRIBUTE,
+                                                       LAYOUT_QUALIFIER_NONE,
+                                                       RAL_PROGRAM_VARIABLE_TYPE_FLOAT_VEC3,
+                                                       0, /* array_size */
+                                                       0, /* uniform_block */
+                                                       system_hashed_ansi_string_create(attribute_name_sstream.str().c_str() ),
+                                                       NULL /* out_variable_id */);
 
     /* Compute the light contribution */
     std::stringstream line;
 
     line << "result_fragment += vec4(" << attribute_name_sstream.str() << ", 0.0);\n";
 
-    ogl_shader_constructor_append_to_function_body(shader_constructor,
-                                                   0, /* main() */
-                                                   system_hashed_ansi_string_create(line.str().c_str() ));
+    glsl_shader_constructor_append_to_function_body(shader_constructor,
+                                                    0, /* main() */
+                                                    system_hashed_ansi_string_create(line.str().c_str() ));
 }
 
 /** TODO */
-PRIVATE void _shaders_fragment_uber_add_sh4_diffuse_factor(ogl_shader_constructor shader_constructor,
-                                                           unsigned int           n_light)
+PRIVATE void _shaders_fragment_uber_add_sh4_diffuse_factor(glsl_shader_constructor shader_constructor,
+                                                           unsigned int            n_light)
 {
     /* Add SH-specific input attribute */
     std::stringstream attribute_name_sstream;
@@ -586,23 +586,23 @@ PRIVATE void _shaders_fragment_uber_add_sh4_diffuse_factor(ogl_shader_constructo
                            << n_light
                            << "_mesh_ambient_diffuse_sh4";
 
-    ogl_shader_constructor_add_general_variable_to_ub(shader_constructor,
-                                                      VARIABLE_TYPE_INPUT_ATTRIBUTE,
-                                                      LAYOUT_QUALIFIER_NONE,
-                                                      TYPE_VEC3,
-                                                      0, /* array_size */
-                                                      0, /* uniform_block */
-                                                      system_hashed_ansi_string_create(attribute_name_sstream.str().c_str() ),
-                                                      NULL /* out_variable_id */);
+    glsl_shader_constructor_add_general_variable_to_ub(shader_constructor,
+                                                       VARIABLE_TYPE_INPUT_ATTRIBUTE,
+                                                       LAYOUT_QUALIFIER_NONE,
+                                                       RAL_PROGRAM_VARIABLE_TYPE_FLOAT_VEC3,
+                                                       0, /* array_size */
+                                                       0, /* uniform_block */
+                                                       system_hashed_ansi_string_create(attribute_name_sstream.str().c_str() ),
+                                                       NULL /* out_variable_id */);
 
     /* Compute the light contribution */
     std::stringstream line;
 
     line << "result_fragment += vec4(" << attribute_name_sstream.str() << ", 0.0);\n";
 
-    ogl_shader_constructor_append_to_function_body(shader_constructor,
-                                                   0, /* main() */
-                                                   system_hashed_ansi_string_create(line.str().c_str() ));
+    glsl_shader_constructor_append_to_function_body(shader_constructor,
+                                                    0, /* main() */
+                                                    system_hashed_ansi_string_create(line.str().c_str() ));
 }
 
 /** Function called back when reference counter drops to zero. Releases the static shader object.
@@ -663,7 +663,7 @@ PRIVATE void _shaders_fragment_uber_release(void* ptr)
 
     if (data_ptr->shader_constructor != NULL)
     {
-        ogl_shader_constructor_release(data_ptr->shader_constructor);
+        glsl_shader_constructor_release(data_ptr->shader_constructor);
 
         data_ptr->shader_constructor = NULL;
     }
@@ -680,7 +680,7 @@ PUBLIC EMERALD_API shaders_fragment_uber_item_id shaders_fragment_uber_add_input
     std::stringstream         body_sstream;
     system_hashed_ansi_string fs_attribute_name_has;
     std::stringstream         fs_attribute_name_sstream;
-    _shader_variable_type     fs_attribute_type;
+    ral_program_variable_type fs_attribute_type;
     unsigned int              n_items  = 0;
     _shaders_fragment_uber*   uber_ptr = (_shaders_fragment_uber*) uber;
     system_hashed_ansi_string vs_attribute_name_has;
@@ -709,7 +709,7 @@ PUBLIC EMERALD_API shaders_fragment_uber_item_id shaders_fragment_uber_add_input
         case UBER_INPUT_ATTRIBUTE_NORMAL:
         {
             fs_attribute_name_sstream << "normal";
-            fs_attribute_type         = TYPE_VEC3;
+            fs_attribute_type         = RAL_PROGRAM_VARIABLE_TYPE_FLOAT_VEC3;
             vs_attribute_name_has     = system_hashed_ansi_string_create("object_normal");
 
             break;
@@ -718,7 +718,7 @@ PUBLIC EMERALD_API shaders_fragment_uber_item_id shaders_fragment_uber_add_input
         case UBER_INPUT_ATTRIBUTE_TEXCOORD:
         {
             fs_attribute_name_sstream << "in_fs_uv";
-            fs_attribute_type         = TYPE_VEC2;
+            fs_attribute_type         = RAL_PROGRAM_VARIABLE_TYPE_FLOAT_VEC2;
             vs_attribute_name_has     = system_hashed_ansi_string_create("object_uv");
 
             break;
@@ -733,28 +733,28 @@ PUBLIC EMERALD_API shaders_fragment_uber_item_id shaders_fragment_uber_add_input
     fs_attribute_name_has = system_hashed_ansi_string_create(fs_attribute_name_sstream.str().c_str() );
 
     /* Add new input attribute, if necessary */
-    ogl_shader_constructor_add_general_variable_to_ub(uber_ptr->shader_constructor,
-                                                      VARIABLE_TYPE_INPUT_ATTRIBUTE,
-                                                      LAYOUT_QUALIFIER_NONE,
-                                                      fs_attribute_type,
-                                                      0, /* array_size */
-                                                      0, /* uniform_block */
-                                                      fs_attribute_name_has,
-                                                      NULL /* out_variable_id */);
+    glsl_shader_constructor_add_general_variable_to_ub(uber_ptr->shader_constructor,
+                                                       VARIABLE_TYPE_INPUT_ATTRIBUTE,
+                                                       LAYOUT_QUALIFIER_NONE,
+                                                       fs_attribute_type,
+                                                       0, /* array_size */
+                                                       0, /* uniform_block */
+                                                       fs_attribute_name_has,
+                                                       NULL /* out_variable_id */);
 
     /* Form new line */
     body_sstream << "result_fragment += vec4(";
 
     switch (fs_attribute_type)
     {
-        case TYPE_VEC2:
+        case RAL_PROGRAM_VARIABLE_TYPE_FLOAT_VEC2:
         {
             body_sstream << fs_attribute_name_sstream.str().c_str() << ", 0, 0);\n";
 
             break;
         }
 
-        case TYPE_VEC3:
+        case RAL_PROGRAM_VARIABLE_TYPE_FLOAT_VEC3:
         {
             body_sstream << fs_attribute_name_sstream.str().c_str() << ", 0);\n";
 
@@ -769,9 +769,9 @@ PUBLIC EMERALD_API shaders_fragment_uber_item_id shaders_fragment_uber_add_input
     }
 
     /* Add it to the body */
-    ogl_shader_constructor_append_to_function_body(uber_ptr->shader_constructor,
-                                                   0, /* function_id */
-                                                   system_hashed_ansi_string_create(body_sstream.str().c_str() ));
+    glsl_shader_constructor_append_to_function_body(uber_ptr->shader_constructor,
+                                                    0, /* function_id */
+                                                    system_hashed_ansi_string_create(body_sstream.str().c_str() ));
 
     /* Call back the parent so that vertex shader actually passes the data we need to fragment shader stage */
     if (pCallbackProc != NULL)
@@ -860,14 +860,14 @@ PUBLIC EMERALD_API shaders_fragment_uber_item_id shaders_fragment_uber_add_light
     {
         light_diffuse_name_sstream << "light" << n_items << "_diffuse";
 
-        ogl_shader_constructor_add_general_variable_to_ub(uber_ptr->shader_constructor,
-                                                          VARIABLE_TYPE_UNIFORM,
-                                                          LAYOUT_QUALIFIER_NONE,
-                                                          TYPE_VEC4,
-                                                          0, /* array_size */
-                                                          uber_ptr->fragment_shader_properties_ub,
-                                                          system_hashed_ansi_string_create(light_diffuse_name_sstream.str().c_str() ),
-                                                          NULL /* out_variable_id */);
+        glsl_shader_constructor_add_general_variable_to_ub(uber_ptr->shader_constructor,
+                                                           VARIABLE_TYPE_UNIFORM,
+                                                           LAYOUT_QUALIFIER_NONE,
+                                                           RAL_PROGRAM_VARIABLE_TYPE_FLOAT_VEC4,
+                                                           0, /* array_size */
+                                                           uber_ptr->fragment_shader_properties_ub,
+                                                           system_hashed_ansi_string_create(light_diffuse_name_sstream.str().c_str() ),
+                                                           NULL /* out_variable_id */);
     }
 
     if (light_type == SHADERS_FRAGMENT_UBER_LIGHT_TYPE_LAMBERT_POINT ||
@@ -876,14 +876,14 @@ PUBLIC EMERALD_API shaders_fragment_uber_item_id shaders_fragment_uber_add_light
     {
         light_world_pos_name_sstream << "light" << n_items << "_world_pos";
 
-        ogl_shader_constructor_add_general_variable_to_ub(uber_ptr->shader_constructor,
-                                                          VARIABLE_TYPE_UNIFORM,
-                                                          LAYOUT_QUALIFIER_NONE,
-                                                          TYPE_VEC4,
-                                                          0, /* array_size */
-                                                          uber_ptr->fragment_shader_properties_ub,
-                                                          system_hashed_ansi_string_create(light_world_pos_name_sstream.str().c_str() ),
-                                                          NULL /* out_variable_id */);
+        glsl_shader_constructor_add_general_variable_to_ub(uber_ptr->shader_constructor,
+                                                           VARIABLE_TYPE_UNIFORM,
+                                                           LAYOUT_QUALIFIER_NONE,
+                                                           RAL_PROGRAM_VARIABLE_TYPE_FLOAT_VEC4,
+                                                           0, /* array_size */
+                                                           uber_ptr->fragment_shader_properties_ub,
+                                                           system_hashed_ansi_string_create(light_world_pos_name_sstream.str().c_str() ),
+                                                           NULL /* out_variable_id */);
     }
 
     if (light_type == SHADERS_FRAGMENT_UBER_LIGHT_TYPE_LAMBERT_DIRECTIONAL ||
@@ -892,14 +892,14 @@ PUBLIC EMERALD_API shaders_fragment_uber_item_id shaders_fragment_uber_add_light
     {
         light_direction_name_sstream << "light" << n_items << "_direction";
 
-        ogl_shader_constructor_add_general_variable_to_ub(uber_ptr->shader_constructor,
-                                                          VARIABLE_TYPE_UNIFORM,
-                                                          LAYOUT_QUALIFIER_NONE,
-                                                          TYPE_VEC3,
-                                                          0, /* array_size */
-                                                          uber_ptr->fragment_shader_properties_ub,
-                                                          system_hashed_ansi_string_create(light_direction_name_sstream.str().c_str() ),
-                                                          NULL /* out_variable_id */);
+        glsl_shader_constructor_add_general_variable_to_ub(uber_ptr->shader_constructor,
+                                                           VARIABLE_TYPE_UNIFORM,
+                                                           LAYOUT_QUALIFIER_NONE,
+                                                           RAL_PROGRAM_VARIABLE_TYPE_FLOAT_VEC3,
+                                                           0, /* array_size */
+                                                           uber_ptr->fragment_shader_properties_ub,
+                                                           system_hashed_ansi_string_create(light_direction_name_sstream.str().c_str() ),
+                                                           NULL /* out_variable_id */);
     }
 
     /* Add light vector calculation */
@@ -947,22 +947,22 @@ PUBLIC EMERALD_API shaders_fragment_uber_item_id shaders_fragment_uber_add_light
                  << ");\n";
         }
 
-        ogl_shader_constructor_append_to_function_body(uber_ptr->shader_constructor,
-                                                       0, /* main() */
-                                                       system_hashed_ansi_string_create(line.str().c_str() ));
+        glsl_shader_constructor_append_to_function_body(uber_ptr->shader_constructor,
+                                                        0, /* main() */
+                                                        system_hashed_ansi_string_create(line.str().c_str() ));
     }
 
     /* Add ambient light uniform if needed. */
     if (light_type == SHADERS_FRAGMENT_UBER_LIGHT_TYPE_AMBIENT)
     {
-        ogl_shader_constructor_add_general_variable_to_ub(uber_ptr->shader_constructor,
-                                                          VARIABLE_TYPE_UNIFORM,
-                                                          LAYOUT_QUALIFIER_NONE,
-                                                          TYPE_VEC3,
-                                                          0, /* array_size */
-                                                          uber_ptr->fragment_shader_properties_ub,
-                                                          system_hashed_ansi_string_create("ambient_color"),
-                                                          NULL /* out_variable_id */);
+        glsl_shader_constructor_add_general_variable_to_ub(uber_ptr->shader_constructor,
+                                                           VARIABLE_TYPE_UNIFORM,
+                                                           LAYOUT_QUALIFIER_NONE,
+                                                           RAL_PROGRAM_VARIABLE_TYPE_FLOAT_VEC3,
+                                                           0, /* array_size */
+                                                           uber_ptr->fragment_shader_properties_ub,
+                                                           system_hashed_ansi_string_create("ambient_color"),
+                                                           NULL /* out_variable_id */);
     }
 
     /* Add material-specific input attributes & uniforms if not already defined. Note that all the names
@@ -974,14 +974,14 @@ PUBLIC EMERALD_API shaders_fragment_uber_item_id shaders_fragment_uber_add_light
         shaders_fragment_uber_property_value value;
 
         /* Item-specific */
-        _shader_variable_type shader_uniform_type;
-        const char*           shader_uniform_name;
+        ral_program_variable_type shader_uniform_type;
+        const char*               shader_uniform_name;
 
         /* Object material-specific */
-        _shader_variable_type uv_sampler_uniform_type;
-        const char*           uv_sampler_uniform_name;
-        const char*           uv_fs_input_attribute_name;
-        const char*           uv_vs_input_attribute_name;
+        ral_program_variable_type uv_sampler_uniform_type;
+        const char*               uv_sampler_uniform_name;
+        const char*               uv_fs_input_attribute_name;
+        const char*               uv_vs_input_attribute_name;
     }
     properties_data[] =
     {
@@ -989,10 +989,10 @@ PUBLIC EMERALD_API shaders_fragment_uber_item_id shaders_fragment_uber_add_light
             SHADERS_FRAGMENT_UBER_PROPERTY_AMBIENT_DATA_SOURCE,
             SHADERS_FRAGMENT_UBER_PROPERTY_VALUE_TEXTURE2D,
 
-            TYPE_VEC4,
+            RAL_PROGRAM_VARIABLE_TYPE_FLOAT_VEC4,
             "ambient_material",
 
-            TYPE_SAMPLER2D,
+            RAL_PROGRAM_VARIABLE_TYPE_SAMPLER_2D,
             "ambient_material_sampler",
             "in_fs_uv",
             "object_uv"
@@ -1002,29 +1002,29 @@ PUBLIC EMERALD_API shaders_fragment_uber_item_id shaders_fragment_uber_add_light
             SHADERS_FRAGMENT_UBER_PROPERTY_AMBIENT_DATA_SOURCE,
             SHADERS_FRAGMENT_UBER_PROPERTY_VALUE_CURVE_CONTAINER_VEC3,
 
-            TYPE_VEC3,
+            RAL_PROGRAM_VARIABLE_TYPE_FLOAT_VEC3,
             "ambient_material",
 
-            TYPE_UNKNOWN
+            RAL_PROGRAM_VARIABLE_TYPE_UNDEFINED
         },
         {
             SHADERS_FRAGMENT_UBER_PROPERTY_AMBIENT_DATA_SOURCE,
             SHADERS_FRAGMENT_UBER_PROPERTY_VALUE_VEC4,
 
-            TYPE_VEC4,
+            RAL_PROGRAM_VARIABLE_TYPE_FLOAT_VEC4,
             "ambient_material",
 
-            TYPE_UNKNOWN
+            RAL_PROGRAM_VARIABLE_TYPE_UNDEFINED
         },
 
         {
             SHADERS_FRAGMENT_UBER_PROPERTY_DIFFUSE_DATA_SOURCE,
             SHADERS_FRAGMENT_UBER_PROPERTY_VALUE_TEXTURE2D,
 
-            TYPE_UNKNOWN,
+            RAL_PROGRAM_VARIABLE_TYPE_UNDEFINED,
             NULL,
 
-            TYPE_SAMPLER2D,
+            RAL_PROGRAM_VARIABLE_TYPE_SAMPLER_2D,
             "diffuse_material_sampler",
             "in_fs_uv",
             "object_uv"
@@ -1034,27 +1034,27 @@ PUBLIC EMERALD_API shaders_fragment_uber_item_id shaders_fragment_uber_add_light
             SHADERS_FRAGMENT_UBER_PROPERTY_DIFFUSE_DATA_SOURCE,
             SHADERS_FRAGMENT_UBER_PROPERTY_VALUE_CURVE_CONTAINER_VEC3,
 
-            TYPE_VEC3,
+            RAL_PROGRAM_VARIABLE_TYPE_FLOAT_VEC3,
             "diffuse_material",
-            TYPE_UNKNOWN
+            RAL_PROGRAM_VARIABLE_TYPE_UNDEFINED
         },
         {
             SHADERS_FRAGMENT_UBER_PROPERTY_DIFFUSE_DATA_SOURCE,
             SHADERS_FRAGMENT_UBER_PROPERTY_VALUE_VEC4,
 
-            TYPE_VEC4,
+            RAL_PROGRAM_VARIABLE_TYPE_FLOAT_VEC4,
             "diffuse_material",
-            TYPE_UNKNOWN
+            RAL_PROGRAM_VARIABLE_TYPE_UNDEFINED
         },
 
         {
             SHADERS_FRAGMENT_UBER_PROPERTY_LUMINOSITY_DATA_SOURCE,
             SHADERS_FRAGMENT_UBER_PROPERTY_VALUE_TEXTURE2D,
 
-            TYPE_UNKNOWN,
+            RAL_PROGRAM_VARIABLE_TYPE_UNDEFINED,
             NULL,
 
-            TYPE_SAMPLER2D,
+            RAL_PROGRAM_VARIABLE_TYPE_SAMPLER_2D,
             "luminosity_material_sampler",
             "in_fs_uv",
             "object_uv"
@@ -1064,51 +1064,51 @@ PUBLIC EMERALD_API shaders_fragment_uber_item_id shaders_fragment_uber_add_light
             SHADERS_FRAGMENT_UBER_PROPERTY_LUMINOSITY_DATA_SOURCE,
             SHADERS_FRAGMENT_UBER_PROPERTY_VALUE_CURVE_CONTAINER_FLOAT,
 
-            TYPE_FLOAT,
+            RAL_PROGRAM_VARIABLE_TYPE_FLOAT,
             "luminosity_material",
-            TYPE_UNKNOWN
+            RAL_PROGRAM_VARIABLE_TYPE_UNDEFINED
         },
         {
             SHADERS_FRAGMENT_UBER_PROPERTY_LUMINOSITY_DATA_SOURCE,
             SHADERS_FRAGMENT_UBER_PROPERTY_VALUE_FLOAT,
 
-            TYPE_FLOAT,
+            RAL_PROGRAM_VARIABLE_TYPE_FLOAT,
             "luminosity_material",
-            TYPE_UNKNOWN
+            RAL_PROGRAM_VARIABLE_TYPE_UNDEFINED
         },
 
         {
             SHADERS_FRAGMENT_UBER_PROPERTY_SHININESS_DATA_SOURCE,
             SHADERS_FRAGMENT_UBER_PROPERTY_VALUE_CURVE_CONTAINER_FLOAT,
 
-            TYPE_FLOAT,
+            RAL_PROGRAM_VARIABLE_TYPE_FLOAT,
             "shininess_material",
-            TYPE_UNKNOWN
+            RAL_PROGRAM_VARIABLE_TYPE_UNDEFINED
         },
         {
             SHADERS_FRAGMENT_UBER_PROPERTY_SHININESS_DATA_SOURCE,
             SHADERS_FRAGMENT_UBER_PROPERTY_VALUE_FLOAT,
 
-            TYPE_FLOAT,
+            RAL_PROGRAM_VARIABLE_TYPE_FLOAT,
             "shininess_material",
-            TYPE_UNKNOWN
+            RAL_PROGRAM_VARIABLE_TYPE_UNDEFINED
         },
 
         {
             SHADERS_FRAGMENT_UBER_PROPERTY_SPECULAR_DATA_SOURCE,
             SHADERS_FRAGMENT_UBER_PROPERTY_VALUE_CURVE_CONTAINER_FLOAT,
 
-            TYPE_FLOAT,
+            RAL_PROGRAM_VARIABLE_TYPE_FLOAT,
             "specular_material",
-            TYPE_UNKNOWN
+            RAL_PROGRAM_VARIABLE_TYPE_UNDEFINED
         },
         {
             SHADERS_FRAGMENT_UBER_PROPERTY_SPECULAR_DATA_SOURCE,
             SHADERS_FRAGMENT_UBER_PROPERTY_VALUE_FLOAT,
 
-            TYPE_FLOAT,
+            RAL_PROGRAM_VARIABLE_TYPE_FLOAT,
             "specular_material",
-            TYPE_UNKNOWN
+            RAL_PROGRAM_VARIABLE_TYPE_UNDEFINED
         },
     };
     const unsigned int n_properties = sizeof(properties_data) / sizeof(properties_data[0]);
@@ -1129,10 +1129,10 @@ PUBLIC EMERALD_API shaders_fragment_uber_item_id shaders_fragment_uber_add_light
                 /** Add a new attribute if necessary */
                 system_hashed_ansi_string attribute_name_has = system_hashed_ansi_string_create(iteration_data.uv_fs_input_attribute_name);
 
-                if (ogl_shader_constructor_add_general_variable_to_ub(uber_ptr->shader_constructor,
+                if (glsl_shader_constructor_add_general_variable_to_ub(uber_ptr->shader_constructor,
                                                                       VARIABLE_TYPE_INPUT_ATTRIBUTE,
                                                                       LAYOUT_QUALIFIER_NONE,
-                                                                      TYPE_VEC2,
+                                                                      RAL_PROGRAM_VARIABLE_TYPE_FLOAT_VEC2,
                                                                       0, /* array_size */
                                                                       0, /* uniform_block */
                                                                       attribute_name_has,
@@ -1145,7 +1145,7 @@ PUBLIC EMERALD_API shaders_fragment_uber_item_id shaders_fragment_uber_add_light
                         _shaders_fragment_uber_new_fragment_input_callback callback_data;
 
                         callback_data.fs_attribute_name = attribute_name_has;
-                        callback_data.fs_attribute_type = TYPE_VEC2;
+                        callback_data.fs_attribute_type = RAL_PROGRAM_VARIABLE_TYPE_FLOAT_VEC2;
                         callback_data.vs_attribute_name = system_hashed_ansi_string_create(iteration_data.uv_vs_input_attribute_name);
 
                         pCallbackProc(SHADERS_FRAGMENT_UBER_PARENT_CALLBACK_NEW_FRAGMENT_INPUT,
@@ -1161,26 +1161,26 @@ PUBLIC EMERALD_API shaders_fragment_uber_item_id shaders_fragment_uber_add_light
 
             if (iteration_data.shader_uniform_name != NULL)
             {
-                ogl_shader_constructor_add_general_variable_to_ub(uber_ptr->shader_constructor,
-                                                                  VARIABLE_TYPE_UNIFORM,
-                                                                  LAYOUT_QUALIFIER_NONE,
-                                                                  iteration_data.shader_uniform_type,
-                                                                  0, /* array_size */
-                                                                  uber_ptr->fragment_shader_properties_ub,
-                                                                  system_hashed_ansi_string_create(iteration_data.shader_uniform_name),
-                                                                  NULL /* out_variable_id */);
+                glsl_shader_constructor_add_general_variable_to_ub(uber_ptr->shader_constructor,
+                                                                   VARIABLE_TYPE_UNIFORM,
+                                                                   LAYOUT_QUALIFIER_NONE,
+                                                                   iteration_data.shader_uniform_type,
+                                                                   0, /* array_size */
+                                                                   uber_ptr->fragment_shader_properties_ub,
+                                                                   system_hashed_ansi_string_create(iteration_data.shader_uniform_name),
+                                                                   NULL /* out_variable_id */);
             }
 
             if (iteration_data.uv_sampler_uniform_name != NULL)
             {
-                ogl_shader_constructor_add_general_variable_to_ub(uber_ptr->shader_constructor,
-                                                                  VARIABLE_TYPE_UNIFORM,
-                                                                  LAYOUT_QUALIFIER_NONE,
-                                                                  iteration_data.uv_sampler_uniform_type,
-                                                                  0, /* array_size */
-                                                                  0, /* uniform_block */
-                                                                  system_hashed_ansi_string_create(iteration_data.uv_sampler_uniform_name),
-                                                                  NULL /* out_variable_id */);
+                glsl_shader_constructor_add_general_variable_to_ub(uber_ptr->shader_constructor,
+                                                                   VARIABLE_TYPE_UNIFORM,
+                                                                   LAYOUT_QUALIFIER_NONE,
+                                                                   iteration_data.uv_sampler_uniform_type,
+                                                                   0, /* array_size */
+                                                                   0, /* uniform_block */
+                                                                   system_hashed_ansi_string_create(iteration_data.uv_sampler_uniform_name),
+                                                                   NULL /* out_variable_id */);
             }
         } /* if (properties[iteration_data.property] == iteration_data.value) */
     } /* for (all properties items) */
@@ -1198,9 +1198,9 @@ PUBLIC EMERALD_API shaders_fragment_uber_item_id shaders_fragment_uber_add_light
         ldotn_sstream << "float light"   << n_items << "_LdotN_clamped "
                       << "= clamp(light" << n_items << "_LdotN, 0.0, 1.0);\n";
 
-        ogl_shader_constructor_append_to_function_body(uber_ptr->shader_constructor,
-                                                           0, /* main() */
-                                                           system_hashed_ansi_string_create(ldotn_sstream.str().c_str() ));
+        glsl_shader_constructor_append_to_function_body(uber_ptr->shader_constructor,
+                                                        0, /* main() */
+                                                        system_hashed_ansi_string_create(ldotn_sstream.str().c_str() ));
     }
 
     /* Add shadow map support */
@@ -1295,14 +1295,14 @@ PUBLIC EMERALD_API shaders_fragment_uber_item_id shaders_fragment_uber_add_light
 PUBLIC EMERALD_API shaders_fragment_uber shaders_fragment_uber_create(ral_context                context,
                                                                       system_hashed_ansi_string  name)
 {
-    ral_shader                embedded_shader               = NULL;
-    _uniform_block_id         fragment_shader_properties_ub = 0;
-    system_hashed_ansi_string ral_shader_instance_name      = system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(name),
-                                                                                                                      " fragment uber");
-    _shaders_fragment_uber*   result_object_ptr             = NULL;
-    shaders_fragment_uber     result_shader                 = NULL;
-    ogl_shader_constructor    shader_constructor            = NULL;
-    ral_shader_create_info    shader_create_info;
+    ral_shader                               embedded_shader               = NULL;
+    glsl_shader_constructor_uniform_block_id fragment_shader_properties_ub = 0;
+    system_hashed_ansi_string                ral_shader_instance_name      = system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(name),
+                                                                                                                                     " fragment uber");
+    _shaders_fragment_uber*                  result_object_ptr             = NULL;
+    shaders_fragment_uber                    result_shader                 = NULL;
+    glsl_shader_constructor                  shader_constructor            = NULL;
+    ral_shader_create_info                   shader_create_info;
 
     /* Create a new ral_shader instance only if one is not already registered */
     if ((ral_context_get_shader_by_name(context,
@@ -1317,9 +1317,9 @@ PUBLIC EMERALD_API shaders_fragment_uber shaders_fragment_uber_create(ral_contex
     }
 
     /* Initialize the shader constructor */
-    shader_constructor = ogl_shader_constructor_create(RAL_SHADER_TYPE_FRAGMENT,
-                                                       system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(name),
-                                                                                                               " fragment uber"));
+    shader_constructor = glsl_shader_constructor_create(RAL_SHADER_TYPE_FRAGMENT,
+                                                        system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(name),
+                                                                                                                " fragment uber"));
 
     ASSERT_DEBUG_SYNC(shader_constructor != NULL,
                       "Could not create a shader constructor");
@@ -1332,56 +1332,56 @@ PUBLIC EMERALD_API shaders_fragment_uber shaders_fragment_uber_create(ral_contex
     }
 
     /* Add FragmentShaderProperties uniform block */
-    fragment_shader_properties_ub = ogl_shader_constructor_add_uniform_block(shader_constructor,
-                                                                             LAYOUT_QUALIFIER_STD140,
-                                                                             system_hashed_ansi_string_create("FragmentShaderProperties") );
+    fragment_shader_properties_ub = glsl_shader_constructor_add_uniform_block(shader_constructor,
+                                                                              LAYOUT_QUALIFIER_STD140,
+                                                                              system_hashed_ansi_string_create("FragmentShaderProperties") );
 
     /* Add input attributes */
-    ogl_shader_constructor_add_general_variable_to_ub(shader_constructor,
-                                                      VARIABLE_TYPE_INPUT_ATTRIBUTE,
-                                                      LAYOUT_QUALIFIER_NONE,
-                                                      TYPE_VEC3,
-                                                      0, /* array_size */
-                                                      0, /* uniform_block */
-                                                      system_hashed_ansi_string_create("world_vertex"),
-                                                      NULL /* out_variable_id */);
+    glsl_shader_constructor_add_general_variable_to_ub(shader_constructor,
+                                                       VARIABLE_TYPE_INPUT_ATTRIBUTE,
+                                                       LAYOUT_QUALIFIER_NONE,
+                                                       RAL_PROGRAM_VARIABLE_TYPE_FLOAT_VEC3,
+                                                       0, /* array_size */
+                                                       0, /* uniform_block */
+                                                       system_hashed_ansi_string_create("world_vertex"),
+                                                       NULL /* out_variable_id */);
 
-    ogl_shader_constructor_add_general_variable_to_ub(shader_constructor,
-                                                      VARIABLE_TYPE_INPUT_ATTRIBUTE,
-                                                      LAYOUT_QUALIFIER_NONE,
-                                                      TYPE_VEC3,
-                                                      0, /* array_size */
-                                                      0, /* uniform_block */
-                                                      system_hashed_ansi_string_create("out_vs_normal"),
-                                                      NULL /* out_variable_id */);
+    glsl_shader_constructor_add_general_variable_to_ub(shader_constructor,
+                                                       VARIABLE_TYPE_INPUT_ATTRIBUTE,
+                                                       LAYOUT_QUALIFIER_NONE,
+                                                       RAL_PROGRAM_VARIABLE_TYPE_FLOAT_VEC3,
+                                                       0, /* array_size */
+                                                       0, /* uniform_block */
+                                                       system_hashed_ansi_string_create("out_vs_normal"),
+                                                       NULL /* out_variable_id */);
 
-    ogl_shader_constructor_add_general_variable_to_ub(shader_constructor,
-                                                      VARIABLE_TYPE_INPUT_ATTRIBUTE,
-                                                      LAYOUT_QUALIFIER_NONE,
-                                                      TYPE_VEC3,
-                                                      0, /* array_size */
-                                                      0, /* uniform_block */
-                                                      system_hashed_ansi_string_create("view_vector"),
-                                                      NULL /* out_variable_id */);
+    glsl_shader_constructor_add_general_variable_to_ub(shader_constructor,
+                                                       VARIABLE_TYPE_INPUT_ATTRIBUTE,
+                                                       LAYOUT_QUALIFIER_NONE,
+                                                       RAL_PROGRAM_VARIABLE_TYPE_FLOAT_VEC3,
+                                                       0, /* array_size */
+                                                       0, /* uniform_block */
+                                                       system_hashed_ansi_string_create("view_vector"),
+                                                       NULL /* out_variable_id */);
 
     /* Add output attributes */
-    ogl_shader_constructor_add_general_variable_to_ub(shader_constructor,
-                                                      VARIABLE_TYPE_OUTPUT_ATTRIBUTE,
-                                                      LAYOUT_QUALIFIER_NONE,
-                                                      TYPE_VEC4,
-                                                      0, /* array_size */
-                                                      0, /* uniform_block */
-                                                      system_hashed_ansi_string_create("result_fragment"),
-                                                      NULL /* out_variable_id */);
+    glsl_shader_constructor_add_general_variable_to_ub(shader_constructor,
+                                                       VARIABLE_TYPE_OUTPUT_ATTRIBUTE,
+                                                       LAYOUT_QUALIFIER_NONE,
+                                                       RAL_PROGRAM_VARIABLE_TYPE_FLOAT_VEC4,
+                                                       0, /* array_size */
+                                                       0, /* uniform_block */
+                                                       system_hashed_ansi_string_create("result_fragment"),
+                                                       NULL /* out_variable_id */);
 
     /* Set base shader body */
-    ogl_shader_constructor_set_function_body(shader_constructor,
-                                             0, /* function_id */
-                                             system_hashed_ansi_string_create("vec3 normal     = normalize(out_vs_normal);\n"
-                                                                              "result_fragment = vec4(0, 0, 0, 1);\n") );
+    glsl_shader_constructor_set_function_body(shader_constructor,
+                                              0, /* function_id */
+                                              system_hashed_ansi_string_create("vec3 normal     = normalize(out_vs_normal);\n"
+                                                                               "result_fragment = vec4(0, 0, 0, 1);\n") );
 
     /* Spawn a new RAL shader instance */
-    system_hashed_ansi_string shader_body = ogl_shader_constructor_get_shader_body(shader_constructor);
+    system_hashed_ansi_string shader_body = glsl_shader_constructor_get_shader_body(shader_constructor);
 
     shader_create_info.name   = ral_shader_instance_name;
     shader_create_info.source = RAL_SHADER_SOURCE_GLSL;
@@ -1537,7 +1537,7 @@ PUBLIC EMERALD_API void shaders_fragment_uber_recompile(shaders_fragment_uber ub
 
     /* Set the shader's body. The back-end will decide whether it makes sense to compile the shader now
      * or later. **/
-    system_hashed_ansi_string shader_body = ogl_shader_constructor_get_shader_body(uber_ptr->shader_constructor);
+    system_hashed_ansi_string shader_body = glsl_shader_constructor_get_shader_body(uber_ptr->shader_constructor);
 
     ral_shader_set_property(uber_ptr->shader,
                             RAL_SHADER_PROPERTY_GLSL_BODY,

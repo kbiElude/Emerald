@@ -35,7 +35,7 @@ typedef unsigned int shaders_vertex_uber_item_id;
 /** TODO */
 PUBLIC EMERALD_API void shaders_vertex_uber_add_passthrough_input_attribute(shaders_vertex_uber       uber,
                                                                             system_hashed_ansi_string in_attribute_name,
-                                                                            _shader_variable_type     in_attribute_variable_type,
+                                                                            ral_program_variable_type in_attribute_variable_type,
                                                                             system_hashed_ansi_string out_attribute_name);
 
 /** TODO */

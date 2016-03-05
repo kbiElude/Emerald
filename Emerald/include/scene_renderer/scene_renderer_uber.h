@@ -41,8 +41,8 @@ typedef enum
      *
      * This property is global, as opposed to _min_variance. The reason is that
      * max variance is used during SM generation pass. The pass uses an
-     * ogl_uber instance created from an ral_program delivered by ogl_materials
-     * (SPECIAL_MATERIAL_DEPTH_CLIP_AND_DEPTH_CLIP_SQUARED).
+     * scene_renderer_uber instance created from an ral_program delivered by
+     * scene_renderer_materials (SPECIAL_MATERIAL_DEPTH_CLIP_AND_DEPTH_CLIP_SQUARED).
      */
     SCENE_RENDERER_UBER_GENERAL_PROPERTY_VSM_MAX_VARIANCE,
 

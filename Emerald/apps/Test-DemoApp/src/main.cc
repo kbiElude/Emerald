@@ -7,7 +7,6 @@
 #include "demo/demo_app.h"
 #include "demo/demo_window.h"
 #include "ogl/ogl_context.h"
-#include "ogl/ogl_materials.h"
 #include "ogl/ogl_pipeline.h"
 #include "ogl/ogl_rendering_handler.h"
 #include "postprocessing/postprocessing_blur_gaussian.h"

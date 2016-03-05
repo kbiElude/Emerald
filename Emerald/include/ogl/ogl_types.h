@@ -1425,94 +1425,7 @@ typedef struct
 } ogl_context_gl_entrypoints_ext_direct_state_access;
 
 
-/** Shader variable types */
-typedef enum
-{
-    TYPE_BOOL,
-    TYPE_BVEC2,
-    TYPE_BVEC3,
-    TYPE_BVEC4,
-    TYPE_DMAT2,
-    TYPE_DMAT2X3,
-    TYPE_DMAT2X4,
-    TYPE_DMAT3,
-    TYPE_DMAT3X2,
-    TYPE_DMAT3X4,
-    TYPE_DMAT4,
-    TYPE_DMAT4X2,
-    TYPE_DMAT4X3,
-    TYPE_DVEC2,
-    TYPE_DVEC3,
-    TYPE_DVEC4,
-    TYPE_FLOAT,
-    TYPE_INT,
-    TYPE_ISAMPLER1D,
-    TYPE_ISAMPLER1DARRAY,
-    TYPE_ISAMPLER2D,
-    TYPE_ISAMPLER2DARRAY,
-    TYPE_ISAMPLER2DMS,
-    TYPE_ISAMPLER2DMSARRAY,
-    TYPE_ISAMPLER2DRECT,
-    TYPE_ISAMPLER3D,
-    TYPE_ISAMPLERBUFFER,
-    TYPE_ISAMPLERCUBE,
-    TYPE_ISAMPLERCUBEARRAY,
-    TYPE_IVEC2,
-    TYPE_IVEC3,
-    TYPE_IVEC4,
-    TYPE_MAT2,
-    TYPE_MAT2X3,
-    TYPE_MAT2X4,
-    TYPE_MAT3,
-    TYPE_MAT3X2,
-    TYPE_MAT3X4,
-    TYPE_MAT4,
-    TYPE_MAT4X2,
-    TYPE_MAT4X3,
-    TYPE_SAMPLER1D,
-    TYPE_SAMPLER1DARRAY,
-    TYPE_SAMPLER1DARRAYSHADOW,
-    TYPE_SAMPLER1DSHADOW,
-    TYPE_SAMPLER2D,
-    TYPE_SAMPLER2DARRAY,
-    TYPE_SAMPLER2DARRAYSHADOW,
-    TYPE_SAMPLER2DMS,
-    TYPE_SAMPLER2DMSARRAY,
-    TYPE_SAMPLER2DRECT,
-    TYPE_SAMPLER2DRECTSHADOW,
-    TYPE_SAMPLER2DSHADOW,
-    TYPE_SAMPLER3D,
-    TYPE_SAMPLERBUFFER,
-    TYPE_SAMPLERCUBE,
-    TYPE_SAMPLERCUBEARRAY,
-    TYPE_SAMPLERCUBEARRAYSHADOW,
-    TYPE_SAMPLERCUBESHADOW,
-    TYPE_UINT,
-    TYPE_USAMPLER1D,
-    TYPE_USAMPLER1DARRAY,
-    TYPE_USAMPLER2D,
-    TYPE_USAMPLER2DARRAY,
-    TYPE_USAMPLER2DMS,
-    TYPE_USAMPLER2DMSARRAY,
-    TYPE_USAMPLER2DRECT,
-    TYPE_USAMPLER3D,
-    TYPE_USAMPLERBUFFER,
-    TYPE_USAMPLERCUBE,
-    TYPE_USAMPLERCUBEARRAY,
-    TYPE_UVEC2,
-    TYPE_UVEC3,
-    TYPE_UVEC4,
-    TYPE_VEC2,
-    TYPE_VEC3,
-    TYPE_VEC4,
-    TYPE_VOID,
-
-    /* Always last */
-    TYPE_UNKNOWN
-} _shader_variable_type;
-
-/** Shader handle & various related types from shaders module. */
-DECLARE_HANDLE(ogl_shader_constructor);
+/** Various predefined shader generators. */
 DECLARE_HANDLE(shaders_fragment_convolution3x3);
 DECLARE_HANDLE(shaders_fragment_laplacian);
 DECLARE_HANDLE(shaders_fragment_rgb_to_Yxy);
@@ -1546,9 +1459,6 @@ DECLARE_HANDLE(ogl_context);
 
     DECLARE_HANDLE(ogl_context_linux);
 #endif
-
-/* Materials library handle */
-DECLARE_HANDLE(ogl_materials);
 
 /** Pipeline handle */
 DECLARE_HANDLE(ogl_pipeline);
