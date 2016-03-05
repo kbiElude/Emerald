@@ -11,6 +11,7 @@
 #include "ogl/ogl_types.h"
 #include "ral/ral_types.h"
 #include "scene/scene_types.h"
+#include "scene_renderer/scene_renderer_types.h"
 
 REFCOUNT_INSERT_DECLARATIONS(mesh_material,
                              mesh_material)
@@ -205,9 +206,9 @@ PUBLIC system_hashed_ansi_string mesh_material_get_mesh_material_type_has(mesh_m
  *  Input scene can be NULL, in which case it is assumed the returned ogl_uber does not need
  *  to consider lighting.
  */
-PUBLIC EMERALD_API ogl_uber mesh_material_get_ogl_uber(mesh_material material,
-                                                       scene         scene,
-                                                       bool          use_shadow_maps);
+PUBLIC EMERALD_API scene_renderer_uber mesh_material_get_uber(mesh_material material,
+                                                              scene         scene,
+                                                              bool          use_shadow_maps);
 
 /** TODO */
 PUBLIC EMERALD_API void mesh_material_get_property(mesh_material          material,

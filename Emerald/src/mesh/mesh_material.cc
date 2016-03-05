@@ -8,7 +8,6 @@
 #include "mesh/mesh_material.h"
 #include "ogl/ogl_context.h"
 #include "ogl/ogl_materials.h"
-#include "ogl/ogl_uber.h"
 #include "ral/ral_context.h"
 #include "ral/ral_program.h"
 #include "ral/ral_shader.h"
@@ -16,6 +15,7 @@
 #include "scene/scene.h"
 #include "scene/scene_light.h"
 #include "scene/scene_material.h"
+#include "scene_renderer/scene_renderer_uber.h"
 #include "system/system_callback_manager.h"
 #include "system/system_file_serializer.h"
 #include "system/system_hash64map.h"
@@ -104,8 +104,8 @@ typedef struct _mesh_material
     _mesh_material_property   shading_properties[MESH_MATERIAL_SHADING_PROPERTY_COUNT];
     scene_material            source_scene_material; /* only used if source == MESH_MATERIAL_SOURCE_OGL_UBER */
     system_variant            temp_variant_float;
-    ogl_uber                  uber_non_sm;            /*         uses shadow maps for per-light visibility calculation */
-    ogl_uber                  uber_sm;                /* does not use shadow maps for per-light visibility calculation */
+    scene_renderer_uber       uber_non_sm;            /*         uses shadow maps for per-light visibility calculation */
+    scene_renderer_uber       uber_sm;                /* does not use shadow maps for per-light visibility calculation */
     system_hashed_ansi_string uv_map_name;            /* NULL by default, needs to be manually set */
     float                     vertex_smoothing_angle;
 
@@ -1319,9 +1319,9 @@ PUBLIC system_hashed_ansi_string mesh_material_get_mesh_material_shading_propert
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API ogl_uber mesh_material_get_ogl_uber(mesh_material material,
-                                                       scene         scene,
-                                                       bool          use_shadow_maps)
+PUBLIC EMERALD_API scene_renderer_uber mesh_material_get_uber(mesh_material material,
+                                                              scene         scene,
+                                                              bool          use_shadow_maps)
 {
     _mesh_material* material_ptr = (_mesh_material*) material;
 

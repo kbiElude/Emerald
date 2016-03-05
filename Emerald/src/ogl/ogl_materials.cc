@@ -7,11 +7,11 @@
 #include "mesh/mesh_material.h"
 #include "ogl/ogl_materials.h"
 #include "ogl/ogl_shadow_mapping.h"
-#include "ogl/ogl_uber.h"
 #include "ral/ral_context.h"
 #include "ral/ral_texture.h"
 #include "scene/scene.h"
 #include "scene/scene_light.h"
+#include "scene_renderer/scene_renderer_uber.h"
 #include "shaders/shaders_fragment_uber.h"
 #include "shaders/shaders_vertex_uber.h"
 #include "system/system_log.h"
@@ -77,9 +77,9 @@ typedef struct _ogl_materials_mesh_material_setting
 
 typedef struct _ogl_materials_uber
 {
-    mesh_material material;
-    ogl_uber      uber;
-    bool          use_shadow_maps;
+    mesh_material       material;
+    scene_renderer_uber uber;
+    bool                use_shadow_maps;
 
     _ogl_materials_uber()
     {
@@ -99,7 +99,7 @@ typedef struct _ogl_materials_uber
 
         if (uber != NULL)
         {
-            ogl_uber_release(uber);
+            scene_renderer_uber_release(uber);
 
             uber = NULL;
         }
@@ -170,7 +170,7 @@ typedef struct _ogl_materials
 
                 if (uber_ptr->uber != NULL)
                 {
-                    ogl_uber_release(uber_ptr->uber);
+                    scene_renderer_uber_release(uber_ptr->uber);
 
                     uber_ptr = NULL;
                 }
@@ -184,11 +184,11 @@ typedef struct _ogl_materials
 
 
 /* Forward declarations */
-PRIVATE ogl_uber                  _ogl_materials_bake_uber             (ogl_materials                      materials,
+PRIVATE scene_renderer_uber       _ogl_materials_bake_uber             (ogl_materials                      materials,
                                                                         mesh_material                      material,
                                                                         scene                              scene,
                                                                         bool                               use_shadow_maps);
-PRIVATE bool                      _ogl_materials_does_uber_match_scene (ogl_uber                           uber,
+PRIVATE bool                      _ogl_materials_does_uber_match_scene (scene_renderer_uber                uber,
                                                                         scene                              scene,
                                                                         bool                               use_shadow_maps);
 PRIVATE void                      _ogl_materials_get_forced_setting    (ogl_materials                      materials,
@@ -202,10 +202,10 @@ PRIVATE void                      _ogl_materials_init_special_materials(_ogl_mat
 
 
 /** TODO */
-PRIVATE ogl_uber _ogl_materials_bake_uber(ogl_materials materials,
-                                          mesh_material material,
-                                          scene         scene,
-                                          bool          use_shadow_maps)
+PRIVATE scene_renderer_uber _ogl_materials_bake_uber(ogl_materials materials,
+                                                     mesh_material material,
+                                                     scene         scene,
+                                                     bool          use_shadow_maps)
 {
     _ogl_materials* materials_ptr = (_ogl_materials*) materials;
     ral_context     context       = materials_ptr->context;
@@ -214,7 +214,7 @@ PRIVATE ogl_uber _ogl_materials_bake_uber(ogl_materials materials,
 
     /* Spawn a new uber  */
     mesh_material_type        material_type = MESH_MATERIAL_TYPE_UNDEFINED;
-    ogl_uber                  new_uber      = NULL;
+    scene_renderer_uber       new_uber      = NULL;
     system_hashed_ansi_string uber_name     = _ogl_materials_get_uber_name(material,
                                                                            scene,
                                                                            use_shadow_maps);
@@ -227,8 +227,8 @@ PRIVATE ogl_uber _ogl_materials_bake_uber(ogl_materials materials,
     {
         case MESH_MATERIAL_TYPE_GENERAL:
         {
-            new_uber = ogl_uber_create(context,
-                                       uber_name);
+            new_uber = scene_renderer_uber_create(context,
+                                                  uber_name);
 
             ASSERT_ALWAYS_SYNC(new_uber != NULL,
                                "Could not spawn an uber instance");
@@ -473,12 +473,12 @@ PRIVATE ogl_uber _ogl_materials_bake_uber(ogl_materials materials,
                             /* Add the light item if not a NULL light */
                             if (uber_light_type != SHADERS_FRAGMENT_UBER_LIGHT_TYPE_NONE)
                             {
-                                ogl_uber_add_light_item(new_uber,
-                                                        current_light,
-                                                        uber_light_type,
-                                                        uses_shadow_mapping,
-                                                        n_uber_fragment_property_value_pairs,
-                                                        uber_fragment_property_value_pairs);
+                                scene_renderer_uber_add_light_item(new_uber,
+                                                                   current_light,
+                                                                   uber_light_type,
+                                                                   uses_shadow_mapping,
+                                                                   n_uber_fragment_property_value_pairs,
+                                                                   uber_fragment_property_value_pairs);
                             } /* if (uber_light_type != UBER_LIGHT_NONE) */
                         } /* for (all scene lights) */
                     } /* if (scene != NULL) */
@@ -509,34 +509,35 @@ PRIVATE ogl_uber _ogl_materials_bake_uber(ogl_materials materials,
                                                                                      &input_fragment_attribute);
 
                     /* Configure the ogl_uber instance */
-                    _ogl_uber_input_fragment_attribute uber_input_attribute = OGL_UBER_INPUT_FRAGMENT_ATTRIBUTE_UNKNOWN;
+                    scene_renderer_uber_input_fragment_attribute uber_input_attribute = SCENE_RENDERER_UBER_INPUT_FRAGMENT_ATTRIBUTE_UNKNOWN;
 
                     switch (input_fragment_attribute)
                     {
                         case MESH_MATERIAL_INPUT_FRAGMENT_ATTRIBUTE_NORMAL:
                         {
-                            uber_input_attribute = OGL_UBER_INPUT_FRAGMENT_ATTRIBUTE_NORMAL;
+                            uber_input_attribute = SCENE_RENDERER_UBER_INPUT_FRAGMENT_ATTRIBUTE_NORMAL;
 
                             break;
                         }
 
                         case MESH_MATERIAL_INPUT_FRAGMENT_ATTRIBUTE_TEXCOORD:
                         {
-                            uber_input_attribute = OGL_UBER_INPUT_FRAGMENT_ATTRIBUTE_TEXCOORD;
+                            uber_input_attribute = SCENE_RENDERER_UBER_INPUT_FRAGMENT_ATTRIBUTE_TEXCOORD;
 
                             break;
                         }
 
                         default:
                         {
-                            ASSERT_DEBUG_SYNC(false, "Unrecognized input fragment attribute");
+                            ASSERT_DEBUG_SYNC(false,
+                                              "Unrecognized input fragment attribute");
                         }
                     }
 
-                    if (uber_input_attribute != OGL_UBER_INPUT_FRAGMENT_ATTRIBUTE_UNKNOWN)
+                    if (uber_input_attribute != SCENE_RENDERER_UBER_INPUT_FRAGMENT_ATTRIBUTE_UNKNOWN)
                     {
-                        ogl_uber_add_input_fragment_attribute_item(new_uber,
-                                                                   uber_input_attribute);
+                        scene_renderer_uber_add_input_fragment_attribute_item(new_uber,
+                                                                              uber_input_attribute);
                     }
                 }
             } /* if (new_uber != NULL) */
@@ -552,9 +553,9 @@ PRIVATE ogl_uber _ogl_materials_bake_uber(ogl_materials materials,
                                        MESH_MATERIAL_PROPERTY_SOURCE_RAL_PROGRAM,
                                       &material_program);
 
-            new_uber = ogl_uber_create_from_ral_program(context,
-                                                        uber_name,
-                                                        material_program);
+            new_uber = scene_renderer_uber_create_from_ral_program(context,
+                                                                   uber_name,
+                                                                   material_program);
 
             ASSERT_ALWAYS_SYNC(new_uber != NULL,
                                "Could not spawn an uber instance");
@@ -570,13 +571,13 @@ PRIVATE ogl_uber _ogl_materials_bake_uber(ogl_materials materials,
     } /* switch (type) */
 
     /* Return the result */
-    return (ogl_uber) new_uber;
+    return (scene_renderer_uber) new_uber;
 }
 
 /** TODO. **/
-PRIVATE bool _ogl_materials_does_uber_match_scene(ogl_uber uber,
-                                                  scene    scene,
-                                                  bool     use_shadow_mapping)
+PRIVATE bool _ogl_materials_does_uber_match_scene(scene_renderer_uber uber,
+                                                  scene               scene,
+                                                  bool                use_shadow_mapping)
 {
     bool result = true;
 
@@ -588,15 +589,15 @@ PRIVATE bool _ogl_materials_does_uber_match_scene(ogl_uber uber,
     unsigned int n_uber_lights    = 0;
     bool         scene_sm_enabled = false;
 
-    scene_get_property                  (scene,
-                                         SCENE_PROPERTY_N_LIGHTS,
-                                        &n_scene_lights);
-    scene_get_property                  (scene,
-                                         SCENE_PROPERTY_SHADOW_MAPPING_ENABLED,
-                                        &scene_sm_enabled);
-    ogl_uber_get_shader_general_property(uber,
-                                         OGL_UBER_GENERAL_PROPERTY_N_ITEMS,
-                                        &n_uber_lights);
+    scene_get_property                             (scene,
+                                                    SCENE_PROPERTY_N_LIGHTS,
+                                                   &n_scene_lights);
+    scene_get_property                             (scene,
+                                                    SCENE_PROPERTY_SHADOW_MAPPING_ENABLED,
+                                                   &scene_sm_enabled);
+    scene_renderer_uber_get_shader_general_property(uber,
+                                                    SCENE_RENDERER_UBER_GENERAL_PROPERTY_N_ITEMS,
+                                                   &n_uber_lights);
 
     if (n_uber_lights != n_scene_lights)
     {
@@ -619,7 +620,7 @@ PRIVATE bool _ogl_materials_does_uber_match_scene(ogl_uber uber,
         bool                             current_uber_item_is_shadow_caster = false;
         shaders_fragment_uber_light_type current_uber_item_light_type       = SHADERS_FRAGMENT_UBER_LIGHT_TYPE_NONE;
         scene_light_shadow_map_bias      current_uber_item_shadow_map_bias  = SCENE_LIGHT_SHADOW_MAP_BIAS_UNKNOWN;
-        _ogl_uber_item_type              current_uber_item_type             = OGL_UBER_ITEM_UNKNOWN;
+        scene_renderer_uber_item_type    current_uber_item_type             = SCENE_RENDERER_UBER_ITEM_UNKNOWN;
 
         current_light = scene_get_light_by_index(scene,
                                                  n_light);
@@ -634,12 +635,12 @@ PRIVATE bool _ogl_materials_does_uber_match_scene(ogl_uber uber,
                                  SCENE_LIGHT_PROPERTY_TYPE,
                                 &current_light_type);
 
-        ogl_uber_get_shader_item_property(uber,
-                                          n_light,
-                                          OGL_UBER_ITEM_PROPERTY_TYPE,
-                                         &current_uber_item_type);
+        scene_renderer_uber_get_shader_item_property(uber,
+                                                     n_light,
+                                                     SCENE_RENDERER_UBER_ITEM_PROPERTY_TYPE,
+                                                    &current_uber_item_type);
 
-        if (current_uber_item_type != OGL_UBER_ITEM_LIGHT)
+        if (current_uber_item_type != SCENE_RENDERER_UBER_ITEM_LIGHT)
         {
             /* Nope */
             result = false;
@@ -651,10 +652,10 @@ PRIVATE bool _ogl_materials_does_uber_match_scene(ogl_uber uber,
          * is overriden by a scene property called SCENE_PROPERTY_SHADOW_MAPPING_ENABLED
          * which is toggled on and off at different stages of the rendering pipeline execution.
          */
-        ogl_uber_get_shader_item_property(uber,
-                                          n_light,
-                                          OGL_UBER_ITEM_PROPERTY_LIGHT_USES_SHADOW_MAP,
-                                         &current_uber_item_is_shadow_caster);
+        scene_renderer_uber_get_shader_item_property(uber,
+                                                     n_light,
+                                                     SCENE_RENDERER_UBER_ITEM_PROPERTY_LIGHT_USES_SHADOW_MAP,
+                                                    &current_uber_item_is_shadow_caster);
 
         current_light_is_shadow_caster &= (use_shadow_mapping && scene_sm_enabled);
 
@@ -662,13 +663,13 @@ PRIVATE bool _ogl_materials_does_uber_match_scene(ogl_uber uber,
         scene_light_shadow_map_algorithm current_light_shadow_map_algorithm     = SCENE_LIGHT_SHADOW_MAP_ALGORITHM_UNKNOWN;
         scene_light_shadow_map_algorithm current_uber_item_shadow_map_algorithm = SCENE_LIGHT_SHADOW_MAP_ALGORITHM_UNKNOWN;
 
-        scene_light_get_property         (current_light,
-                                          SCENE_LIGHT_PROPERTY_SHADOW_MAP_ALGORITHM,
-                                         &current_light_shadow_map_algorithm);
-        ogl_uber_get_shader_item_property(uber,
-                                          n_light,
-                                          OGL_UBER_ITEM_PROPERTY_LIGHT_SHADOW_MAP_ALGORITHM,
-                                         &current_uber_item_shadow_map_algorithm);
+        scene_light_get_property                    (current_light,
+                                                     SCENE_LIGHT_PROPERTY_SHADOW_MAP_ALGORITHM,
+                                                    &current_light_shadow_map_algorithm);
+        scene_renderer_uber_get_shader_item_property(uber,
+                                                     n_light,
+                                                     SCENE_RENDERER_UBER_ITEM_PROPERTY_LIGHT_SHADOW_MAP_ALGORITHM,
+                                                    &current_uber_item_shadow_map_algorithm);
 
         if (current_light_shadow_map_algorithm != current_uber_item_shadow_map_algorithm)
         {
@@ -682,14 +683,14 @@ PRIVATE bool _ogl_materials_does_uber_match_scene(ogl_uber uber,
         if (current_light_type == SCENE_LIGHT_TYPE_POINT ||
             current_light_type == SCENE_LIGHT_TYPE_SPOT)
         {
-            scene_light_get_property         (current_light,
-                                              SCENE_LIGHT_PROPERTY_FALLOFF,
-                                             &current_light_falloff);
+            scene_light_get_property(current_light,
+                                     SCENE_LIGHT_PROPERTY_FALLOFF,
+                                    &current_light_falloff);
 
-            ogl_uber_get_shader_item_property(uber,
-                                              n_light,
-                                              OGL_UBER_ITEM_PROPERTY_LIGHT_FALLOFF,
-                                             &current_uber_item_falloff);
+            scene_renderer_uber_get_shader_item_property(uber,
+                                                         n_light,
+                                                         SCENE_RENDERER_UBER_ITEM_PROPERTY_LIGHT_FALLOFF,
+                                                        &current_uber_item_falloff);
 
             if (current_light_falloff != current_uber_item_falloff)
             {
@@ -705,13 +706,13 @@ PRIVATE bool _ogl_materials_does_uber_match_scene(ogl_uber uber,
             scene_light_shadow_map_pointlight_algorithm current_light_shadow_map_pointlight_algorithm     = SCENE_LIGHT_SHADOW_MAP_POINTLIGHT_ALGORITHM_UNKNOWN;
             scene_light_shadow_map_pointlight_algorithm current_uber_item_shadow_map_pointlight_algorithm = SCENE_LIGHT_SHADOW_MAP_POINTLIGHT_ALGORITHM_UNKNOWN;
 
-            scene_light_get_property         (current_light,
-                                              SCENE_LIGHT_PROPERTY_SHADOW_MAP_POINTLIGHT_ALGORITHM,
-                                             &current_light_shadow_map_pointlight_algorithm);
-            ogl_uber_get_shader_item_property(uber,
-                                              n_light,
-                                              OGL_UBER_ITEM_PROPERTY_LIGHT_SHADOW_MAP_POINTLIGHT_ALGORITHM,
-                                             &current_uber_item_shadow_map_pointlight_algorithm);
+            scene_light_get_property                    (current_light,
+                                                         SCENE_LIGHT_PROPERTY_SHADOW_MAP_POINTLIGHT_ALGORITHM,
+                                                        &current_light_shadow_map_pointlight_algorithm);
+            scene_renderer_uber_get_shader_item_property(uber,
+                                                         n_light,
+                                                         SCENE_RENDERER_UBER_ITEM_PROPERTY_LIGHT_SHADOW_MAP_POINTLIGHT_ALGORITHM,
+                                                        &current_uber_item_shadow_map_pointlight_algorithm);
 
             if (current_light_shadow_map_pointlight_algorithm != current_uber_item_shadow_map_pointlight_algorithm)
             {
@@ -722,14 +723,14 @@ PRIVATE bool _ogl_materials_does_uber_match_scene(ogl_uber uber,
             }
         }
 
-        ogl_uber_get_shader_item_property(uber,
-                                          n_light,
-                                          OGL_UBER_ITEM_PROPERTY_LIGHT_SHADOW_MAP_BIAS,
-                                         &current_uber_item_shadow_map_bias);
-        ogl_uber_get_shader_item_property(uber,
-                                          n_light,
-                                          OGL_UBER_ITEM_PROPERTY_LIGHT_TYPE,
-                                         &current_uber_item_light_type);
+        scene_renderer_uber_get_shader_item_property(uber,
+                                                     n_light,
+                                                     SCENE_RENDERER_UBER_ITEM_PROPERTY_LIGHT_SHADOW_MAP_BIAS,
+                                                    &current_uber_item_shadow_map_bias);
+        scene_renderer_uber_get_shader_item_property(uber,
+                                                     n_light,
+                                                     SCENE_RENDERER_UBER_ITEM_PROPERTY_LIGHT_TYPE,
+                                                    &current_uber_item_light_type);
 
         /* TODO: Expand to support other light types */
         ASSERT_DEBUG_SYNC(current_light_type == SCENE_LIGHT_TYPE_AMBIENT     ||
@@ -1154,13 +1155,13 @@ PUBLIC mesh_material ogl_materials_get_special_material(ogl_materials           
 }
 
 /** Please see header for specification */
-PUBLIC ogl_uber ogl_materials_get_uber(ogl_materials materials,
-                                       mesh_material material,
-                                       scene         scene,
-                                       bool          use_shadow_maps)
+PUBLIC scene_renderer_uber ogl_materials_get_uber(ogl_materials materials,
+                                                  mesh_material material,
+                                                  scene         scene,
+                                                  bool          use_shadow_maps)
 {
-    _ogl_materials* materials_ptr = (_ogl_materials*) materials;
-    ogl_uber        result        = NULL;
+    _ogl_materials*     materials_ptr = (_ogl_materials*) materials;
+    scene_renderer_uber result        = NULL;
 
     /* First, iterate over existing uber containers and check if there's a match */
     unsigned int n_materials = 0;
@@ -1224,10 +1225,10 @@ PUBLIC ogl_uber ogl_materials_get_uber(ogl_materials materials,
     if (result == NULL)
     {
         /* Nope? Gotta bake a new uber then */
-        ogl_uber new_uber = _ogl_materials_bake_uber(materials,
-                                                     material,
-                                                     scene,
-                                                     use_shadow_maps);
+        scene_renderer_uber new_uber = _ogl_materials_bake_uber(materials,
+                                                                material,
+                                                                scene,
+                                                                use_shadow_maps);
 
         ASSERT_DEBUG_SYNC(new_uber != NULL,
                           "Could not bake a new uber");
@@ -1245,9 +1246,9 @@ PUBLIC ogl_uber ogl_materials_get_uber(ogl_materials materials,
                 const char*               uber_name     = NULL;
                 system_hashed_ansi_string uber_name_has = NULL;
 
-                ogl_uber_get_shader_general_property(new_uber,
-                                                     OGL_UBER_GENERAL_PROPERTY_NAME,
-                                                    &uber_name_has);
+                scene_renderer_uber_get_shader_general_property(new_uber,
+                                                                SCENE_RENDERER_UBER_GENERAL_PROPERTY_NAME,
+                                                               &uber_name_has);
 
                 uber_name                     = system_hashed_ansi_string_get_buffer(uber_name_has);
                 new_uber_ptr->material        = mesh_material_create_copy           (system_hashed_ansi_string_create_by_merging_two_strings(uber_name,

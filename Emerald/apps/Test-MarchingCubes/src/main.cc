@@ -13,7 +13,6 @@
 #include "ogl/ogl_context.h"
 #include "ogl/ogl_pipeline.h"
 #include "ogl/ogl_rendering_handler.h"
-#include "ogl/ogl_scene_renderer.h"
 #include "procedural/procedural_uv_generator.h"
 #include "ral/ral_buffer.h"
 #include "ral/ral_context.h"
@@ -24,6 +23,7 @@
 #include "scene/scene_light.h"
 #include "scene/scene_material.h"
 #include "scene/scene_mesh.h"
+#include "scene_renderer/scene_renderer.h"
 #include "system/system_assertions.h"
 #include "system/system_event.h"
 #include "system/system_hashed_ansi_string.h"
@@ -54,7 +54,7 @@ PRIVATE scene_graph_node                  _scene_camera_node      = NULL;
 PRIVATE scene_light                       _scene_light            = NULL;
 PRIVATE scene_graph_node                  _scene_light_node       = NULL;
 PRIVATE scene_graph                       _scene_graph            = NULL; /* do not release */
-PRIVATE ogl_scene_renderer                _scene_renderer         = NULL;
+PRIVATE scene_renderer                    _scene_renderer         = NULL;
 PRIVATE procedural_uv_generator           _uv_generator           = NULL;
 PRIVATE procedural_uv_generator_object_id _uv_generator_object_id = -1;
 PRIVATE demo_window                       _window                 = NULL;
@@ -291,8 +291,8 @@ PRIVATE void _init_scene()
                          _scene_blob_node);
 
     /* Set up the scene renderer */
-    _scene_renderer = ogl_scene_renderer_create(_context,
-                                                _scene);
+    _scene_renderer = scene_renderer_create(_context,
+                                            _scene);
 }
 
 /** TODO */
@@ -367,15 +367,15 @@ PRIVATE void _render(ral_context context,
     system_matrix4x4_invert            (light_node_transformation_matrix);
 
     /* Render the scene */
-    ogl_scene_renderer_render_scene_graph(_scene_renderer,
-                                          _view_matrix,
-                                          _projection_matrix,
-                                          _scene_camera,
-                                          //RENDER_MODE_FORWARD_WITHOUT_DEPTH_PREPASS,
-                                          RENDER_MODE_TEXCOORDS_ONLY,
-                                          false, /* apply_shadow_mapping */
-                                          HELPER_VISUALIZATION_BOUNDING_BOXES,
-                                          frame_time);
+    scene_renderer_render_scene_graph(_scene_renderer,
+                                      _view_matrix,
+                                      _projection_matrix,
+                                      _scene_camera,
+                                      //RENDER_MODE_FORWARD_WITHOUT_DEPTH_PREPASS,
+                                      RENDER_MODE_TEXCOORDS_ONLY,
+                                      false, /* apply_shadow_mapping */
+                                      HELPER_VISUALIZATION_BOUNDING_BOXES,
+                                      frame_time);
 }
 
 /** TODO */
@@ -504,7 +504,7 @@ PRIVATE void _window_closing_callback_handler(system_window window,
 
     if (_scene_renderer != NULL)
     {
-        ogl_scene_renderer_release(_scene_renderer);
+        scene_renderer_release(_scene_renderer);
 
         _scene_renderer = NULL;
     }

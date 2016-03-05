@@ -64,10 +64,10 @@ PUBLIC mesh_material ogl_materials_get_special_material(ogl_materials,
  *  Input scene can be NULL, in which case it is assumed that the returned ogl_uber
  *  need not take lighting into consideration.
  **/
-PUBLIC ogl_uber ogl_materials_get_uber(ogl_materials,
-                                       mesh_material,
-                                       scene,
-                                       bool          use_shadow_maps);
+PUBLIC scene_renderer_uber ogl_materials_get_uber(ogl_materials,
+                                                  mesh_material,
+                                                  scene,
+                                                  bool          use_shadow_maps);
 
 /** TODO.
  *

@@ -10,7 +10,6 @@
 #include "ogl/ogl_materials.h"
 #include "ogl/ogl_shadow_mapping.h"
 #include "ogl/ogl_shader_constructor.h"
-#include "ogl/ogl_uber.h"
 #include "postprocessing/postprocessing_blur_gaussian.h"
 #include "raGL/raGL_framebuffer.h"
 #include "raGL/raGL_program.h"
@@ -29,6 +28,7 @@
 #include "scene/scene_light.h"
 #include "scene/scene_mesh.h"
 #include "scene_renderer/scene_renderer.h"
+#include "scene_renderer/scene_renderer_uber.h"
 #include "system/system_log.h"
 #include "system/system_math_other.h"
 #include "system/system_math_vector.h"
@@ -2773,11 +2773,11 @@ PUBLIC void ogl_shadow_mapping_render_shadow_map_meshes(ogl_shadow_mapping shado
         }
     }
 
-    mesh_material sm_material      = ogl_materials_get_special_material(materials,
-                                                                        sm_special_material);
-    ogl_uber      sm_material_uber = mesh_material_get_ogl_uber        (sm_material,
-                                                                        scene,
-                                                                        false); /* use_shadow_maps */
+    mesh_material       sm_material      = ogl_materials_get_special_material(materials,
+                                                                              sm_special_material);
+    scene_renderer_uber sm_material_uber = mesh_material_get_uber            (sm_material,
+                                                                              scene,
+                                                                              false); /* use_shadow_maps */
 
     /* Configure the uber.
      *
@@ -2802,9 +2802,9 @@ PUBLIC void ogl_shadow_mapping_render_shadow_map_meshes(ogl_shadow_mapping shado
                                  SCENE_LIGHT_PROPERTY_SHADOW_MAP_VSM_MAX_VARIANCE,
                                 &light_vsm_max_variance);
 
-        ogl_uber_set_shader_general_property(sm_material_uber,
-                                             OGL_UBER_GENERAL_PROPERTY_VSM_MAX_VARIANCE,
-                                            &light_vsm_max_variance);
+        scene_renderer_uber_set_shader_general_property(sm_material_uber,
+                                                        SCENE_RENDERER_UBER_GENERAL_PROPERTY_VSM_MAX_VARIANCE,
+                                                       &light_vsm_max_variance);
     }
 
     if (light_type == SCENE_LIGHT_TYPE_POINT)
@@ -2837,15 +2837,15 @@ PUBLIC void ogl_shadow_mapping_render_shadow_map_meshes(ogl_shadow_mapping shado
             ASSERT_DEBUG_SYNC(light_far_near_plane_diff > 0.0f,
                               "(Light far plane distance - near plane distance) is invalid.");
 
-            ogl_uber_set_shader_general_property(sm_material_uber,
-                                                 OGL_UBER_GENERAL_PROPERTY_FAR_NEAR_PLANE_DIFF,
-                                                &light_far_near_plane_diff);
-            ogl_uber_set_shader_general_property(sm_material_uber,
-                                                 OGL_UBER_GENERAL_PROPERTY_FLIP_Z,
-                                                &light_flip_z);
-            ogl_uber_set_shader_general_property(sm_material_uber,
-                                                 OGL_UBER_GENERAL_PROPERTY_NEAR_PLANE,
-                                                &light_near_plane);
+            scene_renderer_uber_set_shader_general_property(sm_material_uber,
+                                                            SCENE_RENDERER_UBER_GENERAL_PROPERTY_FAR_NEAR_PLANE_DIFF,
+                                                           &light_far_near_plane_diff);
+            scene_renderer_uber_set_shader_general_property(sm_material_uber,
+                                                            SCENE_RENDERER_UBER_GENERAL_PROPERTY_FLIP_Z,
+                                                           &light_flip_z);
+            scene_renderer_uber_set_shader_general_property(sm_material_uber,
+                                                            SCENE_RENDERER_UBER_GENERAL_PROPERTY_NEAR_PLANE,
+                                                           &light_near_plane);
         } /* if (sm_algorithm == SCENE_LIGHT_SHADOW_MAP_POINTLIGHT_ALGORITHM_DUAL_PARABOLOID) */
     }
 
@@ -2856,9 +2856,9 @@ PUBLIC void ogl_shadow_mapping_render_shadow_map_meshes(ogl_shadow_mapping shado
                                 SCENE_RENDERER_PROPERTY_VP,
                                &vp);
 
-    ogl_uber_set_shader_general_property(sm_material_uber,
-                                         OGL_UBER_GENERAL_PROPERTY_VP,
-                                         vp);
+    scene_renderer_uber_set_shader_general_property(sm_material_uber,
+                                                    SCENE_RENDERER_UBER_GENERAL_PROPERTY_VP,
+                                                    vp);
 
     /* Kick off the rendering */
     uint32_t n_meshes = 0;
@@ -2867,7 +2867,7 @@ PUBLIC void ogl_shadow_mapping_render_shadow_map_meshes(ogl_shadow_mapping shado
                                          SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
                                         &n_meshes);
 
-    ogl_uber_rendering_start(sm_material_uber);
+    scene_renderer_uber_rendering_start(sm_material_uber);
     {
         for (uint32_t n_mesh = 0;
                       n_mesh < n_meshes;
@@ -2886,15 +2886,15 @@ PUBLIC void ogl_shadow_mapping_render_shadow_map_meshes(ogl_shadow_mapping shado
                 continue;
             }
 
-            ogl_uber_rendering_render_mesh(item_ptr->mesh_instance,
-                                           item_ptr->model_matrix,
-                                           NULL,                    /* normal_matrix */
-                                           sm_material_uber,
-                                           NULL,                    /* material */
-                                           frame_time);
+            scene_renderer_uber_render_mesh(item_ptr->mesh_instance,
+                                            item_ptr->model_matrix,
+                                            NULL,                    /* normal_matrix */
+                                            sm_material_uber,
+                                            NULL,                    /* material */
+                                            frame_time);
         } /* for (all enqueued meshes) */
     }
-    ogl_uber_rendering_stop(sm_material_uber);
+    scene_renderer_uber_rendering_stop(sm_material_uber);
 
     /* Clean up */
     _ogl_shadow_mapping_mesh_item* item_ptr = NULL;

@@ -9,7 +9,6 @@
 #include "ogl/ogl_context.h"
 #include "ogl/ogl_materials.h"
 #include "ogl/ogl_shadow_mapping.h"
-#include "ogl/ogl_uber.h"
 #include "ral/ral_context.h"
 #include "ral/ral_program.h"
 #include "ral/ral_shader.h"
@@ -24,6 +23,7 @@
 #include "scene_renderer/scene_renderer_frustum_preview.h"
 #include "scene_renderer/scene_renderer_lights_preview.h"
 #include "scene_renderer/scene_renderer_normals_preview.h"
+#include "scene_renderer/scene_renderer_uber.h"
 #include "system/system_callback_manager.h"
 #include "system/system_log.h"
 #include "system/system_hash64map.h"
@@ -199,7 +199,7 @@ PRIVATE void _scene_renderer_get_light_color                          (scene_lig
 PRIVATE void _scene_renderer_get_ogl_uber_for_render_mode             (scene_renderer_render_mode  render_mode,
                                                                        ogl_materials               context_materials,
                                                                        scene                       scene,
-                                                                       ogl_uber*                   result_uber_ptr);
+                                                                       scene_renderer_uber*        result_uber_ptr);
 PRIVATE void _scene_renderer_init_resizable_vector_for_resource_pool  (system_resource_pool_block  block);
 PRIVATE void _scene_renderer_on_camera_show_frustum_setting_changed   (const void*                 unused,
                                                                              void*                 scene_renderer);
@@ -223,7 +223,7 @@ PRIVATE void _scene_renderer_subscribe_for_mesh_material_notifications(_scene_re
                                                                        mesh_material               material,
                                                                        bool                        should_subscribe);
 PRIVATE void _scene_renderer_update_frustum_preview_assigned_cameras  (_scene_renderer*            renderer_ptr);
-PRIVATE void _scene_renderer_update_ogl_uber_light_properties         (ogl_uber                    material_uber,
+PRIVATE void _scene_renderer_update_ogl_uber_light_properties         (scene_renderer_uber         material_uber,
                                                                        scene                       scene,
                                                                        system_matrix4x4            current_camera_view_matrix,
                                                                        system_time                 frame_time,
@@ -508,7 +508,7 @@ PRIVATE void _scene_renderer_get_light_color(scene_light    light,
 PRIVATE void _scene_renderer_get_ogl_uber_for_render_mode(scene_renderer_render_mode render_mode,
                                                           ogl_materials              context_materials,
                                                           scene                      scene,
-                                                          ogl_uber*                  result_uber_ptr)
+                                                          scene_renderer_uber*       result_uber_ptr)
 {
     switch (render_mode)
     {
@@ -522,20 +522,20 @@ PRIVATE void _scene_renderer_get_ogl_uber_for_render_mode(scene_renderer_render_
 
         case RENDER_MODE_NORMALS_ONLY:
         {
-            *result_uber_ptr = mesh_material_get_ogl_uber(ogl_materials_get_special_material(context_materials,
-                                                                                             SPECIAL_MATERIAL_NORMALS),
-                                                          scene,
-                                                          false); /* use_shadow_maps */
+            *result_uber_ptr = mesh_material_get_uber(ogl_materials_get_special_material(context_materials,
+                                                                                         SPECIAL_MATERIAL_NORMALS),
+                                                      scene,
+                                                      false); /* use_shadow_maps */
 
             break;
         }
 
         case RENDER_MODE_TEXCOORDS_ONLY:
         {
-            *result_uber_ptr = mesh_material_get_ogl_uber(ogl_materials_get_special_material(context_materials,
-                                                                                             SPECIAL_MATERIAL_TEXCOORD),
-                                                          scene,
-                                                          false); /* use_shadow_maps */
+            *result_uber_ptr = mesh_material_get_uber(ogl_materials_get_special_material(context_materials,
+                                                                                         SPECIAL_MATERIAL_TEXCOORD),
+                                                      scene,
+                                                      false); /* use_shadow_maps */
 
             break;
         }
@@ -604,7 +604,7 @@ PRIVATE void _scene_renderer_process_mesh_for_forward_rendering(scene_mesh scene
     mesh                    mesh_instantiation_parent_gpu = NULL;
     uint32_t                mesh_id                       = -1;
     system_resizable_vector mesh_materials                = NULL;
-    ogl_uber                mesh_uber                     = NULL;
+    scene_renderer_uber     mesh_uber                     = NULL;
     unsigned int            n_mesh_materials              = 0;
     _scene_renderer*        renderer_ptr                  = (_scene_renderer*) renderer;
 
@@ -711,9 +711,9 @@ PRIVATE void _scene_renderer_process_mesh_for_forward_rendering(scene_mesh scene
             /* Retrieve ogl_uber that can render the material for the currently processed
              * scene configuration.
              */
-            mesh_uber = mesh_material_get_ogl_uber(material,
-                                                   renderer_ptr->owned_scene,
-                                                   is_shadow_receiver & renderer_ptr->current_is_shadow_mapping_enabled);
+            mesh_uber = mesh_material_get_uber(material,
+                                               renderer_ptr->owned_scene,
+                                               is_shadow_receiver & renderer_ptr->current_is_shadow_mapping_enabled);
 
             if (!system_hash64map_get(renderer_ptr->regular_mesh_ubers_map,
                                       (system_hash64) mesh_uber,
@@ -1042,11 +1042,11 @@ PRIVATE void _scene_renderer_render_traversed_scene_graph(_scene_renderer*      
                                                           const ogl_context_gl_entrypoints* entry_points_ptr,
                                                           system_time                       frame_time)
 {
-    float         camera_location[4];
-    system_hash64 material_hash             = 0;
-    ogl_uber      material_uber             = NULL;
-    ogl_materials materials                 = NULL;
-    uint32_t      n_custom_meshes_to_render = 0;
+    float               camera_location[4];
+    system_hash64       material_hash             = 0;
+    scene_renderer_uber material_uber             = NULL;
+    ogl_materials       materials                 = NULL;
+    uint32_t            n_custom_meshes_to_render = 0;
 
     ogl_context_get_property(ral_context_get_gl_context(renderer_ptr->context),
                              OGL_CONTEXT_PROPERTY_MATERIALS,
@@ -1158,7 +1158,7 @@ PRIVATE void _scene_renderer_render_traversed_scene_graph(_scene_renderer*      
                 ASSERT_DEBUG_SYNC(material_hash != 0,
                                   "No ogl_uber instance available!");
 
-                material_uber = (ogl_uber) material_hash;
+                material_uber = (scene_renderer_uber) material_hash;
 
                 /* Make sure its configuration takes the frame-specific light configuration into account. */
                 _scene_renderer_update_ogl_uber_light_properties(material_uber,
@@ -1180,10 +1180,10 @@ PRIVATE void _scene_renderer_render_traversed_scene_graph(_scene_renderer*      
                 else
                 {
                     /* Use the 'clip depth' material to output the clip-space depth data */
-                    material_uber = mesh_material_get_ogl_uber(ogl_materials_get_special_material(materials,
-                                                                                                  SPECIAL_MATERIAL_DEPTH_CLIP),
-                                                               renderer_ptr->owned_scene,
-                                                               false); /* use_shadow_maps */
+                    material_uber = mesh_material_get_uber(ogl_materials_get_special_material(materials,
+                                                                                              SPECIAL_MATERIAL_DEPTH_CLIP),
+                                                           renderer_ptr->owned_scene,
+                                                           false); /* use_shadow_maps */
                 }
 
                 ASSERT_DEBUG_SYNC(material_uber != NULL,
@@ -1197,15 +1197,15 @@ PRIVATE void _scene_renderer_render_traversed_scene_graph(_scene_renderer*      
                                                 &n_iteration_items);
 
             /* Update global properties of ogl_uber's vertex shader  */
-            ogl_uber_set_shader_general_property(material_uber,
-                                                 OGL_UBER_GENERAL_PROPERTY_CAMERA_LOCATION,
-                                                 camera_location);
-            ogl_uber_set_shader_general_property(material_uber,
-                                                 OGL_UBER_GENERAL_PROPERTY_VP,
-                                                 renderer_ptr->current_vp);
+            scene_renderer_uber_set_shader_general_property(material_uber,
+                                                            SCENE_RENDERER_UBER_GENERAL_PROPERTY_CAMERA_LOCATION,
+                                                            camera_location);
+            scene_renderer_uber_set_shader_general_property(material_uber,
+                                                            SCENE_RENDERER_UBER_GENERAL_PROPERTY_VP,
+                                                            renderer_ptr->current_vp);
 
             /* Okay. Go on with the rendering. Start from the regular meshes. These are stored in helper maps */
-            ogl_uber_rendering_start(material_uber);
+            scene_renderer_uber_rendering_start(material_uber);
             {
                 if (is_depth_prepass)
                 {
@@ -1247,12 +1247,12 @@ PRIVATE void _scene_renderer_render_traversed_scene_graph(_scene_renderer*      
                                 continue;
                             }
 
-                            ogl_uber_rendering_render_mesh(mesh_ptr->mesh_instance,
-                                                           mesh_ptr->model_matrix,
-                                                           mesh_ptr->normal_matrix,
-                                                           material_uber,
-                                                           mesh_ptr->material,
-                                                           frame_time);
+                            scene_renderer_uber_render_mesh(mesh_ptr->mesh_instance,
+                                                            mesh_ptr->model_matrix,
+                                                            mesh_ptr->normal_matrix,
+                                                            material_uber,
+                                                            mesh_ptr->material,
+                                                            frame_time);
                         } /* for (all meshes) */
                     } /* for (all uber items) */
                 } /* if (is_depth_prepass) */
@@ -1268,12 +1268,12 @@ PRIVATE void _scene_renderer_render_traversed_scene_graph(_scene_renderer*      
                                                                n_iteration_item,
                                                               &item_ptr);
 
-                        ogl_uber_rendering_render_mesh(item_ptr->mesh_instance,
-                                                       item_ptr->model_matrix,
-                                                       item_ptr->normal_matrix,
-                                                       material_uber,
-                                                       item_ptr->material,
-                                                       frame_time);
+                        scene_renderer_uber_render_mesh(item_ptr->mesh_instance,
+                                                        item_ptr->model_matrix,
+                                                        item_ptr->normal_matrix,
+                                                        material_uber,
+                                                        item_ptr->material,
+                                                        frame_time);
                     } /* for (all meshes to be rendered with the material uber instance) */
                 }
 
@@ -1285,7 +1285,7 @@ PRIVATE void _scene_renderer_render_traversed_scene_graph(_scene_renderer*      
                                                                       uber_details_ptr);
                 }
             }
-            ogl_uber_rendering_stop(material_uber);
+            scene_renderer_uber_rendering_stop(material_uber);
 
             /* Clean up */
             _scene_renderer_mesh_uber_item* mesh_ptr = NULL;
@@ -1593,21 +1593,21 @@ PRIVATE void _scene_renderer_update_frustum_preview_assigned_cameras(_scene_rend
 }
 
 /** TODO */
-PRIVATE void _scene_renderer_update_ogl_uber_light_properties(ogl_uber         material_uber,
-                                                              scene            scene,
-                                                              system_matrix4x4 current_camera_view_matrix,
-                                                              system_time      frame_time,
-                                                              system_variant   temp_variant_float)
+PRIVATE void _scene_renderer_update_ogl_uber_light_properties(scene_renderer_uber material_uber,
+                                                              scene               scene,
+                                                              system_matrix4x4    current_camera_view_matrix,
+                                                              system_time         frame_time,
+                                                              system_variant      temp_variant_float)
 {
     unsigned int n_scene_lights = 0;
     unsigned int n_uber_items   = 0;
 
-    scene_get_property                  (scene,
-                                         SCENE_PROPERTY_N_LIGHTS,
-                                        &n_scene_lights);
-    ogl_uber_get_shader_general_property(material_uber,
-                                         OGL_UBER_GENERAL_PROPERTY_N_ITEMS,
-                                        &n_uber_items);
+    scene_get_property                             (scene,
+                                                    SCENE_PROPERTY_N_LIGHTS,
+                                                   &n_scene_lights);
+    scene_renderer_uber_get_shader_general_property(material_uber,
+                                                    SCENE_RENDERER_UBER_GENERAL_PROPERTY_N_ITEMS,
+                                                   &n_uber_items);
 
     ASSERT_DEBUG_SYNC(n_uber_items == n_scene_lights,
                       "scene_renderer needs to be re-initialized, as the light dconfiguration has changed");
@@ -1677,40 +1677,40 @@ PRIVATE void _scene_renderer_update_ogl_uber_light_properties(ogl_uber         m
             /* Depth view matrix */
             current_light_depth_view_row_major = system_matrix4x4_get_row_major_data(current_light_depth_view);
 
-            ogl_uber_set_shader_item_property(material_uber,
-                                              n_light,
-                                              OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_VIEW_MATRIX,
-                                              current_light_depth_view);
+            scene_renderer_uber_set_shader_item_property(material_uber,
+                                                         n_light,
+                                                         SCENE_RENDERER_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_VIEW_MATRIX,
+                                                         current_light_depth_view);
 
             /* Depth VP matrix */
             current_light_depth_vp_row_major = system_matrix4x4_get_row_major_data(current_light_depth_vp);
 
-            ogl_uber_set_shader_item_property(material_uber,
-                                              n_light,
-                                              OGL_UBER_ITEM_PROPERTY_VERTEX_LIGHT_DEPTH_VP,
-                                              current_light_depth_vp_row_major);
+            scene_renderer_uber_set_shader_item_property(material_uber,
+                                                         n_light,
+                                                         SCENE_RENDERER_UBER_ITEM_PROPERTY_VERTEX_LIGHT_DEPTH_VP,
+                                                         current_light_depth_vp_row_major);
 
             /* Shadow map textures */
-            ogl_uber_set_shader_item_property(material_uber,
-                                              n_light,
-                                              OGL_UBER_ITEM_PROPERTY_LIGHT_SHADOW_MAP_TEXTURE_RAL_COLOR,
-                                             &current_light_shadow_map_texture_color);
-            ogl_uber_set_shader_item_property(material_uber,
-                                              n_light,
-                                              OGL_UBER_ITEM_PROPERTY_LIGHT_SHADOW_MAP_TEXTURE_RAL_DEPTH,
-                                             &current_light_shadow_map_texture_depth);
+            scene_renderer_uber_set_shader_item_property(material_uber,
+                                                         n_light,
+                                                         SCENE_RENDERER_UBER_ITEM_PROPERTY_LIGHT_SHADOW_MAP_TEXTURE_RAL_COLOR,
+                                                        &current_light_shadow_map_texture_color);
+            scene_renderer_uber_set_shader_item_property(material_uber,
+                                                         n_light,
+                                                         SCENE_RENDERER_UBER_ITEM_PROPERTY_LIGHT_SHADOW_MAP_TEXTURE_RAL_DEPTH,
+                                                        &current_light_shadow_map_texture_depth);
 
             /* VSM cut-off (if VSM is enabled) */
             if (current_light_sm_algo == SCENE_LIGHT_SHADOW_MAP_ALGORITHM_VSM)
             {
-                ogl_uber_set_shader_item_property(material_uber,
-                                                  n_light,
-                                                  OGL_UBER_ITEM_PROPERTY_LIGHT_SHADOW_MAP_VSM_CUTOFF,
-                                                 &current_light_shadow_map_vsm_cutoff);
-                ogl_uber_set_shader_item_property(material_uber,
-                                                  n_light,
-                                                  OGL_UBER_ITEM_PROPERTY_LIGHT_SHADOW_MAP_VSM_MIN_VARIANCE,
-                                                 &current_light_shadow_map_vsm_min_variance);
+                scene_renderer_uber_set_shader_item_property(material_uber,
+                                                             n_light,
+                                                             SCENE_RENDERER_UBER_ITEM_PROPERTY_LIGHT_SHADOW_MAP_VSM_CUTOFF,
+                                                            &current_light_shadow_map_vsm_cutoff);
+                scene_renderer_uber_set_shader_item_property(material_uber,
+                                                             n_light,
+                                                             SCENE_RENDERER_UBER_ITEM_PROPERTY_LIGHT_SHADOW_MAP_VSM_MIN_VARIANCE,
+                                                            &current_light_shadow_map_vsm_min_variance);
             } /* if (current_light_sm_algo == SCENE_LIGHT_SHADOW_MAP_ALGORITHM_VSM) */
         }
 
@@ -1721,17 +1721,17 @@ PRIVATE void _scene_renderer_update_ogl_uber_light_properties(ogl_uber         m
 
         if (current_light_type == SCENE_LIGHT_TYPE_AMBIENT)
         {
-            ogl_uber_set_shader_item_property(material_uber,
-                                              n_light,
-                                              OGL_UBER_ITEM_PROPERTY_FRAGMENT_AMBIENT_COLOR,
-                                              current_light_color_floats);
+            scene_renderer_uber_set_shader_item_property(material_uber,
+                                                         n_light,
+                                                         SCENE_RENDERER_UBER_ITEM_PROPERTY_FRAGMENT_AMBIENT_COLOR,
+                                                         current_light_color_floats);
         }
         else
         {
-            ogl_uber_set_shader_item_property(material_uber,
-                                              n_light,
-                                              OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_DIFFUSE,
-                                              current_light_color_floats);
+            scene_renderer_uber_set_shader_item_property(material_uber,
+                                                         n_light,
+                                                         SCENE_RENDERER_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_DIFFUSE,
+                                                         current_light_color_floats);
         }
 
         if (current_light_type == SCENE_LIGHT_TYPE_POINT ||
@@ -1742,10 +1742,10 @@ PRIVATE void _scene_renderer_update_ogl_uber_light_properties(ogl_uber         m
                                      SCENE_LIGHT_PROPERTY_POSITION,
                                      current_light_position_floats);
 
-            ogl_uber_set_shader_item_property(material_uber,
-                                              n_light,
-                                              OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_LOCATION,
-                                              current_light_position_floats);
+            scene_renderer_uber_set_shader_item_property(material_uber,
+                                                         n_light,
+                                                         SCENE_RENDERER_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_LOCATION,
+                                                         current_light_position_floats);
 
             /* Attenuation.
              *
@@ -1783,10 +1783,10 @@ PRIVATE void _scene_renderer_update_ogl_uber_light_properties(ogl_uber         m
                                                   dst_float_ptr);
                     } /* for (all curves) */
 
-                    ogl_uber_set_shader_item_property(material_uber,
-                                                      n_light,
-                                                      OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_ATTENUATIONS,
-                                                      current_light_attenuation_floats);
+                    scene_renderer_uber_set_shader_item_property(material_uber,
+                                                                 n_light,
+                                                                 SCENE_RENDERER_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_ATTENUATIONS,
+                                                                 current_light_attenuation_floats);
 
                     break;
                 } /* case SCENE_LIGHT_FALLOFF_CUSTOM: */
@@ -1805,10 +1805,10 @@ PRIVATE void _scene_renderer_update_ogl_uber_light_properties(ogl_uber         m
                     system_variant_get_float (temp_variant_float,
                                              &current_light_range_float);
 
-                    ogl_uber_set_shader_item_property(material_uber,
-                                                      n_light,
-                                                      OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_RANGE,
-                                                     &current_light_range_float);
+                    scene_renderer_uber_set_shader_item_property(material_uber,
+                                                                 n_light,
+                                                                 SCENE_RENDERER_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_RANGE,
+                                                                &current_light_range_float);
 
                     break;
                 } /* case SCENE_LIGHT_FALLOFF_LINEAR: */
@@ -1830,13 +1830,13 @@ PRIVATE void _scene_renderer_update_ogl_uber_light_properties(ogl_uber         m
         if (current_light_type == SCENE_LIGHT_TYPE_DIRECTIONAL ||
             current_light_type == SCENE_LIGHT_TYPE_SPOT)
         {
-            scene_light_get_property         (current_light,
-                                              SCENE_LIGHT_PROPERTY_DIRECTION,
-                                              current_light_direction_floats);
-            ogl_uber_set_shader_item_property(material_uber,
-                                              n_light,
-                                              OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_DIRECTION,
-                                              current_light_direction_floats);
+            scene_light_get_property                    (current_light,
+                                                         SCENE_LIGHT_PROPERTY_DIRECTION,
+                                                         current_light_direction_floats);
+            scene_renderer_uber_set_shader_item_property(material_uber,
+                                                         n_light,
+                                                         SCENE_RENDERER_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_DIRECTION,
+                                                         current_light_direction_floats);
         }
 
         if (current_light_type == SCENE_LIGHT_TYPE_POINT)
@@ -1871,22 +1871,22 @@ PRIVATE void _scene_renderer_update_ogl_uber_light_properties(ogl_uber         m
             current_light_projection_matrix_data = system_matrix4x4_get_row_major_data(current_light_projection_matrix);
             current_light_view_matrix_data       = system_matrix4x4_get_row_major_data(current_light_view_matrix);
 
-            ogl_uber_set_shader_item_property(material_uber,
-                                              n_light,
-                                              OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_FAR_NEAR_DIFF,
-                                             &current_light_plane_diff);
-            ogl_uber_set_shader_item_property(material_uber,
-                                              n_light,
-                                              OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_NEAR_PLANE,
-                                             &current_light_near_plane);
-            ogl_uber_set_shader_item_property(material_uber,
-                                              n_light,
-                                              OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_PROJECTION_MATRIX,
-                                              current_light_projection_matrix_data);
-            ogl_uber_set_shader_item_property(material_uber,
-                                              n_light,
-                                              OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_VIEW_MATRIX,
-                                              current_light_view_matrix_data);
+            scene_renderer_uber_set_shader_item_property(material_uber,
+                                                         n_light,
+                                                         SCENE_RENDERER_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_FAR_NEAR_DIFF,
+                                                        &current_light_plane_diff);
+            scene_renderer_uber_set_shader_item_property(material_uber,
+                                                         n_light,
+                                                         SCENE_RENDERER_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_NEAR_PLANE,
+                                                        &current_light_near_plane);
+            scene_renderer_uber_set_shader_item_property(material_uber,
+                                                         n_light,
+                                                         SCENE_RENDERER_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_PROJECTION_MATRIX,
+                                                         current_light_projection_matrix_data);
+            scene_renderer_uber_set_shader_item_property(material_uber,
+                                                         n_light,
+                                                         SCENE_RENDERER_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_VIEW_MATRIX,
+                                                         current_light_view_matrix_data);
         }
 
         if (current_light_type == SCENE_LIGHT_TYPE_SPOT)
@@ -1912,14 +1912,14 @@ PRIVATE void _scene_renderer_update_ogl_uber_light_properties(ogl_uber         m
             system_variant_get_float (temp_variant_float,
                                      &current_light_edge_angle_float);
 
-            ogl_uber_set_shader_item_property(material_uber,
-                                              n_light,
-                                              OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_CONE_ANGLE,
-                                             &current_light_cone_angle_half_float);
-            ogl_uber_set_shader_item_property(material_uber,
-                                              n_light,
-                                              OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_EDGE_ANGLE,
-                                             &current_light_edge_angle_float);
+            scene_renderer_uber_set_shader_item_property(material_uber,
+                                                         n_light,
+                                                         SCENE_RENDERER_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_CONE_ANGLE,
+                                                        &current_light_cone_angle_half_float);
+            scene_renderer_uber_set_shader_item_property(material_uber,
+                                                         n_light,
+                                                         SCENE_RENDERER_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_EDGE_ANGLE,
+                                                        &current_light_edge_angle_float);
         }
     } /* for (all lights) */
 }
@@ -1988,15 +1988,15 @@ PUBLIC EMERALD_API void scene_renderer_bake_gpu_assets(scene_renderer renderer)
                               "mesh_material instance is NULL");
 
             /* Ensure there's an ogl_uber instance prepared for both SM and non-SM cases */
-            ogl_uber uber_w_sm  = mesh_material_get_ogl_uber(current_mesh_material,
-                                                             renderer_ptr->owned_scene,
-                                                             false); /* use_shadow_maps */
-            ogl_uber uber_wo_sm = mesh_material_get_ogl_uber(current_mesh_material,
-                                                             renderer_ptr->owned_scene,
-                                                             true); /* use_shadow_maps */
+            scene_renderer_uber uber_w_sm  = mesh_material_get_uber(current_mesh_material,
+                                                                    renderer_ptr->owned_scene,
+                                                                    false); /* use_shadow_maps */
+            scene_renderer_uber uber_wo_sm = mesh_material_get_uber(current_mesh_material,
+                                                                    renderer_ptr->owned_scene,
+                                                                    true); /* use_shadow_maps */
 
-            ogl_uber_link(uber_w_sm);
-            ogl_uber_link(uber_wo_sm);
+            scene_renderer_uber_link(uber_w_sm);
+            scene_renderer_uber_link(uber_wo_sm);
         } /* for (all mesh materials) */
     } /* for (all GPU meshes) */
 }

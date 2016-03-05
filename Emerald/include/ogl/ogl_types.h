@@ -1523,7 +1523,6 @@ typedef enum
 
 /** Shader handle & various related types from shaders module. */
 DECLARE_HANDLE(ogl_shader_constructor);
-DECLARE_HANDLE(ogl_uber);
 DECLARE_HANDLE(shaders_fragment_convolution3x3);
 DECLARE_HANDLE(shaders_fragment_laplacian);
 DECLARE_HANDLE(shaders_fragment_rgb_to_Yxy);

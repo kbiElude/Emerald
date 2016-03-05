@@ -39,7 +39,6 @@ static system_hashed_ansi_string _object_type_ogl_rendering_handler_hashed_ansi_
 static system_hashed_ansi_string _object_type_ogl_shader_constructor_hashed_ansi_string                = NULL;
 static system_hashed_ansi_string _object_type_ogl_text_hashed_ansi_string                              = NULL;
 static system_hashed_ansi_string _object_type_ogl_textures_hashed_ansi_string                          = NULL;
-static system_hashed_ansi_string _object_type_ogl_uber_hashed_ansi_string                              = NULL;
 static system_hashed_ansi_string _object_type_postprocessing_bloom_hashed_ansi_string                  = NULL;
 static system_hashed_ansi_string _object_type_postprocessing_blur_poisson_hashed_ansi_string           = NULL;
 static system_hashed_ansi_string _object_type_postprocessing_motion_blur_hashed_ansi_string            = NULL;
@@ -63,6 +62,7 @@ static system_hashed_ansi_string _object_type_scene_curve_hashed_ansi_string    
 static system_hashed_ansi_string _object_type_scene_light_hashed_ansi_string                           = NULL;
 static system_hashed_ansi_string _object_type_scene_material_hashed_ansi_string                        = NULL;
 static system_hashed_ansi_string _object_type_scene_mesh_hashed_ansi_string                            = NULL;
+static system_hashed_ansi_string _object_type_scene_renderer_uber_hashed_ansi_string                   = NULL;
 static system_hashed_ansi_string _object_type_scene_surface_hashed_ansi_string                         = NULL;
 static system_hashed_ansi_string _object_type_scene_texture_hashed_ansi_string                         = NULL;
 static system_hashed_ansi_string _object_type_sh_projector_hashed_ansi_string                          = NULL;
@@ -120,7 +120,6 @@ PUBLIC system_hashed_ansi_string object_manager_convert_object_manager_object_ty
         case OBJECT_TYPE_OGL_SHADER_CONSTRUCTOR:                          return _object_type_ogl_shader_constructor_hashed_ansi_string;
         case OBJECT_TYPE_OGL_TEXT:                                        return _object_type_ogl_text_hashed_ansi_string;
         case OBJECT_TYPE_OGL_TEXTURE:                                     return _object_type_ogl_textures_hashed_ansi_string;
-        case OBJECT_TYPE_OGL_UBER:                                        return _object_type_ogl_uber_hashed_ansi_string;
         case OBJECT_TYPE_POSTPROCESSING_BLOOM:                            return _object_type_postprocessing_bloom_hashed_ansi_string;
         case OBJECT_TYPE_POSTPROCESSING_BLUR_POISSON:                     return _object_type_postprocessing_blur_poisson_hashed_ansi_string;
         case OBJECT_TYPE_POSTPROCESSING_MOTION_BLUR:                      return _object_type_postprocessing_motion_blur_hashed_ansi_string;
@@ -144,6 +143,7 @@ PUBLIC system_hashed_ansi_string object_manager_convert_object_manager_object_ty
         case OBJECT_TYPE_SCENE_LIGHT:                                     return _object_type_scene_light_hashed_ansi_string;
         case OBJECT_TYPE_SCENE_MATERIAL:                                  return _object_type_scene_material_hashed_ansi_string;
         case OBJECT_TYPE_SCENE_MESH:                                      return _object_type_scene_mesh_hashed_ansi_string;
+        case OBJECT_TYPE_SCENE_RENDERER_UBER:                             return _object_type_scene_renderer_uber_hashed_ansi_string;
         case OBJECT_TYPE_SCENE_SURFACE:                                   return _object_type_scene_surface_hashed_ansi_string;
         case OBJECT_TYPE_SCENE_TEXTURE:                                   return _object_type_scene_texture_hashed_ansi_string;
         case OBJECT_TYPE_SH_PROJECTOR:                                    return _object_type_sh_projector_hashed_ansi_string;
@@ -373,7 +373,6 @@ PUBLIC void _object_manager_init()
     _object_type_ogl_shader_constructor_hashed_ansi_string                = system_hashed_ansi_string_create("OpenGL Shader Constructors");
     _object_type_ogl_text_hashed_ansi_string                              = system_hashed_ansi_string_create("OpenGL Text Renderers");
     _object_type_ogl_textures_hashed_ansi_string                          = system_hashed_ansi_string_create("OpenGL Textures");
-    _object_type_ogl_uber_hashed_ansi_string                              = system_hashed_ansi_string_create("OpenGL Ubers");
     _object_type_postprocessing_bloom_hashed_ansi_string                  = system_hashed_ansi_string_create("Post-processing Bloom");
     _object_type_postprocessing_blur_poisson_hashed_ansi_string           = system_hashed_ansi_string_create("Post-processing Blur Poisson");
     _object_type_postprocessing_motion_blur_hashed_ansi_string            = system_hashed_ansi_string_create("Post-processing Motion Blur");
@@ -397,6 +396,7 @@ PUBLIC void _object_manager_init()
     _object_type_scene_light_hashed_ansi_string                           = system_hashed_ansi_string_create("Scene Lights");
     _object_type_scene_material_hashed_ansi_string                        = system_hashed_ansi_string_create("Scene Materials");
     _object_type_scene_mesh_hashed_ansi_string                            = system_hashed_ansi_string_create("Scene Mesh Instances");
+    _object_type_scene_renderer_uber_hashed_ansi_string                   = system_hashed_ansi_string_create("Scene Renderer Ubers");
     _object_type_scene_surface_hashed_ansi_string                         = system_hashed_ansi_string_create("Scene Surfaces");
     _object_type_scene_texture_hashed_ansi_string                         = system_hashed_ansi_string_create("Scene Textures");
     _object_type_sh_projector_hashed_ansi_string                          = system_hashed_ansi_string_create("SH Projector");

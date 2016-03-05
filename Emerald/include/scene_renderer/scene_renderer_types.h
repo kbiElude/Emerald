@@ -14,6 +14,7 @@ DECLARE_HANDLE(scene_renderer_bbox_preview);
 DECLARE_HANDLE(scene_renderer_frustum_preview);
 DECLARE_HANDLE(scene_renderer_lights_preview);
 DECLARE_HANDLE(scene_renderer_normals_preview);
+DECLARE_HANDLE(scene_renderer_uber);
 
 typedef enum
 {
