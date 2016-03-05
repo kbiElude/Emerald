@@ -7,9 +7,9 @@
 #include "mesh/mesh_material.h"
 #include "ogl/ogl_context.h"
 #include "ogl/ogl_shader_constructor.h"
-#include "ogl/ogl_shadow_mapping.h"
 #include "ral/ral_context.h"
 #include "ral/ral_shader.h"
+#include "scene_renderer/scene_renderer_sm.h"
 #include "shaders/shaders_vertex_uber.h"
 #include "system/system_assertions.h"
 #include "system/system_hashed_ansi_string.h"
@@ -350,11 +350,11 @@ PUBLIC EMERALD_API shaders_vertex_uber_item_id shaders_vertex_uber_add_light(sha
     /* Add shadow mapping code if needed */
     if (is_shadow_caster)
     {
-        ogl_shadow_mapping_adjust_vertex_uber_code(uber_ptr->shader_constructor,
-                                                   n_items, /* n_light */
-                                                   light_type,
-                                                   uber_ptr->vs_ub_id,
-                                                   system_hashed_ansi_string_create("world_vertex_temp") );
+        scene_renderer_sm_adjust_vertex_uber_code(uber_ptr->shader_constructor,
+                                                  n_items, /* n_light */
+                                                  light_type,
+                                                  uber_ptr->vs_ub_id,
+                                                  system_hashed_ansi_string_create("world_vertex_temp") );
     }
 
     /* Spawn new descriptor */

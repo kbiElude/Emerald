@@ -214,7 +214,7 @@ typedef enum
     /* Settable, scene_light_shadow_map_pointlight_algorithm. */
     SCENE_LIGHT_PROPERTY_SHADOW_MAP_POINTLIGHT_ALGORITHM,
 
-    /* Settable, float. Set in run-time by ogl_shadow_mapping during
+    /* Settable, float. Set in run-time by scene_renderer_sm during
      * the shadow map baking phase (for dual paraboloid shadow mapping only).
      * Info necessary to 
      * . */

@@ -7,10 +7,10 @@
 #include "mesh/mesh_material.h"
 #include "ogl/ogl_context.h"
 #include "ogl/ogl_shader_constructor.h"
-#include "ogl/ogl_shadow_mapping.h"
 #include "ral/ral_context.h"
 #include "ral/ral_shader.h"
 #include "scene/scene_light.h"
+#include "scene_renderer/scene_renderer_sm.h"
 #include "shaders/shaders_fragment_uber.h"
 #include "system/system_assertions.h"
 #include "system/system_hashed_ansi_string.h"
@@ -1206,14 +1206,14 @@ PUBLIC EMERALD_API shaders_fragment_uber_item_id shaders_fragment_uber_add_light
     /* Add shadow map support */
     if (is_shadow_caster)
     {
-        ogl_shadow_mapping_adjust_fragment_uber_code(uber_ptr->shader_constructor,
-                                                     n_items,
-                                                     light_instance,
-                                                     uber_ptr->fragment_shader_properties_ub,
-                                                     system_hashed_ansi_string_create(light_world_pos_name_sstream.str().c_str() ),
-                                                     system_hashed_ansi_string_create(light_vector_norm_name_sstream.str().c_str() ),
-                                                     system_hashed_ansi_string_create(light_vector_non_norm_name_sstream.str().c_str() ),
-                                                    &light_visibility_var_name_has);
+        scene_renderer_sm_adjust_fragment_uber_code(uber_ptr->shader_constructor,
+                                                    n_items,
+                                                    light_instance,
+                                                    uber_ptr->fragment_shader_properties_ub,
+                                                    system_hashed_ansi_string_create(light_world_pos_name_sstream.str().c_str() ),
+                                                    system_hashed_ansi_string_create(light_vector_norm_name_sstream.str().c_str() ),
+                                                    system_hashed_ansi_string_create(light_vector_non_norm_name_sstream.str().c_str() ),
+                                                   &light_visibility_var_name_has);
     }
 
     /* Compute ambient + diffuse light factors */

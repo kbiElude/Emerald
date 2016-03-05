@@ -8,11 +8,11 @@
 #include "ogl/ogl_context.h"
 #include "ogl/ogl_rendering_handler.h"
 #include "ogl/ogl_text.h"
-#include "ogl/ogl_shadow_mapping.h"
 #include "ral/ral_context.h"
 #include "postprocessing/postprocessing_blur_gaussian.h"
 #include "scene/scene_camera.h"
 #include "scene/scene_light.h"
+#include "scene_renderer/scene_renderer_sm.h"
 #include "system/system_critical_section.h"
 #include "system/system_resources.h"
 #include "system/system_window.h"
@@ -590,20 +590,20 @@ PUBLIC void ui_init()
     system_variant_release(blur_n_passes_min_value);
 
     /* Add color shadow map blur n taps dropdown */
-    ogl_shadow_mapping context_shadow_mapping = NULL;
-    unsigned int       max_n_taps             = 0;
-    unsigned int       min_n_taps             = 0;
+    scene_renderer_sm context_shadow_mapping = NULL;
+    unsigned int      max_n_taps             = 0;
+    unsigned int      min_n_taps             = 0;
 
     ogl_context_get_property(ral_context_get_gl_context(_context),
                              OGL_CONTEXT_PROPERTY_SHADOW_MAPPING,
                             &context_shadow_mapping);
 
-    ogl_shadow_mapping_get_property(context_shadow_mapping,
-                                    OGL_SHADOW_MAPPING_PROPERTY_N_MAX_BLUR_TAPS,
-                                   &max_n_taps);
-    ogl_shadow_mapping_get_property(context_shadow_mapping,
-                                    OGL_SHADOW_MAPPING_PROPERTY_N_MIN_BLUR_TAPS,
-                                   &min_n_taps);
+    scene_renderer_sm_get_property(context_shadow_mapping,
+                                   SCENE_RENDERER_SM_PROPERTY_N_MAX_BLUR_TAPS,
+                                  &max_n_taps);
+    scene_renderer_sm_get_property(context_shadow_mapping,
+                                   SCENE_RENDERER_SM_PROPERTY_N_MIN_BLUR_TAPS,
+                                  &min_n_taps);
 
     system_variant max_n_taps_variant = system_variant_create_float((float) max_n_taps);
     system_variant min_n_taps_variant = system_variant_create_float((float) min_n_taps);

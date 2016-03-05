@@ -8,7 +8,6 @@
 #include "mesh/mesh_material.h"
 #include "ogl/ogl_context.h"
 #include "ogl/ogl_materials.h"
-#include "ogl/ogl_shadow_mapping.h"
 #include "ral/ral_context.h"
 #include "ral/ral_program.h"
 #include "ral/ral_shader.h"
@@ -23,6 +22,7 @@
 #include "scene_renderer/scene_renderer_frustum_preview.h"
 #include "scene_renderer/scene_renderer_lights_preview.h"
 #include "scene_renderer/scene_renderer_normals_preview.h"
+#include "scene_renderer/scene_renderer_sm.h"
 #include "scene_renderer/scene_renderer_uber.h"
 #include "system/system_callback_manager.h"
 #include "system/system_log.h"
@@ -1374,9 +1374,9 @@ PRIVATE void _scene_renderer_render_traversed_scene_graph(_scene_renderer*      
 /** TODO */
 PRIVATE void _scene_renderer_return_shadow_maps_to_pool(scene_renderer renderer)
 {
-    uint32_t           n_lights       = 0;
-    _scene_renderer*   renderer_ptr   = (_scene_renderer*) renderer;
-    ogl_shadow_mapping shadow_mapping = NULL;
+    uint32_t          n_lights       = 0;
+    _scene_renderer*  renderer_ptr   = (_scene_renderer*) renderer;
+    scene_renderer_sm shadow_mapping = NULL;
 
     ogl_context_get_property(ral_context_get_gl_context(renderer_ptr->context),
                              OGL_CONTEXT_PROPERTY_SHADOW_MAPPING,
@@ -2509,7 +2509,7 @@ PUBLIC RENDERING_CONTEXT_CALL void scene_renderer_render_scene_graph(scene_rende
     const ogl_context_gl_entrypoints* entry_points   = NULL;
     scene_graph                       graph          = NULL;
     _scene_renderer*                  renderer_ptr   = (_scene_renderer*) renderer;
-    ogl_shadow_mapping                shadow_mapping = NULL;
+    scene_renderer_sm                 shadow_mapping = NULL;
 
     scene_get_property(renderer_ptr->owned_scene,
                        SCENE_PROPERTY_GRAPH,
@@ -2546,11 +2546,11 @@ PUBLIC RENDERING_CONTEXT_CALL void scene_renderer_render_scene_graph(scene_rende
                           &shadow_mapping_disabled);
 
         /* Prepare the shadow maps */
-        ogl_shadow_mapping_render_shadow_maps(shadow_mapping,
-                                              renderer,
-                                              renderer_ptr->owned_scene,
-                                              camera,
-                                              frame_time);
+        scene_renderer_sm_render_shadow_maps(shadow_mapping,
+                                             renderer,
+                                             renderer_ptr->owned_scene,
+                                             camera,
+                                             frame_time);
 
         scene_set_property(renderer_ptr->owned_scene,
                            SCENE_PROPERTY_SHADOW_MAPPING_ENABLED,
@@ -2579,7 +2579,7 @@ PUBLIC RENDERING_CONTEXT_CALL void scene_renderer_render_scene_graph(scene_rende
                          scene_renderer_update_current_model_matrix,
                          NULL, /* insert_camera_proc */
                          scene_renderer_update_light_properties,
-                         (render_mode == RENDER_MODE_SHADOW_MAP) ? ogl_shadow_mapping_process_mesh_for_shadow_map_rendering
+                         (render_mode == RENDER_MODE_SHADOW_MAP) ? scene_renderer_sm_process_mesh_for_shadow_map_rendering
                                                                  : _scene_renderer_process_mesh_for_forward_rendering,
                          renderer,
                          frame_time);
@@ -2601,10 +2601,10 @@ PUBLIC RENDERING_CONTEXT_CALL void scene_renderer_render_scene_graph(scene_rende
     /* 2. Start uber rendering. Issue as many render requests as there are materials. */
     if (render_mode == RENDER_MODE_SHADOW_MAP)
     {
-        ogl_shadow_mapping_render_shadow_map_meshes(shadow_mapping,
-                                                    renderer,
-                                                    renderer_ptr->owned_scene,
-                                                    frame_time);
+        scene_renderer_sm_render_shadow_map_meshes(shadow_mapping,
+                                                   renderer,
+                                                   renderer_ptr->owned_scene,
+                                                   frame_time);
     } /* if (render_mode == RENDER_MODE_SHADOW_MAP) */
     else
     {

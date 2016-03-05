@@ -15,7 +15,6 @@
 #include "ogl/ogl_context_wrappers.h"
 #include "ogl/ogl_materials.h"
 #include "ogl/ogl_rendering_handler.h"
-#include "ogl/ogl_shadow_mapping.h"
 #include "ogl/ogl_text.h"
 #include "raGL/raGL_buffers.h"
 #include "raGL/raGL_texture.h"
@@ -24,6 +23,7 @@
 #include "ral/ral_framebuffer.h"
 #include "ral/ral_texture.h"
 #include "ral/ral_utils.h"
+#include "scene_renderer/scene_renderer_sm.h"
 #include "system/system_assertions.h"
 #include "system/system_critical_section.h"
 #include "system/system_event.h"
@@ -135,7 +135,7 @@ typedef struct
     ogl_materials                   materials;
     varia_primitive_renderer        primitive_renderer;
     ogl_context_sampler_bindings    sampler_bindings;
-    ogl_shadow_mapping              shadow_mapping;
+    scene_renderer_sm               shadow_mapping;
     ogl_context_state_cache         state_cache;
     ogl_text                        text_renderer;
     ogl_context_texture_compression texture_compression;
@@ -3505,10 +3505,10 @@ PUBLIC EMERALD_API void ogl_context_get_property(ogl_context          context,
             if (context_ptr->shadow_mapping == NULL)
             {
                 /* Create the shadow mapping handler if this is the first incoming request */
-                context_ptr->shadow_mapping = ogl_shadow_mapping_create(context_ptr->context);
+                context_ptr->shadow_mapping = scene_renderer_sm_create(context_ptr->context);
             }
 
-            *(ogl_shadow_mapping*) out_result = context_ptr->shadow_mapping;
+            *(scene_renderer_sm*) out_result = context_ptr->shadow_mapping;
 
             break;
         }
@@ -3676,7 +3676,7 @@ PUBLIC bool ogl_context_release_managers(ogl_context context)
 
     if (context_ptr->shadow_mapping != NULL)
     {
-        ogl_shadow_mapping_release(context_ptr->shadow_mapping);
+        scene_renderer_sm_release(context_ptr->shadow_mapping);
 
         context_ptr->shadow_mapping = NULL;
     }

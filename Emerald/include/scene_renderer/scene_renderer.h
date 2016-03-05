@@ -138,7 +138,7 @@ PUBLIC EMERALD_API void scene_renderer_set_property(scene_renderer          rend
 
 /** TODO.
  *
- *  Internal usage only (exposed specifically for ogl_shadow_mapping which
+ *  Internal usage only (exposed specifically for scene_renderer_sm which
  *  handles the RENDER_MODE_SHADOW_MAP render mode).
  *
  **/
@@ -147,7 +147,7 @@ PUBLIC void scene_renderer_update_current_model_matrix(system_matrix4x4 transfor
 
 /** TODO.
  *
- *  Internal usage only (exposed specifically for ogl_shadow_mapping which
+ *  Internal usage only (exposed specifically for scene_renderer_sm which
  *  handles the RENDER_MODE_SHADOW_MAP render mode).
  *
  **/
