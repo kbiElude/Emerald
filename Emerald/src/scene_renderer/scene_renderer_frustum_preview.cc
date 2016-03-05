@@ -46,7 +46,7 @@
  * n_cameras * 9 vertices (4 comps each)
  * n_lights  * 9 vertices (4 comps each)
  *
- * This implementation does not use ogl_primitive_renderer because
+ * This implementation does not use varia_primitive_renderer because
  * it does not support multi draw base vertex calls (not at the moment, at least!),
  * which we can leverage for rendering of multiple frustums.
  */

@@ -14,7 +14,6 @@
 #include "ogl/ogl_context_vaos.h"
 #include "ogl/ogl_context_wrappers.h"
 #include "ogl/ogl_materials.h"
-#include "ogl/ogl_primitive_renderer.h"
 #include "ogl/ogl_rendering_handler.h"
 #include "ogl/ogl_shadow_mapping.h"
 #include "ogl/ogl_text.h"
@@ -37,6 +36,7 @@
 #include "system/system_resizable_vector.h"
 #include "system/system_resources.h"
 #include "system/system_window.h"
+#include "varia/varia_primitive_renderer.h"
 #include <string.h>
 
 #ifdef _WIN32
@@ -133,7 +133,7 @@ typedef struct
 
     ogl_context_bo_bindings         bo_bindings;
     ogl_materials                   materials;
-    ogl_primitive_renderer          primitive_renderer;
+    varia_primitive_renderer        primitive_renderer;
     ogl_context_sampler_bindings    sampler_bindings;
     ogl_shadow_mapping              shadow_mapping;
     ogl_context_state_cache         state_cache;
@@ -3484,11 +3484,11 @@ PUBLIC EMERALD_API void ogl_context_get_property(ogl_context          context,
             /* If there's no primitive renderer, create one now */
             if (context_ptr->primitive_renderer == NULL)
             {
-                context_ptr->primitive_renderer = ogl_primitive_renderer_create(context_ptr->context,
-                                                                                system_hashed_ansi_string_create("Context primitive renderer") );
+                context_ptr->primitive_renderer = varia_primitive_renderer_create(context_ptr->context,
+                                                                                  system_hashed_ansi_string_create("Context primitive renderer") );
             }
 
-            *((ogl_primitive_renderer*) out_result) = context_ptr->primitive_renderer;
+            *((varia_primitive_renderer*) out_result) = context_ptr->primitive_renderer;
 
             break;
         }
@@ -3662,7 +3662,7 @@ PUBLIC bool ogl_context_release_managers(ogl_context context)
 
     if (context_ptr->primitive_renderer != NULL)
     {
-        ogl_primitive_renderer_release(context_ptr->primitive_renderer);
+        varia_primitive_renderer_release(context_ptr->primitive_renderer);
 
         context_ptr->primitive_renderer = NULL;
     }

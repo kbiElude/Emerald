@@ -17,11 +17,6 @@
 #endif
 
 
-/* Primitive renderer */
-DECLARE_HANDLE(ogl_primitive_renderer);
-
-typedef unsigned int ogl_primitive_renderer_dataset_id;
-
 /* Enumerator describing native GL compare function types. */
 typedef enum
 {

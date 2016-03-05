@@ -6,7 +6,6 @@
 #include "shared.h"
 #include "curve/curve_container.h"
 #include "ogl/ogl_context.h"
-#include "ogl/ogl_primitive_renderer.h"
 #include "object_manager/object_manager_general.h"
 #include "scene/scene_graph.h"
 #include "system/system_assertions.h"
@@ -16,12 +15,13 @@
 #include "system/system_matrix4x4.h"
 #include "system/system_resizable_vector.h"
 #include "varia/varia_curve_renderer.h"
+#include "varia/varia_primitive_renderer.h"
 
 /** Internal type declarations */
 typedef struct _varia_curve_renderer_item
 {
-    ogl_primitive_renderer_dataset_id path_dataset_id;
-    ogl_primitive_renderer_dataset_id view_vector_dataset_id;
+    varia_primitive_renderer_dataset_id path_dataset_id;
+    varia_primitive_renderer_dataset_id view_vector_dataset_id;
 
     _varia_curve_renderer_item()
     {
@@ -40,11 +40,11 @@ typedef struct _varia_curve_renderer_item
 
 typedef struct
 {
-    ogl_primitive_renderer_dataset_id* conversion_array_items;
-    uint32_t                           n_conversion_array_items;
+    varia_primitive_renderer_dataset_id* conversion_array_items;
+    uint32_t                             n_conversion_array_items;
 
     system_resizable_vector   items;
-    ogl_primitive_renderer    primitive_renderer;
+    varia_primitive_renderer  primitive_renderer;
     system_hashed_ansi_string name;
 
     REFCOUNT_INSERT_VARIABLES
@@ -302,7 +302,7 @@ PRIVATE void _varia_curve_renderer_release(void* renderer)
 
     if (renderer_ptr->primitive_renderer != NULL)
     {
-        ogl_primitive_renderer_release(renderer_ptr->primitive_renderer);
+        varia_primitive_renderer_release(renderer_ptr->primitive_renderer);
 
         renderer_ptr->primitive_renderer = NULL;
     }
@@ -312,10 +312,10 @@ PRIVATE void _varia_curve_renderer_release(void* renderer)
 PRIVATE void _varia_curve_renderer_release_item(_varia_curve_renderer*      renderer_ptr,
                                                 _varia_curve_renderer_item* item_ptr)
 {
-    ogl_primitive_renderer_delete_dataset(renderer_ptr->primitive_renderer,
-                                          item_ptr->path_dataset_id);
-    ogl_primitive_renderer_delete_dataset(renderer_ptr->primitive_renderer,
-                                          item_ptr->view_vector_dataset_id);
+    varia_primitive_renderer_delete_dataset(renderer_ptr->primitive_renderer,
+                                            item_ptr->path_dataset_id);
+    varia_primitive_renderer_delete_dataset(renderer_ptr->primitive_renderer,
+                                            item_ptr->view_vector_dataset_id);
 
     item_ptr->path_dataset_id        = -1;
     item_ptr->view_vector_dataset_id = -1;
@@ -372,21 +372,21 @@ PUBLIC EMERALD_API varia_curve_item_id varia_curve_renderer_add_scene_graph_node
     }
 
     /* Fill it */
-    item_ptr->path_dataset_id = ogl_primitive_renderer_add_dataset(renderer_ptr->primitive_renderer,
-                                                                   RAL_PRIMITIVE_TYPE_LINE_STRIP,
-                                                                   n_vertices,
-                                                                   vertex_data,
-                                                                   curve_color);
+    item_ptr->path_dataset_id = varia_primitive_renderer_add_dataset(renderer_ptr->primitive_renderer,
+                                                                     RAL_PRIMITIVE_TYPE_LINE_STRIP,
+                                                                     n_vertices,
+                                                                     vertex_data,
+                                                                     curve_color);
 
     if (should_include_view_vectors)
     {
         const float view_vector_color[] = {1.0f, 0.0f, 0.0f, 1.0f};
 
-        item_ptr->view_vector_dataset_id = ogl_primitive_renderer_add_dataset(renderer_ptr->primitive_renderer,
-                                                                              RAL_PRIMITIVE_TYPE_LINES,
-                                                                              n_vertices * 2,
-                                                                              view_vector_lines_data,
-                                                                              view_vector_color);
+        item_ptr->view_vector_dataset_id = varia_primitive_renderer_add_dataset(renderer_ptr->primitive_renderer,
+                                                                                RAL_PRIMITIVE_TYPE_LINES,
+                                                                                n_vertices * 2,
+                                                                                view_vector_lines_data,
+                                                                                view_vector_color);
     }
 
     /* Store it */
@@ -421,7 +421,7 @@ PUBLIC EMERALD_API varia_curve_renderer varia_curve_renderer_create(ogl_context 
                                  OGL_CONTEXT_PROPERTY_PRIMITIVE_RENDERER,
                                 &new_instance->primitive_renderer);
 
-        ogl_primitive_renderer_retain(new_instance->primitive_renderer);
+        varia_primitive_renderer_retain(new_instance->primitive_renderer);
 
         new_instance->conversion_array_items   = NULL;
         new_instance->items                    = system_resizable_vector_create(4 /* capacity */);
@@ -497,7 +497,7 @@ PUBLIC EMERALD_API void varia_curve_renderer_draw(varia_curve_renderer       ren
             renderer_ptr->conversion_array_items = NULL;
         }
 
-        renderer_ptr->conversion_array_items = new ogl_primitive_renderer_dataset_id[2 * (2 * n_item_ids)];
+        renderer_ptr->conversion_array_items = new varia_primitive_renderer_dataset_id[2 * (2 * n_item_ids)];
 
         ASSERT_ALWAYS_SYNC(renderer_ptr->conversion_array_items != NULL,
                            "Out of memory");
@@ -537,10 +537,10 @@ PUBLIC EMERALD_API void varia_curve_renderer_draw(varia_curve_renderer       ren
         }
     } /* for (all item IDs) */
 
-    ogl_primitive_renderer_draw(renderer_ptr->primitive_renderer,
-                                mvp,
-                                n_items_used,
-                                renderer_ptr->conversion_array_items);
+    varia_primitive_renderer_draw(renderer_ptr->primitive_renderer,
+                                  mvp,
+                                  n_items_used,
+                                  renderer_ptr->conversion_array_items);
 
 end:
     ;

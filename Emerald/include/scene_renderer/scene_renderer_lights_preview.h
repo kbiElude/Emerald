@@ -3,7 +3,7 @@
  * Emerald (kbi/elude @2015)
  *
  * Implements a very simple light preview renderer. If ever necessary,
- * please re-write the implementation to make use of ogl_primitive_renderer
+ * please re-write the implementation to make use of varia_primitive_renderer
  * after a certain number of lights is exceeded.
  */
 #ifndef SCENE_RENDERER_LIGHTS_PREVIEW_H

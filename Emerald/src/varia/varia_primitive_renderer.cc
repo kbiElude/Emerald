@@ -5,7 +5,6 @@
  */
 #include "shared.h"
 #include "ogl/ogl_context.h"
-#include "ogl/ogl_primitive_renderer.h"
 #include "raGL/raGL_backend.h"
 #include "raGL/raGL_buffer.h"
 #include "raGL/raGL_program.h"
@@ -21,6 +20,7 @@
 #include "system/system_log.h"
 #include "system/system_matrix4x4.h"
 #include "system/system_resizable_vector.h"
+#include "varia/varia_primitive_renderer.h"
 #include <sstream>
 
 #define VS_UB_BINDING_ID      (0)
@@ -56,7 +56,7 @@ static const char* vs_body     = "layout(std140, binding = 0) uniform UB\n"
 
 
 /** Internal types */
-typedef struct _ogl_primitive_renderer_dataset
+typedef struct _varia_primitive_renderer_dataset
 {
     GLfloat            color_data[4];
     unsigned int       draw_first;
@@ -66,7 +66,7 @@ typedef struct _ogl_primitive_renderer_dataset
     unsigned int       n_vertices_allocated;
     GLfloat*           vertex_data;
 
-    _ogl_primitive_renderer_dataset()
+    _varia_primitive_renderer_dataset()
     {
         draw_first           = -1;
         instance_id          = -1;
@@ -80,7 +80,7 @@ typedef struct _ogl_primitive_renderer_dataset
                sizeof(color_data) );
     }
 
-    ~_ogl_primitive_renderer_dataset()
+    ~_varia_primitive_renderer_dataset()
     {
         if (vertex_data != NULL)
         {
@@ -90,7 +90,7 @@ typedef struct _ogl_primitive_renderer_dataset
         }
     }
 
-} _ogl_primitive_renderer_dataset;
+} _varia_primitive_renderer_dataset;
 
 typedef struct
 {
@@ -116,9 +116,9 @@ typedef struct
     system_critical_section draw_cs;
 
     /* Draw call arguments */
-    ogl_primitive_renderer_dataset_id* draw_dataset_ids;
-    system_matrix4x4                   draw_mvp;
-    unsigned int                       draw_n_dataset_ids;
+    varia_primitive_renderer_dataset_id* draw_dataset_ids;
+    system_matrix4x4                     draw_mvp;
+    unsigned int                         draw_n_dataset_ids;
 
     /* VAO id */
     GLuint vao_id;
@@ -142,33 +142,33 @@ typedef struct
 
     REFCOUNT_INSERT_VARIABLES
 
-} _ogl_primitive_renderer;
+} _varia_primitive_renderer;
 
 /* Forward declarations */
-PRIVATE void _ogl_primitive_renderer_draw_rendering_thread_callback    (ogl_context              context,
-                                                                        void*                    user_arg);
-PRIVATE void _ogl_primitive_renderer_init_program                      (_ogl_primitive_renderer* renderer_ptr);
-PRIVATE void _ogl_primitive_renderer_init_vao                          (_ogl_primitive_renderer* renderer_ptr);
-PRIVATE void _ogl_primitive_renderer_init_vao_rendering_thread_callback(ogl_context              context,
-                                                                        void*                    user_arg);
-PRIVATE void _ogl_primitive_renderer_release_rendering_thread_callback (ogl_context              context,
-                                                                        void*                    user_arg);
-PRIVATE void _ogl_primitive_renderer_release                           (void*                    line_strip_renderer);
-PRIVATE void _ogl_primitive_renderer_update_bo_storage                 (ogl_context              context,
-                                                                        _ogl_primitive_renderer* renderer_ptr);
-PRIVATE void _ogl_primitive_renderer_update_data_buffer                (_ogl_primitive_renderer* renderer_ptr);
-PRIVATE void _ogl_primitive_renderer_update_vao                        (ogl_context              context,
-                                                                        _ogl_primitive_renderer* renderer_ptr);
+PRIVATE void _varia_primitive_renderer_draw_rendering_thread_callback    (ogl_context                context,
+                                                                          void*                      user_arg);
+PRIVATE void _varia_primitive_renderer_init_program                      (_varia_primitive_renderer* renderer_ptr);
+PRIVATE void _varia_primitive_renderer_init_vao                          (_varia_primitive_renderer* renderer_ptr);
+PRIVATE void _varia_primitive_renderer_init_vao_rendering_thread_callback(ogl_context                context,
+                                                                          void*                      user_arg);
+PRIVATE void _varia_primitive_renderer_release_rendering_thread_callback (ogl_context                context,
+                                                                          void*                      user_arg);
+PRIVATE void _varia_primitive_renderer_release                           (void*                      line_strip_renderer);
+PRIVATE void _varia_primitive_renderer_update_bo_storage                 (ogl_context                context,
+                                                                          _varia_primitive_renderer* renderer_ptr);
+PRIVATE void _varia_primitive_renderer_update_data_buffer                (_varia_primitive_renderer* renderer_ptr);
+PRIVATE void _varia_primitive_renderer_update_vao                        (ogl_context                context,
+                                                                          _varia_primitive_renderer* renderer_ptr);
 
 /** Reference counter impl */
-REFCOUNT_INSERT_IMPLEMENTATION(ogl_primitive_renderer,
-                               ogl_primitive_renderer,
-                              _ogl_primitive_renderer);
+REFCOUNT_INSERT_IMPLEMENTATION(varia_primitive_renderer,
+                               varia_primitive_renderer,
+                              _varia_primitive_renderer);
 
 
 /** TODO */
-PRIVATE void _ogl_primitive_renderer_draw_rendering_thread_callback(ogl_context context,
-                                                                    void*       user_arg)
+PRIVATE void _varia_primitive_renderer_draw_rendering_thread_callback(ogl_context context,
+                                                                      void*       user_arg)
 {
     ogl_context_gl_entrypoints_ext_direct_state_access* dsa_entry_points = NULL;
     ogl_context_gl_entrypoints*                         entry_points     = NULL;
@@ -181,14 +181,14 @@ PRIVATE void _ogl_primitive_renderer_draw_rendering_thread_callback(ogl_context 
                             &dsa_entry_points);
 
     /* NOTE: draw_cs is locked while this call-back is being handled */
-    _ogl_primitive_renderer* renderer_ptr = (_ogl_primitive_renderer*) user_arg;
+    _varia_primitive_renderer* renderer_ptr = (_varia_primitive_renderer*) user_arg;
 
     if (renderer_ptr->dirty)
     {
-        _ogl_primitive_renderer_update_bo_storage(context,
-                                                  renderer_ptr);
-        _ogl_primitive_renderer_update_vao       (context,
-                                                  renderer_ptr);
+        _varia_primitive_renderer_update_bo_storage(context,
+                                                    renderer_ptr);
+        _varia_primitive_renderer_update_vao       (context,
+                                                    renderer_ptr);
 
         ASSERT_DEBUG_SYNC(!renderer_ptr->dirty,
                           "Renderer's BO storage is still marked as dirty");
@@ -248,7 +248,7 @@ PRIVATE void _ogl_primitive_renderer_draw_rendering_thread_callback(ogl_context 
                       n < renderer_ptr->draw_n_dataset_ids;
                     ++n)
     {
-        _ogl_primitive_renderer_dataset* dataset_ptr = NULL;
+        _varia_primitive_renderer_dataset* dataset_ptr = NULL;
 
         if (system_resizable_vector_get_element_at(renderer_ptr->datasets,
                                                    renderer_ptr->draw_dataset_ids[n],
@@ -269,7 +269,7 @@ PRIVATE void _ogl_primitive_renderer_draw_rendering_thread_callback(ogl_context 
 }
 
 /** TODO */
-PRIVATE void _ogl_primitive_renderer_init_program(_ogl_primitive_renderer* renderer_ptr)
+PRIVATE void _varia_primitive_renderer_init_program(_varia_primitive_renderer* renderer_ptr)
 {
     /* Prepare the vertex shader body.
      *
@@ -373,20 +373,20 @@ PRIVATE void _ogl_primitive_renderer_init_program(_ogl_primitive_renderer* rende
 }
 
 /** TODO */
-PRIVATE void _ogl_primitive_renderer_init_vao(_ogl_primitive_renderer* renderer_ptr)
+PRIVATE void _varia_primitive_renderer_init_vao(_varia_primitive_renderer* renderer_ptr)
 {
     /* Request a call-back from the rendering trhread */
     ogl_context_request_callback_from_context_thread(ral_context_get_gl_context(renderer_ptr->context),
-                                                     _ogl_primitive_renderer_init_vao_rendering_thread_callback,
+                                                     _varia_primitive_renderer_init_vao_rendering_thread_callback,
                                                      renderer_ptr);
 }
 
 /* TODO */
-PRIVATE void _ogl_primitive_renderer_init_vao_rendering_thread_callback(ogl_context context,
-                                                                        void*       user_arg)
+PRIVATE void _varia_primitive_renderer_init_vao_rendering_thread_callback(ogl_context context,
+                                                                          void*       user_arg)
 {
     const ogl_context_gl_entrypoints* entry_points = NULL;
-    _ogl_primitive_renderer*         renderer_ptr = (_ogl_primitive_renderer*) user_arg;
+    _varia_primitive_renderer*        renderer_ptr = (_varia_primitive_renderer*) user_arg;
 
     ogl_context_get_property(ral_context_get_gl_context(renderer_ptr->context),
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
@@ -400,11 +400,11 @@ PRIVATE void _ogl_primitive_renderer_init_vao_rendering_thread_callback(ogl_cont
 }
 
 /** TODO */
-PRIVATE void _ogl_primitive_renderer_release_rendering_thread_callback(ogl_context context,
-                                                                       void*       user_arg)
+PRIVATE void _varia_primitive_renderer_release_rendering_thread_callback(ogl_context context,
+                                                                         void*       user_arg)
 {
     ogl_context_gl_entrypoints* entrypoints  = NULL;
-    _ogl_primitive_renderer*    instance_ptr = (_ogl_primitive_renderer*) user_arg;
+    _varia_primitive_renderer*  instance_ptr = (_varia_primitive_renderer*) user_arg;
 
     ogl_context_get_property(ral_context_get_gl_context(instance_ptr->context),
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
@@ -440,17 +440,17 @@ PRIVATE void _ogl_primitive_renderer_release_rendering_thread_callback(ogl_conte
 }
 
 /** TODO */
-PRIVATE void _ogl_primitive_renderer_release(void* line_strip_renderer)
+PRIVATE void _varia_primitive_renderer_release(void* renderer)
 {
-    _ogl_primitive_renderer* instance_ptr = (_ogl_primitive_renderer*) line_strip_renderer;
+    _varia_primitive_renderer* instance_ptr = (_varia_primitive_renderer*) renderer;
 
     ogl_context_request_callback_from_context_thread(ral_context_get_gl_context(instance_ptr->context),
-                                                     _ogl_primitive_renderer_release_rendering_thread_callback,
+                                                     _varia_primitive_renderer_release_rendering_thread_callback,
                                                      instance_ptr);
 
     if (instance_ptr->datasets != NULL)
     {
-        _ogl_primitive_renderer_dataset* dataset_ptr = NULL;
+        _varia_primitive_renderer_dataset* dataset_ptr = NULL;
 
         while (system_resizable_vector_pop(instance_ptr->datasets,
                                           &dataset_ptr) )
@@ -478,8 +478,8 @@ PRIVATE void _ogl_primitive_renderer_release(void* line_strip_renderer)
 }
 
 /** TODO */
-PRIVATE void _ogl_primitive_renderer_update_bo_storage(ogl_context              context,
-                                                       _ogl_primitive_renderer* renderer_ptr)
+PRIVATE void _varia_primitive_renderer_update_bo_storage(ogl_context                context,
+                                                         _varia_primitive_renderer* renderer_ptr)
 {
     ral_buffer_client_sourced_update_info               bo_update_info;
     ogl_context_gl_entrypoints_ext_direct_state_access* dsa_entry_points = NULL;
@@ -497,7 +497,7 @@ PRIVATE void _ogl_primitive_renderer_update_bo_storage(ogl_context              
     {
         LOG_INFO("Performance warning: Flushing data buffer in a rendering thread");
 
-        _ogl_primitive_renderer_update_data_buffer(renderer_ptr);
+        _varia_primitive_renderer_update_data_buffer(renderer_ptr);
 
         ASSERT_DEBUG_SYNC(!renderer_ptr->dirty,
                           "Data buffer is still dirty after flushing");
@@ -549,7 +549,7 @@ PRIVATE void _ogl_primitive_renderer_update_bo_storage(ogl_context              
 }
 
 /** Please see header for specification */
-PRIVATE void _ogl_primitive_renderer_update_data_buffer(_ogl_primitive_renderer* renderer_ptr)
+PRIVATE void _varia_primitive_renderer_update_data_buffer(_varia_primitive_renderer* renderer_ptr)
 {
     /* TODO: This is the simplest implementation possible. Consider optimizations */
 
@@ -567,7 +567,7 @@ PRIVATE void _ogl_primitive_renderer_update_data_buffer(_ogl_primitive_renderer*
                       n_item < n_datasets;
                     ++n_item)
     {
-        _ogl_primitive_renderer_dataset* dataset_ptr = NULL;
+        _varia_primitive_renderer_dataset* dataset_ptr = NULL;
 
         if (system_resizable_vector_get_element_at(renderer_ptr->datasets,
                                                    n_item,
@@ -616,7 +616,7 @@ PRIVATE void _ogl_primitive_renderer_update_data_buffer(_ogl_primitive_renderer*
                       n_item < n_datasets;
                     ++n_item)
     {
-        _ogl_primitive_renderer_dataset* dataset_ptr = NULL;
+        _varia_primitive_renderer_dataset* dataset_ptr = NULL;
 
         if (system_resizable_vector_get_element_at(renderer_ptr->datasets,
                                                    n_item,
@@ -643,8 +643,8 @@ PRIVATE void _ogl_primitive_renderer_update_data_buffer(_ogl_primitive_renderer*
 }
 
 /** TODO */
-PRIVATE void _ogl_primitive_renderer_update_vao(ogl_context               context,
-                                                _ogl_primitive_renderer* renderer_ptr)
+PRIVATE void _varia_primitive_renderer_update_vao(ogl_context                context,
+                                                  _varia_primitive_renderer* renderer_ptr)
 {
     GLuint                            bo_id           = 0;
     raGL_buffer                       bo_raGL         = NULL;
@@ -695,17 +695,17 @@ PRIVATE void _ogl_primitive_renderer_update_vao(ogl_context               contex
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API ogl_primitive_renderer_dataset_id ogl_primitive_renderer_add_dataset(ogl_primitive_renderer renderer,
-                                                                                        ral_primitive_type     primitive_type,
-                                                                                        unsigned int           n_vertices,
-                                                                                        const float*           vertex_data,
-                                                                                        const float*           rgb)
+PUBLIC EMERALD_API varia_primitive_renderer_dataset_id varia_primitive_renderer_add_dataset(varia_primitive_renderer renderer,
+                                                                                            ral_primitive_type       primitive_type,
+                                                                                            unsigned int             n_vertices,
+                                                                                            const float*             vertex_data,
+                                                                                            const float*             rgb)
 {
-    _ogl_primitive_renderer*          renderer_ptr = (_ogl_primitive_renderer*) renderer;
-    ogl_primitive_renderer_dataset_id result_id    = -1;
+    _varia_primitive_renderer*          renderer_ptr = (_varia_primitive_renderer*) renderer;
+    varia_primitive_renderer_dataset_id result_id    = -1;
 
     /* Allocate new descriptor */
-    _ogl_primitive_renderer_dataset* new_dataset_ptr = new (std::nothrow) _ogl_primitive_renderer_dataset;
+    _varia_primitive_renderer_dataset* new_dataset_ptr = new (std::nothrow) _varia_primitive_renderer_dataset;
 
     ASSERT_ALWAYS_SYNC(new_dataset_ptr != NULL,
                        "Out of memory");
@@ -770,17 +770,17 @@ end:
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API void ogl_primitive_renderer_change_dataset_data(ogl_primitive_renderer            renderer,
-                                                                   ogl_primitive_renderer_dataset_id dataset_id,
-                                                                   unsigned int                      n_vertices,
-                                                                   const float*                      vertex_data)
+PUBLIC EMERALD_API void varia_primitive_renderer_change_dataset_data(varia_primitive_renderer            renderer,
+                                                                     varia_primitive_renderer_dataset_id dataset_id,
+                                                                     unsigned int                        n_vertices,
+                                                                     const float*                        vertex_data)
 {
-    _ogl_primitive_renderer* renderer_ptr = (_ogl_primitive_renderer*) renderer;
+    _varia_primitive_renderer* renderer_ptr = (_varia_primitive_renderer*) renderer;
 
     system_critical_section_enter(renderer_ptr->draw_cs);
 
     /* Retrieve the dataset descriptor */
-    _ogl_primitive_renderer_dataset* dataset_ptr = NULL;
+    _varia_primitive_renderer_dataset* dataset_ptr = NULL;
 
     if (!system_resizable_vector_get_element_at(renderer_ptr->datasets,
                                                 dataset_id,
@@ -839,11 +839,11 @@ end:
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API ogl_primitive_renderer ogl_primitive_renderer_create(ral_context               context,
-                                                                        system_hashed_ansi_string name)
+PUBLIC EMERALD_API varia_primitive_renderer varia_primitive_renderer_create(ral_context               context,
+                                                                            system_hashed_ansi_string name)
 {
     /* Spawn the new instance */
-    _ogl_primitive_renderer* renderer_ptr = new (std::nothrow) _ogl_primitive_renderer;
+    _varia_primitive_renderer* renderer_ptr = new (std::nothrow) _varia_primitive_renderer;
 
     ASSERT_ALWAYS_SYNC(renderer_ptr != NULL,
                        "Out of memory while allocating line strip renderer.");
@@ -864,31 +864,31 @@ PUBLIC EMERALD_API ogl_primitive_renderer ogl_primitive_renderer_create(ral_cont
                                  RAL_CONTEXT_PROPERTY_BACKEND,
                                 &renderer_ptr->backend);
 
-        _ogl_primitive_renderer_init_program(renderer_ptr);
-        _ogl_primitive_renderer_init_vao    (renderer_ptr);
+        _varia_primitive_renderer_init_program(renderer_ptr);
+        _varia_primitive_renderer_init_vao    (renderer_ptr);
 
         /* Register the instance */
         REFCOUNT_INSERT_INIT_CODE_WITH_RELEASE_HANDLER(renderer_ptr,
-                                                       _ogl_primitive_renderer_release,
-                                                       OBJECT_TYPE_OGL_PRIMITIVE_RENDERER,
-                                                       system_hashed_ansi_string_create_by_merging_two_strings("\\Primitive Renderers\\",
+                                                       _varia_primitive_renderer_release,
+                                                       OBJECT_TYPE_VARIA_PRIMITIVE_RENDERER,
+                                                       system_hashed_ansi_string_create_by_merging_two_strings("\\Varia Primitive Renderers\\",
                                                                                                                system_hashed_ansi_string_get_buffer(name)) );
     }
 
-    return (ogl_primitive_renderer) renderer_ptr;
+    return (varia_primitive_renderer) renderer_ptr;
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API bool ogl_primitive_renderer_delete_dataset(ogl_primitive_renderer            renderer,
-                                                              ogl_primitive_renderer_dataset_id dataset_id)
+PUBLIC EMERALD_API bool varia_primitive_renderer_delete_dataset(varia_primitive_renderer            renderer,
+                                                                varia_primitive_renderer_dataset_id dataset_id)
 {
-    _ogl_primitive_renderer* renderer_ptr = (_ogl_primitive_renderer*) renderer;
-    bool                      result       = true;
+    _varia_primitive_renderer* renderer_ptr = (_varia_primitive_renderer*) renderer;
+    bool                       result       = true;
 
     /* Identify the dataset */
     system_critical_section_enter(renderer_ptr->draw_cs);
     {
-        _ogl_primitive_renderer_dataset* dataset_ptr = NULL;
+        _varia_primitive_renderer_dataset* dataset_ptr = NULL;
 
         if (!system_resizable_vector_get_element_at(renderer_ptr->datasets,
                                                     dataset_id,
@@ -928,13 +928,13 @@ end:
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API void ogl_primitive_renderer_draw(ogl_primitive_renderer             renderer,
-                                                    system_matrix4x4                   mvp,
-                                                    unsigned int                       n_dataset_ids,
-                                                    ogl_primitive_renderer_dataset_id* dataset_ids)
+PUBLIC EMERALD_API void varia_primitive_renderer_draw(varia_primitive_renderer             renderer,
+                                                      system_matrix4x4                     mvp,
+                                                      unsigned int                         n_dataset_ids,
+                                                      varia_primitive_renderer_dataset_id* dataset_ids)
 {
     /* Store the draw call arguments */
-    _ogl_primitive_renderer* renderer_ptr = (_ogl_primitive_renderer*) renderer;
+    _varia_primitive_renderer* renderer_ptr = (_varia_primitive_renderer*) renderer;
 
     system_critical_section_enter(renderer_ptr->draw_cs);
     {
@@ -944,7 +944,7 @@ PUBLIC EMERALD_API void ogl_primitive_renderer_draw(ogl_primitive_renderer      
 
         /* Switch to the rendering context */
         ogl_context_request_callback_from_context_thread(ral_context_get_gl_context(renderer_ptr->context),
-                                                         _ogl_primitive_renderer_draw_rendering_thread_callback,
+                                                         _varia_primitive_renderer_draw_rendering_thread_callback,
                                                          renderer_ptr);
     }
     system_critical_section_leave(renderer_ptr->draw_cs);

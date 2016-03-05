@@ -121,7 +121,7 @@ typedef enum ogl_context_property
     /* settable, not queriable, ogl_context_linux or ogl_context_win32 */
     OGL_CONTEXT_PROPERTY_PLATFORM_CONTEXT,
 
-    /* not settable, ogl_primitive_renderer */
+    /* not settable, varia_primitive_renderer */
     OGL_CONTEXT_PROPERTY_PRIMITIVE_RENDERER,
 
     /* not settable, ogl_context_handle */
