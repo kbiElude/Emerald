@@ -22,20 +22,18 @@ TEST(AudioTest, StreamPlaybackTest)
     system_file_serializer    test_serializer    = NULL;
     audio_stream              test_stream        = NULL;
     demo_window               window             = NULL;
-    const uint32_t            window_fps         = 5;
+    demo_window_create_info   window_create_info;
     system_hashed_ansi_string window_name        = system_hashed_ansi_string_create("Test window");
-    int                       window_size    [2] = {32, 32};
-    static bool               window_visible     = false;
     int                       window_x1y1x2y2[4] = {0};
 
+    window_create_info.target_rate   = 5;
+    window_create_info.resolution[0] = 32;
+    window_create_info.resolution[1] = 32;
+    window_create_info.visible       = false;
+
     window = demo_app_create_window(window_name,
+                                    window_create_info,
                                     RAL_BACKEND_TYPE_GL);
-
-    demo_window_set_property(window,
-                             DEMO_WINDOW_PROPERTY_VISIBLE,
-                            &window_visible);
-
-    demo_window_show(window);
 
     /* Set up an audio stream.
      *
@@ -56,11 +54,6 @@ TEST(AudioTest, StreamPlaybackTest)
 
     test_serializer = NULL;
     test_stream     = NULL;
-
-    /* Set up FPS cap for the window */
-    demo_window_set_property(window,
-                             DEMO_WINDOW_PROPERTY_TARGET_FRAME_RATE,
-                            &window_fps);
 
     /* Launch the playback */
     printf("Playing from the beginning for 1s..\n");

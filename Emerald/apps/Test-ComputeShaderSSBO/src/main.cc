@@ -383,12 +383,9 @@ PRIVATE void _window_closing_callback_handler(system_window window,
     ogl_rendering_handler                   rendering_handler  = NULL;
     system_screen_mode                      screen_mode        = NULL;
     demo_window                             window             = NULL;
+    demo_window_create_info                 window_create_info;
     const system_hashed_ansi_string         window_name        = system_hashed_ansi_string_create("Compute shader SSBO test app");
     int                                     window_x1y1x2y2[4] = {0};
-
-    window = demo_app_create_window(window_name,
-                                    RAL_BACKEND_TYPE_GL,
-                                    false /* use_timeline */);
 
     system_screen_mode_get         (0,
                                    &screen_mode);
@@ -402,11 +399,14 @@ PRIVATE void _window_closing_callback_handler(system_window window,
     _window_size[0] /= 2;
     _window_size[1] /= 2;
 
-    demo_window_set_property(window,
-                             DEMO_WINDOW_PROPERTY_RESOLUTION,
-                             _window_size);
 
-    demo_window_show(window);
+    window_create_info.resolution[0] = _window_size[0];
+    window_create_info.resolution[1] = _window_size[1];
+
+    window = demo_app_create_window(window_name,
+                                    window_create_info,
+                                    RAL_BACKEND_TYPE_GL,
+                                    false /* use_timeline */);
 
     demo_window_get_property(window,
                              DEMO_WINDOW_PROPERTY_RENDERING_CONTEXT,

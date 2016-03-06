@@ -5,6 +5,7 @@
  */
 #include "shared.h"
 #include "curve/curve_container.h"
+#include "demo/demo_app.h"
 #include "mesh/mesh_material.h"
 #include "ogl/ogl_context.h"
 #include "ral/ral_context.h"
@@ -196,7 +197,8 @@ PRIVATE void _scene_renderer_get_light_color                          (scene_lig
                                                                        system_time                 time,
                                                                        system_variant              temp_float_variant,
                                                                        float*                      out_color);
-PRIVATE void _scene_renderer_get_ogl_uber_for_render_mode             (scene_renderer_render_mode  render_mode,
+PRIVATE void _scene_renderer_get_ogl_uber_for_render_mode             (_scene_renderer*            renderer_ptr,
+                                                                       scene_renderer_render_mode  render_mode,
                                                                        scene_renderer_materials    context_materials,
                                                                        scene                       scene,
                                                                        scene_renderer_uber*        result_uber_ptr);
@@ -505,7 +507,8 @@ PRIVATE void _scene_renderer_get_light_color(scene_light    light,
 }
 
 /** TODO */
-PRIVATE void _scene_renderer_get_ogl_uber_for_render_mode(scene_renderer_render_mode render_mode,
+PRIVATE void _scene_renderer_get_ogl_uber_for_render_mode(_scene_renderer*           renderer_ptr,
+                                                          scene_renderer_render_mode render_mode,
                                                           scene_renderer_materials   context_materials,
                                                           scene                      scene,
                                                           scene_renderer_uber*       result_uber_ptr)
@@ -523,6 +526,7 @@ PRIVATE void _scene_renderer_get_ogl_uber_for_render_mode(scene_renderer_render_
         case RENDER_MODE_NORMALS_ONLY:
         {
             *result_uber_ptr = mesh_material_get_uber(scene_renderer_materials_get_special_material(context_materials,
+                                                                                                    renderer_ptr->context,
                                                                                                     SPECIAL_MATERIAL_NORMALS),
                                                       scene,
                                                       false); /* use_shadow_maps */
@@ -533,6 +537,7 @@ PRIVATE void _scene_renderer_get_ogl_uber_for_render_mode(scene_renderer_render_
         case RENDER_MODE_TEXCOORDS_ONLY:
         {
             *result_uber_ptr = mesh_material_get_uber(scene_renderer_materials_get_special_material(context_materials,
+                                                                                                    renderer_ptr->context,
                                                                                                     SPECIAL_MATERIAL_TEXCOORD),
                                                       scene,
                                                       false); /* use_shadow_maps */
@@ -1048,9 +1053,8 @@ PRIVATE void _scene_renderer_render_traversed_scene_graph(_scene_renderer*      
     scene_renderer_materials materials                 = NULL;
     uint32_t                 n_custom_meshes_to_render = 0;
 
-    ogl_context_get_property(ral_context_get_gl_context(renderer_ptr->context),
-                             OGL_CONTEXT_PROPERTY_MATERIALS,
-                            &materials);
+    demo_app_get_property(DEMO_APP_PROPERTY_MATERIAL_MANAGER,
+                         &materials);
 
     /* Calculate camera location */
     {
@@ -1172,7 +1176,8 @@ PRIVATE void _scene_renderer_render_traversed_scene_graph(_scene_renderer*      
                 /* If this is not a "depth pre-pass" pass .. */
                 if (!is_depth_prepass)
                 {
-                    _scene_renderer_get_ogl_uber_for_render_mode(render_mode,
+                    _scene_renderer_get_ogl_uber_for_render_mode(renderer_ptr,
+                                                                 render_mode,
                                                                  materials,
                                                                  renderer_ptr->owned_scene,
                                                                 &material_uber);
@@ -1181,6 +1186,7 @@ PRIVATE void _scene_renderer_render_traversed_scene_graph(_scene_renderer*      
                 {
                     /* Use the 'clip depth' material to output the clip-space depth data */
                     material_uber = mesh_material_get_uber(scene_renderer_materials_get_special_material(materials,
+                                                                                                         renderer_ptr->context,
                                                                                                          SPECIAL_MATERIAL_DEPTH_CLIP),
                                                            renderer_ptr->owned_scene,
                                                            false); /* use_shadow_maps */
@@ -1931,9 +1937,8 @@ PUBLIC EMERALD_API void scene_renderer_bake_gpu_assets(scene_renderer renderer)
     scene_renderer_materials context_materials = NULL;
     _scene_renderer*         renderer_ptr      = (_scene_renderer*) renderer;
 
-    ogl_context_get_property(ral_context_get_gl_context(renderer_ptr->context),
-                             OGL_CONTEXT_PROPERTY_MATERIALS,
-                            &context_materials);
+    demo_app_get_property(DEMO_APP_PROPERTY_MATERIAL_MANAGER,
+                         &context_materials);
 
     /* At the time of writing, the only thing we need to bake is ogl_uber instances, which are
      * specific to materials used by meshes. */
@@ -2013,9 +2018,8 @@ PUBLIC EMERALD_API scene_renderer scene_renderer_create(ral_context context,
 
     if (scene_renderer_ptr != NULL)
     {
-        ogl_context_get_property(ral_context_get_gl_context(context),
-                                 OGL_CONTEXT_PROPERTY_MATERIALS,
-                                &scene_renderer_ptr->material_manager);
+        demo_app_get_property(DEMO_APP_PROPERTY_MATERIAL_MANAGER,
+                             &scene_renderer_ptr->material_manager);
 
         /* Subscribe for scene notifications */
         _scene_renderer_subscribe_for_general_notifications(scene_renderer_ptr,

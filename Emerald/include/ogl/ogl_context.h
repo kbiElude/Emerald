@@ -109,9 +109,6 @@ typedef enum ogl_context_property
     /* not settable, uint32_t */
     OGL_CONTEXT_PROPERTY_MINOR_VERSION,
 
-    /* not settable, scene_renderer_materials */
-    OGL_CONTEXT_PROPERTY_MATERIALS,
-
     /* not settable, ogl_context */
     OGL_CONTEXT_PROPERTY_PARENT_CONTEXT,
 

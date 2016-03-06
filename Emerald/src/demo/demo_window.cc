@@ -104,6 +104,201 @@ typedef struct _demo_window
     }
 } _demo_window;
 
+/* Forward declarations */
+PRIVATE bool _demo_window_init                              (_demo_window* window_ptr);
+PRIVATE void _demo_window_on_audio_stream_finished_playing  (const void*   callback_data,
+                                                             void*         user_arg);
+PRIVATE void _demo_window_window_closed_callback_handler    (void*         unused,
+                                                             void*         window);
+PRIVATE void _demo_window_window_closing_callback_handler   (void*         unused,
+                                                             void*         window);
+PRIVATE void _demo_window_subscribe_for_window_notifications(_demo_window* window_ptr,
+                                                             bool          should_subscribe);
+
+/** TODO */
+PRIVATE bool _demo_window_init(_demo_window* window_ptr)
+{
+    system_pixel_format pixel_format = NULL; /* ownership will be taken by the window */
+    bool                result       = false;
+    char                rendering_handler_name[256];
+
+    /* Sanity checks */
+    if (window_ptr == NULL)
+    {
+        ASSERT_DEBUG_SYNC(window_ptr != NULL,
+                          "Input demo_window instance is NULL");
+
+        goto end;
+    }
+
+    if (window_ptr->window != NULL)
+    {
+        ASSERT_DEBUG_SYNC(window_ptr->window == NULL,
+                          "The specified window is already shown.");
+
+        goto end;
+    }
+
+    /* Fill out a pixel format descriptor.
+     *
+     * Emerald maintains its own "default framebuffer", to which rendering handlers should render.
+     * Its attachments will be initialized, according to the descriptor we're just about to configure.
+     *
+     * Reason for this is cross-compatibility. MSAA set-up is significantly different under Linux
+     * and Windows, and it's simpler to reconcile both platforms this way. For multisampling, simply
+     * render to multisample framebuffers and then do a resolve right before the buffer swap op.
+     */
+    pixel_format = system_pixel_format_create(8,  /* color_buffer_red_bits   */
+                                              8,  /* color_buffer_green_bits */
+                                              8,  /* color_buffer_blue_bits  */
+                                              0,  /* color_buffer_alpha_bits */
+                                              16, /* depth_buffer_bits       */
+                                              1,  /* n_samples               */
+                                              0); /* stencil_buffer_bits     */
+
+    if (window_ptr->should_run_fullscreen)
+    {
+        system_screen_mode screen_mode = NULL;
+
+        if (!system_screen_mode_get_for_resolution(window_ptr->resolution[0],
+                                                   window_ptr->resolution[1],
+                                                   window_ptr->refresh_rate,
+                                                  &screen_mode) )
+        {
+            LOG_FATAL("No suitable screen mode found for resolution [%u x %u x %uHz]",
+                      window_ptr->resolution[0],
+                      window_ptr->resolution[1],
+                      window_ptr->refresh_rate);
+
+            goto end;
+        }
+
+        window_ptr->window = system_window_create_fullscreen((demo_window) window_ptr,
+                                                             window_ptr->backend_type,
+                                                             screen_mode,
+                                                             window_ptr->use_vsync,
+                                                             pixel_format);
+    }
+    else
+    {
+        int window_x1y1x2y2[4] = {0};
+
+        /* Determine centered position for a renderer window of the specified size. */
+        system_window_get_centered_window_position_for_primary_monitor( (const int*) window_ptr->resolution,
+                                                                        window_x1y1x2y2);
+
+        /* Spawn the window. */
+        window_ptr->window = system_window_create_not_fullscreen((demo_window) window_ptr,
+                                                                 window_ptr->backend_type,
+                                                                 window_x1y1x2y2,
+                                                                 window_ptr->name,
+                                                                 false, /* scalable */
+                                                                 window_ptr->use_vsync,
+                                                                 window_ptr->visible,
+                                                                 pixel_format);
+    }
+
+    if (window_ptr->window == NULL)
+    {
+        ASSERT_ALWAYS_SYNC(false,
+                           "Could not create a rendering window");
+
+        goto end;
+    }
+
+    /* Set up the rendering handler.
+     *
+     * The object does a few important things:
+     *
+     * 1) It's responsible for the rendering thread's lifetime.
+     * 2) Controls the frame refresh rate (as in: rendering handler call-back frequency and timing). It can
+     *    work in a number of modes; we're interested in a constant frame-rate, so we configure it to work
+     *    with FPS policy, but it could also be configured to render as many frames as possible, or only if
+     *    explicitly requested by making ogl_rendering_handler_request_callback_from_context_thread() calls.
+     *
+     *    For FPS policy, the playback is stopped by default. ogl_rendering_handler_play() call must be
+     *    issued to start the rendering process. The "request callback from context thread" calls are also available,
+     *    and can be made at any time from both the rendering thread or any other thread within the process.
+     *
+     * 3) Provides additional functionality needed for correct timeline & vsync support. Feel free to have a lurk
+     *    if curious.
+     */
+    ASSERT_DEBUG_SYNC(window_ptr->rendering_handler == NULL,
+                      "An ogl_rendering_handler instance is already present.");
+
+    snprintf(rendering_handler_name,
+             sizeof(rendering_handler_name),
+             "Rendering handler for window [%s]",
+             system_hashed_ansi_string_get_buffer(window_ptr->name) );
+
+
+    if (window_ptr->target_frame_rate == 0)
+    {
+        window_ptr->rendering_handler = ogl_rendering_handler_create_with_render_per_request_policy(system_hashed_ansi_string_create(rendering_handler_name),
+                                                                                                    NULL,  /* pfn_rendering_callback */
+                                                                                                    NULL); /* user_arg               */
+    }
+    else
+    if (window_ptr->target_frame_rate == ~0)
+    {
+        window_ptr->rendering_handler = ogl_rendering_handler_create_with_max_performance_policy(system_hashed_ansi_string_create(rendering_handler_name),
+                                                                                                 NULL,  /* pfn_rendering_callback */
+                                                                                                 NULL); /* user_arg               */
+    }
+    else
+    {
+        window_ptr->rendering_handler = ogl_rendering_handler_create_with_fps_policy(system_hashed_ansi_string_create(rendering_handler_name),
+                                                                                     window_ptr->target_frame_rate,
+                                                                                     NULL,  /* pfn_rendering_callback */
+                                                                                     NULL); /* user_arg               */
+    }
+
+    /* Bind the rendering handler to the renderer window. Note that this also implicitly
+     * creates a RAL context for the window. */
+    system_window_set_property(window_ptr->window,
+                               SYSTEM_WINDOW_PROPERTY_RENDERING_HANDLER,
+                              &window_ptr->rendering_handler);
+
+    /* Cache the rendering context */
+    system_window_get_property(window_ptr->window,
+                               SYSTEM_WINDOW_PROPERTY_RENDERING_CONTEXT_RAL,
+                              &window_ptr->context);
+
+    ASSERT_DEBUG_SYNC(window_ptr->context != NULL,
+                      "Rendering context is NULL");
+
+    /* Create a flyby instance */
+    window_ptr->flyby = demo_flyby_create(window_ptr->context);
+
+    ASSERT_DEBUG_SYNC(window_ptr->flyby != NULL,
+                      "Could not create a flyby instance");
+
+    /* Set up a timeline object instance */
+    if (window_ptr->use_timeline)
+    {
+        window_ptr->timeline = demo_timeline_create(window_ptr->name,
+                                                    window_ptr->context,
+                                                    window_ptr->window);
+
+        if (window_ptr->timeline == NULL)
+        {
+            ASSERT_DEBUG_SYNC(window_ptr->timeline != NULL,
+                              "Could not create a demo_timeline instance");
+
+            goto end;
+        }
+    }
+
+    /* Set up mouse click & window tear-down callbacks */
+    _demo_window_subscribe_for_window_notifications(window_ptr,
+                                                    true); /* should_subscribe */
+
+    /* All done */
+    result = true;
+
+end:
+    return result;
+}
 
 /** TODO */
 PRIVATE void _demo_window_on_audio_stream_finished_playing(const void* callback_data,
@@ -269,9 +464,10 @@ end:
 }
 
 /** Please see header for specification */
-PUBLIC demo_window demo_window_create(system_hashed_ansi_string name,
-                                      ral_backend_type          backend_type,
-                                      bool                      use_timeline)
+PUBLIC demo_window demo_window_create(system_hashed_ansi_string      name,
+                                      const demo_window_create_info& create_info,
+                                      ral_backend_type               backend_type,
+                                      bool                           use_timeline)
 {
     _demo_window* window_ptr = new (std::nothrow) _demo_window(name,
                                                                backend_type,
@@ -279,6 +475,18 @@ PUBLIC demo_window demo_window_create(system_hashed_ansi_string name,
 
     ASSERT_ALWAYS_SYNC(window_ptr != NULL,
                        "Out of memory");
+
+    window_ptr->should_run_fullscreen = create_info.fullscreen;
+    window_ptr->loader_setup_callback_proc_user_arg = create_info.loader_callback_func_user_arg;
+    window_ptr->pfn_loader_setup_callback_proc      = create_info.pfn_loader_callback_func_ptr;
+    window_ptr->refresh_rate                        = create_info.refresh_rate;
+    window_ptr->resolution[0]                       = create_info.resolution[0];
+    window_ptr->resolution[1]                       = create_info.resolution[1];
+    window_ptr->target_frame_rate                   = create_info.target_rate;
+    window_ptr->use_vsync                           = create_info.use_vsync;
+    window_ptr->visible                             = create_info.visible;
+
+    _demo_window_init(window_ptr);
 
     return (demo_window) window_ptr;
 }
@@ -497,192 +705,6 @@ PUBLIC void demo_window_release(demo_window window)
 
     /* Should be safe to delete the object at this point */
     delete (_demo_window*) window;
-}
-
-/** Please see header for specification */
-PUBLIC EMERALD_API bool demo_window_show(demo_window window)
-{
-    system_pixel_format pixel_format = NULL; /* ownership will be taken by the window */
-    char                rendering_handler_name[256];
-    bool                result       = false;
-    _demo_window*       window_ptr   = (_demo_window*) window;
-
-    /* Sanity checks */
-    if (window == NULL)
-    {
-        ASSERT_DEBUG_SYNC(window != NULL,
-                          "Input demo_window instance is NULL");
-
-        goto end;
-    }
-
-    if (window_ptr->window != NULL)
-    {
-        ASSERT_DEBUG_SYNC(window_ptr->window == NULL,
-                          "The specified window is already shown.");
-
-        goto end;
-    }
-
-    /* Fill out a pixel format descriptor.
-     *
-     * Emerald maintains its own "default framebuffer", to which rendering handlers should render.
-     * Its attachments will be initialized, according to the descriptor we're just about to configure.
-     *
-     * Reason for this is cross-compatibility. MSAA set-up is significantly different under Linux
-     * and Windows, and it's simpler to reconcile both platforms this way. For multisampling, simply
-     * render to multisample framebuffers and then do a resolve right before the buffer swap op.
-     */
-    pixel_format = system_pixel_format_create(8,  /* color_buffer_red_bits   */
-                                              8,  /* color_buffer_green_bits */
-                                              8,  /* color_buffer_blue_bits  */
-                                              0,  /* color_buffer_alpha_bits */
-                                              16, /* depth_buffer_bits       */
-                                              1,  /* n_samples               */
-                                              0); /* stencil_buffer_bits     */
-
-    if (window_ptr->should_run_fullscreen)
-    {
-        system_screen_mode screen_mode = NULL;
-
-        if (!system_screen_mode_get_for_resolution(window_ptr->resolution[0],
-                                                   window_ptr->resolution[1],
-                                                   window_ptr->refresh_rate,
-                                                  &screen_mode) )
-        {
-            LOG_FATAL("No suitable screen mode found for resolution [%u x %u x %uHz]",
-                      window_ptr->resolution[0],
-                      window_ptr->resolution[1],
-                      window_ptr->refresh_rate);
-
-            goto end;
-        }
-
-        window_ptr->window = system_window_create_fullscreen((demo_window) window_ptr,
-                                                             window_ptr->backend_type,
-                                                             screen_mode,
-                                                             window_ptr->use_vsync,
-                                                             pixel_format);
-    }
-    else
-    {
-        int window_x1y1x2y2[4] = {0};
-
-        /* Determine centered position for a renderer window of the specified size. */
-        system_window_get_centered_window_position_for_primary_monitor( (const int*) window_ptr->resolution,
-                                                                        window_x1y1x2y2);
-
-        /* Spawn the window. */
-        window_ptr->window = system_window_create_not_fullscreen((demo_window) window_ptr,
-                                                                 window_ptr->backend_type,
-                                                                 window_x1y1x2y2,
-                                                                 window_ptr->name,
-                                                                 false, /* scalable */
-                                                                 window_ptr->use_vsync,
-                                                                 window_ptr->visible,
-                                                                 pixel_format);
-    }
-
-    if (window_ptr->window == NULL)
-    {
-        ASSERT_ALWAYS_SYNC(false,
-                           "Could not create a rendering window");
-
-        goto end;
-    }
-
-    /* Set up the rendering handler.
-     *
-     * The object does a few important things:
-     *
-     * 1) It's responsible for the rendering thread's lifetime.
-     * 2) Controls the frame refresh rate (as in: rendering handler call-back frequency and timing). It can
-     *    work in a number of modes; we're interested in a constant frame-rate, so we configure it to work
-     *    with FPS policy, but it could also be configured to render as many frames as possible, or only if
-     *    explicitly requested by making ogl_rendering_handler_request_callback_from_context_thread() calls.
-     *
-     *    For FPS policy, the playback is stopped by default. ogl_rendering_handler_play() call must be
-     *    issued to start the rendering process. The "request callback from context thread" calls are also available,
-     *    and can be made at any time from both the rendering thread or any other thread within the process.
-     *
-     * 3) Provides additional functionality needed for correct timeline & vsync support. Feel free to have a lurk
-     *    if curious.
-     */
-    ASSERT_DEBUG_SYNC(window_ptr->rendering_handler == NULL,
-                      "An ogl_rendering_handler instance is already present.");
-
-    snprintf(rendering_handler_name,
-             sizeof(rendering_handler_name),
-             "Rendering handler for window [%s]",
-             system_hashed_ansi_string_get_buffer(window_ptr->name) );
-
-
-    if (window_ptr->target_frame_rate == 0)
-    {
-        window_ptr->rendering_handler = ogl_rendering_handler_create_with_render_per_request_policy(system_hashed_ansi_string_create(rendering_handler_name),
-                                                                                                    NULL,  /* pfn_rendering_callback */
-                                                                                                    NULL); /* user_arg               */
-    }
-    else
-    if (window_ptr->target_frame_rate == ~0)
-    {
-        window_ptr->rendering_handler = ogl_rendering_handler_create_with_max_performance_policy(system_hashed_ansi_string_create(rendering_handler_name),
-                                                                                                 NULL,  /* pfn_rendering_callback */
-                                                                                                 NULL); /* user_arg               */
-    }
-    else
-    {
-        window_ptr->rendering_handler = ogl_rendering_handler_create_with_fps_policy(system_hashed_ansi_string_create(rendering_handler_name),
-                                                                                     window_ptr->target_frame_rate,
-                                                                                     NULL,  /* pfn_rendering_callback */
-                                                                                     NULL); /* user_arg               */
-    }
-
-    /* Bind the rendering handler to the renderer window. Note that this also implicitly
-     * creates a RAL context for the window. */
-    system_window_set_property(window_ptr->window,
-                               SYSTEM_WINDOW_PROPERTY_RENDERING_HANDLER,
-                              &window_ptr->rendering_handler);
-
-    /* Cache the rendering context */
-    system_window_get_property(window_ptr->window,
-                               SYSTEM_WINDOW_PROPERTY_RENDERING_CONTEXT_RAL,
-                              &window_ptr->context);
-
-    ASSERT_DEBUG_SYNC(window_ptr->context != NULL,
-                      "Rendering context is NULL");
-
-    /* Create a flyby instance */
-    window_ptr->flyby = demo_flyby_create(window_ptr->context);
-
-    ASSERT_DEBUG_SYNC(window_ptr->flyby != NULL,
-                      "Could not create a flyby instance");
-
-    /* Set up a timeline object instance */
-    if (window_ptr->use_timeline)
-    {
-        window_ptr->timeline = demo_timeline_create(window_ptr->name,
-                                                    window_ptr->context,
-                                                    window_ptr->window);
-
-        if (window_ptr->timeline == NULL)
-        {
-            ASSERT_DEBUG_SYNC(window_ptr->timeline != NULL,
-                              "Could not create a demo_timeline instance");
-
-            goto end;
-        }
-    }
-
-    /* Set up mouse click & window tear-down callbacks */
-    _demo_window_subscribe_for_window_notifications(window_ptr,
-                                                    true); /* should_subscribe */
-
-    /* All done */
-    result = true;
-
-end:
-    return result;
 }
 
 /** Please see header for specification */

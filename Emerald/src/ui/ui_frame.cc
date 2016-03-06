@@ -378,10 +378,12 @@ PUBLIC void* ui_frame_init(ui           instance,
                                               RAL_BUFFER_PROPERTY_SIZE,
                                              &new_frame_ptr->program_ub_bo_size);
 
+        const uint32_t datavs_indexed_bp = 0;
+
         raGL_program_set_block_property_by_name(program_raGL,
                                                 system_hashed_ansi_string_create("dataVS"),
                                                 RAGL_PROGRAM_BLOCK_PROPERTY_INDEXED_BP,
-                                                0);
+                                               &datavs_indexed_bp);
 
         /* Retrieve the uniforms */
         const ral_program_variable* x1y1x2y2_uniform_ral_ptr = NULL;

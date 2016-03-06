@@ -88,19 +88,18 @@ static void _clear_color_buffer_with_color(ral_context context,
 
 TEST(WindowTest, CreationTest)
 {
-    demo_window                     window               = NULL;
-    const system_hashed_ansi_string window_name          = system_hashed_ansi_string_create("Test window");
-    const uint32_t                  window_resolution[2] = { 320, 240 };
+    demo_window                     window              = NULL;
+    demo_window_create_info         window_create_info;
+    const system_hashed_ansi_string window_name         = system_hashed_ansi_string_create("Test window");
 
     /* Create the window */
+    window_create_info.resolution[0] = 320;
+    window_create_info.resolution[1] = 240;
+
     window = demo_app_create_window(window_name,
+                                    window_create_info,
                                     RAL_BACKEND_TYPE_GL);
 
-    demo_window_set_property(window,
-                             DEMO_WINDOW_PROPERTY_RESOLUTION,
-                             window_resolution);
-
-    demo_window_show       (window);
     demo_app_destroy_window(window_name);
 }
 
@@ -133,19 +132,19 @@ TEST(WindowTest, RenderingHandlerTest)
     /* Create the window */
     static const PFNOGLRENDERINGHANDLERRENDERINGCALLBACK pfn_rendering_callback_func_ptr = _on_render_frame_callback;
     demo_window                                          window                          = NULL;
+    demo_window_create_info                              window_create_info;
     const system_hashed_ansi_string                      window_name                     = system_hashed_ansi_string_create("Test window");
     ogl_rendering_handler                                window_rendering_handler        = NULL;
-    const uint32_t                                       window_target_fps               = 0xFFFFFFFF;
     const uint32_t                                       window_resolution[]             = { 320, 240 };
 
+    window_create_info.resolution[0] = 320;
+    window_create_info.resolution[1] = 240;
+    window_create_info.target_rate   = ~0;
+
     window = demo_app_create_window(window_name,
+                                    window_create_info,
                                     RAL_BACKEND_TYPE_GL,
                                     false /* use_timeline */);
-
-    demo_window_set_property(window,
-                             DEMO_WINDOW_PROPERTY_TARGET_FRAME_RATE,
-                            &window_target_fps);
-    demo_window_show(window);
 
     demo_window_get_property(window,
                              DEMO_WINDOW_PROPERTY_RENDERING_HANDLER,
@@ -218,9 +217,8 @@ TEST(WindowTest, TimelineTest_ShouldRenderFourDifferentlyColoredScreensWithDiffe
     bool                            result                    =  false;
     demo_window                     window                    =  NULL;
     ral_context                     window_context            =  NULL;
+    demo_window_create_info         window_create_info;
     const system_hashed_ansi_string window_name               = system_hashed_ansi_string_create("Test window");
-    const uint32_t                  window_resolution[]       = { 320, 240 };
-    const uint32_t                  window_target_fps         = ~0;
     demo_timeline                   window_timeline           =  NULL;
     ogl_pipeline                    window_timeline_pipeline  =  NULL;
 
@@ -234,17 +232,13 @@ TEST(WindowTest, TimelineTest_ShouldRenderFourDifferentlyColoredScreensWithDiffe
     demo_timeline_segment_node_id frame_3_ps_vs_node_id            = -1;
     demo_timeline_segment_node_id frame_3_vs_pass_renderer_node_id = -1;
 
+    window_create_info.resolution[0] = 320;
+    window_create_info.resolution[1] = 240;
+    window_create_info.target_rate   = ~0;
+
     window = demo_app_create_window(window_name,
+                                    window_create_info,
                                     RAL_BACKEND_TYPE_GL);
-
-    demo_window_set_property(window,
-                             DEMO_WINDOW_PROPERTY_RESOLUTION,
-                             window_resolution);
-    demo_window_set_property(window,
-                             DEMO_WINDOW_PROPERTY_TARGET_FRAME_RATE,
-                            &window_target_fps);
-
-    ASSERT_TRUE(demo_window_show(window) );
 
     /* Retrieve the timeline instance. Define three video segments, each clearing the color buffer with a different color. */
     demo_window_get_property(window,

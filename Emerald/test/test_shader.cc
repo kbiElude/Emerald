@@ -129,30 +129,21 @@ static void _on_render_frame_creation_test_callback(ogl_context context,
 TEST(ShaderTest, CreationTest)
 {
     /* Create the window */
-    ral_shader                      test_shader              = NULL;
-    demo_window                     window                   = NULL;
-    ral_context                     window_context           = NULL;
-    const system_hashed_ansi_string window_name              = system_hashed_ansi_string_create("Test window");
-    const uint32_t                  window_resolution[]      = {320, 240};
-    const uint32_t                  window_target_frame_rate = ~0;
-    const bool                      window_visible           = false;
+    ral_shader                      test_shader         = NULL;
+    demo_window                     window              = NULL;
+    ral_context                     window_context      = NULL;
+    demo_window_create_info         window_create_info;
+    const system_hashed_ansi_string window_name         = system_hashed_ansi_string_create("Test window");
+
+    window_create_info.resolution[0] = 320;
+    window_create_info.resolution[1] = 240;
+    window_create_info.target_rate   = ~0;
+    window_create_info.visible       = false;
 
     ASSERT_NE( (window = demo_app_create_window(window_name,
+                                                window_create_info,
                                                 RAL_BACKEND_TYPE_GL)),
                (demo_window) NULL);
-
-    demo_window_set_property(window,
-                             DEMO_WINDOW_PROPERTY_RESOLUTION,
-                             window_resolution);
-    demo_window_set_property(window,
-                             DEMO_WINDOW_PROPERTY_TARGET_FRAME_RATE,
-                            &window_target_frame_rate);
-    demo_window_set_property(window,
-                             DEMO_WINDOW_PROPERTY_VISIBLE,
-                            &window_visible);
-
-    /* Show the window */
-    ASSERT_TRUE(demo_window_show(window) );
 
     /* Create the test shader */
     const system_hashed_ansi_string shader_body_has    = system_hashed_ansi_string_create("void main()\n"
@@ -200,23 +191,18 @@ TEST(ShaderTest, FullViewportTriangleTest)
     demo_window                     window                   = NULL;
     ral_context                     window_context           = NULL;
     ral_texture_format              window_context_texture_format;
+    demo_window_create_info         window_create_info;
     const system_hashed_ansi_string window_name              = system_hashed_ansi_string_create("Test window");
     ogl_rendering_handler           window_rendering_handler = NULL;
-    const uint32_t                  window_resolution[]      = {320, 240};
-    const uint32_t                  window_target_frame_rate = ~0;
+
+    window_create_info.resolution[0] = 320;
+    window_create_info.resolution[1] = 240;
+    window_create_info.target_rate   = ~0;
 
     window = demo_app_create_window(window_name,
+                                    window_create_info,
                                     RAL_BACKEND_TYPE_GL,
                                     false /* use_timeline */);
-
-    demo_window_set_property(window,
-                             DEMO_WINDOW_PROPERTY_RESOLUTION,
-                             window_resolution);
-    demo_window_set_property(window,
-                             DEMO_WINDOW_PROPERTY_TARGET_FRAME_RATE,
-                            &window_target_frame_rate);
-
-    ASSERT_TRUE(demo_window_show(window) );
 
     demo_window_get_property(window,
                              DEMO_WINDOW_PROPERTY_RENDERING_CONTEXT,

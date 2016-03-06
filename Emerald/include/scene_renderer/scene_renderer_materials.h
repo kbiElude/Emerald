@@ -46,9 +46,9 @@ typedef enum
 
 /** TODO.
  *
- *  This function is not exported.
+ *  Internal usage only. This function should ONLY be used by demo_app.
  **/
-PUBLIC scene_renderer_materials scene_renderer_materials_create(ral_context context);
+PUBLIC scene_renderer_materials scene_renderer_materials_create();
 
 /** TODO */
 PUBLIC EMERALD_API void scene_renderer_materials_force_mesh_material_shading_property_attachment(scene_renderer_materials          materials,
@@ -58,6 +58,7 @@ PUBLIC EMERALD_API void scene_renderer_materials_force_mesh_material_shading_pro
 
 /** TODO */
 PUBLIC mesh_material scene_renderer_materials_get_special_material(scene_renderer_materials                  materials,
+                                                                   ral_context                               context,
                                                                    scene_renderer_materials_special_material material_type);
 
 /** TODO.

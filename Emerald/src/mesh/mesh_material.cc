@@ -5,6 +5,7 @@
  */
 #include "shared.h"
 #include "curve/curve_container.h"
+#include "demo/demo_app.h"
 #include "mesh/mesh_material.h"
 #include "ogl/ogl_context.h"
 #include "ral/ral_context.h"
@@ -1330,13 +1331,8 @@ PUBLIC EMERALD_API scene_renderer_uber mesh_material_get_uber(mesh_material mate
         ogl_context              backend_context = NULL;
         scene_renderer_materials materials       = NULL;
 
-        ral_context_get_property(material_ptr->context,
-                                 RAL_CONTEXT_PROPERTY_BACKEND_CONTEXT,
-                                &backend_context);
-
-        ogl_context_get_property(backend_context,
-                                 OGL_CONTEXT_PROPERTY_MATERIALS,
-                                &materials);
+        demo_app_get_property(DEMO_APP_PROPERTY_MATERIAL_MANAGER,
+                             &materials);
 
         LOG_INFO("Material is dirty - baking..");
 
@@ -1398,6 +1394,13 @@ PUBLIC EMERALD_API void mesh_material_get_property(mesh_material          materi
         case MESH_MATERIAL_PROPERTY_CALLBACK_MANAGER:
         {
             *(system_callback_manager*) out_result = material_ptr->callback_manager;
+
+            break;
+        }
+
+        case MESH_MATERIAL_PROPERTY_CONTEXT:
+        {
+            *(ral_context*) out_result = material_ptr->context;
 
             break;
         }

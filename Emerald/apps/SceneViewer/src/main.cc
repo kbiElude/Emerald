@@ -358,6 +358,7 @@ void _rendering_window_closing_callback_handler(system_window window,
 {
     PFNOGLRENDERINGHANDLERRENDERINGCALLBACK pfn_callback_proc  = _rendering_handler_callback;
     ogl_rendering_handler                   rendering_handler  = NULL;
+    demo_window_create_info                 window_create_info;
     const system_hashed_ansi_string         window_name        = system_hashed_ansi_string_create("Scene viewer");
     int                                     window_x1y1x2y2[4] = {0};
 
@@ -386,30 +387,23 @@ void _rendering_window_closing_callback_handler(system_window window,
 
     /* Carry on */
     system_screen_mode screen_mode = NULL;
-    uint32_t           window_size[2];
 
     system_screen_mode_get         (0,
                                    &screen_mode);
     system_screen_mode_get_property(screen_mode,
                                     SYSTEM_SCREEN_MODE_PROPERTY_WIDTH,
-                                    window_size + 0);
+                                    window_create_info.resolution + 0);
     system_screen_mode_get_property(screen_mode,
                                     SYSTEM_SCREEN_MODE_PROPERTY_HEIGHT,
-                                    window_size + 1);
+                                    window_create_info.resolution + 1);
 
-    window_size[0] /= 2;
-    window_size[1] /= 2;
-
+    window_create_info.resolution[0] /= 2;
+    window_create_info.resolution[1] /= 2;
 
    _window = demo_app_create_window(window_name,
-                                     RAL_BACKEND_TYPE_GL,
-                                     false /* use_timeline */);
-
-    demo_window_set_property(_window,
-                             DEMO_WINDOW_PROPERTY_RESOLUTION,
-                             window_size);
-
-    demo_window_show(_window);
+                                    window_create_info,
+                                    RAL_BACKEND_TYPE_GL,
+                                    false /* use_timeline */);
 
     demo_window_get_property(_window,
                              DEMO_WINDOW_PROPERTY_RENDERING_CONTEXT,

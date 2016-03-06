@@ -7,25 +7,45 @@
 #include "demo/demo_app.h"
 #include "demo/demo_window.h"
 #include "main.h"
+#include "scene_renderer/scene_renderer_materials.h"
+#include "system/system_callback_manager.h"
 #include "system/system_critical_section.h"
 #include "system/system_hash64map.h"
 
 
 typedef struct _demo_app
 {
-    system_critical_section cs;
-    system_hash64map        window_name_to_window_map;
+    system_callback_manager  callback_manager;
+    system_critical_section  cs;
+    scene_renderer_materials materials;
+    system_hash64map         window_name_to_window_map;
 
     _demo_app()
     {
-        cs                        = system_critical_section_create();
-        window_name_to_window_map = system_hash64map_create       (sizeof(demo_window) );
+        callback_manager          = system_callback_manager_create ((_callback_id) DEMO_APP_CALLBACK_ID_COUNT);
+        cs                        = system_critical_section_create ();
+        materials                 = scene_renderer_materials_create();
+        window_name_to_window_map = system_hash64map_create        (sizeof(demo_window) );
     }
 
     void close()
     {
         system_critical_section_enter(cs);
         {
+            if (callback_manager != NULL)
+            {
+                system_callback_manager_release(callback_manager);
+
+                callback_manager = NULL;
+            }
+
+            if (materials != NULL)
+            {
+                scene_renderer_materials_release(materials);
+
+                materials = NULL;
+            }
+
             if (window_name_to_window_map != NULL)
             {
                 demo_window   dangling_window           = NULL;
@@ -70,9 +90,10 @@ PUBLIC EMERALD_API void demo_app_close()
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API demo_window demo_app_create_window(system_hashed_ansi_string window_name,
-                                                      ral_backend_type          backend_type,
-                                                      bool                      use_timeline)
+PUBLIC EMERALD_API demo_window demo_app_create_window(system_hashed_ansi_string      window_name,
+                                                      const demo_window_create_info& create_info,
+                                                      ral_backend_type               backend_type,
+                                                      bool                           use_timeline)
 {
     demo_window   result           = NULL;
     system_hash64 window_name_hash = 0;
@@ -89,6 +110,7 @@ PUBLIC EMERALD_API demo_window demo_app_create_window(system_hashed_ansi_string 
 
     /* Spawn a new window instance */
     result = demo_window_create(window_name,
+                                create_info,
                                 backend_type,
                                 use_timeline);
 
@@ -116,6 +138,10 @@ PUBLIC EMERALD_API demo_window demo_app_create_window(system_hashed_ansi_string 
                                 NULL); /* on_removal_callback_user_arg */
     }
     system_critical_section_leave(app.cs);
+
+    system_callback_manager_call_back(app.callback_manager,
+                                      DEMO_APP_CALLBACK_ID_WINDOW_CREATED,
+                                      result);
 
 end:
     return result;
@@ -159,6 +185,11 @@ PUBLIC EMERALD_API bool demo_app_destroy_window(system_hashed_ansi_string window
     }
     system_critical_section_leave(app.cs);
 
+    /* Notify subscribers about the event */
+    system_callback_manager_call_back(app.callback_manager,
+                                      DEMO_APP_CALLBACK_ID_WINDOW_ABOUT_TO_BE_DESTROYED,
+                                      window);
+
     /* Deallocate the retrieved window */
     demo_window_release(window);
 
@@ -166,6 +197,43 @@ PUBLIC EMERALD_API bool demo_app_destroy_window(system_hashed_ansi_string window
     result = true;
 end:
     return result;
+}
+
+/** Please see header for specification */
+PUBLIC EMERALD_API void demo_app_get_property(demo_app_property property,
+                                              void*             out_result_ptr)
+{
+    switch (property)
+    {
+        case DEMO_APP_PROPERTY_CALLBACK_MANAGER:
+        {
+            *(system_callback_manager*) out_result_ptr = app.callback_manager;
+
+            break;
+        }
+
+        case DEMO_APP_PROPERTY_MATERIAL_MANAGER:
+        {
+            *(scene_renderer_materials*) out_result_ptr = app.materials;
+
+            break;
+        }
+
+        case DEMO_APP_PROPERTY_N_WINDOWS:
+        {
+            system_hash64map_get_property(app.window_name_to_window_map,
+                                          SYSTEM_HASH64MAP_PROPERTY_N_ELEMENTS,
+                                          out_result_ptr);
+
+            break;
+        }
+
+        default:
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Unrecognized demo_app_property value.");
+        }
+    }
 }
 
 /** Please see header for specification */

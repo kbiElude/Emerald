@@ -173,6 +173,10 @@ PRIVATE void _scene_renderer_bbox_preview_init_preview_program(_scene_renderer_b
     system_hashed_ansi_string scene_name = NULL;
     ral_shader                vs         = NULL;
 
+    scene_get_property(preview_ptr->owned_scene,
+                       SCENE_PROPERTY_NAME,
+                      &scene_name);
+
 
     const ral_shader_create_info fs_create_info =
     {
@@ -210,10 +214,6 @@ PRIVATE void _scene_renderer_bbox_preview_init_preview_program(_scene_renderer_b
     const uint32_t n_shader_create_info_items = sizeof(shader_create_info_items) / sizeof(shader_create_info_items[0]);
     ral_shader     result_shaders[n_shader_create_info_items];
 
-
-    scene_get_property(preview_ptr->owned_scene,
-                       SCENE_PROPERTY_NAME,
-                      &scene_name);
 
     if (!ral_context_create_programs(preview_ptr->context,
                                      1, /* n_create_info_items */

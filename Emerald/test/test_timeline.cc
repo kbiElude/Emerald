@@ -26,20 +26,17 @@ TEST(TimelineTest, FunctionalTest)
     const system_time         time_14s          = system_time_get_time_for_s(14);
     demo_timeline             timeline          = NULL;
     demo_window               window            = NULL;
-    uint32_t                  window_target_fps = ~0;
+    demo_window_create_info   window_create_info;
     system_hashed_ansi_string window_name       = system_hashed_ansi_string_create("Test window");
 
+    window_create_info.target_rate = ~0;
+
     window = demo_app_create_window(window_name,
+                                    window_create_info,
                                     RAL_BACKEND_TYPE_GL);
 
     ASSERT_NE(window,
               (demo_window) NULL);
-
-    demo_window_set_property(window,
-                             DEMO_WINDOW_PROPERTY_TARGET_FRAME_RATE,
-                            &window_target_fps);
-
-    ASSERT_TRUE(demo_window_show(window) );
 
     demo_window_get_property(window,
                              DEMO_WINDOW_PROPERTY_TIMELINE,

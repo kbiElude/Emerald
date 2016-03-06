@@ -50,6 +50,12 @@ typedef enum
     /* not settable, system_callback_manager */
     MESH_MATERIAL_PROPERTY_CALLBACK_MANAGER,
 
+    /* not settable, ral_context
+     *
+     * Tells what RAL context was used to instantiate the instance.
+     **/
+    MESH_MATERIAL_PROPERTY_CONTEXT,
+
     /* not settable, system_hashed_ansi_string */
     MESH_MATERIAL_PROPERTY_NAME,
 

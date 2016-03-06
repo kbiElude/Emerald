@@ -21,7 +21,6 @@
 #include "ral/ral_framebuffer.h"
 #include "ral/ral_texture.h"
 #include "ral/ral_utils.h"
-#include "scene_renderer/scene_renderer_materials.h"
 #include "scene_renderer/scene_renderer_sm.h"
 #include "system/system_assertions.h"
 #include "system/system_critical_section.h"
@@ -132,7 +131,6 @@ typedef struct
     ral_context   context;
 
     ogl_context_bo_bindings         bo_bindings;
-    scene_renderer_materials        materials;
     varia_primitive_renderer        primitive_renderer;
     ogl_context_sampler_bindings    sampler_bindings;
     scene_renderer_sm               shadow_mapping;
@@ -951,7 +949,6 @@ PRIVATE void _ogl_context_init_context_after_creation(ogl_context context)
     context_ptr->is_intel_driver                            = false; /* determined later */
     context_ptr->is_nv_driver                               = false; /* determined later */
     context_ptr->primitive_renderer                         = NULL;
-    context_ptr->materials                                  = NULL; /* deferred till first query time */
     context_ptr->multisampling_samples                      = 0;
     context_ptr->sampler_bindings                           = NULL;
     context_ptr->state_cache                                = NULL;
@@ -3452,19 +3449,6 @@ PUBLIC EMERALD_API void ogl_context_get_property(ogl_context          context,
             break;
         }
 
-        case OGL_CONTEXT_PROPERTY_MATERIALS:
-        {
-            /* If there's no material manager available, create one now */
-            if (context_ptr->materials == NULL)
-            {
-                context_ptr->materials = scene_renderer_materials_create(context_ptr->context);
-            }
-
-            *((scene_renderer_materials*) out_result) = context_ptr->materials;
-
-            break;
-        }
-
         case OGL_CONTEXT_PROPERTY_PIXEL_FORMAT:
         {
             *(system_pixel_format*) out_result = context_ptr->pfd;
@@ -3652,13 +3636,6 @@ PUBLIC EMERALD_API bool ogl_context_is_extension_supported(ogl_context          
 PUBLIC bool ogl_context_release_managers(ogl_context context)
 {
     _ogl_context* context_ptr = (_ogl_context*) context;
-
-    if (context_ptr->materials != NULL)
-    {
-        scene_renderer_materials_release(context_ptr->materials);
-
-        context_ptr->materials = NULL;
-    }
 
     if (context_ptr->primitive_renderer != NULL)
     {

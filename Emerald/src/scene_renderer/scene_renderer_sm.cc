@@ -1,10 +1,11 @@
 /**
  *
- * Emerald (kbi/elude @2015)
+ * Emerald (kbi/elude @2015-2016)
  *
  */
 #include "shared.h"
 #include "curve/curve_container.h"
+#include "demo/demo_app.h"
 #include "glsl/glsl_shader_constructor.h"
 #include "mesh/mesh.h"
 #include "ogl/ogl_context.h"
@@ -2729,9 +2730,8 @@ PUBLIC void scene_renderer_sm_render_shadow_map_meshes(scene_renderer_sm shadow_
     scene_renderer_materials materials          = NULL;
     _scene_renderer_sm*      shadow_mapping_ptr = (_scene_renderer_sm*) shadow_mapping;
 
-    ogl_context_get_property(ral_context_get_gl_context(shadow_mapping_ptr->context),
-                             OGL_CONTEXT_PROPERTY_MATERIALS,
-                            &materials);
+    demo_app_get_property(DEMO_APP_PROPERTY_MATERIAL_MANAGER,
+                         &materials);
 
     /* Retrieve the material and associated uber, which
      * should be used for the rendering process. */
@@ -2774,6 +2774,7 @@ PUBLIC void scene_renderer_sm_render_shadow_map_meshes(scene_renderer_sm shadow_
     }
 
     mesh_material       sm_material      = scene_renderer_materials_get_special_material(materials,
+                                                                                         shadow_mapping_ptr->context,
                                                                                          sm_special_material);
     scene_renderer_uber sm_material_uber = mesh_material_get_uber                       (sm_material,
                                                                                          scene,
