@@ -407,7 +407,7 @@ end:
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API varia_curve_renderer varia_curve_renderer_create(ogl_context               context,
+PUBLIC EMERALD_API varia_curve_renderer varia_curve_renderer_create(ral_context               context,
                                                                     system_hashed_ansi_string name)
 {
     _varia_curve_renderer* new_instance = new (std::nothrow) _varia_curve_renderer;
@@ -417,15 +417,12 @@ PUBLIC EMERALD_API varia_curve_renderer varia_curve_renderer_create(ogl_context 
 
     if (new_instance != NULL)
     {
-        ogl_context_get_property(context,
-                                 OGL_CONTEXT_PROPERTY_PRIMITIVE_RENDERER,
-                                &new_instance->primitive_renderer);
-
-        varia_primitive_renderer_retain(new_instance->primitive_renderer);
-
         new_instance->conversion_array_items   = NULL;
         new_instance->items                    = system_resizable_vector_create(4 /* capacity */);
         new_instance->n_conversion_array_items = 0;
+        new_instance->primitive_renderer       = varia_primitive_renderer_create(context,
+                                                                                 system_hashed_ansi_string_create_by_merging_two_strings("Prim renderer for ",
+                                                                                                                                         system_hashed_ansi_string_get_buffer(name) ));
 
         REFCOUNT_INSERT_INIT_CODE_WITH_RELEASE_HANDLER(new_instance,
                                                        _varia_curve_renderer_release,

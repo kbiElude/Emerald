@@ -34,7 +34,6 @@
 #include "system/system_resizable_vector.h"
 #include "system/system_resources.h"
 #include "system/system_window.h"
-#include "varia/varia_primitive_renderer.h"
 #include "varia/varia_text_renderer.h"
 #include <string.h>
 
@@ -131,7 +130,6 @@ typedef struct
     ral_context   context;
 
     ogl_context_bo_bindings         bo_bindings;
-    varia_primitive_renderer        primitive_renderer;
     ogl_context_sampler_bindings    sampler_bindings;
     ogl_context_state_cache         state_cache;
     varia_text_renderer             text_renderer;
@@ -947,7 +945,6 @@ PRIVATE void _ogl_context_init_context_after_creation(ogl_context context)
     context_ptr->gl_ext_texture_filter_anisotropic_support  = false;
     context_ptr->is_intel_driver                            = false; /* determined later */
     context_ptr->is_nv_driver                               = false; /* determined later */
-    context_ptr->primitive_renderer                         = NULL;
     context_ptr->multisampling_samples                      = 0;
     context_ptr->sampler_bindings                           = NULL;
     context_ptr->state_cache                                = NULL;
@@ -3461,20 +3458,6 @@ PUBLIC EMERALD_API void ogl_context_get_property(ogl_context          context,
             break;
         }
 
-        case OGL_CONTEXT_PROPERTY_PRIMITIVE_RENDERER:
-        {
-            /* If there's no primitive renderer, create one now */
-            if (context_ptr->primitive_renderer == NULL)
-            {
-                context_ptr->primitive_renderer = varia_primitive_renderer_create(context_ptr->context,
-                                                                                  system_hashed_ansi_string_create("Context primitive renderer") );
-            }
-
-            *((varia_primitive_renderer*) out_result) = context_ptr->primitive_renderer;
-
-            break;
-        }
-
         case OGL_CONTEXT_PROPERTY_SAMPLER_BINDINGS:
         {
             *((ogl_context_sampler_bindings*) out_result) = context_ptr->sampler_bindings;
@@ -3621,13 +3604,6 @@ PUBLIC EMERALD_API bool ogl_context_is_extension_supported(ogl_context          
 PUBLIC bool ogl_context_release_managers(ogl_context context)
 {
     _ogl_context* context_ptr = (_ogl_context*) context;
-
-    if (context_ptr->primitive_renderer != NULL)
-    {
-        varia_primitive_renderer_release(context_ptr->primitive_renderer);
-
-        context_ptr->primitive_renderer = NULL;
-    }
 
     if (context_ptr->text_renderer != NULL)
     {

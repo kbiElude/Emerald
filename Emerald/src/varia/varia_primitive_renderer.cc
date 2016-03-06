@@ -2,6 +2,7 @@
  *
  * Emerald (kbi/elude @2014-2015)
  *
+ * TODO: For RAL integration, this will require significant overhaul.
  */
 #include "shared.h"
 #include "ogl/ogl_context.h"
@@ -271,10 +272,7 @@ PRIVATE void _varia_primitive_renderer_draw_rendering_thread_callback(ogl_contex
 /** TODO */
 PRIVATE void _varia_primitive_renderer_init_program(_varia_primitive_renderer* renderer_ptr)
 {
-    /* Prepare the vertex shader body.
-     *
-     * NOTE: There used to be a #define here, which is why the break-down.
-     */
+    /* Prepare the vertex shader body. */
     const char* vs_parts[] =
     {
         vs_preamble,
@@ -313,63 +311,65 @@ PRIVATE void _varia_primitive_renderer_init_program(_varia_primitive_renderer* r
     };
     const uint32_t n_shader_create_info_items = sizeof(shader_create_info_items) / sizeof(shader_create_info_items[0]);
 
-    ral_shader result_shaders[n_shader_create_info_items];
+    ral_shader result_shaders[n_shader_create_info_items] = {NULL};
 
-
-    if (!ral_context_create_shaders(renderer_ptr->context,
-                                    n_shader_create_info_items,
-                                    shader_create_info_items,
-                                    result_shaders) )
+    if ( (renderer_ptr->program = ral_context_get_program_by_name(renderer_ptr->context,
+                                                                  program_create_info.name) ) == NULL)
     {
-        ASSERT_DEBUG_SYNC(false,
-                          "RAL shader creation failed.");
+        if (!ral_context_create_shaders(renderer_ptr->context,
+                                        n_shader_create_info_items,
+                                        shader_create_info_items,
+                                        result_shaders) )
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "RAL shader creation failed.");
+        }
+
+        fs = result_shaders[0];
+        vs = result_shaders[1];
+
+        if (!ral_context_create_programs(renderer_ptr->context,
+                                         1, /* n_create_info_items */
+                                         &program_create_info,
+                                        &renderer_ptr->program) )
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "RAL program creation failed.");
+        }
+
+        const system_hashed_ansi_string fs_body_has = system_hashed_ansi_string_create                   (fs_body);
+        const system_hashed_ansi_string vs_body_has = system_hashed_ansi_string_create_by_merging_strings(n_vs_parts,
+                                                                                                          vs_parts);
+
+        ral_shader_set_property(fs,
+                                RAL_SHADER_PROPERTY_GLSL_BODY,
+                               &fs_body_has);
+        ral_shader_set_property(vs,
+                                RAL_SHADER_PROPERTY_GLSL_BODY,
+                               &vs_body_has);
+
+        if (!ral_program_attach_shader(renderer_ptr->program,
+                                       fs) ||
+            !ral_program_attach_shader(renderer_ptr->program,
+                                       vs) )
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "RAL program configuration failed.");
+        }
+
+        /* Good to release the shaders at this point */
+        const ral_shader shaders_to_release[] =
+        {
+            fs,
+            vs
+        };
+        const uint32_t n_shaders_to_release = sizeof(shaders_to_release) / sizeof(shaders_to_release[0]);
+
+        ral_context_delete_objects(renderer_ptr->context,
+                                   RAL_CONTEXT_OBJECT_TYPE_SHADER,
+                                   n_shaders_to_release,
+                                   (const void**) shaders_to_release);
     }
-
-    fs = result_shaders[0];
-    vs = result_shaders[1];
-
-    if (!ral_context_create_programs(renderer_ptr->context,
-                                     1, /* n_create_info_items */
-                                     &program_create_info,
-                                    &renderer_ptr->program) )
-    {
-        ASSERT_DEBUG_SYNC(false,
-                          "RAL program creation failed.");
-    }
-
-
-    const system_hashed_ansi_string fs_body_has = system_hashed_ansi_string_create                   (fs_body);
-    const system_hashed_ansi_string vs_body_has = system_hashed_ansi_string_create_by_merging_strings(n_vs_parts,
-                                                                                                      vs_parts);
-
-    ral_shader_set_property(fs,
-                            RAL_SHADER_PROPERTY_GLSL_BODY,
-                           &fs_body_has);
-    ral_shader_set_property(vs,
-                            RAL_SHADER_PROPERTY_GLSL_BODY,
-                           &vs_body_has);
-
-    if (!ral_program_attach_shader(renderer_ptr->program,
-                                   fs) ||
-        !ral_program_attach_shader(renderer_ptr->program,
-                                   vs) )
-    {
-        ASSERT_DEBUG_SYNC(false,
-                          "RAL program configuration failed.");
-    }
-
-    /* Good to release the shaders at this point */
-    const ral_shader shaders_to_release[] =
-    {
-        fs,
-        vs
-    };
-    const uint32_t n_shaders_to_release = sizeof(shaders_to_release) / sizeof(shaders_to_release[0]);
-
-    ral_context_delete_objects(renderer_ptr->context,
-                               RAL_CONTEXT_OBJECT_TYPE_SHADER,
-                               n_shaders_to_release,
-                               (const void**) shaders_to_release);
 }
 
 /** TODO */

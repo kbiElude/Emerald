@@ -35,6 +35,9 @@ typedef enum
     /* not settable; scene_renderer_materials */
     DEMO_APP_PROPERTY_MATERIAL_MANAGER,
 
+    /* not settable; varia_primitive_renderer */
+    DEMO_APP_PROPERTY_PRIMITIVE_RENDERER,
+
     /* not settable; uint32_t */
     DEMO_APP_PROPERTY_N_WINDOWS
 } demo_app_property;

@@ -502,7 +502,7 @@ PUBLIC bool state_init(system_hashed_ansi_string scene_filename)
                                &scene_rendering_stage_step);
 
     /* Spawn curve renderer */
-    _curve_renderer = varia_curve_renderer_create(ral_context_get_gl_context(_context),
+    _curve_renderer = varia_curve_renderer_create(_context,
                                                   system_hashed_ansi_string_create("Curve renderer") );
 
 end:

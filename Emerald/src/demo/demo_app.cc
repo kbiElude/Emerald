@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2015)
+ * Emerald (kbi/elude @2015-2016)
  *
  */
 #include "shared.h"
@@ -11,6 +11,7 @@
 #include "system/system_callback_manager.h"
 #include "system/system_critical_section.h"
 #include "system/system_hash64map.h"
+#include "varia/varia_primitive_renderer.h"
 
 
 typedef struct _demo_app
@@ -19,6 +20,7 @@ typedef struct _demo_app
     system_critical_section  cs;
     scene_renderer_materials materials;
     system_hash64map         window_name_to_window_map;
+    varia_primitive_renderer primitive_renderer;
 
     _demo_app()
     {

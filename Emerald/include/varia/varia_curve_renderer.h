@@ -25,7 +25,7 @@ PUBLIC EMERALD_API varia_curve_item_id varia_curve_renderer_add_scene_graph_node
                                                                                        float              view_vector_length);
 
 /** TODO */
-PUBLIC EMERALD_API varia_curve_renderer varia_curve_renderer_create(ogl_context               context,
+PUBLIC EMERALD_API varia_curve_renderer varia_curve_renderer_create(ral_context               context,
                                                                     system_hashed_ansi_string name);
 
 /** TODO */
