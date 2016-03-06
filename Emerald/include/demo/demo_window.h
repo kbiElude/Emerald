@@ -153,11 +153,6 @@ PUBLIC EMERALD_API void demo_window_get_property(const demo_window    window,
  **/
 PUBLIC void demo_window_release(demo_window window);
 
-/** TODO */
-PUBLIC EMERALD_API void demo_window_set_property(demo_window          window,
-                                                 demo_window_property property,
-                                                 const void*          data);
-
 /** TODO
  *
  **/
