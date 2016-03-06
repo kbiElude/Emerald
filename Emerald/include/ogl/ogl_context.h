@@ -151,7 +151,7 @@ typedef enum ogl_context_property
     /* nots ettable, bool */
     OGL_CONTEXT_PROPERTY_SUPPORT_GL_EXT_TEXTURE_FILTER_ANISOTROPIC,
 
-    /* not settable, ogl_text_renderer. */
+    /* not settable, varia_text_renderer. */
     OGL_CONTEXT_PROPERTY_TEXT_RENDERER,
 
     /* not settable, ogl_context_texture_compression */

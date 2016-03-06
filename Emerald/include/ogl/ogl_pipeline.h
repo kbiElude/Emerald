@@ -10,6 +10,7 @@
 #include "ral/ral_types.h"
 #include "system/system_types.h"
 #include "ui/ui_types.h"
+#include "varia/varia_types.h"
 
 REFCOUNT_INSERT_DECLARATIONS(ogl_pipeline,
                              ogl_pipeline)
@@ -69,7 +70,7 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API bool ogl_pipeline_draw_stage(ogl_pipel
 PUBLIC EMERALD_API ral_context ogl_pipeline_get_context(ogl_pipeline instance);
 
 /** INTERNAL USE ONLY. TODO. */
-PUBLIC ogl_text ogl_pipeline_get_text_renderer(ogl_pipeline instance);
+PUBLIC varia_text_renderer ogl_pipeline_get_text_renderer(ogl_pipeline instance);
 
 /** TODO */
 PUBLIC EMERALD_API ui ogl_pipeline_get_ui(ogl_pipeline instance);

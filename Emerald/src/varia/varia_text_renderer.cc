@@ -19,7 +19,6 @@
 #include "gfx/gfx_bfg_font_table.h"
 #include "ogl/ogl_context.h"
 #include "ogl/ogl_rendering_handler.h"
-#include "ogl/ogl_text.h"
 #include "raGL/raGL_buffer.h"
 #include "raGL/raGL_program.h"
 #include "raGL/raGL_shader.h"
@@ -36,6 +35,7 @@
 #include "system/system_log.h"
 #include "system/system_math_other.h"
 #include "system/system_resizable_vector.h"
+#include "varia/varia_text_renderer.h"
 #include <map>
 
 #define DEFAULT_COLOR_R (1)
@@ -106,7 +106,7 @@ typedef struct
     PFNGLUSEPROGRAMPROC            pGLUseProgram;
 
     REFCOUNT_INSERT_VARIABLES
-} _ogl_text;
+} _varia_text_renderer;
 
 typedef struct
 {
@@ -121,7 +121,7 @@ typedef struct
     unsigned int   string_length;
     unsigned int   width_px;
 
-} _ogl_text_string;
+} _varia_text_renderer_text_string;
 
 typedef struct _global_per_context_variables
 {
@@ -159,9 +159,9 @@ typedef struct
 } _global_variables;
 
 /** Reference counter impl */
-REFCOUNT_INSERT_IMPLEMENTATION(ogl_text,
-                               ogl_text,
-                              _ogl_text);
+REFCOUNT_INSERT_IMPLEMENTATION(varia_text_renderer,
+                               varia_text_renderer,
+                              _varia_text_renderer);
 
 
 /* Private definitions */
@@ -248,28 +248,28 @@ const char* vertex_shader_template = "#ifdef GL_ES\n"
 
 
 /* Private forward declarations */
-PRIVATE void _ogl_text_construction_callback_from_renderer        (ogl_context context,
-                                                                   void*       text);
-PRIVATE void _ogl_text_create_font_table_to_callback_from_renderer(ogl_context context,
-                                                                   void*       text);
-PRIVATE void _ogl_text_destruction_callback_from_renderer         (ogl_context context,
-                                                                   void*       text);
-PRIVATE void _ogl_text_draw_callback_from_renderer                (ogl_context context,
-                                                                   void*       text);
-PRIVATE void _ogl_text_release                                    (void*       text);
-PRIVATE void _ogl_text_update_vram_data_storage                   (ogl_context context,
-                                                                   void*       text);
+PRIVATE void _varia_text_renderer_construction_callback_from_renderer        (ogl_context context,
+                                                                              void*       text);
+PRIVATE void _varia_text_renderer_create_font_table_to_callback_from_renderer(ogl_context context,
+                                                                              void*       text);
+PRIVATE void _varia_text_renderer_destruction_callback_from_renderer         (ogl_context context,
+                                                                              void*       text);
+PRIVATE void _varia_text_renderer_draw_callback_from_renderer                (ogl_context context,
+                                                                              void*       text);
+PRIVATE void _varia_text_renderer_release                                    (void*       text);
+PRIVATE void _varia_text_renderer_update_vram_data_storage                   (ogl_context context,
+                                                                              void*       text);
 
 /* Private functions */
 
 /** Please see header for specification */
-PRIVATE void _ogl_text_release(void* text)
+PRIVATE void _varia_text_renderer_release(void* text)
 {
-    _ogl_text* text_ptr = (_ogl_text*) text;
+    _varia_text_renderer* text_ptr = (_varia_text_renderer*) text;
 
     /* First we need to call-back from the rendering thread, in order to free resources owned by GL */
     ogl_context_request_callback_from_context_thread(ral_context_get_gl_context(text_ptr->owner_context),
-                                                     _ogl_text_destruction_callback_from_renderer,
+                                                     _varia_text_renderer_destruction_callback_from_renderer,
                                                      text);
 
     /* Release other stuff */
@@ -296,11 +296,11 @@ PRIVATE void _ogl_text_release(void* text)
 }
 
 /** TODO */
-PRIVATE void _ogl_text_update_vram_data_storage(ogl_context context,
-                                                void*       text)
+PRIVATE void _varia_text_renderer_update_vram_data_storage(ogl_context context,
+                                                           void*       text)
 {
-    ral_backend_type backend_type = RAL_BACKEND_TYPE_UNKNOWN;
-    _ogl_text*       text_ptr     = (_ogl_text*) text;
+    ral_backend_type      backend_type = RAL_BACKEND_TYPE_UNKNOWN;
+    _varia_text_renderer* text_ptr     = (_varia_text_renderer*) text;
 
     ral_context_get_property(text_ptr->context,
                              RAL_CONTEXT_PROPERTY_BACKEND_TYPE,
@@ -318,7 +318,7 @@ PRIVATE void _ogl_text_update_vram_data_storage(ogl_context context,
                 n_text_string < n_text_strings;
               ++n_text_string)
     {
-        _ogl_text_string* string_ptr = NULL;
+        _varia_text_renderer_text_string* string_ptr = NULL;
 
         if (system_resizable_vector_get_element_at(text_ptr->strings,
                                                    n_text_string,
@@ -391,7 +391,7 @@ PRIVATE void _ogl_text_update_vram_data_storage(ogl_context context,
                 n_text_string < n_text_strings;
               ++n_text_string)
     {
-        _ogl_text_string* string_ptr = NULL;
+        _varia_text_renderer_text_string* string_ptr = NULL;
 
         if (system_resizable_vector_get_element_at(text_ptr->strings,
                                                    n_text_string,
@@ -464,10 +464,10 @@ PRIVATE void _ogl_text_update_vram_data_storage(ogl_context context,
 }
 
 /** TODO */
-PRIVATE void _ogl_text_construction_callback_from_renderer(ogl_context context,
-                                                           void*       text)
+PRIVATE void _varia_text_renderer_construction_callback_from_renderer(ogl_context context,
+                                                                      void*       text)
 {
-    _ogl_text* text_ptr = (_ogl_text*) text;
+    _varia_text_renderer* text_ptr = (_varia_text_renderer*) text;
 
     if (context == NULL)
     {
@@ -711,11 +711,11 @@ PRIVATE void _ogl_text_construction_callback_from_renderer(ogl_context context,
 }
 
 /** Please see header for specification */
-PRIVATE void _ogl_text_create_font_table_to_callback_from_renderer(ogl_context context,
-                                                                   void*       text)
+PRIVATE void _varia_text_renderer_create_font_table_to_callback_from_renderer(ogl_context context,
+                                                                              void*       text)
 {
-    ral_backend_type backend_type = RAL_BACKEND_TYPE_UNKNOWN;
-    _ogl_text*       text_ptr     = (_ogl_text*) text;
+    ral_backend_type      backend_type = RAL_BACKEND_TYPE_UNKNOWN;
+    _varia_text_renderer* text_ptr     = (_varia_text_renderer*) text;
 
     ral_context_get_property(text_ptr->context,
                              RAL_CONTEXT_PROPERTY_BACKEND_TYPE,
@@ -796,10 +796,10 @@ PRIVATE void _ogl_text_create_font_table_to_callback_from_renderer(ogl_context c
 }
 
 /** Please see header for specification */
-PRIVATE void _ogl_text_destruction_callback_from_renderer(ogl_context context,
-                                                          void*       text)
+PRIVATE void _varia_text_renderer_destruction_callback_from_renderer(ogl_context context,
+                                                                     void*       text)
 {
-    _ogl_text* text_ptr = (_ogl_text*) text;
+    _varia_text_renderer* text_ptr = (_varia_text_renderer*) text;
 
     /* First, free all objects that are not global */
     if (text_ptr->data_buffer != NULL)
@@ -873,12 +873,12 @@ PRIVATE void _ogl_text_destruction_callback_from_renderer(ogl_context context,
 }
 
 /** Please see header for specification */
-PRIVATE void _ogl_text_draw_callback_from_renderer(ogl_context context,
-                                                   void*       text)
+PRIVATE void _varia_text_renderer_draw_callback_from_renderer(ogl_context context,
+                                                              void*       text)
 {
-    ral_backend_type backend_type = RAL_BACKEND_TYPE_UNKNOWN;
-    _ogl_text*       text_ptr     = (_ogl_text*) text;
-    uint32_t         n_strings    = 0;
+    ral_backend_type      backend_type = RAL_BACKEND_TYPE_UNKNOWN;
+    uint32_t              n_strings    = 0;
+    _varia_text_renderer* text_ptr     = (_varia_text_renderer*) text;
 
     const raGL_program program_raGL    = ral_context_get_program_gl(text_ptr->context,
                                                                     _global.draw_text_program);
@@ -900,8 +900,8 @@ PRIVATE void _ogl_text_draw_callback_from_renderer(ogl_context context,
         /* Update underlying helper data buffer contents - only if the "dirty flag" is on */
         if (text_ptr->dirty)
         {
-            _ogl_text_update_vram_data_storage(context,
-                                               text);
+            _varia_text_renderer_update_vram_data_storage(context,
+                                                          text);
 
             text_ptr->dirty = false;
         }
@@ -1034,7 +1034,7 @@ PRIVATE void _ogl_text_draw_callback_from_renderer(ogl_context context,
                                   n_string < n_strings;
                                 ++n_string)
                     {
-                        _ogl_text_string* string_ptr = NULL;
+                        _varia_text_renderer_text_string* string_ptr = NULL;
 
                         system_resizable_vector_get_element_at(text_ptr->strings,
                                                                n_string,
@@ -1104,13 +1104,13 @@ PRIVATE void _ogl_text_draw_callback_from_renderer(ogl_context context,
 
 
 /** Please see header for specification */
-PUBLIC EMERALD_API ogl_text_string_id ogl_text_add_string(ogl_text text)
+PUBLIC EMERALD_API varia_text_renderer_text_string_id varia_text_renderer_add_string(varia_text_renderer text)
 {
-    ogl_text_string_id result          = 0;
-    _ogl_text*         text_ptr        = (_ogl_text*) text;
-    _ogl_text_string*  text_string_ptr = NULL;
+    varia_text_renderer_text_string_id result          = 0;
+    _varia_text_renderer*              text_ptr        = (_varia_text_renderer*) text;
+    _varia_text_renderer_text_string*  text_string_ptr = NULL;
 
-    text_string_ptr = new (std::nothrow) _ogl_text_string;
+    text_string_ptr = new (std::nothrow) _varia_text_renderer_text_string;
 
     ASSERT_DEBUG_SYNC(text_string_ptr != NULL,
                       "Out of memory");
@@ -1153,13 +1153,13 @@ PUBLIC EMERALD_API ogl_text_string_id ogl_text_add_string(ogl_text text)
 
 
 /** Please see header for specification */
-PUBLIC EMERALD_API ogl_text ogl_text_create(system_hashed_ansi_string name,
-                                            ral_context               context,
-                                            gfx_bfg_font_table        font_table,
-                                            uint32_t                  screen_width,
-                                            uint32_t                  screen_height)
+PUBLIC EMERALD_API varia_text_renderer varia_text_renderer_create(system_hashed_ansi_string name,
+                                                                  ral_context               context,
+                                                                  gfx_bfg_font_table        font_table,
+                                                                  uint32_t                  screen_width,
+                                                                  uint32_t                  screen_height)
 {
-    _ogl_text* result_ptr = NULL;
+    _varia_text_renderer* result_ptr = NULL;
 
     /* Sanity checks */
     ASSERT_DEBUG_SYNC(context != NULL,
@@ -1173,7 +1173,7 @@ PUBLIC EMERALD_API ogl_text ogl_text_create(system_hashed_ansi_string name,
     }
 
     /* Instantiate the new object */
-    result_ptr = new (std::nothrow) _ogl_text;
+    result_ptr = new (std::nothrow) _varia_text_renderer;
 
     ASSERT_ALWAYS_SYNC(result_ptr != NULL,
                        "Could not allocate memory for text instance.");
@@ -1192,7 +1192,7 @@ PUBLIC EMERALD_API ogl_text ogl_text_create(system_hashed_ansi_string name,
 
         memset(result_ptr,
                0,
-               sizeof(_ogl_text) );
+               sizeof(_varia_text_renderer) );
 
         result_ptr->context          = context;
         result_ptr->default_color[0] = DEFAULT_COLOR_R;
@@ -1304,55 +1304,55 @@ PUBLIC EMERALD_API ogl_text ogl_text_create(system_hashed_ansi_string name,
         if (_global.font_tables.find(font_table) == _global.font_tables.end() )
         {
             ogl_context_request_callback_from_context_thread(context_gl,
-                                                             _ogl_text_create_font_table_to_callback_from_renderer,
+                                                             _varia_text_renderer_create_font_table_to_callback_from_renderer,
                                                              result_ptr);
         }
 
         /* We need a call-back, now */
         ogl_context_request_callback_from_context_thread(context_gl,
-                                                         _ogl_text_construction_callback_from_renderer,
+                                                         _varia_text_renderer_construction_callback_from_renderer,
                                                          result_ptr);
 
         REFCOUNT_INSERT_INIT_CODE_WITH_RELEASE_HANDLER(result_ptr,
-                                                       _ogl_text_release,
-                                                       OBJECT_TYPE_OGL_TEXT,
-                                                       system_hashed_ansi_string_create_by_merging_two_strings("\\OpenGL Text Renderers\\",
+                                                       _varia_text_renderer_release,
+                                                       OBJECT_TYPE_VARIA_TEXT_RENDERER,
+                                                       system_hashed_ansi_string_create_by_merging_two_strings("\\Varia Text Renderers\\",
                                                                                                                system_hashed_ansi_string_get_buffer(name)) );
 
         goto end;
     }
 
 end:
-    return (ogl_text) result_ptr;
+    return (varia_text_renderer) result_ptr;
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API void ogl_text_delete_string(ogl_text           text,
-                                               ogl_text_string_id text_id)
+PUBLIC EMERALD_API void varia_text_renderer_delete_string(varia_text_renderer                text,
+                                                          varia_text_renderer_text_string_id text_id)
 {
     ASSERT_DEBUG_SYNC(false,
                       "TODO");
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API void ogl_text_draw(ral_context context,
-                                      ogl_text    text)
+PUBLIC EMERALD_API void varia_text_renderer_draw(ral_context         context,
+                                                 varia_text_renderer text)
 {
-    _ogl_text* text_ptr = (_ogl_text*) text;
+    _varia_text_renderer* text_ptr = (_varia_text_renderer*) text;
 
     /* Make sure the request is handled from rendering thread */
     ogl_context_request_callback_from_context_thread(ral_context_get_gl_context(context),
-                                                     _ogl_text_draw_callback_from_renderer,
+                                                     _varia_text_renderer_draw_callback_from_renderer,
                                                      text);
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API const unsigned char* ogl_text_get(ogl_text           text,
-                                                     ogl_text_string_id text_string_id)
+PUBLIC EMERALD_API const unsigned char* varia_text_renderer_get(varia_text_renderer                text,
+                                                                varia_text_renderer_text_string_id text_string_id)
 {
-    const unsigned char* result          = NULL;
-    _ogl_text*           text_ptr        = (_ogl_text*) text;
-    _ogl_text_string*    text_string_ptr = NULL;
+    const unsigned char*              result          = NULL;
+    _varia_text_renderer*             text_ptr        = (_varia_text_renderer*) text;
+    _varia_text_renderer_text_string* text_string_ptr = NULL;
 
     if (system_resizable_vector_get_element_at(text_ptr->strings,
                                                text_string_id,
@@ -1365,11 +1365,11 @@ PUBLIC EMERALD_API const unsigned char* ogl_text_get(ogl_text           text,
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API uint32_t ogl_text_get_added_strings_counter(ogl_text instance)
+PUBLIC EMERALD_API uint32_t varia_text_renderer_get_added_strings_counter(varia_text_renderer instance)
 {
     uint32_t result = 0;
 
-    system_resizable_vector_get_property(((_ogl_text*) instance)->strings,
+    system_resizable_vector_get_property(((_varia_text_renderer*) instance)->strings,
                                           SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
                                          &result);
 
@@ -1377,26 +1377,26 @@ PUBLIC EMERALD_API uint32_t ogl_text_get_added_strings_counter(ogl_text instance
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API ral_context ogl_text_get_context(ogl_text text)
+PUBLIC EMERALD_API ral_context varia_text_renderer_get_context(varia_text_renderer text)
 {
-    return ((_ogl_text*) text)->context;
+    return ((_varia_text_renderer*) text)->context;
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API void ogl_text_get_text_string_property(ogl_text                 text,
-                                                          ogl_text_string_property property,
-                                                          ogl_text_string_id       text_string_id,
-                                                          void*                    out_result)
+PUBLIC EMERALD_API void varia_text_renderer_get_text_string_property(varia_text_renderer                      text,
+                                                                     varia_text_renderer_text_string_property property,
+                                                                     varia_text_renderer_text_string_id       text_string_id,
+                                                                     void*                                    out_result)
 {
-    _ogl_text* text_ptr = (_ogl_text*) text;
+    _varia_text_renderer* text_ptr = (_varia_text_renderer*) text;
 
     switch(property)
     {
-        case OGL_TEXT_STRING_PROPERTY_COLOR:
+        case VARIA_TEXT_RENDERER_TEXT_STRING_PROPERTY_COLOR:
         {
-            _ogl_text_string* text_string_ptr = NULL;
+            _varia_text_renderer_text_string* text_string_ptr = NULL;
 
-            if (text_string_id == TEXT_STRING_ID_DEFAULT)
+            if (text_string_id == VARIA_TEXT_RENDERER_TEXT_STRING_ID_DEFAULT)
             {
                 memcpy(out_result,
                         text_ptr->default_color,
@@ -1420,21 +1420,21 @@ PUBLIC EMERALD_API void ogl_text_get_text_string_property(ogl_text              
             break;
         }
 
-        case OGL_TEXT_STRING_PROPERTY_POSITION_PX:
-        case OGL_TEXT_STRING_PROPERTY_POSITION_SS:
-        case OGL_TEXT_STRING_PROPERTY_SCISSOR_BOX:
-        case OGL_TEXT_STRING_PROPERTY_TEXT_HEIGHT_PX:
-        case OGL_TEXT_STRING_PROPERTY_TEXT_HEIGHT_SS:
-        case OGL_TEXT_STRING_PROPERTY_TEXT_WIDTH_PX:
-        case OGL_TEXT_STRING_PROPERTY_VISIBILITY:
+        case VARIA_TEXT_RENDERER_TEXT_STRING_PROPERTY_POSITION_PX:
+        case VARIA_TEXT_RENDERER_TEXT_STRING_PROPERTY_POSITION_SS:
+        case VARIA_TEXT_RENDERER_TEXT_STRING_PROPERTY_SCISSOR_BOX:
+        case VARIA_TEXT_RENDERER_TEXT_STRING_PROPERTY_TEXT_HEIGHT_PX:
+        case VARIA_TEXT_RENDERER_TEXT_STRING_PROPERTY_TEXT_HEIGHT_SS:
+        case VARIA_TEXT_RENDERER_TEXT_STRING_PROPERTY_TEXT_WIDTH_PX:
+        case VARIA_TEXT_RENDERER_TEXT_STRING_PROPERTY_VISIBILITY:
         {
-            _ogl_text_string* text_string_ptr = NULL;
+            _varia_text_renderer_text_string* text_string_ptr = NULL;
 
             if (system_resizable_vector_get_element_at(text_ptr->strings,
                                                        text_string_id,
                                                       &text_string_ptr) )
             {
-                if (property == OGL_TEXT_STRING_PROPERTY_POSITION_PX)
+                if (property == VARIA_TEXT_RENDERER_TEXT_STRING_PROPERTY_POSITION_PX)
                 {
                     int* position = (int*) out_result;
 
@@ -1442,7 +1442,7 @@ PUBLIC EMERALD_API void ogl_text_get_text_string_property(ogl_text              
                     position[1] = (int) ((text_string_ptr->position[1]) * (float) text_ptr->screen_height);
                 }
                 else
-                if (property == OGL_TEXT_STRING_PROPERTY_POSITION_SS)
+                if (property == VARIA_TEXT_RENDERER_TEXT_STRING_PROPERTY_POSITION_SS)
                 {
                     float* position = (float*) out_result;
 
@@ -1450,26 +1450,26 @@ PUBLIC EMERALD_API void ogl_text_get_text_string_property(ogl_text              
                     position[1] = text_string_ptr->position[1];
                 }
                 else
-                if (property == OGL_TEXT_STRING_PROPERTY_SCISSOR_BOX)
+                if (property == VARIA_TEXT_RENDERER_TEXT_STRING_PROPERTY_SCISSOR_BOX)
                 {
                     memcpy(out_result,
                            text_string_ptr->scissor_box,
                            sizeof(text_string_ptr->scissor_box) );
                 }
                 else
-                if (property == OGL_TEXT_STRING_PROPERTY_TEXT_HEIGHT_PX)
+                if (property == VARIA_TEXT_RENDERER_TEXT_STRING_PROPERTY_TEXT_HEIGHT_PX)
                 {
                     *(int*) out_result = int( float(text_string_ptr->height_px) * (1-text_string_ptr->scale));
                 }
                 else
-                if (property == OGL_TEXT_STRING_PROPERTY_TEXT_HEIGHT_SS)
+                if (property == VARIA_TEXT_RENDERER_TEXT_STRING_PROPERTY_TEXT_HEIGHT_SS)
                 {
                     unsigned int window_height = 0;
 
                     *(float*) out_result = (float(text_string_ptr->height_px) * (1 - text_string_ptr->scale)) / float(text_ptr->screen_height);
                 }
                 else
-                if (property == OGL_TEXT_STRING_PROPERTY_TEXT_WIDTH_PX)
+                if (property == VARIA_TEXT_RENDERER_TEXT_STRING_PROPERTY_TEXT_WIDTH_PX)
                 {
                     *(int*) out_result = int( float(text_string_ptr->width_px) * (1-text_string_ptr->scale));
                 }
@@ -1488,11 +1488,11 @@ PUBLIC EMERALD_API void ogl_text_get_text_string_property(ogl_text              
             break;
         }
 
-        case OGL_TEXT_STRING_PROPERTY_SCALE:
+        case VARIA_TEXT_RENDERER_TEXT_STRING_PROPERTY_SCALE:
         {
-            _ogl_text_string* text_string_ptr = NULL;
+            _varia_text_renderer_text_string* text_string_ptr = NULL;
 
-            if (text_string_id == TEXT_STRING_ID_DEFAULT)
+            if (text_string_id == VARIA_TEXT_RENDERER_TEXT_STRING_ID_DEFAULT)
             {
                 *(float*) out_result = text_ptr->default_scale;
             }
@@ -1521,13 +1521,13 @@ PUBLIC EMERALD_API void ogl_text_get_text_string_property(ogl_text              
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API void ogl_text_set(ogl_text           text,
-                                     ogl_text_string_id text_string_id,
-                                     const char*        raw_text_ptr)
+PUBLIC EMERALD_API void varia_text_renderer_set(varia_text_renderer                text,
+                                                varia_text_renderer_text_string_id text_string_id,
+                                                const char*                        raw_text_ptr)
 {
-    size_t            raw_text_length = 0;
-    _ogl_text*        text_ptr        = (_ogl_text*) text;
-    _ogl_text_string* text_string_ptr = NULL;
+    size_t                            raw_text_length = 0;
+    _varia_text_renderer*             text_ptr        = (_varia_text_renderer*) text;
+    _varia_text_renderer_text_string* text_string_ptr = NULL;
 
     system_critical_section_enter(text_ptr->draw_cs);
 
@@ -1631,11 +1631,11 @@ end:
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API void ogl_text_set_screen_properties(ogl_text instance,
-                                                       uint32_t screen_width,
-                                                       uint32_t screen_height)
+PUBLIC EMERALD_API void varia_text_renderer_set_screen_properties(varia_text_renderer instance,
+                                                                  uint32_t            screen_width,
+                                                                  uint32_t            screen_height)
 {
-    _ogl_text* text_ptr = (_ogl_text*) instance;
+    _varia_text_renderer* text_ptr = (_varia_text_renderer*) instance;
 
     text_ptr->screen_height = screen_height;
     text_ptr->screen_width  = screen_width;
@@ -1643,19 +1643,19 @@ PUBLIC EMERALD_API void ogl_text_set_screen_properties(ogl_text instance,
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API void ogl_text_set_text_string_property(ogl_text                 text,
-                                                          ogl_text_string_id       text_string_id,
-                                                          ogl_text_string_property property,
-                                                          const void*              data)
+PUBLIC EMERALD_API void varia_text_renderer_set_text_string_property(varia_text_renderer                      text,
+                                                                     varia_text_renderer_text_string_id       text_string_id,
+                                                                     varia_text_renderer_text_string_property property,
+                                                                     const void*                              data)
 {
-    _ogl_text*        text_ptr        = (_ogl_text*) text;
-    _ogl_text_string* text_string_ptr = NULL;
+    _varia_text_renderer*             text_ptr        = (_varia_text_renderer*) text;
+    _varia_text_renderer_text_string* text_string_ptr = NULL;
 
     switch (property)
     {
-        case OGL_TEXT_STRING_PROPERTY_COLOR:
+        case VARIA_TEXT_RENDERER_TEXT_STRING_PROPERTY_COLOR:
         {
-            if (text_string_id == TEXT_STRING_ID_DEFAULT)
+            if (text_string_id == VARIA_TEXT_RENDERER_TEXT_STRING_ID_DEFAULT)
             {
                 memcpy(text_ptr->default_color,
                        data,
@@ -1679,14 +1679,14 @@ PUBLIC EMERALD_API void ogl_text_set_text_string_property(ogl_text              
             break;
         }
 
-        case OGL_TEXT_STRING_PROPERTY_SCALE:
+        case VARIA_TEXT_RENDERER_TEXT_STRING_PROPERTY_SCALE:
         {
             float new_scale = *(float*) data;
 
             ASSERT_DEBUG_SYNC(new_scale >= 0 && new_scale <= 1,
                               "Scale out of supported range - adapt the shaders");
 
-            if (text_string_id == TEXT_STRING_ID_DEFAULT)
+            if (text_string_id == VARIA_TEXT_RENDERER_TEXT_STRING_ID_DEFAULT)
             {
                 text_ptr->default_scale = new_scale;
             }
@@ -1706,16 +1706,16 @@ PUBLIC EMERALD_API void ogl_text_set_text_string_property(ogl_text              
             break;
         } /* case OGL_TEXT_STRING_PROPERTY_SCALE: */
 
-        case OGL_TEXT_STRING_PROPERTY_POSITION_PX:
-        case OGL_TEXT_STRING_PROPERTY_POSITION_SS:
-        case OGL_TEXT_STRING_PROPERTY_SCISSOR_BOX:
-        case OGL_TEXT_STRING_PROPERTY_VISIBILITY:
+        case VARIA_TEXT_RENDERER_TEXT_STRING_PROPERTY_POSITION_PX:
+        case VARIA_TEXT_RENDERER_TEXT_STRING_PROPERTY_POSITION_SS:
+        case VARIA_TEXT_RENDERER_TEXT_STRING_PROPERTY_SCISSOR_BOX:
+        case VARIA_TEXT_RENDERER_TEXT_STRING_PROPERTY_VISIBILITY:
         {
             if (system_resizable_vector_get_element_at(text_ptr->strings,
                                                        text_string_id,
                                                       &text_string_ptr) )
             {
-                if (property == OGL_TEXT_STRING_PROPERTY_POSITION_PX)
+                if (property == VARIA_TEXT_RENDERER_TEXT_STRING_PROPERTY_POSITION_PX)
                 {
                     const int* position = (const int*) data;
 
@@ -1723,7 +1723,7 @@ PUBLIC EMERALD_API void ogl_text_set_text_string_property(ogl_text              
                     text_string_ptr->position[1] = (float) (position[1]) / (float) text_ptr->screen_height;
                 }
                 else
-                if (property == OGL_TEXT_STRING_PROPERTY_POSITION_SS)
+                if (property == VARIA_TEXT_RENDERER_TEXT_STRING_PROPERTY_POSITION_SS)
                 {
                     const float* position = (const float*) data;
 
@@ -1731,7 +1731,7 @@ PUBLIC EMERALD_API void ogl_text_set_text_string_property(ogl_text              
                     text_string_ptr->position[1] = position[1];
                 }
                 else
-                if (property == OGL_TEXT_STRING_PROPERTY_SCISSOR_BOX)
+                if (property == VARIA_TEXT_RENDERER_TEXT_STRING_PROPERTY_SCISSOR_BOX)
                 {
                     memcpy(text_string_ptr->scissor_box,
                            data,

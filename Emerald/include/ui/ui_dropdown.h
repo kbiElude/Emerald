@@ -33,7 +33,7 @@ PUBLIC void ui_dropdown_get_property(const void*         dropdown,
 
 /** TODO */
 PUBLIC void* ui_dropdown_init(ui                         instance,
-                              ogl_text                   text_renderer,
+                              varia_text_renderer        text_renderer,
                               system_hashed_ansi_string  label_text,
                               uint32_t                   n_entries,
                               system_hashed_ansi_string* entries,

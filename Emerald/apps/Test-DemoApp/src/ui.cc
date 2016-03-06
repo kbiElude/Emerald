@@ -7,7 +7,6 @@
 #include "demo/demo_window.h"
 #include "ogl/ogl_context.h"
 #include "ogl/ogl_rendering_handler.h"
-#include "ogl/ogl_text.h"
 #include "ral/ral_context.h"
 #include "postprocessing/postprocessing_blur_gaussian.h"
 #include "scene/scene_camera.h"
@@ -19,25 +18,26 @@
 #include "ui/ui.h"
 #include "ui/ui_bag.h"
 #include "ui/ui_dropdown.h"
+#include "varia/varia_text_renderer.h"
 #include "app_config.h"
 #include "include/main.h"
 #include "state.h"
 
-PRIVATE system_variant _temp_variant_float                           = NULL;
-PRIVATE ogl_text       _text_renderer                                = NULL;
-PRIVATE ui             _ui                                           = NULL;
-PRIVATE ui_bag         _ui_bag                                       = NULL;
-PRIVATE ui_control     _ui_color_shadow_map_blur_n_passes_scrollbar  = NULL;
-PRIVATE ui_control     _ui_color_shadow_map_blur_n_taps_scrollbar    = NULL;
-PRIVATE ui_control     _ui_color_shadow_map_blur_resolution_dropdown = NULL;
-PRIVATE ui_control     _ui_color_shadow_map_format_dropdown          = NULL;
-PRIVATE ui_control     _ui_depth_shadow_map_format_dropdown          = NULL;
-PRIVATE ui_control     _ui_shadow_map_algorithm_dropdown             = NULL;
-PRIVATE ui_control     _ui_shadow_map_pl_algorithm_dropdown          = NULL;
-PRIVATE ui_control     _ui_shadow_map_size_dropdown                  = NULL;
-PRIVATE ui_control     _ui_vsm_cutoff_scrollbar                      = NULL;
-PRIVATE ui_control     _ui_vsm_max_variance_scrollbar                = NULL;
-PRIVATE ui_control     _ui_vsm_min_variance_scrollbar                = NULL;
+PRIVATE system_variant      _temp_variant_float                           = NULL;
+PRIVATE varia_text_renderer _text_renderer                                = NULL;
+PRIVATE ui                  _ui                                           = NULL;
+PRIVATE ui_bag              _ui_bag                                       = NULL;
+PRIVATE ui_control          _ui_color_shadow_map_blur_n_passes_scrollbar  = NULL;
+PRIVATE ui_control          _ui_color_shadow_map_blur_n_taps_scrollbar    = NULL;
+PRIVATE ui_control          _ui_color_shadow_map_blur_resolution_dropdown = NULL;
+PRIVATE ui_control          _ui_color_shadow_map_format_dropdown          = NULL;
+PRIVATE ui_control          _ui_depth_shadow_map_format_dropdown          = NULL;
+PRIVATE ui_control          _ui_shadow_map_algorithm_dropdown             = NULL;
+PRIVATE ui_control          _ui_shadow_map_pl_algorithm_dropdown          = NULL;
+PRIVATE ui_control          _ui_shadow_map_size_dropdown                  = NULL;
+PRIVATE ui_control          _ui_vsm_cutoff_scrollbar                      = NULL;
+PRIVATE ui_control          _ui_vsm_max_variance_scrollbar                = NULL;
+PRIVATE ui_control          _ui_vsm_min_variance_scrollbar                = NULL;
 
 
 scene_light_shadow_map_algorithm shadow_map_algorithm_emerald_enums[] =
@@ -519,7 +519,7 @@ PUBLIC void ui_deinit()
     ui_release(_ui);
     _ui = NULL;
 
-    ogl_text_release(_text_renderer);
+    varia_text_renderer_release(_text_renderer);
     _text_renderer = NULL;
 
     system_variant_release(_temp_variant_float);
@@ -529,9 +529,9 @@ PUBLIC void ui_deinit()
 /** Please see header for spec */
 PUBLIC void ui_draw()
 {
-    ui_draw      (_ui);
-    ogl_text_draw(_context,
-                  _text_renderer);
+    ui_draw                 (_ui);
+    varia_text_renderer_draw(_context,
+                             _text_renderer);
 }
 
 /** Please see header for spec */
@@ -546,16 +546,16 @@ PUBLIC void ui_init()
                              DEMO_WINDOW_PROPERTY_RESOLUTION,
                              window_size);
 
-    _text_renderer = ogl_text_create(system_hashed_ansi_string_create("Text renderer"),
-                                     _context,
-                                     system_resources_get_meiryo_font_table(),
-                                     window_size[0],
-                                     window_size[1]);
+    _text_renderer = varia_text_renderer_create(system_hashed_ansi_string_create("Text renderer"),
+                                                _context,
+                                                system_resources_get_meiryo_font_table(),
+                                                window_size[0],
+                                                window_size[1]);
 
-    ogl_text_set_text_string_property(_text_renderer,
-                                      TEXT_STRING_ID_DEFAULT,
-                                      OGL_TEXT_STRING_PROPERTY_SCALE,
-                                     &text_default_size);
+    varia_text_renderer_set_text_string_property(_text_renderer,
+                                                 VARIA_TEXT_RENDERER_TEXT_STRING_ID_DEFAULT,
+                                                 VARIA_TEXT_RENDERER_TEXT_STRING_PROPERTY_SCALE,
+                                                &text_default_size);
 
     _ui = ui_create(_text_renderer,
                     system_hashed_ansi_string_create("UI") );

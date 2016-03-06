@@ -10,7 +10,6 @@
 #include "ogl/ogl_context.h"
 #include "ogl/ogl_pipeline.h"
 #include "ogl/ogl_rendering_handler.h"
-#include "ogl/ogl_text.h"
 #include "raGL/raGL_framebuffer.h"
 #include "ral/ral_context.h"
 #include "system/system_assertions.h"
@@ -23,6 +22,7 @@
 #include "system/system_threads.h"
 #include "system/system_time.h"
 #include "system/system_window.h"
+#include "varia/varia_text_renderer.h"
 
 #define REWIND_DELTA_TIME_MSEC          (1500)
 #define REWIND_STEP_MIN_DELTA_TIME_MSEC (500)
@@ -46,7 +46,7 @@ typedef struct
     ogl_rendering_handler_policy          policy;
     system_time                           runtime_time_adjustment;
     bool                                  runtime_time_adjustment_mode;
-    ogl_text_string_id                    text_string_id;
+    varia_text_renderer_text_string_id    text_string_id;
     system_thread_id                      thread_id;
     demo_timeline                         timeline;
 
@@ -562,29 +562,29 @@ PRIVATE void _ogl_rendering_handler_thread_entrypoint(void* in_arg)
         ogl_context_bind_to_current_thread(context_gl);
 
         /* Create a new text string which we will use to show performance info */
-        const float text_color[4]          = {1.0f, 1.0f, 1.0f, 1.0f};
-        ogl_text    text_renderer          = NULL;
-        const float text_scale             = 0.75f;
-        const int   text_string_position[] = {0, window_size[1]};
+        const float         text_color[4]          = {1.0f, 1.0f, 1.0f, 1.0f};
+        varia_text_renderer text_renderer          = NULL;
+        const float         text_scale             = 0.75f;
+        const int           text_string_position[] = {0, window_size[1]};
 
         ogl_context_get_property(context_gl,
                                  OGL_CONTEXT_PROPERTY_TEXT_RENDERER,
                                 &text_renderer);
 
-        rendering_handler->text_string_id = ogl_text_add_string(text_renderer);
+        rendering_handler->text_string_id = varia_text_renderer_add_string(text_renderer);
 
-        ogl_text_set_text_string_property(text_renderer,
-                                          rendering_handler->text_string_id,
-                                          OGL_TEXT_STRING_PROPERTY_COLOR,
-                                          text_color);
-        ogl_text_set_text_string_property(text_renderer,
-                                          rendering_handler->text_string_id,
-                                          OGL_TEXT_STRING_PROPERTY_POSITION_PX,
-                                          text_string_position);
-        ogl_text_set_text_string_property(text_renderer,
-                                          rendering_handler->text_string_id,
-                                          OGL_TEXT_STRING_PROPERTY_SCALE,
-                                         &text_scale);
+        varia_text_renderer_set_text_string_property(text_renderer,
+                                                     rendering_handler->text_string_id,
+                                                     VARIA_TEXT_RENDERER_TEXT_STRING_PROPERTY_COLOR,
+                                                     text_color);
+        varia_text_renderer_set_text_string_property(text_renderer,
+                                                     rendering_handler->text_string_id,
+                                                     VARIA_TEXT_RENDERER_TEXT_STRING_PROPERTY_POSITION_PX,
+                                                     text_string_position);
+        varia_text_renderer_set_text_string_property(text_renderer,
+                                                     rendering_handler->text_string_id,
+                                                     VARIA_TEXT_RENDERER_TEXT_STRING_PROPERTY_SCALE,
+                                                    &text_scale);
 
         /* On with the loop */
         unsigned int last_frame_index = 0;
@@ -753,9 +753,9 @@ PRIVATE void _ogl_rendering_handler_thread_entrypoint(void* in_arg)
                                      (int) frame_time_msec,
                                      frame_index);
 
-                            ogl_text_set(text_renderer,
-                                         rendering_handler->text_string_id,
-                                         temp_buffer);
+                            varia_text_renderer_set(text_renderer,
+                                                   rendering_handler->text_string_id,
+                                                   temp_buffer);
                         }
 
                         /* Determine AR for the frame. The aspect ratio is configurable on two levels:
@@ -881,8 +881,8 @@ PRIVATE void _ogl_rendering_handler_thread_entrypoint(void* in_arg)
                             }
 
                             /* Draw the text strings right before we blit the render-target to the system's FBO. */
-                            ogl_text_draw(rendering_handler->context,
-                                          text_renderer);
+                            varia_text_renderer_draw(rendering_handler->context,
+                                                     text_renderer);
 
                             /* Blit the context FBO's contents to the back buffer */
                             pGLBindFramebuffer(GL_DRAW_FRAMEBUFFER,

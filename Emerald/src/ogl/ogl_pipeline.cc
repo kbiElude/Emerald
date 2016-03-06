@@ -11,7 +11,6 @@
 #include "ogl/ogl_pipeline.h"
 #include "ogl/ogl_query.h"
 #include "ogl/ogl_rendering_handler.h"
-#include "ogl/ogl_text.h"
 #include "ral/ral_context.h"
 #include "system/system_assertions.h"
 #include "system/system_hashed_ansi_string.h"
@@ -21,6 +20,7 @@
 #include "system/system_types.h"
 #include "system/system_window.h"
 #include "ui/ui.h"
+#include "varia/varia_text_renderer.h"
 
 #define DEFAULT_STAGES_CAPACITY      (4)
 #define DEFAULT_STAGE_STEPS_CAPACITY (4)
@@ -43,7 +43,7 @@ typedef struct
     system_hashed_ansi_string name;
     bool                      should_overlay_performance_info;
 
-    ogl_text                  text_renderer;
+    varia_text_renderer       text_renderer;
     uint32_t                  text_y_delta;
 
     ui                        ui_instance;
@@ -139,7 +139,7 @@ PRIVATE void _ogl_pipeline_deinit_pipeline(_ogl_pipeline* pipeline_ptr)
 
     if (pipeline_ptr->text_renderer != NULL)
     {
-        ogl_text_release(pipeline_ptr->text_renderer);
+        varia_text_renderer_release(pipeline_ptr->text_renderer);
     }
 }
 
@@ -211,10 +211,10 @@ PRIVATE void _ogl_pipeline_init_pipeline(_ogl_pipeline*            pipeline_ptr,
                                SYSTEM_WINDOW_PROPERTY_RENDERING_HANDLER,
                               &rendering_handler);
 
-    ogl_context_get_property(ral_context_get_gl_context(context),
-                             OGL_CONTEXT_PROPERTY_TEXT_RENDERER,
-                            &pipeline_ptr->text_renderer);
-    ogl_text_retain         (pipeline_ptr->text_renderer);
+    ogl_context_get_property  (ral_context_get_gl_context(context),
+                               OGL_CONTEXT_PROPERTY_TEXT_RENDERER,
+                              &pipeline_ptr->text_renderer);
+    varia_text_renderer_retain(pipeline_ptr->text_renderer);
 
     /* Initialize */
     pipeline_ptr->context                         = context;
@@ -227,14 +227,14 @@ PRIVATE void _ogl_pipeline_init_pipeline(_ogl_pipeline*            pipeline_ptr,
 
     const float text_scale = TEXT_SCALE;
 
-    ogl_text_set_text_string_property(pipeline_ptr->text_renderer,
-                                      TEXT_STRING_ID_DEFAULT,
-                                      OGL_TEXT_STRING_PROPERTY_COLOR,
-                                      TEXT_COLOR);
-    ogl_text_set_text_string_property(pipeline_ptr->text_renderer,
-                                      TEXT_STRING_ID_DEFAULT,
-                                      OGL_TEXT_STRING_PROPERTY_SCALE,
-                                     &text_scale);
+    varia_text_renderer_set_text_string_property(pipeline_ptr->text_renderer,
+                                                 VARIA_TEXT_RENDERER_TEXT_STRING_ID_DEFAULT,
+                                                 VARIA_TEXT_RENDERER_TEXT_STRING_PROPERTY_COLOR,
+                                                 TEXT_COLOR);
+    varia_text_renderer_set_text_string_property(pipeline_ptr->text_renderer,
+                                                 VARIA_TEXT_RENDERER_TEXT_STRING_ID_DEFAULT,
+                                                 VARIA_TEXT_RENDERER_TEXT_STRING_PROPERTY_SCALE,
+                                                &text_scale);
 
     ral_context_retain(context);
 }
@@ -327,9 +327,9 @@ PUBLIC EMERALD_API uint32_t ogl_pipeline_add_stage(ogl_pipeline instance)
         _ogl_pipeline_init_pipeline_stage(pipeline_stage_ptr);
 
         /* First stage ever? Add a zeroth text string we'll use to draw sum-up */
-        if (ogl_text_get_added_strings_counter(pipeline_ptr->text_renderer) == 0)
+        if (varia_text_renderer_get_added_strings_counter(pipeline_ptr->text_renderer) == 0)
         {
-            ogl_text_add_string(pipeline_ptr->text_renderer);
+            varia_text_renderer_add_string(pipeline_ptr->text_renderer);
         }
 
         /* Retrieve new stage id */
@@ -383,38 +383,38 @@ PUBLIC EMERALD_API uint32_t ogl_pipeline_add_stage_step(ogl_pipeline            
                                                  SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
                                                 &n_pipeline_stages);
 
-            ogl_text_string_id new_text_string_id  = ogl_text_add_string(pipeline_ptr->text_renderer);
-            ogl_text_string_id new_time_string_id  = ogl_text_add_string(pipeline_ptr->text_renderer);
-            const int          new_text_x          = 0;
-            const int          new_time_x          = pipeline_stage_ptr->max_text_width_px;
-            const int          new_text_y          = START_Y + n_pipeline_stages * pipeline_ptr->text_y_delta;
-            const int          new_text_position[] = {new_text_x, new_text_y};
-            const int          new_time_position[] = {new_time_x, new_text_y};
+            varia_text_renderer_text_string_id new_text_string_id  = varia_text_renderer_add_string(pipeline_ptr->text_renderer);
+            varia_text_renderer_text_string_id new_time_string_id  = varia_text_renderer_add_string(pipeline_ptr->text_renderer);
+            const int                          new_text_x          = 0;
+            const int                          new_time_x          = pipeline_stage_ptr->max_text_width_px;
+            const int                          new_text_y          = START_Y + n_pipeline_stages * pipeline_ptr->text_y_delta;
+            const int                          new_text_position[] = {new_text_x, new_text_y};
+            const int                          new_time_position[] = {new_time_x, new_text_y};
 
-            ogl_text_set_text_string_property(pipeline_ptr->text_renderer,
-                                              new_text_string_id,
-                                              OGL_TEXT_STRING_PROPERTY_COLOR,
-                                              TEXT_COLOR);
-            ogl_text_set_text_string_property(pipeline_ptr->text_renderer,
-                                              new_time_string_id,
-                                              OGL_TEXT_STRING_PROPERTY_COLOR,
-                                              TEXT_COLOR);
-            ogl_text_set_text_string_property(pipeline_ptr->text_renderer,
-                                              new_text_string_id,
-                                              OGL_TEXT_STRING_PROPERTY_POSITION_PX,
-                                              new_text_position);
-            ogl_text_set_text_string_property(pipeline_ptr->text_renderer,
-                                              new_time_string_id,
-                                              OGL_TEXT_STRING_PROPERTY_POSITION_PX,
-                                              new_time_position);
-            ogl_text_set_text_string_property(pipeline_ptr->text_renderer,
-                                              new_text_string_id,
-                                              OGL_TEXT_STRING_PROPERTY_SCALE,
-                                              &TEXT_SCALE);
-            ogl_text_set_text_string_property(pipeline_ptr->text_renderer,
-                                              new_time_string_id,
-                                              OGL_TEXT_STRING_PROPERTY_SCALE,
-                                              &TEXT_SCALE);
+            varia_text_renderer_set_text_string_property(pipeline_ptr->text_renderer,
+                                                         new_text_string_id,
+                                                         VARIA_TEXT_RENDERER_TEXT_STRING_PROPERTY_COLOR,
+                                                         TEXT_COLOR);
+            varia_text_renderer_set_text_string_property(pipeline_ptr->text_renderer,
+                                                         new_time_string_id,
+                                                         VARIA_TEXT_RENDERER_TEXT_STRING_PROPERTY_COLOR,
+                                                         TEXT_COLOR);
+            varia_text_renderer_set_text_string_property(pipeline_ptr->text_renderer,
+                                                         new_text_string_id,
+                                                         VARIA_TEXT_RENDERER_TEXT_STRING_PROPERTY_POSITION_PX,
+                                                         new_text_position);
+            varia_text_renderer_set_text_string_property(pipeline_ptr->text_renderer,
+                                                         new_time_string_id,
+                                                         VARIA_TEXT_RENDERER_TEXT_STRING_PROPERTY_POSITION_PX,
+                                                         new_time_position);
+            varia_text_renderer_set_text_string_property(pipeline_ptr->text_renderer,
+                                                         new_text_string_id,
+                                                         VARIA_TEXT_RENDERER_TEXT_STRING_PROPERTY_SCALE,
+                                                        &TEXT_SCALE);
+            varia_text_renderer_set_text_string_property(pipeline_ptr->text_renderer,
+                                                         new_time_string_id,
+                                                         VARIA_TEXT_RENDERER_TEXT_STRING_PROPERTY_SCALE,
+                                                        &TEXT_SCALE);
 
             result                          = new_text_string_id;
             new_step_ptr->text_string_index = new_text_string_id;
@@ -432,9 +432,9 @@ PUBLIC EMERALD_API uint32_t ogl_pipeline_add_stage_step(ogl_pipeline            
                      system_hashed_ansi_string_get_buffer(step_ptr->name) );
 
             /* Update the text string */
-            ogl_text_set(pipeline_ptr->text_renderer,
-                         new_text_string_id,
-                         buffer);
+            varia_text_renderer_set(pipeline_ptr->text_renderer,
+                                    new_text_string_id,
+                                    buffer);
 
             /* Insert new step into the stage's steps vector */
             system_resizable_vector_push(pipeline_stage_ptr->steps,
@@ -443,10 +443,10 @@ PUBLIC EMERALD_API uint32_t ogl_pipeline_add_stage_step(ogl_pipeline            
             /* If newly added name is longer than any of the already present ones, we need to relocate all time strings */
             uint32_t text_width_px = 0;
 
-            ogl_text_get_text_string_property(pipeline_ptr->text_renderer,
-                                              OGL_TEXT_STRING_PROPERTY_TEXT_WIDTH_PX,
-                                              new_text_string_id,
-                                             &text_width_px);
+            varia_text_renderer_get_text_string_property(pipeline_ptr->text_renderer,
+                                                         VARIA_TEXT_RENDERER_TEXT_STRING_PROPERTY_TEXT_WIDTH_PX,
+                                                         new_text_string_id,
+                                                        &text_width_px);
 
             if (text_width_px > pipeline_stage_ptr->max_text_width_px)
             {
@@ -467,10 +467,10 @@ PUBLIC EMERALD_API uint32_t ogl_pipeline_add_stage_step(ogl_pipeline            
                         int text_y           = START_Y + n * pipeline_ptr->text_y_delta;
                         int time_position[2] = {text_width_px, text_y};
 
-                        ogl_text_set_text_string_property(pipeline_ptr->text_renderer,
-                                                          pipeline_stage_step_ptr->text_time_index,
-                                                          OGL_TEXT_STRING_PROPERTY_POSITION_PX,
-                                                          time_position);
+                        varia_text_renderer_set_text_string_property(pipeline_ptr->text_renderer,
+                                                                     pipeline_stage_step_ptr->text_time_index,
+                                                                     VARIA_TEXT_RENDERER_TEXT_STRING_PROPERTY_POSITION_PX,
+                                                                     time_position);
                     } /* if (pipeline_stage_step_ptr != NULL) */
                 }
             }
@@ -613,14 +613,14 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API bool ogl_pipeline_draw_stage(ogl_pipel
                                   n_current_stage_step,
                                   n_current_stage);
 
-                ogl_text_set_text_string_property(pipeline_ptr->text_renderer,
-                                                  current_stage_step_ptr->text_time_index,
-                                                  OGL_TEXT_STRING_PROPERTY_VISIBILITY,
-                                                 &should_be_visible);
-                ogl_text_set_text_string_property(pipeline_ptr->text_renderer,
-                                                  current_stage_step_ptr->text_string_index,
-                                                  OGL_TEXT_STRING_PROPERTY_VISIBILITY,
-                                                 &should_be_visible);
+                varia_text_renderer_set_text_string_property(pipeline_ptr->text_renderer,
+                                                             current_stage_step_ptr->text_time_index,
+                                                             VARIA_TEXT_RENDERER_TEXT_STRING_PROPERTY_VISIBILITY,
+                                                            &should_be_visible);
+                varia_text_renderer_set_text_string_property(pipeline_ptr->text_renderer,
+                                                             current_stage_step_ptr->text_string_index,
+                                                             VARIA_TEXT_RENDERER_TEXT_STRING_PROPERTY_VISIBILITY,
+                                                            &should_be_visible);
             } /* for (all stage steps for the current pipeline stage) */
         } /* for (all pipeline stages) */
     } /* if (pipeline_ptr->should_overlay_performance_info) */
@@ -784,16 +784,16 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API bool ogl_pipeline_draw_stage(ogl_pipel
                                  (unsigned int) step_ms % 1000,
                                  (long long unsigned int) step_ptr->n_primitives_generated);
 
-                        ogl_text_set(pipeline_ptr->text_renderer,
-                                     step_ptr->text_time_index,
-                                     buffer);
+                        varia_text_renderer_set(pipeline_ptr->text_renderer,
+                                                step_ptr->text_time_index,
+                                                buffer);
                     }
                 }
             } /* if (is_stage_dirty) */
 
             /* Render the results as a final pass */
-            ogl_text_draw(pipeline_ptr->context,
-                          pipeline_ptr->text_renderer);
+            varia_text_renderer_draw(pipeline_ptr->context,
+                                     pipeline_ptr->text_renderer);
         } /* if (pipeline_ptr->should_overlay_performance_info) */
 
         result = true;
@@ -813,7 +813,7 @@ PUBLIC EMERALD_API ral_context ogl_pipeline_get_context(ogl_pipeline instance)
 }
 
 /** Please see header for specification */
-PUBLIC ogl_text ogl_pipeline_get_text_renderer(ogl_pipeline instance)
+PUBLIC varia_text_renderer ogl_pipeline_get_text_renderer(ogl_pipeline instance)
 {
     return ((_ogl_pipeline*) instance)->text_renderer;
 }

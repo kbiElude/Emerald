@@ -27,7 +27,7 @@ PUBLIC void ui_button_get_property(const void*         button,
 
 /** TODO */
 PUBLIC void* ui_button_init(ui                        instance,
-                            ogl_text                  text_renderer,
+                            varia_text_renderer       text_renderer,
                             system_hashed_ansi_string name,
                             const float*              x1y1,
                             const float*              x2y2,

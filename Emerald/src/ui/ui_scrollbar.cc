@@ -5,7 +5,6 @@
  */
 #include "shared.h"
 #include "ogl/ogl_context.h"
-#include "ogl/ogl_text.h"
 #include "raGL/raGL_buffer.h"
 #include "raGL/raGL_program.h"
 #include "raGL/raGL_shader.h"
@@ -21,6 +20,7 @@
 #include "ui/ui.h"
 #include "ui/ui_scrollbar.h"
 #include "ui/ui_shared.h"
+#include "varia/varia_text_renderer.h"
 
 /** Internal constants */
 static system_hashed_ansi_string _ui_scrollbar_slider_program_name = system_hashed_ansi_string_create("UI Scrollbar Slider");
@@ -82,7 +82,7 @@ typedef struct
 
     uint32_t                   text_index;
     ui_scrollbar_text_location text_location;
-    ogl_text                   text_renderer;
+    varia_text_renderer        text_renderer;
     ui                         ui_instance;
 
     ral_program              program_slider;
@@ -377,14 +377,14 @@ PRIVATE void _ui_scrollbar_update_text_position(_ui_scrollbar* scrollbar_ptr)
                                SYSTEM_WINDOW_PROPERTY_DIMENSIONS,
                                window_size);
 
-    ogl_text_get_text_string_property(scrollbar_ptr->text_renderer,
-                                      OGL_TEXT_STRING_PROPERTY_TEXT_HEIGHT_PX,
-                                      scrollbar_ptr->text_index,
-                                     &text_height);
-    ogl_text_get_text_string_property(scrollbar_ptr->text_renderer,
-                                      OGL_TEXT_STRING_PROPERTY_TEXT_WIDTH_PX,
-                                      scrollbar_ptr->text_index,
-                                     &text_width);
+    varia_text_renderer_get_text_string_property(scrollbar_ptr->text_renderer,
+                                                 VARIA_TEXT_RENDERER_TEXT_STRING_PROPERTY_TEXT_HEIGHT_PX,
+                                                 scrollbar_ptr->text_index,
+                                                &text_height);
+    varia_text_renderer_get_text_string_property(scrollbar_ptr->text_renderer,
+                                                 VARIA_TEXT_RENDERER_TEXT_STRING_PROPERTY_TEXT_WIDTH_PX,
+                                                 scrollbar_ptr->text_index,
+                                                &text_width);
 
     if (scrollbar_ptr->text_location == UI_SCROLLBAR_TEXT_LOCATION_ABOVE_SLIDER)
     {
@@ -397,10 +397,10 @@ PRIVATE void _ui_scrollbar_update_text_position(_ui_scrollbar* scrollbar_ptr)
         text_xy[1] = (int) ((1.0f - scrollbar_ptr->slider_x1y1x2y2[1] + 0.5f * (float(text_height) / window_size[1] - scrollbar_ptr->slider_x1y1x2y2[3] + scrollbar_ptr->slider_x1y1x2y2[1])) * (float) window_size[1]);
     }
 
-    ogl_text_set_text_string_property(scrollbar_ptr->text_renderer,
-                                      scrollbar_ptr->text_index,
-                                      OGL_TEXT_STRING_PROPERTY_POSITION_PX,
-                                      text_xy);
+    varia_text_renderer_set_text_string_property(scrollbar_ptr->text_renderer,
+                                                 scrollbar_ptr->text_index,
+                                                 VARIA_TEXT_RENDERER_TEXT_STRING_PROPERTY_POSITION_PX,
+                                                 text_xy);
 }
 
 /** TODO */
@@ -641,10 +641,10 @@ PUBLIC void ui_scrollbar_get_property(const void*         scrollbar,
             {
                 float text_height = 0.0f;
 
-                ogl_text_get_text_string_property(scrollbar_ptr->text_renderer,
-                                                  OGL_TEXT_STRING_PROPERTY_TEXT_HEIGHT_SS,
-                                                  scrollbar_ptr->text_index,
-                                                 &text_height);
+                varia_text_renderer_get_text_string_property(scrollbar_ptr->text_renderer,
+                                                             VARIA_TEXT_RENDERER_TEXT_STRING_PROPERTY_TEXT_HEIGHT_SS,
+                                                             scrollbar_ptr->text_index,
+                                                            &text_height);
 
                 *(float*) out_result = scrollbar_ptr->slider_x1y1x2y2[3] -
                                        scrollbar_ptr->slider_x1y1x2y2[1];
@@ -701,7 +701,7 @@ PUBLIC void ui_scrollbar_hover(void*        internal_instance,
 
 /** TODO */
 PUBLIC void* ui_scrollbar_init(ui                          ui_instance,
-                               ogl_text                    text_renderer,
+                               varia_text_renderer         text_renderer,
                                ui_scrollbar_text_location  text_location,
                                system_hashed_ansi_string   name,
                                system_variant              min_value,
@@ -741,7 +741,7 @@ PUBLIC void* ui_scrollbar_init(ui                          ui_instance,
         new_scrollbar_ptr->set_current_value_ptr_user_arg = set_current_value_ptr_user_arg;
 
         new_scrollbar_ptr->text_renderer                  = text_renderer;
-        new_scrollbar_ptr->text_index                     = ogl_text_add_string(text_renderer);
+        new_scrollbar_ptr->text_index                     = varia_text_renderer_add_string(text_renderer);
         new_scrollbar_ptr->text_location                  = text_location;
         new_scrollbar_ptr->ui_instance                    = ui_instance;
 
@@ -802,18 +802,18 @@ PUBLIC void* ui_scrollbar_init(ui                          ui_instance,
         }
 
         /* Configure the text to be shown on the button */
-        ogl_text_set(new_scrollbar_ptr->text_renderer,
-                     new_scrollbar_ptr->text_index,
-                     system_hashed_ansi_string_get_buffer(name) );
+        varia_text_renderer_set(new_scrollbar_ptr->text_renderer,
+                                new_scrollbar_ptr->text_index,
+                                system_hashed_ansi_string_get_buffer(name) );
 
         int           text_height    = 0;
         system_window window         = NULL;
         int           window_size[2] = {0};
 
-        ogl_text_get_text_string_property(new_scrollbar_ptr->text_renderer,
-                                          OGL_TEXT_STRING_PROPERTY_TEXT_HEIGHT_PX,
-                                          new_scrollbar_ptr->text_index,
-                                         &text_height);
+        varia_text_renderer_get_text_string_property(new_scrollbar_ptr->text_renderer,
+                                                     VARIA_TEXT_RENDERER_TEXT_STRING_PROPERTY_TEXT_HEIGHT_PX,
+                                                     new_scrollbar_ptr->text_index,
+                                                    &text_height);
 
         ral_context_get_property  (new_scrollbar_ptr->context,
                                    RAL_CONTEXT_PROPERTY_WINDOW_SYSTEM,
@@ -827,10 +827,10 @@ PUBLIC void* ui_scrollbar_init(ui                          ui_instance,
         ASSERT_DEBUG_SYNC(new_scrollbar_ptr->slider_x1y1x2y2[1] < new_scrollbar_ptr->slider_x1y1x2y2[3],
                           "Scrollbar has illegal height");
 
-        ogl_text_set_text_string_property(new_scrollbar_ptr->text_renderer,
-                                          new_scrollbar_ptr->text_index,
-                                          OGL_TEXT_STRING_PROPERTY_COLOR,
-                                          _ui_scrollbar_text_color);
+        varia_text_renderer_set_text_string_property(new_scrollbar_ptr->text_renderer,
+                                                     new_scrollbar_ptr->text_index,
+                                                     VARIA_TEXT_RENDERER_TEXT_STRING_PROPERTY_COLOR,
+                                                     _ui_scrollbar_text_color);
 
         _ui_scrollbar_update_text_position(new_scrollbar_ptr);
 
@@ -993,10 +993,10 @@ PUBLIC void ui_scrollbar_set_property(void*               scrollbar,
 
             if (scrollbar_ptr->text_location == UI_SCROLLBAR_TEXT_LOCATION_ABOVE_SLIDER)
             {
-                ogl_text_get_text_string_property(scrollbar_ptr->text_renderer,
-                                                  OGL_TEXT_STRING_PROPERTY_TEXT_HEIGHT_SS,
-                                                  scrollbar_ptr->text_index,
-                                                 &text_height_ss);
+                varia_text_renderer_get_text_string_property(scrollbar_ptr->text_renderer,
+                                                             VARIA_TEXT_RENDERER_TEXT_STRING_PROPERTY_TEXT_HEIGHT_SS,
+                                                             scrollbar_ptr->text_index,
+                                                            &text_height_ss);
             }
 
             scrollbar_ptr->slider_x1y1x2y2[0] =        ((float*) data)[0];
@@ -1015,10 +1015,10 @@ PUBLIC void ui_scrollbar_set_property(void*               scrollbar,
         {
             scrollbar_ptr->is_visible = *(bool*) data;
 
-            ogl_text_set_text_string_property(scrollbar_ptr->text_renderer,
-                                              scrollbar_ptr->text_index,
-                                              OGL_TEXT_STRING_PROPERTY_VISIBILITY,
-                                              data);
+            varia_text_renderer_set_text_string_property(scrollbar_ptr->text_renderer,
+                                                         scrollbar_ptr->text_index,
+                                                         VARIA_TEXT_RENDERER_TEXT_STRING_PROPERTY_VISIBILITY,
+                                                         data);
 
             ui_receive_control_callback(scrollbar_ptr->ui_instance,
                                         (ui_control) scrollbar_ptr,

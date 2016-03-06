@@ -1479,9 +1479,6 @@ typedef void (*PFNOGLPIPELINECALLBACKPROC)(ral_context context,
                                            const int*  rendering_area_px_topdown,
                                            void*       callback_user_arg);
 
-/** Text handle */
-DECLARE_HANDLE(ogl_text);
-
 /** Rendering handler call-back
  *
  *  @param context           TODO

@@ -26,7 +26,7 @@ PUBLIC void ui_checkbox_get_property(const void*         internal_instance,
 
 /** TODO */
 PUBLIC void* ui_checkbox_init(ui                        instance,
-                              ogl_text                  text_renderer,
+                              varia_text_renderer       text_renderer,
                               system_hashed_ansi_string name,
                               const float*              x1y1,
                               PFNUIFIREPROCPTR          pfn_fire_proc_ptr,

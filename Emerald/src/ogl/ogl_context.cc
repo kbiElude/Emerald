@@ -14,7 +14,6 @@
 #include "ogl/ogl_context_vaos.h"
 #include "ogl/ogl_context_wrappers.h"
 #include "ogl/ogl_rendering_handler.h"
-#include "ogl/ogl_text.h"
 #include "raGL/raGL_buffers.h"
 #include "raGL/raGL_texture.h"
 #include "raGL/raGL_utils.h"
@@ -37,6 +36,7 @@
 #include "system/system_resources.h"
 #include "system/system_window.h"
 #include "varia/varia_primitive_renderer.h"
+#include "varia/varia_text_renderer.h"
 #include <string.h>
 
 #ifdef _WIN32
@@ -137,7 +137,7 @@ typedef struct
     ogl_context_sampler_bindings    sampler_bindings;
     scene_renderer_sm               shadow_mapping;
     ogl_context_state_cache         state_cache;
-    ogl_text                        text_renderer;
+    varia_text_renderer             text_renderer;
     ogl_context_texture_compression texture_compression;
     ogl_context_to_bindings         to_bindings;
     ogl_context_vaos                vaos;
@@ -1180,20 +1180,20 @@ PRIVATE void _ogl_context_init_context_after_creation(ogl_context context)
                                    SYSTEM_WINDOW_PROPERTY_NAME,
                                   &window_name);
 
-        context_ptr->text_renderer = ogl_text_create(window_name,
-                                                     context_ptr->context,
-                                                     system_resources_get_meiryo_font_table(),
-                                                     window_size[0],
-                                                     window_size[1]);
+        context_ptr->text_renderer = varia_text_renderer_create(window_name,
+                                                               context_ptr->context,
+                                                               system_resources_get_meiryo_font_table(),
+                                                               window_size[0],
+                                                               window_size[1]);
 
-        ogl_text_set_text_string_property(context_ptr->text_renderer,
-                                          TEXT_STRING_ID_DEFAULT,
-                                          OGL_TEXT_STRING_PROPERTY_SCALE,
-                                         &text_default_size);
-        ogl_text_set_text_string_property(context_ptr->text_renderer,
-                                          TEXT_STRING_ID_DEFAULT,
-                                          OGL_TEXT_STRING_PROPERTY_COLOR,
-                                          text_color);
+        varia_text_renderer_set_text_string_property(context_ptr->text_renderer,
+                                                     VARIA_TEXT_RENDERER_TEXT_STRING_ID_DEFAULT,
+                                                     VARIA_TEXT_RENDERER_TEXT_STRING_PROPERTY_SCALE,
+                                                    &text_default_size);
+        varia_text_renderer_set_text_string_property(context_ptr->text_renderer,
+                                                     VARIA_TEXT_RENDERER_TEXT_STRING_ID_DEFAULT,
+                                                     VARIA_TEXT_RENDERER_TEXT_STRING_PROPERTY_COLOR,
+                                                     text_color);
     }
     ogl_rendering_handler_set_private_property(rendering_handler,
                                                OGL_RENDERING_HANDLER_PRIVATE_PROPERTY_CALL_PASSTHROUGH_MODE,
@@ -3560,7 +3560,7 @@ PUBLIC EMERALD_API void ogl_context_get_property(ogl_context          context,
             ASSERT_DEBUG_SYNC(context_ptr->text_renderer != NULL,
                               "Text renderer is NULL");
 
-            *((ogl_text*) out_result) = context_ptr->text_renderer;
+            *((varia_text_renderer*) out_result) = context_ptr->text_renderer;
 
             break;
         }
@@ -3669,7 +3669,7 @@ PUBLIC bool ogl_context_release_managers(ogl_context context)
 
     if (context_ptr->text_renderer != NULL)
     {
-        ogl_text_release(context_ptr->text_renderer);
+        varia_text_renderer_release(context_ptr->text_renderer);
 
         context_ptr->text_renderer = NULL;
     }

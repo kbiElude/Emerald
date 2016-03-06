@@ -5,7 +5,6 @@
  */
 #include "shared.h"
 #include "ogl/ogl_context.h"
-#include "ogl/ogl_text.h"
 #include "raGL/raGL_buffer.h"
 #include "raGL/raGL_program.h"
 #include "raGL/raGL_shader.h"
@@ -23,6 +22,7 @@
 #include "ui/ui.h"
 #include "ui/ui_texture_preview.h"
 #include "ui/ui_shared.h"
+#include "varia/varia_text_renderer.h"
 #include <string>
 
 #define UB_FS_BP_INDEX (0)
@@ -64,8 +64,8 @@ typedef struct
     ral_texture               texture;
     bool                      texture_initialized;
 
-    GLint    text_index;
-    ogl_text text_renderer;
+    GLint               text_index;
+    varia_text_renderer text_renderer;
 
     /* Cached func ptrs */
     ral_backend_type                backend_type;
@@ -402,34 +402,34 @@ PRIVATE void _ui_texture_preview_init_texture_renderer_callback(ogl_context cont
     texture_preview_ptr->border_width[1] = 1.0f / (float)(preview_height_ss * window_size[1] + 1);
 
     /* Configure the text to be shown below the preview */
-    ogl_text_set(texture_preview_ptr->text_renderer,
-                 texture_preview_ptr->text_index,
-                 system_hashed_ansi_string_get_buffer(texture_preview_ptr->name) );
+    varia_text_renderer_set(texture_preview_ptr->text_renderer,
+                            texture_preview_ptr->text_index,
+                            system_hashed_ansi_string_get_buffer(texture_preview_ptr->name) );
 
     int text_height   = 0;
     int text_xy[2]    = {0};
     int text_width    = 0;
 
-    ogl_text_get_text_string_property(texture_preview_ptr->text_renderer,
-                                      OGL_TEXT_STRING_PROPERTY_TEXT_HEIGHT_PX,
-                                      texture_preview_ptr->text_index,
-                                     &text_height);
-    ogl_text_get_text_string_property(texture_preview_ptr->text_renderer,
-                                      OGL_TEXT_STRING_PROPERTY_TEXT_WIDTH_PX,
-                                      texture_preview_ptr->text_index,
-                                     &text_width);
+    varia_text_renderer_get_text_string_property(texture_preview_ptr->text_renderer,
+                                                 VARIA_TEXT_RENDERER_TEXT_STRING_PROPERTY_TEXT_HEIGHT_PX,
+                                                 texture_preview_ptr->text_index,
+                                                &text_height);
+    varia_text_renderer_get_text_string_property(texture_preview_ptr->text_renderer,
+                                                 VARIA_TEXT_RENDERER_TEXT_STRING_PROPERTY_TEXT_WIDTH_PX,
+                                                 texture_preview_ptr->text_index,
+                                                &text_width);
 
     text_xy[0] = (int) ((texture_preview_ptr->x1y1x2y2[0] + (texture_preview_ptr->x1y1x2y2[2] - texture_preview_ptr->x1y1x2y2[0] - float(text_width)  / window_size[0]) * 0.5f) * (float) window_size[0]);
     text_xy[1] = (int) ((1.0f - (texture_preview_ptr->x1y1x2y2[3] - float(text_height) / window_size[1])) * (float) window_size[1]);
 
-    ogl_text_set_text_string_property(texture_preview_ptr->text_renderer,
-                                      texture_preview_ptr->text_index,
-                                      OGL_TEXT_STRING_PROPERTY_COLOR,
-                                      _ui_texture_preview_text_color);
-    ogl_text_set_text_string_property(texture_preview_ptr->text_renderer,
-                                      texture_preview_ptr->text_index,
-                                      OGL_TEXT_STRING_PROPERTY_POSITION_PX,
-                                      text_xy);
+    varia_text_renderer_set_text_string_property(texture_preview_ptr->text_renderer,
+                                                 texture_preview_ptr->text_index,
+                                                 VARIA_TEXT_RENDERER_TEXT_STRING_PROPERTY_COLOR,
+                                                 _ui_texture_preview_text_color);
+    varia_text_renderer_set_text_string_property(texture_preview_ptr->text_renderer,
+                                                 texture_preview_ptr->text_index,
+                                                 VARIA_TEXT_RENDERER_TEXT_STRING_PROPERTY_POSITION_PX,
+                                                 text_xy);
 
     /* Retrieve uniform locations */
     const ral_program_variable* border_width_uniform_ral_ptr = NULL;
@@ -535,9 +535,9 @@ PUBLIC void ui_texture_preview_deinit(void* internal_instance)
                                1, /* n_objects */
                                (const void**) &ui_texture_preview_ptr->program);
 
-    ogl_text_set(ui_texture_preview_ptr->text_renderer,
-                 ui_texture_preview_ptr->text_index,
-                 "");
+    varia_text_renderer_set(ui_texture_preview_ptr->text_renderer,
+                            ui_texture_preview_ptr->text_index,
+                            "");
 
     if (ui_texture_preview_ptr->program_ub_fs != NULL)
     {
@@ -801,10 +801,10 @@ PUBLIC void ui_texture_preview_get_property(const void*         texture_preview,
 
         case UI_CONTROL_PROPERTY_TEXTURE_PREVIEW_SHOW_TEXTURE_NAME:
         {
-            ogl_text_get_text_string_property(texture_preview_ptr->text_renderer,
-                                              OGL_TEXT_STRING_PROPERTY_VISIBILITY,
-                                              texture_preview_ptr->text_index,
-                                              out_result);
+            varia_text_renderer_get_text_string_property(texture_preview_ptr->text_renderer,
+                                                         VARIA_TEXT_RENDERER_TEXT_STRING_PROPERTY_VISIBILITY,
+                                                         texture_preview_ptr->text_index,
+                                                         out_result);
 
             break;
         }
@@ -826,7 +826,7 @@ PUBLIC void ui_texture_preview_get_property(const void*         texture_preview,
 
 /** Please see header for specification */
 PUBLIC void* ui_texture_preview_init(ui                        instance,
-                                     ogl_text                  text_renderer,
+                                     varia_text_renderer       text_renderer,
                                      system_hashed_ansi_string name,
                                      const float*              x1y1,
                                      const float*              max_size,
@@ -857,7 +857,7 @@ PUBLIC void* ui_texture_preview_init(ui                        instance,
         new_texture_preview_ptr->name                = name;
         new_texture_preview_ptr->preview_type        = preview_type;
         new_texture_preview_ptr->text_renderer       = text_renderer;
-        new_texture_preview_ptr->text_index          = ogl_text_add_string(text_renderer);
+        new_texture_preview_ptr->text_index          = varia_text_renderer_add_string(text_renderer);
         new_texture_preview_ptr->texture             = to;
         new_texture_preview_ptr->texture_initialized = false;
         new_texture_preview_ptr->visible             = true;
@@ -1046,10 +1046,10 @@ PUBLIC void ui_texture_preview_set_property(void*               texture_preview,
 
         case UI_CONTROL_PROPERTY_TEXTURE_PREVIEW_SHOW_TEXTURE_NAME:
         {
-            ogl_text_set_text_string_property(texture_preview_ptr->text_renderer,
-                                              texture_preview_ptr->text_index,
-                                              OGL_TEXT_STRING_PROPERTY_VISIBILITY,
-                                              data);
+            varia_text_renderer_set_text_string_property(texture_preview_ptr->text_renderer,
+                                                         texture_preview_ptr->text_index,
+                                                         VARIA_TEXT_RENDERER_TEXT_STRING_PROPERTY_VISIBILITY,
+                                                         data);
 
             break;
         }

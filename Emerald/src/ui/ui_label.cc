@@ -5,7 +5,6 @@
  */
 #include "shared.h"
 #include "ogl/ogl_context.h"
-#include "ogl/ogl_text.h"
 #include "ral/ral_context.h"
 #include "system/system_assertions.h"
 #include "system/system_hashed_ansi_string.h"
@@ -15,16 +14,17 @@
 #include "ui/ui.h"
 #include "ui/ui_label.h"
 #include "ui/ui_shared.h"
+#include "varia/varia_text_renderer.h"
 
 const float _ui_button_text_color[] = {1, 1, 1, 1.0f};
 
 /** Internal types */
 typedef struct
 {
-    ogl_text_string_id  text_id;
-    ogl_text            text_renderer;
-    bool                visible;
-    float               x1y1[2];
+    varia_text_renderer_text_string_id text_id;
+    varia_text_renderer                text_renderer;
+    bool                               visible;
+    float                              x1y1[2];
 } _ui_label;
 
 /** Please see header for specification */
@@ -33,10 +33,10 @@ PUBLIC void ui_label_deinit(void* internal_instance)
     const bool new_visibility = false;
     _ui_label* ui_label_ptr   = (_ui_label*) internal_instance;
 
-    ogl_text_set_text_string_property(ui_label_ptr->text_renderer,
-                                      ui_label_ptr->text_id,
-                                      OGL_TEXT_STRING_PROPERTY_VISIBILITY,
-                                      &new_visibility);
+    varia_text_renderer_set_text_string_property(ui_label_ptr->text_renderer,
+                                                 ui_label_ptr->text_id,
+                                                 VARIA_TEXT_RENDERER_TEXT_STRING_PROPERTY_VISIBILITY,
+                                                &new_visibility);
 
     delete ui_label_ptr;
 }
@@ -59,10 +59,10 @@ PUBLIC void ui_label_get_property(const void*         label,
 
         case UI_CONTROL_PROPERTY_LABEL_TEXT_HEIGHT_SS:
         {
-            ogl_text_get_text_string_property(label_ptr->text_renderer,
-                                              OGL_TEXT_STRING_PROPERTY_TEXT_HEIGHT_SS,
-                                              label_ptr->text_id,
-                                              out_result);
+            varia_text_renderer_get_text_string_property(label_ptr->text_renderer,
+                                                         VARIA_TEXT_RENDERER_TEXT_STRING_PROPERTY_TEXT_HEIGHT_SS,
+                                                         label_ptr->text_id,
+                                                         out_result);
 
             break;
         }
@@ -77,7 +77,7 @@ PUBLIC void ui_label_get_property(const void*         label,
 
 /** Please see header for specification */
 PUBLIC void* ui_label_init(ui                        instance,
-                           ogl_text                  text_renderer,
+                           varia_text_renderer       text_renderer,
                            system_hashed_ansi_string name,
                            const float*              x1y1)
 {
@@ -97,22 +97,22 @@ PUBLIC void* ui_label_init(ui                        instance,
         new_label_ptr->x1y1[1] = 1 - x1y1[1];
 
         new_label_ptr->text_renderer = text_renderer;
-        new_label_ptr->text_id       = ogl_text_add_string(text_renderer);
+        new_label_ptr->text_id       = varia_text_renderer_add_string(text_renderer);
         new_label_ptr->visible       = true;
 
         /* Configure the text to be shown on the button */
-        ogl_text_set(new_label_ptr->text_renderer,
-                     new_label_ptr->text_id,
-                     system_hashed_ansi_string_get_buffer(name) );
+        varia_text_renderer_set(new_label_ptr->text_renderer,
+                                new_label_ptr->text_id,
+                                system_hashed_ansi_string_get_buffer(name) );
 
-        ogl_text_set_text_string_property(new_label_ptr->text_renderer,
-                                          new_label_ptr->text_id,
-                                          OGL_TEXT_STRING_PROPERTY_COLOR,
-                                          _ui_button_text_color);
-        ogl_text_set_text_string_property(new_label_ptr->text_renderer,
-                                          new_label_ptr->text_id,
-                                          OGL_TEXT_STRING_PROPERTY_POSITION_SS,
-                                          x1y1);
+        varia_text_renderer_set_text_string_property(new_label_ptr->text_renderer,
+                                                     new_label_ptr->text_id,
+                                                     VARIA_TEXT_RENDERER_TEXT_STRING_PROPERTY_COLOR,
+                                                     _ui_button_text_color);
+        varia_text_renderer_set_text_string_property(new_label_ptr->text_renderer,
+                                                     new_label_ptr->text_id,
+                                                     VARIA_TEXT_RENDERER_TEXT_STRING_PROPERTY_POSITION_SS,
+                                                     x1y1);
     } /* if (new_label != NULL) */
 
     return (void*) new_label_ptr;
@@ -129,9 +129,9 @@ PUBLIC void ui_label_set_property(void*               label,
     {
         case UI_CONTROL_PROPERTY_LABEL_TEXT:
         {
-            ogl_text_set(label_ptr->text_renderer,
-                         label_ptr->text_id,
-                         system_hashed_ansi_string_get_buffer(*(system_hashed_ansi_string*) data));
+            varia_text_renderer_set(label_ptr->text_renderer,
+                                    label_ptr->text_id,
+                                    system_hashed_ansi_string_get_buffer(*(system_hashed_ansi_string*) data));
 
             break;
         }
@@ -143,10 +143,10 @@ PUBLIC void ui_label_set_property(void*               label,
             label_ptr->x1y1[0] = x1y1[0];
             label_ptr->x1y1[1] = x1y1[1];
 
-            ogl_text_set_text_string_property(label_ptr->text_renderer,
-                                              label_ptr->text_id,
-                                              OGL_TEXT_STRING_PROPERTY_POSITION_SS,
-                                              label_ptr->x1y1);
+            varia_text_renderer_set_text_string_property(label_ptr->text_renderer,
+                                                         label_ptr->text_id,
+                                                         VARIA_TEXT_RENDERER_TEXT_STRING_PROPERTY_POSITION_SS,
+                                                         label_ptr->x1y1);
 
             break;
         }

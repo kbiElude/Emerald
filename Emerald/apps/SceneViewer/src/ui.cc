@@ -6,7 +6,6 @@
 #include "shared.h"
 #include "ogl/ogl_context.h"
 #include "ogl/ogl_rendering_handler.h"
-#include "ogl/ogl_text.h"
 #include "ral/ral_context.h"
 #include "scene/scene_camera.h"
 #include "system/system_critical_section.h"
@@ -15,15 +14,16 @@
 #include "ui/ui.h"
 #include "ui/ui_dropdown.h"
 #include "ui/ui_texture_preview.h"
+#include "varia/varia_text_renderer.h"
 #include "app_config.h"
 #include "include/main.h"
 #include "state.h"
 
-PRIVATE ogl_text   _text_renderer                = NULL;
-PRIVATE ui         _ui                           = NULL;
-PRIVATE ui_control _ui_active_camera_control     = NULL;
-PRIVATE ui_control _ui_active_path_control       = NULL;
-PRIVATE ui_control _ui_texture_preview           = NULL;
+PRIVATE varia_text_renderer _text_renderer                = NULL;
+PRIVATE ui                  _ui                           = NULL;
+PRIVATE ui_control          _ui_active_camera_control     = NULL;
+PRIVATE ui_control          _ui_active_path_control       = NULL;
+PRIVATE ui_control          _ui_texture_preview           = NULL;
 
 
 /* Forward declarations */
@@ -108,7 +108,7 @@ PUBLIC void ui_deinit()
 
     if (_text_renderer != NULL)
     {
-        ogl_text_release(_text_renderer);
+        varia_text_renderer_release(_text_renderer);
 
         _text_renderer = NULL;
     }
@@ -117,9 +117,9 @@ PUBLIC void ui_deinit()
 /** Please see header for spec */
 PUBLIC void ui_draw()
 {
-    ui_draw      (_ui);
-    ogl_text_draw(_context,
-                  _text_renderer);
+    ui_draw                 (_ui);
+    varia_text_renderer_draw(_context,
+                             _text_renderer);
 }
 
 /** Please see header for spec */
@@ -146,15 +146,15 @@ PUBLIC void ui_init()
                              DEMO_WINDOW_PROPERTY_RESOLUTION,
                              window_size);
 
-    ogl_context_get_property(ral_context_get_gl_context(_context),
-                             OGL_CONTEXT_PROPERTY_TEXT_RENDERER,
-                            &_text_renderer);
-    ogl_text_retain         (_text_renderer);
+    ogl_context_get_property  (ral_context_get_gl_context(_context),
+                               OGL_CONTEXT_PROPERTY_TEXT_RENDERER,
+                              &_text_renderer);
+    varia_text_renderer_retain(_text_renderer);
 
-    ogl_text_set_text_string_property(_text_renderer,
-                                      TEXT_STRING_ID_DEFAULT,
-                                      OGL_TEXT_STRING_PROPERTY_SCALE,
-                                     &text_default_size);
+    varia_text_renderer_set_text_string_property(_text_renderer,
+                                                 VARIA_TEXT_RENDERER_TEXT_STRING_ID_DEFAULT,
+                                                 VARIA_TEXT_RENDERER_TEXT_STRING_PROPERTY_SCALE,
+                                                &text_default_size);
 
     _ui = ui_create(_text_renderer,
                     system_hashed_ansi_string_create("UI") );

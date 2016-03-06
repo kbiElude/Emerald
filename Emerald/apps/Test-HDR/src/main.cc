@@ -14,7 +14,6 @@
 #include "gfx/gfx_rgbe.h"
 #include "ogl/ogl_context.h"
 #include "ogl/ogl_rendering_handler.h"
-#include "ogl/ogl_text.h"
 #include "postprocessing/postprocessing_reinhard_tonemap.h"
 #include "raGL/raGL_buffer.h"
 #include "raGL/raGL_framebuffer.h"
@@ -38,6 +37,7 @@
 #include "system/system_resources.h"
 #include "system/system_window.h"
 #include "system/system_variant.h"
+#include "varia/varia_text_renderer.h"
 
 typedef enum
 {
@@ -103,7 +103,7 @@ const ral_program_variable*           _reinhardt_program_exposure_uniform_ral_pt
 const _raGL_program_variable*         _reinhardt_program_tex_uniform_raGL_ptr     = NULL;
 uint32_t                              _reinhardt_program_ub_bo_size               = 0;
 ral_program_block_buffer              _reinhardt_program_ub                       = NULL;
-ogl_text                              _text_renderer                              = NULL;
+varia_text_renderer                   _text_renderer                              = NULL;
 uint32_t                              _texture_height                             = -1;
 ral_texture                           _texture                                    = NULL;
 gfx_image                             _texture_image                              = NULL;
@@ -121,54 +121,54 @@ void _update_text_renderer()
     {
         case MAPPING_FILMIC:
         {
-            ogl_text_set(_text_renderer,
-                         0,
-                         "Filmic tone mapping");
+            varia_text_renderer_set(_text_renderer,
+                                    0,
+                                    "Filmic tone mapping");
 
             break;
         }
 
         case MAPPING_FILMIC_CUSTOMIZABLE:
         {
-            ogl_text_set(_text_renderer,
-                         0,
-                         "Customizable filmic tone mapping");
+            varia_text_renderer_set(_text_renderer,
+                                    0,
+                                    "Customizable filmic tone mapping");
 
             break;
         }
 
         case MAPPING_LINEAR:
         {
-            ogl_text_set(_text_renderer,
-                         0,
-                         "Linear tone mapping");
+            varia_text_renderer_set(_text_renderer,
+                                    0,
+                                    "Linear tone mapping");
 
             break;
         }
 
         case MAPPING_REINHARDT:
         {
-            ogl_text_set(_text_renderer,
-                         0,
-                         "Reinhardt tone mapping (simple)");
+            varia_text_renderer_set(_text_renderer,
+                                    0,
+                                    "Reinhardt tone mapping (simple)");
 
             break;
         }
 
         case MAPPING_REINHARDT_GLOBAL:
         {
-            ogl_text_set(_text_renderer,
-                         0,
-                         "Reinhardt tone mapping (global)");
+            varia_text_renderer_set(_text_renderer,
+                                    0,
+                                    "Reinhardt tone mapping (global)");
 
             break;
         }
 
         case MAPPING_REINHARDT_GLOBAL_CRUDE:
         {
-            ogl_text_set(_text_renderer,
-                         0,
-                         "Reinhardt tone mapping (global crude)");
+            varia_text_renderer_set(_text_renderer,
+                                    0,
+                                    "Reinhardt tone mapping (global crude)");
 
             break;
         }
@@ -193,22 +193,21 @@ void _rendering_handler(ogl_context context_gl,
         const float text_color[4] = {0, 0, 1, 1};
         const int   text_pos  [2] = {0, 60};
 
-        _text_renderer = ogl_text_create(system_hashed_ansi_string_create("Text renderer"),
-                                         _context,
-                                         system_resources_get_meiryo_font_table(),
-                                         _texture_width,
-                                         _texture_height
-                                         );
+        _text_renderer = varia_text_renderer_create(system_hashed_ansi_string_create("Text renderer"),
+                                                    _context,
+                                                    system_resources_get_meiryo_font_table(),
+                                                    _texture_width,
+                                                    _texture_height);
 
-        ogl_text_add_string              (_text_renderer);
-        ogl_text_set_text_string_property(_text_renderer,
-                                          0, /* text_string_id */
-                                          OGL_TEXT_STRING_PROPERTY_COLOR,
-                                          text_color);
-        ogl_text_set_text_string_property(_text_renderer,
-                                          0, /* text_string_id */
-                                          OGL_TEXT_STRING_PROPERTY_POSITION_PX,
-                                          text_pos);
+        varia_text_renderer_add_string              (_text_renderer);
+        varia_text_renderer_set_text_string_property(_text_renderer,
+                                                     0, /* text_string_id */
+                                                     VARIA_TEXT_RENDERER_TEXT_STRING_PROPERTY_COLOR,
+                                                     text_color);
+        varia_text_renderer_set_text_string_property(_text_renderer,
+                                                     0, /* text_string_id */
+                                                     VARIA_TEXT_RENDERER_TEXT_STRING_PROPERTY_POSITION_PX,
+                                                     text_pos);
 
         _update_text_renderer();
     }
@@ -617,8 +616,8 @@ void _rendering_handler(ogl_context context_gl,
                                 0,  /* first */
                                 4); /* couint */
 
-    ogl_text_draw(_context,
-                  _text_renderer);
+    varia_text_renderer_draw(_context,
+                             _text_renderer);
 }
 
 bool _rendering_lbm_callback_handler(system_window           window,
@@ -687,7 +686,7 @@ void _window_closing_callback_handler(system_window window,
                                1, /* n_objects */
                                (const void**) &_texture);
 
-    ogl_text_release                                      (_text_renderer);
+    varia_text_renderer_release                           (_text_renderer);
     shaders_fragment_texture2D_filmic_customizable_release(_filmic_customizable_fp);
     shaders_fragment_texture2D_filmic_release             (_filmic_fp);
     shaders_fragment_texture2D_reinhardt_release          (_reinhardt_fp);

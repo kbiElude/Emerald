@@ -35,7 +35,6 @@ static system_hashed_ansi_string _object_type_ocl_program_hashed_ansi_string    
 static system_hashed_ansi_string _object_type_ogl_context_hashed_ansi_string                           = NULL;
 static system_hashed_ansi_string _object_type_ogl_pipeline_hashed_ansi_string                          = NULL;
 static system_hashed_ansi_string _object_type_ogl_rendering_handler_hashed_ansi_string                 = NULL;
-static system_hashed_ansi_string _object_type_ogl_text_hashed_ansi_string                              = NULL;
 static system_hashed_ansi_string _object_type_ogl_textures_hashed_ansi_string                          = NULL;
 static system_hashed_ansi_string _object_type_postprocessing_bloom_hashed_ansi_string                  = NULL;
 static system_hashed_ansi_string _object_type_postprocessing_blur_poisson_hashed_ansi_string           = NULL;
@@ -89,6 +88,7 @@ static system_hashed_ansi_string _object_type_unknown_hashed_ansi_string        
 static system_hashed_ansi_string _object_type_varia_curve_renderer_hashed_ansi_string                  = NULL;
 static system_hashed_ansi_string _object_type_varia_primitive_renderer_hashed_ansi_string              = NULL;
 static system_hashed_ansi_string _object_type_varia_skybox_hashed_ansi_string                          = NULL;
+static system_hashed_ansi_string _object_type_varia_text_renderer_hashed_ansi_string                   = NULL;
 
 
 /** Please see header for specification */
@@ -116,7 +116,6 @@ PUBLIC system_hashed_ansi_string object_manager_convert_object_manager_object_ty
         case OBJECT_TYPE_OGL_CONTEXT:                                     return _object_type_ogl_context_hashed_ansi_string;
         case OBJECT_TYPE_OGL_PIPELINE:                                    return _object_type_ogl_pipeline_hashed_ansi_string;
         case OBJECT_TYPE_OGL_RENDERING_HANDLER:                           return _object_type_ogl_rendering_handler_hashed_ansi_string;
-        case OBJECT_TYPE_OGL_TEXT:                                        return _object_type_ogl_text_hashed_ansi_string;
         case OBJECT_TYPE_OGL_TEXTURE:                                     return _object_type_ogl_textures_hashed_ansi_string;
         case OBJECT_TYPE_POSTPROCESSING_BLOOM:                            return _object_type_postprocessing_bloom_hashed_ansi_string;
         case OBJECT_TYPE_POSTPROCESSING_BLUR_POISSON:                     return _object_type_postprocessing_blur_poisson_hashed_ansi_string;
@@ -169,6 +168,7 @@ PUBLIC system_hashed_ansi_string object_manager_convert_object_manager_object_ty
         case OBJECT_TYPE_VARIA_CURVE_RENDERER:                            return _object_type_varia_curve_renderer_hashed_ansi_string;
         case OBJECT_TYPE_VARIA_PRIMITIVE_RENDERER:                        return _object_type_varia_primitive_renderer_hashed_ansi_string;
         case OBJECT_TYPE_VARIA_SKYBOX:                                    return _object_type_varia_skybox_hashed_ansi_string;
+        case OBJECT_TYPE_VARIA_TEXT_RENDERER:                             return _object_type_varia_text_renderer_hashed_ansi_string;
         default:                                                          return _object_type_unknown_hashed_ansi_string;
     }
 
@@ -369,7 +369,6 @@ PUBLIC void _object_manager_init()
     _object_type_ogl_context_hashed_ansi_string                           = system_hashed_ansi_string_create("OpenGL Contexts");
     _object_type_ogl_pipeline_hashed_ansi_string                          = system_hashed_ansi_string_create("OpenGL Pipelines");
     _object_type_ogl_rendering_handler_hashed_ansi_string                 = system_hashed_ansi_string_create("OpenGL Rendering Handlers");
-    _object_type_ogl_text_hashed_ansi_string                              = system_hashed_ansi_string_create("OpenGL Text Renderers");
     _object_type_ogl_textures_hashed_ansi_string                          = system_hashed_ansi_string_create("OpenGL Textures");
     _object_type_postprocessing_bloom_hashed_ansi_string                  = system_hashed_ansi_string_create("Post-processing Bloom");
     _object_type_postprocessing_blur_poisson_hashed_ansi_string           = system_hashed_ansi_string_create("Post-processing Blur Poisson");
@@ -423,6 +422,7 @@ PUBLIC void _object_manager_init()
     _object_type_varia_curve_renderer_hashed_ansi_string                  = system_hashed_ansi_string_create("Varia Curve Renderers");
     _object_type_varia_primitive_renderer_hashed_ansi_string              = system_hashed_ansi_string_create("Varia Primitive Renderers");
     _object_type_varia_skybox_hashed_ansi_string                          = system_hashed_ansi_string_create("Varia Skyboxes");
+    _object_type_varia_text_renderer_hashed_ansi_string                   = system_hashed_ansi_string_create("Varia Text Renderers");
 
     /* Create "directories" (one per each object type) in the internal registry. */
     for (object_manager_object_type object_type  = OBJECT_TYPE_FIRST;

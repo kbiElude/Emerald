@@ -26,7 +26,7 @@ PUBLIC void ui_texture_preview_get_property(const void*         texture_preview,
 
 /** TODO */
 PUBLIC void* ui_texture_preview_init(ui                        instance,
-                                     ogl_text                  text_renderer,
+                                     varia_text_renderer       text_renderer,
                                      system_hashed_ansi_string name,
                                      const float*              x1y1,
                                      const float*              max_size,

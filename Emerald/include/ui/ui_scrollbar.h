@@ -37,7 +37,7 @@ PUBLIC void ui_scrollbar_hover(void*        internal_instance,
 
 /** TODO */
 PUBLIC void* ui_scrollbar_init(ui                          instance,
-                               ogl_text                    text_renderer,
+                               varia_text_renderer         text_renderer,
                                ui_scrollbar_text_location  text_location,
                                system_hashed_ansi_string   name,
                                system_variant              min_value,

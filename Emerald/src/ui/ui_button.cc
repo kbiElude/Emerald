@@ -5,7 +5,6 @@
  */
 #include "shared.h"
 #include "ogl/ogl_context.h"
-#include "ogl/ogl_text.h"
 #include "raGL/raGL_buffer.h"
 #include "raGL/raGL_program.h"
 #include "ral/ral_context.h"
@@ -20,6 +19,7 @@
 #include "ui/ui.h"
 #include "ui/ui_button.h"
 #include "ui/ui_shared.h"
+#include "varia/varia_text_renderer.h"
 
 #define CLICK_BRIGHTNESS_MODIFIER             (1.5f)
 #define FOCUSED_BRIGHTNESS                    (1.5f)
@@ -63,8 +63,8 @@ typedef struct
     uint32_t                 program_ub_vs_bp;
     GLint                    program_x1y1x2y2_ub_offset;
 
-    GLint    text_index;
-    ogl_text text_renderer;
+    GLint               text_index;
+    varia_text_renderer text_renderer;
 
     /* Cached func ptrs */
     PFNGLBINDBUFFERRANGEPROC     pGLBindBufferRange;
@@ -294,14 +294,14 @@ PRIVATE void _ui_button_update_text_location(_ui_button* button_ptr)
         1.0f - button_ptr->x1y1x2y2[3]
     };
 
-    ogl_text_get_text_string_property(button_ptr->text_renderer,
-                                      OGL_TEXT_STRING_PROPERTY_TEXT_HEIGHT_PX,
-                                      button_ptr->text_index,
-                                     &text_height);
-    ogl_text_get_text_string_property(button_ptr->text_renderer,
-                                      OGL_TEXT_STRING_PROPERTY_TEXT_WIDTH_PX,
-                                      button_ptr->text_index,
-                                     &text_width);
+    varia_text_renderer_get_text_string_property(button_ptr->text_renderer,
+                                                 VARIA_TEXT_RENDERER_TEXT_STRING_PROPERTY_TEXT_HEIGHT_PX,
+                                                 button_ptr->text_index,
+                                                &text_height);
+    varia_text_renderer_get_text_string_property(button_ptr->text_renderer,
+                                                 VARIA_TEXT_RENDERER_TEXT_STRING_PROPERTY_TEXT_WIDTH_PX,
+                                                 button_ptr->text_index,
+                                                &text_width);
 
     ral_context_get_property  (button_ptr->context,
                                RAL_CONTEXT_PROPERTY_WINDOW_SYSTEM,
@@ -313,10 +313,10 @@ PRIVATE void _ui_button_update_text_location(_ui_button* button_ptr)
     text_xy[0] = (int) ((x1y1[0] + (x2y2[0] - x1y1[0] - float(text_width)  / window_size[0]) * 0.5f) * (float) window_size[0]);
     text_xy[1] = (int) ((x2y2[1] - (x2y2[1] - x1y1[1] - float(text_height) / window_size[1]) * 0.5f) * (float) window_size[1]);
 
-    ogl_text_set_text_string_property(button_ptr->text_renderer,
-                                      button_ptr->text_index,
-                                      OGL_TEXT_STRING_PROPERTY_POSITION_PX,
-                                      text_xy);
+    varia_text_renderer_set_text_string_property(button_ptr->text_renderer,
+                                                 button_ptr->text_index,
+                                                 VARIA_TEXT_RENDERER_TEXT_STRING_PROPERTY_POSITION_PX,
+                                                 text_xy);
 }
 
 
@@ -325,9 +325,9 @@ PUBLIC void ui_button_deinit(void* internal_instance)
 {
     _ui_button* ui_button_ptr = (_ui_button*) internal_instance;
 
-    ogl_text_set(ui_button_ptr->text_renderer,
-                 ui_button_ptr->text_index,
-                 "");
+    varia_text_renderer_set(ui_button_ptr->text_renderer,
+                            ui_button_ptr->text_index,
+                            "");
 
     ral_context_delete_objects(ui_button_ptr->context,
                                RAL_CONTEXT_OBJECT_TYPE_PROGRAM,
@@ -563,7 +563,7 @@ PUBLIC void ui_button_get_property(const void*         button,
 
 /** Please see header for specification */
 PUBLIC void* ui_button_init(ui                        instance,
-                            ogl_text                  text_renderer,
+                            varia_text_renderer       text_renderer,
                             system_hashed_ansi_string name,
                             const float*              x1y1,
                             const float*              x2y2,
@@ -592,7 +592,7 @@ PUBLIC void* ui_button_init(ui                        instance,
         new_button_ptr->fire_proc_user_arg = fire_proc_user_arg;
         new_button_ptr->pfn_fire_proc_ptr  = pfn_fire_proc_ptr;
         new_button_ptr->text_renderer      = text_renderer;
-        new_button_ptr->text_index         = ogl_text_add_string(text_renderer);
+        new_button_ptr->text_index         = varia_text_renderer_add_string(text_renderer);
         new_button_ptr->visible            = true;
 
         /* Cache GL func pointers */
@@ -633,16 +633,16 @@ PUBLIC void* ui_button_init(ui                        instance,
         }
 
         /* Configure the text to be shown on the button */
-        ogl_text_set(new_button_ptr->text_renderer,
-                     new_button_ptr->text_index,
-                     system_hashed_ansi_string_get_buffer(name) );
+        varia_text_renderer_set(new_button_ptr->text_renderer,
+                                new_button_ptr->text_index,
+                                system_hashed_ansi_string_get_buffer(name) );
 
         _ui_button_update_text_location(new_button_ptr);
 
-        ogl_text_set_text_string_property(new_button_ptr->text_renderer,
-                                          new_button_ptr->text_index,
-                                          OGL_TEXT_STRING_PROPERTY_COLOR,
-                                          _ui_button_text_color);
+        varia_text_renderer_set_text_string_property(new_button_ptr->text_renderer,
+                                                     new_button_ptr->text_index,
+                                                     VARIA_TEXT_RENDERER_TEXT_STRING_PROPERTY_COLOR,
+                                                     _ui_button_text_color);
 
         /* Retrieve the rendering program */
         new_button_ptr->program = ui_get_registered_program(instance,

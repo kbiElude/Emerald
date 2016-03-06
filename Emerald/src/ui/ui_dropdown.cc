@@ -5,7 +5,6 @@
  */
 #include "shared.h"
 #include "ogl/ogl_context.h"
-#include "ogl/ogl_text.h"
 #include "raGL/raGL_buffer.h"
 #include "raGL/raGL_program.h"
 #include "raGL/raGL_shader.h"
@@ -23,6 +22,7 @@
 #include "ui/ui.h"
 #include "ui/ui_dropdown.h"
 #include "ui/ui_shared.h"
+#include "varia/varia_text_renderer.h"
 
 #define BUTTON_WIDTH_PX                       (14)
 #define CLICK_BRIGHTNESS_MODIFIER             (1.5f)
@@ -66,12 +66,12 @@ typedef struct _ui_dropdown_fire_event
 /** Internal types */
 typedef struct _ui_dropdown_entry
 {
-    int                       base_x;
-    int                       base_y;
-    system_hashed_ansi_string name;
-    ogl_text_string_id        string_id;
-    int                       text_y;
-    void*                     user_arg;
+    int                                base_x;
+    int                                base_y;
+    system_hashed_ansi_string          name;
+    varia_text_renderer_text_string_id string_id;
+    int                                text_y;
+    void*                              user_arg;
 
     _ui_dropdown_entry()
     {
@@ -158,12 +158,12 @@ typedef struct
     ral_program_block_buffer  program_slider_ub_vs;
     GLuint                    program_slider_ub_vs_bo_size;
 
-    ogl_text_string_id        current_entry_string_id;
-    system_resizable_vector   entries;
-    system_hashed_ansi_string label_text;
-    ogl_text_string_id        label_string_id;
-    ogl_text                  text_renderer;
-    ui                        ui_instance; /* NOT reference-counted */
+    varia_text_renderer_text_string_id current_entry_string_id;
+    system_resizable_vector            entries;
+    system_hashed_ansi_string          label_text;
+    varia_text_renderer_text_string_id label_string_id;
+    varia_text_renderer                text_renderer;
+    ui                                 ui_instance; /* NOT reference-counted */
 
     ui_control owner_control; /* this object, as visible for applications */
 
@@ -994,10 +994,10 @@ PRIVATE void _ui_dropdown_update_entry_positions(_ui_dropdown* dropdown_ptr)
 
             entry_ptr->text_y = new_xy[1];
 
-            ogl_text_set_text_string_property(dropdown_ptr->text_renderer,
-                                              entry_ptr->string_id,
-                                              OGL_TEXT_STRING_PROPERTY_POSITION_PX,
-                                              new_xy);
+            varia_text_renderer_set_text_string_property(dropdown_ptr->text_renderer,
+                                                         entry_ptr->string_id,
+                                                         VARIA_TEXT_RENDERER_TEXT_STRING_PROPERTY_POSITION_PX,
+                                                         new_xy);
         }
     } /* for (all entries) */
 }
@@ -1068,9 +1068,9 @@ PRIVATE void _ui_dropdown_update_entry_strings(_ui_dropdown* dropdown_ptr,
             if ( only_update_selected_entry && n_entry == (n_strings - 1) ||
                 !only_update_selected_entry)
             {
-                ogl_text_set(dropdown_ptr->text_renderer,
-                             entry_ptr->string_id,
-                             system_hashed_ansi_string_get_buffer(entry_ptr->name) );
+                varia_text_renderer_set(dropdown_ptr->text_renderer,
+                                        entry_ptr->string_id,
+                                        system_hashed_ansi_string_get_buffer(entry_ptr->name) );
 
                 /* Position the string */
                 float         delta_y       = dropdown_ptr->separator_delta_y * float(n_entry + 1);
@@ -1078,14 +1078,14 @@ PRIVATE void _ui_dropdown_update_entry_strings(_ui_dropdown* dropdown_ptr,
                 int           text_xy[2]    = {0};
                 int           text_width    = 0;
 
-                ogl_text_get_text_string_property(dropdown_ptr->text_renderer,
-                                                  OGL_TEXT_STRING_PROPERTY_TEXT_HEIGHT_PX,
-                                                  entry_ptr->string_id,
-                                                 &text_height);
-                ogl_text_get_text_string_property(dropdown_ptr->text_renderer,
-                                                  OGL_TEXT_STRING_PROPERTY_TEXT_WIDTH_PX,
-                                                  entry_ptr->string_id,
-                                                 &text_width);
+                varia_text_renderer_get_text_string_property(dropdown_ptr->text_renderer,
+                                                             VARIA_TEXT_RENDERER_TEXT_STRING_PROPERTY_TEXT_HEIGHT_PX,
+                                                             entry_ptr->string_id,
+                                                            &text_height);
+                varia_text_renderer_get_text_string_property(dropdown_ptr->text_renderer,
+                                                             VARIA_TEXT_RENDERER_TEXT_STRING_PROPERTY_TEXT_WIDTH_PX,
+                                                             entry_ptr->string_id,
+                                                            &text_width);
 
                 if (n_entry == (n_strings - 1) )
                 {
@@ -1098,21 +1098,21 @@ PRIVATE void _ui_dropdown_update_entry_strings(_ui_dropdown* dropdown_ptr,
                 entry_ptr->base_x = text_xy[0];
                 entry_ptr->base_y = text_xy[1];
 
-                ogl_text_set_text_string_property(dropdown_ptr->text_renderer,
-                                                  entry_ptr->string_id,
-                                                  OGL_TEXT_STRING_PROPERTY_COLOR,
-                                                  _ui_dropdown_text_color);
-                ogl_text_set_text_string_property(dropdown_ptr->text_renderer,
-                                                  entry_ptr->string_id,
-                                                  OGL_TEXT_STRING_PROPERTY_POSITION_PX,
-                                                  text_xy);
+                varia_text_renderer_set_text_string_property(dropdown_ptr->text_renderer,
+                                                             entry_ptr->string_id,
+                                                             VARIA_TEXT_RENDERER_TEXT_STRING_PROPERTY_COLOR,
+                                                             _ui_dropdown_text_color);
+                varia_text_renderer_set_text_string_property(dropdown_ptr->text_renderer,
+                                                             entry_ptr->string_id,
+                                                             VARIA_TEXT_RENDERER_TEXT_STRING_PROPERTY_POSITION_PX,
+                                                             text_xy);
 
                 if (n_entry != (n_strings - 1) )
                 {
-                    ogl_text_set_text_string_property(dropdown_ptr->text_renderer,
-                                                      entry_ptr->string_id,
-                                                      OGL_TEXT_STRING_PROPERTY_SCISSOR_BOX,
-                                                      scissor_box);
+                    varia_text_renderer_set_text_string_property(dropdown_ptr->text_renderer,
+                                                                 entry_ptr->string_id,
+                                                                 VARIA_TEXT_RENDERER_TEXT_STRING_PROPERTY_SCISSOR_BOX,
+                                                                 scissor_box);
                 }
             } /* if (string should be updated) */
         } /* if (string descriptor was retrieved) */
@@ -1128,17 +1128,17 @@ PRIVATE void _ui_dropdown_update_entry_visibility(_ui_dropdown* dropdown_ptr)
                                          SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
                                         &n_entries);
 
-    ogl_text_set_text_string_property(dropdown_ptr->text_renderer,
-                                      dropdown_ptr->current_entry_string_id,
-                                      OGL_TEXT_STRING_PROPERTY_VISIBILITY,
-                                     &dropdown_ptr->visible);
+    varia_text_renderer_set_text_string_property(dropdown_ptr->text_renderer,
+                                                 dropdown_ptr->current_entry_string_id,
+                                                 VARIA_TEXT_RENDERER_TEXT_STRING_PROPERTY_VISIBILITY,
+                                                &dropdown_ptr->visible);
 
     if (dropdown_ptr->label_string_id != -1)
     {
-        ogl_text_set_text_string_property(dropdown_ptr->text_renderer,
-                                          dropdown_ptr->label_string_id,
-                                          OGL_TEXT_STRING_PROPERTY_VISIBILITY,
-                                         &dropdown_ptr->visible);
+        varia_text_renderer_set_text_string_property(dropdown_ptr->text_renderer,
+                                                     dropdown_ptr->label_string_id,
+                                                     VARIA_TEXT_RENDERER_TEXT_STRING_PROPERTY_VISIBILITY,
+                                                    &dropdown_ptr->visible);
     }
 
     for (unsigned int n_entry = 0;
@@ -1156,18 +1156,18 @@ PRIVATE void _ui_dropdown_update_entry_visibility(_ui_dropdown* dropdown_ptr)
                 bool visibility = dropdown_ptr->is_droparea_visible &&
                                   dropdown_ptr->visible;
 
-                ogl_text_set_text_string_property(dropdown_ptr->text_renderer,
-                                                  entry_ptr->string_id,
-                                                  OGL_TEXT_STRING_PROPERTY_VISIBILITY,
-                                                 &visibility);
+                varia_text_renderer_set_text_string_property(dropdown_ptr->text_renderer,
+                                                             entry_ptr->string_id,
+                                                             VARIA_TEXT_RENDERER_TEXT_STRING_PROPERTY_VISIBILITY,
+                                                            &visibility);
             }
             else
             {
                 /* Bar string */
-                ogl_text_set_text_string_property(dropdown_ptr->text_renderer,
-                                                  entry_ptr->string_id,
-                                                  OGL_TEXT_STRING_PROPERTY_VISIBILITY,
-                                                 &dropdown_ptr->visible);
+                varia_text_renderer_set_text_string_property(dropdown_ptr->text_renderer,
+                                                             entry_ptr->string_id,
+                                                             VARIA_TEXT_RENDERER_TEXT_STRING_PROPERTY_VISIBILITY,
+                                                            &dropdown_ptr->visible);
             }
         }
         else
@@ -1213,18 +1213,18 @@ PRIVATE void _ui_dropdown_update_position(_ui_dropdown* dropdown_ptr,
                                                    n_entry,
                                                   &entry_ptr) )
         {
-            const ogl_text_string_id& string_id   = entry_ptr->string_id;
-            unsigned int              text_height = 0;
-            unsigned int              text_width  = 0;
+            const varia_text_renderer_text_string_id& string_id   = entry_ptr->string_id;
+            unsigned int                              text_height = 0;
+            unsigned int                              text_width  = 0;
 
-            ogl_text_get_text_string_property(dropdown_ptr->text_renderer,
-                                              OGL_TEXT_STRING_PROPERTY_TEXT_HEIGHT_PX,
-                                              string_id,
-                                             &text_height);
-            ogl_text_get_text_string_property(dropdown_ptr->text_renderer,
-                                              OGL_TEXT_STRING_PROPERTY_TEXT_WIDTH_PX,
-                                              string_id,
-                                             &text_width);
+            varia_text_renderer_get_text_string_property(dropdown_ptr->text_renderer,
+                                                         VARIA_TEXT_RENDERER_TEXT_STRING_PROPERTY_TEXT_HEIGHT_PX,
+                                                         string_id,
+                                                        &text_height);
+            varia_text_renderer_get_text_string_property(dropdown_ptr->text_renderer,
+                                                         VARIA_TEXT_RENDERER_TEXT_STRING_PROPERTY_TEXT_WIDTH_PX,
+                                                         string_id,
+                                                        &text_width);
 
             if (text_height > text_max_height)
             {
@@ -1292,33 +1292,33 @@ PRIVATE void _ui_dropdown_update_position(_ui_dropdown* dropdown_ptr,
 
     if (dropdown_ptr->label_string_id == -1)
     {
-        dropdown_ptr->label_string_id = ogl_text_add_string(dropdown_ptr->text_renderer);
+        dropdown_ptr->label_string_id = varia_text_renderer_add_string(dropdown_ptr->text_renderer);
     }
 
-    ogl_text_set(dropdown_ptr->text_renderer,
-                 dropdown_ptr->label_string_id,
-                 system_hashed_ansi_string_get_buffer(dropdown_ptr->label_text) );
+    varia_text_renderer_set(dropdown_ptr->text_renderer,
+                            dropdown_ptr->label_string_id,
+                            system_hashed_ansi_string_get_buffer(dropdown_ptr->label_text) );
 
-    ogl_text_get_text_string_property(dropdown_ptr->text_renderer,
-                                      OGL_TEXT_STRING_PROPERTY_TEXT_HEIGHT_PX,
-                                      dropdown_ptr->label_string_id,
-                                     &text_height);
-    ogl_text_get_text_string_property(dropdown_ptr->text_renderer,
-                                      OGL_TEXT_STRING_PROPERTY_TEXT_WIDTH_PX,
-                                      dropdown_ptr->label_string_id,
-                                     &text_width);
-    ogl_text_set_text_string_property(dropdown_ptr->text_renderer,
-                                      dropdown_ptr->label_string_id,
-                                      OGL_TEXT_STRING_PROPERTY_COLOR,
-                                      _ui_dropdown_label_text_color);
+    varia_text_renderer_get_text_string_property(dropdown_ptr->text_renderer,
+                                                 VARIA_TEXT_RENDERER_TEXT_STRING_PROPERTY_TEXT_HEIGHT_PX,
+                                                 dropdown_ptr->label_string_id,
+                                                &text_height);
+    varia_text_renderer_get_text_string_property(dropdown_ptr->text_renderer,
+                                                 VARIA_TEXT_RENDERER_TEXT_STRING_PROPERTY_TEXT_WIDTH_PX,
+                                                 dropdown_ptr->label_string_id,
+                                                &text_width);
+    varia_text_renderer_set_text_string_property(dropdown_ptr->text_renderer,
+                                                 dropdown_ptr->label_string_id,
+                                                 VARIA_TEXT_RENDERER_TEXT_STRING_PROPERTY_COLOR,
+                                                 _ui_dropdown_label_text_color);
 
     text_xy[0] = x1y1_ss[0] - text_width - LABEL_X_SEPARATOR_PX;
     text_xy[1] = x1y1_ss[1] + text_height + ((y2_ss - x1y1_ss[1]) - int(text_height)) / 2;
 
-    ogl_text_set_text_string_property(dropdown_ptr->text_renderer,
-                                      dropdown_ptr->label_string_id,
-                                      OGL_TEXT_STRING_PROPERTY_POSITION_PX,
-                                      text_xy);
+    varia_text_renderer_set_text_string_property(dropdown_ptr->text_renderer,
+                                                 dropdown_ptr->label_string_id,
+                                                 VARIA_TEXT_RENDERER_TEXT_STRING_PROPERTY_POSITION_PX,
+                                                 text_xy);
 
     dropdown_ptr->label_x1y1[0] = float(text_xy[0]) / float(window_size[0]);
     dropdown_ptr->label_x1y1[1] = 1.0f - float(text_xy[1]) / float(window_size[1]);
@@ -1356,17 +1356,17 @@ PUBLIC void ui_dropdown_deinit(void* internal_instance)
     /* Release all entry instances */
     _ui_dropdown_entry* entry_ptr = NULL;
 
-    ogl_text_set_text_string_property(ui_dropdown_ptr->text_renderer,
-                                      ui_dropdown_ptr->current_entry_string_id,
-                                      OGL_TEXT_STRING_PROPERTY_VISIBILITY,
-                                     &visibility_false);
+    varia_text_renderer_set_text_string_property(ui_dropdown_ptr->text_renderer,
+                                                 ui_dropdown_ptr->current_entry_string_id,
+                                                 VARIA_TEXT_RENDERER_TEXT_STRING_PROPERTY_VISIBILITY,
+                                                &visibility_false);
 
     while (system_resizable_vector_pop(ui_dropdown_ptr->entries, &entry_ptr) )
     {
-        ogl_text_set_text_string_property(ui_dropdown_ptr->text_renderer,
-                                          entry_ptr->string_id,
-                                          OGL_TEXT_STRING_PROPERTY_VISIBILITY,
-                                         &visibility_false);
+        varia_text_renderer_set_text_string_property(ui_dropdown_ptr->text_renderer,
+                                                     entry_ptr->string_id,
+                                                     VARIA_TEXT_RENDERER_TEXT_STRING_PROPERTY_VISIBILITY,
+                                                    &visibility_false);
 
         /* Go ahead with the release */
         delete entry_ptr;
@@ -1982,7 +1982,7 @@ PUBLIC void ui_dropdown_get_property(const void*         dropdown,
 
 /** Please see header for specification */
 PUBLIC void* ui_dropdown_init(ui                         instance,
-                              ogl_text                   text_renderer,
+                              varia_text_renderer        text_renderer,
                               system_hashed_ansi_string  label_text,
                               uint32_t                   n_strings,
                               system_hashed_ansi_string* strings,
@@ -2085,7 +2085,7 @@ PUBLIC void* ui_dropdown_init(ui                         instance,
             ASSERT_DEBUG_SYNC(entry_ptr != NULL, "Out of memory");
 
             /* Fill the descriptor */
-            entry_ptr->string_id = ogl_text_add_string(text_renderer);
+            entry_ptr->string_id = varia_text_renderer_add_string(text_renderer);
 
             if (n_entry != n_strings)
             {

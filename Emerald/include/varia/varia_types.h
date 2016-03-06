@@ -11,6 +11,7 @@
 DECLARE_HANDLE(varia_curve_renderer);
 DECLARE_HANDLE(varia_primitive_renderer);
 DECLARE_HANDLE(varia_skybox);
+DECLARE_HANDLE(varia_text_renderer);
 
 typedef unsigned int varia_curve_item_id;
 typedef unsigned int varia_primitive_renderer_dataset_id;

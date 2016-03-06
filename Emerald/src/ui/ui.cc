@@ -9,7 +9,6 @@
 #include "shared.h"
 #include "ogl/ogl_context.h"
 #include "ogl/ogl_pipeline.h"
-#include "ogl/ogl_text.h"
 #include "ral/ral_context.h"
 #include "ral/ral_program.h"
 #include "system/system_assertions.h"
@@ -29,6 +28,7 @@
 #include "ui/ui_label.h"
 #include "ui/ui_scrollbar.h"
 #include "ui/ui_texture_preview.h"
+#include "varia/varia_text_renderer.h"
 
 /** Internal definitions */
 #define N_START_CONTROLS     (4)
@@ -79,7 +79,7 @@ typedef struct
     system_resizable_vector   controls;
     system_read_write_mutex   controls_rw_mutex;
     system_hashed_ansi_string name;
-    ogl_text                  text_renderer;
+    varia_text_renderer       text_renderer;
     system_window             window;
 
     system_hash64map registered_ui_control_callbacks; /* stores a system_resizable_vector storing _ui_callback instances.
@@ -154,7 +154,7 @@ PRIVATE void _ui_control_init             (_ui_control*              control_ptr
 PRIVATE void _ui_deinit                   (_ui*                      ui_ptr);
 PRIVATE void _ui_init                     (_ui*                      ui_ptr,
                                            system_hashed_ansi_string name,
-                                           ogl_text                  text_renderer);
+                                           varia_text_renderer       text_renderer);
 PRIVATE bool _ui_callback_on_lbm_down     (system_window             window,
                                            int                       x,
                                            int                       y,
@@ -269,7 +269,7 @@ PRIVATE void _ui_deinit(_ui* ui_ptr)
                                        ui_ptr);
 
     /* Release GL stuff. */
-    ogl_context_request_callback_from_context_thread(ral_context_get_gl_context(ogl_text_get_context(ui_ptr->text_renderer)),
+    ogl_context_request_callback_from_context_thread(ral_context_get_gl_context(varia_text_renderer_get_context(ui_ptr->text_renderer)),
                                                      _ui_deinit_gl_renderer_callback,
                                                      ui_ptr);
 
@@ -307,7 +307,7 @@ PRIVATE void _ui_deinit(_ui* ui_ptr)
     /* Release other owned objects */
     if (ui_ptr->text_renderer != NULL)
     {
-        ogl_text_release(ui_ptr->text_renderer);
+        varia_text_renderer_release(ui_ptr->text_renderer);
 
         ui_ptr->text_renderer = NULL;
     }
@@ -440,9 +440,9 @@ PRIVATE void _ui_init_gl_renderer_callback(ogl_context context,
 /** TODO */
 PRIVATE void _ui_init(_ui*                      ui_ptr,
                       system_hashed_ansi_string name,
-                      ogl_text                  text_renderer)
+                      varia_text_renderer       text_renderer)
 {
-    ral_context context = ogl_text_get_context(text_renderer);
+    ral_context context = varia_text_renderer_get_context(text_renderer);
 
     ui_ptr->controls                        = system_resizable_vector_create(N_START_CONTROLS);
     ui_ptr->controls_rw_mutex               = system_read_write_mutex_create();
@@ -455,7 +455,7 @@ PRIVATE void _ui_init(_ui*                      ui_ptr,
     ui_ptr->text_renderer                   = text_renderer;
     ui_ptr->window                          = NULL;
 
-    ogl_text_retain(text_renderer);
+    varia_text_renderer_retain(text_renderer);
 
     ral_context_get_property(context,
                              RAL_CONTEXT_PROPERTY_WINDOW_SYSTEM,
@@ -1263,7 +1263,7 @@ PUBLIC EMERALD_API ui_control ui_add_texture_preview(ui                        u
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API ui ui_create(ogl_text                  text_renderer,
+PUBLIC EMERALD_API ui ui_create(varia_text_renderer       text_renderer,
                                 system_hashed_ansi_string name)
 {
     _ui* ui_ptr = new (std::nothrow) _ui;
@@ -1378,7 +1378,7 @@ PUBLIC EMERALD_API void ui_get_control_property(ui_control          control,
 /** Please see header for specification */
 PUBLIC ral_context ui_get_context(ui ui_instance)
 {
-    return ogl_text_get_context( ((_ui*) ui_instance)->text_renderer);
+    return varia_text_renderer_get_context( ((_ui*) ui_instance)->text_renderer);
 }
 
 /** Please see header for specification */
@@ -1394,7 +1394,7 @@ PUBLIC ral_program ui_get_registered_program(ui                        ui_instan
 
     if (result != NULL)
     {
-        ral_context_retain_object(ogl_text_get_context(ui_ptr->text_renderer),
+        ral_context_retain_object(varia_text_renderer_get_context(ui_ptr->text_renderer),
                                   RAL_CONTEXT_OBJECT_TYPE_PROGRAM,
                                   result);
     }
@@ -1515,7 +1515,7 @@ PUBLIC bool ui_register_program(ui                        ui_instance,
                                 NULL,
                                 NULL);
 
-        ral_context_retain_object(ogl_text_get_context(ui_ptr->text_renderer),
+        ral_context_retain_object(varia_text_renderer_get_context(ui_ptr->text_renderer),
                                   RAL_CONTEXT_OBJECT_TYPE_PROGRAM,
                                   program);
 

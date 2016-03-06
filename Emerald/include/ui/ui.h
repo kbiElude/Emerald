@@ -10,6 +10,8 @@
 #include "ral/ral_types.h"
 #include "system/system_variant.h"
 #include "ui/ui_types.h"
+#include "varia/varia_types.h"
+
 
 REFCOUNT_INSERT_DECLARATIONS(ui,
                              ui);
@@ -69,7 +71,7 @@ PUBLIC EMERALD_API ui_control ui_add_texture_preview(ui                        u
                                                      ral_texture               texture,
                                                      ui_texture_preview_type   preview_type);
 /** TODO */
-PUBLIC EMERALD_API ui ui_create(ogl_text                  text_renderer,
+PUBLIC EMERALD_API ui ui_create(varia_text_renderer       text_renderer,
                                 system_hashed_ansi_string name);
 
 /** TODO */

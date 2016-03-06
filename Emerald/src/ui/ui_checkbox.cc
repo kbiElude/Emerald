@@ -5,7 +5,6 @@
  */
 #include "shared.h"
 #include "ogl/ogl_context.h"
-#include "ogl/ogl_text.h"
 #include "raGL/raGL_buffer.h"
 #include "raGL/raGL_program.h"
 #include "raGL/raGL_shader.h"
@@ -23,6 +22,8 @@
 #include "ui/ui.h"
 #include "ui/ui_checkbox.h"
 #include "ui/ui_shared.h"
+#include "varia/varia_text_renderer.h"
+
 #include <algorithm>
 
 #ifdef _WIN32
@@ -75,8 +76,8 @@ typedef struct
     uint32_t                 program_ub_vs_bp;
     GLint                    program_x1y1x2y2_ub_offset;
 
-    GLint    text_index;
-    ogl_text text_renderer;
+    GLint               text_index;
+    varia_text_renderer text_renderer;
 
     /* Cached func ptrs */
     PFNGLBINDBUFFERRANGEPROC     pGLBindBufferRange;
@@ -333,14 +334,14 @@ PRIVATE void _ui_checkbox_update_text_location(_ui_checkbox* checkbox_ptr)
         1.0f - checkbox_ptr->x1y1x2y2[3]
     };
 
-    ogl_text_get_text_string_property(checkbox_ptr->text_renderer,
-                                      OGL_TEXT_STRING_PROPERTY_TEXT_HEIGHT_PX,
-                                      checkbox_ptr->text_index,
-                                     &text_height);
-    ogl_text_get_text_string_property(checkbox_ptr->text_renderer,
-                                      OGL_TEXT_STRING_PROPERTY_TEXT_WIDTH_PX,
-                                      checkbox_ptr->text_index,
-                                     &text_width);
+    varia_text_renderer_get_text_string_property(checkbox_ptr->text_renderer,
+                                                 VARIA_TEXT_RENDERER_TEXT_STRING_PROPERTY_TEXT_HEIGHT_PX,
+                                                 checkbox_ptr->text_index,
+                                                &text_height);
+    varia_text_renderer_get_text_string_property(checkbox_ptr->text_renderer,
+                                                 VARIA_TEXT_RENDERER_TEXT_STRING_PROPERTY_TEXT_WIDTH_PX,
+                                                 checkbox_ptr->text_index,
+                                                &text_width);
 
     ral_context_get_property(checkbox_ptr->context,
                              RAL_CONTEXT_PROPERTY_WINDOW_SYSTEM,
@@ -353,10 +354,10 @@ PRIVATE void _ui_checkbox_update_text_location(_ui_checkbox* checkbox_ptr)
     text_xy[0] = (int) ((x1y1[0] + (x2y2[0] + float(CHECKBOX_WIDTH_PX) / window_size[0] - x1y1[0] - float(text_width)  / window_size[0]) * 0.5f) * (float) window_size[0]);
     text_xy[1] = (int) ((x2y2[1] - (x2y2[1] +                                           - x1y1[1] - float(text_height) / window_size[1]) * 0.5f) * (float) window_size[1]);
 
-    ogl_text_set_text_string_property(checkbox_ptr->text_renderer,
-                                      checkbox_ptr->text_index,
-                                      OGL_TEXT_STRING_PROPERTY_POSITION_PX,
-                                      text_xy);
+    varia_text_renderer_set_text_string_property(checkbox_ptr->text_renderer,
+                                                 checkbox_ptr->text_index,
+                                                 VARIA_TEXT_RENDERER_TEXT_STRING_PROPERTY_POSITION_PX,
+                                                 text_xy);
 }
 
 /** TODO */
@@ -367,14 +368,14 @@ PRIVATE void _ui_checkbox_update_x1y1x2y2(_ui_checkbox* checkbox_ptr)
     system_window window;
     int           window_size[2] = {0};
 
-    ogl_text_get_text_string_property(checkbox_ptr->text_renderer,
-                                      OGL_TEXT_STRING_PROPERTY_TEXT_HEIGHT_PX,
-                                      checkbox_ptr->text_index,
-                                     &text_height);
-    ogl_text_get_text_string_property(checkbox_ptr->text_renderer,
-                                      OGL_TEXT_STRING_PROPERTY_TEXT_WIDTH_PX,
-                                      checkbox_ptr->text_index,
-                                     &text_width);
+    varia_text_renderer_get_text_string_property(checkbox_ptr->text_renderer,
+                                                 VARIA_TEXT_RENDERER_TEXT_STRING_PROPERTY_TEXT_HEIGHT_PX,
+                                                 checkbox_ptr->text_index,
+                                                &text_height);
+    varia_text_renderer_get_text_string_property(checkbox_ptr->text_renderer,
+                                                 VARIA_TEXT_RENDERER_TEXT_STRING_PROPERTY_TEXT_WIDTH_PX,
+                                                 checkbox_ptr->text_index,
+                                                &text_width);
 
     ral_context_get_property   (checkbox_ptr->context,
                                 RAL_CONTEXT_PROPERTY_WINDOW_SYSTEM,
@@ -394,9 +395,9 @@ PUBLIC void ui_checkbox_deinit(void* internal_instance)
 {
     _ui_checkbox* ui_checkbox_ptr = (_ui_checkbox*) internal_instance;
 
-    ogl_text_set(ui_checkbox_ptr->text_renderer,
-                 ui_checkbox_ptr->text_index,
-                 "");
+    varia_text_renderer_set(ui_checkbox_ptr->text_renderer,
+                            ui_checkbox_ptr->text_index,
+                            "");
 
     ral_context_delete_objects(ui_checkbox_ptr->context,
                                RAL_CONTEXT_OBJECT_TYPE_PROGRAM,
@@ -602,7 +603,7 @@ PUBLIC void ui_checkbox_get_property(const void*         checkbox,
 
 /** Please see header for specification */
 PUBLIC void* ui_checkbox_init(ui                        instance,
-                              ogl_text                  text_renderer,
+                              varia_text_renderer       text_renderer,
                               system_hashed_ansi_string name,
                               const float*              x1y1,
                               PFNUIFIREPROCPTR          pfn_fire_proc_ptr,
@@ -629,7 +630,7 @@ PUBLIC void* ui_checkbox_init(ui                        instance,
         new_checkbox_ptr->pfn_fire_proc_ptr  = pfn_fire_proc_ptr;
         new_checkbox_ptr->status             = default_status;
         new_checkbox_ptr->text_renderer      = text_renderer;
-        new_checkbox_ptr->text_index         = ogl_text_add_string(text_renderer);
+        new_checkbox_ptr->text_index         = varia_text_renderer_add_string(text_renderer);
         new_checkbox_ptr->visible            = true;
 
         /* Cache GL func pointers */
@@ -670,17 +671,17 @@ PUBLIC void* ui_checkbox_init(ui                        instance,
         }
 
         /* Configure the text to be shown on the button */
-        ogl_text_set(new_checkbox_ptr->text_renderer,
-                     new_checkbox_ptr->text_index,
-                     system_hashed_ansi_string_get_buffer(name) );
+        varia_text_renderer_set(new_checkbox_ptr->text_renderer,
+                                new_checkbox_ptr->text_index,
+                                system_hashed_ansi_string_get_buffer(name) );
 
         _ui_checkbox_update_x1y1x2y2     (new_checkbox_ptr);
         _ui_checkbox_update_text_location(new_checkbox_ptr);
 
-        ogl_text_set_text_string_property(new_checkbox_ptr->text_renderer,
-                                          new_checkbox_ptr->text_index,
-                                          OGL_TEXT_STRING_PROPERTY_COLOR,
-                                          _ui_checkbox_text_color);
+        varia_text_renderer_set_text_string_property(new_checkbox_ptr->text_renderer,
+                                                     new_checkbox_ptr->text_index,
+                                                     VARIA_TEXT_RENDERER_TEXT_STRING_PROPERTY_COLOR,
+                                                     _ui_checkbox_text_color);
 
         /* Retrieve the rendering program */
         new_checkbox_ptr->program = ui_get_registered_program(instance,

@@ -5,7 +5,6 @@
  */
 #include "shared.h"
 #include "ogl/ogl_context.h"
-#include "ogl/ogl_text.h"
 #include "raGL/raGL_buffer.h"
 #include "raGL/raGL_program.h"
 #include "raGL/raGL_shader.h"
@@ -25,6 +24,7 @@
 #include "system/system_matrix4x4.h"
 #include "system/system_resizable_vector.h"
 #include "system/system_resources.h"
+#include "varia/varia_text_renderer.h"
 #include <string>
 #include <sstream>
 
@@ -83,13 +83,13 @@ PRIVATE const unsigned char index_data_array[] =
 /** TODO */
 typedef struct _scene_renderer_frustum_preview_camera
 {
-    scene_camera       camera;
-    ogl_text_string_id camera_text_id;
-    ogl_text           text_renderer;
+    scene_camera                       camera;
+    varia_text_renderer_text_string_id camera_text_id;
+    varia_text_renderer                text_renderer;
 
-    explicit _scene_renderer_frustum_preview_camera(scene_camera       in_camera,
-                                                    ogl_text           in_text_renderer,
-                                                    ogl_text_string_id in_camera_text_id)
+    explicit _scene_renderer_frustum_preview_camera(scene_camera                       in_camera,
+                                                    varia_text_renderer                in_text_renderer,
+                                                    varia_text_renderer_text_string_id in_camera_text_id)
     {
         camera         = in_camera;
         camera_text_id = in_camera_text_id;
@@ -102,8 +102,8 @@ typedef struct _scene_renderer_frustum_preview_camera
     {
         if (camera != NULL)
         {
-            ogl_text_delete_string(text_renderer,
-                                   camera_text_id);
+            varia_text_renderer_delete_string(text_renderer,
+                                              camera_text_id);
 
             scene_camera_release(camera);
 
@@ -119,8 +119,8 @@ typedef struct _scene_renderer_frustum_preview
      * to never release itself.
      *
      */
-    system_resizable_vector assigned_cameras; /* holds _scene_renderer_frustum_preview_camera instances */
-    ogl_text_string_id      test_text_id;
+    system_resizable_vector            assigned_cameras; /* holds _scene_renderer_frustum_preview_camera instances */
+    varia_text_renderer_text_string_id test_text_id;
 
     ral_context              context;
     unsigned char*           data_bo_buffer;
@@ -132,7 +132,7 @@ typedef struct _scene_renderer_frustum_preview
     ral_program              po;
     ral_program_block_buffer po_ub;
     GLint                    po_vp_ub_offset;
-    ogl_text                 text_renderer;  /* TODO: use a global text renderer */
+    varia_text_renderer      text_renderer;  /* TODO: use a global text renderer */
     GLuint                   vao_id;
 
     /* The following arrays are used for the multi draw-call. The number of elements
@@ -225,7 +225,7 @@ typedef struct _scene_renderer_frustum_preview
 
         if (text_renderer != NULL)
         {
-            ogl_text_release(text_renderer);
+            varia_text_renderer_release(text_renderer);
 
             text_renderer = NULL;
         }
@@ -366,20 +366,20 @@ PRIVATE void _scene_renderer_frustum_preview_init_rendering_thread_callback(ogl_
     entry_points_ptr->pGLGetIntegerv(GL_VIEWPORT,
                                      viewport);
 
-    preview_ptr->text_renderer = ogl_text_create(final_renderer_name,
-                                                 preview_ptr->context,
-                                                 system_resources_get_meiryo_font_table(),
-                                                 viewport[2],
-                                                 viewport[3]);
+    preview_ptr->text_renderer = varia_text_renderer_create(final_renderer_name,
+                                                            preview_ptr->context,
+                                                            system_resources_get_meiryo_font_table(),
+                                                            viewport[2],
+                                                            viewport[3]);
 
-    ogl_text_set_text_string_property(preview_ptr->text_renderer,
-                                      TEXT_STRING_ID_DEFAULT,
-                                      OGL_TEXT_STRING_PROPERTY_COLOR,
-                                      text_color);
-    ogl_text_set_text_string_property(preview_ptr->text_renderer,
-                                      TEXT_STRING_ID_DEFAULT,
-                                      OGL_TEXT_STRING_PROPERTY_SCALE,
-                                     &text_scale);
+    varia_text_renderer_set_text_string_property(preview_ptr->text_renderer,
+                                                 VARIA_TEXT_RENDERER_TEXT_STRING_ID_DEFAULT,
+                                                 VARIA_TEXT_RENDERER_TEXT_STRING_PROPERTY_COLOR,
+                                                 text_color);
+    varia_text_renderer_set_text_string_property(preview_ptr->text_renderer,
+                                                 VARIA_TEXT_RENDERER_TEXT_STRING_ID_DEFAULT,
+                                                 VARIA_TEXT_RENDERER_TEXT_STRING_PROPERTY_SCALE,
+                                                &text_scale);
 
     /* Is the PO already registered? */
     static const char* po_name = "Frustum preview renderer program";
@@ -701,25 +701,25 @@ PRIVATE void _scene_renderer_frustum_preview_update_data_bo_buffer(_scene_render
             origin_window_space[0] =         origin_mvp_space[0] * 0.5f + 0.5f;
             origin_window_space[1] = 1.0f - (origin_mvp_space[1] * 0.5f + 0.5f);
 
-            ogl_text_set_text_string_property(camera_ptr->text_renderer,
-                                              camera_ptr->camera_text_id,
-                                              OGL_TEXT_STRING_PROPERTY_VISIBILITY,
-                                             &is_visible);
+            varia_text_renderer_set_text_string_property(camera_ptr->text_renderer,
+                                                         camera_ptr->camera_text_id,
+                                                         VARIA_TEXT_RENDERER_TEXT_STRING_PROPERTY_VISIBILITY,
+                                                        &is_visible);
         }
         else
         {
             static const bool is_visible = false;
 
-            ogl_text_set_text_string_property(camera_ptr->text_renderer,
-                                              camera_ptr->camera_text_id,
-                                              OGL_TEXT_STRING_PROPERTY_VISIBILITY,
-                                             &is_visible);
+            varia_text_renderer_set_text_string_property(camera_ptr->text_renderer,
+                                                         camera_ptr->camera_text_id,
+                                                         VARIA_TEXT_RENDERER_TEXT_STRING_PROPERTY_VISIBILITY,
+                                                        &is_visible);
         }
 
-        ogl_text_set_text_string_property(camera_ptr->text_renderer,
-                                          camera_ptr->camera_text_id,
-                                          OGL_TEXT_STRING_PROPERTY_POSITION_SS,
-                                          origin_window_space);
+        varia_text_renderer_set_text_string_property(camera_ptr->text_renderer,
+                                                     camera_ptr->camera_text_id,
+                                                     VARIA_TEXT_RENDERER_TEXT_STRING_PROPERTY_POSITION_SS,
+                                                     origin_window_space);
 
         /* Update MDEBV draw call arguments */
         uint32_t data_bo_start_offset = 0;
@@ -852,17 +852,17 @@ PUBLIC void scene_renderer_frustum_preview_assign_cameras(scene_renderer_frustum
                       n_camera < n_cameras;
                     ++n_camera)
         {
-            system_hashed_ansi_string camera_name   = NULL;
-            ogl_text_string_id        label_text_id = ogl_text_add_string(preview_ptr->text_renderer);
+            system_hashed_ansi_string          camera_name   = NULL;
+            varia_text_renderer_text_string_id label_text_id = varia_text_renderer_add_string(preview_ptr->text_renderer);
 
             scene_camera_get_property(cameras[n_camera],
                                       SCENE_CAMERA_PROPERTY_NAME,
                                       0, /* time - irrelevant */
                                      &camera_name);
 
-            ogl_text_set(preview_ptr->text_renderer,
-                         label_text_id,
-                         system_hashed_ansi_string_get_buffer(camera_name) );
+            varia_text_renderer_set(preview_ptr->text_renderer,
+                                    label_text_id,
+                                    system_hashed_ansi_string_get_buffer(camera_name) );
 
             _scene_renderer_frustum_preview_camera* current_camera_ptr = new _scene_renderer_frustum_preview_camera(cameras[n_camera],
                                                                                                                     preview_ptr->text_renderer,
@@ -1035,8 +1035,8 @@ PUBLIC RENDERING_CONTEXT_CALL void scene_renderer_frustum_preview_render(scene_r
     entrypoints_ptr->pGLDisable(GL_PRIMITIVE_RESTART_FIXED_INDEX);
 
     /* Draw the labels */
-    ogl_text_draw(preview_ptr->context,
-                  preview_ptr->text_renderer);
+    varia_text_renderer_draw(preview_ptr->context,
+                             preview_ptr->text_renderer);
 }
 
 
