@@ -56,10 +56,16 @@ typedef enum
 
 typedef enum
 {
-    /* not settable, unsigned int */
+    /* not settable, unsigned int
+     *
+     * Can be called for NULL scene_renderer_sm instances
+     **/
     SCENE_RENDERER_SM_PROPERTY_N_MAX_BLUR_TAPS,
 
-    /* not settable, unsigned int */
+    /* not settable, unsigned int
+     *
+     * Can be called for NULL scene_renderer_sm instances
+     **/
     SCENE_RENDERER_SM_PROPERTY_N_MIN_BLUR_TAPS,
 } scene_renderer_sm_property;
 

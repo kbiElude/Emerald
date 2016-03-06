@@ -135,6 +135,7 @@ typedef struct _scene_renderer
     scene_renderer_frustum_preview frustum_preview;
     scene_renderer_lights_preview  lights_preview;
     scene_renderer_normals_preview normals_preview;
+    scene_renderer_sm              shadow_mapping;
 
     ral_context              context;
     scene_renderer_materials material_manager;
@@ -256,6 +257,7 @@ _scene_renderer::_scene_renderer(ral_context in_context,
     normals_preview                 = NULL;
     owned_scene                     = in_scene;
     regular_mesh_ubers_map          = system_hash64map_create    (sizeof(_scene_renderer_uber*) );
+    shadow_mapping                  = scene_renderer_sm_create   (in_context);
     temp_variant_float              = system_variant_create      (SYSTEM_VARIANT_FLOAT);
     vector_pool                     = system_resource_pool_create(sizeof(system_resizable_vector),
                                                                   64, /* capacity */
@@ -388,6 +390,13 @@ _scene_renderer::~_scene_renderer()
         scene_release(owned_scene);
 
         owned_scene = NULL;
+    }
+
+    if (shadow_mapping != NULL)
+    {
+        scene_renderer_sm_release(shadow_mapping);
+
+        shadow_mapping = NULL;
     }
 
     if (temp_variant_float != NULL)
@@ -1380,16 +1389,12 @@ PRIVATE void _scene_renderer_render_traversed_scene_graph(_scene_renderer*      
 /** TODO */
 PRIVATE void _scene_renderer_return_shadow_maps_to_pool(scene_renderer renderer)
 {
-    uint32_t          n_lights       = 0;
-    _scene_renderer*  renderer_ptr   = (_scene_renderer*) renderer;
-    scene_renderer_sm shadow_mapping = NULL;
+    uint32_t         n_lights     = 0;
+    _scene_renderer* renderer_ptr = (_scene_renderer*) renderer;
 
-    ogl_context_get_property(ral_context_get_gl_context(renderer_ptr->context),
-                             OGL_CONTEXT_PROPERTY_SHADOW_MAPPING,
-                            &shadow_mapping);
-    scene_get_property      (renderer_ptr->owned_scene,
-                             SCENE_PROPERTY_N_LIGHTS,
-                            &n_lights);
+    scene_get_property(renderer_ptr->owned_scene,
+                       SCENE_PROPERTY_N_LIGHTS,
+                      &n_lights);
 
     /* Iterate over all lights defined for the scene. */
     for (uint32_t n_light = 0;
@@ -2467,6 +2472,13 @@ PUBLIC EMERALD_API void scene_renderer_get_property(scene_renderer          rend
             break;
         }
 
+        case SCENE_RENDERER_PROPERTY_SHADOW_MAPPING_MANAGER:
+        {
+            *(scene_renderer_sm*) out_result = renderer_ptr->shadow_mapping;
+
+            break;
+        }
+
         case SCENE_RENDERER_PROPERTY_VISIBLE_WORLD_AABB_MAX:
         {
             memcpy(out_result,
@@ -2513,7 +2525,6 @@ PUBLIC RENDERING_CONTEXT_CALL void scene_renderer_render_scene_graph(scene_rende
     const ogl_context_gl_entrypoints* entry_points   = NULL;
     scene_graph                       graph          = NULL;
     _scene_renderer*                  renderer_ptr   = (_scene_renderer*) renderer;
-    scene_renderer_sm                 shadow_mapping = NULL;
 
     scene_get_property(renderer_ptr->owned_scene,
                        SCENE_PROPERTY_GRAPH,
@@ -2522,9 +2533,6 @@ PUBLIC RENDERING_CONTEXT_CALL void scene_renderer_render_scene_graph(scene_rende
     ogl_context_get_property(ral_context_get_gl_context(renderer_ptr->context),
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
                             &entry_points);
-    ogl_context_get_property(ral_context_get_gl_context(renderer_ptr->context),
-                             OGL_CONTEXT_PROPERTY_SHADOW_MAPPING,
-                            &shadow_mapping);
 
     /* Prepare graph traversal parameters */
     system_matrix4x4 vp = system_matrix4x4_create_by_mul(projection,
@@ -2550,7 +2558,7 @@ PUBLIC RENDERING_CONTEXT_CALL void scene_renderer_render_scene_graph(scene_rende
                           &shadow_mapping_disabled);
 
         /* Prepare the shadow maps */
-        scene_renderer_sm_render_shadow_maps(shadow_mapping,
+        scene_renderer_sm_render_shadow_maps(renderer_ptr->shadow_mapping,
                                              renderer,
                                              renderer_ptr->owned_scene,
                                              camera,
@@ -2605,7 +2613,7 @@ PUBLIC RENDERING_CONTEXT_CALL void scene_renderer_render_scene_graph(scene_rende
     /* 2. Start uber rendering. Issue as many render requests as there are materials. */
     if (render_mode == RENDER_MODE_SHADOW_MAP)
     {
-        scene_renderer_sm_render_shadow_map_meshes(shadow_mapping,
+        scene_renderer_sm_render_shadow_map_meshes(renderer_ptr->shadow_mapping,
                                                    renderer,
                                                    renderer_ptr->owned_scene,
                                                    frame_time);

@@ -590,18 +590,13 @@ PUBLIC void ui_init()
     system_variant_release(blur_n_passes_min_value);
 
     /* Add color shadow map blur n taps dropdown */
-    scene_renderer_sm context_shadow_mapping = NULL;
-    unsigned int      max_n_taps             = 0;
-    unsigned int      min_n_taps             = 0;
+    unsigned int max_n_taps = 0;
+    unsigned int min_n_taps = 0;
 
-    ogl_context_get_property(ral_context_get_gl_context(_context),
-                             OGL_CONTEXT_PROPERTY_SHADOW_MAPPING,
-                            &context_shadow_mapping);
-
-    scene_renderer_sm_get_property(context_shadow_mapping,
+    scene_renderer_sm_get_property(NULL,
                                    SCENE_RENDERER_SM_PROPERTY_N_MAX_BLUR_TAPS,
                                   &max_n_taps);
-    scene_renderer_sm_get_property(context_shadow_mapping,
+    scene_renderer_sm_get_property(NULL,
                                    SCENE_RENDERER_SM_PROPERTY_N_MIN_BLUR_TAPS,
                                   &min_n_taps);
 

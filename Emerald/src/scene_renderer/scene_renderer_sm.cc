@@ -2,6 +2,7 @@
  *
  * Emerald (kbi/elude @2015-2016)
  *
+ * TODO: For RAL integration, this implementation will require a major overhaul.
  */
 #include "shared.h"
 #include "curve/curve_container.h"
@@ -1073,6 +1074,9 @@ PRIVATE void _scene_renderer_sm_init_renderer_callback(ogl_context context,
     /* Generate a FBO id. */
     entry_points->pGLGenFramebuffers(1,
                                     &shadow_mapping_ptr->fbo_id);
+
+    ASSERT_DEBUG_SYNC(shadow_mapping_ptr->fbo_id != 0,
+                      "Zero FBO ID returned.");
 }
 
 /** TODO */
@@ -1855,15 +1859,16 @@ PUBLIC RENDERING_CONTEXT_CALL scene_renderer_sm scene_renderer_sm_create(ral_con
 
     if (new_instance_ptr != NULL)
     {
+        ogl_context context_gl = ral_context_get_gl_context(context);
+
         new_instance_ptr->context    = context;
         new_instance_ptr->is_enabled = false;
 
-        /* NOTE: We cannot make an usual ogl_context renderer callback request at this point,
-         *       since shadow mapping handler is initialized by ogl_context itself. Assume
-         *       we're already within a GL rendering context.. */
-        _scene_renderer_sm_init_renderer_callback(ral_context_get_gl_context(context),
-                                                  new_instance_ptr);
+        ogl_context_request_callback_from_context_thread(context_gl,
+                                                         _scene_renderer_sm_init_renderer_callback,
+                                                         new_instance_ptr);
 
+        /** TODO: Cache & re-use for the same context! */
         new_instance_ptr->blur_handler = postprocessing_blur_gaussian_create(context,
                                                                              system_hashed_ansi_string_create("Gaussian blur handler"),
                                                                              N_MIN_BLUR_TAPS,
@@ -2610,8 +2615,8 @@ PUBLIC void scene_renderer_sm_process_mesh_for_shadow_map_rendering(scene_mesh s
     scene_renderer_get_property(renderer,
                                 SCENE_RENDERER_PROPERTY_CONTEXT_RAL,
                                &context);
-    ogl_context_get_property   (ral_context_get_gl_context(context),
-                                OGL_CONTEXT_PROPERTY_SHADOW_MAPPING,
+    scene_renderer_get_property(renderer,
+                                SCENE_RENDERER_PROPERTY_SHADOW_MAPPING_MANAGER,
                                &shadow_mapping_ptr);
     scene_mesh_get_property    (scene_mesh_instance,
                                 SCENE_MESH_PROPERTY_IS_SHADOW_CASTER,

@@ -41,6 +41,9 @@ typedef enum
     /* indexed property, key: mesh id // value: system_matrix4x4 */
     SCENE_RENDERER_PROPERTY_MESH_NORMAL_MATRIX,
 
+    /* general property, value: scene_renderer_sm */
+    SCENE_RENDERER_PROPERTY_SHADOW_MAPPING_MANAGER,
+
     /* general property, value: float[3] */
     SCENE_RENDERER_PROPERTY_VISIBLE_WORLD_AABB_MAX,
 

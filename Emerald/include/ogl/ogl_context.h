@@ -127,9 +127,6 @@ typedef enum ogl_context_property
     /* not settable, ogl_context_sampler_bindings */
     OGL_CONTEXT_PROPERTY_SAMPLER_BINDINGS,
 
-    /* not settable, scene_renderer_sm */
-    OGL_CONTEXT_PROPERTY_SHADOW_MAPPING,
-
     /* not settable, ogl_context_state_cache */
     OGL_CONTEXT_PROPERTY_STATE_CACHE,
 
