@@ -93,11 +93,6 @@ PUBLIC EMERALD_API void varia_text_renderer_set(varia_text_renderer             
                                                 const char*                        raw_text_ptr);
 
 /** TODO */
-PUBLIC EMERALD_API void varia_text_renderer_set_screen_properties(varia_text_renderer instance,
-                                                                  uint32_t            screen_width,
-                                                                  uint32_t            screen_height);
-
-/** TODO */
 PUBLIC EMERALD_API void varia_text_renderer_set_text_string_property(varia_text_renderer                      text,
                                                                      varia_text_renderer_text_string_id       text_string_id,
                                                                      varia_text_renderer_text_string_property property,

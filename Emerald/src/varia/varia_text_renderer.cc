@@ -47,15 +47,6 @@
 /** Internal types */
 typedef struct
 {
-    ral_texture to;
-} _font_table_descriptor;
-
-typedef std::map<gfx_bfg_font_table, _font_table_descriptor> FontTable;
-typedef FontTable::iterator                                  FontTableIterator;
-typedef FontTable::const_iterator                            FontTableConstIterator;
-
-typedef struct
-{
     char*        data_buffer_contents;
     uint32_t     data_buffer_contents_length;
     uint32_t     data_buffer_contents_size;
@@ -64,11 +55,25 @@ typedef struct
 
     ral_buffer data_buffer;
 
+    GLuint                   fsdata_index;
+    ral_program_block_buffer fsdata_ub;
+    GLuint                   vsdata_index;
+    ral_program_block_buffer vsdata_ub;
+
     float default_color[3];
     float default_scale;
 
     system_critical_section   draw_cs;
+    GLuint                    draw_text_fragment_shader_color_ub_offset;
+    GLuint                    draw_text_fragment_shader_font_table_location;
+    ral_program               draw_text_program;
+    ral_program_block_buffer  draw_text_program_data_ssb;
+    GLuint                    draw_text_vertex_shader_n_origin_character_ub_offset;
+    GLuint                    draw_text_vertex_shader_scale_ub_offset;
+
     gfx_bfg_font_table        font_table;
+    ral_texture               font_table_to;
+
     system_hashed_ansi_string name;
     ral_context               owner_context;
     uint32_t                  screen_height;
@@ -123,40 +128,6 @@ typedef struct
 
 } _varia_text_renderer_text_string;
 
-typedef struct _global_per_context_variables
-{
-    GLuint                   fsdata_index;
-    ral_program_block_buffer fsdata_ub;
-    GLuint                   vsdata_index;
-    ral_program_block_buffer vsdata_ub;
-
-    _global_per_context_variables()
-    {
-        fsdata_index = -1;
-        fsdata_ub    = NULL;
-        vsdata_index = -1;
-        vsdata_ub    = NULL;
-    }
-
-    ~_global_per_context_variables()
-    {
-        ral_program_block_buffer_release(fsdata_ub);
-        ral_program_block_buffer_release(vsdata_ub);
-    }
-} _global_per_context_variables;
-
-typedef struct
-{
-    ral_program              draw_text_program;          /* ogl_program_ub instances are PER-CONTEXT */
-    ral_program_block_buffer draw_text_program_data_ssb; /* NOT per-context */
-
-    GLuint draw_text_fragment_shader_color_ub_offset;
-    GLuint draw_text_fragment_shader_font_table_location;
-    GLuint draw_text_vertex_shader_n_origin_character_ub_offset;
-    GLuint draw_text_vertex_shader_scale_ub_offset;
-
-    FontTable   font_tables;
-} _global_variables;
 
 /** Reference counter impl */
 REFCOUNT_INSERT_IMPLEMENTATION(varia_text_renderer,
@@ -165,86 +136,79 @@ REFCOUNT_INSERT_IMPLEMENTATION(varia_text_renderer,
 
 
 /* Private definitions */
-_global_variables       _global;                                                                                    /* always enter _global_cs before accessing */
-system_critical_section _global_cs              = system_critical_section_create();
-system_hash64map        _global_per_context_map = system_hash64map_create(sizeof(_global_per_context_variables*) ); /* holds _global_per_context_variables* items.
-                                                                                                                     * always enter _global_cs before accessing. */
-uint32_t                _n_global_owners = 0;                                                                       /* always enter _global_cs before accessing */
+static const char* fragment_shader_template = "#ifdef GL_ES\n"
+                                              "    precision highp float;\n"
+                                              "#endif\n"
+                                              "\n"
+                                              "in  vec2 vertex_shader_uv;\n"
+                                              "out vec4 result;\n"
+                                              "\n"
+                                              "uniform FSData\n"
+                                              "{\n"
+                                              "    vec3 color;\n"
+                                              "};\n"
+                                              "\n"
+                                              "uniform sampler2D font_table;\n"
+                                              "\n"
+                                              "void main()\n"
+                                              "{\n"
+                                              "    vec4 texel = texture(font_table, vertex_shader_uv);\n"
+                                              "\n"
+                                              "    result = vec4(color.xyz * texel.x, (texel.x > 0.9) ? 1 : 0);\n"
+                                              "}\n";
 
-
-const char* fragment_shader_template = "#ifdef GL_ES\n"
-                                       "    precision highp float;\n"
-                                       "#endif\n"
-                                       "\n"
-                                       "in  vec2 vertex_shader_uv;\n"
-                                       "out vec4 result;\n"
-                                       "\n"
-                                       "uniform FSData\n"
-                                       "{\n"
-                                       "    vec3 color;\n"
-                                       "};\n"
-                                       "\n"
-                                       "uniform sampler2D font_table;\n"
-                                       "\n"
-                                       "void main()\n"
-                                       "{\n"
-                                       "    vec4 texel = texture(font_table, vertex_shader_uv);\n"
-                                       "\n"
-                                       "    result = vec4(color.xyz * texel.x, (texel.x > 0.9) ? 1 : 0);\n"
-                                       "}\n";
-
-const char* vertex_shader_template = "#ifdef GL_ES\n"
-                                     "    precision highp float;\n"
-                                     "    precision highp samplerBuffer;\n"
-                                     "#else\n"
-                                     "    #extension GL_ARB_shader_storage_buffer_object : require\n"
-                                     "#endif\n"
-                                     "\n"
-                                     "buffer dataSSB\n"
-                                     "{\n"
-                                     "    restrict readonly vec4 data[];\n"
-                                     "};\n"
-                                     "\n"
-                                     "uniform VSData\n"
-                                     "{\n"
-                                     "    int   n_origin_character;\n"
-                                     "    float scale;\n"
-                                     "};\n"
-                                     "\n"
-                                     "out vec2 vertex_shader_uv;\n"
-                                     "\n"
-                                     "\n"
-                                     "void main()\n"
-                                     "{\n"
-                                     "   int   character_id    = gl_VertexID / 6;\n"
-                                     "   vec2  vertex_data;\n"
-                                     "\n"
-                                     "    switch (gl_VertexID % 6)\n"
-                                     "    {\n"
-                                     "        case 0: vertex_data = vec2(0.0, 1.0); break;\n"
-                                     "        case 1: vertex_data = vec2(0.0, 0.0); break;\n"
-                                     "        case 2:\n"
-                                     "        case 3: vertex_data = vec2(1.0, 0.0); break;\n"
-                                     "        case 4: vertex_data = vec2(1.0, 1.0); break;\n"
-                                     "        case 5: vertex_data = vec2(0.0, 1.0); break;\n"
-                                     "    }\n"
-                                     "\n"
-                                     "   vec2  x1_y1_origin = data[n_origin_character * 2].xy;\n"
-                                     "   vec4  x1_y1_u1_v1  = data[character_id * 2];\n"
-                                     "   vec4  u2_v2_w_h    = data[character_id * 2 + 1];\n"
-                                     "   float u_delta      = u2_v2_w_h.x - x1_y1_u1_v1.z;\n"
-                                     "   float v_delta      = u2_v2_w_h.y - x1_y1_u1_v1.w;\n"
-                                     "\n"
-                                     /* Scale x1/y1 to <-1, 1> */
-                                     "   x1_y1_u1_v1.xy   = x1_y1_u1_v1.xy * vec2(2.0) - vec2(1.0);\n"
-                                     "   x1_y1_origin     = x1_y1_origin   * vec2(2.0) - vec2(1.0);\n"
-                                     /* Output */
-                                     "   gl_Position      = vec4(x1_y1_u1_v1.x + (1.0 - scale) * (x1_y1_origin.x - x1_y1_u1_v1.x) + scale * (vertex_data.x * u2_v2_w_h.z * 2.0),\n"
-                                     "                           x1_y1_u1_v1.y + (1.0 - scale) * (x1_y1_origin.y - x1_y1_u1_v1.y) + scale * (vertex_data.y * u2_v2_w_h.w * 2.0),\n"
-                                     "                           0.0, 1.0);\n"
-                                     "   vertex_shader_uv = vec2(vertex_data.x * u_delta +       x1_y1_u1_v1.z, \n"
-                                     "                          -vertex_data.y * v_delta + 1.0 - x1_y1_u1_v1.w);\n"
-                                     "}\n";
+static const char* vertex_shader_template = "#ifdef GL_ES\n"
+                                            "    precision highp float;\n"
+                                            "    precision highp samplerBuffer;\n"
+                                            "#else\n"
+                                            "    #extension GL_ARB_shader_storage_buffer_object : require\n"
+                                            "#endif\n"
+                                            "\n"
+                                            "buffer dataSSB\n"
+                                            "{\n"
+                                            "    restrict readonly vec4 data[];\n"
+                                            "};\n"
+                                            "\n"
+                                            "uniform VSData\n"
+                                            "{\n"
+                                            "    int   n_origin_character;\n"
+                                            "    float scale;\n"
+                                            "};\n"
+                                            "\n"
+                                            "out vec2 vertex_shader_uv;\n"
+                                            "\n"
+                                            "\n"
+                                            "void main()\n"
+                                            "{\n"
+                                            "   int   character_id    = gl_VertexID / 6;\n"
+                                            "   vec2  vertex_data;\n"
+                                            "\n"
+                                            "    switch (gl_VertexID % 6)\n"
+                                            "    {\n"
+                                            "        case 0: vertex_data = vec2(0.0, 1.0); break;\n"
+                                            "        case 1: vertex_data = vec2(0.0, 0.0); break;\n"
+                                            "        case 2:\n"
+                                            "        case 3: vertex_data = vec2(1.0, 0.0); break;\n"
+                                            "        case 4: vertex_data = vec2(1.0, 1.0); break;\n"
+                                            "        case 5: vertex_data = vec2(0.0, 1.0); break;\n"
+                                            "    }\n"
+                                            "\n"
+                                            "   vec2  x1_y1_origin = data[n_origin_character * 2].xy;\n"
+                                            "   vec4  x1_y1_u1_v1  = data[character_id * 2];\n"
+                                            "   vec4  u2_v2_w_h    = data[character_id * 2 + 1];\n"
+                                            "   float u_delta      = u2_v2_w_h.x - x1_y1_u1_v1.z;\n"
+                                            "   float v_delta      = u2_v2_w_h.y - x1_y1_u1_v1.w;\n"
+                                            "\n"
+                                            /* Scale x1/y1 to <-1, 1> */
+                                            "   x1_y1_u1_v1.xy   = x1_y1_u1_v1.xy * vec2(2.0) - vec2(1.0);\n"
+                                            "   x1_y1_origin     = x1_y1_origin   * vec2(2.0) - vec2(1.0);\n"
+                                            /* Output */
+                                            "   gl_Position      = vec4(x1_y1_u1_v1.x + (1.0 - scale) * (x1_y1_origin.x - x1_y1_u1_v1.x) + scale * (vertex_data.x * u2_v2_w_h.z * 2.0),\n"
+                                            "                           x1_y1_u1_v1.y + (1.0 - scale) * (x1_y1_origin.y - x1_y1_u1_v1.y) + scale * (vertex_data.y * u2_v2_w_h.w * 2.0),\n"
+                                            "                           0.0, 1.0);\n"
+                                            "   vertex_shader_uv = vec2(vertex_data.x * u_delta +       x1_y1_u1_v1.z, \n"
+                                            "                          -vertex_data.y * v_delta + 1.0 - x1_y1_u1_v1.w);\n"
+                                            "}\n";
 
 
 /* Private forward declarations */
@@ -261,6 +225,560 @@ PRIVATE void _varia_text_renderer_update_vram_data_storage                   (og
                                                                               void*       text);
 
 /* Private functions */
+
+/** TODO */
+PRIVATE void _varia_text_renderer_construction_callback_from_renderer(ogl_context context,
+                                                                      void*       text)
+{
+    raGL_program          draw_text_program_raGL    = NULL;
+    GLuint                draw_text_program_raGL_id = -1;
+    _varia_text_renderer* text_ptr                  = (_varia_text_renderer*) text;
+
+    if (context == NULL)
+    {
+        context = ral_context_get_gl_context(text_ptr->context);
+    }
+
+    const ral_shader_create_info draw_text_fs_create_info =
+    {
+        system_hashed_ansi_string_create("ogl_text fragment shader"),
+        RAL_SHADER_TYPE_FRAGMENT
+    };
+    const ral_shader_create_info draw_text_vs_create_info =
+    {
+        system_hashed_ansi_string_create("ogl_text vertex shader"),
+        RAL_SHADER_TYPE_VERTEX
+    };
+    const ral_shader_create_info shader_create_info_items[] =
+    {
+        draw_text_fs_create_info,
+        draw_text_vs_create_info
+    };
+    const uint32_t n_shader_create_info_items                 = sizeof(shader_create_info_items) / sizeof(shader_create_info_items[0]);
+    ral_shader     result_shaders[n_shader_create_info_items] = { NULL };
+
+    const ral_program_create_info draw_text_program_create_info =
+    {
+        RAL_PROGRAM_SHADER_STAGE_BIT_FRAGMENT | RAL_PROGRAM_SHADER_STAGE_BIT_VERTEX,
+        system_hashed_ansi_string_create("ogl_text program")
+    };
+
+
+    if (!ral_context_create_shaders(text_ptr->context,
+                                    n_shader_create_info_items,
+                                    shader_create_info_items,
+                                    result_shaders) )
+    {
+        ASSERT_DEBUG_SYNC(false,
+                          "RAL shader creation failed.");
+    }
+
+    if (!ral_context_create_programs(text_ptr->context,
+                                     1, /* n_create_info_items */
+                                    &draw_text_program_create_info,
+                                    &text_ptr->draw_text_program) )
+    {
+        ASSERT_DEBUG_SYNC(false,
+                          "RAL program creation failed.");
+    }
+
+    /* Prepare the bodies */
+    ral_backend_type  backend_type = RAL_BACKEND_TYPE_UNKNOWN;
+    std::stringstream fs_sstream;
+    std::stringstream vs_sstream;
+
+    ral_context_get_property(text_ptr->context,
+                             RAL_CONTEXT_PROPERTY_BACKEND_TYPE,
+                            &backend_type);
+
+    if (backend_type == RAL_BACKEND_TYPE_ES)
+    {
+        fs_sstream << "#version 310 es\n"
+                      "\n"
+                   << fragment_shader_template;
+
+        vs_sstream << "#version 310 es\n"
+                      "\n"
+                   << vertex_shader_template;
+    }
+    else
+    {
+        ASSERT_DEBUG_SYNC(backend_type == RAL_BACKEND_TYPE_GL,
+                          "Unrecognized context type");
+
+        fs_sstream << "#version 430 core\n"
+                      "\n"
+                   << fragment_shader_template;
+
+        vs_sstream << "#version 430 core\n"
+                      "\n"
+                   << vertex_shader_template;
+    }
+
+    /* Assign the bodies to the shaders */
+    const system_hashed_ansi_string fs_body_has = system_hashed_ansi_string_create(fs_sstream.str().c_str() );
+    const system_hashed_ansi_string vs_body_has = system_hashed_ansi_string_create(vs_sstream.str().c_str() );
+
+    ral_shader_set_property(result_shaders[0],
+                            RAL_SHADER_PROPERTY_GLSL_BODY,
+                           &fs_body_has);
+    ral_shader_set_property(result_shaders[1],
+                            RAL_SHADER_PROPERTY_GLSL_BODY,
+                           &vs_body_has);
+
+    if (!ral_program_attach_shader(text_ptr->draw_text_program,
+                                   result_shaders[0]) ||
+        !ral_program_attach_shader(text_ptr->draw_text_program,
+                                   result_shaders[1]) )
+    {
+        ASSERT_DEBUG_SYNC(false,
+                          "Could not link text drawing program.");
+    }
+
+    /* Retrieve uniform locations */
+    const ral_program_variable*   fragment_shader_color_ral_ptr            = NULL;
+    const _raGL_program_variable* fragment_shader_font_table_raGL_ptr      = NULL;
+    const ral_program_variable*   vertex_shader_n_origin_character_ral_ptr = NULL;
+    const ral_program_variable*   vertex_shader_scale_ral_ptr              = NULL;
+
+    draw_text_program_raGL = ral_context_get_program_gl(text_ptr->context,
+                                                        text_ptr->draw_text_program);
+
+    raGL_program_get_property(draw_text_program_raGL,
+                              RAGL_PROGRAM_PROPERTY_ID,
+                             &draw_text_program_raGL_id);
+
+    if (!ral_program_get_block_variable_by_name(text_ptr->draw_text_program,
+                                                system_hashed_ansi_string_create("FSData"),
+                                                system_hashed_ansi_string_create("color"),
+                                               &fragment_shader_color_ral_ptr) )
+    {
+        ASSERT_DEBUG_SYNC(false,
+                          "Could not retrieve color uniform descriptor.");
+    }
+
+    if (!raGL_program_get_uniform_by_name(draw_text_program_raGL,
+                                          system_hashed_ansi_string_create("font_table"),
+                                         &fragment_shader_font_table_raGL_ptr) )
+    {
+        ASSERT_DEBUG_SYNC(false,
+                          "Could not retrieve font table uniform descriptor.");
+    }
+
+    if (!ral_program_get_block_variable_by_name(text_ptr->draw_text_program,
+                                                system_hashed_ansi_string_create("VSData"),
+                                                system_hashed_ansi_string_create("n_origin_character"),
+                                               &vertex_shader_n_origin_character_ral_ptr))
+    {
+        ASSERT_DEBUG_SYNC(false,
+                          "Could not retrieve n origin character uniform descriptor.");
+    }
+
+    if (!ral_program_get_block_variable_by_name(text_ptr->draw_text_program,
+                                                system_hashed_ansi_string_create("VSData"),
+                                                system_hashed_ansi_string_create("scale"),
+                                               &vertex_shader_scale_ral_ptr) )
+    {
+        ASSERT_DEBUG_SYNC(false,
+                          "Could not retrieve scale uniform descriptor.");
+    }
+
+    text_ptr->draw_text_program_data_ssb = ral_program_block_buffer_create(text_ptr->context,
+                                                                           text_ptr->draw_text_program,
+                                                                           system_hashed_ansi_string_create("dataSSB") );
+
+    text_ptr->draw_text_fragment_shader_color_ub_offset            = fragment_shader_color_ral_ptr->block_offset;
+    text_ptr->draw_text_fragment_shader_font_table_location        = fragment_shader_font_table_raGL_ptr->location;
+    text_ptr->draw_text_vertex_shader_n_origin_character_ub_offset = vertex_shader_n_origin_character_ral_ptr->block_offset;
+    text_ptr->draw_text_vertex_shader_scale_ub_offset              = vertex_shader_scale_ral_ptr->block_offset;
+
+    ASSERT_DEBUG_SYNC(text_ptr->draw_text_fragment_shader_color_ub_offset != -1,
+                      "FSData color uniform UB offset is -1");
+    ASSERT_DEBUG_SYNC(text_ptr->draw_text_vertex_shader_n_origin_character_ub_offset != -1,
+                      "VSData n_origin_character UB offset is -1");
+    ASSERT_DEBUG_SYNC(text_ptr->draw_text_vertex_shader_scale_ub_offset != -1,
+                      "VSData scale UB offset is -1");
+
+    /* Set up samplers */
+    text_ptr->pGLProgramUniform1i(draw_text_program_raGL_id,
+                                  text_ptr->draw_text_fragment_shader_font_table_location,
+                                  1);
+
+    /* Delete the shader objects */
+    ral_context_delete_objects(text_ptr->context,
+                               RAL_CONTEXT_OBJECT_TYPE_SHADER,
+                               n_shader_create_info_items,
+                               (const void**) result_shaders);
+
+    /* Retrieve uniform block instances. */
+    text_ptr->fsdata_ub = ral_program_block_buffer_create(text_ptr->context,
+                                                          text_ptr->draw_text_program,
+                                                          system_hashed_ansi_string_create("FSData") );
+    text_ptr->vsdata_ub = ral_program_block_buffer_create(text_ptr->context,
+                                                          text_ptr->draw_text_program,
+                                                          system_hashed_ansi_string_create("VSData") );
+
+    raGL_program_get_block_property_by_name(draw_text_program_raGL,
+                                            system_hashed_ansi_string_create("FSData"),
+                                            RAGL_PROGRAM_BLOCK_PROPERTY_INDEXED_BP,
+                                           &text_ptr->fsdata_index);
+    raGL_program_get_block_property_by_name(draw_text_program_raGL,
+                                            system_hashed_ansi_string_create("VSData"),
+                                            RAGL_PROGRAM_BLOCK_PROPERTY_INDEXED_BP,
+                                           &text_ptr->vsdata_index);
+
+    ASSERT_DEBUG_SYNC(text_ptr->fsdata_index != text_ptr->vsdata_index,
+                      "BPs match");
+}
+
+/** Please see header for specification */
+PRIVATE void _varia_text_renderer_create_font_table_to_callback_from_renderer(ogl_context context,
+                                                                              void*       text)
+{
+    ral_backend_type      backend_type = RAL_BACKEND_TYPE_UNKNOWN;
+    _varia_text_renderer* text_ptr     = (_varia_text_renderer*) text;
+
+    ral_context_get_property(text_ptr->context,
+                             RAL_CONTEXT_PROPERTY_BACKEND_TYPE,
+                            &backend_type);
+
+    /* Retrieve font table properties */
+    const unsigned char* font_table_data_ptr = gfx_bfg_font_table_get_data_pointer(text_ptr->font_table);
+    uint32_t             font_table_height   = 0;
+    uint32_t             font_table_width    = 0;
+
+    gfx_bfg_font_table_get_data_properties(text_ptr->font_table,
+                                          &font_table_width,
+                                          &font_table_height);
+
+    /* Create the descriptor */
+    ral_texture_create_info         to_create_info;
+    const system_hashed_ansi_string to_name = system_hashed_ansi_string_create_by_merging_two_strings("Text renderer ",
+                                                                                                     system_hashed_ansi_string_get_buffer(text_ptr->name) );
+
+    to_create_info.base_mipmap_depth      = 1;
+    to_create_info.base_mipmap_height     = font_table_height;
+    to_create_info.base_mipmap_width      = font_table_width;
+    to_create_info.fixed_sample_locations = false;
+    to_create_info.format                 = RAL_TEXTURE_FORMAT_RGB8_UNORM;
+    to_create_info.n_layers               = 1;
+    to_create_info.n_samples              = 1;
+    to_create_info.type                   = RAL_TEXTURE_TYPE_2D;
+    to_create_info.usage                  = RAL_TEXTURE_USAGE_SAMPLED_BIT;
+    to_create_info.use_full_mipmap_chain  = true;
+
+    ral_context_create_textures(text_ptr->context,
+                                1, /* n_textures */
+                                &to_create_info,
+                                &text_ptr->font_table_to);
+
+    text_ptr->pGLBindTexture(GL_TEXTURE_2D,
+                             ral_context_get_texture_gl_id(text_ptr->context,
+                                                           text_ptr->font_table_to) );
+
+    text_ptr->pGLTexSubImage2D (GL_TEXTURE_2D,
+                                0, /* level */
+                                0, /* xoffset */
+                                0, /* yoffset */
+                                font_table_width,
+                                font_table_height,
+                                GL_RGB,
+                                GL_UNSIGNED_BYTE,
+                                font_table_data_ptr);
+    text_ptr->pGLTexParameteri (GL_TEXTURE_2D,
+                                GL_TEXTURE_WRAP_S,
+                                GL_CLAMP_TO_EDGE);
+    text_ptr->pGLTexParameteri (GL_TEXTURE_2D,
+                                GL_TEXTURE_WRAP_T,
+                                GL_CLAMP_TO_EDGE);
+    text_ptr->pGLTexParameteri (GL_TEXTURE_2D,
+                                GL_TEXTURE_MAG_FILTER,
+                                GL_LINEAR);
+    text_ptr->pGLTexParameteri (GL_TEXTURE_2D,
+                                GL_TEXTURE_MIN_FILTER,
+                                GL_LINEAR_MIPMAP_LINEAR);
+    text_ptr->pGLGenerateMipmap(GL_TEXTURE_2D);
+
+    /* Note that texture data is stored in BGR order. We would have just gone with GL_BGR
+     * format under GL context, but this is not supported under ES. What we can do, however,
+     * is use GL_TEXTURE_SWIZZLE parameters of the texture object. */
+    text_ptr->pGLTexParameteri(GL_TEXTURE_2D,
+                               GL_TEXTURE_SWIZZLE_R,
+                               GL_BLUE);
+    text_ptr->pGLTexParameteri(GL_TEXTURE_2D,
+                               GL_TEXTURE_SWIZZLE_B,
+                               GL_RED);
+}
+
+/** Please see header for specification */
+PRIVATE void _varia_text_renderer_destruction_callback_from_renderer(ogl_context context,
+                                                                     void*       text)
+{
+    _varia_text_renderer* text_ptr = (_varia_text_renderer*) text;
+
+    /* First, free all objects that are not global */
+    if (text_ptr->data_buffer != NULL)
+    {
+        ral_context_delete_objects(text_ptr->context,
+                                   RAL_CONTEXT_OBJECT_TYPE_BUFFER,
+                                   1, /* n_buffers */
+                                   (const void**) &text_ptr->data_buffer);
+
+        text_ptr->data_buffer = NULL;
+    }
+
+    if (text_ptr->fsdata_ub != NULL)
+    {
+        ral_program_block_buffer_release(text_ptr->fsdata_ub);
+
+        text_ptr->fsdata_ub = NULL;
+    }
+
+    if (text_ptr->vsdata_ub != NULL)
+    {
+        ral_program_block_buffer_release(text_ptr->vsdata_ub);
+
+        text_ptr->vsdata_ub = NULL;
+    }
+
+    /* Get rid of all the shaders and programs */
+    ral_context_delete_objects(text_ptr->context,
+                               RAL_CONTEXT_OBJECT_TYPE_PROGRAM,
+                               1, /* n_objects */
+                               (const void**) &text_ptr->draw_text_program);
+
+    ral_context_delete_objects(text_ptr->context,
+                               RAL_CONTEXT_OBJECT_TYPE_TEXTURE,
+                               1, /* n_textures */
+                               (const void**) &text_ptr->font_table_to);
+
+    if (text_ptr->draw_text_program_data_ssb != NULL)
+    {
+        ral_program_block_buffer_release(text_ptr->draw_text_program_data_ssb);
+
+        text_ptr->draw_text_program_data_ssb = NULL;
+    }
+
+    text_ptr->draw_text_program                                    = NULL;
+    text_ptr->draw_text_fragment_shader_color_ub_offset            = -1;
+    text_ptr->draw_text_fragment_shader_font_table_location        = -1;
+    text_ptr->draw_text_vertex_shader_n_origin_character_ub_offset = -1;
+    text_ptr->draw_text_vertex_shader_scale_ub_offset              = -1;
+}
+
+/** Please see header for specification */
+PRIVATE void _varia_text_renderer_draw_callback_from_renderer(ogl_context context,
+                                                              void*       text)
+{
+    ral_backend_type      backend_type = RAL_BACKEND_TYPE_UNKNOWN;
+    uint32_t              n_strings    = 0;
+    _varia_text_renderer* text_ptr     = (_varia_text_renderer*) text;
+
+    const raGL_program program_raGL    = ral_context_get_program_gl(text_ptr->context,
+                                                                    text_ptr->draw_text_program);
+    GLuint             program_raGL_id = 0;
+
+    raGL_program_get_property(program_raGL,
+                              RAGL_PROGRAM_PROPERTY_ID,
+                             &program_raGL_id);
+
+    ral_context_get_property            (text_ptr->context,
+                                         RAL_CONTEXT_PROPERTY_BACKEND,
+                                        &backend_type);
+    system_resizable_vector_get_property(text_ptr->strings,
+                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                        &n_strings);
+
+    system_critical_section_enter(text_ptr->draw_cs);
+    {
+        /* Update underlying helper data buffer contents - only if the "dirty flag" is on */
+        if (text_ptr->dirty)
+        {
+            _varia_text_renderer_update_vram_data_storage(context,
+                                                          text);
+
+            text_ptr->dirty = false;
+        }
+
+        /* Carry on */
+        if (n_strings > 0)
+        {
+            GLuint vao_id = 0;
+
+            ogl_context_get_property(context,
+                                     OGL_CONTEXT_PROPERTY_VAO_NO_VAAS,
+                                    &vao_id);
+
+            /* Mark the text drawing program as active */
+            if (backend_type == RAL_BACKEND_TYPE_GL)
+            {
+                text_ptr->gl_pGLPolygonMode(GL_FRONT_AND_BACK,
+                                            GL_FILL);
+            }
+
+            text_ptr->pGLUseProgram (program_raGL_id);
+
+            /* Bind data BO to the 0-th SSBO BP */
+            GLuint      data_buffer_id           = 0;
+            raGL_buffer data_buffer_raGL         = NULL;
+            uint32_t    data_buffer_start_offset = -1;
+
+            data_buffer_raGL = ral_context_get_buffer_gl(text_ptr->context,
+                                                         text_ptr->data_buffer);
+
+            raGL_buffer_get_property(data_buffer_raGL,
+                                     RAGL_BUFFER_PROPERTY_ID,
+                                    &data_buffer_id);
+            raGL_buffer_get_property(data_buffer_raGL,
+                                     RAGL_BUFFER_PROPERTY_START_OFFSET,
+                                    &data_buffer_start_offset);
+
+            text_ptr->pGLBindBufferRange(GL_SHADER_STORAGE_BUFFER,
+                                         0, /* index */
+                                         data_buffer_id,
+                                         data_buffer_start_offset,
+                                         text_ptr->data_buffer_contents_size);
+
+            /* Set up texture units */
+            text_ptr->pGLActiveTexture(GL_TEXTURE1);
+            text_ptr->pGLBindTexture  (GL_TEXTURE_2D,
+                                       ral_context_get_texture_gl_id(text_ptr->context,
+                                                                     text_ptr->font_table_to) );
+
+            /* Draw! */
+            GLuint      ub_fsdata_bo_id           =  0;
+            raGL_buffer ub_fsdata_bo_raGL         = NULL;
+            ral_buffer  ub_fsdata_bo_ral          = NULL;
+            uint32_t    ub_fsdata_bo_size         =  0;
+            uint32_t    ub_fsdata_bo_start_offset = -1;
+            GLuint      ub_vsdata_bo_id           =  0;
+            raGL_buffer ub_vsdata_bo_raGL         = NULL;
+            ral_buffer  ub_vsdata_bo_ral          = NULL;
+            uint32_t    ub_vsdata_bo_size         =  0;
+            uint32_t    ub_vsdata_bo_start_offset = -1;
+
+            ral_program_block_buffer_get_property(text_ptr->fsdata_ub,
+                                                  RAL_PROGRAM_BLOCK_BUFFER_PROPERTY_BUFFER_RAL,
+                                                 &ub_fsdata_bo_ral);
+            ral_program_block_buffer_get_property(text_ptr->vsdata_ub,
+                                                  RAL_PROGRAM_BLOCK_BUFFER_PROPERTY_BUFFER_RAL,
+                                                 &ub_vsdata_bo_ral);
+
+            ub_fsdata_bo_raGL = ral_context_get_buffer_gl(text_ptr->context,
+                                                          ub_fsdata_bo_ral);
+            ub_vsdata_bo_raGL = ral_context_get_buffer_gl(text_ptr->context,
+                                                          ub_vsdata_bo_ral);
+
+            raGL_buffer_get_property(ub_fsdata_bo_raGL,
+                                     RAGL_BUFFER_PROPERTY_ID,
+                                    &ub_fsdata_bo_id);
+            raGL_buffer_get_property(ub_fsdata_bo_raGL,
+                                     RAGL_BUFFER_PROPERTY_START_OFFSET,
+                                    &ub_fsdata_bo_start_offset);
+            raGL_buffer_get_property(ub_vsdata_bo_raGL,
+                                     RAGL_BUFFER_PROPERTY_ID,
+                                    &ub_vsdata_bo_id);
+            raGL_buffer_get_property(ub_vsdata_bo_raGL,
+                                     RAGL_BUFFER_PROPERTY_START_OFFSET,
+                                    &ub_vsdata_bo_start_offset);
+
+            ral_buffer_get_property(ub_fsdata_bo_ral,
+                                    RAL_BUFFER_PROPERTY_SIZE,
+                                   &ub_fsdata_bo_size);
+            ral_buffer_get_property(ub_vsdata_bo_ral,
+                                    RAL_BUFFER_PROPERTY_SIZE,
+                                   &ub_vsdata_bo_size);
+
+            text_ptr->pGLBindBufferRange(GL_UNIFORM_BUFFER,
+                                         text_ptr->fsdata_index,
+                                         ub_fsdata_bo_id,
+                                         ub_fsdata_bo_start_offset,
+                                         ub_fsdata_bo_size);
+            text_ptr->pGLBindBufferRange(GL_UNIFORM_BUFFER,
+                                         text_ptr->vsdata_index,
+                                         ub_vsdata_bo_id,
+                                         ub_vsdata_bo_start_offset,
+                                         ub_vsdata_bo_size);
+
+            text_ptr->pGLBindVertexArray(vao_id);
+            text_ptr->pGLEnable         (GL_BLEND);
+            text_ptr->pGLDisable        (GL_DEPTH_TEST);
+            text_ptr->pGLBlendEquation  (GL_FUNC_ADD);
+            text_ptr->pGLBlendFunc      (GL_ONE,
+                                         GL_ONE_MINUS_SRC_ALPHA);
+            {
+                bool     has_enabled_scissor_test  = false;
+                uint32_t n_characters_drawn_so_far = 0;
+
+                for (uint32_t n_string = 0;
+                              n_string < n_strings;
+                            ++n_string)
+                {
+                    _varia_text_renderer_text_string* string_ptr = NULL;
+
+                    system_resizable_vector_get_element_at(text_ptr->strings,
+                                                           n_string,
+                                                          &string_ptr);
+
+                    if (string_ptr->visible)
+                    {
+                        if (string_ptr->scissor_box[0] == -1 &&
+                            string_ptr->scissor_box[1] == -1 &&
+                            string_ptr->scissor_box[2] == -1 &&
+                            string_ptr->scissor_box[3] == -1)
+                        {
+                            text_ptr->pGLDisable(GL_SCISSOR_TEST);
+
+                            has_enabled_scissor_test = false;
+                        }
+                        else
+                        {
+                            text_ptr->pGLEnable (GL_SCISSOR_TEST);
+                            text_ptr->pGLScissor(string_ptr->scissor_box[0],
+                                                 string_ptr->scissor_box[1],
+                                                 string_ptr->scissor_box[2],
+                                                 string_ptr->scissor_box[3]);
+
+                            has_enabled_scissor_test = true;
+                        }
+
+                        ral_program_block_buffer_set_nonarrayed_variable_value(text_ptr->fsdata_ub,
+                                                                               text_ptr->draw_text_fragment_shader_color_ub_offset,
+                                                                               string_ptr->color,
+                                                                               sizeof(float) * 3);
+                        ral_program_block_buffer_set_nonarrayed_variable_value(text_ptr->vsdata_ub,
+                                                                               text_ptr->draw_text_vertex_shader_scale_ub_offset,
+                                                                              &string_ptr->scale,
+                                                                               sizeof(float) );
+                        ral_program_block_buffer_set_nonarrayed_variable_value(text_ptr->vsdata_ub,
+                                                                               text_ptr->draw_text_vertex_shader_n_origin_character_ub_offset,
+                                                                              &n_characters_drawn_so_far,
+                                                                               sizeof(int) );
+
+                        ral_program_block_buffer_sync(text_ptr->fsdata_ub);
+                        ral_program_block_buffer_sync(text_ptr->vsdata_ub);
+
+                        text_ptr->pGLDrawArrays(GL_TRIANGLES,
+                                                n_characters_drawn_so_far * 6,
+                                                string_ptr->string_length * 6);
+                    }
+
+                    n_characters_drawn_so_far += string_ptr->string_length;
+                } /* for (uint32_t n_string = 0; n_string < n_strings; ++n_string) */
+
+                if (has_enabled_scissor_test)
+                {
+                    text_ptr->pGLDisable(GL_SCISSOR_TEST);
+                }
+            }
+            text_ptr->pGLDisable(GL_BLEND);
+
+            /* Clean up */
+            text_ptr->pGLUseProgram (0);
+        } /* if (n_strings > 0) */
+    }
+    system_critical_section_leave(text_ptr->draw_cs);
+}
 
 /** Please see header for specification */
 PRIVATE void _varia_text_renderer_release(void* text)
@@ -356,7 +874,7 @@ PRIVATE void _varia_text_renderer_update_vram_data_storage(ogl_context context,
         /* This implies we also need to resize the buffer object */
         if (text_ptr->data_buffer != NULL)
         {
-            /* Since we're using raGL_buffers, we need to free the region first */
+            /* Free the region first */
             ral_context_delete_objects(text_ptr->context,
                                        RAL_CONTEXT_OBJECT_TYPE_BUFFER,
                                        1, /* n_buffers */
@@ -463,645 +981,6 @@ PRIVATE void _varia_text_renderer_update_vram_data_storage(ogl_context context,
     }
 }
 
-/** TODO */
-PRIVATE void _varia_text_renderer_construction_callback_from_renderer(ogl_context context,
-                                                                      void*       text)
-{
-    _varia_text_renderer* text_ptr = (_varia_text_renderer*) text;
-
-    if (context == NULL)
-    {
-        context = ral_context_get_gl_context(text_ptr->context);
-    }
-
-    /* If this is the first text object instance we are dealing with, we need to create all the shaders and programs to do
-     * the dirty work
-     */
-    system_critical_section_enter(_global_cs);
-    {
-        raGL_program draw_text_program_raGL    = NULL;
-        GLuint       draw_text_program_raGL_id = -1;
-
-        if (_n_global_owners == 0)
-        {
-            const ral_shader_create_info draw_text_fs_create_info =
-            {
-                system_hashed_ansi_string_create("ogl_text fragment shader"),
-                RAL_SHADER_TYPE_FRAGMENT
-            };
-            const ral_shader_create_info draw_text_vs_create_info =
-            {
-                system_hashed_ansi_string_create("ogl_text vertex shader"),
-                RAL_SHADER_TYPE_VERTEX
-            };
-            const ral_shader_create_info shader_create_info_items[] =
-            {
-                draw_text_fs_create_info,
-                draw_text_vs_create_info
-            };
-            const uint32_t n_shader_create_info_items                 = sizeof(shader_create_info_items) / sizeof(shader_create_info_items[0]);
-            ral_shader     result_shaders[n_shader_create_info_items] = { NULL };
-
-            const ral_program_create_info draw_text_program_create_info =
-            {
-                RAL_PROGRAM_SHADER_STAGE_BIT_FRAGMENT | RAL_PROGRAM_SHADER_STAGE_BIT_VERTEX,
-                system_hashed_ansi_string_create("ogl_text program")
-            };
-
-
-            if (!ral_context_create_shaders(text_ptr->context,
-                                            n_shader_create_info_items,
-                                            shader_create_info_items,
-                                            result_shaders) )
-            {
-                ASSERT_DEBUG_SYNC(false,
-                                  "RAL shader creation failed.");
-            }
-
-            if (!ral_context_create_programs(text_ptr->context,
-                                             1, /* n_create_info_items */
-                                            &draw_text_program_create_info,
-                                            &_global.draw_text_program) )
-            {
-                ASSERT_DEBUG_SYNC(false,
-                                  "RAL program creation failed.");
-            }
-
-            /* Prepare the bodies */
-            ral_backend_type  backend_type = RAL_BACKEND_TYPE_UNKNOWN;
-            std::stringstream fs_sstream;
-            std::stringstream vs_sstream;
-
-            ral_context_get_property(text_ptr->context,
-                                     RAL_CONTEXT_PROPERTY_BACKEND_TYPE,
-                                    &backend_type);
-
-            if (backend_type == RAL_BACKEND_TYPE_ES)
-            {
-                fs_sstream << "#version 310 es\n"
-                              "\n"
-                           << fragment_shader_template;
-
-                vs_sstream << "#version 310 es\n"
-                              "\n"
-                           << vertex_shader_template;
-            }
-            else
-            {
-                ASSERT_DEBUG_SYNC(backend_type == RAL_BACKEND_TYPE_GL,
-                                  "Unrecognized context type");
-
-                fs_sstream << "#version 430 core\n"
-                              "\n"
-                           << fragment_shader_template;
-
-                vs_sstream << "#version 430 core\n"
-                              "\n"
-                           << vertex_shader_template;
-            }
-
-            /* Assign the bodies to the shaders */
-            const system_hashed_ansi_string fs_body_has = system_hashed_ansi_string_create(fs_sstream.str().c_str() );
-            const system_hashed_ansi_string vs_body_has = system_hashed_ansi_string_create(vs_sstream.str().c_str() );
-
-            ral_shader_set_property(result_shaders[0],
-                                    RAL_SHADER_PROPERTY_GLSL_BODY,
-                                   &fs_body_has);
-            ral_shader_set_property(result_shaders[1],
-                                    RAL_SHADER_PROPERTY_GLSL_BODY,
-                                   &vs_body_has);
-
-            if (!ral_program_attach_shader(_global.draw_text_program,
-                                           result_shaders[0]) ||
-                !ral_program_attach_shader(_global.draw_text_program,
-                                           result_shaders[1]) )
-            {
-                ASSERT_DEBUG_SYNC(false,
-                                  "Could not link text drawing program.");
-            }
-
-            /* Retrieve uniform locations */
-            const ral_program_variable*   fragment_shader_color_ral_ptr            = NULL;
-            const _raGL_program_variable* fragment_shader_font_table_raGL_ptr      = NULL;
-            const ral_program_variable*   vertex_shader_n_origin_character_ral_ptr = NULL;
-            const ral_program_variable*   vertex_shader_scale_ral_ptr              = NULL;
-
-            draw_text_program_raGL = ral_context_get_program_gl(text_ptr->context,
-                                                                _global.draw_text_program);
-
-            raGL_program_get_property(draw_text_program_raGL,
-                                      RAGL_PROGRAM_PROPERTY_ID,
-                                     &draw_text_program_raGL_id);
-
-            if (!ral_program_get_block_variable_by_name(_global.draw_text_program,
-                                                        system_hashed_ansi_string_create("FSData"),
-                                                        system_hashed_ansi_string_create("color"),
-                                                       &fragment_shader_color_ral_ptr) )
-            {
-                ASSERT_DEBUG_SYNC(false,
-                                  "Could not retrieve color uniform descriptor.");
-            }
-
-            if (!raGL_program_get_uniform_by_name(draw_text_program_raGL,
-                                                  system_hashed_ansi_string_create("font_table"),
-                                                 &fragment_shader_font_table_raGL_ptr) )
-            {
-                ASSERT_DEBUG_SYNC(false,
-                                  "Could not retrieve font table uniform descriptor.");
-            }
-
-            if (!ral_program_get_block_variable_by_name(_global.draw_text_program,
-                                                        system_hashed_ansi_string_create("VSData"),
-                                                        system_hashed_ansi_string_create("n_origin_character"),
-                                                       &vertex_shader_n_origin_character_ral_ptr))
-            {
-                ASSERT_DEBUG_SYNC(false,
-                                  "Could not retrieve n origin character uniform descriptor.");
-            }
-
-            if (!ral_program_get_block_variable_by_name(_global.draw_text_program,
-                                                        system_hashed_ansi_string_create("VSData"),
-                                                        system_hashed_ansi_string_create("scale"),
-                                                       &vertex_shader_scale_ral_ptr) )
-            {
-                ASSERT_DEBUG_SYNC(false,
-                                  "Could not retrieve scale uniform descriptor.");
-            }
-
-            _global.draw_text_program_data_ssb = ral_program_block_buffer_create(text_ptr->context,
-                                                                                 _global.draw_text_program,
-                                                                                 system_hashed_ansi_string_create("dataSSB") );
-
-            _global.draw_text_fragment_shader_color_ub_offset            = fragment_shader_color_ral_ptr->block_offset;
-            _global.draw_text_fragment_shader_font_table_location        = fragment_shader_font_table_raGL_ptr->location;
-            _global.draw_text_vertex_shader_n_origin_character_ub_offset = vertex_shader_n_origin_character_ral_ptr->block_offset;
-            _global.draw_text_vertex_shader_scale_ub_offset              = vertex_shader_scale_ral_ptr->block_offset;
-
-            ASSERT_DEBUG_SYNC(_global.draw_text_fragment_shader_color_ub_offset != -1,
-                              "FSData color uniform UB offset is -1");
-            ASSERT_DEBUG_SYNC(_global.draw_text_vertex_shader_n_origin_character_ub_offset != -1,
-                              "VSData n_origin_character UB offset is -1");
-            ASSERT_DEBUG_SYNC(_global.draw_text_vertex_shader_scale_ub_offset != -1,
-                              "VSData scale UB offset is -1");
-
-            /* Set up samplers */
-            text_ptr->pGLProgramUniform1i(draw_text_program_raGL_id,
-                                          _global.draw_text_fragment_shader_font_table_location,
-                                          1);
-
-            /* Delete the shader objects */
-            ral_context_delete_objects(text_ptr->context,
-                                       RAL_CONTEXT_OBJECT_TYPE_SHADER,
-                                       n_shader_create_info_items,
-                                       (const void**) result_shaders);
-        }
-        else
-        {
-            draw_text_program_raGL = ral_context_get_program_gl(text_ptr->context,
-                                                                _global.draw_text_program);
-
-            raGL_program_get_property(draw_text_program_raGL,
-                                      RAGL_PROGRAM_PROPERTY_ID,
-                                     &draw_text_program_raGL_id);
-        }
-
-        /* Retrieve uniform block instances.
-         *
-         * NOTE: The ogl_program_ub instances are per-context, since we do not want contexts
-         *       to be modifying their own text data representation in parallel.
-         */
-        if (!system_hash64map_contains(_global_per_context_map,
-                                       (system_hash64) context) )
-        {
-            _global_per_context_variables* per_context_data_ptr = new (std::nothrow) _global_per_context_variables;
-
-            ASSERT_DEBUG_SYNC(per_context_data_ptr != NULL,
-                              "Out of memory");
-
-            per_context_data_ptr->fsdata_ub = ral_program_block_buffer_create(text_ptr->context,
-                                                                              _global.draw_text_program,
-                                                                              system_hashed_ansi_string_create("FSData") );
-            per_context_data_ptr->vsdata_ub = ral_program_block_buffer_create(text_ptr->context,
-                                                                              _global.draw_text_program,
-                                                                              system_hashed_ansi_string_create("VSData") );
-
-            raGL_program_get_block_property_by_name(draw_text_program_raGL,
-                                                    system_hashed_ansi_string_create("FSData"),
-                                                    RAGL_PROGRAM_BLOCK_PROPERTY_INDEXED_BP,
-                                                   &per_context_data_ptr->fsdata_index);
-            raGL_program_get_block_property_by_name(draw_text_program_raGL,
-                                                    system_hashed_ansi_string_create("VSData"),
-                                                    RAGL_PROGRAM_BLOCK_PROPERTY_INDEXED_BP,
-                                                   &per_context_data_ptr->vsdata_index);
-
-            ASSERT_DEBUG_SYNC(per_context_data_ptr->fsdata_index != per_context_data_ptr->vsdata_index,
-                              "BPs match");
-
-            system_hash64map_insert(_global_per_context_map,
-                                    (system_hash64) context,
-                                    per_context_data_ptr,
-                                    NULL,  /* on_remove_callback */
-                                    NULL); /* on_remove_callback_user_arg */
-        } /* if (_global_per_context_map recognizes context) */
-
-        /* Increment the ref counter */
-        ++_n_global_owners;
-    }
-    system_critical_section_leave(_global_cs);
-}
-
-/** Please see header for specification */
-PRIVATE void _varia_text_renderer_create_font_table_to_callback_from_renderer(ogl_context context,
-                                                                              void*       text)
-{
-    ral_backend_type      backend_type = RAL_BACKEND_TYPE_UNKNOWN;
-    _varia_text_renderer* text_ptr     = (_varia_text_renderer*) text;
-
-    ral_context_get_property(text_ptr->context,
-                             RAL_CONTEXT_PROPERTY_BACKEND_TYPE,
-                            &backend_type);
-
-    if (_global.font_tables.find(text_ptr->font_table) == _global.font_tables.end() )
-    {
-        /* Retrieve font table properties */
-        const unsigned char* font_table_data_ptr = gfx_bfg_font_table_get_data_pointer(text_ptr->font_table);
-        uint32_t             font_table_height   = 0;
-        uint32_t             font_table_width    = 0;
-
-        gfx_bfg_font_table_get_data_properties(text_ptr->font_table,
-                                              &font_table_width,
-                                              &font_table_height);
-
-        /* Create the descriptor */
-        _font_table_descriptor          descriptor;
-        ral_texture_create_info         to_create_info;
-        const system_hashed_ansi_string to_name = system_hashed_ansi_string_create_by_merging_two_strings("Text renderer ",
-                                                                                                         system_hashed_ansi_string_get_buffer(text_ptr->name) );
-
-        to_create_info.base_mipmap_depth      = 1;
-        to_create_info.base_mipmap_height     = font_table_height;
-        to_create_info.base_mipmap_width      = font_table_width;
-        to_create_info.fixed_sample_locations = false;
-        to_create_info.format                 = RAL_TEXTURE_FORMAT_RGB8_UNORM;
-        to_create_info.n_layers               = 1;
-        to_create_info.n_samples              = 1;
-        to_create_info.type                   = RAL_TEXTURE_TYPE_2D;
-        to_create_info.usage                  = RAL_TEXTURE_USAGE_SAMPLED_BIT;
-        to_create_info.use_full_mipmap_chain  = true;
-
-        ral_context_create_textures(text_ptr->context,
-                                    1, /* n_textures */
-                                    &to_create_info,
-                                    &descriptor.to);
-
-        text_ptr->pGLBindTexture(GL_TEXTURE_2D,
-                                 ral_context_get_texture_gl_id(text_ptr->context,
-                                                               descriptor.to) );
-
-        text_ptr->pGLTexSubImage2D (GL_TEXTURE_2D,
-                                    0, /* level */
-                                    0, /* xoffset */
-                                    0, /* yoffset */
-                                    font_table_width,
-                                    font_table_height,
-                                    GL_RGB,
-                                    GL_UNSIGNED_BYTE,
-                                    font_table_data_ptr);
-        text_ptr->pGLTexParameteri (GL_TEXTURE_2D,
-                                    GL_TEXTURE_WRAP_S,
-                                    GL_CLAMP_TO_EDGE);
-        text_ptr->pGLTexParameteri (GL_TEXTURE_2D,
-                                    GL_TEXTURE_WRAP_T,
-                                    GL_CLAMP_TO_EDGE);
-        text_ptr->pGLTexParameteri (GL_TEXTURE_2D,
-                                    GL_TEXTURE_MAG_FILTER,
-                                    GL_LINEAR);
-        text_ptr->pGLTexParameteri (GL_TEXTURE_2D,
-                                    GL_TEXTURE_MIN_FILTER,
-                                    GL_LINEAR_MIPMAP_LINEAR);
-        text_ptr->pGLGenerateMipmap(GL_TEXTURE_2D);
-
-        /* Note that texture data is stored in BGR order. We would have just gone with GL_BGR
-         * format under GL context, but this is not supported under ES. What we can do, however,
-         * is use GL_TEXTURE_SWIZZLE parameters of the texture object. */
-        text_ptr->pGLTexParameteri(GL_TEXTURE_2D,
-                                   GL_TEXTURE_SWIZZLE_R,
-                                   GL_BLUE);
-        text_ptr->pGLTexParameteri(GL_TEXTURE_2D,
-                                   GL_TEXTURE_SWIZZLE_B,
-                                   GL_RED);
-
-        _global.font_tables[text_ptr->font_table] = descriptor;
-    }
-}
-
-/** Please see header for specification */
-PRIVATE void _varia_text_renderer_destruction_callback_from_renderer(ogl_context context,
-                                                                     void*       text)
-{
-    _varia_text_renderer* text_ptr = (_varia_text_renderer*) text;
-
-    /* First, free all objects that are not global */
-    if (text_ptr->data_buffer != NULL)
-    {
-        ral_context_delete_objects(text_ptr->context,
-                                   RAL_CONTEXT_OBJECT_TYPE_BUFFER,
-                                   1, /* n_buffers */
-                                   (const void**) &text_ptr->data_buffer);
-
-        text_ptr->data_buffer = NULL;
-    }
-
-    /* Moving on to global variables, check if we're the only owner remaining */
-    system_critical_section_enter(_global_cs);
-    {
-        if (_n_global_owners == 1)
-        {
-            /* It's time. Get rid of all the shaders and programs */
-            ral_context_delete_objects(text_ptr->context,
-                                       RAL_CONTEXT_OBJECT_TYPE_PROGRAM,
-                                       1, /* n_objects */
-                                       (const void**) &_global.draw_text_program);
-
-            for (FontTableIterator iterator  = _global.font_tables.begin();
-                                   iterator != _global.font_tables.end();
-                                 ++iterator)
-            {
-                ral_context_delete_objects(text_ptr->context,
-                                           RAL_CONTEXT_OBJECT_TYPE_TEXTURE,
-                                           1, /* n_textures */
-                                           (const void**) &iterator->second.to);
-            }
-            _global.font_tables.clear();
-
-            if (_global.draw_text_program_data_ssb != NULL)
-            {
-                ral_program_block_buffer_release(_global.draw_text_program_data_ssb);
-
-                _global.draw_text_program_data_ssb = NULL;
-            }
-
-            _global.draw_text_program = NULL;
-
-            _global.draw_text_fragment_shader_color_ub_offset            = -1;
-            _global.draw_text_fragment_shader_font_table_location        = -1;
-            _global.draw_text_vertex_shader_n_origin_character_ub_offset = -1;
-            _global.draw_text_vertex_shader_scale_ub_offset              = -1;
-        }
-
-        --_n_global_owners;
-
-        /* Also release context-specific data.
-         *
-         * Note: This location may also be called for the root context, for which there will be no
-         *       per-context variables initialized.
-         */
-        _global_per_context_variables* variables_ptr = NULL;
-
-        if (system_hash64map_get(_global_per_context_map,
-                                 (system_hash64) context,
-                                &variables_ptr) )
-        {
-            delete variables_ptr;
-            variables_ptr = NULL;
-
-            system_hash64map_remove(_global_per_context_map,
-                                    (system_hash64) context);
-        }
-    }
-    system_critical_section_leave(_global_cs);
-}
-
-/** Please see header for specification */
-PRIVATE void _varia_text_renderer_draw_callback_from_renderer(ogl_context context,
-                                                              void*       text)
-{
-    ral_backend_type      backend_type = RAL_BACKEND_TYPE_UNKNOWN;
-    uint32_t              n_strings    = 0;
-    _varia_text_renderer* text_ptr     = (_varia_text_renderer*) text;
-
-    const raGL_program program_raGL    = ral_context_get_program_gl(text_ptr->context,
-                                                                    _global.draw_text_program);
-    GLuint             program_raGL_id = 0;
-
-    raGL_program_get_property(program_raGL,
-                              RAGL_PROGRAM_PROPERTY_ID,
-                             &program_raGL_id);
-
-    ral_context_get_property            (text_ptr->context,
-                                         RAL_CONTEXT_PROPERTY_BACKEND,
-                                        &backend_type);
-    system_resizable_vector_get_property(text_ptr->strings,
-                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
-                                        &n_strings);
-
-    system_critical_section_enter(text_ptr->draw_cs);
-    {
-        /* Update underlying helper data buffer contents - only if the "dirty flag" is on */
-        if (text_ptr->dirty)
-        {
-            _varia_text_renderer_update_vram_data_storage(context,
-                                                          text);
-
-            text_ptr->dirty = false;
-        }
-
-        /* Carry on */
-        if (n_strings > 0)
-        {
-            GLuint vao_id = 0;
-
-            ogl_context_get_property(context,
-                                     OGL_CONTEXT_PROPERTY_VAO_NO_VAAS,
-                                    &vao_id);
-
-            system_critical_section_enter(_global_cs);
-            {
-                _global_per_context_variables* variables_ptr = NULL;
-
-                system_hash64map_get(_global_per_context_map,
-                                     (system_hash64) context,
-                                    &variables_ptr);
-
-                ASSERT_DEBUG_SYNC(variables_ptr != NULL,
-                                  "Per-context text variable data is unavailable");
-
-                /* Mark the text drawing program as active */
-                if (backend_type == RAL_BACKEND_TYPE_GL)
-                {
-                    text_ptr->gl_pGLPolygonMode(GL_FRONT_AND_BACK,
-                                                GL_FILL);
-                }
-
-                text_ptr->pGLUseProgram (program_raGL_id);
-
-                /* Bind data BO to the 0-th SSBO BP */
-                GLuint      data_buffer_id           = 0;
-                raGL_buffer data_buffer_raGL         = NULL;
-                uint32_t    data_buffer_start_offset = -1;
-
-                data_buffer_raGL = ral_context_get_buffer_gl(text_ptr->context,
-                                                             text_ptr->data_buffer);
-
-                raGL_buffer_get_property(data_buffer_raGL,
-                                         RAGL_BUFFER_PROPERTY_ID,
-                                        &data_buffer_id);
-                raGL_buffer_get_property(data_buffer_raGL,
-                                         RAGL_BUFFER_PROPERTY_START_OFFSET,
-                                        &data_buffer_start_offset);
-
-                text_ptr->pGLBindBufferRange(GL_SHADER_STORAGE_BUFFER,
-                                             0, /* index */
-                                             data_buffer_id,
-                                             data_buffer_start_offset,
-                                             text_ptr->data_buffer_contents_size);
-
-                /* Set up texture units */
-                ASSERT_DEBUG_SYNC(_global.font_tables.find(text_ptr->font_table) != _global.font_tables.end(),
-                                  "Could not find corresponding texture for a font table!");
-
-                text_ptr->pGLActiveTexture(GL_TEXTURE1);
-                text_ptr->pGLBindTexture  (GL_TEXTURE_2D,
-                                           ral_context_get_texture_gl_id(text_ptr->context,
-                                                                         _global.font_tables[text_ptr->font_table].to) );
-
-                /* Draw! */
-                GLuint      ub_fsdata_bo_id           =  0;
-                raGL_buffer ub_fsdata_bo_raGL         = NULL;
-                ral_buffer  ub_fsdata_bo_ral          = NULL;
-                uint32_t    ub_fsdata_bo_size         =  0;
-                uint32_t    ub_fsdata_bo_start_offset = -1;
-                GLuint      ub_vsdata_bo_id           =  0;
-                raGL_buffer ub_vsdata_bo_raGL         = NULL;
-                ral_buffer  ub_vsdata_bo_ral          = NULL;
-                uint32_t    ub_vsdata_bo_size         =  0;
-                uint32_t    ub_vsdata_bo_start_offset = -1;
-
-                ral_program_block_buffer_get_property(variables_ptr->fsdata_ub,
-                                                      RAL_PROGRAM_BLOCK_BUFFER_PROPERTY_BUFFER_RAL,
-                                                     &ub_fsdata_bo_ral);
-                ral_program_block_buffer_get_property(variables_ptr->vsdata_ub,
-                                                      RAL_PROGRAM_BLOCK_BUFFER_PROPERTY_BUFFER_RAL,
-                                                     &ub_vsdata_bo_ral);
-
-                ub_fsdata_bo_raGL = ral_context_get_buffer_gl(text_ptr->context,
-                                                              ub_fsdata_bo_ral);
-                ub_vsdata_bo_raGL = ral_context_get_buffer_gl(text_ptr->context,
-                                                              ub_vsdata_bo_ral);
-
-                raGL_buffer_get_property(ub_fsdata_bo_raGL,
-                                         RAGL_BUFFER_PROPERTY_ID,
-                                        &ub_fsdata_bo_id);
-                raGL_buffer_get_property(ub_fsdata_bo_raGL,
-                                         RAGL_BUFFER_PROPERTY_START_OFFSET,
-                                        &ub_fsdata_bo_start_offset);
-                raGL_buffer_get_property(ub_vsdata_bo_raGL,
-                                         RAGL_BUFFER_PROPERTY_ID,
-                                        &ub_vsdata_bo_id);
-                raGL_buffer_get_property(ub_vsdata_bo_raGL,
-                                         RAGL_BUFFER_PROPERTY_START_OFFSET,
-                                        &ub_vsdata_bo_start_offset);
-
-                ral_buffer_get_property(ub_fsdata_bo_ral,
-                                        RAL_BUFFER_PROPERTY_SIZE,
-                                       &ub_fsdata_bo_size);
-                ral_buffer_get_property(ub_vsdata_bo_ral,
-                                        RAL_BUFFER_PROPERTY_SIZE,
-                                       &ub_vsdata_bo_size);
-
-                text_ptr->pGLBindBufferRange(GL_UNIFORM_BUFFER,
-                                             variables_ptr->fsdata_index,
-                                             ub_fsdata_bo_id,
-                                             ub_fsdata_bo_start_offset,
-                                             ub_fsdata_bo_size);
-                text_ptr->pGLBindBufferRange(GL_UNIFORM_BUFFER,
-                                             variables_ptr->vsdata_index,
-                                             ub_vsdata_bo_id,
-                                             ub_vsdata_bo_start_offset,
-                                             ub_vsdata_bo_size);
-
-                text_ptr->pGLBindVertexArray(vao_id);
-                text_ptr->pGLEnable         (GL_BLEND);
-                text_ptr->pGLDisable        (GL_DEPTH_TEST);
-                text_ptr->pGLBlendEquation  (GL_FUNC_ADD);
-                text_ptr->pGLBlendFunc      (GL_ONE,
-                                             GL_ONE_MINUS_SRC_ALPHA);
-                {
-                    bool     has_enabled_scissor_test  = false;
-                    uint32_t n_characters_drawn_so_far = 0;
-
-                    for (uint32_t n_string = 0;
-                                  n_string < n_strings;
-                                ++n_string)
-                    {
-                        _varia_text_renderer_text_string* string_ptr = NULL;
-
-                        system_resizable_vector_get_element_at(text_ptr->strings,
-                                                               n_string,
-                                                              &string_ptr);
-
-                        if (string_ptr->visible)
-                        {
-                            if (string_ptr->scissor_box[0] == -1 &&
-                                string_ptr->scissor_box[1] == -1 &&
-                                string_ptr->scissor_box[2] == -1 &&
-                                string_ptr->scissor_box[3] == -1)
-                            {
-                                text_ptr->pGLDisable(GL_SCISSOR_TEST);
-
-                                has_enabled_scissor_test = false;
-                            }
-                            else
-                            {
-                                text_ptr->pGLEnable (GL_SCISSOR_TEST);
-                                text_ptr->pGLScissor(string_ptr->scissor_box[0],
-                                                     string_ptr->scissor_box[1],
-                                                     string_ptr->scissor_box[2],
-                                                     string_ptr->scissor_box[3]);
-
-                                has_enabled_scissor_test = true;
-                            }
-
-                            ral_program_block_buffer_set_nonarrayed_variable_value(variables_ptr->fsdata_ub,
-                                                                                   _global.draw_text_fragment_shader_color_ub_offset,
-                                                                                   string_ptr->color,
-                                                                                   sizeof(float) * 3);
-                            ral_program_block_buffer_set_nonarrayed_variable_value(variables_ptr->vsdata_ub,
-                                                                                   _global.draw_text_vertex_shader_scale_ub_offset,
-                                                                                  &string_ptr->scale,
-                                                                                   sizeof(float) );
-                            ral_program_block_buffer_set_nonarrayed_variable_value(variables_ptr->vsdata_ub,
-                                                                                   _global.draw_text_vertex_shader_n_origin_character_ub_offset,
-                                                                                  &n_characters_drawn_so_far,
-                                                                                   sizeof(int) );
-
-                            ral_program_block_buffer_sync(variables_ptr->fsdata_ub);
-                            ral_program_block_buffer_sync(variables_ptr->vsdata_ub);
-
-                            text_ptr->pGLDrawArrays(GL_TRIANGLES,
-                                                    n_characters_drawn_so_far * 6,
-                                                    string_ptr->string_length * 6);
-                        }
-
-                        n_characters_drawn_so_far += string_ptr->string_length;
-                    } /* for (uint32_t n_string = 0; n_string < n_strings; ++n_string) */
-
-                    if (has_enabled_scissor_test)
-                    {
-                        text_ptr->pGLDisable(GL_SCISSOR_TEST);
-                    }
-                }
-                text_ptr->pGLDisable(GL_BLEND);
-
-                /* Clean up */
-                text_ptr->pGLUseProgram (0);
-            }
-            system_critical_section_leave(_global_cs);
-        } /* if (n_strings > 0) */
-    }
-    system_critical_section_leave(text_ptr->draw_cs);
-}
-
 
 /** Please see header for specification */
 PUBLIC EMERALD_API varia_text_renderer_text_string_id varia_text_renderer_add_string(varia_text_renderer text)
@@ -1201,11 +1080,15 @@ PUBLIC EMERALD_API varia_text_renderer varia_text_renderer_create(system_hashed_
         result_ptr->default_scale    = DEFAULT_SCALE;
         result_ptr->draw_cs          = system_critical_section_create();
         result_ptr->font_table       = font_table;
+        result_ptr->fsdata_index     = -1;
+        result_ptr->fsdata_ub        = NULL;
         result_ptr->name             = name;
         result_ptr->owner_context    = context;
         result_ptr->screen_width     = screen_width;
         result_ptr->screen_height    = screen_height;
         result_ptr->strings          = system_resizable_vector_create(4 /* default capacity */);
+        result_ptr->vsdata_index     = -1;
+        result_ptr->vsdata_ub        = NULL;
 
         /* Retrieve TBO alignment requirement */
         const ogl_context_gl_limits* limits_ptr = NULL;
@@ -1301,12 +1184,9 @@ PUBLIC EMERALD_API varia_text_renderer varia_text_renderer_create(system_hashed_
         }
 
         /* Make sure the font table has been assigned a texture object */
-        if (_global.font_tables.find(font_table) == _global.font_tables.end() )
-        {
-            ogl_context_request_callback_from_context_thread(context_gl,
-                                                             _varia_text_renderer_create_font_table_to_callback_from_renderer,
-                                                             result_ptr);
-        }
+        ogl_context_request_callback_from_context_thread(context_gl,
+                                                         _varia_text_renderer_create_font_table_to_callback_from_renderer,
+                                                         result_ptr);
 
         /* We need a call-back, now */
         ogl_context_request_callback_from_context_thread(context_gl,
@@ -1628,18 +1508,6 @@ PUBLIC EMERALD_API void varia_text_renderer_set(varia_text_renderer             
 
 end:
     system_critical_section_leave(text_ptr->draw_cs);
-}
-
-/** Please see header for specification */
-PUBLIC EMERALD_API void varia_text_renderer_set_screen_properties(varia_text_renderer instance,
-                                                                  uint32_t            screen_width,
-                                                                  uint32_t            screen_height)
-{
-    _varia_text_renderer* text_ptr = (_varia_text_renderer*) instance;
-
-    text_ptr->screen_height = screen_height;
-    text_ptr->screen_width  = screen_width;
-    text_ptr->dirty         = true;
 }
 
 /* Please see header for specification */
