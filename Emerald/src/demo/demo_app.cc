@@ -187,6 +187,8 @@ PUBLIC EMERALD_API bool demo_app_destroy_window(system_hashed_ansi_string window
     }
     system_critical_section_leave(app.cs);
 
+    demo_window_stop_rendering(window);
+
     /* Notify subscribers about the event */
     system_callback_manager_call_back(app.callback_manager,
                                       DEMO_APP_CALLBACK_ID_WINDOW_ABOUT_TO_BE_DESTROYED,

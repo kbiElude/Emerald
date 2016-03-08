@@ -1151,7 +1151,6 @@ PRIVATE void _ogl_context_init_context_after_creation(ogl_context context)
 
     if (!context_ptr->is_helper_context)
     {
-
         _ogl_context_initialize_fbo(context_ptr);
 
         /* Set up text renderer */
