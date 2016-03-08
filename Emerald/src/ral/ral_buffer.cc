@@ -231,9 +231,9 @@ PUBLIC void ral_buffer_release(ral_buffer& buffer)
 }
 
 /** Please see header for specification */
-PUBLIC bool ral_buffer_set_data_from_client_memory(ral_buffer                                   buffer,
-                                                   uint32_t                                     n_updates,
-                                                   const ral_buffer_client_sourced_update_info* updates)
+PUBLIC bool ral_buffer_set_data_from_client_memory(ral_buffer                             buffer,
+                                                   uint32_t                               n_updates,
+                                                   ral_buffer_client_sourced_update_info* updates)
 {
     _ral_buffer*                                       buffer_ptr = (_ral_buffer*) buffer;
     ral_buffer_client_sourced_update_info_callback_arg callback_arg;
@@ -268,6 +268,13 @@ PUBLIC bool ral_buffer_set_data_from_client_memory(ral_buffer                   
     callback_arg.buffer    = buffer;
     callback_arg.n_updates = n_updates;
     callback_arg.updates   = updates;
+
+    for (uint32_t n_update = 0;
+                  n_update < n_updates;
+                ++n_update)
+    {
+        updates[n_update].start_offset += buffer_ptr->start_offset;
+    }
 
     system_callback_manager_call_back(buffer_ptr->callback_manager,
                                       RAL_BUFFER_CALLBACK_ID_CLIENT_MEMORY_SOURCED_UPDATES_REQUESTED,

@@ -83,19 +83,16 @@ typedef struct
     ral_context  context;
 
     /* GL function pointers cache */
-    PFNGLNAMEDBUFFERSUBDATAEXTPROC gl_pGLNamedBufferSubDataEXT;
     PFNGLPOLYGONMODEPROC           gl_pGLPolygonMode;
     PFNGLTEXTUREPARAMETERIEXTPROC  gl_pGLTextureParameteriEXT;
-    PFNGLTEXTURESTORAGE2DEXTPROC   gl_pGLTextureStorage2DEXT;
-    PFNGLTEXTURESUBIMAGE2DEXTPROC  gl_pGLTextureSubImage2DEXT;
     PFNGLACTIVETEXTUREPROC         pGLActiveTexture;
     PFNGLBINDBUFFERPROC            pGLBindBuffer;
     PFNGLBINDBUFFERRANGEPROC       pGLBindBufferRange;
+    PFNGLBINDSAMPLERPROC           pGLBindSampler;
     PFNGLBINDTEXTUREPROC           pGLBindTexture;
     PFNGLBINDVERTEXARRAYPROC       pGLBindVertexArray;
     PFNGLBLENDEQUATIONPROC         pGLBlendEquation;
     PFNGLBLENDFUNCPROC             pGLBlendFunc;
-    PFNGLBUFFERSUBDATAPROC         pGLBufferSubData;
     PFNGLDELETEVERTEXARRAYSPROC    pGLDeleteVertexArrays;
     PFNGLDISABLEPROC               pGLDisable;
     PFNGLDRAWARRAYSPROC            pGLDrawArrays;
@@ -106,9 +103,8 @@ typedef struct
     PFNGLSCISSORPROC               pGLScissor;
     PFNGLTEXBUFFERRANGEPROC        pGLTexBufferRange;
     PFNGLTEXPARAMETERIPROC         pGLTexParameteri;
-    PFNGLTEXSUBIMAGE2DPROC         pGLTexSubImage2D;
-    PFNGLUNIFORMBLOCKBINDINGPROC   pGLUniformBlockBinding;
     PFNGLUSEPROGRAMPROC            pGLUseProgram;
+    PFNGLVIEWPORTPROC              pGLViewport;
 
     REFCOUNT_INSERT_VARIABLES
 } _varia_text_renderer;
@@ -152,7 +148,7 @@ static const char* fragment_shader_template = "#ifdef GL_ES\n"
                                               "\n"
                                               "void main()\n"
                                               "{\n"
-                                              "    vec4 texel = texture(font_table, vertex_shader_uv);\n"
+                                              "    vec4 texel = textureLod(font_table, vertex_shader_uv, 0.0);\n"
                                               "\n"
                                               "    result = vec4(color.xyz * texel.x, (texel.x > 0.9) ? 1 : 0);\n"
                                               "}\n";
@@ -456,6 +452,8 @@ PRIVATE void _varia_text_renderer_create_font_table_to_callback_from_renderer(og
     const system_hashed_ansi_string to_name = system_hashed_ansi_string_create_by_merging_two_strings("Text renderer ",
                                                                                                      system_hashed_ansi_string_get_buffer(text_ptr->name) );
 
+    ral_texture_mipmap_client_sourced_update_info to_update;
+
     to_create_info.base_mipmap_depth      = 1;
     to_create_info.base_mipmap_height     = font_table_height;
     to_create_info.base_mipmap_width      = font_table_width;
@@ -465,26 +463,32 @@ PRIVATE void _varia_text_renderer_create_font_table_to_callback_from_renderer(og
     to_create_info.n_samples              = 1;
     to_create_info.type                   = RAL_TEXTURE_TYPE_2D;
     to_create_info.usage                  = RAL_TEXTURE_USAGE_SAMPLED_BIT;
-    to_create_info.use_full_mipmap_chain  = true;
+    to_create_info.use_full_mipmap_chain  = false;
 
-    ral_context_create_textures(text_ptr->context,
-                                1, /* n_textures */
-                                &to_create_info,
-                                &text_ptr->font_table_to);
+    to_update.data                   = font_table_data_ptr;
+    to_update.data_row_alignment     = 1;
+    to_update.data_size              = 3 * font_table_width * font_table_height;
+    to_update.data_type              = RAL_TEXTURE_DATA_TYPE_UBYTE;
+    to_update.n_layer                = 0;
+    to_update.n_mipmap               = 0;
+    to_update.region_size[0]         = font_table_width;
+    to_update.region_size[1]         = font_table_height;
+    to_update.region_size[2]         = 0;
+    to_update.region_start_offset[0] = 0;
+    to_update.region_start_offset[1] = 0;
+    to_update.region_start_offset[2] = 0;
 
-    text_ptr->pGLBindTexture(GL_TEXTURE_2D,
-                             ral_context_get_texture_gl_id(text_ptr->context,
-                                                           text_ptr->font_table_to) );
+    ral_context_create_textures                   (text_ptr->context,
+                                                   1, /* n_textures */
+                                                   &to_create_info,
+                                                   &text_ptr->font_table_to);
+    ral_texture_set_mipmap_data_from_client_memory(text_ptr->font_table_to,
+                                                   1, /* n_updates */
+                                                   &to_update);
 
-    text_ptr->pGLTexSubImage2D (GL_TEXTURE_2D,
-                                0, /* level */
-                                0, /* xoffset */
-                                0, /* yoffset */
-                                font_table_width,
-                                font_table_height,
-                                GL_RGB,
-                                GL_UNSIGNED_BYTE,
-                                font_table_data_ptr);
+    text_ptr->pGLBindTexture   (GL_TEXTURE_2D,
+                                ral_context_get_texture_gl_id(text_ptr->context,
+                                                              text_ptr->font_table_to) );
     text_ptr->pGLTexParameteri (GL_TEXTURE_2D,
                                 GL_TEXTURE_WRAP_S,
                                 GL_CLAMP_TO_EDGE);
@@ -496,8 +500,7 @@ PRIVATE void _varia_text_renderer_create_font_table_to_callback_from_renderer(og
                                 GL_LINEAR);
     text_ptr->pGLTexParameteri (GL_TEXTURE_2D,
                                 GL_TEXTURE_MIN_FILTER,
-                                GL_LINEAR_MIPMAP_LINEAR);
-    text_ptr->pGLGenerateMipmap(GL_TEXTURE_2D);
+                                GL_LINEAR);
 
     /* Note that texture data is stored in BGR order. We would have just gone with GL_BGR
      * format under GL context, but this is not supported under ES. What we can do, however,
@@ -571,6 +574,7 @@ PRIVATE void _varia_text_renderer_draw_callback_from_renderer(ogl_context contex
                                                               void*       text)
 {
     ral_backend_type      backend_type = RAL_BACKEND_TYPE_UNKNOWN;
+    uint32_t              fb_resolution[2];
     uint32_t              n_strings    = 0;
     _varia_text_renderer* text_ptr     = (_varia_text_renderer*) text;
 
@@ -583,6 +587,9 @@ PRIVATE void _varia_text_renderer_draw_callback_from_renderer(ogl_context contex
                              &program_raGL_id);
 
     ral_context_get_property            (text_ptr->context,
+                                         RAL_CONTEXT_PROPERTY_SYSTEM_FRAMEBUFFER_SIZE,
+                                         fb_resolution);
+    ral_context_get_property            (text_ptr->context,
                                          RAL_CONTEXT_PROPERTY_BACKEND,
                                         &backend_type);
     system_resizable_vector_get_property(text_ptr->strings,
@@ -591,6 +598,11 @@ PRIVATE void _varia_text_renderer_draw_callback_from_renderer(ogl_context contex
 
     system_critical_section_enter(text_ptr->draw_cs);
     {
+        text_ptr->pGLViewport(0,
+                              0,
+                              fb_resolution[0],
+                              fb_resolution[1]);
+
         /* Update underlying helper data buffer contents - only if the "dirty flag" is on */
         if (text_ptr->dirty)
         {
@@ -619,9 +631,10 @@ PRIVATE void _varia_text_renderer_draw_callback_from_renderer(ogl_context contex
             text_ptr->pGLUseProgram (program_raGL_id);
 
             /* Bind data BO to the 0-th SSBO BP */
-            GLuint      data_buffer_id           = 0;
-            raGL_buffer data_buffer_raGL         = NULL;
-            uint32_t    data_buffer_start_offset = -1;
+            GLuint      data_buffer_id                = 0;
+            raGL_buffer data_buffer_raGL              = NULL;
+            uint32_t    data_buffer_raGL_start_offset = -1;
+            uint32_t    data_buffer_ral_start_offset  = -1;
 
             data_buffer_raGL = ral_context_get_buffer_gl(text_ptr->context,
                                                          text_ptr->data_buffer);
@@ -631,31 +644,38 @@ PRIVATE void _varia_text_renderer_draw_callback_from_renderer(ogl_context contex
                                     &data_buffer_id);
             raGL_buffer_get_property(data_buffer_raGL,
                                      RAGL_BUFFER_PROPERTY_START_OFFSET,
-                                    &data_buffer_start_offset);
+                                    &data_buffer_raGL_start_offset);
+            ral_buffer_get_property (text_ptr->data_buffer,
+                                     RAL_BUFFER_PROPERTY_START_OFFSET,
+                                    &data_buffer_ral_start_offset);
 
             text_ptr->pGLBindBufferRange(GL_SHADER_STORAGE_BUFFER,
                                          0, /* index */
                                          data_buffer_id,
-                                         data_buffer_start_offset,
+                                         data_buffer_raGL_start_offset + data_buffer_ral_start_offset,
                                          text_ptr->data_buffer_contents_size);
 
             /* Set up texture units */
             text_ptr->pGLActiveTexture(GL_TEXTURE1);
+            text_ptr->pGLBindSampler  (1,  /* unit   */
+                                       0); /* sampler*/
             text_ptr->pGLBindTexture  (GL_TEXTURE_2D,
                                        ral_context_get_texture_gl_id(text_ptr->context,
                                                                      text_ptr->font_table_to) );
 
             /* Draw! */
-            GLuint      ub_fsdata_bo_id           =  0;
-            raGL_buffer ub_fsdata_bo_raGL         = NULL;
-            ral_buffer  ub_fsdata_bo_ral          = NULL;
-            uint32_t    ub_fsdata_bo_size         =  0;
-            uint32_t    ub_fsdata_bo_start_offset = -1;
-            GLuint      ub_vsdata_bo_id           =  0;
-            raGL_buffer ub_vsdata_bo_raGL         = NULL;
-            ral_buffer  ub_vsdata_bo_ral          = NULL;
-            uint32_t    ub_vsdata_bo_size         =  0;
-            uint32_t    ub_vsdata_bo_start_offset = -1;
+            GLuint      ub_fsdata_bo_id                =  0;
+            raGL_buffer ub_fsdata_bo_raGL              = NULL;
+            uint32_t    ub_fsdata_bo_raGL_start_offset = -1;
+            ral_buffer  ub_fsdata_bo_ral               = NULL;
+            uint32_t    ub_fsdata_bo_ral_start_offset  = -1;
+            uint32_t    ub_fsdata_bo_size              =  0;
+            GLuint      ub_vsdata_bo_id                =  0;
+            raGL_buffer ub_vsdata_bo_raGL              = NULL;
+            uint32_t    ub_vsdata_bo_raGL_start_offset = -1;
+            ral_buffer  ub_vsdata_bo_ral               = NULL;
+            uint32_t    ub_vsdata_bo_ral_start_offset  = -1;
+            uint32_t    ub_vsdata_bo_size              =  0;
 
             ral_program_block_buffer_get_property(text_ptr->fsdata_ub,
                                                   RAL_PROGRAM_BLOCK_BUFFER_PROPERTY_BUFFER_RAL,
@@ -674,30 +694,36 @@ PRIVATE void _varia_text_renderer_draw_callback_from_renderer(ogl_context contex
                                     &ub_fsdata_bo_id);
             raGL_buffer_get_property(ub_fsdata_bo_raGL,
                                      RAGL_BUFFER_PROPERTY_START_OFFSET,
-                                    &ub_fsdata_bo_start_offset);
+                                    &ub_fsdata_bo_raGL_start_offset);
             raGL_buffer_get_property(ub_vsdata_bo_raGL,
                                      RAGL_BUFFER_PROPERTY_ID,
                                     &ub_vsdata_bo_id);
             raGL_buffer_get_property(ub_vsdata_bo_raGL,
                                      RAGL_BUFFER_PROPERTY_START_OFFSET,
-                                    &ub_vsdata_bo_start_offset);
+                                    &ub_vsdata_bo_raGL_start_offset);
 
             ral_buffer_get_property(ub_fsdata_bo_ral,
                                     RAL_BUFFER_PROPERTY_SIZE,
                                    &ub_fsdata_bo_size);
+            ral_buffer_get_property(ub_fsdata_bo_ral,
+                                    RAL_BUFFER_PROPERTY_START_OFFSET,
+                                   &ub_fsdata_bo_ral_start_offset);
             ral_buffer_get_property(ub_vsdata_bo_ral,
                                     RAL_BUFFER_PROPERTY_SIZE,
                                    &ub_vsdata_bo_size);
+            ral_buffer_get_property(ub_vsdata_bo_ral,
+                                    RAL_BUFFER_PROPERTY_START_OFFSET,
+                                   &ub_vsdata_bo_ral_start_offset);
 
             text_ptr->pGLBindBufferRange(GL_UNIFORM_BUFFER,
                                          text_ptr->fsdata_index,
                                          ub_fsdata_bo_id,
-                                         ub_fsdata_bo_start_offset,
+                                         ub_fsdata_bo_raGL_start_offset + ub_fsdata_bo_ral_start_offset,
                                          ub_fsdata_bo_size);
             text_ptr->pGLBindBufferRange(GL_UNIFORM_BUFFER,
                                          text_ptr->vsdata_index,
                                          ub_vsdata_bo_id,
-                                         ub_vsdata_bo_start_offset,
+                                         ub_vsdata_bo_raGL_start_offset + ub_vsdata_bo_ral_start_offset,
                                          ub_vsdata_bo_size);
 
             text_ptr->pGLBindVertexArray(vao_id);
@@ -951,34 +977,15 @@ PRIVATE void _varia_text_renderer_update_vram_data_storage(ogl_context context,
     } /* for (size_t n_text_string = 0; n_text_string < n_text_strings; ++n_text_string) */
 
     /* Upload the data */
-    GLuint      data_buffer_id           = 0;
-    raGL_buffer data_buffer_raGL         = NULL;
-    uint32_t    data_buffer_start_offset = -1;
+    ral_buffer_client_sourced_update_info data_update;
 
-    data_buffer_raGL = ral_context_get_buffer_gl(text_ptr->context,
-                                                 text_ptr->data_buffer);
+    data_update.data         = text_ptr->data_buffer_contents;
+    data_update.data_size    = text_ptr->data_buffer_contents_size;
+    data_update.start_offset = 0;
 
-    raGL_buffer_get_property(data_buffer_raGL,
-                             RAGL_BUFFER_PROPERTY_ID,
-                            &data_buffer_id);
-    raGL_buffer_get_property(data_buffer_raGL,
-                             RAGL_BUFFER_PROPERTY_START_OFFSET,
-                            &data_buffer_start_offset);
-
-    if (backend_type == RAL_BACKEND_TYPE_GL)
-    {
-        text_ptr->gl_pGLNamedBufferSubDataEXT(data_buffer_id,
-                                              data_buffer_start_offset,
-                                              text_ptr->data_buffer_contents_size,
-                                              text_ptr->data_buffer_contents);
-    }
-    else
-    {
-        text_ptr->pGLBufferSubData(GL_ARRAY_BUFFER,
-                                   data_buffer_start_offset,
-                                   text_ptr->data_buffer_contents_size,
-                                   text_ptr->data_buffer_contents);
-    }
+    ral_buffer_set_data_from_client_memory(text_ptr->data_buffer,
+                                           1, /* n_updates */
+                                          &data_update);
 }
 
 
@@ -1118,27 +1125,26 @@ PUBLIC EMERALD_API varia_text_renderer varia_text_renderer_create(system_hashed_
                                      OGL_CONTEXT_PROPERTY_ENTRYPOINTS_ES_EXT_TEXTURE_BUFFER,
                                     &ts_entry_points);
 
-            result_ptr->pGLActiveTexture       = entry_points->pGLActiveTexture;
-            result_ptr->pGLBindBuffer          = entry_points->pGLBindBuffer;
-            result_ptr->pGLBindBufferRange     = entry_points->pGLBindBufferRange;
-            result_ptr->pGLBindTexture         = entry_points->pGLBindTexture;
-            result_ptr->pGLBindVertexArray     = entry_points->pGLBindVertexArray;
-            result_ptr->pGLBlendEquation       = entry_points->pGLBlendEquation;
-            result_ptr->pGLBlendFunc           = entry_points->pGLBlendFunc;
-            result_ptr->pGLBufferSubData       = entry_points->pGLBufferSubData;
-            result_ptr->pGLDeleteVertexArrays  = entry_points->pGLDeleteVertexArrays;
-            result_ptr->pGLDisable             = entry_points->pGLDisable;
-            result_ptr->pGLDrawArrays          = entry_points->pGLDrawArrays;
-            result_ptr->pGLEnable              = entry_points->pGLEnable;
-            result_ptr->pGLGenVertexArrays     = entry_points->pGLGenVertexArrays;
-            result_ptr->pGLGenerateMipmap      = entry_points->pGLGenerateMipmap;
-            result_ptr->pGLProgramUniform1i    = entry_points->pGLProgramUniform1i;
-            result_ptr->pGLScissor             = entry_points->pGLScissor;
-            result_ptr->pGLTexBufferRange      = ts_entry_points->pGLTexBufferRangeEXT;
-            result_ptr->pGLTexParameteri       = entry_points->pGLTexParameteri;
-            result_ptr->pGLTexSubImage2D       = entry_points->pGLTexSubImage2D;
-            result_ptr->pGLUniformBlockBinding = entry_points->pGLUniformBlockBinding;
-            result_ptr->pGLUseProgram          = entry_points->pGLUseProgram;
+            result_ptr->pGLActiveTexture      = entry_points->pGLActiveTexture;
+            result_ptr->pGLBindBuffer         = entry_points->pGLBindBuffer;
+            result_ptr->pGLBindBufferRange    = entry_points->pGLBindBufferRange;
+            result_ptr->pGLBindSampler        = entry_points->pGLBindSampler;
+            result_ptr->pGLBindTexture        = entry_points->pGLBindTexture;
+            result_ptr->pGLBindVertexArray    = entry_points->pGLBindVertexArray;
+            result_ptr->pGLBlendEquation      = entry_points->pGLBlendEquation;
+            result_ptr->pGLBlendFunc          = entry_points->pGLBlendFunc;
+            result_ptr->pGLDeleteVertexArrays = entry_points->pGLDeleteVertexArrays;
+            result_ptr->pGLDisable            = entry_points->pGLDisable;
+            result_ptr->pGLDrawArrays         = entry_points->pGLDrawArrays;
+            result_ptr->pGLEnable             = entry_points->pGLEnable;
+            result_ptr->pGLGenVertexArrays    = entry_points->pGLGenVertexArrays;
+            result_ptr->pGLGenerateMipmap     = entry_points->pGLGenerateMipmap;
+            result_ptr->pGLProgramUniform1i   = entry_points->pGLProgramUniform1i;
+            result_ptr->pGLScissor            = entry_points->pGLScissor;
+            result_ptr->pGLTexBufferRange     = ts_entry_points->pGLTexBufferRangeEXT;
+            result_ptr->pGLTexParameteri      = entry_points->pGLTexParameteri;
+            result_ptr->pGLUseProgram         = entry_points->pGLUseProgram;
+            result_ptr->pGLViewport           = entry_points->pGLViewport;
         }
         else
         {
@@ -1155,19 +1161,16 @@ PUBLIC EMERALD_API varia_text_renderer varia_text_renderer_create(system_hashed_
                                      OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL_EXT_DIRECT_STATE_ACCESS,
                                     &dsa_entry_points);
 
-            result_ptr->gl_pGLNamedBufferSubDataEXT = dsa_entry_points->pGLNamedBufferSubDataEXT;
             result_ptr->gl_pGLPolygonMode           = entry_points->pGLPolygonMode;
             result_ptr->gl_pGLTextureParameteriEXT  = dsa_entry_points->pGLTextureParameteriEXT;
-            result_ptr->gl_pGLTextureStorage2DEXT   = dsa_entry_points->pGLTextureStorage2DEXT;
-            result_ptr->gl_pGLTextureSubImage2DEXT  = dsa_entry_points->pGLTextureSubImage2DEXT;
             result_ptr->pGLActiveTexture            = entry_points->pGLActiveTexture;
             result_ptr->pGLBindBuffer               = entry_points->pGLBindBuffer;
             result_ptr->pGLBindBufferRange          = entry_points->pGLBindBufferRange;
+            result_ptr->pGLBindSampler              = entry_points->pGLBindSampler;
             result_ptr->pGLBindTexture              = entry_points->pGLBindTexture;
             result_ptr->pGLBindVertexArray          = entry_points->pGLBindVertexArray;
             result_ptr->pGLBlendEquation            = entry_points->pGLBlendEquation;
             result_ptr->pGLBlendFunc                = entry_points->pGLBlendFunc;
-            result_ptr->pGLBufferSubData            = entry_points->pGLBufferSubData;
             result_ptr->pGLDeleteVertexArrays       = entry_points->pGLDeleteVertexArrays;
             result_ptr->pGLDisable                  = entry_points->pGLDisable;
             result_ptr->pGLDrawArrays               = entry_points->pGLDrawArrays;
@@ -1178,9 +1181,8 @@ PUBLIC EMERALD_API varia_text_renderer varia_text_renderer_create(system_hashed_
             result_ptr->pGLScissor                  = entry_points->pGLScissor;
             result_ptr->pGLTexBufferRange           = entry_points->pGLTexBufferRange;
             result_ptr->pGLTexParameteri            = entry_points->pGLTexParameteri;
-            result_ptr->pGLTexSubImage2D            = entry_points->pGLTexSubImage2D;
-            result_ptr->pGLUniformBlockBinding      = entry_points->pGLUniformBlockBinding;
             result_ptr->pGLUseProgram               = entry_points->pGLUseProgram;
+            result_ptr->pGLViewport                 = entry_points->pGLViewport;
         }
 
         /* Make sure the font table has been assigned a texture object */

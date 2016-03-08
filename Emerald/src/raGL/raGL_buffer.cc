@@ -282,14 +282,16 @@ PUBLIC void raGL_buffer_update_regions_with_client_memory(raGL_buffer           
                                                           uint32_t                                     n_updates,
                                                           const ral_buffer_client_sourced_update_info* updates)
 {
-    _raGL_buffer*                                         buffer_ptr = (_raGL_buffer*) buffer;
+    _raGL_buffer*                                         buffer_ptr      = (_raGL_buffer*) buffer;
     _raGL_buffer_client_memory_sourced_update_request_arg callback_arg;
+    ogl_context                                           current_context = ogl_context_get_current_context();
 
     callback_arg.buffer    = buffer;
     callback_arg.n_updates = n_updates;
     callback_arg.updates   = updates;
 
-    ogl_context_request_callback_from_context_thread(buffer_ptr->context,
+    ogl_context_request_callback_from_context_thread( (current_context != buffer_ptr->context && current_context != NULL) ? current_context
+                                                                                                                          : buffer_ptr->context,
                                                      _raGL_buffer_on_client_memory_sourced_update_request_rendering_thread,
                                                     &callback_arg);
 }

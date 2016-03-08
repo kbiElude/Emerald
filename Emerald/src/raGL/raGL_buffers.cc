@@ -588,6 +588,37 @@ PRIVATE unsigned int _raGL_buffers_get_nonsparse_buffer_size(_raGL_buffers_heap 
 }
 
 /** TODO */
+PRIVATE void _raGL_buffers_init_rendering_callback(ogl_context     context,
+                                                   void*           buffers_raw_ptr)
+{
+    _raGL_buffers* buffers_ptr = (_raGL_buffers*) buffers_raw_ptr;
+
+    /* If sparse buffers are supported, allocate a single sparse buffer */
+    if (buffers_ptr->are_sparse_buffers_in)
+    {
+        _raGL_buffers_alloc_new_sparse_buffer(buffers_ptr);
+    } /* if (new_buffers->are_sparse_buffers_in) */
+    else
+    {
+        for (unsigned int n_heap = 0;
+                          n_heap < RAGL_BUFFERS_HEAP_COUNT;
+                        ++n_heap)
+        {
+            ral_buffer_mappability_bits mappability = (n_heap == RAGL_BUFFERS_HEAP_MISCELLANEOUS) ? (RAL_BUFFER_MAPPABILITY_READ_OP_BIT | RAL_BUFFER_MAPPABILITY_WRITE_OP_BIT)
+                                                                                                  :  RAL_BUFFER_MAPPABILITY_NONE;
+
+            _raGL_buffers_alloc_new_immutable_buffer(buffers_ptr,
+                                                     mappability,
+                                                     (n_heap == RAGL_BUFFERS_HEAP_IBO) ? RAL_BUFFER_USAGE_INDEX_BUFFER_BIT
+                                                   : (n_heap == RAGL_BUFFERS_HEAP_UBO) ? RAL_BUFFER_USAGE_UNIFORM_BUFFER_BIT
+                                                   : (n_heap == RAGL_BUFFERS_HEAP_VBO) ? RAL_BUFFER_USAGE_VERTEX_BUFFER_BIT
+                                                                                       : 0xFFFFFFFF,
+                                                     _raGL_buffers_get_nonsparse_buffer_size( (_raGL_buffers_heap) n_heap) );
+        }
+    }
+}
+
+/** TODO */
 PRIVATE void _raGL_buffers_on_sparse_memory_block_alloced(system_memory_manager manager,
                                                           unsigned int          offset_aligned,
                                                           unsigned int          size,
@@ -948,29 +979,9 @@ PUBLIC raGL_buffers raGL_buffers_create(raGL_backend backend,
 
     if (new_buffers != NULL)
     {
-        /* If sparse buffers are supported, allocate a single sparse buffer */
-        if (new_buffers->are_sparse_buffers_in)
-        {
-            _raGL_buffers_alloc_new_sparse_buffer(new_buffers);
-        } /* if (new_buffers->are_sparse_buffers_in) */
-        else
-        {
-            for (unsigned int n_heap = 0;
-                              n_heap < RAGL_BUFFERS_HEAP_COUNT;
-                            ++n_heap)
-            {
-                ral_buffer_mappability_bits mappability = (n_heap == RAGL_BUFFERS_HEAP_MISCELLANEOUS) ? (RAL_BUFFER_MAPPABILITY_READ_OP_BIT | RAL_BUFFER_MAPPABILITY_WRITE_OP_BIT)
-                                                                                                      :  RAL_BUFFER_MAPPABILITY_NONE;
-
-                _raGL_buffers_alloc_new_immutable_buffer(new_buffers,
-                                                         mappability,
-                                                         (n_heap == RAGL_BUFFERS_HEAP_IBO) ? RAL_BUFFER_USAGE_INDEX_BUFFER_BIT
-                                                       : (n_heap == RAGL_BUFFERS_HEAP_UBO) ? RAL_BUFFER_USAGE_UNIFORM_BUFFER_BIT
-                                                       : (n_heap == RAGL_BUFFERS_HEAP_VBO) ? RAL_BUFFER_USAGE_VERTEX_BUFFER_BIT
-                                                                                           : 0xFFFFFFFF,
-                                                         _raGL_buffers_get_nonsparse_buffer_size( (_raGL_buffers_heap) n_heap) );
-            }
-        }
+        ogl_context_request_callback_from_context_thread(context,
+                                                         _raGL_buffers_init_rendering_callback,
+                                                         new_buffers);
 
         /* Register in the object manager */
         REFCOUNT_INSERT_INIT_CODE_WITH_RELEASE_HANDLER(new_buffers,

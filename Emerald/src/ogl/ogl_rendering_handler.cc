@@ -446,7 +446,6 @@ PRIVATE void _ogl_rendering_handler_thread_entrypoint(void* in_arg)
         /* Cache some variables.. */
         ral_backend_type          backend_type                      = RAL_BACKEND_TYPE_UNKNOWN;
         ogl_context               context_gl                        = ral_context_get_gl_context(rendering_handler->context);
-        ogl_context               context_gl_parent_gl              = NULL;
         ral_context               context_ral                       = rendering_handler->context;
         system_window             context_window                    = NULL;
         unsigned char             context_window_n_depth_bits       = 0;
@@ -458,8 +457,8 @@ PRIVATE void _ogl_rendering_handler_thread_entrypoint(void* in_arg)
         bool                      default_fb_has_stencil_attachment = false;
         bool                      default_fb_id_set                 = false;
         GLuint                    default_fb_raGL_id                = -1;
+        bool                      is_helper_context                 = false;
         bool                      is_multisample_pf                 = false;
-        bool                      is_root_context                   = false;
         PFNGLBINDFRAMEBUFFERPROC  pGLBindFramebuffer                = NULL;
         PFNGLBLITFRAMEBUFFERPROC  pGLBlitFramebuffer                = NULL;
         PFNGLCLEARPROC            pGLClear                          = NULL;
@@ -479,12 +478,12 @@ PRIVATE void _ogl_rendering_handler_thread_entrypoint(void* in_arg)
         };
         GLint                     window_size[2]                   = {0};
 
-        ogl_context_get_property  (context_gl,
-                                   OGL_CONTEXT_PROPERTY_PARENT_CONTEXT,
-                                  &context_gl_parent_gl);
         ral_context_get_property  (rendering_handler->context,
                                    RAL_CONTEXT_PROPERTY_BACKEND_TYPE,
                                   &backend_type);
+        ogl_context_get_property  (context_gl,
+                                   OGL_CONTEXT_PROPERTY_IS_HELPER_CONTEXT,
+                                  &is_helper_context);
         ral_context_get_property  (rendering_handler->context,
                                    RAL_CONTEXT_PROPERTY_WINDOW_SYSTEM,
                                   &context_window);
@@ -511,7 +510,6 @@ PRIVATE void _ogl_rendering_handler_thread_entrypoint(void* in_arg)
         default_fb_has_depth_attachment   = (context_window_n_depth_bits   >  0);
         default_fb_has_stencil_attachment = (context_window_n_stencil_bits >  0);
         is_multisample_pf                 = (context_window_n_samples      >  1);
-        is_root_context                   = false; /* TODO: context sharing support has been removed during RAL integration*/
 
         ASSERT_DEBUG_SYNC(window_size[0] != 0 &&
                           window_size[1] != 0,
@@ -567,24 +565,27 @@ PRIVATE void _ogl_rendering_handler_thread_entrypoint(void* in_arg)
         const float         text_scale             = 0.75f;
         const int           text_string_position[] = {0, window_size[1]};
 
-        ogl_context_get_property(context_gl,
-                                 OGL_CONTEXT_PROPERTY_TEXT_RENDERER,
-                                &text_renderer);
+        if (!is_helper_context)
+        {
+            ogl_context_get_property(context_gl,
+                                     OGL_CONTEXT_PROPERTY_TEXT_RENDERER,
+                                    &text_renderer);
 
-        rendering_handler->text_string_id = varia_text_renderer_add_string(text_renderer);
+            rendering_handler->text_string_id = varia_text_renderer_add_string(text_renderer);
 
-        varia_text_renderer_set_text_string_property(text_renderer,
-                                                     rendering_handler->text_string_id,
-                                                     VARIA_TEXT_RENDERER_TEXT_STRING_PROPERTY_COLOR,
-                                                     text_color);
-        varia_text_renderer_set_text_string_property(text_renderer,
-                                                     rendering_handler->text_string_id,
-                                                     VARIA_TEXT_RENDERER_TEXT_STRING_PROPERTY_POSITION_PX,
-                                                     text_string_position);
-        varia_text_renderer_set_text_string_property(text_renderer,
-                                                     rendering_handler->text_string_id,
-                                                     VARIA_TEXT_RENDERER_TEXT_STRING_PROPERTY_SCALE,
-                                                    &text_scale);
+            varia_text_renderer_set_text_string_property(text_renderer,
+                                                         rendering_handler->text_string_id,
+                                                         VARIA_TEXT_RENDERER_TEXT_STRING_PROPERTY_COLOR,
+                                                         text_color);
+            varia_text_renderer_set_text_string_property(text_renderer,
+                                                         rendering_handler->text_string_id,
+                                                         VARIA_TEXT_RENDERER_TEXT_STRING_PROPERTY_POSITION_PX,
+                                                         text_string_position);
+            varia_text_renderer_set_text_string_property(text_renderer,
+                                                         rendering_handler->text_string_id,
+                                                         VARIA_TEXT_RENDERER_TEXT_STRING_PROPERTY_SCALE,
+                                                        &text_scale);
+        }
 
         /* On with the loop */
         unsigned int last_frame_index = 0;
@@ -629,6 +630,9 @@ PRIVATE void _ogl_rendering_handler_thread_entrypoint(void* in_arg)
 
                 if (rendering_handler->callback_request_needs_buffer_swap)
                 {
+                    ASSERT_DEBUG_SYNC(!is_helper_context,
+                                      "Buffer swaps are unavailable for helper contexts");
+
                     if (default_fb_raGL_id == -1)
                     {
                         ral_framebuffer  default_fb      = NULL;
@@ -692,6 +696,9 @@ PRIVATE void _ogl_rendering_handler_thread_entrypoint(void* in_arg)
             {
                 /* Playback in progress - determine frame index and frame time. */
                 bool is_vsync_enabled = false;
+
+                ASSERT_DEBUG_SYNC(!is_helper_context,
+                                  "Playback is unavailable for helper contexts");
 
                 system_window_get_property(context_window,
                                            SYSTEM_WINDOW_PROPERTY_IS_VSYNC_ENABLED,
@@ -808,10 +815,6 @@ PRIVATE void _ogl_rendering_handler_thread_entrypoint(void* in_arg)
                             raGL_framebuffer_get_property(default_fb_raGL,
                                                           RAGL_FRAMEBUFFER_PROPERTY_ID,
                                                          &default_fb_raGL_id);
-
-                            ASSERT_DEBUG_SYNC( is_root_context && default_fb_raGL_id == 0 ||
-                                              !is_root_context && default_fb_raGL_id != 0,
-                                             "Rendering context's default FBO is assigned an invalid ID");
 
                             default_fb_id_set = true;
                         }

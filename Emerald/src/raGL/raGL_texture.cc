@@ -1030,8 +1030,9 @@ PUBLIC bool raGL_texture_update_with_client_sourced_data(raGL_texture           
                                                          uint32_t                                             n_updates,
                                                          const ral_texture_mipmap_client_sourced_update_info* updates)
 {
-    bool           result      = false;
-    _raGL_texture* texture_ptr = (_raGL_texture*) texture;
+    ogl_context    current_context = ogl_context_get_current_context();
+    bool           result          = false;
+    _raGL_texture* texture_ptr     = (_raGL_texture*) texture;
 
     /* Sanity checks.. */
     if (texture == NULL)
@@ -1064,7 +1065,8 @@ PUBLIC bool raGL_texture_update_with_client_sourced_data(raGL_texture           
     callback_arg.texture_ptr = texture_ptr;
     callback_arg.updates     = updates;
 
-    ogl_context_request_callback_from_context_thread(texture_ptr->context,
+    ogl_context_request_callback_from_context_thread((current_context != texture_ptr->context && current_context != NULL) ? current_context
+                                                                                                                          : texture_ptr->context,
                                                      _raGL_texture_client_memory_sourced_update_rendering_thread_callback,
                                                     &callback_arg);
 

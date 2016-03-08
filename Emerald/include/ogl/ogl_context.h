@@ -84,6 +84,9 @@ typedef enum ogl_context_property
     /* not settable, ogl_context_info* */
     OGL_CONTEXT_PROPERTY_INFO,
 
+    /* settable, bool. */
+    OGL_CONTEXT_PROPERTY_IS_HELPER_CONTEXT,
+
     /* not settable, bool.
      *
      * True if the platform is using Intel drivers, false otherwise */

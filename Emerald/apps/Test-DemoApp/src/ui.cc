@@ -546,12 +546,17 @@ PUBLIC void ui_init()
                              DEMO_WINDOW_PROPERTY_RESOLUTION,
                              window_size);
 
+#if 0
     _text_renderer = varia_text_renderer_create(system_hashed_ansi_string_create("Text renderer"),
                                                 _context,
                                                 system_resources_get_meiryo_font_table(),
                                                 window_size[0],
                                                 window_size[1]);
-
+#else
+    ogl_context_get_property(ral_context_get_gl_context(_context),
+                             OGL_CONTEXT_PROPERTY_TEXT_RENDERER,
+                            &_text_renderer);
+#endif
     varia_text_renderer_set_text_string_property(_text_renderer,
                                                  VARIA_TEXT_RENDERER_TEXT_STRING_ID_DEFAULT,
                                                  VARIA_TEXT_RENDERER_TEXT_STRING_PROPERTY_SCALE,

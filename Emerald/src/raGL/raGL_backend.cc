@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2015)
+ * Emerald (kbi/elude @2015-2016)
  *
  */
 #include "shared.h"
@@ -31,28 +31,40 @@
 #include "system/system_pixel_format.h"
 #include "system/system_window.h"
 
-#define ROOT_WINDOW_ES_NAME "Root window ES"
-#define ROOT_WINDOW_GL_NAME "Root window GL"
+#define N_HELPER_CONTEXTS         4
+#define ROOT_HELPER_CONTEXT_INDEX 0
+#define ROOT_WINDOW_ES_NAME       "Root window ES"
+#define ROOT_WINDOW_GL_NAME       "Root window GL"
 
 
 typedef struct _raGL_backend
 {
+    bool is_helper_context;
+
     system_hash64map        buffers_map;      /* maps ral_buffer to raGL_buffer instance; owns the mapped raGL_buffer instances */
     system_critical_section buffers_map_cs;
+    bool                    buffers_map_owner;
+
     system_hash64map        framebuffers_map; /* maps ral_framebuffer to raGL_framebuffer instance; owns the mapped raGL_framebuffer instances */
     system_critical_section framebuffers_map_cs;
+
     system_hash64map        samplers_map;     /* maps ral_sampler to raGL_sampler instance; owns the mapped raGL_sampler instances */
     system_critical_section samplers_map_cs;
+    bool                    samplers_map_owner;
+
     system_hash64map        shaders_map;     /* maps ral_shader to raGL_shader instance; owns the mapped raGL_shader instances */
     system_critical_section shaders_map_cs;
+    bool                    shaders_map_owner;
 
     system_hash64map        program_id_to_raGL_program_map; /* maps GLid to raGL_program instance; does not own the raGL_program values; lock programs_map_cs before usage. */
     system_hash64map        programs_map;                   /* maps ral_program to raGL_program instance; owns the mapped raGL_program instances */
     system_critical_section programs_map_cs;
+    bool                    programs_map_owner;
 
     system_hash64map        texture_id_to_raGL_texture_map; /* maps GLid to raGL_texture instance; does NOT own the mapepd raGL_texture instances; lock textures_map_cs before usage. */
     system_hash64map        textures_map;                   /* maps ral_texture to raGL_texture instance; owns the mapped raGL_texture instances */
     system_critical_section textures_map_cs;
+    bool                    textures_map_owner;
 
     raGL_buffers  buffers;
     raGL_textures textures;
@@ -66,31 +78,7 @@ typedef struct _raGL_backend
 
     _raGL_backend(ral_context               in_owner_context,
                   system_hashed_ansi_string in_name,
-                  ral_backend_type          in_backend_type)
-    {
-        backend_type                      = in_backend_type;
-        buffers                           = NULL;
-        buffers_map                       = system_hash64map_create       (sizeof(raGL_buffer) );
-        buffers_map_cs                    = system_critical_section_create();
-        context_gl                        = NULL;
-        context_ral                       = in_owner_context;
-        framebuffers_map                  = system_hash64map_create       (sizeof(raGL_framebuffer) );
-        framebuffers_map_cs               = system_critical_section_create();
-        max_framebuffer_color_attachments = 0;
-        name                              = in_name;
-        program_id_to_raGL_program_map    = system_hash64map_create       (sizeof(raGL_program) );
-        programs_map                      = system_hash64map_create       (sizeof(raGL_program) );
-        programs_map_cs                   = system_critical_section_create();
-        samplers_map                      = system_hash64map_create       (sizeof(raGL_sampler) );
-        samplers_map_cs                   = system_critical_section_create();
-        shaders_map                       = system_hash64map_create       (sizeof(raGL_shader) );
-        shaders_map_cs                    = system_critical_section_create();
-        textures                          = NULL;
-        texture_id_to_raGL_texture_map    = system_hash64map_create       (sizeof(raGL_texture) );
-        textures_map                      = system_hash64map_create       (sizeof(raGL_texture) );
-        textures_map_cs                   = system_critical_section_create();
-    }
-
+                  ral_backend_type          in_backend_type);
     ~_raGL_backend();
 } _raGL_backend;
 
@@ -109,54 +97,265 @@ typedef struct
 
 } _raGL_backend_on_objects_deleted_rendering_callback_arg;
 
+typedef struct _raGL_backend_global_context
+{
+    raGL_backend helper_backend;
+    ral_context  helper_context;
+    demo_window  helper_window;
+
+    _raGL_backend_global_context()
+    {
+        helper_backend = NULL;
+        helper_context = NULL;
+        helper_window  = NULL;
+    }
+
+    ~_raGL_backend_global_context()
+    {
+        ASSERT_DEBUG_SYNC(helper_backend == NULL &&
+                          helper_context == NULL &&
+                          helper_window  == NULL,
+                          "Helper context should have been initialized before ~_raGL_backend_global_context() is called.");
+    }
+} _raGL_backend_global_context;
+
+typedef struct _raGL_backend_global
+{
+    ral_backend_type        backend_type;
+    system_critical_section cs;
+    uint32_t                n_owners;
+
+    _raGL_backend_global_context helper_contexts[N_HELPER_CONTEXTS];
+
+    _raGL_backend_global()
+    {
+        backend_type = RAL_BACKEND_TYPE_UNKNOWN;
+        cs           = system_critical_section_create();
+        n_owners     = 0;
+
+        memset(helper_contexts,
+               0,
+               sizeof(helper_contexts) );
+    }
+
+    ~_raGL_backend_global()
+    {
+        system_critical_section_enter(cs);
+        {
+            ASSERT_DEBUG_SYNC(n_owners == 0,
+                              "GL back-end global about to deinitialize, even though helper contexts are still active.");
+        }
+        system_critical_section_leave(cs);
+
+        system_critical_section_release(cs);
+        cs = NULL;
+    }
+
+    void deinit();
+    void init  (ral_backend_type backend_type);
+} _raGL_backend_global;
+
+static _raGL_backend_global _global;
+
 
 /* Forward declarations */
-PRIVATE void _raGL_backend_cache_limits                                   (_raGL_backend*           backend_ptr);
-PRIVATE bool _raGL_backend_get_object                                     (void*                    backend,
-                                                                           ral_context_object_type  object_type,
-                                                                           void*                    object_ral,
-                                                                           void**                   out_result_ptr);
-PRIVATE void _raGL_backend_get_object_vars                                (_raGL_backend*           backend_ptr,
-                                                                           ral_context_object_type  object_type,
-                                                                           system_critical_section* out_cs_ptr,
-                                                                           system_hash64map*        out_hashmap_ptr);
-PRIVATE void _raGL_backend_on_buffer_client_memory_sourced_update_request (const void*              callback_arg_data,
-                                                                           void*                    backend);
-PRIVATE void _raGL_backend_on_objects_created                             (const void*              callback_arg_data,
-                                                                           void*                    backend);
-PRIVATE void _raGL_backend_on_objects_created_rendering_callback          (ogl_context              context,
-                                                                           void*                    callback_arg);
-PRIVATE void _raGL_backend_on_objects_deleted                             (const void*              callback_arg,
-                                                                           void*                    backend);
-PRIVATE void _raGL_backend_on_objects_deleted_rendering_callback          (ogl_context              context,
-                                                                           void*                    callback_arg);
-PRIVATE void _raGL_backend_on_shader_attach_request                       (const void*              callback_arg_data,
-                                                                           void*                    backend);
-PRIVATE void _raGL_backend_on_shader_body_updated_notification            (const void*              callback_arg_data,
-                                                                           void*                    backend);
-PRIVATE void _raGL_backend_on_texture_client_memory_sourced_update_request(const void*              callback_arg_data,
-                                                                           void*                    backend);
-PRIVATE void _raGL_backend_on_texture_mipmap_generation_request           (const void*              callback_arg_data,
-                                                                           void*                    backend);
-PRIVATE void _raGL_backend_release_raGL_object                            (_raGL_backend*           backend_ptr,
-                                                                           ral_context_object_type  object_type,
-                                                                           void*                    object_raGL,
-                                                                           void*                    object_ral);
-PRIVATE void _raGL_backend_subscribe_for_buffer_notifications             (_raGL_backend*           backend_ptr,
-                                                                           ral_buffer               buffer,
-                                                                           bool                     should_subscribe);
-PRIVATE void _raGL_backend_subscribe_for_notifications                    (_raGL_backend*           backend_ptr,
-                                                                           bool                     should_subscribe);
-PRIVATE void _raGL_backend_subscribe_for_program_notifications            (_raGL_backend*           backend_ptr,
-                                                                           ral_program              program,
-                                                                           bool                     should_subscribe);
-PRIVATE void _raGL_backend_subscribe_for_shader_notifications             (_raGL_backend*           backend_ptr,
-                                                                           ral_shader               shader,
-                                                                           bool                     should_subscribe);
-PRIVATE void _raGL_backend_subscribe_for_texture_notifications            (_raGL_backend*           backend_ptr,
-                                                                           ral_texture              texture,
-                                                                           bool                     should_subscribe);
+PRIVATE void        _raGL_backend_cache_limits                                   (_raGL_backend*           backend_ptr);
+PRIVATE demo_window _raGL_backend_create_helper_window                           (ral_backend_type         backend_type,
+                                                                                  uint32_t                 n_helper_window);
+PRIVATE bool        _raGL_backend_get_object                                     (void*                    backend,
+                                                                                  ral_context_object_type  object_type,
+                                                                                  void*                    object_ral,
+                                                                                  void**                   out_result_ptr);
+PRIVATE void        _raGL_backend_get_object_vars                                (_raGL_backend*           backend_ptr,
+                                                                                  ral_context_object_type  object_type,
+                                                                                  system_critical_section* out_cs_ptr,
+                                                                                  system_hash64map*        out_hashmap_ptr,
+                                                                                  bool*                    out_is_owner_ptr);
+PRIVATE void        _raGL_backend_on_buffer_client_memory_sourced_update_request (const void*              callback_arg_data,
+                                                                                  void*                    backend);
+PRIVATE void        _raGL_backend_on_objects_created                             (const void*              callback_arg_data,
+                                                                                  void*                    backend);
+PRIVATE void        _raGL_backend_on_objects_created_rendering_callback          (ogl_context              context,
+                                                                                  void*                    callback_arg);
+PRIVATE void        _raGL_backend_on_objects_deleted                             (const void*              callback_arg,
+                                                                                  void*                    backend);
+PRIVATE void        _raGL_backend_on_objects_deleted_rendering_callback          (ogl_context              context,
+                                                                                  void*                    callback_arg);
+PRIVATE void        _raGL_backend_on_shader_attach_request                       (const void*              callback_arg_data,
+                                                                                  void*                    backend);
+PRIVATE void        _raGL_backend_on_shader_body_updated_notification            (const void*              callback_arg_data,
+                                                                                  void*                    backend);
+PRIVATE void        _raGL_backend_on_texture_client_memory_sourced_update_request(const void*              callback_arg_data,
+                                                                                  void*                    backend);
+PRIVATE void        _raGL_backend_on_texture_mipmap_generation_request           (const void*              callback_arg_data,
+                                                                                  void*                    backend);
+PRIVATE void        _raGL_backend_release_raGL_object                            (_raGL_backend*           backend_ptr,
+                                                                                  ral_context_object_type  object_type,
+                                                                                  void*                    object_raGL,
+                                                                                  void*                    object_ral);
+PRIVATE void        _raGL_backend_subscribe_for_buffer_notifications             (_raGL_backend*           backend_ptr,
+                                                                                  ral_buffer               buffer,
+                                                                                  bool                     should_subscribe);
+PRIVATE void        _raGL_backend_subscribe_for_notifications                    (_raGL_backend*           backend_ptr,
+                                                                                  bool                     should_subscribe);
+PRIVATE void        _raGL_backend_subscribe_for_program_notifications            (_raGL_backend*           backend_ptr,
+                                                                                  ral_program              program,
+                                                                                  bool                     should_subscribe);
+PRIVATE void        _raGL_backend_subscribe_for_shader_notifications             (_raGL_backend*           backend_ptr,
+                                                                                  ral_shader               shader,
+                                                                                  bool                     should_subscribe);
+PRIVATE void        _raGL_backend_subscribe_for_texture_notifications            (_raGL_backend*           backend_ptr,
+                                                                                  ral_texture              texture,
+                                                                                  bool                     should_subscribe);
 
+
+/** TODO */
+void _raGL_backend_global::deinit()
+{
+    system_critical_section_enter(_global.cs);
+
+    for (uint32_t n_helper_context = 0;
+                  n_helper_context < N_HELPER_CONTEXTS;
+                ++n_helper_context)
+    {
+        demo_window_close(_global.helper_contexts[n_helper_context].helper_window);
+
+        _global.helper_contexts[n_helper_context].helper_backend = NULL;
+        _global.helper_contexts[n_helper_context].helper_context = NULL;
+        _global.helper_contexts[n_helper_context].helper_window  = NULL;
+    }
+
+    system_critical_section_leave(_global.cs);
+}
+
+/** TODO */
+void _raGL_backend_global::init(ral_backend_type backend_type)
+{
+    system_critical_section_enter(_global.cs);
+
+    for (uint32_t n_helper_context = 0;
+                  n_helper_context < N_HELPER_CONTEXTS;
+                ++n_helper_context)
+    {
+        raGL_backend                           backend      = NULL;
+        _raGL_backend*                         backend_ptr  = NULL;
+        ral_context                            context      = NULL;
+        volatile _raGL_backend_global_context& context_data = _global.helper_contexts[n_helper_context];
+        static const bool                      true_value   = true;
+        demo_window                            window       = _raGL_backend_create_helper_window(backend_type,
+                                                                                                 n_helper_context);
+
+        demo_window_get_property(window,
+                                 DEMO_WINDOW_PROPERTY_RENDERING_CONTEXT,
+                                &context);
+        ral_context_get_property(context,
+                                 RAL_CONTEXT_PROPERTY_BACKEND,
+                                &backend);
+
+        context_data.helper_backend = backend;
+        context_data.helper_context = context;
+        context_data.helper_window  = window;
+
+        backend_ptr = (_raGL_backend*) backend;
+
+        if (((_raGL_backend*) _global.helper_contexts[0].helper_backend)->buffers != NULL)
+        {
+            backend_ptr->buffers = ((_raGL_backend*) _global.helper_contexts[0].helper_backend)->buffers;
+
+            raGL_buffers_retain(backend_ptr->buffers);
+        }
+        else
+        {
+            backend_ptr->buffers = raGL_buffers_create((raGL_backend) backend_ptr,
+                                                       backend_ptr->context_gl);
+        }
+
+        if (((_raGL_backend*) _global.helper_contexts[0].helper_backend)->textures != NULL)
+        {
+            backend_ptr->textures = ((_raGL_backend*) _global.helper_contexts[0].helper_backend)->textures;
+
+            raGL_textures_retain(backend_ptr->textures);
+        }
+        else
+        {
+            backend_ptr->textures = raGL_textures_create(backend_ptr->context_ral,
+                                                         backend_ptr->context_gl);
+        }
+
+        ogl_context_set_property(ral_context_get_gl_context(context),
+                                 OGL_CONTEXT_PROPERTY_IS_HELPER_CONTEXT,
+                                &true_value);
+
+        ((_raGL_backend*) backend)->is_helper_context = true;
+    }
+
+    _global.backend_type = backend_type;
+
+    system_critical_section_leave(_global.cs);
+}
+
+
+/** TODO */
+_raGL_backend::_raGL_backend(ral_context               in_owner_context,
+                             system_hashed_ansi_string in_name,
+                             ral_backend_type          in_backend_type)
+{
+    static_assert(N_HELPER_CONTEXTS >= 1, "");
+
+    if (_global.helper_contexts[0].helper_backend != NULL)
+    {
+        _raGL_backend* root_backend_ptr = (_raGL_backend*) _global.helper_contexts[0].helper_backend;
+
+        buffers_map                    = root_backend_ptr->buffers_map;
+        buffers_map_cs                 = root_backend_ptr->buffers_map_cs;
+        buffers_map_owner              = false;
+        programs_map                   = root_backend_ptr->programs_map;
+        programs_map_cs                = root_backend_ptr->programs_map_cs;
+        programs_map_owner             = false;
+        samplers_map                   = root_backend_ptr->samplers_map;
+        samplers_map_cs                = root_backend_ptr->samplers_map_cs;
+        samplers_map_owner             = false;
+        shaders_map                    = root_backend_ptr->shaders_map;
+        shaders_map_cs                 = root_backend_ptr->shaders_map_cs;
+        shaders_map_owner              = false;
+        textures                       = NULL;
+        texture_id_to_raGL_texture_map = root_backend_ptr->texture_id_to_raGL_texture_map;
+        textures_map                   = root_backend_ptr->textures_map;
+        textures_map_cs                = root_backend_ptr->textures_map_cs;
+        textures_map_owner             = false;
+    }
+    else
+    {
+        buffers_map                    = system_hash64map_create       (sizeof(raGL_buffer) );
+        buffers_map_cs                 = system_critical_section_create();
+        buffers_map_owner              = true;
+        programs_map                   = system_hash64map_create       (sizeof(raGL_program) );
+        programs_map_cs                = system_critical_section_create();
+        programs_map_owner             = true;
+        samplers_map                   = system_hash64map_create       (sizeof(raGL_sampler) );
+        samplers_map_cs                = system_critical_section_create();
+        samplers_map_owner             = true;
+        shaders_map                    = system_hash64map_create       (sizeof(raGL_shader) );
+        shaders_map_cs                 = system_critical_section_create();
+        shaders_map_owner              = true;
+        textures                       = NULL;
+        texture_id_to_raGL_texture_map = system_hash64map_create       (sizeof(raGL_texture) );
+        textures_map                   = system_hash64map_create       (sizeof(raGL_texture) );
+        textures_map_cs                = system_critical_section_create();
+        textures_map_owner             = true;
+    }
+
+    backend_type                      = in_backend_type;
+    buffers                           = NULL;
+    context_gl                        = NULL;
+    context_ral                       = in_owner_context;
+    framebuffers_map                  = system_hash64map_create       (sizeof(raGL_framebuffer) );
+    framebuffers_map_cs               = system_critical_section_create();
+    is_helper_context                 = false;
+    max_framebuffer_color_attachments = 0;
+    name                              = in_name;
+    program_id_to_raGL_program_map    = system_hash64map_create       (sizeof(raGL_program) );
+}
 
 /** TODO */
 _raGL_backend::~_raGL_backend()
@@ -190,6 +389,7 @@ _raGL_backend::~_raGL_backend()
                 ++n_object_type)
     {
         system_critical_section cs                = NULL;
+        bool                    is_owner          = false;
         uint32_t                n_objects_leaking = 0;
         system_hash64map        objects_map       = NULL;
         system_hash64map*       objects_map_ptr   = &objects_map;
@@ -197,7 +397,13 @@ _raGL_backend::~_raGL_backend()
         _raGL_backend_get_object_vars(this,
                                       (ral_context_object_type) n_object_type,
                                      &cs,
-                                     &objects_map);
+                                     &objects_map,
+                                     &is_owner);
+
+        if (!is_owner)
+        {
+            continue;
+        }
 
         system_hash64map_get_property(objects_map,
                                       SYSTEM_HASH64MAP_PROPERTY_N_ELEMENTS,
@@ -236,7 +442,8 @@ _raGL_backend::~_raGL_backend()
         *objects_map_ptr = NULL;
     }
 
-    if (texture_id_to_raGL_texture_map != NULL)
+    if (texture_id_to_raGL_texture_map != NULL &&
+        textures_map_owner)
     {
         system_hash64map_release(texture_id_to_raGL_texture_map);
 
@@ -248,94 +455,75 @@ _raGL_backend::~_raGL_backend()
                                               false); /* should_subscribe */
 
     /* Release the critical sections */
-    system_critical_section_release(buffers_map_cs);
+    if (buffers_map_owner)
+    {
+        system_critical_section_release(buffers_map_cs);
+    }
     buffers_map_cs = NULL;
 
     system_critical_section_release(framebuffers_map_cs);
     framebuffers_map_cs = NULL;
 
-    system_critical_section_release(programs_map_cs);
-    programs_map_cs = NULL;
+    if (programs_map_owner)
+    {
+        if (program_id_to_raGL_program_map != NULL)
+        {
+            system_hash64map_release(program_id_to_raGL_program_map);
 
-    system_critical_section_release(samplers_map_cs);
+            program_id_to_raGL_program_map = NULL;
+        }
+
+        system_critical_section_release(programs_map_cs);
+    }
+    program_id_to_raGL_program_map = NULL;
+    programs_map_cs                = NULL;
+
+    if (samplers_map_owner)
+    {
+        system_critical_section_release(samplers_map_cs);
+    }
     samplers_map_cs = NULL;
 
-    system_critical_section_release(shaders_map_cs);
+    if (shaders_map_owner)
+    {
+        system_critical_section_release(shaders_map_cs);
+    }
     shaders_map_cs = NULL;
 
-    system_critical_section_release(textures_map_cs);
-    textures_map_cs = NULL;
-
-    /* Release the remaining hash maps */
-    if (program_id_to_raGL_program_map != NULL)
+    if (textures_map_owner)
     {
-        system_hash64map_release(program_id_to_raGL_program_map);
-
-        program_id_to_raGL_program_map = NULL;
+        system_critical_section_release(textures_map_cs);
     }
+    textures_map_cs = NULL;
 }
 
 /** TODO */
-PRIVATE void _raGL_backend_create_root_window(ral_backend_type backend_type)
+PRIVATE demo_window _raGL_backend_create_helper_window(ral_backend_type backend_type,
+                                                       uint32_t         n_window)
 {
-    system_window             root_window                   = NULL;
-    system_hashed_ansi_string root_window_name              = (backend_type == RAL_BACKEND_TYPE_ES) ? system_hashed_ansi_string_create(ROOT_WINDOW_ES_NAME)
-                                                                                                    : system_hashed_ansi_string_create(ROOT_WINDOW_GL_NAME);
-    system_pixel_format       root_window_pf                = NULL;
-    ogl_rendering_handler     root_window_rendering_handler = NULL;
-    static const int          root_window_x1y1x2y2[] =
-    {
-        0,
-        0,
-        64,
-        64
-    };
+    demo_window               window                   = NULL;
+    demo_window_create_info   window_create_info;
+    char                      window_name[128];
+    system_hashed_ansi_string window_name_has          = NULL;
 
-    /* Spawn a new root window. All client-created windows will share namespace with root
-     * window's context.
-     *
-     * NOTE: Spawned window takes ownership of the pixel_format object.
-     *
-     * NOTE: The pixel format we use to initialize the root window uses 0 bits for the
-     *       color, depth and stencil attachments. That's fine, we don't really need
-     *       to render anything to the window; we only use it as a mean to share objects
-     *       between contexts.
-     */
-    root_window_pf = system_pixel_format_create(8,  /* red_bits     */
-                                                8,  /* green_bits   */
-                                                8,  /* blue_bits    */
-                                                0,  /* alpha_bits   */
-                                                24, /* depth_bits   */
-                                                1,  /* n_samples    */
-                                                0); /* stencil_bits */
+    snprintf(window_name,
+             sizeof(window_name),
+             "Helper window %u",
+             n_window);
 
-    root_window = system_window_create_not_fullscreen(NULL, /* owner_window */
-                                                      backend_type,
-                                                      root_window_x1y1x2y2,
-                                                      root_window_name,
-                                                      false, /* scalable      */
-                                                      false, /* vsync_enabled */
-                                                      false, /* visible       */
-                                                      root_window_pf);
+    window_name_has = system_hashed_ansi_string_create(window_name);
 
-    ASSERT_DEBUG_SYNC(root_window != NULL,
-                      "Root window context creation failed");
+    /* Spawn a new helper window. */
+    window_create_info.resolution[0] = 4;
+    window_create_info.resolution[1] = 4;
+    window_create_info.visible = false;
 
-    root_window_rendering_handler = ogl_rendering_handler_create_with_render_per_request_policy(system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(root_window_name),
-                                                                                                                                                        " rendering handler"),
-                                                                                                NULL,  /* pfn_rendering_callback */
-                                                                                                NULL); /* user_arg */
+    window = demo_window_create(window_name_has,
+                                window_create_info,
+                                backend_type,
+                                false /* use_timeline */);
 
-    ASSERT_DEBUG_SYNC(root_window_rendering_handler != NULL,
-                      "Root window rendering handler creation failed");
-
-    system_window_set_property(root_window,
-                               SYSTEM_WINDOW_PROPERTY_RENDERING_HANDLER,
-                              &root_window_rendering_handler);
-
-    /* The setter takes ownership of root_window, but for the sake of code maintainability,
-     * retain the RH so that we can release it at the moment root_window is also released. */
-    ogl_rendering_handler_retain(root_window_rendering_handler);
+    return window;
 }
 
 /** TODO */
@@ -345,6 +533,7 @@ PRIVATE bool _raGL_backend_get_object(void*                   backend,
                                       void**                  out_result_ptr)
 {
     _raGL_backend*          backend_ptr = (_raGL_backend*) backend;
+    bool                    is_owner    = false;
     system_hash64map        map         = NULL;
     system_critical_section map_cs      = NULL;
     bool                    result      = false;
@@ -371,7 +560,8 @@ PRIVATE bool _raGL_backend_get_object(void*                   backend,
     _raGL_backend_get_object_vars(backend_ptr,
                                   object_type,
                                  &map_cs,
-                                 &map);
+                                 &map,
+                                 &is_owner);
 
     /* Try to find the object instance */
     system_critical_section_enter(map_cs);
@@ -402,54 +592,61 @@ end:
 PRIVATE void _raGL_backend_get_object_vars(_raGL_backend*           backend_ptr,
                                            ral_context_object_type  object_type,
                                            system_critical_section* out_cs_ptr,
-                                           system_hash64map*        out_hashmap_ptr)
+                                           system_hash64map*        out_hashmap_ptr,
+                                           bool*                    out_is_owner_ptr)
 {
     switch (object_type)
     {
         case RAL_CONTEXT_OBJECT_TYPE_BUFFER:
         {
-            *out_hashmap_ptr = backend_ptr->buffers_map;
-            *out_cs_ptr      = backend_ptr->buffers_map_cs;
+            *out_hashmap_ptr  = backend_ptr->buffers_map;
+            *out_cs_ptr       = backend_ptr->buffers_map_cs;
+            *out_is_owner_ptr = backend_ptr->buffers_map_owner;
 
             break;
         }
 
         case RAL_CONTEXT_OBJECT_TYPE_FRAMEBUFFER:
         {
-            *out_hashmap_ptr = backend_ptr->framebuffers_map;
-            *out_cs_ptr      = backend_ptr->framebuffers_map_cs;
+            *out_hashmap_ptr  = backend_ptr->framebuffers_map;
+            *out_cs_ptr       = backend_ptr->framebuffers_map_cs;
+            *out_is_owner_ptr = true;
 
             break;
         }
 
         case RAL_CONTEXT_OBJECT_TYPE_PROGRAM:
         {
-            *out_hashmap_ptr = backend_ptr->programs_map;
-            *out_cs_ptr      = backend_ptr->programs_map_cs;
+            *out_hashmap_ptr  = backend_ptr->programs_map;
+            *out_cs_ptr       = backend_ptr->programs_map_cs;
+            *out_is_owner_ptr = backend_ptr->programs_map_owner;
 
             break;
         }
 
         case RAL_CONTEXT_OBJECT_TYPE_SAMPLER:
         {
-            *out_hashmap_ptr = backend_ptr->samplers_map;
-            *out_cs_ptr      = backend_ptr->samplers_map_cs;
+            *out_hashmap_ptr  = backend_ptr->samplers_map;
+            *out_cs_ptr       = backend_ptr->samplers_map_cs;
+            *out_is_owner_ptr = backend_ptr->samplers_map_owner;
 
             break;
         }
 
         case RAL_CONTEXT_OBJECT_TYPE_SHADER:
         {
-            *out_hashmap_ptr = backend_ptr->shaders_map;
-            *out_cs_ptr      = backend_ptr->shaders_map_cs;
+            *out_hashmap_ptr  = backend_ptr->shaders_map;
+            *out_cs_ptr       = backend_ptr->shaders_map_cs;
+            *out_is_owner_ptr = backend_ptr->shaders_map_owner;
 
             break;
         }
 
         case RAL_CONTEXT_OBJECT_TYPE_TEXTURE:
         {
-            *out_hashmap_ptr = backend_ptr->textures_map;
-            *out_cs_ptr      = backend_ptr->textures_map_cs;
+            *out_hashmap_ptr  = backend_ptr->textures_map;
+            *out_cs_ptr       = backend_ptr->textures_map_cs;
+            *out_is_owner_ptr = backend_ptr->textures_map_owner;
 
             break;
         }
@@ -509,24 +706,6 @@ PRIVATE void _raGL_backend_on_objects_created(const void* callback_arg_data,
                       "Backend instance is NULL");
     ASSERT_DEBUG_SYNC(callback_arg_data != NULL,
                       "Callback argument is NULL");
-
-    /* If the required managers are unavailable, create them now.
-     *
-     * NOTE: It would be much cleaner if these were created at init() time, but
-     *       it's far from simple, given how the window+context+rendering handler
-     *       set-up process is performed.
-     **/
-    if (backend_ptr->buffers == NULL)
-    {
-        backend_ptr->buffers = raGL_buffers_create((raGL_backend) backend_ptr,
-                                                   backend_ptr->context_gl);
-    }
-
-    if (backend_ptr->textures == NULL)
-    {
-        backend_ptr->textures = raGL_textures_create(backend_ptr->context_ral,
-                                                     backend_ptr->context_gl);
-    }
 
     /* Request a rendering call-back to create the buffer instances */
     _raGL_backend_on_objects_created_rendering_callback_arg rendering_callback_arg;
@@ -618,6 +797,7 @@ PRIVATE void _raGL_backend_on_objects_created_rendering_callback(ogl_context con
 {
     const _raGL_backend_on_objects_created_rendering_callback_arg* callback_arg_ptr        = (const _raGL_backend_on_objects_created_rendering_callback_arg*) callback_arg;
     const ogl_context_gl_entrypoints*                              entrypoints_ptr         = NULL;
+    bool                                                           is_object_owner         = false;
     uint32_t                                                       n_objects_to_initialize = 0;
     system_hash64map                                               objects_map             = NULL;
     system_critical_section                                        objects_map_cs          = NULL;
@@ -642,7 +822,8 @@ PRIVATE void _raGL_backend_on_objects_created_rendering_callback(ogl_context con
     _raGL_backend_get_object_vars(callback_arg_ptr->backend_ptr,
                                   callback_arg_ptr->ral_callback_arg_ptr->object_type,
                                  &objects_map_cs,
-                                 &objects_map);
+                                 &objects_map,
+                                 &is_object_owner);
 
     /* Generate the IDs */
     result_object_ids_ptr = new (std::nothrow) GLuint[n_objects_to_initialize];
@@ -901,6 +1082,7 @@ PRIVATE void _raGL_backend_on_objects_deleted(const void* callback_arg,
 {
     _raGL_backend*                                           backend_ptr      = (_raGL_backend*)                                           backend;
     const ral_context_callback_objects_deleted_callback_arg* callback_arg_ptr = (const ral_context_callback_objects_deleted_callback_arg*) callback_arg;
+    bool                                                     is_owner         = false;
     system_hash64map                                         object_map       = NULL;
     system_critical_section                                  object_map_cs    = NULL;
     void*                                                    object_raGL      = NULL;
@@ -914,7 +1096,8 @@ PRIVATE void _raGL_backend_on_objects_deleted(const void* callback_arg,
     _raGL_backend_get_object_vars(backend_ptr,
                                   callback_arg_ptr->object_type,
                                  &object_map_cs,
-                                 &object_map);
+                                 &object_map,
+                                 &is_owner);
 
     /* Unsubscribe from any RAL object notifications */
     switch (callback_arg_ptr->object_type)
@@ -1068,6 +1251,7 @@ PRIVATE void _raGL_backend_on_objects_deleted_rendering_callback(ogl_context con
 {
     const _raGL_backend_on_objects_deleted_rendering_callback_arg* callback_arg_ptr = (const _raGL_backend_on_objects_deleted_rendering_callback_arg*) callback_arg;
     const ogl_context_gl_entrypoints*                              entrypoints_ptr  = NULL;
+    bool                                                           is_owner         = false;
     system_hash64map                                               object_map       = NULL;
     system_critical_section                                        object_map_cs    = NULL;
     void*                                                          object_raGL      = NULL;
@@ -1075,7 +1259,8 @@ PRIVATE void _raGL_backend_on_objects_deleted_rendering_callback(ogl_context con
     _raGL_backend_get_object_vars(callback_arg_ptr->backend_ptr,
                                   callback_arg_ptr->ral_callback_arg_ptr->object_type,
                                  &object_map_cs,
-                                 &object_map);
+                                 &object_map,
+                                 &is_owner);
 
     if (object_map == NULL)
     {
@@ -1594,15 +1779,56 @@ PUBLIC raGL_backend raGL_backend_create(ral_context               context_ral,
                                         system_hashed_ansi_string name,
                                         ral_backend_type          type)
 {
-    _raGL_backend* new_backend_ptr = new (std::nothrow) _raGL_backend(context_ral,
-                                                                      name,
-                                                                      type);
+    _raGL_backend* new_backend_ptr = NULL;
+
+    /* Initialize helper contexts if none are available. */
+    system_critical_section_enter(_global.cs);
+    {
+        if (_global.helper_contexts[0].helper_context == NULL)
+        {
+            _global.helper_contexts[0].helper_context = (ral_context) ~0;
+
+            _global.init(type);
+
+            _global.n_owners++;
+        }
+        else
+        {
+            bool all_helper_contexts_inited = true;
+
+            for (uint32_t n_helper_context = 1;
+                          n_helper_context < N_HELPER_CONTEXTS;
+                        ++n_helper_context)
+            {
+                all_helper_contexts_inited &= (_global.helper_contexts[n_helper_context].helper_context != NULL);
+            }
+
+            if (all_helper_contexts_inited)
+            {
+                _global.n_owners++;
+            }
+        }
+    }
+    system_critical_section_leave(_global.cs);
+
+    new_backend_ptr = new (std::nothrow) _raGL_backend(context_ral,
+                                                       name,
+                                                       type);
 
     ASSERT_ALWAYS_SYNC(new_backend_ptr != NULL,
                        "Out of memory");
     if (new_backend_ptr != NULL)
     {
         new_backend_ptr->context_ral = context_ral;
+
+        if (_global.n_owners > 0)
+        {
+            new_backend_ptr->buffers  = ((_raGL_backend*) _global.helper_contexts[0].helper_backend)->buffers;
+            new_backend_ptr->textures = ((_raGL_backend*) _global.helper_contexts[0].helper_backend)->textures;
+
+            raGL_buffers_retain (new_backend_ptr->buffers);
+            raGL_textures_retain(new_backend_ptr->textures);
+        }
 
         /* Sign up for notifications */
         _raGL_backend_subscribe_for_notifications(new_backend_ptr,
@@ -1616,17 +1842,9 @@ PUBLIC raGL_backend raGL_backend_create(ral_context               context_ral,
 PUBLIC void raGL_backend_init(raGL_backend backend)
 {
     _raGL_backend* backend_ptr      = (_raGL_backend*) backend;
-    _raGL_backend* root_backend_ptr = NULL;
+    _raGL_backend* root_backend_ptr = (_raGL_backend*) _global.helper_contexts[0].helper_backend;
     system_window  window           = NULL;
     bool           vsync_enabled    = false;
-
-    if (!system_hashed_ansi_string_is_equal_to_raw_string(backend_ptr->name,
-                                                          ROOT_WINDOW_ES_NAME) &&
-         system_hashed_ansi_string_is_equal_to_raw_string(backend_ptr->name,
-                                                          ROOT_WINDOW_GL_NAME) )
-    {
-        root_backend_ptr = (_raGL_backend*) raGL_backend_get_root_context(backend_ptr->backend_type);
-    }
 
     /* Create a GL context  */
     ral_context_get_property(backend_ptr->context_ral,
@@ -1668,6 +1886,30 @@ PUBLIC bool raGL_backend_get_framebuffer(void*           backend,
                                     RAL_CONTEXT_OBJECT_TYPE_FRAMEBUFFER,
                                     framebuffer_ral,
                                     out_framebuffer_raGL_ptr);
+}
+
+/** Please see header for specification */
+PUBLIC ral_context raGL_backend_get_helper_context(ral_backend_type type)
+{
+    ral_context result = NULL;
+
+    system_critical_section_enter(_global.cs);
+    {
+        if (_global.helper_contexts[0].helper_context == NULL)
+        {
+            _global.init(type);
+        }
+        else
+        {
+            ASSERT_DEBUG_SYNC(type == _global.backend_type,
+                              "Only one backend can be initialized during execution.");
+        }
+
+        result = _global.helper_contexts[0].helper_context;
+    }
+    system_critical_section_leave(_global.cs);
+
+    return result;
 }
 
 /** Please see header for specification */
@@ -1827,40 +2069,6 @@ end:
 }
 
 /** Please see header for specification */
-PUBLIC ogl_context raGL_backend_get_root_context(ral_backend_type backend_type)
-{
-    _raGL_backend*                  root_backend_ptr   = NULL;
-    ral_context                     root_context_ral   = NULL;
-    const system_hashed_ansi_string root_window_name   = (backend_type == RAL_BACKEND_TYPE_ES) ? system_hashed_ansi_string_create(ROOT_WINDOW_ES_NAME)
-                                                                                               : system_hashed_ansi_string_create(ROOT_WINDOW_GL_NAME);
-    system_window                   root_window_system = NULL;
-    demo_window                     root_window        = demo_app_get_window_by_name(root_window_name);
-
-    if (root_window == NULL)
-    {
-        _raGL_backend_create_root_window(backend_type);
-
-        root_window = demo_app_get_window_by_name(root_window_name);
-
-        ASSERT_DEBUG_SYNC(root_window != NULL,
-                          "Could not create a root window");
-    } /* if (root_window == NULL) */
-
-    demo_window_get_private_property(root_window,
-                                     DEMO_WINDOW_PRIVATE_PROPERTY_WINDOW,
-                                    &root_window_system);
-    system_window_get_property      (root_window_system,
-                                     SYSTEM_WINDOW_PROPERTY_RENDERING_CONTEXT_RAL,
-                                    &root_context_ral);
-    ral_context_get_property        (root_context_ral,
-                                     RAL_CONTEXT_PROPERTY_BACKEND,
-                                    &root_backend_ptr);
-
-    return root_backend_ptr->context_gl;
-}
-
-
-/** Please see header for specification */
 PUBLIC void raGL_backend_get_property(void*                backend,
                                       ral_context_property property,
                                       void*                out_result_ptr)
@@ -1957,9 +2165,34 @@ PUBLIC void raGL_backend_release(void* backend)
     if (backend != NULL)
     {
         /* Request a rendering context call-back to release backend's assets */
+        const bool is_helper_context = backend_ptr->is_helper_context;
+
         ogl_context_request_callback_from_context_thread(backend_ptr->context_gl,
                                                          _raGL_backend_release_rendering_callback,
                                                          backend_ptr);
+
+        if (!is_helper_context)
+        {
+            system_critical_section_enter(_global.cs);
+            {
+                --_global.n_owners;
+
+                if (_global.n_owners == 0)
+                {
+                    for (int32_t n_helper_context  = N_HELPER_CONTEXTS - 1;
+                                 n_helper_context >= 0;
+                               --n_helper_context)
+                    {
+                        demo_window_close(_global.helper_contexts[n_helper_context].helper_window);
+
+                        _global.helper_contexts[n_helper_context].helper_backend = NULL;
+                        _global.helper_contexts[n_helper_context].helper_context = NULL;
+                        _global.helper_contexts[n_helper_context].helper_window  = NULL;
+                    }
+                }
+            }
+            system_critical_section_leave(_global.cs);
+        }
     } /* if (backend != NULL) */
 }
 

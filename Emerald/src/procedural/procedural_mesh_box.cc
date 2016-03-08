@@ -469,7 +469,7 @@ PRIVATE void _procedural_mesh_box_create_renderer_callback(ogl_context context,
             arrays_bo_triangles_update_info.data_size    = mesh_box->arrays_bo_normals_offset;
             arrays_bo_triangles_update_info.start_offset = 0;
 
-            const ral_buffer_client_sourced_update_info arrays_bo_updates[2] =
+            ral_buffer_client_sourced_update_info arrays_bo_updates[2] =
             {
                 arrays_bo_triangles_update_info,
                 arrays_bo_normals_update_info

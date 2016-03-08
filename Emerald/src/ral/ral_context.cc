@@ -1275,13 +1275,13 @@ PUBLIC ral_context ral_context_create(system_hashed_ansi_string name,
             case RAL_BACKEND_TYPE_ES:
             case RAL_BACKEND_TYPE_GL:
             {
-                new_context_ptr->backend_type                         = backend_type;
-                new_context_ptr->backend                              = (void*) raGL_backend_create( (ral_context) new_context_ptr,
-                                                                                                    name,
-                                                                                                    backend_type);
-                new_context_ptr->pfn_backend_get_framebuffer_proc     = raGL_backend_get_framebuffer;
-                new_context_ptr->pfn_backend_get_property_proc        = raGL_backend_get_property;
-                new_context_ptr->pfn_backend_release_proc             = raGL_backend_release;
+                new_context_ptr->backend_type                     = backend_type;
+                new_context_ptr->backend                          = (void*) raGL_backend_create( (ral_context) new_context_ptr,
+                                                                                                name,
+                                                                                                backend_type);
+                new_context_ptr->pfn_backend_get_framebuffer_proc = raGL_backend_get_framebuffer;
+                new_context_ptr->pfn_backend_get_property_proc    = raGL_backend_get_property;
+                new_context_ptr->pfn_backend_release_proc         = raGL_backend_release;
 
                 break;
             }

@@ -30,7 +30,7 @@ PUBLIC bool raGL_backend_get_framebuffer(void*           backend,
                                          void**          out_framebuffer_raGL_ptr);
 
 /** TODO */
-PUBLIC ogl_context raGL_backend_get_root_context(ral_backend_type backend_type);
+PUBLIC ral_context raGL_backend_get_helper_context(ral_backend_type type);
 
 /** TODO */
 PUBLIC void raGL_backend_get_property(void*                backend, /* raGL_backend instance */

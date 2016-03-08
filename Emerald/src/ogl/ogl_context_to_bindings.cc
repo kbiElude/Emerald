@@ -597,11 +597,13 @@ PUBLIC void ogl_context_to_bindings_set_binding(ogl_context_to_bindings bindings
                                           (system_hash64) texture,
                                          &texture_metadata_ptr) )
                 {
-                    ASSERT_DEBUG_SYNC(false,
-                                      "No texture metadata associated with texture id [%u]",
-                                      texture);
+                    texture_metadata_ptr = new _ogl_context_to_bindings_texture_metadata;
 
-                    goto end;
+                    system_hash64map_insert(bindings_ptr->texture_id_to_texture_metadata_map,
+                                            (system_hash64) texture,
+                                            texture_metadata_ptr,
+                                            NULL,  /* callback          */
+                                            NULL); /* callback_argument */
                 }
 
                 if (!texture_metadata_ptr->has_been_bound)

@@ -81,7 +81,7 @@ PUBLIC EMERALD_API void ral_buffer_get_property(ral_buffer          buffer,
 PUBLIC void ral_buffer_release(ral_buffer& buffer);
 
 /** TODO */
-PUBLIC bool ral_buffer_set_data_from_client_memory(ral_buffer                                   buffer,
-                                                   uint32_t                                     n_updates,
-                                                   const ral_buffer_client_sourced_update_info* updates);
+PUBLIC bool ral_buffer_set_data_from_client_memory(ral_buffer                             buffer,
+                                                   uint32_t                               n_updates,
+                                                   ral_buffer_client_sourced_update_info* updates);
 #endif /* RAL_BUFFER_H */
