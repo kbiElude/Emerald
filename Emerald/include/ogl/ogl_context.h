@@ -137,6 +137,9 @@ typedef enum ogl_context_property
     OGL_CONTEXT_PROPERTY_SUPPORT_GL_ARB_BUFFER_STORAGE,
 
     /* not settable, bool */
+    OGL_CONTEXT_PROPERTY_SUPPORT_GL_ARB_MULTI_BIND,
+
+    /* not settable, bool */
     OGL_CONTEXT_PROPERTY_SUPPORT_GL_ARB_SPARSE_BUFFERS,
 
     /* not settable, bool */

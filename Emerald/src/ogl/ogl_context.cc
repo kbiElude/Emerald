@@ -3489,6 +3489,13 @@ PUBLIC EMERALD_API void ogl_context_get_property(ogl_context          context,
             break;
         }
 
+        case OGL_CONTEXT_PROPERTY_SUPPORT_GL_ARB_MULTI_BIND:
+        {
+            *((bool*) out_result) = context_ptr->gl_arb_multi_bind_support;
+
+            break;
+        }
+
         case OGL_CONTEXT_PROPERTY_SUPPORT_GL_ARB_SPARSE_BUFFERS:
         {
             *((bool*) out_result) = context_ptr->gl_arb_sparse_buffer_support;

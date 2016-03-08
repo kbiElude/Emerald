@@ -424,8 +424,9 @@ PUBLIC void ogl_context_bo_bindings_init(ogl_context_bo_bindings                
     bindings_ptr->entrypoints_private_ptr = entrypoints_private_ptr;
 
     /* Determine if GL_ARB_multi_bind is supported */
-    bindings_ptr->is_arb_multi_bind_supported = ogl_context_is_extension_supported(bindings_ptr->context,
-                                                                                   system_hashed_ansi_string_create("GL_ARB_multi_bind") );
+    ogl_context_get_property(bindings_ptr->context,
+                             OGL_CONTEXT_PROPERTY_SUPPORT_GL_ARB_MULTI_BIND,
+                            &bindings_ptr->is_arb_multi_bind_supported);
 
     /* Initialize general binding descriptors */
     for (unsigned int n_binding_target = 0;

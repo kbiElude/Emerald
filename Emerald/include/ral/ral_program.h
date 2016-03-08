@@ -89,6 +89,14 @@ PUBLIC void ral_program_add_block(ral_program               program,
                                   ral_program_block_type    block_type,
                                   system_hashed_ansi_string block_name);
 
+/** TODO.
+ *
+ *  NOTE: This call blocks until rendering back-end finishes attaching the shader AND
+ *        linking the program object, if all shaders are attached to the PO.
+ **/
+PUBLIC EMERALD_API bool ral_program_attach_shader(ral_program program,
+                                                  ral_shader  shader);
+
 /** TODO
  *
  *  NOTE: Should only be called by rendering back-end.
@@ -105,10 +113,6 @@ PUBLIC void ral_program_attach_variable_to_block(ral_program               progr
  **/
 PUBLIC void ral_program_attach_vertex_attribute(ral_program            program,
                                                 ral_program_attribute* attribute_ptr);
-
-/** TODO */
-PUBLIC EMERALD_API bool ral_program_attach_shader(ral_program program,
-                                                  ral_shader  shader);
 
 /** TODO */
 PUBLIC void ral_program_clear_metadata(ral_program program);
