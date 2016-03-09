@@ -24,7 +24,7 @@
 #define RAGL_BUFFERS_H
 
 #include "ogl/ogl_types.h"
-#include "raGL/raGL_buffer.h"
+#include "raGL/raGL_types.h"
 #include "ral/ral_types.h"
 #include "system/system_types.h"
 
@@ -36,7 +36,6 @@ DECLARE_HANDLE(raGL_buffers);
  *       the OpenGL back-end. */
 REFCOUNT_INSERT_DECLARATIONS(raGL_buffers,
                              raGL_buffers);
-
 
 /** TODO
  *
@@ -75,5 +74,11 @@ PUBLIC raGL_buffers raGL_buffers_create(raGL_backend backend,
  *  TODO */
 PUBLIC void raGL_buffers_free_buffer_memory(raGL_buffers buffers,
                                             raGL_buffer  buffer);
+
+/** TODO */
+PUBLIC void raGL_buffers_get_buffer_property(raGL_buffers                 buffers,
+                                             GLuint                       bo_id,
+                                             raGL_buffers_buffer_property property,
+                                             void*                        out_result_ptr);
 
 #endif /* RAGL_BUFFERS_H */

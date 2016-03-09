@@ -6,7 +6,7 @@
 #include "shared.h"
 #include "mesh/mesh.h"
 #include "ogl/ogl_context.h"
-#include "raGL/raGL_buffers.h"
+#include "raGL/raGL_buffer.h"
 #include "raGL/raGL_program.h"
 #include "ral/ral_buffer.h"
 #include "ral/ral_context.h"

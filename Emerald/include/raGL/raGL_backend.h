@@ -25,6 +25,12 @@ PUBLIC bool raGL_backend_get_buffer(void*      backend,
                                     void**     out_buffer_raGL_ptr);
 
 /** TODO */
+PUBLIC void raGL_backend_get_buffer_property_by_id(raGL_backend                 backend,
+                                                   GLuint                       bo_id,
+                                                   raGL_buffers_buffer_property property,
+                                                   void*                        out_result_ptr);
+
+/** TODO */
 PUBLIC bool raGL_backend_get_framebuffer(void*           backend,
                                          ral_framebuffer framebuffer_ral,
                                          void**          out_framebuffer_raGL_ptr);

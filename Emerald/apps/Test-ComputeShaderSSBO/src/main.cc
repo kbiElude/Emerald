@@ -236,6 +236,40 @@ void _rendering_handler(ogl_context context,
         has_initialized = true;
     } /* if (!has_initialized) */
 
+    /* Update the test counter value */
+    raGL_buffer                           bo_raGL              = NULL;
+    GLuint                                bo_raGL_id           = 0;
+    uint32_t                              bo_raGL_start_offset = -1;
+    uint32_t                              bo_ral_start_offset  = -1;
+    ral_buffer_client_sourced_update_info update;
+
+    bo_raGL = ral_context_get_buffer_gl(_context,
+                                        _bo);
+
+    raGL_buffer_get_property(bo_raGL,
+                             RAGL_BUFFER_PROPERTY_ID,
+                            &bo_raGL_id);
+    raGL_buffer_get_property(bo_raGL,
+                             RAGL_BUFFER_PROPERTY_START_OFFSET,
+                            &bo_raGL_start_offset);
+    ral_buffer_get_property (_bo,
+                             RAL_BUFFER_PROPERTY_START_OFFSET,
+                            &bo_ral_start_offset);
+
+    entry_points->pGLBindBufferRange(GL_SHADER_STORAGE_BUFFER,
+                                     0,
+                                     bo_raGL_id,
+                                     bo_ral_start_offset + bo_raGL_start_offset,
+                                     sizeof(n_frames_rendered) );
+
+    update.data         = &n_frames_rendered;
+    update.data_size    = sizeof(n_frames_rendered);
+    update.start_offset = 0;
+
+    ral_buffer_set_data_from_client_memory(_bo,
+                                           1, /* n_updates */
+                                          &update);
+
     /* Run the compute shader invocations.
      *
      * NOTE: We're doing a ceiling division here to ensure the whole texture mipmap
@@ -257,25 +291,6 @@ void _rendering_handler(ogl_context context,
     entry_points->pGLDispatchCompute(n_global_invocations[0],
                                      n_global_invocations[1],
                                      1); /* num_groups_z */
-
-    /* Update the test counter value */
-    raGL_buffer bo_gl    = NULL;
-    GLuint      bo_gl_id = 0;
-
-    bo_gl = ral_context_get_buffer_gl(_context,
-                                      _bo);
-
-    raGL_buffer_get_property(bo_gl,
-                             RAGL_BUFFER_PROPERTY_ID,
-                            &bo_gl_id);
-
-    entry_points->pGLBindBufferBase(GL_SHADER_STORAGE_BUFFER,
-                                    0,
-                                    bo_gl_id);
-    entry_points->pGLBufferSubData(GL_SHADER_STORAGE_BUFFER,
-                                   0, /* offset */
-                                   sizeof(n_frames_rendered),
-                                  &n_frames_rendered);
 
     /* Copy the result data to the back buffer */
     raGL_framebuffer read_fbo_gl    = NULL;

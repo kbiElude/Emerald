@@ -77,11 +77,6 @@ PUBLIC void ogl_context_bo_bindings_set_binding_range(ogl_context_bo_bindings bi
                                                       GLsizeiptr              size,
                                                       GLint                   bo_id);
 
-/** TODO */
-PUBLIC void ogl_context_bo_bindings_set_bo_storage_size(ogl_context_bo_bindings bindings,
-                                                        GLuint                  bo_id,
-                                                        GLsizeiptr              bo_size);
-
 /** TODO
  *
  *  @param bindings  TODO

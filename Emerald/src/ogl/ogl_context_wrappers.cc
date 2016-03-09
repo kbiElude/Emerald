@@ -742,10 +742,6 @@ PUBLIC void APIENTRY ogl_context_wrappers_glBufferData(GLenum        target,
                                             size,
                                             data,
                                             usage);
-
-    ogl_context_bo_bindings_set_bo_storage_size(bo_bindings,
-                                                ogl_context_bo_bindings_get_general_binding(bo_bindings, target),
-                                                size);
 }
 
 /** Please see header for spec */
@@ -768,10 +764,6 @@ PUBLIC void APIENTRY ogl_context_wrappers_glBufferStorage(GLenum        target,
                                                size,
                                                data,
                                                flags);
-
-    ogl_context_bo_bindings_set_bo_storage_size(bo_bindings,
-                                                ogl_context_bo_bindings_get_general_binding(bo_bindings, target),
-                                                size);
 }
 
 /** Please see header for spec */
@@ -4305,10 +4297,6 @@ PUBLIC void APIENTRY ogl_context_wrappers_glNamedBufferDataEXT(GLuint      buffe
                                                     size,
                                                     data,
                                                     usage);
-
-    ogl_context_bo_bindings_set_bo_storage_size(bo_bindings,
-                                                buffer,
-                                                size);
 }
 
 /** Please see header for spec */
@@ -4328,10 +4316,6 @@ PUBLIC void APIENTRY ogl_context_wrappers_glNamedBufferStorageEXT(GLuint        
                                                        size,
                                                        data,
                                                        flags);
-
-    ogl_context_bo_bindings_set_bo_storage_size(bo_bindings,
-                                                buffer,
-                                                size);
 }
 
 /* Please see header for specification */

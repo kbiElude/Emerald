@@ -1878,6 +1878,18 @@ PUBLIC bool raGL_backend_get_buffer(void*      backend,
 }
 
 /** Please see header for specification */
+PUBLIC void raGL_backend_get_buffer_property_by_id(raGL_backend                 backend,
+                                                   GLuint                       bo_id,
+                                                   raGL_buffers_buffer_property property,
+                                                   void*                        out_result_ptr)
+{
+    raGL_buffers_get_buffer_property(((_raGL_backend*) backend)->buffers,
+                                     bo_id,
+                                     property,
+                                     out_result_ptr);
+}
+
+/** Please see header for specification */
 PUBLIC bool raGL_backend_get_framebuffer(void*           backend,
                                          ral_framebuffer framebuffer_ral,
                                          void**          out_framebuffer_raGL_ptr)

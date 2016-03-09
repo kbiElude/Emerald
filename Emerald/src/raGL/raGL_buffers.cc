@@ -53,6 +53,7 @@ typedef struct _raGL_buffers
     system_resource_pool                           buffer_descriptor_pool;
     ogl_context                                    context; /* do not retain - else face circular dependencies */
     ogl_context_es_entrypoints*                    entry_points_es;
+    system_hash64map                               id_to_buffer_map;         /* maps GLuint to _raGL_buffers_buffer instance; does NOT own the instance */
     system_hash64map                               ral_buffer_to_buffer_map; /* maps ral_buffer to _raGL_buffers_buffer instances; owns the instances */
 
     ogl_context_gl_entrypoints*                    entry_points_gl;
@@ -75,6 +76,13 @@ typedef struct _raGL_buffers
 
     ~_raGL_buffers()
     {
+        if (id_to_buffer_map != NULL)
+        {
+            system_hash64map_release(id_to_buffer_map);
+
+            id_to_buffer_map = NULL;
+        }
+
         if (nonsparse_heaps != NULL)
         {
             for (unsigned int n_heap = 0;
@@ -178,6 +186,7 @@ _raGL_buffers::_raGL_buffers(raGL_backend in_backend,
     entry_points_gl          = NULL;
     entry_points_gl_bs       = NULL;
     entry_points_gl_sb       = NULL;
+    id_to_buffer_map         = system_hash64map_create(sizeof(_raGL_buffers_buffer*) );
     page_size                = 0;
     ral_buffer_to_buffer_map = system_hash64map_create       (sizeof(_raGL_buffers_buffer*) );
     sparse_buffers           = system_resizable_vector_create(16); /* capacity */
@@ -394,6 +403,17 @@ PRIVATE _raGL_buffers_buffer* _raGL_buffers_alloc_new_immutable_buffer(_raGL_buf
 
         system_resizable_vector_push(new_buffer_ptr->buffers_ptr->nonsparse_heaps[heap_type],
                                      new_buffer_ptr);
+
+        ASSERT_DEBUG_SYNC(!system_hash64map_contains(buffers_ptr->id_to_buffer_map,
+                                                     (system_hash64) bo_id),
+                          "Buffer info descriptor already stored for BO GL id %d",
+                          bo_id);
+
+        system_hash64map_insert(buffers_ptr->id_to_buffer_map,
+                                bo_id,
+                                new_buffer_ptr,
+                                NULL,  /* callback          */
+                                NULL); /* callback_argument */
     } /* if (reported_bo_size >= bo_size) */
     else
     {
@@ -1024,4 +1044,49 @@ PUBLIC void raGL_buffers_free_buffer_memory(raGL_buffers buffers,
     buffer = NULL;
 }
 
+/** Please see header for spec */
+PUBLIC void raGL_buffers_get_buffer_property(raGL_buffers                 buffers,
+                                             GLuint                       bo_id,
+                                             raGL_buffers_buffer_property property,
+                                             void*                        out_result_ptr)
+{
+    _raGL_buffers_buffer* buffer_ptr  = NULL;
+    _raGL_buffers*        buffers_ptr = (_raGL_buffers*) buffers;
 
+    if (buffers_ptr == NULL)
+    {
+        ASSERT_DEBUG_SYNC(buffers_ptr != NULL,
+                          "Input raGL_buffers instance is NULL");
+
+        goto end;
+    }
+
+    if (!system_hash64map_get(buffers_ptr->id_to_buffer_map,
+                              bo_id,
+                             &buffer_ptr) )
+    {
+        ASSERT_DEBUG_SYNC(false,
+                          "GL BO id [%d] was not recognized.",
+                          bo_id);
+
+        goto end;
+    }
+
+    switch (property)
+    {
+        case RAGL_BUFFERS_BUFFER_PROPERTY_SIZE:
+        {
+            *(uint32_t*) out_result_ptr = buffer_ptr->bo_size;
+
+            break;
+        }
+
+        default:
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Unrecognized raGL_buffers_buffer_property value specified.");
+        }
+    }
+end:
+    ;
+}

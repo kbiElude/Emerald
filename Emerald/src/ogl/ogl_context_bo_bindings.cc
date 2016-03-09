@@ -9,6 +9,7 @@
 #include "ogl/ogl_context_state_cache.h"
 #include "ogl/ogl_context_vaos.h"
 #include "ogl/ogl_vao.h"
+#include "raGL/raGL_buffers.h"
 #include "system/system_hash64map.h"
 
 /** TODO.
@@ -40,17 +41,6 @@ typedef enum
 
     BINDING_TARGET_UNKNOWN = BINDING_TARGET_COUNT
 } _ogl_context_bo_binding_target;
-
-/** TODO */
-typedef struct _ogl_context_bo_bindings_bo_info
-{
-    GLsizeiptr size;
-
-    _ogl_context_bo_bindings_bo_info()
-    {
-        size = 0;
-    }
-} _ogl_context_bo_bindings_bo_info;
 
 /** TODO */
 typedef struct _ogl_context_bo_bindings_general_binding
@@ -97,11 +87,6 @@ typedef struct _ogl_context_bo_bindings
     GLuint*     sync_indiced_bindings_data_buffers;
     GLintptr*   sync_indiced_bindings_data_offsets;
     GLsizeiptr* sync_indiced_bindings_data_sizes;
-
-    /* For GL_ARB_multi_bind path, we need to cache buffer object storage size information, in order to
-     * convert all glBindBufferBase() calls into ranged ones.
-     */
-    system_hash64map bo_id_to_bo_info_map;
 
     /* DO NOT retain/release, as this object is managed by ogl_context and retaining it
      * will cause the rendering context to never release itself.
@@ -236,23 +221,27 @@ PRIVATE void _ogl_context_bo_bindings_sync_multi_bind_process_indiced_sync_bit(o
             else
             {
                 /* Retrieve BO size */
-                const _ogl_context_bo_bindings_bo_info* bo_ptr = NULL;
-
-                if (local_binding_ptr->bo_id != 0                            &&
-                    system_hash64map_get(bindings_ptr->bo_id_to_bo_info_map,
-                                         local_binding_ptr->bo_id,
-                                        &bo_ptr) )
+                if (local_binding_ptr->bo_id != 0)
                 {
                     /* Set the arguments */
+                    raGL_backend backend = NULL;
+                    uint32_t     bo_size = 0;
+
+                    ogl_context_get_property(bindings_ptr->context,
+                                             OGL_CONTEXT_PROPERTY_BACKEND,
+                                            &backend);
+
+                    raGL_backend_get_buffer_property_by_id(backend,
+                                                           local_binding_ptr->bo_id,
+                                                           RAGL_BUFFERS_BUFFER_PROPERTY_SIZE,
+                                                          &bo_size);
+
                     sync_data_offsets[n_binding] = 0;
-                    sync_data_sizes  [n_binding] = bo_ptr->size;
+                    sync_data_sizes  [n_binding] = bo_size;
                 }
                 else
                 {
                     /* This code-path is valid as long as we're unbinding a BO */
-                    ASSERT_DEBUG_SYNC(local_binding_ptr->bo_id == 0,
-                                      "Could not retrieve BO descriptor");
-
                     sync_data_offsets[n_binding] = 0;
                     sync_data_sizes  [n_binding] = 0;
                 }
@@ -352,8 +341,7 @@ PUBLIC ogl_context_bo_bindings ogl_context_bo_bindings_create(ogl_context contex
 
     if (new_bindings != NULL)
     {
-        new_bindings->context              = context;
-        new_bindings->bo_id_to_bo_info_map = system_hash64map_create(sizeof(_ogl_context_bo_bindings_bo_info*));
+        new_bindings->context = context;
 
         ogl_context_get_property(context,
                                  OGL_CONTEXT_PROPERTY_LIMITS,
@@ -577,29 +565,6 @@ PUBLIC void ogl_context_bo_bindings_release(ogl_context_bo_bindings bindings)
         delete [] bindings_ptr->sync_indiced_bindings_data_sizes;
 
         bindings_ptr->sync_indiced_bindings_data_sizes = NULL;
-    }
-
-    /* Release helper objects */
-    if (bindings_ptr->bo_id_to_bo_info_map != NULL)
-    {
-        system_hash64                     bo_hash = 0;
-        _ogl_context_bo_bindings_bo_info* bo_ptr  = NULL;
-
-        while (system_hash64map_get_element_at(bindings_ptr->bo_id_to_bo_info_map,
-                                               0,
-                                              &bo_ptr,
-                                              &bo_hash) )
-        {
-            delete bo_ptr;
-            bo_ptr = NULL;
-
-            system_hash64map_remove(bindings_ptr->bo_id_to_bo_info_map,
-                                    bo_hash);
-        }
-
-        system_hash64map_release(bindings_ptr->bo_id_to_bo_info_map);
-
-        bindings_ptr->bo_id_to_bo_info_map = NULL;
     }
 
     /* Done */
@@ -854,45 +819,6 @@ PUBLIC void ogl_context_bo_bindings_set_binding_range(ogl_context_bo_bindings bi
         } /* switch (binding_point) */
     }
     #endif
-}
-
-/** Please see header for spec */
-PUBLIC void ogl_context_bo_bindings_set_bo_storage_size(ogl_context_bo_bindings bindings,
-                                                        GLuint                  bo_id,
-                                                        GLsizeiptr              bo_size)
-{
-    _ogl_context_bo_bindings* bindings_ptr = (_ogl_context_bo_bindings*) bindings;
-
-    /* Is the BO already recognized? */
-    _ogl_context_bo_bindings_bo_info* bo_ptr = NULL;
-
-    if (!system_hash64map_get(bindings_ptr->bo_id_to_bo_info_map,
-                              bo_id,
-                             &bo_ptr) )
-    {
-        /* Nope. Allocate a new descriptor */
-        bo_ptr = new (std::nothrow) _ogl_context_bo_bindings_bo_info;
-
-        ASSERT_ALWAYS_SYNC(bo_ptr != NULL,
-                           "Out of memory");
-
-        if (bo_ptr == NULL)
-        {
-            goto end;
-        }
-
-        system_hash64map_insert(bindings_ptr->bo_id_to_bo_info_map,
-                                bo_id,
-                                bo_ptr,
-                                NULL,  /* on_remove_callback_proc */
-                                NULL); /* on_remove_callback_proc_user_arg */
-    }
-
-    /* Update the size */
-    bo_ptr->size = bo_size;
-
-end:
-    ;
 }
 
 /** Please see header for spec */

@@ -231,9 +231,9 @@ PUBLIC void ral_buffer_release(ral_buffer& buffer)
 }
 
 /** Please see header for specification */
-PUBLIC bool ral_buffer_set_data_from_client_memory(ral_buffer                             buffer,
-                                                   uint32_t                               n_updates,
-                                                   ral_buffer_client_sourced_update_info* updates)
+PUBLIC EMERALD_API bool ral_buffer_set_data_from_client_memory(ral_buffer                             buffer,
+                                                               uint32_t                               n_updates,
+                                                               ral_buffer_client_sourced_update_info* updates)
 {
     _ral_buffer*                                       buffer_ptr = (_ral_buffer*) buffer;
     ral_buffer_client_sourced_update_info_callback_arg callback_arg;
