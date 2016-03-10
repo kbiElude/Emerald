@@ -127,10 +127,8 @@ typedef struct _scene_renderer_bbox_preview
     PFNGLBINDBUFFERPROC          pGLBindBuffer;
     PFNGLBINDBUFFERRANGEPROC     pGLBindBufferRange;
     PFNGLBINDVERTEXARRAYPROC     pGLBindVertexArray;
-    PFNGLBUFFERSUBDATAPROC       pGLBufferSubData;
     PFNGLDELETEVERTEXARRAYSPROC  pGLDeleteVertexArrays;
     PFNGLDRAWARRAYSPROC          pGLDrawArrays;
-    PFNGLGENBUFFERSPROC          pGLGenBuffers;
     PFNGLGENVERTEXARRAYSPROC     pGLGenVertexArrays;
     PFNGLUNIFORMBLOCKBINDINGPROC pGLUniformBlockBinding;
     PFNGLUSEPROGRAMPROC          pGLUseProgram;
@@ -513,10 +511,8 @@ PUBLIC scene_renderer_bbox_preview scene_renderer_bbox_preview_create(ral_contex
             new_instance_ptr->pGLBindBuffer          = entry_points_ptr->pGLBindBuffer;
             new_instance_ptr->pGLBindBufferRange     = entry_points_ptr->pGLBindBufferRange;
             new_instance_ptr->pGLBindVertexArray     = entry_points_ptr->pGLBindVertexArray;
-            new_instance_ptr->pGLBufferSubData       = entry_points_ptr->pGLBufferSubData;
             new_instance_ptr->pGLDeleteVertexArrays  = entry_points_ptr->pGLDeleteVertexArrays;
             new_instance_ptr->pGLDrawArrays          = entry_points_ptr->pGLDrawArrays;
-            new_instance_ptr->pGLGenBuffers          = entry_points_ptr->pGLGenBuffers;
             new_instance_ptr->pGLGenVertexArrays     = entry_points_ptr->pGLGenVertexArrays;
             new_instance_ptr->pGLUniformBlockBinding = entry_points_ptr->pGLUniformBlockBinding;
             new_instance_ptr->pGLUseProgram          = entry_points_ptr->pGLUseProgram;
@@ -535,10 +531,8 @@ PUBLIC scene_renderer_bbox_preview scene_renderer_bbox_preview_create(ral_contex
             new_instance_ptr->pGLBindBuffer          = entry_points_ptr->pGLBindBuffer;
             new_instance_ptr->pGLBindBufferRange     = entry_points_ptr->pGLBindBufferRange;
             new_instance_ptr->pGLBindVertexArray     = entry_points_ptr->pGLBindVertexArray;
-            new_instance_ptr->pGLBufferSubData       = entry_points_ptr->pGLBufferSubData;
             new_instance_ptr->pGLDeleteVertexArrays  = entry_points_ptr->pGLDeleteVertexArrays;
             new_instance_ptr->pGLDrawArrays          = entry_points_ptr->pGLDrawArrays;
-            new_instance_ptr->pGLGenBuffers          = entry_points_ptr->pGLGenBuffers;
             new_instance_ptr->pGLGenVertexArrays     = entry_points_ptr->pGLGenVertexArrays;
             new_instance_ptr->pGLUniformBlockBinding = entry_points_ptr->pGLUniformBlockBinding;
             new_instance_ptr->pGLUseProgram          = entry_points_ptr->pGLUseProgram;

@@ -57,13 +57,70 @@ typedef struct _ral_buffer
 
 
 /** Please see header for specification */
+PUBLIC EMERALD_API bool ral_buffer_clear_region(ral_buffer                    buffer,
+                                                uint32_t                      n_clear_ops,
+                                                ral_buffer_clear_region_info* clear_ops)
+{
+    _ral_buffer*                         buffer_ptr   = (_ral_buffer*) buffer;
+    ral_buffer_clear_region_callback_arg callback_arg;
+    bool                                 result       = false;
+
+    /* Sanity checks */
+    if (buffer == NULL)
+    {
+        ASSERT_DEBUG_SYNC(false,
+                          "Input buffer is NULL");
+
+        goto end;
+    }
+
+    if (n_clear_ops == 0)
+    {
+        result = true;
+
+        goto end;
+    }
+
+    if (clear_ops == NULL)
+    {
+        ASSERT_DEBUG_SYNC(false,
+                          "Input clear info array is NULL");
+
+        goto end;
+    }
+
+    /* Convert input data to a callback argument and send a notification, so that active rendering contexts
+     * can handle the request. */
+    callback_arg.buffer      = buffer;
+    callback_arg.clear_ops   = clear_ops;
+    callback_arg.n_clear_ops = n_clear_ops;
+
+    for (uint32_t n_clear_op = 0;
+                  n_clear_op < n_clear_ops;
+                ++n_clear_op)
+    {
+        clear_ops[n_clear_op].offset += buffer_ptr->start_offset;
+    }
+
+    system_callback_manager_call_back(buffer_ptr->callback_manager,
+                                      RAL_BUFFER_CALLBACK_ID_CLEAR_REGION_REQUESTED,
+                                     &callback_arg);
+
+    /* All done */
+    result = true;
+
+end:
+    return result;
+}
+
+/** Please see header for specification */
 PUBLIC EMERALD_API bool ral_buffer_copy_to_buffer(ral_buffer                      src_buffer,
                                                   ral_buffer                      dst_buffer,
                                                   uint32_t                        n_copy_ops,
                                                   ral_buffer_copy_to_buffer_info* copy_ops)
 {
-    _ral_buffer*                           dst_buffer_ptr = (_ral_buffer*) dst_buffer;
     ral_buffer_copy_to_buffer_callback_arg callback_arg;
+    _ral_buffer*                           dst_buffer_ptr = (_ral_buffer*) dst_buffer;
     bool                                   result         = false;
     _ral_buffer*                           src_buffer_ptr = (_ral_buffer*) src_buffer;
 

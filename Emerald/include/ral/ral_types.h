@@ -269,6 +269,14 @@ typedef enum
 };
 typedef int ral_queue_bits;
 
+/** All info required to perform a buffer region clear op */
+typedef struct ral_buffer_clear_region_info
+{
+    uint32_t clear_value;
+    uint32_t offset;
+    uint32_t size;
+} ral_buffer_clear_region_info;
+
 /** All info required to perform a buffer->buffer copy */
 typedef struct ral_buffer_copy_to_buffer_info
 {

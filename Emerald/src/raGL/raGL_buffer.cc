@@ -85,6 +85,13 @@ typedef struct _raGL_buffer
 
 typedef struct
 {
+    raGL_buffer                         buffer;
+    const ral_buffer_clear_region_info* clear_ops;
+    uint32_t                            n_clear_ops;
+} _raGL_buffer_clear_region_request_arg;
+
+typedef struct
+{
     raGL_buffer                                  buffer;
     uint32_t                                     n_updates;
     const ral_buffer_client_sourced_update_info* updates;
@@ -108,7 +115,7 @@ PRIVATE void _raGL_buffer_on_client_memory_sourced_update_request_rendering_thre
 
     buffer_ptr = (_raGL_buffer*) callback_arg_ptr->buffer;
 
-    ogl_context_get_property(buffer_ptr->context,
+    ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL_EXT_DIRECT_STATE_ACCESS,
                             &dsa_entrypoints_ptr);
 
@@ -126,6 +133,39 @@ PRIVATE void _raGL_buffer_on_client_memory_sourced_update_request_rendering_thre
 }
 
 /** TODO */
+PRIVATE void _raGL_buffer_on_clear_region_request_rendering_thread(ogl_context context,
+                                                                   void*       callback_arg)
+{
+    _raGL_buffer*                          buffer_ptr       = NULL;
+    _raGL_buffer_clear_region_request_arg* callback_arg_ptr = (_raGL_buffer_clear_region_request_arg*) callback_arg;
+    const ogl_context_gl_entrypoints*      entrypoints_ptr  = NULL;
+
+    buffer_ptr = (_raGL_buffer*) callback_arg_ptr->buffer;
+
+    ogl_context_get_property(context,
+                             OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
+                            &entrypoints_ptr);
+
+    entrypoints_ptr->pGLBindBuffer(GL_COPY_WRITE_BUFFER,
+                                   buffer_ptr->id);
+
+    for (uint32_t n_clear_op = 0;
+                  n_clear_op < callback_arg_ptr->n_clear_ops;
+                ++n_clear_op)
+    {
+        const ral_buffer_clear_region_info& current_clear = callback_arg_ptr->clear_ops[n_clear_op];
+
+        entrypoints_ptr->pGLClearBufferSubData(GL_COPY_WRITE_BUFFER,
+                                               GL_R32UI,
+                                               current_clear.offset,
+                                               current_clear.size,
+                                               GL_RED_INTEGER,
+                                               GL_UNSIGNED_INT,
+                                              &current_clear.clear_value);
+    }
+}
+
+/** TODO */
 PRIVATE void _raGL_buffer_on_copy_buffer_to_buffer_update_request_rendering_thread(ogl_context context,
                                                                                    void*       callback_arg)
 {
@@ -134,7 +174,7 @@ PRIVATE void _raGL_buffer_on_copy_buffer_to_buffer_update_request_rendering_thre
     _raGL_buffer*                                             dst_buffer_ptr      = (_raGL_buffer*) callback_arg_ptr->dst_buffer;
     _raGL_buffer*                                             src_buffer_ptr      = (_raGL_buffer*) callback_arg_ptr->src_buffer;
 
-    ogl_context_get_property(dst_buffer_ptr->context,
+    ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL_EXT_DIRECT_STATE_ACCESS,
                             &dsa_entrypoints_ptr);
 
@@ -150,6 +190,25 @@ PRIVATE void _raGL_buffer_on_copy_buffer_to_buffer_update_request_rendering_thre
                                                           dst_buffer_ptr->start_offset + current_copy.dst_buffer_region_start_offset, /* writeOffset */
                                                           current_copy.region_size);
     } /* for (all copy ops) */
+}
+
+/** Please see header for specification */
+PUBLIC void raGL_buffer_clear_region(raGL_buffer                         buffer_raGL,
+                                     uint32_t                            n_clear_ops,
+                                     const ral_buffer_clear_region_info* clear_ops)
+{
+    _raGL_buffer*                         buffer_ptr      = (_raGL_buffer*) buffer_raGL;
+    _raGL_buffer_clear_region_request_arg callback_arg;
+    ogl_context                           current_context = ogl_context_get_current_context();
+
+    callback_arg.buffer      = buffer_raGL;
+    callback_arg.clear_ops   = clear_ops;
+    callback_arg.n_clear_ops = n_clear_ops;
+
+    ogl_context_request_callback_from_context_thread( (current_context != buffer_ptr->context && current_context != NULL) ? current_context
+                                                                                                                          : buffer_ptr->context,
+                                                     _raGL_buffer_on_clear_region_request_rendering_thread,
+                                                     &callback_arg);
 }
 
 /** Please see header for specification */

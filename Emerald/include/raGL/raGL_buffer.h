@@ -21,6 +21,11 @@ typedef enum
 } raGL_buffer_property;
 
 /** TODO */
+PUBLIC void raGL_buffer_clear_region(raGL_buffer                         buffer_raGL,
+                                     uint32_t                            n_clear_ops,
+                                     const ral_buffer_clear_region_info* clear_ops);
+
+/** TODO */
 PUBLIC void raGL_buffer_copy_buffer_to_buffer(raGL_buffer                           dst_buffer_raGL,
                                               raGL_buffer                           src_buffer_raGL,
                                               uint32_t                              n_copy_ops,

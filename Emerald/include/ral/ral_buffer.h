@@ -11,6 +11,12 @@ typedef enum
      **/
     RAL_BUFFER_CALLBACK_ID_BUFFER_TO_BUFFER_COPY_REQUESTED,
 
+    /* One or more region clears are pending for a ral_buffer instance.
+     *
+     * arg: ral_buffer_clear_region_callback_arg
+     */
+    RAL_BUFFER_CALLBACK_ID_CLEAR_REGION_REQUESTED,
+
     /* One or more updates are pending for a ral_buffer instance.
      *
      * arg: ral_buffer_client_sourced_update_info_callback_arg
@@ -20,6 +26,20 @@ typedef enum
     /* Always last */
     RAL_BUFFER_CALLBACK_ID_COUNT,
 };
+
+typedef struct ral_buffer_clear_region_callback_arg
+{
+    ral_buffer                          buffer;
+    const ral_buffer_clear_region_info* clear_ops;
+    uint32_t                            n_clear_ops;
+
+    ral_buffer_clear_region_callback_arg()
+    {
+        buffer      = NULL;
+        clear_ops   = NULL;
+        n_clear_ops = 0;
+    }
+} ral_buffer_clear_region_callback_arg;
 
 typedef struct ral_buffer_client_sourced_update_info_callback_arg
 {
@@ -81,6 +101,11 @@ typedef enum
     RAL_BUFFER_PROPERTY_USER_QUEUE_BITS,
 } ral_buffer_property;
 
+
+/** TODO */
+PUBLIC EMERALD_API bool ral_buffer_clear_region(ral_buffer                    buffer,
+                                                uint32_t                      n_clear_ops,
+                                                ral_buffer_clear_region_info* clear_ops);
 
 /** TODO */
 PUBLIC EMERALD_API bool ral_buffer_copy_to_buffer(ral_buffer                      src_buffer,

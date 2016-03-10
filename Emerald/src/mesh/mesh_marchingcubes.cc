@@ -1751,17 +1751,18 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void mesh_marchingcubes_polygonize(mes
         }
 
         /* Set up the indirect draw call's <count> SSB. Zero out the value before we run the polygonizer */
-        static const int int_zero = 0;
+        ral_buffer_clear_region_info clear_op;
 
-        entrypoints_ptr->pGLBindBuffer        (GL_DRAW_INDIRECT_BUFFER,
-                                               indirect_draw_call_args_bo_id);
-        entrypoints_ptr->pGLClearBufferSubData(GL_DRAW_INDIRECT_BUFFER,
-                                               GL_R32UI,
-                                               mesh_ptr->indirect_draw_call_args_bo_count_arg_offset,
-                                               sizeof(int),
-                                               GL_RED_INTEGER,
-                                               GL_UNSIGNED_INT,
-                                              &int_zero);
+        entrypoints_ptr->pGLBindBuffer(GL_DRAW_INDIRECT_BUFFER,
+                                       indirect_draw_call_args_bo_id);
+
+        clear_op.clear_value = 0;
+        clear_op.offset      = mesh_ptr->indirect_draw_call_args_bo_count_arg_offset;
+        clear_op.size        = sizeof(int);
+
+        ral_buffer_clear_region(mesh_ptr->indirect_draw_call_args_bo,
+                                1, /* n_clear_ops */
+                               &clear_op);
 
         /* Polygonize the scalar field */
         const raGL_program polygonizer_po_raGL    = ral_context_get_program_gl(mesh_ptr->context,
