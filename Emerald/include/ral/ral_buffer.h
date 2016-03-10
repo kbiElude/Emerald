@@ -5,6 +5,12 @@
 
 typedef enum
 {
+    /* One or more buffer->buffer copy ops are pending for a ral_buffer instance.
+     *
+     * arg: ral_buffer_copy_to_buffer_callback_arg
+     **/
+    RAL_BUFFER_CALLBACK_ID_BUFFER_TO_BUFFER_COPY_REQUESTED,
+
     /* One or more updates are pending for a ral_buffer instance.
      *
      * arg: ral_buffer_client_sourced_update_info_callback_arg
@@ -29,6 +35,21 @@ typedef struct ral_buffer_client_sourced_update_info_callback_arg
     }
 } ral_buffer_client_sourced_update_info_callback_arg;
 
+typedef struct ral_buffer_copy_to_buffer_callback_arg
+{
+    ral_buffer_copy_to_buffer_info* copy_ops;
+    ral_buffer                      dst_buffer;
+    uint32_t                        n_copy_ops;
+    ral_buffer                      src_buffer;
+
+    ral_buffer_copy_to_buffer_callback_arg()
+    {
+        copy_ops   = NULL;
+        dst_buffer = NULL;
+        n_copy_ops = 0;
+        src_buffer = NULL;
+    }
+} ral_buffer_copy_to_buffer_callback_arg;
 
 typedef enum
 {
@@ -60,6 +81,12 @@ typedef enum
     RAL_BUFFER_PROPERTY_USER_QUEUE_BITS,
 } ral_buffer_property;
 
+
+/** TODO */
+PUBLIC EMERALD_API bool ral_buffer_copy_to_buffer(ral_buffer                      src_buffer,
+                                                  ral_buffer                      dst_buffer,
+                                                  uint32_t                        n_copy_ops,
+                                                  ral_buffer_copy_to_buffer_info* copy_ops);
 
 /** TODO */
 PUBLIC ral_buffer ral_buffer_create(system_hashed_ansi_string     name,

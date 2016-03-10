@@ -654,8 +654,7 @@ PUBLIC EMERALD_API bool demo_window_stop_rendering(demo_window window)
 
     if (playback_status != RENDERING_HANDLER_PLAYBACK_STATUS_STARTED)
     {
-        ASSERT_DEBUG_SYNC(false,
-                          "No rendering active for the specified window.");
+        LOG_ERROR("No rendering active for the specified window.");
 
         goto end;
     }

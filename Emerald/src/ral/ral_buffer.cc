@@ -57,6 +57,67 @@ typedef struct _ral_buffer
 
 
 /** Please see header for specification */
+PUBLIC EMERALD_API bool ral_buffer_copy_to_buffer(ral_buffer                      src_buffer,
+                                                  ral_buffer                      dst_buffer,
+                                                  uint32_t                        n_copy_ops,
+                                                  ral_buffer_copy_to_buffer_info* copy_ops)
+{
+    _ral_buffer*                           dst_buffer_ptr = (_ral_buffer*) dst_buffer;
+    ral_buffer_copy_to_buffer_callback_arg callback_arg;
+    bool                                   result         = false;
+    _ral_buffer*                           src_buffer_ptr = (_ral_buffer*) src_buffer;
+
+    /* Sanity checks */
+    if (dst_buffer == NULL || src_buffer == NULL)
+    {
+        ASSERT_DEBUG_SYNC(false,
+                          "Input destination/source buffer is NULL");
+
+        goto end;
+    }
+
+    if (n_copy_ops == 0)
+    {
+        result = true;
+
+        goto end;
+    }
+
+    if (copy_ops == NULL)
+    {
+        ASSERT_DEBUG_SYNC(false,
+                          "Input copy info array is NULL");
+
+        goto end;
+    }
+
+    /* Convert input data to a callback argument and send a notification, so that active rendering contexts
+     * can handle the request. */
+    callback_arg.copy_ops   = copy_ops;
+    callback_arg.dst_buffer = dst_buffer;
+    callback_arg.n_copy_ops = n_copy_ops;
+    callback_arg.src_buffer = src_buffer;
+
+    for (uint32_t n_copy_op = 0;
+                  n_copy_op < n_copy_ops;
+                ++n_copy_op)
+    {
+        copy_ops[n_copy_op].dst_buffer_region_start_offset += dst_buffer_ptr->start_offset;
+        copy_ops[n_copy_op].src_buffer_region_start_offset += src_buffer_ptr->start_offset;
+    }
+
+    system_callback_manager_call_back(src_buffer_ptr->callback_manager,
+                                      RAL_BUFFER_CALLBACK_ID_BUFFER_TO_BUFFER_COPY_REQUESTED,
+                                     &callback_arg);
+
+    /* All done */
+    result = true;
+
+end:
+    return result;
+}
+
+/** Please see header for specification */
 PUBLIC ral_buffer ral_buffer_create(system_hashed_ansi_string     name,
                                     const ral_buffer_create_info* create_info_ptr)
 {

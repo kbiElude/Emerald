@@ -886,33 +886,35 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void postprocessing_blur_gaussian_exec
                                                                                     ral_texture                             src_texture,
                                                                                     postprocessing_blur_gaussian_resolution blur_resolution)
 {
-    _postprocessing_blur_gaussian*                            blur_ptr                      = (_postprocessing_blur_gaussian*) blur;
-    GLuint                                                    coeff_bo_id                   = 0;
-    raGL_buffer                                               coeff_bo_raGL                 = NULL;
-    uint32_t                                                  coeff_bo_start_offset         = -1;
-    ral_framebuffer                                           context_default_fb            = NULL;
-    raGL_framebuffer                                          context_default_fb_raGL       = NULL;
-    GLuint                                                    context_default_fb_raGL_id    = -1;
-    const ogl_context_gl_entrypoints_ext_direct_state_access* dsa_entrypoints_ptr           = NULL;
-    const ogl_context_gl_entrypoints*                         entrypoints_ptr               = NULL;
-    GLuint                                                    other_data_bo_id              = 0;
-    raGL_buffer                                               other_data_bo_raGL            = NULL;
-    uint32_t                                                  other_data_bo_start_offset    = -1;
-    ral_texture_format                                        src_texture_format            = RAL_TEXTURE_FORMAT_UNKNOWN;
-    unsigned int                                              src_texture_height            = 0;
-    GLuint                                                    src_texture_id                = 0;
-    bool                                                      src_texture_is_rbo            = false;
-    raGL_texture                                              src_texture_raGL              = NULL;
-    unsigned int                                              src_texture_width             = 0;
-    ral_texture_type                                          src_texture_type              = RAL_TEXTURE_TYPE_UNKNOWN;
-    ogl_context_state_cache                                   state_cache                   = NULL;
-    raGL_sampler                                              temp_2d_array_texture_sampler = NULL;
-    ral_texture                                               temp_2d_array_texture         = NULL;
-    GLuint                                                    temp_2d_array_texture_id      = 0;
-    bool                                                      temp_2d_array_texture_is_rbo  = false;
-    raGL_texture                                              temp_2d_array_texture_raGL    = NULL;
-    GLuint                                                    vao_id                        = 0;
-    GLint                                                     viewport_data[4]              = {0};
+    _postprocessing_blur_gaussian*                            blur_ptr                        = (_postprocessing_blur_gaussian*) blur;
+    GLuint                                                    coeff_bo_id                     = 0;
+    raGL_buffer                                               coeff_bo_raGL                   = NULL;
+    uint32_t                                                  coeff_bo_raGL_start_offset      = -1;
+    uint32_t                                                  coeff_bo_ral_start_offset       = -1;
+    ral_framebuffer                                           context_default_fb              = NULL;
+    raGL_framebuffer                                          context_default_fb_raGL         = NULL;
+    GLuint                                                    context_default_fb_raGL_id      = -1;
+    const ogl_context_gl_entrypoints_ext_direct_state_access* dsa_entrypoints_ptr             = NULL;
+    const ogl_context_gl_entrypoints*                         entrypoints_ptr                 = NULL;
+    GLuint                                                    other_data_bo_id                = 0;
+    raGL_buffer                                               other_data_bo_raGL              = NULL;
+    uint32_t                                                  other_data_bo_raGL_start_offset = -1;
+    uint32_t                                                  other_data_bo_ral_start_offset  = -1;
+    ral_texture_format                                        src_texture_format              = RAL_TEXTURE_FORMAT_UNKNOWN;
+    unsigned int                                              src_texture_height              = 0;
+    GLuint                                                    src_texture_id                  = 0;
+    bool                                                      src_texture_is_rbo              = false;
+    raGL_texture                                              src_texture_raGL                = NULL;
+    unsigned int                                              src_texture_width               = 0;
+    ral_texture_type                                          src_texture_type                = RAL_TEXTURE_TYPE_UNKNOWN;
+    ogl_context_state_cache                                   state_cache                     = NULL;
+    raGL_sampler                                              temp_2d_array_texture_sampler   = NULL;
+    ral_texture                                               temp_2d_array_texture           = NULL;
+    GLuint                                                    temp_2d_array_texture_id        = 0;
+    bool                                                      temp_2d_array_texture_is_rbo    = false;
+    raGL_texture                                              temp_2d_array_texture_raGL      = NULL;
+    GLuint                                                    vao_id                          = 0;
+    GLint                                                     viewport_data[4]                = {0};
 
     ASSERT_DEBUG_SYNC(n_taps >= blur_ptr->n_min_taps &&
                       n_taps <= blur_ptr->n_max_taps,
@@ -983,14 +985,20 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void postprocessing_blur_gaussian_exec
                             &coeff_bo_id);
     raGL_buffer_get_property(coeff_bo_raGL,
                              RAGL_BUFFER_PROPERTY_START_OFFSET,
-                            &coeff_bo_start_offset);
+                            &coeff_bo_raGL_start_offset);
+    ral_buffer_get_property (blur_ptr->coeff_bo,
+                             RAL_BUFFER_PROPERTY_START_OFFSET,
+                            &coeff_bo_ral_start_offset);
 
     raGL_buffer_get_property(other_data_bo_raGL,
                              RAGL_BUFFER_PROPERTY_ID,
                             &other_data_bo_id);
     raGL_buffer_get_property(other_data_bo_raGL,
                              RAGL_BUFFER_PROPERTY_START_OFFSET,
-                            &other_data_bo_start_offset);
+                            &other_data_bo_raGL_start_offset);
+    ral_buffer_get_property (blur_ptr->other_data_bo,
+                             RAL_BUFFER_PROPERTY_START_OFFSET,
+                            &other_data_bo_ral_start_offset);
 
     /* The implementation below may look a bit wooly. Below is the break-down of the
      * whole process:
@@ -1251,24 +1259,34 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void postprocessing_blur_gaussian_exec
     entrypoints_ptr->pGLBindBufferRange(GL_UNIFORM_BUFFER,
                                         OTHER_DATA_UB_BP,
                                         other_data_bo_id,
-                                        other_data_bo_start_offset,
+                                        other_data_bo_raGL_start_offset + other_data_bo_ral_start_offset,
                                         sizeof(int) * 3);
+
+    ral_buffer_copy_to_buffer_info copy_op_frac;
+    ral_buffer_copy_to_buffer_info copy_op_per_layer;
+
+    copy_op_frac.dst_buffer_region_start_offset = 0;
+    copy_op_frac.region_size                    =     sizeof(int);
+    copy_op_frac.src_buffer_region_start_offset = 2 * sizeof(int);
+
+    copy_op_per_layer.dst_buffer_region_start_offset = 0;
+    copy_op_per_layer.region_size                    = sizeof(int);
+    copy_op_per_layer.src_buffer_region_start_offset = sizeof(int);
 
     for (unsigned int n_layer = 0;
                       n_layer < n_layers;
                     ++n_layer)
     {
         /* Use the iteration-specific number of taps */
-        dsa_entrypoints_ptr->pGLNamedCopyBufferSubDataEXT(other_data_bo_id,                             /* readBuffer */
-                                                          other_data_bo_id,                             /* writeBuffer */
-                                                          other_data_bo_start_offset + 1 * sizeof(int), /* readOffset */
-                                                          other_data_bo_start_offset,                   /* writeOffset */
-                                                          sizeof(int) );
+        ral_buffer_copy_to_buffer(blur_ptr->other_data_bo, /* src_buffer */
+                                  blur_ptr->other_data_bo, /* dst_buffer */
+                                  1,
+                                 &copy_op_per_layer);
 
         entrypoints_ptr->pGLBindBufferRange(GL_UNIFORM_BUFFER,
                                             COEFFS_DATA_UB_BP,
                                             coeff_bo_id,
-                                            coeff_bo_start_offset + blur_ptr->coeff_buffer_offsets[n_taps - blur_ptr->n_min_taps],
+                                            coeff_bo_raGL_start_offset + coeff_bo_ral_start_offset + blur_ptr->coeff_buffer_offsets[n_taps - blur_ptr->n_min_taps],
                                             blur_ptr->n_max_data_coeffs * 4 /* padding */ * sizeof(float) );
 
         /* Copy the layer to blur */
@@ -1394,15 +1412,14 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void postprocessing_blur_gaussian_exec
             entrypoints_ptr->pGLBindBufferRange(GL_UNIFORM_BUFFER,
                                                 COEFFS_DATA_UB_BP,
                                                 coeff_bo_id,
-                                                coeff_bo_start_offset + blur_ptr->coeff_buffer_offset_for_value_1,
+                                                coeff_bo_raGL_start_offset + coeff_bo_ral_start_offset + blur_ptr->coeff_buffer_offset_for_value_1,
                                                 blur_ptr->n_max_data_coeffs * 4 /* padding */ * sizeof(float) );
 
             /* Set the number of taps to 1 */
-            dsa_entrypoints_ptr->pGLNamedCopyBufferSubDataEXT(other_data_bo_id,                             /* readBuffer  */
-                                                              other_data_bo_id,                             /* writeBuffer */
-                                                              other_data_bo_start_offset + 2 * sizeof(int), /* readOffset  */
-                                                              other_data_bo_start_offset,                   /* writeOffset */
-                                                              sizeof(int) );
+            ral_buffer_copy_to_buffer(blur_ptr->other_data_bo, /* src_buffer */
+                                      blur_ptr->other_data_bo, /* dst_buffer */
+                                      1,
+                                     &copy_op_frac);
 
             /* Draw data from texture layer 1 */
             entrypoints_ptr->pGLDrawArrays(GL_TRIANGLE_STRIP,

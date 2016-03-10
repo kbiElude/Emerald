@@ -269,6 +269,21 @@ typedef enum
 };
 typedef int ral_queue_bits;
 
+/** All info required to perform a buffer->buffer copy */
+typedef struct ral_buffer_copy_to_buffer_info
+{
+    uint32_t dst_buffer_region_start_offset;
+    uint32_t region_size;
+    uint32_t src_buffer_region_start_offset;
+
+    ral_buffer_copy_to_buffer_info()
+    {
+        dst_buffer_region_start_offset = 0;
+        region_size                    = 0;
+        src_buffer_region_start_offset = 0;
+    }
+} ral_buffer_copy_to_buffer_info;
+
 /** All info required to create a single buffer instance */
 typedef struct ral_buffer_create_info
 {

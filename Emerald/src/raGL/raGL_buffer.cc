@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2015)
+ * Emerald (kbi/elude @2015-2016)
  *
  */
 #include "shared.h"
@@ -90,6 +90,13 @@ typedef struct
     const ral_buffer_client_sourced_update_info* updates;
 } _raGL_buffer_client_memory_sourced_update_request_arg;
 
+typedef struct
+{
+    const ral_buffer_copy_to_buffer_info* copy_ops;
+    raGL_buffer                           dst_buffer;
+    uint32_t                              n_copy_ops;
+    raGL_buffer                           src_buffer;
+} _raGL_buffer_copy_buffer_to_buffer_request_arg;
 
 /** TODO */
 PRIVATE void _raGL_buffer_on_client_memory_sourced_update_request_rendering_thread(ogl_context context,
@@ -118,6 +125,54 @@ PRIVATE void _raGL_buffer_on_client_memory_sourced_update_request_rendering_thre
     } /* for (all updates) */
 }
 
+/** TODO */
+PRIVATE void _raGL_buffer_on_copy_buffer_to_buffer_update_request_rendering_thread(ogl_context context,
+                                                                                   void*       callback_arg)
+{
+    _raGL_buffer_copy_buffer_to_buffer_request_arg*           callback_arg_ptr    = (_raGL_buffer_copy_buffer_to_buffer_request_arg*) callback_arg;
+    const ogl_context_gl_entrypoints_ext_direct_state_access* dsa_entrypoints_ptr = NULL;
+    _raGL_buffer*                                             dst_buffer_ptr      = (_raGL_buffer*) callback_arg_ptr->dst_buffer;
+    _raGL_buffer*                                             src_buffer_ptr      = (_raGL_buffer*) callback_arg_ptr->src_buffer;
+
+    ogl_context_get_property(dst_buffer_ptr->context,
+                             OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL_EXT_DIRECT_STATE_ACCESS,
+                            &dsa_entrypoints_ptr);
+
+    for (uint32_t n_copy_op = 0;
+                  n_copy_op < callback_arg_ptr->n_copy_ops;
+                ++n_copy_op)
+    {
+        const ral_buffer_copy_to_buffer_info& current_copy = callback_arg_ptr->copy_ops[n_copy_op];
+
+        dsa_entrypoints_ptr->pGLNamedCopyBufferSubDataEXT(src_buffer_ptr->id,                                                         /* readBuffer  */
+                                                          dst_buffer_ptr->id,                                                         /* writeBuffer */
+                                                          src_buffer_ptr->start_offset + current_copy.src_buffer_region_start_offset, /* readOffset  */
+                                                          dst_buffer_ptr->start_offset + current_copy.dst_buffer_region_start_offset, /* writeOffset */
+                                                          current_copy.region_size);
+    } /* for (all copy ops) */
+}
+
+/** Please see header for specification */
+PUBLIC void raGL_buffer_copy_buffer_to_buffer(raGL_buffer                           dst_buffer_raGL,
+                                              raGL_buffer                           src_buffer_raGL,
+                                              uint32_t                              n_copy_ops,
+                                              const ral_buffer_copy_to_buffer_info* copy_ops)
+{
+    _raGL_buffer_copy_buffer_to_buffer_request_arg callback_arg;
+    ogl_context                                    current_context = ogl_context_get_current_context();
+    _raGL_buffer*                                  dst_buffer_ptr  = (_raGL_buffer*) dst_buffer_raGL;
+    _raGL_buffer*                                  src_buffer_ptr  = (_raGL_buffer*) src_buffer_raGL;
+
+    callback_arg.copy_ops   = copy_ops;
+    callback_arg.dst_buffer = dst_buffer_raGL;
+    callback_arg.n_copy_ops = n_copy_ops;
+    callback_arg.src_buffer = src_buffer_raGL;
+
+    ogl_context_request_callback_from_context_thread( (current_context != dst_buffer_ptr->context && current_context != NULL) ? current_context
+                                                                                                                              : dst_buffer_ptr->context,
+                                                     _raGL_buffer_on_copy_buffer_to_buffer_update_request_rendering_thread,
+                                                    &callback_arg);
+}
 
 /** Please see header for specification */
 PUBLIC raGL_buffer raGL_buffer_create(ogl_context           context,

@@ -173,6 +173,8 @@ PRIVATE void        _raGL_backend_get_object_vars                               
                                                                                   bool*                    out_is_owner_ptr);
 PRIVATE void        _raGL_backend_on_buffer_client_memory_sourced_update_request (const void*              callback_arg_data,
                                                                                   void*                    backend);
+PRIVATE void        _raGL_backend_on_buffer_to_buffer_copy_request               (const void*              callback_arg_data,
+                                                                                  void*                    backend);
 PRIVATE void        _raGL_backend_on_objects_created                             (const void*              callback_arg_data,
                                                                                   void*                    backend);
 PRIVATE void        _raGL_backend_on_objects_created_rendering_callback          (ogl_context              context,
@@ -657,6 +659,43 @@ PRIVATE void _raGL_backend_get_object_vars(_raGL_backend*           backend_ptr,
                               "Unrecognized raGL_backend_object_type value.");
         }
     } /* switch (object_type) */
+}
+
+/** TODO */
+PRIVATE void _raGL_backend_on_buffer_to_buffer_copy_request(const void* callback_arg_data,
+                                                            void*       backend)
+{
+    _raGL_backend*                          backend_ptr      = (_raGL_backend*)                          backend;
+    ral_buffer_copy_to_buffer_callback_arg* callback_arg_ptr = (ral_buffer_copy_to_buffer_callback_arg*) callback_arg_data;
+    raGL_buffer                             dst_buffer_raGL  = NULL;
+    raGL_buffer                             src_buffer_raGL  = NULL;
+
+    /* Identify the raGL_buffer instances for the dst & src ral_buffer objects and forward
+     * the request. */
+    system_critical_section_enter(backend_ptr->buffers_map_cs);
+    {
+        if (!system_hash64map_get(backend_ptr->buffers_map,
+                                  (system_hash64) callback_arg_ptr->dst_buffer,
+                                 &dst_buffer_raGL) ||
+            !system_hash64map_get(backend_ptr->buffers_map,
+                                  (system_hash64) callback_arg_ptr->src_buffer,
+                                 &src_buffer_raGL) )
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "No raGL_buffer instance found for the specified dst / src ral_buffer instances.");
+
+            goto end;
+        }
+    }
+    system_critical_section_leave(backend_ptr->buffers_map_cs);
+
+    raGL_buffer_copy_buffer_to_buffer(dst_buffer_raGL,
+                                      src_buffer_raGL,
+                                      callback_arg_ptr->n_copy_ops,
+                                      callback_arg_ptr->copy_ops);
+
+end:
+    ;
 }
 
 /** TODO */
@@ -1666,6 +1705,11 @@ PRIVATE void _raGL_backend_subscribe_for_buffer_notifications(_raGL_backend* bac
     if (should_subscribe)
     {
         system_callback_manager_subscribe_for_callbacks(buffer_ral_callback_manager,
+                                                        RAL_BUFFER_CALLBACK_ID_BUFFER_TO_BUFFER_COPY_REQUESTED,
+                                                        CALLBACK_SYNCHRONICITY_SYNCHRONOUS,
+                                                        _raGL_backend_on_buffer_to_buffer_copy_request,
+                                                        backend_ptr);
+        system_callback_manager_subscribe_for_callbacks(buffer_ral_callback_manager,
                                                         RAL_BUFFER_CALLBACK_ID_CLIENT_MEMORY_SOURCED_UPDATES_REQUESTED,
                                                         CALLBACK_SYNCHRONICITY_SYNCHRONOUS,
                                                         _raGL_backend_on_buffer_client_memory_sourced_update_request,
@@ -1673,6 +1717,10 @@ PRIVATE void _raGL_backend_subscribe_for_buffer_notifications(_raGL_backend* bac
     } /* if (should_subscribe) */
     else
     {
+        system_callback_manager_unsubscribe_from_callbacks(buffer_ral_callback_manager,
+                                                           RAL_BUFFER_CALLBACK_ID_BUFFER_TO_BUFFER_COPY_REQUESTED,
+                                                           _raGL_backend_on_buffer_to_buffer_copy_request,
+                                                           backend_ptr);
         system_callback_manager_unsubscribe_from_callbacks(buffer_ral_callback_manager,
                                                            RAL_BUFFER_CALLBACK_ID_CLIENT_MEMORY_SOURCED_UPDATES_REQUESTED,
                                                            _raGL_backend_on_buffer_client_memory_sourced_update_request,

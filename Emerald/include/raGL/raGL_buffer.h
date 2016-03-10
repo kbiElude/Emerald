@@ -21,6 +21,12 @@ typedef enum
 } raGL_buffer_property;
 
 /** TODO */
+PUBLIC void raGL_buffer_copy_buffer_to_buffer(raGL_buffer                           dst_buffer_raGL,
+                                              raGL_buffer                           src_buffer_raGL,
+                                              uint32_t                              n_copy_ops,
+                                              const ral_buffer_copy_to_buffer_info* copy_ops);
+
+/** TODO */
 PUBLIC raGL_buffer raGL_buffer_create(ogl_context           context,
                                       GLint                 id,
                                       system_memory_manager memory_manager,
